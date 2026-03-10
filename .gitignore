@@ -33,7 +33,7 @@ migrate_working_dir/
 /coverage/
 
 docs
-scripts
+
 
 # Build directories
 /build-*/
