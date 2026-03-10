@@ -1,0 +1,344 @@
+name: Build libmpv Prebuilt Binaries
+
+# Esegui:
+#   - Manualmente (workflow_dispatch)
+#   - Quando un tag v* viene pushato (es: v0.41.0)
+#   - Quando i build script cambiano
+on:
+  workflow_dispatch:
+    inputs:
+      mpv_version:
+        description: 'mpv version (es: 0.41.0)'
+        required: false
+        default: '0.41.0'
+      platforms:
+        description: 'Piattaforme (macos ios android linux windows — separati da spazio)'
+        required: false
+        default: 'macos ios android linux windows'
+  push:
+    tags:
+      - 'libs/v*'
+    paths:
+      - 'scripts/build_libmpv_*.sh'
+      - '.github/workflows/build_libs.yml'
+
+env:
+  MPV_VERSION: ${{ github.event.inputs.mpv_version || '0.41.0' }}
+
+jobs:
+  # ══════════════════════════════════════════════════════════════════════════
+  # macOS — compila libmpv.dylib (arm64)
+  # ══════════════════════════════════════════════════════════════════════════
+  build-macos:
+    name: macOS (arm64)
+    runs-on: macos-14        # Apple Silicon
+    if: contains(github.event.inputs.platforms || 'macos ios android linux windows', 'macos')
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew install meson ninja nasm cmake pkg-config python3 \
+            autoconf automake libtool git 2>/dev/null || true
+
+      - name: Build libmpv (arm64)
+        env:
+          ARCH: arm64
+          MPV_VERSION: ${{ env.MPV_VERSION }}
+          JOBS: 3
+          KEEP_BUILD: 0
+        run: |
+          chmod +x scripts/build_libmpv_macos.sh
+          ./scripts/build_libmpv_macos.sh
+
+      - name: Verifica output
+        run: |
+          test -f macos/libs/libmpv.dylib || (echo "libmpv.dylib non trovata!" && exit 1)
+          otool -L macos/libs/libmpv.dylib
+          du -sh macos/libs/libmpv.dylib
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-macos-arm64
+          path: macos/libs/libmpv.dylib
+          retention-days: 30
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # iOS — compila libmpv.xcframework (device arm64 + simulator)
+  # ══════════════════════════════════════════════════════════════════════════
+  build-ios:
+    name: iOS (xcframework)
+    runs-on: macos-14
+    if: contains(github.event.inputs.platforms || 'macos ios android linux windows', 'ios')
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew install meson ninja nasm cmake pkg-config python3 \
+            autoconf automake libtool git 2>/dev/null || true
+
+      - name: Build libmpv iOS xcframework
+        env:
+          MPV_VERSION: ${{ env.MPV_VERSION }}
+          JOBS: 3
+          KEEP_BUILD: 0
+        run: |
+          chmod +x scripts/build_libmpv_ios.sh
+          ./scripts/build_libmpv_ios.sh
+
+      - name: Verifica output
+        run: |
+          test -d ios/Frameworks/libmpv.xcframework || (echo "xcframework non trovato!" && exit 1)
+          ls -la ios/Frameworks/libmpv.xcframework/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-ios-xcframework
+          path: ios/Frameworks/libmpv.xcframework/
+          retention-days: 30
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Android — compila libmpv.so per tutte le ABI
+  # ══════════════════════════════════════════════════════════════════════════
+  build-android:
+    name: Android (arm64-v8a, armeabi-v7a, x86_64, x86)
+    runs-on: ubuntu-24.04
+    if: contains(github.event.inputs.platforms || 'macos ios android linux windows', 'android')
+    timeout-minutes: 300
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            build-essential cmake ninja-build nasm python3 python3-pip \
+            pkg-config autoconf automake libtool git curl unzip
+          pip3 install meson --quiet
+
+      - name: Setup Android NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Find NDK path
+        run: |
+          NDK_PATH="$(ls -d $ANDROID_SDK_ROOT/ndk/* 2>/dev/null | sort -V | tail -1)"
+          echo "ANDROID_NDK_ROOT=$NDK_PATH" >> "$GITHUB_ENV"
+          echo "NDK trovato: $NDK_PATH"
+
+      - name: Build libmpv (tutte le ABI)
+        env:
+          MPV_VERSION: ${{ env.MPV_VERSION }}
+          ANDROID_API: '21'
+          ABIS: 'arm64-v8a armeabi-v7a x86_64 x86'
+          JOBS: 4
+          KEEP_BUILD: 0
+        run: |
+          chmod +x scripts/build_libmpv_android.sh
+          ./scripts/build_libmpv_android.sh
+
+      - name: Verifica output
+        run: |
+          for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+            f="android/src/main/jniLibs/$abi/libmpv.so"
+            test -f "$f" || (echo "$f non trovata!" && exit 1)
+            echo "$(du -sh $f) — $f"
+            file "$f"
+          done
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-android-jniLibs
+          path: android/src/main/jniLibs/
+          retention-days: 30
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Linux — compila libmpv.so.2 (x86_64)
+  # ══════════════════════════════════════════════════════════════════════════
+  build-linux:
+    name: Linux (x86_64)
+    runs-on: ubuntu-24.04
+    if: contains(github.event.inputs.platforms || 'macos ios android linux windows', 'linux')
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build libmpv (x86_64)
+        env:
+          MPV_VERSION: ${{ env.MPV_VERSION }}
+          JOBS: 4
+          KEEP_BUILD: 0
+        run: |
+          chmod +x scripts/build_libmpv_linux.sh
+          ./scripts/build_libmpv_linux.sh
+
+      - name: Verifica output
+        run: |
+          test -f linux/libs/libmpv.so.2 || (echo "libmpv.so.2 non trovata!" && exit 1)
+          ldd linux/libs/libmpv.so.2
+          du -sh linux/libs/libmpv.so.2
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-linux-x86_64
+          path: linux/libs/
+          retention-days: 30
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Windows — cross-compila libmpv-2.dll da Linux con MinGW64
+  # ══════════════════════════════════════════════════════════════════════════
+  build-windows:
+    name: Windows (x86_64, cross da Linux)
+    runs-on: ubuntu-24.04
+    if: contains(github.event.inputs.platforms || 'macos ios android linux windows', 'windows')
+    timeout-minutes: 300
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain MinGW64 + build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            mingw-w64 mingw-w64-tools \
+            nasm cmake ninja-build python3 python3-pip \
+            autoconf automake libtool pkg-config \
+            git curl unzip
+          pip3 install meson --quiet
+
+      - name: Build libmpv (Windows x86_64, cross-compile)
+        env:
+          MPV_VERSION: ${{ env.MPV_VERSION }}
+          JOBS: 4
+          KEEP_BUILD: 0
+        run: |
+          chmod +x scripts/build_libmpv_windows.sh
+          ./scripts/build_libmpv_windows.sh
+
+      - name: Verifica output
+        run: |
+          test -f windows/libs/libmpv-2.dll || (echo "libmpv-2.dll non trovata!" && exit 1)
+          echo "OK: $(du -sh windows/libs/libmpv-2.dll)"
+          # Verifica dipendenze (solo system DLL ammesse)
+          x86_64-w64-mingw32-objdump -p windows/libs/libmpv-2.dll | \
+            grep 'DLL Name' | sort | uniq
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-windows-x86_64
+          path: |
+            windows/libs/libmpv-2.dll
+            windows/include/
+          retention-days: 30
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Release — aggrega tutti gli artifact e crea una GitHub Release
+  # ══════════════════════════════════════════════════════════════════════════
+  create-release:
+    name: Crea Release
+    runs-on: ubuntu-latest
+    needs: [build-macos, build-ios, build-android, build-linux, build-windows]
+    if: |
+      always() &&
+      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
+      (needs.build-ios.result == 'success' || needs.build-ios.result == 'skipped') &&
+      (needs.build-android.result == 'success' || needs.build-android.result == 'skipped') &&
+      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped') &&
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download tutti gli artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts/
+
+      - name: Crea archivi per piattaforma
+        run: |
+          cd release-artifacts/
+          ls -la
+
+          # macOS
+          if [ -f libmpv-macos-arm64/libmpv.dylib ]; then
+            tar -czf libmpv-macos-arm64.tar.gz -C libmpv-macos-arm64 libmpv.dylib
+          fi
+
+          # iOS
+          if [ -d libmpv-ios-xcframework ]; then
+            tar -czf libmpv-ios-xcframework.tar.gz libmpv-ios-xcframework/
+          fi
+
+          # Android
+          if [ -d libmpv-android-jniLibs ]; then
+            tar -czf libmpv-android-jniLibs.tar.gz libmpv-android-jniLibs/
+          fi
+
+          # Linux
+          if [ -d libmpv-linux-x86_64 ]; then
+            tar -czf libmpv-linux-x86_64.tar.gz -C libmpv-linux-x86_64 .
+          fi
+
+          # Windows
+          if [ -f libmpv-windows-x86_64/libmpv-2.dll ]; then
+            zip libmpv-windows-x86_64.zip -j libmpv-windows-x86_64/libmpv-2.dll
+          fi
+
+          ls -lh *.tar.gz *.zip 2>/dev/null || echo "Nessun archivio creato"
+
+      - name: Crea GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: libs/v${{ env.MPV_VERSION }}-${{ github.run_number }}
+          name: libmpv ${{ env.MPV_VERSION }} prebuilt binaries
+          draft: false
+          prerelease: false
+          body: |
+            ## libmpv ${{ env.MPV_VERSION }} — binari precompilati
+
+            Binari compilati da sorgenti ufficiali (nessuna dipendenza da media_kit o Homebrew).
+
+            | Piattaforma | File | Note |
+            |-------------|------|------|
+            | macOS arm64 | `libmpv-macos-arm64.tar.gz` | dylib statico, no Homebrew |
+            | iOS | `libmpv-ios-xcframework.tar.gz` | xcframework statico (device + simulator) |
+            | Android | `libmpv-android-jniLibs.tar.gz` | arm64-v8a, armeabi-v7a, x86_64, x86 |
+            | Linux x86_64 | `libmpv-linux-x86_64.tar.gz` | .so.2 |
+            | Windows x86_64 | `libmpv-windows-x86_64.zip` | libmpv-2.dll |
+
+            ### Come usare
+
+            Scarica l'archivio per la tua piattaforma ed estrai nella cartella corretta:
+            - macOS: `macos/libs/`
+            - iOS: `ios/Frameworks/`
+            - Android: `android/src/main/jniLibs/`
+            - Linux: `linux/libs/`
+            - Windows: `windows/libs/`
+
+            ### Versioni componenti
+            - mpv: ${{ env.MPV_VERSION }}
+            - ffmpeg: 7.1.1
+            - libass: 0.17.3
+            - libplacebo: 7.349.0 (macOS/Linux)
+          files: |
+            release-artifacts/*.tar.gz
+            release-artifacts/*.zip

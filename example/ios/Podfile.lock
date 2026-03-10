@@ -1,0 +1,28 @@
+PODS:
+  - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
+  - mpv_audio_kit (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+  - mpv_audio_kit (from `.symlinks/plugins/mpv_audio_kit/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+  mpv_audio_kit:
+    :path: ".symlinks/plugins/mpv_audio_kit/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  mpv_audio_kit: 4201ae989c52f626b0da9b941f7914cfa6218be9
+
+PODFILE CHECKSUM: f8c2dcdfb50bb67645580d28a6bf814fca30bdec
+
+COCOAPODS: 1.16.2

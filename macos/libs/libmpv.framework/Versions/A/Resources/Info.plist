@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>        <string>org.mpv-player.libmpv</string>
+    <key>CFBundleName</key>              <string>libmpv</string>
+    <key>CFBundlePackageType</key>       <string>FMWK</string>
+    <key>CFBundleShortVersionString</key><string>0.41.0</string>
+    <key>CFBundleVersion</key>           <string>0.41.0</string>
+    <key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
+    <key>MinimumOSVersion</key>          <string>10.14</string>
+</dict>
+</plist>
