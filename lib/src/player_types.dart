@@ -65,6 +65,28 @@ class MediaInfo {
       'MediaInfo(title: $title, artist: $artist, duration: $duration)';
 }
 
+/// Represents an audio output device detected by mpv.
+class AudioDevice {
+  /// Internal name of the device (useful for `setAudioDevice`).
+  final String name;
+
+  /// Human-readable description of the device.
+  final String description;
+
+  const AudioDevice({required this.name, required this.description});
+
+  @override
+  String toString() => 'AudioDevice($name, $description)';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AudioDevice && name == other.name && description == other.description;
+
+  @override
+  int get hashCode => name.hashCode ^ description.hashCode;
+}
+
 /// Represents an audio filter applied to the mpv pipeline (lavfi/AF).
 ///
 /// Each filter corresponds to a string in mpv's [--af] filter graph.

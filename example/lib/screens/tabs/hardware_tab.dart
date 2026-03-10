@@ -46,17 +46,48 @@ class _HardwareTabState extends State<HardwareTab> {
               }
             },
           ),
-          buildDropdownRow<String>(
-            'Audio Device',
-            _audioDevice,
-            [
-              'auto',
-            ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-            (v) {
-              if (v != null) {
-                setState(() => _audioDevice = v);
-                widget.player.setAudioDevice(v);
+          StreamBuilder<List<AudioDevice>>(
+            stream: widget.player.audioDeviceListStream,
+            initialData: widget.player.audioDeviceList,
+            builder: (context, snapshot) {
+              var devices = snapshot.data ?? [];
+
+              // If 'auto' is missing, add it to avoid errors with the default value
+              if (!devices.any((d) => d.name == 'auto')) {
+                devices = [
+                  const AudioDevice(name: 'auto', description: 'Default (auto)'),
+                  ...devices,
+                ];
               }
+
+              // Ensure the selected _audioDevice exists in the current list
+              // to avoid DropdownButton errors.
+              final currentDeviceValue = devices.any((d) => d.name == _audioDevice)
+                  ? _audioDevice
+                  : 'auto';
+
+              return buildDropdownRow<String>(
+                'Audio Device',
+                currentDeviceValue,
+                devices.map((d) {
+                  return DropdownMenuItem(
+                    value: d.name,
+                    child: SizedBox(
+                      width: 200,
+                      child: Text(
+                        d.name == 'auto' ? 'Default (auto)' : d.description,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                (v) {
+                  if (v != null) {
+                    setState(() => _audioDevice = v);
+                    widget.player.setAudioDevice(v);
+                  }
+                },
+              );
             },
           ),
           buildDropdownRow<String>(

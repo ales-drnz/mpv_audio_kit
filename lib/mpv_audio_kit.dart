@@ -17,5 +17,5 @@
 library;
 export 'src/mpv_player.dart' show MpvPlayer;
 export 'src/player_types.dart'
-    show PlayerState, PlayerConfig, MediaInfo, AudioFilter;
+    show PlayerState, PlayerConfig, MediaInfo, AudioFilter, AudioDevice;
 export 'src/mpv_bindings.dart' show MpvLibraryException;

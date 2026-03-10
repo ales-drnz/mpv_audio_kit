@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
@@ -36,6 +37,7 @@ class MpvPlayer {
   final _logCtrl = StreamController<String>.broadcast();
   final _cacheCtrl = StreamController<double>.broadcast();
   final _bitrateCtrl = StreamController<int?>.broadcast();
+  final _audioDeviceListCtrl = StreamController<List<AudioDevice>>.broadcast();
 
   PlayerState _state = PlayerState.idle;
   double _position = 0.0;
@@ -59,6 +61,7 @@ class MpvPlayer {
   Stream<String> get logStream => _logCtrl.stream;
   Stream<double> get cacheStream => _cacheCtrl.stream;
   Stream<int?> get bitrateStream => _bitrateCtrl.stream;
+  Stream<List<AudioDevice>> get audioDeviceListStream => _audioDeviceListCtrl.stream;
 
   PlayerState get state => _state;
   double get position => _position;
@@ -70,6 +73,7 @@ class MpvPlayer {
   MediaInfo? get mediaInfo => _mediaInfo;
   double? get cacheDuration => _lastCacheDuration;
   int? get bitrate => _lastBitrate;
+  List<AudioDevice> get audioDeviceList => _parseDeviceList(getAudioDeviceList() ?? '[]');
   bool get isPlaying => _state == PlayerState.playing;
   bool get isPaused => _state == PlayerState.paused;
 
@@ -123,6 +127,7 @@ class MpvPlayer {
     _observe('metadata', MpvFormat.mpvFormatString, 9);
     _observe('demuxer-cache-duration', MpvFormat.mpvFormatDouble, 10);
     _observe('audio-bitrate', MpvFormat.mpvFormatDouble, 11);
+    _observe('audio-device-list', MpvFormat.mpvFormatString, 12);
   }
 
   void _observe(String name, int format, int replyId) {
@@ -258,6 +263,11 @@ class MpvPlayer {
           if (_state != PlayerState.error && _state != PlayerState.ended) {
             _updateState(PlayerState.idle);
           }
+        }
+      case 'audio-device-list':
+        if (prop.format == MpvFormat.mpvFormatString && prop.data != nullptr) {
+          final jsonStr = prop.data.cast<Pointer<Utf8>>().value.cast<Utf8>().toDartString();
+          _audioDeviceListCtrl.add(_parseDeviceList(jsonStr));
         }
     }
   }
@@ -727,5 +737,21 @@ class MpvPlayer {
     _pitchCtrl.close();
     _mediaInfoCtrl.close();
     _logCtrl.close();
+    _audioDeviceListCtrl.close();
+  }
+
+  List<AudioDevice> _parseDeviceList(String jsonStr) {
+    try {
+      final List<dynamic> list = json.decode(jsonStr);
+      return list.map((d) {
+        return AudioDevice(
+          name: d['name'] ?? 'unknown',
+          description: d['description'] ?? 'No description',
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Error parsing audio-device-list: $e');
+      return [];
+    }
   }
 }

@@ -769,8 +769,9 @@ slice_mpv() {
   grep -q "\/\/\[p->renderer setAudioOutputDeviceUniqueID:" "$dir/audio/out/ao_avfoundation.m" || \
     sed -i '' 's/\[p->renderer setAudioOutputDeviceUniqueID:/\/\/\[p->renderer setAudioOutputDeviceUniqueID:/g' "$dir/audio/out/ao_avfoundation.m"
 
-  # Patch meson.build to remove ao_coreaudio_properties.c on iOS (it's macOS only HAL stuff)
-  sed -i '' "s/sources += files('audio\/out\/ao_coreaudio_properties.c')/# sources += files('audio\/out\/ao_coreaudio_properties.c')/g" "$dir/meson.build"
+  # Patch meson.build to support appleframeworks on iOS
+  grep -q "dependency('appleframeworks', modules : \['CoreAudio', 'AudioUnit'\]" "$dir/meson.build" && \
+    sed -i '' "s/dependency('appleframeworks', modules : \['CoreAudio', 'AudioUnit'\])/dependency('appleframeworks', modules : ['CoreAudio', 'AudioUnit', 'AudioToolbox'], required : get_option('audiounit') or get_option('coreaudio'))/g" "$dir/meson.build"
 
   # Patch ao.h for iOS missing types (central hack for Darwin audio components)
   grep -q "TARGET_OS_IPHONE" "$dir/audio/out/ao.h" || \
@@ -955,7 +956,7 @@ PYEOF2
     -Dcocoa=disabled \
     -Davfoundation=enabled \
     -Dcoreaudio=disabled \
-    -Daudiounit=disabled \
+    -Daudiounit=enabled \
     -Dios-gl=disabled \
     -Dvideotoolbox-gl=disabled \
     -Dvideotoolbox-pl=disabled \
