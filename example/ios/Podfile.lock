@@ -21,7 +21,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  mpv_audio_kit: 4201ae989c52f626b0da9b941f7914cfa6218be9
+  mpv_audio_kit: c10c2aedc9db6b79c6df17cdecabc4301c92babc
 
 PODFILE CHECKSUM: f8c2dcdfb50bb67645580d28a6bf814fca30bdec
 

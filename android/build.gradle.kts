@@ -9,8 +9,8 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.11.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+        classpath("com.android.tools.build:gradle:8.7.2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21")
     }
 }
 
@@ -30,6 +30,7 @@ android {
     namespace = "com.example.mpv_audio_kit"
 
     compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -63,7 +64,7 @@ android {
         // Per ora il plugin carica libmpv.so a runtime via dart:ffi.
         // Se le .so sono presenti in jniLibs vengono packagizzate nell'APK.
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
 
         // Link CMakeLists per il wrapper JNI/NDK
@@ -78,7 +79,7 @@ android {
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.18.1"
+            version = "3.22.1"
         }
     }
 

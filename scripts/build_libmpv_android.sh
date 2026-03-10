@@ -4,7 +4,7 @@
 #
 # Compiles mpv 0.41.0 as a shared library for Android.
 # Output: android/src/main/jniLibs/{abi}/libmpv.so
-#         Supported ABIs: arm64-v8a, armeabi-v7a, x86_64, x86
+#         Supported ABIs: arm64-v8a, x86_64
 #
 # Usage (from project root):
 #   chmod +x scripts/build_libmpv_android.sh
@@ -32,7 +32,7 @@ OUTPUT_BASE="$ROOT/android/src/main/jniLibs"
 MPV_VERSION="${MPV_VERSION:-0.41.0}"
 ANDROID_API="${ANDROID_API:-21}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 4)}"
-ABIS="${ABIS:-arm64-v8a armeabi-v7a x86_64 x86}"
+ABIS="${ABIS:-arm64-v8a x86_64}"
 
 # Dependency versions
 FFMPEG_VERSION="7.1.1"
@@ -279,13 +279,20 @@ build_abi() {
   log "═══ ABI: $abi ═══"
 
   android_zlib       "$abi" "$prefix"
+  android_iconv      "$abi" "$prefix"
   android_bzip2      "$abi" "$prefix"
   android_xz         "$abi" "$prefix"
+  android_expat      "$abi" "$prefix"
+  android_libpng     "$abi" "$prefix"
+  android_freetype   "$abi" "$prefix"
+  android_fribidi    "$abi" "$prefix"
+  android_harfbuzz   "$abi" "$prefix"
+  android_freetype2  "$abi" "$prefix"
+  android_fontconfig "$abi" "$prefix"
+  android_libass     "$abi" "$prefix"
   android_speexdsp   "$abi" "$prefix"
   android_rubberband "$abi" "$prefix"
   android_libarchive "$abi" "$prefix"
-  android_mujs       "$abi" "$prefix"
-  android_luajit     "$abi" "$prefix"
   android_mbedtls    "$abi" "$prefix"
   android_ffmpeg     "$abi" "$prefix"
   android_libplacebo "$abi" "$prefix"
@@ -308,6 +315,7 @@ android_zlib() {
   download "https://github.com/madler/zlib/releases/download/v${ZLIB_VERSION}/zlib-${ZLIB_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
+  make clean 2>/dev/null || true
   CC="$(ndk_cc "$abi")" \
   CFLAGS="-O2 -fPIC" \
   ./configure --prefix="$prefix" --static
@@ -342,6 +350,7 @@ android_bzip2() {
   download "https://sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
+  make clean 2>/dev/null || true
   make -j"$JOBS" \
     CC="$(ndk_cc "$abi")" AR="$(ndk_ar)" RANLIB="$(ndk_ranlib)" \
     CFLAGS="-O2 -fPIC -D_FILE_OFFSET_BITS=64" libbz2.a
@@ -376,6 +385,7 @@ android_expat() {
   download "https://github.com/libexpat/libexpat/releases/download/R_$(echo "$LIBEXPAT_VERSION" | tr . _)/expat-${LIBEXPAT_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
+  make clean 2>/dev/null || true
   CC="$(ndk_cc "$abi")" AR="$(ndk_ar)" RANLIB="$(ndk_ranlib)" CFLAGS="-O2 -fPIC" \
   ./configure --prefix="$prefix" --host="$(abi_to_triple "$abi")" \
     --enable-static --disable-shared --without-docbook --without-examples --without-tests
@@ -391,6 +401,7 @@ android_libpng() {
   download "https://downloads.sourceforge.net/project/libpng/libpng16/${LIBPNG_VERSION}/libpng-${LIBPNG_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
+  make clean 2>/dev/null || true
   CC="$(ndk_cc "$abi")" AR="$(ndk_ar)" RANLIB="$(ndk_ranlib)" \
   CFLAGS="-O2 -fPIC" CPPFLAGS="-I$prefix/include" LDFLAGS="-L$prefix/lib" \
   ./configure --prefix="$prefix" --host="$(abi_to_triple "$abi")" \
@@ -504,6 +515,7 @@ android_libass() {
   download "https://github.com/libass/libass/releases/download/${LIBASS_VERSION}/libass-${LIBASS_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
+  make clean 2>/dev/null || true
   CC="$(ndk_cc "$abi")" AR="$(ndk_ar)" RANLIB="$(ndk_ranlib)" \
   CFLAGS="-O2 -fPIC" LDFLAGS="-L$prefix/lib" PKG_CONFIG_PATH="$prefix/lib/pkgconfig" \
   ./configure --prefix="$prefix" --host="$(abi_to_triple "$abi")" \
@@ -521,6 +533,7 @@ android_speexdsp() {
   download "https://downloads.xiph.org/releases/speex/speexdsp-${SPEEX_DSP_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
+  make clean 2>/dev/null || true
   CC="$(ndk_cc "$abi")" AR="$(ndk_ar)" RANLIB="$(ndk_ranlib)" CFLAGS="-O2 -fPIC" \
   ./configure --prefix="$prefix" --host="$(abi_to_triple "$abi")" --enable-static --disable-shared
   make -j"$JOBS"; make install
@@ -572,6 +585,7 @@ android_lcms2() {
   download "https://downloads.sourceforge.net/project/lcms/lcms/${LCMS2_VERSION}/lcms2-${LCMS2_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
+  make clean 2>/dev/null || true
   CC="$(ndk_cc "$abi")" AR="$(ndk_ar)" RANLIB="$(ndk_ranlib)" CFLAGS="-O2 -fPIC" \
   ./configure --prefix="$prefix" --host="$(abi_to_triple "$abi")" --enable-static --disable-shared
   make -j"$JOBS"; make install
@@ -626,8 +640,12 @@ android_luajit() {
   pushd "$gitdir" >/dev/null
   make clean 2>/dev/null || true
   local triple; triple="$(abi_to_triple "$abi")"
+  local host_cc="clang"
+  if [[ "$abi" == "armeabi-v7a" || "$abi" == "x86" ]]; then
+    host_cc="clang -m32"
+  fi
   make -j"$JOBS" \
-    HOST_CC="clang" \
+    HOST_CC="$host_cc" \
     CROSS="${triple}-" \
     STATIC_CC="$(ndk_cc "$abi")" \
     DYNAMIC_CC="$(ndk_cc "$abi") -fPIC" \
@@ -755,14 +773,14 @@ android_mpv() {
   pushd "$bdir" >/dev/null
   python3 -c "
 import sys, re
-with open('../../../src/mpv-$MPV_VERSION/meson.build', 'r') as f: content = f.read()
+with open('$dir/meson.build', 'r') as f: content = f.read()
 content = re.sub(
     r\"libplacebo = dependency\('libplacebo',\s*version: '[^']*',\n\s*default_options: \['default_library=static', 'demos=false'\]\)\",
     \"libplacebo = dependency('libplacebo', version: '>=6.338.2', required: false)\",
     content
 )
 content = content.replace(\"libass = dependency('libass', version: '>= 0.12.2')\", \"libass = dependency('libass', version: '>= 0.12.2', required: false)\")
-with open('../../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
+with open('$dir/meson.build', 'w') as f: f.write(content)
 "
   PKG_CONFIG_PATH="$prefix/lib/pkgconfig" \
   meson setup "$dir" \
@@ -776,8 +794,8 @@ with open('../../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(conten
     -Dtests=false \
     -Dmanpage-build=disabled \
     -Dhtml-build=disabled \
-    -Dlua=luajit \
-    -Djavascript=enabled \
+    -Dlua=disabled \
+    -Djavascript=disabled \
     -Drubberband=enabled \
     -Duchardet=disabled \
     -Dlcms2=disabled \

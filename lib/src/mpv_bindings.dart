@@ -297,12 +297,10 @@ class MpvLibrary {
     mpvGetPropertyString =
         _lib.lookupFunction<_MpvGetPropertyStringNative, MpvGetPropertyString>(
             'mpv_get_property_string');
-    mpvGetProperty =
-        _lib.lookupFunction<_MpvGetPropertyNative, MpvGetProperty>(
-            'mpv_get_property');
-    mpvSetProperty =
-        _lib.lookupFunction<_MpvSetPropertyNative, MpvSetProperty>(
-            'mpv_set_property');
+    mpvGetProperty = _lib.lookupFunction<_MpvGetPropertyNative, MpvGetProperty>(
+        'mpv_get_property');
+    mpvSetProperty = _lib.lookupFunction<_MpvSetPropertyNative, MpvSetProperty>(
+        'mpv_set_property');
     mpvCommand =
         _lib.lookupFunction<_MpvCommandNative, MpvCommand>('mpv_command');
     mpvCommandString =
@@ -317,9 +315,8 @@ class MpvLibrary {
         _lib.lookupFunction<_MpvUnobservePropertyNative, MpvUnobserveProperty>(
             'mpv_unobserve_property');
     mpvFree = _lib.lookupFunction<_MpvFreeNative, MpvFree>('mpv_free');
-    mpvErrorString =
-        _lib.lookupFunction<_MpvErrorStringNative, MpvErrorString>(
-            'mpv_error_string');
+    mpvErrorString = _lib.lookupFunction<_MpvErrorStringNative, MpvErrorString>(
+        'mpv_error_string');
     mpvRequestLogMessages = _lib.lookupFunction<_MpvRequestLogMessagesNative,
         MpvRequestLogMessages>('mpv_request_log_messages');
     mpvClientApiVersion =
@@ -356,8 +353,7 @@ class MpvLibrary {
           return c;
         } catch (_) {}
       }
-      throw const MpvLibraryException(
-          'libmpv not found in the app bundle.\n'
+      throw const MpvLibraryException('libmpv not found in the app bundle.\n'
           '  • Mac: Ensure libmpv.dylib is in Frameworks/\n'
           '  • Setup: Run scripts/setup_libs.sh');
     } else if (Platform.isLinux) {
@@ -373,7 +369,6 @@ class MpvLibrary {
     throw MpvLibraryException(
         'Platform not supported: ${Platform.operatingSystem}');
   }
-
 }
 
 class MpvLibraryException implements Exception {
