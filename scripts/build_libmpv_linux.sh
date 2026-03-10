@@ -574,7 +574,6 @@ build_ffmpeg() {
     --enable-avutil --enable-avdevice --enable-swresample --enable-swscale \
     --enable-protocols --enable-demuxers --enable-decoders --enable-filters \
     --disable-outdevs \
-    --enable-libfreetype --enable-libass \
     --enable-zlib --enable-bzlib --enable-lzma \
     --enable-iconv \
     --enable-network --enable-mbedtls --enable-version3 --disable-openssl \
@@ -592,6 +591,17 @@ build_mpv() {
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   local bdir="$BUILD_DIR/build/mpv"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
+  python3 -c "
+import sys, re
+with open('../../src/mpv-$MPV_VERSION/meson.build', 'r') as f: content = f.read()
+content = re.sub(
+    r\"libplacebo = dependency\('libplacebo',\s*version: '[^']*',\n\s*default_options: \['default_library=static', 'demos=false'\]\)\",
+    \"libplacebo = dependency('libplacebo', version: '>=6.338.2', required: false)\",
+    content
+)
+content = content.replace(\"libass = dependency('libass', version: '>= 0.12.2')\", \"libass = dependency('libass', version: '>= 0.12.2', required: false)\")
+with open('../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
+"
   PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig" \
   meson setup "$dir" \
     --prefix="$PREFIX" \
@@ -604,19 +614,16 @@ build_mpv() {
     -Dmanpage-build=disabled \
     -Dhtml-build=disabled \
     -Dffmpeg=enabled \
-    -Dlibass=enabled \
-    -Dlibplacebo=disabled \
     -Dvulkan=disabled \
     -Dgl=disabled \
     -Dsdl2=disabled \
-    -Dvideo-osd=disabled \
     -Dlua=luajit \
     -Djavascript=enabled \
     -Drubberband=enabled \
-    -Duchardet=enabled \
+    -Duchardet=disabled \
     -Dlcms2=disabled \
     -Dlibarchive=enabled \
-    -Dlibbluray=enabled \
+    -Dlibbluray=disabled \
     -Dzimg=disabled \
     -Dalsa=enabled \
     -Dpulse=enabled \
@@ -666,10 +673,10 @@ main() {
 
   build_zlib; build_bzip2; build_xz; build_expat; build_libpng
   build_freetype; build_fribidi; build_harfbuzz; build_freetype_round2; build_fontconfig
-  build_libass; build_jpeg_turbo; build_speexdsp; build_rubberband
-  build_uchardet; build_lcms2; build_libarchive; build_libbluray
+  build_libass; build_speexdsp; build_rubberband
+  build_libarchive
   build_mujs; build_luajit
-  build_mbedtls; build_ffmpeg; build_mpv
+  build_mbedtls; build_ffmpeg; build_libplacebo; build_mpv
 
   finalize
 

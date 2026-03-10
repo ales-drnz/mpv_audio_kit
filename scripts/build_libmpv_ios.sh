@@ -247,11 +247,11 @@ EOF
   slice_libass     "$sdk" "$arch" "$prefix" "$cf"
   slice_speexdsp   "$sdk" "$arch" "$prefix" "$cf"
   slice_rubberband "$sdk" "$arch" "$prefix" "$cf"
-  slice_uchardet   "$sdk" "$arch" "$prefix" "$cf"
   slice_libarchive "$sdk" "$arch" "$prefix" "$cf"
   slice_mujs       "$sdk" "$arch" "$prefix" "$cf"
 #  slice_luajit     "$sdk" "$arch" "$prefix" "$cf"
   slice_ffmpeg     "$sdk" "$arch" "$prefix" "$cf" "$sysroot"
+  slice_libplacebo "$sdk" "$arch" "$prefix" "$cf"
   slice_mpv        "$sdk" "$arch" "$prefix" "$cf"
 }
 
@@ -740,7 +740,6 @@ slice_ffmpeg() {
     --enable-avutil --enable-avdevice --enable-swresample --enable-swscale \
     --enable-protocols --enable-demuxers --enable-decoders --enable-filters \
     --disable-outdevs \
-    --enable-libfreetype --enable-libass \
     --enable-zlib --enable-bzlib --enable-lzma --enable-iconv \
     --enable-network --enable-securetransport --disable-openssl \
     --disable-videotoolbox \
@@ -914,9 +913,19 @@ patch = (
     "# utils-mac-ios-patched\n\n"
 )
 content = content.replace(marker, patch + marker, 1)
+
+# Remove hard requirements for libplacebo and libass so compilation is smooth without video features
+import re
+content = re.sub(
+    r"libplacebo = dependency\('libplacebo',\s*version: '[^']*',\n\s*default_options: \['default_library=static', 'demos=false'\]\)",
+    "libplacebo = dependency('libplacebo', version: '>=6.338.2', required: false)",
+    content
+)
+content = content.replace("libass = dependency('libass', version: '>= 0.12.2')", "libass = dependency('libass', version: '>= 0.12.2', required: false)")
+
 with open(fn, 'w') as f:
     f.write(content)
-print('meson.build: osdep/utils-mac.c now compiled for darwin + ios')
+print('meson.build: osdep/utils-mac.c now compiled for darwin + ios, libplacebo & libass made optional')
 PYEOF2
 
   local bdir="$BUILD_DIR/build/mpv-${sdk}-${arch}"; mkdir -p "$bdir"
@@ -939,12 +948,11 @@ PYEOF2
     -Dlua=disabled \
     -Djavascript=enabled \
     -Drubberband=enabled \
-    -Duchardet=enabled \
+    -Duchardet=disabled \
     -Dlcms2=disabled \
     -Dlibarchive=enabled \
     -Dzimg=disabled \
     -Dcocoa=disabled \
-    -Dvideo-osd=disabled \
     -Davfoundation=enabled \
     -Dcoreaudio=disabled \
     -Daudiounit=disabled \

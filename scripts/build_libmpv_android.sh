@@ -279,25 +279,13 @@ build_abi() {
   log "═══ ABI: $abi ═══"
 
   android_zlib       "$abi" "$prefix"
-  android_iconv      "$abi" "$prefix"
   android_bzip2      "$abi" "$prefix"
   android_xz         "$abi" "$prefix"
-  android_expat      "$abi" "$prefix"
-  android_libpng     "$abi" "$prefix"
-  android_freetype   "$abi" "$prefix"
-  android_fribidi    "$abi" "$prefix"
-  android_harfbuzz   "$abi" "$prefix"
-  android_freetype2  "$abi" "$prefix"
-  android_fontconfig "$abi" "$prefix"
-  android_libass     "$abi" "$prefix"
   android_speexdsp   "$abi" "$prefix"
   android_rubberband "$abi" "$prefix"
-  android_uchardet   "$abi" "$prefix"
-  android_lcms2      "$abi" "$prefix"
   android_libarchive "$abi" "$prefix"
   android_mujs       "$abi" "$prefix"
   android_luajit     "$abi" "$prefix"
-  android_zimg       "$abi" "$prefix"
   android_mbedtls    "$abi" "$prefix"
   android_ffmpeg     "$abi" "$prefix"
   android_libplacebo "$abi" "$prefix"
@@ -726,7 +714,6 @@ android_ffmpeg() {
     --enable-avutil --enable-avdevice --enable-swresample --enable-swscale \
     --enable-protocols --enable-demuxers --enable-decoders --enable-filters \
     --disable-outdevs \
-    --enable-libfreetype --enable-libass \
     --enable-zlib --enable-bzlib --enable-lzma \
     --enable-network --enable-mbedtls --disable-openssl --enable-version3 \
     --disable-vaapi --disable-vdpau \
@@ -766,6 +753,17 @@ android_mpv() {
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   local bdir="$BUILD_DIR/build/mpv-android-$abi"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
+  python3 -c "
+import sys, re
+with open('../../../src/mpv-$MPV_VERSION/meson.build', 'r') as f: content = f.read()
+content = re.sub(
+    r\"libplacebo = dependency\('libplacebo',\s*version: '[^']*',\n\s*default_options: \['default_library=static', 'demos=false'\]\)\",
+    \"libplacebo = dependency('libplacebo', version: '>=6.338.2', required: false)\",
+    content
+)
+content = content.replace(\"libass = dependency('libass', version: '>= 0.12.2')\", \"libass = dependency('libass', version: '>= 0.12.2', required: false)\")
+with open('../../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
+"
   PKG_CONFIG_PATH="$prefix/lib/pkgconfig" \
   meson setup "$dir" \
     --prefix="$prefix" \
@@ -781,10 +779,10 @@ android_mpv() {
     -Dlua=luajit \
     -Djavascript=enabled \
     -Drubberband=enabled \
-    -Duchardet=enabled \
-    -Dlcms2=enabled \
+    -Duchardet=disabled \
+    -Dlcms2=disabled \
     -Dlibarchive=enabled \
-    -Dzimg=enabled \
+    -Dzimg=disabled \
     -Dcocoa=disabled \
     -Davfoundation=disabled \
     -Dcoreaudio=disabled \

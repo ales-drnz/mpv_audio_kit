@@ -186,6 +186,19 @@ fetch() {
   echo "$archive"
 }
 
+download_git() {
+  local url="$1" dest="$2" tag="${3:-}"
+  if [[ ! -d "$dest/.git" ]]; then
+    echo "→ Cloning $dest..." >&2
+    if [[ -n "$tag" ]]; then
+      git clone --depth=1 --branch "$tag" "$url" "$dest" 2>/dev/null \
+        || { rm -rf "$dest"; git clone --depth=1 "$url" "$dest"; }
+    else
+      git clone --depth=1 "$url" "$dest"
+    fi
+  fi
+}
+
 cmake_win() {
   cmake -S "$1" -B "$2" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
@@ -379,27 +392,35 @@ if [[ ! -f "$DIST/lib/librubberband.a" ]]; then
   popd
 fi
 
-# ── uchardet ──────────────────────────────────────────────────────────────────
-if [[ ! -f "$DIST/lib/libuchardet.a" ]]; then
-  echo "--- uchardet $UCHARDET_VERSION ---"
-  UC=$(fetch uchardet "https://www.freedesktop.org/software/uchardet/releases/uchardet-${UCHARDET_VERSION}.tar.xz")
-  tar -xf "$UC" -C "$SRC"
-  mkdir -p "$SRC/uchardet-$UCHARDET_VERSION/build"
-  cmake_win "$SRC/uchardet-$UCHARDET_VERSION" "$SRC/uchardet-$UCHARDET_VERSION/build" \
-    -DBUILD_STATIC=ON -DBUILD_BINARY=OFF
-  ninja -C "$SRC/uchardet-$UCHARDET_VERSION/build" install
+# ── libplacebo ────────────────────────────────────────────────────────────
+if [[ ! -f "$DIST/lib/libplacebo.a" ]]; then
+  echo "--- libplacebo $LIBPLACEBO_VERSION ---"
+  LP_DIR="$SRC/libplacebo-git"
+  download_git "https://code.videolan.org/videolan/libplacebo.git" "$LP_DIR" "v6.338.2"
+  git -C "$LP_DIR" submodule update --init --recursive
+  pushd "$LP_DIR"
+    meson setup build \
+      --cross-file "$CROSS_FILE" \
+      --prefix="$DIST" --libdir=lib \
+      --buildtype=release --default-library=static \
+      -Dvulkan=disabled -Dshaderc=disabled -Dglslang=disabled -Dopengl=disabled \
+      -Dd3d11=disabled -Ddemos=false -Dtests=false
+    ninja -C build install
+  popd
 fi
 
-# ── lcms2 ─────────────────────────────────────────────────────────────────────
-if [[ ! -f "$DIST/lib/liblcms2.a" ]]; then
-  echo "--- lcms2 $LCMS2_VERSION ---"
-  LC=$(fetch lcms2 "https://github.com/mm2/Little-CMS/releases/download/lcms${LCMS2_VERSION}/lcms2-${LCMS2_VERSION}.tar.gz")
-  tar -xf "$LC" -C "$SRC"
-  pushd "$SRC/lcms2-$LCMS2_VERSION"
-    CFLAGS="$CFLAGS_COMMON" ./configure "${AUTOCONF_COMMON[@]}"
+# ── libass ────────────────────────────────────────────────────────────────
+if [[ ! -f "$DIST/lib/libass.a" ]]; then
+  echo "--- libass $LIBASS_VERSION ---"
+  LA=$(fetch libass "https://github.com/libass/libass/releases/download/${LIBASS_VERSION}/libass-${LIBASS_VERSION}.tar.gz")
+  tar -xf "$LA" -C "$SRC"
+  pushd "$SRC/libass-$LIBASS_VERSION"
+    CFLAGS="$CFLAGS_COMMON" ./configure "${AUTOCONF_COMMON[@]}" \
+      --disable-require-system-font-provider
     make -j"$JOBS" install
   popd
 fi
+
 
 # ── libarchive ────────────────────────────────────────────────────────────────
 if [[ ! -f "$DIST/lib/libarchive.a" ]]; then
@@ -414,17 +435,6 @@ if [[ ! -f "$DIST/lib/libarchive.a" ]]; then
   popd
 fi
 
-# ── libbluray ─────────────────────────────────────────────────────────────────
-if [[ ! -f "$DIST/lib/libbluray.a" ]]; then
-  echo "--- libbluray $LIBBLURAY_VERSION ---"
-  LB=$(fetch libbluray "https://download.videolan.org/pub/videolan/libbluray/${LIBBLURAY_VERSION}/libbluray-${LIBBLURAY_VERSION}.tar.bz2")
-  tar -xf "$LB" -C "$SRC"
-  pushd "$SRC/libbluray-$LIBBLURAY_VERSION"
-    CFLAGS="$CFLAGS_COMMON" ./configure "${AUTOCONF_COMMON[@]}" \
-        --disable-bdjava-jar --without-libxml2 --disable-udf --without-freetype
-    make -j"$JOBS" install
-  popd
-fi
 
 # ── mujs ──────────────────────────────────────────────────────────────────────
 if [[ ! -f "$DIST/lib/libmujs.a" ]]; then
@@ -496,18 +506,6 @@ if [[ ! -f "$DIST/lib/libmbedtls.a" ]]; then
   cmake --build "$SRC/mbedtls-$MBEDTLS_VERSION/build" -j"$JOBS" --target install
 fi
 
-# ── zimg ──────────────────────────────────────────────────────────────────────
-if [[ ! -f "$DIST/lib/libzimg.a" ]]; then
-  echo "--- zimg $ZIMG_VERSION ---"
-  ZI=$(fetch zimg "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-${ZIMG_VERSION}.tar.gz")
-  tar -xf "$ZI" -C "$SRC"
-  pushd "$SRC/zimg-release-$ZIMG_VERSION"
-    autoreconf -fiv 2>/dev/null || true
-    CFLAGS="$CFLAGS_COMMON" CXXFLAGS="$CXXFLAGS_COMMON" \
-      ./configure "${AUTOCONF_COMMON[@]}"
-    make -j"$JOBS" install
-  popd
-fi
 
 # ── FFmpeg ────────────────────────────────────────────────────────────────────
 if [[ ! -f "$DIST/lib/libavcodec.a" ]]; then
@@ -525,9 +523,8 @@ if [[ ! -f "$DIST/lib/libavcodec.a" ]]; then
       --disable-programs --disable-doc --disable-debug \
       --enable-avcodec --enable-avfilter --enable-avformat \
       --enable-avutil --enable-avdevice --enable-swresample --enable-swscale \
-      --enable-libass --enable-libfreetype --enable-libfribidi --enable-libharfbuzz \
-      --enable-libbluray --enable-libmujs --enable-libspeex --enable-librubberband \
-      --enable-libuchardet --enable-libzimg --enable-libarchive \
+      --enable-libmujs --enable-libspeex --enable-librubberband \
+      --enable-libarchive \
       --enable-zlib --enable-bzlib --enable-lzma \
       --enable-network --enable-mbedtls --enable-version3 \
       --extra-cflags="-I$DIST/include $WIN_FLAGS" \
@@ -543,6 +540,17 @@ MPV_ARCHIVE=$(fetch mpv "https://github.com/mpv-player/mpv/archive/refs/tags/v${
 tar -xf "$MPV_ARCHIVE" -C "$SRC"
 
 pushd "$SRC/mpv-$MPV_VERSION"
+  python3 -c "
+import sys, re
+with open('meson.build', 'r') as f: content = f.read()
+content = re.sub(
+    r\"libplacebo = dependency\('libplacebo',\s*version: '[^']*',\n\s*default_options: \['default_library=static', 'demos=false'\]\)\",
+    \"libplacebo = dependency('libplacebo', version: '>=6.338.2', required: false)\",
+    content
+)
+content = content.replace(\"libass = dependency('libass', version: '>= 0.12.2')\", \"libass = dependency('libass', version: '>= 0.12.2', required: false)\")
+with open('meson.build', 'w') as f: f.write(content)
+"
   meson setup build \
     --cross-file "$CROSS_FILE" \
     --prefix="$DIST" --libdir=lib \
@@ -552,21 +560,21 @@ pushd "$SRC/mpv-$MPV_VERSION"
     -Dcplayer=false \
     -Dtests=false \
     -Dmanpage-build=disabled \
-    -Dvideo-osd=disabled \
     -Dvulkan=disabled \
     -Dgl=disabled \
     -Dopengl=disabled \
     -Dwgl=disabled \
     -Dd3d11=disabled \
-    -Djpeg=enabled \
+    -Djpeg=disabled \
     -Dlua=luajit \
     -Dlibarchive=enabled \
-    -Dlibbluray=enabled \
-    -Duchardet=enabled \
+    -Dlibbluray=disabled \
+    -Duchardet=disabled \
     -Drubberband=enabled \
     -Dspeex=enabled \
-    -Dlcms2=enabled \
-    -Dzimg=enabled \
+    -Dlcms2=disabled \
+    -Dzimg=disabled \
+    -Dplain-gl=disabled \
     -Dc_args="-I$DIST/include $WIN_FLAGS" \
     -Dcpp_args="-I$DIST/include $WIN_FLAGS" \
     -Dc_link_args="-L$DIST/lib -static-libgcc" \
