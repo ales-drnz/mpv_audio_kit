@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 import '../../widgets/ui_helpers.dart';
 import '../../widgets/eq_widget.dart';
 
 class DspTab extends StatefulWidget {
-  final MpvPlayer player;
+  final Player player;
   const DspTab({super.key, required this.player});
 
   @override
@@ -46,11 +46,11 @@ class _DspTabState extends State<DspTab> {
             children: [
               buildToggle('Normalize Downmix (lavfi)', _normalizeDownmix, (v) {
                 setState(() => _normalizeDownmix = v);
-                widget.player.setAudioNormalizeDownmix(v);
+                widget.player.setRawProperty('audio-normalize-downmix', v ? 'yes' : 'no');
               }),
               buildToggle('Decoder Downmix (hw)', _hardwareDownmix, (v) {
                 setState(() => _hardwareDownmix = v);
-                widget.player.setAudioDecoderDownmix(v);
+                widget.player.setRawProperty('ad-lavc-downmix', v ? 'yes' : 'no');
               }),
               buildToggle('Compressor', _compressorEnabled, (v) {
                 setState(() => _compressorEnabled = v);

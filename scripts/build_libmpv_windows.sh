@@ -596,10 +596,9 @@ popd
 ok "mpv ✓"
 
 # ── Finalize ──────────────────────────────────────────────────────────────────
-mkdir -p "$DEST" "$HEADERS_DEST/mpv"
-cp "$DIST/bin/libmpv-2.dll" "$DEST/"
-cp "$DIST/lib/libmpv.dll.a" "$DEST/"
-cp "$DIST/include/mpv/"* "$HEADERS_DEST/mpv/"
+release_dir="$ROOT/release_builds"
+mkdir -p "$release_dir"
+cp "$DIST/bin/libmpv-2.dll" "$release_dir/libmpv_windows-x86_64.dll"
 
 log "=== Build libmpv for Windows COMPLETED! ==="
-log "Artifacts in: $DEST"
+log "Artifacts in: $release_dir/libmpv_windows-x86_64.dll"

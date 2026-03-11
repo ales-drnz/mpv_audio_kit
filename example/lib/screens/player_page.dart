@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 import 'tabs/playback_tab.dart';
 import 'tabs/stream_lab_tab.dart';
 import 'tabs/pitch_tab.dart';
@@ -19,7 +19,7 @@ class PlayerPage extends StatefulWidget {
 }
 
 class _PlayerPageState extends State<PlayerPage> {
-  late final MpvPlayer _player;
+  late final Player _player;
   String? _error;
   final List<String> _logs = [];
   int _navIndex = 0;
@@ -29,21 +29,21 @@ class _PlayerPageState extends State<PlayerPage> {
   void initState() {
     super.initState();
     try {
-      _player = MpvPlayer(
-        config: const PlayerConfig(
+      _player = Player(
+        configuration: const PlayerConfiguration(
           initialVolume: 50.0,
           autoPlay: true,
           logLevel: 'debug',
         ),
       );
-      _player.logStream.listen((line) {
+      _player.stream.log.listen((line) {
         setState(() {
           _logs.add(line);
           if (_logs.length > 200) _logs.removeAt(0);
         });
       });
-      _player.stateStream.listen((s) {
-        debugPrint('[player] state → $s');
+      _player.stream.playing.listen((p) {
+        debugPrint('[player] playing → $p');
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -73,7 +73,19 @@ class _PlayerPageState extends State<PlayerPage> {
     }
 
     return Scaffold(
-      body: SafeArea(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0.7, -0.6),
+            radius: 1.2,
+            colors: [
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              Theme.of(context).colorScheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool isWide = constraints.maxWidth > 700;
@@ -121,7 +133,12 @@ class _PlayerPageState extends State<PlayerPage> {
                 Expanded(
                   child: Column(
                     children: [
-                      Expanded(child: pages[safeIndex]),
+                      Expanded(
+                        child: IndexedStack(
+                          index: safeIndex,
+                          children: pages,
+                        ),
+                      ),
                       _TwoRowNavBar(
                         row1: row1,
                         row2: row2,
@@ -169,8 +186,9 @@ class _PlayerPageState extends State<PlayerPage> {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildLogSection() {
     return Container(
@@ -319,21 +337,34 @@ class _TwoRowNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final surface = cs.surfaceContainer;
-    final divider = cs.outlineVariant.withOpacity(0.4);
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       decoration: BoxDecoration(
-        color: surface,
-        border: Border(top: BorderSide(color: divider, width: 0.5)),
+        color: const Color(0xFF1e293b), // Solid dark slate color
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildRow(context, row1, 0),
-          Divider(height: 0.5, thickness: 0.5, color: divider),
+          Divider(
+            height: 1, 
+            thickness: 1, 
+            color: cs.outlineVariant.withValues(alpha: 0.1)
+          ),
           _buildRow(context, row2, row1.length),
         ],
       ),
@@ -376,35 +407,51 @@ class _NavTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final color = selected ? cs.primary : cs.onSurfaceVariant;
-    final bg = selected ? cs.primary.withOpacity(0.12) : Colors.transparent;
 
     return Expanded(
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: bg,
-            border: selected
-                ? Border(bottom: BorderSide(color: cs.primary, width: 2))
-                : null,
+            color: selected ? cs.primary.withOpacity(0.08) : Colors.transparent,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(item.icon, size: 20, color: color),
-              const SizedBox(height: 2),
+              AnimatedScale(
+                scale: selected ? 1.1 : 1.0,
+                duration: const Duration(milliseconds: 250),
+                child: Icon(
+                  item.icon,
+                  size: 20,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 4),
               Text(
                 item.label,
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight:
-                      selected ? FontWeight.w700 : FontWeight.w400,
+                  fontSize: 9,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                  letterSpacing: 0.5,
                   color: color,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: selected ? 12 : 0,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ],
           ),

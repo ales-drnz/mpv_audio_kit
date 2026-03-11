@@ -1,5 +1,5 @@
 #
-# mpv_audio_kit macOS podspec
+# mpv_audio_pro_kit macOS podspec
 #
 # La dylib libmpv viene copiata in Runner.app/Contents/Frameworks/ tramite
 # uno script_phase, che è il metodo più affidabile per i plugin Flutter/FFI.
@@ -10,7 +10,7 @@
 #
 
 Pod::Spec.new do |s|
-  s.name             = 'mpv_audio_kit'
+  s.name             = 'mpv_audio_pro_kit'
   s.version          = '0.0.1'
   s.summary          = 'Flutter audio player powered by libmpv.'
   s.description      = <<-DESC
@@ -18,9 +18,9 @@ Pod::Spec.new do |s|
     Supports audio filters (equalizer, compressor, loudnorm, pitch/tempo),
     all media formats supported by mpv, and streaming protocols.
   DESC
-  s.homepage         = 'https://github.com/your-org/mpv_audio_kit'
+  s.homepage         = 'https://github.com/your-org/mpv_audio_pro_kit'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'mpv_audio_kit' => 'dev@example.com' }
+  s.author           = { 'mpv_audio_pro_kit' => 'dev@example.com' }
 
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*'
@@ -30,6 +30,41 @@ Pod::Spec.new do |s|
   s.platform    = :osx, '10.14'
   s.swift_version = '5.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
+
+  # ── Download libmpv.dylib from github releases ────────────────────────────
+  # Automatically downloaded if missing or invalid.
+  # Run `scripts/generate_checksums.sh` to get the SHA-256 for your new release.
+  s.prepare_command = <<-CMD
+    MPV_RELEASE_VERSION="v0.0.1"
+    EXPECTED_SHA256="PUT_MACOS_DYLIB_SHA256_HERE"
+    URL="https://github.com/my-org/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_macos-universal.dylib"
+    FILE_DEST="libs/libmpv.dylib"
+    
+    mkdir -p libs
+    DOWNLOAD_NEEDED=1
+    
+    if [ -f "$FILE_DEST" ]; then
+      ACTUAL_SHA256=$(shasum -a 256 "$FILE_DEST" | awk '{ print $1 }')
+      if [ "$ACTUAL_SHA256" = "$EXPECTED_SHA256" ]; then
+        DOWNLOAD_NEEDED=0
+      else
+        echo "SHA-256 mismatch! Expected $EXPECTED_SHA256 but got $ACTUAL_SHA256. Redownloading..."
+        rm -f "$FILE_DEST"
+      fi
+    fi
+
+    if [ $DOWNLOAD_NEEDED -eq 1 ]; then
+      echo "Downloading libmpv_macos-universal.dylib from $URL..."
+      curl -L -o "$FILE_DEST" "$URL"
+      
+      ACTUAL_SHA256=$(shasum -a 256 "$FILE_DEST" | awk '{ print $1 }')
+      if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+        echo "ERROR: SHA-256 verification failed for downloaded file!"
+        rm -f "$FILE_DEST"
+        exit 1
+      fi
+    fi
+  CMD
 
   # ── Copia libmpv.dylib nel bundle dell'app ────────────────────────────────
   # Cerca prima macos/libs/libmpv.dylib (bundlato), poi Homebrew (sviluppo).

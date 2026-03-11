@@ -51,33 +51,57 @@ target_include_directories(${PLUGIN_NAME}
 )
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
-# ── libmpv su Windows ─────────────────────────────────────────────────────
-# Distribuiamo libmpv-2.dll nella cartella windows/libs/bin/.
-# L'utente deve scaricare i binaries precompilati da:
-#   https://sourceforge.net/projects/mpv-player-windows/files/libmpv/
-# e copiare libmpv-2.dll (+ libmpv.lib per l'import lib) in windows/libs/.
-#
-# Se l'import lib è presente, linkiamo staticamente il simbolo;
-# altrimenti dart:ffi caricherà la DLL a runtime senza link esplicito.
+# ── libmpv for Windows ──────────────────────────────────────────────────────
+# Distribute libmpv-2.dll into windows/libs/bin/.
+# The DLL is automatically downloaded from GitHub Releases if missing.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.lib")
   target_link_libraries(${PLUGIN_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.lib"
   )
 endif()
 
-# List of absolute paths to libraries that should be bundled with the plugin.
-# Copia libmpv-2.dll nella directory dell'eseguibile dell'app.
 set(_MPV_DLL "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv-2.dll")
+set(MPV_RELEASE_VERSION "v0.0.1")
+set(EXPECTED_SHA256 "PUT_WINDOWS_DLL_SHA256_HERE")
+
+set(DOWNLOAD_NEEDED TRUE)
+
+if(EXISTS "${_MPV_DLL}")
+  file(SHA256 "${_MPV_DLL}" ACTUAL_SHA256)
+  if(ACTUAL_SHA256 STREQUAL EXPECTED_SHA256)
+    set(DOWNLOAD_NEEDED FALSE)
+  else()
+    message(STATUS "[mpv_audio_kit] SHA-256 mismatch! Expected ${EXPECTED_SHA256} but got ${ACTUAL_SHA256}. Redownloading...")
+    file(REMOVE "${_MPV_DLL}")
+  endif()
+endif()
+
+if(DOWNLOAD_NEEDED)
+  message(STATUS "[mpv_audio_kit] Downloading libmpv_windows-x86_64.dll from Github Releases...")
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+  file(DOWNLOAD 
+    "https://github.com/my-org/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_windows-x86_64.dll"
+    "${_MPV_DLL}"
+    SHOW_PROGRESS
+    EXPECTED_HASH SHA256=${EXPECTED_SHA256}
+    STATUS DOWNLOAD_STATUS
+  )
+  list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+  if(NOT STATUS_CODE EQUAL 0)
+    list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+    message(FATAL_ERROR "[mpv_audio_kit] Failed to download libmpv.dll: ${ERROR_MSG}")
+  endif()
+endif()
+
 if(EXISTS "${_MPV_DLL}")
   set(mpv_audio_kit_bundled_libraries
     "${_MPV_DLL}"
     PARENT_SCOPE
   )
 else()
-  # DLL non trovata nella cartella libs — l'utente la deve fornire nel PATH.
-  message(STATUS "[mpv_audio_kit] libmpv-2.dll non trovata in windows/libs/. "
-                 "Assicurati che sia nel PATH dell'applicazione o copiala in "
-                 "windows/libs/libmpv-2.dll")
+  # DLL not found in libs folder — user needs to provide it in PATH.
+  message(WARNING "[mpv_audio_kit] libmpv-2.dll not found in windows/libs/. "
+                  "Make sure it is in your application PATH.")
   set(mpv_audio_kit_bundled_libraries
     ""
     PARENT_SCOPE

@@ -1081,9 +1081,13 @@ assemble_xcframework() {
 
   local xcodebuild_args=("-create-xcframework")
 
+  local release_dir="$ROOT/release_builds"
+  mkdir -p "$release_dir"
+
   # Process device slice
   if [[ "${ONLY_SIMULATOR:-0}" != "1" ]]; then
     merge_all_libs "$PREFIX_BASE/iphoneos_arm64/lib" "$device_combined"
+    cp "$device_combined" "$release_dir/libmpv_ios-arm64.a"
     local device_dir="$BUILD_DIR/xcfw_device"
     local headers_src="$PREFIX_BASE/iphoneos_arm64/include/mpv"
     mkdir -p "$device_dir/Headers"
@@ -1096,11 +1100,15 @@ assemble_xcframework() {
   if [[ "${SKIP_SIMULATOR:-0}" != "1" ]]; then
     merge_all_libs "$PREFIX_BASE/iphonesimulator_arm64/lib"  "$sim_arm64_combined"
     merge_all_libs "$PREFIX_BASE/iphonesimulator_x86_64/lib" "$sim_x86_combined"
+    
+    cp "$sim_arm64_combined" "$release_dir/libmpv_ios-simulator-arm64.a"
+    cp "$sim_x86_combined" "$release_dir/libmpv_ios-simulator-x86_64.a"
 
     # Simulator universal (arm64 + x86_64)
     local sim_universal="$BUILD_DIR/libmpv_simulator.a"
     log "lipo simulator (arm64 + x86_64)..."
     lipo -create "$sim_arm64_combined" "$sim_x86_combined" -output "$sim_universal"
+    cp "$sim_universal" "$release_dir/libmpv_ios-simulator-universal.a"
 
     local sim_dir="$BUILD_DIR/xcfw_sim"
     local sim_headers_src="$PREFIX_BASE/iphonesimulator_arm64/include/mpv"
@@ -1116,6 +1124,12 @@ assemble_xcframework() {
 
   codesign -s - --force --deep "$xcfw" 2>/dev/null || true
   ok "xcframework: $xcfw"
+
+  log "Zipping xcframework..."
+  pushd "$OUTPUT_DIR" >/dev/null
+  zip -r "$release_dir/libmpv_ios.xcframework.zip" "libmpv.xcframework" >/dev/null
+  popd >/dev/null
+  ok "Output: $release_dir/libmpv_ios.xcframework.zip"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -1140,7 +1154,8 @@ main() {
   echo ""
   echo "╔══════════════════════════════════════════════════════════════╗"
   echo "║  iOS build complete!                                         ║"
-  echo "║  Output: ios/Frameworks/libmpv.xcframework                  ║"
+  echo "║  Output: release_builds/libmpv_ios-*.a                      ║"
+  echo "║          release_builds/libmpv_ios.xcframework.zip          ║"
   echo "╚══════════════════════════════════════════════════════════════╝"
 }
 

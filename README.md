@@ -1,239 +1,414 @@
-# mpv_audio_kit
+# mpv_audio_pro_kit
 
-A Flutter audio player plugin powered by [libmpv](https://mpv.io). Supports local files, HTTP(S) streams, and internet radio. Exposes the full mpv audio pipeline including equalizer, dynamic compression, loudness normalization, and pitch/tempo control.
+#### A high-performance, professional-grade audio engine for Flutter & Dart.
 
-## Platform support
+[![](https://img.shields.io/pub/v/mpv_audio_pro_kit.svg)](https://pub.dev/packages/mpv_audio_pro_kit)
+[![](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![](https://img.shields.io/badge/libmpv-v0.41.0-orange.svg)]()
 
-| Platform | Status |
-|---|---|
-| macOS | ✅ |
-| iOS | ✅ |
-| Android | ✅ |
-| Linux | ✅ |
-| Windows | ✅ |
+`mpv_audio_pro_kit` is a specialized audio engine built on top of `libmpv`. It is designed for applications that require a robust audio-first pipeline, featuring a dedicated background event loop, extensive DSP capabilities, and fine-grained control over playback quality.
+
+---
 
 ## Installation
 
+Add `mpv_audio_pro_kit` to your `pubspec.yaml`:
+
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.1
+  mpv_audio_pro_kit: ^0.0.1
 ```
 
-## Quick start
+### Platform Requirements
+
+*   **Android**: SDK 21 (Android 5.0) or above.
+*   **iOS**: iOS 11.0 or above.
+*   **macOS**: 10.15 or above.
+*   **Windows**: Windows 10 (64-bit) or above.
+*   **Linux**: Any modern distribution with `libmpv.so.2` installed.
+
+---
+
+## Platforms
+
+| Platform  | Architecture | Device | Emulator | mpv version |
+| :--- | :--- | :---: | :---: | :---: |
+| **Android** | arm64, armv7, x64, x86 | ✅ | ✅ | v0.41.0 |
+| **iOS** | arm64, x64 | ✅ | ✅ | v0.41.0 |
+| **macOS** | arm64, x64 | ✅ | — | v0.41.0 |
+| **Windows**| x64 | ✅ | — | v0.41.0 |
+| **Linux** | x64 | ✅ | — | v0.41.0 |
+
+---
+
+## Features
+
+- ✅ **Async Event Loop**: `libmpv` events are processed in a background Isolate, keeping the UI at 60/120 FPS.
+- ✅ **Gapless Playback**: Seamless audio transitions between tracks.
+- ✅ **ReplayGain**: Industry-standard track & album normalization.
+- ✅ **High-Fidelity Filters**: 10-band EQ, EBU R128 Normalization, Compression.
+- ✅ **Dynamic Playlist**: Add, remove, move, and replace tracks in real-time.
+- ✅ **Audiophile Hardware**: Exclusive mode (WASAPI/ALSA/CoreAudio) and device switching.
+- ✅ **Metadata & Extras**: Attach custom data to tracks and retrieve native audio parameters.
+- ✅ **HTTP Headers**: Support for authenticated streams and custom User-Agents.
+- ✅ **Caching & Buffering**: Fine-tuned control over network cache and thread-filling.
+
+---
+
+## TL;DR
+
+A complete, copy-pasteable example of a simple audio player screen.
 
 ```dart
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:flutter/material.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 
-// Create the player
-final player = MpvPlayer(
-  config: const PlayerConfig(autoPlay: true),
-);
+void main() {
+  runApp(const MaterialApp(home: AudioPlayerScreen()));
+}
 
-// Listen to state changes
-player.stateStream.listen((state) {
-  print('State: $state');
-});
+class AudioPlayerScreen extends StatefulWidget {
+  const AudioPlayerScreen({super.key});
+  @override
+  State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
+}
 
-// Load and play
-await player.open('https://example.com/audio.mp3', play: true);
+class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
+  // 1. Initialize the Player
+  late final Player player = Player();
 
-// Dispose when done
-player.dispose();
-```
+  @override
+  void initState() {
+    super.initState();
+    // 2. Load a track
+    player.open(Media('https://example.com/audio.mp3'));
+  }
 
-## MpvPlayer
+  @override
+  void dispose() {
+    // 3. Clean up native resources
+    player.dispose();
+    super.dispose();
+  }
 
-### Constructor
-
-```dart
-MpvPlayer({PlayerConfig config = const PlayerConfig()})
-```
-
-### Playback
-
-| Method | Description |
-|---|---|
-| `open(String url, {bool? play})` | Load a URL. Starts playback if `play: true` or `autoPlay` is set. |
-| `play()` | Resume playback. |
-| `pause()` | Pause playback. |
-| `playOrPause()` | Toggle play/pause. |
-| `stop()` | Stop and unload the current file. |
-| `seek(double seconds, {bool relative})` | Seek to an absolute or relative position. |
-
-### Audio
-
-| Method | Description |
-|---|---|
-| `setVolume(double vol)` | Set volume (0–100; values above 100 amplify). |
-| `setSpeed(double speed)` | Set playback speed (1.0 = normal). |
-| `setPitch(double pitch)` | Set audio pitch. |
-| `setAudioDelay(double delay)` | Set sync offset in seconds (e.g., -0.2). |
-| `setAudioFilters(List<AudioFilter>)` | Replace the entire audio filter chain. |
-| `addAudioFilter(AudioFilter)` | Append a filter to the current chain. |
-| `clearAudioFilters()` | Remove all active audio filters. |
- 
-### Network & Cache
- 
-| Method | Description |
-|---|---|
-| `setCache(String mode)` | Set cache behavior ("yes", "no", "auto"). |
-| `setCacheSecs(double secs)` | Pre-fetch buffer duration for network streams. |
-| `setCacheOnDisk(bool)` | Save cache to temporary files instead of RAM. |
-| `setCachePause(bool)` | Enable automatic pausing for network buffering. |
-| `setYtdl(bool)` | Enable/disable YouTube-DL integration. |
-| `setNetworkTimeout(double)` | Network connection timeout limit in seconds. |
-
-### Streams
-
-| Stream | Type | Description |
-|---|---|---|
-| `stateStream` | `PlayerState` | Playback state changes. |
-| `positionStream` | `double` | Current position in seconds (updates every ~10 ms). |
-| `durationStream` | `double?` | Total duration in seconds (`null` for live streams). |
-| `volumeStream` | `double` | Volume changes. |
-| `mediaInfoStream` | `MediaInfo` | File metadata after load (or ICY tag updates). |
-| `cacheStream` | `double` | Current buffered seconds duration. |
-| `bitrateStream` | `int?` | Real-time audio bitrate in bps. |
-| `logStream` | `String` | Raw mpv log lines. |
-
-### Properties
-
-| Property | Type | Description |
-|---|---|---|
-| `state` | `PlayerState` | Current state. |
-| `position` | `double` | Current position in seconds. |
-| `duration` | `double?` | Duration in seconds. |
-| `volume` | `double` | Current volume. |
-| `mediaInfo` | `MediaInfo?` | Metadata of the loaded file. |
-| `isPlaying` | `bool` | Shorthand for `state == PlayerState.playing`. |
-| `isPaused` | `bool` | Shorthand for `state == PlayerState.paused`. |
-
-### Raw mpv access
-
-For features not covered by the high-level API, you can access mpv directly:
-
-```dart
-player.setRawProperty('loop-file', 'inf');          // loop current file
-player.setRawProperty('audio-delay', '-0.2');        // sync offset
-final title = player.getRawProperty('media-title');  // read any property
-player.sendRawCommand(['playlist-next', 'force']);    // any mpv command
-```
-
-## PlayerConfig
-
-```dart
-const PlayerConfig({
-  bool autoPlay = false,       // start playback immediately after open()
-  double initialVolume = 100,  // 0–100
-  String logLevel = 'warn',    // 'no' | 'fatal' | 'error' | 'warn' | 'info' | 'v' | 'debug'
-  String? audioOutput,         // force a specific mpv --ao driver (null = auto)
-})
-```
-
-## PlayerState
-
-```dart
-enum PlayerState { idle, buffering, playing, paused, ended, error }
-```
-
-## MediaInfo
-
-Emitted once via `mediaInfoStream` when a file finishes loading:
-
-```dart
-class MediaInfo {
-  final double?  duration;    // seconds; null for live streams
-  final String?  title;
-  final String?  artist;
-  final String?  album;
-  final String?  year;
-  final int?     bitrate;     // bps
-  final int?     sampleRate;  // Hz
-  final int?     channels;
-  final String?  codec;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('mpv_audio_pro_kit')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Typed stream for position updates
+            StreamBuilder<Duration>(
+              stream: player.stream.position,
+              builder: (context, snap) => Text(
+                'Position: ${snap.data ?? Duration.zero}',
+                style: const TextStyle(fontSize: 24),
+              ),
+            ),
+            const SizedBox(height: 48),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FloatingActionButton(
+                  onPressed: () => player.play(),
+                  child: const Icon(Icons.play_arrow),
+                ),
+                const SizedBox(width: 16),
+                FloatingActionButton(
+                  onPressed: () => player.pause(),
+                  child: const Icon(Icons.pause),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 ```
 
-## AudioFilter
+---
 
-### Built-in factories
+## Guide
 
-```dart
-// 10-band equalizer (ISO centers: 31–16k Hz)
-AudioFilter.equalizer([0, 0, 6, 0, -3, 0, 0, 0, 3, 0])
- 
-// Real-time effects
+### Contents
+- [Initialization](#initialization)
+- [Create & Dispose](#create--dispose)
+- [Managing Media](#managing-media)
+- [Using Extras](#using-extras)
+- [Using HTTP Headers](#using-http-headers)
+- [Playback & Seek](#playback--seek)
+- [Volume, Rate & Pitch](#volume-rate--pitch)
+- [Playlist Control](#playlist-control)
+- [Audio Quality (Gapless & ReplayGain)](#audio-quality-gapless--replaygain)
+- [Audio Filters (EQ & Normalization)](#audio-filters-eq--normalization)
+- [Event Subscriptions](#event-subscriptions)
+- [Audio Device & Hardware Selection](#audio-device--hardware-selection)
+- [Permissions](#permissions)
+- [Architecture](#architecture)
+- [Troubleshooting](#troubleshooting)
 
-AudioFilter.echo(delay: 200, falloff: 0.4)  // Echo/Reverb
-AudioFilter.extraStereo(m: 2.0)             // Stereo expander
-AudioFilter.crystalizer(intensity: 2.0)     // Harmonic enhancer
- 
-// Dynamic compressor
-AudioFilter.compressor(threshold: -20, ratio: 4, attack: 20, release: 250)
- 
-// EBU R128 loudness normalization
-AudioFilter.loudnorm(integratedLoudness: -16, truePeak: -1.5, lra: 11)
- 
-// Pitch / tempo shift (requires rubberband in the mpv build)
-AudioFilter.scaleTempo(pitch: 1.0, tempo: 1.25)
- 
-// Any raw lavfi filter string
-AudioFilter.custom('aecho=0.8:0.9:1000:0.3')
-```
+---
 
-### Stacking filters
+### Initialization
 
-```dart
-await player.setAudioFilters([
-  AudioFilter.loudnorm(),
-  AudioFilter.equalizer([0, 0, 3, 0, 0, 0, 0, 0, 2, 0]),
-]);
-```
+`mpv_audio_pro_kit` is ready to use without global setup. However, it is recommended to manage your `Player` instances carefully within the widget lifecycle or a service.
 
-## Full example
+### Create & Dispose
+
+A `Player` instance manages its own native `libmpv` context and event isolate.
 
 ```dart
-final player = MpvPlayer(
-  config: const PlayerConfig(
-    autoPlay: true,
-    initialVolume: 80,
-    logLevel: 'warn',
+// Basic instance
+final player = Player();
+
+// Advanced configuration
+final player = Player(
+  configuration: PlayerConfiguration(
+    logLevel: 'info',          // 'no', 'fatal', 'error', 'warn', 'info', 'v', 'debug', 'trace'
+    initialVolume: 50.0,       // 0.0 to 100.0
+    autoPlay: true,            // Automatically start when source is opened
+    audioClientName: 'my_app', // Name used in system mixers
   ),
 );
-
-// Metadata
-player.mediaInfoStream.listen((info) {
-  print('${info.title} — ${info.artist}');
-  print('Duration: ${info.duration?.toStringAsFixed(0)}s');
-});
-
-// Position slider
-player.positionStream.listen((pos) => setState(() => _position = pos));
-player.durationStream.listen((dur) => setState(() => _duration = dur));
-
-// Load an internet radio stream
-await player.open('https://ice1.somafm.com/groovesalad-256-mp3');
-
-// Apply an equalizer after a few seconds
-await Future.delayed(const Duration(seconds: 3));
-await player.setAudioFilters([
-  AudioFilter.equalizer([0, 0, 4, 2, 0, 0, 0, 0, 2, 3]),
-]);
-
-// Seek 30 seconds forward
-await player.seek(30, relative: true);
-
-// Cleanup
-player.dispose();
 ```
 
-## Supported formats
+**Note:** It is extremely important to release the allocated resources back to the system:
+```dart
+await player.dispose();
+```
 
-All formats supported by the bundled FFmpeg build, including:
-MP3, AAC, FLAC, Opus, Vorbis, WAV, AIFF, M4A, OGG, WMA, ALAC, and more.
+### Managing Media
 
-Protocols: `http://`, `https://`, `file://`, HLS (`m3u8`), and all other protocols supported by mpv/FFmpeg.
+A `Playable` can be a single `Media` object or a `List<Media>`.
+
+#### `Media`
+```dart
+final media = Media('https://server.com/audio.flac');
+await player.open(media);
+```
+
+#### `Playlist`
+```dart
+final playlist = [
+  Media('https://example.com/01.mp3'),
+  Media('https://example.com/02.mp3'),
+];
+await player.openPlaylist(playlist, play: true);
+```
+
+---
+
+### Using Extras
+
+You can attach custom metadata to any `Media` object. This data is carried through the playlist and can be retrieved later to update your UI.
+
+```dart
+final media = Media(
+  'https://cdn.example.com/podcast.mp3',
+  extras: {
+    'title': 'The Antigravity Podcast',
+    'episode': 42,
+    'art': 'https://cdn.example.com/cover.jpg',
+  },
+);
+
+// Access it later from the playlist stream
+player.stream.playlist.listen((playlist) {
+  final current = playlist.medias[playlist.index];
+  print(current.extras?['title']);
+});
+```
+
+### Using HTTP Headers
+
+Commonly required for authenticated streams or custom referrers.
+
+```dart
+final media = Media(
+  'https://api.music.com/v1/stream/123',
+  httpHeaders: {
+    'Authorization': 'Bearer <your_token>',
+    'X-Custom-Client': 'FlutterApp',
+    'User-Agent': 'Mozilla/5.0',
+  },
+);
+await player.open(media);
+```
+
+---
+
+### Playback & Seek
+
+Standard controls for the playback stream.
+
+```dart
+await player.play();
+await player.pause();
+await player.playOrPause();
+await player.stop();
+
+// Absolute Seek
+await player.seek(Duration(minutes: 2, seconds: 15));
+
+// Relative Seek (Forward 15 seconds)
+await player.seek(Duration(seconds: 15), relative: true);
+
+// Relative Seek (Backward 15 seconds)
+await player.seek(Duration(seconds: -15), relative: true);
+```
+
+---
+
+### Volume, Rate & Pitch
+
+```dart
+// Volume: 0.0 to 100.0. Values >100.0 provide software amplification.
+await player.setVolume(85.0);
+
+// Rate: Controls speed (0.5x to 2.0x).
+await player.setRate(1.2);
+
+// Pitch: Controls frequency (0.5 to 2.0). 
+// Note: Requires setPitchCorrection(true) for best results.
+await player.setPitch(1.1);
+await player.setPitchCorrection(true);
+```
+
+---
+
+### Playlist Control
+
+Manage your active queue with frame-perfect precision.
+
+```dart
+// Navigation
+await player.next();
+await player.previous();
+await player.jump(3); // Jump to index 3 (4th track)
+
+// Modifications
+await player.add(Media('path/to/new.wav'));
+await player.remove(0); // Remove item at index 0
+await player.move(5, 0); // Move item from pos 5 to the front
+await player.replace(2, Media('path/to/replaced.mp3'));
+
+// Loop & Shuffle
+await player.setPlaylistMode(PlaylistMode.loop); // none, single, loop
+await player.setShuffle(true);
+```
+
+---
+
+### Audio Quality (Gapless & ReplayGain)
+
+Optimized for professional listening environments.
+
+#### Gapless Playback
+Attempts to transition between tracks without any silence.
+```dart
+// 'weak': same format items transition seamlessly.
+// 'yes': always attempt gapless transition.
+await player.setGaplessPlayback(GaplessMode.weak);
+```
+
+#### ReplayGain (Normalization)
+Standardizes volume across different files based on internal tags.
+```dart
+await player.setReplayGain(ReplayGainMode.track);
+await player.setReplayGainPreamp(6.0); // Pre-gain boost in dB
+await player.setReplayGainFallback(-3.0); // Fallback for tracks without tags
+await player.setReplayGainClip(false); // Enable/Disable clipping protection
+```
+
+---
+
+### Audio Filters (EQ & Normalization)
+
+Direct access to FFmpeg's `lavfi` audio filter graph.
+
+```dart
+await player.setAudioFilters([
+  // 10-Band Equalizer (dB gains for bands 31Hz to 16kHz)
+  AudioFilter.equalizer([0, 0, 4, 6, 4, 0, -2, -4, -4, 0]),
+  
+  // EBU R128 industry-standard loudness normalization
+  AudioFilter.loudnorm(),
+  
+  // Crossfeed (simulates speakers on headphones)
+  AudioFilter.crossfeed(),
+]);
+
+// Clear all active filters
+await player.clearAudioFilters();
+```
+
+---
+
+### Event Subscriptions
+
+The library provides a modern stream-based API for all state changes.
+
+```dart
+// BROADCAST STREAMS (player.stream.*)
+player.stream.position.listen((pos) => ...);
+player.stream.playing.listen((isPlaying) => ...);
+player.stream.audioParams.listen((params) => print(params.sampleRate));
+player.stream.log.listen((msg) => print(msg));
+
+// SYNCHRONOUS SNAPSHOTS (player.state.*)
+final currentVolume = player.state.volume;
+final currentTrack = player.state.playlist.index;
+```
+
+---
+
+### Audio Device & Hardware Selection
+
+```dart
+// Retrieve detected output devices
+List<AudioDevice> devices = player.state.audioDevices;
+
+// Select specific hardware output
+await player.setAudioDevice(devices[1]);
+
+// Enable Bit-Perfect Output (Exclusive Mode)
+// Supported on Windows (WASAPI), Linux (ALSA), and macOS (CoreAudio).
+await player.setAudioExclusive(true);
+```
+
+---
+
+### Permissions
+
+Ensure your application has the necessary permissions.
+
+#### **Android**
+Add these to `AndroidManifest.xml`:
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+```
+
+#### **iOS**
+Add `Background Modes` to your project and enabled `Audio` in `Info.plist`:
+```xml
+<key>UIBackgroundModes</key>
+<array>
+    <string>audio</string>
+</array>
+```
+
+---
 
 ## License
 
-MPL-2.0. See [LICENSE](LICENSE).
+This project is licensed under the **MIT License**.
+Native dependencies (FFmpeg, libmpv) are subject to **LGPL/GPL** licenses.
+
+---
+*Developed by Antigravity AI*

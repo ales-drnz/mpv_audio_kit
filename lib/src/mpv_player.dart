@@ -38,6 +38,10 @@ class MpvPlayer {
   final _cacheCtrl = StreamController<double>.broadcast();
   final _bitrateCtrl = StreamController<int?>.broadcast();
   final _audioDeviceListCtrl = StreamController<List<AudioDevice>>.broadcast();
+  final _shuffleCtrl = StreamController<bool>.broadcast();
+  final _loopFileCtrl = StreamController<String>.broadcast();
+  final _loopPlaylistCtrl = StreamController<String>.broadcast();
+  final _playlistCtrl = StreamController<List<PlaylistItem>>.broadcast();
 
   PlayerState _state = PlayerState.idle;
   double _position = 0.0;
@@ -49,6 +53,10 @@ class MpvPlayer {
   MediaInfo? _mediaInfo;
   double? _lastCacheDuration;
   int? _lastBitrate;
+  bool _shuffle = false;
+  String _loopFile = 'no';
+  String _loopPlaylist = 'no';
+  List<PlaylistItem> _playlist = [];
 
   Stream<PlayerState> get stateStream => _stateCtrl.stream;
   Stream<double> get positionStream => _positionCtrl.stream;
@@ -62,6 +70,10 @@ class MpvPlayer {
   Stream<double> get cacheStream => _cacheCtrl.stream;
   Stream<int?> get bitrateStream => _bitrateCtrl.stream;
   Stream<List<AudioDevice>> get audioDeviceListStream => _audioDeviceListCtrl.stream;
+  Stream<bool> get shuffleStream => _shuffleCtrl.stream;
+  Stream<String> get loopFileStream => _loopFileCtrl.stream;
+  Stream<String> get loopPlaylistStream => _loopPlaylistCtrl.stream;
+  Stream<List<PlaylistItem>> get playlistStream => _playlistCtrl.stream;
 
   PlayerState get state => _state;
   double get position => _position;
@@ -74,6 +86,10 @@ class MpvPlayer {
   double? get cacheDuration => _lastCacheDuration;
   int? get bitrate => _lastBitrate;
   List<AudioDevice> get audioDeviceList => _parseDeviceList(getAudioDeviceList() ?? '[]');
+  bool get shuffle => _shuffle;
+  String get loopFile => _loopFile;
+  String get loopPlaylist => _loopPlaylist;
+  List<PlaylistItem> get playlist => _playlist;
   bool get isPlaying => _state == PlayerState.playing;
   bool get isPaused => _state == PlayerState.paused;
 
@@ -128,6 +144,10 @@ class MpvPlayer {
     _observe('demuxer-cache-duration', MpvFormat.mpvFormatDouble, 10);
     _observe('audio-bitrate', MpvFormat.mpvFormatDouble, 11);
     _observe('audio-device-list', MpvFormat.mpvFormatString, 12);
+    _observe('shuffle', MpvFormat.mpvFormatFlag, 13);
+    _observe('loop-file', MpvFormat.mpvFormatString, 14);
+    _observe('loop-playlist', MpvFormat.mpvFormatString, 15);
+    _observe('playlist', MpvFormat.mpvFormatString, 16);
   }
 
   void _observe(String name, int format, int replyId) {
@@ -269,6 +289,27 @@ class MpvPlayer {
           final jsonStr = prop.data.cast<Pointer<Utf8>>().value.cast<Utf8>().toDartString();
           _audioDeviceListCtrl.add(_parseDeviceList(jsonStr));
         }
+      case 'shuffle':
+        if (prop.format == MpvFormat.mpvFormatFlag && prop.data != nullptr) {
+          _shuffle = prop.data.cast<Int32>().value == 1;
+          _shuffleCtrl.add(_shuffle);
+        }
+      case 'loop-file':
+        if (prop.format == MpvFormat.mpvFormatString && prop.data != nullptr) {
+          _loopFile = prop.data.cast<Pointer<Utf8>>().value.cast<Utf8>().toDartString();
+          _loopFileCtrl.add(_loopFile);
+        }
+      case 'loop-playlist':
+        if (prop.format == MpvFormat.mpvFormatString && prop.data != nullptr) {
+          _loopPlaylist = prop.data.cast<Pointer<Utf8>>().value.cast<Utf8>().toDartString();
+          _loopPlaylistCtrl.add(_loopPlaylist);
+        }
+      case 'playlist':
+        if (prop.format == MpvFormat.mpvFormatString && prop.data != nullptr) {
+          final jsonStr = prop.data.cast<Pointer<Utf8>>().value.cast<Utf8>().toDartString();
+          _playlist = _parsePlaylist(jsonStr);
+          _playlistCtrl.add(_playlist);
+        }
     }
   }
 
@@ -393,6 +434,12 @@ class MpvPlayer {
     _command(['playlist-clear']);
   }
 
+  /// Toggles shuffle mode.
+  Future<void> setShuffle(bool enable) async {
+    _checkNotDisposed();
+    _prop('shuffle', enable ? 'yes' : 'no');
+  }
+
   /// Sets loop mode for the current file ("no", "inf", "yes", or "1").
   Future<void> setLoopFile(String mode) async {
     _checkNotDisposed();
@@ -403,6 +450,18 @@ class MpvPlayer {
   Future<void> setLoopPlaylist(String mode) async {
     _checkNotDisposed();
     _prop('loop-playlist', mode);
+  }
+
+  /// Plays a specific playlist item by its ID.
+  Future<void> playlistPlayId(int id) async {
+    _checkNotDisposed();
+    _command(['playlist-play-id', id.toString()]);
+  }
+
+  /// Removes an item from the playlist by its ID.
+  Future<void> playlistRemoveId(int id) async {
+    _checkNotDisposed();
+    _command(['playlist-remove', id.toString()]);
   }
 
   // ── Audio API ─────────────────────────────────────────────────────────────
@@ -751,6 +810,24 @@ class MpvPlayer {
       }).toList();
     } catch (e) {
       debugPrint('Error parsing audio-device-list: $e');
+      return [];
+    }
+  }
+
+  List<PlaylistItem> _parsePlaylist(String jsonStr) {
+    try {
+      final List<dynamic> list = json.decode(jsonStr);
+      return list.map((d) {
+        return PlaylistItem(
+          id: d['id'] ?? 0,
+          filename: d['filename'] ?? '',
+          current: d['current'] == true,
+          playing: d['playing'] == true,
+          title: d['title'],
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Error parsing playlist: $e');
       return [];
     }
   }

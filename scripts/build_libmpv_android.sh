@@ -327,14 +327,14 @@ build_abi() {
   android_libplacebo "$abi" "$prefix"
   android_mpv        "$abi" "$prefix"
 
-  # Copia libmpv.so nella directory jniLibs
-  local out_dir="$OUTPUT_BASE/$abi"
-  mkdir -p "$out_dir"
-  cp "$prefix/lib/libmpv.so" "$out_dir/libmpv.so"
-  rm -f "$out_dir/libc++_shared.so"
+  # Copia libmpv.so nella directory release_builds
+  local release_dir="$ROOT/release_builds"
+  mkdir -p "$release_dir"
+  local final_name="libmpv_android-${abi}.so"
+  cp "$prefix/lib/libmpv.so" "$release_dir/$final_name"
 
-  "$(ndk_strip)" --strip-unneeded "$out_dir/libmpv.so" 2>/dev/null || true
-  ok "Output: $out_dir/libmpv.so"
+  "$(ndk_strip)" --strip-unneeded "$release_dir/$final_name" 2>/dev/null || true
+  ok "Output: $release_dir/$final_name"
 }
 
 # ── Librerie per Android ──────────────────────────────────────────────────────
@@ -877,7 +877,7 @@ main() {
   echo ""
   echo "╔══════════════════════════════════════════════════════════════╗"
   echo "║  Android build complete!                                     ║"
-  echo "║  Output: android/src/main/jniLibs/{abi}/libmpv.so           ║"
+  echo "║  Output: release_builds/libmpv_android-{abi}.so             ║"
   echo "╚══════════════════════════════════════════════════════════════╝"
 }
 

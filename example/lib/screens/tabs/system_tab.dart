@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 import '../../widgets/ui_helpers.dart';
 
 class SystemTab extends StatefulWidget {
-  final MpvPlayer player;
+  final Player player;
   const SystemTab({super.key, required this.player});
 
   @override
@@ -24,7 +24,7 @@ class _SystemTabState extends State<SystemTab> {
         buildSectionCard(context, 'Advanced Buffer & System', [
           buildSliderRow('Buffer (s)', _audioBuffer, 0.0, 2.0, (v) {
             setState(() => _audioBuffer = v);
-            widget.player.setAudioBuffer(v);
+            widget.player.setRawProperty('audio-buffer', v.toStringAsFixed(3));
           }),
           Wrap(
             spacing: 16,
@@ -35,11 +35,11 @@ class _SystemTabState extends State<SystemTab> {
               }),
               buildToggle('Fallback to Null', _fallbackToNull, (v) {
                 setState(() => _fallbackToNull = v);
-                widget.player.setAudioFallbackToNull(v);
+                widget.player.setRawProperty('ao-null-untimed', v ? 'yes' : 'no');
               }),
               buildToggle('Stream Silence', _streamSilence, (v) {
                 setState(() => _streamSilence = v);
-                widget.player.setAudioStreamSilence(v);
+                widget.player.setRawProperty('stream-silence', v ? 'yes' : 'no');
               }),
             ],
           ),

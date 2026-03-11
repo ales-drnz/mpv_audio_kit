@@ -887,7 +887,9 @@ EOF
 make_universal() {
   local arm_dylib="$PREFIX_BASE/arm64/lib/libmpv.dylib"
   local x86_dylib="$PREFIX_BASE/x86_64/lib/libmpv.dylib"
-  local out="$OUTPUT_DIR/libmpv.dylib"
+  local release_dir="$ROOT/release_builds"
+  mkdir -p "$release_dir"
+  local out="$release_dir/libmpv_macos-universal.dylib"
 
   [[ ! -f "$arm_dylib" ]] && fail "arm64 libmpv.dylib not found: $arm_dylib"
   [[ ! -f "$x86_dylib" ]] && fail "x86_64 libmpv.dylib not found: $x86_dylib"
@@ -898,23 +900,27 @@ make_universal() {
   install_name_tool -id "@rpath/libmpv.dylib" "$out" 2>/dev/null
   codesign -s - --force "$out" 2>/dev/null
   ok "Universal binary: $out"
+  export FINAL_MACOS_OUT="$out"
 }
 
 # ── Finalization: copy + fix install name + codesign ──────────────────────────
 finalize() {
   local arch="$1"
   local src="$PREFIX_BASE/$arch/lib/libmpv.dylib"
-  local out="$OUTPUT_DIR/libmpv.dylib"
+  local release_dir="$ROOT/release_builds"
+  mkdir -p "$release_dir"
+  local out="$release_dir/libmpv_macos-$arch.dylib"
   [[ ! -f "$src" ]] && fail "libmpv.dylib not found: $src"
   rm -f "$out"
   cp "$src" "$out"
   install_name_tool -id "@rpath/libmpv.dylib" "$out" 2>/dev/null
   codesign -s - --force "$out" 2>/dev/null
   ok "Output: $out"
+  export FINAL_MACOS_OUT="$out"
 }
 
 verify_output() {
-  local out="$OUTPUT_DIR/libmpv.dylib"
+  local out="${FINAL_MACOS_OUT}"
   log "Verifying external dependencies..."
   local external
   external="$(otool -L "$out" | grep '/opt/homebrew\|/usr/local' || true)"
@@ -975,9 +981,8 @@ main() {
   echo "║  Build completed successfully!                               ║"
   echo "║                                                              ║"
   echo "║  Next steps:                                                 ║"
-  echo "║  1. Commit macos/libs/libmpv.dylib                         ║"
-  echo "║  2. Re-enable app-sandbox in Release.entitlements            ║"
-  echo "║  3. Run: cd example && flutter run -d macos                 ║"
+  echo "║  1. Check release_builds/libmpv_macos-universal.dylib      ║"
+  echo "║  2. Upload to GitHub releases                                ║"
   echo "╚══════════════════════════════════════════════════════════════╝"
   echo ""
 }

@@ -651,21 +651,19 @@ with open('../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
   ok "mpv ✓"
 }
 
-# ── Finalization ──────────────────────────────────────────────────────────────
 finalize() {
-  mkdir -p "$OUTPUT_DIR"
+  local release_dir="$ROOT/release_builds"
+  mkdir -p "$release_dir"
   local src="$PREFIX/lib/libmpv.so"
   [[ ! -f "$src" ]] && src="$(ls "$PREFIX/lib/libmpv.so."* 2>/dev/null | tail -1)"
   [[ ! -f "$src" ]] && fail "libmpv.so not found in $PREFIX/lib/"
 
-  cp "$src" "$OUTPUT_DIR/libmpv.so.2"
-  # Create symlink libmpv.so → libmpv.so.2
-  ln -sf "libmpv.so.2" "$OUTPUT_DIR/libmpv.so"
-  ok "Output: $OUTPUT_DIR/libmpv.so.2"
+  cp "$src" "$release_dir/libmpv_linux-$ARCH.so"
+  ok "Output: $release_dir/libmpv_linux-$ARCH.so"
 
   log "Checking external dependencies..."
   local external
-  external="$(ldd "$OUTPUT_DIR/libmpv.so.2" | grep -v 'linux-vdso\|libc\|libm\|libdl\|libpthread\|librt\|ld-linux\|libresolv' | grep '=> /' || true)"
+  external="$(ldd "$release_dir/libmpv_linux-$ARCH.so" | grep -v 'linux-vdso\|libc\|libm\|libdl\|libpthread\|librt\|ld-linux\|libresolv' | grep '=> /' || true)"
   if [[ -n "$external" ]]; then
     warn "External dependencies found (expected: OK on Linux):"
     echo "$external"
@@ -698,7 +696,7 @@ main() {
   echo ""
   echo "╔══════════════════════════════════════════════════════════════╗"
   echo "║  Linux build complete!                                       ║"
-  echo "║  Output: linux/libs/libmpv.so.2                             ║"
+  echo "║  Output: release_builds/libmpv_linux-$ARCH.so               ║"
   echo "╚══════════════════════════════════════════════════════════════╝"
 }
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 import '../../widgets/ui_helpers.dart';
 
 class HardwareTab extends StatefulWidget {
-  final MpvPlayer player;
+  final Player player;
   const HardwareTab({super.key, required this.player});
 
   @override
@@ -47,21 +47,20 @@ class _HardwareTabState extends State<HardwareTab> {
             },
           ),
           StreamBuilder<List<AudioDevice>>(
-            stream: widget.player.audioDeviceListStream,
-            initialData: widget.player.audioDeviceList,
+            stream: widget.player.stream.audioDevices,
+            initialData: widget.player.state.audioDevices,
             builder: (context, snapshot) {
               var devices = snapshot.data ?? [];
 
-              // If 'auto' is missing, add it to avoid errors with the default value
+              // Ensure 'auto' is always present to avoid DropdownButton errors.
               if (!devices.any((d) => d.name == 'auto')) {
                 devices = [
-                  const AudioDevice(name: 'auto', description: 'Default (auto)'),
+                  const AudioDevice('auto', 'Default (auto)'),
                   ...devices,
                 ];
               }
 
-              // Ensure the selected _audioDevice exists in the current list
-              // to avoid DropdownButton errors.
+              // Guard against the selected device disappearing from the list.
               final currentDeviceValue = devices.any((d) => d.name == _audioDevice)
                   ? _audioDevice
                   : 'auto';
@@ -84,7 +83,11 @@ class _HardwareTabState extends State<HardwareTab> {
                 (v) {
                   if (v != null) {
                     setState(() => _audioDevice = v);
-                    widget.player.setAudioDevice(v);
+                    final device = devices.firstWhere(
+                      (d) => d.name == v,
+                      orElse: () => AudioDevice(v, v),
+                    );
+                    widget.player.setAudioDevice(device);
                   }
                 },
               );
@@ -157,7 +160,7 @@ class _HardwareTabState extends State<HardwareTab> {
             (v) {
               if (v != null) {
                 setState(() => _sampleRate = v);
-                widget.player.setAudioSamplerate(v);
+                widget.player.setRawProperty('audio-samplerate', v.toString());
               }
             },
           ),
@@ -174,7 +177,7 @@ class _HardwareTabState extends State<HardwareTab> {
             (v) {
               if (v != null) {
                 setState(() => _audioFormat = v);
-                widget.player.setAudioFormat(v);
+                widget.player.setRawProperty('audio-format', v);
               }
             },
           ),
@@ -193,7 +196,7 @@ class _HardwareTabState extends State<HardwareTab> {
             (v) {
               if (v != null) {
                 setState(() => _audioChannels = v);
-                widget.player.setAudioChannels(v);
+                widget.player.setRawProperty('audio-channels', v);
               }
             },
           ),
@@ -208,7 +211,7 @@ class _HardwareTabState extends State<HardwareTab> {
             (v) {
               if (v != null) {
                 setState(() => _clientName = v);
-                widget.player.setAudioClientName(v);
+                widget.player.setRawProperty('audio-client-name', v);
               }
             },
           ),

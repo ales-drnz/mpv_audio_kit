@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 import '../../widgets/ui_helpers.dart';
 
 class GainTab extends StatefulWidget {
-  final MpvPlayer player;
+  final Player player;
   const GainTab({super.key, required this.player});
 
   @override
@@ -11,8 +11,8 @@ class GainTab extends StatefulWidget {
 }
 
 class _GainTabState extends State<GainTab> {
-  String _gaplessAudio = 'weak';
-  String _replayGain = 'no';
+  GaplessMode _gaplessMode = GaplessMode.weak;
+  ReplayGainMode _replayGainMode = ReplayGainMode.none;
   double _replayGainPreamp = 0.0;
   bool _replayGainClip = false;
   double _replayGainFallback = 0.0;
@@ -26,32 +26,30 @@ class _GainTabState extends State<GainTab> {
       padding: const EdgeInsets.all(16),
       children: [
         buildSectionCard(context, 'ReplayGain & Gapless', [
-          buildDropdownRow<String>(
+          buildDropdownRow<GaplessMode>(
             'Gapless',
-            _gaplessAudio,
-            [
-              'no',
-              'yes',
-              'weak',
-            ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            _gaplessMode,
+            GaplessMode.values.map((v) => DropdownMenuItem(
+              value: v, 
+              child: Text(v.name.toUpperCase())
+            )).toList(),
             (v) {
               if (v != null) {
-                setState(() => _gaplessAudio = v);
-                widget.player.setGaplessAudio(v);
+                setState(() => _gaplessMode = v);
+                widget.player.setGaplessPlayback(v);
               }
             },
           ),
-          buildDropdownRow<String>(
+          buildDropdownRow<ReplayGainMode>(
             'ReplayGain',
-            _replayGain,
-            [
-              'no',
-              'track',
-              'album',
-            ].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            _replayGainMode,
+            ReplayGainMode.values.map((v) => DropdownMenuItem(
+              value: v, 
+              child: Text(v.name.toUpperCase())
+            )).toList(),
             (v) {
               if (v != null) {
-                setState(() => _replayGain = v);
+                setState(() => _replayGainMode = v);
                 widget.player.setReplayGain(v);
               }
             },
@@ -60,9 +58,7 @@ class _GainTabState extends State<GainTab> {
             setState(() => _replayGainPreamp = v);
             widget.player.setReplayGainPreamp(v);
           }),
-          buildSliderRow('Fallback (dB)', _replayGainFallback, -15.0, 15.0, (
-            v,
-          ) {
+          buildSliderRow('Fallback (dB)', _replayGainFallback, -15.0, 15.0, (v) {
             setState(() => _replayGainFallback = v);
             widget.player.setReplayGainFallback(v);
           }),
@@ -88,24 +84,19 @@ class _GainTabState extends State<GainTab> {
               widget.player.setVolumeGain(v);
             },
           ),
-          buildSliderRow('Min Gain (dB limit)', _volumeGainMin, -150.0, 0.0, (
-            v,
-          ) {
+          buildSliderRow('Min Gain (dB limit)', _volumeGainMin, -150.0, 0.0, (v) {
             setState(() {
               _volumeGainMin = v;
               if (_volumeGain < _volumeGainMin) _volumeGain = _volumeGainMin;
             });
-            widget.player.setVolumeGainMin(v);
+            // Note: volume-gain is one property, min/max are just local UI limits here
             widget.player.setVolumeGain(_volumeGain);
           }),
-          buildSliderRow('Max Gain (dB limit)', _volumeGainMax, 0.0, 150.0, (
-            v,
-          ) {
+          buildSliderRow('Max Gain (dB limit)', _volumeGainMax, 0.0, 150.0, (v) {
             setState(() {
               _volumeGainMax = v;
               if (_volumeGain > _volumeGainMax) _volumeGain = _volumeGainMax;
             });
-            widget.player.setVolumeGainMax(v);
             widget.player.setVolumeGain(_volumeGain);
           }),
         ]),

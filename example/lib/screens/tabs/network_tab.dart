@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 import '../../widgets/ui_helpers.dart';
 
 class NetworkTab extends StatefulWidget {
-  final MpvPlayer player;
+  final Player player;
   const NetworkTab({super.key, required this.player});
 
   @override
@@ -24,10 +24,10 @@ class _NetworkTabState extends State<NetworkTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        StreamBuilder<double>(
-          stream: widget.player.cacheStream,
+        StreamBuilder<Duration>(
+          stream: widget.player.stream.buffer,
           builder: (context, snapshot) {
-            final seconds = snapshot.data ?? 0.0;
+            final seconds = (snapshot.data?.inMilliseconds ?? 0) / 1000.0;
             return buildSectionCard(context, 'Real-time Buffer Status', [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -62,7 +62,7 @@ class _NetworkTabState extends State<NetworkTab> {
             children: [
               buildToggle('YouTube-DL Hook', _ytdl, (v) {
                 setState(() => _ytdl = v);
-                widget.player.setYtdl(v);
+                widget.player.setRawProperty('ytdl', v ? 'yes' : 'no');
               }),
             ],
           ),

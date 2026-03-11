@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
 import '../../models/stream_category.dart';
 
 const streamCategories = [
@@ -61,83 +61,114 @@ const streamCategories = [
 ];
 
 class StreamLabTab extends StatelessWidget {
-  final MpvPlayer player;
+  final Player player;
 
   const StreamLabTab({super.key, required this.player});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            'Stream Laboratory',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
+        Row(
+          children: [
+            Icon(Icons.science, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
+            Text(
+              'Stream Laboratory',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
         ),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          elevation: 0,
-          color: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+        const SizedBox(height: 20),
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
             ),
           ),
-          child: ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: streamCategories.length,
-            itemBuilder: (context, i) {
-              final cat = streamCategories[i];
-              return ExpansionTile(
-                title: Text(
-                  cat.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-                children: cat.items
-                    .map(
-                      (s) => ListTile(
-                        dense: true,
-                        title: Text(s.label),
-                        subtitle: Text(
-                          s.url,
-                          style: const TextStyle(fontSize: 10),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+          child: Column(
+            children: streamCategories.asMap().entries.map((entry) {
+              final i = entry.key;
+              final cat = entry.value;
+              return Column(
+                children: [
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      leading: Icon(
+                        i == 0 ? Icons.high_quality : i == 1 ? Icons.audiotrack : i == 2 ? Icons.music_note : Icons.layers,
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                      ),
+                      title: Text(
+                        cat.name,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                      childrenPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      children: cat.items.map((s) => ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        title: Text(s.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        subtitle: Text(s.url, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7))),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton.filledTonal(
-                              icon: const Icon(Icons.play_arrow, size: 18),
-                              onPressed: () => player.open(s.url, play: true),
-                              tooltip: 'Play (Replace)',
+                            _CompactActionButton(
+                              icon: Icons.play_arrow_rounded, 
+                              onPressed: () => player.open(Media(s.url), play: true),
+                              color: Theme.of(context).colorScheme.primary,
                             ),
-                            const SizedBox(width: 4),
-                            IconButton.filledTonal(
-                              icon: const Icon(Icons.queue_music, size: 18),
-                              onPressed: () => player.enqueue(s.url),
-                              tooltip: 'Enqueue in background',
+                            const SizedBox(width: 8),
+                            _CompactActionButton(
+                              icon: Icons.add_rounded, 
+                              onPressed: () => player.add(Media(s.url)),
+                              color: Theme.of(context).colorScheme.secondary,
                             ),
                           ],
                         ),
-                      ),
-                    )
-                    .toList(),
+                      )).toList(),
+                    ),
+                  ),
+                  if (i < streamCategories.length - 1)
+                    Divider(
+                      height: 1, 
+                      indent: 50, 
+                      endIndent: 20, 
+                      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.1)
+                    ),
+                ],
               );
-            },
+            }).toList(),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CompactActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final Color color;
+  const _CompactActionButton({required this.icon, required this.onPressed, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18, color: color),
+      ),
     );
   }
 }

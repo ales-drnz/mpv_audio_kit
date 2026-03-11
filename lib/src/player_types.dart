@@ -87,6 +87,35 @@ class AudioDevice {
   int get hashCode => name.hashCode ^ description.hashCode;
 }
 
+/// Represents an item in the playback queue.
+class PlaylistItem {
+  /// Unique ID within the playlist session.
+  final int id;
+
+  /// Path or URL of the file.
+  final String filename;
+
+  /// Whether this is the current entry in the playlist.
+  final bool current;
+
+  /// Whether this item is actively being played.
+  final bool playing;
+
+  /// Optional title if already resolved by the demuxer.
+  final String? title;
+
+  const PlaylistItem({
+    required this.id,
+    required this.filename,
+    required this.current,
+    required this.playing,
+    this.title,
+  });
+
+  @override
+  String toString() => 'PlaylistItem(id: $id, title: ${title ?? filename}, current: $current)';
+}
+
 /// Represents an audio filter applied to the mpv pipeline (lavfi/AF).
 ///
 /// Each filter corresponds to a string in mpv's [--af] filter graph.

@@ -12,24 +12,61 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 set(PLUGIN_NAME "mpv_audio_kit_plugin")
 
 # ── libmpv ────────────────────────────────────────────────────────────────
-# Modalità 1 (consigliata): libmpv.so.2 bundlato in linux/libs/
-#   → Flutter lo copia nella cartella dell'app, zero install per l'utente.
-#   → Ottieni il file con: scripts/setup_libs.sh
+# Mode 1 (recommended): Bundled libmpv.so.2 in linux/libs/
+#   → Flutter copies it into the app bundle, zero install for the user.
+#   → The .so is automatically downloaded from GitHub Releases if missing.
 #
-# Modalità 2 (fallback sviluppo): il sistema fornisce libmpv via pkg-config.
-#   sudo apt install libmpv-dev   (Debian/Ubuntu)
+# Mode 2 (development fallback): System libraries via pkg-config.
+#   sudo apt install libmpv-dev      (Debian/Ubuntu)
 #   sudo dnf install mpv-libs-devel  (Fedora)
-#   sudo pacman -S mpv             (Arch)
+#   sudo pacman -S mpv               (Arch)
 set(_BUNDLED_MPV "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.so.2")
+set(MPV_RELEASE_VERSION "v0.0.1")
+set(EXPECTED_SHA256 "PUT_LINUX_SO_SHA256_HERE")
+
+set(DOWNLOAD_NEEDED TRUE)
+
 if(EXISTS "${_BUNDLED_MPV}")
-  message(STATUS "[mpv_audio_kit] Uso libmpv bundlata: ${_BUNDLED_MPV}")
+  file(SHA256 "${_BUNDLED_MPV}" ACTUAL_SHA256)
+  if(ACTUAL_SHA256 STREQUAL EXPECTED_SHA256)
+    set(DOWNLOAD_NEEDED FALSE)
+  else()
+    message(STATUS "[mpv_audio_kit] SHA-256 mismatch! Expected ${EXPECTED_SHA256} but got ${ACTUAL_SHA256}. Redownloading...")
+    file(REMOVE "${_BUNDLED_MPV}")
+  endif()
+endif()
+
+if(DOWNLOAD_NEEDED)
+  message(STATUS "[mpv_audio_kit] Downloading libmpv_linux-x86_64.so from Github Releases...")
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+  file(DOWNLOAD 
+    "https://github.com/my-org/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_linux-x86_64.so"
+    "${_BUNDLED_MPV}"
+    SHOW_PROGRESS
+    EXPECTED_HASH SHA256=${EXPECTED_SHA256}
+    STATUS DOWNLOAD_STATUS
+  )
+  list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+  if(NOT STATUS_CODE EQUAL 0)
+    list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+    message(FATAL_ERROR "[mpv_audio_kit] Failed to download libmpv.so: ${ERROR_MSG}")
+  endif()
+endif()
+
+if(EXISTS "${_BUNDLED_MPV}")
+  message(STATUS "[mpv_audio_kit] Using bundled libmpv: ${_BUNDLED_MPV}")
+  
+  # Force CMake to treat our .so as a shared library and ignore pkg-config
+  add_library(mpv_bundled SHARED IMPORTED GLOBAL)
+  set_target_properties(mpv_bundled PROPERTIES IMPORTED_LOCATION "${_BUNDLED_MPV}")
+  
   set(mpv_audio_kit_bundled_libraries "${_BUNDLED_MPV}" PARENT_SCOPE)
 else()
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(MPV REQUIRED mpv)
   target_include_directories(${PLUGIN_NAME} PRIVATE ${MPV_INCLUDE_DIRS})
   target_link_libraries(${PLUGIN_NAME} PRIVATE ${MPV_LIBRARIES})
-  message(STATUS "[mpv_audio_kit] Uso libmpv di sistema (pkg-config)")
+  message(STATUS "[mpv_audio_kit] Using system libmpv (pkg-config)")
   set(mpv_audio_kit_bundled_libraries "" PARENT_SCOPE)
 endif()
 
