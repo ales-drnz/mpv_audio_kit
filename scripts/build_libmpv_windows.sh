@@ -1,21 +1,31 @@
 #!/usr/bin/env bash
-# build_libmpv_windows.sh — Cross-compiles libmpv-2.dll for Windows x86_64 from Linux.
+# =============================================================================
+# build_libmpv_windows.sh
 #
-# Requires: Linux (Ubuntu 22.04+) with mingw-w64 and build toolchain
-#   sudo apt install mingw-w64 mingw-w64-tools nasm cmake ninja-build \
-#     meson python3 python3-pip autoconf automake libtool git curl pkg-config
+# Cross-compiles mpv 0.41.0 for Windows x86_64 from Linux.
 #
-# Run from project root:
+# === OUTPUT FORMATS AND LOCATIONS ===
+# Target Dir:  windows/libs/ (binaries) and windows/include/ (headers)
+# Output File: libmpv-2.dll (Dynamic Link Library), libmpv.dll.a (Import Library for linking)
+#
+# === SYSTEM & HARDWARE SPECS ===
+# Target OS:   Windows (Windows 10+ recommended, cross-compiled via MinGW-w64 on Linux)
+# Target Arch: x86_64 (64-bit Windows environments)
+# Compiler:    MinGW-w64 x86_64-w64-mingw32-gcc
+#
+# Usage (from project root):
 #   chmod +x scripts/build_libmpv_windows.sh
 #   ./scripts/build_libmpv_windows.sh
 #
-# Environment variables:
-#   MPV_VERSION      — mpv version to compile (default: 0.41.0)
-#   JOBS             — parallel jobs (default: nproc)
-#   KEEP_BUILD       — 1 = do not delete the build dir (default: 0)
+# Options (environment variables):
+#   MPV_VERSION=0.41.0    (default: 0.41.0)
+#   JOBS=N                (default: number of cores)
+#   KEEP_BUILD=1          (does not delete BUILD_DIR at the end)
 #
-# Output: windows/libs/libmpv-2.dll
-#         windows/include/mpv/  (public headers)
+# Requirements (via Linux Ubuntu 22.04+):
+#   sudo apt install mingw-w64 mingw-w64-tools nasm cmake ninja-build \
+#     meson python3 python3-pip autoconf automake libtool git curl pkg-config
+# =============================================================================
 
 set -euo pipefail
 
@@ -527,6 +537,7 @@ if [[ ! -f "$DIST/lib/libavcodec.a" ]]; then
       --enable-libarchive \
       --enable-zlib --enable-bzlib --enable-lzma \
       --enable-network --enable-mbedtls --enable-version3 \
+      --disable-sdl2 --disable-outdevs \
       --extra-cflags="-I$DIST/include $WIN_FLAGS" \
       --extra-cxxflags="-I$DIST/include $WIN_FLAGS" \
       --extra-ldflags="-L$DIST/lib -static-libgcc"

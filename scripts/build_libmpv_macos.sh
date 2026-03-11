@@ -3,7 +3,15 @@
 # build_libmpv_macos.sh
 #
 # Compiles mpv 0.41.0 with all dependencies linked statically.
-# Output: macos/libs/libmpv.dylib  (dependencies only on /usr/lib and /System/Library)
+#
+# === OUTPUT FORMATS AND LOCATIONS ===
+# Target Dir:  macos/libs/
+# Output File: libmpv.dylib (Dynamic Library with @rpath install name)
+#
+# === SYSTEM & HARDWARE SPECS ===
+# Target OS:   macOS (Deployment target 11.0+)
+# Target Arch: arm64 (Apple Silicon) and/or x86_64 (Intel), optionally Universal Binary
+# Compiler:    Xcode Toolchain (Apple Clang)
 #
 # Usage:
 #   chmod +x scripts/build_libmpv_macos.sh
@@ -747,7 +755,7 @@ build_mpv() {
   # disable Cocoa (to avoid the swift.h dependency). Without this file the
   # symbols cfstr_from_cstr / cfstr_get_cstr are left undefined in the dylib
   # and the CoreAudio AO crashes with SIGSEGV on the first call.
-  cat > /tmp/_mpv_utils_mac_patch.py << 'PYEOF'
+  cat > "$BUILD_DIR/_mpv_utils_mac_patch.py" << 'PYEOF'
 import sys, re
 fn = sys.argv[1]
 with open(fn) as f:
@@ -769,7 +777,7 @@ with open(fn, 'w') as f:
     f.write(content)
 print("Patched meson.build: osdep/utils-mac.c now compiled unconditionally on Darwin")
 PYEOF
-  python3 /tmp/_mpv_utils_mac_patch.py "$dir/meson.build"
+  python3 "$BUILD_DIR/_mpv_utils_mac_patch.py" "$dir/meson.build"
 
   local bdir="$BUILD_DIR/build/mpv-$arch"
   mkdir -p "$bdir"

@@ -3,8 +3,15 @@
 # build_libmpv_android.sh
 #
 # Compiles mpv 0.41.0 as a shared library for Android.
-# Output: android/src/main/jniLibs/{abi}/libmpv.so
-#         Supported ABIs: arm64-v8a, x86_64
+#
+# === OUTPUT FORMATS AND LOCATIONS ===
+# Target Dir:  android/src/main/jniLibs/arm64-v8a/
+# Output File: libmpv.so (Shared Library)
+# 
+# === SYSTEM & HARDWARE SPECS ===
+# Target OS:   Android (API Level 21 / Android 5.0 Lollipop or newer)
+# Target Arch: arm64-v8a (Physical 64-bit devices & Apple Silicon Simulators)
+# Compiler:    Android NDK (LLVM Clang) statically linking libc++_static.a
 #
 # Usage (from project root):
 #   chmod +x scripts/build_libmpv_android.sh
@@ -19,6 +26,7 @@
 #   SKIP_DOWNLOAD=1
 #   KEEP_BUILD=1
 #   SKIP_SIMULATOR=1                 (skips building emulator architectures x86/x86_64)
+#   ONLY_SIMULATOR=1                 (builds ONLY emulator architectures)
 #
 # Requirements: cmake, ninja, nasm, python3, git, curl
 #            On macOS also: iconv (from system), clang (Xcode CLT)
@@ -35,10 +43,13 @@ ANDROID_API="${ANDROID_API:-21}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 4)}"
 
 if [[ "${SKIP_SIMULATOR:-0}" == "1" ]]; then
-  ABIS="${ABIS:-arm64-v8a armeabi-v7a}"
+  ABIS="${ABIS:-arm64-v8a}"
+elif [[ "${ONLY_SIMULATOR:-0}" == "1" ]]; then
+  ABIS="${ABIS:-arm64-v8a}"
 else
-  ABIS="${ABIS:-arm64-v8a armeabi-v7a x86_64 x86}"
+  ABIS="${ABIS:-arm64-v8a}"
 fi
+
 
 # Dependency versions
 FFMPEG_VERSION="7.1.1"
@@ -81,7 +92,6 @@ find_or_download_ndk() {
     ok "NDK found: $ANDROID_NDK_ROOT"
     return
   fi
-  # 2. Common locations
   local candidates=(
     "$HOME/Library/Android/sdk/ndk/${NDK_VERSION}"
     "$HOME/Android/Sdk/ndk/${NDK_VERSION}"
@@ -94,6 +104,19 @@ find_or_download_ndk() {
       export ANDROID_NDK_ROOT="$c"
       ok "NDK found: $ANDROID_NDK_ROOT"
       return
+    fi
+  done
+  
+  # 2.5 Dynamic search in common bases
+  for base in "$HOME/Library/Android/sdk/ndk" "$HOME/Android/Sdk/ndk" "/usr/local/lib/android/sdk/ndk"; do
+    if [[ -d "$base" ]]; then
+      local latest_ndk
+      latest_ndk="$(ls -d "$base"/* 2>/dev/null | grep -Ev 'ndk-bundle' | sort -V | tail -1)"
+      if [[ -n "$latest_ndk" && -d "$latest_ndk" ]]; then
+        export ANDROID_NDK_ROOT="$latest_ndk"
+        ok "NDK found: $ANDROID_NDK_ROOT"
+        return
+      fi
     fi
   done
   # 3. Download NDK
@@ -234,8 +257,8 @@ pkg-config = 'pkg-config'
 [built-in options]
 c_args = ['-I${prefix}/include']
 cpp_args = ['-I${prefix}/include']
-c_link_args = ['-L${prefix}/lib']
-cpp_link_args = ['-L${prefix}/lib']
+c_link_args = ['-L${prefix}/lib', '-lc++_static', '-lc++abi']
+cpp_link_args = ['-L${prefix}/lib', '-lc++_static', '-lc++abi']
 
 [host_machine]
 system = 'android'
@@ -308,6 +331,8 @@ build_abi() {
   local out_dir="$OUTPUT_BASE/$abi"
   mkdir -p "$out_dir"
   cp "$prefix/lib/libmpv.so" "$out_dir/libmpv.so"
+  rm -f "$out_dir/libc++_shared.so"
+
   "$(ndk_strip)" --strip-unneeded "$out_dir/libmpv.so" 2>/dev/null || true
   ok "Output: $out_dir/libmpv.so"
 }
@@ -719,7 +744,9 @@ android_ffmpeg() {
 
   # Flags per armeabi-v7a: NEON
   local extra_cflags="-O2 -fPIC"
+  local extra_config=""
   [[ "$abi" == "armeabi-v7a" ]] && extra_cflags+=" -mfpu=neon -mfloat-abi=softfp"
+  [[ "$abi" == "x86" ]] && extra_config="--disable-asm"
 
   PKG_CONFIG_PATH="$prefix/lib/pkgconfig" \
   "$dir/configure" \
@@ -734,6 +761,7 @@ android_ffmpeg() {
     --strip="$(ndk_strip)" \
     --extra-cflags="$extra_cflags -I$prefix/include" \
     --extra-ldflags="-L$prefix/lib" \
+    $extra_config \
     --enable-avcodec --enable-avfilter --enable-avformat \
     --enable-avutil --enable-avdevice --enable-swresample --enable-swscale \
     --enable-protocols --enable-demuxers --enable-decoders --enable-filters \
@@ -816,7 +844,8 @@ with open('$dir/meson.build', 'w') as f: f.write(content)
     -Dplain-gl=disabled \
     -Dx11=disabled \
     -Dwayland=disabled \
-    -Dandroid-media-ndk=enabled
+    -Dandroid-media-ndk=disabled \
+    -Degl-android=disabled
   ninja -j"$JOBS"; ninja install
   popd >/dev/null
   ok "mpv shared ($abi) ✓"

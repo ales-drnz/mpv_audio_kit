@@ -3,7 +3,15 @@
 # build_libmpv_linux.sh
 #
 # Compiles mpv 0.41.0 with all dependencies linked statically.
-# Output: linux/libs/libmpv.so.2  (dependencies only on glibc and system)
+#
+# === OUTPUT FORMATS AND LOCATIONS ===
+# Target Dir:  linux/libs/
+# Output File: libmpv.so.2 (Shared Library dynamically linked only to glibc)
+#
+# === SYSTEM & HARDWARE SPECS ===
+# Target OS:   Linux (Tested on Ubuntu/Debian, Fedora, Arch)
+# Target Arch: x86_64 or aarch64 (Depends on host machine architecture)
+# Compiler:    GNU GCC / Clang
 #
 # Usage (from project root, on a Linux x86_64 machine):
 #   chmod +x scripts/build_libmpv_linux.sh
@@ -629,6 +637,11 @@ with open('../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
     -Dpulse=enabled \
     -Dx11=disabled \
     -Dwayland=disabled \
+    -Ddrm=disabled \
+    -Dplain-gl=disabled \
+    -Degl-drm=disabled \
+    -Degl-wayland=disabled \
+    -Degl-x11=disabled \
     -Dcocoa=disabled \
     -Davfoundation=disabled \
     -Dcoreaudio=disabled \
