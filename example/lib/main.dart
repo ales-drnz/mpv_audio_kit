@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'screens/player_page.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MpvAudioKit.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -11,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'mpv_audio_pro_kit',
+      title: 'mpv_audio_kit',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

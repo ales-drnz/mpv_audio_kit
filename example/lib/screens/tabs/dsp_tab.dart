@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../widgets/ui_helpers.dart';
 import '../../widgets/eq_widget.dart';
 

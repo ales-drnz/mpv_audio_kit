@@ -1,6 +1,6 @@
-import 'package:mpv_audio_pro_kit/src/models/playlist.dart';
-import 'package:mpv_audio_pro_kit/src/models/audio_device.dart';
-import 'package:mpv_audio_pro_kit/src/models/audio_params.dart';
+import 'package:mpv_audio_kit/src/models/playlist.dart';
+import 'package:mpv_audio_kit/src/models/audio_device.dart';
+import 'package:mpv_audio_kit/src/models/audio_params.dart';
 
 /// Typed event streams for subscribing to individual [Player] state changes.
 ///

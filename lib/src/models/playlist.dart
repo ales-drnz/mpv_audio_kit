@@ -1,4 +1,4 @@
-import 'package:mpv_audio_pro_kit/src/models/media.dart';
+import 'package:mpv_audio_kit/src/models/media.dart';
 
 /// The repeat / loop mode for the player's playlist.
 enum PlaylistMode {

@@ -3,7 +3,7 @@ import FlutterMacOS
 
 public class MpvAudioKitPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "mpv_audio_pro_kit", binaryMessenger: registrar.messenger)
+    let channel = FlutterMethodChannel(name: "mpv_audio_kit", binaryMessenger: registrar.messenger)
     let instance = MpvAudioKitPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }

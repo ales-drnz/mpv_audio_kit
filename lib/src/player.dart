@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
+import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 import 'package:flutter/foundation.dart';
 
 import 'event_isolate.dart';
 import 'mpv_bindings.dart';
+import 'utils/android_helper.dart';
 
 import 'models/media.dart';
 import 'models/playlist.dart';
@@ -34,7 +36,7 @@ export 'models/gapless_mode.dart';
 ///
 /// ## Quick start
 /// ```dart
-/// import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
+/// import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 ///
 /// final player = Player();
 /// await player.open(Media('https://example.com/audio.mp3'));
@@ -147,6 +149,9 @@ class Player {
     );
 
     _startEventIsolate();
+
+    // Register our mpv handle to prevent memory leaks on hot-restart
+    NativeReferenceHolder.instance.add(_handle);
   }
 
   // ── Initialization ────────────────────────────────────────────────────────
@@ -450,7 +455,15 @@ class Player {
       final headers = media.httpHeaders!.entries.map((e) => '${e.key}: ${e.value}').join(',');
       _opt('http-header-fields', headers);
     }
-    _command(['loadfile', media.uri, 'replace']);
+    
+    final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
+    // Note: We use the normalized URI for mpv, but keep original in `_mediaCache`
+    // so `AndroidHelper` caches and `playlist` matches.
+    // Wait, if mpv returns fd://15 in playlist, `_mediaCache` will NOT match `fd://15`.
+    // Let's store BOTH `fd://x` and `asset://` mapping in `_mediaCache`.
+    _mediaCache[normalizedUri] = media;
+    
+    _command(['loadfile', normalizedUri, 'replace']);
     if (!(play ?? configuration.autoPlay)) _prop('pause', 'yes');
   }
 
@@ -461,10 +474,16 @@ class Player {
     _mediaCache.clear();
     for (final m in medias) {
       _mediaCache[m.uri] = m;
+      final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
+      _mediaCache[normalizedUri] = m;
     }
-    _command(['loadfile', medias.first.uri, 'replace']);
+    
+    final firstNormalizedUri = await AndroidHelper.normalizeUri(medias.first.uri);
+    _command(['loadfile', firstNormalizedUri, 'replace']);
+    
     for (final m in medias.skip(1)) {
-      _command(['loadfile', m.uri, 'append']);
+      final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
+      _command(['loadfile', normalizedUri, 'append']);
     }
     if (!(play ?? configuration.autoPlay)) _prop('pause', 'yes');
   }
@@ -512,7 +531,9 @@ class Player {
       final headers = media.httpHeaders!.entries.map((e) => '${e.key}: ${e.value}').join(',');
       _opt('http-header-fields', headers);
     }
-    _command(['loadfile', media.uri, 'append']);
+    final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
+    _mediaCache[normalizedUri] = media;
+    _command(['loadfile', normalizedUri, 'append']);
   }
 
   /// Removes the track at [index] from the playlist.
@@ -549,8 +570,10 @@ class Player {
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
     _mediaCache[media.uri] = media;
+    final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
+    _mediaCache[normalizedUri] = media;
     // Complex operation: insert new, move to position, remove old.
-    _command(['loadfile', media.uri, 'append']);
+    _command(['loadfile', normalizedUri, 'append']);
     // Note: This relies on the internal state for index calculation.
     final lastIndex = _state.playlist.medias.length;
     _command(['playlist-move', lastIndex.toString(), index.toString()]);
@@ -847,6 +870,10 @@ class Player {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    
+    // Remove from hot-restart tracking
+    NativeReferenceHolder.instance.remove(_handle);
+
     _eventSub?.cancel();
     _eventIsolate.stop();
     _lib.mpvTerminateDestroy(_handle);

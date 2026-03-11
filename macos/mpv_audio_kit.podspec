@@ -1,5 +1,5 @@
 #
-# mpv_audio_pro_kit macOS podspec
+# mpv_audio_kit macOS podspec
 #
 # La dylib libmpv viene copiata in Runner.app/Contents/Frameworks/ tramite
 # uno script_phase, che è il metodo più affidabile per i plugin Flutter/FFI.
@@ -10,7 +10,7 @@
 #
 
 Pod::Spec.new do |s|
-  s.name             = 'mpv_audio_pro_kit'
+  s.name             = 'mpv_audio_kit'
   s.version          = '0.0.1'
   s.summary          = 'Flutter audio player powered by libmpv.'
   s.description      = <<-DESC
@@ -18,9 +18,9 @@ Pod::Spec.new do |s|
     Supports audio filters (equalizer, compressor, loudnorm, pitch/tempo),
     all media formats supported by mpv, and streaming protocols.
   DESC
-  s.homepage         = 'https://github.com/your-org/mpv_audio_pro_kit'
+  s.homepage         = 'https://github.com/your-org/mpv_audio_kit'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'mpv_audio_pro_kit' => 'dev@example.com' }
+  s.author           = { 'mpv_audio_kit' => 'dev@example.com' }
 
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*'

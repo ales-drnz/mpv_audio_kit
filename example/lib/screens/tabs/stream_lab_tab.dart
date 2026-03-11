@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../models/stream_category.dart';
 
 const streamCategories = [
@@ -69,7 +69,7 @@ const streamCategories = [
           'artist': 'Broke For Free',
         },
         httpHeaders: {
-          'User-Agent': 'mpv_audio_pro_kit_example/1.0',
+          'User-Agent': 'mpv_audio_kit_example/1.0',
         },
       ),
     ],

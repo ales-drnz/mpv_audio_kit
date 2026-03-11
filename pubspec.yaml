@@ -1,7 +1,7 @@
-name: mpv_audio_pro_kit
+name: mpv_audio_kit
 description: "Flutter audio player built on top of libmpv. Supports audio filters, pitch control, equalizer, and all mpv audio features. Targets macOS, Windows, Linux, iOS and Android."
 version: 0.0.1
-homepage: https://github.com/your-org/mpv_audio_pro_kit
+homepage: https://github.com/your-org/mpv_audio_kit
 
 environment:
   sdk: ^3.6.0
@@ -22,16 +22,16 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.example.mpv_audio_pro_kit
-        pluginClass: MpvAudioProKitPlugin
+        package: com.example.mpv_audio_kit
+        pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
       ios:
-        pluginClass: MpvAudioProKitPlugin
+        pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
       linux:
         ffiPlugin: true
       macos:
-        pluginClass: MpvAudioProKitPlugin
+        pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
       windows:
         ffiPlugin: true

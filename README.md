@@ -1,22 +1,22 @@
-# mpv_audio_pro_kit
+# mpv_audio_kit
 
 #### A high-performance, professional-grade audio engine for Flutter & Dart.
 
-[![](https://img.shields.io/pub/v/mpv_audio_pro_kit.svg)](https://pub.dev/packages/mpv_audio_pro_kit)
+[![](https://img.shields.io/pub/v/mpv_audio_kit.svg)](https://pub.dev/packages/mpv_audio_kit)
 [![](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![](https://img.shields.io/badge/libmpv-v0.41.0-orange.svg)]()
 
-`mpv_audio_pro_kit` is a specialized audio engine built on top of `libmpv`. It is designed for applications that require a robust audio-first pipeline, featuring a dedicated background event loop, extensive DSP capabilities, and fine-grained control over playback quality.
+`mpv_audio_kit` is a specialized audio engine built on top of `libmpv`. It is designed for applications that require a robust audio-first pipeline, featuring a dedicated background event loop, extensive DSP capabilities, and fine-grained control over playback quality.
 
 ---
 
 ## Installation
 
-Add `mpv_audio_pro_kit` to your `pubspec.yaml`:
+Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_pro_kit: ^0.0.1
+  mpv_audio_kit: ^0.0.1
 ```
 
 ### Platform Requirements
@@ -61,7 +61,7 @@ A complete, copy-pasteable example of a simple audio player screen.
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 void main() {
   runApp(const MaterialApp(home: AudioPlayerScreen()));
@@ -94,7 +94,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('mpv_audio_pro_kit')),
+      appBar: AppBar(title: const Text('mpv_audio_kit')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -155,7 +155,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
 ### Initialization
 
-`mpv_audio_pro_kit` is ready to use without global setup. However, it is recommended to manage your `Player` instances carefully within the widget lifecycle or a service.
+`mpv_audio_kit` is ready to use without global setup. However, it is recommended to manage your `Player` instances carefully within the widget lifecycle or a service.
 
 ### Create & Dispose
 
@@ -403,12 +403,13 @@ Add `Background Modes` to your project and enabled `Audio` in `Info.plist`:
 </array>
 ```
 
----
+## Credits & Acknowledgements
 
-## License
+This project owes a significant debt of gratitude to the pioneering architectural work of [media-kit](https://github.com/media-kit/media-kit). Specifically, several critical resilience implementations in `mpv_audio_kit` were inspired by or directly derived from the brilliant work of Hitesh Kumar Saini (`alexmercerind`) and `cillyvms`, including:
+- **Native Memory Guardians** (`NativeReferenceHolder`) handling `libmpv` orphans during Flutter Hot-Restarts.
+- **Android Content / Asset URI Resolvers** (`AndroidHelper`) bridging the Android Java scope into raw native file descriptors.
 
-This project is licensed under the **MIT License**.
-Native dependencies (FFmpeg, libmpv) are subject to **LGPL/GPL** licenses.
+Their codebase is phenomenal, and `mpv_audio_kit` stands on the shoulders of those giants to deliver rock-solid audio production builds.
 
 ---
 *Developed by Antigravity AI*

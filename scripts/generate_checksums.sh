@@ -82,8 +82,8 @@ else
   echo "2. Upload all files from $RELEASE_DIR to the release."
   echo "3. Update the checksums and VERSION variables in:"
   echo "   - android/build.gradle.kts"
-  echo "   - ios/mpv_audio_pro_kit.podspec"
-  echo "   - macos/mpv_audio_pro_kit.podspec"
+  echo "   - ios/mpv_audio_kit.podspec"
+  echo "   - macos/mpv_audio_kit.podspec"
   echo "   - windows/CMakeLists.txt"
   echo "   - linux/CMakeLists.txt"
 fi

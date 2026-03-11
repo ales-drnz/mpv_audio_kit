@@ -17,7 +17,7 @@
 ///     'startAt': Duration(minutes: 5),
 ///   },
 ///   httpHeaders: {
-///     'User-Agent': 'mpv_audio_pro_kit',
+///     'User-Agent': 'mpv_audio_kit',
 ///   },
 /// );
 /// ```

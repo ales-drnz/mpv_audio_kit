@@ -47,8 +47,8 @@ Now that your new assets are hosted on GitHub, you must tell the `mpv_audio_kit`
 You will need to update the following plugin files manually. In every file listed below, you will find a variable at the top (e.g., `MPV_RELEASE_VERSION = "v1.0.0"`) and an array containing the hashes matching the new files.
 
 - **Android:** `android/build.gradle.kts`
-- **iOS:** `ios/mpv_audio_pro_kit.podspec`
-- **macOS:** `macos/mpv_audio_pro_kit.podspec`
+- **iOS:** `ios/mpv_audio_kit.podspec`
+- **macOS:** `macos/mpv_audio_kit.podspec`
 - **Windows:** `windows/CMakeLists.txt`
 - **Linux:** `linux/CMakeLists.txt`
 

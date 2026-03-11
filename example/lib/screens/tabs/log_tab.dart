@@ -81,7 +81,7 @@ class _LogTabState extends State<LogTab> {
             decoration: BoxDecoration(
               color: const Color(0xFF1A1A1A),
               border: Border(
-                bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
+                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
               ),
             ),
             child: Row(
@@ -133,7 +133,7 @@ class _LogTabState extends State<LogTab> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -215,10 +215,10 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.18) : Colors.transparent,
+          color: selected ? color.withValues(alpha: 0.18) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? color : Colors.white.withOpacity(0.12),
+            color: selected ? color : Colors.white.withValues(alpha: 0.12),
             width: 1,
           ),
         ),
@@ -238,7 +238,7 @@ class _FilterChip extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: selected ? color.withOpacity(0.25) : Colors.white12,
+                  color: selected ? color.withValues(alpha: 0.25) : Colors.white12,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

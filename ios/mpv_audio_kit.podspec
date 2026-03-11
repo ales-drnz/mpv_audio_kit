@@ -1,5 +1,5 @@
 #
-# mpv_audio_pro_kit iOS podspec
+# mpv_audio_kit iOS podspec
 #
 # libmpv su iOS deve essere distribuita come XCFramework statica.
 # Usa il progetto mpv-build oppure scarica un binario precompilato.
@@ -9,16 +9,16 @@
 #   https://github.com/mpv-player/mpv/blob/master/DOCS/compile-howto.rst
 #
 Pod::Spec.new do |s|
-  s.name             = 'mpv_audio_pro_kit'
+  s.name             = 'mpv_audio_kit'
   s.version          = '0.0.1'
   s.summary          = 'Flutter audio player powered by libmpv.'
   s.description      = <<-DESC
     High-quality audio player for Flutter, based on libmpv.
     Supports audio filters, all media formats, and streaming protocols.
   DESC
-  s.homepage         = 'https://github.com/your-org/mpv_audio_pro_kit'
+  s.homepage         = 'https://github.com/your-org/mpv_audio_kit'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'mpv_audio_pro_kit' => 'dev@example.com' }
+  s.author           = { 'mpv_audio_kit' => 'dev@example.com' }
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*'
   s.dependency 'Flutter'

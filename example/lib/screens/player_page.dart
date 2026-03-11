@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'tabs/playback_tab.dart';
 import 'tabs/stream_lab_tab.dart';
 import 'tabs/pitch_tab.dart';
@@ -417,7 +417,7 @@ class _NavTab extends StatelessWidget {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? cs.primary.withOpacity(0.08) : Colors.transparent,
+            color: selected ? cs.primary.withValues(alpha: 0.08) : Colors.transparent,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -1,10 +1,10 @@
-/// mpv_audio_pro_kit — Flutter audio player powered by libmpv.
+/// mpv_audio_kit — Flutter audio player powered by libmpv.
 ///
 /// Supports macOS, Windows, Linux, iOS, and Android.
 ///
 /// ## Quick start
 /// ```dart
-/// import 'package:mpv_audio_pro_kit/mpv_audio_pro_kit.dart';
+/// import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 ///
 /// final player = Player();
 ///
@@ -31,3 +31,4 @@ export 'src/models/player_stream.dart'        show PlayerStream;
 export 'src/models/replay_gain.dart'          show ReplayGainMode;
 export 'src/models/gapless_mode.dart'         show GaplessMode;
 export 'src/mpv_bindings.dart'                show MpvLibraryException;
+export 'src/mpv_audio_kit.dart'               show MpvAudioKit;
