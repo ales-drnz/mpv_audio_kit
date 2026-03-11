@@ -103,6 +103,13 @@ class AudioFilter {
     return AudioFilter._('lavfi-crystalizer=i=$intensity');
   }
 
+  /// Crossfeed — simulates loudspeakers on headphones for reduced listening fatigue.
+  ///
+  /// Uses Bauer stereophonic-to-binaural DSP with the popular `cmoy` profile.
+  factory AudioFilter.crossfeed() {
+    return AudioFilter._('lavfi-bs2b=profile=cmoy');
+  }
+
   @override
   String toString() => 'AudioFilter($value)';
 }

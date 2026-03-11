@@ -58,6 +58,22 @@ const streamCategories = [
       ),
     ],
   ),
+  StreamCategory(
+    name: '5. Metadata & Headers',
+    items: [
+      StreamItem(
+        label: 'Track with Extras Example',
+        url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/WFMU/Broke_For_Free/Directionless_EP/Broke_For_Free_-_01_-_Night_Owl.mp3',
+        extras: {
+          'title': 'Night Owl (Extras Example)',
+          'artist': 'Broke For Free',
+        },
+        httpHeaders: {
+          'User-Agent': 'mpv_audio_pro_kit_example/1.0',
+        },
+      ),
+    ],
+  ),
 ];
 
 class StreamLabTab extends StatelessWidget {
@@ -119,13 +135,13 @@ class StreamLabTab extends StatelessWidget {
                           children: [
                             _CompactActionButton(
                               icon: Icons.play_arrow_rounded, 
-                              onPressed: () => player.open(Media(s.url), play: true),
+                              onPressed: () => player.open(Media(s.url, extras: s.extras, httpHeaders: s.httpHeaders), play: true),
                               color: Theme.of(context).colorScheme.primary,
                             ),
                             const SizedBox(width: 8),
                             _CompactActionButton(
                               icon: Icons.add_rounded, 
-                              onPressed: () => player.add(Media(s.url)),
+                              onPressed: () => player.add(Media(s.url, extras: s.extras, httpHeaders: s.httpHeaders)),
                               color: Theme.of(context).colorScheme.secondary,
                             ),
                           ],

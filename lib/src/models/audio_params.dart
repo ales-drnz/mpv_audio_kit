@@ -23,6 +23,23 @@ class AudioParams {
     this.hrChannels,
   });
 
+  /// Creates a copy of this object with the given fields replaced with the new values.
+  AudioParams copyWith({
+    String? format,
+    int? sampleRate,
+    String? channels,
+    int? channelCount,
+    String? hrChannels,
+  }) {
+    return AudioParams(
+      format: format ?? this.format,
+      sampleRate: sampleRate ?? this.sampleRate,
+      channels: channels ?? this.channels,
+      channelCount: channelCount ?? this.channelCount,
+      hrChannels: hrChannels ?? this.hrChannels,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

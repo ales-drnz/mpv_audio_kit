@@ -70,6 +70,10 @@ class Player {
   /// Internal playlist tracking (mirrors mpv's JSON output).
   List<_RawPlaylistEntry> _rawPlaylist = [];
 
+  /// Cache to retain Dart-side metadata ([Media.extras], [Media.httpHeaders]) 
+  /// for tracks, keyed by their URI.
+  final Map<String, Media> _mediaCache = {};
+
   // ── Stream controllers ────────────────────────────────────────────────────
 
   final _playlistCtrl       = StreamController<Playlist>.broadcast();
@@ -382,7 +386,7 @@ class Player {
       _rawPlaylist = list.map((e) => _RawPlaylistEntry.fromJson(e)).toList();
 
       final currentIndex = _rawPlaylist.indexWhere((e) => e.current);
-      final medias = _rawPlaylist.map((e) => Media(e.filename)).toList();
+      final medias = _rawPlaylist.map((e) => _mediaCache[e.filename] ?? Media(e.filename)).toList();
       final playlist = Playlist(medias, index: currentIndex.clamp(0, medias.length));
 
       _patchState((s) => s.copyWith(playlist: playlist));
@@ -440,6 +444,8 @@ class Player {
   /// Replaces the entire current playlist with this single track.
   Future<void> open(Media media, {bool? play}) async {
     _checkNotDisposed();
+    _mediaCache.clear();
+    _mediaCache[media.uri] = media;
     if (media.httpHeaders != null) {
       final headers = media.httpHeaders!.entries.map((e) => '${e.key}: ${e.value}').join(',');
       _opt('http-header-fields', headers);
@@ -452,6 +458,10 @@ class Player {
   Future<void> openPlaylist(List<Media> medias, {bool? play}) async {
     _checkNotDisposed();
     if (medias.isEmpty) return;
+    _mediaCache.clear();
+    for (final m in medias) {
+      _mediaCache[m.uri] = m;
+    }
     _command(['loadfile', medias.first.uri, 'replace']);
     for (final m in medias.skip(1)) {
       _command(['loadfile', m.uri, 'append']);
@@ -497,6 +507,7 @@ class Player {
   /// Appends [media] to the end of the current playlist.
   Future<void> add(Media media) async {
     _checkNotDisposed();
+    _mediaCache[media.uri] = media;
     if (media.httpHeaders != null) {
       final headers = media.httpHeaders!.entries.map((e) => '${e.key}: ${e.value}').join(',');
       _opt('http-header-fields', headers);
@@ -537,6 +548,7 @@ class Player {
   /// Replaces the track at [index] with a new [media] item.
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
+    _mediaCache[media.uri] = media;
     // Complex operation: insert new, move to position, remove old.
     _command(['loadfile', media.uri, 'append']);
     // Note: This relies on the internal state for index calculation.
@@ -548,6 +560,7 @@ class Player {
   /// Clears all tracks from the playlist.
   Future<void> clearPlaylist() async {
     _checkNotDisposed();
+    _mediaCache.clear();
     _command(['playlist-clear']);
   }
 
@@ -884,22 +897,3 @@ class _RawPlaylistEntry {
       );
 }
 
-// ── AudioParams.copyWith extension (needed internally) ───────────────────────
-
-extension _AudioParamsCopyWith on AudioParams {
-  AudioParams copyWith({
-    String? format,
-    int? sampleRate,
-    String? channels,
-    int? channelCount,
-    String? hrChannels,
-  }) {
-    return AudioParams(
-      format:       format       ?? this.format,
-      sampleRate:   sampleRate   ?? this.sampleRate,
-      channels:     channels     ?? this.channels,
-      channelCount: channelCount ?? this.channelCount,
-      hrChannels:   hrChannels   ?? this.hrChannels,
-    );
-  }
-}

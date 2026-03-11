@@ -22,6 +22,7 @@ class _DspTabState extends State<DspTab> {
   bool _extraStereoEnabled = false;
   bool _crystalizerEnabled = false;
   bool _echoEnabled = false;
+  bool _crossfeedEnabled = false;
 
   void _applyFilters() {
     final filters = <AudioFilter>[];
@@ -32,6 +33,7 @@ class _DspTabState extends State<DspTab> {
     if (_extraStereoEnabled) filters.add(AudioFilter.extraStereo());
     if (_crystalizerEnabled) filters.add(AudioFilter.crystalizer());
     if (_echoEnabled) filters.add(AudioFilter.echo());
+    if (_crossfeedEnabled) filters.add(AudioFilter.crossfeed());
     widget.player.setAudioFilters(filters);
   }
 
@@ -71,6 +73,10 @@ class _DspTabState extends State<DspTab> {
               }),
               buildToggle('Echo', _echoEnabled, (v) {
                 setState(() => _echoEnabled = v);
+                _applyFilters();
+              }),
+              buildToggle('Crossfeed (Headphones)', _crossfeedEnabled, (v) {
+                setState(() => _crossfeedEnabled = v);
                 _applyFilters();
               }),
             ],

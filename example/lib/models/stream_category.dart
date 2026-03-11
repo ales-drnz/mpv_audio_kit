@@ -1,7 +1,15 @@
 class StreamItem {
   final String label;
   final String url;
-  const StreamItem({required this.label, required this.url});
+  final Map<String, dynamic>? extras;
+  final Map<String, String>? httpHeaders;
+  
+  const StreamItem({
+    required this.label, 
+    required this.url,
+    this.extras,
+    this.httpHeaders,
+  });
 }
 
 class StreamCategory {
