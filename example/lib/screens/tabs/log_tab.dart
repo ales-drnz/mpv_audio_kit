@@ -71,17 +71,17 @@ class _LogTabState extends State<LogTab> {
   Widget build(BuildContext context) {
     final filtered = _filteredLogs;
 
-    return Container(
-      color: const Color(0xFF0D0D0D),
-      child: Column(
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: Column(
         children: [
           // ── toolbar ──────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A),
+              color: Theme.of(context).colorScheme.surfaceContainer,
               border: Border(
-                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
               ),
             ),
             child: Row(
@@ -133,14 +133,14 @@ class _LogTabState extends State<LogTab> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${filtered.length} lines',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: Colors.white38,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontFamily: 'monospace',
                     ),
                   ),
@@ -152,37 +152,35 @@ class _LogTabState extends State<LogTab> {
           // ── log list ─────────────────────────────────────────────
           Expanded(
             child: filtered.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No logs yet',
-                      style: TextStyle(color: Colors.white30, fontSize: 13),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
                     ),
                   )
-                : SelectionArea(
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      reverse: true,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) {
-                        final line = filtered[filtered.length - 1 - i];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 1),
-                          child: Text(
-                            line,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontFamily: 'monospace',
-                              color: _lineColor(line),
-                              height: 1.4,
-                            ),
-                          ),
-                        );
-                      },
+                : ListView.builder(
+                    controller: _scrollController,
+                    reverse: true,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
                     ),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final line = filtered[filtered.length - 1 - i];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 1),
+                        child: Text(
+                          line,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontFamily: 'monospace',
+                            color: _lineColor(line),
+                            height: 1.4,
+                          ),
+                        ),
+                      );
+                    },
                   ),
           ),
         ],
@@ -215,10 +213,10 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.18) : Colors.transparent,
+          color: selected ? color.withValues(alpha: 0.2) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? color : Colors.white.withValues(alpha: 0.12),
+            color: selected ? color : Theme.of(context).colorScheme.outlineVariant,
             width: 1,
           ),
         ),
@@ -230,7 +228,7 @@ class _FilterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: selected ? color : Colors.white38,
+                color: selected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             if (count > 0) ...[
@@ -238,14 +236,14 @@ class _FilterChip extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: selected ? color.withValues(alpha: 0.25) : Colors.white12,
+                  color: selected ? color.withValues(alpha: 0.3) : Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$count',
                   style: TextStyle(
                     fontSize: 9,
-                    color: selected ? color : Colors.white38,
+                    color: selected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

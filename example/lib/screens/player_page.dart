@@ -1,7 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'tabs/playback_tab.dart';
+import 'tabs/queue_tab.dart';
 import 'tabs/stream_lab_tab.dart';
 import 'tabs/pitch_tab.dart';
 import 'tabs/hardware_tab.dart';
@@ -74,18 +76,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: const Alignment(0.7, -0.6),
-            radius: 1.2,
-            colors: [
-              Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              Theme.of(context).colorScheme.surface,
-            ],
-          ),
-        ),
-        child: SafeArea(
+      body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final bool isWide = constraints.maxWidth > 700;
@@ -94,16 +85,16 @@ class _PlayerPageState extends State<PlayerPage> {
             // On narrow, log tab is the last nav destination.
             final List<Widget> pages = [
               PlaybackTab(player: _player),
+              QueueTab(player: _player),
               StreamLabTab(player: _player),
               PitchTab(player: _player),
               HardwareTab(player: _player),
-              SystemTab(player: _player),
               GainTab(player: _player),
               DspTab(player: _player),
+              SystemTab(player: _player),
               NetworkTab(player: _player),
               if (!isWide) LogTab(logs: _logs),
             ];
-
 
             // Clamp navIndex in case we switch between wide/narrow
             final safeIndex = _navIndex.clamp(0, pages.length - 1);
@@ -111,19 +102,23 @@ class _PlayerPageState extends State<PlayerPage> {
             // ── Tab definitions ──────────────────────────────────────
             const row1 = [
               _NavTabItem(icon: Icons.music_note, label: 'Player'),
+              _NavTabItem(icon: Icons.queue_music, label: 'Queue'),
               _NavTabItem(icon: Icons.cell_tower, label: 'Streams'),
               _NavTabItem(icon: Icons.speed, label: 'Pitch'),
               _NavTabItem(icon: Icons.speaker, label: 'Routing'),
-              _NavTabItem(icon: Icons.memory, label: 'System'),
             ];
             const row2Base = [
               _NavTabItem(icon: Icons.graphic_eq, label: 'Gain'),
               _NavTabItem(icon: Icons.filter_hdr, label: 'DSP'),
+              _NavTabItem(icon: Icons.memory, label: 'System'),
               _NavTabItem(icon: Icons.wifi, label: 'Network'),
             ];
             final row2 = isWide
                 ? row2Base
-                : [...row2Base, const _NavTabItem(icon: Icons.terminal, label: 'Log')];
+                : [
+                    ...row2Base,
+                    const _NavTabItem(icon: Icons.terminal, label: 'Log'),
+                  ];
 
             final allTabs = [...row1, ...row2];
 
@@ -134,10 +129,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   child: Column(
                     children: [
                       Expanded(
-                        child: IndexedStack(
-                          index: safeIndex,
-                          children: pages,
-                        ),
+                        child: IndexedStack(index: safeIndex, children: pages),
                       ),
                       _TwoRowNavBar(
                         row1: row1,
@@ -163,9 +155,9 @@ class _PlayerPageState extends State<PlayerPage> {
                       },
                       child: Container(
                         width: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         child: Center(
                           child: Container(
                             width: 4,
@@ -186,9 +178,8 @@ class _PlayerPageState extends State<PlayerPage> {
           },
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildLogSection() {
     return Container(
@@ -256,30 +247,28 @@ class _PlayerPageState extends State<PlayerPage> {
           ),
           const SizedBox(height: 4),
           Expanded(
-            child: SelectionArea(
-              child: ListView.builder(
-                reverse: true,
-                itemCount: _logs.length,
-                itemBuilder: (_, i) {
-                  final line = _logs[_logs.length - 1 - i];
-                  final color = line.contains('error') || line.contains('fatal')
-                      ? Colors.red[300]
-                      : line.contains('warn')
-                      ? Colors.orange[300]
-                      : line.contains('Set property:') ||
-                            line.contains('Run command:')
-                      ? Colors.purpleAccent[100]
-                      : Colors.green[300];
-                  return Text(
-                    line,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontFamily: 'monospace',
-                      color: color ?? Colors.grey[300],
-                    ),
-                  );
-                },
-              ),
+            child: ListView.builder(
+              reverse: true,
+              itemCount: _logs.length,
+              itemBuilder: (_, i) {
+                final line = _logs[_logs.length - 1 - i];
+                final color = line.contains('error') || line.contains('fatal')
+                    ? Colors.red[300]
+                    : line.contains('warn')
+                    ? Colors.orange[300]
+                    : line.contains('Set property:') ||
+                          line.contains('Run command:')
+                    ? Colors.purpleAccent[100]
+                    : Colors.green[300];
+                return Text(
+                  line,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    color: color ?? Colors.grey[300],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -340,30 +329,20 @@ class _TwoRowNavBar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1e293b), // Solid dark slate color
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.1),
+        color: cs.surfaceContainer,
+        border: Border(
+          top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
-      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildRow(context, row1, 0),
           Divider(
-            height: 1, 
-            thickness: 1, 
-            color: cs.outlineVariant.withValues(alpha: 0.1)
+            height: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.5),
           ),
           _buildRow(context, row2, row1.length),
         ],
@@ -371,11 +350,7 @@ class _TwoRowNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(
-    BuildContext context,
-    List<_NavTabItem> tabs,
-    int offset,
-  ) {
+  Widget _buildRow(BuildContext context, List<_NavTabItem> tabs, int offset) {
     return Row(
       children: tabs.asMap().entries.map((entry) {
         final i = entry.key + offset;
@@ -409,51 +384,38 @@ class _NavTab extends StatelessWidget {
     final color = selected ? cs.primary : cs.onSurfaceVariant;
 
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? cs.primary.withValues(alpha: 0.08) : Colors.transparent,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedScale(
-                scale: selected ? 1.1 : 1.0,
-                duration: const Duration(milliseconds: 250),
-                child: Icon(
-                  item.icon,
-                  size: 20,
-                  color: color,
-                ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: selected ? cs.primaryContainer : Colors.transparent,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(item.icon, size: 20, color: color),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal,
+                      color: color,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                item.label,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                  letterSpacing: 0.5,
-                  color: color,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                width: selected ? 12 : 0,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: cs.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

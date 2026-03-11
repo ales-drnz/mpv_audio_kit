@@ -20,16 +20,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6366f1),
           brightness: Brightness.dark,
-          surface: const Color(0xFF0f172a),
         ),
         useMaterial3: true,
-        fontFamily: 'Inter',
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-        ),
       ),
       home: const PlayerPage(),
     );
