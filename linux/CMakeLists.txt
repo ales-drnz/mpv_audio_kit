@@ -22,7 +22,7 @@ set(PLUGIN_NAME "mpv_audio_kit_plugin")
 #   sudo pacman -S mpv               (Arch)
 set(_BUNDLED_MPV "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.so.2")
 set(MPV_RELEASE_VERSION "v0.0.1")
-set(EXPECTED_SHA256 "PUT_LINUX_SO_SHA256_HERE")
+set(EXPECTED_SHA256 "85e14535c28c72ba68aa79b8f251f19863f654f325b223ee592fc9fa3c6e857e")
 
 set(DOWNLOAD_NEEDED TRUE)
 
@@ -120,7 +120,7 @@ enable_testing()
 include(FetchContent)
 FetchContent_Declare(
   googletest
-  URL https://github.com/google/googletest/archive/release-1.11.0.zip
+  URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip
 )
 # Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)

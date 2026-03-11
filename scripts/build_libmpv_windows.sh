@@ -683,8 +683,8 @@ STUBEOF
     -Dwasapi=enabled \
     -Dc_args="-I$DIST/include $WIN_FLAGS" \
     -Dcpp_args="-I$DIST/include $WIN_FLAGS" \
-    -Dc_link_args="-L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lstdc++ -lexpat -lpathcch -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore" \
-    -Dcpp_link_args="-L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lexpat -lpathcch -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore"
+    -Dc_link_args="-static -L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lstdc++ -lexpat -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore ${SRC}/mpv-${MPV_VERSION}/osdep/pathcch_stub.c.obj" \
+    -Dcpp_link_args="-static -L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lexpat -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore ${SRC}/mpv-${MPV_VERSION}/osdep/pathcch_stub.c.obj"
   
   ninja -C build install
 popd

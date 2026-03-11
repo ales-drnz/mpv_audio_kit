@@ -28,9 +28,17 @@ These scripts will compile everything to static lengths and automatically export
 Before uploading the newly compiled artifacts, you must generate their unique cryptographic fingerprint to protect end users against corrupted packets or partial downloads.
 
 Run the checksum utility:
+
+**On Linux/macOS:**
 ```bash
 cd scripts/
 ./generate_checksums.sh
+```
+
+**On Windows:**
+```powershell
+cd scripts
+.\generate_checksums.ps1
 ```
 
 This script reads all files in `release_builds/` and outputs a `release_builds/checksums.txt` file alongside them, presenting exactly what you need to integrate into the plugin code.

@@ -62,7 +62,7 @@ endif()
 
 set(_MPV_DLL "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv-2.dll")
 set(MPV_RELEASE_VERSION "v0.0.1")
-set(EXPECTED_SHA256 "PUT_WINDOWS_DLL_SHA256_HERE")
+set(EXPECTED_SHA256 "9837060c8a88ba8d4d4ab12f7d14faad667a25ac1ccee757df15fa7752ab4fff")
 
 set(DOWNLOAD_NEEDED TRUE)
 
@@ -122,7 +122,7 @@ enable_testing()
 include(FetchContent)
 FetchContent_Declare(
   googletest
-  URL https://github.com/google/googletest/archive/release-1.11.0.zip
+  URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip
 )
 # Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)

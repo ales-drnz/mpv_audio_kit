@@ -42,3 +42,11 @@ docs
 /build-android/
 /build-ios/
 /build-macos/
+
+# mpv_audio_kit libmpv Prebuilts
+/windows/libs/
+/linux/libs/
+/macos/libs/
+/ios/Frameworks/libmpv.xcframework/
+/ios/Frameworks/libmpv_xcframework.zip
+/android/src/main/jniLibs/
