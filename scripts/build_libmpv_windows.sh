@@ -584,10 +584,49 @@ content = re.sub(
 with open('meson.build', 'w') as f: f.write(content)
 "
 
+  # Patch timer-win32.c: define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION if missing
+  # (older MinGW-w64 doesn't define it even with _WIN32_WINNT=0x0A00)
+  sed -i '1s|^|#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION\n#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002\n#endif\n|' osdep/timer-win32.c
 
+  # Patch w32_register.c: define FTA_Show and FTA_OpenIsSafe if missing (shellapi constants)
+  sed -i '1s|^|#ifndef FTA_Show\n#define FTA_Show 0x00000002\n#endif\n#ifndef FTA_OpenIsSafe\n#define FTA_OpenIsSafe 0x00001000\n#endif\n|' osdep/w32_register.c
 
-  # Inject the stub object into the meson build by adding it to extra_objects or link_args
-  # We do this by passing it as a link argument since meson will pass it to the linker
+  # Create a pathcch stub for MinGW (pathcch.dll is not available in MinGW sysroot)
+  # Implements needed APIs using shlwapi equivalents
+  cat > osdep/pathcch_stub.c << 'STUBEOF'
+/* pathcch stub for MinGW cross-compile — implements missing pathcch APIs via shlwapi */
+#include <windows.h>
+#include <shlwapi.h>
+#define S_OK   0L
+#define E_FAIL ((HRESULT)0x80004005L)
+typedef long HRESULT;
+__declspec(dllexport)
+HRESULT PathCchCanonicalizeEx(wchar_t *pszPathOut, size_t cchPathOut,
+                               const wchar_t *pszPathIn, unsigned long dwFlags) {
+    if (!PathCanonicalizeW(pszPathOut, pszPathIn)) return E_FAIL;
+    return S_OK;
+}
+__declspec(dllexport)
+HRESULT PathCchRemoveFileSpec(wchar_t *pszPath, size_t cchPath) {
+    PathRemoveFileSpecW(pszPath);
+    return S_OK;
+}
+__declspec(dllexport)
+HRESULT PathAllocCombine(const wchar_t *pszPathIn, const wchar_t *pszMore,
+                          unsigned long dwFlags, wchar_t **ppszPathOut) {
+    wchar_t buf[32768];
+    if (!PathCombineW(buf, pszPathIn, pszMore)) return E_FAIL;
+    size_t len = wcslen(buf) + 1;
+    *ppszPathOut = (wchar_t*)LocalAlloc(LMEM_FIXED, len * sizeof(wchar_t));
+    if (!*ppszPathOut) return E_FAIL;
+    wmemcpy(*ppszPathOut, buf, len);
+    return S_OK;
+}
+STUBEOF
+  # Compile the stub directly. We link it as an object to avoid -lpathcch dynamic dependency.
+  x86_64-w64-mingw32-gcc -c osdep/pathcch_stub.c \
+    -I"$DIST/include" -D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00 \
+    -o osdep/pathcch_stub.c.obj
 
   # Clean previous build dir to force full reconfiguration with updated cross-file
   rm -rf build
@@ -624,8 +663,8 @@ with open('meson.build', 'w') as f: f.write(content)
     -Dwasapi=enabled \
     -Dc_args="-I$DIST/include $WIN_FLAGS" \
     -Dcpp_args="-I$DIST/include $WIN_FLAGS" \
-    -Dc_link_args="-static -L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lstdc++ -lexpat -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore -lpathcch" \
-    -Dcpp_link_args="-static -L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lexpat -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore -lpathcch"
+    -Dc_link_args="-static -L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lstdc++ -lexpat -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore ${SRC}/mpv-${MPV_VERSION}/osdep/pathcch_stub.c.obj" \
+    -Dcpp_link_args="-static -L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lexpat -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore ${SRC}/mpv-${MPV_VERSION}/osdep/pathcch_stub.c.obj"
   
   ninja -C build install
 popd
