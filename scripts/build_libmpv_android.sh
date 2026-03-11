@@ -18,6 +18,7 @@
 #   JOBS=N
 #   SKIP_DOWNLOAD=1
 #   KEEP_BUILD=1
+#   SKIP_SIMULATOR=1                 (skips building emulator architectures x86/x86_64)
 #
 # Requirements: cmake, ninja, nasm, python3, git, curl
 #            On macOS also: iconv (from system), clang (Xcode CLT)
@@ -32,7 +33,12 @@ OUTPUT_BASE="$ROOT/android/src/main/jniLibs"
 MPV_VERSION="${MPV_VERSION:-0.41.0}"
 ANDROID_API="${ANDROID_API:-21}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 4)}"
-ABIS="${ABIS:-arm64-v8a x86_64}"
+
+if [[ "${SKIP_SIMULATOR:-0}" == "1" ]]; then
+  ABIS="${ABIS:-arm64-v8a armeabi-v7a}"
+else
+  ABIS="${ABIS:-arm64-v8a armeabi-v7a x86_64 x86}"
+fi
 
 # Dependency versions
 FFMPEG_VERSION="7.1.1"

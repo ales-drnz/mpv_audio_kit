@@ -22,27 +22,7 @@
 		</data>
 		<key>ios-arm64/libmpv.a</key>
 		<data>
-		CrKfFn4lg73wLZn7fMANuzud/Os=
-		</data>
-		<key>ios-arm64_x86_64-simulator/Headers/client.h</key>
-		<data>
-		ug40oP5o8dJmfi01M+5F06MAUEE=
-		</data>
-		<key>ios-arm64_x86_64-simulator/Headers/render.h</key>
-		<data>
-		b95iHG1u5/Rg1oHxX1tvDusoXBA=
-		</data>
-		<key>ios-arm64_x86_64-simulator/Headers/render_gl.h</key>
-		<data>
-		xRmnnP40GWV2EAycuztrMWB/dkg=
-		</data>
-		<key>ios-arm64_x86_64-simulator/Headers/stream_cb.h</key>
-		<data>
-		9bVVBss6fflpNwH4JRg/v9ZEhBY=
-		</data>
-		<key>ios-arm64_x86_64-simulator/libmpv.a</key>
-		<data>
-		FqxEsdE2sZFFxUS2mPc85WJHCrU=
+		895FdTBJoOpiapoFGxvh/XHUhX8=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -79,42 +59,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			McM7RmdaD/ju9O9a//SlQpZmL06EcV9X9A180qzWy2E=
-			</data>
-		</dict>
-		<key>ios-arm64_x86_64-simulator/Headers/client.h</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			PAcyNqCctFbG6AWH1VI8h3HDL7IsoBTg+ZzD1DkFt1w=
-			</data>
-		</dict>
-		<key>ios-arm64_x86_64-simulator/Headers/render.h</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			GSaRlBYCBS8A3wWH8SYkbEh4WhzyHeaNIqkuoZCNHFU=
-			</data>
-		</dict>
-		<key>ios-arm64_x86_64-simulator/Headers/render_gl.h</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			SGYsDtmHKhTdnhaEEFyX9p+UoEFHCcJUxdNyrcQdLmk=
-			</data>
-		</dict>
-		<key>ios-arm64_x86_64-simulator/Headers/stream_cb.h</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			GI5YttFDg+FaXf/cTs67378uQSucCZ/yG1cfdHqM4y0=
-			</data>
-		</dict>
-		<key>ios-arm64_x86_64-simulator/libmpv.a</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			ndyWNvxyiqDsbPWlga0quzDF6Wuceu33NLrxSDBRZVg=
+			JiRDKJK85fIAVBv62kB+BG4Uihc60sPMrtxqfJXE1UY=
 			</data>
 		</dict>
 	</dict>
