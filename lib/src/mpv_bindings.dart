@@ -328,16 +328,23 @@ class MpvLibrary {
             'mpv_client_api_version');
   }
 
-  /// Opens libmpv from the platform-specific path. Throws [MpvLibraryException]
-  /// if the library cannot be found.
-  factory MpvLibrary.open() {
+  /// Opens libmpv from the platform-specific path or a custom [path].
+  /// Throws [MpvLibraryException] if the library cannot be found.
+  factory MpvLibrary.open([String? path]) {
     if (Platform.isIOS) {
       // On iOS libmpv is statically linked via xcframework.
       // DynamicLibrary.process() exposes all symbols from the current process.
       return MpvLibrary._(DynamicLibrary.process());
     }
-    final path = _resolvePath();
-    return MpvLibrary._(DynamicLibrary.open(path));
+    final resolvedPath = path ?? _resolvePath();
+    try {
+      return MpvLibrary._(DynamicLibrary.open(resolvedPath));
+    } catch (e) {
+      throw MpvLibraryException(
+          'Failed to load libmpv from "$resolvedPath".\n'
+          'Error: $e\n'
+          'Ensure the library is present and all its dependencies are installed.');
+    }
   }
 
   static String _resolvePath() {
@@ -364,7 +371,14 @@ class MpvLibrary {
       // Return libmpv.so.2 (assumed bundled/expected version)
       return 'libmpv.so.2';
     } else if (Platform.isWindows) {
-      // Return libmpv-2.dll (assumed bundled/expected version)
+      // On Windows, use an absolute path relative to the executable.
+      // This is more robust than relying on the current working directory.
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      final localDll = '$exeDir\\libmpv-2.dll';
+      if (File(localDll).existsSync()) {
+        return localDll;
+      }
+      // Fallback to searching in PATH.
       return 'libmpv-2.dll';
     } else if (Platform.isAndroid) {
       // Precompiled in android/src/main/jniLibs/<abi>/libmpv.so

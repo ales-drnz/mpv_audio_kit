@@ -1,2 +1,2 @@
 85e14535c28c72ba68aa79b8f251f19863f654f325b223ee592fc9fa3c6e857e  libmpv_linux-x86_64.so
-9837060c8a88ba8d4d4ab12f7d14faad667a25ac1ccee757df15fa7752ab4fff  libmpv_windows-x86_64.dll
+1992d392ee77ce908b882aeeb266fdbab8b41e257b7ebac3aceb27e4a59ebe68  libmpv_windows-x86_64.dll

@@ -62,7 +62,7 @@ endif()
 
 set(_MPV_DLL "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv-2.dll")
 set(MPV_RELEASE_VERSION "v0.0.1")
-set(EXPECTED_SHA256 "9837060c8a88ba8d4d4ab12f7d14faad667a25ac1ccee757df15fa7752ab4fff")
+set(EXPECTED_SHA256 "1992d392ee77ce908b882aeeb266fdbab8b41e257b7ebac3aceb27e4a59ebe68")
 
 set(DOWNLOAD_NEEDED TRUE)
 
@@ -93,15 +93,18 @@ if(DOWNLOAD_NEEDED)
   endif()
 endif()
 
-if(EXISTS "${_MPV_DLL}")
+# Collect all DLLs from the libs directory to bundle them with the application.
+file(GLOB _MPV_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/libs/*.dll")
+
+if(_MPV_DLLS)
   set(mpv_audio_kit_bundled_libraries
-    "${_MPV_DLL}"
+    ${_MPV_DLLS}
     PARENT_SCOPE
   )
 else()
   # DLL not found in libs folder — user needs to provide it in PATH.
-  message(WARNING "[mpv_audio_kit] libmpv-2.dll not found in windows/libs/. "
-                  "Make sure it is in your application PATH.")
+  message(WARNING "[mpv_audio_kit] No DLLs found in windows/libs/. "
+                  "Make sure libmpv-2.dll is in your application PATH.")
   set(mpv_audio_kit_bundled_libraries
     ""
     PARENT_SCOPE

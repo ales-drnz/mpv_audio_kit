@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 
 import 'event_isolate.dart';
 import 'mpv_bindings.dart';
+import 'mpv_audio_kit.dart';
 import 'utils/android_helper.dart';
 
 import 'models/media.dart';
@@ -116,7 +117,7 @@ class Player {
   /// Spawns the libmpv context and the background event-loop isolate.
   /// Call [dispose] when done to free all native resources.
   Player({this.configuration = const PlayerConfiguration()}) {
-    _lib = MpvLibrary.open();
+    _lib = MpvLibrary.open(MpvAudioKit.libraryPath);
     _handle = _lib.mpvCreate();
     if (_handle == nullptr) throw StateError('mpv_create() returned NULL');
 

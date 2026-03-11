@@ -548,26 +548,6 @@ if [[ ! -f "$DIST/lib/libavcodec.a" ]]; then
   popd
 fi
 
-# ── pathcch import library ────────────────────────────────────────────────────
-# mpv on Windows uses __imp_PathCchXxx symbols (DLL import style). MinGW
-# doesn't ship libpathcch.a, so we generate an import library stub via dlltool.
-if [[ ! -f "$DIST/lib/libpathcch.a" ]]; then
-  echo "--- pathcch import library ---"
-  cat > "$DIST/lib/pathcch.def" << 'DEFEOF'
-LIBRARY pathcch
-EXPORTS
-  PathCchCanonicalizeEx
-  PathCchRemoveFileSpec
-  PathAllocCombine
-  PathCchAppend
-  PathCchCombineEx
-DEFEOF
-  x86_64-w64-mingw32-dlltool \
-    -d "$DIST/lib/pathcch.def" \
-    -l "$DIST/lib/libpathcch.a" \
-    -k
-fi
-
 # ── mpv ───────────────────────────────────────────────────────────────────────
 echo "--- mpv $MPV_VERSION ---"
 MPV_ARCHIVE=$(fetch mpv "https://github.com/mpv-player/mpv/archive/refs/tags/v${MPV_VERSION}.tar.gz")

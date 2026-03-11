@@ -9,6 +9,10 @@ import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 
 abstract class MpvAudioKit {
   static bool _initialized = false;
+  static String? _libraryPath;
+
+  /// Returns the path used to initialize the library, if provided.
+  static String? get libraryPath => _libraryPath;
 
   /// Initializes the native backend for `mpv_audio_kit`.
   /// Must be called before creating any [Player] instances.
@@ -26,7 +30,7 @@ abstract class MpvAudioKit {
       debugPrint('$tag Disposing over-leaked native pointers (Hot-Restart fix):');
       
       // Load mpv library
-      final lib = MpvLibrary.open();
+      final lib = MpvLibrary.open(libmpv);
       for (final ref in references) {
         debugPrint(' - Address: ${ref.address}');
         try {
@@ -43,7 +47,8 @@ abstract class MpvAudioKit {
         }
       }
     });
-
+    
+    _libraryPath = libmpv;
     _initialized = true;
   }
 }
