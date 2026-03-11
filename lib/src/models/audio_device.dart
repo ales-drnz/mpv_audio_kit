@@ -1,3 +1,7 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by MIT license that can be found in the LICENSE file.
+
 /// Represents an audio output device detected by mpv.
 class AudioDevice {
   /// Internal mpv device name, used with [Player.setAudioDevice].

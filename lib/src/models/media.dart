@@ -1,3 +1,7 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by MIT license that can be found in the LICENSE file.
+
 /// A piece of media that can be loaded into the [Player].
 ///
 /// Wraps a URI string with optional metadata and per-track configuration.

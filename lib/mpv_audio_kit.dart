@@ -1,3 +1,7 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by MIT license that can be found in the LICENSE file.
+
 /// mpv_audio_kit — Flutter audio player powered by libmpv.
 ///
 /// Supports macOS, Windows, Linux, iOS, and Android.

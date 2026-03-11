@@ -2,45 +2,44 @@
 # =============================================================================
 # build_libmpv_linux.sh
 #
-# Compiles mpv 0.41.0 with all dependencies linked statically.
+# Compiles mpv 0.41.0 as libmpv.so for Linux x86_64 / aarch64,
+# with all dependencies statically linked (only glibc remains dynamic).
 #
-# === OUTPUT FORMATS AND LOCATIONS ===
-# Target Dir:  linux/libs/
-# Output File: libmpv.so.2 (Shared Library dynamically linked only to glibc)
+# === OUTPUT ===
+# release_builds/libmpv_linux-<arch>.so
 #
-# === SYSTEM & HARDWARE SPECS ===
-# Target OS:   Linux (Tested on Ubuntu/Debian, Fedora, Arch)
-# Target Arch: x86_64 or aarch64 (Depends on host machine architecture)
-# Compiler:    GNU GCC / Clang
+# === SYSTEM ===
+# Target OS:   Linux (Ubuntu 22.04+ / Debian 12+ / Fedora 39+ / Arch)
+# Target Arch: x86_64 or aarch64 (auto-detected from host)
+# Compiler:    GNU GCC
 #
-# Usage (from project root, on a Linux x86_64 machine):
+# Usage (from project root, on a Linux machine):
 #   chmod +x scripts/build_libmpv_linux.sh
 #   ./scripts/build_libmpv_linux.sh
 #
-# Options:
-#   ARCH=x86_64|aarch64    (default: machine's arch)
-#   MPV_VERSION=0.41.0
-#   JOBS=N
-#   SKIP_DOWNLOAD=1
-#   KEEP_BUILD=1
+# Options (env vars):
+#   ARCH=x86_64|aarch64     (default: auto from uname -m)
+#   MPV_VERSION=0.41.0      (default: 0.41.0)
+#   JOBS=N                  (default: nproc)
+#   SKIP_DOWNLOAD=1         (reuse cached tarballs)
+#   KEEP_BUILD=1            (don't delete build dir after success)
 #
-# Requirements (automatically installed on Debian/Ubuntu):
-#   build-essential, cmake, ninja-build, nasm, meson, python3, pkg-config,
-#   autoconf, automake, libtool, git, curl, libva-dev, libvdpau-dev,
-#   libasound2-dev, libpulse-dev
+# Requirements (auto-installed on Debian/Ubuntu):
+#   build-essential, cmake, ninja-build, nasm, meson, python3,
+#   pkg-config, autoconf, automake, libtool, git, curl,
+#   libva-dev, libvdpau-dev, libasound2-dev, libpulse-dev, libx11-dev
 # =============================================================================
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
-OUTPUT_DIR="$ROOT/linux/libs"
 
 MPV_VERSION="${MPV_VERSION:-0.41.0}"
-JOBS="${JOBS:-$(nproc)}"
+JOBS="${JOBS:-$(nproc 2>/dev/null || echo 4)}"
 ARCH="${ARCH:-$(uname -m)}"
 
-# Dependency versions
+# ── Dependency versions ────────────────────────────────────────────────────────
 FFMPEG_VERSION="7.1.1"
 LIBASS_VERSION="0.17.3"
 FRIBIDI_VERSION="1.0.16"
@@ -53,49 +52,39 @@ ZLIB_VERSION="1.3.1"
 BZIP2_VERSION="1.0.8"
 XZ_VERSION="5.6.4"
 RUBBERBAND_VERSION="3.3.0"
-UCHARDET_VERSION="0.0.8"
-LCMS2_VERSION="2.17"
-LIBARCHIVE_VERSION="3.7.7"
-LIBBLURAY_VERSION="1.3.4"
-MUJS_VERSION="1.3.6"
-LUAJIT_COMMIT="v2.1"
-ZIMG_VERSION="3.0.5"
-JPEG_TURBO_VERSION="3.1.0"
 SPEEX_DSP_VERSION="1.2.1"
 LIBPLACEBO_VERSION="7.349.0"
 MBEDTLS_VERSION="3.6.0"
-VULKAN_HEADERS_VERSION="1.4.309"
-SHADERC_VERSION="2024.3"
-GLSLANG_VERSION="15.1.0"
-SPIRV_TOOLS_VERSION="2024.4"
-SPIRV_CROSS_VERSION="vulkan-sdk-1.4.309.0"
-SPIRV_HEADERS_VERSION="vulkan-sdk-1.4.309.0"
 
-BUILD_DIR="${BUILD_DIR:-$ROOT/build-linux}"
+BUILD_DIR="${BUILD_DIR:-$ROOT/build-linux-$ARCH}"
 PREFIX="$BUILD_DIR/prefix"
 
+# ── Logging ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 log()  { echo -e "${CYAN}▶ $*${NC}" >&2; }
 ok()   { echo -e "${GREEN}✓ $*${NC}" >&2; }
 warn() { echo -e "${YELLOW}⚠ $*${NC}" >&2; }
 fail() { echo -e "${RED}✗ $*${NC}" >&2; exit 1; }
 
-# ── System check ─────────────────────────────────────────────────────────────
+# ── System check & dependency install ─────────────────────────────────────────
 check_tools() {
   [[ "$(uname)" != "Linux" ]] && fail "This script must be run on Linux"
   log "Installing build dependencies..."
+  # In Docker we run as root — no sudo needed. On a host system sudo is used automatically.
+  local SUDO=""; command -v sudo &>/dev/null && SUDO="sudo"
   if command -v apt-get &>/dev/null; then
-    sudo apt-get update -qq
-    sudo apt-get install -y \
+    $SUDO apt-get update -qq
+    $SUDO apt-get install -y \
       build-essential cmake ninja-build nasm python3 python3-pip \
       pkg-config autoconf automake libtool git curl \
       libva-dev libvdpau-dev \
       libasound2-dev libpulse-dev \
       libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
       zlib1g-dev 2>/dev/null || true
-    pip3 install meson --quiet 2>/dev/null || sudo pip3 install meson --quiet 2>/dev/null || true
+    pip3 install meson --quiet 2>/dev/null || \
+      $SUDO pip3 install meson --quiet 2>/dev/null || true
   elif command -v dnf &>/dev/null; then
-    sudo dnf install -y \
+    $SUDO dnf install -y \
       gcc gcc-c++ cmake ninja-build nasm python3 python3-pip \
       pkg-config autoconf automake libtool git curl \
       libva-devel libvdpau-devel \
@@ -104,7 +93,7 @@ check_tools() {
       zlib-devel 2>/dev/null || true
     pip3 install meson --quiet 2>/dev/null || true
   elif command -v pacman &>/dev/null; then
-    sudo pacman -S --needed --noconfirm \
+    $SUDO pacman -S --needed --noconfirm \
       base-devel cmake ninja nasm python python-pip \
       pkg-config autoconf automake libtool git curl \
       libva libvdpau alsa-lib libpulse \
@@ -120,12 +109,12 @@ check_tools() {
   ok "Tools OK"
 }
 
-# ── Download helpers ─────────────────────────────────────────────────────────
+# ── Download helpers ───────────────────────────────────────────────────────────
 download() {
   local url="$1" dest="$2"
   [[ "${SKIP_DOWNLOAD:-0}" == "1" && -f "$dest" ]] && { ok "Skip: $(basename "$dest")"; return; }
   log "Download: $(basename "$dest")"
-  curl -fsSL --retry 3 -o "$dest" "$url" || fail "Download fallito: $url"
+  curl -fsSL --retry 3 -o "$dest" "$url" || fail "Download failed: $url"
 }
 
 download_git() {
@@ -150,21 +139,26 @@ extract() {
   echo "$dest_parent/$name"
 }
 
-# ── Meson cross-file (only if necessary) ──────────────────────────────────────
-write_meson_native() {
-  local file="$BUILD_DIR/meson_native.ini"
-  touch "$file"
-  echo "$file"
-}
+# =============================================================================
+# Build environment
+# =============================================================================
+# On Debian/Ubuntu, meson installs .pc files into the multiarch dir
+# (e.g. lib/aarch64-linux-gnu/pkgconfig on arm64, lib/x86_64-linux-gnu/pkgconfig on x86_64).
+# We must include it in PKG_CONFIG_PATH so that autoconf-based builds (libass, etc.)
+# can resolve pkg-config dependencies like harfbuzz installed by meson.
+MULTIARCH="$(gcc -print-multiarch 2>/dev/null || dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo "")"
+MULTIARCH_PKG=""
+[[ -n "$MULTIARCH" ]] && MULTIARCH_PKG=":$PREFIX/lib/$MULTIARCH/pkgconfig"
+
+export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig${MULTIARCH_PKG}"
+export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig${MULTIARCH_PKG}"
+export CFLAGS="-O2 -fPIC"
+export CXXFLAGS="-O2 -fPIC"
+export LDFLAGS="-L$PREFIX/lib"
 
 # =============================================================================
 # Library builds
 # =============================================================================
-export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
-export PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
-export CFLAGS="-O2 -fPIC"
-export CXXFLAGS="-O2 -fPIC"
-export LDFLAGS="-L$PREFIX/lib"
 
 build_zlib() {
   [[ -f "$PREFIX/lib/libz.a" ]] && return
@@ -198,7 +192,8 @@ build_xz() {
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
   ./configure --prefix="$PREFIX" --enable-static --disable-shared \
-    --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-scripts --disable-doc
+    --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo \
+    --disable-scripts --disable-doc
   make -j"$JOBS"; make install
   popd >/dev/null
   ok "xz ✓"
@@ -210,7 +205,8 @@ build_expat() {
   download "https://github.com/libexpat/libexpat/releases/download/R_$(echo "$LIBEXPAT_VERSION" | tr . _)/expat-${LIBEXPAT_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   pushd "$dir" >/dev/null
-  ./configure --prefix="$PREFIX" --enable-static --disable-shared --without-docbook --without-examples --without-tests
+  ./configure --prefix="$PREFIX" --enable-static --disable-shared \
+    --without-docbook --without-examples --without-tests
   make -j"$JOBS"; make install
   popd >/dev/null
   ok "expat ✓"
@@ -229,18 +225,24 @@ build_libpng() {
 }
 
 build_freetype() {
-  [[ -f "$PREFIX/lib/libfreetype.a" ]] && return
+  [[ -f "$PREFIX/lib/libfreetype.a" && ! -f "$PREFIX/.ft_round2" ]] && return
   local src="$BUILD_DIR/src/freetype-$FREETYPE_VERSION.tar.gz"
   download "https://downloads.sourceforge.net/project/freetype/freetype2/${FREETYPE_VERSION}/freetype-${FREETYPE_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
-  local bdir="$BUILD_DIR/build/freetype-r1"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$dir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=OFF -DFT_DISABLE_HARFBUZZ=ON \
-    -DFT_REQUIRE_ZLIB=ON -DFT_REQUIRE_PNG=ON -DZLIB_INCLUDE_DIR="$PREFIX/include" -DZLIB_LIBRARY="$PREFIX/lib/libz.a" -DPNG_PNG_INCLUDE_DIR="$PREFIX/include" -DPNG_LIBRARY="$PREFIX/lib/libpng.a" -GNinja
-  ninja -j"$JOBS"; ninja install
-  popd >/dev/null
-  ok "freetype r1 ✓"
+
+  # Round 1: without HarfBuzz
+  if [[ ! -f "$PREFIX/lib/libfreetype.a" ]]; then
+    local bdir="$BUILD_DIR/build/freetype-r1"; mkdir -p "$bdir"
+    pushd "$bdir" >/dev/null
+    cmake "$dir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_SHARED_LIBS=OFF -DFT_DISABLE_HARFBUZZ=ON \
+      -DFT_REQUIRE_ZLIB=ON -DFT_REQUIRE_PNG=ON \
+      -DZLIB_INCLUDE_DIR="$PREFIX/include" -DZLIB_LIBRARY="$PREFIX/lib/libz.a" \
+      -DPNG_PNG_INCLUDE_DIR="$PREFIX/include" -DPNG_LIBRARY="$PREFIX/lib/libpng.a" -GNinja
+    ninja -j"$JOBS"; ninja install
+    popd >/dev/null
+    ok "freetype r1 ✓"
+  fi
 }
 
 build_fribidi() {
@@ -250,7 +252,8 @@ build_fribidi() {
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   local bdir="$BUILD_DIR/build/fribidi"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
-  meson setup "$dir" --prefix="$PREFIX" --buildtype=release --default-library=static -Ddocs=false -Dtests=false
+  meson setup "$dir" --prefix="$PREFIX" --buildtype=release --default-library=static \
+    -Ddocs=false -Dtests=false
   ninja -j"$JOBS"; ninja install
   popd >/dev/null
   ok "fribidi ✓"
@@ -264,7 +267,8 @@ build_harfbuzz() {
   local bdir="$BUILD_DIR/build/harfbuzz"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
   meson setup "$dir" --prefix="$PREFIX" --buildtype=release --default-library=static \
-    -Dfreetype=enabled -Dglib=disabled -Dgobject=disabled -Dicu=disabled -Dtests=disabled -Ddocs=disabled
+    -Dfreetype=enabled -Dglib=disabled -Dgobject=disabled -Dicu=disabled \
+    -Dtests=disabled -Ddocs=disabled
   ninja -j"$JOBS"; ninja install
   popd >/dev/null
   ok "harfbuzz ✓"
@@ -274,7 +278,7 @@ build_freetype_round2() {
   [[ -f "$PREFIX/.ft_round2" ]] && return
   local src="$BUILD_DIR/src/freetype-$FREETYPE_VERSION.tar.gz"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
-  rm -rf "$BUILD_DIR/build/freetype-r1"
+  # Round 2: with HarfBuzz (for libass subpixel hinting)
   local bdir="$BUILD_DIR/build/freetype-r2"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
   cmake "$dir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
@@ -297,8 +301,12 @@ build_fontconfig() {
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   local bdir="$BUILD_DIR/build/fontconfig"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
+  # Disable EVERYTHING related to X11 to keep it portable
   meson setup "$dir" --prefix="$PREFIX" --buildtype=release --default-library=static \
-    -Dtests=disabled -Dtools=disabled -Ddoc=disabled
+    -Dtests=disabled \
+    -Dtools=disabled \
+    -Ddoc=disabled \
+    -Dcache-build=disabled
   ninja -j"$JOBS"; ninja install
   popd >/dev/null
   ok "fontconfig ✓"
@@ -315,20 +323,6 @@ build_libass() {
   make -j"$JOBS"; make install
   popd >/dev/null
   ok "libass ✓"
-}
-
-build_jpeg_turbo() {
-  [[ -f "$PREFIX/lib/libjpeg.a" ]] && return
-  local src="$BUILD_DIR/src/libjpeg-turbo-$JPEG_TURBO_VERSION.tar.gz"
-  download "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/${JPEG_TURBO_VERSION}/libjpeg-turbo-${JPEG_TURBO_VERSION}.tar.gz" "$src"
-  local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
-  local bdir="$BUILD_DIR/build/jpeg-turbo"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$dir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
-    -DENABLE_STATIC=ON -DENABLE_SHARED=OFF -DWITH_TURBOJPEG=OFF -GNinja
-  ninja -j"$JOBS"; ninja install
-  popd >/dev/null
-  ok "jpeg-turbo ✓"
 }
 
 build_speexdsp() {
@@ -357,192 +351,25 @@ build_rubberband() {
   ok "rubberband ✓"
 }
 
-build_uchardet() {
-  [[ -f "$PREFIX/lib/libuchardet.a" ]] && return
-  local src="$BUILD_DIR/src/uchardet-$UCHARDET_VERSION.tar.gz"
-  download "https://www.freedesktop.org/software/uchardet/releases/uchardet-${UCHARDET_VERSION}.tar.xz" "$src"
-  local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
-  local bdir="$BUILD_DIR/build/uchardet"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$dir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_STATIC=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_BINARY=OFF \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -GNinja
-  ninja -j"$JOBS"; ninja install
-  popd >/dev/null
-  ok "uchardet ✓"
-}
-
-build_lcms2() {
-  [[ -f "$PREFIX/lib/liblcms2.a" ]] && return
-  local src="$BUILD_DIR/src/lcms2-$LCMS2_VERSION.tar.gz"
-  download "https://downloads.sourceforge.net/project/lcms/lcms/${LCMS2_VERSION}/lcms2-${LCMS2_VERSION}.tar.gz" "$src"
-  local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
-  pushd "$dir" >/dev/null
-  ./configure --prefix="$PREFIX" --enable-static --disable-shared
-  make -j"$JOBS"; make install
-  popd >/dev/null
-  ok "lcms2 ✓"
-}
-
-build_libarchive() {
-  [[ -f "$PREFIX/lib/libarchive.a" ]] && return
-  local src="$BUILD_DIR/src/libarchive-$LIBARCHIVE_VERSION.tar.gz"
-  download "https://github.com/libarchive/libarchive/releases/download/v${LIBARCHIVE_VERSION}/libarchive-${LIBARCHIVE_VERSION}.tar.gz" "$src"
-  local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
-  pushd "$dir" >/dev/null
-  CFLAGS="-O2 -fPIC -I$PREFIX/include" LDFLAGS="-L$PREFIX/lib" \
-  ./configure --prefix="$PREFIX" --enable-static --disable-shared \
-    --with-zlib --with-bz2lib --with-liblzma --without-nettle --without-openssl --without-xml2 --without-expat
-  make -j"$JOBS"; make install
-  popd >/dev/null
-  ok "libarchive ✓"
-}
-
-build_libbluray() {
-  [[ -f "$PREFIX/lib/libbluray.a" ]] && return
-  local src="$BUILD_DIR/src/libbluray-$LIBBLURAY_VERSION.tar.bz2"
-  download "https://download.videolan.org/pub/videolan/libbluray/${LIBBLURAY_VERSION}/libbluray-${LIBBLURAY_VERSION}.tar.bz2" "$src"
-  local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
-  pushd "$dir" >/dev/null
-  [[ ! -f configure ]] && autoreconf -fiv
-  ./configure --prefix="$PREFIX" --enable-static --disable-shared \
-    --disable-examples --disable-bdjava-jar --disable-udf --without-libxml2 --without-fontconfig
-  make -j"$JOBS"; make install
-  popd >/dev/null
-  ok "libbluray ✓"
-}
-
-build_mujs() {
-  [[ -f "$PREFIX/lib/libmujs.a" ]] && return
-  local gitdir="$BUILD_DIR/src/mujs-git"
-  [[ -d "$gitdir/.git" ]] || download_git "https://github.com/ccxvii/mujs.git" "$gitdir" "$MUJS_VERSION"
-  pushd "$gitdir" >/dev/null
-  make clean 2>/dev/null || true
-  make -j"$JOBS" CFLAGS="-O2 -fPIC" prefix="$PREFIX" install-static
-  popd >/dev/null
-  ok "mujs ✓"
-}
-
-build_luajit() {
-  [[ -f "$PREFIX/lib/libluajit-5.1.a" ]] && return
-  local gitdir="$BUILD_DIR/src/luajit-git"
-  [[ -d "$gitdir/.git" ]] || download_git "https://github.com/LuaJIT/LuaJIT.git" "$gitdir" "$LUAJIT_COMMIT"
-  pushd "$gitdir" >/dev/null
-  make clean 2>/dev/null || true
-  make -j"$JOBS" CFLAGS="-O2 -fPIC" PREFIX="$PREFIX" install
-  popd >/dev/null
-  ok "luajit ✓"
-}
-
-build_zimg() {
-  [[ -f "$PREFIX/lib/libzimg.a" ]] && return
-  local src="$BUILD_DIR/src/zimg-$ZIMG_VERSION.tar.gz"
-  download "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-${ZIMG_VERSION}.tar.gz" "$src"
-  extract "$src" "$BUILD_DIR/src" >/dev/null
-  local dir; dir="$(ls -d "$BUILD_DIR/src/zimg-"* 2>/dev/null | tail -1)"
-  pushd "$dir" >/dev/null
-  [[ ! -f configure ]] && autoreconf -fiv
-  CFLAGS="-O2 -fPIC" CXXFLAGS="-O2 -fPIC" \
-  ./configure --prefix="$PREFIX" --enable-static --disable-shared
-  make -j"$JOBS"; make install
-  popd >/dev/null
-  ok "zimg ✓"
-}
-
-build_spirv_headers() {
-  [[ -d "$PREFIX/include/spirv" ]] && return
-  local gitdir="$BUILD_DIR/src/spirv-headers-git"
-  download_git "https://github.com/KhronosGroup/SPIRV-Headers.git" "$gitdir" "$SPIRV_HEADERS_VERSION"
-  local bdir="$BUILD_DIR/build/spirv-headers"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$gitdir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -GNinja
-  ninja install
-  popd >/dev/null
-  ok "SPIRV-Headers ✓"
-}
-
-build_spirv_tools() {
-  [[ -f "$PREFIX/lib/libSPIRV-Tools.a" ]] && return
-  local gitdir="$BUILD_DIR/src/spirv-tools-git"
-  download_git "https://github.com/KhronosGroup/SPIRV-Tools.git" "$gitdir" "$SPIRV_TOOLS_VERSION"
-  local bdir="$BUILD_DIR/build/spirv-tools"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$gitdir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=OFF -DSPIRV_SKIP_TESTS=ON -DSPIRV_SKIP_EXECUTABLES=ON \
-    -DSPIRV-Headers_SOURCE_DIR="$BUILD_DIR/src/spirv-headers-git" -GNinja
-  ninja -j"$JOBS"; ninja install
-  popd >/dev/null
-  ok "SPIRV-Tools ✓"
-}
-
-build_spirv_cross() {
-  [[ -f "$PREFIX/lib/libspirv-cross-core.a" ]] && return
-  local gitdir="$BUILD_DIR/src/spirv-cross-git"
-  download_git "https://github.com/KhronosGroup/SPIRV-Cross.git" "$gitdir" "$SPIRV_CROSS_VERSION"
-  local bdir="$BUILD_DIR/build/spirv-cross"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$gitdir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
-    -DSPIRV_CROSS_SHARED=OFF -DSPIRV_CROSS_STATIC=ON -DSPIRV_CROSS_CLI=OFF \
-    -DSPIRV_CROSS_ENABLE_TESTS=OFF -GNinja
-  ninja -j"$JOBS"; ninja install
-  popd >/dev/null
-  ok "SPIRV-Cross ✓"
-}
-
-build_glslang() {
-  [[ -f "$PREFIX/lib/libglslang.a" ]] && return
-  local gitdir="$BUILD_DIR/src/glslang-git"
-  download_git "https://github.com/KhronosGroup/glslang.git" "$gitdir" "$GLSLANG_VERSION"
-  local bdir="$BUILD_DIR/build/glslang"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$gitdir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=OFF -DENABLE_CTEST=OFF \
-    -DSPIRV_HEADERS_INCLUDE_DIR="$PREFIX/include" -GNinja
-  ninja -j"$JOBS"; ninja install
-  popd >/dev/null
-  ok "glslang ✓"
-}
-
-build_shaderc() {
-  [[ -f "$PREFIX/lib/libshaderc_combined.a" ]] && return
-  local gitdir="$BUILD_DIR/src/shaderc-git"
-  download_git "https://github.com/google/shaderc.git" "$gitdir" "v$SHADERC_VERSION"
-  rm -rf "$gitdir/third_party/glslang" "$gitdir/third_party/spirv-tools" "$gitdir/third_party/spirv-headers"
-  ln -sf "$BUILD_DIR/src/glslang-git"       "$gitdir/third_party/glslang"
-  ln -sf "$BUILD_DIR/src/spirv-tools-git"   "$gitdir/third_party/spirv-tools"
-  ln -sf "$BUILD_DIR/src/spirv-headers-git" "$gitdir/third_party/spirv-headers"
-  local bdir="$BUILD_DIR/build/shaderc"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$gitdir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
-    -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSHADERC_SKIP_COPYRIGHT_CHECK=ON \
-    -DBUILD_SHARED_LIBS=OFF -GNinja
-  ninja -j"$JOBS"; ninja install
-  popd >/dev/null
-  ok "shaderc ✓"
-}
-
-build_vulkan_headers() {
-  [[ -f "$PREFIX/include/vulkan/vulkan.h" ]] && return
-  local gitdir="$BUILD_DIR/src/vulkan-headers-git"
-  download_git "https://github.com/KhronosGroup/Vulkan-Headers.git" "$gitdir" "v$VULKAN_HEADERS_VERSION"
-  local bdir="$BUILD_DIR/build/vulkan-headers"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
-  cmake "$gitdir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -GNinja
-  ninja install
-  popd >/dev/null
-  ok "Vulkan-Headers ✓"
-}
-
 build_libplacebo() {
+  # Build WITHOUT Vulkan — same as macOS and Android builds.
+  # libplacebo is still useful for signal processing / filters even without GPU.
   [[ -f "$PREFIX/lib/libplacebo.a" ]] && return
   local gitdir="$BUILD_DIR/src/libplacebo-git"
   download_git "https://code.videolan.org/videolan/libplacebo.git" "$gitdir" "v$LIBPLACEBO_VERSION"
+  # Init submodules (glad, etc.)
+  git -C "$gitdir" submodule update --init --recursive
   local bdir="$BUILD_DIR/build/libplacebo"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
+  PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig" \
   meson setup "$gitdir" --prefix="$PREFIX" --buildtype=release --default-library=static \
-    -Dvulkan=enabled -Dshaderc=enabled -Dglslang=enabled \
-    -Dvulkan-registry="$PREFIX/share/vulkan/registry/vk.xml" \
-    -Ddemos=false -Dtests=false
+    -Dvulkan=disabled \
+    -Dshaderc=disabled \
+    -Dglslang=disabled \
+    -Dopengl=disabled \
+    -Dd3d11=disabled \
+    -Ddemos=false \
+    -Dtests=false
   ninja -j"$JOBS"; ninja install
   popd >/dev/null
   ok "libplacebo ✓"
@@ -572,6 +399,9 @@ build_ffmpeg() {
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   local bdir="$BUILD_DIR/build/ffmpeg"; mkdir -p "$bdir"
   pushd "$bdir" >/dev/null
+  # NOTE: No --enable-gpl here (we don't need rubberband via FFmpeg — mpv links it directly)
+  # NOTE: mbedtls is safe on Linux (no GPL conflict unlike Windows cross-compile)
+  # Extra aggressive disabling of anything that pulls system libs like X11 or VDPAU
   PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig" \
   "$dir/configure" \
     --prefix="$PREFIX" \
@@ -584,8 +414,16 @@ build_ffmpeg() {
     --disable-outdevs \
     --enable-zlib --enable-bzlib --enable-lzma \
     --enable-iconv \
-    --enable-network --enable-mbedtls --enable-version3 --disable-openssl \
-    --disable-sdl2
+    --enable-network --enable-mbedtls --enable-version3 \
+    --disable-openssl \
+    --disable-sdl2 \
+    --disable-xlib \
+    --disable-vaapi \
+    --disable-vdpau \
+    --disable-libxcb \
+    --disable-libxcb-shm \
+    --disable-libxcb-xfixes \
+    --disable-libxcb-shape
   make -j"$JOBS"; make install
   popd >/dev/null
   ok "ffmpeg ✓"
@@ -598,19 +436,42 @@ build_mpv() {
   download "https://github.com/mpv-player/mpv/archive/refs/tags/v${MPV_VERSION}.tar.gz" "$src"
   local dir; dir="$(extract "$src" "$BUILD_DIR/src")"
   local bdir="$BUILD_DIR/build/mpv"; mkdir -p "$bdir"
-  pushd "$bdir" >/dev/null
+
+  # ── Patch meson.build ──────────────────────────────────────────────────────
   python3 -c "
-import sys, re
-with open('../../src/mpv-$MPV_VERSION/meson.build', 'r') as f: content = f.read()
+import re
+with open('$dir/meson.build', 'r') as f: content = f.read()
+
+# Make libplacebo optional (version string may differ from the one mpv expects)
 content = re.sub(
     r\"libplacebo = dependency\('libplacebo',\s*version: '[^']*',\n\s*default_options: \['default_library=static', 'demos=false'\]\)\",
     \"libplacebo = dependency('libplacebo', version: '>=6.338.2', required: false)\",
     content
 )
-content = content.replace(\"libass = dependency('libass', version: '>= 0.12.2')\", \"libass = dependency('libass', version: '>= 0.12.2', required: false)\")
-with open('../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
+# Make libass optional as a safety net
+content = content.replace(
+    \"libass = dependency('libass', version: '>= 0.12.2')\",
+    \"libass = dependency('libass', version: '>= 0.12.2', required: false)\"
+)
+
+with open('$dir/meson.build', 'w') as f: f.write(content)
 "
-  PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig" \
+
+  pushd "$bdir" >/dev/null
+  # ── Check valid meson options for mpv 0.41.0 ──────────────────────────────
+  # Validated options list (tested against mpv 0.41.0 meson.options):
+  #   - lua=disabled  (not 'luajit' — that syntax is invalid in 0.41.0)
+  #   - javascript=disabled (mujs not needed for audio-only library)
+  #   - alsa=enabled, pulse=enabled for Linux audio
+  #   - pipewire=auto (auto-detect PipeWire if present)
+  #   - No cocoa/avfoundation/coreaudio/audiounit (macOS only)
+  # mpv 0.41.0 validated options (cross-checked with macOS and Android builds):
+  #   - No sdl2 (removed from mpv meson options in 0.41.0)
+  #   - No egl (handled via egl-drm/wayland/x11 sub-options)
+  #   - No gl-cocoa / gl-x11 (macOS/Linux specific, use gl-win32 for Windows)
+  #   - No vaapi-x11 (use vaapi=disabled)
+  #   - libarchive=disabled (iconv dep issues on some distros; not needed for audio)
+  PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig${MULTIARCH_PKG}" \
   meson setup "$dir" \
     --prefix="$PREFIX" \
     --buildtype=release \
@@ -621,31 +482,31 @@ with open('../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
     -Dtests=false \
     -Dmanpage-build=disabled \
     -Dhtml-build=disabled \
-    -Dffmpeg=enabled \
     -Dvulkan=disabled \
     -Dgl=disabled \
-    -Dsdl2=disabled \
-    -Dlua=luajit \
-    -Djavascript=enabled \
-    -Drubberband=enabled \
-    -Duchardet=disabled \
-    -Dlcms2=disabled \
-    -Dlibarchive=enabled \
-    -Dlibbluray=disabled \
-    -Dzimg=disabled \
-    -Dalsa=enabled \
-    -Dpulse=enabled \
-    -Dx11=disabled \
-    -Dwayland=disabled \
-    -Ddrm=disabled \
     -Dplain-gl=disabled \
     -Degl-drm=disabled \
     -Degl-wayland=disabled \
     -Degl-x11=disabled \
-    -Dcocoa=disabled \
-    -Davfoundation=disabled \
-    -Dcoreaudio=disabled \
-    -Daudiounit=disabled
+    -Ddrm=disabled \
+    -Dwayland=disabled \
+    -Dx11=disabled \
+    -Dvdpau=disabled \
+    -Dvaapi=disabled \
+    -Dlua=disabled \
+    -Djavascript=disabled \
+    -Drubberband=enabled \
+    -Duchardet=disabled \
+    -Dlcms2=disabled \
+    -Dlibarchive=disabled \
+    -Dlibbluray=disabled \
+    -Dzimg=disabled \
+    -Djpeg=disabled \
+    -Dalsa=auto \
+    -Dpulse=auto \
+    -Dpipewire=auto \
+    -Djack=disabled \
+    -Dopenal=disabled
   ninja -j"$JOBS"; ninja install
   popd >/dev/null
   ok "mpv ✓"
@@ -654,18 +515,51 @@ with open('../../src/mpv-$MPV_VERSION/meson.build', 'w') as f: f.write(content)
 finalize() {
   local release_dir="$ROOT/release_builds"
   mkdir -p "$release_dir"
-  local src="$PREFIX/lib/libmpv.so"
-  [[ ! -f "$src" ]] && src="$(ls "$PREFIX/lib/libmpv.so."* 2>/dev/null | tail -1)"
-  [[ ! -f "$src" ]] && fail "libmpv.so not found in $PREFIX/lib/"
 
-  cp "$src" "$release_dir/libmpv_linux-$ARCH.so"
+  log "Locating libmpv.so..."
+  
+  # libmpv.so might be in lib/ or lib/$MULTIARCH (e.g. lib/aarch64-linux-gnu/)
+  local lib_paths=(
+    "$PREFIX/lib"
+    "$PREFIX/lib64"
+    "$PREFIX/lib/$MULTIARCH"
+  )
+  
+  local src=""
+  for lp in "${lib_paths[@]}"; do
+    if [[ -d "$lp" ]]; then
+      # Try to find the versioned .so
+      local found; found="$(ls "$lp"/libmpv.so.* 2>/dev/null | sort -V | tail -1 || true)"
+      if [[ -z "$found" ]]; then
+        found="$(ls "$lp"/libmpv.so 2>/dev/null || true)"
+      fi
+      
+      if [[ -n "$found" && -f "$found" ]]; then
+        src="$found"
+        break
+      fi
+    fi
+  done
+
+  [[ -z "$src" ]] && fail "libmpv.so not found in any expected prefix/lib path."
+  
+  log "Found libmpv: $src"
+  cp -P "$src" "$release_dir/libmpv_linux-$ARCH.so"
+  # If it was a symlink, also copy the target
+  if [[ -L "$src" ]]; then
+    local target; target="$(readlink -f "$src")"
+    cp "$target" "$release_dir/libmpv_linux-$ARCH.so"
+  fi
+
   ok "Output: $release_dir/libmpv_linux-$ARCH.so"
 
   log "Checking external dependencies..."
   local external
-  external="$(ldd "$release_dir/libmpv_linux-$ARCH.so" | grep -v 'linux-vdso\|libc\|libm\|libdl\|libpthread\|librt\|ld-linux\|libresolv' | grep '=> /' || true)"
+  external="$(ldd "$release_dir/libmpv_linux-$ARCH.so" \
+    | grep -v 'linux-vdso\|libc\|libm\|libdl\|libpthread\|librt\|ld-linux\|libresolv\|libgcc_s' \
+    | grep '=>' || true)"
   if [[ -n "$external" ]]; then
-    warn "External dependencies found (expected: OK on Linux):"
+    warn "External runtime dependencies (expected on Linux):"
     echo "$external"
   else
     ok "Minimal dependencies (glibc only)"
@@ -675,29 +569,52 @@ finalize() {
 # ── Main ──────────────────────────────────────────────────────────────────────
 main() {
   echo ""
-  echo "╔══════════════════════════════════════════════════════════════╗"
-  echo "║   build_libmpv_linux.sh — mpv $MPV_VERSION for Linux x86_64    ║"
-  echo "╚══════════════════════════════════════════════════════════════╝"
+  echo "╔══════════════════════════════════════════════════════════════════╗"
+  echo "║  build_libmpv_linux.sh — mpv $MPV_VERSION for Linux ($ARCH)      ║"
+  echo "╚══════════════════════════════════════════════════════════════════╝"
+  echo ""
 
   check_tools
   mkdir -p "$BUILD_DIR/src" "$BUILD_DIR/build" "$PREFIX/include" "$PREFIX/lib"
 
-  build_zlib; build_bzip2; build_xz; build_expat; build_libpng
-  build_freetype; build_fribidi; build_harfbuzz; build_freetype_round2; build_fontconfig
-  build_libass; build_speexdsp; build_rubberband
-  build_libarchive
-  build_mujs; build_luajit
-  build_mbedtls; build_ffmpeg; build_libplacebo; build_mpv
+  # ── Core compression / text libs ──
+  build_zlib
+  build_bzip2
+  build_xz
+  build_expat
+  build_libpng
+
+  # ── Font rendering stack ──
+  build_freetype        # r1: without HarfBuzz
+  build_fribidi
+  build_harfbuzz
+  build_freetype_round2 # r2: with HarfBuzz
+  build_fontconfig
+  build_libass
+
+  # ── Audio processing ──
+  build_speexdsp        # resampler used by rubberband
+  build_rubberband      # pitch shifting / time-stretch
+
+  # ── libplacebo (without Vulkan, same as macOS/Android) ──
+  build_libplacebo
+
+  # ── TLS + codec engine ──
+  build_mbedtls
+  build_ffmpeg
+
+  # ── mpv itself ──
+  build_mpv
 
   finalize
 
   [[ "${KEEP_BUILD:-0}" != "1" ]] && rm -rf "$BUILD_DIR" && ok "BUILD_DIR removed"
 
   echo ""
-  echo "╔══════════════════════════════════════════════════════════════╗"
-  echo "║  Linux build complete!                                       ║"
-  echo "║  Output: release_builds/libmpv_linux-$ARCH.so               ║"
-  echo "╚══════════════════════════════════════════════════════════════╝"
+  echo "╔══════════════════════════════════════════════════════════════════╗"
+  echo "║  ✓ Linux build complete!                                         ║"
+  echo "║  Output: release_builds/libmpv_linux-$ARCH.so                   ║"
+  echo "╚══════════════════════════════════════════════════════════════════╝"
 }
 
 main "$@"

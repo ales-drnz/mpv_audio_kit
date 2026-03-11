@@ -1,3 +1,7 @@
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+// All rights reserved.
+// Use of this source code is governed by MIT license that can be found in the LICENSE file.
+
 // ignore_for_file: camel_case_types
 
 import 'dart:ffi';

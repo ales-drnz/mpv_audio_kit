@@ -27,11 +27,20 @@ macos:
 	./scripts/build_libmpv_macos.sh
 
 # Docker-based builds for Linux and Windows
-docker-image:
-	docker build -t mpv-build-env scripts/docker/
+docker-image-arm64:
+	docker build --platform linux/arm64 -t mpv-build-env-arm64 scripts/docker/
 
-linux: docker-image
-	docker run --rm -v "$(shell pwd)":/src -w /src mpv-build-env ./scripts/build_libmpv_linux.sh
+docker-image-x64:
+	docker build --platform linux/amd64 -t mpv-build-env-x64 scripts/docker/
 
-windows: docker-image
-	docker run --rm -v "$(shell pwd)":/src -w /src mpv-build-env ./scripts/build_libmpv_windows.sh
+linux:
+	@echo "Please use 'make linux-x64' or 'make linux-arm64'"
+
+linux-x64: docker-image-x64
+	docker run --rm --platform linux/amd64 -v "$(shell pwd)":/src -w /src mpv-build-env-x64 ./scripts/build_libmpv_linux.sh
+
+linux-arm64: docker-image-arm64
+	docker run --rm --platform linux/arm64 -v "$(shell pwd)":/src -w /src mpv-build-env-arm64 ./scripts/build_libmpv_linux.sh
+
+windows: docker-image-x64
+	docker run --rm --platform linux/amd64 -v "$(shell pwd)":/src -w /src mpv-build-env-x64 ./scripts/build_libmpv_windows.sh

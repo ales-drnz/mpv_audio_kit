@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 class PlaybackTab extends StatefulWidget {
@@ -405,7 +406,6 @@ class _PlaybackTabState extends State<PlaybackTab> {
       builder: (context, snap) {
         final playlist = snap.data ?? const Playlist.empty();
         final list = playlist.medias;
-        if (list.isEmpty) return const SizedBox.shrink();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,20 +424,94 @@ class _PlaybackTabState extends State<PlaybackTab> {
                         .withValues(alpha: 0.5),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: widget.player.clearPlaylist,
-                  icon: const Icon(Icons.clear_all_rounded, size: 18),
-                  label: const Text('Clear Queue'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                    textStyle: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () async {
+                        final result = await FilePicker.platform.pickFiles(
+                          type: FileType.audio,
+                          allowMultiple: true,
+                        );
+                        if (result != null) {
+                          for (final file in result.files) {
+                            final path = file.path;
+                            if (path != null) {
+                              widget.player.add(Media(path));
+                            }
+                          }
+                          // Automatically play if it's the first track added
+                          if (widget.player.state.playlist.medias.isEmpty) {
+                            widget.player.play();
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.folder_open_rounded, size: 18),
+                      label: const Text('Add File'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        textStyle: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    if (list.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: widget.player.clearPlaylist,
+                        icon: const Icon(Icons.clear_all_rounded, size: 18),
+                        label: const Text('Clear Queue'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          textStyle: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Container(
+            if (list.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainer
+                      .withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outlineVariant
+                        .withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.queue_music_rounded,
+                      size: 48,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant
+                          .withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Queue is empty',
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withValues(alpha: 0.5),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
               decoration: BoxDecoration(
                 color: Theme.of(context)
                     .colorScheme

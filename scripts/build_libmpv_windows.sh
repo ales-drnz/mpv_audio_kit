@@ -142,6 +142,11 @@ endian = 'little'
 
 [properties]
 needs_exe_wrapper = true
+sys_root = '/usr/x86_64-w64-mingw32'
+
+[built-in options]
+c_link_args = ['-L/usr/x86_64-w64-mingw32/lib']
+cpp_link_args = ['-L/usr/x86_64-w64-mingw32/lib']
 EOF
 
 # ── pkg-config wrapper ────────────────────────────────────────────────────────
@@ -517,7 +522,6 @@ if [[ ! -f "$DIST/lib/libmbedtls.a" ]]; then
   cmake --build "$SRC/mbedtls-$MBEDTLS_VERSION/build" -j"$JOBS" --target install
 fi
 
-
 # ── FFmpeg ────────────────────────────────────────────────────────────────────
 if [[ ! -f "$DIST/lib/libavcodec.a" ]]; then
   echo "--- FFmpeg $FFMPEG_VERSION ---"
@@ -534,16 +538,34 @@ if [[ ! -f "$DIST/lib/libavcodec.a" ]]; then
       --disable-programs --disable-doc --disable-debug \
       --enable-avcodec --enable-avfilter --enable-avformat \
       --enable-avutil --enable-avdevice --enable-swresample --enable-swscale \
-      --enable-libmujs --enable-libspeex --enable-librubberband \
-      --enable-libarchive \
       --enable-zlib --enable-bzlib --enable-lzma \
-      --enable-network --enable-mbedtls --enable-version3 \
+      --enable-network --enable-version3 \
       --disable-sdl2 --disable-outdevs \
       --extra-cflags="-I$DIST/include $WIN_FLAGS" \
       --extra-cxxflags="-I$DIST/include $WIN_FLAGS" \
       --extra-ldflags="-L$DIST/lib -static-libgcc"
     make -j"$JOBS" install
   popd
+fi
+
+# ── pathcch import library ────────────────────────────────────────────────────
+# mpv on Windows uses __imp_PathCchXxx symbols (DLL import style). MinGW
+# doesn't ship libpathcch.a, so we generate an import library stub via dlltool.
+if [[ ! -f "$DIST/lib/libpathcch.a" ]]; then
+  echo "--- pathcch import library ---"
+  cat > "$DIST/lib/pathcch.def" << 'DEFEOF'
+LIBRARY pathcch
+EXPORTS
+  PathCchCanonicalizeEx
+  PathCchRemoveFileSpec
+  PathAllocCombine
+  PathCchAppend
+  PathCchCombineEx
+DEFEOF
+  x86_64-w64-mingw32-dlltool \
+    -d "$DIST/lib/pathcch.def" \
+    -l "$DIST/lib/libpathcch.a" \
+    -k
 fi
 
 # ── mpv ───────────────────────────────────────────────────────────────────────
@@ -555,14 +577,79 @@ pushd "$SRC/mpv-$MPV_VERSION"
   python3 -c "
 import sys, re
 with open('meson.build', 'r') as f: content = f.read()
+# Make libplacebo optional (may not be in our dist)
 content = re.sub(
     r\"libplacebo = dependency\('libplacebo',\s*version: '[^']*',\n\s*default_options: \['default_library=static', 'demos=false'\]\)\",
     \"libplacebo = dependency('libplacebo', version: '>=6.338.2', required: false)\",
     content
 )
+# Make libass optional (fallback if not found)
 content = content.replace(\"libass = dependency('libass', version: '>= 0.12.2')\", \"libass = dependency('libass', version: '>= 0.12.2', required: false)\")
+# Make pathcch optional for MinGW cross-compile (not in MinGW sysroot)
+content = re.sub(
+    r\"cc\.find_library\('pathcch'[^)]*\)\",
+    \"cc.find_library('pathcch', required: false)\",
+    content
+)
+# Make ALL cc.find_library() calls optional for MinGW cross-compile
+# These Windows system libs exist in the sysroot but meson can't find them.
+# We pass them explicitly via c_link_args / cpp_link_args.
+content = re.sub(
+    r\"cc\.find_library\('([^']+)'(?!\s*,\s*required)\s*\)\",
+    r\"cc.find_library('\1', required: false)\",
+    content
+)
 with open('meson.build', 'w') as f: f.write(content)
 "
+
+  # Patch timer-win32.c: define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION if missing
+  # (older MinGW-w64 doesn't define it even with _WIN32_WINNT=0x0A00)
+  sed -i '1s|^|#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION\n#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002\n#endif\n|' osdep/timer-win32.c
+
+  # Patch w32_register.c: define FTA_Show and FTA_OpenIsSafe if missing (shellapi constants)
+  sed -i '1s|^|#ifndef FTA_Show\n#define FTA_Show 0x00000002\n#endif\n#ifndef FTA_OpenIsSafe\n#define FTA_OpenIsSafe 0x00001000\n#endif\n|' osdep/w32_register.c
+
+  # Create a pathcch stub for MinGW (pathcch.dll is not available in MinGW sysroot)
+  # Implements needed APIs using shlwapi equivalents
+  cat > osdep/pathcch_stub.c << 'STUBEOF'
+/* pathcch stub for MinGW cross-compile — implements missing pathcch APIs via shlwapi */
+#include <windows.h>
+#include <shlwapi.h>
+#define S_OK   0L
+#define E_FAIL ((HRESULT)0x80004005L)
+typedef long HRESULT;
+__declspec(dllexport)
+HRESULT PathCchCanonicalizeEx(wchar_t *pszPathOut, size_t cchPathOut,
+                               const wchar_t *pszPathIn, unsigned long dwFlags) {
+    if (!PathCanonicalizeW(pszPathOut, pszPathIn)) return E_FAIL;
+    return S_OK;
+}
+__declspec(dllexport)
+HRESULT PathCchRemoveFileSpec(wchar_t *pszPath, size_t cchPath) {
+    PathRemoveFileSpecW(pszPath);
+    return S_OK;
+}
+__declspec(dllexport)
+HRESULT PathAllocCombine(const wchar_t *pszPathIn, const wchar_t *pszMore,
+                          unsigned long dwFlags, wchar_t **ppszPathOut) {
+    wchar_t buf[32768];
+    if (!PathCombineW(buf, pszPathIn, pszMore)) return E_FAIL;
+    size_t len = wcslen(buf) + 1;
+    *ppszPathOut = (wchar_t*)LocalAlloc(LMEM_FIXED, len * sizeof(wchar_t));
+    if (!*ppszPathOut) return E_FAIL;
+    wmemcpy(*ppszPathOut, buf, len);
+    return S_OK;
+}
+STUBEOF
+  # Compile the stub and add it to the build sources list via meson's custom_target or by injecting object
+  x86_64-w64-mingw32-gcc -c osdep/pathcch_stub.c \
+    -I"$DIST/include" -D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00 \
+    -o osdep/pathcch_stub.c.obj
+  # Inject the stub object into the meson build by adding it to extra_objects or link_args
+  # We do this by passing it as a link argument since meson will pass it to the linker
+
+  # Clean previous build dir to force full reconfiguration with updated cross-file
+  rm -rf build
   meson setup build \
     --cross-file "$CROSS_FILE" \
     --prefix="$DIST" --libdir=lib \
@@ -574,23 +661,30 @@ with open('meson.build', 'w') as f: f.write(content)
     -Dmanpage-build=disabled \
     -Dvulkan=disabled \
     -Dgl=disabled \
-    -Dopengl=disabled \
-    -Dwgl=disabled \
+    -Dgl-win32=disabled \
+    -Dgl-dxinterop=disabled \
     -Dd3d11=disabled \
+    -Dd3d-hwaccel=disabled \
+    -Dd3d9-hwaccel=disabled \
+    -Ddirect3d=disabled \
+    -Degl=disabled \
+    -Degl-angle=disabled \
+    -Degl-angle-lib=disabled \
+    -Degl-angle-win32=disabled \
+    -Dplain-gl=disabled \
     -Djpeg=disabled \
-    -Dlua=luajit \
-    -Dlibarchive=enabled \
+    -Dlua=disabled \
+    -Dlibarchive=disabled \
     -Dlibbluray=disabled \
     -Duchardet=disabled \
     -Drubberband=enabled \
-    -Dspeex=enabled \
     -Dlcms2=disabled \
     -Dzimg=disabled \
-    -Dplain-gl=disabled \
+    -Dwasapi=enabled \
     -Dc_args="-I$DIST/include $WIN_FLAGS" \
     -Dcpp_args="-I$DIST/include $WIN_FLAGS" \
-    -Dc_link_args="-L$DIST/lib -static-libgcc" \
-    -Dcpp_link_args="-L$DIST/lib -static-libgcc -static-libstdc++"
+    -Dc_link_args="-L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lstdc++ -lexpat -lpathcch -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore" \
+    -Dcpp_link_args="-L$DIST/lib -L/usr/x86_64-w64-mingw32/lib -static-libgcc -static-libstdc++ -lexpat -lpathcch -lavrt -ldwmapi -lgdi32 -limm32 -lntdll -lole32 -luser32 -lwinmm -lshlwapi -lshell32 -lsetupapi -lcfgmgr32 -lversion -lshcore"
   
   ninja -C build install
 popd

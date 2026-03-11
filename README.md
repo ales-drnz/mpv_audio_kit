@@ -405,11 +405,9 @@ Add `Background Modes` to your project and enabled `Audio` in `Info.plist`:
 
 ## Credits & Acknowledgements
 
-This project owes a significant debt of gratitude to the pioneering architectural work of [media-kit](https://github.com/media-kit/media-kit). Specifically, several critical resilience implementations in `mpv_audio_kit` were inspired by or directly derived from the brilliant work of Hitesh Kumar Saini (`alexmercerind`) and `cillyvms`, including:
+This project owes a gratitude to the pioneering architectural work of [media-kit](https://github.com/media-kit/media-kit). Specifically, two implementations in `mpv_audio_kit` were directly derived from the work of `alexmercerind` and `cillyvms`, including:
 - **Native Memory Guardians** (`NativeReferenceHolder`) handling `libmpv` orphans during Flutter Hot-Restarts.
 - **Android Content / Asset URI Resolvers** (`AndroidHelper`) bridging the Android Java scope into raw native file descriptors.
 
-Their codebase is phenomenal, and `mpv_audio_kit` stands on the shoulders of those giants to deliver rock-solid audio production builds.
-
 ---
-*Developed by Antigravity AI*
+*Developed by Alessandro Di Ronza*
