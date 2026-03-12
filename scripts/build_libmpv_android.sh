@@ -45,9 +45,9 @@ JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo
 if [[ "${SKIP_SIMULATOR:-0}" == "1" ]]; then
   ABIS="${ABIS:-arm64-v8a}"
 elif [[ "${ONLY_SIMULATOR:-0}" == "1" ]]; then
-  ABIS="${ABIS:-arm64-v8a}"
+  ABIS="${ABIS:-x86_64}"
 else
-  ABIS="${ABIS:-arm64-v8a}"
+  ABIS="${ABIS:-arm64-v8a x86_64}"
 fi
 
 

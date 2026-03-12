@@ -37,7 +37,7 @@ ROOT="$SCRIPT_DIR/.."
 
 MPV_VERSION="${MPV_VERSION:-0.41.0}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 4)}"
-ARCH="${ARCH:-$(uname -m)}"
+ARCH="${ARCH:-x86_64}" # Default to x86_64, can be overridden by env var
 
 # ── Dependency versions ────────────────────────────────────────────────────────
 FFMPEG_VERSION="7.1.1"

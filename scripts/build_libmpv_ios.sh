@@ -10,7 +10,7 @@
 #
 # === SYSTEM & HARDWARE SPECS ===
 # Target OS:   iOS (Deployment target 13.0+)
-# Target Arch: arm64 (Physical Devices), arm64/x86_64 (iOS Simulator)
+# Target Arch: arm64 (Physical Devices), arm64 (iOS Simulator)
 # Compiler:    Xcode Toolchain (Apple Clang)
 #
 # Usage (from project root):
@@ -67,9 +67,9 @@ PREFIX_BASE="$BUILD_DIR/prefix"
 if [[ "${SKIP_SIMULATOR:-0}" == "1" ]]; then
   SLICES=("iphoneos:arm64")
 elif [[ "${ONLY_SIMULATOR:-0}" == "1" ]]; then
-  SLICES=("iphonesimulator:arm64" "iphonesimulator:x86_64")
+  SLICES=("iphonesimulator:arm64")
 else
-  SLICES=("iphoneos:arm64" "iphonesimulator:arm64" "iphonesimulator:x86_64")
+  SLICES=("iphoneos:arm64" "iphonesimulator:arm64")
 fi
 IOS_MIN="13.0"
 
@@ -1077,7 +1077,6 @@ assemble_xcframework() {
   # Merge per-slice
   local device_combined="$BUILD_DIR/libmpv_device.a"
   local sim_arm64_combined="$BUILD_DIR/libmpv_sim_arm64.a"
-  local sim_x86_combined="$BUILD_DIR/libmpv_sim_x86_64.a"
 
   local xcodebuild_args=("-create-xcframework")
 
@@ -1087,7 +1086,6 @@ assemble_xcframework() {
   # Process device slice
   if [[ "${ONLY_SIMULATOR:-0}" != "1" ]]; then
     merge_all_libs "$PREFIX_BASE/iphoneos_arm64/lib" "$device_combined"
-    cp "$device_combined" "$release_dir/libmpv_ios-arm64.a"
     local device_dir="$BUILD_DIR/xcfw_device"
     local headers_src="$PREFIX_BASE/iphoneos_arm64/include/mpv"
     mkdir -p "$device_dir/Headers"
@@ -1099,16 +1097,10 @@ assemble_xcframework() {
   # Process simulator slices
   if [[ "${SKIP_SIMULATOR:-0}" != "1" ]]; then
     merge_all_libs "$PREFIX_BASE/iphonesimulator_arm64/lib"  "$sim_arm64_combined"
-    merge_all_libs "$PREFIX_BASE/iphonesimulator_x86_64/lib" "$sim_x86_combined"
-    
-    cp "$sim_arm64_combined" "$release_dir/libmpv_ios-simulator-arm64.a"
-    cp "$sim_x86_combined" "$release_dir/libmpv_ios-simulator-x86_64.a"
 
-    # Simulator universal (arm64 + x86_64)
+    # Simulator (arm64 for Apple Silicon)
     local sim_universal="$BUILD_DIR/libmpv_simulator.a"
-    log "lipo simulator (arm64 + x86_64)..."
-    lipo -create "$sim_arm64_combined" "$sim_x86_combined" -output "$sim_universal"
-    cp "$sim_universal" "$release_dir/libmpv_ios-simulator-universal.a"
+    cp "$sim_arm64_combined" "$sim_universal"
 
     local sim_dir="$BUILD_DIR/xcfw_sim"
     local sim_headers_src="$PREFIX_BASE/iphonesimulator_arm64/include/mpv"
@@ -1127,9 +1119,9 @@ assemble_xcframework() {
 
   log "Zipping xcframework..."
   pushd "$OUTPUT_DIR" >/dev/null
-  zip -r "$release_dir/libmpv_ios.xcframework.zip" "libmpv.xcframework" >/dev/null
+  zip -r "$release_dir/libmpv_ios-arm64.xcframework.zip" "libmpv.xcframework" >/dev/null
   popd >/dev/null
-  ok "Output: $release_dir/libmpv_ios.xcframework.zip"
+  ok "Output: $release_dir/libmpv_ios-arm64.xcframework.zip"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -1154,8 +1146,7 @@ main() {
   echo ""
   echo "╔══════════════════════════════════════════════════════════════╗"
   echo "║  iOS build complete!                                         ║"
-  echo "║  Output: release_builds/libmpv_ios-*.a                      ║"
-  echo "║          release_builds/libmpv_ios.xcframework.zip          ║"
+  echo "║  Output: release_builds/libmpv_ios-arm64.xcframework.zip     ║"
   echo "╚══════════════════════════════════════════════════════════════╝"
 }
 

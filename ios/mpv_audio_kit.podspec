@@ -33,7 +33,7 @@ Pod::Spec.new do |s|
   s.prepare_command = <<-CMD
     MPV_RELEASE_VERSION="v0.0.1"
     EXPECTED_SHA256="PUT_IOS_ZIP_SHA256_HERE"
-    URL="https://github.com/my-org/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_ios.xcframework.zip"
+    URL="https://github.com/my-org/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_ios-arm64.xcframework.zip"
     
     mkdir -p Frameworks
     ZIP_FILE="Frameworks/libmpv_xcframework.zip"
@@ -54,7 +54,7 @@ Pod::Spec.new do |s|
     fi
 
     if [ $DOWNLOAD_NEEDED -eq 1 ]; then
-      echo "Downloading libmpv_ios.xcframework.zip from $URL..."
+      echo "Downloading libmpv_ios-arm64.xcframework.zip from $URL..."
       curl -L -o "$ZIP_FILE" "$URL"
       
       ACTUAL_SHA256=$(shasum -a 256 "$ZIP_FILE" | awk '{ print $1 }')
