@@ -76,7 +76,7 @@ check_tools() {
     $SUDO apt-get update -qq
     $SUDO apt-get install -y \
       build-essential cmake ninja-build nasm python3 python3-pip \
-      pkg-config autoconf automake libtool git curl \
+      pkg-config autoconf automake libtool git curl gperf \
       libva-dev libvdpau-dev \
       libasound2-dev libpulse-dev \
       libx11-dev libxext-dev libxrandr-dev libxinerama-dev \
@@ -86,7 +86,7 @@ check_tools() {
   elif command -v dnf &>/dev/null; then
     $SUDO dnf install -y \
       gcc gcc-c++ cmake ninja-build nasm python3 python3-pip \
-      pkg-config autoconf automake libtool git curl \
+      pkg-config autoconf automake libtool git curl gperf \
       libva-devel libvdpau-devel \
       alsa-lib-devel pulseaudio-libs-devel \
       libX11-devel libXext-devel libXrandr-devel \
@@ -95,7 +95,7 @@ check_tools() {
   elif command -v pacman &>/dev/null; then
     $SUDO pacman -S --needed --noconfirm \
       base-devel cmake ninja nasm python python-pip \
-      pkg-config autoconf automake libtool git curl \
+      pkg-config autoconf automake libtool git curl gperf \
       libva libvdpau alsa-lib libpulse \
       libx11 libxext libxrandr 2>/dev/null || true
     pip3 install meson --quiet 2>/dev/null || true
@@ -237,6 +237,7 @@ build_freetype() {
     cmake "$dir" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
       -DBUILD_SHARED_LIBS=OFF -DFT_DISABLE_HARFBUZZ=ON \
       -DFT_REQUIRE_ZLIB=ON -DFT_REQUIRE_PNG=ON \
+      -DFT_DISABLE_BROTLI=ON -DFT_DISABLE_BZIP2=ON \
       -DZLIB_INCLUDE_DIR="$PREFIX/include" -DZLIB_LIBRARY="$PREFIX/lib/libz.a" \
       -DPNG_PNG_INCLUDE_DIR="$PREFIX/include" -DPNG_LIBRARY="$PREFIX/lib/libpng.a" -GNinja
     ninja -j"$JOBS"; ninja install
@@ -285,6 +286,7 @@ build_freetype_round2() {
     -DBUILD_SHARED_LIBS=OFF \
     -DFT_DISABLE_HARFBUZZ=OFF -DFT_REQUIRE_HARFBUZZ=ON \
     -DFT_REQUIRE_ZLIB=ON -DFT_REQUIRE_PNG=ON \
+    -DFT_DISABLE_BROTLI=ON -DFT_DISABLE_BZIP2=ON \
     -DZLIB_INCLUDE_DIR="$PREFIX/include" -DZLIB_LIBRARY="$PREFIX/lib/libz.a" \
     -DPNG_PNG_INCLUDE_DIR="$PREFIX/include" -DPNG_LIBRARY="$PREFIX/lib/libpng.a" \
     -DHarfBuzz_DIR="$PREFIX/lib/cmake/harfbuzz" -GNinja
