@@ -85,5 +85,10 @@ mixin _PlaylistModule on _PlayerBase {
   Future<void> setShuffle(bool shuffle) async {
     _checkNotDisposed();
     _prop('shuffle', shuffle ? 'yes' : 'no');
+    if (shuffle) {
+      _command(['playlist-shuffle']);
+    } else {
+      _command(['playlist-unshuffle']);
+    }
   }
 }
