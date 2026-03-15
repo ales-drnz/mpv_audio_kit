@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  DEBUG / PROFILE — sandbox DISABILITATA.
+	  libmpv di Homebrew linka dinamicamente ~20 dylib in /opt/homebrew/opt/.
+	  La sandbox macOS blocca l'accesso a quei path, impedendo dlopen.
+	  Per la distribuzione in produzione è necessaria una build di libmpv
+	  staticamente linkata (tutti i codec inclusi, nessuna dipendenza esterna).
+	-->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<!-- Permette di caricare dylib non firmate da Apple (libmpv ad-hoc) -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<!-- Accesso rete in uscita (streaming audio HTTP/HTTPS) -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>
