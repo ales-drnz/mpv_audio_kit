@@ -67,10 +67,8 @@ class Player extends _PlayerBase
     }
     final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
     _mediaCache[normalizedUri] = media;
+    _pendingPlay = play ?? configuration.autoPlay;
     _command(['loadfile', normalizedUri, 'replace']);
-    if (!(play ?? configuration.autoPlay)) {
-      _prop('pause', 'yes');
-    }
   }
 
   /// Opens a list of [Media] items as the new playlist.
@@ -92,9 +90,7 @@ class Player extends _PlayerBase
       final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
       _command(['loadfile', normalizedUri, 'append']);
     }
-    if (!(play ?? configuration.autoPlay)) {
-      _prop('pause', 'yes');
-    }
+    _pendingPlay = play ?? configuration.autoPlay;
   }
 
   /// Manually injects a line into the player's log stream.
@@ -141,6 +137,7 @@ abstract class _PlayerBase {
   bool _disposed = false;
 
   PlayerState _state = const PlayerState();
+  bool _pendingPlay = true;
   List<_RawPlaylistEntry> _rawPlaylist = [];
   final Map<String, Media> _mediaCache = {};
 
@@ -321,10 +318,12 @@ abstract class _PlayerBase {
       case MpvEventStartFile():
         _patchState((s) => s.copyWith(buffering: true, completed: false));
       case MpvEventFileLoaded():
-        _patchState((s) => s.copyWith(
-            buffering: false,
-            playing: configuration.autoPlay,
-            completed: false));
+        _prop('pause', _pendingPlay ? 'no' : 'yes');
+        _updateState(
+            (s) => s.copyWith(
+                buffering: false, playing: _pendingPlay, completed: false),
+            _playingCtrl,
+            _pendingPlay);
         _pollPosition();
         _extractEmbeddedCover();
       case MpvEndFileEvent(:final reason, :final error):

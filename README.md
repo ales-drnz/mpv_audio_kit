@@ -44,7 +44,7 @@ dependencies:
 | Platform  | Architecture | Device | Emulator | mpv version |
 | :--- | :--- | :---: | :---: | :---: |
 | **Android** | arm64-v8a, x86_64 | ✅ | ✅ | v0.41.0 |
-| **iOS** | arm64 | ✅ | ✅ | v0.41.0 |
+| **iOS** | arm64, x86_64 | ✅ | ✅ | v0.41.0 |
 | **macOS** | arm64 | ✅ | — | v0.41.0 |
 | **Windows**| x86_64 | ✅ | — | v0.41.0 |
 | **Linux** | x86_64 | ✅ | — | v0.41.0 |

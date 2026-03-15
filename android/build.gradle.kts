@@ -121,7 +121,8 @@ val downloadMpvTask = tasks.register("downloadMpvLibraries") {
     
     doLast {
         val jniLibsDir = file("src/main/jniLibs")
-        abis.forEach { (abi, info) ->
+        val abiFilters = android.defaultConfig.ndk.abiFilters.ifEmpty { abis.keys }
+        abis.filter { it.key in abiFilters }.forEach { (abi, info) ->
             val filename = info["file"]!!
             val expectedHash = info["sha256"]!!
             val abiDir = file("${jniLibsDir}/${abi}")

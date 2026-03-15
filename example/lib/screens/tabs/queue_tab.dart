@@ -3,10 +3,19 @@ import 'package:file_picker/file_picker.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../widgets/shared/property_cards.dart';
 
-class QueueTab extends StatelessWidget {
+class QueueTab extends StatefulWidget {
   final Player player;
 
   const QueueTab({super.key, required this.player});
+
+  @override
+  State<QueueTab> createState() => _QueueTabState();
+}
+
+class _QueueTabState extends State<QueueTab> {
+  bool _picking = false;
+
+  Player get player => widget.player;
 
   @override
   Widget build(BuildContext context) {
@@ -98,20 +107,28 @@ class QueueTab extends StatelessWidget {
                   children: [
                     _QueueActionButton(
                       onPressed: () async {
-                        final result = await FilePicker.platform.pickFiles(
-                          type: FileType.audio,
-                          allowMultiple: true,
-                        );
-                        if (result != null) {
-                          for (final file in result.files) {
-                            final path = file.path;
-                            if (path != null) {
-                              player.add(Media(path));
+                        if (_picking) return;
+                        setState(() => _picking = true);
+                        try {
+                          final result = await FilePicker.platform.pickFiles(
+                            type: FileType.any,
+                            allowMultiple: true,
+                          );
+                          if (result != null) {
+                            final wasEmpty =
+                                player.state.playlist.medias.isEmpty;
+                            for (final file in result.files) {
+                              final path = file.path;
+                              if (path != null) {
+                                await player.add(Media(path));
+                              }
+                            }
+                            if (wasEmpty) {
+                              player.play();
                             }
                           }
-                          if (player.state.playlist.medias.isEmpty) {
-                            player.play();
-                          }
+                        } finally {
+                          if (mounted) setState(() => _picking = false);
                         }
                       },
                       icon: Icons.folder_open_rounded,

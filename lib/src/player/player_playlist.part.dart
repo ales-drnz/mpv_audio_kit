@@ -64,6 +64,7 @@ mixin _PlaylistModule on _PlayerBase {
     _checkNotDisposed();
     _mediaCache.clear();
     _command(['playlist-clear']);
+    _command(['playlist-remove', 'current']);
   }
 
   /// Sets the playlist repeat mode.

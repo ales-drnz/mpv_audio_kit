@@ -143,6 +143,7 @@ class _PlayerPageState extends State<PlayerPage> {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 720;
