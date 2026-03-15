@@ -29,6 +29,7 @@ export 'src/models/playlist.dart' show Playlist, PlaylistMode;
 export 'src/models/audio_device.dart' show AudioDevice;
 export 'src/models/audio_filter.dart' show AudioFilter;
 export 'src/models/audio_params.dart' show AudioParams;
+export 'src/models/mpv_log_entry.dart' show MpvLogEntry;
 export 'src/models/player_configuration.dart' show PlayerConfiguration;
 export 'src/models/player_state.dart' show PlayerState;
 export 'src/models/player_stream.dart' show PlayerStream;

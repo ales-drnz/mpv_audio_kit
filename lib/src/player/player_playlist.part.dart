@@ -53,10 +53,8 @@ mixin _PlaylistModule on _PlayerBase {
     _mediaCache[media.uri] = media;
     final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
     _mediaCache[normalizedUri] = media;
-    _command(['loadfile', normalizedUri, 'append']);
-    final lastIndex = _state.playlist.medias.length;
-    _command(['playlist-move', lastIndex.toString(), index.toString()]);
-    _command(['playlist-remove', (index + 1).toString()]);
+    _command(['playlist-remove', index.toString()]);
+    _command(['loadfile', normalizedUri, 'insert-at', index.toString()]);
   }
 
   /// Clears all tracks from the playlist.

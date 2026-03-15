@@ -19,7 +19,7 @@ mixin _PropertyRegistry on _PlayerBase {
         _updateState((s) => s.copyWith(rate: value), _rateCtrl, value);
       case 'pitch':
         _updateState((s) => s.copyWith(pitch: value), _pitchCtrl, value);
-      case 'demuxer-cache-duration':
+      case 'demuxer-cache-time':
         _updateBuffer(value);
       case 'audio-bitrate':
         _updateBitrate(value);
@@ -199,7 +199,7 @@ mixin _PropertyRegistry on _PlayerBase {
     _observe('shuffle', MpvFormat.mpvFormatFlag, 14);
 
     // Playback Mechanics
-    _observe('demuxer-cache-duration', MpvFormat.mpvFormatDouble, 9);
+    _observe('demuxer-cache-time', MpvFormat.mpvFormatDouble, 9);
     _observe('demuxer-cache-state', MpvFormat.mpvFormatString, 10);
     _observe('audio-bitrate', MpvFormat.mpvFormatDouble, 11);
     _observe('playlist', MpvFormat.mpvFormatString, 17);

@@ -6,6 +6,7 @@ import 'package:mpv_audio_kit/src/models/playlist.dart';
 import 'package:mpv_audio_kit/src/models/audio_device.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/audio_filter.dart';
+import 'package:mpv_audio_kit/src/models/mpv_log_entry.dart';
 
 /// Typed event streams for subscribing to individual [Player] state changes.
 ///
@@ -171,8 +172,8 @@ class PlayerStream {
   /// Emits human-readable error messages from the mpv engine.
   final Stream<String> error;
 
-  /// Emits raw log lines from the mpv engine at the configured log level.
-  final Stream<String> log;
+  /// Emits structured log entries from the mpv engine at the configured log level.
+  final Stream<MpvLogEntry> log;
 
   const PlayerStream({
     required this.playlist,

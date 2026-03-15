@@ -41,7 +41,13 @@ class PlayerState {
   /// Whether the player is currently buffering.
   final bool buffering;
 
-  /// How far ahead the demuxer has buffered.
+  /// Absolute position up to which the demuxer has buffered content.
+  ///
+  /// This is an absolute timestamp from the start of the track (equivalent
+  /// to `demuxer-cache-time` in mpv), not a relative duration. For example,
+  /// if the current position is 1:00 and 30 s are cached ahead, [buffer] is
+  /// 1:30. Use this value directly as the buffered position in audio_service
+  /// or any progress-bar UI without adding [position].
   final Duration buffer;
 
   /// Buffer fill percentage (0.0–100.0).

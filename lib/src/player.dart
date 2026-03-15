@@ -22,6 +22,7 @@ import 'models/playlist.dart';
 import 'models/audio_device.dart';
 import 'models/audio_filter.dart';
 import 'models/audio_params.dart';
+import 'models/mpv_log_entry.dart';
 import 'models/player_configuration.dart';
 import 'models/player_state.dart';
 import 'models/player_stream.dart';
@@ -31,6 +32,7 @@ export 'models/playlist.dart';
 export 'models/audio_device.dart';
 export 'models/audio_filter.dart';
 export 'models/audio_params.dart';
+export 'models/mpv_log_entry.dart';
 export 'models/player_configuration.dart';
 export 'models/player_state.dart';
 export 'models/player_stream.dart';
@@ -71,8 +73,12 @@ class Player extends _PlayerBase
     _command(['loadfile', normalizedUri, 'replace']);
   }
 
-  /// Opens a list of [Media] items as the new playlist.
-  Future<void> openPlaylist(List<Media> medias, {bool? play}) async {
+  /// Opens a list of [Media] items as the new playlist, optionally starting at [index].
+  ///
+  /// If [index] is greater than zero, the player immediately jumps to that
+  /// position after loading the playlist (the first item is loaded briefly then
+  /// replaced — this is imperceptible and is the standard mpv approach).
+  Future<void> openPlaylist(List<Media> medias, {bool? play, int index = 0}) async {
     _checkNotDisposed();
     if (medias.isEmpty) {
       return;
@@ -91,11 +97,14 @@ class Player extends _PlayerBase
       _command(['loadfile', normalizedUri, 'append']);
     }
     _pendingPlay = play ?? configuration.autoPlay;
+    if (index > 0) {
+      _command(['playlist-play-index', index.toString()]);
+    }
   }
 
-  /// Manually injects a line into the player's log stream.
-  void log(String message) {
-    _logCtrl.add('[mpv_audio_kit] info: $message');
+  /// Manually injects an entry into the player's log stream.
+  void log(String message, {String level = 'info'}) {
+    _logCtrl.add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
   }
 
   /// Reads any mpv property as a string.
@@ -137,7 +146,7 @@ abstract class _PlayerBase {
   bool _disposed = false;
 
   PlayerState _state = const PlayerState();
-  bool _pendingPlay = true;
+  bool _pendingPlay = false;
   List<_RawPlaylistEntry> _rawPlaylist = [];
   final Map<String, Media> _mediaCache = {};
 
@@ -194,7 +203,7 @@ abstract class _PlayerBase {
   final _activeFiltersCtrl = StreamController<List<AudioFilter>>.broadcast();
   final _equalizerGainsCtrl = StreamController<List<double>>.broadcast();
   final _errorCtrl = StreamController<String>.broadcast();
-  final _logCtrl = StreamController<String>.broadcast();
+  final _logCtrl = StreamController<MpvLogEntry>.broadcast();
 
   PlayerState get state => _state;
   late final PlayerStream stream;
@@ -342,10 +351,10 @@ abstract class _PlayerBase {
       case MpvEventPropertyString(:final name, :final value):
         _handleStringProperty(name, value);
       case MpvEventLog(:final prefix, :final level, :final text):
-        final line = '[$prefix] $level: $text';
-        _logCtrl.add(line);
+        final entry = MpvLogEntry(prefix: prefix, level: level, text: text);
+        _logCtrl.add(entry);
         if (level == 'error' || level == 'fatal') {
-          _errorCtrl.add(line);
+          _errorCtrl.add(entry.toString());
         }
       case MpvEventError(:final message):
         _errorCtrl.add(message);
@@ -483,7 +492,9 @@ abstract class _PlayerBase {
   void _parseCacheState(String jsonStr) {
     try {
       final map = json.decode(jsonStr) as Map<String, dynamic>;
-      final pct = (map['cache-duration'] as num?)?.toDouble() ?? 0.0;
+      final cacheDuration = (map['cache-duration'] as num?)?.toDouble() ?? 0.0;
+      final targetSecs = _state.cacheSecs > 0 ? _state.cacheSecs : 1.0;
+      final pct = (cacheDuration / targetSecs * 100.0).clamp(0.0, 100.0);
       _patchState((s) => s.copyWith(bufferingPercentage: pct));
       _bufferPctCtrl.add(pct);
     } catch (_) {}
@@ -565,7 +576,8 @@ abstract class _PlayerBase {
     });
   }
 
-  void _log(String message) => _logCtrl.add('[mpv_audio_kit] $message');
+  void _log(String message, {String level = 'info'}) =>
+      _logCtrl.add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
 
   int _currentCoverOpId = 0;
 
@@ -728,8 +740,37 @@ abstract class _PlayerBase {
       _audioDelayCtrl,
       _pitchCorrectionCtrl,
       _metadataCtrl,
+      _gaplessModeCtrl,
+      _replayGainModeCtrl,
+      _replayGainPreampCtrl,
+      _replayGainFallbackCtrl,
+      _replayGainClipCtrl,
+      _volumeGainCtrl,
+      _cacheModeCtrl,
+      _cacheSecsCtrl,
+      _cacheOnDiskCtrl,
+      _cachePauseCtrl,
+      _cachePauseWaitCtrl,
+      _demuxerMaxBytesCtrl,
+      _demuxerReadaheadSecsCtrl,
+      _demuxerMaxBackBytesCtrl,
+      _networkTimeoutCtrl,
+      _tlsVerifyCtrl,
+      _audioExclusiveCtrl,
+      _audioBufferCtrl,
+      _streamSilenceCtrl,
+      _aoNullUntimedCtrl,
+      _audioTrackCtrl,
+      _audioSpdifCtrl,
+      _volumeMaxCtrl,
+      _audioSampleRateCtrl,
+      _audioFormatCtrl,
+      _audioChannelsCtrl,
+      _audioClientNameCtrl,
+      _activeFiltersCtrl,
+      _equalizerGainsCtrl,
       _errorCtrl,
-      _logCtrl
+      _logCtrl,
     ];
     for (final c in ctrls) {
       c.close();
