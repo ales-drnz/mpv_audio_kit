@@ -1,8 +1,12 @@
+import java.io.FileOutputStream
+import java.net.URL
+import java.security.MessageDigest
+
 group = "com.example.mpv_audio_kit"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    val kotlinVersion = "2.2.20"
+    val kotlinVersion = "2.0.21"
     repositories {
         google()
         mavenCentral()
@@ -10,7 +14,7 @@ buildscript {
 
     dependencies {
         classpath("com.android.tools.build:gradle:8.7.2")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     }
 }
 
@@ -98,10 +102,6 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")
 }
-
-import java.io.FileOutputStream
-import java.net.URL
-import java.security.MessageDigest
 
 val MPV_RELEASE_VERSION = "v0.0.1"
 val MPV_BASE_URL = "https://github.com/ales-drnz/mpv_audio_kit/releases/download/\${MPV_RELEASE_VERSION}"

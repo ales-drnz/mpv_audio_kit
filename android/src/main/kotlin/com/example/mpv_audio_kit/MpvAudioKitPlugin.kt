@@ -19,6 +19,17 @@ import io.flutter.plugin.common.MethodChannel.Result
 class MpvAudioKitPlugin :
     FlutterPlugin,
     MethodCallHandler {
+
+    companion object {
+        init {
+            // Loading libmpv.so via System.loadLibrary() ensures that the JVM
+            // invokes libmpv's JNI_OnLoad, registering the JavaVM pointer internally.
+            // Without this, dart:ffi loads it via dlopen() which skips JNI_OnLoad,
+            // causing the AudioTrack audio output driver to fail with
+            // "No Java virtual machine has been registered".
+            System.loadLibrary("mpv")
+        }
+    }
     // The MethodChannel that will the communication between Flutter and native Android
     //
     // This local reference serves to register the plugin with the Flutter Engine and unregister it

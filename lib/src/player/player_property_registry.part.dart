@@ -67,6 +67,9 @@ mixin _PropertyRegistry on _PlayerBase {
     switch (name) {
       case 'pause':
         _updateState((s) => s.copyWith(playing: !flag), _playingCtrl, !flag);
+        if (!flag) {
+          _scheduleAudioOutputCheck();
+        }
       case 'mute':
         _updateState((s) => s.copyWith(mute: flag), _muteCtrl, flag);
       case 'idle-active':

@@ -555,6 +555,17 @@ abstract class _PlayerBase {
     }
   }
 
+  void _scheduleAudioOutputCheck() {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (_disposed || !_state.playing) return;
+      final fmt = _getPropString('audio-out-params/format');
+      if (fmt == null || fmt.isEmpty) {
+        _errorCtrl.add(
+            '[mpv_audio_kit] No audio output driver initialized — playback is silent');
+      }
+    });
+  }
+
   void _log(String message) => _logCtrl.add('[mpv_audio_kit] $message');
 
   int _currentCoverOpId = 0;
