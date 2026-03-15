@@ -27,7 +27,9 @@ class _AudioEngineTabState extends State<AudioEngineTab> {
           setState(() => _clippingDetected = true);
           _clippingTimer?.cancel();
           _clippingTimer = Timer(const Duration(seconds: 2), () {
-            if (mounted) setState(() => _clippingDetected = false);
+            if (mounted) {
+              setState(() => _clippingDetected = false);
+            }
           });
         }
       }

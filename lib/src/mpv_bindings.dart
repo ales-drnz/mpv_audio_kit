@@ -423,8 +423,12 @@ class MpvLibrary {
       final localSo = '$exeDir/lib/libmpv.so.2';
       final bundleSo = '$exeDir/libmpv.so.2';
 
-      if (File(localSo).existsSync()) return localSo;
-      if (File(bundleSo).existsSync()) return bundleSo;
+      if (File(localSo).existsSync()) {
+        return localSo;
+      }
+      if (File(bundleSo).existsSync()) {
+        return bundleSo;
+      }
 
       // Fallback to system search path
       return 'libmpv.so.2';
@@ -446,8 +450,12 @@ class MpvLibrary {
   }
 }
 
+/// Exception thrown when the `libmpv` shared library cannot be loaded or resolved.
 class MpvLibraryException implements Exception {
+  /// The error message describing the failure.
   final String message;
+
+  /// Creates a new [MpvLibraryException] with the given [message].
   const MpvLibraryException(this.message);
 
   @override

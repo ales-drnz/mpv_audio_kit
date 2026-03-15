@@ -102,7 +102,9 @@ class _PlayerPageState extends State<PlayerPage> {
         if (mounted) {
           setState(() {
             _logs.add(line);
-            if (_logs.length > 500) _logs.removeAt(0);
+            if (_logs.length > 500) {
+              _logs.removeAt(0);
+            }
           });
         }
       });

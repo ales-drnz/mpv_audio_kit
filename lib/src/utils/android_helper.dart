@@ -34,7 +34,9 @@ abstract class AndroidHelper {
   }
 
   static Future<String> _copyAssetToCache(String uri) async {
-    if (_assetCache.containsKey(uri)) return _assetCache[uri]!;
+    if (_assetCache.containsKey(uri)) {
+      return _assetCache[uri]!;
+    }
 
     // Extract the raw path inside the asset bundle
     String assetPath = uri.substring('asset://'.length);

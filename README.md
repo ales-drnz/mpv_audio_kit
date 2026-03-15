@@ -76,13 +76,13 @@ The following images demonstrate the example app included in the `example/` dire
 
 | Screen | Description |
 | :--- | :--- |
-| ![Playback Interface](imgs/playback_interface.png) | **Playback Interface**<br>UI with real-time metadata extraction and cover art processing. |
-| ![Queue Management](imgs/queue_management.png) | **Queue Management**<br>Live playlist control with support for adding, removing tracks. |
-| ![Audio Engine](imgs/audio_engine.png) | **Audio Engine (DSP & Filters)**<br>Feature-rich 10-band graphic equalizer, EBU R128 industry-standard loudness normalization, and real-time audio compression. |
-| ![Routing & Hardware Tuning](imgs/routing_tuning.png) | **Routing & Hardware Tuning**<br>Audio mode selection (WASAPI/ALSA/CoreAudio), device selection, and output format configuration. |
-| ![Stream Lab](imgs/stream_lab.png) | **Stream Lab**<br>Specialized testing environment for network streams, radio protocols, and custom HTTP headers. |
-| ![Demuxer & Cache Control](imgs/cache_control.png) | **Demuxer & Cache Control**<br>Granular control over network buffering, demuxer thread filling, and memory pool management. |
-| ![System Infrastructure](imgs/infrastructure.png) | **System Infrastructure**<br>Exclusive audio, Low-level timing adjustments, audio buffer sizes, and native engine configuration. |
+| ![Playback Interface](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/playback_interface.png) | **Playback Interface**<br>UI with real-time metadata extraction and cover art processing. |
+| ![Queue Management](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/queue_management.png) | **Queue Management**<br>Live playlist control with support for adding, removing tracks. |
+| ![Audio Engine](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/audio_engine.png) | **Audio Engine (DSP & Filters)**<br>Feature-rich 10-band graphic equalizer, EBU R128 industry-standard loudness normalization, and real-time audio compression. |
+| ![Routing & Hardware Tuning](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/routing_tuning.png) | **Routing & Hardware Tuning**<br>Audio mode selection (WASAPI/ALSA/CoreAudio), device selection, and output format configuration. |
+| ![Stream Lab](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/stream_lab.png) | **Stream Lab**<br>Specialized testing environment for network streams, radio protocols, and custom HTTP headers. |
+| ![Demuxer & Cache Control](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/cache_control.png) | **Demuxer & Cache Control**<br>Granular control over network buffering, demuxer thread filling, and memory pool management. |
+| ![System Infrastructure](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/infrastructure.png) | **System Infrastructure**<br>Exclusive audio, Low-level timing adjustments, audio buffer sizes, and native engine configuration. |
 
 ---
 

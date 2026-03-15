@@ -212,7 +212,9 @@ class EqCurvePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (gains.isEmpty) return;
+    if (gains.isEmpty) {
+      return;
+    }
 
     final paintLine = Paint()
       ..color = enabled ? color : Colors.grey.withValues(alpha: 0.3)
@@ -288,7 +290,9 @@ class EqCurvePainter extends CustomPainter {
       return true;
     }
     for (int i = 0; i < gains.length; i++) {
-      if (gains[i] != oldDelegate.gains[i]) return true;
+      if (gains[i] != oldDelegate.gains[i]) {
+        return true;
+      }
     }
     return false;
   }

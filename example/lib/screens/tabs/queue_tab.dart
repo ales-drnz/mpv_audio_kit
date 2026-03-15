@@ -75,7 +75,9 @@ class QueueTab extends StatelessWidget {
                     ),
                   ],
                   onChanged: (v) {
-                    if (v != null) player.setPlaylistMode(v);
+                    if (v != null) {
+                      player.setPlaylistMode(v);
+                    }
                   },
                 );
               },

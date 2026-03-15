@@ -68,13 +68,17 @@ class Player extends _PlayerBase
     final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
     _mediaCache[normalizedUri] = media;
     _command(['loadfile', normalizedUri, 'replace']);
-    if (!(play ?? configuration.autoPlay)) _prop('pause', 'yes');
+    if (!(play ?? configuration.autoPlay)) {
+      _prop('pause', 'yes');
+    }
   }
 
   /// Opens a list of [Media] items as the new playlist.
   Future<void> openPlaylist(List<Media> medias, {bool? play}) async {
     _checkNotDisposed();
-    if (medias.isEmpty) return;
+    if (medias.isEmpty) {
+      return;
+    }
     _mediaCache.clear();
     for (final m in medias) {
       _mediaCache[m.uri] = m;
@@ -88,7 +92,9 @@ class Player extends _PlayerBase
       final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
       _command(['loadfile', normalizedUri, 'append']);
     }
-    if (!(play ?? configuration.autoPlay)) _prop('pause', 'yes');
+    if (!(play ?? configuration.autoPlay)) {
+      _prop('pause', 'yes');
+    }
   }
 
   /// Manually injects a line into the player's log stream.
@@ -102,7 +108,9 @@ class Player extends _PlayerBase
     return using((arena) {
       final n = name.toNativeUtf8(allocator: arena);
       final ptr = _lib.mpvGetPropertyString(_handle, n);
-      if (ptr == nullptr) return null;
+      if (ptr == nullptr) {
+        return null;
+      }
       final s = ptr.cast<Utf8>().toDartString();
       _lib.mpvFree(ptr.cast());
       return s;
@@ -197,7 +205,9 @@ abstract class _PlayerBase {
   _PlayerBase({this.configuration = const PlayerConfiguration()}) {
     _lib = MpvLibrary.open(MpvAudioKit.libraryPath);
     _handle = _lib.mpvCreate();
-    if (_handle == nullptr) throw StateError('mpv_create() returned NULL');
+    if (_handle == nullptr) {
+      throw StateError('mpv_create() returned NULL');
+    }
 
     _applyPreInitOptions();
     final rc = _lib.mpvInitialize(_handle);
@@ -318,7 +328,9 @@ abstract class _PlayerBase {
         _pollPosition();
         _extractEmbeddedCover();
       case MpvEndFileEvent(:final reason, :final error):
-        if (error < 0) _errorCtrl.add(_errorString(error));
+        if (error < 0) {
+          _errorCtrl.add(_errorString(error));
+        }
         final isEof = reason == MpvEndFileReason.mpvEndFileReasonEof;
         _patchState((s) =>
             s.copyWith(playing: false, buffering: false, completed: isEof));
@@ -333,7 +345,9 @@ abstract class _PlayerBase {
       case MpvEventLog(:final prefix, :final level, :final text):
         final line = '[$prefix] $level: $text';
         _logCtrl.add(line);
-        if (level == 'error' || level == 'fatal') _errorCtrl.add(line);
+        if (level == 'error' || level == 'fatal') {
+          _errorCtrl.add(line);
+        }
       case MpvEventError(:final message):
         _errorCtrl.add(message);
     }
@@ -380,7 +394,9 @@ abstract class _PlayerBase {
     return using((arena) {
       final n = name.toNativeUtf8(allocator: arena);
       final ptr = _lib.mpvGetPropertyString(_handle, n);
-      if (ptr == nullptr) return null;
+      if (ptr == nullptr) {
+        return null;
+      }
       final s = ptr.cast<Utf8>().toDartString();
       _lib.mpvFree(ptr.cast());
       return s;
@@ -393,7 +409,9 @@ abstract class _PlayerBase {
   }
 
   void _checkNotDisposed() {
-    if (_disposed) throw StateError('Player has been disposed');
+    if (_disposed) {
+      throw StateError('Player has been disposed');
+    }
   }
 
   // --- Internal State Pipeline ---
@@ -424,7 +442,9 @@ abstract class _PlayerBase {
   void _updateMetadata(String value) {
     try {
       final String cleanValue = value.trim();
-      if (cleanValue.isEmpty) return;
+      if (cleanValue.isEmpty) {
+        return;
+      }
       final Map<String, dynamic> raw = json.decode(cleanValue);
       final metadata = raw.map((k, v) => MapEntry(k, v.toString()));
       _patchState((s) => s.copyWith(metadata: metadata));
@@ -541,7 +561,9 @@ abstract class _PlayerBase {
 
   void _extractEmbeddedCover() {
     final vid = _getPropString('vid');
-    if (vid == null || vid == 'no' || vid == '0') return;
+    if (vid == null || vid == 'no' || vid == '0') {
+      return;
+    }
 
     final result = calloc<MpvNode>();
     final args = ['screenshot-raw', 'video'];
@@ -613,14 +635,18 @@ abstract class _PlayerBase {
         }
       }
 
-      if (opId != _currentCoverOpId) return;
+      if (opId != _currentCoverOpId) {
+        return;
+      }
 
       // Ensure Alpha is opaque (BGR0 -> BGRA)
       for (int i = 3; i < workingBuffer.length; i += 4) {
         workingBuffer[i] = 255;
       }
 
-      if (opId != _currentCoverOpId) return;
+      if (opId != _currentCoverOpId) {
+        return;
+      }
 
       final buffer = await ui.ImmutableBuffer.fromUint8List(workingBuffer);
       final descriptor = ui.ImageDescriptor.raw(
@@ -632,7 +658,9 @@ abstract class _PlayerBase {
 
       // 2. Resize to max 800px
       double ratio = 800 / (w > h ? w : h);
-      if (ratio > 1.0) ratio = 1.0;
+      if (ratio > 1.0) {
+        ratio = 1.0;
+      }
 
       final codec = await descriptor.instantiateCodec(
         targetWidth: (w * ratio).round(),
@@ -642,7 +670,9 @@ abstract class _PlayerBase {
       final frame = await codec.getNextFrame();
       final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
 
-      if (opId != _currentCoverOpId) return;
+      if (opId != _currentCoverOpId) {
+        return;
+      }
 
       if (data != null) {
         _updateMediaCover(bytes: data.buffer.asUint8List());
@@ -655,7 +685,9 @@ abstract class _PlayerBase {
   }
 
   Future<void> dispose() async {
-    if (_disposed) return;
+    if (_disposed) {
+      return;
+    }
     _disposed = true;
 
     NativeReferenceHolder.instance.remove(_handle);

@@ -37,19 +37,29 @@ class SettingsService {
   Future<void> restore(Player player) async {
     // Volume & Basic Controls
     final volume = _prefs.getDouble('${_keyPrefix}volume');
-    if (volume != null) await player.setVolume(volume);
+    if (volume != null) {
+      await player.setVolume(volume);
+    }
 
     final volumeMax = _prefs.getDouble('${_keyPrefix}volume-max');
-    if (volumeMax != null) await player.setVolumeMax(volumeMax);
+    if (volumeMax != null) {
+      await player.setVolumeMax(volumeMax);
+    }
 
     final rate = _prefs.getDouble('${_keyPrefix}rate');
-    if (rate != null) await player.setRate(rate);
+    if (rate != null) {
+      await player.setRate(rate);
+    }
 
     final pitch = _prefs.getDouble('${_keyPrefix}pitch');
-    if (pitch != null) await player.setPitch(pitch);
+    if (pitch != null) {
+      await player.setPitch(pitch);
+    }
 
     final mute = _prefs.getBool('${_keyPrefix}mute');
-    if (mute != null) await player.setMute(mute);
+    if (mute != null) {
+      await player.setMute(mute);
+    }
 
     // Playlist / Playback Mode
     final mode = _prefs.getString('${_keyPrefix}playlist_mode');
@@ -62,43 +72,63 @@ class SettingsService {
     }
 
     final shuffle = _prefs.getBool('${_keyPrefix}shuffle');
-    if (shuffle != null) await player.setShuffle(shuffle);
+    if (shuffle != null) {
+      await player.setShuffle(shuffle);
+    }
 
     // Audio Engine / DSP
-    final EQGains = _prefs.getString('${_keyPrefix}equalizer_gains');
-    if (EQGains != null) {
-      final List<dynamic> decoded = jsonDecode(EQGains);
+    final eqGains = _prefs.getString('${_keyPrefix}equalizer_gains');
+    if (eqGains != null) {
+      final List<dynamic> decoded = jsonDecode(eqGains);
       final gains = decoded.map((e) => (e as num).toDouble()).toList();
       player.setEqualizerGains(gains);
     }
 
     final gapless = _prefs.getString('${_keyPrefix}gapless-audio');
-    if (gapless != null) await player.setGaplessPlayback(gapless);
+    if (gapless != null) {
+      await player.setGaplessPlayback(gapless);
+    }
 
     final replaygain = _prefs.getString('${_keyPrefix}replaygain');
-    if (replaygain != null) await player.setReplayGain(replaygain);
+    if (replaygain != null) {
+      await player.setReplayGain(replaygain);
+    }
 
     final replaygainPreamp = _prefs.getDouble('${_keyPrefix}replaygain-preamp');
-    if (replaygainPreamp != null) await player.setReplayGainPreamp(replaygainPreamp);
+    if (replaygainPreamp != null) {
+      await player.setReplayGainPreamp(replaygainPreamp);
+    }
 
     final replaygainFallback = _prefs.getDouble('${_keyPrefix}replaygain-fallback');
-    if (replaygainFallback != null) await player.setReplayGainFallback(replaygainFallback);
+    if (replaygainFallback != null) {
+      await player.setReplayGainFallback(replaygainFallback);
+    }
 
     final replaygainClip = _prefs.getBool('${_keyPrefix}replaygain-clip');
-    if (replaygainClip != null) await player.setReplayGainClip(replaygainClip);
+    if (replaygainClip != null) {
+      await player.setReplayGainClip(replaygainClip);
+    }
 
     final volumeGain = _prefs.getDouble('${_keyPrefix}volume-gain');
-    if (volumeGain != null) await player.setVolumeGain(volumeGain);
+    if (volumeGain != null) {
+      await player.setVolumeGain(volumeGain);
+    }
 
     final pitchCorrection = _prefs.getBool('${_keyPrefix}pitch-correction');
-    if (pitchCorrection != null) await player.setPitchCorrection(pitchCorrection);
+    if (pitchCorrection != null) {
+      await player.setPitchCorrection(pitchCorrection);
+    }
 
     final audioDelay = _prefs.getDouble('${_keyPrefix}audio-delay');
-    if (audioDelay != null) await player.setAudioDelay(audioDelay);
+    if (audioDelay != null) {
+      await player.setAudioDelay(audioDelay);
+    }
 
     // Routing & Hardware
     final sampleRate = _prefs.getInt('${_keyPrefix}audio-samplerate');
-    if (sampleRate != null) await player.setAudioSampleRate(sampleRate);
+    if (sampleRate != null) {
+      await player.setAudioSampleRate(sampleRate);
+    }
 
     final format = _prefs.getString('${_keyPrefix}audio-format');
     if (format != null && format != 'no' && format != 'auto') {
@@ -111,7 +141,9 @@ class SettingsService {
     }
 
     final clientName = _prefs.getString('${_keyPrefix}audio-client-name');
-    if (clientName != null) await player.setAudioClientName(clientName);
+    if (clientName != null) {
+      await player.setAudioClientName(clientName);
+    }
 
     final deviceName = _prefs.getString('${_keyPrefix}audio-device');
     if (deviceName != null) {
@@ -119,17 +151,25 @@ class SettingsService {
     }
 
     final spdif = _prefs.getString('${_keyPrefix}audio-spdif');
-    if (spdif != null) await player.setAudioSpdif(spdif);
+    if (spdif != null) {
+      await player.setAudioSpdif(spdif);
+    }
 
     final exclusive = _prefs.getBool('${_keyPrefix}audio-exclusive');
-    if (exclusive != null) await player.setAudioExclusive(exclusive);
+    if (exclusive != null) {
+      await player.setAudioExclusive(exclusive);
+    }
 
     final audioBuffer = _prefs.getDouble('${_keyPrefix}audio-buffer');
-    if (audioBuffer != null) await player.setAudioBuffer(audioBuffer);
+    if (audioBuffer != null) {
+      await player.setAudioBuffer(audioBuffer);
+    }
 
     // Cache & Demuxer
     final cacheMode = _prefs.getString('${_keyPrefix}cache');
-    if (cacheMode != null) await player.setCache(cacheMode);
+    if (cacheMode != null) {
+      await player.setCache(cacheMode);
+    }
 
     final cacheSecs = _prefs.getDouble('${_keyPrefix}cache-secs');
     if (cacheSecs != null && cacheSecs < 1000000) {
@@ -137,35 +177,55 @@ class SettingsService {
     }
 
     final cacheOnDisk = _prefs.getBool('${_keyPrefix}cache-on-disk');
-    if (cacheOnDisk != null) await player.setCacheOnDisk(cacheOnDisk);
+    if (cacheOnDisk != null) {
+      await player.setCacheOnDisk(cacheOnDisk);
+    }
 
     final cachePause = _prefs.getBool('${_keyPrefix}cache-pause');
-    if (cachePause != null) await player.setCachePause(cachePause);
+    if (cachePause != null) {
+      await player.setCachePause(cachePause);
+    }
 
     final cachePauseWait = _prefs.getDouble('${_keyPrefix}cache-pause-wait');
-    if (cachePauseWait != null) await player.setCachePauseWait(cachePauseWait);
+    if (cachePauseWait != null) {
+      await player.setCachePauseWait(cachePauseWait);
+    }
 
     final demuxMaxBytes = _prefs.getInt('${_keyPrefix}demuxer-max-bytes');
-    if (demuxMaxBytes != null) await player.setDemuxerMaxBytes(demuxMaxBytes);
+    if (demuxMaxBytes != null) {
+      await player.setDemuxerMaxBytes(demuxMaxBytes);
+    }
 
     final demuxReadahead = _prefs.getInt('${_keyPrefix}demuxer-readahead-secs');
-    if (demuxReadahead != null) await player.setDemuxerReadaheadSecs(demuxReadahead);
+    if (demuxReadahead != null) {
+      await player.setDemuxerReadaheadSecs(demuxReadahead);
+    }
 
     final demuxMaxBack = _prefs.getInt('${_keyPrefix}demuxer-max-back-bytes');
-    if (demuxMaxBack != null) await player.setDemuxerMaxBackBytes(demuxMaxBack);
+    if (demuxMaxBack != null) {
+      await player.setDemuxerMaxBackBytes(demuxMaxBack);
+    }
 
     // Network
     final networkTimeout = _prefs.getDouble('${_keyPrefix}network-timeout');
-    if (networkTimeout != null) await player.setNetworkTimeout(networkTimeout);
+    if (networkTimeout != null) {
+      await player.setNetworkTimeout(networkTimeout);
+    }
 
     final tlsVerify = _prefs.getBool('${_keyPrefix}tls-verify');
-    if (tlsVerify != null) await player.setTlsVerify(tlsVerify);
+    if (tlsVerify != null) {
+      await player.setTlsVerify(tlsVerify);
+    }
 
     final streamSilence = _prefs.getBool('${_keyPrefix}stream-silence');
-    if (streamSilence != null) await player.setStreamSilence(streamSilence);
+    if (streamSilence != null) {
+      await player.setStreamSilence(streamSilence);
+    }
 
     final aoNullUntimed = _prefs.getBool('${_keyPrefix}ao-null-untimed');
-    if (aoNullUntimed != null) await player.setAoNullUntimed(aoNullUntimed);
+    if (aoNullUntimed != null) {
+      await player.setAoNullUntimed(aoNullUntimed);
+    }
 
     final audioTrack = _prefs.getString('${_keyPrefix}aid');
     if (audioTrack != null && audioTrack != '' && audioTrack != 'no') {

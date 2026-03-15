@@ -440,7 +440,9 @@ class _SeekerState extends State<_Seeker> {
                         builder: (context, snap) {
                           final bufferSecs =
                               (snap.data?.inMilliseconds ?? 0) / 1000.0;
-                          if (bufferSecs <= 0) return const SizedBox.shrink();
+                          if (bufferSecs <= 0) {
+                            return const SizedBox.shrink();
+                          }
                           return Text(
                             'Buffer: ${bufferSecs.toStringAsFixed(1)}s',
                             style: TextStyle(

@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.author           = { 'mpv_audio_kit' => 'dev@example.com' }
 
   s.source           = { :path => '.' }
-  s.source_files     = 'Classes/**/*'
+  s.source_files     = 'mpv_audio_kit/Sources/mpv_audio_kit/**/*'
 
   s.dependency 'FlutterMacOS'
 

@@ -12,6 +12,7 @@ class AudioDevice {
   /// Human-readable description shown in system mixer / device pickers.
   final String description;
 
+  /// Creates an [AudioDevice] with the specified [name] and [description].
   const AudioDevice(this.name, this.description);
 
   /// The default automatic device selection.

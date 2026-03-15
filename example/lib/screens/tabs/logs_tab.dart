@@ -46,7 +46,9 @@ class _LogsTabState extends State<LogsTab> {
   }
 
   List<String> get _filteredLogs {
-    if (_selectedFilter == LogFilter.all) return widget.logs;
+    if (_selectedFilter == LogFilter.all) {
+      return widget.logs;
+    }
     return widget.logs.where((log) {
       switch (_selectedFilter) {
         case LogFilter.manual:
@@ -121,7 +123,9 @@ class _LogsTabState extends State<LogsTab> {
   }
 
   void _scrollToBottom() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(

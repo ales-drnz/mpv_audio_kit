@@ -25,6 +25,7 @@ class AudioParams {
   /// Descriptive codec name (e.g. `"FLAC (Free Lossless Audio Codec)"`).
   final String? codecName;
 
+  /// Creates an [AudioParams] instance with the specified audio settings.
   const AudioParams({
     this.format,
     this.sampleRate,

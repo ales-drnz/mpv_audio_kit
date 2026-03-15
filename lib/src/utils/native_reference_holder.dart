@@ -39,8 +39,12 @@ class NativeReferenceHolder {
   /// Called at the very beginning of the app (e.g. `MpvAudioKit.ensureInitialized()`)
   void ensureInitialized(
       void Function(List<Pointer<MpvHandle>>) onOrphanFound) {
-    if (!_isDebug) return;
-    if (_initialized) return;
+    if (!_isDebug) {
+      return;
+    }
+    if (_initialized) {
+      return;
+    }
     _initialized = true;
 
     try {
@@ -81,9 +85,13 @@ class NativeReferenceHolder {
   }
 
   void add(Pointer<MpvHandle> handle) {
-    if (!_isDebug || !_initialized) return;
+    if (!_isDebug || !_initialized) {
+      return;
+    }
     _completer.future.then((_) {
-      if (handle == nullptr) return;
+      if (handle == nullptr) {
+        return;
+      }
       for (int i = 0; i < _kBufferSize; i++) {
         final ref = _buffer + i;
         if (ref.value == 0) {
@@ -95,9 +103,13 @@ class NativeReferenceHolder {
   }
 
   void remove(Pointer<MpvHandle> handle) {
-    if (!_isDebug || !_initialized) return;
+    if (!_isDebug || !_initialized) {
+      return;
+    }
     _completer.future.then((_) {
-      if (handle == nullptr) return;
+      if (handle == nullptr) {
+        return;
+      }
       for (int i = 0; i < _kBufferSize; i++) {
         final ref = _buffer + i;
         if (ref.value == handle.address) {

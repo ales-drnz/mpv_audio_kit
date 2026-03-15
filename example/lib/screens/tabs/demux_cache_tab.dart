@@ -23,7 +23,9 @@ class _DemuxCacheTabState extends State<DemuxCacheTab> {
           builder: (context, snap) {
             final val = snap.data ?? 'auto';
             final options = ['auto', 'yes', 'no'];
-            if (!options.contains(val)) options.add(val);
+            if (!options.contains(val)) {
+              options.add(val);
+            }
 
             return DropdownPropertyCard<String>(
               title: 'Cache Mode',

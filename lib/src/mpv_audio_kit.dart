@@ -7,7 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 
-abstract class MpvAudioKit {
+/// Main class for global `mpv_audio_kit` configuration and initialization.
+abstract final class MpvAudioKit {
+  MpvAudioKit._();
+
   static bool _initialized = false;
   static String? _libraryPath;
 
@@ -20,10 +23,14 @@ abstract class MpvAudioKit {
   /// Handles cleanup of orphaned `libmpv` native resources
   /// (e.g., handles that leaked across a Flutter Hot-Restart).
   static void ensureInitialized({String? libmpv}) {
-    if (_initialized) return;
+    if (_initialized) {
+      return;
+    }
 
     NativeReferenceHolder.instance.ensureInitialized((references) {
-      if (references.isEmpty) return;
+      if (references.isEmpty) {
+        return;
+      }
 
       const tag = 'mpv_audio_kit: NativeReferenceHolder:';
       debugPrint('$tag Found ${references.length} orphaned reference(s).');

@@ -73,7 +73,9 @@ class _RoutingTabState extends State<RoutingTab> {
           builder: (context, snap) {
             final val = snap.data ?? '';
             final options = ['', 'ac3', 'dts', 'ac3,dts'];
-            if (!options.contains(val)) options.add(val);
+            if (!options.contains(val)) {
+              options.add(val);
+            }
 
             return DropdownPropertyCard<String>(
               title: 'S/PDIF (Passthrough)',
@@ -101,7 +103,9 @@ class _RoutingTabState extends State<RoutingTab> {
           builder: (context, snap) {
             final val = snap.data ?? 'auto';
             final options = ['auto', '1', '2', '3', '4'];
-            if (!options.contains(val)) options.add(val);
+            if (!options.contains(val)) {
+              options.add(val);
+            }
 
             return DropdownPropertyCard<String>(
               title: 'Audio Track',
@@ -141,7 +145,9 @@ class _RoutingTabState extends State<RoutingTab> {
           builder: (context, snap) {
                 final val = snap.data ?? 130.0;
                 final options = [100.0, 130.0, 150.0, 200.0, 300.0, 500.0, 1000.0];
-                if (!options.contains(val)) options.add(val);
+                if (!options.contains(val)) {
+                  options.add(val);
+                }
                 options.sort();
 
                 return DropdownPropertyCard<double>(
@@ -168,7 +174,9 @@ class _RoutingTabState extends State<RoutingTab> {
           builder: (context, snap) {
                 final val = snap.data ?? 0;
                 final options = [0, 44100, 48000, 88200, 96000, 192000, 384000];
-                if (!options.contains(val)) options.add(val);
+                if (!options.contains(val)) {
+                  options.add(val);
+                }
                 options.sort();
 
                 return DropdownPropertyCard<int>(
@@ -194,7 +202,9 @@ class _RoutingTabState extends State<RoutingTab> {
           builder: (context, snap) {
                 final val = snap.data ?? 'auto';
                 final options = ['auto', 'u8', 's16', 's32', 'float', 'double'];
-                if (!options.contains(val)) options.add(val);
+                if (!options.contains(val)) {
+                  options.add(val);
+                }
 
                 return DropdownPropertyCard<String>(
                   title: 'Output Format',
@@ -222,7 +232,9 @@ class _RoutingTabState extends State<RoutingTab> {
                   '7.1',
                   'auto-safe',
                 ];
-                if (!options.contains(val)) options.add(val);
+                if (!options.contains(val)) {
+                  options.add(val);
+                }
 
                 return DropdownPropertyCard<String>(
                   title: 'Audio Channels',
@@ -242,7 +254,9 @@ class _RoutingTabState extends State<RoutingTab> {
           builder: (context, snap) {
                 final val = snap.data ?? 'mpv_audio_kit';
                 final options = ['mpv', 'mpv_audio_kit', 'custom_app_audio'];
-                if (!options.contains(val)) options.add(val);
+                if (!options.contains(val)) {
+                  options.add(val);
+                }
 
                 return DropdownPropertyCard<String>(
                   title: 'Client Name',

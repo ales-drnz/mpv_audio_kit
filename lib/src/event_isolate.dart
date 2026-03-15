@@ -105,11 +105,15 @@ void _runEventLoop(
     final event = lib.mpvWaitEvent(handle, 0.5);
     final id = event.ref.eventId;
 
-    if (id == mpv.MpvEventId.mpvEventNone) continue;
+    if (id == mpv.MpvEventId.mpvEventNone) {
+      continue;
+    }
 
     _dispatchEvent(lib, handle, toMain, event);
 
-    if (id == mpv.MpvEventId.mpvEventShutdown) break;
+    if (id == mpv.MpvEventId.mpvEventShutdown) {
+      break;
+    }
   }
 }
 
@@ -167,11 +171,15 @@ void _dispatchProperty(
       final now = DateTime.now().millisecondsSinceEpoch;
       final last = _lastTimestamps[name] ?? 0;
       // Throttle time-pos to roughly 30fps (33ms) to avoid over-saturating the message bus
-      if (now - last < 33) return;
+      if (now - last < 33) {
+        return;
+      }
       _lastTimestamps[name] = now;
     }
 
-    if (_lastValues[name] == v) return;
+    if (_lastValues[name] == v) {
+      return;
+    }
     _lastValues[name] = v;
 
     toMain.send(MpvEventPropertyDouble(name, v));
@@ -180,7 +188,9 @@ void _dispatchProperty(
 
   if (prop.format == mpv.MpvFormat.mpvFormatFlag && prop.data != nullptr) {
     final v = prop.data.cast<Int32>().value;
-    if (_lastValues[name] == v) return;
+    if (_lastValues[name] == v) {
+      return;
+    }
     _lastValues[name] = v;
     toMain.send(MpvEventPropertyInt(name, v));
     return;
@@ -188,7 +198,9 @@ void _dispatchProperty(
 
   if (prop.format == mpv.MpvFormat.mpvFormatString && prop.data != nullptr) {
     final s = prop.data.cast<Pointer<Utf8>>().value.cast<Utf8>().toDartString();
-    if (_lastValues[name] == s) return;
+    if (_lastValues[name] == s) {
+      return;
+    }
     _lastValues[name] = s;
     toMain.send(MpvEventPropertyString(name, s));
   }
@@ -223,7 +235,9 @@ class MpvEventIsolate {
     // The isolate immediately sends back its own receive port.
     final completer = Completer<SendPort>();
     final sub = initPort.listen((msg) {
-      if (msg is SendPort && !completer.isCompleted) completer.complete(msg);
+      if (msg is SendPort && !completer.isCompleted) {
+        completer.complete(msg);
+      }
     });
     _toIsolate = await completer.future;
     await sub.cancel();
@@ -232,7 +246,9 @@ class MpvEventIsolate {
     // Open the main ReceivePort, tell the isolate to start.
     final fromIsolate = ReceivePort();
     fromIsolate.listen((msg) {
-      if (msg is MpvIsolateEvent) _events.add(msg);
+      if (msg is MpvIsolateEvent) {
+        _events.add(msg);
+      }
     });
 
     _toIsolate!.send(_InitMessage(handle.address, fromIsolate.sendPort));
