@@ -62,6 +62,7 @@ Pod::Spec.new do |s|
       fi
 
       unzip -o "$ZIP_FILE" -d Frameworks/
+      rm -f "$ZIP_FILE"
     fi
   CMD
 

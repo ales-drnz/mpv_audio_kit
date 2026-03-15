@@ -65,7 +65,7 @@ android {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
 
-        // Link CMakeLists per il wrapper JNI/NDK
+        // Link CMakeLists for the JNI/NDK wrapper
         externalNativeBuild {
             cmake {
                 cppFlags("")
