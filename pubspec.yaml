@@ -1,12 +1,11 @@
 name: mpv_audio_kit
 description: "Flutter audio player built on top of libmpv. Supports audio filters, pitch control, equalizer, and all mpv audio features. Targets macOS, Windows, Linux, iOS and Android."
-version: 0.0.1+2
+version: 0.0.1+3
 homepage: https://github.com/ales-drnz/mpv_audio_kit
 repository: https://github.com/ales-drnz/mpv_audio_kit
 issue_tracker: https://github.com/ales-drnz/mpv_audio_kit/issues
 funding:
   - https://www.patreon.com/ales_drnz
-
 
 topics:
   - audio

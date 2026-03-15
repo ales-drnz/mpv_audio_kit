@@ -1,8 +1,10 @@
+## [0.0.1+3] - 15-03-2026
+
+- Minor fixes
+
 ## [0.0.1+2] - 15-03-2026
 
-### Fixed
-- **Funding**: Updated Patreon URL in `pubspec.yaml` to ensure it is reachable.
-- **Documentation**: Added missing API documentation for critical symbols.
+- Minor fixes
 
 ## [0.0.1+1] - 15-03-2026
 
