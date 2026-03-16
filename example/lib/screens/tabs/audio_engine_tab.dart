@@ -14,7 +14,7 @@ class AudioEngineTab extends StatefulWidget {
 
 class _AudioEngineTabState extends State<AudioEngineTab> {
   // Clipping Monitor
-  StreamSubscription<String>? _logSub;
+  StreamSubscription<MpvLogEntry>? _logSub;
   bool _clippingDetected = false;
   Timer? _clippingTimer;
 
@@ -22,7 +22,7 @@ class _AudioEngineTabState extends State<AudioEngineTab> {
   void initState() {
     super.initState();
     _logSub = widget.player.stream.log.listen((line) {
-      if (line.contains('clipping')) {
+      if (line.text.contains('clipping')) {
         if (mounted) {
           setState(() => _clippingDetected = true);
           _clippingTimer?.cancel();

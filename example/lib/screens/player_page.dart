@@ -101,7 +101,7 @@ class _PlayerPageState extends State<PlayerPage> {
       _player.stream.log.listen((line) {
         if (mounted) {
           setState(() {
-            _logs.add(line);
+            _logs.add(line.toString());
             if (_logs.length > 500) {
               _logs.removeAt(0);
             }

@@ -1,3 +1,8 @@
+## [0.0.1+8] - 16-03-2026
+
+- Removed audiounit driver from libmpv to fix native iOS widget for audio control when using audio_service library.
+- Fixed filepicker error in example app.
+
 ## [0.0.1+7] - 16-03-2026
 
 - Fixed macOS libs build
