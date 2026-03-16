@@ -8,12 +8,8 @@ issue_tracker: https://github.com/ales-drnz/mpv_audio_kit/issues
 topics:
   - cross-platform
   - audio-player
-  - audio
-  - player
-  - music
   - libmpv
   - ffmpeg
-  - mpv
   - dsp
 
 platforms:
