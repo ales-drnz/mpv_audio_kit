@@ -200,6 +200,7 @@ abstract class _PlayerBase {
   final _audioFormatCtrl = StreamController<String>.broadcast();
   final _audioChannelsCtrl = StreamController<String>.broadcast();
   final _audioClientNameCtrl = StreamController<String>.broadcast();
+  final _audioDriverCtrl = StreamController<String>.broadcast();
   final _activeFiltersCtrl = StreamController<List<AudioFilter>>.broadcast();
   final _equalizerGainsCtrl = StreamController<List<double>>.broadcast();
   final _errorCtrl = StreamController<String>.broadcast();
@@ -274,6 +275,7 @@ abstract class _PlayerBase {
       audioFormat: _audioFormatCtrl.stream,
       audioChannels: _audioChannelsCtrl.stream,
       audioClientName: _audioClientNameCtrl.stream,
+      audioDriver: _audioDriverCtrl.stream,
       activeFilters: _activeFiltersCtrl.stream,
       equalizerGains: _equalizerGainsCtrl.stream,
       error: _errorCtrl.stream,
@@ -767,6 +769,7 @@ abstract class _PlayerBase {
       _audioFormatCtrl,
       _audioChannelsCtrl,
       _audioClientNameCtrl,
+      _audioDriverCtrl,
       _activeFiltersCtrl,
       _equalizerGainsCtrl,
       _errorCtrl,

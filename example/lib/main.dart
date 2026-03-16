@@ -1,13 +1,17 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'screens/player_page.dart';
+import 'services/audio_handler.dart';
 import 'services/settings_service.dart';
 
 late final SettingsService settingsService;
+late final Player player;
+late final MpvAudioHandler audioHandler;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +40,28 @@ void main() async {
 
   MpvAudioKit.ensureInitialized();
   settingsService = await SettingsService.init();
+
+  player = Player(
+    configuration: const PlayerConfiguration(
+      initialVolume: 50.0,
+      autoPlay: true,
+      logLevel: 'debug',
+    ),
+  );
+
+  audioHandler = await AudioService.init(
+    builder: () => MpvAudioHandler(player),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.example.mpvaudiokit.channel.audio',
+      androidNotificationChannelName: 'Audio playback',
+      androidNotificationOngoing: true,
+      androidShowNotificationBadge: false,
+      androidStopForegroundOnPause: true,
+      notificationColor: Color(0xFF6366f1),
+    ),
+  );
+
+  await settingsService.restore(player);
 
   runApp(const MyApp());
 }

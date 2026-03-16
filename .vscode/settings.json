@@ -1,3 +1,4 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "cmake.sourceDirectory": "/Users/ales.drnz/github_projects/mpv_audio_kit/docs/media-kit-main/media_kit_video/linux"
 }

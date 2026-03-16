@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../widgets/shared/property_cards.dart';
@@ -42,12 +43,19 @@ class _SystemInfraTabState extends State<SystemInfraTab> {
           initialData: widget.player.state.audioExclusive,
           builder: (context, snap) {
             final val = snap.data ?? false;
-            return TogglePropertyCard(
-              title: 'Exclusive Mode',
-              subtitle: 'audio-exclusive=${val ? 'yes' : 'no'}',
-              icon: Icons.priority_high_rounded,
-              value: val,
-              onChanged: widget.player.setAudioExclusive,
+            final desktopOnly = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+            return IgnorePointer(
+              ignoring: !desktopOnly,
+              child: Opacity(
+                opacity: desktopOnly ? 1.0 : 0.4,
+                child: TogglePropertyCard(
+                  title: 'Exclusive Mode',
+                  subtitle: 'audio-exclusive=${val ? 'yes' : 'no'}',
+                  icon: Icons.priority_high_rounded,
+                  value: val,
+                  onChanged: widget.player.setAudioExclusive,
+                ),
+              ),
             );
           },
         ),

@@ -183,4 +183,11 @@ mixin _AudioModule on _PlayerBase {
     _prop('audio-client-name', name);
     _updateState((s) => s.copyWith(audioClientName: name), _audioClientNameCtrl, name);
   }
+
+  /// Sets the audio output driver (e.g. 'auto', 'coreaudio', 'pulse', 'alsa', 'wasapi').
+  Future<void> setAudioDriver(String driver) async {
+    _checkNotDisposed();
+    _prop('ao', driver);
+    _updateState((s) => s.copyWith(audioDriver: driver), _audioDriverCtrl, driver);
+  }
 }

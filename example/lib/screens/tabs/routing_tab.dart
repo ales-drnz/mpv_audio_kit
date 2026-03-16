@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../widgets/shared/property_cards.dart';
@@ -11,6 +12,40 @@ class RoutingTab extends StatefulWidget {
 }
 
 class _RoutingTabState extends State<RoutingTab> {
+  List<String> _availableDrivers = ['auto'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableDrivers();
+  }
+
+  Future<void> _loadAvailableDrivers() async {
+    final collected = <String>[];
+    bool collecting = false;
+
+    final sub = widget.player.stream.log.listen((entry) {
+      final text = entry.text.trim();
+      if (text.contains('Available audio outputs')) {
+        collecting = true;
+        return;
+      }
+      if (collecting && text.isNotEmpty) {
+        // Lines like: "  coreaudio       CoreAudio audio output"
+        final driverName = text.split(RegExp(r'\s+')).first;
+        if (driverName.isNotEmpty) collected.add(driverName);
+      }
+    });
+
+    widget.player.setRawProperty('ao', 'help');
+    await Future.delayed(const Duration(milliseconds: 300));
+    await sub.cancel();
+
+    if (collected.isNotEmpty && mounted) {
+      setState(() => _availableDrivers = ['auto', ...collected]);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -64,6 +99,26 @@ class _RoutingTabState extends State<RoutingTab> {
                   },
                 );
               },
+            );
+          },
+        ),
+        StreamBuilder<String>(
+          stream: widget.player.stream.audioDriver,
+          initialData: widget.player.state.audioDriver,
+          builder: (context, snap) {
+            final val = snap.data ?? 'auto';
+            final options = List<String>.from(_availableDrivers);
+            if (!options.contains(val)) options.add(val);
+
+            return DropdownPropertyCard<String>(
+              title: 'Audio Driver',
+              subtitle: 'ao=$val',
+              icon: Icons.tune_rounded,
+              value: val,
+              items: options
+                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                  .toList(),
+              onChanged: (v) => v != null ? widget.player.setAudioDriver(v) : null,
             );
           },
         ),

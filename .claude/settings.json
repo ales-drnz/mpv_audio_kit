@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nm /Users/ales.drnz/github_projects/mpv_audio_kit/docs/libmpv-xcframeworks_v0.6.3_ios-universal-audio-default/Mpv.xcframework/ios-arm64/Mpv.framework/Mpv)",
+      "Bash(grep -E \"^avfoundation$|^coreaudio$|^audiounit$|^null$|^openal$|^pulse$|Audio output driver\")",
+      "Bash(grep -E \"^avfoundation$|^coreaudio$|^audiounit$|^null$|^openal$\")",
+      "Bash(nm /Users/ales.drnz/github_projects/mpv_audio_kit/ios/Frameworks/libmpv.xcframework/ios-arm64/libmpv.framework/libmpv)",
+      "Bash(grep -E \"^avfoundation$|^coreaudio$|^audiounit$|^null$\")",
+      "Read(//Users/ales.drnz/**)",
+      "Bash(find /Users/ales.drnz/github_projects/mpv_audio_kit/docs/media-kit-main -name *.swift -o -name *.m -o -name *.mm)",
+      "Bash(find /Users/ales.drnz/github_projects/mpv_audio_kit -name ao_avfoundation* -o -name ao_audiounit*)",
+      "Bash(nm /Users/ales.drnz/github_projects/mpv_audio_kit/ios/Frameworks/libmpv.xcframework/ios-arm64/libmpv.a)",
+      "Bash(find /Users/ales.drnz/github_projects/mpv_audio_kit/build-ios -name ao_audiounit*)",
+      "Bash(find /Users/ales.drnz -path */mpv-0.41.0/audio/out/ao_audiounit*)",
+      "Bash(find /Users/ales.drnz -path */mpv-0.41.0* -name ao_audiounit*)",
+      "Read(//dev/**)",
+      "Bash(curl -s https://raw.githubusercontent.com/mpv-player/mpv/v0.36.0/audio/out/ao_audiounit.m)",
+      "Bash(curl -s https://raw.githubusercontent.com/mpv-player/mpv/v0.41.0/audio/out/ao_audiounit.m)"
+    ]
+  }
+}

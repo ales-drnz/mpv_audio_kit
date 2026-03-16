@@ -1,3 +1,9 @@
+## [0.0.1+9] - 16-03-2026
+
+- Re-added audiounit driver together with avfoundation in libmpv for iOS. Audio_service now works with both.
+- Added new option to choose AO driver in example app.
+- Added audio_service to example app to test native controls of the OS.
+
 ## [0.0.1+8] - 16-03-2026
 
 - Removed audiounit driver from libmpv to fix native iOS widget for audio control when using audio_service library.

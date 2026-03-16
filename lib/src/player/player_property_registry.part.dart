@@ -178,6 +178,8 @@ mixin _PropertyRegistry on _PlayerBase {
       case 'audio-client-name':
         _updateState((s) => s.copyWith(audioClientName: value),
             _audioClientNameCtrl, value);
+      case 'ao':
+        _updateState((s) => s.copyWith(audioDriver: value), _audioDriverCtrl, value);
       case 'af':
         final filters =
             value.split(',').where((e) => e.isNotEmpty).map((e) => AudioFilter.custom(e)).toList();
@@ -263,6 +265,7 @@ mixin _PropertyRegistry on _PlayerBase {
     _observe('audio-channels', MpvFormat.mpvFormatString, 59);
     _observe('audio-client-name', MpvFormat.mpvFormatString, 60);
     _observe('af', MpvFormat.mpvFormatString, 61);
+    _observe('ao', MpvFormat.mpvFormatString, 62);
   }
 
   // --- Specialized Update Helpers ---

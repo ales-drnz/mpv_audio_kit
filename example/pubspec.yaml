@@ -32,6 +32,7 @@ dependencies:
   file_picker: ^10.3.10
   window_manager: ^0.5.1
   shared_preferences: ^2.5.4
+  audio_service: ^0.18.18
 
 dev_dependencies:
   integration_test:

@@ -167,6 +167,9 @@ class PlayerState {
   /// Audio client name (used by backend drivers like PulseAudio).
   final String audioClientName;
 
+  /// Audio output driver ('auto', 'coreaudio', 'pulse', 'alsa', 'wasapi', etc.).
+  final String audioDriver;
+
   /// Currently active audio filters.
   final List<AudioFilter> activeFilters;
 
@@ -223,6 +226,7 @@ class PlayerState {
     this.audioFormat = 'auto',
     this.audioChannels = 'auto',
     this.audioClientName = 'mpv_audio_kit',
+    this.audioDriver = 'auto',
     this.activeFilters = const [],
     this.equalizerGains = const [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
   });
@@ -277,6 +281,7 @@ class PlayerState {
     String? audioFormat,
     String? audioChannels,
     String? audioClientName,
+    String? audioDriver,
     List<AudioFilter>? activeFilters,
     List<double>? equalizerGains,
   }) {
@@ -330,6 +335,7 @@ class PlayerState {
       audioFormat: audioFormat ?? this.audioFormat,
       audioChannels: audioChannels ?? this.audioChannels,
       audioClientName: audioClientName ?? this.audioClientName,
+      audioDriver: audioDriver ?? this.audioDriver,
       activeFilters: activeFilters ?? this.activeFilters,
       equalizerGains: equalizerGains ?? this.equalizerGains,
     );

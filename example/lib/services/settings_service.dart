@@ -145,6 +145,11 @@ class SettingsService {
       await player.setAudioClientName(clientName);
     }
 
+    final audioDriver = _prefs.getString('${_keyPrefix}ao');
+    if (audioDriver != null) {
+      await player.setAudioDriver(audioDriver);
+    }
+
     final deviceName = _prefs.getString('${_keyPrefix}audio-device');
     if (deviceName != null) {
       await player.setAudioDevice(AudioDevice(deviceName, deviceName));

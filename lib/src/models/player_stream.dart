@@ -163,6 +163,9 @@ class PlayerStream {
   /// Emits the audio client name.
   final Stream<String> audioClientName;
 
+  /// Emits the audio output driver.
+  final Stream<String> audioDriver;
+
   /// Emits the list of currently active audio filters.
   final Stream<List<AudioFilter>> activeFilters;
 
@@ -225,6 +228,7 @@ class PlayerStream {
     required this.audioFormat,
     required this.audioChannels,
     required this.audioClientName,
+    required this.audioDriver,
     required this.activeFilters,
     required this.equalizerGains,
     required this.error,
