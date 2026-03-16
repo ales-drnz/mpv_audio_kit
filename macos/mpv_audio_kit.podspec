@@ -79,7 +79,7 @@ Pod::Spec.new do |s|
         mkdir -p "$DEST"
 
         # Official bundled libmpv.dylib
-        SRC="${PODS_ROOT}/../../../macos/libs/libmpv.dylib"
+        SRC="${PODS_TARGET_SRCROOT}/libs/libmpv.dylib"
 
         if [ ! -f "$SRC" ]; then
           echo "error: libmpv.dylib not found. Download it from GitHub or place it in macos/libs/libmpv.dylib"

@@ -1,3 +1,7 @@
+## [0.0.1+7] - 16-03-2026
+
+- Fixed macOS libs build
+
 ## [0.0.1+6] - 15-03-2026
 
 - Fixed shuffle bug
