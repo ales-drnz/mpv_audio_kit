@@ -80,10 +80,12 @@ The following images demonstrate the example app included in the `example/` dire
 
 **Desktop** — macOS/Windows/Linux with the console panel pinned on the right:
 
-| | |
-| :---: | :---: |
-| **Player with Live Console**<br>Playback UI with cover art, metadata, and progress alongside pinned logs. | **Settings Grid**<br>Navigation for all properties (`--af`, `--cache`, `--network`, etc.) with pinned console. |
-| ![Player + Console](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_player_console.png) | ![Settings Grid + Console](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_settings_grid.png) |
+| |
+| :---: |
+| **Player**<br>Playback UI with cover art, metadata, and progress alongside pinned logs. |
+| ![Player + Console](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_player_console.png) |
+| **Settings**<br>Navigation for all properties (`--af`, `--cache`, `--network`, etc.) with pinned console. |
+| ![Settings Grid + Console](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_settings_grid.png) |
 
 **Mobile** — iPhone and Android portrait:
 
