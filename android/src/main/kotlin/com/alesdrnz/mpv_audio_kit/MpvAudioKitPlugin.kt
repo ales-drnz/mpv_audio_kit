@@ -1,10 +1,9 @@
 /*
- * This file includes implementations derived from media_kit (https://github.com/media-kit/media-kit).
  * Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
  * All rights reserved.
  * Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
  */
-package com.example.mpv_audio_kit
+package com.alesdrnz.mpv_audio_kit
 
 import android.content.Context
 import android.net.Uri
@@ -30,10 +29,7 @@ class MpvAudioKitPlugin :
             System.loadLibrary("mpv")
         }
     }
-    // The MethodChannel that will the communication between Flutter and native Android
-    //
-    // This local reference serves to register the plugin with the Flutter Engine and unregister it
-    // when the Flutter Engine is detached from the Activity
+
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
     private val openFds = mutableMapOf<String, ParcelFileDescriptor>()
@@ -49,9 +45,6 @@ class MpvAudioKitPlugin :
         result: Result
     ) {
         when (call.method) {
-            "getPlatformVersion" -> {
-                result.success("Android ${android.os.Build.VERSION.RELEASE}")
-            }
             "openFileDescriptor" -> {
                 val uriStr = call.argument<String>("uri")
                 if (uriStr != null) {

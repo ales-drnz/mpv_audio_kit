@@ -104,7 +104,6 @@ class PropertyBaseCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Container(
                     constraints: const BoxConstraints(
-                      minWidth: 40,
                       maxWidth: 180,
                     ),
                     child: t,
@@ -158,7 +157,8 @@ class SliderPropertyCard extends StatefulWidget {
   final double min;
   final double max;
   final int divisions;
-  final String label;
+  final double? defaultValue;
+  final String Function(double)? labelBuilder;
   final ValueChanged<double> onChanged;
 
   const SliderPropertyCard({
@@ -171,7 +171,8 @@ class SliderPropertyCard extends StatefulWidget {
     this.min = 0.0,
     this.max = 1.0,
     this.divisions = 100,
-    this.label = '',
+    this.defaultValue,
+    this.labelBuilder,
   });
 
   @override
@@ -182,14 +183,45 @@ class _SliderPropertyCardState extends State<SliderPropertyCard> {
   double? _dragValue;
 
   @override
+  void didUpdateWidget(SliderPropertyCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_dragValue != null && widget.value != oldWidget.value) {
+      _dragValue = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final displayValue = _dragValue ?? widget.value;
+    final displayValue = (_dragValue ?? widget.value).clamp(widget.min, widget.max);
+    final def = widget.defaultValue;
+    final atDefault = def == null || (displayValue - def).abs() < 1e-9;
 
     return PropertyBaseCard(
       title: widget.title,
       subtitle: widget.subtitle,
       icon: widget.icon,
       isActive: true,
+      trailing: (def != null && !atDefault)
+          ? Tooltip(
+              message: 'Reset to default',
+              child: InkWell(
+                onTap: () {
+                  setState(() => _dragValue = def);
+                  widget.onChanged(def);
+                },
+                customBorder: const CircleBorder(),
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: Icon(
+                    Icons.refresh_rounded,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            )
+          : null,
       body: Row(
         children: [
           Expanded(
@@ -200,21 +232,12 @@ class _SliderPropertyCardState extends State<SliderPropertyCard> {
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
               ),
               child: Slider(
-                value: displayValue.clamp(widget.min, widget.max),
+                value: displayValue,
                 min: widget.min,
                 max: widget.max,
                 divisions: widget.divisions,
-                onChanged: (v) {
-                  setState(() => _dragValue = v);
-                },
-                onChangeEnd: (v) async {
-                  widget.onChanged(v);
-                  // Avoid snap-back for a moment
-                  await Future.delayed(const Duration(milliseconds: 500));
-                  if (mounted) {
-                    setState(() => _dragValue = null);
-                  }
-                },
+                onChanged: (v) => setState(() => _dragValue = v),
+                onChangeEnd: (v) => widget.onChanged(v),
               ),
             ),
           ),
@@ -222,9 +245,7 @@ class _SliderPropertyCardState extends State<SliderPropertyCard> {
           SizedBox(
             width: 50,
             child: Text(
-              widget.label.isNotEmpty
-                  ? widget.label
-                  : displayValue.toStringAsFixed(2),
+              widget.labelBuilder?.call(displayValue) ?? displayValue.toStringAsFixed(2),
               textAlign: TextAlign.end,
               style: const TextStyle(
                 fontSize: 13,
@@ -267,30 +288,176 @@ class DropdownPropertyCard<T> extends StatelessWidget {
       subtitle: subtitle,
       icon: icon,
       isActive: true,
-      trailing: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<T>(
-              value: value,
-              items: items,
-              onChanged: onChanged,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              isDense: true,
-              isExpanded: true,
-              alignment: Alignment.centerRight,
-              iconSize: 18,
-              dropdownColor: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: cs.onSurface,
+      trailing: SizedBox(
+        width: 130,
+        child: Container(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                items: items,
+                onChanged: onChanged,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                isDense: true,
+                isExpanded: true,
+                alignment: Alignment.centerRight,
+                iconSize: 18,
+                dropdownColor: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
+                ),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A card for enum properties with ≤3 options using a [SegmentedButton].
+class SegmentedPropertyCard<T> extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final T value;
+  final List<(T, String)> segments;
+  final ValueChanged<T> onChanged;
+
+  const SegmentedPropertyCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.value,
+    required this.segments,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PropertyBaseCard(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      isActive: true,
+      trailing: SegmentedButton<T>(
+        segments: segments
+            .map((s) => ButtonSegment<T>(value: s.$1, label: Text(s.$2)))
+            .toList(),
+        selected: {value},
+        onSelectionChanged: (s) => onChanged(s.first),
+        showSelectedIcon: false,
+        style: ButtonStyle(
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 8),
+          ),
+          minimumSize: const WidgetStatePropertyAll(Size(0, 30)),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          side: WidgetStatePropertyAll(
+            BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A card for string properties using a [TextField].
+class TextPropertyCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final String value;
+  final ValueChanged<String> onSubmitted;
+
+  const TextPropertyCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.value,
+    required this.onSubmitted,
+  });
+
+  @override
+  State<TextPropertyCard> createState() => _TextPropertyCardState();
+}
+
+class _TextPropertyCardState extends State<TextPropertyCard> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(TextPropertyCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus && widget.value != _controller.text) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return PropertyBaseCard(
+      title: widget.title,
+      subtitle: widget.subtitle,
+      icon: widget.icon,
+      isActive: true,
+      trailing: SizedBox(
+        width: 130,
+        child: Container(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            onSubmitted: widget.onSubmitted,
+            onTapOutside: (_) {
+              _focusNode.unfocus();
+              widget.onSubmitted(_controller.text);
+            },
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
             ),
           ),
         ),

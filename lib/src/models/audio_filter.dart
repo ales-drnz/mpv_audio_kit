@@ -34,7 +34,10 @@ class AudioFilter {
   /// 31.25 Hz, 62.5 Hz, 125 Hz, 250 Hz, 500 Hz,
   /// 1 kHz, 2 kHz, 4 kHz, 8 kHz, 16 kHz.
   factory AudioFilter.equalizer(List<double> gains) {
-    assert(gains.length == 10, 'equalizer requires exactly 10 gain values');
+    if (gains.length != 10) {
+      throw ArgumentError.value(
+          gains.length, 'gains', 'equalizer requires exactly 10 gain values');
+    }
     const centers = [
       31.25,
       62.5,

@@ -52,7 +52,7 @@ void main() async {
   audioHandler = await AudioService.init(
     builder: () => MpvAudioHandler(player),
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.example.mpvaudiokit.channel.audio',
+      androidNotificationChannelId: 'com.alesdrnz.mpvaudiokit.channel.audio',
       androidNotificationChannelName: 'Audio playback',
       androidNotificationOngoing: true,
       androidShowNotificationBadge: false,

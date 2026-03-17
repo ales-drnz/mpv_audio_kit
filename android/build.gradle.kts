@@ -2,7 +2,7 @@ import java.io.FileOutputStream
 import java.net.URL
 import java.security.MessageDigest
 
-group = "com.example.mpv_audio_kit"
+group = "com.alesdrnz.mpv_audio_kit"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -31,7 +31,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.mpv_audio_kit"
+    namespace = "com.alesdrnz.mpv_audio_kit"
 
     compileSdk = 36
     ndkVersion = "28.2.13676358"

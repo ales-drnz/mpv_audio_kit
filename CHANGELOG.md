@@ -1,3 +1,12 @@
+## [0.0.2] - 17-03-2026
+
+- New extended documentation.
+- Fixed filepicker on macOS.
+- Restructured settings UI in example app by mpv property each have their own dedicated page and stream lab moved to main navigation.
+- Other audio engine fixes.
+
+---
+
 ## [0.0.1+9] - 16-03-2026
 
 - Re-added audiounit driver together with avfoundation in libmpv for iOS. Audio_service now works with both.

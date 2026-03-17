@@ -17,7 +17,8 @@ import 'mpv_bindings.dart' as mpv;
 class _InitMessage {
   final int handleAddress;
   final SendPort toMain;
-  _InitMessage(this.handleAddress, this.toMain);
+  final String? libraryPath;
+  _InitMessage(this.handleAddress, this.toMain, {this.libraryPath});
 }
 
 /// Tells the event loop isolate to exit cleanly.
@@ -80,13 +81,17 @@ void _isolateEntry(SendPort initialReplyPort) {
   mpv.MpvLibrary? lib;
   bool running = true;
 
+  // Per-isolate deduplication state — not shared across Player instances.
+  final lastValues = <String, dynamic>{};
+  final lastTimestamps = <String, int>{};
+
   fromMain.listen((message) {
     if (message is _InitMessage) {
       toMain = message.toMain;
-      lib = mpv.MpvLibrary.open();
+      lib = mpv.MpvLibrary.open(message.libraryPath);
       handle = Pointer<mpv.MpvHandle>.fromAddress(message.handleAddress);
       // Start the blocking event loop.
-      _runEventLoop(lib!, handle!, toMain!, () => running);
+      _runEventLoop(lib!, handle!, toMain!, () => running, lastValues, lastTimestamps);
     } else if (message is _ShutdownMessage) {
       running = false;
       fromMain.close();
@@ -99,6 +104,8 @@ void _runEventLoop(
   Pointer<mpv.MpvHandle> handle,
   SendPort toMain,
   bool Function() isRunning,
+  Map<String, dynamic> lastValues,
+  Map<String, int> lastTimestamps,
 ) {
   while (isRunning()) {
     // Block up to 500 ms, so we can check isRunning() periodically.
@@ -109,7 +116,7 @@ void _runEventLoop(
       continue;
     }
 
-    _dispatchEvent(lib, handle, toMain, event);
+    _dispatchEvent(lib, handle, toMain, event, lastValues, lastTimestamps);
 
     if (id == mpv.MpvEventId.mpvEventShutdown) {
       break;
@@ -122,6 +129,8 @@ void _dispatchEvent(
   Pointer<mpv.MpvHandle> handle,
   SendPort toMain,
   Pointer<mpv.MpvEvent> event,
+  Map<String, dynamic> lastValues,
+  Map<String, int> lastTimestamps,
 ) {
   final id = event.ref.eventId;
   switch (id) {
@@ -139,8 +148,9 @@ void _dispatchEvent(
       toMain.send(MpvEndFileEvent(ef.reason, ef.error));
 
     case mpv.MpvEventId.mpvEventPropertyChange:
-      _dispatchProperty(
-          lib, toMain, event.ref.data.cast<mpv.MpvEventProperty>().ref);
+      _dispatchProperty(lib, toMain,
+          event.ref.data.cast<mpv.MpvEventProperty>().ref,
+          lastValues, lastTimestamps);
 
     case mpv.MpvEventId.mpvEventLogMessage:
       _dispatchLog(toMain, event.ref.data.cast<mpv.MpvEventLogMessage>().ref);
@@ -152,13 +162,12 @@ void _dispatchEvent(
   }
 }
 
-final Map<String, dynamic> _lastValues = {};
-final Map<String, int> _lastTimestamps = {};
-
 void _dispatchProperty(
   mpv.MpvLibrary lib,
   SendPort toMain,
   mpv.MpvEventProperty prop,
+  Map<String, dynamic> lastValues,
+  Map<String, int> lastTimestamps,
 ) {
   final name = prop.name.cast<Utf8>().toDartString();
 
@@ -169,18 +178,18 @@ void _dispatchProperty(
 
     if (name == 'time-pos') {
       final now = DateTime.now().millisecondsSinceEpoch;
-      final last = _lastTimestamps[name] ?? 0;
+      final last = lastTimestamps[name] ?? 0;
       // Throttle time-pos to roughly 30fps (33ms) to avoid over-saturating the message bus
       if (now - last < 33) {
         return;
       }
-      _lastTimestamps[name] = now;
+      lastTimestamps[name] = now;
     }
 
-    if (_lastValues[name] == v) {
+    if (lastValues[name] == v) {
       return;
     }
-    _lastValues[name] = v;
+    lastValues[name] = v;
 
     toMain.send(MpvEventPropertyDouble(name, v));
     return;
@@ -188,20 +197,20 @@ void _dispatchProperty(
 
   if (prop.format == mpv.MpvFormat.mpvFormatFlag && prop.data != nullptr) {
     final v = prop.data.cast<Int32>().value;
-    if (_lastValues[name] == v) {
+    if (lastValues[name] == v) {
       return;
     }
-    _lastValues[name] = v;
+    lastValues[name] = v;
     toMain.send(MpvEventPropertyInt(name, v));
     return;
   }
 
   if (prop.format == mpv.MpvFormat.mpvFormatString && prop.data != nullptr) {
     final s = prop.data.cast<Pointer<Utf8>>().value.cast<Utf8>().toDartString();
-    if (_lastValues[name] == s) {
+    if (lastValues[name] == s) {
       return;
     }
-    _lastValues[name] = s;
+    lastValues[name] = s;
     toMain.send(MpvEventPropertyString(name, s));
   }
 }
@@ -228,7 +237,7 @@ class MpvEventIsolate {
   Stream<MpvIsolateEvent> get events => _events.stream;
 
   /// Spawns the event loop isolate and wires it to [handle].
-  Future<void> start(Pointer<mpv.MpvHandle> handle) async {
+  Future<void> start(Pointer<mpv.MpvHandle> handle, {String? libraryPath}) async {
     final initPort = ReceivePort();
     _isolate = await Isolate.spawn(_isolateEntry, initPort.sendPort);
 
@@ -251,7 +260,8 @@ class MpvEventIsolate {
       }
     });
 
-    _toIsolate!.send(_InitMessage(handle.address, fromIsolate.sendPort));
+    _toIsolate!.send(_InitMessage(handle.address, fromIsolate.sendPort,
+        libraryPath: libraryPath));
   }
 
   /// Signals the isolate to exit and cleans up resources.

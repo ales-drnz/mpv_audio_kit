@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
-import 'tabs/playback_tab.dart';
-import 'tabs/queue_tab.dart';
-import 'tabs/logs_tab.dart';
+import 'player/playback_tab.dart';
+import 'player/queue_tab.dart';
+import 'player/logs_tab.dart';
 import 'settings_page.dart';
+import 'settings/stream_lab_page.dart';
 import '../main.dart';
 
 class PlayerPage extends StatefulWidget {
@@ -130,14 +131,13 @@ class _PlayerPageState extends State<PlayerPage> {
             final isWide = constraints.maxWidth >= 720;
             final showPinned = _isConsolePinned && isWide;
 
-            final List<Widget> mainPages = [
+            // Pages that respect the 650px constraint
+            // Nav: 0=Player, 1=Queue, 2=Stream, 3=Settings, 4=Logs(optional)
+            final constrainedPages = <Widget>[
               PlaybackTab(player: player),
               QueueTab(player: player),
-              SettingsPage(player: player),
-            ];
-
-            if (!showPinned) {
-              mainPages.add(
+              StreamLabPage(player: player),
+              if (!showPinned)
                 LogsTab(
                   player: player,
                   logs: List.from(_logs),
@@ -145,21 +145,33 @@ class _PlayerPageState extends State<PlayerPage> {
                   onClearLogs: () => setState(() => _logs.clear()),
                   onTogglePin: () => _handleTogglePin(true),
                 ),
-              );
-            }
+            ];
 
-            final safeIndex = _navIndex.clamp(0, mainPages.length - 1);
+            final totalNav = showPinned ? 4 : 5;
+            final safeIndex = _navIndex.clamp(0, totalNav - 1);
+            final isSettings = safeIndex == 3;
+            // Constrained IndexedStack skips the settings slot (index 3)
+            final constrainedIndex = (safeIndex >= 4 ? safeIndex - 1 : safeIndex)
+                .clamp(0, constrainedPages.length - 1);
+
             Widget content = Column(
               children: [
                 Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 650),
-                      child: IndexedStack(
-                        index: safeIndex,
-                        children: mainPages,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Offstage(
+                        offstage: isSettings,
+                        child: IndexedStack(
+                          index: constrainedIndex,
+                          children: constrainedPages,
+                        ),
                       ),
-                    ),
+                      Offstage(
+                        offstage: !isSettings,
+                        child: SettingsPage(player: player),
+                      ),
+                    ],
                   ),
                 ),
                 NavigationBar(
@@ -173,6 +185,10 @@ class _PlayerPageState extends State<PlayerPage> {
                     const NavigationDestination(
                       icon: Icon(Icons.queue_music_rounded),
                       label: 'Queue',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.rss_feed_rounded),
+                      label: 'Stream',
                     ),
                     const NavigationDestination(
                       icon: Icon(Icons.settings_rounded),

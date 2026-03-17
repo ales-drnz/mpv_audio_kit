@@ -43,133 +43,145 @@ class _EQWidgetState extends State<EQWidget> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Responsive band width: fits 10 bands if possible, but keeps a readable minimum
-        final double bandWidth = (constraints.maxWidth / 10).clamp(40.0, 64.0);
+        // Ensure a minimum band width for internal consistency (e.g., slider thumb, labels)
+        // If the resulting width exceeds constraints.maxWidth, FittedBox will scale it down.
+        final double bandWidth = (constraints.maxWidth / 10).clamp(32.0, 64.0);
         const double sliderHeight = 120.0;
         const double topSpace = 24.0;
         const double bottomSpace = 24.0;
-        final double totalWidth = bandWidth * 10;
         final double totalHeight = topSpace + sliderHeight + bottomSpace;
+        final double contentWidth = bandWidth * 10;
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: SizedBox(
-            width: totalWidth,
-            height: totalHeight,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // 1. The Curve - perfectly aligned vertically with the slider area
-                Positioned(
-                  top: topSpace,
-                  height: sliderHeight,
-                  left: 0,
-                  right: 0,
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: EqCurvePainter(
-                        gains: currentGains,
-                        enabled: widget.enabled,
-                        color: Theme.of(context).colorScheme.primary,
-                        bandWidth: bandWidth,
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: totalHeight,
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: contentWidth,
+                height: totalHeight,
+                child: Stack(
+                  children: [
+                    // 1. The Curve - perfectly aligned vertically with the slider area
+                    Positioned(
+                      top: topSpace,
+                      height: sliderHeight,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: EqCurvePainter(
+                            gains: currentGains,
+                            enabled: widget.enabled,
+                            color: Theme.of(context).colorScheme.primary,
+                            bandWidth: bandWidth,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                // 2. The Interactive Column (Value + Slider + Label)
-                Row(
-                  children: List.generate(10, (i) {
-                    final val = currentGains[i];
-                    return SizedBox(
-                      width: bandWidth,
-                      child: Column(
-                        children: [
-                          // Value Text Area
-                          SizedBox(
-                            height: topSpace,
-                            child: Center(
-                              child: Text(
-                                '${val > 0 ? '+' : ''}${val.toStringAsFixed(1)}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: widget.enabled ? null : Colors.grey,
+                    // 2. The Interactive Column (Value + Slider + Label)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(10, (i) {
+                        final val = currentGains[i];
+                        return SizedBox(
+                          width: bandWidth,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Value Text Area
+                              SizedBox(
+                                height: topSpace,
+                                child: Center(
+                                  child: Text(
+                                    '${val > 0 ? '+' : ''}${val.toStringAsFixed(1)}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          widget.enabled ? null : Colors.grey,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          // Slider Area
-                          SizedBox(
-                            height: sliderHeight,
-                            child: RotatedBox(
-                              quarterTurns: 3,
-                              child: SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  trackHeight: 2,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 7,
-                                    elevation: 0,
-                                    pressedElevation: 0,
-                                  ),
-                                  overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 14,
-                                  ),
-                                  // Remove all internal padding from the slider track
-                                  trackShape: const _TightTrackShape(),
-                                  activeTrackColor: widget.enabled
-                                      ? null
-                                      : Colors.grey.withAlpha(128),
-                                  inactiveTrackColor: widget.enabled
-                                      ? null
-                                      : Colors.grey.withAlpha(51),
-                                  thumbColor: widget.enabled
-                                      ? null
-                                      : Colors.grey,
-                                ),
-                                child: Slider(
-                                  min: -15,
-                                  max: 15,
-                                  value: val,
-                                  onChanged: widget.enabled
-                                      ? (v) => setState(() => _dragGains[i] = v)
-                                      : null,
-                                  onChangeEnd: widget.enabled
-                                      ? (v) async {
-                                          widget.onChanged(i, v);
-                                          await Future.delayed(
-                                            const Duration(milliseconds: 500),
-                                          );
-                                          if (mounted) {
-                                            setState(
-                                              () => _dragGains.remove(i),
+                              // Slider Area
+                              SizedBox(
+                                height: sliderHeight,
+                                child: RotatedBox(
+                                  quarterTurns: 3,
+                                  child: SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      trackHeight: 2,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 7,
+                                        elevation: 0,
+                                        pressedElevation: 0,
+                                      ),
+                                      overlayShape:
+                                          const RoundSliderOverlayShape(
+                                            overlayRadius: 14,
+                                          ),
+                                      // Remove all internal padding from the slider track
+                                      trackShape: const _TightTrackShape(),
+                                      activeTrackColor: widget.enabled
+                                          ? null
+                                          : Colors.grey.withAlpha(128),
+                                      inactiveTrackColor: widget.enabled
+                                          ? null
+                                          : Colors.grey.withAlpha(51),
+                                      thumbColor: widget.enabled
+                                          ? null
+                                          : Colors.grey,
+                                    ),
+                                    child: Slider(
+                                      min: -15,
+                                      max: 15,
+                                      value: val,
+                                      onChanged: widget.enabled
+                                          ? (v) =>
+                                              setState(() => _dragGains[i] = v)
+                                          : null,
+                                      onChangeEnd: widget.enabled
+                                          ? (v) async {
+                                            widget.onChanged(i, v);
+                                            await Future.delayed(
+                                              const Duration(milliseconds: 500),
                                             );
+                                            if (mounted) {
+                                              setState(
+                                                () => _dragGains.remove(i),
+                                              );
+                                            }
                                           }
-                                        }
-                                      : null,
+                                          : null,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                          // Label Text Area
-                          SizedBox(
-                            height: bottomSpace,
-                            child: Center(
-                              child: Text(
-                                EQWidget._labels[i],
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: widget.enabled ? null : Colors.grey,
+                              // Label Text Area
+                              SizedBox(
+                                height: bottomSpace,
+                                child: Center(
+                                  child: Text(
+                                    EQWidget._labels[i],
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color:
+                                          widget.enabled ? null : Colors.grey,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }),
+                        );
+                      }),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         );

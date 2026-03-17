@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../../widgets/shared/property_cards.dart';
+import '../../widgets/property_cards.dart';
 
 class QueueTab extends StatefulWidget {
   final Player player;
@@ -64,30 +64,17 @@ class _QueueTabState extends State<QueueTab> {
                     Icons.repeat_rounded,
                   ),
                 };
-                return DropdownPropertyCard<PlaylistMode>(
+                return SegmentedPropertyCard<PlaylistMode>(
                   title: 'Repeat Mode',
                   subtitle: subtitle,
                   icon: icon,
                   value: mode,
-                  items: const [
-                    DropdownMenuItem(
-                      value: PlaylistMode.none,
-                      child: Text('Off'),
-                    ),
-                    DropdownMenuItem(
-                      value: PlaylistMode.single,
-                      child: Text('Single'),
-                    ),
-                    DropdownMenuItem(
-                      value: PlaylistMode.loop,
-                      child: Text('All'),
-                    ),
+                  segments: const [
+                    (PlaylistMode.none, 'Off'),
+                    (PlaylistMode.single, 'Single'),
+                    (PlaylistMode.loop, 'All'),
                   ],
-                  onChanged: (v) {
-                    if (v != null) {
-                      player.setPlaylistMode(v);
-                    }
-                  },
+                  onChanged: player.setPlaylistMode,
                 );
               },
             ),

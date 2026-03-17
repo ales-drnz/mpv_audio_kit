@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../models/stream_category.dart';
-import '../../widgets/shared/property_cards.dart';
+import '../../widgets/property_cards.dart';
 
 const streamCategories = [
   StreamCategory(
@@ -88,10 +88,10 @@ const streamCategories = [
   ),
 ];
 
-class StreamLabTab extends StatelessWidget {
+class StreamLabPage extends StatelessWidget {
   final Player player;
 
-  const StreamLabTab({super.key, required this.player});
+  const StreamLabPage({super.key, required this.player});
 
   @override
   Widget build(BuildContext context) {

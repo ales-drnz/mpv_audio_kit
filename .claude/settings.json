@@ -15,7 +15,13 @@
       "Bash(find /Users/ales.drnz -path */mpv-0.41.0* -name ao_audiounit*)",
       "Read(//dev/**)",
       "Bash(curl -s https://raw.githubusercontent.com/mpv-player/mpv/v0.36.0/audio/out/ao_audiounit.m)",
-      "Bash(curl -s https://raw.githubusercontent.com/mpv-player/mpv/v0.41.0/audio/out/ao_audiounit.m)"
+      "Bash(curl -s https://raw.githubusercontent.com/mpv-player/mpv/v0.41.0/audio/out/ao_audiounit.m)",
+      "Bash(find /Users/ales.drnz/github_projects/mpv_audio_kit/example/ios/Runner -name *.xcconfig)",
+      "Bash(sed -i '' 's/com\\\\.example\\\\.mpvAudioKitExample/com.alesdrnz.mpvAudioKitExample/g' /Users/ales.drnz/github_projects/mpv_audio_kit/example/ios/Runner.xcodeproj/project.pbxproj)",
+      "Bash(sed -i '' 's/com\\\\.example\\\\.mpvAudioKitExample/com.alesdrnz.mpvAudioKitExample/g' /Users/ales.drnz/github_projects/mpv_audio_kit/example/macos/Runner.xcodeproj/project.pbxproj)",
+      "Bash(find /Users/ales.drnz/github_projects/mpv_audio_kit/docs -type f -name *.md -o -name *.txt -o -name *.rst)",
+      "WebSearch",
+      "Bash(flutter analyze:*)"
     ]
   }
 }

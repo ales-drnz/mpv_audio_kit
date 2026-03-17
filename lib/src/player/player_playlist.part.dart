@@ -87,6 +87,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// Enables or disables shuffle mode.
   Future<void> setShuffle(bool shuffle) async {
     _checkNotDisposed();
+    _updateState((s) => s.copyWith(shuffle: shuffle), _shuffleCtrl, shuffle);
     _prop('shuffle', shuffle ? 'yes' : 'no');
     if (shuffle) {
       _command(['playlist-shuffle']);

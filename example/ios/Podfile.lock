@@ -97,7 +97,7 @@ SPEC CHECKSUMS:
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  mpv_audio_kit: 1ce13bef75bec9fbbea2ded2c85343677e721368
+  mpv_audio_kit: 647367f3928201147b4eab66dc9d910c444a3f4d
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0

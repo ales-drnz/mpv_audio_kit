@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../../widgets/shared/property_cards.dart';
+import '../../widgets/property_cards.dart';
 
 enum LogFilter { all, manual, error, warn, info, debug }
 

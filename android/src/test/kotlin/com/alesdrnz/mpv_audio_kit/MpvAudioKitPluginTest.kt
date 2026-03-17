@@ -1,4 +1,4 @@
-package com.example.mpv_audio_kit
+package com.alesdrnz.mpv_audio_kit
 
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -15,13 +15,13 @@ import kotlin.test.Test
 
 internal class MpvAudioKitPluginTest {
     @Test
-    fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
+    fun onMethodCall_openFileDescriptor_withNullUri_returnsError() {
         val plugin = MpvAudioKitPlugin()
 
-        val call = MethodCall("getPlatformVersion", null)
+        val call = MethodCall("openFileDescriptor", null)
         val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
         plugin.onMethodCall(call, mockResult)
 
-        Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
+        Mockito.verify(mockResult).error("INVALID", "uri is null", null)
     }
 }

@@ -320,7 +320,7 @@ abstract class _PlayerBase {
 
   Future<void> _startEventIsolate() async {
     _eventIsolate = MpvEventIsolate();
-    await _eventIsolate.start(_handle);
+    await _eventIsolate.start(_handle, libraryPath: MpvAudioKit.libraryPath);
     _eventSub = _eventIsolate.events.listen(_handleEvent);
   }
 
@@ -459,7 +459,9 @@ abstract class _PlayerBase {
       final metadata = raw.map((k, v) => MapEntry(k, v.toString()));
       _patchState((s) => s.copyWith(metadata: metadata));
       _metadataCtrl.add(metadata);
-    } catch (_) {}
+    } catch (e) {
+      _log('Failed to parse metadata: $e', level: 'warn');
+    }
   }
 
   void _updatePlaylist(String jsonStr) {
@@ -471,11 +473,13 @@ abstract class _PlayerBase {
       final medias = _rawPlaylist
           .map((e) => _mediaCache[e.filename] ?? Media(e.filename))
           .toList();
-      final playlist =
-          Playlist(medias, index: currentIndex.clamp(0, medias.length));
+      final idx = medias.isEmpty ? 0 : currentIndex.clamp(0, medias.length - 1);
+      final playlist = Playlist(medias, index: idx);
       _patchState((s) => s.copyWith(playlist: playlist));
       _playlistCtrl.add(playlist);
-    } catch (_) {}
+    } catch (e) {
+      _log('Failed to parse playlist: $e', level: 'warn');
+    }
   }
 
   void _updateAudioDevices(String jsonStr) {
@@ -488,7 +492,9 @@ abstract class _PlayerBase {
           .toList();
       _patchState((s) => s.copyWith(audioDevices: devices));
       _audioDevicesCtrl.add(devices);
-    } catch (_) {}
+    } catch (e) {
+      _log('Failed to parse audio devices: $e', level: 'warn');
+    }
   }
 
   void _parseCacheState(String jsonStr) {
@@ -499,7 +505,9 @@ abstract class _PlayerBase {
       final pct = (cacheDuration / targetSecs * 100.0).clamp(0.0, 100.0);
       _patchState((s) => s.copyWith(bufferingPercentage: pct));
       _bufferPctCtrl.add(pct);
-    } catch (_) {}
+    } catch (e) {
+      _log('Failed to parse cache state: $e', level: 'warn');
+    }
   }
 
   void _pollPosition() {
@@ -680,26 +688,36 @@ abstract class _PlayerBase {
         pixelFormat: ui.PixelFormat.bgra8888,
       );
 
-      // 2. Resize to max 800px
-      double ratio = 800 / (w > h ? w : h);
-      if (ratio > 1.0) {
-        ratio = 1.0;
-      }
+      try {
+        // 2. Resize to max 800px
+        double ratio = 800 / (w > h ? w : h);
+        if (ratio > 1.0) {
+          ratio = 1.0;
+        }
 
-      final codec = await descriptor.instantiateCodec(
-        targetWidth: (w * ratio).round(),
-        targetHeight: (h * ratio).round(),
-      );
+        final codec = await descriptor.instantiateCodec(
+          targetWidth: (w * ratio).round(),
+          targetHeight: (h * ratio).round(),
+        );
 
-      final frame = await codec.getNextFrame();
-      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
-
-      if (opId != _currentCoverOpId) {
-        return;
-      }
-
-      if (data != null) {
-        _updateMediaCover(bytes: data.buffer.asUint8List());
+        try {
+          final frame = await codec.getNextFrame();
+          try {
+            if (opId != _currentCoverOpId) return;
+            final data =
+                await frame.image.toByteData(format: ui.ImageByteFormat.png);
+            if (opId != _currentCoverOpId) return;
+            if (data != null) {
+              _updateMediaCover(bytes: data.buffer.asUint8List());
+            }
+          } finally {
+            frame.image.dispose();
+          }
+        } finally {
+          codec.dispose();
+        }
+      } finally {
+        descriptor.dispose();
       }
     } catch (e) {
       if (opId == _currentCoverOpId) {
@@ -715,7 +733,7 @@ abstract class _PlayerBase {
     _disposed = true;
 
     NativeReferenceHolder.instance.remove(_handle);
-    _eventSub?.cancel();
+    await _eventSub?.cancel();
     _eventIsolate.stop();
     _lib.mpvTerminateDestroy(_handle);
 
