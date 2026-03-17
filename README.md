@@ -27,7 +27,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.2
+  mpv_audio_kit: ^0.0.2+1
 ```
 
 ### Platform Requirements
@@ -78,23 +78,35 @@ dependencies:
 
 The following images demonstrate the example app included in the `example/` directory. This application serves as a reference music player for testing the various features and capabilities of mpv.
 
-**Desktop** — macOS/Windows/Linux with the console panel pinned on the right:
+**Desktop**
 
-| |
-| :---: |
-| **Player**<br>Playback UI with cover art, metadata, and progress alongside pinned logs. |
-| ![Player + Console](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_player_console.png) |
-| **Settings**<br>Navigation for all properties (`--af`, `--cache`, `--network`, etc.) with pinned console. |
-| ![Settings Grid + Console](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_settings_grid.png) |
+<table width="100%">
+  <tr>
+    <td width="60%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_player_console.png" width="100%"></td>
+    <td align="left"><b>Player</b><br>Playback UI with cover art, metadata, and progress alongside pinned logs.</td>
+  </tr>
+  <tr>
+    <td width="60%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_settings_grid.png" width="100%"></td>
+    <td align="left"><b>Settings</b><br>Navigation for all properties (<code>--af</code>, <code>--cache</code>, <code>--network</code>, etc.) with pinned console.</td>
+  </tr>
+</table>
 
-**Mobile** — iPhone and Android portrait:
+**Mobile**
 
-| | |
-| :---: | :---: |
-| **Player**<br>Large cover art, metadata, and controls | **Queue**<br>Playlist with shuffle & repeat |
-| ![Player](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_player.png) | ![Queue](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_queue.png) |
-| **Filters (`--af`)**<br>10-band EQ, Loudnorm & Compressor | **Hardware (`--audio`)**<br>Output device, format & channels |
-| ![Filters](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_filters.png) | ![Audio Hardware](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_audio_hardware.png) |
+<table width="100%">
+  <tr>
+    <td width="25%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_player.png" width="100%"></td>
+    <td width="25%" align="left"><b>Player</b><br>Large cover art, metadata, and controls</td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_queue.png" width="100%"></td>
+    <td width="25%" align="left"><b>Queue</b><br>Playlist with shuffle & repeat</td>
+  </tr>
+  <tr>
+    <td width="25%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_filters.png" width="100%"></td>
+    <td width="25%" align="left"><b>Filters (<code>--af</code>)</b><br>10-band EQ, Loudnorm & Compressor</td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_audio_hardware.png" width="100%"></td>
+    <td width="25%" align="left"><b>Hardware (<code>--audio</code>)</b><br>Output device, format & channels</td>
+  </tr>
+</table>
 
 ---
 
