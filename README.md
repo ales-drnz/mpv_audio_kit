@@ -87,12 +87,12 @@ The following images demonstrate the example app included in the `example/` dire
 
 **Mobile** — iPhone and Android portrait:
 
-| Screen | Description |
-| :--- | :--- |
-| ![Player](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_player.png) | **Player**<br>Large cover art, track metadata, progress bar, and playback controls. |
-| ![Queue](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_queue.png) | **Queue**<br>Playlist management with shuffle toggle and segmented repeat-mode selector. |
-| ![Filters](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_filters.png) | **Filters (`--af`)**<br>10-band graphic EQ with per-band gain control, EBU R128 loudness normalization, and dynamic range compression. |
-| ![Audio Hardware](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_audio_hardware.png) | **Audio Hardware (`--audio`)**<br>Physical output device and S/PDIF passthrough dropdowns alongside sample rate, format, and channel configuration. |
+| | |
+| :---: | :---: |
+| ![Player](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_player.png) | ![Queue](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_queue.png) |
+| **Player**<br>Large cover art, metadata, and controls | **Queue**<br>Playlist with shuffle & repeat |
+| ![Filters](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_filters.png) | ![Audio Hardware](https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_audio_hardware.png) |
+| **Filters (`--af`)**<br>10-band EQ, Loudnorm & Compressor | **Hardware (`--audio`)**<br>Output device, format & channels |
 
 ---
 
