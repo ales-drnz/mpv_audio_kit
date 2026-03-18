@@ -12,9 +12,7 @@
 
 ## Why did I build this?
 
-Many existing Flutter audio libraries are either outdated or too restrictive, often hiding the native engine's power behind oversimplified abstractions.
-
-This project was born out of two main needs:
+Many existing Flutter audio libraries are either built on an old version of mpv or they are simply too restrictive, hiding some cool features relative to audio processing. So I made this project to provide a more powerful and flexible audio library for Flutter and solve two main needs:
 
 - **Unlocking Jellyfin's full potential**: For audio streaming, supporting `.m3u8` (HLS) is essential. Jellyfin uses HLS for transcoding, this ensures that seeking works flawlessly during transcoded tracks.
 - **Total control for technical users**: This library doesn't limit features; it exposes the native engine so technical users can tune buffers, network timeouts, and DSP filters exactly how they want.
@@ -27,7 +25,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.2+1
+  mpv_audio_kit: ^0.0.2+2
 ```
 
 ### Platform Requirements
@@ -87,7 +85,7 @@ The following images demonstrate the example app included in the `example/` dire
   </tr>
   <tr>
     <td width="60%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_settings_grid.png" width="100%"></td>
-    <td align="left"><b>Settings</b><br>Navigation for all properties (<code>--af</code>, <code>--cache</code>, <code>--network</code>, etc.) with pinned console.</td>
+    <td align="left"><b>Settings</b><br>Navigation for all properties such as <code>--af</code>, <code>--cache</code>, <code>--network</code>, etc.</td>
   </tr>
 </table>
 
@@ -998,9 +996,7 @@ Add to `DebugProfile.entitlements` and `Release.entitlements`:
 
 ## Project Background
 
-All the native bindings, isolate logic, and architectural patterns were implemented through the use of **Claude Opus 4.6** and **Antigravity** in general, with **Gemini** models for the UI part.
-
-The goal was to build a low-level audio engine through organization and orchestration, without necessarily being a low-level bindings specialist.
+All the native bindings, isolate logic, and architectural patterns were implemented through the use of **Claude Opus 4.6** and **Antigravity** in general, with **Gemini** models for the UI part. The goal was to build a low-level audio engine through organization and orchestration, without necessarily being a low-level bindings specialist.
 
 ---
 

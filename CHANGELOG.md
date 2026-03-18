@@ -1,6 +1,10 @@
+## [0.0.2+2] - 18-03-2026
+
+- Cleaned up files.
+
 ## [0.0.2+1] - 17-03-2026
 
-- Minor fixes
+- Minor fixes.
 
 ## [0.0.2] - 17-03-2026
 
@@ -22,27 +26,27 @@
 
 ## [0.0.1+7] - 16-03-2026
 
-- Fixed macOS libs build
+- Fixed macOS libs build.
 
 ## [0.0.1+6] - 15-03-2026
 
-- Fixed shuffle bug
+- Fixed shuffle bug.
 
 ## [0.0.1+5] - 15-03-2026
 
-- Minor fixes
+- Minor fixes.
 
 ## [0.0.1+4] - 15-03-2026
 
-- Minor fixes
+- Minor fixes.
 
 ## [0.0.1+3] - 15-03-2026
 
-- Minor fixes
+- Minor fixes.
 
 ## [0.0.1+2] - 15-03-2026
 
-- Minor fixes
+- Minor fixes.
 
 ## [0.0.1+1] - 15-03-2026
 
