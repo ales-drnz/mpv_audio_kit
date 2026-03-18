@@ -33,9 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# mpv_audio_kit libmpv build tools and artifacts
+# Others
 /docs/
 /scripts/
+/test/
 /windows/libs/
 /linux/libs/
 /macos/libs/
