@@ -39,6 +39,8 @@ void main() async {
   ));
 
   MpvAudioKit.ensureInitialized();
+  // Example for custom libmpv path:
+  // MpvAudioKit.ensureInitialized(libmpv: '/path/to/libmpv.so');
   settingsService = await SettingsService.init();
 
   player = Player(

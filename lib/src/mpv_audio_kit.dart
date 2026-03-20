@@ -7,6 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 
+import 'dart:ffi';
+import 'dart:io';
+
 /// Main class for global `mpv_audio_kit` configuration and initialization.
 abstract final class MpvAudioKit {
   MpvAudioKit._();
@@ -26,6 +29,9 @@ abstract final class MpvAudioKit {
     if (_initialized) {
       return;
     }
+
+    // Apply platform-specific fixes (e.g., LC_NUMERIC for libmpv on Linux/macOS)
+    _applyPlatformQuirks();
 
     NativeReferenceHolder.instance.ensureInitialized((references) {
       if (references.isEmpty) {
@@ -58,5 +64,34 @@ abstract final class MpvAudioKit {
 
     _libraryPath = libmpv;
     _initialized = true;
+  }
+
+  /// Applies platform-specific native quirks.
+  ///
+  /// On Linux and macOS, mpv requires the `LC_NUMERIC` locale to be set to "C"
+  /// to ensure proper parsing of floating-point numbers regardless of the
+  /// user's system language settings (e.g., using a dot instead of a comma).
+  static void _applyPlatformQuirks() {
+    if (Platform.isWindows || Platform.isAndroid) {
+      return;
+    }
+
+    try {
+      final DynamicLibrary libc = Platform.isLinux
+          ? DynamicLibrary.open('libc.so.6')
+          : DynamicLibrary.open('libSystem.B.dylib');
+
+      final setlocale = libc.lookupFunction<
+          Pointer<Utf8> Function(Int32, Pointer<Utf8>),
+          Pointer<Utf8> Function(int, Pointer<Utf8>)>('setlocale');
+
+      // LC_NUMERIC = 1 on Linux/macOS
+      using((arena) {
+        setlocale(1, 'C'.toNativeUtf8(allocator: arena));
+      });
+    } catch (e) {
+      debugPrint('mpv_audio_kit: setlocale failed: $e. '
+          'mpv might fail to initialize if system locale is not compatible.');
+    }
   }
 }

@@ -20,7 +20,7 @@ set(PLUGIN_NAME "mpv_audio_kit_plugin")
 # This ensures consistency and proper audio backend support.
 set(_BUNDLED_MPV "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.so.2")
 set(MPV_RELEASE_VERSION "v0.0.1")
-set(EXPECTED_SHA256 "0840732ab274a89e547e6e647e82c8c05ba461203cc4834828516f0606d426a8")
+set(EXPECTED_SHA256 "befdb708ec8ba253ea190c5149fdbe43aa3b621bec14786d33abfaba1a9d8eaf")
 
 set(DOWNLOAD_NEEDED TRUE)
 
