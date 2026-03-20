@@ -1,3 +1,7 @@
+## [0.0.2+3] - 20-03-2026
+
+- Updated linux libmpv, ALSA, Pipewire and Pulse now all work without external dependencies.
+
 ## [0.0.2+2] - 18-03-2026
 
 - Cleaned up files.
