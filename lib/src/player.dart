@@ -78,7 +78,8 @@ class Player extends _PlayerBase
   /// If [index] is greater than zero, the player immediately jumps to that
   /// position after loading the playlist (the first item is loaded briefly then
   /// replaced — this is imperceptible and is the standard mpv approach).
-  Future<void> openPlaylist(List<Media> medias, {bool? play, int index = 0}) async {
+  Future<void> openPlaylist(List<Media> medias,
+      {bool? play, int index = 0}) async {
     _checkNotDisposed();
     if (medias.isEmpty) {
       return;
@@ -104,7 +105,8 @@ class Player extends _PlayerBase
 
   /// Manually injects an entry into the player's log stream.
   void log(String message, {String level = 'info'}) {
-    _logCtrl.add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
+    _logCtrl
+        .add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
   }
 
   /// Reads any mpv property as a string.
@@ -586,8 +588,8 @@ abstract class _PlayerBase {
     });
   }
 
-  void _log(String message, {String level = 'info'}) =>
-      _logCtrl.add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
+  void _log(String message, {String level = 'info'}) => _logCtrl
+      .add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
 
   int _currentCoverOpId = 0;
 
@@ -656,7 +658,7 @@ abstract class _PlayerBase {
       // 1. Optimized buffer handling
       Uint8List workingBuffer;
       if (stride == w * 4) {
-        // Zero-copy: reuse the bytes we already copied from C
+        // Zero-copy: reuse the bytes previously copied from C
         workingBuffer = bytes;
       } else {
         // Re-align if stride has padding

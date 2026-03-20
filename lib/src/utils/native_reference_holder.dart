@@ -17,7 +17,7 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 /// any instantiated libmpv handles will leak and keep audio paths locked (e.g., in Windows/WASAPI).
 ///
 /// Stores tracking addresses in a cross-isolate, persistent way (via a tmp file keyed by PID)
-/// so that when Dart is hot-restarted, we can find the orphaned mpv handles and send 'quit' to them.
+/// handles so that when Dart is hot-restarted, orphaned mpv handles can be identified and terminated.
 class NativeReferenceHolder {
   static const int _kBufferSize = 256;
   static final NativeReferenceHolder instance = NativeReferenceHolder._();
@@ -30,7 +30,7 @@ class NativeReferenceHolder {
   bool get _isDebug => !const bool.fromEnvironment('dart.vm.product');
 
   NativeReferenceHolder._() {
-    // We use the process ID to identify the current run.
+    // The process ID is used to identify the current run.
     // Hot Restart leaves the PID unchanged.
     _file = File(
         '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_audio_kit_refs_$pid.txt');
@@ -53,7 +53,7 @@ class NativeReferenceHolder {
         _buffer = calloc<IntPtr>(_kBufferSize);
         _file.writeAsStringSync(_buffer.address.toString());
       } else {
-        // We survived a hot restart! The file exists, let's read the address
+        // File exists after a hot restart; reading the address.
         final addressStr = _file.readAsStringSync().trim();
         final address = int.parse(addressStr);
         _buffer = Pointer<IntPtr>.fromAddress(address);

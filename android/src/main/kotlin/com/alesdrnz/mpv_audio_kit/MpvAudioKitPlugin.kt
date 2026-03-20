@@ -14,7 +14,11 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
-/** MpvAudioKitPlugin */
+/** 
+ * MpvAudioKitPlugin
+ * 
+ * Android implementation for mpv_audio_kit.
+ */
 class MpvAudioKitPlugin :
     FlutterPlugin,
     MethodCallHandler {
@@ -32,14 +36,22 @@ class MpvAudioKitPlugin :
 
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
-    private val openFds = mutableMapOf<String, ParcelFileDescriptor>()
 
+    /**
+     * Initializes the plugin when attached to the Flutter engine.
+     */
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         context = flutterPluginBinding.applicationContext
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "mpv_audio_kit")
         channel.setMethodCallHandler(this)
     }
 
+    /**
+     * Handles MethodChannel calls from Dart.
+     * 
+     * Significant work on Android includes handling Content URIs (e.g., from the file picker)
+     * by converting them to low-level File Descriptors that libmpv can consume.
+     */
     override fun onMethodCall(
         call: MethodCall,
         result: Result
@@ -50,11 +62,12 @@ class MpvAudioKitPlugin :
                 if (uriStr != null) {
                     try {
                         val uri = Uri.parse(uriStr)
+                        // Opens the Content URI and returns a ParcelFileDescriptor.
                         val pfd = context.contentResolver.openFileDescriptor(uri, "r")
                         if (pfd != null) {
-                            val fd = pfd.detachFd() // Gets raw integer FD and detaches ownership.
-                            // We do not save to openFds since detachFd moves ownership native/libmpv (but mpv_audio_kit cleans up the Media reference later?).
-                            // Wait, no. If we detachFd(), Java no longer closes it automatically. mpv does.
+                            // Detaches the raw integer FD. Ownership is transferred to libmpv,
+                            // which will be responsible for closing it after use.
+                            val fd = pfd.detachFd()
                             result.success(fd)
                         } else {
                             result.success(null)
@@ -67,8 +80,7 @@ class MpvAudioKitPlugin :
                 }
             }
             "closeFileDescriptor" -> {
-                // Not needed if we use detachFd() and assume libmpv or OS cleans up.
-                // But just in case, we can provide a no-op or actual close if we didn't detach.
+                // Currently handled by libmpv after detaching the FD.
                 result.success(null)
             }
             else -> {
@@ -77,6 +89,9 @@ class MpvAudioKitPlugin :
         }
     }
 
+    /**
+     * Cleans up the plugin when detached from the engine.
+     */
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
     }

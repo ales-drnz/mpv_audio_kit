@@ -10,7 +10,7 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 
 // ---------------------------------------------------------------------------
-// mpv_error  (subset — only what we need)
+// mpv_error  (subset — limited to required error codes)
 // ---------------------------------------------------------------------------
 abstract final class MpvError {
   static const int mpvErrorSuccess = 0;

@@ -108,7 +108,7 @@ void _runEventLoop(
   Map<String, int> lastTimestamps,
 ) {
   while (isRunning()) {
-    // Block up to 500 ms, so we can check isRunning() periodically.
+    // Block up to 500 ms to check isRunning() periodically.
     final event = lib.mpvWaitEvent(handle, 0.5);
     final id = event.ref.eventId;
 
