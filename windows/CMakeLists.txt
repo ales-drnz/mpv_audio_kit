@@ -110,4 +110,3 @@ else()
   message(FATAL_ERROR "[mpv_audio_kit] libmpv-2.dll not found. It must be present in windows/libs/libmpv-2.dll")
 endif()
 
-endif()
