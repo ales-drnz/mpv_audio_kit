@@ -15,13 +15,14 @@
  *      never invoked at runtime.
  */
 
-#include <jni.h>
 #include <android/log.h>
+#include <jni.h>
+
 
 #define LOG_TAG "mpv_audio_kit"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
-    LOGD("mpv_audio_kit JNI loaded");
-    return JNI_VERSION_1_6;
+  LOGD("mpv_audio_kit JNI loaded");
+  return JNI_VERSION_1_6;
 }

@@ -1,3 +1,7 @@
+## [0.0.3+2] - 21-03-2026
+
+- Minor fixes.
+
 ## [0.0.3+1] - 21-03-2026
 
 - **GitHub Release**: New tag system for versioning libmpv binaries to avoid conflicts with the same release on GitHub. From now on every important update to libmpv (like 0.0.3 Linux fix) will have a new tag and a new release (libmpv-r1, libmpv-r2, etc.). This avoids confusion with the pub version number and ensures users with old SHAs can still use their version when downloading instead of breaking the build.

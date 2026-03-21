@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'screens/player_page.dart';
@@ -31,12 +30,6 @@ void main() async {
       await windowManager.focus();
     });
   }
-
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarDividerColor: Colors.transparent,
-  ));
 
   MpvAudioKit.ensureInitialized();
   // Example for custom libmpv path:
