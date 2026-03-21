@@ -999,7 +999,7 @@ Add to `DebugProfile.entitlements` and `Release.entitlements`:
 
 ## Troubleshooting
 
-#### Building & Testing on Containers (Docker/Distrobox)
+#### Building & Testing on Containers (WSL/Docker/Distrobox)
 If you are developing or testing your Flutter app inside a headless Linux container, you will need to install both the core Flutter desktop build tools and the native audio server runtimes. Standard Linux desktops (like Ubuntu or Fedora) already have the audio backends pre-installed, but minimal containers require them to route sound to your host machine:
 
 ```bash
@@ -1011,8 +1011,9 @@ sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 sudo apt install pipewire pipewire-pulse libasound2-dev libpulse-dev libpipewire-0.3-dev
 ```
 
-> **Note on ALSA:** be aware that low-level hardware drivers like ALSA don't work inside containers. Use the PulseAudio or PipeWire backend for container testing
-
+> **Note on ALSA:** be aware that low-level hardware drivers like ALSA don't work inside containers. Use the PulseAudio or PipeWire backend for container testing.
+> 
+> **Note on WSL:** PipeWire and ALSA do not work on Windows Subsystem for Linux. You must use the PulseAudio backend to hear sound during development.
 ---
 
 ## Project Background
