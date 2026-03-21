@@ -1,3 +1,7 @@
+## [0.0.3+1] - 21-03-2026
+
+- **GitHub Release**: New tag system for versioning libmpv binaries to avoid conflicts with the same release on GitHub. From now on every important update to libmpv (like 0.0.3 Linux fix) will have a new tag and a new release (libmpv-r1, libmpv-r2, etc.). This avoids confusion with the pub version number and ensures users with old SHAs can still use their version when downloading instead of breaking the build.
+
 ## [0.0.3] - 21-03-2026
 
 - **Linux**: Bumped minimum supported OS version to Ubuntu 24.04 required because `mpv 0.41.0` enforced a strict dependency on `libpipewire-0.3 >= 0.3.57` for its native PipeWire backend.
@@ -6,7 +10,7 @@
 
 ## [0.0.2+3] - 20-03-2026
 
-- Updated linux libmpv, ALSA, Pipewire and Pulse now all work without external dependencies.
+- Updated Linux libmpv, ALSA, Pipewire and Pulse now all work without external dependencies.
 
 ## [0.0.2+2] - 18-03-2026
 
