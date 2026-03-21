@@ -25,7 +25,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.2+3
+  mpv_audio_kit: ^0.0.3
 ```
 
 ### Platform Requirements
@@ -34,7 +34,7 @@ dependencies:
 *   **iOS**: iOS 13.0 or above.
 *   **macOS**: 10.14 or above (Apple Silicon).
 *   **Windows**: Windows 10 or above.
-*   **Linux**: Ubuntu 22.04 or above.
+*   **Linux**: Ubuntu 24.04 or above.
 
 ---
 
@@ -68,7 +68,10 @@ dependencies:
     *   [10. Raw API](#10-raw-api)
     *   [11. Error Handling & Logging](#11-error-handling--logging)
 *   [Permissions](#permissions)
+*   [Troubleshooting](#troubleshooting)
+*   [Project Background](#project-background)
 *   [Credits](#credits)
+*   [Funding](#funding)
 
 ---
 
@@ -991,6 +994,24 @@ Add to `DebugProfile.entitlements` and `Release.entitlements`:
 <key>com.apple.security.network.client</key>
 <true/>
 ```
+
+---
+
+## Troubleshooting
+
+#### Building & Testing on Containers (Docker/Distrobox)
+If you are developing or testing your Flutter app inside a headless Linux container, you will need to install both the core Flutter desktop build tools and the native audio server runtimes. Standard Linux desktops (like Ubuntu or Fedora) already have the audio backends pre-installed, but minimal containers require them to route sound to your host machine:
+
+```bash
+sudo apt update
+# 1. Flutter desktop build essentials:
+sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+# 2. Audio backend runtimes & host routing (required to hear sound inside containers):
+sudo apt install pipewire pipewire-pulse libasound2-dev libpulse-dev libpipewire-0.3-dev
+```
+
+> **Note on ALSA:** be aware that low-level hardware drivers like ALSA don't work inside containers. Use the PulseAudio or PipeWire backend for container testing
 
 ---
 

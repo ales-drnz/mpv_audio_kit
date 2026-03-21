@@ -55,18 +55,30 @@ class _AoPageState extends State<AoPage> {
           stream: widget.player.stream.audioDriver,
           initialData: widget.player.state.audioDriver,
           builder: (context, snap) {
-            final val = snap.data ?? 'auto';
+            String val = snap.data ?? 'auto';
+            if (val.isEmpty) val = 'auto';
+
             final options = List<String>.from(_availableDrivers);
             if (!options.contains(val)) options.add(val);
+
+            String subtitle = 'ao=$val';
+            if (val == 'auto') {
+              final active = widget.player.getRawProperty('current-ao');
+              if (active != null && active.isNotEmpty) {
+                subtitle += ' ($active)';
+              }
+            }
+
             return DropdownPropertyCard<String>(
               title: 'Audio Driver',
-              subtitle: 'ao=$val',
+              subtitle: subtitle,
               icon: Icons.tune_rounded,
               value: val,
               items: options
                   .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                   .toList(),
-              onChanged: (v) => v != null ? widget.player.setAudioDriver(v) : null,
+              onChanged: (v) =>
+                  v != null ? widget.player.setAudioDriver(v) : null,
             );
           },
         ),
@@ -82,8 +94,10 @@ class _AoPageState extends State<AoPage> {
               subtitle: 'ao-null-untimed=${val ? 'yes' : 'no'}',
               icon: Icons.layers_clear_rounded,
               value: val,
-              onChanged: (v) =>
-                  widget.player.setRawProperty('ao-null-untimed', v ? 'yes' : 'no'),
+              onChanged: (v) => widget.player.setRawProperty(
+                'ao-null-untimed',
+                v ? 'yes' : 'no',
+              ),
             );
           },
         ),

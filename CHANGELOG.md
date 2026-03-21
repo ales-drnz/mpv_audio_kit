@@ -1,3 +1,9 @@
+## [0.0.3] - 21-03-2026
+
+- **Linux**: Bumped minimum supported OS version to Ubuntu 24.04 required because `mpv 0.41.0` enforced a strict dependency on `libpipewire-0.3 >= 0.3.57` for its native PipeWire backend.
+- **README**: Added a detailed *Troubleshooting* section in the README explaining how to correctly satisfy Linux system dependencies when building on containers.
+- **Example**: Fixed AO menu not showing the default driver automatically.
+
 ## [0.0.2+3] - 20-03-2026
 
 - Updated linux libmpv, ALSA, Pipewire and Pulse now all work without external dependencies.
@@ -54,16 +60,12 @@
 
 ## [0.0.1+1] - 15-03-2026
 
-### Added
 - **Swift Package Manager**: Added support for SPM on iOS and macOS.
-
-### Fixed
 - **README**: Fixed broken image links on pub.dev using absolute GitHub URLs.
 - **Analysis**: Enforced curly braces in flow control structures and resolved all static analysis warnings.
 
 ## [0.0.1] - 15-03-2026
 
-### Added
 - **Initial Release**: High-performance audio library for Flutter powered by `libmpv` (v0.41.0).
 - **Cross-Platform Support**: Seamless playback on iOS, Android, macOS, Windows, and Linux.
 - **Example App**: Included a comprehensive example app demonstrating DSP, hardware routing, and queue management.
