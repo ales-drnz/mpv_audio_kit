@@ -18,7 +18,7 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   String? _error;
   final List<String> _logs = [];
-  bool _isConsolePinned = false;
+  bool _isConsolePinned = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   int _navIndex = 0;
 
   Future<void> _handleTogglePin(bool pin) async {

@@ -84,7 +84,7 @@ The following images demonstrate the example app included in the `example/` dire
 <table width="100%">
   <tr>
     <td width="60%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_player_console.png" width="100%"></td>
-    <td align="left"><b>Player</b><br>Playback UI with cover art, metadata, and progress alongside pinned logs.</td>
+    <td align="left"><b>Player</b><br>Cover art, metadata, and controls alongside pinned logs.</td>
   </tr>
   <tr>
     <td width="60%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_settings_grid.png" width="100%"></td>
@@ -97,7 +97,7 @@ The following images demonstrate the example app included in the `example/` dire
 <table width="100%">
   <tr>
     <td width="25%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_player.png" width="100%"></td>
-    <td width="25%" align="left"><b>Player</b><br>Large cover art, metadata, and controls</td>
+    <td width="25%" align="left"><b>Player</b><br>Cover art, metadata, and controls</td>
     <td width="25%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mobile_queue.png" width="100%"></td>
     <td width="25%" align="left"><b>Queue</b><br>Playlist with shuffle & repeat</td>
   </tr>
@@ -185,7 +185,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
 #### Global Initialization
 
-Call `MpvAudioKit.ensureInitialized()` **once at startup**, before creating any `Player` instance. This registers the native backend and cleans up any handles that leaked across a Flutter Hot-Restart (a common problem with FFI libraries on desktop).
+Call `MpvAudioKit.ensureInitialized()` **once at startup**, before creating any `Player` instance. This registers the native backend and cleans up any handles that leaked across a Flutter Hot-Restart.
 
 ```dart
 void main() async {
@@ -418,7 +418,7 @@ await player.setAudioDelay(-0.2);
 
 ### 5. Audio Quality & DSP
 
-All filters in this section run in libmpv's `libavfilter` pipeline and work on **every platform** — including iOS and macOS where most Flutter libraries provide no DSP support.
+All filters in this section run in libmpv's `libavfilter` pipeline and work on **every platform**.
 
 #### Applying Filters
 
@@ -591,7 +591,7 @@ await player.setAudioDriver('auto');      // Let mpv choose (default)
 
 #### Exclusive Mode
 
-Bypasses the OS audio mixer and writes directly to the hardware. Eliminates software resampling and volume processing for bit-perfect output. Only available on WASAPI (Windows) and ALSA (Linux):
+Bypasses the OS audio mixer and writes directly to the hardware. Eliminates software resampling and volume processing for bit-perfect output. Only available on WASAPI (Windows), ALSA (Linux) and CoreAudio (macOS):
 
 ```dart
 await player.setAudioExclusive(true);   // Request exclusive access
@@ -1018,7 +1018,7 @@ sudo apt install pipewire pipewire-pulse libasound2-dev libpulse-dev libpipewire
 
 ## Project Background
 
-All the native bindings, isolate logic, and architectural patterns were implemented through the use of **Claude Opus 4.6** and **Antigravity** in general, with **Gemini** models for the UI part. The goal was to build a low-level audio engine through organization and orchestration, without necessarily being a low-level bindings specialist.
+All the native bindings, isolate logic, and architectural patterns were implemented through the use of **Claude Opus 4.6** and **Antigravity** in general, with **Gemini** models for the UI part. The goal was to build a low-level audio engine through organization and orchestration without being an expert in low-level bindings.
 
 ---
 
