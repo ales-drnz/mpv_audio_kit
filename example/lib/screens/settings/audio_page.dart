@@ -23,7 +23,10 @@ class AudioPage extends StatelessWidget {
           builder: (context, snapshot) {
             var devices = snapshot.data ?? [];
             if (!devices.any((d) => d.name == 'auto')) {
-              devices = [const AudioDevice('auto', 'Default (auto)'), ...devices];
+              devices = [
+                const AudioDevice('auto', 'Default (auto)'),
+                ...devices,
+              ];
             }
             return StreamBuilder<AudioDevice>(
               stream: player.stream.audioDevice,
@@ -41,13 +44,15 @@ class AudioPage extends StatelessWidget {
                   icon: Icons.speaker_group_rounded,
                   value: currentValue,
                   items: devices
-                      .map((d) => DropdownMenuItem(
-                            value: d.name,
-                            child: Text(
-                              d.name == 'auto' ? 'Default (auto)' : d.description,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ))
+                      .map(
+                        (d) => DropdownMenuItem(
+                          value: d.name,
+                          child: Text(
+                            d.name == 'auto' ? 'Default (auto)' : d.description,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) {
                     if (v != null) {
@@ -76,10 +81,12 @@ class AudioPage extends StatelessWidget {
               icon: Icons.settings_input_hdmi_rounded,
               value: val,
               items: options
-                  .map((v) => DropdownMenuItem(
-                        value: v,
-                        child: Text(v == '' ? 'None/Decode' : 'Passthrough: $v'),
-                      ))
+                  .map(
+                    (v) => DropdownMenuItem(
+                      value: v,
+                      child: Text(v == '' ? 'None/Decode' : 'Passthrough: $v'),
+                    ),
+                  )
                   .toList(),
               onChanged: (v) => v != null ? player.setAudioSpdif(v) : null,
             );
@@ -100,10 +107,12 @@ class AudioPage extends StatelessWidget {
               icon: Icons.graphic_eq_rounded,
               value: val,
               items: options
-                  .map((v) => DropdownMenuItem(
-                        value: v,
-                        child: Text(v == 0 ? 'Auto' : '$v Hz'),
-                      ))
+                  .map(
+                    (v) => DropdownMenuItem(
+                      value: v,
+                      child: Text(v == 0 ? 'Auto' : '$v Hz'),
+                    ),
+                  )
                   .toList(),
               onChanged: (v) => v != null ? player.setAudioSampleRate(v) : null,
             );
@@ -133,7 +142,15 @@ class AudioPage extends StatelessWidget {
           initialData: player.state.audioChannels,
           builder: (context, snap) {
             final val = snap.data ?? 'auto';
-            final options = ['auto', 'mono', 'stereo', '2.1', '5.1', '7.1', 'auto-safe'];
+            final options = [
+              'auto',
+              'mono',
+              'stereo',
+              '2.1',
+              '5.1',
+              '7.1',
+              'auto-safe',
+            ];
             if (!options.contains(val)) options.add(val);
             return DropdownPropertyCard<String>(
               title: 'Audio Channels',

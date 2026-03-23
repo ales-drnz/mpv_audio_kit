@@ -46,7 +46,12 @@ class VolumePage extends StatelessWidget {
               icon: Icons.do_not_disturb_on_rounded,
               value: val,
               items: options
-                  .map((v) => DropdownMenuItem(value: v, child: Text('${v.toInt()}%')))
+                  .map(
+                    (v) => DropdownMenuItem(
+                      value: v,
+                      child: Text('${v.toInt()}%'),
+                    ),
+                  )
                   .toList(),
               onChanged: (v) => v != null ? player.setVolumeMax(v) : null,
             );

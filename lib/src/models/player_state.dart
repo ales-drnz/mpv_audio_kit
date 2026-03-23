@@ -176,6 +176,43 @@ class PlayerState {
   /// Current 10-band equalizer gains in dB.
   final List<double> equalizerGains;
 
+  // ── Cover Art ──────────────────────────────────────────────────────────────
+
+  /// Controls how mpv handles embedded and external cover images.
+  ///
+  /// Valid values (`--audio-display=<no|embedded-first|external-first>`):
+  /// - `'no'` — disable video/cover-art display entirely; use this when you
+  ///   read artwork out-of-band (e.g. via `metadata_god`) to skip the video pipeline.
+  /// - `'embedded-first'` — display cover art, preferring embedded images over
+  ///   external files (mpv default).
+  /// - `'external-first'` — display cover art, preferring external files over
+  ///   embedded images.
+  ///
+  /// Has no effect on files that already have a normal video track.
+  final String audioDisplay;
+
+  /// Controls whether mpv automatically loads external cover art files.
+  ///
+  /// Valid values (`--cover-art-auto=<no|exact|fuzzy|all>`):
+  /// - `'no'` — disabled. The library sets this by default to prevent
+  ///   unintended image loading; mpv's own default is `'exact'`.
+  /// - `'exact'` — load a file whose base name matches the audio file with
+  ///   an image extension (e.g. `song.flac` → `song.jpg`), plus names in
+  ///   `--cover-art-whitelist` (default: `cover`, `folder`, `album`, …).
+  /// - `'fuzzy'` — load any file whose name *contains* the audio file's base name.
+  /// - `'all'` — load all image files in the same directory as the audio file.
+  final String coverArtAuto;
+
+  /// Duration in seconds for which a still image (e.g. cover art) is held as
+  /// a displayable video frame after the file is loaded.
+  ///
+  /// Set to `'inf'` to keep the frame alive indefinitely — required when you
+  /// want to read the cover art at any time via [Player.screenshotCoverArt].
+  /// Set to `'0'` or a small value if you never use [Player.screenshotCoverArt].
+  ///
+  /// Default: `'inf'`.
+  final String imageDisplayDuration;
+
   const PlayerState({
     this.playlist = const Playlist.empty(),
     this.playing = false,
@@ -229,6 +266,9 @@ class PlayerState {
     this.audioDriver = 'auto',
     this.activeFilters = const [],
     this.equalizerGains = const [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    this.audioDisplay = 'embedded-first',
+    this.coverArtAuto = 'no',
+    this.imageDisplayDuration = 'inf',
   });
 
   PlayerState copyWith({
@@ -284,6 +324,9 @@ class PlayerState {
     String? audioDriver,
     List<AudioFilter>? activeFilters,
     List<double>? equalizerGains,
+    String? audioDisplay,
+    String? coverArtAuto,
+    String? imageDisplayDuration,
   }) {
     return PlayerState(
       playlist: playlist ?? this.playlist,
@@ -338,6 +381,9 @@ class PlayerState {
       audioDriver: audioDriver ?? this.audioDriver,
       activeFilters: activeFilters ?? this.activeFilters,
       equalizerGains: equalizerGains ?? this.equalizerGains,
+      audioDisplay: audioDisplay ?? this.audioDisplay,
+      coverArtAuto: coverArtAuto ?? this.coverArtAuto,
+      imageDisplayDuration: imageDisplayDuration ?? this.imageDisplayDuration,
     );
   }
 

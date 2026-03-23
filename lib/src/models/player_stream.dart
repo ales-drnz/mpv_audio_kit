@@ -172,6 +172,17 @@ class PlayerStream {
   /// Emits the current equalizer gains.
   final Stream<List<double>> equalizerGains;
 
+  // ── Cover Art ──────────────────────────────────────────────────────────────
+
+  /// Emits the current [PlayerState.audioDisplay] mode.
+  final Stream<String> audioDisplay;
+
+  /// Emits the current [PlayerState.coverArtAuto] mode.
+  final Stream<String> coverArtAuto;
+
+  /// Emits the current [PlayerState.imageDisplayDuration] value.
+  final Stream<String> imageDisplayDuration;
+
   /// Emits human-readable error messages from the mpv engine.
   final Stream<String> error;
 
@@ -231,6 +242,9 @@ class PlayerStream {
     required this.audioDriver,
     required this.activeFilters,
     required this.equalizerGains,
+    required this.audioDisplay,
+    required this.coverArtAuto,
+    required this.imageDisplayDuration,
     required this.error,
     required this.log,
   });

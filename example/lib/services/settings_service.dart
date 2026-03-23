@@ -99,7 +99,9 @@ class SettingsService {
       await player.setReplayGainPreamp(replaygainPreamp);
     }
 
-    final replaygainFallback = _prefs.getDouble('${_keyPrefix}replaygain-fallback');
+    final replaygainFallback = _prefs.getDouble(
+      '${_keyPrefix}replaygain-fallback',
+    );
     if (replaygainFallback != null) {
       await player.setReplayGainFallback(replaygainFallback);
     }

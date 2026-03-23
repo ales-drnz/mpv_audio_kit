@@ -187,6 +187,15 @@ mixin _PropertyRegistry on _PlayerBase {
             _activeFiltersCtrl, filters);
       case 'demuxer-cache-state':
         _parseCacheState(value);
+      case 'audio-display':
+        _updateState(
+            (s) => s.copyWith(audioDisplay: value), _audioDisplayCtrl, value);
+      case 'cover-art-auto':
+        _updateState(
+            (s) => s.copyWith(coverArtAuto: value), _coverArtAutoCtrl, value);
+      case 'image-display-duration':
+        _updateState((s) => s.copyWith(imageDisplayDuration: value),
+            _imageDisplayDurationCtrl, value);
     }
   }
 
@@ -266,6 +275,11 @@ mixin _PropertyRegistry on _PlayerBase {
     _observe('audio-client-name', MpvFormat.mpvFormatString, 60);
     _observe('af', MpvFormat.mpvFormatString, 61);
     _observe('ao', MpvFormat.mpvFormatString, 62);
+
+    // Cover Art
+    _observe('audio-display', MpvFormat.mpvFormatString, 63);
+    _observe('cover-art-auto', MpvFormat.mpvFormatString, 64);
+    _observe('image-display-duration', MpvFormat.mpvFormatString, 65);
   }
 
   // --- Specialized Update Helpers ---

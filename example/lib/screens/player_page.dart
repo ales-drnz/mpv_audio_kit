@@ -18,7 +18,8 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   String? _error;
   final List<String> _logs = [];
-  bool _isConsolePinned = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  bool _isConsolePinned =
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   int _navIndex = 0;
 
   Future<void> _handleTogglePin(bool pin) async {
@@ -44,47 +45,107 @@ class _PlayerPageState extends State<PlayerPage> {
     try {
       // Listen for changes and save them
       player.stream.volume.listen((v) => settingsService.save('volume', v));
-      player.stream.volumeMax.listen((v) => settingsService.save('volume-max', v));
+      player.stream.volumeMax.listen(
+        (v) => settingsService.save('volume-max', v),
+      );
       player.stream.rate.listen((v) => settingsService.save('rate', v));
       player.stream.pitch.listen((v) => settingsService.save('pitch', v));
       player.stream.mute.listen((v) => settingsService.save('mute', v));
 
-      player.stream.playlistMode.listen((v) => settingsService.save('playlist_mode', v.name));
+      player.stream.playlistMode.listen(
+        (v) => settingsService.save('playlist_mode', v.name),
+      );
       player.stream.shuffle.listen((v) => settingsService.save('shuffle', v));
 
-      player.stream.audioSampleRate.listen((v) => settingsService.save('audio-samplerate', v));
-      player.stream.audioFormat.listen((v) => settingsService.save('audio-format', v));
-      player.stream.audioChannels.listen((v) => settingsService.save('audio-channels', v));
-      player.stream.audioClientName.listen((v) => settingsService.save('audio-client-name', v));
-      player.stream.audioDevice.listen((v) => settingsService.save('audio-device', v.name));
-      player.stream.audioSpdif.listen((v) => settingsService.save('audio-spdif', v));
-      player.stream.audioExclusive.listen((v) => settingsService.save('audio-exclusive', v));
-      player.stream.audioBuffer.listen((v) => settingsService.save('audio-buffer', v));
-      player.stream.audioDelay.listen((v) => settingsService.save('audio-delay', v));
+      player.stream.audioSampleRate.listen(
+        (v) => settingsService.save('audio-samplerate', v),
+      );
+      player.stream.audioFormat.listen(
+        (v) => settingsService.save('audio-format', v),
+      );
+      player.stream.audioChannels.listen(
+        (v) => settingsService.save('audio-channels', v),
+      );
+      player.stream.audioClientName.listen(
+        (v) => settingsService.save('audio-client-name', v),
+      );
+      player.stream.audioDevice.listen(
+        (v) => settingsService.save('audio-device', v.name),
+      );
+      player.stream.audioSpdif.listen(
+        (v) => settingsService.save('audio-spdif', v),
+      );
+      player.stream.audioExclusive.listen(
+        (v) => settingsService.save('audio-exclusive', v),
+      );
+      player.stream.audioBuffer.listen(
+        (v) => settingsService.save('audio-buffer', v),
+      );
+      player.stream.audioDelay.listen(
+        (v) => settingsService.save('audio-delay', v),
+      );
 
-      player.stream.gaplessMode.listen((v) => settingsService.save('gapless-audio', v));
-      player.stream.replayGainMode.listen((v) => settingsService.save('replaygain', v));
-      player.stream.replayGainPreamp.listen((v) => settingsService.save('replaygain-preamp', v));
-      player.stream.replayGainFallback.listen((v) => settingsService.save('replaygain-fallback', v));
-      player.stream.replayGainClip.listen((v) => settingsService.save('replaygain-clip', v));
-      player.stream.volumeGain.listen((v) => settingsService.save('volume-gain', v));
-      player.stream.pitchCorrection.listen((v) => settingsService.save('pitch-correction', v));
+      player.stream.gaplessMode.listen(
+        (v) => settingsService.save('gapless-audio', v),
+      );
+      player.stream.replayGainMode.listen(
+        (v) => settingsService.save('replaygain', v),
+      );
+      player.stream.replayGainPreamp.listen(
+        (v) => settingsService.save('replaygain-preamp', v),
+      );
+      player.stream.replayGainFallback.listen(
+        (v) => settingsService.save('replaygain-fallback', v),
+      );
+      player.stream.replayGainClip.listen(
+        (v) => settingsService.save('replaygain-clip', v),
+      );
+      player.stream.volumeGain.listen(
+        (v) => settingsService.save('volume-gain', v),
+      );
+      player.stream.pitchCorrection.listen(
+        (v) => settingsService.save('pitch-correction', v),
+      );
 
       player.stream.cacheMode.listen((v) => settingsService.save('cache', v));
-      player.stream.cacheSecs.listen((v) => settingsService.save('cache-secs', v));
-      player.stream.cacheOnDisk.listen((v) => settingsService.save('cache-on-disk', v));
-      player.stream.cachePause.listen((v) => settingsService.save('cache-pause', v));
-      player.stream.cachePauseWait.listen((v) => settingsService.save('cache-pause-wait', v));
-      player.stream.demuxerMaxBytes.listen((v) => settingsService.save('demuxer-max-bytes', v));
-      player.stream.demuxerReadaheadSecs.listen((v) => settingsService.save('demuxer-readahead-secs', v));
-      player.stream.demuxerMaxBackBytes.listen((v) => settingsService.save('demuxer-max-back-bytes', v));
+      player.stream.cacheSecs.listen(
+        (v) => settingsService.save('cache-secs', v),
+      );
+      player.stream.cacheOnDisk.listen(
+        (v) => settingsService.save('cache-on-disk', v),
+      );
+      player.stream.cachePause.listen(
+        (v) => settingsService.save('cache-pause', v),
+      );
+      player.stream.cachePauseWait.listen(
+        (v) => settingsService.save('cache-pause-wait', v),
+      );
+      player.stream.demuxerMaxBytes.listen(
+        (v) => settingsService.save('demuxer-max-bytes', v),
+      );
+      player.stream.demuxerReadaheadSecs.listen(
+        (v) => settingsService.save('demuxer-readahead-secs', v),
+      );
+      player.stream.demuxerMaxBackBytes.listen(
+        (v) => settingsService.save('demuxer-max-back-bytes', v),
+      );
 
-      player.stream.networkTimeout.listen((v) => settingsService.save('network-timeout', v));
-      player.stream.tlsVerify.listen((v) => settingsService.save('tls-verify', v));
-      player.stream.streamSilence.listen((v) => settingsService.save('stream-silence', v));
-      player.stream.aoNullUntimed.listen((v) => settingsService.save('ao-null-untimed', v));
+      player.stream.networkTimeout.listen(
+        (v) => settingsService.save('network-timeout', v),
+      );
+      player.stream.tlsVerify.listen(
+        (v) => settingsService.save('tls-verify', v),
+      );
+      player.stream.streamSilence.listen(
+        (v) => settingsService.save('stream-silence', v),
+      );
+      player.stream.aoNullUntimed.listen(
+        (v) => settingsService.save('ao-null-untimed', v),
+      );
       player.stream.audioTrack.listen((v) => settingsService.save('aid', v));
-      player.stream.equalizerGains.listen((v) => settingsService.save('equalizer_gains', v));
+      player.stream.equalizerGains.listen(
+        (v) => settingsService.save('equalizer_gains', v),
+      );
 
       player.stream.log.listen((line) {
         if (mounted) {
@@ -151,8 +212,11 @@ class _PlayerPageState extends State<PlayerPage> {
             final safeIndex = _navIndex.clamp(0, totalNav - 1);
             final isSettings = safeIndex == 3;
             // Constrained IndexedStack skips the settings slot (index 3)
-            final constrainedIndex = (safeIndex >= 4 ? safeIndex - 1 : safeIndex)
-                .clamp(0, constrainedPages.length - 1);
+            final constrainedIndex =
+                (safeIndex >= 4 ? safeIndex - 1 : safeIndex).clamp(
+                  0,
+                  constrainedPages.length - 1,
+                );
 
             Widget content = Column(
               children: [

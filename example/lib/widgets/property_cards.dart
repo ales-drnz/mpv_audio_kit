@@ -103,9 +103,7 @@ class PropertyBaseCard extends StatelessWidget {
                 if (t != null) ...[
                   const SizedBox(width: 8),
                   Container(
-                    constraints: const BoxConstraints(
-                      maxWidth: 180,
-                    ),
+                    constraints: const BoxConstraints(maxWidth: 180),
                     child: t,
                   ),
                 ],
@@ -192,7 +190,10 @@ class _SliderPropertyCardState extends State<SliderPropertyCard> {
 
   @override
   Widget build(BuildContext context) {
-    final displayValue = (_dragValue ?? widget.value).clamp(widget.min, widget.max);
+    final displayValue = (_dragValue ?? widget.value).clamp(
+      widget.min,
+      widget.max,
+    );
     final def = widget.defaultValue;
     final atDefault = def == null || (displayValue - def).abs() < 1e-9;
 
@@ -245,7 +246,8 @@ class _SliderPropertyCardState extends State<SliderPropertyCard> {
           SizedBox(
             width: 50,
             child: Text(
-              widget.labelBuilder?.call(displayValue) ?? displayValue.toStringAsFixed(2),
+              widget.labelBuilder?.call(displayValue) ??
+                  displayValue.toStringAsFixed(2),
               textAlign: TextAlign.end,
               style: const TextStyle(
                 fontSize: 13,
@@ -302,7 +304,10 @@ class DropdownPropertyCard<T> extends StatelessWidget {
                 value: value,
                 items: items,
                 onChanged: onChanged,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 isDense: true,
                 isExpanded: true,
                 alignment: Alignment.centerRight,
@@ -368,7 +373,9 @@ class SegmentedPropertyCard<T> extends StatelessWidget {
           visualDensity: VisualDensity.compact,
           side: WidgetStatePropertyAll(
             BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.5),
               width: 1,
             ),
           ),
@@ -461,6 +468,275 @@ class _TextPropertyCardState extends State<TextPropertyCard> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A card for a toggleable filter with collapsible parameter sliders.
+///
+/// The header row shows the icon, title, subtitle, an expand chevron, and a
+/// toggle switch. The param area animates open/closed and is dimmed when the
+/// filter is disabled.
+class ExpandableFilterCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool enabled;
+  final ValueChanged<bool> onToggle;
+  final List<Widget> params;
+
+  const ExpandableFilterCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.enabled,
+    required this.onToggle,
+    required this.params,
+  });
+
+  @override
+  State<ExpandableFilterCard> createState() => _ExpandableFilterCardState();
+}
+
+class _ExpandableFilterCardState extends State<ExpandableFilterCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: cs.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: widget.enabled
+                        ? cs.primaryContainer
+                        : cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    size: 20,
+                    color: widget.enabled ? cs.primary : cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(
+                              ClipboardData(text: widget.subtitle),
+                            ).then((_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Copied: ${widget.subtitle}'),
+                                    duration: const Duration(seconds: 1),
+                                    behavior: SnackBarBehavior.floating,
+                                    width: 280,
+                                  ),
+                                );
+                              }
+                            });
+                          },
+                          child: Text(
+                            widget.subtitle,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontFamily: 'monospace',
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.expand_more_rounded,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                ),
+                Switch(value: widget.enabled, onChanged: widget.onToggle),
+              ],
+            ),
+            if (_expanded)
+              IgnorePointer(
+                ignoring: !widget.enabled,
+                child: Opacity(
+                  opacity: widget.enabled ? 1.0 : 0.4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(height: 20, thickness: 0.5),
+                      ...widget.params,
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact labeled slider for use inside [ExpandableFilterCard].
+///
+/// Visual updates happen during drag; [onChanged] is only called on release.
+class FilterParamSlider extends StatefulWidget {
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final double defaultValue;
+  final String Function(double) labelBuilder;
+  final ValueChanged<double> onChanged;
+
+  const FilterParamSlider({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.defaultValue,
+    required this.labelBuilder,
+    required this.onChanged,
+    this.divisions = 100,
+  });
+
+  @override
+  State<FilterParamSlider> createState() => _FilterParamSliderState();
+}
+
+class _FilterParamSliderState extends State<FilterParamSlider> {
+  double? _dragValue;
+
+  @override
+  void didUpdateWidget(FilterParamSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_dragValue != null && widget.value != oldWidget.value) {
+      _dragValue = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final display = (_dragValue ?? widget.value).clamp(widget.min, widget.max);
+    final atDefault = (widget.value - widget.defaultValue).abs() < 1e-9;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 0),
+            child: Row(
+              children: [
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  widget.labelBuilder(display),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                    color: cs.primary,
+                  ),
+                ),
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: atDefault
+                      ? null
+                      : Tooltip(
+                          message: 'Reset to default',
+                          child: InkWell(
+                            onTap: () {
+                              setState(() => _dragValue = null);
+                              widget.onChanged(widget.defaultValue);
+                            },
+                            customBorder: const CircleBorder(),
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              size: 16,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            ),
+            child: Slider(
+              value: display,
+              min: widget.min,
+              max: widget.max,
+              divisions: widget.divisions,
+              onChanged: (v) => setState(() => _dragValue = v),
+              onChangeEnd: (v) {
+                setState(() => _dragValue = null);
+                widget.onChanged(v);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

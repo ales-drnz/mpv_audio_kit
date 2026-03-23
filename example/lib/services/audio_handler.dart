@@ -30,30 +30,32 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   void _updatePlaybackState() {
     final s = player.state;
-    playbackState.add(PlaybackState(
-      controls: [
-        MediaControl.skipToPrevious,
-        s.playing ? MediaControl.pause : MediaControl.play,
-        MediaControl.stop,
-        MediaControl.skipToNext,
-      ],
-      systemActions: const {
-        MediaAction.seek,
-        MediaAction.seekForward,
-        MediaAction.seekBackward,
-      },
-      androidCompactActionIndices: const [0, 1, 3],
-      processingState: s.buffering
-          ? AudioProcessingState.buffering
-          : s.completed
-              ? AudioProcessingState.completed
-              : AudioProcessingState.ready,
-      playing: s.playing,
-      updatePosition: s.position,
-      bufferedPosition: s.buffer,
-      speed: s.rate,
-      queueIndex: s.playlist.index >= 0 ? s.playlist.index : null,
-    ));
+    playbackState.add(
+      PlaybackState(
+        controls: [
+          MediaControl.skipToPrevious,
+          s.playing ? MediaControl.pause : MediaControl.play,
+          MediaControl.stop,
+          MediaControl.skipToNext,
+        ],
+        systemActions: const {
+          MediaAction.seek,
+          MediaAction.seekForward,
+          MediaAction.seekBackward,
+        },
+        androidCompactActionIndices: const [0, 1, 3],
+        processingState: s.buffering
+            ? AudioProcessingState.buffering
+            : s.completed
+            ? AudioProcessingState.completed
+            : AudioProcessingState.ready,
+        playing: s.playing,
+        updatePosition: s.position,
+        bufferedPosition: s.buffer,
+        speed: s.rate,
+        queueIndex: s.playlist.index >= 0 ? s.playlist.index : null,
+      ),
+    );
   }
 
   void _updateMediaItem() {
@@ -66,22 +68,23 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
     final current = media[idx];
     final meta = s.metadata;
-    mediaItem.add(MediaItem(
-      id: current.uri,
-      title: meta['title'] ?? _titleFromUri(current.uri),
-      artist: meta['artist'],
-      album: meta['album'],
-      duration: s.duration == Duration.zero ? null : s.duration,
-    ));
+    mediaItem.add(
+      MediaItem(
+        id: current.uri,
+        title: meta['title'] ?? _titleFromUri(current.uri),
+        artist: meta['artist'],
+        album: meta['album'],
+        duration: s.duration == Duration.zero ? null : s.duration,
+      ),
+    );
   }
 
   void _syncQueue(Playlist playlist) {
-    queue.add(playlist.medias.map((m) {
-      return MediaItem(
-        id: m.uri,
-        title: _titleFromUri(m.uri),
-      );
-    }).toList());
+    queue.add(
+      playlist.medias.map((m) {
+        return MediaItem(id: m.uri, title: _titleFromUri(m.uri));
+      }).toList(),
+    );
     _updateMediaItem();
   }
 
@@ -115,9 +118,9 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
   Future<void> stop() async {
     await player.pause();
     await player.seek(Duration.zero);
-    playbackState.add(playbackState.value.copyWith(
-      processingState: AudioProcessingState.idle,
-    ));
+    playbackState.add(
+      playbackState.value.copyWith(processingState: AudioProcessingState.idle),
+    );
   }
 
   void dispose() {

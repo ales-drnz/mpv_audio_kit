@@ -30,6 +30,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   file_picker: ^10.3.10
+  desktop_drop: ^0.5.0
   window_manager: ^0.5.1
   shared_preferences: ^2.5.4
   audio_service: ^0.18.18

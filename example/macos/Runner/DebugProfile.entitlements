@@ -3,23 +3,22 @@
 <plist version="1.0">
 <dict>
 	<!--
-	  DEBUG / PROFILE — sandbox DISABILITATA.
-	  libmpv di Homebrew linka dinamicamente ~20 dylib in /opt/homebrew/opt/.
-	  La sandbox macOS blocca l'accesso a quei path, impedendo dlopen.
-	  Per la distribuzione in produzione è necessaria una build di libmpv
-	  staticamente linkata (tutti i codec inclusi, nessuna dipendenza esterna).
+	  DEBUG / PROFILE — sandbox DISABLED.
+	  macOS sandbox blocks access to non-bundled dynamic libraries, preventing dlopen.
+	  For production distribution, a statically linked libmpv build
+	  is required (all codecs included, no external dependencies).
 	-->
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
-	<!-- Permette di caricare dylib non firmate da Apple (libmpv ad-hoc) -->
+	<!-- Allows loading dylibs not signed by Apple (ad-hoc libmpv) -->
 	<key>com.apple.security.cs.disable-library-validation</key>
 	<true/>
-	<!-- Accesso rete in uscita (streaming audio HTTP/HTTPS) -->
+	<!-- Outbound network access (HTTP/HTTPS audio streaming) -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
-	<!-- File picker: accesso ai file selezionati dall'utente -->
+	<!-- File picker: access to user-selected files -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 </dict>

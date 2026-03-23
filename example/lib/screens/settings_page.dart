@@ -15,6 +15,7 @@ import 'settings/demuxer_page.dart';
 import 'settings/network_page.dart';
 import 'settings/tls_page.dart';
 import 'settings/stream_silence_page.dart';
+import 'settings/cover_art_page.dart';
 
 class SettingsPage extends StatefulWidget {
   final Player player;
@@ -180,7 +181,14 @@ class _SettingsHomeState extends State<_SettingsHome> {
         label: 'stream',
         icon: Icons.shutter_speed_rounded,
         title: 'Stream Silence',
-        onTap: () => _go('Stream Silence', StreamSilencePage(player: widget.player)),
+        onTap: () =>
+            _go('Stream Silence', StreamSilencePage(player: widget.player)),
+      ),
+      _NavEntry(
+        label: 'cover',
+        icon: Icons.image_rounded,
+        title: 'Cover Art',
+        onTap: () => _go('Cover Art', CoverArtPage(player: widget.player)),
       ),
     ];
 

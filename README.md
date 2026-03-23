@@ -25,7 +25,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.3+2
+  mpv_audio_kit: ^0.0.4
 ```
 
 ### Platform Requirements
@@ -799,20 +799,95 @@ final meta = player.state.metadata;
 
 Common tag keys (case as returned by mpv): `title`, `artist`, `album`, `album_artist`, `date`, `track`, `disc`, `genre`, `comment`, `composer`.
 
-#### Cover Art
+#### Cover Art — How It Works
 
-mpv_audio_kit extracts embedded cover art from audio files automatically. When a track loads, the cover is extracted via the `screenshot-raw` command, converted to PNG, and attached to the `Media` object in `player.state.playlist`.
+mpv_audio_kit extracts embedded cover art automatically when a track loads. The pipeline is:
+
+1. **`audio-display = 'embedded-first'`** (default) — mpv decodes the embedded image track as a video frame.
+2. **`image-display-duration = 'inf'`** — the frame is held in memory indefinitely so it can be read at any time.
+3. **`screenshot-raw`** — the `screenshot-raw video` command captures the raw RGBA pixel data of the current video frame (i.e. the cover art) into a `Uint8List`.
+4. The raw pixels are converted to PNG and attached to the `Media` extras as `artBytes` / `artUri`.
 
 ```dart
 player.stream.playlist.listen((playlist) {
   final current = playlist.medias[playlist.index];
   final artBytes = current.extras?['artBytes'] as Uint8List?;  // PNG bytes
   final artUri   = current.extras?['artUri']   as String?;     // data:image/png;base64,...
-  // 'cover' is an alias for artUri, provided for compatibility
 });
 ```
 
 The extracted image is resized to a maximum of 800 px on the longest side before being delivered to the stream, to avoid excessive memory usage.
+
+#### Cover Art — Configuration
+
+Three properties control when and how cover art is processed. All are fully observable via `player.state` and `player.stream`.
+
+##### `audio-display`
+
+Controls which image source mpv decodes into the video pipeline.
+
+| Value | Behaviour |
+|-------|-----------|
+| `'embedded-first'` | Display cover art, preferring embedded images over external files. **Required for `screenshotCoverArt` to work.** mpv default. |
+| `'external-first'` | Display cover art, preferring external files over embedded images. |
+| `'no'` | Disable video/cover-art display entirely — no video pipeline overhead. Use this when your app reads artwork out-of-band (e.g. via `metadata_god` or a tag library). |
+
+```dart
+// Default — embedded art decoded and available for screenshotCoverArt()
+await player.setAudioDisplay('embedded-first');
+
+// Disable when you read artwork from file tags directly
+await player.setAudioDisplay('no');
+
+// React to changes
+player.stream.audioDisplay.listen((mode) => print('audio-display: $mode'));
+```
+
+##### `cover-art-auto`
+
+Controls whether mpv scans for an external cover art file next to the audio file (e.g. `cover.jpg`, `folder.jpg`).
+
+| Value | Behaviour |
+|-------|-----------|
+| `'no'` | Disabled. Recommended for apps that manage artwork themselves. The library sets this by default; mpv's own default is `'exact'`. |
+| `'exact'` | Load a file whose base name matches the audio file with an image extension (e.g. `song.flac` → `song.jpg`), plus names from `--cover-art-whitelist` (`cover`, `folder`, `album`, …). mpv default. |
+| `'fuzzy'` | Load any file whose name *contains* the audio file's base name. |
+| `'all'` | Load all image files in the same directory as the audio file. |
+
+```dart
+// Disabled by default — prevents unrelated images from loading
+await player.setCoverArtAuto('no');
+
+// Enable fuzzy scanning (e.g. for a local file player)
+await player.setCoverArtAuto('fuzzy');
+
+player.stream.coverArtAuto.listen((mode) => print('cover-art-auto: $mode'));
+```
+
+##### `image-display-duration`
+
+How long (in seconds) the decoded cover frame is held as a displayable video frame after the file loads.
+
+```dart
+// 'inf' (default) — frame lives forever; required for screenshotCoverArt()
+await player.setImageDisplayDuration('inf');
+
+// '0' — frame is discarded immediately; use when you never call screenshotCoverArt()
+await player.setImageDisplayDuration('0');
+
+// Any number of seconds
+await player.setImageDisplayDuration('5');
+
+player.stream.imageDisplayDuration.listen((d) => print('image-display-duration: $d'));
+```
+
+> **Tip — disabling the video pipeline entirely:** if your app reads artwork via a tag library (e.g. `metadata_god`) rather than through mpv, set both `audio-display = 'no'` and `cover-art-auto = 'no'`. mpv will skip video decoding altogether, reducing CPU and memory usage:
+>
+> ```dart
+> await player.setAudioDisplay('no');
+> await player.setCoverArtAuto('no');
+> await player.setImageDisplayDuration('0');
+> ```
 
 ---
 

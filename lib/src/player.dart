@@ -205,6 +205,9 @@ abstract class _PlayerBase {
   final _audioDriverCtrl = StreamController<String>.broadcast();
   final _activeFiltersCtrl = StreamController<List<AudioFilter>>.broadcast();
   final _equalizerGainsCtrl = StreamController<List<double>>.broadcast();
+  final _audioDisplayCtrl = StreamController<String>.broadcast();
+  final _coverArtAutoCtrl = StreamController<String>.broadcast();
+  final _imageDisplayDurationCtrl = StreamController<String>.broadcast();
   final _errorCtrl = StreamController<String>.broadcast();
   final _logCtrl = StreamController<MpvLogEntry>.broadcast();
 
@@ -280,6 +283,9 @@ abstract class _PlayerBase {
       audioDriver: _audioDriverCtrl.stream,
       activeFilters: _activeFiltersCtrl.stream,
       equalizerGains: _equalizerGainsCtrl.stream,
+      audioDisplay: _audioDisplayCtrl.stream,
+      coverArtAuto: _coverArtAutoCtrl.stream,
+      imageDisplayDuration: _imageDisplayDurationCtrl.stream,
       error: _errorCtrl.stream,
       log: _logCtrl.stream,
     );
@@ -475,7 +481,12 @@ abstract class _PlayerBase {
       final medias = _rawPlaylist
           .map((e) => _mediaCache[e.filename] ?? Media(e.filename))
           .toList();
-      final idx = medias.isEmpty ? 0 : currentIndex.clamp(0, medias.length - 1);
+      // currentIndex is -1 when mpv emits the playlist without a `current` flag
+      // (e.g. transiently during playlist-move). Fall back to the last known index
+      // instead of clamping -1 to 0, which would incorrectly mark the first item.
+      final idx = currentIndex >= 0
+          ? currentIndex
+          : _state.playlist.index.clamp(0, medias.isEmpty ? 0 : medias.length - 1);
       final playlist = Playlist(medias, index: idx);
       _patchState((s) => s.copyWith(playlist: playlist));
       _playlistCtrl.add(playlist);

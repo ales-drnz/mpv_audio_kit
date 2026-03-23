@@ -150,6 +150,59 @@ mixin _AudioModule on _PlayerBase {
   /// Removes all active audio filters.
   Future<void> clearAudioFilters() => setAudioFilters([]);
 
+  // ── Cover Art ──────────────────────────────────────────────────────────────
+
+  /// Controls how mpv handles embedded and external cover images
+  /// (`--audio-display=<no|embedded-first|external-first>`).
+  ///
+  /// - `'no'` — disable video/cover-art display entirely. Use this when your
+  ///   app reads artwork out-of-band (e.g. via `metadata_god`) to skip the
+  ///   video pipeline overhead entirely.
+  /// - `'embedded-first'` — display cover art, preferring embedded images over
+  ///   external files. Required for `screenshotCoverArt` to work (mpv default).
+  /// - `'external-first'` — display cover art, preferring external files over
+  ///   embedded images.
+  ///
+  /// Has no effect on files that already have a normal video track.
+  /// Changes take effect on the next [open] call.
+  Future<void> setAudioDisplay(String mode) async {
+    _checkNotDisposed();
+    _prop('audio-display', mode);
+    _updateState(
+        (s) => s.copyWith(audioDisplay: mode), _audioDisplayCtrl, mode);
+  }
+
+  /// Controls whether mpv automatically loads external cover art files
+  /// (`--cover-art-auto=<no|exact|fuzzy|all>`).
+  ///
+  /// - `'no'` — disabled (the library's default; mpv's own default is `'exact'`).
+  ///   Recommended for apps that manage artwork themselves.
+  /// - `'exact'` — load a file whose base name matches the audio file with an
+  ///   image extension (e.g. `song.flac` → `song.jpg`), plus names from
+  ///   `--cover-art-whitelist` (default: `cover`, `folder`, `album`, …).
+  /// - `'fuzzy'` — load any file whose name *contains* the audio file's base name.
+  /// - `'all'` — load all image files in the same directory as the audio file.
+  Future<void> setCoverArtAuto(String mode) async {
+    _checkNotDisposed();
+    _prop('cover-art-auto', mode);
+    _updateState(
+        (s) => s.copyWith(coverArtAuto: mode), _coverArtAutoCtrl, mode);
+  }
+
+  /// Sets how long (in seconds) an image frame (e.g. cover art) is held as a
+  /// displayable video frame after the file is loaded.
+  ///
+  /// Pass `'inf'` (default) to keep the frame alive indefinitely — required
+  /// when you want to extract cover art at any point after loading via
+  /// [screenshotCoverArt]. Pass `'0'` if you never use [screenshotCoverArt]
+  /// and want to minimise memory.
+  Future<void> setImageDisplayDuration(String duration) async {
+    _checkNotDisposed();
+    _prop('image-display-duration', duration);
+    _updateState((s) => s.copyWith(imageDisplayDuration: duration),
+        _imageDisplayDurationCtrl, duration);
+  }
+
   /// Appends a single [filter] to the current filter chain.
   Future<void> addAudioFilter(AudioFilter filter) async {
     _checkNotDisposed();

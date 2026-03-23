@@ -38,9 +38,10 @@ mixin _PlaylistModule on _PlayerBase {
     _command(['playlist-prev']);
   }
 
-  /// Jumps to the track at [index] in the playlist.
+  /// Jumps to the track at [index] in the playlist and starts playback.
   Future<void> jump(int index) async {
     _checkNotDisposed();
+    _pendingPlay = true;
     _command(['playlist-play-index', index.toString()]);
   }
 

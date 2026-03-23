@@ -27,7 +27,8 @@ class DemuxerPage extends StatelessWidget {
               divisions: 2048,
               defaultValue: 150.0,
               labelBuilder: (v) => '${v.toInt()}MiB',
-              onChanged: (v) => player.setDemuxerMaxBytes((v * 1024 * 1024).toInt()),
+              onChanged: (v) =>
+                  player.setDemuxerMaxBytes((v * 1024 * 1024).toInt()),
             );
           },
         ),
@@ -65,7 +66,8 @@ class DemuxerPage extends StatelessWidget {
               divisions: 1024,
               defaultValue: 50.0,
               labelBuilder: (v) => '${v.toInt()}MiB',
-              onChanged: (v) => player.setDemuxerMaxBackBytes((v * 1024 * 1024).toInt()),
+              onChanged: (v) =>
+                  player.setDemuxerMaxBackBytes((v * 1024 * 1024).toInt()),
             );
           },
         ),

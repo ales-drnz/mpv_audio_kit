@@ -1,3 +1,10 @@
+## [0.0.4] - 23-03-2026
+
+- **Core**: Added new APIs to configure embedded and external cover art handling (`setAudioDisplay`, `setCoverArtAuto`, `setImageDisplayDuration`).
+- **Core**: Fast jump into playlist now automatically starts playback.
+- **Example**: Refined Queue tab design and improved stability.
+- **Example**: Added new sliders to DSP filters.
+
 ## [0.0.3+2] - 21-03-2026
 
 - Minor fixes.

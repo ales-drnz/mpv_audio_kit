@@ -100,8 +100,9 @@ class _EQWidgetState extends State<EQWidget> {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color:
-                                          widget.enabled ? null : Colors.grey,
+                                      color: widget.enabled
+                                          ? null
+                                          : Colors.grey,
                                     ),
                                   ),
                                 ),
@@ -140,21 +141,24 @@ class _EQWidgetState extends State<EQWidget> {
                                       max: 15,
                                       value: val,
                                       onChanged: widget.enabled
-                                          ? (v) =>
-                                              setState(() => _dragGains[i] = v)
+                                          ? (v) => setState(
+                                              () => _dragGains[i] = v,
+                                            )
                                           : null,
                                       onChangeEnd: widget.enabled
                                           ? (v) async {
-                                            widget.onChanged(i, v);
-                                            await Future.delayed(
-                                              const Duration(milliseconds: 500),
-                                            );
-                                            if (mounted) {
-                                              setState(
-                                                () => _dragGains.remove(i),
+                                              widget.onChanged(i, v);
+                                              await Future.delayed(
+                                                const Duration(
+                                                  milliseconds: 500,
+                                                ),
                                               );
+                                              if (mounted) {
+                                                setState(
+                                                  () => _dragGains.remove(i),
+                                                );
+                                              }
                                             }
-                                          }
                                           : null,
                                     ),
                                   ),
@@ -168,8 +172,9 @@ class _EQWidgetState extends State<EQWidget> {
                                     EQWidget._labels[i],
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color:
-                                          widget.enabled ? null : Colors.grey,
+                                      color: widget.enabled
+                                          ? null
+                                          : Colors.grey,
                                     ),
                                   ),
                                 ),
