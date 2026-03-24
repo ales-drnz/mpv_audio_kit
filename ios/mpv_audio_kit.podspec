@@ -8,7 +8,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'mpv_audio_kit'
-  s.version          = '0.0.4'
+  s.version          = '0.0.5'
   s.summary          = 'Flutter audio player powered by libmpv.'
   s.description      = <<-DESC
     High-quality audio player for Flutter, based on libmpv.

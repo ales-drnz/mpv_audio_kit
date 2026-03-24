@@ -70,6 +70,12 @@ class MpvEventError extends MpvIsolateEvent {
   MpvEventError(this.message);
 }
 
+class MpvEventHookFired extends MpvIsolateEvent {
+  final int id;
+  final String name;
+  MpvEventHookFired(this.id, this.name);
+}
+
 // ── Isolate entry point ───────────────────────────────────────────────────────
 
 void _isolateEntry(SendPort initialReplyPort) {
@@ -154,6 +160,11 @@ void _dispatchEvent(
 
     case mpv.MpvEventId.mpvEventLogMessage:
       _dispatchLog(toMain, event.ref.data.cast<mpv.MpvEventLogMessage>().ref);
+
+    case mpv.MpvEventId.mpvEventHook:
+      final hook = event.ref.data.cast<mpv.MpvEventHook>().ref;
+      final name = hook.name.cast<Utf8>().toDartString();
+      toMain.send(MpvEventHookFired(hook.id, name));
 
     case mpv.MpvEventId.mpvEventSeek:
     case mpv.MpvEventId.mpvEventPlaybackRestart:

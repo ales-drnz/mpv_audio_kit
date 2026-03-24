@@ -23,6 +23,7 @@ import 'models/audio_device.dart';
 import 'models/audio_filter.dart';
 import 'models/audio_params.dart';
 import 'models/mpv_log_entry.dart';
+import 'models/mpv_hook_event.dart';
 import 'models/player_configuration.dart';
 import 'models/player_state.dart';
 import 'models/player_stream.dart';
@@ -33,6 +34,7 @@ export 'models/audio_device.dart';
 export 'models/audio_filter.dart';
 export 'models/audio_params.dart';
 export 'models/mpv_log_entry.dart';
+export 'models/mpv_hook_event.dart';
 export 'models/player_configuration.dart';
 export 'models/player_state.dart';
 export 'models/player_stream.dart';
@@ -41,6 +43,7 @@ part 'player/player_playback.part.dart';
 part 'player/player_playlist.part.dart';
 part 'player/player_audio.part.dart';
 part 'player/player_network.part.dart';
+part 'player/player_hooks.part.dart';
 part 'player/player_property_registry.part.dart';
 
 /// A high-performance audio player powered by libmpv.
@@ -50,6 +53,7 @@ class Player extends _PlayerBase
         _PlaylistModule,
         _AudioModule,
         _NetworkModule,
+        _HooksModule,
         _PropertyRegistry {
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration});
@@ -210,6 +214,7 @@ abstract class _PlayerBase {
   final _imageDisplayDurationCtrl = StreamController<String>.broadcast();
   final _errorCtrl = StreamController<String>.broadcast();
   final _logCtrl = StreamController<MpvLogEntry>.broadcast();
+  final _hookCtrl = StreamController<MpvHookEvent>.broadcast();
 
   PlayerState get state => _state;
   late final PlayerStream stream;
@@ -288,6 +293,7 @@ abstract class _PlayerBase {
       imageDisplayDuration: _imageDisplayDurationCtrl.stream,
       error: _errorCtrl.stream,
       log: _logCtrl.stream,
+      hook: _hookCtrl.stream,
     );
 
     _startEventIsolate();
@@ -366,6 +372,8 @@ abstract class _PlayerBase {
         if (level == 'error' || level == 'fatal') {
           _errorCtrl.add(entry.toString());
         }
+      case MpvEventHookFired(:final id, :final name):
+        _hookCtrl.add(MpvHookEvent(id, name));
       case MpvEventError(:final message):
         _errorCtrl.add(message);
     }
@@ -805,6 +813,7 @@ abstract class _PlayerBase {
       _equalizerGainsCtrl,
       _errorCtrl,
       _logCtrl,
+      _hookCtrl,
     ];
     for (final c in ctrls) {
       c.close();

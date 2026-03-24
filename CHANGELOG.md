@@ -1,3 +1,8 @@
+## [0.0.5] - 24-03-2026
+
+- **Core**: Added stream hooks API (`registerHook`, `continueHook`, `player.stream.hook`) to intercept mpv's file-loading pipeline.
+- **README**: Documentation fixes and consistency improvements.
+
 ## [0.0.4] - 23-03-2026
 
 - **Core**: Added new APIs to configure embedded and external cover art handling (`setAudioDisplay`, `setCoverArtAuto`, `setImageDisplayDuration`).

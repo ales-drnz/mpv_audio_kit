@@ -7,6 +7,7 @@ import 'package:mpv_audio_kit/src/models/audio_device.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/audio_filter.dart';
 import 'package:mpv_audio_kit/src/models/mpv_log_entry.dart';
+import 'package:mpv_audio_kit/src/models/mpv_hook_event.dart';
 
 /// Typed event streams for subscribing to individual [Player] state changes.
 ///
@@ -189,6 +190,12 @@ class PlayerStream {
   /// Emits structured log entries from the mpv engine at the configured log level.
   final Stream<MpvLogEntry> log;
 
+  /// Emits whenever mpv fires a registered hook (see [Player.registerHook]).
+  ///
+  /// The consumer must call [Player.continueHook] with [MpvHookEvent.id]
+  /// to let mpv proceed. Until then mpv suspends the guarded operation.
+  final Stream<MpvHookEvent> hook;
+
   const PlayerStream({
     required this.playlist,
     required this.playing,
@@ -247,5 +254,6 @@ class PlayerStream {
     required this.imageDisplayDuration,
     required this.error,
     required this.log,
+    required this.hook,
   });
 }

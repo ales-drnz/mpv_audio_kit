@@ -12,10 +12,11 @@
 
 ## Why did I build this?
 
-Many existing Flutter audio libraries are either built on an old version of mpv or they are simply too restrictive, hiding some cool features relative to audio processing. So I made this project to provide a more powerful and flexible audio library for Flutter and solve two main needs:
+Many existing Flutter audio libraries are either built on an old version of mpv or they are simply too restrictive, hiding some cool features relative to audio processing. So I made this project to provide a more powerful and flexible audio library for Flutter and solve three main needs:
 
-- **Unlocking Jellyfin's full potential**: For audio streaming, supporting `.m3u8` (HLS) is essential. Jellyfin uses HLS for transcoding, this ensures that seeking works flawlessly during transcoded tracks.
-- **Total control for technical users**: This library doesn't limit features; it exposes the native engine so technical users can tune buffers, network timeouts, and DSP filters exactly how they want.
+- **🪼 Jellyfin**: For audio streaming, supporting `.m3u8` (HLS) is essential. Jellyfin uses HLS for transcoding, this ensures that seeking works flawlessly during transcoded tracks.
+- **🟡 Plex**: Transcoding in this case requires a `/decision` call before each stream. The `on_load` hook resolves `.m3u8` URL lazily and embed credentials as query parameters.
+- **⚙️ Total control for technical users**: This library doesn't limit features; it exposes the native engine so technical users can tune buffers, network timeouts, and DSP filters exactly how they want.
 
 ---
 
@@ -25,7 +26,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.4
+  mpv_audio_kit: ^0.0.5
 ```
 
 ### Platform Requirements
@@ -67,6 +68,7 @@ dependencies:
     *   [9. State & Streams](#9-state--streams)
     *   [10. Raw API](#10-raw-api)
     *   [11. Error Handling & Logging](#11-error-handling--logging)
+    *   [12. Hooks](#12-hooks)
 *   [Permissions](#permissions)
 *   [Troubleshooting](#troubleshooting)
 *   [Project Background](#project-background)
@@ -121,6 +123,7 @@ The following images demonstrate the example app included in the `example/` dire
 - ⚙️ **Audiophile Hardware**: Exclusive mode (WASAPI/ALSA/CoreAudio), output device selection, sample rate and format forcing.
 - 🔍 **Metadata & Cover Art**: Native extraction of embedded cover images and metadata tags.
 - 🌐 **Network Streams**: HLS, RTSP, RTMP, SHOUTcast/Icecast, and any format libmpv supports — with native HTTP headers.
+- 🪝 **Stream Hooks**: Intercept mpv's file-loading pipeline via `on_load` to lazily resolve URLs, redirect streams, or inject per-file headers.
 - 📦 **Granular Caching**: Fine-tuned control over demuxer memory pool, disk overflow cache, and cache-pause behavior.
 - 🔧 **Raw Access**: Read and write any mpv property directly, or send any mpv command.
 
@@ -155,7 +158,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
   @override
   void dispose() {
-    player.dispose();
+    player.dispose(); // Flutter's dispose() is synchronous — fire and forget
     super.dispose();
   }
 
@@ -461,10 +464,16 @@ AudioFilter.equalizer([0.0, 0.0, 0.0, -2.0, -2.0, 2.0, 3.0, 3.0, 1.0, 0.0])
 
 > **Note:** `AudioFilter.equalizer` requires a `List<double>` of exactly 10 elements. Passing integer literals without the `.0` suffix will cause a compile error.
 
-For real-time slider interaction (e.g. dragging an EQ band), use `setEqualizerGains` instead. It updates only the gain values without rebuilding the entire filter chain, and is synchronous:
+To track gain values in Dart state without touching mpv (e.g. while a slider is still being dragged), use `setEqualizerGains`. It only updates `player.state.equalizerGains` and emits on `player.stream.equalizerGains` — it does **not** apply anything to the engine. Call `setAudioFilters` to commit:
 
 ```dart
+// Called on every slider drag — updates state, no mpv call
 player.setEqualizerGains([0.0, 0.0, 3.0, 5.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+
+// Called on slider release — actually applies to mpv
+await player.setAudioFilters([
+  AudioFilter.equalizer(player.state.equalizerGains),
+]);
 ```
 
 #### EBU R128 Loudness Normalization
@@ -799,14 +808,9 @@ final meta = player.state.metadata;
 
 Common tag keys (case as returned by mpv): `title`, `artist`, `album`, `album_artist`, `date`, `track`, `disc`, `genre`, `comment`, `composer`.
 
-#### Cover Art — How It Works
+#### Cover Art
 
-mpv_audio_kit extracts embedded cover art automatically when a track loads. The pipeline is:
-
-1. **`audio-display = 'embedded-first'`** (default) — mpv decodes the embedded image track as a video frame.
-2. **`image-display-duration = 'inf'`** — the frame is held in memory indefinitely so it can be read at any time.
-3. **`screenshot-raw`** — the `screenshot-raw video` command captures the raw RGBA pixel data of the current video frame (i.e. the cover art) into a `Uint8List`.
-4. The raw pixels are converted to PNG and attached to the `Media` extras as `artBytes` / `artUri`.
+When a track loads, mpv decodes its embedded cover art into a video frame (`audio-display = 'embedded-first'`). The library captures that frame with `screenshot-raw`, converts it to PNG (resized to a maximum of 800 px on the longest side), and attaches it to the `Media` extras as `artBytes` / `artUri`. This happens automatically — no extra calls needed.
 
 ```dart
 player.stream.playlist.listen((playlist) {
@@ -816,10 +820,6 @@ player.stream.playlist.listen((playlist) {
 });
 ```
 
-The extracted image is resized to a maximum of 800 px on the longest side before being delivered to the stream, to avoid excessive memory usage.
-
-#### Cover Art — Configuration
-
 Three properties control when and how cover art is processed. All are fully observable via `player.state` and `player.stream`.
 
 ##### `audio-display`
@@ -828,12 +828,12 @@ Controls which image source mpv decodes into the video pipeline.
 
 | Value | Behaviour |
 |-------|-----------|
-| `'embedded-first'` | Display cover art, preferring embedded images over external files. **Required for `screenshotCoverArt` to work.** mpv default. |
+| `'embedded-first'` | Display cover art, preferring embedded images over external files. **Required for automatic cover extraction.** mpv default. |
 | `'external-first'` | Display cover art, preferring external files over embedded images. |
 | `'no'` | Disable video/cover-art display entirely — no video pipeline overhead. Use this when your app reads artwork out-of-band (e.g. via `metadata_god` or a tag library). |
 
 ```dart
-// Default — embedded art decoded and available for screenshotCoverArt()
+// Default — embedded art decoded and extracted automatically on load
 await player.setAudioDisplay('embedded-first');
 
 // Disable when you read artwork from file tags directly
@@ -869,10 +869,10 @@ player.stream.coverArtAuto.listen((mode) => print('cover-art-auto: $mode'));
 How long (in seconds) the decoded cover frame is held as a displayable video frame after the file loads.
 
 ```dart
-// 'inf' (default) — frame lives forever; required for screenshotCoverArt()
+// 'inf' (default) — frame lives forever; required for automatic cover extraction
 await player.setImageDisplayDuration('inf');
 
-// '0' — frame is discarded immediately; use when you never call screenshotCoverArt()
+// '0' — frame is discarded immediately; saves memory when cover art is not needed
 await player.setImageDisplayDuration('0');
 
 // Any number of seconds
@@ -1035,6 +1035,96 @@ player.stream.log.listen((entry) {
 ```
 
 Set `logLevel` in `PlayerConfiguration` to control verbosity. `'warn'` is appropriate for production; `'debug'` or `'v'` for development.
+
+---
+
+### 12. Hooks
+
+Hooks intercept mpv's file-loading pipeline before a stream is opened. Use them to lazily resolve URLs, inject per-file HTTP headers, or redirect to a different source — without a local proxy server.
+
+#### Registering a Hook
+
+Call `registerHook` **once** after creating the player (before any `open` call):
+
+```dart
+player.registerHook('on_load');
+```
+
+Common hook names:
+
+| Name | When it fires |
+| :--- | :--- |
+| `on_load` | Before a stream is opened — can redirect the URL |
+| `on_load_fail` | After a stream fails to open |
+| `on_preloaded` | After the file is pre-loaded but before playback starts |
+
+#### Listening and Continuing
+
+Subscribe to `player.stream.hook` and call `continueHook` when processing is done. **You must always call `continueHook`**, even on error — otherwise mpv stalls indefinitely:
+
+```dart
+player.stream.hook.listen((event) async {
+  if (event.name == 'on_load') {
+    final url = player.getRawProperty('stream-open-filename') ?? '';
+
+    try {
+      if (url.startsWith('my-scheme://')) {
+        // Redirect to a real URL
+        final resolved = await myResolver(url);
+        player.setRawProperty('stream-open-filename', resolved.url);
+
+        // Inject per-file HTTP headers (direct HTTP only — for HLS use URL query params)
+        if (resolved.headers.isNotEmpty) {
+          final headerString = resolved.headers.entries
+              .map((e) => '${e.key}: ${e.value}')
+              .join(',');
+          player.setRawProperty(
+            'file-local-options/http-header-fields',
+            headerString,
+          );
+        }
+      }
+    } finally {
+      player.continueHook(event.id); // always call
+    }
+  } else {
+    player.continueHook(event.id);
+  }
+});
+```
+
+#### HTTP Headers via Hook
+
+`file-local-options/http-header-fields` sets headers only for the current file. They are applied at the mpv/libmpv layer and work correctly for direct HTTP streams.
+
+**Important — HLS streams**: when mpv opens an HLS playlist, the actual segment downloads are handled directly by ffmpeg/lavf, which does **not** inherit `http-header-fields` set via the hook. If your server requires authentication on the HLS segments, embed the credentials in the URL as query parameters instead:
+
+```dart
+// ✅ Correct for HLS — auth in the URL, visible to ffmpeg/lavf
+player.setRawProperty(
+  'stream-open-filename',
+  'https://server/stream/playlist.m3u8?token=abc123',
+);
+
+// ⚠️ Works for direct HTTP streams only — ignored by ffmpeg/lavf for HLS sub-requests
+player.setRawProperty('file-local-options/http-header-fields', 'Authorization: Bearer abc123');
+```
+
+#### Lazy URL Resolution
+
+When building a playlist with `Future.wait`, all `getStreamUrl` calls run in parallel. If your server rejects concurrent session creation (as Plex does for transcoding), store the session parameters and return a placeholder URL (e.g. `my-scheme://session-id`). The `on_load` hook fires **sequentially** as mpv opens each track, so resolution calls never overlap:
+
+```dart
+// Building the queue — no real API calls yet
+final medias = await Future.wait(tracks.map((t) async {
+  final url = await service.getStreamUrl(t.id); // returns "my-scheme://abc"
+  return Media(url);
+}));
+await player.openPlaylist(medias);
+
+// When mpv reaches each track, the hook resolves it on demand:
+// on_load → myResolver("my-scheme://abc") → /decision + start.m3u8 URL
+```
 
 ---
 

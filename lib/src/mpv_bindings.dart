@@ -192,6 +192,17 @@ final class MpvByteArray extends Struct {
 }
 
 // ---------------------------------------------------------------------------
+// mpv_event_hook
+// ---------------------------------------------------------------------------
+final class MpvEventHook extends Struct {
+  // const char *name — hook name (e.g. "on_load")
+  external Pointer<Void> name;
+
+  @Uint64()
+  external int id;
+}
+
+// ---------------------------------------------------------------------------
 // Function typedefs — native side
 // ---------------------------------------------------------------------------
 
@@ -299,6 +310,16 @@ typedef MpvRequestLogMessages = int Function(
 typedef _MpvClientApiVersionNative = UnsignedLong Function();
 typedef MpvClientApiVersion = int Function();
 
+// int mpv_hook_add(mpv_handle *ctx, uint64_t reply_userdata, const char *name, int priority)
+typedef _MpvHookAddNative = Int32 Function(
+    Pointer<MpvHandle> ctx, Uint64 replyUserdata, Pointer<Utf8> name, Int32 priority);
+typedef MpvHookAdd = int Function(
+    Pointer<MpvHandle> ctx, int replyUserdata, Pointer<Utf8> name, int priority);
+
+// int mpv_hook_continue(mpv_handle *ctx, uint64_t id)
+typedef _MpvHookContinueNative = Int32 Function(Pointer<MpvHandle> ctx, Uint64 id);
+typedef MpvHookContinue = int Function(Pointer<MpvHandle> ctx, int id);
+
 // ---------------------------------------------------------------------------
 // Loaded library wrapper
 // ---------------------------------------------------------------------------
@@ -326,6 +347,8 @@ class MpvLibrary {
   late final MpvRequestLogMessages mpvRequestLogMessages;
   late final MpvCommandRet mpvCommandRet;
   late final MpvClientApiVersion mpvClientApiVersion;
+  late final MpvHookAdd mpvHookAdd;
+  late final MpvHookContinue mpvHookContinue;
 
   /// Creates a wrapper from an already opened library (same process).
   factory MpvLibrary.fromExisting(DynamicLibrary lib) => MpvLibrary._(lib);
@@ -378,6 +401,11 @@ class MpvLibrary {
     mpvClientApiVersion =
         _lib.lookupFunction<_MpvClientApiVersionNative, MpvClientApiVersion>(
             'mpv_client_api_version');
+    mpvHookAdd =
+        _lib.lookupFunction<_MpvHookAddNative, MpvHookAdd>('mpv_hook_add');
+    mpvHookContinue =
+        _lib.lookupFunction<_MpvHookContinueNative, MpvHookContinue>(
+            'mpv_hook_continue');
   }
 
   /// Opens libmpv from the platform-specific path or a custom [path].
