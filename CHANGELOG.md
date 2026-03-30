@@ -1,3 +1,7 @@
+## [0.0.5+1] - 30-03-2026
+
+- **README**: Improved documentation.
+
 ## [0.0.5] - 24-03-2026
 
 - **Core**: Added stream hooks API (`registerHook`, `continueHook`, `player.stream.hook`) to intercept mpv's file-loading pipeline.
