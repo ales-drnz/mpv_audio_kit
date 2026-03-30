@@ -8,8 +8,7 @@
 [![](https://img.shields.io/github/stars/ales-drnz/mpv_audio_kit?style=flat&logo=github)](https://github.com/ales-drnz/mpv_audio_kit)
 [![](https://img.shields.io/discord/1485588004029333516?logo=discord&logoColor=white)](https://discord.gg/g2Qf4Mq9MP)
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_audio_kit.png" width="120" align="left" style="margin-right: 15px;" alt="logo" />`mpv_audio_kit` is an audio library built on `libmpv` v0.41.0 — the engine behind the mpv media player. It provides a dedicated background event loop, a complete DSP pipeline, and direct access to every mpv property, making it the most capable audio library available for Flutter.
-
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_audio_kit.png" width="70" align="left" style="margin-right: 15px;" alt="logo" />`mpv_audio_kit` is an audio library built on `libmpv` v0.41.0 — the engine behind the mpv media player. It provides a dedicated background event loop, a complete DSP pipeline, and direct access to every mpv property, making it the most capable audio library available for Flutter.
 <br clear="left"/>
 
 ---
