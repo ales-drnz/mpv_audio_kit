@@ -90,7 +90,7 @@ class AudioFilter {
         'lavfi-loudnorm=I=$integratedLoudness:TP=$truePeak:LRA=$lra');
   }
 
-  /// Pitch / tempo shift via Rubberband (requires a Rubberband-enabled build).
+  /// Pitch / tempo shift
   ///
   /// - [pitch] — pitch factor (1.0 = original, 2.0 = one octave up).
   /// - [tempo] — tempo factor (1.0 = original, 0.5 = half speed).
