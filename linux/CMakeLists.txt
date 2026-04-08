@@ -19,8 +19,8 @@ set(PLUGIN_NAME "mpv_audio_kit_plugin")
 # The official libmpv.so.2 is automatically downloaded from GitHub Releases.
 # This ensures consistency and proper audio backend support.
 set(_BUNDLED_MPV "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.so.2")
-set(MPV_RELEASE_VERSION "libmpv-r1")
-set(EXPECTED_SHA256 "1c680dad2f0e1fb3849b28b3a3561d49bed4e4313ed5d2531ad4d5eb8f948c59")
+set(MPV_RELEASE_VERSION "libmpv-r2")
+set(EXPECTED_SHA256 "951a9175c7517f7a1d8d0762722c0fe5157ab67f073b9625837d091b0f8a7936")
 
 set(DOWNLOAD_NEEDED TRUE)
 

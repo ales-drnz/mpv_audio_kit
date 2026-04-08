@@ -8,11 +8,10 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'mpv_audio_kit'
-  s.version          = '0.0.5'
+  s.version          = '0.0.6'
   s.summary          = 'Flutter audio player powered by libmpv.'
   s.description      = <<-DESC
-    High-quality audio player for Flutter, based on libmpv.
-    Supports audio filters, all media formats, and streaming protocols.
+    Supports audio filters, pitch control, equalizer, and all mpv audio features.
   DESC
   s.homepage         = 'https://github.com/ales-drnz/mpv_audio_kit'
   s.license          = { :file => '../LICENSE' }
@@ -29,8 +28,8 @@ Pod::Spec.new do |s|
   # Automatically downloaded from GitHub Releases if missing or invalid.
   # Run `scripts/generate_checksums.sh` to get the SHA-256 for your new release.
   s.prepare_command = <<-CMD
-    MPV_RELEASE_VERSION="libmpv-r1"
-    EXPECTED_SHA256="b6d0b3d9114e811d3955596c9219acedba31069973e5154411a0787772de1890"
+    MPV_RELEASE_VERSION="libmpv-r2"
+    EXPECTED_SHA256="e8695352fb858466cbf244ab0f48219b353175d52a493df109c4afc502de401c"
     URL="https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_ios-arm64.xcframework.zip"
 
     mkdir -p Frameworks

@@ -34,10 +34,10 @@ mixin _NetworkModule on _PlayerBase {
   }
 
   /// Enables or disables streaming silence when no audio is playing.
-  Future<void> setStreamSilence(bool enable) async {
+  Future<void> setAudioStreamSilence(bool enable) async {
     _checkNotDisposed();
-    _prop('stream-silence', enable ? 'yes' : 'no');
-    _updateState((s) => s.copyWith(streamSilence: enable), _streamSilenceCtrl, enable);
+    _prop('audio-stream-silence', enable ? 'yes' : 'no');
+    _updateState((s) => s.copyWith(audioStreamSilence: enable), _audioStreamSilenceCtrl, enable);
   }
 
   /// Whether to automatically pause when the cache runs empty.

@@ -131,6 +131,19 @@ class PlayerState {
   /// Network timeout in seconds.
   final double networkTimeout;
 
+  /// Whether playback is paused because the network cache ran empty.
+  ///
+  /// This is mpv's `paused-for-cache` property — the authoritative signal
+  /// for network buffering stalls. When `true`, mpv is waiting for data
+  /// and will auto-resume once [cachePauseWait] seconds are buffered.
+  final bool pausedForCache;
+
+  /// Whether the current stream is being read via a network protocol.
+  ///
+  /// Mirrors mpv's `demuxer-via-network` property. Useful for deciding
+  /// whether an error is likely network-related.
+  final bool demuxerViaNetwork;
+
   /// Whether to verify TLS/SSL certificates.
   final bool tlsVerify;
 
@@ -141,7 +154,7 @@ class PlayerState {
   final double audioBuffer;
 
   /// Whether to stream silence when nothing is playing.
-  final bool streamSilence;
+  final bool audioStreamSilence;
 
   /// Whether to fallback to untimed null output.
   final bool aoNullUntimed;
@@ -207,8 +220,8 @@ class PlayerState {
   /// a displayable video frame after the file is loaded.
   ///
   /// Set to `'inf'` to keep the frame alive indefinitely — required when you
-  /// want to read the cover art at any time via [Player.screenshotCoverArt].
-  /// Set to `'0'` or a small value if you never use [Player.screenshotCoverArt].
+  /// want to extract cover art at any time via the `screenshot-raw` command.
+  /// Set to `'0'` or a small value if you never extract cover art.
   ///
   /// Default: `'inf'`.
   final String imageDisplayDuration;
@@ -251,10 +264,12 @@ class PlayerState {
     this.demuxerReadaheadSecs = 1,
     this.demuxerMaxBackBytes = 50 * 1024 * 1024,
     this.networkTimeout = 30.0,
+    this.pausedForCache = false,
+    this.demuxerViaNetwork = false,
     this.tlsVerify = true,
     this.audioExclusive = false,
     this.audioBuffer = 0.2,
-    this.streamSilence = false,
+    this.audioStreamSilence = false,
     this.aoNullUntimed = false,
     this.audioTrack = 'auto',
     this.audioSpdif = '',
@@ -309,10 +324,12 @@ class PlayerState {
     int? demuxerReadaheadSecs,
     int? demuxerMaxBackBytes,
     double? networkTimeout,
+    bool? pausedForCache,
+    bool? demuxerViaNetwork,
     bool? tlsVerify,
     bool? audioExclusive,
     double? audioBuffer,
-    bool? streamSilence,
+    bool? audioStreamSilence,
     bool? aoNullUntimed,
     String? audioTrack,
     String? audioSpdif,
@@ -366,10 +383,12 @@ class PlayerState {
       demuxerReadaheadSecs: demuxerReadaheadSecs ?? this.demuxerReadaheadSecs,
       demuxerMaxBackBytes: demuxerMaxBackBytes ?? this.demuxerMaxBackBytes,
       networkTimeout: networkTimeout ?? this.networkTimeout,
+      pausedForCache: pausedForCache ?? this.pausedForCache,
+      demuxerViaNetwork: demuxerViaNetwork ?? this.demuxerViaNetwork,
       tlsVerify: tlsVerify ?? this.tlsVerify,
       audioExclusive: audioExclusive ?? this.audioExclusive,
       audioBuffer: audioBuffer ?? this.audioBuffer,
-      streamSilence: streamSilence ?? this.streamSilence,
+      audioStreamSilence: audioStreamSilence ?? this.audioStreamSilence,
       aoNullUntimed: aoNullUntimed ?? this.aoNullUntimed,
       audioTrack: audioTrack ?? this.audioTrack,
       audioSpdif: audioSpdif ?? this.audioSpdif,

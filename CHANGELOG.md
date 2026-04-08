@@ -1,3 +1,13 @@
+## [0.0.6] - 08-04-2026
+
+- **Core**: Added SMB2/3 protocol support (`smb2://`) for Samba/CIFS network shares via patched libsmb2.
+- **Core**: Typed error stream — `Stream<MpvPlayerError>` (sealed: `MpvEndFileError`, `MpvLogError`) replaces `Stream<String>`.
+- **Core**: Added `stream.endFile` (`MpvFileEndedEvent`) for all file-end events, including premature EOF detection.
+- **Core**: Added `stream.pausedForCache` and `stream.demuxerViaNetwork` for network state monitoring.
+- **Core**: Added optional `timeout` parameter to `registerHook` for automatic safety continuation.
+- **Fixed**: Incorrect name for audio-stream-silence property.
+- **Build**: Updated libmpv binaries from `libmpv-r1` to `libmpv-r2` across all platforms.
+
 ## [0.0.5+1] - 30-03-2026
 
 - **README**: Improved documentation.

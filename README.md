@@ -8,7 +8,7 @@
 [![](https://img.shields.io/github/stars/ales-drnz/mpv_audio_kit?style=flat&logo=github)](https://github.com/ales-drnz/mpv_audio_kit)
 [![](https://img.shields.io/discord/1485588004029333516?logo=discord&logoColor=white)](https://discord.gg/g2Qf4Mq9MP)
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_audio_kit.png" width="70" align="left" style="margin-right: 15px;" alt="logo" />`mpv_audio_kit` is an audio library built on `libmpv` v0.41.0 — the engine behind the mpv media player. It provides a dedicated background event loop, a complete DSP pipeline, and direct access to every mpv property, making it the most capable audio library available for Flutter.
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_audio_kit.png" width="70" align="left" style="margin-right: 15px;" alt="logo" />`mpv_audio_kit` is an audio library built on `libmpv` v0.41.0, the engine behind the mpv media player. It provides a dedicated background event loop, a complete DSP pipeline, and direct access to every property, making it the most capable audio library available for Flutter.
 <br clear="left"/>
 
 ---
@@ -29,7 +29,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.5+1
+  mpv_audio_kit: ^0.0.6
 ```
 
 ### Platform Requirements
@@ -108,7 +108,7 @@ dependencies:
         *   [7.3 Network Timeout](#73-network-timeout)
         *   [7.4 TLS/SSL Verification](#74-tlsssl-verification)
         *   [7.5 Audio Buffer](#75-audio-buffer)
-        *   [7.6 Stream Silence](#76-stream-silence)
+        *   [7.6 Audio Stream Silence](#76-audio-stream-silence)
         *   [7.7 Untimed Null Output](#77-untimed-null-output)
         *   [7.8 Radio & Live Streams](#78-radio--live-streams)
     *   [8. Metadata & Cover Art](#8-metadata--cover-art)
@@ -127,8 +127,10 @@ dependencies:
         *   [10.3 Send a Command](#103-send-a-command)
         *   [10.4 Log Injection](#104-log-injection)
     *   [11. Error Handling & Logging](#11-error-handling--logging)
-        *   [11.1 Error Stream](#111-error-stream)
-        *   [11.2 Log Stream](#112-log-stream)
+        *   [11.1 Typed Error Stream](#111-typed-error-stream)
+        *   [11.2 End File Stream](#112-end-file-stream)
+        *   [11.3 Network State](#113-network-state)
+        *   [11.4 Log Stream](#114-log-stream)
     *   [12. Hooks](#12-hooks)
         *   [12.1 Registering a Hook](#121-registering-a-hook)
         *   [12.2 Listening and Continuing](#122-listening-and-continuing)
@@ -187,7 +189,7 @@ The following images demonstrate the example app included in the `example/` dire
 - 📜 **Dynamic Playlist**: Add, remove, move, and replace tracks at runtime without stopping playback.
 - ⚙️ **Audiophile Hardware**: Exclusive mode (WASAPI/ALSA/CoreAudio), output device selection, sample rate and format forcing.
 - 🔍 **Metadata & Cover Art**: Native extraction of embedded cover images and metadata tags.
-- 🌐 **Network Streams**: HLS, RTSP, RTMP, SHOUTcast/Icecast, and any format libmpv supports — with native HTTP headers.
+- 🌐 **Network Streams**: HLS, RTSP, RTMP, SMB, SHOUTcast/Icecast, and any format libmpv supports — with native HTTP headers.
 - 🪝 **Stream Hooks**: Intercept mpv's file-loading pipeline via `on_load` to lazily resolve URLs, redirect streams, or inject per-file headers.
 - 📦 **Granular Caching**: Fine-tuned control over demuxer memory pool, disk overflow cache, and cache-pause behavior.
 - 🔧 **Raw Access**: Read and write any mpv property directly, or send any mpv command.
@@ -223,7 +225,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
   @override
   void dispose() {
-    player.dispose(); // Flutter's dispose() is synchronous — fire and forget
+    player.dispose(); // fire and forget is fine inside Flutter's synchronous dispose()
     super.dispose();
   }
 
@@ -328,6 +330,7 @@ final content = Media('content://com.android.externalstorage.documents/...');
 | `content://` | Android content provider URIs (file picker, media store) |
 | `rtsp://` | Real-Time Streaming Protocol |
 | `rtmp://` | Real-Time Messaging Protocol (live streaming) |
+| `smb2://` | SMB2/3 network shares (Samba/CIFS via libsmb2) |
 | `hls://` / `m3u8` | HTTP Live Streaming (HLS), as used by Jellyfin transcoding |
 | Any URL | libmpv accepts any scheme it has a protocol handler for |
 
@@ -657,7 +660,7 @@ Select the native backend used for audio output:
 ```dart
 await player.setAudioDriver('wasapi');    // Windows
 await player.setAudioDriver('coreaudio'); // macOS
-await player.setAudioDriver('pulse');     // Linu
+await player.setAudioDriver('pulse');     // Linux
 await player.setAudioDriver('alsa');      // Linux
 await player.setAudioDriver('pipewire');  // Linux
 await player.setAudioDriver('auto');      // Let mpv choose (default)
@@ -815,12 +818,12 @@ await player.setAudioBuffer(0.1);  // 100 ms (low latency)
 await player.setAudioBuffer(0.5);  // 500 ms (stable on slow hardware)
 ```
 
-#### 7.6 Stream Silence
+#### 7.6 Audio Stream Silence
 
 Keep audio hardware active even when playback is paused, to eliminate click/pop on resume:
 
 ```dart
-await player.setStreamSilence(true);
+await player.setAudioStreamSilence(true);
 ```
 
 #### 7.7 Untimed Null Output
@@ -1080,17 +1083,83 @@ player.log('Cache miss — refetching segment', level: 'warn');
 
 ### 11. Error Handling & Logging
 
-#### 11.1 Error Stream
+#### 11.1 Typed Error Stream
+
+The error stream emits `MpvPlayerError` — a sealed class with two subtypes that let you distinguish between playback failures and informational engine errors:
 
 ```dart
-player.stream.error.listen((message) {
-  print('Engine error: $message');
+player.stream.error.listen((error) {
+  switch (error) {
+    case MpvEndFileError():
+      // Playback ended due to an error (e.g. network timeout, file not found).
+      print('End-file error: reason=${error.reason}, code=${error.code}');
+      print('  isLoadingError: ${error.isLoadingError}');
+      print('  isAudioOutputError: ${error.isAudioOutputError}');
+      print('  isFormatError: ${error.isFormatError}');
+    case MpvLogError():
+      // An mpv subsystem logged at error/fatal level (e.g. codec issue).
+      // Does NOT necessarily mean playback has stopped.
+      print('Log error [${error.prefix}] ${error.level}: ${error.message}');
+  }
 });
 ```
 
-Errors are also automatically generated from mpv log messages at the `error` or `fatal` level.
+**`MpvEndFileError`** — emitted when `MPV_EVENT_END_FILE` fires with a non-zero error code:
+- `reason` — a `MpvEndFileReason` enum (`eof`, `stop`, `quit`, `error`, `redirect`)
+- `code` — the raw mpv error code (e.g. `-13` for `MPV_ERROR_LOADING_FAILED`)
+- `isLoadingError` — `true` for network/file loading failures
+- `isAudioOutputError` — `true` when the audio output driver failed to initialize
+- `isFormatError` — `true` when the file format is unrecognizable or has no audio
 
-#### 11.2 Log Stream
+**`MpvLogError`** — emitted when mpv logs at `error` or `fatal` level:
+- `prefix` — the mpv subsystem (e.g. `'ffmpeg'`, `'ao'`, `'demux'`)
+- `level` — `'error'` or `'fatal'`
+
+> **Network note:** per the mpv documentation, a network disconnection mid-stream
+> may report as `MpvEndFileReason.eof` rather than `MpvEndFileReason.error`.
+> Use `player.stream.endFile` and compare position vs duration for reliable detection (see §11.2).
+
+#### 11.2 End File Stream
+
+`player.stream.endFile` emits an `MpvFileEndedEvent` for **every** file-end — not just errors. This is the only way to detect premature EOFs caused by network disconnections, which mpv reports as `reason: eof` with no error code:
+
+```dart
+player.stream.endFile.listen((event) {
+  if (event.reason == MpvEndFileReason.eof) {
+    final pos = player.state.position;
+    final dur = player.state.duration;
+    if (dur > Duration.zero && (dur - pos).inSeconds > 5) {
+      print('Premature EOF — likely a network drop');
+    }
+  }
+});
+```
+
+`MpvFileEndedEvent` fields:
+- `reason` — a `MpvEndFileReason` enum value
+- `error` — the raw mpv error code (non-zero only when `reason == MpvEndFileReason.error`)
+
+#### 11.3 Network State
+
+Two dedicated streams for monitoring network conditions:
+
+```dart
+// True when playback is paused because the cache ran empty (network stall).
+// This is the authoritative signal — prefer it over interpreting error events.
+player.stream.pausedForCache.listen((paused) {
+  if (paused) showBufferingIndicator();
+});
+
+// True when the current stream is being read via a network protocol.
+// Useful for deciding whether an error is likely network-related.
+player.stream.demuxerViaNetwork.listen((isNetwork) {
+  print('Network stream: $isNetwork');
+});
+```
+
+Both are also available synchronously via `player.state.pausedForCache` and `player.state.demuxerViaNetwork`.
+
+#### 11.4 Log Stream
 
 ```dart
 player.stream.log.listen((entry) {
@@ -1113,6 +1182,12 @@ Call `registerHook` **once** after creating the player (before any `open` call):
 
 ```dart
 player.registerHook('on_load');
+```
+
+You can add a safety timeout — if `continueHook` isn't called within the given duration, the library auto-continues to prevent mpv from stalling indefinitely (e.g. due to an unhandled exception):
+
+```dart
+player.registerHook('on_load', timeout: const Duration(seconds: 10));
 ```
 
 Common hook names:
@@ -1234,6 +1309,7 @@ If you are developing or testing your Flutter app inside a headless Linux contai
 
 ```bash
 sudo apt update
+
 # 1. Flutter desktop build essentials:
 sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 

@@ -8,6 +8,7 @@ import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/audio_filter.dart';
 import 'package:mpv_audio_kit/src/models/mpv_log_entry.dart';
 import 'package:mpv_audio_kit/src/models/mpv_hook_event.dart';
+import 'package:mpv_audio_kit/src/models/mpv_player_error.dart';
 
 /// Typed event streams for subscribing to individual [Player] state changes.
 ///
@@ -131,6 +132,15 @@ class PlayerStream {
   /// Emits whether TLS verification is enabled.
   final Stream<bool> tlsVerify;
 
+  /// Whether playback is paused because the network cache ran empty.
+  ///
+  /// This is the authoritative signal for network stalls. Prefer this
+  /// over interpreting [error] events for buffering detection.
+  final Stream<bool> pausedForCache;
+
+  /// Whether the current stream is being read via a network protocol.
+  final Stream<bool> demuxerViaNetwork;
+
   /// Emits whether audio exclusive mode is enabled.
   final Stream<bool> audioExclusive;
 
@@ -138,7 +148,7 @@ class PlayerStream {
   final Stream<double> audioBuffer;
 
   /// Emits whether stream silence is enabled.
-  final Stream<bool> streamSilence;
+  final Stream<bool> audioStreamSilence;
 
   /// Emits whether fallback to null output is enabled.
   final Stream<bool> aoNullUntimed;
@@ -184,8 +194,18 @@ class PlayerStream {
   /// Emits the current [PlayerState.imageDisplayDuration] value.
   final Stream<String> imageDisplayDuration;
 
-  /// Emits human-readable error messages from the mpv engine.
-  final Stream<String> error;
+  /// Emits for **every** file-end event — clean completions, stops, errors,
+  /// and premature EOFs alike.
+  ///
+  /// Use [MpvFileEndedEvent.reachedNaturalEnd] to detect whether an EOF
+  /// was genuine or caused by a network disconnection.
+  final Stream<MpvFileEndedEvent> endFile;
+
+  /// Emits typed error events from the mpv engine.
+  ///
+  /// Use pattern matching to distinguish [MpvEndFileError] (playback
+  /// failures) from [MpvLogError] (informational engine errors).
+  final Stream<MpvPlayerError> error;
 
   /// Emits structured log entries from the mpv engine at the configured log level.
   final Stream<MpvLogEntry> log;
@@ -235,9 +255,11 @@ class PlayerStream {
     required this.demuxerMaxBackBytes,
     required this.networkTimeout,
     required this.tlsVerify,
+    required this.pausedForCache,
+    required this.demuxerViaNetwork,
     required this.audioExclusive,
     required this.audioBuffer,
-    required this.streamSilence,
+    required this.audioStreamSilence,
     required this.aoNullUntimed,
     required this.audioTrack,
     required this.audioSpdif,
@@ -252,6 +274,7 @@ class PlayerStream {
     required this.audioDisplay,
     required this.coverArtAuto,
     required this.imageDisplayDuration,
+    required this.endFile,
     required this.error,
     required this.log,
     required this.hook,

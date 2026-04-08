@@ -110,12 +110,18 @@ mixin _PropertyRegistry on _PlayerBase {
       case 'audio-exclusive':
         _updateState(
             (s) => s.copyWith(audioExclusive: flag), _audioExclusiveCtrl, flag);
-      case 'stream-silence':
+      case 'audio-stream-silence':
         _updateState(
-            (s) => s.copyWith(streamSilence: flag), _streamSilenceCtrl, flag);
+            (s) => s.copyWith(audioStreamSilence: flag), _audioStreamSilenceCtrl, flag);
       case 'ao-null-untimed':
         _updateState(
             (s) => s.copyWith(aoNullUntimed: flag), _aoNullUntimedCtrl, flag);
+      case 'paused-for-cache':
+        _updateState((s) => s.copyWith(pausedForCache: flag),
+            _pausedForCacheCtrl, flag);
+      case 'demuxer-via-network':
+        _updateState((s) => s.copyWith(demuxerViaNetwork: flag),
+            _demuxerViaNetworkCtrl, flag);
       case 'audio-samplerate':
         _updateState((s) => s.copyWith(audioSampleRate: value),
             _audioSampleRateCtrl, value);
@@ -262,9 +268,11 @@ mixin _PropertyRegistry on _PlayerBase {
     _observe('demuxer-max-back-bytes', MpvFormat.mpvFormatInt64, 47);
     _observe('network-timeout', MpvFormat.mpvFormatDouble, 48);
     _observe('tls-verify', MpvFormat.mpvFormatFlag, 49);
+    _observe('paused-for-cache', MpvFormat.mpvFormatFlag, 66);
+    _observe('demuxer-via-network', MpvFormat.mpvFormatFlag, 67);
     _observe('audio-buffer', MpvFormat.mpvFormatDouble, 50);
     _observe('audio-exclusive', MpvFormat.mpvFormatFlag, 51);
-    _observe('stream-silence', MpvFormat.mpvFormatFlag, 52);
+    _observe('audio-stream-silence', MpvFormat.mpvFormatFlag, 52);
     _observe('ao-null-untimed', MpvFormat.mpvFormatFlag, 53);
     _observe('aid', MpvFormat.mpvFormatString, 54);
     _observe('audio-spdif', MpvFormat.mpvFormatString, 55);

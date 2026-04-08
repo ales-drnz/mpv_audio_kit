@@ -13,7 +13,7 @@ import 'package:ffi/ffi.dart';
 import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 
 import 'event_isolate.dart';
-import 'mpv_bindings.dart';
+import 'mpv_bindings.dart' hide MpvEndFileReason;
 import 'mpv_audio_kit.dart';
 import 'utils/android_helper.dart';
 
@@ -24,6 +24,7 @@ import 'models/audio_filter.dart';
 import 'models/audio_params.dart';
 import 'models/mpv_log_entry.dart';
 import 'models/mpv_hook_event.dart';
+import 'models/mpv_player_error.dart';
 import 'models/player_configuration.dart';
 import 'models/player_state.dart';
 import 'models/player_stream.dart';
@@ -139,6 +140,12 @@ class Player extends _PlayerBase
     _checkNotDisposed();
     _command(args);
   }
+
+  @override
+  Future<void> dispose() async {
+    _cancelHookTimers();
+    await super.dispose();
+  }
 }
 
 /// Base class for [Player] containing shared state and native communication logic.
@@ -150,6 +157,10 @@ abstract class _PlayerBase {
   late final MpvEventIsolate _eventIsolate;
   StreamSubscription<MpvIsolateEvent>? _eventSub;
   bool _disposed = false;
+
+  // Hook timeout state — lives here because _handleEvent dispatches hooks.
+  final _hookTimeouts = <String, Duration>{};
+  final _hookTimers = <int, Timer>{};
 
   PlayerState _state = const PlayerState();
   bool _pendingPlay = false;
@@ -195,9 +206,11 @@ abstract class _PlayerBase {
   final _demuxerMaxBackBytesCtrl = StreamController<int>.broadcast();
   final _networkTimeoutCtrl = StreamController<double>.broadcast();
   final _tlsVerifyCtrl = StreamController<bool>.broadcast();
+  final _pausedForCacheCtrl = StreamController<bool>.broadcast();
+  final _demuxerViaNetworkCtrl = StreamController<bool>.broadcast();
   final _audioExclusiveCtrl = StreamController<bool>.broadcast();
   final _audioBufferCtrl = StreamController<double>.broadcast();
-  final _streamSilenceCtrl = StreamController<bool>.broadcast();
+  final _audioStreamSilenceCtrl = StreamController<bool>.broadcast();
   final _aoNullUntimedCtrl = StreamController<bool>.broadcast();
   final _audioTrackCtrl = StreamController<String>.broadcast();
   final _audioSpdifCtrl = StreamController<String>.broadcast();
@@ -212,7 +225,8 @@ abstract class _PlayerBase {
   final _audioDisplayCtrl = StreamController<String>.broadcast();
   final _coverArtAutoCtrl = StreamController<String>.broadcast();
   final _imageDisplayDurationCtrl = StreamController<String>.broadcast();
-  final _errorCtrl = StreamController<String>.broadcast();
+  final _endFileCtrl = StreamController<MpvFileEndedEvent>.broadcast();
+  final _errorCtrl = StreamController<MpvPlayerError>.broadcast();
   final _logCtrl = StreamController<MpvLogEntry>.broadcast();
   final _hookCtrl = StreamController<MpvHookEvent>.broadcast();
 
@@ -274,9 +288,11 @@ abstract class _PlayerBase {
       demuxerMaxBackBytes: _demuxerMaxBackBytesCtrl.stream,
       networkTimeout: _networkTimeoutCtrl.stream,
       tlsVerify: _tlsVerifyCtrl.stream,
+      pausedForCache: _pausedForCacheCtrl.stream,
+      demuxerViaNetwork: _demuxerViaNetworkCtrl.stream,
       audioExclusive: _audioExclusiveCtrl.stream,
       audioBuffer: _audioBufferCtrl.stream,
-      streamSilence: _streamSilenceCtrl.stream,
+      audioStreamSilence: _audioStreamSilenceCtrl.stream,
       aoNullUntimed: _aoNullUntimedCtrl.stream,
       audioTrack: _audioTrackCtrl.stream,
       audioSpdif: _audioSpdifCtrl.stream,
@@ -291,6 +307,7 @@ abstract class _PlayerBase {
       audioDisplay: _audioDisplayCtrl.stream,
       coverArtAuto: _coverArtAutoCtrl.stream,
       imageDisplayDuration: _imageDisplayDurationCtrl.stream,
+      endFile: _endFileCtrl.stream,
       error: _errorCtrl.stream,
       log: _logCtrl.stream,
       hook: _hookCtrl.stream,
@@ -318,6 +335,19 @@ abstract class _PlayerBase {
 
     _opt('keep-open', 'yes');
     _opt('idle', 'yes');
+
+    // Disable all builtin scripts and bindings — not needed for a library.
+    _opt('osc', 'no');
+    _opt('ytdl', 'no');
+    _opt('load-stats-overlay', 'no');
+    _opt('load-console', 'no');
+    _opt('load-commands', 'no');
+    _opt('load-auto-profiles', 'no');
+    _opt('load-select', 'no');
+    _opt('load-context-menu', 'no');
+    _opt('load-positioning', 'no');
+    _opt('load-scripts', 'no');
+    _opt('input-builtin-bindings', 'no');
     _opt('audio-client-name', configuration.audioClientName ?? 'mpv_audio_kit');
 
     if (configuration.logLevel != 'no') {
@@ -352,10 +382,19 @@ abstract class _PlayerBase {
         _pollPosition();
         _extractEmbeddedCover();
       case MpvEndFileEvent(:final reason, :final error):
+        final typedReason = MpvEndFileReason.fromValue(reason);
+        _endFileCtrl.add(MpvFileEndedEvent(
+          reason: typedReason,
+          error: error,
+        ));
         if (error < 0) {
-          _errorCtrl.add(_errorString(error));
+          _errorCtrl.add(MpvEndFileError(
+            reason: typedReason,
+            code: error,
+            message: _errorString(error),
+          ));
         }
-        final isEof = reason == MpvEndFileReason.mpvEndFileReasonEof;
+        final isEof = reason == MpvEndFileReason.eof.value;
         _patchState((s) =>
             s.copyWith(playing: false, buffering: false, completed: isEof));
       case MpvEventShutdown():
@@ -370,12 +409,22 @@ abstract class _PlayerBase {
         final entry = MpvLogEntry(prefix: prefix, level: level, text: text);
         _logCtrl.add(entry);
         if (level == 'error' || level == 'fatal') {
-          _errorCtrl.add(entry.toString());
+          _errorCtrl.add(MpvLogError(
+            prefix: prefix,
+            level: level,
+            text: text,
+          ));
         }
       case MpvEventHookFired(:final id, :final name):
+        final timeout = _hookTimeouts[name];
+        if (timeout != null) _startHookTimeout(id, name, timeout);
         _hookCtrl.add(MpvHookEvent(id, name));
       case MpvEventError(:final message):
-        _errorCtrl.add(message);
+        _errorCtrl.add(MpvLogError(
+          prefix: 'mpv',
+          level: 'error',
+          text: message,
+        ));
     }
   }
 
@@ -432,6 +481,25 @@ abstract class _PlayerBase {
   String _errorString(int code) {
     final p = _lib.mpvErrorString(code);
     return p == nullptr ? 'error $code' : p.cast<Utf8>().toDartString();
+  }
+
+  void _startHookTimeout(int id, String name, Duration timeout) {
+    _hookTimers[id] = Timer(timeout, () {
+      _hookTimers.remove(id);
+      _log(
+        'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s — '
+        'auto-continuing to unblock mpv',
+        level: 'warn',
+      );
+      if (!_disposed) _lib.mpvHookContinue(_handle, id);
+    });
+  }
+
+  void _cancelHookTimers() {
+    for (final timer in _hookTimers.values) {
+      timer.cancel();
+    }
+    _hookTimers.clear();
   }
 
   void _checkNotDisposed() {
@@ -601,8 +669,10 @@ abstract class _PlayerBase {
       if (_disposed || !_state.playing) return;
       final fmt = _getPropString('audio-out-params/format');
       if (fmt == null || fmt.isEmpty) {
-        _errorCtrl.add(
-            '[mpv_audio_kit] No audio output driver initialized — playback is silent');
+        _errorCtrl.add(const MpvLogError(
+            prefix: 'mpv_audio_kit',
+            level: 'error',
+            text: 'No audio output driver initialized — playback is silent'));
       }
     });
   }
@@ -797,9 +867,11 @@ abstract class _PlayerBase {
       _demuxerMaxBackBytesCtrl,
       _networkTimeoutCtrl,
       _tlsVerifyCtrl,
+      _pausedForCacheCtrl,
+      _demuxerViaNetworkCtrl,
       _audioExclusiveCtrl,
       _audioBufferCtrl,
-      _streamSilenceCtrl,
+      _audioStreamSilenceCtrl,
       _aoNullUntimedCtrl,
       _audioTrackCtrl,
       _audioSpdifCtrl,
@@ -811,6 +883,7 @@ abstract class _PlayerBase {
       _audioDriverCtrl,
       _activeFiltersCtrl,
       _equalizerGainsCtrl,
+      _endFileCtrl,
       _errorCtrl,
       _logCtrl,
       _hookCtrl,

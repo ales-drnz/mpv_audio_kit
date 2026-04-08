@@ -3,7 +3,7 @@ import java.net.URL
 import java.security.MessageDigest
 
 group = "com.alesdrnz.mpv_audio_kit"
-version = "0.0.5"
+version = "0.0.6"
 
 buildscript {
     val kotlinVersion = "2.0.21"
@@ -103,7 +103,7 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.0.0")
 }
 
-val MPV_RELEASE_VERSION = "libmpv-r1"
+val MPV_RELEASE_VERSION = "libmpv-r2"
 val MPV_BASE_URL = "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}"
 
 val downloadMpvTask = tasks.register("downloadMpvLibraries") {
@@ -111,11 +111,11 @@ val downloadMpvTask = tasks.register("downloadMpvLibraries") {
     val abis = mapOf(
         "arm64-v8a" to mapOf(
             "file" to "libmpv_android-arm64-v8a.so",
-            "sha256" to "a911b90dbf98fb793e92bbb2f3a011478daec716032d6dddc2ee8d21ed9434ce"
+            "sha256" to "aedbf7cbfe4c7a93ab778a35ff48e84cb33afba07943b0a761c62e0d35c17f10"
         ),
         "x86_64" to mapOf(
             "file" to "libmpv_android-x86_64.so",
-            "sha256" to "fb00ebc8f387b85e1b9998670649a1fc4177bd31e6ada6c31f531bb04fe1ba01"
+            "sha256" to "e1020ea73ad9a576d56e26297e9cee118bac4da044becd8b154cab99cf6d6422"
         )
     )
     

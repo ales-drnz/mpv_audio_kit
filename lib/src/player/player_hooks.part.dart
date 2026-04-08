@@ -24,11 +24,17 @@ part of '../player.dart';
 /// });
 /// ```
 mixin _HooksModule on _PlayerBase {
+
   /// Registers an mpv hook with [name] and optional [priority].
   ///
   /// Hook events are delivered via [PlayerStream.hook].
   /// Call [continueHook] with the event's [MpvHookEvent.id] when processing
   /// is complete. Until then, mpv suspends the operation guarded by this hook.
+  ///
+  /// If [timeout] is provided, the library automatically calls [continueHook]
+  /// after the given duration if the consumer hasn't called it yet. This
+  /// prevents mpv from stalling indefinitely due to unhandled exceptions in
+  /// hook listeners.
   ///
   /// Common hook names:
   /// - `"on_load"` — before a stream is opened; can redirect the URL.
@@ -36,8 +42,9 @@ mixin _HooksModule on _PlayerBase {
   /// - `"on_preloaded"` — after the file is pre-loaded but before playback starts.
   ///
   /// Higher [priority] values run earlier. The default (0) is fine for most uses.
-  void registerHook(String name, {int priority = 0}) {
+  void registerHook(String name, {int priority = 0, Duration? timeout}) {
     _checkNotDisposed();
+    if (timeout != null) _hookTimeouts[name] = timeout;
     using((arena) {
       _lib.mpvHookAdd(
         _handle,
@@ -54,7 +61,9 @@ mixin _HooksModule on _PlayerBase {
   /// [PlayerStream.hook], even if your processing fails — otherwise mpv
   /// will stall indefinitely waiting for the hook to return.
   void continueHook(int id) {
+    _hookTimers.remove(id)?.cancel();
     _checkNotDisposed();
     _lib.mpvHookContinue(_handle, id);
   }
+
 }

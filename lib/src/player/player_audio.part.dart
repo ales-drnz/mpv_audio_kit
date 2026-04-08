@@ -159,7 +159,7 @@ mixin _AudioModule on _PlayerBase {
   ///   app reads artwork out-of-band (e.g. via `metadata_god`) to skip the
   ///   video pipeline overhead entirely.
   /// - `'embedded-first'` — display cover art, preferring embedded images over
-  ///   external files. Required for `screenshotCoverArt` to work (mpv default).
+  ///   external files. Required for cover art extraction via `screenshot-raw` (mpv default).
   /// - `'external-first'` — display cover art, preferring external files over
   ///   embedded images.
   ///
@@ -194,7 +194,7 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Pass `'inf'` (default) to keep the frame alive indefinitely — required
   /// when you want to extract cover art at any point after loading via
-  /// [screenshotCoverArt]. Pass `'0'` if you never use [screenshotCoverArt]
+  /// the `screenshot-raw` command. Pass `'0'` if you never extract cover art
   /// and want to minimise memory.
   Future<void> setImageDisplayDuration(String duration) async {
     _checkNotDisposed();
