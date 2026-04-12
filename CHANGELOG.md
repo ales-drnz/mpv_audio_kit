@@ -1,3 +1,9 @@
+## [0.0.7] - 12-04-2026
+
+- **Core**: Patched audio-format (u8, s16, s32, float, etc.) to allow instant reset to default — setting it to `"no"` (newly accepted) or `""` now resets the format immediately, while previously a full player restart was required.
+- **Example**: Updated deprecated APIs that prevented the app from running.
+- **Build**: Updated libmpv binaries to `libmpv-r3` across all platforms.
+
 ## [0.0.6] - 08-04-2026
 
 - **Core**: Added SMB2/3 protocol support (`smb2://`) for Samba/CIFS network shares via patched libsmb2.

@@ -136,8 +136,8 @@ class _PlayerPageState extends State<PlayerPage> {
       player.stream.tlsVerify.listen(
         (v) => settingsService.save('tls-verify', v),
       );
-      player.stream.streamSilence.listen(
-        (v) => settingsService.save('stream-silence', v),
+      player.stream.audioStreamSilence.listen(
+        (v) => settingsService.save('audio-stream-silence', v),
       );
       player.stream.aoNullUntimed.listen(
         (v) => settingsService.save('ao-null-untimed', v),

@@ -176,8 +176,9 @@ mixin _PropertyRegistry on _PlayerBase {
         _updateState(
             (s) => s.copyWith(audioSpdif: value), _audioSpdifCtrl, value);
       case 'audio-format':
+        final fmt = value.isEmpty ? 'no' : value;
         _updateState(
-            (s) => s.copyWith(audioFormat: value), _audioFormatCtrl, value);
+            (s) => s.copyWith(audioFormat: fmt), _audioFormatCtrl, fmt);
       case 'audio-channels':
         _updateState(
             (s) => s.copyWith(audioChannels: value), _audioChannelsCtrl, value);

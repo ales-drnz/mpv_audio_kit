@@ -122,8 +122,8 @@ class AudioPage extends StatelessWidget {
           stream: player.stream.audioFormat,
           initialData: player.state.audioFormat,
           builder: (context, snap) {
-            final val = snap.data ?? 'auto';
-            final options = ['auto', 'u8', 's16', 's32', 'float', 'double'];
+            final val = snap.data ?? 'no';
+            final options = ['no', 'u8', 'u8p', 's16', 's16p', 's32', 's32p', 'float', 'floatp', 'double', 'doublep'];
             if (!options.contains(val)) options.add(val);
             return DropdownPropertyCard<String>(
               title: 'Output Format',
@@ -131,7 +131,10 @@ class AudioPage extends StatelessWidget {
               icon: Icons.settings_applications_rounded,
               value: val,
               items: options
-                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                  .map((v) => DropdownMenuItem(
+                        value: v,
+                        child: Text(v == 'no' ? 'Auto' : v),
+                      ))
                   .toList(),
               onChanged: (v) => v != null ? player.setAudioFormat(v) : null,
             );

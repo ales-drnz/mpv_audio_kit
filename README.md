@@ -3,8 +3,8 @@
 #### Audio engine for Flutter & Dart.
 
 [![](https://img.shields.io/pub/v/mpv_audio_kit.svg)](https://pub.dev/packages/mpv_audio_kit)
-[![](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 [![](https://img.shields.io/badge/libmpv-v0.41.0-orange.svg)]()
+[![](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 [![](https://img.shields.io/github/stars/ales-drnz/mpv_audio_kit?style=flat&logo=github)](https://github.com/ales-drnz/mpv_audio_kit)
 [![](https://img.shields.io/discord/1485588004029333516?logo=discord&logoColor=white)](https://discord.gg/g2Qf4Mq9MP)
 
@@ -29,7 +29,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.6
+  mpv_audio_kit: ^0.0.7
 ```
 
 ### Platform Requirements
@@ -708,13 +708,13 @@ await player.setAudioSampleRate(0);       // Auto (pass-through)
 await player.setAudioFormat('u8');     // 8-bit unsigned integer
 await player.setAudioFormat('s16');    // 16-bit signed integer
 await player.setAudioFormat('s32');    // 32-bit signed integer
-await player.setAudioFormat('float');  // 32-bit float
-await player.setAudioFormat('auto');   // Auto (default)
+await player.setAudioFormat('floatp');  // 32-bit floatp
+await player.setAudioFormat('no');     // Reset to auto
 
 // Channel layout
 await player.setAudioChannels('stereo');       // Force stereo downmix
 await player.setAudioChannels('5.1');          // 5.1 surround
-await player.setAudioChannels('auto');         // Pass-through (default)
+await player.setAudioChannels('no');           // Reset to auto (default)
 ```
 
 #### 6.5 S/PDIF Passthrough
@@ -825,6 +825,8 @@ Keep audio hardware active even when playback is paused, to eliminate click/pop 
 ```dart
 await player.setAudioStreamSilence(true);
 ```
+
+> **Note on iOS:** the audio driver in this case is never released, so after an iOS interruption (phone call, other app audio) it stays suspended and playback can't continue.
 
 #### 7.7 Untimed Null Output
 

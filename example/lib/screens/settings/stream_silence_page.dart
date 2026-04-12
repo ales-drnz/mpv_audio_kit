@@ -13,17 +13,17 @@ class StreamSilencePage extends StatelessWidget {
       children: [
         const PropertySectionHeader(title: 'Stream'),
         StreamBuilder<bool>(
-          stream: player.stream.streamSilence,
-          initialData: player.state.streamSilence,
+          stream: player.stream.audioStreamSilence,
+          initialData: player.state.audioStreamSilence,
           builder: (context, snap) {
             final val = snap.data ?? false;
             return TogglePropertyCard(
               title: 'Stream Silence',
-              subtitle: 'stream-silence=${val ? 'yes' : 'no'}',
+              subtitle: 'audio-stream-silence=${val ? 'yes' : 'no'}',
               icon: Icons.shutter_speed_rounded,
               value: val,
               onChanged: (v) =>
-                  player.setRawProperty('stream-silence', v ? 'yes' : 'no'),
+                  player.setRawProperty('audio-stream-silence', v ? 'yes' : 'no'),
             );
           },
         ),
