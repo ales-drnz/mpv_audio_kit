@@ -722,9 +722,13 @@ await player.setAudioFormat('double');  // 64-bit float (interleaved)
 await player.setAudioFormat('doublep'); // 64-bit float (planar)
 
 // Channel layout
-await player.setAudioChannels('stereo');       // Force stereo downmix
-await player.setAudioChannels('5.1');          // 5.1 surround
-await player.setAudioChannels('no');           // Reset to auto (default)
+await player.setAudioChannels('auto');         // Auto
+await player.setAudioChannels('auto-safe');    // Reject multichannel unless verified
+await player.setAudioChannels('mono');         // 1 channel
+await player.setAudioChannels('stereo');       // 2 channels, triggers decoder-level downmix
+await player.setAudioChannels('2.1');          // 2 main + LFE (subwoofer)
+await player.setAudioChannels('5.1');          // 5 main + LFE (surround)
+await player.setAudioChannels('7.1');          // 7 main + LFE (surround + rear)
 ```
 
 #### 6.5 S/PDIF Passthrough
