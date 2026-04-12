@@ -700,12 +700,16 @@ Force a specific output format for bit-perfect playback or DAC compatibility:
 
 ```dart
 // Sample rate
-await player.setAudioSampleRate(96000);   // 96 kHz
-await player.setAudioSampleRate(192000);  // 192 kHz
-await player.setAudioSampleRate(0);       // Auto (pass-through)
+await player.setAudioSampleRate(0);       // Auto
+await player.setAudioSampleRate(44100);   // 44.1 kHz (CD)
+await player.setAudioSampleRate(48000);   // 48 kHz (DVD / broadcast)
+await player.setAudioSampleRate(88200);   // 88.2 kHz (hi-res)
+await player.setAudioSampleRate(96000);   // 96 kHz (hi-res)
+await player.setAudioSampleRate(192000);  // 192 kHz (studio)
+await player.setAudioSampleRate(384000);  // 384 kHz (DXD)
 
 // Bit depth / sample format
-await player.setAudioFormat('no');      // Auto / reset to default
+await player.setAudioFormat('no');      // Auto
 await player.setAudioFormat('u8');      // 8-bit unsigned integer (interleaved)
 await player.setAudioFormat('u8p');     // 8-bit unsigned integer (planar)
 await player.setAudioFormat('s16');     // 16-bit signed integer (interleaved)
