@@ -705,11 +705,17 @@ await player.setAudioSampleRate(192000);  // 192 kHz
 await player.setAudioSampleRate(0);       // Auto (pass-through)
 
 // Bit depth / sample format
-await player.setAudioFormat('u8');     // 8-bit unsigned integer
-await player.setAudioFormat('s16');    // 16-bit signed integer
-await player.setAudioFormat('s32');    // 32-bit signed integer
-await player.setAudioFormat('floatp');  // 32-bit floatp
-await player.setAudioFormat('no');     // Reset to auto
+await player.setAudioFormat('no');      // Auto / reset to default
+await player.setAudioFormat('u8');      // 8-bit unsigned integer (interleaved)
+await player.setAudioFormat('u8p');     // 8-bit unsigned integer (planar)
+await player.setAudioFormat('s16');     // 16-bit signed integer (interleaved)
+await player.setAudioFormat('s16p');    // 16-bit signed integer (planar)
+await player.setAudioFormat('s32');     // 32-bit signed integer (interleaved)
+await player.setAudioFormat('s32p');    // 32-bit signed integer (planar)
+await player.setAudioFormat('float');   // 32-bit float (interleaved)
+await player.setAudioFormat('floatp');  // 32-bit float (planar)
+await player.setAudioFormat('double');  // 64-bit float (interleaved)
+await player.setAudioFormat('doublep'); // 64-bit float (planar)
 
 // Channel layout
 await player.setAudioChannels('stereo');       // Force stereo downmix
