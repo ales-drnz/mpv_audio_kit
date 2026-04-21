@@ -32,6 +32,15 @@ class MpvEventStartFile extends MpvIsolateEvent {}
 
 class MpvEventFileLoaded extends MpvIsolateEvent {}
 
+/// mpv fired MPV_EVENT_SEEK — a seek request was accepted and playback
+/// has been suspended while mpv reinitializes its pipeline.
+class MpvEventPlaybackSeek extends MpvIsolateEvent {}
+
+/// mpv fired MPV_EVENT_PLAYBACK_RESTART — the seek (or file load) has
+/// finished reinitializing and playback is about to resume.
+/// This is the authoritative "seek request is finished" signal.
+class MpvEventPlaybackRestart extends MpvIsolateEvent {}
+
 class MpvEndFileEvent extends MpvIsolateEvent {
   final int reason; // MpvEndFileReason.*
   final int error;
@@ -167,9 +176,13 @@ void _dispatchEvent(
       toMain.send(MpvEventHookFired(hook.id, name));
 
     case mpv.MpvEventId.mpvEventSeek:
+      toMain.send(MpvEventPlaybackSeek());
+
     case mpv.MpvEventId.mpvEventPlaybackRestart:
-      // Handled on main isolate by polling time-pos.
-      toMain.send(MpvEventPropertyDouble('_seek', 0));
+      // Authoritative "seek finished" signal. The main isolate polls
+      // time-pos synchronously in response so the new position is
+      // visible on the stream before any throttled time-pos event.
+      toMain.send(MpvEventPlaybackRestart());
   }
 }
 

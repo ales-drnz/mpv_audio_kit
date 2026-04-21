@@ -31,6 +31,7 @@ export 'src/models/audio_filter.dart' show AudioFilter;
 export 'src/models/audio_params.dart' show AudioParams;
 export 'src/models/mpv_log_entry.dart' show MpvLogEntry;
 export 'src/models/mpv_hook_event.dart' show MpvHookEvent;
+export 'src/models/mpv_prefetch_state.dart' show MpvPrefetchState;
 export 'src/models/mpv_player_error.dart'
     show MpvPlayerError, MpvEndFileError, MpvLogError, MpvEndFileReason, MpvFileEndedEvent;
 export 'src/models/player_configuration.dart' show PlayerConfiguration;

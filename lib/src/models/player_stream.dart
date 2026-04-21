@@ -8,6 +8,7 @@ import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/audio_filter.dart';
 import 'package:mpv_audio_kit/src/models/mpv_log_entry.dart';
 import 'package:mpv_audio_kit/src/models/mpv_hook_event.dart';
+import 'package:mpv_audio_kit/src/models/mpv_prefetch_state.dart';
 import 'package:mpv_audio_kit/src/models/mpv_player_error.dart';
 
 /// Typed event streams for subscribing to individual [Player] state changes.
@@ -29,6 +30,17 @@ class PlayerStream {
 
   /// Emits the current playback position as a [Duration].
   final Stream<Duration> position;
+
+  /// Emits once after a seek request has been fully reinitialized by mpv
+  /// and playback is about to resume — i.e. the authoritative
+  /// `MPV_EVENT_PLAYBACK_RESTART` signal.
+  ///
+  /// Use this to release "held" UI state (e.g. a seek slider's local
+  /// target value) exactly when mpv has finished the seek, instead of
+  /// guessing with a fixed timer. By the time a subscriber receives
+  /// this event, [position] has already been updated with the real
+  /// post-seek value via a synchronous `time-pos` poll.
+  final Stream<void> seekCompleted;
 
   /// Emits the duration of the current track. Zero for live / unknown streams.
   final Stream<Duration> duration;
@@ -216,11 +228,24 @@ class PlayerStream {
   /// to let mpv proceed. Until then mpv suspends the guarded operation.
   final Stream<MpvHookEvent> hook;
 
+  /// Lifecycle of mpv's background playlist-prefetch.
+  ///
+  /// Emits [MpvPrefetchState.loading] when a prefetch starts,
+  /// [MpvPrefetchState.ready] once the secondary cache is full,
+  /// [MpvPrefetchState.used] (then immediately [MpvPrefetchState.idle])
+  /// when the prefetched stream is consumed at a gapless transition,
+  /// and [MpvPrefetchState.idle] after any abort / drop / cancel.
+  ///
+  /// Backed by the patched `prefetch-state` mpv property — works
+  /// uniformly across HLS, DASH, raw HTTP, SMB, local files.
+  final Stream<MpvPrefetchState> prefetchState;
+
   const PlayerStream({
     required this.playlist,
     required this.playing,
     required this.completed,
     required this.position,
+    required this.seekCompleted,
     required this.duration,
     required this.volume,
     required this.rate,
@@ -278,5 +303,6 @@ class PlayerStream {
     required this.error,
     required this.log,
     required this.hook,
+    required this.prefetchState,
   });
 }

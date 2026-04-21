@@ -3,7 +3,7 @@ import java.net.URL
 import java.security.MessageDigest
 
 group = "com.alesdrnz.mpv_audio_kit"
-version = "0.0.7"
+version = "0.0.8"
 
 buildscript {
     val kotlinVersion = "2.0.21"
@@ -103,7 +103,7 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.0.0")
 }
 
-val MPV_RELEASE_VERSION = "libmpv-r3"
+val MPV_RELEASE_VERSION = "libmpv-r4"
 val MPV_BASE_URL = "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}"
 
 val downloadMpvTask = tasks.register("downloadMpvLibraries") {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -354,6 +355,31 @@ class _SeekerState extends State<_Seeker> {
   double? _dragValue;
   bool get _isDragging => _dragValue != null;
 
+  // Tracks whether a user seek is in flight. Released by the engine's
+  // authoritative `seekCompleted` signal (MPV_EVENT_PLAYBACK_RESTART),
+  // so the slider snaps back to the live position exactly when mpv has
+  // finished the seek — no fixed delay, no flicker.
+  bool _awaitingSeekCompletion = false;
+  StreamSubscription<void>? _seekCompletedSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _seekCompletedSub = widget.player.stream.seekCompleted.listen((_) {
+      if (!mounted || !_awaitingSeekCompletion) return;
+      setState(() {
+        _awaitingSeekCompletion = false;
+        _dragValue = null;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _seekCompletedSub?.cancel();
+    super.dispose();
+  }
+
   String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -413,16 +439,14 @@ class _SeekerState extends State<_Seeker> {
                     onChanged: (v) {
                       setState(() => _dragValue = v);
                     },
-                    onChangeEnd: (v) async {
+                    onChangeEnd: (v) {
                       final seekTo = Duration(
                         microseconds: (v * dur.inMicroseconds).round(),
                       );
+                      _awaitingSeekCompletion = true;
                       widget.player.seek(seekTo);
-
-                      await Future.delayed(const Duration(milliseconds: 500));
-                      if (mounted) {
-                        setState(() => _dragValue = null);
-                      }
+                      // _dragValue stays held until the seekCompleted
+                      // subscription above clears it.
                     },
                   ),
                 ),

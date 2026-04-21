@@ -24,6 +24,7 @@ import 'models/audio_filter.dart';
 import 'models/audio_params.dart';
 import 'models/mpv_log_entry.dart';
 import 'models/mpv_hook_event.dart';
+import 'models/mpv_prefetch_state.dart';
 import 'models/mpv_player_error.dart';
 import 'models/player_configuration.dart';
 import 'models/player_state.dart';
@@ -172,6 +173,7 @@ abstract class _PlayerBase {
   final _playingCtrl = StreamController<bool>.broadcast();
   final _completedCtrl = StreamController<bool>.broadcast();
   final _positionCtrl = StreamController<Duration>.broadcast();
+  final _seekCompletedCtrl = StreamController<void>.broadcast();
   final _durationCtrl = StreamController<Duration>.broadcast();
   final _volumeCtrl = StreamController<double>.broadcast();
   final _rateCtrl = StreamController<double>.broadcast();
@@ -229,6 +231,13 @@ abstract class _PlayerBase {
   final _errorCtrl = StreamController<MpvPlayerError>.broadcast();
   final _logCtrl = StreamController<MpvLogEntry>.broadcast();
   final _hookCtrl = StreamController<MpvHookEvent>.broadcast();
+  // Surface the patched `prefetch-state` mpv property as a typed stream.
+  // See [MpvPrefetchState] and the `patch_prefetch_state.py` patch in
+  // scripts/patches/mpv/ for the native side. We expose every state
+  // transition including the transient `used` → `idle` pair so clients
+  // can treat `used` as a one-shot "track just transitioned gaplessly"
+  // signal without polling.
+  final _prefetchStateCtrl = StreamController<MpvPrefetchState>.broadcast();
 
   PlayerState get state => _state;
   late final PlayerStream stream;
@@ -254,6 +263,7 @@ abstract class _PlayerBase {
       playing: _playingCtrl.stream,
       completed: _completedCtrl.stream,
       position: _positionCtrl.stream,
+      seekCompleted: _seekCompletedCtrl.stream,
       duration: _durationCtrl.stream,
       volume: _volumeCtrl.stream,
       rate: _rateCtrl.stream,
@@ -311,6 +321,7 @@ abstract class _PlayerBase {
       error: _errorCtrl.stream,
       log: _logCtrl.stream,
       hook: _hookCtrl.stream,
+      prefetchState: _prefetchStateCtrl.stream,
     );
 
     _startEventIsolate();
@@ -381,6 +392,21 @@ abstract class _PlayerBase {
             _pendingPlay);
         _pollPosition();
         _extractEmbeddedCover();
+      case MpvEventPlaybackSeek():
+        // mpv accepted the seek; playback is suspended until
+        // MpvEventPlaybackRestart fires. Intentionally a no-op: we
+        // don't want to mutate the position stream here (that caused
+        // the pre-fix "position=0 flash" bug).
+        break;
+      case MpvEventPlaybackRestart():
+        // Authoritative "seek finished" signal. Poll time-pos
+        // immediately so positionStream emits the real post-seek
+        // value before the 33ms-throttled time-pos observer can,
+        // then notify listeners waiting on seekCompleted.
+        _pollPosition();
+        if (!_seekCompletedCtrl.isClosed) {
+          _seekCompletedCtrl.add(null);
+        }
       case MpvEndFileEvent(:final reason, :final error):
         final typedReason = MpvEndFileReason.fromValue(reason);
         _endFileCtrl.add(MpvFileEndedEvent(
@@ -833,6 +859,7 @@ abstract class _PlayerBase {
       _playingCtrl,
       _completedCtrl,
       _positionCtrl,
+      _seekCompletedCtrl,
       _durationCtrl,
       _volumeCtrl,
       _rateCtrl,

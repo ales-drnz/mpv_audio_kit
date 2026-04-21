@@ -12,7 +12,6 @@ mixin _PropertyRegistry on _PlayerBase {
   void _handleDoubleProperty(String name, double value) {
     switch (name) {
       case 'time-pos':
-      case '_seek':
         _updatePosition(value);
       case 'duration':
         _updateDuration(value);
@@ -131,6 +130,12 @@ mixin _PropertyRegistry on _PlayerBase {
   @override
   void _handleStringProperty(String name, String value) {
     switch (name) {
+      // Patched mpv `prefetch-state` property. We parse to the typed
+      // enum here rather than expose the raw string — consumers of
+      // PlayerStream.prefetchState get MpvPrefetchState, not a stringly
+      // typed value, so they can switch exhaustively.
+      case 'prefetch-state':
+        _prefetchStateCtrl.add(MpvPrefetchState.parse(value));
       case 'loop-file':
       case 'loop-playlist':
         _updatePlaylistMode(name, value);
@@ -289,6 +294,12 @@ mixin _PropertyRegistry on _PlayerBase {
     _observe('audio-display', MpvFormat.mpvFormatString, 63);
     _observe('cover-art-auto', MpvFormat.mpvFormatString, 64);
     _observe('image-display-duration', MpvFormat.mpvFormatString, 65);
+
+    // Background prefetch lifecycle — added by the `patch_prefetch_state`
+    // mpv patch. Values: idle | loading | ready | used. Observed as a
+    // string because mpv emits it via m_property_strdup_ro. See
+    // [MpvPrefetchState] on the public API side.
+    _observe('prefetch-state', MpvFormat.mpvFormatString, 68);
   }
 
   // --- Specialized Update Helpers ---
