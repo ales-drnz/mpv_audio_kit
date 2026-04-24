@@ -190,7 +190,7 @@ The following images demonstrate the example app included in the `example/` dire
 - 📜 **Dynamic Playlist**: Add, remove, move, and replace tracks at runtime without stopping playback.
 - ⚙️ **Audiophile Hardware**: Exclusive mode (WASAPI/ALSA/CoreAudio), output device selection, sample rate and format forcing.
 - 🔍 **Metadata & Cover Art**: Native extraction of embedded cover images and metadata tags.
-- 🌐 **Network Streams**: HLS, RTSP, RTMP, SMB, SHOUTcast/Icecast, and any format libmpv supports — with native HTTP headers.
+- 🌐 **Network Streams**: HLS, DASH, RTSP, RTMP, SMB, SHOUTcast/Icecast, and any format libmpv supports — with native HTTP headers.
 - 🪝 **Stream Hooks**: Intercept mpv's file-loading pipeline via `on_load` to lazily resolve URLs, redirect streams, or inject per-file headers.
 - 📦 **Granular Caching**: Fine-tuned control over demuxer memory pool, disk overflow cache, and cache-pause behavior.
 - 🔧 **Raw Access**: Read and write any mpv property directly, or send any mpv command.
@@ -333,6 +333,7 @@ final content = Media('content://com.android.externalstorage.documents/...');
 | `rtmp://` | Real-Time Messaging Protocol (live streaming) |
 | `smb2://` | SMB2/3 network shares (Samba/CIFS via libsmb2) |
 | `hls://` / `m3u8` | HTTP Live Streaming (HLS), as used by Jellyfin transcoding |
+| `mpd` | Dynamic Adaptive Streaming over HTTP (DASH), as used by Plex transcoding |
 | Any URL | libmpv accepts any scheme it has a protocol handler for |
 
 #### 2.2 HTTP Headers
@@ -1263,6 +1264,8 @@ Common hook names:
 | `on_load` | Before a stream is opened — can redirect the URL |
 | `on_load_fail` | After a stream fails to open |
 | `on_preloaded` | After the file is pre-loaded but before playback starts |
+
+> **Hooks fire during prefetch too.** Upstream mpv's `prefetch_next()` bypasses the hook pipeline and opens the next playlist entry's raw URL directly — so `on_load` would never see prefetched tracks. `mpv_audio_kit` ships a patched `prefetch_next()` that runs `on_load` synchronously on the core thread before the opener thread starts, with a re-entry guard and demuxer NULL-mask so the `stream-open-filename` property setter accepts hook-driven rewrites while the previous track is still playing. This means custom URL schemes (e.g. `plex-transcode://` → resolved HLS URL) are resolved for **every** track, including the one being prefetched in the background — your listener is called once per track regardless of whether playback is active or prefetching.
 
 #### 12.2 Listening and Continuing
 
