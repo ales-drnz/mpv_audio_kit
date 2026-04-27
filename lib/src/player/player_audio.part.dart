@@ -135,16 +135,18 @@ mixin _AudioModule on _PlayerBase {
     _checkNotDisposed();
     final afString = filters.isEmpty ? '' : filters.map((f) => f.value).join(',');
     _prop('af', afString);
-    _state = _state.copyWith(activeFilters: filters);
-    _activeFiltersCtrl.add(filters);
+    _updateState(
+        (s) => s.copyWith(activeFilters: filters), _activeFiltersCtrl, filters);
   }
 
   /// Sets the 10-band equalizer gains and updates the internal state.
   /// Note: This does not automatically re-apply filters; call [setAudioFilters] or
   /// individual filter triggers to commit.
   void setEqualizerGains(List<double> gains) {
-    _state = _state.copyWith(equalizerGains: List.from(gains));
-    _equalizerGainsCtrl.add(_state.equalizerGains);
+    _checkNotDisposed();
+    final copy = List<double>.from(gains);
+    _updateState(
+        (s) => s.copyWith(equalizerGains: copy), _equalizerGainsCtrl, copy);
   }
 
   /// Removes all active audio filters.

@@ -76,10 +76,7 @@ mixin _PropertyRegistry on _PlayerBase {
         _updateState((s) => s.copyWith(mute: flag), _muteCtrl, flag);
       case 'idle-active':
         if (flag) {
-          _updateState(
-              (s) => s.copyWith(playing: false, buffering: false),
-              _playingCtrl,
-              false);
+          _updateLifecycle(playing: false, buffering: false);
         }
       case 'shuffle':
         _updateState((s) => s.copyWith(shuffle: flag), _shuffleCtrl, flag);

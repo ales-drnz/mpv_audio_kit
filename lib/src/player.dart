@@ -74,6 +74,7 @@ class Player extends _PlayerBase
       _opt('http-header-fields', headers);
     }
     final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
+    if (_disposed) return;
     _mediaCache[normalizedUri] = media;
     _pendingPlay = play ?? configuration.autoPlay;
     _command(['loadfile', normalizedUri, 'replace']);
@@ -84,28 +85,35 @@ class Player extends _PlayerBase
   /// If [index] is greater than zero, the player immediately jumps to that
   /// position after loading the playlist (the first item is loaded briefly then
   /// replaced — this is imperceptible and is the standard mpv approach).
+  ///
+  /// [index] is clamped to `medias.length - 1`; passing an out-of-range value
+  /// silently falls back to the last entry rather than no-oping like raw mpv.
   Future<void> openPlaylist(List<Media> medias,
       {bool? play, int index = 0}) async {
     _checkNotDisposed();
     if (medias.isEmpty) {
       return;
     }
+    final clampedIndex = index.clamp(0, medias.length - 1);
     _mediaCache.clear();
     for (final m in medias) {
       _mediaCache[m.uri] = m;
       final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
+      if (_disposed) return;
       _mediaCache[normalizedUri] = m;
     }
     final firstNormalizedUri =
         await AndroidHelper.normalizeUri(medias.first.uri);
+    if (_disposed) return;
     _command(['loadfile', firstNormalizedUri, 'replace']);
     for (final m in medias.skip(1)) {
       final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
+      if (_disposed) return;
       _command(['loadfile', normalizedUri, 'append']);
     }
     _pendingPlay = play ?? configuration.autoPlay;
-    if (index > 0) {
-      _command(['playlist-play-index', index.toString()]);
+    if (clampedIndex > 0) {
+      _command(['playlist-play-index', clampedIndex.toString()]);
     }
   }
 
@@ -382,14 +390,11 @@ abstract class _PlayerBase {
   void _handleEvent(MpvIsolateEvent event) {
     switch (event) {
       case MpvEventStartFile():
-        _patchState((s) => s.copyWith(buffering: true, completed: false));
+        _updateLifecycle(buffering: true, completed: false);
       case MpvEventFileLoaded():
         _prop('pause', _pendingPlay ? 'no' : 'yes');
-        _updateState(
-            (s) => s.copyWith(
-                buffering: false, playing: _pendingPlay, completed: false),
-            _playingCtrl,
-            _pendingPlay);
+        _updateLifecycle(
+            buffering: false, playing: _pendingPlay, completed: false);
         _pollPosition();
         _extractEmbeddedCover();
       case MpvEventPlaybackSeek():
@@ -421,10 +426,9 @@ abstract class _PlayerBase {
           ));
         }
         final isEof = reason == MpvEndFileReason.eof.value;
-        _patchState((s) =>
-            s.copyWith(playing: false, buffering: false, completed: isEof));
+        _updateLifecycle(playing: false, buffering: false, completed: isEof);
       case MpvEventShutdown():
-        _patchState((s) => s.copyWith(playing: false, buffering: false));
+        _updateLifecycle(playing: false, buffering: false);
       case MpvEventPropertyDouble(:final name, :final value):
         _handleDoubleProperty(name, value);
       case MpvEventPropertyInt(:final name, :final value):
@@ -547,6 +551,29 @@ abstract class _PlayerBase {
     ctrl.add(newValue);
   }
 
+  /// Updates the playback-lifecycle triple (playing / buffering / completed)
+  /// and emits on each underlying stream only for fields whose value actually
+  /// changed. Use this for compound transitions (start-file, file-loaded,
+  /// end-file, shutdown, idle-active) so all three streams stay in sync with
+  /// `state` instead of going silent on `_patchState`.
+  void _updateLifecycle({bool? playing, bool? buffering, bool? completed}) {
+    final prev = _state;
+    _state = _state.copyWith(
+      playing: playing,
+      buffering: buffering,
+      completed: completed,
+    );
+    if (playing != null && prev.playing != playing) {
+      _playingCtrl.add(playing);
+    }
+    if (buffering != null && prev.buffering != buffering) {
+      _bufferingCtrl.add(buffering);
+    }
+    if (completed != null && prev.completed != completed) {
+      _completedCtrl.add(completed);
+    }
+  }
+
   void _updateAudioParams(AudioParams Function(AudioParams) updater) {
     final updated = updater(_state.audioParams);
     _patchState((s) => s.copyWith(audioParams: updated));
@@ -626,6 +653,7 @@ abstract class _PlayerBase {
   }
 
   void _pollPosition() {
+    if (_disposed) return;
     using((arena) {
       final n = 'time-pos'.toNativeUtf8(allocator: arena);
       final buf = arena<Double>();
@@ -709,6 +737,7 @@ abstract class _PlayerBase {
   int _currentCoverOpId = 0;
 
   void _extractEmbeddedCover() {
+    if (_disposed) return;
     final vid = _getPropString('vid');
     if (vid == null || vid == 'no' || vid == '0') {
       return;
@@ -793,11 +822,15 @@ abstract class _PlayerBase {
         workingBuffer[i] = 255;
       }
 
-      if (opId != _currentCoverOpId) {
+      if (opId != _currentCoverOpId || _disposed) {
         return;
       }
 
       final buffer = await ui.ImmutableBuffer.fromUint8List(workingBuffer);
+      if (opId != _currentCoverOpId || _disposed) {
+        buffer.dispose();
+        return;
+      }
       final descriptor = ui.ImageDescriptor.raw(
         buffer,
         width: w,
@@ -820,10 +853,10 @@ abstract class _PlayerBase {
         try {
           final frame = await codec.getNextFrame();
           try {
-            if (opId != _currentCoverOpId) return;
+            if (opId != _currentCoverOpId || _disposed) return;
             final data =
                 await frame.image.toByteData(format: ui.ImageByteFormat.png);
-            if (opId != _currentCoverOpId) return;
+            if (opId != _currentCoverOpId || _disposed) return;
             if (data != null) {
               _updateMediaCover(bytes: data.buffer.asUint8List());
             }
@@ -849,10 +882,20 @@ abstract class _PlayerBase {
     }
     _disposed = true;
 
+    // Invalidate any in-flight async cover-art processing so it bails before
+    // touching state or the (about-to-close) media-cover stream.
+    _currentCoverOpId++;
+
     NativeReferenceHolder.instance.remove(_handle);
+    // Cancel the main-isolate subscription FIRST so no further _handleEvent
+    // calls fire after _disposed=true. After cancel completes, in-flight
+    // events queued on the isolate's stream are dropped on the floor.
     await _eventSub?.cancel();
-    _eventIsolate.stop();
+    // Tearing down mpv before stopping the isolate is safe: mpv's blocking
+    // mpvWaitEvent unblocks with MPV_EVENT_SHUTDOWN as soon as the handle is
+    // destroyed, letting the isolate's run-loop exit cleanly.
     _lib.mpvTerminateDestroy(_handle);
+    _eventIsolate.stop();
 
     final ctrls = [
       _playlistCtrl,
@@ -910,6 +953,10 @@ abstract class _PlayerBase {
       _audioDriverCtrl,
       _activeFiltersCtrl,
       _equalizerGainsCtrl,
+      _audioDisplayCtrl,
+      _coverArtAutoCtrl,
+      _imageDisplayDurationCtrl,
+      _prefetchStateCtrl,
       _endFileCtrl,
       _errorCtrl,
       _logCtrl,
