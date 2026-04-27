@@ -139,7 +139,7 @@ class _PlayerPageState extends State<PlayerPage> {
       player.stream.audioStreamSilence.listen(
         (v) => settingsService.save('audio-stream-silence', v),
       );
-      player.stream.aoNullUntimed.listen(
+      player.stream.audioNullUntimed.listen(
         (v) => settingsService.save('ao-null-untimed', v),
       );
       player.stream.audioTrack.listen((v) => settingsService.save('aid', v));

@@ -24,18 +24,33 @@
 library;
 
 export 'src/player.dart' show Player;
+export 'src/cover/cover_art_raw.dart' show CoverArtRaw;
 export 'src/models/media.dart' show Media;
 export 'src/models/playlist.dart' show Playlist, PlaylistMode;
 export 'src/models/audio_device.dart' show AudioDevice;
 export 'src/models/audio_filter.dart' show AudioFilter;
 export 'src/models/audio_params.dart' show AudioParams;
+export 'src/models/enums.dart'
+    show
+        GaplessMode,
+        ReplayGainMode,
+        AudioDisplayMode,
+        CoverArtAutoMode,
+        CacheMode;
 export 'src/models/mpv_log_entry.dart' show MpvLogEntry;
 export 'src/models/mpv_hook_event.dart' show MpvHookEvent;
 export 'src/models/mpv_prefetch_state.dart' show MpvPrefetchState;
 export 'src/models/mpv_player_error.dart'
-    show MpvPlayerError, MpvEndFileError, MpvLogError, MpvEndFileReason, MpvFileEndedEvent;
+    show
+        MpvPlayerError,
+        MpvEndFileError,
+        MpvEndFileErrorX,
+        MpvLogError,
+        MpvEndFileReason,
+        MpvFileEndedEvent,
+        MpvFileEndedEventX;
 export 'src/models/player_configuration.dart' show PlayerConfiguration;
 export 'src/models/player_state.dart' show PlayerState;
-export 'src/models/player_stream.dart' show PlayerStream;
+export 'src/player_stream.dart' show PlayerStream;
 export 'src/mpv_bindings.dart' show MpvLibraryException, MpvError;
-export 'src/mpv_audio_kit.dart' show MpvAudioKit;
+export 'src/library_loader.dart' show MpvAudioKit;

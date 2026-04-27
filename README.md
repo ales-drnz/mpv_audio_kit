@@ -29,8 +29,17 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.0.9
+  mpv_audio_kit: ^0.1.0
 ```
+
+> **Migrating from 0.0.x?** 0.1.0 introduces typed enums (`GaplessMode`,
+> `ReplayGainMode`, `CacheMode`, `AudioDisplay`, `CoverArtAuto`) and
+> `Duration` on every time-based setter (`setAudioDelay`, `setNetworkTimeout`,
+> `setCacheSecs`, `setCachePauseWait`, `setAudioBuffer`). `PlayerState` now
+> has structural equality, and `Player.stream.log` is now mpv-engine-only —
+> wrapper-side messages moved to `Player.stream.internalLog`. See the
+> [CHANGELOG](CHANGELOG.md#010---wip) for the full breaking-change list and
+> migration recipes.
 
 ### Platform Requirements
 
@@ -481,10 +490,10 @@ await player.setVolumeGain(6.0);       // Pre-amplify by +6 dB
 
 ```dart
 // Shift audio forward by 50 ms (useful for Bluetooth A2DP sync)
-await player.setAudioDelay(0.05);
+await player.setAudioDelay(const Duration(milliseconds: 50));
 
 // Shift backward by 200 ms
-await player.setAudioDelay(-0.2);
+await player.setAudioDelay(const Duration(milliseconds: -200));
 ```
 
 ---
@@ -627,9 +636,9 @@ AudioFilter.custom('lavfi-agate=threshold=0.1:ratio=2')
 ReplayGain reads per-track or per-album gain tags embedded by tools like `mp3gain`, `metaflac`, or any modern music tagger:
 
 ```dart
-await player.setReplayGain('track');   // Use track-level gain (most common)
-await player.setReplayGain('album');   // Use album-level gain (preserves relative track levels)
-await player.setReplayGain('no');      // Disable
+await player.setReplayGain(ReplayGainMode.track);   // Use track-level gain (most common)
+await player.setReplayGain(ReplayGainMode.album);   // Use album-level gain (preserves relative track levels)
+await player.setReplayGain(ReplayGainMode.no);      // Disable
 
 // Pre-amplification applied on top of the ReplayGain value
 await player.setReplayGainPreamp(2.0);    // +2 dB pre-amp
@@ -644,9 +653,9 @@ await player.setReplayGainClip(false);
 #### 5.12 Gapless Playback
 
 ```dart
-await player.setGaplessPlayback('yes');   // Full gapless — decode next track before current ends
-await player.setGaplessPlayback('weak');  // Gapless only between compatible formats (default)
-await player.setGaplessPlayback('no');    // Gap between all tracks
+await player.setGaplessPlayback(GaplessMode.yes);   // Full gapless — decode next track before current ends
+await player.setGaplessPlayback(GaplessMode.weak);  // Gapless only between compatible formats (default)
+await player.setGaplessPlayback(GaplessMode.no);    // Gap between all tracks
 ```
 
 `'weak'` is the safest default: it provides gapless transitions between tracks of the same format (e.g. consecutive FLAC or MP3 files) without the risk of breaking on format changes.
@@ -775,18 +784,18 @@ await player.reloadAudio();
 #### 7.1 Cache Control
 
 ```dart
-await player.setCache('yes');    // Always cache network streams
-await player.setCache('no');     // Never cache (live streams, minimize latency)
-await player.setCache('auto');   // Cache only seekable streams (default)
+await player.setCache(CacheMode.yes);    // Always cache network streams
+await player.setCache(CacheMode.no);     // Never cache (live streams, minimize latency)
+await player.setCache(CacheMode.auto);   // Cache only seekable streams (default)
 
 // How many seconds ahead to buffer
-await player.setCacheSecs(30.0);
+await player.setCacheSecs(const Duration(seconds: 30));
 
 // Pause automatically when the cache runs dry, resume when refilled
 await player.setCachePause(true);
 
 // How many seconds must be buffered before auto-resuming after a stall
-await player.setCachePauseWait(3.0);
+await player.setCachePauseWait(const Duration(seconds: 3));
 
 // Spill overflow cache to temporary disk files
 await player.setCacheOnDisk(true);
@@ -816,7 +825,7 @@ await player.setDemuxerMaxBackBytes(0);
 #### 7.3 Network Timeout
 
 ```dart
-await player.setNetworkTimeout(10.0); // Fail after 10 seconds of no data
+await player.setNetworkTimeout(const Duration(seconds: 10)); // Fail after 10 seconds of no data
 ```
 
 #### 7.4 TLS/SSL Verification
@@ -830,8 +839,8 @@ await player.setTlsVerify(false); // Disable for self-signed certificates
 The hardware audio buffer — lower values reduce latency, higher values improve stability under load:
 
 ```dart
-await player.setAudioBuffer(0.1);  // 100 ms (low latency)
-await player.setAudioBuffer(0.5);  // 500 ms (stable on slow hardware)
+await player.setAudioBuffer(const Duration(milliseconds: 100));  // 100 ms (low latency)
+await player.setAudioBuffer(const Duration(milliseconds: 500));  // 500 ms (stable on slow hardware)
 ```
 
 #### 7.6 Audio Stream Silence
@@ -858,9 +867,9 @@ For Icecast/SHOUTcast radio, disable caching and cache-pause to minimize latency
 
 ```dart
 await player.open(Media('https://stream.radio.example.com/live.mp3'));
-await player.setCache('no');
+await player.setCache(CacheMode.no);
 await player.setCachePause(false);
-await player.setNetworkTimeout(10.0);
+await player.setNetworkTimeout(const Duration(seconds: 10));
 ```
 
 For HLS streams (like Jellyfin transcoding), the default cache settings work well. Mpv handles HLS natively and provides precise seeking even on transcoded streams:
@@ -920,10 +929,10 @@ Controls which image source mpv decodes into the video pipeline.
 
 ```dart
 // Default — embedded art decoded and extracted automatically on load
-await player.setAudioDisplay('embedded-first');
+await player.setAudioDisplay(AudioDisplay.embeddedFirst);
 
 // Disable when you read artwork from file tags directly
-await player.setAudioDisplay('no');
+await player.setAudioDisplay(AudioDisplay.no);
 
 // React to changes
 player.stream.audioDisplay.listen((mode) => print('audio-display: $mode'));
@@ -942,10 +951,10 @@ Controls whether mpv scans for an external cover art file next to the audio file
 
 ```dart
 // Disabled by default — prevents unrelated images from loading
-await player.setCoverArtAuto('no');
+await player.setCoverArtAuto(CoverArtAuto.no);
 
 // Enable fuzzy scanning (e.g. for a local file player)
-await player.setCoverArtAuto('fuzzy');
+await player.setCoverArtAuto(CoverArtAuto.fuzzy);
 
 player.stream.coverArtAuto.listen((mode) => print('cover-art-auto: $mode'));
 ```
@@ -970,8 +979,8 @@ player.stream.imageDisplayDuration.listen((d) => print('image-display-duration: 
 > **Tip — disabling the video pipeline entirely:** if your app reads artwork via a tag library (e.g. `metadata_god`) rather than through mpv, set both `audio-display = 'no'` and `cover-art-auto = 'no'`. mpv will skip video decoding altogether, reducing CPU and memory usage:
 >
 > ```dart
-> await player.setAudioDisplay('no');
-> await player.setCoverArtAuto('no');
+> await player.setAudioDisplay(AudioDisplay.no);
+> await player.setCoverArtAuto(CoverArtAuto.no);
 > await player.setImageDisplayDuration('0');
 > ```
 

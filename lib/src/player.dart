@@ -5,31 +5,37 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
-
-import 'dart:ui' as ui;
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 
+import 'cover/cover_art_extractor.dart';
+import 'cover/cover_art_processor.dart';
+import 'cover/cover_art_raw.dart';
 import 'event_isolate.dart';
+import 'internal/json_parsers.dart';
+import 'internal/lifecycle_transitions.dart';
+import 'library_loader.dart';
 import 'mpv_bindings.dart' hide MpvEndFileReason;
-import 'mpv_audio_kit.dart';
+import 'reactive/default_specs.dart';
+import 'reactive/property_registry.dart';
+import 'reactive/reactive_property.dart';
 import 'utils/android_helper.dart';
+import 'utils/duration_seconds.dart';
 
 import 'models/media.dart';
 import 'models/playlist.dart';
 import 'models/audio_device.dart';
 import 'models/audio_filter.dart';
-import 'models/audio_params.dart';
 import 'models/mpv_log_entry.dart';
 import 'models/mpv_hook_event.dart';
-import 'models/mpv_prefetch_state.dart';
 import 'models/mpv_player_error.dart';
 import 'models/player_configuration.dart';
 import 'models/player_state.dart';
-import 'models/player_stream.dart';
+import 'player_stream.dart';
 
+export 'cover/cover_art_raw.dart';
 export 'models/media.dart';
 export 'models/playlist.dart';
 export 'models/audio_device.dart';
@@ -39,14 +45,13 @@ export 'models/mpv_log_entry.dart';
 export 'models/mpv_hook_event.dart';
 export 'models/player_configuration.dart';
 export 'models/player_state.dart';
-export 'models/player_stream.dart';
+export 'player_stream.dart';
 
 part 'player/player_playback.part.dart';
 part 'player/player_playlist.part.dart';
 part 'player/player_audio.part.dart';
 part 'player/player_network.part.dart';
 part 'player/player_hooks.part.dart';
-part 'player/player_property_registry.part.dart';
 
 /// A high-performance audio player powered by libmpv.
 class Player extends _PlayerBase
@@ -55,14 +60,25 @@ class Player extends _PlayerBase
         _PlaylistModule,
         _AudioModule,
         _NetworkModule,
-        _HooksModule,
-        _PropertyRegistry {
+        _HooksModule {
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration});
 
   // --- Public Specialized API ---
 
   /// Opens a [Media] and optionally starts playback immediately.
+  ///
+  /// The play/pause decision is committed to mpv's global `pause` property
+  /// BEFORE the `loadfile` command. mpv processes commands in arrival order
+  /// on a single thread, so rapid consecutive calls
+  /// (e.g. `open(A, play:true)` followed immediately by `open(B, play:false)`)
+  /// cannot race: each `open()` issues a `(set pause, loadfile replace)`
+  /// pair atomically, and the *last* pair wins because `replace` aborts any
+  /// in-flight load. Setting `pause` as a global property (rather than as
+  /// a `loadfile` per-file option) also guarantees the property observer
+  /// fires — the file-local-option route can silently skip the
+  /// `PROPERTY_CHANGE` emission, leaving `state.playing` stale on the very
+  /// first `open()`.
   Future<void> open(Media media, {bool? play}) async {
     _checkNotDisposed();
     _mediaCache.clear();
@@ -76,7 +92,8 @@ class Player extends _PlayerBase
     final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
     if (_disposed) return;
     _mediaCache[normalizedUri] = media;
-    _pendingPlay = play ?? configuration.autoPlay;
+    final shouldPlay = play ?? configuration.autoPlay;
+    _prop('pause', shouldPlay ? 'no' : 'yes');
     _command(['loadfile', normalizedUri, 'replace']);
   }
 
@@ -88,6 +105,9 @@ class Player extends _PlayerBase
   ///
   /// [index] is clamped to `medias.length - 1`; passing an out-of-range value
   /// silently falls back to the last entry rather than no-oping like raw mpv.
+  ///
+  /// As with [open], `pause` is committed globally before `loadfile` so
+  /// the property observer drives `state.playing`.
   Future<void> openPlaylist(List<Media> medias,
       {bool? play, int index = 0}) async {
     _checkNotDisposed();
@@ -95,6 +115,7 @@ class Player extends _PlayerBase
       return;
     }
     final clampedIndex = index.clamp(0, medias.length - 1);
+    final shouldPlay = play ?? configuration.autoPlay;
     _mediaCache.clear();
     for (final m in medias) {
       _mediaCache[m.uri] = m;
@@ -105,25 +126,38 @@ class Player extends _PlayerBase
     final firstNormalizedUri =
         await AndroidHelper.normalizeUri(medias.first.uri);
     if (_disposed) return;
+    _prop('pause', shouldPlay ? 'no' : 'yes');
     _command(['loadfile', firstNormalizedUri, 'replace']);
     for (final m in medias.skip(1)) {
       final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
       if (_disposed) return;
       _command(['loadfile', normalizedUri, 'append']);
     }
-    _pendingPlay = play ?? configuration.autoPlay;
     if (clampedIndex > 0) {
       _command(['playlist-play-index', clampedIndex.toString()]);
     }
   }
 
-  /// Manually injects an entry into the player's log stream.
-  void log(String message, {String level = 'info'}) {
-    _logCtrl
-        .add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
+  /// Manually appends a log entry to the wrapper's *internal* log stream
+  /// ([PlayerStream.internalLog]) — useful for tagging consumer-side
+  /// events (e.g. "user pressed retry") into the same stream where
+  /// the wrapper itself emits parse warnings and hook timeouts.
+  ///
+  /// Renamed from `log()` to `appendLog()` in 0.1.0 to disambiguate
+  /// from the engine-side log subscription at [PlayerStream.log] —
+  /// `player.log` (inject) and `player.stream.log` (subscribe) used
+  /// the same verb for opposite roles, which made docstrings ambiguous.
+  void appendLog(String message, {String level = 'info'}) {
+    _internalLogCtrl.add(
+        MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
   }
 
   /// Reads any mpv property as a string.
+  ///
+  /// **Escape hatch for properties not surfaced by the typed API.** For
+  /// observed properties (`volume`, `pause`, `cache-secs`, …), prefer
+  /// `player.state.<field>` — the cached value is updated on every
+  /// property-change event from mpv and avoids an FFI round-trip.
   String? getRawProperty(String name) {
     _checkNotDisposed();
     return using((arena) {
@@ -139,12 +173,26 @@ class Player extends _PlayerBase
   }
 
   /// Writes any mpv property as a string.
+  ///
+  /// **Warning:** this is an escape hatch for properties the typed API
+  /// doesn't yet cover. If [name] is one of the registry-observed
+  /// properties (volume, pause, cache-*, replaygain*, ao, af, …), the
+  /// resulting state mutation will *also* flow through the property
+  /// observer on mpv's side, so `player.state` and `player.stream` will
+  /// stay consistent — but expect a one-event-loop-tick delay between
+  /// the call returning and the cached state catching up. Prefer the
+  /// typed setters (`setVolume`, `setCache`, `setReplayGain`, …) when
+  /// they exist, both for type-safety and for synchronous state update.
   void setRawProperty(String name, String value) {
     _checkNotDisposed();
     _prop(name, value);
   }
 
   /// Sends a raw mpv command.
+  ///
+  /// **Escape hatch.** Same caveats as [setRawProperty]: prefer the
+  /// typed playback / playlist methods (`play`, `pause`, `seek`,
+  /// `add`, `jump`, …) when they cover your use case.
   void sendRawCommand(List<String> args) {
     _checkNotDisposed();
     _command(args);
@@ -157,7 +205,17 @@ class Player extends _PlayerBase
   }
 }
 
-/// Base class for [Player] containing shared state and native communication logic.
+/// Base class for [Player] containing shared state and native communication
+/// logic.
+///
+/// Owns:
+/// - the FFI handle and event-isolate plumbing,
+/// - the [PropertyRegistry] for the ~60 simple mpv properties,
+/// - the small set of standalone [ReactiveProperty]s and [StreamController]s
+///   that back state fields not directly mirrored by an mpv property
+///   (lifecycle: `buffering`/`completed`; complex JSON parses: `playlist`,
+///   `metadata`, `audioDevices`, `bufferingPercentage`; pure events: log,
+///   error, hook, end-of-file, seek-completed).
 abstract class _PlayerBase {
   final PlayerConfiguration configuration;
 
@@ -172,80 +230,53 @@ abstract class _PlayerBase {
   final _hookTimers = <int, Timer>{};
 
   PlayerState _state = const PlayerState();
-  bool _pendingPlay = false;
-  List<_RawPlaylistEntry> _rawPlaylist = [];
   final Map<String, Media> _mediaCache = {};
 
-  // --- Controllers ---
-  final _playlistCtrl = StreamController<Playlist>.broadcast();
-  final _playingCtrl = StreamController<bool>.broadcast();
-  final _completedCtrl = StreamController<bool>.broadcast();
-  final _positionCtrl = StreamController<Duration>.broadcast();
-  final _seekCompletedCtrl = StreamController<void>.broadcast();
-  final _durationCtrl = StreamController<Duration>.broadcast();
-  final _volumeCtrl = StreamController<double>.broadcast();
-  final _rateCtrl = StreamController<double>.broadcast();
-  final _pitchCtrl = StreamController<double>.broadcast();
-  final _bufferingCtrl = StreamController<bool>.broadcast();
-  final _bufferCtrl = StreamController<Duration>.broadcast();
-  final _bufferPctCtrl = StreamController<double>.broadcast();
-  final _playlistModeCtrl = StreamController<PlaylistMode>.broadcast();
-  final _shuffleCtrl = StreamController<bool>.broadcast();
-  final _audioParamsCtrl = StreamController<AudioParams>.broadcast();
-  final _audioOutParamsCtrl = StreamController<AudioParams>.broadcast();
-  final _audioBitrateCtrl = StreamController<double?>.broadcast();
-  final _audioDeviceCtrl = StreamController<AudioDevice>.broadcast();
-  final _audioDevicesCtrl = StreamController<List<AudioDevice>>.broadcast();
-  final _muteCtrl = StreamController<bool>.broadcast();
-  final _audioDelayCtrl = StreamController<double>.broadcast();
-  final _pitchCorrectionCtrl = StreamController<bool>.broadcast();
-  final _metadataCtrl = StreamController<Map<String, String>>.broadcast();
-  final _gaplessModeCtrl = StreamController<String>.broadcast();
-  final _replayGainModeCtrl = StreamController<String>.broadcast();
-  final _replayGainPreampCtrl = StreamController<double>.broadcast();
-  final _replayGainFallbackCtrl = StreamController<double>.broadcast();
-  final _replayGainClipCtrl = StreamController<bool>.broadcast();
-  final _volumeGainCtrl = StreamController<double>.broadcast();
-  final _cacheModeCtrl = StreamController<String>.broadcast();
-  final _cacheSecsCtrl = StreamController<double>.broadcast();
-  final _cacheOnDiskCtrl = StreamController<bool>.broadcast();
-  final _cachePauseCtrl = StreamController<bool>.broadcast();
-  final _cachePauseWaitCtrl = StreamController<double>.broadcast();
-  final _demuxerMaxBytesCtrl = StreamController<int>.broadcast();
-  final _demuxerReadaheadSecsCtrl = StreamController<int>.broadcast();
-  final _demuxerMaxBackBytesCtrl = StreamController<int>.broadcast();
-  final _networkTimeoutCtrl = StreamController<double>.broadcast();
-  final _tlsVerifyCtrl = StreamController<bool>.broadcast();
-  final _pausedForCacheCtrl = StreamController<bool>.broadcast();
-  final _demuxerViaNetworkCtrl = StreamController<bool>.broadcast();
-  final _audioExclusiveCtrl = StreamController<bool>.broadcast();
-  final _audioBufferCtrl = StreamController<double>.broadcast();
-  final _audioStreamSilenceCtrl = StreamController<bool>.broadcast();
-  final _aoNullUntimedCtrl = StreamController<bool>.broadcast();
-  final _audioTrackCtrl = StreamController<String>.broadcast();
-  final _audioSpdifCtrl = StreamController<String>.broadcast();
-  final _volumeMaxCtrl = StreamController<double>.broadcast();
-  final _audioSampleRateCtrl = StreamController<int>.broadcast();
-  final _audioFormatCtrl = StreamController<String>.broadcast();
-  final _audioChannelsCtrl = StreamController<String>.broadcast();
-  final _audioClientNameCtrl = StreamController<String>.broadcast();
-  final _audioDriverCtrl = StreamController<String>.broadcast();
-  final _activeFiltersCtrl = StreamController<List<AudioFilter>>.broadcast();
-  final _equalizerGainsCtrl = StreamController<List<double>>.broadcast();
-  final _audioDisplayCtrl = StreamController<String>.broadcast();
-  final _coverArtAutoCtrl = StreamController<String>.broadcast();
-  final _imageDisplayDurationCtrl = StreamController<String>.broadcast();
-  final _endFileCtrl = StreamController<MpvFileEndedEvent>.broadcast();
-  final _errorCtrl = StreamController<MpvPlayerError>.broadcast();
-  final _logCtrl = StreamController<MpvLogEntry>.broadcast();
-  final _hookCtrl = StreamController<MpvHookEvent>.broadcast();
-  // Surface the patched `prefetch-state` mpv property as a typed stream.
-  // See [MpvPrefetchState] and the `patch_prefetch_state.py` patch in
-  // scripts/patches/mpv/ for the native side. We expose every state
-  // transition including the transient `used` → `idle` pair so clients
-  // can treat `used` as a one-shot "track just transitioned gaplessly"
-  // signal without polling.
-  final _prefetchStateCtrl = StreamController<MpvPrefetchState>.broadcast();
+  // ── Property registry (the bulk of state — one spec per mpv property) ──
+  late final DefaultPropertyReactives _reactives;
+  late final PropertyRegistry _registry;
+
+  // ── Standalone reactive properties (no 1:1 mpv property backing) ───────
+  // Lifecycle flags driven by file-boundary events, not by a single property.
+  final ReactiveProperty<bool> _buffering = ReactiveProperty<bool>(false);
+  final ReactiveProperty<bool> _completed = ReactiveProperty<bool>(false);
+  // Derived from JSON properties that need access to player-side context.
+  final ReactiveProperty<Playlist> _playlist =
+      ReactiveProperty<Playlist>(const Playlist.empty());
+  final ReactiveProperty<PlaylistMode> _playlistMode =
+      ReactiveProperty<PlaylistMode>(PlaylistMode.none);
+  final ReactiveProperty<List<AudioDevice>> _audioDevices =
+      ReactiveProperty<List<AudioDevice>>(
+          const [AudioDevice('auto', 'Auto')]);
+  final ReactiveProperty<Map<String, String>> _metadata =
+      ReactiveProperty<Map<String, String>>(const <String, String>{});
+  final ReactiveProperty<double> _bufferingPercentage =
+      ReactiveProperty<double>(0.0);
+  // User-driven (no observed mpv property).
+  final ReactiveProperty<List<double>> _equalizerGains =
+      ReactiveProperty<List<double>>(
+          const [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+
+  // ── Pure event streams (no current value) ───────────────────────────────
+  final StreamController<MpvFileEndedEvent> _endFileCtrl =
+      StreamController<MpvFileEndedEvent>.broadcast();
+  final StreamController<MpvPlayerError> _errorCtrl =
+      StreamController<MpvPlayerError>.broadcast();
+  // Log stream from the mpv engine itself (codec / demux / ao / …).
+  final StreamController<MpvLogEntry> _logCtrl =
+      StreamController<MpvLogEntry>.broadcast();
+  // Log stream from the Dart wrapper itself — JSON parse warnings, hook
+  // timeouts, manual `Player.log(...)` injections. Split from `_logCtrl`
+  // in 0.1.0 so consumers can filter wrapper-side noise from genuine
+  // engine messages without inspecting the prefix.
+  final StreamController<MpvLogEntry> _internalLogCtrl =
+      StreamController<MpvLogEntry>.broadcast();
+  final StreamController<MpvHookEvent> _hookCtrl =
+      StreamController<MpvHookEvent>.broadcast();
+  final StreamController<void> _seekCompletedCtrl =
+      StreamController<void>.broadcast();
+  final StreamController<CoverArtRaw> _coverArtRawCtrl =
+      StreamController<CoverArtRaw>.broadcast();
 
   PlayerState get state => _state;
   late final PlayerStream stream;
@@ -264,83 +295,51 @@ abstract class _PlayerBase {
       throw StateError('mpv_initialize() failed: ${_errorString(rc)}');
     }
     _applyPostInitOptions();
-    _registerObservedProperties();
 
-    stream = PlayerStream(
-      playlist: _playlistCtrl.stream,
-      playing: _playingCtrl.stream,
-      completed: _completedCtrl.stream,
-      position: _positionCtrl.stream,
-      seekCompleted: _seekCompletedCtrl.stream,
-      duration: _durationCtrl.stream,
-      volume: _volumeCtrl.stream,
-      rate: _rateCtrl.stream,
-      pitch: _pitchCtrl.stream,
-      buffering: _bufferingCtrl.stream,
-      buffer: _bufferCtrl.stream,
-      bufferingPercentage: _bufferPctCtrl.stream,
-      playlistMode: _playlistModeCtrl.stream,
-      shuffle: _shuffleCtrl.stream,
-      audioParams: _audioParamsCtrl.stream,
-      audioOutParams: _audioOutParamsCtrl.stream,
-      audioBitrate: _audioBitrateCtrl.stream,
-      audioDevice: _audioDeviceCtrl.stream,
-      audioDevices: _audioDevicesCtrl.stream,
-      mute: _muteCtrl.stream,
-      audioDelay: _audioDelayCtrl.stream,
-      pitchCorrection: _pitchCorrectionCtrl.stream,
-      metadata: _metadataCtrl.stream,
-      gaplessMode: _gaplessModeCtrl.stream,
-      replayGainMode: _replayGainModeCtrl.stream,
-      replayGainPreamp: _replayGainPreampCtrl.stream,
-      replayGainFallback: _replayGainFallbackCtrl.stream,
-      replayGainClip: _replayGainClipCtrl.stream,
-      volumeGain: _volumeGainCtrl.stream,
-      cacheMode: _cacheModeCtrl.stream,
-      cacheSecs: _cacheSecsCtrl.stream,
-      cacheOnDisk: _cacheOnDiskCtrl.stream,
-      cachePause: _cachePauseCtrl.stream,
-      cachePauseWait: _cachePauseWaitCtrl.stream,
-      demuxerMaxBytes: _demuxerMaxBytesCtrl.stream,
-      demuxerReadaheadSecs: _demuxerReadaheadSecsCtrl.stream,
-      demuxerMaxBackBytes: _demuxerMaxBackBytesCtrl.stream,
-      networkTimeout: _networkTimeoutCtrl.stream,
-      tlsVerify: _tlsVerifyCtrl.stream,
-      pausedForCache: _pausedForCacheCtrl.stream,
-      demuxerViaNetwork: _demuxerViaNetworkCtrl.stream,
-      audioExclusive: _audioExclusiveCtrl.stream,
-      audioBuffer: _audioBufferCtrl.stream,
-      audioStreamSilence: _audioStreamSilenceCtrl.stream,
-      aoNullUntimed: _aoNullUntimedCtrl.stream,
-      audioTrack: _audioTrackCtrl.stream,
-      audioSpdif: _audioSpdifCtrl.stream,
-      volumeMax: _volumeMaxCtrl.stream,
-      audioSampleRate: _audioSampleRateCtrl.stream,
-      audioFormat: _audioFormatCtrl.stream,
-      audioChannels: _audioChannelsCtrl.stream,
-      audioClientName: _audioClientNameCtrl.stream,
-      audioDriver: _audioDriverCtrl.stream,
-      activeFilters: _activeFiltersCtrl.stream,
-      equalizerGains: _equalizerGainsCtrl.stream,
-      audioDisplay: _audioDisplayCtrl.stream,
-      coverArtAuto: _coverArtAutoCtrl.stream,
-      imageDisplayDuration: _imageDisplayDurationCtrl.stream,
+    _reactives = DefaultPropertyReactives();
+    _registry = PropertyRegistry()
+      ..registerAll(buildDefaultSpecs(
+        _reactives,
+        onPlayingChanged: (playing) {
+          if (playing) _scheduleAudioOutputCheck();
+        },
+        onIdleActive: (idle) {
+          if (idle) _updateLifecycle(playing: false, buffering: false);
+        },
+      ));
+    _registry.observeAll(_lib, _handle);
+
+    // Properties handled outside the registry need an explicit observe call
+    // (the registry only observes specs it knows about).
+    _observe('playlist', MpvFormat.mpvFormatString);
+    _observe('audio-device-list', MpvFormat.mpvFormatString);
+    _observe('metadata', MpvFormat.mpvFormatString);
+    _observe('demuxer-cache-state', MpvFormat.mpvFormatString);
+    _observe('loop-file', MpvFormat.mpvFormatString);
+    _observe('loop-playlist', MpvFormat.mpvFormatString);
+
+    stream = PlayerStream.fromInternals(
+      reactives: _reactives,
+      buffering: _buffering,
+      completed: _completed,
+      playlist: _playlist,
+      playlistMode: _playlistMode,
+      audioDevices: _audioDevices,
+      metadata: _metadata,
+      bufferingPercentage: _bufferingPercentage,
+      equalizerGains: _equalizerGains,
       endFile: _endFileCtrl.stream,
       error: _errorCtrl.stream,
       log: _logCtrl.stream,
+      internalLog: _internalLogCtrl.stream,
       hook: _hookCtrl.stream,
-      prefetchState: _prefetchStateCtrl.stream,
+      seekCompleted: _seekCompletedCtrl.stream,
+      coverArtRaw: _coverArtRawCtrl.stream,
     );
 
     _startEventIsolate();
     NativeReferenceHolder.instance.add(_handle);
   }
-
-  // --- Handlers (Implemented by Mixins) ---
-  void _handleDoubleProperty(String name, double value);
-  void _handleIntProperty(String name, int value);
-  void _handleStringProperty(String name, String value);
-  void _registerObservedProperties();
 
   // --- Core Lifecycle ---
 
@@ -388,13 +387,24 @@ abstract class _PlayerBase {
   }
 
   void _handleEvent(MpvIsolateEvent event) {
+    // Defensive early-exit: dispose() awaits `_eventSub.cancel()` before
+    // closing controllers, so an in-flight `_handleEvent` invocation
+    // already cannot land here after teardown. This guard exists so a
+    // future refactor that loosens the dispose ordering can't silently
+    // resurrect "Bad state: Cannot add after close" exceptions on the
+    // event-emitting controllers below.
+    if (_disposed) return;
     switch (event) {
       case MpvEventStartFile():
         _updateLifecycle(buffering: true, completed: false);
       case MpvEventFileLoaded():
-        _prop('pause', _pendingPlay ? 'no' : 'yes');
-        _updateLifecycle(
-            buffering: false, playing: _pendingPlay, completed: false);
+        // `pause` is set globally via `_prop('pause', ...)` BEFORE the
+        // `loadfile` command in open() / openPlaylist() / jump(). That
+        // path triggers mpv's property observer, so the registry
+        // updates `state.playing` and `_reactives.playing` on its own
+        // — we don't touch them here. We only clear buffering /
+        // completed and kick the cover-art pipeline.
+        _updateLifecycle(buffering: false, completed: false);
         _pollPosition();
         _extractEmbeddedCover();
       case MpvEventPlaybackSeek():
@@ -404,10 +414,6 @@ abstract class _PlayerBase {
         // the pre-fix "position=0 flash" bug).
         break;
       case MpvEventPlaybackRestart():
-        // Authoritative "seek finished" signal. Poll time-pos
-        // immediately so positionStream emits the real post-seek
-        // value before the 33ms-throttled time-pos observer can,
-        // then notify listeners waiting on seekCompleted.
         _pollPosition();
         if (!_seekCompletedCtrl.isClosed) {
           _seekCompletedCtrl.add(null);
@@ -430,11 +436,11 @@ abstract class _PlayerBase {
       case MpvEventShutdown():
         _updateLifecycle(playing: false, buffering: false);
       case MpvEventPropertyDouble(:final name, :final value):
-        _handleDoubleProperty(name, value);
+        _dispatchProperty(name, value);
       case MpvEventPropertyInt(:final name, :final value):
-        _handleIntProperty(name, value);
+        _dispatchProperty(name, value);
       case MpvEventPropertyString(:final name, :final value):
-        _handleStringProperty(name, value);
+        _dispatchProperty(name, value);
       case MpvEventLog(:final prefix, :final level, :final text):
         final entry = MpvLogEntry(prefix: prefix, level: level, text: text);
         _logCtrl.add(entry);
@@ -455,6 +461,37 @@ abstract class _PlayerBase {
           level: 'error',
           text: message,
         ));
+    }
+  }
+
+  /// Routes a property-change to the registry first, then falls back to the
+  /// custom handlers for properties whose update logic doesn't fit a simple
+  /// (parser, reducer) pair (JSON parsing with player-side context, derived
+  /// fields aggregating multiple mpv properties, etc.).
+  void _dispatchProperty(String name, dynamic raw) {
+    final next = _registry.dispatch(name, raw, _state);
+    if (next != null) {
+      _state = next;
+      return;
+    }
+    if (_registry.specFor(name) != null) {
+      // Spec exists but value was deduplicated — nothing to do.
+      return;
+    }
+    // Custom out-of-registry handlers for the few properties whose update
+    // logic touches more than `(parse → reduce)`.
+    switch (name) {
+      case 'loop-file':
+      case 'loop-playlist':
+        _updatePlaylistModeFromMpv(name, raw as String);
+      case 'playlist':
+        _updatePlaylistFromJson(raw as String);
+      case 'audio-device-list':
+        _updateAudioDevicesFromJson(raw as String);
+      case 'metadata':
+        _updateMetadataFromJson(raw as String);
+      case 'demuxer-cache-state':
+        _updateBufferingPercentageFromJson(raw as String);
     }
   }
 
@@ -490,9 +527,14 @@ abstract class _PlayerBase {
         _lib.mpvCommandString(_handle, cmd.toNativeUtf8(allocator: arena)));
   }
 
-  void _observe(String name, int format, int replyId) {
+  /// One-off observe — the registry handles the bulk of properties; this
+  /// helper covers the few hand-rolled ones (playlist, metadata, etc.).
+  /// Reply IDs are diagnostic-only on the receive side, so we burn a small
+  /// pool of high IDs (10001+) to avoid colliding with the registry's range.
+  int _customReplyId = 10001;
+  void _observe(String name, int format) {
     using((arena) => _lib.mpvObserveProperty(
-        _handle, replyId, name.toNativeUtf8(allocator: arena), format));
+        _handle, _customReplyId++, name.toNativeUtf8(allocator: arena), format));
   }
 
   String? _getPropString(String name) {
@@ -516,7 +558,7 @@ abstract class _PlayerBase {
   void _startHookTimeout(int id, String name, Duration timeout) {
     _hookTimers[id] = Timer(timeout, () {
       _hookTimers.remove(id);
-      _log(
+      _internalLog(
         'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s — '
         'auto-continuing to unblock mpv',
         level: 'warn',
@@ -540,117 +582,101 @@ abstract class _PlayerBase {
 
   // --- Internal State Pipeline ---
 
-  void _patchState(PlayerState Function(PlayerState) updater) {
+  /// Updates [_state] and writes [value] into [reactive]. The reactive
+  /// dedups so equal-value writes are silent on the stream.
+  ///
+  /// This is the API the setter-mixins (audio, network, …) call after
+  /// pushing a value to mpv via `_prop`/`_command`, so the public state
+  /// reflects the requested value optimistically.
+  void _updateField<T>(
+    PlayerState Function(PlayerState) updater,
+    ReactiveProperty<T> reactive,
+    T value,
+  ) {
     _state = updater(_state);
-  }
-
-  /// Updates state and notifies a specific controller.
-  void _updateState<T>(PlayerState Function(PlayerState) updater,
-      StreamController<T> ctrl, T newValue) {
-    _state = updater(_state);
-    ctrl.add(newValue);
+    reactive.update(value);
   }
 
   /// Updates the playback-lifecycle triple (playing / buffering / completed)
-  /// and emits on each underlying stream only for fields whose value actually
-  /// changed. Use this for compound transitions (start-file, file-loaded,
-  /// end-file, shutdown, idle-active) so all three streams stay in sync with
-  /// `state` instead of going silent on `_patchState`.
+  /// and emits on each underlying reactive only for fields whose value
+  /// actually changed. Use this for compound transitions (start-file,
+  /// file-loaded, end-file, shutdown, idle-active) so all three streams stay
+  /// in sync with `state` instead of going silent on `_patchState`.
+  ///
+  /// The pure-function core lives in [computeLifecycle] (in
+  /// `lib/src/internal/lifecycle_transitions.dart`) so the diff logic
+  /// can be regression-tested without spinning up a real player — see
+  /// `test/internal/lifecycle_transitions_test.dart`.
   void _updateLifecycle({bool? playing, bool? buffering, bool? completed}) {
-    final prev = _state;
-    _state = _state.copyWith(
+    final result = computeLifecycle(
+      prev: _state,
       playing: playing,
       buffering: buffering,
       completed: completed,
     );
-    if (playing != null && prev.playing != playing) {
-      _playingCtrl.add(playing);
-    }
-    if (buffering != null && prev.buffering != buffering) {
-      _bufferingCtrl.add(buffering);
-    }
-    if (completed != null && prev.completed != completed) {
-      _completedCtrl.add(completed);
-    }
+    _state = result.newState;
+    if (result.playingDidChange) _reactives.playing.update(playing!);
+    if (result.bufferingDidChange) _buffering.update(buffering!);
+    if (result.completedDidChange) _completed.update(completed!);
   }
 
-  void _updateAudioParams(AudioParams Function(AudioParams) updater) {
-    final updated = updater(_state.audioParams);
-    _patchState((s) => s.copyWith(audioParams: updated));
-    _audioParamsCtrl.add(updated);
+  // --- Custom property handlers (JSON / derived) ---
+
+  void _updatePlaylistModeFromMpv(String name, String value) {
+    final next = derivePlaylistMode(name, value, _state.playlistMode);
+    if (next == null) return;
+    _updateField(
+      (s) => s.copyWith(playlistMode: next),
+      _playlistMode,
+      next,
+    );
   }
 
-  void _updateAudioOutParams(AudioParams Function(AudioParams) updater) {
-    final updated = updater(_state.audioOutParams);
-    _patchState((s) => s.copyWith(audioOutParams: updated));
-    _audioOutParamsCtrl.add(updated);
-  }
-
-  void _updateMetadata(String value) {
+  void _updatePlaylistFromJson(String jsonStr) {
     try {
-      final String cleanValue = value.trim();
-      if (cleanValue.isEmpty) {
-        return;
-      }
-      final Map<String, dynamic> raw = json.decode(cleanValue);
-      final metadata = raw.map((k, v) => MapEntry(k, v.toString()));
-      _patchState((s) => s.copyWith(metadata: metadata));
-      _metadataCtrl.add(metadata);
+      final playlist = parsePlaylistJson(
+        jsonStr: jsonStr,
+        mediaCache: _mediaCache,
+        previous: _state.playlist,
+      );
+      _updateField(
+          (s) => s.copyWith(playlist: playlist), _playlist, playlist);
     } catch (e) {
-      _log('Failed to parse metadata: $e', level: 'warn');
+      _internalLog('Failed to parse playlist: $e', level: 'warn');
     }
   }
 
-  void _updatePlaylist(String jsonStr) {
+  void _updateAudioDevicesFromJson(String jsonStr) {
     try {
-      final list =
-          (json.decode(jsonStr) as List<dynamic>).cast<Map<String, dynamic>>();
-      _rawPlaylist = list.map((e) => _RawPlaylistEntry.fromJson(e)).toList();
-      final currentIndex = _rawPlaylist.indexWhere((e) => e.current);
-      final medias = _rawPlaylist
-          .map((e) => _mediaCache[e.filename] ?? Media(e.filename))
-          .toList();
-      // currentIndex is -1 when mpv emits the playlist without a `current` flag
-      // (e.g. transiently during playlist-move). Fall back to the last known index
-      // instead of clamping -1 to 0, which would incorrectly mark the first item.
-      final idx = currentIndex >= 0
-          ? currentIndex
-          : _state.playlist.index.clamp(0, medias.isEmpty ? 0 : medias.length - 1);
-      final playlist = Playlist(medias, index: idx);
-      _patchState((s) => s.copyWith(playlist: playlist));
-      _playlistCtrl.add(playlist);
+      final devices = parseAudioDeviceListJson(jsonStr);
+      _updateField(
+          (s) => s.copyWith(audioDevices: devices), _audioDevices, devices);
     } catch (e) {
-      _log('Failed to parse playlist: $e', level: 'warn');
+      _internalLog('Failed to parse audio devices: $e', level: 'warn');
     }
   }
 
-  void _updateAudioDevices(String jsonStr) {
+  void _updateMetadataFromJson(String value) {
     try {
-      final list =
-          (json.decode(jsonStr) as List<dynamic>).cast<Map<String, dynamic>>();
-      final devices = list
-          .map((d) => AudioDevice(d['name'] as String? ?? 'unknown',
-              d['description'] as String? ?? ''))
-          .toList();
-      _patchState((s) => s.copyWith(audioDevices: devices));
-      _audioDevicesCtrl.add(devices);
+      final metadata = parseMetadataJson(value);
+      if (metadata == null) return;
+      _updateField((s) => s.copyWith(metadata: metadata), _metadata, metadata);
     } catch (e) {
-      _log('Failed to parse audio devices: $e', level: 'warn');
+      _internalLog('Failed to parse metadata: $e', level: 'warn');
     }
   }
 
-  void _parseCacheState(String jsonStr) {
+  void _updateBufferingPercentageFromJson(String jsonStr) {
     try {
-      final map = json.decode(jsonStr) as Map<String, dynamic>;
-      final cacheDuration = (map['cache-duration'] as num?)?.toDouble() ?? 0.0;
-      final targetSecs = _state.cacheSecs > 0 ? _state.cacheSecs : 1.0;
-      final pct = (cacheDuration / targetSecs * 100.0).clamp(0.0, 100.0);
-      _patchState((s) => s.copyWith(bufferingPercentage: pct));
-      _bufferPctCtrl.add(pct);
+      final pct = parseBufferingPercentage(jsonStr, _state.cacheSecs);
+      _updateField((s) => s.copyWith(bufferingPercentage: pct),
+          _bufferingPercentage, pct);
     } catch (e) {
-      _log('Failed to parse cache state: $e', level: 'warn');
+      _internalLog('Failed to parse cache state: $e', level: 'warn');
     }
   }
+
+  // --- Misc helpers ---
 
   void _pollPosition() {
     if (_disposed) return;
@@ -661,31 +687,12 @@ abstract class _PlayerBase {
           _handle, n, MpvFormat.mpvFormatDouble, buf.cast());
       if (rc == MpvError.mpvErrorSuccess) {
         final pos = Duration(microseconds: (buf.value * 1e6).round());
-        _patchState((s) => s.copyWith(position: pos));
-        _positionCtrl.add(pos);
+        _updateField(
+            (s) => s.copyWith(position: pos), _reactives.position, pos);
       }
     });
   }
 
-  void _updatePlaylistMode(String name, String value) {
-    if (name == 'loop-file') {
-      if (value == 'inf') {
-        _updateState((s) => s.copyWith(playlistMode: PlaylistMode.single),
-            _playlistModeCtrl, PlaylistMode.single);
-      } else if (_state.playlistMode == PlaylistMode.single) {
-        _updateState((s) => s.copyWith(playlistMode: PlaylistMode.none),
-            _playlistModeCtrl, PlaylistMode.none);
-      }
-    } else if (name == 'loop-playlist') {
-      if (value == 'inf') {
-        _updateState((s) => s.copyWith(playlistMode: PlaylistMode.loop),
-            _playlistModeCtrl, PlaylistMode.loop);
-      } else if (_state.playlistMode == PlaylistMode.loop) {
-        _updateState((s) => s.copyWith(playlistMode: PlaylistMode.none),
-            _playlistModeCtrl, PlaylistMode.none);
-      }
-    }
-  }
 
   void _updateMediaCover({String? uri, Uint8List? bytes}) {
     final currentIdx = _state.playlist.index;
@@ -713,7 +720,7 @@ abstract class _PlayerBase {
       updatedMedias[currentIdx] = updatedMedia;
 
       final updatedPlaylist = Playlist(updatedMedias, index: currentIdx);
-      _updateState((s) => s.copyWith(playlist: updatedPlaylist), _playlistCtrl,
+      _updateField((s) => s.copyWith(playlist: updatedPlaylist), _playlist,
           updatedPlaylist);
     }
   }
@@ -731,260 +738,113 @@ abstract class _PlayerBase {
     });
   }
 
-  void _log(String message, {String level = 'info'}) => _logCtrl
-      .add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
+  /// Internal log helper — emits on the wrapper-side log channel
+  /// ([Player.stream.internalLog]), kept separate from mpv's engine log
+  /// stream ([Player.stream.log]).
+  void _internalLog(String message, {String level = 'info'}) =>
+      _internalLogCtrl.add(MpvLogEntry(
+          prefix: 'mpv_audio_kit', level: level, text: message));
 
   int _currentCoverOpId = 0;
 
   void _extractEmbeddedCover() {
     if (_disposed) return;
-    final vid = _getPropString('vid');
-    if (vid == null || vid == 'no' || vid == '0') {
-      return;
+    final raw = CoverArtExtractor.capture(_lib, _handle);
+    if (raw == null) return;
+    // Always surface the raw frame on the public stream — consumers that
+    // disabled `processCoverArt` are listening on this for their own
+    // pipeline, and even consumers that use the default processor may want
+    // a hook to log/inspect the source.
+    if (!_coverArtRawCtrl.isClosed) {
+      _coverArtRawCtrl.add(raw);
     }
-
-    final result = calloc<MpvNode>();
-    final args = ['screenshot-raw', 'video'];
-
-    using((arena) {
-      final argPtrs = arena
-          .allocate<Pointer<Utf8>>((args.length + 1) * sizeOf<Pointer<Utf8>>());
-      for (int i = 0; i < args.length; i++) {
-        argPtrs[i] = args[i].toNativeUtf8(allocator: arena);
-      }
-      argPtrs[args.length] = nullptr;
-
-      final res = _lib.mpvCommandRet(_handle, argPtrs, result);
-      if (res < 0) {
-        _lib.mpvFreeNodeContents(result);
-        calloc.free(result);
-        return;
-      }
-
-      if (result.ref.format == MpvFormat.mpvFormatNodeMap) {
-        int? w, h, stride;
-        Uint8List? rawBytes;
-
-        final map = result.ref.u.list;
-        for (int i = 0; i < map.ref.num; i++) {
-          final key = map.ref.keys[i].toDartString();
-          final val = map.ref.values[i];
-          if (key == 'w' && val.format == MpvFormat.mpvFormatInt64) {
-            w = val.u.int64;
-          }
-          if (key == 'h' && val.format == MpvFormat.mpvFormatInt64) {
-            h = val.u.int64;
-          }
-          if (key == 'stride' && val.format == MpvFormat.mpvFormatInt64) {
-            stride = val.u.int64;
-          }
-          if (key == 'data' && val.format == MpvFormat.mpvFormatByteArray) {
-            rawBytes = Uint8List.fromList(
-                val.u.ba.ref.data.cast<Uint8>().asTypedList(val.u.ba.ref.size));
-          }
-        }
-
-        if (w != null && h != null && stride != null && rawBytes != null) {
-          // Process in background
-          _processRawCover(w, h, stride, rawBytes);
-        }
-      }
-
-      _lib.mpvFreeNodeContents(result);
-      calloc.free(result);
-    });
+    if (configuration.processCoverArt) {
+      _processCoverWithDefaults(raw);
+    }
   }
 
-  Future<void> _processRawCover(
-      int w, int h, int stride, Uint8List bytes) async {
+  Future<void> _processCoverWithDefaults(CoverArtRaw raw) async {
     final opId = ++_currentCoverOpId;
     try {
-      // 1. Optimized buffer handling
-      Uint8List workingBuffer;
-      if (stride == w * 4) {
-        // Zero-copy: reuse the bytes previously copied from C
-        workingBuffer = bytes;
-      } else {
-        // Re-align if stride has padding
-        workingBuffer = Uint8List(w * h * 4);
-        for (int y = 0; y < h; y++) {
-          workingBuffer.setRange(y * w * 4, (y + 1) * w * 4,
-              bytes.sublist(y * stride, y * stride + w * 4));
-        }
-      }
-
-      if (opId != _currentCoverOpId) {
-        return;
-      }
-
-      // Ensure Alpha is opaque (BGR0 -> BGRA)
-      for (int i = 3; i < workingBuffer.length; i += 4) {
-        workingBuffer[i] = 255;
-      }
-
-      if (opId != _currentCoverOpId || _disposed) {
-        return;
-      }
-
-      final buffer = await ui.ImmutableBuffer.fromUint8List(workingBuffer);
-      if (opId != _currentCoverOpId || _disposed) {
-        buffer.dispose();
-        return;
-      }
-      final descriptor = ui.ImageDescriptor.raw(
-        buffer,
-        width: w,
-        height: h,
-        pixelFormat: ui.PixelFormat.bgra8888,
+      final png = await CoverArtProcessor.toPng(
+        raw,
+        isCancelled: () => _disposed || opId != _currentCoverOpId,
       );
-
-      try {
-        // 2. Resize to max 800px
-        double ratio = 800 / (w > h ? w : h);
-        if (ratio > 1.0) {
-          ratio = 1.0;
-        }
-
-        final codec = await descriptor.instantiateCodec(
-          targetWidth: (w * ratio).round(),
-          targetHeight: (h * ratio).round(),
-        );
-
-        try {
-          final frame = await codec.getNextFrame();
-          try {
-            if (opId != _currentCoverOpId || _disposed) return;
-            final data =
-                await frame.image.toByteData(format: ui.ImageByteFormat.png);
-            if (opId != _currentCoverOpId || _disposed) return;
-            if (data != null) {
-              _updateMediaCover(bytes: data.buffer.asUint8List());
-            }
-          } finally {
-            frame.image.dispose();
-          }
-        } finally {
-          codec.dispose();
-        }
-      } finally {
-        descriptor.dispose();
-      }
+      if (png == null) return;
+      if (_disposed || opId != _currentCoverOpId) return;
+      _updateMediaCover(bytes: png);
     } catch (e) {
       if (opId == _currentCoverOpId) {
-        _log('Error processing embedded cover: $e');
+        _internalLog('Error processing embedded cover: $e');
       }
     }
   }
 
+  /// Tears down the player.
+  ///
+  /// The teardown order is load-bearing — changing it has caused crashes
+  /// in past releases. The current sequence is:
+  ///
+  /// 1. **Flip `_disposed`** so any subsequent setter / public-API call
+  ///    fails fast via `_checkNotDisposed()`.
+  /// 2. **Bump `_currentCoverOpId`** so any in-flight cover-art processing
+  ///    bails on its next `isCancelled()` check before touching state or
+  ///    the about-to-close media-cover stream.
+  /// 3. **Drop the [NativeReferenceHolder] entry** so a hot-restart that
+  ///    fires before the destroy completes doesn't try to clean up a
+  ///    handle we're already cleaning up.
+  /// 4. **Await `_eventSub.cancel()`** before destroying the handle. This
+  ///    prevents new `_handleEvent` invocations from landing after the
+  ///    destroy. In-flight events queued on the isolate's stream are
+  ///    dropped on the floor by Dart's async-cancel semantics.
+  /// 5. **`mpvTerminateDestroy(_handle)` BEFORE stopping the isolate**.
+  ///    mpv's blocking `mpv_wait_event()` unblocks with
+  ///    `MPV_EVENT_SHUTDOWN` as soon as the handle is destroyed, letting
+  ///    the isolate's run-loop exit cleanly. The reverse order (stop
+  ///    isolate → destroy handle) had a window where the isolate could
+  ///    re-enter `mpv_wait_event` between the kill-queue and the destroy.
+  /// 6. **Stop the isolate**, which is now guaranteed to exit on its
+  ///    next loop iteration.
+  /// 7. **Close all reactive properties + controllers**. Order within
+  ///    this group does not matter for correctness (they tolerate
+  ///    `close()` while a listener is attached); grouping by ownership
+  ///    is for auditability.
   Future<void> dispose() async {
     if (_disposed) {
       return;
     }
     _disposed = true;
-
-    // Invalidate any in-flight async cover-art processing so it bails before
-    // touching state or the (about-to-close) media-cover stream.
     _currentCoverOpId++;
 
     NativeReferenceHolder.instance.remove(_handle);
-    // Cancel the main-isolate subscription FIRST so no further _handleEvent
-    // calls fire after _disposed=true. After cancel completes, in-flight
-    // events queued on the isolate's stream are dropped on the floor.
     await _eventSub?.cancel();
-    // Tearing down mpv before stopping the isolate is safe: mpv's blocking
-    // mpvWaitEvent unblocks with MPV_EVENT_SHUTDOWN as soon as the handle is
-    // destroyed, letting the isolate's run-loop exit cleanly.
     _lib.mpvTerminateDestroy(_handle);
     _eventIsolate.stop();
 
-    final ctrls = [
-      _playlistCtrl,
-      _playingCtrl,
-      _completedCtrl,
-      _positionCtrl,
-      _seekCompletedCtrl,
-      _durationCtrl,
-      _volumeCtrl,
-      _rateCtrl,
-      _pitchCtrl,
-      _bufferingCtrl,
-      _bufferCtrl,
-      _bufferPctCtrl,
-      _playlistModeCtrl,
-      _shuffleCtrl,
-      _audioParamsCtrl,
-      _audioOutParamsCtrl,
-      _audioBitrateCtrl,
-      _audioDeviceCtrl,
-      _audioDevicesCtrl,
-      _muteCtrl,
-      _audioDelayCtrl,
-      _pitchCorrectionCtrl,
-      _metadataCtrl,
-      _gaplessModeCtrl,
-      _replayGainModeCtrl,
-      _replayGainPreampCtrl,
-      _replayGainFallbackCtrl,
-      _replayGainClipCtrl,
-      _volumeGainCtrl,
-      _cacheModeCtrl,
-      _cacheSecsCtrl,
-      _cacheOnDiskCtrl,
-      _cachePauseCtrl,
-      _cachePauseWaitCtrl,
-      _demuxerMaxBytesCtrl,
-      _demuxerReadaheadSecsCtrl,
-      _demuxerMaxBackBytesCtrl,
-      _networkTimeoutCtrl,
-      _tlsVerifyCtrl,
-      _pausedForCacheCtrl,
-      _demuxerViaNetworkCtrl,
-      _audioExclusiveCtrl,
-      _audioBufferCtrl,
-      _audioStreamSilenceCtrl,
-      _aoNullUntimedCtrl,
-      _audioTrackCtrl,
-      _audioSpdifCtrl,
-      _volumeMaxCtrl,
-      _audioSampleRateCtrl,
-      _audioFormatCtrl,
-      _audioChannelsCtrl,
-      _audioClientNameCtrl,
-      _audioDriverCtrl,
-      _activeFiltersCtrl,
-      _equalizerGainsCtrl,
-      _audioDisplayCtrl,
-      _coverArtAutoCtrl,
-      _imageDisplayDurationCtrl,
-      _prefetchStateCtrl,
-      _endFileCtrl,
-      _errorCtrl,
-      _logCtrl,
-      _hookCtrl,
-    ];
-    for (final c in ctrls) {
-      c.close();
-    }
+    // Close the registry-backed reactives, then the standalone ones, then
+    // the pure-event stream controllers. Order doesn't matter for
+    // correctness — the controllers tolerate close() being called while a
+    // listener is still attached — but grouping by ownership keeps
+    // teardown auditable.
+    await _registry.closeAll();
+    await Future.wait<void>([
+      _buffering.close(),
+      _completed.close(),
+      _playlist.close(),
+      _playlistMode.close(),
+      _audioDevices.close(),
+      _metadata.close(),
+      _bufferingPercentage.close(),
+      _equalizerGains.close(),
+    ]);
+    await Future.wait<void>([
+      _endFileCtrl.close(),
+      _errorCtrl.close(),
+      _logCtrl.close(),
+      _internalLogCtrl.close(),
+      _hookCtrl.close(),
+      _seekCompletedCtrl.close(),
+      _coverArtRawCtrl.close(),
+    ]);
   }
-}
-
-class _RawPlaylistEntry {
-  final String filename;
-  final bool current;
-  final bool playing;
-  final String? title;
-
-  _RawPlaylistEntry(
-      {required this.filename,
-      required this.current,
-      required this.playing,
-      this.title});
-
-  factory _RawPlaylistEntry.fromJson(Map<String, dynamic> json) =>
-      _RawPlaylistEntry(
-        filename: json['filename'] as String? ?? '',
-        current: json['current'] == true,
-        playing: json['playing'] == true,
-        title: json['title'] as String?,
-      );
 }

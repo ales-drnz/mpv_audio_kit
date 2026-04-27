@@ -2,7 +2,11 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:freezed_annotation/freezed_annotation.dart';
+
 import '../mpv_bindings.dart';
+
+part 'mpv_player_error.freezed.dart';
 
 /// Typed error events from the mpv engine.
 ///
@@ -17,48 +21,65 @@ import '../mpv_bindings.dart';
 ///     case MpvEndFileError():
 ///       print('Playback ended: reason=${error.reason}, code=${error.code}');
 ///     case MpvLogError():
-///       print('${error.prefix}: ${error.message}');
+///       print(error.message);
 ///   }
 /// });
 /// ```
-sealed class MpvPlayerError {
-  const MpvPlayerError();
+@freezed
+sealed class MpvPlayerError with _$MpvPlayerError {
+  const MpvPlayerError._();
+
+  /// Playback of a file ended with an error or unexpected EOF.
+  ///
+  /// Emitted when mpv fires `MPV_EVENT_END_FILE` with a non-zero error code.
+  ///
+  /// **Network note:** according to the mpv documentation, a network
+  /// disconnection mid-stream may report as [MpvEndFileReason.eof] rather
+  /// than [MpvEndFileReason.error]. Use `Player.stream.endFile` and compare
+  /// the player's position against duration to detect premature endings.
+  const factory MpvPlayerError.endFile({
+    /// Why the file ended.
+    required MpvEndFileReason reason,
+
+    /// mpv error code (one of [MpvError] constants, e.g.
+    /// [MpvError.mpvErrorLoadingFailed]). Only meaningful when [reason]
+    /// is [MpvEndFileReason.error]; otherwise `0`.
+    required int code,
+
+    /// Human-readable error description.
+    required String message,
+  }) = MpvEndFileError;
+
+  /// A log message at `error` or `fatal` level from an mpv subsystem.
+  ///
+  /// These are informational errors from mpv's internal logging — they don't
+  /// necessarily mean playback has stopped. For example, a codec warning or
+  /// a filter configuration issue.
+  const factory MpvPlayerError.log({
+    /// The mpv subsystem that produced the message (e.g. `'ffmpeg'`,
+    /// `'demux'`, `'ao'`).
+    required String prefix,
+
+    /// The log level — either `'error'` or `'fatal'`.
+    required String level,
+
+    /// Raw log text from the mpv subsystem.
+    required String text,
+  }) = MpvLogError;
 
   /// Human-readable error description.
-  String get message;
-
-  @override
-  String toString() => message;
+  ///
+  /// For [MpvEndFileError] this is the mpv-supplied error string; for
+  /// [MpvLogError] it is `'[prefix] level: text'`.
+  String get message => switch (this) {
+        MpvEndFileError(:final message) => message,
+        MpvLogError(:final prefix, :final level, :final text) =>
+          '[$prefix] $level: $text',
+      };
 }
 
-/// Playback of a file ended with an error or unexpected EOF.
-///
-/// Emitted when mpv fires `MPV_EVENT_END_FILE` with a non-zero error code.
-///
-/// **Network note:** according to the mpv documentation, a network
-/// disconnection mid-stream may report as [MpvEndFileReason.eof] rather
-/// than [MpvEndFileReason.error]. Use [Player.stream.endFile] and compare
-/// the player's position against duration to detect premature endings.
-class MpvEndFileError extends MpvPlayerError {
-  const MpvEndFileError({
-    required this.reason,
-    required this.code,
-    required String message,
-  }) : _message = message;
-
-  /// Why the file ended.
-  final MpvEndFileReason reason;
-
-  /// mpv error code (one of [MpvError] constants, e.g.
-  /// [MpvError.mpvErrorLoadingFailed]). Only meaningful when [reason]
-  /// is [MpvEndFileReason.error]; otherwise `0`.
-  final int code;
-
-  final String _message;
-
-  @override
-  String get message => _message;
-
+/// Convenience predicates for [MpvEndFileError].
+extension MpvEndFileErrorX on MpvEndFileError {
   /// Whether this is likely a loading/network failure.
   bool get isLoadingError => code == MpvError.mpvErrorLoadingFailed;
 
@@ -71,35 +92,10 @@ class MpvEndFileError extends MpvPlayerError {
       code == MpvError.mpvErrorNothingToPlay;
 }
 
-/// A log message at `error` or `fatal` level from an mpv subsystem.
-///
-/// These are informational errors from mpv's internal logging — they don't
-/// necessarily mean playback has stopped. For example, a codec warning or
-/// a filter configuration issue.
-class MpvLogError extends MpvPlayerError {
-  const MpvLogError({
-    required this.prefix,
-    required this.level,
-    required String text,
-  }) : _text = text;
-
-  /// The mpv subsystem that produced the message (e.g. `'ffmpeg'`,
-  /// `'demux'`, `'ao'`).
-  final String prefix;
-
-  /// The log level — either `'error'` or `'fatal'`.
-  final String level;
-
-  final String _text;
-
-  @override
-  String get message => '[$prefix] $level: $_text';
-}
-
 /// Emitted for **every** file-end event, regardless of whether an error occurred.
 ///
 /// This is the typed Dart equivalent of mpv's `MPV_EVENT_END_FILE`.
-/// Subscribe via `player.stream.endFile` to detect both clean completions
+/// Subscribe via `Player.stream.endFile` to detect both clean completions
 /// and premature endings (e.g. a network stream that reports EOF
 /// mid-playback without setting an error code).
 ///
@@ -111,20 +107,24 @@ class MpvLogError extends MpvPlayerError {
 ///   }
 /// });
 /// ```
-class MpvFileEndedEvent {
-  const MpvFileEndedEvent({
-    required this.reason,
-    required this.error,
-  });
+@freezed
+abstract class MpvFileEndedEvent with _$MpvFileEndedEvent {
+  const factory MpvFileEndedEvent({
+    /// Why the file ended.
+    required MpvEndFileReason reason,
 
-  /// Why the file ended.
-  final MpvEndFileReason reason;
+    /// mpv error code. Non-zero only when [reason] is [MpvEndFileReason.error].
+    required int error,
+  }) = _MpvFileEndedEvent;
+}
 
-  /// mpv error code. Non-zero only when [reason] is [MpvEndFileReason.error].
-  final int error;
-
-  @override
-  String toString() => 'MpvFileEndedEvent(reason: $reason, error: $error)';
+/// Whether the file ended naturally and not because of a stop, error, redirect,
+/// or shutdown.
+extension MpvFileEndedEventX on MpvFileEndedEvent {
+  /// `true` when [reason] is [MpvEndFileReason.eof] — note that mpv also
+  /// reports EOF on mid-stream network disconnects, so this is "natural end
+  /// from mpv's POV", not "track played to completion".
+  bool get reachedNaturalEnd => reason == MpvEndFileReason.eof;
 }
 
 /// Why a file ended — mirrors `mpv_end_file_reason` from the C API.

@@ -183,42 +183,46 @@ class AudioPage extends StatelessWidget {
         ),
 
         const PropertySectionHeader(title: 'Sync & Delay'),
-        StreamBuilder<double>(
+        StreamBuilder<Duration>(
           stream: player.stream.audioDelay,
           initialData: player.state.audioDelay,
           builder: (context, snap) {
-            final val = snap.data ?? 0.0;
+            final secs =
+                (snap.data ?? Duration.zero).inMicroseconds / 1e6;
             return SliderPropertyCard(
               title: 'Audio Sync Delay',
-              subtitle: 'audio-delay=${val.toStringAsFixed(3)}s',
+              subtitle: 'audio-delay=${secs.toStringAsFixed(3)}s',
               icon: Icons.timer_rounded,
-              value: val,
+              value: secs,
               min: -5.0,
               max: 5.0,
               defaultValue: 0.0,
               labelBuilder: (v) => '${v.toStringAsFixed(3)}s',
-              onChanged: player.setAudioDelay,
+              onChanged: (v) => player.setAudioDelay(
+                  Duration(microseconds: (v * 1e6).round())),
             );
           },
         ),
 
         const PropertySectionHeader(title: 'Hardware'),
-        StreamBuilder<double>(
+        StreamBuilder<Duration>(
           stream: player.stream.audioBuffer,
           initialData: player.state.audioBuffer,
           builder: (context, snap) {
-            final val = snap.data ?? 0.2;
+            final secs = (snap.data ?? const Duration(milliseconds: 200))
+                    .inMicroseconds /
+                1e6;
             return SliderPropertyCard(
               title: 'Audio Buffer',
-              subtitle: 'audio-buffer=${val.toStringAsFixed(3)}',
+              subtitle: 'audio-buffer=${secs.toStringAsFixed(3)}',
               icon: Icons.storage_rounded,
-              value: val,
+              value: secs,
               min: 0.0,
               max: 2.0,
               defaultValue: 0.2,
               labelBuilder: (v) => '${v.toStringAsFixed(1)}s',
-              onChanged: (v) =>
-                  player.setRawProperty('audio-buffer', v.toStringAsFixed(3)),
+              onChanged: (v) => player.setAudioBuffer(
+                  Duration(microseconds: (v * 1e6).round())),
             );
           },
         ),

@@ -39,9 +39,13 @@ mixin _PlaylistModule on _PlayerBase {
   }
 
   /// Jumps to the track at [index] in the playlist and starts playback.
+  ///
+  /// Unpauses synchronously *before* issuing the playlist jump so the new
+  /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives — no
+  /// shared `_pendingPlay` field to race on with concurrent `open()` calls.
   Future<void> jump(int index) async {
     _checkNotDisposed();
-    _pendingPlay = true;
+    _prop('pause', 'no');
     _command(['playlist-play-index', index.toString()]);
   }
 
@@ -83,17 +87,29 @@ mixin _PlaylistModule on _PlayerBase {
         _prop('loop-file', 'no');
         _prop('loop-playlist', 'inf');
     }
+    // Optimistic update so `state.playlistMode` and the matching stream
+    // reflect the requested mode without waiting for the two `loop-file`
+    // and `loop-playlist` observers to round-trip from mpv. Matches the
+    // pattern used by every other setter in this package.
+    _updateField(
+      (s) => s.copyWith(playlistMode: mode),
+      _playlistMode,
+      mode,
+    );
   }
 
   /// Enables or disables shuffle mode.
   Future<void> setShuffle(bool shuffle) async {
     _checkNotDisposed();
-    _updateState((s) => s.copyWith(shuffle: shuffle), _shuffleCtrl, shuffle);
     _prop('shuffle', shuffle ? 'yes' : 'no');
     if (shuffle) {
       _command(['playlist-shuffle']);
     } else {
       _command(['playlist-unshuffle']);
     }
+    // Optimistic update *after* the FFI side-effects, matching the
+    // `_prop → _updateField` ordering of every other setter.
+    _updateField(
+        (s) => s.copyWith(shuffle: shuffle), _reactives.shuffle, shuffle);
   }
 }

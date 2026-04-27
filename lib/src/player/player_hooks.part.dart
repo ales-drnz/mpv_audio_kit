@@ -60,10 +60,24 @@ mixin _HooksModule on _PlayerBase {
   /// Must be called exactly once per [MpvHookEvent] received on
   /// [PlayerStream.hook], even if your processing fails — otherwise mpv
   /// will stall indefinitely waiting for the hook to return.
+  ///
+  /// Calling with an invalid [id] (zero or negative — typo in a consumer
+  /// dispatch table) is a no-op: the wrapper logs a warning on
+  /// [PlayerStream.internalLog] and skips the FFI call rather than
+  /// passing a bogus id to `mpv_hook_continue`. mpv's behaviour on
+  /// unknown ids is undefined across versions, and the cost of an
+  /// extra integer compare here is negligible compared to the FFI call.
   void continueHook(int id) {
-    _hookTimers.remove(id)?.cancel();
     _checkNotDisposed();
+    if (id <= 0) {
+      _internalLog(
+        'continueHook: ignored invalid hook id $id (must be a positive '
+        'integer obtained from MpvHookEvent.id)',
+        level: 'warn',
+      );
+      return;
+    }
+    _hookTimers.remove(id)?.cancel();
     _lib.mpvHookContinue(_handle, id);
   }
-
 }

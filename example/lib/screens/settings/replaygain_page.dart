@@ -12,20 +12,20 @@ class ReplayGainPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'ReplayGain'),
-        StreamBuilder<String>(
+        StreamBuilder<ReplayGainMode>(
           stream: player.stream.replayGainMode,
           initialData: player.state.replayGainMode,
           builder: (context, snap) {
-            final mode = snap.data ?? 'no';
-            return SegmentedPropertyCard<String>(
+            final mode = snap.data ?? ReplayGainMode.no;
+            return SegmentedPropertyCard<ReplayGainMode>(
               title: 'Mode',
-              subtitle: 'replaygain=$mode',
+              subtitle: 'replaygain=${mode.mpvValue}',
               icon: Icons.av_timer_rounded,
               value: mode,
               segments: const [
-                ('no', 'NONE'),
-                ('track', 'TRACK'),
-                ('album', 'ALBUM'),
+                (ReplayGainMode.no, 'NONE'),
+                (ReplayGainMode.track, 'TRACK'),
+                (ReplayGainMode.album, 'ALBUM'),
               ],
               onChanged: player.setReplayGain,
             );
@@ -83,20 +83,20 @@ class ReplayGainPage extends StatelessWidget {
         ),
 
         const PropertySectionHeader(title: 'Gapless'),
-        StreamBuilder<String>(
+        StreamBuilder<GaplessMode>(
           stream: player.stream.gaplessMode,
           initialData: player.state.gaplessMode,
           builder: (context, snap) {
-            final mode = snap.data ?? 'no';
-            return SegmentedPropertyCard<String>(
+            final mode = snap.data ?? GaplessMode.weak;
+            return SegmentedPropertyCard<GaplessMode>(
               title: 'Gapless Playback',
-              subtitle: 'gapless-audio=$mode',
+              subtitle: 'gapless-audio=${mode.mpvValue}',
               icon: Icons.leak_add_rounded,
               value: mode,
               segments: const [
-                ('no', 'NONE'),
-                ('yes', 'YES'),
-                ('weak', 'WEAK'),
+                (GaplessMode.no, 'NONE'),
+                (GaplessMode.yes, 'YES'),
+                (GaplessMode.weak, 'WEAK'),
               ],
               onChanged: player.setGaplessPlayback,
             );

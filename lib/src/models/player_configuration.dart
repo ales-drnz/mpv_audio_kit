@@ -24,10 +24,22 @@ class PlayerConfiguration {
 
   final String? audioClientName;
 
+  /// When `true` (default), the library decodes the embedded video frame
+  /// extracted on each file-loaded event into an 800px PNG and attaches it
+  /// to `playlist.medias[currentIdx].extras['artBytes']` (and
+  /// `'artUri'` as a base64 data URI).
+  ///
+  /// Set to `false` to skip that work entirely — useful for apps that read
+  /// cover art out-of-band (e.g. via `metadata_god`) or want to run their
+  /// own image pipeline. The raw BGRA buffer is still emitted on
+  /// `Player.stream.coverArtRaw` regardless of this flag.
+  final bool processCoverArt;
+
   const PlayerConfiguration({
     this.autoPlay = false,
     this.initialVolume = 100.0,
     this.logLevel = 'warn',
     this.audioClientName,
+    this.processCoverArt = true,
   });
 }

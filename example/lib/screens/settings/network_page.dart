@@ -12,22 +12,24 @@ class NetworkPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Network'),
-        StreamBuilder<double>(
+        StreamBuilder<Duration>(
           stream: player.stream.networkTimeout,
           initialData: player.state.networkTimeout,
           builder: (context, snap) {
-            final val = snap.data ?? 30.0;
+            final secs =
+                (snap.data ?? const Duration(seconds: 30)).inSeconds.toDouble();
             return SliderPropertyCard(
               title: 'Network Timeout',
-              subtitle: 'network-timeout=${val.toInt()}',
+              subtitle: 'network-timeout=${secs.toInt()}',
               icon: Icons.cloud_off_rounded,
-              value: val,
+              value: secs,
               min: 1.0,
               max: 300.0,
               divisions: 300,
               defaultValue: 30.0,
               labelBuilder: (v) => '${v.toInt()}s',
-              onChanged: player.setNetworkTimeout,
+              onChanged: (v) =>
+                  player.setNetworkTimeout(Duration(seconds: v.toInt())),
             );
           },
         ),

@@ -2,90 +2,33 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'audio_params.freezed.dart';
+
 /// Audio format parameters as reported by the mpv audio output pipeline.
-class AudioParams {
-  /// Sample format string (e.g. `"floatp"`, `"s16"`).
-  final String? format;
-
-  /// Sample rate in Hz.
-  final int? sampleRate;
-
-  /// Channel layout string in mpv notation (e.g. `"stereo"`, `"5.1"`).
-  final String? channels;
-
-  /// Number of audio channels.
-  final int? channelCount;
-
-  /// Human-readable channel layout description.
-  final String? hrChannels;
-
-  /// The codec identifier (e.g. `"flac"`, `"mp3"`).
-  final String? codec;
-
-  /// Descriptive codec name (e.g. `"FLAC (Free Lossless Audio Codec)"`).
-  final String? codecName;
-
-  /// Creates an [AudioParams] instance with the specified audio settings.
-  const AudioParams({
-    this.format,
-    this.sampleRate,
-    this.channels,
-    this.channelCount,
-    this.hrChannels,
-    this.codec,
-    this.codecName,
-  });
-
-  /// Creates a copy of this object with the given fields replaced with the new values.
-  AudioParams copyWith({
+@freezed
+abstract class AudioParams with _$AudioParams {
+  const factory AudioParams({
+    /// Sample format string (e.g. `"floatp"`, `"s16"`).
     String? format,
+
+    /// Sample rate in Hz.
     int? sampleRate,
+
+    /// Channel layout string in mpv notation (e.g. `"stereo"`, `"5.1"`).
     String? channels,
+
+    /// Number of audio channels.
     int? channelCount,
+
+    /// Human-readable channel layout description.
     String? hrChannels,
+
+    /// The codec identifier (e.g. `"flac"`, `"mp3"`).
     String? codec,
+
+    /// Descriptive codec name (e.g. `"FLAC (Free Lossless Audio Codec)"`).
     String? codecName,
-  }) {
-    return AudioParams(
-      format: format ?? this.format,
-      sampleRate: sampleRate ?? this.sampleRate,
-      channels: channels ?? this.channels,
-      channelCount: channelCount ?? this.channelCount,
-      hrChannels: hrChannels ?? this.hrChannels,
-      codec: codec ?? this.codec,
-      codecName: codecName ?? this.codecName,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AudioParams &&
-          format == other.format &&
-          sampleRate == other.sampleRate &&
-          channels == other.channels &&
-          channelCount == other.channelCount &&
-          hrChannels == other.hrChannels &&
-          codec == other.codec &&
-          codecName == other.codecName;
-
-  @override
-  int get hashCode =>
-      format.hashCode ^
-      sampleRate.hashCode ^
-      channels.hashCode ^
-      channelCount.hashCode ^
-      hrChannels.hashCode ^
-      codec.hashCode ^
-      codecName.hashCode;
-
-  @override
-  String toString() => 'AudioParams('
-      'format: $format, '
-      'sampleRate: $sampleRate, '
-      'channels: $channels, '
-      'channelCount: $channelCount, '
-      'hrChannels: $hrChannels, '
-      'codec: $codec, '
-      'codecName: $codecName)';
+  }) = _AudioParams;
 }

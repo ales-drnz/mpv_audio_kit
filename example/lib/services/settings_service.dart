@@ -10,6 +10,11 @@ class SettingsService {
 
   SettingsService(this._prefs);
 
+  /// Helper: load-time SharedPreferences store seconds as `double`, but the
+  /// 0.1.0 API takes [Duration] for every time-based setter.
+  static Duration _secondsToDuration(double seconds) =>
+      Duration(microseconds: (seconds * 1e6).round());
+
   static Future<SettingsService> init() async {
     final prefs = await SharedPreferences.getInstance();
     return SettingsService(prefs);
@@ -95,16 +100,16 @@ class SettingsService {
       player.setEqualizerGains(gains);
     }
 
-    // Gapless audio playback: "yes", "no", or "weak"
+    // Gapless audio playback (typed enum since 0.1.0)
     final gapless = _prefs.getString('${_keyPrefix}gapless-audio');
     if (gapless != null) {
-      await player.setGaplessPlayback(gapless);
+      await player.setGaplessPlayback(GaplessMode.fromMpv(gapless));
     }
 
-    // ReplayGain mode: "track", "album", or "no"
+    // ReplayGain mode (typed enum since 0.1.0)
     final replaygain = _prefs.getString('${_keyPrefix}replaygain');
     if (replaygain != null) {
-      await player.setReplayGain(replaygain);
+      await player.setReplayGain(ReplayGainMode.fromMpv(replaygain));
     }
 
     // ReplayGain pre-amplification in dB
@@ -139,10 +144,10 @@ class SettingsService {
       await player.setPitchCorrection(pitchCorrection);
     }
 
-    // Audio delay offset in seconds (positive = audio later)
+    // Audio delay offset (positive = audio later, since 0.1.0 takes Duration)
     final audioDelay = _prefs.getDouble('${_keyPrefix}audio-delay');
     if (audioDelay != null) {
-      await player.setAudioDelay(audioDelay);
+      await player.setAudioDelay(_secondsToDuration(audioDelay));
     }
 
     // ── Routing & Hardware ───────────────────────────────────────────────────
@@ -195,24 +200,24 @@ class SettingsService {
       await player.setAudioExclusive(exclusive);
     }
 
-    // Audio buffer size in seconds
+    // Audio buffer size (Duration since 0.1.0)
     final audioBuffer = _prefs.getDouble('${_keyPrefix}audio-buffer');
     if (audioBuffer != null) {
-      await player.setAudioBuffer(audioBuffer);
+      await player.setAudioBuffer(_secondsToDuration(audioBuffer));
     }
 
     // ── Cache & Demuxer ──────────────────────────────────────────────────────
 
-    // Cache mode: "yes", "no", or "auto"
+    // Cache mode (typed enum since 0.1.0)
     final cacheMode = _prefs.getString('${_keyPrefix}cache');
     if (cacheMode != null) {
-      await player.setCache(cacheMode);
+      await player.setCache(CacheMode.fromMpv(cacheMode));
     }
 
-    // How many seconds of audio/video to cache ahead
+    // How many seconds of audio/video to cache ahead (Duration since 0.1.0)
     final cacheSecs = _prefs.getDouble('${_keyPrefix}cache-secs');
     if (cacheSecs != null && cacheSecs < 1000000) {
-      await player.setCacheSecs(cacheSecs);
+      await player.setCacheSecs(_secondsToDuration(cacheSecs));
     }
 
     // Store cache data on disk instead of RAM
@@ -227,10 +232,10 @@ class SettingsService {
       await player.setCachePause(cachePause);
     }
 
-    // Seconds to buffer before resuming after cache-pause
+    // Buffer required before resuming after cache-pause (Duration since 0.1.0)
     final cachePauseWait = _prefs.getDouble('${_keyPrefix}cache-pause-wait');
     if (cachePauseWait != null) {
-      await player.setCachePauseWait(cachePauseWait);
+      await player.setCachePauseWait(_secondsToDuration(cachePauseWait));
     }
 
     // Maximum bytes the demuxer may buffer
@@ -253,10 +258,10 @@ class SettingsService {
 
     // ── Network ──────────────────────────────────────────────────────────────
 
-    // Network request timeout in seconds
+    // Network request timeout (Duration since 0.1.0)
     final networkTimeout = _prefs.getDouble('${_keyPrefix}network-timeout');
     if (networkTimeout != null) {
-      await player.setNetworkTimeout(networkTimeout);
+      await player.setNetworkTimeout(_secondsToDuration(networkTimeout));
     }
 
     // Enable TLS certificate verification
@@ -274,9 +279,9 @@ class SettingsService {
     }
 
     // Null audio output runs without timing (useful for benchmarking)
-    final aoNullUntimed = _prefs.getBool('${_keyPrefix}ao-null-untimed');
-    if (aoNullUntimed != null) {
-      await player.setAoNullUntimed(aoNullUntimed);
+    final audioNullUntimed = _prefs.getBool('${_keyPrefix}ao-null-untimed');
+    if (audioNullUntimed != null) {
+      await player.setAudioNullUntimed(audioNullUntimed);
     }
 
     // Active audio track ID (e.g. "1", "2")

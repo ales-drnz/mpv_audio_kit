@@ -12,37 +12,44 @@ class CachePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Cache Configuration'),
-        StreamBuilder<String>(
+        StreamBuilder<CacheMode>(
           stream: player.stream.cacheMode,
           initialData: player.state.cacheMode,
           builder: (context, snap) {
-            final val = snap.data ?? 'auto';
-            return SegmentedPropertyCard<String>(
+            final val = snap.data ?? CacheMode.auto;
+            return SegmentedPropertyCard<CacheMode>(
               title: 'Cache Mode',
-              subtitle: 'cache=$val',
+              subtitle: 'cache=${val.mpvValue}',
               icon: Icons.cached_rounded,
               value: val,
-              segments: const [('auto', 'AUTO'), ('yes', 'YES'), ('no', 'NO')],
+              segments: const [
+                (CacheMode.auto, 'AUTO'),
+                (CacheMode.yes, 'YES'),
+                (CacheMode.no, 'NO'),
+              ],
               onChanged: player.setCache,
             );
           },
         ),
-        StreamBuilder<double>(
+        StreamBuilder<Duration>(
           stream: player.stream.cacheSecs,
           initialData: player.state.cacheSecs,
           builder: (context, snap) {
-            final val = snap.data ?? 1.0;
+            final secs = (snap.data ?? const Duration(seconds: 1))
+                    .inMicroseconds /
+                1e6;
             return SliderPropertyCard(
               title: 'Cache Time',
-              subtitle: 'cache-secs=${val.toInt()}',
+              subtitle: 'cache-secs=${secs.toInt()}',
               icon: Icons.timer_outlined,
-              value: val,
+              value: secs,
               min: 1.0,
               max: 3600.0,
               divisions: 360,
               defaultValue: 1.0,
               labelBuilder: (v) => '${v.toInt()}s',
-              onChanged: player.setCacheSecs,
+              onChanged: (v) => player.setCacheSecs(
+                  Duration(microseconds: (v * 1e6).round())),
             );
           },
         ),
@@ -74,22 +81,25 @@ class CachePage extends StatelessWidget {
             );
           },
         ),
-        StreamBuilder<double>(
+        StreamBuilder<Duration>(
           stream: player.stream.cachePauseWait,
           initialData: player.state.cachePauseWait,
           builder: (context, snap) {
-            final val = snap.data ?? 1.0;
+            final secs = (snap.data ?? const Duration(seconds: 1))
+                    .inMicroseconds /
+                1e6;
             return SliderPropertyCard(
               title: 'Buffer Wait',
-              subtitle: 'cache-pause-wait=${val.toStringAsFixed(1)}',
+              subtitle: 'cache-pause-wait=${secs.toStringAsFixed(1)}',
               icon: Icons.hourglass_bottom_rounded,
-              value: val,
+              value: secs,
               min: 0.1,
               max: 60.0,
               divisions: 600,
               defaultValue: 1.0,
               labelBuilder: (v) => '${v.toStringAsFixed(1)}s',
-              onChanged: player.setCachePauseWait,
+              onChanged: (v) => player.setCachePauseWait(
+                  Duration(microseconds: (v * 1e6).round())),
             );
           },
         ),

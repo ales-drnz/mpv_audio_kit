@@ -10,7 +10,14 @@ import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 import 'dart:ffi';
 import 'dart:io';
 
-/// Main class for global `mpv_audio_kit` configuration and initialization.
+/// Global configuration / one-time initialization for `mpv_audio_kit`.
+///
+/// Despite living next to `Player`, this is *not* the player itself —
+/// historically the file was called `mpv_audio_kit.dart` which collided
+/// confusingly with `lib/mpv_audio_kit.dart` (the public entry library).
+/// Renamed to `library_loader.dart` in 0.1.0 to make ownership obvious:
+/// this file owns the libmpv `DynamicLibrary` lookup and the orphaned-
+/// handle cleanup that fires across hot-restarts.
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 
@@ -25,6 +32,14 @@ abstract final class MpvAudioKit {
   ///
   /// Handles cleanup of orphaned `libmpv` native resources
   /// (e.g., handles that leaked across a Flutter Hot-Restart).
+  ///
+  /// [libmpv] (optional) — explicit path or filename for the native
+  /// `libmpv` library to load via `DynamicLibrary.open`. When `null`
+  /// (the default), the platform's standard lookup is used:
+  /// `libmpv.so.2` on Linux, `libmpv.dylib` on macOS/iOS,
+  /// `mpv.dll` on Windows, and the bundled JNI library on Android.
+  /// Pass an explicit path only when shipping a custom libmpv build
+  /// alongside your app.
   static void ensureInitialized({String? libmpv}) {
     if (_initialized) {
       return;

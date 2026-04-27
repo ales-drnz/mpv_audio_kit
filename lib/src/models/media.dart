@@ -2,6 +2,10 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'media.freezed.dart';
+
 /// A piece of media that can be loaded into the [Player].
 ///
 /// Wraps a URI string with optional metadata and per-track configuration.
@@ -25,34 +29,27 @@
 ///   },
 /// );
 /// ```
-class Media {
-  /// The URI of the media resource.
-  ///
-  /// Supported schemes: `http://`, `https://`, `file://`, `asset:///`, `rtsp://`,
-  /// `rtmp://`, and anything else that libmpv accepts.
-  final String uri;
+///
+/// **0.1.0 breaking change:** equality now considers all fields ([uri], [extras]
+/// and [httpHeaders]). Previously only [uri] was compared. This is intentional
+/// — when [extras] changes (e.g. cover art is attached after load), the
+/// containing [Playlist] should be observably different.
+@freezed
+abstract class Media with _$Media {
+  const factory Media(
+    /// The URI of the media resource.
+    ///
+    /// Supported schemes: `http://`, `https://`, `file://`, `asset:///`,
+    /// `rtsp://`, `rtmp://`, and anything else that libmpv accepts.
+    String uri, {
+    /// Optional user-supplied metadata attached to this track.
+    ///
+    /// The player itself does not interpret these values; they are carried
+    /// through the playlist so the UI layer can access them without a
+    /// separate lookup.
+    Map<String, dynamic>? extras,
 
-  /// Optional user-supplied metadata attached to this track.
-  ///
-  /// The player itself does not interpret these values; they are carried through
-  /// the playlist so the UI layer can access them without a separate lookup.
-  final Map<String, dynamic>? extras;
-
-  /// Optional HTTP headers for network streams.
-  final Map<String, String>? httpHeaders;
-
-  /// Creates a [Media] from a URI.
-  ///
-  /// [uri] must be a non-empty string that libmpv can open.
-  const Media(this.uri, {this.extras, this.httpHeaders});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is Media && uri == other.uri;
-
-  @override
-  int get hashCode => uri.hashCode;
-
-  @override
-  String toString() => 'Media($uri)';
+    /// Optional HTTP headers for network streams.
+    Map<String, String>? httpHeaders,
+  }) = _Media;
 }

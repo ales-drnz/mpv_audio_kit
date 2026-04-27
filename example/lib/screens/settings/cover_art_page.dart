@@ -12,48 +12,53 @@ class CoverArtPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Display'),
-        StreamBuilder<String>(
+        StreamBuilder<AudioDisplayMode>(
           stream: player.stream.audioDisplay,
           initialData: player.state.audioDisplay,
           builder: (context, snap) {
-            final val = snap.data ?? 'embedded-first';
-            return DropdownPropertyCard<String>(
+            final val = snap.data ?? AudioDisplayMode.embeddedFirst;
+            return DropdownPropertyCard<AudioDisplayMode>(
               title: 'Audio Display',
-              subtitle: 'audio-display=$val',
+              subtitle: 'audio-display=${val.mpvValue}',
               icon: Icons.image_rounded,
               value: val,
               items: const [
-                DropdownMenuItem(value: 'no', child: Text('Disabled')),
                 DropdownMenuItem(
-                  value: 'embedded-first',
+                    value: AudioDisplayMode.no, child: Text('Disabled')),
+                DropdownMenuItem(
+                  value: AudioDisplayMode.embeddedFirst,
                   child: Text('Embedded first'),
                 ),
                 DropdownMenuItem(
-                  value: 'external-first',
+                  value: AudioDisplayMode.externalFirst,
                   child: Text('External first'),
                 ),
               ],
-              onChanged: (v) => v != null ? player.setAudioDisplay(v) : null,
+              onChanged: (v) => v != null ? player.setAudioDisplayMode(v) : null,
             );
           },
         ),
-        StreamBuilder<String>(
+        StreamBuilder<CoverArtAutoMode>(
           stream: player.stream.coverArtAuto,
           initialData: player.state.coverArtAuto,
           builder: (context, snap) {
-            final val = snap.data ?? 'no';
-            return DropdownPropertyCard<String>(
+            final val = snap.data ?? CoverArtAutoMode.no;
+            return DropdownPropertyCard<CoverArtAutoMode>(
               title: 'Auto-load Cover Art',
-              subtitle: 'cover-art-auto=$val',
+              subtitle: 'cover-art-auto=${val.mpvValue}',
               icon: Icons.upload_rounded,
               value: val,
               items: const [
-                DropdownMenuItem(value: 'no', child: Text('Disabled')),
-                DropdownMenuItem(value: 'exact', child: Text('Exact match')),
-                DropdownMenuItem(value: 'fuzzy', child: Text('Fuzzy match')),
-                DropdownMenuItem(value: 'all', child: Text('All images')),
+                DropdownMenuItem(
+                    value: CoverArtAutoMode.no, child: Text('Disabled')),
+                DropdownMenuItem(
+                    value: CoverArtAutoMode.exact, child: Text('Exact match')),
+                DropdownMenuItem(
+                    value: CoverArtAutoMode.fuzzy, child: Text('Fuzzy match')),
+                DropdownMenuItem(
+                    value: CoverArtAutoMode.all, child: Text('All images')),
               ],
-              onChanged: (v) => v != null ? player.setCoverArtAuto(v) : null,
+              onChanged: (v) => v != null ? player.setCoverArtAutoMode(v) : null,
             );
           },
         ),

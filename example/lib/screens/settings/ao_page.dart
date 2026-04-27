@@ -85,8 +85,8 @@ class _AoPageState extends State<AoPage> {
 
         const PropertySectionHeader(title: 'Engine'),
         StreamBuilder<bool>(
-          stream: widget.player.stream.aoNullUntimed,
-          initialData: widget.player.state.aoNullUntimed,
+          stream: widget.player.stream.audioNullUntimed,
+          initialData: widget.player.state.audioNullUntimed,
           builder: (context, snap) {
             final val = snap.data ?? false;
             return TogglePropertyCard(

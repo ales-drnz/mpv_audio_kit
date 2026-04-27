@@ -85,36 +85,36 @@ class _LogsTabState extends State<LogsTab> {
   void _requestHelp(String type) {
     switch (type) {
       case 'filters':
-        widget.player.log(
+        widget.player.appendLog(
           'Requesting audio filters help (check console if not below)...',
         );
         widget.player.setRawProperty('af', 'help');
         break;
       case 'drivers':
-        widget.player.log(
+        widget.player.appendLog(
           'Requesting available Audio Output drivers via mpv help...',
         );
         widget.player.setRawProperty('ao', 'help');
         break;
       case 'devices':
         final devices = widget.player.state.audioDevices;
-        widget.player.log('Detected Audio Devices (from audio-device-list):');
+        widget.player.appendLog('Detected Audio Devices (from audio-device-list):');
         for (final d in devices) {
-          widget.player.log('  - "${d.name}" : ${d.description}');
+          widget.player.appendLog('  - "${d.name}" : ${d.description}');
         }
         break;
       case 'properties':
         final list = widget.player.getRawProperty('property-list');
         if (list != null) {
-          widget.player.log('Common mpv Properties:');
-          widget.player.log('  ${list.replaceAll(',', ', ')}');
+          widget.player.appendLog('Common mpv Properties:');
+          widget.player.appendLog('  ${list.replaceAll(',', ', ')}');
         }
         break;
       case 'commands':
         final list = widget.player.getRawProperty('command-list');
         if (list != null) {
-          widget.player.log('Available mpv Commands:');
-          widget.player.log('  ${list.replaceAll(',', ', ')}');
+          widget.player.appendLog('Available mpv Commands:');
+          widget.player.appendLog('  ${list.replaceAll(',', ', ')}');
         }
         break;
     }

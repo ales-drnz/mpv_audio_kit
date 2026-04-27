@@ -18,6 +18,17 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 ///
 /// Stores tracking addresses in a cross-isolate, persistent way (via a tmp file keyed by PID)
 /// handles so that when Dart is hot-restarted, orphaned mpv handles can be identified and terminated.
+///
+/// **Threading assumption**: instances are tracked through a single Dart
+/// isolate. The internal `add` / `remove` ordering is microtask-sequential
+/// (no shared-memory race within one isolate). Tracking handles created
+/// from multiple isolates that all import this package would race on the
+/// underlying buffer; not currently supported.
+///
+/// **Capacity**: a fixed pool of [_kBufferSize] slots. When full, [add]
+/// silently drops the new handle but emits a `debugPrint` warning so the
+/// developer notices during a debug session — the production path is
+/// unaffected because this entire class is a no-op outside debug.
 class NativeReferenceHolder {
   static const int _kBufferSize = 256;
   static final NativeReferenceHolder instance = NativeReferenceHolder._();
@@ -96,9 +107,18 @@ class NativeReferenceHolder {
         final ref = _buffer + i;
         if (ref.value == 0) {
           ref.value = handle.address;
-          break;
+          return;
         }
       }
+      // All slots full — debug-only warning. Hot-restart cleanup will miss
+      // this handle, which on Windows can keep WASAPI exclusive-mode
+      // devices locked until the parent process exits.
+      debugPrint(
+        'mpv_audio_kit: NativeReferenceHolder buffer full ($_kBufferSize '
+        'handles tracked). Handle ${handle.address} not registered for '
+        'hot-restart cleanup — dispose Player instances before creating '
+        'more.',
+      );
     });
   }
 
