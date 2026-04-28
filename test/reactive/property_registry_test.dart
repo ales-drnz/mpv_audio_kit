@@ -13,7 +13,7 @@ void main() {
     test('routes a double event to the matching spec and reduces state', () {
       final volume = ReactiveProperty<double>(100.0);
       final registry = PropertyRegistry()
-        ..register(MpvDoubleSpec<double>(
+        ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: volume,
           parse: (raw) => raw,
@@ -37,7 +37,7 @@ void main() {
     test('returns null when the value is deduplicated', () {
       final volume = ReactiveProperty<double>(100.0);
       final registry = PropertyRegistry()
-        ..register(MpvDoubleSpec<double>(
+        ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: volume,
           parse: (raw) => raw,
@@ -54,7 +54,7 @@ void main() {
     test('flag spec inverts pause→playing via the parser', () async {
       final playing = ReactiveProperty<bool>(false);
       final registry = PropertyRegistry()
-        ..register(MpvFlagSpec<bool>(
+        ..register(MpvPropertySpec<bool>.flag(
           name: 'pause',
           reactive: playing,
           parse: (raw) => !raw,
@@ -77,7 +77,7 @@ void main() {
     test('flag spec accepts integer 0/1 in addition to bool', () {
       final mute = ReactiveProperty<bool>(false);
       final registry = PropertyRegistry()
-        ..register(MpvFlagSpec<bool>(
+        ..register(MpvPropertySpec<bool>.flag(
           name: 'mute',
           reactive: mute,
           parse: (raw) => raw,
@@ -95,7 +95,7 @@ void main() {
     test('parse can transform raw values (empty string → "no")', () {
       final audioFormat = ReactiveProperty<String>('auto');
       final registry = PropertyRegistry()
-        ..register(MpvStringSpec<String>(
+        ..register(MpvPropertySpec<String>.string(
           name: 'audio-format',
           reactive: audioFormat,
           parse: (raw) => raw.isEmpty ? 'no' : raw,
@@ -112,7 +112,7 @@ void main() {
       final calls = <double>[];
       final volume = ReactiveProperty<double>(0.0);
       final registry = PropertyRegistry()
-        ..register(MpvDoubleSpec<double>(
+        ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: volume,
           parse: (raw) => raw,
@@ -132,7 +132,7 @@ void main() {
     test('int spec wraps int in Duration via parse', () {
       final readahead = ReactiveProperty<int>(1);
       final registry = PropertyRegistry()
-        ..register(MpvIntSpec<int>(
+        ..register(MpvPropertySpec<int>.int64(
           name: 'demuxer-readahead-secs',
           reactive: readahead,
           parse: (raw) => raw,
@@ -148,7 +148,7 @@ void main() {
     test('Duration-typed double spec wraps microseconds correctly', () async {
       final position = ReactiveProperty<Duration>(Duration.zero);
       final registry = PropertyRegistry()
-        ..register(MpvDoubleSpec<Duration>(
+        ..register(MpvPropertySpec<Duration>.double(
           name: 'time-pos',
           reactive: position,
           parse: (raw) => Duration(microseconds: (raw * 1e6).round()),
@@ -168,13 +168,13 @@ void main() {
       final a = ReactiveProperty<double>(0.0);
       final b = ReactiveProperty<bool>(false);
       final registry = PropertyRegistry()
-        ..register(MpvDoubleSpec<double>(
+        ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: a,
           parse: (raw) => raw,
           reduce: (v, s) => s.copyWith(volume: v),
         ))
-        ..register(MpvFlagSpec<bool>(
+        ..register(MpvPropertySpec<bool>.flag(
           name: 'mute',
           reactive: b,
           parse: (raw) => raw,
@@ -192,7 +192,7 @@ void main() {
   group('PropertyRegistry.specFor', () {
     test('returns the registered spec by name', () {
       final volume = ReactiveProperty<double>(0.0);
-      final spec = MpvDoubleSpec<double>(
+      final spec = MpvPropertySpec<double>.double(
         name: 'volume',
         reactive: volume,
         parse: (raw) => raw,

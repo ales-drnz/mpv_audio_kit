@@ -16,7 +16,7 @@ mixin _NetworkModule on _PlayerBase {
   }
 
   /// Cache behavior. See [CacheMode] for the available variants.
-  Future<void> setCache(CacheMode mode) async {
+  Future<void> setCacheMode(CacheMode mode) async {
     _checkNotDisposed();
     _prop('cache', mode.mpvValue);
     _updateField(

@@ -13,11 +13,8 @@ import 'dart:io';
 /// Global configuration / one-time initialization for `mpv_audio_kit`.
 ///
 /// Despite living next to `Player`, this is *not* the player itself —
-/// historically the file was called `mpv_audio_kit.dart` which collided
-/// confusingly with `lib/mpv_audio_kit.dart` (the public entry library).
-/// Renamed to `library_loader.dart` in 0.1.0 to make ownership obvious:
-/// this file owns the libmpv `DynamicLibrary` lookup and the orphaned-
-/// handle cleanup that fires across hot-restarts.
+/// it owns the libmpv `DynamicLibrary` lookup and the orphaned-handle
+/// cleanup that fires across hot-restarts.
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 

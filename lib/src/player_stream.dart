@@ -61,7 +61,11 @@ class PlayerStream {
         audioBitrate = reactives.audioBitrate.stream,
         audioDevice = reactives.audioDevice.stream,
         audioParams = _audioParamsStream(reactives),
-        audioOutParams = _audioOutParamsStream(reactives),
+        // mpv exposes `audio-out-params` as a single MPV_FORMAT_NODE_MAP
+        // and there is no codec / codec-name sibling on the output side, so
+        // a direct passthrough of the node reactive's stream is the entire
+        // aggregator — no `_bindAggregate` needed.
+        audioOutParams = reactives.audioOutParamsNode.stream,
         gaplessMode = reactives.gaplessMode.stream,
         replayGainMode = reactives.replayGainMode.stream,
         replayGainPreamp = reactives.replayGainPreamp.stream,
@@ -92,9 +96,10 @@ class PlayerStream {
         audioChannels = reactives.audioChannels.stream,
         audioClientName = reactives.audioClientName.stream,
         audioDriver = reactives.audioDriver.stream,
+        audioOutputState = reactives.audioOutputState.stream,
         activeFilters = reactives.activeFilters.stream,
-        audioDisplay = reactives.audioDisplay.stream,
-        coverArtAuto = reactives.coverArtAuto.stream,
+        audioDisplayMode = reactives.audioDisplayMode.stream,
+        coverArtAutoMode = reactives.coverArtAutoMode.stream,
         imageDisplayDuration = reactives.imageDisplayDuration.stream,
         prefetchState = reactives.prefetchState.stream,
         buffering = buffering.stream,
@@ -107,80 +112,31 @@ class PlayerStream {
         equalizerGains = equalizerGains.stream;
 
   /// Builds a synthetic [AudioParams] broadcast stream that emits a fresh
-  /// aggregated snapshot whenever any of the 7 backing reactive properties
-  /// changes (format, sampleRate, channels, channelCount, hrChannels, codec,
-  /// codecName).
-  ///
-  /// Subscribers can still observe individual sub-properties through the
-  /// per-field [ReactiveProperty]s, but most consumers use the aggregated
-  /// snapshot.
+  /// aggregated snapshot whenever any of the 3 backing sources changes:
+  /// the `audio-params` node (which carries format / sampleRate / channels /
+  /// channelCount / hrChannels in one shot) plus the two sibling string
+  /// properties `audio-codec` and `audio-codec-name`.
   ///
   /// Implementation: a single broadcast controller is created once per
-  /// [PlayerStream]; the 7 source subscriptions are opened lazily on the
+  /// [PlayerStream]; the source subscriptions are opened lazily on the
   /// first listener (`onListen`) and torn down once the last listener
-  /// cancels (`onCancel`). This is functionally equivalent to the previous
-  /// `async* + yield* + finally` plumbing but doesn't depend on Dart's
-  /// generator finally semantics for correctness.
+  /// cancels (`onCancel`).
   static Stream<AudioParams> _audioParamsStream(
     DefaultPropertyReactives r,
   ) {
-    AudioParams snapshot() => AudioParams(
-          format: r.audioParamsFormat.value.isEmpty
-              ? null
-              : r.audioParamsFormat.value,
-          sampleRate: r.audioParamsSampleRate.value == 0
-              ? null
-              : r.audioParamsSampleRate.value,
-          channels: r.audioParamsChannels.value.isEmpty
-              ? null
-              : r.audioParamsChannels.value,
-          channelCount: r.audioParamsChannelCount.value == 0
-              ? null
-              : r.audioParamsChannelCount.value,
-          hrChannels: r.audioParamsHrChannels.value.isEmpty
-              ? null
-              : r.audioParamsHrChannels.value,
-          codec: r.audioCodec.value.isEmpty ? null : r.audioCodec.value,
-          codecName:
-              r.audioCodecName.value.isEmpty ? null : r.audioCodecName.value,
-        );
+    AudioParams snapshot() {
+      final node = r.audioParamsNode.value;
+      return node.copyWith(
+        codec: r.audioCodec.value.isEmpty ? null : r.audioCodec.value,
+        codecName:
+            r.audioCodecName.value.isEmpty ? null : r.audioCodecName.value,
+      );
+    }
+
     return _bindAggregate<AudioParams>(snapshot, [
-      r.audioParamsFormat.stream,
-      r.audioParamsSampleRate.stream,
-      r.audioParamsChannels.stream,
-      r.audioParamsChannelCount.stream,
-      r.audioParamsHrChannels.stream,
+      r.audioParamsNode.stream,
       r.audioCodec.stream,
       r.audioCodecName.stream,
-    ]);
-  }
-
-  static Stream<AudioParams> _audioOutParamsStream(
-    DefaultPropertyReactives r,
-  ) {
-    AudioParams snapshot() => AudioParams(
-          format: r.audioOutParamsFormat.value.isEmpty
-              ? null
-              : r.audioOutParamsFormat.value,
-          sampleRate: r.audioOutParamsSampleRate.value == 0
-              ? null
-              : r.audioOutParamsSampleRate.value,
-          channels: r.audioOutParamsChannels.value.isEmpty
-              ? null
-              : r.audioOutParamsChannels.value,
-          channelCount: r.audioOutParamsChannelCount.value == 0
-              ? null
-              : r.audioOutParamsChannelCount.value,
-          hrChannels: r.audioOutParamsHrChannels.value.isEmpty
-              ? null
-              : r.audioOutParamsHrChannels.value,
-        );
-    return _bindAggregate<AudioParams>(snapshot, [
-      r.audioOutParamsFormat.stream,
-      r.audioOutParamsSampleRate.stream,
-      r.audioOutParamsChannels.stream,
-      r.audioOutParamsChannelCount.stream,
-      r.audioOutParamsHrChannels.stream,
     ]);
   }
 
@@ -379,6 +335,12 @@ class PlayerStream {
   /// Emits the audio output driver.
   final Stream<String> audioDriver;
 
+  /// Lifecycle of mpv's audio output: `closed → initializing → active`
+  /// in the success path, `→ failed` if `ao_init_best()` returns a
+  /// NULL handle. The wrapper surfaces a typed [MpvLogError] on
+  /// [error] the moment this stream emits [AudioOutputState.failed].
+  final Stream<AudioOutputState> audioOutputState;
+
   /// Emits the list of currently active audio filters.
   final Stream<List<AudioFilter>> activeFilters;
 
@@ -388,10 +350,10 @@ class PlayerStream {
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
   /// Emits the current cover-art display mode.
-  final Stream<AudioDisplayMode> audioDisplay;
+  final Stream<AudioDisplayMode> audioDisplayMode;
 
   /// Emits the current external cover-art auto-load mode.
-  final Stream<CoverArtAutoMode> coverArtAuto;
+  final Stream<CoverArtAutoMode> coverArtAutoMode;
 
   /// Emits the current `image-display-duration` value.
   final Stream<String> imageDisplayDuration;
@@ -418,29 +380,25 @@ class PlayerStream {
   final Stream<MpvLogEntry> log;
 
   /// Wrapper-side log entries — JSON parse warnings, hook timeouts, and
-  /// any [Player.log] injection. Always carries `prefix: 'mpv_audio_kit'`.
+  /// any [Player.appendLog] injection. Always carries
+  /// `prefix: 'mpv_audio_kit'`.
   ///
-  /// Split from [log] in 0.1.0 so consumers can route engine and wrapper
-  /// noise to different sinks (e.g. show only [log] in a debug overlay
-  /// while routing [internalLog] to crash reporting).
+  /// Disjoint from [log] so consumers can route engine and wrapper noise
+  /// to different sinks (e.g. show only [log] in a debug overlay while
+  /// routing [internalLog] to crash reporting).
   final Stream<MpvLogEntry> internalLog;
 
   /// Emits whenever mpv fires a registered hook (see `Player.registerHook`).
   final Stream<MpvHookEvent> hook;
 
-  /// Lifecycle of mpv's background playlist-prefetch.
-  ///
-  /// Backed by the patched `prefetch-state` mpv property — works
-  /// uniformly across HLS, DASH, raw HTTP, SMB, local files.
+  /// Lifecycle of mpv's background playlist-prefetch — works uniformly
+  /// across HLS, DASH, raw HTTP, SMB, and local files.
   final Stream<MpvPrefetchState> prefetchState;
 
-  /// Raw cover-art frames as captured by mpv's `screenshot-raw video`
-  /// command after each file load.
-  ///
-  /// Always emitted regardless of `PlayerConfiguration.processCoverArt`,
-  /// so consumers can run their own image pipeline (resize / format /
-  /// color-space) instead of the library's default 800px PNG path.
-  /// Pixel format is BGRA8888 — see [CoverArtRaw] for the layout
-  /// (and especially the [CoverArtRaw.stride] caveat).
+  /// Embedded cover-art payload after each file load — the original
+  /// codec bytes (PNG / JPEG / WEBP / …) from the file's attached
+  /// picture stream, plus the MIME type. Hand straight to
+  /// `Image.memory(raw.bytes)` or run your own pipeline (resize, encode,
+  /// cache) — the wrapper does not process the bytes.
   final Stream<CoverArtRaw> coverArtRaw;
 }

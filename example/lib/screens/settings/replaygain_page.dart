@@ -27,7 +27,7 @@ class ReplayGainPage extends StatelessWidget {
                 (ReplayGainMode.track, 'TRACK'),
                 (ReplayGainMode.album, 'ALBUM'),
               ],
-              onChanged: player.setReplayGain,
+              onChanged: player.setReplayGainMode,
             );
           },
         ),
@@ -98,7 +98,7 @@ class ReplayGainPage extends StatelessWidget {
                 (GaplessMode.yes, 'YES'),
                 (GaplessMode.weak, 'WEAK'),
               ],
-              onChanged: player.setGaplessPlayback,
+              onChanged: player.setGaplessMode,
             );
           },
         ),

@@ -10,11 +10,9 @@
 /// gapless transitions are actually reusing the buffered stream, or log
 /// warnings when a prefetch is aborted/dropped.
 ///
-/// Backed by a patched mpv property `prefetch-state`. Source of truth is
-/// mpv's own state (`MPContext.open_active`, `open_for_prefetch`,
-/// `open_done`, plus the secondary demuxer's `demux_reader_state.idle`),
-/// so it behaves identically across demuxer backends — HLS, DASH, raw
-/// HTTP range reads, SMB, local files.
+/// Backed by mpv's `prefetch-state` property, with the same lifecycle
+/// across every demuxer backend — HLS, DASH, raw HTTP range reads,
+/// SMB, local files.
 enum MpvPrefetchState {
   /// No background prefetch is active. Default state.
   idle,
@@ -36,10 +34,9 @@ enum MpvPrefetchState {
   /// consecutive events and can treat [used] as a one-shot signal.
   used;
 
-  /// Parses the string emitted by the patched mpv property. Unknown
-  /// values fall back to [idle] so future mpv additions don't crash
-  /// clients — they just see the phase treated as "not actively
-  /// prefetching".
+  /// Parses the string emitted by mpv. Unknown values fall back to
+  /// [idle] so future mpv additions don't crash clients — they just
+  /// see the phase treated as "not actively prefetching".
   static MpvPrefetchState parse(String value) {
     switch (value) {
       case 'loading':

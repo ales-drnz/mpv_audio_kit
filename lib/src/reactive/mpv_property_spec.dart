@@ -8,206 +8,161 @@ import 'reactive_property.dart';
 
 /// Declarative description of a single mpv property exposed by the player.
 ///
-/// One spec captures everything that previously had to be wired across six
-/// disconnected sites: the [ReactiveProperty] that owns the Dart-side value,
-/// the mpv property name + format used to call `mpv_observe_property`, the
+/// One spec collects everything needed to bridge an mpv property to a
+/// Dart-side value: the [ReactiveProperty] that owns the cell, the mpv
+/// property name + format used to call `mpv_observe_property`, the
 /// raw → typed parser, and the reducer that folds the new value into
-/// [PlayerState]. The result is that adding an observed property to the
-/// public API is a one-line edit to the spec list.
+/// [PlayerState]. Adding an observed property to the public API is a
+/// one-line edit to the spec list.
 ///
-/// Concrete spec types ([MpvDoubleSpec], [MpvFlagSpec], [MpvStringSpec],
-/// [MpvIntSpec]) only differ in which [MpvFormat] they bind to mpv and what
-/// raw Dart type they accept from the event isolate.
-abstract class MpvPropertySpec<T> {
+/// The five named factory constructors ([MpvPropertySpec.double],
+/// [MpvPropertySpec.flag], [MpvPropertySpec.int64], [MpvPropertySpec.string],
+/// [MpvPropertySpec.node]) only differ in which [MpvFormat] they bind to mpv
+/// and what raw Dart type the parser accepts. Funnelling them through a
+/// single `parseAndDispatch` pipeline (dedup → reactive update → state
+/// reduce → onChange) keeps "format → spec → dispatch" a single source of
+/// truth — adding a format is one new factory and one new branch in the
+/// event isolate, no chance to wire one and forget the other.
+class MpvPropertySpec<T> {
+  /// Internal canonical constructor. All factories funnel through here so the
+  /// dispatch pipeline ([parseAndDispatch]) is implemented exactly once.
+  MpvPropertySpec._({
+    required this.name,
+    required this.format,
+    required this.reactive,
+    required T Function(dynamic raw) parse,
+    required PlayerState Function(T value, PlayerState state) reduce,
+    void Function(T value)? onChange,
+  })  : _parse = parse,
+        _reduce = reduce,
+        _onChange = onChange;
+
+  /// Spec for an mpv property delivered as `MPV_FORMAT_DOUBLE`.
+  factory MpvPropertySpec.double({
+    required String name,
+    required ReactiveProperty<T> reactive,
+    required T Function(double raw) parse,
+    required PlayerState Function(T value, PlayerState state) reduce,
+    void Function(T value)? onChange,
+  }) =>
+      MpvPropertySpec._(
+        name: name,
+        format: MpvFormat.mpvFormatDouble,
+        reactive: reactive,
+        parse: (raw) => parse(raw as double),
+        reduce: reduce,
+        onChange: onChange,
+      );
+
+  /// Spec for an mpv property delivered as `MPV_FORMAT_FLAG`. The event
+  /// isolate forwards flag values as `int` (0/1); we accept either
+  /// representation defensively so future format changes don't silently
+  /// miss flags.
+  factory MpvPropertySpec.flag({
+    required String name,
+    required ReactiveProperty<T> reactive,
+    required T Function(bool raw) parse,
+    required PlayerState Function(T value, PlayerState state) reduce,
+    void Function(T value)? onChange,
+  }) =>
+      MpvPropertySpec._(
+        name: name,
+        format: MpvFormat.mpvFormatFlag,
+        reactive: reactive,
+        parse: (raw) => parse(raw is int ? raw == 1 : raw as bool),
+        reduce: reduce,
+        onChange: onChange,
+      );
+
+  /// Spec for an mpv property delivered as `MPV_FORMAT_INT64`.
+  factory MpvPropertySpec.int64({
+    required String name,
+    required ReactiveProperty<T> reactive,
+    required T Function(int raw) parse,
+    required PlayerState Function(T value, PlayerState state) reduce,
+    void Function(T value)? onChange,
+  }) =>
+      MpvPropertySpec._(
+        name: name,
+        format: MpvFormat.mpvFormatInt64,
+        reactive: reactive,
+        parse: (raw) => parse(raw as int),
+        reduce: reduce,
+        onChange: onChange,
+      );
+
+  /// Spec for an mpv property delivered as `MPV_FORMAT_STRING`.
+  factory MpvPropertySpec.string({
+    required String name,
+    required ReactiveProperty<T> reactive,
+    required T Function(String raw) parse,
+    required PlayerState Function(T value, PlayerState state) reduce,
+    void Function(T value)? onChange,
+  }) =>
+      MpvPropertySpec._(
+        name: name,
+        format: MpvFormat.mpvFormatString,
+        reactive: reactive,
+        parse: (raw) => parse(raw as String),
+        reduce: reduce,
+        onChange: onChange,
+      );
+
+  /// Spec for an mpv property delivered as `MPV_FORMAT_NODE`. The raw value
+  /// passed to [parse] is a Dart-native tree (`Map<String, dynamic>`,
+  /// `List<dynamic>`, scalar, or `null`) decoded by the event isolate from
+  /// mpv's `mpv_node` recursive struct. Use this for properties mpv exposes
+  /// natively as structured data — `playlist`, `metadata`,
+  /// `audio-device-list`, `audio-params`, `audio-out-params`,
+  /// `demuxer-cache-state`, `track-list` — instead of observing them as
+  /// strings and parsing JSON in Dart.
+  factory MpvPropertySpec.node({
+    required String name,
+    required ReactiveProperty<T> reactive,
+    required T Function(dynamic raw) parse,
+    required PlayerState Function(T value, PlayerState state) reduce,
+    void Function(T value)? onChange,
+  }) =>
+      MpvPropertySpec._(
+        name: name,
+        format: MpvFormat.mpvFormatNode,
+        reactive: reactive,
+        parse: parse,
+        reduce: reduce,
+        onChange: onChange,
+      );
+
   /// The mpv property name passed to `mpv_observe_property` / `mpv_set_property`.
-  String get name;
+  final String name;
 
   /// One of the [MpvFormat] integer constants — selects the wire format used
   /// by mpv when delivering value updates.
-  int get format;
+  final int format;
 
   /// The Dart-side value cell. Updated by [parseAndDispatch] on each property
   /// change; exposed publicly through `Player.stream`.
-  ReactiveProperty<T> get reactive;
+  final ReactiveProperty<T> reactive;
+
+  final T Function(dynamic raw) _parse;
+  final PlayerState Function(T value, PlayerState state) _reduce;
+  final void Function(T value)? _onChange;
 
   /// Folds [next] into the player's [PlayerState]. Returning the same state
   /// (== identity) is a valid no-op for properties that don't have a
-  /// corresponding [PlayerState] field (e.g. the patched `prefetch-state`,
-  /// which is stream-only).
-  PlayerState reduce(T next, PlayerState state);
+  /// corresponding [PlayerState] field (e.g. `prefetch-state`, which is
+  /// stream-only).
+  PlayerState reduce(T next, PlayerState state) => _reduce(next, state);
 
   /// Optional side-effect callback fired after [reactive] has been updated
   /// and [reduce] has been applied. Use sparingly — keep cross-property
   /// orchestration out of specs and in the player itself.
-  void Function(T next)? get onChange => null;
+  void Function(T next)? get onChange => _onChange;
 
   /// Parses a raw mpv-side value and applies the full update pipeline:
   /// dedup → reactive update → state reduce → onChange. Returns the new
   /// [PlayerState], or `null` if the value was deduplicated (no change).
-  PlayerState? parseAndDispatch(dynamic raw, PlayerState state);
-}
-
-/// Spec for an mpv property delivered as `MPV_FORMAT_DOUBLE`.
-class MpvDoubleSpec<T> extends MpvPropertySpec<T> {
-  MpvDoubleSpec({
-    required this.name,
-    required this.reactive,
-    required T Function(double raw) parse,
-    required PlayerState Function(T value, PlayerState state) reduce,
-    void Function(T value)? onChange,
-  })  : _parse = parse,
-        _reduce = reduce,
-        _onChange = onChange;
-
-  @override
-  final String name;
-
-  @override
-  final ReactiveProperty<T> reactive;
-
-  final T Function(double raw) _parse;
-  final PlayerState Function(T value, PlayerState state) _reduce;
-  final void Function(T value)? _onChange;
-
-  @override
-  int get format => MpvFormat.mpvFormatDouble;
-
-  @override
-  PlayerState reduce(T next, PlayerState state) => _reduce(next, state);
-
-  @override
-  void Function(T next)? get onChange => _onChange;
-
-  @override
   PlayerState? parseAndDispatch(dynamic raw, PlayerState state) {
-    final value = _parse(raw as double);
-    if (!reactive.update(value)) return null;
-    final next = _reduce(value, state);
-    _onChange?.call(value);
-    return next;
-  }
-}
-
-/// Spec for an mpv property delivered as `MPV_FORMAT_FLAG` (a 0/1 int that
-/// the event isolate has already decoded into a Dart `bool`).
-class MpvFlagSpec<T> extends MpvPropertySpec<T> {
-  MpvFlagSpec({
-    required this.name,
-    required this.reactive,
-    required T Function(bool raw) parse,
-    required PlayerState Function(T value, PlayerState state) reduce,
-    void Function(T value)? onChange,
-  })  : _parse = parse,
-        _reduce = reduce,
-        _onChange = onChange;
-
-  @override
-  final String name;
-
-  @override
-  final ReactiveProperty<T> reactive;
-
-  final T Function(bool raw) _parse;
-  final PlayerState Function(T value, PlayerState state) _reduce;
-  final void Function(T value)? _onChange;
-
-  @override
-  int get format => MpvFormat.mpvFormatFlag;
-
-  @override
-  PlayerState reduce(T next, PlayerState state) => _reduce(next, state);
-
-  @override
-  void Function(T next)? get onChange => _onChange;
-
-  @override
-  PlayerState? parseAndDispatch(dynamic raw, PlayerState state) {
-    // The event isolate forwards flag values as `int` (0/1); accept either
-    // representation defensively so future changes don't silently miss flags.
-    final asBool = raw is int ? raw == 1 : raw as bool;
-    final value = _parse(asBool);
-    if (!reactive.update(value)) return null;
-    final next = _reduce(value, state);
-    _onChange?.call(value);
-    return next;
-  }
-}
-
-/// Spec for an mpv property delivered as `MPV_FORMAT_INT64`.
-class MpvIntSpec<T> extends MpvPropertySpec<T> {
-  MpvIntSpec({
-    required this.name,
-    required this.reactive,
-    required T Function(int raw) parse,
-    required PlayerState Function(T value, PlayerState state) reduce,
-    void Function(T value)? onChange,
-  })  : _parse = parse,
-        _reduce = reduce,
-        _onChange = onChange;
-
-  @override
-  final String name;
-
-  @override
-  final ReactiveProperty<T> reactive;
-
-  final T Function(int raw) _parse;
-  final PlayerState Function(T value, PlayerState state) _reduce;
-  final void Function(T value)? _onChange;
-
-  @override
-  int get format => MpvFormat.mpvFormatInt64;
-
-  @override
-  PlayerState reduce(T next, PlayerState state) => _reduce(next, state);
-
-  @override
-  void Function(T next)? get onChange => _onChange;
-
-  @override
-  PlayerState? parseAndDispatch(dynamic raw, PlayerState state) {
-    final value = _parse(raw as int);
-    if (!reactive.update(value)) return null;
-    final next = _reduce(value, state);
-    _onChange?.call(value);
-    return next;
-  }
-}
-
-/// Spec for an mpv property delivered as `MPV_FORMAT_STRING`.
-class MpvStringSpec<T> extends MpvPropertySpec<T> {
-  MpvStringSpec({
-    required this.name,
-    required this.reactive,
-    required T Function(String raw) parse,
-    required PlayerState Function(T value, PlayerState state) reduce,
-    void Function(T value)? onChange,
-  })  : _parse = parse,
-        _reduce = reduce,
-        _onChange = onChange;
-
-  @override
-  final String name;
-
-  @override
-  final ReactiveProperty<T> reactive;
-
-  final T Function(String raw) _parse;
-  final PlayerState Function(T value, PlayerState state) _reduce;
-  final void Function(T value)? _onChange;
-
-  @override
-  int get format => MpvFormat.mpvFormatString;
-
-  @override
-  PlayerState reduce(T next, PlayerState state) => _reduce(next, state);
-
-  @override
-  void Function(T next)? get onChange => _onChange;
-
-  @override
-  PlayerState? parseAndDispatch(dynamic raw, PlayerState state) {
-    final value = _parse(raw as String);
+    final value = _parse(raw);
     if (!reactive.update(value)) return null;
     final next = _reduce(value, state);
     _onChange?.call(value);

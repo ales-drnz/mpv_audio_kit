@@ -45,7 +45,7 @@ class _FiltersPageState extends State<FiltersPage> {
     final list = List<AudioFilter>.from(current)
       ..removeWhere((f) => f.value.contains(name));
     if (enable) list.add(specific ?? AudioFilter.custom(name));
-    widget.player.setAudioFilters(list);
+    widget.player.setActiveFilters(list);
   }
 
   @override

@@ -23,6 +23,7 @@ migrate_working_dir/
 # is commented out by default.
 .vscode/
 .claude/
+CLAUDE.md
 analysis_options.yaml
 
 # Flutter/Dart/Pub related

@@ -1,6 +1,5 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -15,6 +14,58 @@ class PlaybackTab extends StatefulWidget {
 
 class _PlaybackTabState extends State<PlaybackTab> {
   double? _dragVolume;
+  CoverArtRaw? _cover;
+  // Pixel dimensions of the current cover, decoded asynchronously after
+  // it arrives. `null` while the FutureBuilder-equivalent decode is in
+  // flight or if the bytes were undecodable.
+  int? _coverWidth;
+  int? _coverHeight;
+  StreamSubscription<CoverArtRaw>? _coverSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _coverSub = widget.player.stream.coverArtRaw.listen((raw) {
+      if (!mounted) return;
+      setState(() {
+        _cover = raw;
+        _coverWidth = null;
+        _coverHeight = null;
+      });
+      _decodeDimensions(raw);
+    });
+  }
+
+  Future<void> _decodeDimensions(CoverArtRaw raw) async {
+    try {
+      // ignore: deprecated_member_use
+      final codec = await ui.instantiateImageCodec(raw.bytes);
+      try {
+        final frame = await codec.getNextFrame();
+        try {
+          // Skip if the user moved on to a new track while we decoded.
+          if (!mounted || !identical(_cover, raw)) return;
+          setState(() {
+            _coverWidth = frame.image.width;
+            _coverHeight = frame.image.height;
+          });
+        } finally {
+          frame.image.dispose();
+        }
+      } finally {
+        codec.dispose();
+      }
+    } catch (_) {
+      // Truncated / unsupported bytes — leave dims null. The cover
+      // itself may still render via Image.memory's own decode.
+    }
+  }
+
+  @override
+  void dispose() {
+    _coverSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,65 +86,28 @@ class _PlaybackTabState extends State<PlaybackTab> {
           child: Column(
             children: [
               const Spacer(),
-              // Cover Art & Metadata Section
-              StreamBuilder<Playlist>(
-                stream: widget.player.stream.playlist,
-                initialData: widget.player.state.playlist,
-                builder: (context, playlistSnap) {
-                  final playlist = playlistSnap.data ?? const Playlist.empty();
-                  final currentMedia = playlist.medias.isNotEmpty
-                      ? playlist.medias[playlist.index]
-                      : null;
-
-                  final artBytes = currentMedia?.extras?['artBytes'];
-                  final String? coverUrl =
-                      currentMedia?.extras?['artUri']?.toString() ??
-                      currentMedia?.extras?['cover']?.toString();
-
-                  Widget? coverImage;
-
-                  if (artBytes is Uint8List) {
-                    coverImage = Image.memory(artBytes, fit: BoxFit.cover);
-                  } else if (coverUrl != null) {
-                    if (coverUrl.startsWith('http') ||
-                        coverUrl.startsWith('data:')) {
-                      coverImage = Image.network(
-                        coverUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            const Icon(Icons.broken_image, size: 80),
-                      );
-                    } else {
-                      coverImage = Image.file(
-                        File(coverUrl),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            const Icon(Icons.broken_image, size: 80),
-                      );
-                    }
-                  }
-
-                  return Center(
-                    child: Container(
-                      width: coverSize,
-                      height: coverSize,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(coverSize * 0.1),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child:
-                          coverImage ??
-                          Icon(
-                            Icons.music_note_rounded,
-                            size: coverSize * 0.4,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
-                          ),
-                    ),
-                  );
-                },
+              // Cover Art
+              Center(
+                child: Container(
+                  width: coverSize,
+                  height: coverSize,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(coverSize * 0.1),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: _cover != null
+                      ? Image.memory(
+                          _cover!.bytes,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        )
+                      : Icon(
+                          Icons.music_note_rounded,
+                          size: coverSize * 0.4,
+                          color: cs.onPrimaryContainer,
+                        ),
+                ),
               ),
               const Spacer(),
 
@@ -183,6 +197,39 @@ class _PlaybackTabState extends State<PlaybackTab> {
                                   );
                                 },
                               ),
+                              // Cover-art info chips, in muted (grey) tone
+                              // so they read as secondary metadata next to
+                              // the audio chips above. Resolution shows
+                              // `decoding…` while dart:ui finishes the
+                              // first frame of the new bytes (a few ms
+                              // per track), then snaps to the real
+                              // pixel dimensions.
+                              if (_cover != null) ...[
+                                _InfoChip(
+                                  label:
+                                      (_coverWidth != null &&
+                                              _coverHeight != null)
+                                          ? '$_coverWidth × $_coverHeight'
+                                          : 'decoding…',
+                                  muted: true,
+                                ),
+                                _InfoChip(
+                                  // Strip the `image/` prefix and
+                                  // uppercase the subtype to match the
+                                  // visual style of the audio chips
+                                  // above (MP3 / FLAC / S16 / …).
+                                  label: _cover!.mimeType
+                                      .split('/')
+                                      .last
+                                      .toUpperCase(),
+                                  muted: true,
+                                ),
+                                _InfoChip(
+                                  label:
+                                      '${(_cover!.bytes.length / 1024).toStringAsFixed(1)} KB',
+                                  muted: true,
+                                ),
+                              ],
                             ],
                           );
                         },
@@ -321,20 +368,27 @@ class _PlaybackTabState extends State<PlaybackTab> {
 
 class _InfoChip extends StatelessWidget {
   final String label;
-  const _InfoChip({required this.label});
+  // Muted = grey tones, used for secondary metadata (e.g. cover-art
+  // dimensions) so it doesn't compete visually with the primary audio
+  // chips (codec / kHz / format / bitrate).
+  final bool muted;
+  const _InfoChip({required this.label, this.muted = false});
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final bg = muted ? cs.surfaceContainerHighest : cs.secondaryContainer;
+    final fg = muted ? cs.onSurfaceVariant : cs.onSecondaryContainer;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
+        color: bg,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSecondaryContainer,
+          color: fg,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),

@@ -26,8 +26,8 @@ void main() {
     registry = PropertyRegistry()
       ..registerAll(buildDefaultSpecs(
         reactives,
-        onPlayingChanged: (_) {},
         onIdleActive: (_) {},
+        onAudioOutputState: (_) {},
       ));
   });
 
@@ -82,13 +82,20 @@ void main() {
     });
   });
 
-  group('Default registry — audio params (decoder + hardware sub-fields)', () {
-    test('audio-params/* fields aggregate into state.audioParams', () {
-      dispatch('audio-params/format', 'floatp');
-      dispatch('audio-params/samplerate', 48000.0);
-      dispatch('audio-params/channels', 'stereo');
-      dispatch('audio-params/channel-count', 2.0);
-      dispatch('audio-params/hr-channels', 'L+R');
+  group('Default registry — audio params (decoder + hardware node maps)', () {
+    test(
+        '`audio-params` node + `audio-codec` + `audio-codec-name` populate '
+        'state.audioParams', () {
+      // Single MPV_FORMAT_NODE_MAP for the 5 wire fields, replacing the
+      // 5 individual sub-property observers from 0.0.x. Codec fields stay
+      // separate (mpv does not include them in the node map).
+      dispatch('audio-params', <String, dynamic>{
+        'format': 'floatp',
+        'samplerate': 48000,
+        'channels': 'stereo',
+        'channel-count': 2,
+        'hr-channels': 'L+R',
+      });
       dispatch('audio-codec', 'flac');
       dispatch('audio-codec-name', 'FLAC');
 
@@ -101,12 +108,41 @@ void main() {
       expect(state.audioParams.codecName, 'FLAC');
     });
 
-    test('audio-out-params/* fields aggregate into state.audioOutParams', () {
-      dispatch('audio-out-params/format', 's16');
-      dispatch('audio-out-params/samplerate', 44100.0);
-      dispatch('audio-out-params/channels', 'stereo');
-      dispatch('audio-out-params/channel-count', 2.0);
-      dispatch('audio-out-params/hr-channels', '2.0');
+    test(
+        '`audio-params` node merges into existing audioParams without '
+        'clobbering codec / codecName populated by sibling specs', () {
+      // Codec arrives first (mpv emits siblings independently).
+      dispatch('audio-codec', 'flac');
+      dispatch('audio-codec-name', 'FLAC');
+      // Then the node map fires.
+      dispatch('audio-params', <String, dynamic>{
+        'format': 'floatp',
+        'samplerate': 48000,
+        'channels': 'stereo',
+        'channel-count': 2,
+        'hr-channels': 'L+R',
+      });
+
+      // Both node-side and sibling-side fields must coexist on state.
+      expect(state.audioParams.format, 'floatp');
+      expect(state.audioParams.sampleRate, 48000);
+      expect(state.audioParams.codec, 'flac',
+          reason:
+              'audio-params node reduce must not reset the codec fields '
+              'populated by audio-codec / audio-codec-name siblings');
+      expect(state.audioParams.codecName, 'FLAC');
+    });
+
+    test('`audio-out-params` node populates state.audioOutParams', () {
+      // Hardware side has no codec siblings — single node spec covers
+      // every observable field.
+      dispatch('audio-out-params', <String, dynamic>{
+        'format': 's16',
+        'samplerate': 44100,
+        'channels': 'stereo',
+        'channel-count': 2,
+        'hr-channels': '2.0',
+      });
 
       expect(state.audioOutParams.format, 's16');
       expect(state.audioOutParams.sampleRate, 44100);
@@ -166,29 +202,27 @@ void main() {
   });
 
   group('Default registry — onChange callbacks', () {
-    test('onPlayingChanged fires only when pause → playing transition happens',
-        () {
-      final calls = <bool>[];
+    test('onAudioOutputState fires on every state transition', () {
+      final calls = <AudioOutputState>[];
       reactives = DefaultPropertyReactives();
       registry = PropertyRegistry()
         ..registerAll(buildDefaultSpecs(
           reactives,
-          onPlayingChanged: calls.add,
           onIdleActive: (_) {},
+          onAudioOutputState: calls.add,
         ));
       state = const PlayerState();
 
-      // First update: core-idle=false → playing=true (transition from seed=false).
-      registry.dispatch('core-idle', false, state);
-      expect(calls, [true]);
+      registry.dispatch('audio-output-state', 'initializing', state);
+      registry.dispatch('audio-output-state', 'active', state);
+      registry.dispatch('audio-output-state', 'active', state); // dedup
+      registry.dispatch('audio-output-state', 'failed', state);
 
-      // Same value again: dedup, no callback.
-      registry.dispatch('core-idle', false, state);
-      expect(calls, [true]);
-
-      // Toggle to paused / idle.
-      registry.dispatch('core-idle', true, state);
-      expect(calls, [true, false]);
+      expect(calls, [
+        AudioOutputState.initializing,
+        AudioOutputState.active,
+        AudioOutputState.failed,
+      ]);
     });
 
     test('onIdleActive fires on every idle transition', () {
@@ -197,8 +231,8 @@ void main() {
       registry = PropertyRegistry()
         ..registerAll(buildDefaultSpecs(
           reactives,
-          onPlayingChanged: (_) {},
           onIdleActive: calls.add,
+          onAudioOutputState: (_) {},
         ));
       state = const PlayerState();
 
@@ -222,13 +256,11 @@ void main() {
         'core-idle', 'volume', 'speed', 'pitch', 'mute', 'idle-active',
         'shuffle', 'audio-pitch-correction', 'audio-delay', 'audio-bitrate',
         'audio-device',
-        // Audio params
-        'audio-params/format', 'audio-params/samplerate',
-        'audio-params/channels', 'audio-params/channel-count',
-        'audio-params/hr-channels', 'audio-codec', 'audio-codec-name',
-        'audio-out-params/format', 'audio-out-params/samplerate',
-        'audio-out-params/channels', 'audio-out-params/channel-count',
-        'audio-out-params/hr-channels',
+        // Audio params (single MPV_FORMAT_NODE_MAP per side, plus the
+        // two string siblings that mpv does not bundle into the decoder
+        // node).
+        'audio-params', 'audio-codec', 'audio-codec-name',
+        'audio-out-params',
         // ReplayGain & gapless
         'gapless-audio', 'replaygain', 'replaygain-preamp',
         'replaygain-fallback', 'replaygain-clip', 'volume-gain',
@@ -246,6 +278,7 @@ void main() {
         'audio-display', 'cover-art-auto', 'image-display-duration',
         // Patched / stream-only
         'prefetch-state',
+        'audio-output-state',
       ];
       for (final name in expected) {
         expect(registry.specFor(name), isNotNull,

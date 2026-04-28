@@ -103,13 +103,13 @@ class SettingsService {
     // Gapless audio playback (typed enum since 0.1.0)
     final gapless = _prefs.getString('${_keyPrefix}gapless-audio');
     if (gapless != null) {
-      await player.setGaplessPlayback(GaplessMode.fromMpv(gapless));
+      await player.setGaplessMode(GaplessMode.fromMpv(gapless));
     }
 
     // ReplayGain mode (typed enum since 0.1.0)
     final replaygain = _prefs.getString('${_keyPrefix}replaygain');
     if (replaygain != null) {
-      await player.setReplayGain(ReplayGainMode.fromMpv(replaygain));
+      await player.setReplayGainMode(ReplayGainMode.fromMpv(replaygain));
     }
 
     // ReplayGain pre-amplification in dB
@@ -211,7 +211,7 @@ class SettingsService {
     // Cache mode (typed enum since 0.1.0)
     final cacheMode = _prefs.getString('${_keyPrefix}cache');
     if (cacheMode != null) {
-      await player.setCache(CacheMode.fromMpv(cacheMode));
+      await player.setCacheMode(CacheMode.fromMpv(cacheMode));
     }
 
     // How many seconds of audio/video to cache ahead (Duration since 0.1.0)

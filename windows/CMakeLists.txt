@@ -65,7 +65,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.lib")
 endif()
 
 set(_MPV_DLL "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv-2.dll")
-set(MPV_RELEASE_VERSION "libmpv-r4")
+set(MPV_RELEASE_VERSION "libmpv-r5")
 set(EXPECTED_SHA256 "183c2b36e3d8ff0dd035740ce24327c29dced75ba44a4c2064acdaf4a40174bd")
 
 set(DOWNLOAD_NEEDED TRUE)

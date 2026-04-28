@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -6,9 +7,26 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 ///
 /// Keeps [playbackState], [mediaItem], and [queue] in sync with the player
 /// and delegates all control commands (play, pause, seek, skip) back to it.
+///
+/// Cover art is propagated to [MediaItem.artUri] by persisting the bytes
+/// emitted on `Player.stream.coverArtRaw` to a temp file and passing a
+/// `file://` URI to audio_service. Android MediaSession, iOS Now
+/// Playing, and Windows SMTC all render `file://` URIs reliably; raw
+/// bytes can't be passed directly (the API takes a [Uri]) and base64
+/// data URIs are not honoured by every native backend.
 class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
   final Player player;
   final List<StreamSubscription> _subs = [];
+
+  /// Path of the most recent cover written to the OS temp dir, fed to
+  /// `MediaItem.artUri` via [Uri.file]. `null` until the first cover
+  /// arrives, or if the file write failed.
+  String? _coverPath;
+
+  /// Monotonic counter so every track produces a fresh filename. Without
+  /// it audio_service / system media widgets cache by URI and don't
+  /// observe new bytes when the path stays the same.
+  int _coverCounter = 0;
 
   MpvAudioHandler(this.player) {
     _bindStreams();
@@ -26,6 +44,23 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(player.stream.playlist.listen(_syncQueue));
     _subs.add(player.stream.metadata.listen((_) => _updateMediaItem()));
     _subs.add(player.stream.duration.listen((_) => _updateMediaItem()));
+    _subs.add(player.stream.coverArtRaw.listen(_persistCover));
+  }
+
+  Future<void> _persistCover(CoverArtRaw raw) async {
+    final ext = raw.mimeType.split('/').last;
+    final id = ++_coverCounter;
+    final path = '${Directory.systemTemp.path}'
+        '${Platform.pathSeparator}'
+        'mpv_audio_kit_cover_$id.$ext';
+    try {
+      await File(path).writeAsBytes(raw.bytes, flush: true);
+      _coverPath = path;
+      _updateMediaItem();
+    } catch (_) {
+      // Disk full, permissions, sandbox — skip silently; the MediaItem
+      // simply falls back to the previous (or no) artwork.
+    }
   }
 
   void _updatePlaybackState() {
@@ -75,6 +110,7 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
         artist: meta['artist'],
         album: meta['album'],
         duration: s.duration == Duration.zero ? null : s.duration,
+        artUri: _coverPath != null ? Uri.file(_coverPath!) : null,
       ),
     );
   }

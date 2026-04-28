@@ -27,7 +27,7 @@ class CachePage extends StatelessWidget {
                 (CacheMode.yes, 'YES'),
                 (CacheMode.no, 'NO'),
               ],
-              onChanged: player.setCache,
+              onChanged: player.setCacheMode,
             );
           },
         ),

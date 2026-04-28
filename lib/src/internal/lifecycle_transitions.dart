@@ -11,11 +11,9 @@ import '../models/playlist.dart';
 ///
 /// The three `*DidChange` flags tell the caller which of the three
 /// observable lifecycle reactives (playing / buffering / completed) needs
-/// to be fed an `update()`. The previous in-line implementation in
-/// `_PlayerBase` interleaved this diff logic with the `ReactiveProperty`
-/// updates, which is exactly the pattern that produced the silent
-/// `_bufferingCtrl` / `_completedCtrl` regressions in 0.0.9 — a missed
-/// `controller.add(...)` next to a successful `state.copyWith(...)`.
+/// to be fed an `update()`. Splitting the diff out of the dispatch site
+/// keeps `state.copyWith(...)` and `controller.add(...)` from drifting
+/// out of sync — they share one decision point and one set of flags.
 @internal
 class LifecycleResult {
   const LifecycleResult({
@@ -42,8 +40,8 @@ class LifecycleResult {
 ///
 /// The design intentionally keeps the dispatch logic out of this
 /// function so it stays trivially testable — see
-/// `test/internal/lifecycle_transitions_test.dart` for the regression
-/// suite around the 0.0.9 bug class.
+/// `test/internal/lifecycle_transitions_test.dart` for the suite that
+/// pins down every transition produced by the player.
 @internal
 LifecycleResult computeLifecycle({
   required PlayerState prev,

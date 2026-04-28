@@ -211,6 +211,10 @@ abstract class PlayerState with _$PlayerState {
     /// Audio output driver ('auto', 'coreaudio', 'pulse', 'alsa', 'wasapi', etc.).
     @Default('auto') String audioDriver,
 
+    /// Audio output lifecycle (`closed` / `initializing` / `active` /
+    /// `failed`). See [AudioOutputState].
+    @Default(AudioOutputState.closed) AudioOutputState audioOutputState,
+
     /// Currently active audio filters.
     @Default(<AudioFilter>[]) List<AudioFilter> activeFilters,
 
@@ -219,18 +223,18 @@ abstract class PlayerState with _$PlayerState {
 
     /// Controls how mpv handles embedded and external cover images. See
     /// [AudioDisplayMode] for the available variants.
-    @Default(AudioDisplayMode.embeddedFirst) AudioDisplayMode audioDisplay,
+    @Default(AudioDisplayMode.embeddedFirst) AudioDisplayMode audioDisplayMode,
 
     /// Controls whether mpv automatically loads external cover art files.
     /// See [CoverArtAutoMode] for the available variants.
-    @Default(CoverArtAutoMode.no) CoverArtAutoMode coverArtAuto,
+    @Default(CoverArtAutoMode.no) CoverArtAutoMode coverArtAutoMode,
 
     /// Duration in seconds for which a still image (e.g. cover art) is held
     /// as a displayable video frame after the file is loaded.
     ///
-    /// Set to `'inf'` to keep the frame alive indefinitely — required when
-    /// you want to extract cover art at any time via the `screenshot-raw`
-    /// command. Set to `'0'` or a small value if you never extract cover art.
+    /// `'inf'` keeps the frame alive indefinitely; `'0'` (or any small
+    /// value) drops it as soon as audio playback starts. Mirrors mpv's
+    /// `--image-display-duration` option.
     @Default('inf') String imageDisplayDuration,
   }) = _PlayerState;
 }

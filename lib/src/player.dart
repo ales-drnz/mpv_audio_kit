@@ -3,19 +3,16 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ffi';
-import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
 
 import 'cover/cover_art_extractor.dart';
-import 'cover/cover_art_processor.dart';
 import 'cover/cover_art_raw.dart';
 import 'event_isolate.dart';
-import 'internal/json_parsers.dart';
 import 'internal/lifecycle_transitions.dart';
+import 'internal/node_parsers.dart';
 import 'library_loader.dart';
 import 'mpv_bindings.dart' hide MpvEndFileReason;
 import 'reactive/default_specs.dart';
@@ -143,10 +140,9 @@ class Player extends _PlayerBase
   /// events (e.g. "user pressed retry") into the same stream where
   /// the wrapper itself emits parse warnings and hook timeouts.
   ///
-  /// Renamed from `log()` to `appendLog()` in 0.1.0 to disambiguate
-  /// from the engine-side log subscription at [PlayerStream.log] —
-  /// `player.log` (inject) and `player.stream.log` (subscribe) used
-  /// the same verb for opposite roles, which made docstrings ambiguous.
+  /// Named `appendLog` to keep it distinct from
+  /// [PlayerStream.internalLog] — this method *injects* a message,
+  /// the stream getter *subscribes* to messages.
   void appendLog(String message, {String level = 'info'}) {
     _internalLogCtrl.add(
         MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
@@ -266,9 +262,9 @@ abstract class _PlayerBase {
   final StreamController<MpvLogEntry> _logCtrl =
       StreamController<MpvLogEntry>.broadcast();
   // Log stream from the Dart wrapper itself — JSON parse warnings, hook
-  // timeouts, manual `Player.log(...)` injections. Split from `_logCtrl`
-  // in 0.1.0 so consumers can filter wrapper-side noise from genuine
-  // engine messages without inspecting the prefix.
+  // timeouts, manual `Player.appendLog(...)` injections. Kept disjoint
+  // from `_logCtrl` so consumers can filter wrapper-side noise from
+  // genuine engine messages without inspecting the prefix.
   final StreamController<MpvLogEntry> _internalLogCtrl =
       StreamController<MpvLogEntry>.broadcast();
   final StreamController<MpvHookEvent> _hookCtrl =
@@ -300,21 +296,35 @@ abstract class _PlayerBase {
     _registry = PropertyRegistry()
       ..registerAll(buildDefaultSpecs(
         _reactives,
-        onPlayingChanged: (playing) {
-          if (playing) _scheduleAudioOutputCheck();
-        },
         onIdleActive: (idle) {
           if (idle) _updateLifecycle(playing: false, buffering: false);
+        },
+        onAudioOutputState: (state) {
+          // `audio-output-state` reaches `failed` the moment
+          // `ao_init_best()` returns NULL — surface a typed error so
+          // consumers can react immediately to a silent player.
+          if (state == AudioOutputState.failed && !_errorCtrl.isClosed) {
+            _errorCtrl.add(const MpvLogError(
+              prefix: 'mpv_audio_kit',
+              level: 'error',
+              text: 'Audio output failed to initialize — playback is silent',
+            ));
+          }
         },
       ));
     _registry.observeAll(_lib, _handle);
 
     // Properties handled outside the registry need an explicit observe call
-    // (the registry only observes specs it knows about).
-    _observe('playlist', MpvFormat.mpvFormatString);
-    _observe('audio-device-list', MpvFormat.mpvFormatString);
-    _observe('metadata', MpvFormat.mpvFormatString);
-    _observe('demuxer-cache-state', MpvFormat.mpvFormatString);
+    // (the registry only observes specs it knows about). Most go through
+    // MPV_FORMAT_NODE — mpv exposes them as structured Map/List trees, and
+    // observing them as STRING + JSON-parsing every change burns one extra
+    // string allocation, one extra parse, and rounds int64 sample rates
+    // through string conversion. The two `loop-*` properties stay STRING
+    // because they hold flag-like values (`no` / `inf` / a number).
+    _observe('playlist', MpvFormat.mpvFormatNode);
+    _observe('audio-device-list', MpvFormat.mpvFormatNode);
+    _observe('metadata', MpvFormat.mpvFormatNode);
+    _observe('demuxer-cache-state', MpvFormat.mpvFormatNode);
     _observe('loop-file', MpvFormat.mpvFormatString);
     _observe('loop-playlist', MpvFormat.mpvFormatString);
 
@@ -366,7 +376,7 @@ abstract class _PlayerBase {
     _opt('load-positioning', 'no');
     _opt('load-scripts', 'no');
     _opt('input-builtin-bindings', 'no');
-    _opt('audio-client-name', configuration.audioClientName ?? 'mpv_audio_kit');
+    _opt('audio-client-name', 'mpv_audio_kit');
 
     if (configuration.logLevel != 'no') {
       using((arena) {
@@ -409,9 +419,9 @@ abstract class _PlayerBase {
         _extractEmbeddedCover();
       case MpvEventPlaybackSeek():
         // mpv accepted the seek; playback is suspended until
-        // MpvEventPlaybackRestart fires. Intentionally a no-op: we
-        // don't want to mutate the position stream here (that caused
-        // the pre-fix "position=0 flash" bug).
+        // MpvEventPlaybackRestart fires. Intentionally a no-op:
+        // mutating the position stream here would briefly flash 0
+        // before the post-restart re-poll lands.
         break;
       case MpvEventPlaybackRestart():
         _pollPosition();
@@ -440,6 +450,8 @@ abstract class _PlayerBase {
       case MpvEventPropertyInt(:final name, :final value):
         _dispatchProperty(name, value);
       case MpvEventPropertyString(:final name, :final value):
+        _dispatchProperty(name, value);
+      case MpvEventPropertyNode(:final name, :final value):
         _dispatchProperty(name, value);
       case MpvEventLog(:final prefix, :final level, :final text):
         final entry = MpvLogEntry(prefix: prefix, level: level, text: text);
@@ -479,19 +491,21 @@ abstract class _PlayerBase {
       return;
     }
     // Custom out-of-registry handlers for the few properties whose update
-    // logic touches more than `(parse → reduce)`.
+    // logic touches more than `(parse → reduce)` (player-side context like
+    // `_mediaCache`, `_state.playlist`, `_state.cacheSecs`, or the
+    // two-property aggregation behind `playlistMode`).
     switch (name) {
       case 'loop-file':
       case 'loop-playlist':
         _updatePlaylistModeFromMpv(name, raw as String);
       case 'playlist':
-        _updatePlaylistFromJson(raw as String);
+        _updatePlaylistFromNode(raw);
       case 'audio-device-list':
-        _updateAudioDevicesFromJson(raw as String);
+        _updateAudioDevicesFromNode(raw);
       case 'metadata':
-        _updateMetadataFromJson(raw as String);
+        _updateMetadataFromNode(raw);
       case 'demuxer-cache-state':
-        _updateBufferingPercentageFromJson(raw as String);
+        _updateBufferingPercentageFromNode(raw);
     }
   }
 
@@ -529,25 +543,13 @@ abstract class _PlayerBase {
 
   /// One-off observe — the registry handles the bulk of properties; this
   /// helper covers the few hand-rolled ones (playlist, metadata, etc.).
-  /// Reply IDs are diagnostic-only on the receive side, so we burn a small
-  /// pool of high IDs (10001+) to avoid colliding with the registry's range.
-  int _customReplyId = 10001;
+  /// Reply IDs are diagnostic-only on the receive side, so we use a high
+  /// pool starting just past the registry's reserved range so the two
+  /// dispatch paths are visually distinguishable in `mpv -v` logs.
+  int _customReplyId = PropertyRegistry.registryReplyIdMax + 1;
   void _observe(String name, int format) {
-    using((arena) => _lib.mpvObserveProperty(
-        _handle, _customReplyId++, name.toNativeUtf8(allocator: arena), format));
-  }
-
-  String? _getPropString(String name) {
-    return using((arena) {
-      final n = name.toNativeUtf8(allocator: arena);
-      final ptr = _lib.mpvGetPropertyString(_handle, n);
-      if (ptr == nullptr) {
-        return null;
-      }
-      final s = ptr.cast<Utf8>().toDartString();
-      _lib.mpvFree(ptr.cast());
-      return s;
-    });
+    using((arena) => _lib.mpvObserveProperty(_handle, _customReplyId++,
+        name.toNativeUtf8(allocator: arena), format));
   }
 
   String _errorString(int code) {
@@ -588,13 +590,21 @@ abstract class _PlayerBase {
   /// This is the API the setter-mixins (audio, network, …) call after
   /// pushing a value to mpv via `_prop`/`_command`, so the public state
   /// reflects the requested value optimistically.
+  ///
+  /// Short-circuits when [reactive] dedups the write: writing a value the
+  /// reactive already holds means the new state would be `==` to the old
+  /// one too (Freezed structural equality on [PlayerState]), so the
+  /// `_state = updater(_state)` allocation would just produce a structurally
+  /// identical snapshot. Skipping it avoids one [PlayerState] allocation
+  /// per redundant setter call (matches the registry dispatch behaviour
+  /// for property-change events).
   void _updateField<T>(
     PlayerState Function(PlayerState) updater,
     ReactiveProperty<T> reactive,
     T value,
   ) {
+    if (!reactive.update(value)) return;
     _state = updater(_state);
-    reactive.update(value);
   }
 
   /// Updates the playback-lifecycle triple (playing / buffering / completed)
@@ -632,10 +642,10 @@ abstract class _PlayerBase {
     );
   }
 
-  void _updatePlaylistFromJson(String jsonStr) {
+  void _updatePlaylistFromNode(dynamic raw) {
     try {
-      final playlist = parsePlaylistJson(
-        jsonStr: jsonStr,
+      final playlist = parsePlaylistNode(
+        raw: raw,
         mediaCache: _mediaCache,
         previous: _state.playlist,
       );
@@ -646,9 +656,9 @@ abstract class _PlayerBase {
     }
   }
 
-  void _updateAudioDevicesFromJson(String jsonStr) {
+  void _updateAudioDevicesFromNode(dynamic raw) {
     try {
-      final devices = parseAudioDeviceListJson(jsonStr);
+      final devices = parseAudioDeviceListNode(raw);
       _updateField(
           (s) => s.copyWith(audioDevices: devices), _audioDevices, devices);
     } catch (e) {
@@ -656,9 +666,9 @@ abstract class _PlayerBase {
     }
   }
 
-  void _updateMetadataFromJson(String value) {
+  void _updateMetadataFromNode(dynamic raw) {
     try {
-      final metadata = parseMetadataJson(value);
+      final metadata = parseMetadataNode(raw);
       if (metadata == null) return;
       _updateField((s) => s.copyWith(metadata: metadata), _metadata, metadata);
     } catch (e) {
@@ -666,9 +676,9 @@ abstract class _PlayerBase {
     }
   }
 
-  void _updateBufferingPercentageFromJson(String jsonStr) {
+  void _updateBufferingPercentageFromNode(dynamic raw) {
     try {
-      final pct = parseBufferingPercentage(jsonStr, _state.cacheSecs);
+      final pct = parseDemuxerCacheStateNode(raw, _state.cacheSecs);
       _updateField((s) => s.copyWith(bufferingPercentage: pct),
           _bufferingPercentage, pct);
     } catch (e) {
@@ -694,50 +704,6 @@ abstract class _PlayerBase {
   }
 
 
-  void _updateMediaCover({String? uri, Uint8List? bytes}) {
-    final currentIdx = _state.playlist.index;
-    if (currentIdx >= 0 && currentIdx < _state.playlist.medias.length) {
-      final media = _state.playlist.medias[currentIdx];
-      final extras = {...?media.extras};
-      if (uri != null) {
-        extras['artUri'] = uri;
-        extras['cover'] = uri;
-      }
-      if (bytes != null) {
-        extras['artBytes'] = bytes;
-        final dataUri = 'data:image/png;base64,${base64Encode(bytes)}';
-        extras['artUri'] = dataUri;
-        extras['cover'] = dataUri;
-      }
-
-      final updatedMedia = Media(
-        media.uri,
-        extras: extras,
-        httpHeaders: media.httpHeaders,
-      );
-
-      final updatedMedias = List<Media>.from(_state.playlist.medias);
-      updatedMedias[currentIdx] = updatedMedia;
-
-      final updatedPlaylist = Playlist(updatedMedias, index: currentIdx);
-      _updateField((s) => s.copyWith(playlist: updatedPlaylist), _playlist,
-          updatedPlaylist);
-    }
-  }
-
-  void _scheduleAudioOutputCheck() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (_disposed || !_state.playing) return;
-      final fmt = _getPropString('audio-out-params/format');
-      if (fmt == null || fmt.isEmpty) {
-        _errorCtrl.add(const MpvLogError(
-            prefix: 'mpv_audio_kit',
-            level: 'error',
-            text: 'No audio output driver initialized — playback is silent'));
-      }
-    });
-  }
-
   /// Internal log helper — emits on the wrapper-side log channel
   /// ([Player.stream.internalLog]), kept separate from mpv's engine log
   /// stream ([Player.stream.log]).
@@ -745,38 +711,12 @@ abstract class _PlayerBase {
       _internalLogCtrl.add(MpvLogEntry(
           prefix: 'mpv_audio_kit', level: level, text: message));
 
-  int _currentCoverOpId = 0;
-
   void _extractEmbeddedCover() {
     if (_disposed) return;
     final raw = CoverArtExtractor.capture(_lib, _handle);
     if (raw == null) return;
-    // Always surface the raw frame on the public stream — consumers that
-    // disabled `processCoverArt` are listening on this for their own
-    // pipeline, and even consumers that use the default processor may want
-    // a hook to log/inspect the source.
     if (!_coverArtRawCtrl.isClosed) {
       _coverArtRawCtrl.add(raw);
-    }
-    if (configuration.processCoverArt) {
-      _processCoverWithDefaults(raw);
-    }
-  }
-
-  Future<void> _processCoverWithDefaults(CoverArtRaw raw) async {
-    final opId = ++_currentCoverOpId;
-    try {
-      final png = await CoverArtProcessor.toPng(
-        raw,
-        isCancelled: () => _disposed || opId != _currentCoverOpId,
-      );
-      if (png == null) return;
-      if (_disposed || opId != _currentCoverOpId) return;
-      _updateMediaCover(bytes: png);
-    } catch (e) {
-      if (opId == _currentCoverOpId) {
-        _internalLog('Error processing embedded cover: $e');
-      }
     }
   }
 
@@ -787,25 +727,22 @@ abstract class _PlayerBase {
   ///
   /// 1. **Flip `_disposed`** so any subsequent setter / public-API call
   ///    fails fast via `_checkNotDisposed()`.
-  /// 2. **Bump `_currentCoverOpId`** so any in-flight cover-art processing
-  ///    bails on its next `isCancelled()` check before touching state or
-  ///    the about-to-close media-cover stream.
-  /// 3. **Drop the [NativeReferenceHolder] entry** so a hot-restart that
+  /// 2. **Drop the [NativeReferenceHolder] entry** so a hot-restart that
   ///    fires before the destroy completes doesn't try to clean up a
   ///    handle we're already cleaning up.
-  /// 4. **Await `_eventSub.cancel()`** before destroying the handle. This
+  /// 3. **Await `_eventSub.cancel()`** before destroying the handle. This
   ///    prevents new `_handleEvent` invocations from landing after the
   ///    destroy. In-flight events queued on the isolate's stream are
   ///    dropped on the floor by Dart's async-cancel semantics.
-  /// 5. **`mpvTerminateDestroy(_handle)` BEFORE stopping the isolate**.
+  /// 4. **`mpvTerminateDestroy(_handle)` BEFORE stopping the isolate**.
   ///    mpv's blocking `mpv_wait_event()` unblocks with
   ///    `MPV_EVENT_SHUTDOWN` as soon as the handle is destroyed, letting
   ///    the isolate's run-loop exit cleanly. The reverse order (stop
   ///    isolate → destroy handle) had a window where the isolate could
   ///    re-enter `mpv_wait_event` between the kill-queue and the destroy.
-  /// 6. **Stop the isolate**, which is now guaranteed to exit on its
+  /// 5. **Stop the isolate**, which is now guaranteed to exit on its
   ///    next loop iteration.
-  /// 7. **Close all reactive properties + controllers**. Order within
+  /// 6. **Close all reactive properties + controllers**. Order within
   ///    this group does not matter for correctness (they tolerate
   ///    `close()` while a listener is attached); grouping by ownership
   ///    is for auditability.
@@ -814,7 +751,6 @@ abstract class _PlayerBase {
       return;
     }
     _disposed = true;
-    _currentCoverOpId++;
 
     NativeReferenceHolder.instance.remove(_handle);
     await _eventSub?.cancel();

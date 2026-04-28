@@ -1,11 +1,40 @@
 ## [0.1.0] - WIP
 
-Major Dart-side refactor. Native build pipeline (libmpv binaries + C
-patches under `scripts/`) is unchanged. Six structural problems reported
-in the 0.0.9 review have been resolved at the root, not patched at the
-symptom level.
+Major Dart-side refactor. Native build pipeline is unchanged. Six
+structural problems reported in the 0.0.9 review have been resolved
+at the root, not patched at the symptom level.
 
-### BREAKING — naming polish (review pass 2)
+### BREAKING — setter / state field symmetry
+
+The setter and the corresponding [PlayerState] / [PlayerStream] field
+now share the exact same name. Six call-sites were inconsistent:
+
+- `setCache(CacheMode)` → `setCacheMode(CacheMode)` (matches
+  `state.cacheMode`).
+- `setGaplessPlayback(GaplessMode)` → `setGaplessMode(GaplessMode)`
+  (matches `state.gaplessMode`).
+- `setReplayGain(ReplayGainMode)` → `setReplayGainMode(ReplayGainMode)`
+  (matches `state.replayGainMode`).
+- `setAudioFilters(List<AudioFilter>)` →
+  `setActiveFilters(List<AudioFilter>)` (matches `state.activeFilters`).
+- `state.audioDisplay` → `state.audioDisplayMode` (matches the
+  `setAudioDisplayMode` setter and the `AudioDisplayMode` enum
+  parameter type).
+- `state.coverArtAuto` → `state.coverArtAutoMode` (matches the
+  `setCoverArtAutoMode` setter and the `CoverArtAutoMode` enum
+  parameter type).
+
+The streams on `PlayerStream` follow the field rename
+(`stream.audioDisplayMode`, `stream.coverArtAutoMode`).
+
+### BREAKING — `PlayerConfiguration` slimmed
+
+- **`PlayerConfiguration.audioClientName` removed.** The audio client
+  name is a runtime-mutable mpv property, so duplicating it in the
+  init-time configuration was redundant. Set it via
+  `await player.setAudioClientName('YourApp')` after construction.
+
+### BREAKING — naming polish
 
 - **`AudioDisplay` → `AudioDisplayMode`** and **`CoverArtAuto` →
   `CoverArtAutoMode`**. The other three enums (`GaplessMode`,
@@ -82,7 +111,7 @@ symptom level.
 - **`Player.stream.coverArtRaw`** added (`Stream<CoverArtRaw>`). Always
   emits — opt-out only affects the default `extras['artBytes']` PNG.
 
-### CORE — internal symmetry fixes (review pass 2)
+### CORE — internal symmetry fixes
 
 - **`setShuffle` setter order swap**: was `_updateField` → `_prop` →
   `_command`, now matches every other setter with `_prop` → `_command`
@@ -115,9 +144,11 @@ symptom level.
   Root-cause fix for the class of bugs that produced the silent
   `_completedCtrl` and `_bufferingCtrl` regressions in 0.0.9.
 
-- **Cover-art pipeline split** into `CoverArtExtractor` (FFI-only,
-  `screenshot-raw video` capture) and `CoverArtProcessor` (`dart:ui` only,
-  BGRA → PNG resize). Stateless, testable in isolation.
+- **Cover-art pipeline reduced to a single FFI helper**
+  ([CoverArtExtractor]) that reads the file's embedded picture bytes
+  via the `embedded-cover-art-data` mpv property. The wrapper does no
+  decoding, no resize, no re-encoding, no filesystem I/O — the bytes
+  are forwarded as-is on `Player.stream.coverArtRaw`.
 
 - **`_pendingPlay` race fixed at the root.** The shared field that caused
   rapid `open(A, play:true)` + `open(B, play:false)` calls to race on
@@ -129,6 +160,70 @@ symptom level.
 - **File rename:** `lib/src/mpv_audio_kit.dart` → `lib/src/library_loader.dart`
   to disambiguate from the public entry point at `lib/mpv_audio_kit.dart`.
 
+### CORE — runtime correctness
+
+- **Fixed (P0): `MPV_FORMAT_INT64` property-change events were silently
+  dropped by the event isolate's dispatch switch.** Only `Double` /
+  `Flag` / `String` had branches; `Int64` events fell through to the
+  unhandled tail and never reached the registry. Symptom: the four
+  `MpvIntSpec` properties (`demuxer-max-bytes`,
+  `demuxer-readahead-secs`, `demuxer-max-back-bytes`,
+  `audio-samplerate`) only ever showed their initial-default value on
+  `Player.stream` because the optimistic state update covered the
+  setter path but observer-driven changes never arrived. Most visible
+  on `state.audioSampleRate`, which is RW but mpv emits autonomously
+  after every audio reconfig — the field stayed at `0` for the
+  lifetime of the player. `event_isolate.dart` now handles all four
+  scalar formats; an integration test in
+  `test/runtime/player_runtime_test.dart` is the regression guard.
+
+- **Refactor: `MPV_FORMAT_NODE` now used for natively-structured
+  properties** (`playlist`, `metadata`, `audio-device-list`,
+  `demuxer-cache-state`, `audio-params`, `audio-out-params`). Previously
+  observed as `MPV_FORMAT_STRING` and parsed via `jsonDecode` in Dart.
+  Switching to NODE removes one string allocation + one parse per
+  property change and preserves int64 sample-rate precision (was
+  round-tripping through string conversion). The wire-side pipeline
+  inside `event_isolate.dart` decodes the recursive `mpv_node` tree
+  into native Dart `Map<String, dynamic>` / `List<dynamic>` / scalar /
+  `Uint8List` once at the isolate boundary.
+
+- **Refactor: `audio-params` and `audio-out-params` collapsed from
+  5 + 5 sub-property observers to 1 + 1 NODE_MAP observers.** The
+  `_bindAggregate` aggregator on `audio-out-params` is gone (the
+  spec emits the full snapshot already); the `audio-params` aggregator
+  shrunk from 7 to 3 source streams (NODE + the two `audio-codec*`
+  siblings mpv keeps separate).
+
+- **Refactor: `MpvDoubleSpec` / `MpvFlagSpec` / `MpvIntSpec` /
+  `MpvStringSpec` quartet collapsed into a single `MpvPropertySpec<T>`
+  with named factory constructors (`.double`, `.flag`, `.int64`,
+  `.string`, `.node`).** The four classes had ~80% identical code, and
+  the duplication was exactly the shape that let the Int64 dispatch
+  bug above slip through. One class with one `parseAndDispatch`
+  pipeline removes that bug class by construction. Internal API only —
+  the call sites in `default_specs.dart` and the test suite were the
+  only consumers.
+
+- **Refactor: removed `lib/src/internal/json_parsers.dart`** (which
+  parsed JSON-string variants of the four properties listed above).
+  Replaced by `lib/src/internal/node_parsers.dart` with the same
+  function names but Map / List inputs.
+
+- **Polish**: extracted `_kTimePosThrottleMs = 33` named constant in
+  `event_isolate.dart` (was a bare `33` literal).
+  `PropertyRegistry.registryReplyIdMax = 10000` documents the
+  reply-id boundary between registry and out-of-registry observers.
+  `_updateField` short-circuits when the reactive dedups the write,
+  saving one `PlayerState` allocation per redundant setter call.
+
+- **Polish: `MpvEventIsolate.events` listener now guards against the
+  shutdown race** — closing the broadcast controller in `stop()` could
+  collide with an in-flight `MpvEventShutdown` add when several
+  players are created and disposed in quick succession (showed up
+  only under the test suite). The listener now skips the add when
+  `_events.isClosed` is true.
+
 ### Build / repo plumbing
 
 - Added `freezed_annotation: ^3.1.0` (runtime dep) and
@@ -138,9 +233,72 @@ symptom level.
 - `*.freezed.dart` / `*.g.dart` are gitignored; `.pubignore` retains them
   so they ship inside the published tarball. Run `dart run build_runner build`
   before `dart pub publish` (or use `scripts/publish.sh` which chains both).
-- New `test/` directory with 44 unit tests covering `ReactiveProperty`,
-  `PropertyRegistry`, the default spec list (every mpv property
-  smoke-tested), and enum round-trips.
+- **Test suite expanded to ~198 tests** across `test/reactive/`,
+  `test/internal/`, `test/models/`, `test/utils/`, `test/event_isolate/`
+  (new — `decodeMpvNode` synthetic tree decoder), `test/cover/` (new —
+  BGRA → PNG round-trip with stride padding + cancellation),
+  `test/runtime/` (new — real-libmpv smoke tests gated on macOS / Linux
+  with a 44 KB sine WAV fixture in `test/fixtures/`).
+### CORE — new observable mpv properties
+
+- **`audio-output-state`** — exposes mpv's audio-output lifecycle as
+  a typed `closed | initializing | active | failed` enum on
+  `Player.stream.audioOutputState` and `state.audioOutputState`. The
+  wrapper surfaces a typed `MpvLogError` on `Player.stream.error` the
+  moment the state reaches `failed`, replacing the previous 1-second
+  delayed sanity check on `audio-out-params/format` (which had race
+  conditions on slow-init audio backends and on rapid file
+  unload/reload).
+
+- **`embedded-cover-art-data`** + **`embedded-cover-art-mime`** —
+  return the original codec bytes (PNG / JPEG / WEBP / BMP / GIF) of
+  the file's attached_pic stream, with the matching MIME type.
+  Replaces the previous BGRA-via-`screenshot-raw video` capture
+  pipeline: no decode, no pixel format conversion, no alpha
+  correction, no re-encode. The change events fire on every file
+  load, so observers see new artwork without polling.
+
+### BREAKING — cover-art API simplified
+
+The wrapper no longer processes cover art, no longer mutates the
+[Playlist]/[Media] graph after a file load, and no longer touches the
+filesystem for cover output. The full pipeline is now: mpv emits the
+embedded codec bytes → wrapper reads them → wrapper emits a
+[CoverArtRaw] on `Player.stream.coverArtRaw`. That's it.
+
+- **`CoverArtRaw`** is now a simple data class with `bytes`
+  (`Uint8List` of the original codec bytes — PNG / JPEG / WEBP / BMP /
+  GIF) and `mimeType`. No width / height / stride / isContiguous, no
+  BGRA pixel buffer.
+- **`Player.stream.coverArtRaw`** emits codec bytes straight from the
+  source file. Hand them to `Image.memory(raw.bytes)` for in-app
+  rendering — Flutter dispatches on magic bytes, no decode helper
+  needed.
+- **`PlayerConfiguration.processCoverArt` is removed.** The wrapper no
+  longer does opt-in/opt-out resize-to-PNG; it just emits the bytes.
+  Apps that want a downscaled PNG run their own
+  `dart:ui.instantiateImageCodec` pipeline.
+- **`playlist.medias[i].extras` is no longer mutated by the wrapper.**
+  The previous side-effect that injected `'artBytes'`, `'artUri'`, and
+  `'cover'` keys on every file load is gone — `Media` instances are
+  now stable across track transitions, exactly as the consumer
+  constructed them. Apps that relied on those keys must migrate to the
+  cover stream:
+  ```dart
+  player.stream.coverArtRaw.listen((raw) {
+    setState(() => _cover = raw);
+  });
+  // …
+  if (_cover != null) Image.memory(_cover!.bytes);
+  ```
+- **`CoverArtProcessor` is removed.** Was an opinionated 800px PNG
+  re-encoder used internally by the previous `processCoverArt` path.
+  Apps that want resize / re-encode now do it directly with `dart:ui`
+  (≈30 lines, mirrors what the helper used to do).
+- **Video-frame cover extraction is no longer supported.** The
+  package is audio-only: only the file's embedded attached_pic is
+  surfaced as cover art. Files without an embedded cover yield no
+  emission on `coverArtRaw`.
 
 ## [0.0.9] - 27-04-2026
 

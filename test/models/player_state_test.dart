@@ -50,9 +50,9 @@ void main() {
           reason: 'matches mpv default `gapless-audio=weak`');
       expect(s.replayGainMode, ReplayGainMode.no);
       expect(s.cacheMode, CacheMode.auto);
-      expect(s.audioDisplay, AudioDisplayMode.embeddedFirst,
+      expect(s.audioDisplayMode, AudioDisplayMode.embeddedFirst,
           reason: 'matches mpv default `audio-display=embedded-first`');
-      expect(s.coverArtAuto, CoverArtAutoMode.no,
+      expect(s.coverArtAutoMode, CoverArtAutoMode.no,
           reason:
               'library default is `no` (mpv default would be `exact`); '
               'we disable to avoid implicit file scanning');

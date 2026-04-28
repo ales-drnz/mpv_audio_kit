@@ -4,36 +4,19 @@
 
 import 'dart:typed_data';
 
-/// Raw cover-art payload extracted from mpv via `screenshot-raw video`.
+/// Raw cover-art payload extracted from the currently loaded file.
 ///
-/// Surfaced on `Player.stream.coverArtRaw` for consumers that want to do
-/// their own image processing (resize, format conversion, color-space
-/// adjustment, …) instead of the library's default 800px BGRA → PNG path.
-///
-/// Pixel format is mpv's `bgra8888`. The buffer may have row stride padding
-/// — always honour [stride] when iterating row-by-row, do not assume
-/// `stride == width * 4`.
+/// [bytes] holds the original codec data (PNG / JPEG / WEBP / BMP /
+/// GIF) exactly as it was embedded in the audio file's attached
+/// picture stream. Consumers can hand the bytes directly to
+/// `Image.memory(bytes)` or `dart:ui.instantiateImageCodec`.
 class CoverArtRaw {
-  const CoverArtRaw({
-    required this.bytes,
-    required this.width,
-    required this.height,
-    required this.stride,
-  });
+  const CoverArtRaw({required this.bytes, required this.mimeType});
 
-  /// Raw pixel buffer. Length is `stride * height` bytes.
+  /// The raw file content (e.g. PNG bytes starting with `\x89PNG`).
   final Uint8List bytes;
 
-  /// Image width in pixels.
-  final int width;
-
-  /// Image height in pixels.
-  final int height;
-
-  /// Row stride in bytes — ≥ `width * 4` and possibly larger if mpv
-  /// over-aligned the buffer for SIMD writes.
-  final int stride;
-
-  /// Whether the buffer is densely packed (no row padding).
-  bool get isContiguous => stride == width * 4;
+  /// MIME type — `image/png`, `image/jpeg`, `image/webp`, `image/bmp`,
+  /// or `image/gif`.
+  final String mimeType;
 }

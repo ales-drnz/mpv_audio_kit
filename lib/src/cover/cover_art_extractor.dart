@@ -10,79 +10,43 @@ import 'package:ffi/ffi.dart';
 import '../mpv_bindings.dart';
 import 'cover_art_raw.dart';
 
-/// Pure-FFI helper that captures the current video frame from an mpv handle
-/// as a [CoverArtRaw] (BGRA pixel buffer + dimensions + stride).
+/// Pure-FFI helper that captures the embedded cover art of the
+/// currently loaded file as a [CoverArtRaw] (codec bytes + MIME type).
 ///
 /// Stateless: the player owns the mpv handle and decides when to call
-/// [capture] (typically right after `MPV_EVENT_FILE_LOADED`). All `dart:ui`
-/// processing lives in [CoverArtProcessor] so this layer can be exercised
-/// without a Flutter engine.
+/// [capture] (typically right after `MPV_EVENT_FILE_LOADED`).
 abstract final class CoverArtExtractor {
   CoverArtExtractor._();
 
-  /// Captures the current video frame via mpv's `screenshot-raw video`
-  /// command. Returns `null` when:
-  /// - the file has no video / cover-art track (`vid == 'no' | '0'`),
-  /// - mpv refuses the command,
-  /// - the returned node is not a NodeMap (mpv internal error).
+  /// Reads the bytes of the file's embedded cover art via the
+  /// `embedded-cover-art-data` and `embedded-cover-art-mime` mpv
+  /// properties. Returns `null` when the loaded file has no embedded
+  /// cover.
   ///
-  /// Synchronous: the FFI call is fast enough to run on the main isolate
-  /// alongside the property-change burst that follows file-loaded. The
-  /// actual decode/resize work happens later in [CoverArtProcessor].
+  /// The returned bytes are the original PNG / JPEG / … as embedded —
+  /// no decode, no pixel format conversion.
   static CoverArtRaw? capture(
     MpvLibrary lib,
     Pointer<MpvHandle> handle,
   ) {
-    final vid = _getPropString(lib, handle, 'vid');
-    if (vid == null || vid == 'no' || vid == '0') {
-      return null;
-    }
-
     final result = calloc<MpvNode>();
-    final args = ['screenshot-raw', 'video'];
-
     try {
       return using<CoverArtRaw?>((arena) {
-        final argPtrs = arena.allocate<Pointer<Utf8>>(
-            (args.length + 1) * sizeOf<Pointer<Utf8>>());
-        for (var i = 0; i < args.length; i++) {
-          argPtrs[i] = args[i].toNativeUtf8(allocator: arena);
-        }
-        argPtrs[args.length] = nullptr;
-
-        final res = lib.mpvCommandRet(handle, argPtrs, result);
-        if (res < 0) return null;
-        if (result.ref.format != MpvFormat.mpvFormatNodeMap) return null;
-
-        int? w, h, stride;
-        Uint8List? rawBytes;
-
-        final map = result.ref.u.list;
-        for (var i = 0; i < map.ref.num; i++) {
-          final key = map.ref.keys[i].toDartString();
-          final val = map.ref.values[i];
-          switch (key) {
-            case 'w' when val.format == MpvFormat.mpvFormatInt64:
-              w = val.u.int64;
-            case 'h' when val.format == MpvFormat.mpvFormatInt64:
-              h = val.u.int64;
-            case 'stride' when val.format == MpvFormat.mpvFormatInt64:
-              stride = val.u.int64;
-            case 'data' when val.format == MpvFormat.mpvFormatByteArray:
-              // Copy out of mpv's owned buffer immediately — the buffer is
-              // freed by `mpvFreeNodeContents` below and reusing it after
-              // would be a use-after-free.
-              rawBytes = Uint8List.fromList(val.u.ba.ref.data
-                  .cast<Uint8>()
-                  .asTypedList(val.u.ba.ref.size));
-          }
-        }
-
-        if (w == null || h == null || stride == null || rawBytes == null) {
-          return null;
-        }
-        return CoverArtRaw(
-            bytes: rawBytes, width: w, height: h, stride: stride);
+        final propName =
+            'embedded-cover-art-data'.toNativeUtf8(allocator: arena);
+        final rc = lib.mpvGetProperty(
+            handle, propName, MpvFormat.mpvFormatNode, result.cast());
+        if (rc < 0) return null;
+        if (result.ref.format != MpvFormat.mpvFormatByteArray) return null;
+        final ba = result.ref.u.ba.ref;
+        if (ba.size <= 0) return null;
+        // Copy out of mpv-owned memory before mpvFreeNodeContents
+        // releases it in the outer `finally`.
+        final bytes = Uint8List.fromList(
+            ba.data.cast<Uint8>().asTypedList(ba.size));
+        final mime = _getPropString(lib, handle, 'embedded-cover-art-mime') ??
+            'application/octet-stream';
+        return CoverArtRaw(bytes: bytes, mimeType: mime);
       });
     } finally {
       lib.mpvFreeNodeContents(result);

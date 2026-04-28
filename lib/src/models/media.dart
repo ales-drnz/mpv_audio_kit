@@ -30,10 +30,9 @@ part 'media.freezed.dart';
 /// );
 /// ```
 ///
-/// **0.1.0 breaking change:** equality now considers all fields ([uri], [extras]
-/// and [httpHeaders]). Previously only [uri] was compared. This is intentional
-/// — when [extras] changes (e.g. cover art is attached after load), the
-/// containing [Playlist] should be observably different.
+/// Equality considers all fields ([uri], [extras] and [httpHeaders]) so two
+/// instances that differ in any of them sort and compare distinctly — useful
+/// when consumers diff playlists for re-render decisions.
 @freezed
 abstract class Media with _$Media {
   const factory Media(

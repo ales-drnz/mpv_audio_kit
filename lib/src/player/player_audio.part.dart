@@ -60,7 +60,7 @@ mixin _AudioModule on _PlayerBase {
 
   /// Enables or disables gapless playback. See [GaplessMode] for the
   /// available variants.
-  Future<void> setGaplessPlayback(GaplessMode mode) async {
+  Future<void> setGaplessMode(GaplessMode mode) async {
     _checkNotDisposed();
     _prop('gapless-audio', mode.mpvValue);
     _updateField(
@@ -69,7 +69,7 @@ mixin _AudioModule on _PlayerBase {
 
   /// Configures ReplayGain normalization. See [ReplayGainMode] for the
   /// available variants.
-  Future<void> setReplayGain(ReplayGainMode mode) async {
+  Future<void> setReplayGainMode(ReplayGainMode mode) async {
     _checkNotDisposed();
     _prop('replaygain', mode.mpvValue);
     _updateField((s) => s.copyWith(replayGainMode: mode),
@@ -139,7 +139,7 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Replaces the entire audio filter chain with [filters].
-  Future<void> setAudioFilters(List<AudioFilter> filters) async {
+  Future<void> setActiveFilters(List<AudioFilter> filters) async {
     _checkNotDisposed();
     final afString = filters.isEmpty ? '' : filters.map((f) => f.value).join(',');
     _prop('af', afString);
@@ -167,7 +167,7 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Removes all active audio filters.
-  Future<void> clearAudioFilters() => setAudioFilters([]);
+  Future<void> clearAudioFilters() => setActiveFilters([]);
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
@@ -180,7 +180,7 @@ mixin _AudioModule on _PlayerBase {
     _checkNotDisposed();
     _prop('audio-display', mode.mpvValue);
     _updateField(
-        (s) => s.copyWith(audioDisplay: mode), _reactives.audioDisplay, mode);
+        (s) => s.copyWith(audioDisplayMode: mode), _reactives.audioDisplayMode, mode);
   }
 
   /// Controls whether mpv automatically loads external cover art files.
@@ -189,16 +189,14 @@ mixin _AudioModule on _PlayerBase {
     _checkNotDisposed();
     _prop('cover-art-auto', mode.mpvValue);
     _updateField(
-        (s) => s.copyWith(coverArtAuto: mode), _reactives.coverArtAuto, mode);
+        (s) => s.copyWith(coverArtAutoMode: mode), _reactives.coverArtAutoMode, mode);
   }
 
   /// Sets how long (in seconds) an image frame (e.g. cover art) is held as a
-  /// displayable video frame after the file is loaded.
-  ///
-  /// Pass `'inf'` (default) to keep the frame alive indefinitely — required
-  /// when you want to extract cover art at any point after loading via
-  /// the `screenshot-raw` command. Pass `'0'` if you never extract cover art
-  /// and want to minimise memory.
+  /// displayable video frame after the file is loaded. Pass `'inf'`
+  /// (default) to keep the frame alive indefinitely or `'0'` to drop it as
+  /// soon as audio playback starts. Mirrors mpv's
+  /// `--image-display-duration` option.
   Future<void> setImageDisplayDuration(String duration) async {
     _checkNotDisposed();
     _prop('image-display-duration', duration);

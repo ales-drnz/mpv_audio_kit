@@ -36,7 +36,8 @@ export 'src/models/enums.dart'
         ReplayGainMode,
         AudioDisplayMode,
         CoverArtAutoMode,
-        CacheMode;
+        CacheMode,
+        AudioOutputState;
 export 'src/models/mpv_log_entry.dart' show MpvLogEntry;
 export 'src/models/mpv_hook_event.dart' show MpvHookEvent;
 export 'src/models/mpv_prefetch_state.dart' show MpvPrefetchState;

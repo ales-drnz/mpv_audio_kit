@@ -103,7 +103,7 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.0.0")
 }
 
-val MPV_RELEASE_VERSION = "libmpv-r4"
+val MPV_RELEASE_VERSION = "libmpv-r5"
 val MPV_BASE_URL = "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}"
 
 val downloadMpvTask = tasks.register("downloadMpvLibraries") {

@@ -14,8 +14,9 @@ import 'dart:async';
 /// The [update] method deduplicates writes — a write of the same value (by
 /// `==`) is a no-op and does not emit on the stream. This is the primary
 /// reason this class exists: it removes the per-call-site burden of "did the
-/// value actually change?" branching that the previous handler-switch pattern
-/// repeatedly got wrong (bugs fixed in 0.0.9: `_completedCtrl`, `_bufferingCtrl`).
+/// value actually change?" branching, so a setter that updates state
+/// optimistically can write unconditionally and trust that streams stay
+/// quiet on no-ops.
 class ReactiveProperty<T> {
   /// Creates a [ReactiveProperty] seeded with [initial] as its current value.
   ReactiveProperty(T initial) : _value = initial;

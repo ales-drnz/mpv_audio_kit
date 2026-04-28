@@ -27,6 +27,17 @@ import 'mpv_property_spec.dart';
 class PropertyRegistry {
   PropertyRegistry();
 
+  /// Upper bound on reply-IDs the registry assigns in [observeAll].
+  ///
+  /// Out-of-registry observers (the few JSON / aggregate properties wired
+  /// directly in `Player._observe`) must use IDs strictly greater than
+  /// this so nobody can mis-attribute an event to the wrong half of the
+  /// dispatch pipeline. mpv treats the integer as opaque user data, so the
+  /// boundary is purely an internal convention — but it costs ~zero to
+  /// enforce and made the bug class "registry overlapped custom range"
+  /// impossible by construction.
+  static const int registryReplyIdMax = 10000;
+
   final Map<String, MpvPropertySpec> _byName = {};
 
   /// Registers a single spec. Subsequent calls with the same [MpvPropertySpec.name]
@@ -54,8 +65,16 @@ class PropertyRegistry {
   /// Reply IDs are auto-assigned starting at 1, in the same order as
   /// [register] calls. The event isolate doesn't decode reply IDs; mpv
   /// dispatches property changes by name on the receive side, so reply IDs
-  /// are effectively only for diagnostics in `mpv -v` logs.
+  /// are effectively only for diagnostics in `mpv -v` logs. The assigned
+  /// IDs are guaranteed to stay at or below [registryReplyIdMax] so the
+  /// out-of-registry observers (in `Player._observe`) can use a disjoint
+  /// range — see [registryReplyIdMax].
   void observeAll(MpvLibrary lib, Pointer<MpvHandle> handle) {
+    assert(_byName.length <= registryReplyIdMax,
+        'PropertyRegistry has ${_byName.length} specs, exceeding the '
+        'reply-id boundary of $registryReplyIdMax. Bump the boundary or '
+        'split the registry — IDs at or above the boundary are reserved '
+        'for out-of-registry observers wired in Player._observe.');
     var replyId = 1;
     for (final spec in _byName.values) {
       using((arena) {

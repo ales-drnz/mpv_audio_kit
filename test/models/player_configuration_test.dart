@@ -22,19 +22,6 @@ void main() {
       expect(c.logLevel, 'warn');
     });
 
-    test('audioClientName defaults to null', () {
-      const c = PlayerConfiguration();
-      expect(c.audioClientName, isNull);
-    });
-
-    test('processCoverArt defaults to true (cover-art pipeline opt-in)', () {
-      // Regression test for the 0.1.0 breaking-change addition: the
-      // default must remain `true` so existing apps that relied on
-      // implicit PNG generation in `playlist.medias[i].extras` keep
-      // working without code changes.
-      const c = PlayerConfiguration();
-      expect(c.processCoverArt, isTrue);
-    });
   });
 
   group('PlayerConfiguration full-field construction', () {
@@ -43,14 +30,10 @@ void main() {
         autoPlay: true,
         initialVolume: 50.0,
         logLevel: 'debug',
-        audioClientName: 'TestApp',
-        processCoverArt: false,
       );
       expect(c.autoPlay, isTrue);
       expect(c.initialVolume, 50.0);
       expect(c.logLevel, 'debug');
-      expect(c.audioClientName, 'TestApp');
-      expect(c.processCoverArt, isFalse);
     });
   });
 }

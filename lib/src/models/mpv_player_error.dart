@@ -10,9 +10,9 @@ part 'mpv_player_error.freezed.dart';
 
 /// Typed error events from the mpv engine.
 ///
-/// Replaces the old untyped `Stream<String>` error stream with structured
-/// events that let consumers distinguish between playback failures, log-level
-/// errors, and internal engine issues.
+/// Sealed union of structured events that lets consumers distinguish
+/// between playback failures, log-level errors, and internal engine
+/// issues with a `switch`.
 ///
 /// Use a `switch` on the sealed subtypes:
 /// ```dart

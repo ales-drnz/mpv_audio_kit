@@ -13,8 +13,8 @@ class CoverArtPage extends StatelessWidget {
       children: [
         const PropertySectionHeader(title: 'Display'),
         StreamBuilder<AudioDisplayMode>(
-          stream: player.stream.audioDisplay,
-          initialData: player.state.audioDisplay,
+          stream: player.stream.audioDisplayMode,
+          initialData: player.state.audioDisplayMode,
           builder: (context, snap) {
             final val = snap.data ?? AudioDisplayMode.embeddedFirst;
             return DropdownPropertyCard<AudioDisplayMode>(
@@ -39,8 +39,8 @@ class CoverArtPage extends StatelessWidget {
           },
         ),
         StreamBuilder<CoverArtAutoMode>(
-          stream: player.stream.coverArtAuto,
-          initialData: player.state.coverArtAuto,
+          stream: player.stream.coverArtAutoMode,
+          initialData: player.state.coverArtAutoMode,
           builder: (context, snap) {
             final val = snap.data ?? CoverArtAutoMode.no;
             return DropdownPropertyCard<CoverArtAutoMode>(
