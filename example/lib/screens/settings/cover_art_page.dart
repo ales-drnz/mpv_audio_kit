@@ -64,17 +64,31 @@ class CoverArtPage extends StatelessWidget {
         ),
 
         const PropertySectionHeader(title: 'Frame Retention'),
-        StreamBuilder<String>(
+        StreamBuilder<Duration?>(
           stream: player.stream.imageDisplayDuration,
           initialData: player.state.imageDisplayDuration,
           builder: (context, snap) {
-            final val = snap.data ?? 'inf';
+            final val = snap.data;
+            final display = val == null
+                ? 'inf'
+                : '${(val.inMilliseconds / 1000).toStringAsFixed(2)}s';
             return TextPropertyCard(
               title: 'Image Display Duration',
-              subtitle: 'image-display-duration=$val',
+              subtitle: 'image-display-duration=$display',
               icon: Icons.timer_outlined,
-              value: val,
-              onSubmitted: player.setImageDisplayDuration,
+              value: display,
+              onSubmitted: (raw) {
+                final trimmed = raw.trim().toLowerCase();
+                if (trimmed.isEmpty || trimmed == 'inf') {
+                  player.setImageDisplayDuration(null);
+                  return;
+                }
+                final secs = double.tryParse(trimmed.replaceAll('s', ''));
+                if (secs == null) return;
+                player.setImageDisplayDuration(
+                  Duration(microseconds: (secs * 1e6).round()),
+                );
+              },
             );
           },
         ),

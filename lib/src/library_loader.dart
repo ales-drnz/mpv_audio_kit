@@ -3,9 +3,9 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:ffi/ffi.dart';
-import 'package:flutter/foundation.dart';
+import 'package:mpv_audio_kit/src/internal/debug_log.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
-import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
+import 'package:mpv_audio_kit/src/utils/orphan_handle_tracker.dart';
 
 import 'dart:ffi';
 import 'dart:io';
@@ -37,7 +37,22 @@ abstract final class MpvAudioKit {
   /// `mpv.dll` on Windows, and the bundled JNI library on Android.
   /// Pass an explicit path only when shipping a custom libmpv build
   /// alongside your app.
-  static void ensureInitialized({String? libmpv}) {
+  ///
+  /// [hotRestartCleanup] (default: `true`) — enables the file-backed
+  /// orphan-handle tracker that cleans up libmpv handles leaked across
+  /// a Flutter Hot-Restart (the Dart VM is replaced but the native
+  /// process keeps running, so handles allocated by the previous VM
+  /// would otherwise stay alive and block exclusive-mode audio
+  /// devices on Windows). Set to `false` in `dart test` and other
+  /// multi-isolate scenarios where one VM creates the handles and
+  /// another (later) VM in the same process must not touch them —
+  /// the tracker uses the process pid to share state across VMs and
+  /// would mis-attribute handles disposed by the previous VM as
+  /// "orphans".
+  static void ensureInitialized({
+    String? libmpv,
+    bool hotRestartCleanup = true,
+  }) {
     if (_initialized) {
       return;
     }
@@ -45,20 +60,26 @@ abstract final class MpvAudioKit {
     // Apply platform-specific fixes (e.g., LC_NUMERIC for libmpv on Linux/macOS)
     _applyPlatformQuirks();
 
-    NativeReferenceHolder.instance.ensureInitialized((references) {
+    if (!hotRestartCleanup) {
+      _libraryPath = libmpv;
+      _initialized = true;
+      return;
+    }
+
+    OrphanHandleTracker.instance.ensureInitialized((references) {
       if (references.isEmpty) {
         return;
       }
 
-      const tag = 'mpv_audio_kit: NativeReferenceHolder:';
-      debugPrint('$tag Found ${references.length} orphaned reference(s).');
-      debugPrint(
+      const tag = 'mpv_audio_kit: OrphanHandleTracker:';
+      debugLog('$tag Found ${references.length} orphaned reference(s).');
+      debugLog(
           '$tag Disposing over-leaked native pointers (Hot-Restart fix):');
 
       // Load mpv library
       final lib = MpvLibrary.open(libmpv);
       for (final ref in references) {
-        debugPrint(' - Address: ${ref.address}');
+        debugLog(' - Address: ${ref.address}');
         try {
           // We can't use mpv_terminate_destroy because the handle thread might have panicked or exited improperly.
           // Sending the 'quit' command is much safer and lets MPV clean up its own context in its thread.
@@ -69,7 +90,7 @@ abstract final class MpvAudioKit {
             calloc.free(cmd);
           }
         } catch (e) {
-          debugPrint('$tag Error sending quit: $e');
+          debugLog('$tag Error sending quit: $e');
         }
       }
     });
@@ -102,7 +123,7 @@ abstract final class MpvAudioKit {
         setlocale(1, 'C'.toNativeUtf8(allocator: arena));
       });
     } catch (e) {
-      debugPrint('mpv_audio_kit: setlocale failed: $e. '
+      debugLog('mpv_audio_kit: setlocale failed: $e. '
           'mpv might fail to initialize if system locale is not compatible.');
     }
   }

@@ -6,7 +6,9 @@ import '../internal/node_parsers.dart';
 import '../models/audio_device.dart';
 import '../models/audio_filter.dart';
 import '../models/audio_params.dart';
+import '../models/chapter.dart';
 import '../models/mpv_prefetch_state.dart';
+import '../models/mpv_track.dart';
 // player_state.dart re-exports enums.dart, so we don't need a direct import.
 import '../models/player_state.dart';
 import '../utils/duration_seconds.dart';
@@ -96,7 +98,10 @@ class DefaultPropertyReactives {
   final ReactiveProperty<bool> audioStreamSilence =
       ReactiveProperty<bool>(false);
   final ReactiveProperty<bool> audioNullUntimed = ReactiveProperty<bool>(false);
-  final ReactiveProperty<String> audioTrack = ReactiveProperty<String>('auto');
+  final ReactiveProperty<List<MpvTrack>> tracks =
+      ReactiveProperty<List<MpvTrack>>(const []);
+  final ReactiveProperty<MpvTrack?> currentAudioTrack =
+      ReactiveProperty<MpvTrack?>(null);
   final ReactiveProperty<String> audioSpdif = ReactiveProperty<String>('');
   final ReactiveProperty<double> volumeMax = ReactiveProperty<double>(130.0);
   final ReactiveProperty<int> audioSampleRate = ReactiveProperty<int>(0);
@@ -118,13 +123,47 @@ class DefaultPropertyReactives {
       ReactiveProperty<AudioDisplayMode>(AudioDisplayMode.embeddedFirst);
   final ReactiveProperty<CoverArtAutoMode> coverArtAutoMode =
       ReactiveProperty<CoverArtAutoMode>(CoverArtAutoMode.no);
-  final ReactiveProperty<String> imageDisplayDuration =
-      ReactiveProperty<String>('inf');
+  // null = `inf` (mpv's "keep frame indefinitely"); finite Duration is the
+  // hold time. Default mirrors the wrapper's pre-init `image-display-duration=inf`.
+  final ReactiveProperty<Duration?> imageDisplayDuration =
+      ReactiveProperty<Duration?>(null);
 
   // Stream-only — no PlayerState field; exposed through
   // `Player.stream.prefetchState`.
   final ReactiveProperty<MpvPrefetchState> prefetchState =
       ReactiveProperty<MpvPrefetchState>(MpvPrefetchState.idle);
+
+  // Background prefetch toggle. Default mirrors mpv's own default.
+  final ReactiveProperty<bool> prefetchPlaylist = ReactiveProperty<bool>(false);
+
+  // Playback timing extras.
+  final ReactiveProperty<Duration> audioPts =
+      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> timeRemaining =
+      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> playtimeRemaining =
+      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<bool> eofReached = ReactiveProperty<bool>(false);
+
+  // Stream capability.
+  final ReactiveProperty<bool> seekable = ReactiveProperty<bool>(false);
+  final ReactiveProperty<bool> partiallySeekable =
+      ReactiveProperty<bool>(false);
+
+  // Display / file metadata.
+  final ReactiveProperty<String> mediaTitle = ReactiveProperty<String>('');
+  final ReactiveProperty<String> fileFormat = ReactiveProperty<String>('');
+  final ReactiveProperty<int> fileSize = ReactiveProperty<int>(0);
+
+  // Buffering depth (lookahead beyond the current playhead).
+  final ReactiveProperty<Duration> bufferDuration =
+      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<bool> demuxerIdle = ReactiveProperty<bool>(true);
+
+  // Chapter navigation.
+  final ReactiveProperty<int?> currentChapter = ReactiveProperty<int?>(null);
+  final ReactiveProperty<List<Chapter>> chapters =
+      ReactiveProperty<List<Chapter>>(const []);
 }
 
 /// Builds the default list of [MpvPropertySpec]s mapping mpv property names
@@ -301,29 +340,37 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: GaplessMode.fromMpv,
       reduce: (v, s) => s.copyWith(gaplessMode: v),
     ),
+    // ── ReplayGain ───────────────────────────────────────────────────────
+    // The 4 mpv properties (replaygain, replaygain-preamp,
+    // replaygain-fallback, replaygain-clip) reduce into a single
+    // [ReplayGainConfig] field on PlayerState. The granular reactives
+    // exist for per-property dedup at the observer level; the public
+    // `Stream<ReplayGainConfig>` is built lazily in PlayerStream.
     MpvPropertySpec<ReplayGainMode>.string(
       name: 'replaygain',
       reactive: r.replayGainMode,
       parse: ReplayGainMode.fromMpv,
-      reduce: (v, s) => s.copyWith(replayGainMode: v),
+      reduce: (v, s) => s.copyWith(replayGain: s.replayGain.copyWith(mode: v)),
     ),
     MpvPropertySpec<double>.double(
       name: 'replaygain-preamp',
       reactive: r.replayGainPreamp,
       parse: _identityDouble,
-      reduce: (v, s) => s.copyWith(replayGainPreamp: v),
+      reduce: (v, s) =>
+          s.copyWith(replayGain: s.replayGain.copyWith(preamp: v)),
     ),
     MpvPropertySpec<double>.double(
       name: 'replaygain-fallback',
       reactive: r.replayGainFallback,
       parse: _identityDouble,
-      reduce: (v, s) => s.copyWith(replayGainFallback: v),
+      reduce: (v, s) =>
+          s.copyWith(replayGain: s.replayGain.copyWith(fallback: v)),
     ),
     MpvPropertySpec<bool>.flag(
       name: 'replaygain-clip',
       reactive: r.replayGainClip,
       parse: _identityBool,
-      reduce: (v, s) => s.copyWith(replayGainClip: v),
+      reduce: (v, s) => s.copyWith(replayGain: s.replayGain.copyWith(clip: v)),
     ),
     MpvPropertySpec<double>.double(
       name: 'volume-gain',
@@ -332,36 +379,40 @@ List<MpvPropertySpec> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(volumeGain: v),
     ),
 
-    // ── Cache / network ──────────────────────────────────────────────────
+    // ── Cache ────────────────────────────────────────────────────────────
+    // The 5 mpv cache properties reduce into a single [CacheConfig]
+    // field on PlayerState. Granular reactives exist for per-property
+    // dedup; the public `Stream<CacheConfig>` is aggregated lazily in
+    // PlayerStream.
     MpvPropertySpec<CacheMode>.string(
       name: 'cache',
       reactive: r.cacheMode,
       parse: CacheMode.fromMpv,
-      reduce: (v, s) => s.copyWith(cacheMode: v),
+      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(mode: v)),
     ),
     MpvPropertySpec<Duration>.double(
       name: 'cache-secs',
       reactive: r.cacheSecs,
       parse: _toDuration,
-      reduce: (v, s) => s.copyWith(cacheSecs: v),
+      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(secs: v)),
     ),
     MpvPropertySpec<bool>.flag(
       name: 'cache-on-disk',
       reactive: r.cacheOnDisk,
       parse: _identityBool,
-      reduce: (v, s) => s.copyWith(cacheOnDisk: v),
+      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(onDisk: v)),
     ),
     MpvPropertySpec<bool>.flag(
       name: 'cache-pause',
       reactive: r.cachePause,
       parse: _identityBool,
-      reduce: (v, s) => s.copyWith(cachePause: v),
+      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(pause: v)),
     ),
     MpvPropertySpec<Duration>.double(
       name: 'cache-pause-wait',
       reactive: r.cachePauseWait,
       parse: _toDuration,
-      reduce: (v, s) => s.copyWith(cachePauseWait: v),
+      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(pauseWait: v)),
     ),
     MpvPropertySpec<int>.int64(
       name: 'demuxer-max-bytes',
@@ -431,11 +482,21 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: _identityBool,
       reduce: (v, s) => s.copyWith(audioNullUntimed: v),
     ),
-    MpvPropertySpec<String>.string(
-      name: 'aid',
-      reactive: r.audioTrack,
-      parse: _identityString,
-      reduce: (v, s) => s.copyWith(audioTrack: v),
+    // Track inventory + currently-active audio track. mpv exposes these
+    // as structured node trees; the typed [MpvTrack] model lets the
+    // consumer build a "switch audio track" UI without touching `aid`
+    // strings.
+    MpvPropertySpec<List<MpvTrack>>.node(
+      name: 'track-list',
+      reactive: r.tracks,
+      parse: parseTrackListNode,
+      reduce: (v, s) => s.copyWith(tracks: v),
+    ),
+    MpvPropertySpec<MpvTrack?>.node(
+      name: 'current-tracks/audio',
+      reactive: r.currentAudioTrack,
+      parse: parseCurrentAudioTrackNode,
+      reduce: (v, s) => s.copyWith(currentAudioTrack: v),
     ),
     MpvPropertySpec<String>.string(
       name: 'audio-spdif',
@@ -501,10 +562,10 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: CoverArtAutoMode.fromMpv,
       reduce: (v, s) => s.copyWith(coverArtAutoMode: v),
     ),
-    MpvPropertySpec<String>.string(
+    MpvPropertySpec<Duration?>.string(
       name: 'image-display-duration',
       reactive: r.imageDisplayDuration,
-      parse: _identityString,
+      parse: _parseImageDisplayDuration,
       reduce: (v, s) => s.copyWith(imageDisplayDuration: v),
     ),
 
@@ -523,6 +584,101 @@ List<MpvPropertySpec> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(audioOutputState: v),
       onChange: onAudioOutputState,
     ),
+    MpvPropertySpec<bool>.flag(
+      name: 'prefetch-playlist',
+      reactive: r.prefetchPlaylist,
+      parse: _identityBool,
+      reduce: (v, s) => s.copyWith(prefetchPlaylist: v),
+    ),
+
+    // ── Playback timing extras ───────────────────────────────────────────
+    MpvPropertySpec<Duration>.double(
+      name: 'audio-pts',
+      reactive: r.audioPts,
+      parse: _toDuration,
+      reduce: (v, s) => s.copyWith(audioPts: v),
+    ),
+    MpvPropertySpec<Duration>.double(
+      name: 'time-remaining',
+      reactive: r.timeRemaining,
+      parse: _toDuration,
+      reduce: (v, s) => s.copyWith(timeRemaining: v),
+    ),
+    MpvPropertySpec<Duration>.double(
+      name: 'playtime-remaining',
+      reactive: r.playtimeRemaining,
+      parse: _toDuration,
+      reduce: (v, s) => s.copyWith(playtimeRemaining: v),
+    ),
+    MpvPropertySpec<bool>.flag(
+      name: 'eof-reached',
+      reactive: r.eofReached,
+      parse: _identityBool,
+      reduce: (v, s) => s.copyWith(eofReached: v),
+    ),
+
+    // ── Stream capability ────────────────────────────────────────────────
+    MpvPropertySpec<bool>.flag(
+      name: 'seekable',
+      reactive: r.seekable,
+      parse: _identityBool,
+      reduce: (v, s) => s.copyWith(seekable: v),
+    ),
+    MpvPropertySpec<bool>.flag(
+      name: 'partially-seekable',
+      reactive: r.partiallySeekable,
+      parse: _identityBool,
+      reduce: (v, s) => s.copyWith(partiallySeekable: v),
+    ),
+
+    // ── Display / file metadata ──────────────────────────────────────────
+    MpvPropertySpec<String>.string(
+      name: 'media-title',
+      reactive: r.mediaTitle,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(mediaTitle: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'file-format',
+      reactive: r.fileFormat,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(fileFormat: v),
+    ),
+    MpvPropertySpec<int>.int64(
+      name: 'file-size',
+      reactive: r.fileSize,
+      parse: _identityInt,
+      reduce: (v, s) => s.copyWith(fileSize: v),
+    ),
+
+    // ── Buffering depth ──────────────────────────────────────────────────
+    MpvPropertySpec<Duration>.double(
+      name: 'demuxer-cache-duration',
+      reactive: r.bufferDuration,
+      parse: _toDuration,
+      reduce: (v, s) => s.copyWith(bufferDuration: v),
+    ),
+    MpvPropertySpec<bool>.flag(
+      name: 'demuxer-cache-idle',
+      reactive: r.demuxerIdle,
+      parse: _identityBool,
+      reduce: (v, s) => s.copyWith(demuxerIdle: v),
+    ),
+
+    // ── Chapter navigation ───────────────────────────────────────────────
+    // mpv emits `chapter = -1` when no chapter is active; map to `null`.
+    MpvPropertySpec<int?>.int64(
+      name: 'chapter',
+      reactive: r.currentChapter,
+      parse: (raw) => raw < 0 ? null : raw,
+      reduce: (v, s) => s.copyWith(currentChapter: v),
+    ),
+    MpvPropertySpec<List<Chapter>>.node(
+      name: 'chapter-list',
+      reactive: r.chapters,
+      parse: parseChapterListNode,
+      reduce: (v, s) => s.copyWith(chapters: v),
+    ),
   ];
 }
 
@@ -538,3 +694,13 @@ List<AudioFilter> _parseAudioFilters(String raw) => raw
     .where((e) => e.isNotEmpty)
     .map((e) => AudioFilter.custom(e))
     .toList();
+
+/// `image-display-duration` parser: mpv emits `'inf'` for "keep
+/// indefinitely", a numeric string (seconds) otherwise. Maps to
+/// `Duration?` with `null = inf`. Unparseable values fall back to `null`.
+Duration? _parseImageDisplayDuration(String raw) {
+  if (raw == 'inf' || raw.isEmpty) return null;
+  final secs = double.tryParse(raw);
+  if (secs == null) return null;
+  return secondsToDuration(secs);
+}

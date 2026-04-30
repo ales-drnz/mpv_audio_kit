@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 void main() {
@@ -36,8 +36,8 @@ void main() {
       expect(s.duration, Duration.zero);
       expect(s.buffer, Duration.zero);
       expect(s.audioDelay, Duration.zero);
-      expect(s.cacheSecs, const Duration(seconds: 1));
-      expect(s.cachePauseWait, const Duration(seconds: 1));
+      expect(s.cache.secs, const Duration(seconds: 1));
+      expect(s.cache.pauseWait, const Duration(seconds: 1));
       expect(s.networkTimeout, const Duration(seconds: 30));
       expect(s.audioBuffer, const Duration(milliseconds: 200));
     });
@@ -48,14 +48,31 @@ void main() {
       const s = PlayerState();
       expect(s.gaplessMode, GaplessMode.weak,
           reason: 'matches mpv default `gapless-audio=weak`');
-      expect(s.replayGainMode, ReplayGainMode.no);
-      expect(s.cacheMode, CacheMode.auto);
+      expect(s.replayGain.mode, ReplayGainMode.no);
+      expect(s.cache.mode, CacheMode.auto);
       expect(s.audioDisplayMode, AudioDisplayMode.embeddedFirst,
           reason: 'matches mpv default `audio-display=embedded-first`');
       expect(s.coverArtAutoMode, CoverArtAutoMode.no,
           reason:
               'library default is `no` (mpv default would be `exact`); '
               'we disable to avoid implicit file scanning');
+    });
+
+    test('replayGain + cache config defaults aggregate the granular fields',
+        () {
+      const s = PlayerState();
+      expect(s.replayGain, const ReplayGainConfig());
+      expect(s.replayGain.mode, ReplayGainMode.no);
+      expect(s.replayGain.preamp, 0.0);
+      expect(s.replayGain.clip, isFalse);
+      expect(s.replayGain.fallback, 0.0);
+
+      expect(s.cache, const CacheConfig());
+      expect(s.cache.mode, CacheMode.auto);
+      expect(s.cache.secs, const Duration(seconds: 1));
+      expect(s.cache.onDisk, isFalse);
+      expect(s.cache.pause, isTrue);
+      expect(s.cache.pauseWait, const Duration(seconds: 1));
     });
 
     test('audioBitrate is null by default (unavailable, NOT zero)', () {
@@ -82,6 +99,11 @@ void main() {
       const s = PlayerState();
       expect(s.audioDevices.length, 1);
       expect(s.audioDevices.first.name, 'auto');
+    });
+
+    test('prefetchPlaylist defaults to false (mpv 0.41 default)', () {
+      const s = PlayerState();
+      expect(s.prefetchPlaylist, isFalse);
     });
   });
 

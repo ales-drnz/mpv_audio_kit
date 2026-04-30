@@ -278,7 +278,9 @@ class _PlaybackTabState extends State<PlaybackTab> {
                                 ? Icons.pause_rounded
                                 : Icons.play_arrow_rounded,
                           ),
-                          onPressed: () => widget.player.playOrPause(),
+                          onPressed: () => isPlaying
+                              ? widget.player.pause()
+                              : widget.player.play(),
                         ),
                       );
                     },

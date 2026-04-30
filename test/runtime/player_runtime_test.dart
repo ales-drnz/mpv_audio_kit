@@ -8,7 +8,7 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 /// Locates the libmpv shared library bundled with the package for the host
@@ -71,7 +71,7 @@ void main() {
           'or follow the test fixtures README.');
       return;
     }
-    MpvAudioKit.ensureInitialized(libmpv: lib);
+    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
   });
 
   // Note: this entire group uses a SINGLE Player instance. flutter_test on
@@ -85,7 +85,7 @@ void main() {
   group('Player runtime — shared instance', () {
     late Player player;
 
-    setUpAll(() {
+    setUpAll(() async {
       player = Player(
           configuration: const PlayerConfiguration(
         autoPlay: false,
@@ -93,7 +93,7 @@ void main() {
       ));
       // Avoid a real audio device in CI / sandbox. Keep mpv silent so the
       // log channel is uncluttered during tests.
-      player.setRawProperty('ao', 'null');
+      await player.setRawProperty('ao', 'null');
     });
 
     tearDownAll(() async {
@@ -168,7 +168,7 @@ void main() {
       try {
         // Set to a non-default value (50 MiB). mpv will fire an
         // observer-driven change event with MPV_FORMAT_INT64.
-        player.setRawProperty('demuxer-max-bytes', '50MiB');
+        await player.setRawProperty('demuxer-max-bytes', '50MiB');
 
         final value = await completer.future
             .timeout(const Duration(seconds: 3), onTimeout: () {
@@ -201,10 +201,77 @@ void main() {
       // The previous test left a file loaded with `ao=null`. The null
       // AO is a valid output that succeeds `ao_init_best()`, so the
       // property must reach `active`.
-      final raw = player.getRawProperty('audio-output-state');
+      final raw = await player.getRawProperty('audio-output-state');
       expect(raw, 'active');
       expect(player.state.audioOutputState, AudioOutputState.active);
     }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test(
+        'multitrack MKA fixture populates state.tracks with 2 audio tracks',
+        () async {
+      // Smoke test: verifies the multitrack MKA fixture is decoded by the
+      // bundled libmpv (FLAC-in-Matroska + multi-track demux). If this
+      // fails, the bundled binary lacks the matroska demuxer / FLAC
+      // decoder and the runtime_extended track tests would fail too.
+      final multitrackPath =
+          '${Directory.current.path}/test/fixtures/multitrack_two_audio.mka';
+      if (!File(multitrackPath).existsSync()) {
+        markTestSkipped('Multitrack fixture missing: $multitrackPath');
+        return;
+      }
+
+      final restartCompleter = Completer<void>();
+      final restartSub = player.stream.seekCompleted.listen((_) {
+        if (!restartCompleter.isCompleted) restartCompleter.complete();
+      });
+      try {
+        await player.open(Media(multitrackPath), play: false);
+        await restartCompleter.future
+            .timeout(const Duration(seconds: 5), onTimeout: () {
+          fail('seekCompleted never fired for multitrack MKA — bundled '
+              'libmpv may lack matroska demuxer / FLAC decoder');
+        });
+      } finally {
+        await restartSub.cancel();
+      }
+
+      final audioTracks =
+          player.state.tracks.where((t) => t.type == 'audio').toList();
+      expect(audioTracks.length, 2,
+          reason:
+              'fixture has 2 audio tracks (440Hz + 880Hz); track-list must '
+              'expose both via the new MpvPropertySpec.node spec');
+      expect(audioTracks.map((t) => t.codec), everyElement('flac'));
+      expect(audioTracks.map((t) => t.lang), containsAll(['eng', 'fra']));
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('chapter MKA fixture populates state.chapters with 3 entries',
+        () async {
+      final chapterPath =
+          '${Directory.current.path}/test/fixtures/with_chapters.mka';
+      if (!File(chapterPath).existsSync()) {
+        markTestSkipped('Chapter fixture missing: $chapterPath');
+        return;
+      }
+
+      // The `chapter-list` observer fires asynchronously, sometimes
+      // after MPV_EVENT_PLAYBACK_RESTART. Wait on the typed stream
+      // rather than checking state right after seekCompleted.
+      await player.open(Media(chapterPath), play: false);
+      final chapters = await _firstWhereWithTimeout(
+        player.stream.chapters,
+        (c) => c.length == 3,
+        description: 'chapter-list with 3 entries from with_chapters.mka',
+      );
+
+      expect(chapters, hasLength(3));
+      expect(chapters[0].title, 'Intro');
+      expect(chapters[1].title, 'Verse');
+      expect(chapters[2].title, 'Outro');
+      expect(chapters[0].time, Duration.zero);
+      expect(chapters[1].time, const Duration(seconds: 1));
+      expect(chapters[2].time, const Duration(seconds: 2));
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test(
         '`embedded-cover-art-data` returns the original codec bytes '
@@ -238,7 +305,7 @@ void main() {
         await restartSub.cancel();
       }
 
-      final mime = player.getRawProperty('embedded-cover-art-mime');
+      final mime = await player.getRawProperty('embedded-cover-art-mime');
       expect(mime, 'image/png',
           reason: 'fixture was muxed with a PNG cover');
     }, timeout: const Timeout(Duration(seconds: 30)));

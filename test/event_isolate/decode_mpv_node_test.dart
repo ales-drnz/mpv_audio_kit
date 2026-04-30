@@ -6,7 +6,7 @@ import 'dart:ffi';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mpv_audio_kit/src/event_isolate.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 

@@ -8,7 +8,11 @@ import 'package:mpv_audio_kit/src/models/playlist.dart';
 import 'package:mpv_audio_kit/src/models/audio_device.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/audio_filter.dart';
+import 'package:mpv_audio_kit/src/models/cache_config.dart';
+import 'package:mpv_audio_kit/src/models/chapter.dart';
 import 'package:mpv_audio_kit/src/models/enums.dart';
+import 'package:mpv_audio_kit/src/models/mpv_track.dart';
+import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
 
 export 'package:mpv_audio_kit/src/models/enums.dart';
 
@@ -117,35 +121,19 @@ abstract class PlayerState with _$PlayerState {
     /// Gapless playback mode.
     @Default(GaplessMode.weak) GaplessMode gaplessMode,
 
-    /// ReplayGain normalization mode.
-    @Default(ReplayGainMode.no) ReplayGainMode replayGainMode,
-
-    /// Pre-amplification in dB for ReplayGain.
-    @Default(0.0) double replayGainPreamp,
-
-    /// Gain applied to files without ReplayGain tags.
-    @Default(0.0) double replayGainFallback,
-
-    /// Whether to allow clipping after ReplayGain.
-    @Default(false) bool replayGainClip,
+    /// ReplayGain configuration aggregate (mode + preamp + clip +
+    /// fallback). Set the whole config atomically via
+    /// [Player.setReplayGain]; modify a single field through
+    /// `state.replayGain.copyWith(...)`.
+    @Default(ReplayGainConfig()) ReplayGainConfig replayGain,
 
     /// Software volume gain in dB.
     @Default(0.0) double volumeGain,
 
-    /// Cache mode.
-    @Default(CacheMode.auto) CacheMode cacheMode,
-
-    /// Target cache duration.
-    @Default(Duration(seconds: 1)) Duration cacheSecs,
-
-    /// Whether to spill cache to disk.
-    @Default(false) bool cacheOnDisk,
-
-    /// Whether to pause for buffering.
-    @Default(true) bool cachePause,
-
-    /// Pre-buffer required before resuming after a stall.
-    @Default(Duration(seconds: 1)) Duration cachePauseWait,
+    /// Cache configuration aggregate (mode + secs + onDisk + pause +
+    /// pauseWait). Set atomically via [Player.setCache]; modify a single
+    /// field through `state.cache.copyWith(...)`.
+    @Default(CacheConfig()) CacheConfig cache,
 
     /// Max bytes the demuxer can cache.
     @Default(_kDemuxerMaxBytesDefault) int demuxerMaxBytes,
@@ -187,8 +175,14 @@ abstract class PlayerState with _$PlayerState {
     /// Whether to fallback to untimed null output.
     @Default(false) bool audioNullUntimed,
 
-    /// Audio output track ID ('auto', 'no', or a number).
-    @Default('auto') String audioTrack,
+    /// All tracks reported by mpv for the current file (audio, video,
+    /// embedded picture, …). Filter by [MpvTrack.type] for a typed
+    /// "audio tracks only" view; switch via [Player.setAudioTrack].
+    @Default(<MpvTrack>[]) List<MpvTrack> tracks,
+
+    /// Currently-active audio track, or `null` when no audio is
+    /// selected. Mirrors mpv's `current-tracks/audio`.
+    MpvTrack? currentAudioTrack,
 
     /// S/PDIF passthrough mode.
     @Default('') String audioSpdif,
@@ -229,12 +223,77 @@ abstract class PlayerState with _$PlayerState {
     /// See [CoverArtAutoMode] for the available variants.
     @Default(CoverArtAutoMode.no) CoverArtAutoMode coverArtAutoMode,
 
-    /// Duration in seconds for which a still image (e.g. cover art) is held
-    /// as a displayable video frame after the file is loaded.
+    /// How long a still image (e.g. cover art) is held as a displayable
+    /// video frame after the file is loaded.
     ///
-    /// `'inf'` keeps the frame alive indefinitely; `'0'` (or any small
-    /// value) drops it as soon as audio playback starts. Mirrors mpv's
-    /// `--image-display-duration` option.
-    @Default('inf') String imageDisplayDuration,
+    /// `null` keeps the frame alive indefinitely (mpv's `inf`);
+    /// `Duration.zero` drops it as soon as audio playback starts. Mirrors
+    /// mpv's `--image-display-duration` option.
+    Duration? imageDisplayDuration,
+
+    /// Whether mpv prefetches the next playlist item in the background.
+    ///
+    /// When `true`, the demuxer for the next track opens before the current
+    /// one finishes, eliminating the file-boundary stall. Observe progress
+    /// via [PlayerStream.prefetchState].
+    @Default(false) bool prefetchPlaylist,
+
+    /// Audio frame timestamp at the playhead. Advances per audio frame
+    /// (more granular than `position`, which mpv updates on a fixed
+    /// schedule) and includes audio driver latency. Useful for
+    /// audio-only sync calculations.
+    @Default(Duration.zero) Duration audioPts,
+
+    /// Time remaining until the file ends, ignoring playback speed.
+    @Default(Duration.zero) Duration timeRemaining,
+
+    /// Time remaining until the file ends, adjusted for playback speed —
+    /// what the listener will actually wait. At 2.0x speed on a 60 s
+    /// remaining file this is 30 s.
+    @Default(Duration.zero) Duration playtimeRemaining,
+
+    /// Whether playback has reached end-of-file. Distinct from
+    /// `completed` (lifecycle flag): `eofReached` mirrors mpv's
+    /// `eof-reached` and disambiguates a natural EOF from a user pause.
+    @Default(false) bool eofReached,
+
+    /// Whether the current stream supports seeking at all (live streams
+    /// often do not).
+    @Default(false) bool seekable,
+
+    /// Whether the stream is partially seekable — only some ranges are
+    /// reachable (typical for HLS / DASH when only a sliding window is
+    /// available).
+    @Default(false) bool partiallySeekable,
+
+    /// Display name for the current track. Falls back to the file name
+    /// when no `title` tag is available. Mirrors mpv's `media-title`.
+    @Default('') String mediaTitle,
+
+    /// Container format (e.g. `mp4`, `m4a`, `flac`, `mp3`). Comma-separated
+    /// list when the demuxer matches multiple formats.
+    @Default('') String fileFormat,
+
+    /// Total stream size in bytes. Zero when unknown (live streams).
+    @Default(0) int fileSize,
+
+    /// Buffered duration ahead of the playhead — `demuxer-cache-duration`.
+    /// Complements [buffer] (which is `demuxer-cache-time`, an absolute
+    /// timestamp): [bufferDuration] is the headroom.
+    @Default(Duration.zero) Duration bufferDuration,
+
+    /// Whether the demuxer thread is idle. `true` while the demuxer has
+    /// no data to fetch (cache full or EOF); `false` while pulling.
+    /// Combined with `pausedForCache` it disambiguates "starved network"
+    /// from "fully cached, sitting idle".
+    @Default(true) bool demuxerIdle,
+
+    /// Index of the active chapter (0-based), or `null` when no chapter
+    /// is active or the file has none. Setter: [Player.setChapter].
+    int? currentChapter,
+
+    /// Chapters in the current file (audiobook / podcast markers).
+    /// Empty list when the file carries no chapter table.
+    @Default(<Chapter>[]) List<Chapter> chapters,
   }) = _PlayerState;
 }

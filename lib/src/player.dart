@@ -6,11 +6,12 @@ import 'dart:async';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
-import 'package:mpv_audio_kit/src/utils/native_reference_holder.dart';
+import 'package:mpv_audio_kit/src/utils/orphan_handle_tracker.dart';
 
 import 'cover/cover_art_extractor.dart';
 import 'cover/cover_art_raw.dart';
 import 'event_isolate.dart';
+import 'internal/audio_output_error.dart';
 import 'internal/lifecycle_transitions.dart';
 import 'internal/node_parsers.dart';
 import 'library_loader.dart';
@@ -18,18 +19,21 @@ import 'mpv_bindings.dart' hide MpvEndFileReason;
 import 'reactive/default_specs.dart';
 import 'reactive/property_registry.dart';
 import 'reactive/reactive_property.dart';
-import 'utils/android_helper.dart';
 import 'utils/duration_seconds.dart';
+import 'utils/uri_resolver.dart';
 
 import 'models/media.dart';
 import 'models/playlist.dart';
 import 'models/audio_device.dart';
 import 'models/audio_filter.dart';
+import 'models/cache_config.dart';
 import 'models/mpv_log_entry.dart';
 import 'models/mpv_hook_event.dart';
 import 'models/mpv_player_error.dart';
+import 'models/mpv_track.dart';
 import 'models/player_configuration.dart';
 import 'models/player_state.dart';
+import 'models/replay_gain_config.dart';
 import 'player_stream.dart';
 
 export 'cover/cover_art_raw.dart';
@@ -86,7 +90,7 @@ class Player extends _PlayerBase
           .join(',');
       _opt('http-header-fields', headers);
     }
-    final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
+    final normalizedUri = await _resolveUri(media.uri);
     if (_disposed) return;
     _mediaCache[normalizedUri] = media;
     final shouldPlay = play ?? configuration.autoPlay;
@@ -96,16 +100,19 @@ class Player extends _PlayerBase
 
   /// Opens a list of [Media] items as the new playlist, optionally starting at [index].
   ///
-  /// If [index] is greater than zero, the player immediately jumps to that
-  /// position after loading the playlist (the first item is loaded briefly then
-  /// replaced — this is imperceptible and is the standard mpv approach).
+  /// Multi-media counterpart of [open] (Dart-canonical `addAll`/`openAll`
+  /// pattern). If [index] is greater than zero, the player immediately
+  /// jumps to that position after loading the playlist (the first item
+  /// is loaded briefly then replaced — this is imperceptible and is the
+  /// standard mpv approach).
   ///
-  /// [index] is clamped to `medias.length - 1`; passing an out-of-range value
-  /// silently falls back to the last entry rather than no-oping like raw mpv.
+  /// [index] is clamped to `medias.length - 1`; passing an out-of-range
+  /// value silently falls back to the last entry rather than no-oping
+  /// like raw mpv.
   ///
   /// As with [open], `pause` is committed globally before `loadfile` so
   /// the property observer drives `state.playing`.
-  Future<void> openPlaylist(List<Media> medias,
+  Future<void> openAll(List<Media> medias,
       {bool? play, int index = 0}) async {
     _checkNotDisposed();
     if (medias.isEmpty) {
@@ -116,17 +123,17 @@ class Player extends _PlayerBase
     _mediaCache.clear();
     for (final m in medias) {
       _mediaCache[m.uri] = m;
-      final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
+      final normalizedUri = await _resolveUri(m.uri);
       if (_disposed) return;
       _mediaCache[normalizedUri] = m;
     }
     final firstNormalizedUri =
-        await AndroidHelper.normalizeUri(medias.first.uri);
+        await _resolveUri(medias.first.uri);
     if (_disposed) return;
     _prop('pause', shouldPlay ? 'no' : 'yes');
     _command(['loadfile', firstNormalizedUri, 'replace']);
     for (final m in medias.skip(1)) {
-      final normalizedUri = await AndroidHelper.normalizeUri(m.uri);
+      final normalizedUri = await _resolveUri(m.uri);
       if (_disposed) return;
       _command(['loadfile', normalizedUri, 'append']);
     }
@@ -135,26 +142,16 @@ class Player extends _PlayerBase
     }
   }
 
-  /// Manually appends a log entry to the wrapper's *internal* log stream
-  /// ([PlayerStream.internalLog]) — useful for tagging consumer-side
-  /// events (e.g. "user pressed retry") into the same stream where
-  /// the wrapper itself emits parse warnings and hook timeouts.
-  ///
-  /// Named `appendLog` to keep it distinct from
-  /// [PlayerStream.internalLog] — this method *injects* a message,
-  /// the stream getter *subscribes* to messages.
-  void appendLog(String message, {String level = 'info'}) {
-    _internalLogCtrl.add(
-        MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
-  }
-
   /// Reads any mpv property as a string.
   ///
   /// **Escape hatch for properties not surfaced by the typed API.** For
   /// observed properties (`volume`, `pause`, `cache-secs`, …), prefer
   /// `player.state.<field>` — the cached value is updated on every
   /// property-change event from mpv and avoids an FFI round-trip.
-  String? getRawProperty(String name) {
+  ///
+  /// Returns `null` if the property doesn't exist or the FFI call
+  /// fails. Throws [StateError] if the player has been disposed.
+  Future<String?> getRawProperty(String name) async {
     _checkNotDisposed();
     return using((arena) {
       final n = name.toNativeUtf8(allocator: arena);
@@ -179,7 +176,9 @@ class Player extends _PlayerBase
   /// the call returning and the cached state catching up. Prefer the
   /// typed setters (`setVolume`, `setCache`, `setReplayGain`, …) when
   /// they exist, both for type-safety and for synchronous state update.
-  void setRawProperty(String name, String value) {
+  ///
+  /// Throws [StateError] if the player has been disposed.
+  Future<void> setRawProperty(String name, String value) async {
     _checkNotDisposed();
     _prop(name, value);
   }
@@ -189,7 +188,9 @@ class Player extends _PlayerBase
   /// **Escape hatch.** Same caveats as [setRawProperty]: prefer the
   /// typed playback / playlist methods (`play`, `pause`, `seek`,
   /// `add`, `jump`, …) when they cover your use case.
-  void sendRawCommand(List<String> args) {
+  ///
+  /// Throws [StateError] if the player has been disposed.
+  Future<void> sendRawCommand(List<String> args) async {
     _checkNotDisposed();
     _command(args);
   }
@@ -262,9 +263,9 @@ abstract class _PlayerBase {
   final StreamController<MpvLogEntry> _logCtrl =
       StreamController<MpvLogEntry>.broadcast();
   // Log stream from the Dart wrapper itself — JSON parse warnings, hook
-  // timeouts, manual `Player.appendLog(...)` injections. Kept disjoint
-  // from `_logCtrl` so consumers can filter wrapper-side noise from
-  // genuine engine messages without inspecting the prefix.
+  // timeouts, etc. Kept disjoint from `_logCtrl` so consumers can filter
+  // wrapper-side noise from genuine engine messages without inspecting
+  // the prefix.
   final StreamController<MpvLogEntry> _internalLogCtrl =
       StreamController<MpvLogEntry>.broadcast();
   final StreamController<MpvHookEvent> _hookCtrl =
@@ -300,16 +301,8 @@ abstract class _PlayerBase {
           if (idle) _updateLifecycle(playing: false, buffering: false);
         },
         onAudioOutputState: (state) {
-          // `audio-output-state` reaches `failed` the moment
-          // `ao_init_best()` returns NULL — surface a typed error so
-          // consumers can react immediately to a silent player.
-          if (state == AudioOutputState.failed && !_errorCtrl.isClosed) {
-            _errorCtrl.add(const MpvLogError(
-              prefix: 'mpv_audio_kit',
-              level: 'error',
-              text: 'Audio output failed to initialize — playback is silent',
-            ));
-          }
+          final err = buildAudioOutputError(state);
+          if (err != null) _errorCtrl.add(err);
         },
       ));
     _registry.observeAll(_lib, _handle);
@@ -348,7 +341,7 @@ abstract class _PlayerBase {
     );
 
     _startEventIsolate();
-    NativeReferenceHolder.instance.add(_handle);
+    OrphanHandleTracker.instance.add(_handle);
   }
 
   // --- Core Lifecycle ---
@@ -397,19 +390,20 @@ abstract class _PlayerBase {
   }
 
   void _handleEvent(MpvIsolateEvent event) {
-    // Defensive early-exit: dispose() awaits `_eventSub.cancel()` before
-    // closing controllers, so an in-flight `_handleEvent` invocation
-    // already cannot land here after teardown. This guard exists so a
-    // future refactor that loosens the dispose ordering can't silently
-    // resurrect "Bad state: Cannot add after close" exceptions on the
-    // event-emitting controllers below.
+    // Single defensive guard for every controller add() below (and inside
+    // any helper invoked from this switch). dispose() flips `_disposed`
+    // BEFORE awaiting `_eventSub.cancel()`, which in turn awaits the
+    // currently-running `_handleEvent` invocation before closing any
+    // controller — so once we pass this check, every `_xCtrl.add(...)`
+    // in this method is guaranteed to land on an open controller. Per-
+    // controller `isClosed` checks would be cruft duplicating this fence.
     if (_disposed) return;
     switch (event) {
       case MpvEventStartFile():
         _updateLifecycle(buffering: true, completed: false);
       case MpvEventFileLoaded():
         // `pause` is set globally via `_prop('pause', ...)` BEFORE the
-        // `loadfile` command in open() / openPlaylist() / jump(). That
+        // `loadfile` command in open() / openAll() / jump(). That
         // path triggers mpv's property observer, so the registry
         // updates `state.playing` and `_reactives.playing` on its own
         // — we don't touch them here. We only clear buffering /
@@ -425,9 +419,7 @@ abstract class _PlayerBase {
         break;
       case MpvEventPlaybackRestart():
         _pollPosition();
-        if (!_seekCompletedCtrl.isClosed) {
-          _seekCompletedCtrl.add(null);
-        }
+        _seekCompletedCtrl.add(null);
       case MpvEndFileEvent(:final reason, :final error):
         final typedReason = MpvEndFileReason.fromValue(reason);
         _endFileCtrl.add(MpvFileEndedEvent(
@@ -492,7 +484,7 @@ abstract class _PlayerBase {
     }
     // Custom out-of-registry handlers for the few properties whose update
     // logic touches more than `(parse → reduce)` (player-side context like
-    // `_mediaCache`, `_state.playlist`, `_state.cacheSecs`, or the
+    // `_mediaCache`, `_state.playlist`, `_state.cache.secs`, or the
     // two-property aggregation behind `playlistMode`).
     switch (name) {
       case 'loop-file':
@@ -536,11 +528,6 @@ abstract class _PlayerBase {
     });
   }
 
-  void _commandString(String cmd) {
-    using((arena) =>
-        _lib.mpvCommandString(_handle, cmd.toNativeUtf8(allocator: arena)));
-  }
-
   /// One-off observe — the registry handles the bulk of properties; this
   /// helper covers the few hand-rolled ones (playlist, metadata, etc.).
   /// Reply IDs are diagnostic-only on the receive side, so we use a high
@@ -575,6 +562,14 @@ abstract class _PlayerBase {
     }
     _hookTimers.clear();
   }
+
+  /// Indirection for the consumer-supplied [UriResolver]; falls back to
+  /// the identity pass-through when no resolver was configured. The
+  /// indirection is the single touchpoint for all 6 call-sites that
+  /// used to call `FlutterUriResolver.normalizeUri` directly — keeps
+  /// platform-specific URI logic out of `lib/src/player.dart`.
+  Future<String> _resolveUri(String uri) =>
+      (configuration.uriResolver ?? defaultUriResolver)(uri);
 
   void _checkNotDisposed() {
     if (_disposed) {
@@ -678,7 +673,7 @@ abstract class _PlayerBase {
 
   void _updateBufferingPercentageFromNode(dynamic raw) {
     try {
-      final pct = parseDemuxerCacheStateNode(raw, _state.cacheSecs);
+      final pct = parseDemuxerCacheStateNode(raw, _state.cache.secs);
       _updateField((s) => s.copyWith(bufferingPercentage: pct),
           _bufferingPercentage, pct);
     } catch (e) {
@@ -715,9 +710,7 @@ abstract class _PlayerBase {
     if (_disposed) return;
     final raw = CoverArtExtractor.capture(_lib, _handle);
     if (raw == null) return;
-    if (!_coverArtRawCtrl.isClosed) {
-      _coverArtRawCtrl.add(raw);
-    }
+    _coverArtRawCtrl.add(raw);
   }
 
   /// Tears down the player.
@@ -727,7 +720,7 @@ abstract class _PlayerBase {
   ///
   /// 1. **Flip `_disposed`** so any subsequent setter / public-API call
   ///    fails fast via `_checkNotDisposed()`.
-  /// 2. **Drop the [NativeReferenceHolder] entry** so a hot-restart that
+  /// 2. **Drop the [OrphanHandleTracker] entry** so a hot-restart that
   ///    fires before the destroy completes doesn't try to clean up a
   ///    handle we're already cleaning up.
   /// 3. **Await `_eventSub.cancel()`** before destroying the handle. This
@@ -752,10 +745,25 @@ abstract class _PlayerBase {
     }
     _disposed = true;
 
-    NativeReferenceHolder.instance.remove(_handle);
+    OrphanHandleTracker.instance.remove(_handle);
     await _eventSub?.cancel();
+    // Ask mpv to shut down cooperatively via the `quit` command. mpv
+    // processes it asynchronously, fires MPV_EVENT_SHUTDOWN inside
+    // its own event queue, and the next call to `mpv_wait_event` in
+    // the isolate's loop returns with that event — at which point
+    // the loop unwinds NATURALLY. This is the only way to unblock
+    // `mpv_wait_event` from outside the isolate without poking at
+    // libmpv internals; calling `mpv_terminate_destroy` first races
+    // the event-loop thread and crashes inside libmpv when the
+    // handle is freed mid-syscall.
+    _command(['quit']);
+    // Wait for the isolate to actually exit (it returns from
+    // mpv_wait_event with MPV_EVENT_SHUTDOWN, breaks out of the loop,
+    // and the VM tears it down).
+    await _eventIsolate.stop();
+    // Now safe to terminate — the isolate is no longer touching the
+    // handle.
     _lib.mpvTerminateDestroy(_handle);
-    _eventIsolate.stop();
 
     // Close the registry-backed reactives, then the standalone ones, then
     // the pure-event stream controllers. Order doesn't matter for

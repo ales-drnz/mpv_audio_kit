@@ -36,7 +36,7 @@ class _AoPageState extends State<AoPage> {
       }
     });
 
-    widget.player.setRawProperty('ao', 'help');
+    await widget.player.setRawProperty('ao', 'help');
     await Future.delayed(const Duration(milliseconds: 300));
     await sub.cancel();
 
@@ -61,13 +61,10 @@ class _AoPageState extends State<AoPage> {
             final options = List<String>.from(_availableDrivers);
             if (!options.contains(val)) options.add(val);
 
-            String subtitle = 'ao=$val';
-            if (val == 'auto') {
-              final active = widget.player.getRawProperty('current-ao');
-              if (active != null && active.isNotEmpty) {
-                subtitle += ' ($active)';
-              }
-            }
+            // Subtitle is rendered synchronously; the async `current-ao`
+            // lookup is left out here. If a deeper "active driver" hint
+            // is needed, fetch it in initState and store on state.
+            final subtitle = 'ao=$val';
 
             return DropdownPropertyCard<String>(
               title: 'Audio Driver',
@@ -94,10 +91,10 @@ class _AoPageState extends State<AoPage> {
               subtitle: 'ao-null-untimed=${val ? 'yes' : 'no'}',
               icon: Icons.layers_clear_rounded,
               value: val,
-              onChanged: (v) => widget.player.setRawProperty(
+              onChanged: (v) => unawaited(widget.player.setRawProperty(
                 'ao-null-untimed',
                 v ? 'yes' : 'no',
-              ),
+              )),
             );
           },
         ),

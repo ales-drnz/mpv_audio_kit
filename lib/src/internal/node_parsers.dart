@@ -4,7 +4,9 @@
 
 import '../models/audio_device.dart';
 import '../models/audio_params.dart';
+import '../models/chapter.dart';
 import '../models/media.dart';
+import '../models/mpv_track.dart';
 import '../models/playlist.dart';
 import '../utils/duration_seconds.dart';
 
@@ -131,6 +133,61 @@ AudioParams parseAudioParamsNode(dynamic raw) {
     channelCount: _intOrNull(raw['channel-count']),
     hrChannels: _stringOrNull(raw['hr-channels']),
   );
+}
+
+/// Decodes mpv's `track-list` property (`MPV_FORMAT_NODE_ARRAY`).
+///
+/// Each entry is a `MPV_FORMAT_NODE_MAP` describing one track. Missing
+/// `id` entries fall back to `-1` and missing `type` to `''` rather
+/// than throwing — mpv occasionally emits transient malformed entries
+/// during track reconfig.
+List<MpvTrack> parseTrackListNode(dynamic raw) {
+  if (raw is! List) return const [];
+  return raw.map(_parseTrackEntry).toList(growable: false);
+}
+
+/// Decodes mpv's `current-tracks/audio` property (`MPV_FORMAT_NODE_MAP`)
+/// — the metadata of the currently-active audio track. Returns `null`
+/// when no audio track is active (mpv emits `null` / non-map).
+MpvTrack? parseCurrentAudioTrackNode(dynamic raw) {
+  if (raw is! Map) return null;
+  return _parseTrackEntry(raw);
+}
+
+MpvTrack _parseTrackEntry(dynamic entry) {
+  final m = entry is Map ? entry : const <String, dynamic>{};
+  return MpvTrack(
+    id: m['id'] is int ? m['id'] as int : -1,
+    type: m['type'] is String ? m['type'] as String : '',
+    selected: m['selected'] == true,
+    title: _stringOrNull(m['title']),
+    lang: _stringOrNull(m['lang']),
+    defaultTrack: m['default'] == true,
+    forced: m['forced'] == true,
+    image: m['image'] == true,
+    albumart: m['albumart'] == true,
+    codec: _stringOrNull(m['codec']),
+    codecDesc: _stringOrNull(m['codec-desc']),
+    samplerate: _intOrNull(m['demux-samplerate']),
+    channels: _stringOrNull(m['demux-channels']),
+    channelCount: _intOrNull(m['demux-channel-count']),
+  );
+}
+
+/// Decodes mpv's `chapter-list` property (`MPV_FORMAT_NODE_ARRAY`).
+///
+/// Each entry is a `MPV_FORMAT_NODE_MAP` with `time` (seconds, double)
+/// and an optional `title`. Missing or malformed entries fall back to
+/// `Duration.zero` / `null` rather than throwing — a single bad
+/// chapter shouldn't tear down the whole list.
+List<Chapter> parseChapterListNode(dynamic raw) {
+  if (raw is! List) return const [];
+  return raw.map((entry) {
+    final m = entry is Map ? entry : const <String, dynamic>{};
+    final t = m['time'];
+    final time = t is num ? secondsToDuration(t.toDouble()) : Duration.zero;
+    return Chapter(time: time, title: _stringOrNull(m['title']));
+  }).toList(growable: false);
 }
 
 String? _stringOrNull(dynamic v) {

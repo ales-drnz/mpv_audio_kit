@@ -25,7 +25,11 @@ library;
 
 export 'src/player.dart' show Player;
 export 'src/cover/cover_art_raw.dart' show CoverArtRaw;
+export 'src/models/cache_config.dart' show CacheConfig;
+export 'src/models/chapter.dart' show Chapter;
 export 'src/models/media.dart' show Media;
+export 'src/models/mpv_track.dart' show MpvTrack;
+export 'src/models/replay_gain_config.dart' show ReplayGainConfig;
 export 'src/models/playlist.dart' show Playlist, PlaylistMode;
 export 'src/models/audio_device.dart' show AudioDevice;
 export 'src/models/audio_filter.dart' show AudioFilter;
@@ -37,7 +41,8 @@ export 'src/models/enums.dart'
         AudioDisplayMode,
         CoverArtAutoMode,
         CacheMode,
-        AudioOutputState;
+        AudioOutputState,
+        PlaybackLifecycle;
 export 'src/models/mpv_log_entry.dart' show MpvLogEntry;
 export 'src/models/mpv_hook_event.dart' show MpvHookEvent;
 export 'src/models/mpv_prefetch_state.dart' show MpvPrefetchState;

@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 // Import via the public entry library so we get the typed `MpvEndFileReason`
 // from `models/mpv_player_error.dart` (and not the duplicate raw FFI enum
 // of the same name from `mpv_bindings.dart`, which the public `library`

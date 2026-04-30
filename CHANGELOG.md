@@ -2,7 +2,319 @@
 
 Major Dart-side refactor. Native build pipeline is unchanged. Six
 structural problems reported in the 0.0.9 review have been resolved
-at the root, not patched at the symptom level.
+at the root, not patched at the symptom level. A second pass on the
+public API consolidated runtime-mutable properties as typed setters,
+collapsed redundant granular config setters into atomic config
+objects, replaced the stringly-typed track API with a typed model,
+and added 13 new observable mpv properties for audiobook / podcast /
+streaming use cases.
+
+### BREAKING — `Player.openPlaylist` → `Player.openAll`
+
+Multi-media counterpart of [Player.open] now follows the Dart-canonical
+`addAll`/`openAll` pattern (mirrors `Iterable.add` ↔ `addAll`).
+Migration: `player.openPlaylist(medias) → player.openAll(medias)`.
+Signature is otherwise identical (`{bool? play, int index = 0}`).
+
+### BREAKING — track API typed (`MpvTrack` model)
+
+The single stringly-typed `state.audioTrack: String` (`'auto'` /
+`'no'` / a number) is replaced by a typed track inventory:
+
+- **`state.tracks: List<MpvTrack>`** + `Player.stream.tracks` — every
+  track mpv reports for the current file (audio + embedded picture +
+  any other type the demuxer surfaced). Each [MpvTrack] carries
+  `id`, `type`, `title`, `lang`, `selected`, `defaultTrack`,
+  `forced`, `image`/`albumart` flags, `codec`, `codecDesc`,
+  `samplerate`, `channels`, `channelCount`. UI track switchers
+  filter by `type == 'audio' && !image && !albumart` to skip the
+  embedded `attached_pic` pseudo-tracks.
+- **`state.currentAudioTrack: MpvTrack?`** + `Player.stream.currentAudioTrack`
+  — the active audio track, `null` when none is selected. Backed by
+  mpv's `current-tracks/audio`.
+- **`Player.setAudioTrack(int trackId)`** — switches to the track
+  with that id. Replaces the old `setAudioTrack(String)` that
+  accepted `'auto'` / `'no'` / a numeric string.
+- **`Player.setAudioTrackAuto()`** — defers to mpv's automatic
+  choice (the container's default-flagged track, or the first audio
+  track if none is flagged).
+- **`Player.setAudioTrackOff()`** — disables audio output entirely
+  (`aid=no`).
+
+Migration:
+```dart
+// 0.0.x
+player.setAudioTrack('1');
+player.setAudioTrack('auto');
+player.setAudioTrack('no');
+
+// 0.1.0
+await player.setAudioTrack(1);
+await player.setAudioTrackAuto();
+await player.setAudioTrackOff();
+```
+
+### BREAKING — config aggregates (`ReplayGainConfig`, `CacheConfig`)
+
+The 4 ReplayGain setters (`setReplayGainMode` / `setReplayGainPreamp`
+/ `setReplayGainClip` / `setReplayGainFallback`) and the 5 cache
+setters (`setCacheMode` / `setCacheSecs` / `setCacheOnDisk` /
+`setCachePause` / `setCachePauseWait`) collapse into two atomic
+setters that take a typed config object:
+
+- **`Player.setReplayGain(ReplayGainConfig config)`** — writes the 4
+  backing mpv properties in one shot.
+- **`Player.setCache(CacheConfig config)`** — writes the 5 backing
+  cache properties in one shot.
+
+The matching state / stream surface follows the same shape:
+
+- `state.replayGainMode` / `replayGainPreamp` / `replayGainClip` /
+  `replayGainFallback` → **`state.replayGain: ReplayGainConfig`**.
+- `state.cacheMode` / `cacheSecs` / `cacheOnDisk` / `cachePause` /
+  `cachePauseWait` → **`state.cache: CacheConfig`**.
+- 9 individual `Stream<X>` getters → **`Stream<ReplayGainConfig>
+  Player.stream.replayGain`** + **`Stream<CacheConfig>
+  Player.stream.cache`** (lazy aggregators — source streams are
+  only subscribed once a listener attaches, same pattern as
+  `audioParams`).
+
+Modify a single field idiomatically with `copyWith`:
+
+```dart
+// One-off tweak:
+await player.setReplayGain(state.replayGain.copyWith(preamp: -3));
+await player.setCache(state.cache.copyWith(
+    secs: const Duration(seconds: 30)));
+
+// Restore a saved preset:
+await player.setReplayGain(savedRgConfig);
+await player.setCache(savedCacheConfig);
+```
+
+### BREAKING — `Player.appendLog` removed
+
+The "inject into the wrapper internal-log stream" method was
+test/demo scaffolding rather than a load-bearing API. Consumers that
+want to tag custom events into a unified log feed maintain their own
+`StreamController<MpvLogEntry>` and merge with
+`Player.stream.internalLog`. The example app demonstrates the
+pattern in `example/lib/screens/player/logs_tab.dart` and
+`example/lib/screens/player_page.dart`.
+
+### BREAKING — `setImageDisplayDuration` typed
+
+The setter and the matching state / stream now use `Duration?`
+instead of an mpv-wire string:
+
+- `null` keeps the frame alive indefinitely (mpv's `inf`).
+- `Duration.zero` drops the frame as soon as audio playback starts.
+- A finite `Duration` holds the frame for that long.
+
+Migration: `setImageDisplayDuration('inf')` → `setImageDisplayDuration(null)`,
+`setImageDisplayDuration('0')` → `setImageDisplayDuration(Duration.zero)`,
+otherwise pass a `Duration`. Matches the `Duration` migration of the
+five time-based setters already documented above.
+
+### BREAKING — escape hatches now async
+
+`Player.getRawProperty`, `Player.setRawProperty`, and
+`Player.sendRawCommand` are now `Future<X>` instead of synchronous —
+matches the 40+ typed setters that have always been
+`Future<void>`. Calls without `await` continue to work
+fire-and-forget; reading `getRawProperty` requires `await`.
+
+### BREAKING — `Player.playOrPause` removed
+
+One-line convenience that issued a `cycle pause` mpv command. Almost
+every UI that needs a play/pause toggle already binds to
+`Player.stream.playing` / `state.playing` and decides between
+`play()` and `pause()` based on that bool — the toggle method added
+no value over the explicit branch. Migration:
+
+```dart
+final isPlaying = player.state.playing;
+isPlaying ? player.pause() : player.play();
+```
+
+### CORE — new observable mpv properties (13 additions)
+
+Public API additions that round out the audio / streaming /
+audiobook surface. All thirteen flow through the standard
+`Player.stream.X` and `Player.state.X` pairing.
+
+- **`audioPts`** (`Duration`) — `audio-pts`. Audio frame timestamp
+  at the playhead; advances per audio frame, includes driver
+  latency. More granular than `time-pos` for audio-only sync.
+- **`timeRemaining`** (`Duration`) — `time-remaining`. Time until
+  EOF, ignoring playback speed.
+- **`playtimeRemaining`** (`Duration`) — `playtime-remaining`.
+  Speed-adjusted: at 2.0x on a 60 s remaining file this reads 30 s.
+- **`eofReached`** (`bool`) — `eof-reached`. Disambiguates a
+  natural EOF from a user pause (the existing lifecycle `completed`
+  flag fires once per file boundary; `eofReached` mirrors mpv's own
+  property continuously).
+- **`seekable`** + **`partiallySeekable`** (`bool`) — `seekable` /
+  `partially-seekable`. Lets a UI enable/disable the seek bar
+  without heuristics (live streams set `seekable=false`; HLS / DASH
+  sliding windows set `partiallySeekable=true`).
+- **`mediaTitle`** (`String`) — `media-title`. Display name with
+  automatic fallback to the file name when no `title` tag is
+  present.
+- **`fileFormat`** (`String`) — `file-format`. Container format
+  (`mp4`, `m4a`, `flac`, `mp3`, …); comma-separated list when the
+  demuxer matched multiple formats.
+- **`fileSize`** (`int`, bytes) — `file-size`. Zero when unknown.
+- **`bufferDuration`** (`Duration`) — `demuxer-cache-duration`.
+  Headroom ahead of the playhead. Complements `buffer` (which is
+  `demuxer-cache-time`, an absolute timestamp): `buffer` shows
+  position, `bufferDuration` shows lookahead.
+- **`demuxerIdle`** (`bool`) — `demuxer-cache-idle`. `true` when
+  the demuxer thread has nothing to fetch (cache full or EOF);
+  `false` while pulling. Combined with `pausedForCache` it
+  disambiguates "starved network" from "fully cached, sitting idle".
+- **`prefetchPlaylist`** (`bool`) — `prefetch-playlist`, set via
+  **`Player.setPrefetchPlaylist(bool)`**. When enabled, mpv opens
+  the demuxer for the next track before the current one finishes,
+  eliminating the file-boundary stall. Pairs with the existing
+  `Player.stream.prefetchState` for end-to-end visibility.
+- **`currentChapter`** (`int?`, null when none active) +
+  **`chapters`** (`List<Chapter>`) — `chapter` and `chapter-list`,
+  jump via **`Player.setChapter(int index)`**. Audiobook / podcast
+  chapter navigation. New [Chapter] model carries `time: Duration`
+  and `title: String?`.
+
+### CORE — `PlaybackLifecycle` aggregate stream (additive)
+
+New `Player.stream.playbackLifecycle: Stream<PlaybackLifecycle>`
+emits a single mutually-exclusive enum (`idle` / `loading` /
+`buffering` / `playing` / `paused` / `completed`) derived from the
+existing `playing` / `buffering` / `completed` / `pausedForCache` /
+`duration` signals. Useful when a UI wants one indicator instead of
+three booleans. The underlying booleans remain available for
+granular use cases. Lazy aggregator — source streams are only
+subscribed once a listener attaches, so the aggregate costs nothing
+when unused. Named `PlaybackLifecycle` (not `PlaybackState`) to
+avoid an import collision with `audio_service`'s own
+`PlaybackState`.
+
+### Fixed (P0)
+
+- **Use-after-dispose hazards on `Player.add()` and
+  `Player.replace()`.** Same pattern of bug fixed for
+  `Player.open()` / `Player.openPlaylist()` in 0.0.9, but the two
+  playlist-mutation methods were missed: each `await
+  AndroidHelper.normalizeUri(...)` was followed by `_command(['loadfile',
+  ...])` without a `_disposed` re-check, so disposing the player
+  while an Android intent-URI normalisation was in flight could
+  fire a `loadfile` against a destroyed mpv handle. Both methods
+  now re-check `_disposed` after every async boundary.
+
+### CORE — internal restructuring (this release)
+
+- **`audio-output-state` failure → `MpvLogError` extracted** to a
+  pure `buildAudioOutputError(AudioOutputState)` helper in
+  `lib/src/internal/audio_output_error.dart`. The wrapper
+  constructor now invokes the helper directly. Same pattern as
+  `lib/src/internal/lifecycle_transitions.dart` and
+  `lib/src/internal/playback_lifecycle.dart` — pure helpers tested
+  in isolation.
+- **`derivePlaybackLifecycle(...)` pure helper** added in
+  `lib/src/internal/playback_lifecycle.dart`. Folds the 5 underlying
+  signals into the `PlaybackLifecycle` enum without a real player.
+- **Single defensive guard for `_handleEvent`.** The 3 redundant
+  per-controller `isClosed` guards (`_errorCtrl`,
+  `_seekCompletedCtrl`, `_coverArtRawCtrl`) have been removed in
+  favour of the single `if (_disposed) return;` fence at the head
+  of `_handleEvent`. The dispose ordering (`_disposed = true` →
+  `await _eventSub?.cancel()` → controller close) means once the
+  fence passes, every controller add() in the switch is guaranteed
+  to land on an open controller. The fence comment now documents
+  this contract explicitly.
+
+### Build / repo plumbing (this release)
+
+- **Test suite at 260+ tests** across `test/internal/`,
+  `test/reactive/`, `test/models/`, `test/utils/`,
+  `test/event_isolate/`, `test/cover/`, `test/runtime/`, plus the
+  new `test/runtime_extended/` tier (19 files, one Player per file
+  to leverage flutter_test's per-file isolate split). Net delta
+  vs. 0.0.9 baseline: +68 (new helpers + new mpv-property dispatch
+  tests + end-to-end runtime coverage of every public setter on
+  the Player surface; consolidation of 17 Freezed-mechanic tests
+  into the parametric enum suite). Coverage exercises every
+  public setter against real libmpv 0.41 with deterministic
+  fixtures, plus error-path / edge-case / dispose-contract /
+  sustained-playback observers. See `CLAUDE.md` for the
+  cosmetic `tearDownAll` flake on dispose-contract files.
+- **Default registry coverage smoke test is bidirectional.** The
+  set of registered spec names is asserted equal to the documented
+  set: removing a spec from `buildDefaultSpecs` fails with a
+  "missing" diff, adding a spec without updating the test fails
+  with an "extra" diff. Forces every spec change to surface in code
+  review.
+- **`enums_test.dart` consolidated** to a single parametric block
+  iterating over every (`values`, `fromMpv`, fallback) tuple,
+  including `AudioOutputState` (which was missing from the
+  per-enum-block layout).
+- **Per-setter dispatch tests for the 13 new mpv properties** in
+  `default_specs_test.dart`: every observable property added in
+  this release (`audio-pts`, `time-remaining`, `playtime-remaining`,
+  `eof-reached`, `seekable`, `partially-seekable`, `media-title`,
+  `file-format`, `file-size`, `demuxer-cache-duration`,
+  `demuxer-cache-idle`, `chapter`, `chapter-list`) round-trips
+  through the registry with a typed payload assertion.
+- **Aggregate `copyWith` invariant tests** for `ReplayGainConfig`
+  and `CacheConfig`: dispatching a single backing mpv property
+  must preserve the other 3 (or 4) sibling fields. Pins the
+  `s.copyWith(replayGain: s.replayGain.copyWith(...))` reduce
+  pattern that the 9 aggregate specs share.
+- **`test/runtime_extended/` tier — runtime setter coverage.** A
+  new test directory groups end-to-end setter tests (one file per
+  concern, every public setter on the Player surface covered) plus
+  error / edge / dispose-contract suites:
+  - **Setter end-to-end** (14 files): `setters_replaygain_test.dart`,
+    `setters_cache_test.dart`, `setters_chapter_test.dart`,
+    `setters_tracks_test.dart`, `setters_image_display_test.dart`,
+    `setters_open_prefetch_test.dart`,
+    `setters_async_escape_test.dart`,
+    `setters_audio_basic_test.dart`,
+    `setters_audio_output_test.dart`, `setters_dsp_test.dart`,
+    `setters_network_test.dart`, `setters_playback_test.dart`,
+    `setters_playlist_test.dart`, `setters_hooks_test.dart`.
+  - **Error paths** (`error_paths_test.dart`): non-existent file,
+    malformed URL, both surface `MpvFileEndedEvent.error` +
+    `MpvEndFileError` on the typed error stream;
+    `MpvEndFileReason.fromValue` exhaustive mapping for all 5 raw
+    codes.
+  - **Edge cases** (`edge_cases_test.dart`): 50 ms tiny fixture,
+    88.2 kHz exotic sample rate, `openAll([])` no-op, `openAll`
+    out-of-range index clamp, 50× rapid sequential `setVolume`.
+  - **Dispose contract** (`dispose_safety_test.dart`,
+    `dispose_setters_state_error_test.dart`,
+    `dispose_escape_hatches_test.dart`): idempotency,
+    `StateError` on every typed setter post-dispose,
+    `StateError` on every escape hatch post-dispose. Three files
+    so each gets its own per-isolate Player budget.
+  - **Sustained-playback observers**
+    (`runtime_state_test.dart`): `mediaTitle`, `fileFormat`,
+    `fileSize`, `seekable`, `partiallySeekable`, `audioBitrate`,
+    `bufferDuration`, `audioPts`, `eofReached` all verified live
+    on a 5-second fixture.
+  - **`isolation_guard_test.dart`** — a permanent guard
+    verifying the flutter_test per-file isolate split keeps
+    holding.
+
+  Each file spins up its own [Player] in its own isolate group,
+  sidestepping the documented SIGSEGV-on-3rd-Player quirk in
+  `flutter_test` (see `CLAUDE.md`). Fixtures: 5 new files
+  generated via ffmpeg — `test/fixtures/multitrack_two_audio.mka`
+  (2-track FLAC-in-Matroska for track-list testing),
+  `test/fixtures/with_chapters.mka` (3-chapter FLAC-in-Matroska),
+  `test/fixtures/sine_50ms.wav` (boundary tiny duration),
+  `test/fixtures/sine_88200hz.flac` (exotic sample rate),
+  `test/fixtures/sine_5s.flac` (sustained-playback observer
+  testing).
 
 ### BREAKING — setter / state field symmetry
 

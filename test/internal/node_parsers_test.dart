@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/internal/node_parsers.dart';
 
@@ -340,6 +340,151 @@ void main() {
       expect(parseAudioParamsNode(null), const AudioParams());
       expect(parseAudioParamsNode('garbage'), const AudioParams());
       expect(parseAudioParamsNode(<dynamic>[]), const AudioParams());
+    });
+  });
+
+  group('parseChapterListNode', () {
+    test('parses an audiobook-style chapter list', () {
+      final raw = [
+        {'time': 0.0, 'title': 'Intro'},
+        {'time': 60.5, 'title': 'Chapter 1'},
+        {'time': 600.25, 'title': 'Chapter 2'},
+      ];
+      final chapters = parseChapterListNode(raw);
+      expect(chapters, hasLength(3));
+      expect(chapters[0].time, Duration.zero);
+      expect(chapters[0].title, 'Intro');
+      expect(chapters[1].time, const Duration(milliseconds: 60500));
+      expect(chapters[2].time, const Duration(milliseconds: 600250));
+    });
+
+    test('missing title becomes null', () {
+      final chapters = parseChapterListNode([
+        {'time': 10.0},
+      ]);
+      expect(chapters[0].title, isNull);
+    });
+
+    test('empty title string also becomes null', () {
+      final chapters = parseChapterListNode([
+        {'time': 10.0, 'title': ''},
+      ]);
+      expect(chapters[0].title, isNull);
+    });
+
+    test('malformed entry falls back to Duration.zero rather than throwing',
+        () {
+      final chapters = parseChapterListNode([
+        {'title': 'Has title but no time'},
+        'totally-not-a-map',
+      ]);
+      expect(chapters, hasLength(2));
+      expect(chapters[0].time, Duration.zero);
+      expect(chapters[1].time, Duration.zero);
+      expect(chapters[1].title, isNull);
+    });
+
+    test('non-list raw → empty list', () {
+      expect(parseChapterListNode(null), const <Chapter>[]);
+      expect(parseChapterListNode('garbage'), const <Chapter>[]);
+      expect(parseChapterListNode(<String, dynamic>{}), const <Chapter>[]);
+    });
+  });
+
+  group('parseTrackListNode', () {
+    test('parses a multi-track audio file with album-art picture stream', () {
+      final raw = [
+        {
+          'id': 1,
+          'type': 'audio',
+          'selected': true,
+          'default': true,
+          'codec': 'flac',
+          'codec-desc': 'FLAC (Free Lossless Audio Codec)',
+          'lang': 'eng',
+          'title': 'Stereo',
+          'demux-samplerate': 48000,
+          'demux-channels': 'stereo',
+          'demux-channel-count': 2,
+        },
+        {
+          'id': 2,
+          'type': 'audio',
+          'codec': 'aac',
+          'lang': 'jpn',
+          'title': 'Surround',
+        },
+        {
+          'id': 3,
+          'type': 'video',
+          'image': true,
+          'albumart': true,
+          'codec': 'mjpeg',
+        },
+      ];
+      final tracks = parseTrackListNode(raw);
+      expect(tracks, hasLength(3));
+
+      expect(tracks[0].id, 1);
+      expect(tracks[0].type, 'audio');
+      expect(tracks[0].selected, isTrue);
+      expect(tracks[0].defaultTrack, isTrue,
+          reason: 'mpv key is `default`; renamed to defaultTrack in Dart');
+      expect(tracks[0].lang, 'eng');
+      expect(tracks[0].title, 'Stereo');
+      expect(tracks[0].codec, 'flac');
+      expect(tracks[0].codecDesc, contains('FLAC'));
+      expect(tracks[0].samplerate, 48000);
+      expect(tracks[0].channels, 'stereo');
+      expect(tracks[0].channelCount, 2);
+
+      expect(tracks[1].selected, isFalse);
+      expect(tracks[1].defaultTrack, isFalse);
+
+      // Cover-art track is recognisable via image / albumart flags so a
+      // "switch audio track" UI can skip it.
+      expect(tracks[2].image, isTrue);
+      expect(tracks[2].albumart, isTrue);
+    });
+
+    test('missing fields fall back to safe defaults', () {
+      final tracks = parseTrackListNode([
+        {'type': 'audio'}, // no id
+        {'id': 5}, // no type
+        'totally-not-a-map',
+      ]);
+      expect(tracks, hasLength(3));
+      expect(tracks[0].id, -1);
+      expect(tracks[1].type, '');
+      expect(tracks[2].id, -1);
+      expect(tracks[2].type, '');
+    });
+
+    test('non-list raw → empty list', () {
+      expect(parseTrackListNode(null), const <MpvTrack>[]);
+      expect(parseTrackListNode('garbage'), const <MpvTrack>[]);
+    });
+  });
+
+  group('parseCurrentAudioTrackNode', () {
+    test('parses a single audio track map', () {
+      final t = parseCurrentAudioTrackNode({
+        'id': 2,
+        'type': 'audio',
+        'selected': true,
+        'codec': 'opus',
+      });
+      expect(t, isNotNull);
+      expect(t!.id, 2);
+      expect(t.type, 'audio');
+      expect(t.codec, 'opus');
+      expect(t.selected, isTrue);
+    });
+
+    test('non-map raw → null (no audio track active)', () {
+      expect(parseCurrentAudioTrackNode(null), isNull);
+      expect(parseCurrentAudioTrackNode('garbage'), isNull);
+      expect(parseCurrentAudioTrackNode(<dynamic>[]), isNull);
     });
   });
 }

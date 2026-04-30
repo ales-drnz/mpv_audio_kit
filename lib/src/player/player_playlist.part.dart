@@ -15,7 +15,8 @@ mixin _PlaylistModule on _PlayerBase {
           .join(',');
       _opt('http-header-fields', headers);
     }
-    final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
+    final normalizedUri = await _resolveUri(media.uri);
+    if (_disposed) return;
     _mediaCache[normalizedUri] = media;
     _command(['loadfile', normalizedUri, 'append']);
   }
@@ -59,7 +60,8 @@ mixin _PlaylistModule on _PlayerBase {
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
     _mediaCache[media.uri] = media;
-    final normalizedUri = await AndroidHelper.normalizeUri(media.uri);
+    final normalizedUri = await _resolveUri(media.uri);
+    if (_disposed) return;
     _mediaCache[normalizedUri] = media;
     _command(['playlist-remove', index.toString()]);
     _command(['loadfile', normalizedUri, 'insert-at', index.toString()]);
@@ -111,5 +113,18 @@ mixin _PlaylistModule on _PlayerBase {
     // `_prop → _updateField` ordering of every other setter.
     _updateField(
         (s) => s.copyWith(shuffle: shuffle), _reactives.shuffle, shuffle);
+  }
+
+  /// Enables or disables background prefetch of the next playlist item.
+  ///
+  /// When enabled, mpv opens the demuxer for the next track before the
+  /// current one finishes, so playback continues without an opening-thread
+  /// stall on file boundaries. Observe progress via
+  /// [PlayerStream.prefetchState].
+  Future<void> setPrefetchPlaylist(bool enabled) async {
+    _checkNotDisposed();
+    _prop('prefetch-playlist', enabled ? 'yes' : 'no');
+    _updateField((s) => s.copyWith(prefetchPlaylist: enabled),
+        _reactives.prefetchPlaylist, enabled);
   }
 }

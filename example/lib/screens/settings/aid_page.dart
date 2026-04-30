@@ -12,22 +12,56 @@ class AidPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Audio Track'),
-        StreamBuilder<String>(
-          stream: player.stream.audioTrack,
-          initialData: player.state.audioTrack,
-          builder: (context, snap) {
-            final val = snap.data ?? 'auto';
-            final options = ['auto', '1', '2', '3', '4'];
-            if (!options.contains(val)) options.add(val);
-            return DropdownPropertyCard<String>(
-              title: 'Audio Track',
-              subtitle: 'aid=$val',
-              icon: Icons.audiotrack_rounded,
-              value: val,
-              items: options
-                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-                  .toList(),
-              onChanged: (v) => v != null ? player.setAudioTrack(v) : null,
+        StreamBuilder<List<MpvTrack>>(
+          stream: player.stream.tracks,
+          initialData: player.state.tracks,
+          builder: (context, tracksSnap) {
+            final audioTracks = (tracksSnap.data ?? const <MpvTrack>[])
+                .where((t) => t.type == 'audio' && !t.image && !t.albumart)
+                .toList();
+            return StreamBuilder<MpvTrack?>(
+              stream: player.stream.currentAudioTrack,
+              initialData: player.state.currentAudioTrack,
+              builder: (context, currentSnap) {
+                final current = currentSnap.data;
+                final currentId = current?.id;
+
+                final items = <DropdownMenuItem<int?>>[
+                  const DropdownMenuItem(value: -1, child: Text('Auto')),
+                  const DropdownMenuItem(value: -2, child: Text('No audio')),
+                  ...audioTracks.map((t) {
+                    final label = t.title?.isNotEmpty == true
+                        ? '${t.id}: ${t.title}${t.lang != null ? ' [${t.lang}]' : ''}'
+                        : '${t.id}${t.lang != null ? ' [${t.lang}]' : ''}';
+                    return DropdownMenuItem(value: t.id, child: Text(label));
+                  }),
+                ];
+
+                final selected = items.any((i) => i.value == currentId)
+                    ? currentId
+                    : -1;
+
+                return DropdownPropertyCard<int?>(
+                  title: 'Audio Track',
+                  subtitle: current == null
+                      ? 'no audio'
+                      : 'aid=${current.id}'
+                          '${current.lang != null ? ' (${current.lang})' : ''}',
+                  icon: Icons.audiotrack_rounded,
+                  value: selected,
+                  items: items,
+                  onChanged: (v) {
+                    if (v == null) return;
+                    if (v == -1) {
+                      player.setAudioTrackAuto();
+                    } else if (v == -2) {
+                      player.setAudioTrackOff();
+                    } else {
+                      player.setAudioTrack(v);
+                    }
+                  },
+                );
+              },
             );
           },
         ),

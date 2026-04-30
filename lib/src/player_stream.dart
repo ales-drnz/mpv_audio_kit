@@ -9,11 +9,16 @@ import 'package:mpv_audio_kit/src/models/playlist.dart';
 import 'package:mpv_audio_kit/src/models/audio_device.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/audio_filter.dart';
+import 'package:mpv_audio_kit/src/models/cache_config.dart';
+import 'package:mpv_audio_kit/src/models/chapter.dart';
 import 'package:mpv_audio_kit/src/models/enums.dart';
+import 'package:mpv_audio_kit/src/models/mpv_track.dart';
+import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
 import 'package:mpv_audio_kit/src/models/mpv_log_entry.dart';
 import 'package:mpv_audio_kit/src/models/mpv_hook_event.dart';
 import 'package:mpv_audio_kit/src/models/mpv_prefetch_state.dart';
 import 'package:mpv_audio_kit/src/models/mpv_player_error.dart';
+import 'package:mpv_audio_kit/src/internal/playback_lifecycle.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
 
@@ -67,16 +72,9 @@ class PlayerStream {
         // aggregator — no `_bindAggregate` needed.
         audioOutParams = reactives.audioOutParamsNode.stream,
         gaplessMode = reactives.gaplessMode.stream,
-        replayGainMode = reactives.replayGainMode.stream,
-        replayGainPreamp = reactives.replayGainPreamp.stream,
-        replayGainFallback = reactives.replayGainFallback.stream,
-        replayGainClip = reactives.replayGainClip.stream,
+        replayGain = _replayGainStream(reactives),
         volumeGain = reactives.volumeGain.stream,
-        cacheMode = reactives.cacheMode.stream,
-        cacheSecs = reactives.cacheSecs.stream,
-        cacheOnDisk = reactives.cacheOnDisk.stream,
-        cachePause = reactives.cachePause.stream,
-        cachePauseWait = reactives.cachePauseWait.stream,
+        cache = _cacheStream(reactives),
         demuxerMaxBytes = reactives.demuxerMaxBytes.stream,
         demuxerReadaheadSecs = reactives.demuxerReadaheadSecs.stream,
         demuxerMaxBackBytes = reactives.demuxerMaxBackBytes.stream,
@@ -88,7 +86,8 @@ class PlayerStream {
         audioBuffer = reactives.audioBuffer.stream,
         audioStreamSilence = reactives.audioStreamSilence.stream,
         audioNullUntimed = reactives.audioNullUntimed.stream,
-        audioTrack = reactives.audioTrack.stream,
+        tracks = reactives.tracks.stream,
+        currentAudioTrack = reactives.currentAudioTrack.stream,
         audioSpdif = reactives.audioSpdif.stream,
         volumeMax = reactives.volumeMax.stream,
         audioSampleRate = reactives.audioSampleRate.stream,
@@ -102,14 +101,98 @@ class PlayerStream {
         coverArtAutoMode = reactives.coverArtAutoMode.stream,
         imageDisplayDuration = reactives.imageDisplayDuration.stream,
         prefetchState = reactives.prefetchState.stream,
+        prefetchPlaylist = reactives.prefetchPlaylist.stream,
+        audioPts = reactives.audioPts.stream,
+        timeRemaining = reactives.timeRemaining.stream,
+        playtimeRemaining = reactives.playtimeRemaining.stream,
+        eofReached = reactives.eofReached.stream,
+        seekable = reactives.seekable.stream,
+        partiallySeekable = reactives.partiallySeekable.stream,
+        mediaTitle = reactives.mediaTitle.stream,
+        fileFormat = reactives.fileFormat.stream,
+        fileSize = reactives.fileSize.stream,
+        bufferDuration = reactives.bufferDuration.stream,
+        demuxerIdle = reactives.demuxerIdle.stream,
+        currentChapter = reactives.currentChapter.stream,
+        chapters = reactives.chapters.stream,
         buffering = buffering.stream,
         completed = completed.stream,
+        playbackLifecycle =
+            _playbackLifecycleStream(reactives, buffering, completed),
         playlist = playlist.stream,
         playlistMode = playlistMode.stream,
         audioDevices = audioDevices.stream,
         metadata = metadata.stream,
         bufferingPercentage = bufferingPercentage.stream,
         equalizerGains = equalizerGains.stream;
+
+  /// Aggregate [ReplayGainConfig] stream — emits a fresh snapshot
+  /// whenever any of the 4 backing properties changes (`replaygain`,
+  /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`).
+  /// Lazy: subscriptions open only on the first listener.
+  static Stream<ReplayGainConfig> _replayGainStream(
+    DefaultPropertyReactives r,
+  ) {
+    ReplayGainConfig snapshot() => ReplayGainConfig(
+          mode: r.replayGainMode.value,
+          preamp: r.replayGainPreamp.value,
+          clip: r.replayGainClip.value,
+          fallback: r.replayGainFallback.value,
+        );
+    return _bindAggregate<ReplayGainConfig>(snapshot, [
+      r.replayGainMode.stream,
+      r.replayGainPreamp.stream,
+      r.replayGainClip.stream,
+      r.replayGainFallback.stream,
+    ]);
+  }
+
+  /// Aggregate [CacheConfig] stream — emits a fresh snapshot whenever
+  /// any of the 5 backing properties changes (`cache`, `cache-secs`,
+  /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`). Lazy: source
+  /// subscriptions open only on the first listener.
+  static Stream<CacheConfig> _cacheStream(DefaultPropertyReactives r) {
+    CacheConfig snapshot() => CacheConfig(
+          mode: r.cacheMode.value,
+          secs: r.cacheSecs.value,
+          onDisk: r.cacheOnDisk.value,
+          pause: r.cachePause.value,
+          pauseWait: r.cachePauseWait.value,
+        );
+    return _bindAggregate<CacheConfig>(snapshot, [
+      r.cacheMode.stream,
+      r.cacheSecs.stream,
+      r.cacheOnDisk.stream,
+      r.cachePause.stream,
+      r.cachePauseWait.stream,
+    ]);
+  }
+
+  /// Aggregate [PlaybackLifecycle] derived from the 5 underlying signals
+  /// the wrapper already tracks (`playing`, `buffering`, `completed`,
+  /// `pausedForCache`, `duration`). Lazy: subscriptions to the source
+  /// streams open only on the first listener.
+  static Stream<PlaybackLifecycle> _playbackLifecycleStream(
+    DefaultPropertyReactives r,
+    ReactiveProperty<bool> bufferingProp,
+    ReactiveProperty<bool> completedProp,
+  ) {
+    PlaybackLifecycle snapshot() => derivePlaybackLifecycle(
+          playing: r.playing.value,
+          buffering: bufferingProp.value,
+          completed: completedProp.value,
+          pausedForCache: r.pausedForCache.value,
+          duration: r.duration.value,
+        );
+
+    return _bindAggregate<PlaybackLifecycle>(snapshot, [
+      r.playing.stream,
+      bufferingProp.stream,
+      completedProp.stream,
+      r.pausedForCache.stream,
+      r.duration.stream,
+    ]);
+  }
 
   /// Builds a synthetic [AudioParams] broadcast stream that emits a fresh
   /// aggregated snapshot whenever any of the 3 backing sources changes:
@@ -248,35 +331,18 @@ class PlayerStream {
   /// Emits the gapless playback mode.
   final Stream<GaplessMode> gaplessMode;
 
-  /// Emits the ReplayGain mode.
-  final Stream<ReplayGainMode> replayGainMode;
-
-  /// Emits the ReplayGain preamp value in dB.
-  final Stream<double> replayGainPreamp;
-
-  /// Emits the ReplayGain fallback value in dB.
-  final Stream<double> replayGainFallback;
-
-  /// Emits whether ReplayGain clipping is allowed.
-  final Stream<bool> replayGainClip;
+  /// Aggregate ReplayGain configuration — emits a fresh
+  /// [ReplayGainConfig] whenever any of mode / preamp / clip /
+  /// fallback changes. Set with [Player.setReplayGain].
+  final Stream<ReplayGainConfig> replayGain;
 
   /// Emits the software volume gain in dB.
   final Stream<double> volumeGain;
 
-  /// Emits the cache mode.
-  final Stream<CacheMode> cacheMode;
-
-  /// Emits the target cache duration.
-  final Stream<Duration> cacheSecs;
-
-  /// Emits whether cache on disk is enabled.
-  final Stream<bool> cacheOnDisk;
-
-  /// Emits whether pause on buffer is enabled.
-  final Stream<bool> cachePause;
-
-  /// Emits the cache pause wait duration.
-  final Stream<Duration> cachePauseWait;
+  /// Aggregate cache configuration — emits a fresh [CacheConfig]
+  /// whenever any of mode / secs / onDisk / pause / pauseWait changes.
+  /// Set with [Player.setCache].
+  final Stream<CacheConfig> cache;
 
   /// Emits the max demuxer bytes.
   final Stream<int> demuxerMaxBytes;
@@ -311,8 +377,13 @@ class PlayerStream {
   /// Emits whether fallback to null output is enabled.
   final Stream<bool> audioNullUntimed;
 
-  /// Emits the current audio track ID.
-  final Stream<String> audioTrack;
+  /// All tracks reported by mpv for the current file (audio + embedded
+  /// picture + any other type the demuxer surfaced). See
+  /// [PlayerState.tracks] for the filtering pattern.
+  final Stream<List<MpvTrack>> tracks;
+
+  /// Currently-active audio track, or `null` when none is selected.
+  final Stream<MpvTrack?> currentAudioTrack;
 
   /// Emits the current S/PDIF passthrough mode.
   final Stream<String> audioSpdif;
@@ -355,8 +426,9 @@ class PlayerStream {
   /// Emits the current external cover-art auto-load mode.
   final Stream<CoverArtAutoMode> coverArtAutoMode;
 
-  /// Emits the current `image-display-duration` value.
-  final Stream<String> imageDisplayDuration;
+  /// Emits the current `image-display-duration` value. `null` = mpv's `inf`
+  /// (frame held indefinitely); finite Duration = explicit hold time.
+  final Stream<Duration?> imageDisplayDuration;
 
   /// Emits for **every** file-end event — clean completions, stops, errors,
   /// and premature EOFs alike.
@@ -380,7 +452,7 @@ class PlayerStream {
   final Stream<MpvLogEntry> log;
 
   /// Wrapper-side log entries — JSON parse warnings, hook timeouts, and
-  /// any [Player.appendLog] injection. Always carries
+  /// other messages produced by the Dart wrapper itself. Always carries
   /// `prefix: 'mpv_audio_kit'`.
   ///
   /// Disjoint from [log] so consumers can route engine and wrapper noise
@@ -394,6 +466,61 @@ class PlayerStream {
   /// Lifecycle of mpv's background playlist-prefetch — works uniformly
   /// across HLS, DASH, raw HTTP, SMB, and local files.
   final Stream<MpvPrefetchState> prefetchState;
+
+  /// Whether mpv prefetches the next playlist item in the background.
+  /// Toggle via [Player.setPrefetchPlaylist].
+  final Stream<bool> prefetchPlaylist;
+
+  /// Audio frame timestamp at the playhead (mpv's `audio-pts`). More
+  /// granular than [position] for audio-only sync.
+  final Stream<Duration> audioPts;
+
+  /// Time until end-of-file ignoring playback speed.
+  final Stream<Duration> timeRemaining;
+
+  /// Time until end-of-file adjusted for playback speed.
+  final Stream<Duration> playtimeRemaining;
+
+  /// Whether playback has reached EOF (mpv's `eof-reached`).
+  final Stream<bool> eofReached;
+
+  /// Whether the current stream supports seeking.
+  final Stream<bool> seekable;
+
+  /// Whether the stream is only partially seekable (HLS / DASH window).
+  final Stream<bool> partiallySeekable;
+
+  /// Display name for the current track (`media-title`); falls back to
+  /// the file name when no `title` tag is present.
+  final Stream<String> mediaTitle;
+
+  /// Container format (e.g. `mp4`, `flac`, `mp3`).
+  final Stream<String> fileFormat;
+
+  /// Total stream size in bytes; `0` when unknown.
+  final Stream<int> fileSize;
+
+  /// Buffered duration ahead of the playhead (`demuxer-cache-duration`).
+  /// Complements [buffer] (absolute timestamp) with the headroom amount.
+  final Stream<Duration> bufferDuration;
+
+  /// Whether the demuxer thread is idle (cache full or EOF).
+  final Stream<bool> demuxerIdle;
+
+  /// Active chapter index, or `null` when no chapter is active.
+  /// Set via [Player.setChapter].
+  final Stream<int?> currentChapter;
+
+  /// Chapter markers for the current file.
+  final Stream<List<Chapter>> chapters;
+
+  /// Aggregate playback lifecycle as a single mutually-exclusive enum.
+  ///
+  /// Derived lazily from `playing` / `buffering` / `completed` /
+  /// `pausedForCache` / `duration` — subscribing here opens
+  /// subscriptions to those 5 streams only for as long as a listener
+  /// is attached. See [PlaybackLifecycle] for the state mapping.
+  final Stream<PlaybackLifecycle> playbackLifecycle;
 
   /// Embedded cover-art payload after each file load — the original
   /// codec bytes (PNG / JPEG / WEBP / …) from the file's attached

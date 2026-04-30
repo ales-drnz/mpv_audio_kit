@@ -31,10 +31,17 @@ class SettingsService {
       await _prefs.setDouble(fullKey, value);
     } else if (value is bool) {
       await _prefs.setBool(fullKey, value);
+    } else if (value is Duration) {
+      await _prefs.setDouble(fullKey, value.inMicroseconds / 1e6);
     } else if (value is List<String>) {
       await _prefs.setStringList(fullKey, value);
     } else if (value is List<double>) {
       await _prefs.setString(fullKey, jsonEncode(value));
+    } else if (value is Enum) {
+      // Persist enums by their `mpvValue` (set via `dynamic`-checked
+      // accessor below); the restore path uses the same wire format.
+      final mpvValue = (value as dynamic).mpvValue as String?;
+      if (mpvValue != null) await _prefs.setString(fullKey, mpvValue);
     }
   }
 
@@ -106,30 +113,25 @@ class SettingsService {
       await player.setGaplessMode(GaplessMode.fromMpv(gapless));
     }
 
-    // ReplayGain mode (typed enum since 0.1.0)
-    final replaygain = _prefs.getString('${_keyPrefix}replaygain');
-    if (replaygain != null) {
-      await player.setReplayGainMode(ReplayGainMode.fromMpv(replaygain));
-    }
-
-    // ReplayGain pre-amplification in dB
-    final replaygainPreamp = _prefs.getDouble('${_keyPrefix}replaygain-preamp');
-    if (replaygainPreamp != null) {
-      await player.setReplayGainPreamp(replaygainPreamp);
-    }
-
-    // ReplayGain fallback gain (dB) when tags are missing
-    final replaygainFallback = _prefs.getDouble(
-      '${_keyPrefix}replaygain-fallback',
-    );
-    if (replaygainFallback != null) {
-      await player.setReplayGainFallback(replaygainFallback);
-    }
-
-    // Prevent clipping from ReplayGain amplification
-    final replaygainClip = _prefs.getBool('${_keyPrefix}replaygain-clip');
-    if (replaygainClip != null) {
-      await player.setReplayGainClip(replaygainClip);
+    // ReplayGain configuration aggregate. Each subkey is optional; we
+    // start from the in-memory defaults so unset prefs don't override
+    // them with zeros.
+    final rgMode = _prefs.getString('${_keyPrefix}replaygain');
+    final rgPreamp = _prefs.getDouble('${_keyPrefix}replaygain-preamp');
+    final rgFallback = _prefs.getDouble('${_keyPrefix}replaygain-fallback');
+    final rgClip = _prefs.getBool('${_keyPrefix}replaygain-clip');
+    if (rgMode != null ||
+        rgPreamp != null ||
+        rgFallback != null ||
+        rgClip != null) {
+      await player.setReplayGain(player.state.replayGain.copyWith(
+        mode: rgMode != null
+            ? ReplayGainMode.fromMpv(rgMode)
+            : player.state.replayGain.mode,
+        preamp: rgPreamp ?? player.state.replayGain.preamp,
+        fallback: rgFallback ?? player.state.replayGain.fallback,
+        clip: rgClip ?? player.state.replayGain.clip,
+      ));
     }
 
     // Additional volume gain in dB (applied after ReplayGain)
@@ -208,34 +210,31 @@ class SettingsService {
 
     // ── Cache & Demuxer ──────────────────────────────────────────────────────
 
-    // Cache mode (typed enum since 0.1.0)
-    final cacheMode = _prefs.getString('${_keyPrefix}cache');
-    if (cacheMode != null) {
-      await player.setCacheMode(CacheMode.fromMpv(cacheMode));
-    }
-
-    // How many seconds of audio/video to cache ahead (Duration since 0.1.0)
-    final cacheSecs = _prefs.getDouble('${_keyPrefix}cache-secs');
-    if (cacheSecs != null && cacheSecs < 1000000) {
-      await player.setCacheSecs(_secondsToDuration(cacheSecs));
-    }
-
-    // Store cache data on disk instead of RAM
-    final cacheOnDisk = _prefs.getBool('${_keyPrefix}cache-on-disk');
-    if (cacheOnDisk != null) {
-      await player.setCacheOnDisk(cacheOnDisk);
-    }
-
-    // Pause playback when cache is empty
-    final cachePause = _prefs.getBool('${_keyPrefix}cache-pause');
-    if (cachePause != null) {
-      await player.setCachePause(cachePause);
-    }
-
-    // Buffer required before resuming after cache-pause (Duration since 0.1.0)
-    final cachePauseWait = _prefs.getDouble('${_keyPrefix}cache-pause-wait');
-    if (cachePauseWait != null) {
-      await player.setCachePauseWait(_secondsToDuration(cachePauseWait));
+    // Cache configuration aggregate. Same partial-restore strategy as
+    // ReplayGain: missing prefs keep the current defaults.
+    final cMode = _prefs.getString('${_keyPrefix}cache');
+    final cSecs = _prefs.getDouble('${_keyPrefix}cache-secs');
+    final cOnDisk = _prefs.getBool('${_keyPrefix}cache-on-disk');
+    final cPause = _prefs.getBool('${_keyPrefix}cache-pause');
+    final cPauseWait = _prefs.getDouble('${_keyPrefix}cache-pause-wait');
+    if (cMode != null ||
+        cSecs != null ||
+        cOnDisk != null ||
+        cPause != null ||
+        cPauseWait != null) {
+      await player.setCache(player.state.cache.copyWith(
+        mode: cMode != null
+            ? CacheMode.fromMpv(cMode)
+            : player.state.cache.mode,
+        secs: cSecs != null && cSecs < 1000000
+            ? _secondsToDuration(cSecs)
+            : player.state.cache.secs,
+        onDisk: cOnDisk ?? player.state.cache.onDisk,
+        pause: cPause ?? player.state.cache.pause,
+        pauseWait: cPauseWait != null
+            ? _secondsToDuration(cPauseWait)
+            : player.state.cache.pauseWait,
+      ));
     }
 
     // Maximum bytes the demuxer may buffer
@@ -284,10 +283,11 @@ class SettingsService {
       await player.setAudioNullUntimed(audioNullUntimed);
     }
 
-    // Active audio track ID (e.g. "1", "2")
-    final audioTrack = _prefs.getString('${_keyPrefix}aid');
-    if (audioTrack != null && audioTrack != '' && audioTrack != 'no') {
-      await player.setAudioTrack(audioTrack);
+    // Active audio track ID — saved as int via stream.currentAudioTrack.
+    // Negative sentinel = no track persisted; defer to mpv's auto choice.
+    final audioTrackId = _prefs.getInt('${_keyPrefix}aid');
+    if (audioTrackId != null && audioTrackId >= 0) {
+      await player.setAudioTrack(audioTrackId);
     }
   }
 }

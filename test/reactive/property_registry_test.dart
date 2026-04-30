@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mpv_audio_kit/src/models/player_state.dart';
 import 'package:mpv_audio_kit/src/reactive/mpv_property_spec.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
@@ -129,7 +129,13 @@ void main() {
       expect(calls, [50.0, 60.0]);
     });
 
-    test('int spec wraps int in Duration via parse', () {
+    test('int64 spec dispatches into reactive + state and dedups', () {
+      // Pins the int64 dispatch path: a regression here is the same class
+      // of bug as the 0.1.0 fix where MPV_FORMAT_INT64 events were dropped
+      // by the event-isolate switch, leaving int64 specs frozen at their
+      // seed value. Asserting on both `next.field` and `reactive.value`
+      // catches a future divergence between state reduction and reactive
+      // update.
       final readahead = ReactiveProperty<int>(1);
       final registry = PropertyRegistry()
         ..register(MpvPropertySpec<int>.int64(
@@ -143,6 +149,19 @@ void main() {
       final next = registry.dispatch('demuxer-readahead-secs', 5, initial);
       expect(next, isNotNull);
       expect(next!.demuxerReadaheadSecs, 5);
+      expect(readahead.value, 5,
+          reason:
+              'reactive must update in lockstep with the state reducer');
+
+      // Same value → dedup → no state allocation.
+      expect(registry.dispatch('demuxer-readahead-secs', 5, next), isNull);
+      expect(readahead.value, 5);
+
+      // Different value → emits again.
+      final last = registry.dispatch('demuxer-readahead-secs', 7, next);
+      expect(last, isNotNull);
+      expect(last!.demuxerReadaheadSecs, 7);
+      expect(readahead.value, 7);
     });
 
     test('Duration-typed double spec wraps microseconds correctly', () async {

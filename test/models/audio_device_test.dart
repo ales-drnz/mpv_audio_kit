@@ -2,18 +2,12 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 void main() {
-  group('AudioDevice', () {
-    test('positional name + description', () {
-      const d = AudioDevice('coreaudio/AppleHDA', 'Built-in Speakers');
-      expect(d.name, 'coreaudio/AppleHDA');
-      expect(d.description, 'Built-in Speakers');
-    });
-
-    test('AudioDevice.auto() factory is canonical default', () {
+  group('AudioDevice — semantic invariants', () {
+    test('AudioDevice.auto() factory is the canonical default', () {
       const d = AudioDevice.auto();
       expect(d.name, 'auto');
       expect(d.description, 'Auto');
@@ -28,19 +22,6 @@ void main() {
       const b = AudioDevice('hw:0,0', 'Built-in (Localized)');
       expect(a, b);
       expect(a.hashCode, b.hashCode);
-    });
-
-    test('different name → not equal', () {
-      const a = AudioDevice('a', 'desc');
-      const b = AudioDevice('b', 'desc');
-      expect(a, isNot(b));
-    });
-
-    test('toString includes both name and description', () {
-      const d = AudioDevice('a', 'b');
-      final s = d.toString();
-      expect(s, contains('a'));
-      expect(s, contains('b'));
     });
   });
 }

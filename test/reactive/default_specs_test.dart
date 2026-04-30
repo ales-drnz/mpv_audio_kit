@@ -2,9 +2,11 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
+import 'package:mpv_audio_kit/src/models/cache_config.dart';
 import 'package:mpv_audio_kit/src/models/mpv_prefetch_state.dart';
 import 'package:mpv_audio_kit/src/models/player_state.dart';
+import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
 
@@ -199,6 +201,193 @@ void main() {
       dispatch('prefetch-state', 'totally-bogus');
       expect(reactives.prefetchState.value, MpvPrefetchState.idle);
     });
+
+    test('prefetch-playlist flag round-trips into state.prefetchPlaylist',
+        () {
+      // Default mirrors mpv 0.41 (off). Toggle via setPrefetchPlaylist
+      // (or any property write) drives the observed flag.
+      expect(state.prefetchPlaylist, isFalse);
+
+      dispatch('prefetch-playlist', true);
+      expect(state.prefetchPlaylist, isTrue);
+      expect(reactives.prefetchPlaylist.value, isTrue);
+
+      dispatch('prefetch-playlist', false);
+      expect(state.prefetchPlaylist, isFalse);
+      expect(reactives.prefetchPlaylist.value, isFalse);
+    });
+  });
+
+  group('Default registry — new mpv properties (XS)', () {
+    test('audio-pts (double → Duration)', () {
+      dispatch('audio-pts', 1.5);
+      expect(state.audioPts, const Duration(milliseconds: 1500));
+      expect(reactives.audioPts.value, const Duration(milliseconds: 1500));
+    });
+
+    test('time-remaining + playtime-remaining (double → Duration)', () {
+      dispatch('time-remaining', 30.0);
+      dispatch('playtime-remaining', 15.0);
+      expect(state.timeRemaining, const Duration(seconds: 30));
+      expect(state.playtimeRemaining, const Duration(seconds: 15));
+    });
+
+    test('eof-reached (flag → bool)', () {
+      dispatch('eof-reached', true);
+      expect(state.eofReached, isTrue);
+      dispatch('eof-reached', false);
+      expect(state.eofReached, isFalse);
+    });
+
+    test('seekable + partially-seekable (flag → bool)', () {
+      dispatch('seekable', true);
+      dispatch('partially-seekable', false);
+      expect(state.seekable, isTrue);
+      expect(state.partiallySeekable, isFalse);
+    });
+
+    test('media-title (string → String)', () {
+      dispatch('media-title', 'My Song - Artist');
+      expect(state.mediaTitle, 'My Song - Artist');
+    });
+
+    test('file-format (string → String)', () {
+      dispatch('file-format', 'mp4,m4a,3gp');
+      expect(state.fileFormat, 'mp4,m4a,3gp');
+    });
+
+    test('file-size (int64 → int)', () {
+      dispatch('file-size', 1234567890);
+      expect(state.fileSize, 1234567890);
+    });
+
+    test('demuxer-cache-duration (double → Duration) → bufferDuration', () {
+      dispatch('demuxer-cache-duration', 12.5);
+      expect(state.bufferDuration, const Duration(milliseconds: 12500));
+    });
+
+    test('demuxer-cache-idle (flag → bool)', () {
+      dispatch('demuxer-cache-idle', false);
+      expect(state.demuxerIdle, isFalse);
+      dispatch('demuxer-cache-idle', true);
+      expect(state.demuxerIdle, isTrue);
+    });
+
+    test('chapter (int64 → int?, -1 maps to null)', () {
+      dispatch('chapter', 2);
+      expect(state.currentChapter, 2);
+
+      dispatch('chapter', -1);
+      expect(state.currentChapter, isNull,
+          reason: 'mpv emits chapter=-1 when no chapter is active; the '
+              'parser must surface that as `null`');
+    });
+
+    test('chapter-list (NODE_ARRAY → List<Chapter>)', () {
+      dispatch('chapter-list', [
+        {'time': 0.0, 'title': 'A'},
+        {'time': 60.0, 'title': 'B'},
+      ]);
+      expect(state.chapters, hasLength(2));
+      expect(state.chapters[0].title, 'A');
+      expect(state.chapters[1].time, const Duration(seconds: 60));
+    });
+
+    test('image-display-duration ("inf" → null)', () {
+      dispatch('image-display-duration', 'inf');
+      expect(state.imageDisplayDuration, isNull);
+
+      dispatch('image-display-duration', '5.5');
+      expect(state.imageDisplayDuration,
+          const Duration(milliseconds: 5500));
+    });
+  });
+
+  group('Default registry — config aggregate copyWith preserves siblings',
+      () {
+    // Cruciale: i 9 spec ReplayGain/Cache fanno reduce su
+    // `s.copyWith(replayGain: s.replayGain.copyWith(field: v))` —
+    // un cambio su un campo NON deve sovrascrivere gli altri 3-4.
+    // Questi test pinnano l'invariante.
+
+    test('replayGain: dispatching one property preserves the other 3', () {
+      // Seed via dispatch so the granular reactives stay in sync with
+      // the aggregate state — directly assigning state.replayGain would
+      // leave the reactives at their defaults and the next dispatch
+      // would dedup.
+      dispatch('replaygain', 'album');
+      dispatch('replaygain-preamp', -3.0);
+      dispatch('replaygain-clip', true);
+      dispatch('replaygain-fallback', 1.5);
+      expect(
+          state.replayGain,
+          const ReplayGainConfig(
+            mode: ReplayGainMode.album,
+            preamp: -3.0,
+            clip: true,
+            fallback: 1.5,
+          ));
+
+      // Change just preamp; assert the other 3 fields are untouched.
+      dispatch('replaygain-preamp', -10.0);
+      expect(state.replayGain.preamp, -10.0);
+      expect(state.replayGain.mode, ReplayGainMode.album,
+          reason: 'mode must survive a preamp-only dispatch');
+      expect(state.replayGain.clip, isTrue);
+      expect(state.replayGain.fallback, 1.5);
+
+      // Change just clip.
+      dispatch('replaygain-clip', false);
+      expect(state.replayGain.clip, isFalse);
+      expect(state.replayGain.mode, ReplayGainMode.album);
+      expect(state.replayGain.preamp, -10.0,
+          reason: 'preamp from the previous dispatch must survive');
+    });
+
+    test('cache: dispatching one property preserves the other 4', () {
+      // Seed all 5 fields via dispatch (see replayGain test for rationale).
+      dispatch('cache', 'yes');
+      dispatch('cache-secs', 30.0);
+      dispatch('cache-on-disk', true);
+      dispatch('cache-pause', false);
+      dispatch('cache-pause-wait', 5.0);
+      expect(
+          state.cache,
+          const CacheConfig(
+            mode: CacheMode.yes,
+            secs: Duration(seconds: 30),
+            onDisk: true,
+            pause: false,
+            pauseWait: Duration(seconds: 5),
+          ));
+
+      dispatch('cache-secs', 60.0);
+      expect(state.cache.secs, const Duration(seconds: 60));
+      expect(state.cache.mode, CacheMode.yes);
+      expect(state.cache.onDisk, isTrue);
+      expect(state.cache.pause, isFalse);
+      expect(state.cache.pauseWait, const Duration(seconds: 5));
+
+      dispatch('cache-pause', true);
+      expect(state.cache.pause, isTrue);
+      expect(state.cache.secs, const Duration(seconds: 60));
+
+      dispatch('cache', 'no');
+      expect(state.cache.mode, CacheMode.no);
+      expect(state.cache.secs, const Duration(seconds: 60));
+      expect(state.cache.onDisk, isTrue);
+    });
+
+    test('replayGain: dispatch on initial PlayerState (default) is safe',
+        () {
+      // Edge case: dispatching the first property after a fresh state
+      // must not throw on the `s.replayGain.copyWith(...)` chain.
+      expect(state.replayGain, const ReplayGainConfig());
+      dispatch('replaygain-preamp', 1.0);
+      expect(state.replayGain.preamp, 1.0);
+      expect(state.replayGain.mode, ReplayGainMode.no,
+          reason: 'default ReplayGainConfig.mode must survive');
+    });
   });
 
   group('Default registry — onChange callbacks', () {
@@ -244,23 +433,26 @@ void main() {
     });
   });
 
-  group('Default registry — coverage smoke test', () {
-    test('every spec name observed by the player is registered', () {
-      // The full set of mpv property names the registry knows about. If any
-      // future maintenance accidentally drops a spec from buildDefaultSpecs,
-      // this test fails loudly with a missing-name error rather than the
-      // bug going unnoticed in production.
-      const expected = <String>[
+  group('Default registry — coverage contract', () {
+    test('registry holds exactly the documented set of mpv property names',
+        () {
+      // Bidirectional check: extracts the live spec names from the registry
+      // and asserts equality with the documented set below. A drift in
+      // either direction triggers a failure:
+      // - dropping a spec from buildDefaultSpecs → "missing" diff (caller
+      //   removed observability without deliberation);
+      // - adding a spec without updating this test → "extra" diff (forces
+      //   the addition to surface in code review with a one-line update).
+      final actual = registry.specs.map((s) => s.name).toSet();
+
+      const documented = <String>{
         // Playback / timing
         'time-pos', 'duration', 'demuxer-cache-time',
         'core-idle', 'volume', 'speed', 'pitch', 'mute', 'idle-active',
         'shuffle', 'audio-pitch-correction', 'audio-delay', 'audio-bitrate',
         'audio-device',
-        // Audio params (single MPV_FORMAT_NODE_MAP per side, plus the
-        // two string siblings that mpv does not bundle into the decoder
-        // node).
-        'audio-params', 'audio-codec', 'audio-codec-name',
-        'audio-out-params',
+        // Audio params
+        'audio-params', 'audio-codec', 'audio-codec-name', 'audio-out-params',
         // ReplayGain & gapless
         'gapless-audio', 'replaygain', 'replaygain-preamp',
         'replaygain-fallback', 'replaygain-clip', 'volume-gain',
@@ -271,19 +463,33 @@ void main() {
         'paused-for-cache', 'demuxer-via-network',
         // Audio output / driver
         'audio-buffer', 'audio-exclusive', 'audio-stream-silence',
-        'ao-null-untimed', 'aid', 'audio-spdif', 'volume-max',
+        'ao-null-untimed', 'track-list', 'current-tracks/audio',
+        'audio-spdif', 'volume-max',
         'audio-samplerate', 'audio-format', 'audio-channels',
         'audio-client-name', 'af', 'ao',
         // Cover art
         'audio-display', 'cover-art-auto', 'image-display-duration',
         // Patched / stream-only
-        'prefetch-state',
-        'audio-output-state',
-      ];
-      for (final name in expected) {
-        expect(registry.specFor(name), isNotNull,
-            reason: 'spec missing for "$name"');
-      }
+        'prefetch-state', 'audio-output-state', 'prefetch-playlist',
+        // Playback timing extras
+        'audio-pts', 'time-remaining', 'playtime-remaining', 'eof-reached',
+        // Stream capability
+        'seekable', 'partially-seekable',
+        // Display / file metadata
+        'media-title', 'file-format', 'file-size',
+        // Buffering depth
+        'demuxer-cache-duration', 'demuxer-cache-idle',
+        // Chapter navigation
+        'chapter', 'chapter-list',
+      };
+
+      expect(actual, equals(documented),
+          reason:
+              'Default registry drifted from the documented contract. '
+              'Missing: ${documented.difference(actual)}. '
+              'Extra: ${actual.difference(documented)}. '
+              'Update the `documented` set in this test if the change is '
+              'deliberate.');
     });
   });
 }

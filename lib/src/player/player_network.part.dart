@@ -5,29 +5,41 @@ part of '../player.dart';
 
 /// Module for network, cache, and buffering configuration.
 mixin _NetworkModule on _PlayerBase {
-  /// Amount of network data fetched ahead of the playback position.
+  /// Sets the cache configuration atomically.
   ///
-  /// Sub-second precision is preserved (sent to mpv as a fractional float).
-  Future<void> setCacheSecs(Duration secs) async {
+  /// Writes the five backing mpv properties (`cache`, `cache-secs`,
+  /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`) in one shot.
+  /// Modify a single field via
+  /// `await player.setCache(state.cache.copyWith(secs: const Duration(seconds: 30)))`.
+  Future<void> setCache(CacheConfig config) async {
     _checkNotDisposed();
-    _prop('cache-secs', durationToSeconds(secs).toStringAsFixed(3));
+    _prop('cache', config.mode.mpvValue);
+    _prop('cache-secs', durationToSeconds(config.secs).toStringAsFixed(3));
+    _prop('cache-on-disk', config.onDisk ? 'yes' : 'no');
+    _prop('cache-pause', config.pause ? 'yes' : 'no');
+    _prop('cache-pause-wait',
+        durationToSeconds(config.pauseWait).toStringAsFixed(3));
     _updateField(
-        (s) => s.copyWith(cacheSecs: secs), _reactives.cacheSecs, secs);
-  }
-
-  /// Cache behavior. See [CacheMode] for the available variants.
-  Future<void> setCacheMode(CacheMode mode) async {
-    _checkNotDisposed();
-    _prop('cache', mode.mpvValue);
+        (s) => s.copyWith(cache: s.cache.copyWith(mode: config.mode)),
+        _reactives.cacheMode,
+        config.mode);
     _updateField(
-        (s) => s.copyWith(cacheMode: mode), _reactives.cacheMode, mode);
-  }
-
-  /// Whether to spill overflow cache to temporary disk files.
-  Future<void> setCacheOnDisk(bool enable) async {
-    _checkNotDisposed();
-    _prop('cache-on-disk', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(cacheOnDisk: enable), _reactives.cacheOnDisk, enable);
+        (s) => s.copyWith(cache: s.cache.copyWith(secs: config.secs)),
+        _reactives.cacheSecs,
+        config.secs);
+    _updateField(
+        (s) => s.copyWith(cache: s.cache.copyWith(onDisk: config.onDisk)),
+        _reactives.cacheOnDisk,
+        config.onDisk);
+    _updateField(
+        (s) => s.copyWith(cache: s.cache.copyWith(pause: config.pause)),
+        _reactives.cachePause,
+        config.pause);
+    _updateField(
+        (s) =>
+            s.copyWith(cache: s.cache.copyWith(pauseWait: config.pauseWait)),
+        _reactives.cachePauseWait,
+        config.pauseWait);
   }
 
   /// Sets the audio buffer size.
@@ -43,21 +55,6 @@ mixin _NetworkModule on _PlayerBase {
     _checkNotDisposed();
     _prop('audio-stream-silence', enable ? 'yes' : 'no');
     _updateField((s) => s.copyWith(audioStreamSilence: enable), _reactives.audioStreamSilence, enable);
-  }
-
-  /// Whether to automatically pause when the cache runs empty.
-  Future<void> setCachePause(bool enable) async {
-    _checkNotDisposed();
-    _prop('cache-pause', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(cachePause: enable), _reactives.cachePause, enable);
-  }
-
-  /// Pre-buffer required before auto-resuming after a stall.
-  Future<void> setCachePauseWait(Duration wait) async {
-    _checkNotDisposed();
-    _prop('cache-pause-wait', durationToSeconds(wait).toStringAsFixed(3));
-    _updateField((s) => s.copyWith(cachePauseWait: wait),
-        _reactives.cachePauseWait, wait);
   }
 
   /// Network connection timeout. mpv accepts integer seconds only, so the

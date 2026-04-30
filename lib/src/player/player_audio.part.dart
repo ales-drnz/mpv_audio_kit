@@ -67,13 +67,39 @@ mixin _AudioModule on _PlayerBase {
         (s) => s.copyWith(gaplessMode: mode), _reactives.gaplessMode, mode);
   }
 
-  /// Configures ReplayGain normalization. See [ReplayGainMode] for the
-  /// available variants.
-  Future<void> setReplayGainMode(ReplayGainMode mode) async {
+  /// Sets the ReplayGain normalization configuration atomically.
+  ///
+  /// Writes the four backing mpv properties (`replaygain`,
+  /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`) in
+  /// one shot. Modify a single field via
+  /// `await player.setReplayGain(state.replayGain.copyWith(preamp: -3))`.
+  Future<void> setReplayGain(ReplayGainConfig config) async {
     _checkNotDisposed();
-    _prop('replaygain', mode.mpvValue);
-    _updateField((s) => s.copyWith(replayGainMode: mode),
-        _reactives.replayGainMode, mode);
+    _prop('replaygain', config.mode.mpvValue);
+    _prop('replaygain-preamp', config.preamp.toStringAsFixed(2));
+    _prop('replaygain-clip', config.clip ? 'yes' : 'no');
+    _prop('replaygain-fallback', config.fallback.toStringAsFixed(2));
+    // Optimistic update: write each granular reactive (the registry
+    // dispatch + state reduce will be a no-op when the observer event
+    // arrives with the same value).
+    _updateField(
+        (s) => s.copyWith(replayGain: s.replayGain.copyWith(mode: config.mode)),
+        _reactives.replayGainMode,
+        config.mode);
+    _updateField(
+        (s) => s.copyWith(
+            replayGain: s.replayGain.copyWith(preamp: config.preamp)),
+        _reactives.replayGainPreamp,
+        config.preamp);
+    _updateField(
+        (s) => s.copyWith(replayGain: s.replayGain.copyWith(clip: config.clip)),
+        _reactives.replayGainClip,
+        config.clip);
+    _updateField(
+        (s) => s.copyWith(
+            replayGain: s.replayGain.copyWith(fallback: config.fallback)),
+        _reactives.replayGainFallback,
+        config.fallback);
   }
 
   /// Sets volume gain in dB (pre-amplification).
@@ -90,27 +116,6 @@ mixin _AudioModule on _PlayerBase {
     _updateField((s) => s.copyWith(volumeMax: max), _reactives.volumeMax, max);
   }
 
-  /// Pre-amplification in dB applied before ReplayGain normalization.
-  Future<void> setReplayGainPreamp(double db) async {
-    _checkNotDisposed();
-    _prop('replaygain-preamp', db.toStringAsFixed(2));
-    _updateField((s) => s.copyWith(replayGainPreamp: db), _reactives.replayGainPreamp, db);
-  }
-
-  /// Whether to allow clipping after ReplayGain.
-  Future<void> setReplayGainClip(bool clip) async {
-    _checkNotDisposed();
-    _prop('replaygain-clip', clip ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(replayGainClip: clip), _reactives.replayGainClip, clip);
-  }
-
-  /// Gain applied to files without ReplayGain tags.
-  Future<void> setReplayGainFallback(double db) async {
-    _checkNotDisposed();
-    _prop('replaygain-fallback', db.toStringAsFixed(2));
-    _updateField((s) => s.copyWith(replayGainFallback: db), _reactives.replayGainFallback, db);
-  }
-
   /// Enables exclusive audio mode (WASAPI / ALSA / CoreAudio).
   Future<void> setAudioExclusive(bool exclusive) async {
     _checkNotDisposed();
@@ -125,11 +130,29 @@ mixin _AudioModule on _PlayerBase {
     _updateField((s) => s.copyWith(audioSpdif: codecs), _reactives.audioSpdif, codecs);
   }
 
-  /// Selects an audio track by ID.
-  Future<void> setAudioTrack(String trackId) async {
+  /// Selects the audio track with [trackId].
+  ///
+  /// IDs match [MpvTrack.id] entries in [PlayerState.tracks] / [Player.stream.tracks].
+  /// State updates flow through the `current-tracks/audio` observer (no
+  /// optimistic update — mpv may reject an unknown id).
+  Future<void> setAudioTrack(int trackId) async {
     _checkNotDisposed();
-    _prop('aid', trackId);
-    _updateField((s) => s.copyWith(audioTrack: trackId), _reactives.audioTrack, trackId);
+    _prop('aid', trackId.toString());
+  }
+
+  /// Reverts audio track selection to mpv's automatic choice (the
+  /// container's default track or the first audio track if no default
+  /// is flagged).
+  Future<void> setAudioTrackAuto() async {
+    _checkNotDisposed();
+    _prop('aid', 'auto');
+  }
+
+  /// Disables audio output entirely (`aid=no`). Useful for files where
+  /// the consumer wants only metadata / cover art without playing audio.
+  Future<void> setAudioTrackOff() async {
+    _checkNotDisposed();
+    _prop('aid', 'no');
   }
 
   /// Forcibly reloads the audio output.
@@ -192,14 +215,17 @@ mixin _AudioModule on _PlayerBase {
         (s) => s.copyWith(coverArtAutoMode: mode), _reactives.coverArtAutoMode, mode);
   }
 
-  /// Sets how long (in seconds) an image frame (e.g. cover art) is held as a
-  /// displayable video frame after the file is loaded. Pass `'inf'`
-  /// (default) to keep the frame alive indefinitely or `'0'` to drop it as
-  /// soon as audio playback starts. Mirrors mpv's
-  /// `--image-display-duration` option.
-  Future<void> setImageDisplayDuration(String duration) async {
+  /// Sets how long an image frame (e.g. cover art) is held as a
+  /// displayable video frame after the file is loaded.
+  ///
+  /// Pass `null` (default) to keep the frame alive indefinitely (mpv's
+  /// `inf`); pass [Duration.zero] to drop it as soon as audio playback
+  /// starts. Mirrors mpv's `--image-display-duration` option.
+  Future<void> setImageDisplayDuration(Duration? duration) async {
     _checkNotDisposed();
-    _prop('image-display-duration', duration);
+    final mpvValue =
+        duration == null ? 'inf' : durationToSeconds(duration).toString();
+    _prop('image-display-duration', mpvValue);
     _updateField((s) => s.copyWith(imageDisplayDuration: duration),
         _reactives.imageDisplayDuration, duration);
   }

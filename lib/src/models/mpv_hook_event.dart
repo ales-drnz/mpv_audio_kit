@@ -12,9 +12,12 @@
 /// player.registerHook('on_load');
 /// player.stream.hook.listen((event) async {
 ///   if (event.name == 'on_load') {
-///     final url = player.getRawProperty('stream-open-filename') ?? '';
+///     final url = await player.getRawProperty('stream-open-filename') ?? '';
 ///     if (url.startsWith('my-scheme://')) {
-///       player.setRawProperty('stream-open-filename', await resolve(url));
+///       await player.setRawProperty(
+///         'stream-open-filename',
+///         await resolve(url),
+///       );
 ///     }
 ///   }
 ///   player.continueHook(event.id); // always call, even on error

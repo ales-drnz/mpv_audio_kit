@@ -22,6 +22,20 @@ class _PlayerPageState extends State<PlayerPage> {
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   int _navIndex = 0;
 
+  void _pushLog(String line) {
+    if (!mounted) return;
+    setState(() {
+      _logs.add(line);
+      if (_logs.length > 500) {
+        _logs.removeAt(0);
+      }
+    });
+  }
+
+  void _handleAppendLog(String message) {
+    _pushLog('[mpv_audio_kit] info: $message');
+  }
+
   Future<void> _handleTogglePin(bool pin) async {
     setState(() => _isConsolePinned = pin);
 
@@ -88,18 +102,12 @@ class _PlayerPageState extends State<PlayerPage> {
       player.stream.gaplessMode.listen(
         (v) => settingsService.save('gapless-audio', v),
       );
-      player.stream.replayGainMode.listen(
-        (v) => settingsService.save('replaygain', v),
-      );
-      player.stream.replayGainPreamp.listen(
-        (v) => settingsService.save('replaygain-preamp', v),
-      );
-      player.stream.replayGainFallback.listen(
-        (v) => settingsService.save('replaygain-fallback', v),
-      );
-      player.stream.replayGainClip.listen(
-        (v) => settingsService.save('replaygain-clip', v),
-      );
+      player.stream.replayGain.listen((c) {
+        settingsService.save('replaygain', c.mode);
+        settingsService.save('replaygain-preamp', c.preamp);
+        settingsService.save('replaygain-fallback', c.fallback);
+        settingsService.save('replaygain-clip', c.clip);
+      });
       player.stream.volumeGain.listen(
         (v) => settingsService.save('volume-gain', v),
       );
@@ -107,19 +115,13 @@ class _PlayerPageState extends State<PlayerPage> {
         (v) => settingsService.save('pitch-correction', v),
       );
 
-      player.stream.cacheMode.listen((v) => settingsService.save('cache', v));
-      player.stream.cacheSecs.listen(
-        (v) => settingsService.save('cache-secs', v),
-      );
-      player.stream.cacheOnDisk.listen(
-        (v) => settingsService.save('cache-on-disk', v),
-      );
-      player.stream.cachePause.listen(
-        (v) => settingsService.save('cache-pause', v),
-      );
-      player.stream.cachePauseWait.listen(
-        (v) => settingsService.save('cache-pause-wait', v),
-      );
+      player.stream.cache.listen((c) {
+        settingsService.save('cache', c.mode);
+        settingsService.save('cache-secs', c.secs);
+        settingsService.save('cache-on-disk', c.onDisk);
+        settingsService.save('cache-pause', c.pause);
+        settingsService.save('cache-pause-wait', c.pauseWait);
+      });
       player.stream.demuxerMaxBytes.listen(
         (v) => settingsService.save('demuxer-max-bytes', v),
       );
@@ -142,21 +144,14 @@ class _PlayerPageState extends State<PlayerPage> {
       player.stream.audioNullUntimed.listen(
         (v) => settingsService.save('ao-null-untimed', v),
       );
-      player.stream.audioTrack.listen((v) => settingsService.save('aid', v));
+      player.stream.currentAudioTrack
+          .listen((t) => settingsService.save('aid', t?.id ?? -1));
       player.stream.equalizerGains.listen(
         (v) => settingsService.save('equalizer_gains', v),
       );
 
-      player.stream.log.listen((line) {
-        if (mounted) {
-          setState(() {
-            _logs.add(line.toString());
-            if (_logs.length > 500) {
-              _logs.removeAt(0);
-            }
-          });
-        }
-      });
+      player.stream.log.listen((line) => _pushLog(line.toString()));
+      player.stream.internalLog.listen((line) => _pushLog(line.toString()));
       player.stream.playing.listen((p) {
         debugPrint('[player] playing → $p');
       });
@@ -205,6 +200,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   isPinned: false,
                   onClearLogs: () => setState(() => _logs.clear()),
                   onTogglePin: () => _handleTogglePin(true),
+                  onAppendLog: _handleAppendLog,
                 ),
             ];
 
@@ -288,6 +284,7 @@ class _PlayerPageState extends State<PlayerPage> {
                         isPinned: true,
                         onClearLogs: () => setState(() => _logs.clear()),
                         onTogglePin: () => _handleTogglePin(false),
+                        onAppendLog: _handleAppendLog,
                       ),
                     ),
                   ),

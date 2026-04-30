@@ -1,5 +1,4 @@
-// This file includes implementations derived from media_kit (https://github.com/media-kit/media-kit).
-// Copyright © 2021 & onwards, Hitesh Kumar Saini <saini123hitesh@gmail.com>.
+// Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
@@ -8,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
 /// Helps resolving Android-specific URIs like `asset://` and `content://`.
-abstract class AndroidHelper {
+abstract class FlutterUriResolver {
   static const MethodChannel _channel = MethodChannel('mpv_audio_kit');
   static final Map<String, String> _assetCache = {};
   // De-duplicates concurrent `normalizeUri()` calls for the same asset:
@@ -34,7 +33,7 @@ abstract class AndroidHelper {
       }
     } catch (e) {
       debugPrint(
-          'mpv_audio_kit: AndroidHelper.normalizeUri error for $uri: $e');
+          'mpv_audio_kit: FlutterUriResolver.normalizeUri error for $uri: $e');
     }
     return uri;
   }

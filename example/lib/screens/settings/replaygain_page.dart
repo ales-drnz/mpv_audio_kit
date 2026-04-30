@@ -12,72 +12,61 @@ class ReplayGainPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'ReplayGain'),
-        StreamBuilder<ReplayGainMode>(
-          stream: player.stream.replayGainMode,
-          initialData: player.state.replayGainMode,
+        StreamBuilder<ReplayGainConfig>(
+          stream: player.stream.replayGain,
+          initialData: player.state.replayGain,
           builder: (context, snap) {
-            final mode = snap.data ?? ReplayGainMode.no;
-            return SegmentedPropertyCard<ReplayGainMode>(
-              title: 'Mode',
-              subtitle: 'replaygain=${mode.mpvValue}',
-              icon: Icons.av_timer_rounded,
-              value: mode,
-              segments: const [
-                (ReplayGainMode.no, 'NONE'),
-                (ReplayGainMode.track, 'TRACK'),
-                (ReplayGainMode.album, 'ALBUM'),
+            final cfg = snap.data ?? const ReplayGainConfig();
+            return Column(
+              children: [
+                SegmentedPropertyCard<ReplayGainMode>(
+                  title: 'Mode',
+                  subtitle: 'replaygain=${cfg.mode.mpvValue}',
+                  icon: Icons.av_timer_rounded,
+                  value: cfg.mode,
+                  segments: const [
+                    (ReplayGainMode.no, 'NONE'),
+                    (ReplayGainMode.track, 'TRACK'),
+                    (ReplayGainMode.album, 'ALBUM'),
+                  ],
+                  onChanged: (m) =>
+                      player.setReplayGain(cfg.copyWith(mode: m)),
+                ),
+                SliderPropertyCard(
+                  title: 'Preamp',
+                  subtitle:
+                      'replaygain-preamp=${cfg.preamp.toStringAsFixed(1)}dB',
+                  icon: Icons.tune_rounded,
+                  value: cfg.preamp,
+                  min: -15.0,
+                  max: 15.0,
+                  defaultValue: 0.0,
+                  labelBuilder: (v) => '${v.toStringAsFixed(1)}dB',
+                  onChanged: (v) =>
+                      player.setReplayGain(cfg.copyWith(preamp: v)),
+                ),
+                SliderPropertyCard(
+                  title: 'Fallback',
+                  subtitle:
+                      'replaygain-fallback=${cfg.fallback.toStringAsFixed(1)}dB',
+                  icon: Icons.settings_backup_restore_rounded,
+                  value: cfg.fallback,
+                  min: -15.0,
+                  max: 15.0,
+                  defaultValue: 0.0,
+                  labelBuilder: (v) => '${v.toStringAsFixed(1)}dB',
+                  onChanged: (v) =>
+                      player.setReplayGain(cfg.copyWith(fallback: v)),
+                ),
+                TogglePropertyCard(
+                  title: 'Allow Clipping',
+                  subtitle: 'replaygain-clip=${cfg.clip ? 'yes' : 'no'}',
+                  icon: Icons.high_quality_rounded,
+                  value: cfg.clip,
+                  onChanged: (v) =>
+                      player.setReplayGain(cfg.copyWith(clip: v)),
+                ),
               ],
-              onChanged: player.setReplayGainMode,
-            );
-          },
-        ),
-        StreamBuilder<double>(
-          stream: player.stream.replayGainPreamp,
-          initialData: player.state.replayGainPreamp,
-          builder: (context, snap) {
-            final val = snap.data ?? 0.0;
-            return SliderPropertyCard(
-              title: 'Preamp',
-              subtitle: 'replaygain-preamp=${val.toStringAsFixed(1)}dB',
-              icon: Icons.tune_rounded,
-              value: val,
-              min: -15.0,
-              max: 15.0,
-              defaultValue: 0.0,
-              labelBuilder: (v) => '${v.toStringAsFixed(1)}dB',
-              onChanged: player.setReplayGainPreamp,
-            );
-          },
-        ),
-        StreamBuilder<double>(
-          stream: player.stream.replayGainFallback,
-          initialData: player.state.replayGainFallback,
-          builder: (context, snap) {
-            final val = snap.data ?? 0.0;
-            return SliderPropertyCard(
-              title: 'Fallback',
-              subtitle: 'replaygain-fallback=${val.toStringAsFixed(1)}dB',
-              icon: Icons.settings_backup_restore_rounded,
-              value: val,
-              min: -15.0,
-              max: 15.0,
-              defaultValue: 0.0,
-              labelBuilder: (v) => '${v.toStringAsFixed(1)}dB',
-              onChanged: player.setReplayGainFallback,
-            );
-          },
-        ),
-        StreamBuilder<bool>(
-          stream: player.stream.replayGainClip,
-          initialData: player.state.replayGainClip,
-          builder: (context, snap) {
-            final clip = snap.data ?? false;
-            return TogglePropertyCard(
-              title: 'Allow Clipping',
-              subtitle: 'replaygain-clip=${clip ? 'yes' : 'no'}',
-              icon: Icons.high_quality_rounded,
-              value: clip,
-              onChanged: player.setReplayGainClip,
             );
           },
         ),

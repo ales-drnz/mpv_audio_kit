@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -11,6 +13,7 @@ class LogsTab extends StatefulWidget {
   final VoidCallback onClearLogs;
   final bool isPinned;
   final VoidCallback onTogglePin;
+  final void Function(String message) onAppendLog;
 
   const LogsTab({
     super.key,
@@ -19,6 +22,7 @@ class LogsTab extends StatefulWidget {
     required this.onClearLogs,
     required this.isPinned,
     required this.onTogglePin,
+    required this.onAppendLog,
   });
 
   @override
@@ -73,48 +77,48 @@ class _LogsTabState extends State<LogsTab> {
     }).toList();
   }
 
-  void _sendCommand(String cmd) {
+  Future<void> _sendCommand(String cmd) async {
     if (cmd.contains('=')) {
       final parts = cmd.split('=');
-      widget.player.setRawProperty(parts[0].trim(), parts[1].trim());
+      await widget.player.setRawProperty(parts[0].trim(), parts[1].trim());
     } else {
-      widget.player.sendRawCommand(cmd.split(' '));
+      await widget.player.sendRawCommand(cmd.split(' '));
     }
   }
 
-  void _requestHelp(String type) {
+  Future<void> _requestHelp(String type) async {
     switch (type) {
       case 'filters':
-        widget.player.appendLog(
+        widget.onAppendLog(
           'Requesting audio filters help (check console if not below)...',
         );
-        widget.player.setRawProperty('af', 'help');
+        await widget.player.setRawProperty('af', 'help');
         break;
       case 'drivers':
-        widget.player.appendLog(
+        widget.onAppendLog(
           'Requesting available Audio Output drivers via mpv help...',
         );
-        widget.player.setRawProperty('ao', 'help');
+        await widget.player.setRawProperty('ao', 'help');
         break;
       case 'devices':
         final devices = widget.player.state.audioDevices;
-        widget.player.appendLog('Detected Audio Devices (from audio-device-list):');
+        widget.onAppendLog('Detected Audio Devices (from audio-device-list):');
         for (final d in devices) {
-          widget.player.appendLog('  - "${d.name}" : ${d.description}');
+          widget.onAppendLog('  - "${d.name}" : ${d.description}');
         }
         break;
       case 'properties':
-        final list = widget.player.getRawProperty('property-list');
+        final list = await widget.player.getRawProperty('property-list');
         if (list != null) {
-          widget.player.appendLog('Common mpv Properties:');
-          widget.player.appendLog('  ${list.replaceAll(',', ', ')}');
+          widget.onAppendLog('Common mpv Properties:');
+          widget.onAppendLog('  ${list.replaceAll(',', ', ')}');
         }
         break;
       case 'commands':
-        final list = widget.player.getRawProperty('command-list');
+        final list = await widget.player.getRawProperty('command-list');
         if (list != null) {
-          widget.player.appendLog('Available mpv Commands:');
-          widget.player.appendLog('  ${list.replaceAll(',', ', ')}');
+          widget.onAppendLog('Available mpv Commands:');
+          widget.onAppendLog('  ${list.replaceAll(',', ', ')}');
         }
         break;
     }
@@ -215,7 +219,7 @@ class _LogsTabState extends State<LogsTab> {
                       icon: const Icon(Icons.send_rounded),
                       onPressed: () {
                         if (_commandController.text.isNotEmpty) {
-                          _sendCommand(_commandController.text);
+                          unawaited(_sendCommand(_commandController.text));
                           _commandController.clear();
                         }
                       },
@@ -234,7 +238,7 @@ class _LogsTabState extends State<LogsTab> {
                   style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                   onSubmitted: (val) {
                     if (val.isNotEmpty) {
-                      _sendCommand(val);
+                      unawaited(_sendCommand(val));
                       _commandController.clear();
                     }
                   },

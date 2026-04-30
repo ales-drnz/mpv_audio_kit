@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../widgets/property_cards.dart';
@@ -22,8 +24,10 @@ class StreamSilencePage extends StatelessWidget {
               subtitle: 'audio-stream-silence=${val ? 'yes' : 'no'}',
               icon: Icons.shutter_speed_rounded,
               value: val,
-              onChanged: (v) =>
-                  player.setRawProperty('audio-stream-silence', v ? 'yes' : 'no'),
+              onChanged: (v) => unawaited(player.setRawProperty(
+                'audio-stream-silence',
+                v ? 'yes' : 'no',
+              )),
             );
           },
         ),

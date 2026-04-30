@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:mpv_audio_kit/uri_resolver_flutter.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'screens/player_page.dart';
@@ -41,6 +42,11 @@ void main() async {
       initialVolume: 50.0,
       autoPlay: true,
       logLevel: 'debug',
+      // Wire the Flutter-aware URI resolver: translates `asset://`
+      // bundle paths via rootBundle and `content://` Android intent
+      // URIs via the platform channel. Pure Dart consumers (and the
+      // package's own runtime tests) leave this null.
+      uriResolver: FlutterUriResolver.normalizeUri,
     ),
   );
 

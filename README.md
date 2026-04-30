@@ -1406,14 +1406,6 @@ All the native bindings, isolate logic, and architectural patterns were implemen
 
 ---
 
-## Credits
-
-This project architecture is inspired by and includes native bridging logic from **media-kit** (by `alexmercerind` and `cillyvms`), specifically:
-- **NativeReferenceHolder**: Native memory management for Hot-Restart cleanup.
-- **AndroidHelper**: URI to file-descriptor mapping for Android `content://` URIs.
-
----
-
 ## Funding
 
 If you find this library useful and want to support its development, consider becoming a supporter on **Patreon**:

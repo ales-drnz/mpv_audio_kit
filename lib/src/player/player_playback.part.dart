@@ -17,12 +17,6 @@ mixin _PlaybackModule on _PlayerBase {
     _prop('pause', 'yes');
   }
 
-  /// Toggles between play and pause.
-  Future<void> playOrPause() async {
-    _checkNotDisposed();
-    _commandString('cycle pause');
-  }
-
   /// Stops playback and unloads the current file.
   Future<void> stop() async {
     _checkNotDisposed();
@@ -37,5 +31,18 @@ mixin _PlaybackModule on _PlayerBase {
     final secs = position.inMicroseconds / 1e6;
     _command(
         ['seek', secs.toStringAsFixed(6), relative ? 'relative' : 'absolute']);
+  }
+
+  /// Jumps to the chapter at [index] in the current file.
+  ///
+  /// Indexing is 0-based and matches [PlayerState.chapters]. mpv handles
+  /// out-of-range values (negative or beyond the last chapter) by
+  /// clamping; the optimistic [PlayerState.currentChapter] update reflects
+  /// the requested value and is corrected by the next observer event.
+  Future<void> setChapter(int index) async {
+    _checkNotDisposed();
+    _prop('chapter', index.toString());
+    _updateField((s) => s.copyWith(currentChapter: index),
+        _reactives.currentChapter, index);
   }
 }
