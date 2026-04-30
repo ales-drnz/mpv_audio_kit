@@ -19,10 +19,18 @@ import 'reactive_property.dart';
 /// [MpvPropertySpec.flag], [MpvPropertySpec.int64], [MpvPropertySpec.string],
 /// [MpvPropertySpec.node]) only differ in which [MpvFormat] they bind to mpv
 /// and what raw Dart type the parser accepts. Funnelling them through a
-/// single `parseAndDispatch` pipeline (dedup → reactive update → state
-/// reduce → onChange) keeps "format → spec → dispatch" a single source of
-/// truth — adding a format is one new factory and one new branch in the
-/// event isolate, no chance to wire one and forget the other.
+/// single `parseAndDispatch` pipeline (parse → dedup → reactive update →
+/// state reduce → onChange) keeps "format → spec → dispatch" a single
+/// source of truth — adding a format is one new factory and one new branch
+/// in the event isolate, no chance to wire one and forget the other.
+///
+/// The [T] generic is the type of the [reactive] cell. For most
+/// properties [T] is also the parsed value type (a scalar like `double` or
+/// `bool`). For aggregate properties — where a single mpv property updates
+/// only one field of a larger config — the parser folds the parsed value
+/// into the current [PlayerState]'s aggregate and returns the *whole*
+/// aggregate, so the reactive holds and dedups on the full struct. This
+/// is why every parse callback receives the current [PlayerState].
 class MpvPropertySpec<T> {
   /// Internal canonical constructor. All factories funnel through here so the
   /// dispatch pipeline ([parseAndDispatch]) is implemented exactly once.
@@ -30,7 +38,7 @@ class MpvPropertySpec<T> {
     required this.name,
     required this.format,
     required this.reactive,
-    required T Function(dynamic raw) parse,
+    required T Function(dynamic raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
   })  : _parse = parse,
@@ -41,7 +49,7 @@ class MpvPropertySpec<T> {
   factory MpvPropertySpec.double({
     required String name,
     required ReactiveProperty<T> reactive,
-    required T Function(double raw) parse,
+    required T Function(double raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
   }) =>
@@ -49,7 +57,7 @@ class MpvPropertySpec<T> {
         name: name,
         format: MpvFormat.mpvFormatDouble,
         reactive: reactive,
-        parse: (raw) => parse(raw as double),
+        parse: (raw, state) => parse(raw as double, state),
         reduce: reduce,
         onChange: onChange,
       );
@@ -61,7 +69,7 @@ class MpvPropertySpec<T> {
   factory MpvPropertySpec.flag({
     required String name,
     required ReactiveProperty<T> reactive,
-    required T Function(bool raw) parse,
+    required T Function(bool raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
   }) =>
@@ -69,7 +77,8 @@ class MpvPropertySpec<T> {
         name: name,
         format: MpvFormat.mpvFormatFlag,
         reactive: reactive,
-        parse: (raw) => parse(raw is int ? raw == 1 : raw as bool),
+        parse: (raw, state) =>
+            parse(raw is int ? raw == 1 : raw as bool, state),
         reduce: reduce,
         onChange: onChange,
       );
@@ -78,7 +87,7 @@ class MpvPropertySpec<T> {
   factory MpvPropertySpec.int64({
     required String name,
     required ReactiveProperty<T> reactive,
-    required T Function(int raw) parse,
+    required T Function(int raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
   }) =>
@@ -86,7 +95,7 @@ class MpvPropertySpec<T> {
         name: name,
         format: MpvFormat.mpvFormatInt64,
         reactive: reactive,
-        parse: (raw) => parse(raw as int),
+        parse: (raw, state) => parse(raw as int, state),
         reduce: reduce,
         onChange: onChange,
       );
@@ -95,7 +104,7 @@ class MpvPropertySpec<T> {
   factory MpvPropertySpec.string({
     required String name,
     required ReactiveProperty<T> reactive,
-    required T Function(String raw) parse,
+    required T Function(String raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
   }) =>
@@ -103,7 +112,7 @@ class MpvPropertySpec<T> {
         name: name,
         format: MpvFormat.mpvFormatString,
         reactive: reactive,
-        parse: (raw) => parse(raw as String),
+        parse: (raw, state) => parse(raw as String, state),
         reduce: reduce,
         onChange: onChange,
       );
@@ -119,7 +128,7 @@ class MpvPropertySpec<T> {
   factory MpvPropertySpec.node({
     required String name,
     required ReactiveProperty<T> reactive,
-    required T Function(dynamic raw) parse,
+    required T Function(dynamic raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
   }) =>
@@ -143,7 +152,7 @@ class MpvPropertySpec<T> {
   /// change; exposed publicly through `Player.stream`.
   final ReactiveProperty<T> reactive;
 
-  final T Function(dynamic raw) _parse;
+  final T Function(dynamic raw, PlayerState state) _parse;
   final PlayerState Function(T value, PlayerState state) _reduce;
   final void Function(T value)? _onChange;
 
@@ -159,10 +168,11 @@ class MpvPropertySpec<T> {
   void Function(T next)? get onChange => _onChange;
 
   /// Parses a raw mpv-side value and applies the full update pipeline:
-  /// dedup → reactive update → state reduce → onChange. Returns the new
-  /// [PlayerState], or `null` if the value was deduplicated (no change).
+  /// parse → dedup → reactive update → state reduce → onChange. Returns
+  /// the new [PlayerState], or `null` if the value was deduplicated (no
+  /// change).
   PlayerState? parseAndDispatch(dynamic raw, PlayerState state) {
-    final value = _parse(raw);
+    final value = _parse(raw, state);
     if (!reactive.update(value)) return null;
     final next = _reduce(value, state);
     _onChange?.call(value);

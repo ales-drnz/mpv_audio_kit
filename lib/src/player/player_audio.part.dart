@@ -49,7 +49,13 @@ mixin _AudioModule on _PlayerBase {
     _updateField((s) => s.copyWith(pitchCorrection: enable), _reactives.pitchCorrection, enable);
   }
 
-  /// Sets the audio delay (positive: delay audio, negative: advance it).
+  /// Sets the audio delay relative to video (mpv's `audio-delay`).
+  ///
+  /// Sign convention: positive values **delay** audio relative to video
+  /// (audio plays later), negative values **advance** it (audio plays
+  /// earlier). This matches mpv's convention but is counterintuitive
+  /// when thought of as "audio offset" — positive does NOT mean "audio
+  /// ahead".
   ///
   /// Resolution is millisecond-rounded — sub-millisecond precision is
   /// stripped before the value is sent to mpv.
@@ -81,27 +87,8 @@ mixin _AudioModule on _PlayerBase {
     _prop('replaygain-preamp', config.preamp.toStringAsFixed(2));
     _prop('replaygain-clip', config.clip ? 'yes' : 'no');
     _prop('replaygain-fallback', config.fallback.toStringAsFixed(2));
-    // Optimistic update: write each granular reactive (the registry
-    // dispatch + state reduce will be a no-op when the observer event
-    // arrives with the same value).
     _updateField(
-        (s) => s.copyWith(replayGain: s.replayGain.copyWith(mode: config.mode)),
-        _reactives.replayGainMode,
-        config.mode);
-    _updateField(
-        (s) => s.copyWith(
-            replayGain: s.replayGain.copyWith(preamp: config.preamp)),
-        _reactives.replayGainPreamp,
-        config.preamp);
-    _updateField(
-        (s) => s.copyWith(replayGain: s.replayGain.copyWith(clip: config.clip)),
-        _reactives.replayGainClip,
-        config.clip);
-    _updateField(
-        (s) => s.copyWith(
-            replayGain: s.replayGain.copyWith(fallback: config.fallback)),
-        _reactives.replayGainFallback,
-        config.fallback);
+        (s) => s.copyWith(replayGain: config), _reactives.replayGain, config);
   }
 
   /// Sets volume gain in dB (pre-amplification on top of [setVolume]).

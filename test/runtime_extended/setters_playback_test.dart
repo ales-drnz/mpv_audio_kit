@@ -73,18 +73,42 @@ void main() {
     // tearDownAll then operates on a quiesced player.
 
     test('seek absolute updates state.position', () async {
+      // Subscribe BEFORE the setter so the broadcast emission isn't
+      // missed. Anchor on the position observer rather than wall-clock:
+      // mpv may settle slightly off the requested 1000ms target.
+      final waitFor800 = player.stream.position
+          .firstWhere((p) => p.inMilliseconds >= 800)
+          .timeout(const Duration(seconds: 3));
       await player.seek(const Duration(seconds: 1));
-      await Future.delayed(const Duration(milliseconds: 500));
-      expect(player.state.position.inMilliseconds, greaterThan(800),
-          reason: 'mpv may settle slightly off the requested 1000ms target');
+      await waitFor800;
+      expect(player.state.position.inMilliseconds, greaterThan(800));
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('seek relative offsets from the current position', () async {
-      // Anchor at 1.0s, then seek +1.0s relative → ~2.0s.
+      // Reset to 0 first: the previous seek-absolute test left position
+      // at ~1000ms, and ReactiveProperty.position dedups same-value
+      // updates — without this reset, the seek(1s) below would land on
+      // an already-cached value and never emit.
+      final waitForZero = player.stream.position
+          .firstWhere((p) => p.inMilliseconds < 100)
+          .timeout(const Duration(seconds: 3));
+      await player.seek(Duration.zero);
+      await waitForZero;
+
+      // Anchor at 1.0s, then seek +1.0s relative → ~2.0s. Both legs
+      // subscribe BEFORE the seek so the broadcast emission isn't
+      // missed by a late subscription.
+      final waitFor800 = player.stream.position
+          .firstWhere((p) => p.inMilliseconds >= 800)
+          .timeout(const Duration(seconds: 3));
       await player.seek(const Duration(seconds: 1));
-      await Future.delayed(const Duration(milliseconds: 400));
+      await waitFor800;
+
+      final waitFor1700 = player.stream.position
+          .firstWhere((p) => p.inMilliseconds >= 1700)
+          .timeout(const Duration(seconds: 3));
       await player.seek(const Duration(seconds: 1), relative: true);
-      await Future.delayed(const Duration(milliseconds: 400));
+      await waitFor1700;
       expect(player.state.position.inMilliseconds, greaterThan(1700));
     }, timeout: const Timeout(Duration(seconds: 15)));
 
@@ -104,6 +128,11 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('stop returns the player to an idle lifecycle', () async {
+      // The previous test left state.playing == false (after pause), so
+      // ReactiveProperty.playing dedups the false→false echo and no new
+      // emission fires after stop(). We can't anchor on a stream value
+      // change; the wait gives mpv time to process the stop command,
+      // and we assert the post-stop state synchronously.
       await player.stop();
       await Future.delayed(const Duration(milliseconds: 300));
       expect(player.state.playing, isFalse);

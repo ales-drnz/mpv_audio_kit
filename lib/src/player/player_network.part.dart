@@ -19,27 +19,7 @@ mixin _NetworkModule on _PlayerBase {
     _prop('cache-pause', config.pause ? 'yes' : 'no');
     _prop('cache-pause-wait',
         durationToSeconds(config.pauseWait).toStringAsFixed(3));
-    _updateField(
-        (s) => s.copyWith(cache: s.cache.copyWith(mode: config.mode)),
-        _reactives.cacheMode,
-        config.mode);
-    _updateField(
-        (s) => s.copyWith(cache: s.cache.copyWith(secs: config.secs)),
-        _reactives.cacheSecs,
-        config.secs);
-    _updateField(
-        (s) => s.copyWith(cache: s.cache.copyWith(onDisk: config.onDisk)),
-        _reactives.cacheOnDisk,
-        config.onDisk);
-    _updateField(
-        (s) => s.copyWith(cache: s.cache.copyWith(pause: config.pause)),
-        _reactives.cachePause,
-        config.pause);
-    _updateField(
-        (s) =>
-            s.copyWith(cache: s.cache.copyWith(pauseWait: config.pauseWait)),
-        _reactives.cachePauseWait,
-        config.pauseWait);
+    _updateField((s) => s.copyWith(cache: config), _reactives.cache, config);
   }
 
   /// Sets the audio output buffer depth.

@@ -72,16 +72,15 @@ class PlayerStream {
         audioDelay = reactives.audioDelay.stream,
         audioBitrate = reactives.audioBitrate.stream,
         audioDevice = reactives.audioDevice.stream,
-        audioParams = _audioParamsStream(reactives),
+        audioParams = reactives.audioParams.stream,
         // mpv exposes `audio-out-params` as a single MPV_FORMAT_NODE_MAP
         // and there is no codec / codec-name sibling on the output side, so
-        // a direct passthrough of the node reactive's stream is the entire
-        // aggregator — no `_bindAggregate` needed.
+        // the aggregator is a direct passthrough of the node reactive.
         audioOutParams = reactives.audioOutParamsNode.stream,
         gaplessMode = reactives.gaplessMode.stream,
-        replayGain = _replayGainStream(reactives),
+        replayGain = reactives.replayGain.stream,
         volumeGain = reactives.volumeGain.stream,
-        cache = _cacheStream(reactives),
+        cache = reactives.cache.stream,
         demuxerMaxBytes = reactives.demuxerMaxBytes.stream,
         demuxerReadaheadSecs = reactives.demuxerReadaheadSecs.stream,
         demuxerMaxBackBytes = reactives.demuxerMaxBackBytes.stream,
@@ -154,48 +153,6 @@ class PlayerStream {
         pitchTempo = pitchTempo.stream,
         customAudioFilters = customAudioFilters.stream;
 
-  /// Aggregate [ReplayGainConfig] stream — emits a fresh snapshot
-  /// whenever any of the 4 backing properties changes (`replaygain`,
-  /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`).
-  /// Lazy: subscriptions open only on the first listener.
-  static Stream<ReplayGainConfig> _replayGainStream(
-    DefaultPropertyReactives r,
-  ) {
-    ReplayGainConfig snapshot() => ReplayGainConfig(
-          mode: r.replayGainMode.value,
-          preamp: r.replayGainPreamp.value,
-          clip: r.replayGainClip.value,
-          fallback: r.replayGainFallback.value,
-        );
-    return _bindAggregate<ReplayGainConfig>(snapshot, [
-      r.replayGainMode.stream,
-      r.replayGainPreamp.stream,
-      r.replayGainClip.stream,
-      r.replayGainFallback.stream,
-    ]);
-  }
-
-  /// Aggregate [CacheConfig] stream — emits a fresh snapshot whenever
-  /// any of the 5 backing properties changes (`cache`, `cache-secs`,
-  /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`). Lazy: source
-  /// subscriptions open only on the first listener.
-  static Stream<CacheConfig> _cacheStream(DefaultPropertyReactives r) {
-    CacheConfig snapshot() => CacheConfig(
-          mode: r.cacheMode.value,
-          secs: r.cacheSecs.value,
-          onDisk: r.cacheOnDisk.value,
-          pause: r.cachePause.value,
-          pauseWait: r.cachePauseWait.value,
-        );
-    return _bindAggregate<CacheConfig>(snapshot, [
-      r.cacheMode.stream,
-      r.cacheSecs.stream,
-      r.cacheOnDisk.stream,
-      r.cachePause.stream,
-      r.cachePauseWait.stream,
-    ]);
-  }
-
   /// Aggregate [PlaybackLifecycle] derived from the 5 underlying signals
   /// the wrapper already tracks (`playing`, `buffering`, `completed`,
   /// `pausedForCache`, `duration`). Lazy: subscriptions to the source
@@ -219,35 +176,6 @@ class PlayerStream {
       completedProp.stream,
       r.pausedForCache.stream,
       r.duration.stream,
-    ]);
-  }
-
-  /// Builds a synthetic [AudioParams] broadcast stream that emits a fresh
-  /// aggregated snapshot whenever any of the 3 backing sources changes:
-  /// the `audio-params` node (which carries format / sampleRate / channels /
-  /// channelCount / hrChannels in one shot) plus the two sibling string
-  /// properties `audio-codec` and `audio-codec-name`.
-  ///
-  /// Implementation: a single broadcast controller is created once per
-  /// [PlayerStream]; the source subscriptions are opened lazily on the
-  /// first listener (`onListen`) and torn down once the last listener
-  /// cancels (`onCancel`).
-  static Stream<AudioParams> _audioParamsStream(
-    DefaultPropertyReactives r,
-  ) {
-    AudioParams snapshot() {
-      final node = r.audioParamsNode.value;
-      return node.copyWith(
-        codec: r.audioCodec.value.isEmpty ? null : r.audioCodec.value,
-        codecName:
-            r.audioCodecName.value.isEmpty ? null : r.audioCodecName.value,
-      );
-    }
-
-    return _bindAggregate<AudioParams>(snapshot, [
-      r.audioParamsNode.stream,
-      r.audioCodec.stream,
-      r.audioCodecName.stream,
     ]);
   }
 

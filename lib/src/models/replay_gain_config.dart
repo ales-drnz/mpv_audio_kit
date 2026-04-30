@@ -15,9 +15,9 @@ part 'replay_gain_config.freezed.dart';
 /// four backing properties (`replaygain`, `replaygain-preamp`,
 /// `replaygain-clip`, `replaygain-fallback`) atomically.
 ///
-/// For one-off tweaks the granular setters
-/// ([Player.setReplayGainMode], [Player.setReplayGainPreamp], …) are
-/// equally valid and slightly more ergonomic.
+/// For one-off tweaks, modify a single field via
+/// `state.replayGain.copyWith(preamp: -3)` and pass the result to
+/// [Player.setReplayGain].
 ///
 /// Read the current configuration via [PlayerState.replayGain] or
 /// observe live changes via [PlayerStream.replayGain].

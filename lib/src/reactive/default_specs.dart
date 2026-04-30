@@ -6,6 +6,7 @@ import '../internal/audio_filter_chain.dart';
 import '../internal/node_parsers.dart';
 import '../models/audio/audio_device.dart';
 import '../models/audio/audio_params.dart';
+import '../models/cache_config.dart';
 import '../models/playback/chapter.dart';
 import '../models/dsp/compressor_config.dart';
 import '../models/dsp/equalizer_config.dart';
@@ -15,14 +16,15 @@ import '../models/playback/mpv_track.dart';
 import '../models/dsp/pitch_tempo_config.dart';
 // player_state.dart re-exports enums.dart, so we don't need a direct import.
 import '../models/player_state.dart';
+import '../models/replay_gain_config.dart';
 import '../utils/duration_seconds.dart';
 import 'mpv_property_spec.dart';
 import 'reactive_property.dart';
 
 /// Bundles the [ReactiveProperty]s that back state fields the registry
 /// "owns" — for the most part one per observed mpv property, but a few
-/// (`playing`, `audioParamsNode`, …) are written into by more than one
-/// helper.
+/// (`playing`, `audioParams`, `cache`, `replayGain`) are aggregate cells
+/// that several specs share so dedup happens on the full struct.
 class DefaultPropertyReactives {
   DefaultPropertyReactives();
 
@@ -49,40 +51,32 @@ class DefaultPropertyReactives {
   final ReactiveProperty<AudioDevice> audioDevice =
       ReactiveProperty<AudioDevice>(const AudioDevice('auto', 'Auto'));
 
-  // Audio params (decoder side) — one node-map property + the two
-  // sibling string properties (`audio-codec`, `audio-codec-name`) that mpv
-  // does NOT bundle into the `audio-params` node.
-  final ReactiveProperty<AudioParams> audioParamsNode =
+  // Audio params (decoder side) — aggregate of `audio-params` (NODE) +
+  // `audio-codec` + `audio-codec-name`. The 3 specs all dedup and emit
+  // on this single cell so listeners see one [AudioParams] snapshot per
+  // change.
+  final ReactiveProperty<AudioParams> audioParams =
       ReactiveProperty<AudioParams>(const AudioParams());
-  final ReactiveProperty<String> audioCodec = ReactiveProperty<String>('');
-  final ReactiveProperty<String> audioCodecName = ReactiveProperty<String>('');
 
   // Audio out params (hardware side) — single node-map; mpv exposes no
   // codec/codec-name siblings on the output side.
   final ReactiveProperty<AudioParams> audioOutParamsNode =
       ReactiveProperty<AudioParams>(const AudioParams());
 
-  // ReplayGain.
-  final ReactiveProperty<ReplayGainMode> replayGainMode =
-      ReactiveProperty<ReplayGainMode>(ReplayGainMode.no);
-  final ReactiveProperty<double> replayGainPreamp =
-      ReactiveProperty<double>(0.0);
-  final ReactiveProperty<double> replayGainFallback =
-      ReactiveProperty<double>(0.0);
-  final ReactiveProperty<bool> replayGainClip = ReactiveProperty<bool>(false);
+  // ReplayGain — aggregate of the 4 mpv properties (replaygain,
+  // replaygain-preamp, replaygain-fallback, replaygain-clip). All 4 specs
+  // dedup and emit on this single cell.
+  final ReactiveProperty<ReplayGainConfig> replayGain =
+      ReactiveProperty<ReplayGainConfig>(const ReplayGainConfig());
   final ReactiveProperty<double> volumeGain = ReactiveProperty<double>(0.0);
   final ReactiveProperty<GaplessMode> gaplessMode =
       ReactiveProperty<GaplessMode>(GaplessMode.weak);
 
-  // Cache / network.
-  final ReactiveProperty<CacheMode> cacheMode =
-      ReactiveProperty<CacheMode>(CacheMode.auto);
-  final ReactiveProperty<Duration> cacheSecs =
-      ReactiveProperty<Duration>(const Duration(hours: 1));
-  final ReactiveProperty<bool> cacheOnDisk = ReactiveProperty<bool>(false);
-  final ReactiveProperty<bool> cachePause = ReactiveProperty<bool>(true);
-  final ReactiveProperty<Duration> cachePauseWait =
-      ReactiveProperty<Duration>(const Duration(seconds: 1));
+  // Cache — aggregate of the 5 mpv cache properties (cache, cache-secs,
+  // cache-on-disk, cache-pause, cache-pause-wait). All 5 specs dedup and
+  // emit on this single cell.
+  final ReactiveProperty<CacheConfig> cache =
+      ReactiveProperty<CacheConfig>(const CacheConfig());
   final ReactiveProperty<int> demuxerMaxBytes =
       ReactiveProperty<int>(150 * 1024 * 1024);
   final ReactiveProperty<int> demuxerReadaheadSecs = ReactiveProperty<int>(1);
@@ -272,7 +266,7 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<bool>.flag(
       name: 'core-idle',
       reactive: r.playing,
-      parse: (raw) => !raw,
+      parse: (raw, _) => !raw,
       reduce: (playing, s) => s.copyWith(playing: playing),
     ),
     MpvPropertySpec<double>.double(
@@ -330,58 +324,60 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<double?>.double(
       name: 'audio-bitrate',
       reactive: r.audioBitrate,
-      parse: (raw) => raw > 0 ? raw : null,
+      parse: (raw, _) => raw > 0 ? raw : null,
       reduce: (v, s) => s.copyWith(audioBitrate: v),
     ),
     MpvPropertySpec<AudioDevice>.string(
       name: 'audio-device',
       reactive: r.audioDevice,
-      parse: (raw) => AudioDevice(raw, raw),
+      parse: (raw, _) => AudioDevice(raw, raw),
       reduce: (v, s) => s.copyWith(audioDevice: v),
     ),
 
     // ── Audio params (decoder side) ──────────────────────────────────────
     //
-    // mpv exposes `audio-params` as a single MPV_FORMAT_NODE_MAP with the 5
-    // wire-side fields (`format`, `samplerate`, `channels`, `channel-count`,
-    // `hr-channels`). We observe the node directly instead of subscribing
-    // to 5 sub-property strings and aggregating. Codec / codec-name are
-    // separate properties that the node map does not contain — they keep
-    // their own specs below and merge into the same `state.audioParams`.
+    // Aggregate cell: 3 specs (`audio-params`, `audio-codec`,
+    // `audio-codec-name`) share `r.audioParams`. Each spec parses its
+    // own mpv property and folds the result into the current
+    // [AudioParams] via copyWith — the reactive holds and dedups on the
+    // full struct. The `audio-params` node carries 5 of the 8 fields
+    // (format / sampleRate / channels / channelCount / hrChannels);
+    // codec and codecName arrive as separate string properties.
     MpvPropertySpec<AudioParams>.node(
       name: 'audio-params',
-      reactive: r.audioParamsNode,
-      parse: parseAudioParamsNode,
-      reduce: (v, s) => s.copyWith(
-        audioParams: s.audioParams.copyWith(
-          format: v.format,
-          sampleRate: v.sampleRate,
-          channels: v.channels,
-          channelCount: v.channelCount,
-          hrChannels: v.hrChannels,
-        ),
-      ),
+      reactive: r.audioParams,
+      parse: (raw, s) {
+        final node = parseAudioParamsNode(raw);
+        return s.audioParams.copyWith(
+          format: node.format,
+          sampleRate: node.sampleRate,
+          channels: node.channels,
+          channelCount: node.channelCount,
+          hrChannels: node.hrChannels,
+        );
+      },
+      reduce: (v, s) => s.copyWith(audioParams: v),
     ),
-    MpvPropertySpec<String>.string(
+    MpvPropertySpec<AudioParams>.string(
       name: 'audio-codec',
-      reactive: r.audioCodec,
-      parse: _identityString,
-      reduce: (v, s) =>
-          s.copyWith(audioParams: s.audioParams.copyWith(codec: v)),
+      reactive: r.audioParams,
+      parse: (raw, s) =>
+          s.audioParams.copyWith(codec: raw.isEmpty ? null : raw),
+      reduce: (v, s) => s.copyWith(audioParams: v),
     ),
-    MpvPropertySpec<String>.string(
+    MpvPropertySpec<AudioParams>.string(
       name: 'audio-codec-name',
-      reactive: r.audioCodecName,
-      parse: _identityString,
-      reduce: (v, s) =>
-          s.copyWith(audioParams: s.audioParams.copyWith(codecName: v)),
+      reactive: r.audioParams,
+      parse: (raw, s) =>
+          s.audioParams.copyWith(codecName: raw.isEmpty ? null : raw),
+      reduce: (v, s) => s.copyWith(audioParams: v),
     ),
 
     // ── Audio params (hardware side) ─────────────────────────────────────
     MpvPropertySpec<AudioParams>.node(
       name: 'audio-out-params',
       reactive: r.audioOutParamsNode,
-      parse: parseAudioParamsNode,
+      parse: (raw, _) => parseAudioParamsNode(raw),
       reduce: (v, s) => s.copyWith(audioOutParams: v),
     ),
 
@@ -389,40 +385,38 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<GaplessMode>.string(
       name: 'gapless-audio',
       reactive: r.gaplessMode,
-      parse: GaplessMode.fromMpv,
+      parse: (raw, _) => GaplessMode.fromMpv(raw),
       reduce: (v, s) => s.copyWith(gaplessMode: v),
     ),
     // ── ReplayGain ───────────────────────────────────────────────────────
-    // The 4 mpv properties (replaygain, replaygain-preamp,
-    // replaygain-fallback, replaygain-clip) reduce into a single
-    // [ReplayGainConfig] field on PlayerState. The granular reactives
-    // exist for per-property dedup at the observer level; the public
-    // `Stream<ReplayGainConfig>` is built lazily in PlayerStream.
-    MpvPropertySpec<ReplayGainMode>.string(
+    // Aggregate cell: the 4 mpv properties (replaygain, replaygain-preamp,
+    // replaygain-fallback, replaygain-clip) share `r.replayGain` — each
+    // spec folds its own value into the current [ReplayGainConfig] via
+    // copyWith and the reactive dedups on the full struct.
+    MpvPropertySpec<ReplayGainConfig>.string(
       name: 'replaygain',
-      reactive: r.replayGainMode,
-      parse: ReplayGainMode.fromMpv,
-      reduce: (v, s) => s.copyWith(replayGain: s.replayGain.copyWith(mode: v)),
+      reactive: r.replayGain,
+      parse: (raw, s) =>
+          s.replayGain.copyWith(mode: ReplayGainMode.fromMpv(raw)),
+      reduce: (v, s) => s.copyWith(replayGain: v),
     ),
-    MpvPropertySpec<double>.double(
+    MpvPropertySpec<ReplayGainConfig>.double(
       name: 'replaygain-preamp',
-      reactive: r.replayGainPreamp,
-      parse: _identityDouble,
-      reduce: (v, s) =>
-          s.copyWith(replayGain: s.replayGain.copyWith(preamp: v)),
+      reactive: r.replayGain,
+      parse: (raw, s) => s.replayGain.copyWith(preamp: raw),
+      reduce: (v, s) => s.copyWith(replayGain: v),
     ),
-    MpvPropertySpec<double>.double(
+    MpvPropertySpec<ReplayGainConfig>.double(
       name: 'replaygain-fallback',
-      reactive: r.replayGainFallback,
-      parse: _identityDouble,
-      reduce: (v, s) =>
-          s.copyWith(replayGain: s.replayGain.copyWith(fallback: v)),
+      reactive: r.replayGain,
+      parse: (raw, s) => s.replayGain.copyWith(fallback: raw),
+      reduce: (v, s) => s.copyWith(replayGain: v),
     ),
-    MpvPropertySpec<bool>.flag(
+    MpvPropertySpec<ReplayGainConfig>.flag(
       name: 'replaygain-clip',
-      reactive: r.replayGainClip,
-      parse: _identityBool,
-      reduce: (v, s) => s.copyWith(replayGain: s.replayGain.copyWith(clip: v)),
+      reactive: r.replayGain,
+      parse: (raw, s) => s.replayGain.copyWith(clip: raw),
+      reduce: (v, s) => s.copyWith(replayGain: v),
     ),
     MpvPropertySpec<double>.double(
       name: 'volume-gain',
@@ -432,39 +426,38 @@ List<MpvPropertySpec> buildDefaultSpecs(
     ),
 
     // ── Cache ────────────────────────────────────────────────────────────
-    // The 5 mpv cache properties reduce into a single [CacheConfig]
-    // field on PlayerState. Granular reactives exist for per-property
-    // dedup; the public `Stream<CacheConfig>` is aggregated lazily in
-    // PlayerStream.
-    MpvPropertySpec<CacheMode>.string(
+    // Aggregate cell: the 5 mpv cache properties share `r.cache` — each
+    // spec folds its own value into the current [CacheConfig] via
+    // copyWith and the reactive dedups on the full struct.
+    MpvPropertySpec<CacheConfig>.string(
       name: 'cache',
-      reactive: r.cacheMode,
-      parse: CacheMode.fromMpv,
-      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(mode: v)),
+      reactive: r.cache,
+      parse: (raw, s) => s.cache.copyWith(mode: CacheMode.fromMpv(raw)),
+      reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<Duration>.double(
+    MpvPropertySpec<CacheConfig>.double(
       name: 'cache-secs',
-      reactive: r.cacheSecs,
-      parse: _toDuration,
-      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(secs: v)),
+      reactive: r.cache,
+      parse: (raw, s) => s.cache.copyWith(secs: secondsToDuration(raw)),
+      reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<bool>.flag(
+    MpvPropertySpec<CacheConfig>.flag(
       name: 'cache-on-disk',
-      reactive: r.cacheOnDisk,
-      parse: _identityBool,
-      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(onDisk: v)),
+      reactive: r.cache,
+      parse: (raw, s) => s.cache.copyWith(onDisk: raw),
+      reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<bool>.flag(
+    MpvPropertySpec<CacheConfig>.flag(
       name: 'cache-pause',
-      reactive: r.cachePause,
-      parse: _identityBool,
-      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(pause: v)),
+      reactive: r.cache,
+      parse: (raw, s) => s.cache.copyWith(pause: raw),
+      reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<Duration>.double(
+    MpvPropertySpec<CacheConfig>.double(
       name: 'cache-pause-wait',
-      reactive: r.cachePauseWait,
-      parse: _toDuration,
-      reduce: (v, s) => s.copyWith(cache: s.cache.copyWith(pauseWait: v)),
+      reactive: r.cache,
+      parse: (raw, s) => s.cache.copyWith(pauseWait: secondsToDuration(raw)),
+      reduce: (v, s) => s.copyWith(cache: v),
     ),
     MpvPropertySpec<int>.int64(
       name: 'demuxer-max-bytes',
@@ -541,13 +534,13 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<List<MpvTrack>>.node(
       name: 'track-list',
       reactive: r.tracks,
-      parse: parseTrackListNode,
+      parse: (raw, _) => parseTrackListNode(raw),
       reduce: (v, s) => s.copyWith(tracks: v),
     ),
     MpvPropertySpec<MpvTrack?>.node(
       name: 'current-tracks/audio',
       reactive: r.currentAudioTrack,
-      parse: parseCurrentAudioTrackNode,
+      parse: (raw, _) => parseCurrentAudioTrackNode(raw),
       reduce: (v, s) => s.copyWith(currentAudioTrack: v),
     ),
     MpvPropertySpec<String>.string(
@@ -573,7 +566,7 @@ List<MpvPropertySpec> buildDefaultSpecs(
       reactive: r.audioFormat,
       // mpv emits an empty string when the format has been reset; surface
       // that as 'no' to keep the public API consistent with the setter.
-      parse: (raw) => raw.isEmpty ? 'no' : raw,
+      parse: (raw, _) => raw.isEmpty ? 'no' : raw,
       reduce: (v, s) => s.copyWith(audioFormat: v),
     ),
     MpvPropertySpec<String>.string(
@@ -597,7 +590,7 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<List<String>>.string(
       name: 'af',
       reactive: r.customAudioFilters,
-      parse: extractCustomFilters,
+      parse: (raw, _) => extractCustomFilters(raw),
       reduce: (v, s) => s.copyWith(customAudioFilters: v),
     ),
     MpvPropertySpec<String>.string(
@@ -611,19 +604,19 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<AudioDisplayMode>.string(
       name: 'audio-display',
       reactive: r.audioDisplayMode,
-      parse: AudioDisplayMode.fromMpv,
+      parse: (raw, _) => AudioDisplayMode.fromMpv(raw),
       reduce: (v, s) => s.copyWith(audioDisplayMode: v),
     ),
     MpvPropertySpec<CoverArtAutoMode>.string(
       name: 'cover-art-auto',
       reactive: r.coverArtAutoMode,
-      parse: CoverArtAutoMode.fromMpv,
+      parse: (raw, _) => CoverArtAutoMode.fromMpv(raw),
       reduce: (v, s) => s.copyWith(coverArtAutoMode: v),
     ),
     MpvPropertySpec<Duration?>.string(
       name: 'image-display-duration',
       reactive: r.imageDisplayDuration,
-      parse: _parseImageDisplayDuration,
+      parse: (raw, _) => _parseImageDisplayDuration(raw),
       reduce: (v, s) => s.copyWith(imageDisplayDuration: v),
     ),
 
@@ -632,13 +625,13 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<MpvPrefetchState>.string(
       name: 'prefetch-state',
       reactive: r.prefetchState,
-      parse: MpvPrefetchState.parse,
+      parse: (raw, _) => MpvPrefetchState.parse(raw),
       reduce: (_, s) => s,
     ),
     MpvPropertySpec<AudioOutputState>.string(
       name: 'audio-output-state',
       reactive: r.audioOutputState,
-      parse: AudioOutputState.fromMpv,
+      parse: (raw, _) => AudioOutputState.fromMpv(raw),
       reduce: (v, s) => s.copyWith(audioOutputState: v),
       onChange: onAudioOutputState,
     ),
@@ -728,13 +721,13 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<int?>.int64(
       name: 'chapter',
       reactive: r.currentChapter,
-      parse: (raw) => raw < 0 ? null : raw,
+      parse: (raw, _) => raw < 0 ? null : raw,
       reduce: (v, s) => s.copyWith(currentChapter: v),
     ),
     MpvPropertySpec<List<Chapter>>.node(
       name: 'chapter-list',
       reactive: r.chapters,
-      parse: parseChapterListNode,
+      parse: (raw, _) => parseChapterListNode(raw),
       reduce: (v, s) => s.copyWith(chapters: v),
     ),
 
@@ -770,13 +763,13 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<Duration?>.string(
       name: 'ab-loop-a',
       reactive: r.abLoopA,
-      parse: _parseAbLoopTime,
+      parse: (raw, _) => _parseAbLoopTime(raw),
       reduce: (v, s) => s.copyWith(abLoopA: v),
     ),
     MpvPropertySpec<Duration?>.string(
       name: 'ab-loop-b',
       reactive: r.abLoopB,
-      parse: _parseAbLoopTime,
+      parse: (raw, _) => _parseAbLoopTime(raw),
       reduce: (v, s) => s.copyWith(abLoopB: v),
     ),
     // `ab-loop-count` is `OPT_CHOICE` with `'inf'=-1` and a non-negative
@@ -784,14 +777,14 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<int?>.string(
       name: 'ab-loop-count',
       reactive: r.abLoopCount,
-      parse: _parseAbLoopCount,
+      parse: (raw, _) => _parseAbLoopCount(raw),
       reduce: (v, s) => s.copyWith(abLoopCount: v),
     ),
     // Read-only int. `-1` from mpv == infinity; map to `null`.
     MpvPropertySpec<int?>.int64(
       name: 'remaining-ab-loops',
       reactive: r.remainingAbLoops,
-      parse: (raw) => raw < 0 ? null : raw,
+      parse: (raw, _) => raw < 0 ? null : raw,
       reduce: (v, s) => s.copyWith(remainingAbLoops: v),
     ),
 
@@ -841,7 +834,7 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<Map<String, String>>.node(
       name: 'chapter-metadata',
       reactive: r.chapterMetadata,
-      parse: _parseStringMap,
+      parse: (raw, _) => _parseStringMap(raw),
       reduce: (v, s) => s.copyWith(chapterMetadata: v),
     ),
     MpvPropertySpec<String>.string(
@@ -870,11 +863,11 @@ Map<String, String> _parseStringMap(dynamic raw) {
 
 // ── Tiny inline parsers used by buildDefaultSpecs ──────────────────────────
 
-double _identityDouble(double raw) => raw;
-int _identityInt(int raw) => raw;
-bool _identityBool(bool raw) => raw;
-String _identityString(String raw) => raw;
-Duration _toDuration(double raw) => secondsToDuration(raw);
+double _identityDouble(double raw, PlayerState _) => raw;
+int _identityInt(int raw, PlayerState _) => raw;
+bool _identityBool(bool raw, PlayerState _) => raw;
+String _identityString(String raw, PlayerState _) => raw;
+Duration _toDuration(double raw, PlayerState _) => secondsToDuration(raw);
 
 /// `ab-loop-a` / `ab-loop-b` parser. mpv emits `'no'` when disabled
 /// (the `M_OPT_ALLOW_NO` flag on `OPT_TIME`); any other value is a

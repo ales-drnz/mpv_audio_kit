@@ -140,6 +140,36 @@ void main() {
           reason: 'last setVolume(20 + 49 = 69) wins');
     }, timeout: const Timeout(Duration(seconds: 15)));
 
+    test('concurrent open() calls — last one wins (replace aborts the '
+        'in-flight load)', () async {
+      // Two open() calls fired without await between them. mpv processes
+      // commands in arrival order on a single thread and each open()
+      // issues a (set pause, loadfile replace) pair atomically; the
+      // *last* pair wins because `replace` aborts any in-flight load.
+      // We use two fixtures with distinct sample rates so the
+      // audio-params observer emits an unambiguous "B has settled" value.
+      final fixA =
+          '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      final fixB =
+          '${Directory.current.path}/test/fixtures/sine_88200hz.flac';
+      if (!File(fixA).existsSync() || !File(fixB).existsSync()) {
+        markTestSkipped('Fixtures missing');
+        return;
+      }
+
+      final futureA = player.open(Media(fixA), play: false);
+      final futureB = player.open(Media(fixB), play: false);
+      await Future.wait([futureA, futureB]);
+
+      final params = await player.stream.audioParams
+          .firstWhere((p) => p.sampleRate == 88200)
+          .timeout(const Duration(seconds: 5));
+      expect(params.sampleRate, 88200,
+          reason: 'open(B) was issued after open(A) without await between '
+              "them; replace must abort A's in-flight load and the "
+              "audio-params observer must settle on B's 88.2 kHz value");
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
     // ── Numeric boundary contracts ─────────────────────────────────────
     //
     // mpv applies its own M_RANGE clamp on the way in; the wrapper
@@ -167,6 +197,26 @@ void main() {
       expect(player.state.rate, 100.0);
 
       // Restore a normal rate so subsequent tests aren't disturbed.
+      await player.setRate(1.0);
+    }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test('setRate above 100.0 retains the optimistic value (mpv clamps to '
+        'M_RANGE max in its own time)', () async {
+      await player.setRate(150.0);
+      expect(player.state.rate, 150.0,
+          reason: 'wrapper writes the requested value optimistically; mpv '
+              'clamps to its M_RANGE max (100.0) on its side');
+
+      await player.setRate(1.0);
+    }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test('setRate below 0.01 retains the optimistic value (mpv clamps to '
+        'M_RANGE min in its own time)', () async {
+      await player.setRate(-1.0);
+      expect(player.state.rate, -1.0,
+          reason: 'wrapper writes the requested value optimistically; mpv '
+              'rejects / clamps sub-0.01 speeds on its side');
+
       await player.setRate(1.0);
     }, timeout: const Timeout(Duration(seconds: 5)));
 

@@ -16,7 +16,7 @@ void main() {
         ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: volume,
-          parse: (raw) => raw,
+          parse: (raw, _) => raw,
           reduce: (v, s) => s.copyWith(volume: v),
         ));
 
@@ -40,7 +40,7 @@ void main() {
         ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: volume,
-          parse: (raw) => raw,
+          parse: (raw, _) => raw,
           reduce: (v, s) => s.copyWith(volume: v),
         ));
 
@@ -57,7 +57,7 @@ void main() {
         ..register(MpvPropertySpec<bool>.flag(
           name: 'pause',
           reactive: playing,
-          parse: (raw) => !raw,
+          parse: (raw, _) => !raw,
           reduce: (v, s) => s.copyWith(playing: v),
         ));
 
@@ -80,7 +80,7 @@ void main() {
         ..register(MpvPropertySpec<bool>.flag(
           name: 'mute',
           reactive: mute,
-          parse: (raw) => raw,
+          parse: (raw, _) => raw,
           reduce: (v, s) => s.copyWith(mute: v),
         ));
 
@@ -98,7 +98,7 @@ void main() {
         ..register(MpvPropertySpec<String>.string(
           name: 'audio-format',
           reactive: audioFormat,
-          parse: (raw) => raw.isEmpty ? 'no' : raw,
+          parse: (raw, _) => raw.isEmpty ? 'no' : raw,
           reduce: (v, s) => s.copyWith(audioFormat: v),
         ));
 
@@ -115,7 +115,7 @@ void main() {
         ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: volume,
-          parse: (raw) => raw,
+          parse: (raw, _) => raw,
           reduce: (v, s) => s.copyWith(volume: v),
           onChange: calls.add,
         ));
@@ -141,7 +141,7 @@ void main() {
         ..register(MpvPropertySpec<int>.int64(
           name: 'demuxer-readahead-secs',
           reactive: readahead,
-          parse: (raw) => raw,
+          parse: (raw, _) => raw,
           reduce: (v, s) => s.copyWith(demuxerReadaheadSecs: v),
         ));
 
@@ -170,7 +170,7 @@ void main() {
         ..register(MpvPropertySpec<Duration>.double(
           name: 'time-pos',
           reactive: position,
-          parse: (raw) => Duration(microseconds: (raw * 1e6).round()),
+          parse: (raw, _) => Duration(microseconds: (raw * 1e6).round()),
           reduce: (v, s) => s.copyWith(position: v),
         ));
 
@@ -190,13 +190,13 @@ void main() {
         ..register(MpvPropertySpec<double>.double(
           name: 'volume',
           reactive: a,
-          parse: (raw) => raw,
+          parse: (raw, _) => raw,
           reduce: (v, s) => s.copyWith(volume: v),
         ))
         ..register(MpvPropertySpec<bool>.flag(
           name: 'mute',
           reactive: b,
-          parse: (raw) => raw,
+          parse: (raw, _) => raw,
           reduce: (v, s) => s.copyWith(mute: v),
         ));
 
@@ -214,7 +214,7 @@ void main() {
       final spec = MpvPropertySpec<double>.double(
         name: 'volume',
         reactive: volume,
-        parse: (raw) => raw,
+        parse: (raw, _) => raw,
         reduce: (v, s) => s.copyWith(volume: v),
       );
       final registry = PropertyRegistry()..register(spec);
