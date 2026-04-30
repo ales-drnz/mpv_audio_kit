@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:mpv_audio_kit/src/models/media.dart';
+import 'package:mpv_audio_kit/src/models/playback/media.dart';
 
 /// The repeat / loop mode for the player's playlist.
 enum PlaylistMode {

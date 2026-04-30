@@ -2,13 +2,17 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../internal/audio_filter_chain.dart';
 import '../internal/node_parsers.dart';
-import '../models/audio_device.dart';
-import '../models/audio_filter.dart';
-import '../models/audio_params.dart';
-import '../models/chapter.dart';
-import '../models/mpv_prefetch_state.dart';
-import '../models/mpv_track.dart';
+import '../models/audio/audio_device.dart';
+import '../models/audio/audio_params.dart';
+import '../models/playback/chapter.dart';
+import '../models/dsp/compressor_config.dart';
+import '../models/dsp/equalizer_config.dart';
+import '../models/dsp/loudness_config.dart';
+import '../models/events/mpv_prefetch_state.dart';
+import '../models/playback/mpv_track.dart';
+import '../models/dsp/pitch_tempo_config.dart';
 // player_state.dart re-exports enums.dart, so we don't need a direct import.
 import '../models/player_state.dart';
 import '../utils/duration_seconds.dart';
@@ -74,7 +78,7 @@ class DefaultPropertyReactives {
   final ReactiveProperty<CacheMode> cacheMode =
       ReactiveProperty<CacheMode>(CacheMode.auto);
   final ReactiveProperty<Duration> cacheSecs =
-      ReactiveProperty<Duration>(const Duration(seconds: 1));
+      ReactiveProperty<Duration>(const Duration(hours: 1));
   final ReactiveProperty<bool> cacheOnDisk = ReactiveProperty<bool>(false);
   final ReactiveProperty<bool> cachePause = ReactiveProperty<bool>(true);
   final ReactiveProperty<Duration> cachePauseWait =
@@ -85,7 +89,7 @@ class DefaultPropertyReactives {
   final ReactiveProperty<int> demuxerMaxBackBytes =
       ReactiveProperty<int>(50 * 1024 * 1024);
   final ReactiveProperty<Duration> networkTimeout =
-      ReactiveProperty<Duration>(const Duration(seconds: 30));
+      ReactiveProperty<Duration>(const Duration(seconds: 60));
   final ReactiveProperty<bool> tlsVerify = ReactiveProperty<bool>(true);
   final ReactiveProperty<bool> pausedForCache = ReactiveProperty<bool>(false);
   final ReactiveProperty<bool> demuxerViaNetwork =
@@ -111,8 +115,19 @@ class DefaultPropertyReactives {
   final ReactiveProperty<String> audioClientName =
       ReactiveProperty<String>('mpv_audio_kit');
   final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
-  final ReactiveProperty<List<AudioFilter>> activeFilters =
-      ReactiveProperty<List<AudioFilter>>(const []);
+  // DSP filter chain stages — each owns a reserved label and is upserted
+  // atomically by the matching typed setter. Custom filters carry no
+  // managed label and live at the head of the chain.
+  final ReactiveProperty<EqualizerConfig> equalizer =
+      ReactiveProperty<EqualizerConfig>(const EqualizerConfig());
+  final ReactiveProperty<CompressorConfig> compressor =
+      ReactiveProperty<CompressorConfig>(const CompressorConfig());
+  final ReactiveProperty<LoudnessConfig> loudness =
+      ReactiveProperty<LoudnessConfig>(const LoudnessConfig());
+  final ReactiveProperty<PitchTempoConfig> pitchTempo =
+      ReactiveProperty<PitchTempoConfig>(const PitchTempoConfig());
+  final ReactiveProperty<List<String>> customAudioFilters =
+      ReactiveProperty<List<String>>(const []);
 
   // Audio output lifecycle (read-only string).
   final ReactiveProperty<AudioOutputState> audioOutputState =
@@ -128,8 +143,15 @@ class DefaultPropertyReactives {
   final ReactiveProperty<Duration?> imageDisplayDuration =
       ReactiveProperty<Duration?>(null);
 
-  // Stream-only — no PlayerState field; exposed through
-  // `Player.stream.prefetchState`.
+  // Stream-only by design: `prefetch-state` is an event-shaped signal
+  // (idle → loading → ready → used cycles per playlist transition), not
+  // a snapshot value. Surfacing it as a [PlayerState] field would let
+  // consumers `.copyWith` it, which would race the wrapper's reducer.
+  // Exposed exclusively through `Player.stream.prefetchState`. The
+  // [ReactiveProperty] storage exists so the registry can dedup
+  // duplicate emissions and so `Player.dispose` can close the
+  // controller, but `_reactives.prefetchState.value` is not a public
+  // surface — never read it from outside the wrapper.
   final ReactiveProperty<MpvPrefetchState> prefetchState =
       ReactiveProperty<MpvPrefetchState>(MpvPrefetchState.idle);
 
@@ -164,6 +186,36 @@ class DefaultPropertyReactives {
   final ReactiveProperty<int?> currentChapter = ReactiveProperty<int?>(null);
   final ReactiveProperty<List<Chapter>> chapters =
       ReactiveProperty<List<Chapter>>(const []);
+
+  // Path / URI introspection (read-only).
+  final ReactiveProperty<String> path = ReactiveProperty<String>('');
+  final ReactiveProperty<String> filename = ReactiveProperty<String>('');
+  final ReactiveProperty<String> streamPath = ReactiveProperty<String>('');
+  final ReactiveProperty<String> streamOpenFilename =
+      ReactiveProperty<String>('');
+
+  // A-B loop. Setters write `no` for null; observers parse it back.
+  final ReactiveProperty<Duration?> abLoopA =
+      ReactiveProperty<Duration?>(null);
+  final ReactiveProperty<Duration?> abLoopB =
+      ReactiveProperty<Duration?>(null);
+  final ReactiveProperty<int?> abLoopCount = ReactiveProperty<int?>(null);
+  final ReactiveProperty<int?> remainingAbLoops = ReactiveProperty<int?>(null);
+
+  // Tier 2 introspection.
+  final ReactiveProperty<bool> seeking = ReactiveProperty<bool>(false);
+  final ReactiveProperty<double> percentPos = ReactiveProperty<double>(0.0);
+  final ReactiveProperty<double> cacheSpeed = ReactiveProperty<double>(0.0);
+  final ReactiveProperty<int> cacheBufferingState = ReactiveProperty<int>(0);
+  final ReactiveProperty<String> currentDemuxer =
+      ReactiveProperty<String>('');
+  final ReactiveProperty<String> currentAo = ReactiveProperty<String>('');
+  final ReactiveProperty<Duration> demuxerStartTime =
+      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Map<String, String>> chapterMetadata =
+      ReactiveProperty<Map<String, String>>(const <String, String>{});
+  final ReactiveProperty<String> mpvVersion = ReactiveProperty<String>('');
+  final ReactiveProperty<String> ffmpegVersion = ReactiveProperty<String>('');
 }
 
 /// Builds the default list of [MpvPropertySpec]s mapping mpv property names
@@ -536,11 +588,17 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: _identityString,
       reduce: (v, s) => s.copyWith(audioClientName: v),
     ),
-    MpvPropertySpec<List<AudioFilter>>.string(
+    // The `af` observer surfaces *external* mutations to the filter
+    // chain (e.g. via `setRawProperty('af', ...)`) by recomputing the
+    // unmanaged segment as `customAudioFilters`. Wrapper-managed stages
+    // (equalizer/compressor/loudness/pitchTempo) are owned by their typed
+    // setters, not parsed back from the af string — bypassing the typed
+    // setters with a raw write leaves their state stale by design.
+    MpvPropertySpec<List<String>>.string(
       name: 'af',
-      reactive: r.activeFilters,
-      parse: _parseAudioFilters,
-      reduce: (v, s) => s.copyWith(activeFilters: v),
+      reactive: r.customAudioFilters,
+      parse: extractCustomFilters,
+      reduce: (v, s) => s.copyWith(customAudioFilters: v),
     ),
     MpvPropertySpec<String>.string(
       name: 'ao',
@@ -679,7 +737,135 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: parseChapterListNode,
       reduce: (v, s) => s.copyWith(chapters: v),
     ),
+
+    // ── Path / URI introspection (read-only) ─────────────────────────────
+    MpvPropertySpec<String>.string(
+      name: 'path',
+      reactive: r.path,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(path: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'filename',
+      reactive: r.filename,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(filename: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'stream-path',
+      reactive: r.streamPath,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(streamPath: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'stream-open-filename',
+      reactive: r.streamOpenFilename,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(streamOpenFilename: v),
+    ),
+
+    // ── A-B loop ────────────────────────────────────────────────────────
+    // mpv emits `ab-loop-a` / `-b` as STRING (`'no'` when disabled, a
+    // numeric string otherwise — `OPT_TIME` with `M_OPT_ALLOW_NO`).
+    MpvPropertySpec<Duration?>.string(
+      name: 'ab-loop-a',
+      reactive: r.abLoopA,
+      parse: _parseAbLoopTime,
+      reduce: (v, s) => s.copyWith(abLoopA: v),
+    ),
+    MpvPropertySpec<Duration?>.string(
+      name: 'ab-loop-b',
+      reactive: r.abLoopB,
+      parse: _parseAbLoopTime,
+      reduce: (v, s) => s.copyWith(abLoopB: v),
+    ),
+    // `ab-loop-count` is `OPT_CHOICE` with `'inf'=-1` and a non-negative
+    // numeric range. We surface it as a nullable int (`null` = inf).
+    MpvPropertySpec<int?>.string(
+      name: 'ab-loop-count',
+      reactive: r.abLoopCount,
+      parse: _parseAbLoopCount,
+      reduce: (v, s) => s.copyWith(abLoopCount: v),
+    ),
+    // Read-only int. `-1` from mpv == infinity; map to `null`.
+    MpvPropertySpec<int?>.int64(
+      name: 'remaining-ab-loops',
+      reactive: r.remainingAbLoops,
+      parse: (raw) => raw < 0 ? null : raw,
+      reduce: (v, s) => s.copyWith(remainingAbLoops: v),
+    ),
+
+    // ── Tier 2 introspection ────────────────────────────────────────────
+    MpvPropertySpec<bool>.flag(
+      name: 'seeking',
+      reactive: r.seeking,
+      parse: _identityBool,
+      reduce: (v, s) => s.copyWith(seeking: v),
+    ),
+    MpvPropertySpec<double>.double(
+      name: 'percent-pos',
+      reactive: r.percentPos,
+      parse: _identityDouble,
+      reduce: (v, s) => s.copyWith(percentPos: v),
+    ),
+    MpvPropertySpec<double>.double(
+      name: 'cache-speed',
+      reactive: r.cacheSpeed,
+      parse: _identityDouble,
+      reduce: (v, s) => s.copyWith(cacheSpeed: v),
+    ),
+    MpvPropertySpec<int>.int64(
+      name: 'cache-buffering-state',
+      reactive: r.cacheBufferingState,
+      parse: _identityInt,
+      reduce: (v, s) => s.copyWith(cacheBufferingState: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'current-demuxer',
+      reactive: r.currentDemuxer,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(currentDemuxer: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'current-ao',
+      reactive: r.currentAo,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(currentAo: v),
+    ),
+    MpvPropertySpec<Duration>.double(
+      name: 'demuxer-start-time',
+      reactive: r.demuxerStartTime,
+      parse: _toDuration,
+      reduce: (v, s) => s.copyWith(demuxerStartTime: v),
+    ),
+    MpvPropertySpec<Map<String, String>>.node(
+      name: 'chapter-metadata',
+      reactive: r.chapterMetadata,
+      parse: _parseStringMap,
+      reduce: (v, s) => s.copyWith(chapterMetadata: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'mpv-version',
+      reactive: r.mpvVersion,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(mpvVersion: v),
+    ),
+    MpvPropertySpec<String>.string(
+      name: 'ffmpeg-version',
+      reactive: r.ffmpegVersion,
+      parse: _identityString,
+      reduce: (v, s) => s.copyWith(ffmpegVersion: v),
+    ),
   ];
+}
+
+/// Decodes a `MPV_FORMAT_NODE_MAP` whose values are uniformly strings
+/// (mpv emits this shape for `chapter-metadata`, `vf-metadata`, …).
+/// Falls back to an empty map on a non-map payload — a single malformed
+/// emission shouldn't tear down the consumer's metadata view.
+Map<String, String> _parseStringMap(dynamic raw) {
+  if (raw is! Map) return const <String, String>{};
+  return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
 }
 
 // ── Tiny inline parsers used by buildDefaultSpecs ──────────────────────────
@@ -689,11 +875,23 @@ int _identityInt(int raw) => raw;
 bool _identityBool(bool raw) => raw;
 String _identityString(String raw) => raw;
 Duration _toDuration(double raw) => secondsToDuration(raw);
-List<AudioFilter> _parseAudioFilters(String raw) => raw
-    .split(',')
-    .where((e) => e.isNotEmpty)
-    .map((e) => AudioFilter.custom(e))
-    .toList();
+
+/// `ab-loop-a` / `ab-loop-b` parser. mpv emits `'no'` when disabled
+/// (the `M_OPT_ALLOW_NO` flag on `OPT_TIME`); any other value is a
+/// numeric string in seconds.
+Duration? _parseAbLoopTime(String raw) {
+  if (raw == 'no' || raw.isEmpty) return null;
+  final secs = double.tryParse(raw);
+  if (secs == null || secs.isNaN) return null;
+  return secondsToDuration(secs);
+}
+
+/// `ab-loop-count` parser. `'inf'` = infinite; non-negative int = explicit
+/// repetition count.
+int? _parseAbLoopCount(String raw) {
+  if (raw == 'inf' || raw.isEmpty) return null;
+  return int.tryParse(raw);
+}
 
 /// `image-display-duration` parser: mpv emits `'inf'` for "keep
 /// indefinitely", a numeric string (seconds) otherwise. Maps to

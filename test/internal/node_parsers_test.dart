@@ -464,6 +464,65 @@ void main() {
       expect(parseTrackListNode(null), const <MpvTrack>[]);
       expect(parseTrackListNode('garbage'), const <MpvTrack>[]);
     });
+
+    test('extended fields: accessibility, decoder, replaygain, metadata', () {
+      final tracks = parseTrackListNode([
+        {
+          'id': 1,
+          'type': 'audio',
+          'codec': 'flac',
+          'decoder': 'flac',
+          'decoder-desc': 'FLAC reference decoder',
+          'format-name': 'fltp',
+          'demux-bitrate': 850000.0,
+          'demux-duration': 184.5,
+          'hls-bitrate': 192000.0,
+          'dependent': false,
+          'visual-impaired': false,
+          'hearing-impaired': true,
+          'replaygain-track-gain': -3.5,
+          'replaygain-track-peak': 0.98,
+          'replaygain-album-gain': -2.1,
+          'replaygain-album-peak': 0.99,
+          'metadata': <String, dynamic>{
+            'TITLE': 'Track One',
+            'ARTIST': 'Some Artist',
+          },
+        },
+      ]);
+      expect(tracks, hasLength(1));
+      final t = tracks[0];
+      expect(t.dependent, isFalse);
+      expect(t.visualImpaired, isFalse);
+      expect(t.hearingImpaired, isTrue);
+      expect(t.decoder, 'flac');
+      expect(t.decoderDesc, contains('FLAC'));
+      expect(t.formatName, 'fltp');
+      expect(t.demuxBitrate, 850000.0);
+      expect(t.demuxDuration, const Duration(milliseconds: 184500));
+      expect(t.hlsBitrate, 192000.0);
+      expect(t.replaygainTrackGain, -3.5);
+      expect(t.replaygainTrackPeak, 0.98);
+      expect(t.replaygainAlbumGain, -2.1);
+      expect(t.replaygainAlbumPeak, 0.99);
+      expect(t.metadata['TITLE'], 'Track One');
+      expect(t.metadata['ARTIST'], 'Some Artist');
+    });
+
+    test('extended fields fall back to null / empty when absent', () {
+      final t = parseTrackListNode([
+        {'id': 7, 'type': 'audio'},
+      ])[0];
+      expect(t.dependent, isFalse);
+      expect(t.visualImpaired, isFalse);
+      expect(t.hearingImpaired, isFalse);
+      expect(t.decoder, isNull);
+      expect(t.formatName, isNull);
+      expect(t.demuxBitrate, isNull);
+      expect(t.demuxDuration, isNull);
+      expect(t.replaygainTrackGain, isNull);
+      expect(t.metadata, isEmpty);
+    });
   });
 
   group('parseCurrentAudioTrackNode', () {

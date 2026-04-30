@@ -5,19 +5,22 @@
 import 'dart:async';
 
 import 'package:mpv_audio_kit/src/cover/cover_art_raw.dart';
-import 'package:mpv_audio_kit/src/models/playlist.dart';
-import 'package:mpv_audio_kit/src/models/audio_device.dart';
-import 'package:mpv_audio_kit/src/models/audio_params.dart';
-import 'package:mpv_audio_kit/src/models/audio_filter.dart';
+import 'package:mpv_audio_kit/src/models/playback/playlist.dart';
+import 'package:mpv_audio_kit/src/models/audio/audio_device.dart';
+import 'package:mpv_audio_kit/src/models/audio/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/cache_config.dart';
-import 'package:mpv_audio_kit/src/models/chapter.dart';
+import 'package:mpv_audio_kit/src/models/playback/chapter.dart';
+import 'package:mpv_audio_kit/src/models/dsp/compressor_config.dart';
 import 'package:mpv_audio_kit/src/models/enums.dart';
-import 'package:mpv_audio_kit/src/models/mpv_track.dart';
+import 'package:mpv_audio_kit/src/models/dsp/equalizer_config.dart';
+import 'package:mpv_audio_kit/src/models/dsp/loudness_config.dart';
+import 'package:mpv_audio_kit/src/models/playback/mpv_track.dart';
+import 'package:mpv_audio_kit/src/models/dsp/pitch_tempo_config.dart';
 import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
-import 'package:mpv_audio_kit/src/models/mpv_log_entry.dart';
-import 'package:mpv_audio_kit/src/models/mpv_hook_event.dart';
-import 'package:mpv_audio_kit/src/models/mpv_prefetch_state.dart';
-import 'package:mpv_audio_kit/src/models/mpv_player_error.dart';
+import 'package:mpv_audio_kit/src/models/events/mpv_log_entry.dart';
+import 'package:mpv_audio_kit/src/models/events/mpv_hook_event.dart';
+import 'package:mpv_audio_kit/src/models/events/mpv_prefetch_state.dart';
+import 'package:mpv_audio_kit/src/models/events/mpv_player_error.dart';
 import 'package:mpv_audio_kit/src/internal/playback_lifecycle.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
@@ -44,7 +47,11 @@ class PlayerStream {
     required ReactiveProperty<List<AudioDevice>> audioDevices,
     required ReactiveProperty<Map<String, String>> metadata,
     required ReactiveProperty<double> bufferingPercentage,
-    required ReactiveProperty<List<double>> equalizerGains,
+    required ReactiveProperty<EqualizerConfig> equalizer,
+    required ReactiveProperty<CompressorConfig> compressor,
+    required ReactiveProperty<LoudnessConfig> loudness,
+    required ReactiveProperty<PitchTempoConfig> pitchTempo,
+    required ReactiveProperty<List<String>> customAudioFilters,
     required this.endFile,
     required this.error,
     required this.log,
@@ -96,7 +103,6 @@ class PlayerStream {
         audioClientName = reactives.audioClientName.stream,
         audioDriver = reactives.audioDriver.stream,
         audioOutputState = reactives.audioOutputState.stream,
-        activeFilters = reactives.activeFilters.stream,
         audioDisplayMode = reactives.audioDisplayMode.stream,
         coverArtAutoMode = reactives.coverArtAutoMode.stream,
         imageDisplayDuration = reactives.imageDisplayDuration.stream,
@@ -115,6 +121,24 @@ class PlayerStream {
         demuxerIdle = reactives.demuxerIdle.stream,
         currentChapter = reactives.currentChapter.stream,
         chapters = reactives.chapters.stream,
+        path = reactives.path.stream,
+        filename = reactives.filename.stream,
+        streamPath = reactives.streamPath.stream,
+        streamOpenFilename = reactives.streamOpenFilename.stream,
+        abLoopA = reactives.abLoopA.stream,
+        abLoopB = reactives.abLoopB.stream,
+        abLoopCount = reactives.abLoopCount.stream,
+        remainingAbLoops = reactives.remainingAbLoops.stream,
+        seeking = reactives.seeking.stream,
+        percentPos = reactives.percentPos.stream,
+        cacheSpeed = reactives.cacheSpeed.stream,
+        cacheBufferingState = reactives.cacheBufferingState.stream,
+        currentDemuxer = reactives.currentDemuxer.stream,
+        currentAo = reactives.currentAo.stream,
+        demuxerStartTime = reactives.demuxerStartTime.stream,
+        chapterMetadata = reactives.chapterMetadata.stream,
+        mpvVersion = reactives.mpvVersion.stream,
+        ffmpegVersion = reactives.ffmpegVersion.stream,
         buffering = buffering.stream,
         completed = completed.stream,
         playbackLifecycle =
@@ -124,7 +148,11 @@ class PlayerStream {
         audioDevices = audioDevices.stream,
         metadata = metadata.stream,
         bufferingPercentage = bufferingPercentage.stream,
-        equalizerGains = equalizerGains.stream;
+        equalizer = equalizer.stream,
+        compressor = compressor.stream,
+        loudness = loudness.stream,
+        pitchTempo = pitchTempo.stream,
+        customAudioFilters = customAudioFilters.stream;
 
   /// Aggregate [ReplayGainConfig] stream — emits a fresh snapshot
   /// whenever any of the 4 backing properties changes (`replaygain`,
@@ -359,10 +387,13 @@ class PlayerStream {
   /// Emits whether TLS verification is enabled.
   final Stream<bool> tlsVerify;
 
-  /// Whether playback is paused because the network cache ran empty.
+  /// Emits `true` when playback is paused because the network cache ran
+  /// empty; `false` once mpv resumes after [cache] `pauseWait` seconds
+  /// of buffered data are available again.
   final Stream<bool> pausedForCache;
 
-  /// Whether the current stream is being read via a network protocol.
+  /// Emits `true` when the current stream is being read via a network
+  /// protocol (HTTP, RTMP, …); `false` for local files.
   final Stream<bool> demuxerViaNetwork;
 
   /// Emits whether audio exclusive mode is enabled.
@@ -412,11 +443,27 @@ class PlayerStream {
   /// [error] the moment this stream emits [AudioOutputState.failed].
   final Stream<AudioOutputState> audioOutputState;
 
-  /// Emits the list of currently active audio filters.
-  final Stream<List<AudioFilter>> activeFilters;
+  /// 10-band graphic equalizer config (`@_mak_eq` filter stage).
+  /// Set with [Player.setEqualizer]; modify a single field through
+  /// `state.equalizer.copyWith(...)`.
+  final Stream<EqualizerConfig> equalizer;
 
-  /// Emits the current equalizer gains.
-  final Stream<List<double>> equalizerGains;
+  /// Dynamic-range compressor config (`@_mak_comp` filter stage).
+  /// Set with [Player.setCompressor].
+  final Stream<CompressorConfig> compressor;
+
+  /// EBU R128 loudness normalization config (`@_mak_loud` filter stage).
+  /// Set with [Player.setLoudness].
+  final Stream<LoudnessConfig> loudness;
+
+  /// Pitch / tempo shifter config (`@_mak_pt` filter stage; rubberband).
+  /// Set with [Player.setPitchTempo].
+  final Stream<PitchTempoConfig> pitchTempo;
+
+  /// Raw mpv `--af` filter strings inserted at the head of the chain
+  /// (before any wrapper-managed DSP stage). Set with
+  /// [Player.setCustomAudioFilters].
+  final Stream<List<String>> customAudioFilters;
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
@@ -513,6 +560,72 @@ class PlayerStream {
 
   /// Chapter markers for the current file.
   final Stream<List<Chapter>> chapters;
+
+  /// Full path or URI of the current file, post-redirect.
+  /// Mirrors mpv's `path`. Empty when no file is loaded.
+  final Stream<String> path;
+
+  /// File name only (no directory) of the current file.
+  /// Mirrors mpv's `filename`. Empty when no file is loaded.
+  final Stream<String> filename;
+
+  /// URI as originally requested, before any `on_load` hook redirect.
+  /// Mirrors mpv's `stream-path`.
+  final Stream<String> streamPath;
+
+  /// URI as actually opened post-redirect. Mirrors mpv's
+  /// `stream-open-filename`.
+  final Stream<String> streamOpenFilename;
+
+  /// A-B loop start point. `null` when disabled. Set via
+  /// [Player.setAbLoopA].
+  final Stream<Duration?> abLoopA;
+
+  /// A-B loop end point. `null` when disabled. Set via
+  /// [Player.setAbLoopB].
+  final Stream<Duration?> abLoopB;
+
+  /// Total A-B loop repetitions. `null` = infinite. Set via
+  /// [Player.setAbLoopCount].
+  final Stream<int?> abLoopCount;
+
+  /// Remaining A-B loop repetitions in the active loop. `null` when no
+  /// loop is active or count is infinite. Read-only — mirrors mpv's
+  /// `remaining-ab-loops`.
+  final Stream<int?> remainingAbLoops;
+
+  /// Whether mpv is currently seeking. UI gate to suppress concurrent
+  /// seek commands during a long (network) seek.
+  final Stream<bool> seeking;
+
+  /// Playback position as percentage of duration (0–100).
+  final Stream<double> percentPos;
+
+  /// Demuxer cache download speed in bytes per second.
+  final Stream<double> cacheSpeed;
+
+  /// Cache fill state as percentage (0–100). mpv's own metric, distinct
+  /// from [bufferingPercentage].
+  final Stream<int> cacheBufferingState;
+
+  /// Name of the active demuxer (e.g. `mkv`, `lavf`, `mp3`).
+  final Stream<String> currentDemuxer;
+
+  /// Name of the audio output driver actually in use post-resolution.
+  final Stream<String> currentAo;
+
+  /// Initial timestamp offset of the current file as reported by the
+  /// demuxer.
+  final Stream<Duration> demuxerStartTime;
+
+  /// Tag dictionary for the active chapter (per-chapter metadata).
+  final Stream<Map<String, String>> chapterMetadata;
+
+  /// mpv version string. Stable for the lifetime of the [Player].
+  final Stream<String> mpvVersion;
+
+  /// FFmpeg version string. Stable for the lifetime of the [Player].
+  final Stream<String> ffmpegVersion;
 
   /// Aggregate playback lifecycle as a single mutually-exclusive enum.
   ///

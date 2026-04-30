@@ -16,6 +16,7 @@ void main() {
         'loading': MpvPrefetchState.loading,
         'ready': MpvPrefetchState.ready,
         'used': MpvPrefetchState.used,
+        'failed': MpvPrefetchState.failed,
       };
       for (final entry in cases.entries) {
         expect(MpvPrefetchState.parse(entry.key), entry.value,
@@ -34,7 +35,7 @@ void main() {
           reason: 'parse is case-sensitive (mpv emits lowercase)');
     });
 
-    test('all four variants are reachable via parse', () {
+    test('every variant is reachable via parse', () {
       final reachable = MpvPrefetchState.values
           .map((v) => MpvPrefetchState.parse(v.name))
           .toSet();

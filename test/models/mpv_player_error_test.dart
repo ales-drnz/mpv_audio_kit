@@ -4,7 +4,7 @@
 
 import 'package:test/test.dart';
 // Import via the public entry library so we get the typed `MpvEndFileReason`
-// from `models/mpv_player_error.dart` (and not the duplicate raw FFI enum
+// from `models/events/mpv_player_error.dart` (and not the duplicate raw FFI enum
 // of the same name from `mpv_bindings.dart`, which the public `library`
 // intentionally hides).
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';

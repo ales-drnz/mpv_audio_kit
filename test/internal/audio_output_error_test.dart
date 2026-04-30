@@ -5,7 +5,7 @@
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/src/internal/audio_output_error.dart';
 import 'package:mpv_audio_kit/src/models/enums.dart';
-import 'package:mpv_audio_kit/src/models/mpv_player_error.dart';
+import 'package:mpv_audio_kit/src/models/events/mpv_player_error.dart';
 
 void main() {
   group('buildAudioOutputError', () {

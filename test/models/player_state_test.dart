@@ -36,10 +36,14 @@ void main() {
       expect(s.duration, Duration.zero);
       expect(s.buffer, Duration.zero);
       expect(s.audioDelay, Duration.zero);
-      expect(s.cache.secs, const Duration(seconds: 1));
-      expect(s.cache.pauseWait, const Duration(seconds: 1));
-      expect(s.networkTimeout, const Duration(seconds: 30));
-      expect(s.audioBuffer, const Duration(milliseconds: 200));
+      expect(s.cache.secs, const Duration(hours: 1),
+          reason: 'matches mpv `--cache-secs=3600`');
+      expect(s.cache.pauseWait, const Duration(seconds: 1),
+          reason: 'matches mpv `--cache-pause-wait=1.0`');
+      expect(s.networkTimeout, const Duration(seconds: 60),
+          reason: 'matches mpv `--network-timeout=60`');
+      expect(s.audioBuffer, const Duration(milliseconds: 200),
+          reason: 'matches mpv `--audio-buffer=0.2`');
     });
 
     test('typed enums start at the documented default variant', () {
@@ -69,7 +73,7 @@ void main() {
 
       expect(s.cache, const CacheConfig());
       expect(s.cache.mode, CacheMode.auto);
-      expect(s.cache.secs, const Duration(seconds: 1));
+      expect(s.cache.secs, const Duration(hours: 1));
       expect(s.cache.onDisk, isFalse);
       expect(s.cache.pause, isTrue);
       expect(s.cache.pauseWait, const Duration(seconds: 1));
@@ -83,10 +87,23 @@ void main() {
       expect(s.audioBitrate, isNull);
     });
 
-    test('equalizerGains is 10 zero-bands by default', () {
+    test('equalizer is disabled with 10 zero-band gains by default', () {
       const s = PlayerState();
-      expect(s.equalizerGains.length, 10);
-      expect(s.equalizerGains, everyElement(0.0));
+      expect(s.equalizer.enabled, isFalse);
+      expect(s.equalizer.gains.length, 10);
+      expect(s.equalizer.gains, everyElement(0.0));
+    });
+
+    test('compressor / loudness / pitchTempo all start disabled', () {
+      const s = PlayerState();
+      expect(s.compressor.enabled, isFalse);
+      expect(s.loudness.enabled, isFalse);
+      expect(s.pitchTempo.enabled, isFalse);
+    });
+
+    test('customAudioFilters is empty by default', () {
+      const s = PlayerState();
+      expect(s.customAudioFilters, isEmpty);
     });
 
     test('audioParams + audioOutParams default to all-null AudioParams', () {

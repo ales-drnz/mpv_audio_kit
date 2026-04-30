@@ -6,7 +6,21 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
-/// Helps resolving Android-specific URIs like `asset://` and `content://`.
+/// Translates Flutter-host URIs (`asset://`, `content://`) into paths or
+/// file URIs that libmpv can open directly.
+///
+/// libmpv understands `file://`, `http(s)://`, and other native protocols
+/// but not Flutter's asset bundle indirection or Android's `content://`
+/// authority URIs. Pass [normalizeUri] to
+/// [PlayerConfiguration.uriResolver] to opt into the translation:
+///
+/// ```dart
+/// final player = Player(
+///   configuration: PlayerConfiguration(
+///     uriResolver: FlutterUriResolver.normalizeUri,
+///   ),
+/// );
+/// ```
 abstract class FlutterUriResolver {
   static const MethodChannel _channel = MethodChannel('mpv_audio_kit');
   static final Map<String, String> _assetCache = {};

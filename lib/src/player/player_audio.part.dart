@@ -40,7 +40,9 @@ mixin _AudioModule on _PlayerBase {
     _updateField((s) => s.copyWith(audioDevice: device), _reactives.audioDevice, device);
   }
 
-  /// Whether to enable pitch correction ("scaletempo") when playback rate is changed.
+  /// Enables or disables pitch correction (mpv's `scaletempo` engine)
+  /// for non-1.0 playback rates. When disabled, raising the rate also
+  /// raises pitch (chipmunk effect); enabled keeps pitch constant.
   Future<void> setPitchCorrection(bool enable) async {
     _checkNotDisposed();
     _prop('audio-pitch-correction', enable ? 'yes' : 'no');
@@ -102,14 +104,24 @@ mixin _AudioModule on _PlayerBase {
         config.fallback);
   }
 
-  /// Sets volume gain in dB (pre-amplification).
+  /// Sets volume gain in dB (pre-amplification on top of [setVolume]).
+  ///
+  /// Hard range: -150 to +150 dB. The default soft clamp mpv applies is
+  /// -96 to +12 dB (configurable with mpv's `volume-gain-min` /
+  /// `volume-gain-max`). 0 dB = unity. Values above ~+6 dB risk clipping
+  /// unless [setReplayGain] or a downstream limiter is in the chain.
   Future<void> setVolumeGain(double gainDb) async {
     _checkNotDisposed();
     _prop('volume-gain', gainDb.toStringAsFixed(2));
     _updateField((s) => s.copyWith(volumeGain: gainDb), _reactives.volumeGain, gainDb);
   }
 
-  /// Sets maximum volume limit (default 130).
+  /// Sets the upper bound the user-facing volume scale is clamped to.
+  ///
+  /// Range: 100 to 1000. Default 130 (matches mpv's default and the slider
+  /// range most apps expose). Setting above 100 lets [setVolume] amplify
+  /// past unity; values up to 1000 = +20 dB digital boost. mpv hard-rejects
+  /// values below 100.
   Future<void> setVolumeMax(double max) async {
     _checkNotDisposed();
     _prop('volume-max', max.toStringAsFixed(1));
@@ -161,36 +173,113 @@ mixin _AudioModule on _PlayerBase {
     _command(['ao-reload']);
   }
 
-  /// Replaces the entire audio filter chain with [filters].
-  Future<void> setActiveFilters(List<AudioFilter> filters) async {
+  // ── DSP filter chain ───────────────────────────────────────────────────────
+  //
+  // Four typed DSP stages plus a raw escape for everything else. Each
+  // typed stage is upserted into mpv's `af` chain via a reserved label so
+  // the wrapper can flip a single stage without touching the others. Chain
+  // order is fixed: custom filters first, then compressor → equalizer →
+  // pitch/tempo → loudnorm. `enabled=false` removes the stage from the
+  // chain (zero-CPU) but preserves its parameters in state for re-enable.
+
+  /// Sets the 10-band graphic equalizer config and applies it to mpv's
+  /// filter chain in one atomic operation.
+  ///
+  /// Modify a single field via `state.equalizer.copyWith(...)`. Reset
+  /// with [EqualizerConfig.flat]. Toggle on/off via
+  /// `state.equalizer.copyWith(enabled: ...)` — the gains are preserved
+  /// while disabled.
+  Future<void> setEqualizer(EqualizerConfig config) async {
     _checkNotDisposed();
-    final afString = filters.isEmpty ? '' : filters.map((f) => f.value).join(',');
-    _prop('af', afString);
+    if (config.gains.length != 10) {
+      throw ArgumentError.value(
+        config.gains.length,
+        'config.gains',
+        'EqualizerConfig requires exactly 10 gain values',
+      );
+    }
+    final copy = config.copyWith(gains: List<double>.from(config.gains));
+    _writeAfChain(equalizer: copy);
     _updateField(
-        (s) => s.copyWith(activeFilters: filters), _reactives.activeFilters, filters);
+      (s) => s.copyWith(equalizer: copy),
+      _reactives.equalizer,
+      copy,
+    );
   }
 
-  /// Sets the 10-band equalizer gains and updates the internal state.
-  ///
-  /// **Note**: this does *not* re-apply the audio filter chain. After
-  /// calling this, invoke [setAudioFilters] (typically with
-  /// `AudioFilter.equalizer(state.equalizerGains)`) to commit the new
-  /// gains to mpv. The split exists so consumers can debounce slider
-  /// drags without rebuilding the filter chain on every tick.
-  ///
-  /// The signature is `Future<void> async` for symmetry with every other
-  /// setter, even though no async work is performed — the `await` is a
-  /// no-op but lets call-sites use the same `await player.setX(...)`
-  /// pattern uniformly.
-  Future<void> setEqualizerGains(List<double> gains) async {
+  /// Sets the dynamic-range compressor config and applies it to mpv's
+  /// filter chain in one atomic operation.
+  Future<void> setCompressor(CompressorConfig config) async {
     _checkNotDisposed();
-    final copy = List<double>.from(gains);
+    _writeAfChain(compressor: config);
     _updateField(
-        (s) => s.copyWith(equalizerGains: copy), _equalizerGains, copy);
+      (s) => s.copyWith(compressor: config),
+      _reactives.compressor,
+      config,
+    );
   }
 
-  /// Removes all active audio filters.
-  Future<void> clearAudioFilters() => setActiveFilters([]);
+  /// Sets the EBU R128 loudness normalization config and applies it to
+  /// mpv's filter chain in one atomic operation.
+  Future<void> setLoudness(LoudnessConfig config) async {
+    _checkNotDisposed();
+    _writeAfChain(loudness: config);
+    _updateField(
+      (s) => s.copyWith(loudness: config),
+      _reactives.loudness,
+      config,
+    );
+  }
+
+  /// Sets the pitch / tempo shifter config (rubberband) and applies it
+  /// to mpv's filter chain in one atomic operation.
+  Future<void> setPitchTempo(PitchTempoConfig config) async {
+    _checkNotDisposed();
+    _writeAfChain(pitchTempo: config);
+    _updateField(
+      (s) => s.copyWith(pitchTempo: config),
+      _reactives.pitchTempo,
+      config,
+    );
+  }
+
+  /// Sets raw mpv `--af` filter strings to live at the head of the chain,
+  /// before any wrapper-managed DSP stage.
+  ///
+  /// Use for filters not covered by the typed setters
+  /// ([setEqualizer], [setCompressor], [setLoudness], [setPitchTempo]) —
+  /// e.g. `pan=stereo|c0=c1|c1=c0`, `aresample=async=1`,
+  /// `lavfi-aecho=...`. Each entry must NOT carry a wrapper-reserved
+  /// label (`@_mak_eq`, `@_mak_comp`, `@_mak_loud`, `@_mak_pt`).
+  Future<void> setCustomAudioFilters(List<String> filters) async {
+    _checkNotDisposed();
+    final copy = List<String>.from(filters);
+    _writeAfChain(customFilters: copy);
+    _updateField(
+      (s) => s.copyWith(customAudioFilters: copy),
+      _reactives.customAudioFilters,
+      copy,
+    );
+  }
+
+  /// Recomposes the full mpv `af` value from the current state, with the
+  /// caller's overrides applied. Internal helper for the five DSP setters.
+  void _writeAfChain({
+    EqualizerConfig? equalizer,
+    CompressorConfig? compressor,
+    LoudnessConfig? loudness,
+    PitchTempoConfig? pitchTempo,
+    List<String>? customFilters,
+  }) {
+    final af = composeAfChain(
+      customFilters: customFilters ?? _state.customAudioFilters,
+      compressor: compressor ?? _state.compressor,
+      equalizer: equalizer ?? _state.equalizer,
+      pitchTempo: pitchTempo ?? _state.pitchTempo,
+      loudness: loudness ?? _state.loudness,
+    );
+    _prop('af', af);
+  }
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
@@ -228,12 +317,6 @@ mixin _AudioModule on _PlayerBase {
     _prop('image-display-duration', mpvValue);
     _updateField((s) => s.copyWith(imageDisplayDuration: duration),
         _reactives.imageDisplayDuration, duration);
-  }
-
-  /// Appends a single [filter] to the current filter chain.
-  Future<void> addAudioFilter(AudioFilter filter) async {
-    _checkNotDisposed();
-    _command(['af', 'add', filter.value]);
   }
 
   /// Sets the target audio sample rate.

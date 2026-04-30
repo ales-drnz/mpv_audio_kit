@@ -12,467 +12,389 @@ class FiltersPage extends StatefulWidget {
 }
 
 class _FiltersPageState extends State<FiltersPage> {
-  // Compressor
-  double _cmpThreshold = -20;
-  double _cmpRatio = 4;
-  double _cmpAttack = 20;
-  double _cmpRelease = 250;
-
-  // Loudnorm
-  double _lnIL = -16;
-  double _lnTP = -1.5;
-  double _lnLRA = 11;
-
-  // Extra Stereo
+  // Niche custom filter parameters. The four mainstream stages
+  // (equalizer / compressor / loudness / pitch-tempo) live entirely in
+  // PlayerState and need no local mirror.
   double _esM = 2.0;
-
-  // Crystalizer
   double _cryIntensity = 2.0;
-
-  // Echo
   double _echoDelay = 200;
   double _echoFalloff = 0.4;
 
-  bool _isActive(List<AudioFilter> filters, String name) =>
-      filters.any((f) => f.value.contains(name));
+  static const _kExtraStereoPrefix = 'lavfi-extrastereo';
+  static const _kCrystalizerPrefix = 'lavfi-crystalizer';
+  static const _kEchoPrefix = 'lavfi-aecho';
+  static const _kCrossfeedPrefix = 'lavfi-crossfeed';
 
-  void _toggle(
-    List<AudioFilter> current,
-    String name,
+  bool _customActive(List<String> customs, String prefix) =>
+      customs.any((f) => f.startsWith(prefix));
+
+  Future<void> _upsertCustom(
+    List<String> customs,
+    String prefix,
     bool enable, {
-    AudioFilter? specific,
+    String? newValue,
   }) {
-    final list = List<AudioFilter>.from(current)
-      ..removeWhere((f) => f.value.contains(name));
-    if (enable) list.add(specific ?? AudioFilter.custom(name));
-    widget.player.setActiveFilters(list);
+    final next = customs.where((f) => !f.startsWith(prefix)).toList();
+    if (enable) next.add(newValue ?? prefix);
+    return widget.player.setCustomAudioFilters(next);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<AudioFilter>>(
-      stream: widget.player.stream.activeFilters,
-      initialData: widget.player.state.activeFilters,
-      builder: (context, snap) {
-        final active = snap.data ?? [];
+    final player = widget.player;
 
-        final cmpActive = _isActive(active, 'acompressor');
-        final lnActive = _isActive(active, 'loudnorm');
-        final esActive = _isActive(active, 'extrastereo');
-        final cryActive = _isActive(active, 'crystalizer');
-        final echoActive = _isActive(active, 'aecho');
-        final cfActive = _isActive(active, 'crossfeed');
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // ── Equalizer ──────────────────────────────────────────────────
+        const PropertySectionHeader(title: 'Equalizer'),
+        StreamBuilder<EqualizerConfig>(
+          stream: player.stream.equalizer,
+          initialData: player.state.equalizer,
+          builder: (context, snap) {
+            final eq = snap.data!;
+            return PropertyBaseCard(
+              title: '10-Band Equalizer',
+              subtitle: 'EqualizerConfig',
+              icon: Icons.equalizer_rounded,
+              isActive: eq.enabled,
+              trailing: Switch(
+                value: eq.enabled,
+                onChanged: (v) =>
+                    player.setEqualizer(eq.copyWith(enabled: v)),
+              ),
+              body: EQWidget(
+                gains: eq.gains,
+                enabled: eq.enabled,
+                onChanged: (i, v) {
+                  final newGains = List<double>.from(eq.gains)..[i] = v;
+                  player.setEqualizer(eq.copyWith(gains: newGains));
+                },
+              ),
+            );
+          },
+        ),
 
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ── Equalizer ──────────────────────────────────────────────────
-            const PropertySectionHeader(title: 'Equalizer'),
-            StreamBuilder<List<double>>(
-              stream: widget.player.stream.equalizerGains,
-              initialData: widget.player.state.equalizerGains,
-              builder: (context, eqSnap) {
-                final gains = eqSnap.data ?? List.filled(10, 0.0);
-                final eqEnabled = _isActive(active, 'equalizer');
-                return PropertyBaseCard(
-                  title: '10-Band Equalizer',
-                  subtitle: 'af=equalizer',
-                  icon: Icons.equalizer_rounded,
-                  isActive: eqEnabled,
-                  trailing: Switch(
-                    value: eqEnabled,
-                    onChanged: (v) => _toggle(
-                      active,
-                      'equalizer',
-                      v,
-                      specific: AudioFilter.equalizer(gains),
-                    ),
-                  ),
-                  body: EQWidget(
-                    gains: gains,
-                    enabled: eqEnabled,
-                    onChanged: (i, v) {
-                      final newGains = List<double>.from(gains)..[i] = v;
-                      widget.player.setEqualizerGains(newGains);
-                      if (eqEnabled) {
-                        _toggle(
-                          active,
-                          'equalizer',
-                          true,
-                          specific: AudioFilter.equalizer(newGains),
-                        );
-                      }
-                    },
-                  ),
-                );
-              },
-            ),
-
-            // ── Dynamics ───────────────────────────────────────────────────
-            const PropertySectionHeader(title: 'Dynamics'),
-            ExpandableFilterCard(
+        // ── Dynamics ───────────────────────────────────────────────────
+        const PropertySectionHeader(title: 'Dynamics'),
+        StreamBuilder<CompressorConfig>(
+          stream: player.stream.compressor,
+          initialData: player.state.compressor,
+          builder: (context, snap) {
+            final c = snap.data!;
+            return ExpandableFilterCard(
               title: 'Compressor',
               subtitle:
-                  'af=acompressor threshold=${_cmpThreshold.toStringAsFixed(0)}dB ratio=${_cmpRatio.toStringAsFixed(1)}:1 attack=${_cmpAttack.toStringAsFixed(0)}ms release=${_cmpRelease.toStringAsFixed(0)}ms',
+                  'threshold=${c.threshold.toStringAsFixed(0)}dB ratio=${c.ratio.toStringAsFixed(1)}:1 '
+                  'attack=${c.attack.inMilliseconds}ms release=${c.release.inMilliseconds}ms',
               icon: Icons.vignette_rounded,
-              enabled: cmpActive,
-              onToggle: (v) => _toggle(
-                active,
-                'acompressor',
-                v,
-                specific: AudioFilter.compressor(
-                  threshold: _cmpThreshold,
-                  ratio: _cmpRatio,
-                  attack: _cmpAttack,
-                  release: _cmpRelease,
-                ),
-              ),
+              enabled: c.enabled,
+              onToggle: (v) =>
+                  player.setCompressor(c.copyWith(enabled: v)),
               params: [
                 FilterParamSlider(
                   label: 'Threshold',
-                  value: _cmpThreshold,
+                  value: c.threshold,
                   min: -60,
                   max: 0,
                   divisions: 60,
                   defaultValue: -20,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} dB',
-                  onChanged: (v) {
-                    setState(() => _cmpThreshold = v);
-                    if (cmpActive) {
-                      _toggle(
-                        active,
-                        'acompressor',
-                        true,
-                        specific: AudioFilter.compressor(
-                          threshold: v,
-                          ratio: _cmpRatio,
-                          attack: _cmpAttack,
-                          release: _cmpRelease,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) =>
+                      player.setCompressor(c.copyWith(threshold: v)),
                 ),
                 FilterParamSlider(
                   label: 'Ratio',
-                  value: _cmpRatio,
+                  value: c.ratio,
                   min: 1,
                   max: 20,
                   divisions: 38,
                   defaultValue: 4,
                   labelBuilder: (v) => '${v.toStringAsFixed(1)}:1',
-                  onChanged: (v) {
-                    setState(() => _cmpRatio = v);
-                    if (cmpActive) {
-                      _toggle(
-                        active,
-                        'acompressor',
-                        true,
-                        specific: AudioFilter.compressor(
-                          threshold: _cmpThreshold,
-                          ratio: v,
-                          attack: _cmpAttack,
-                          release: _cmpRelease,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) =>
+                      player.setCompressor(c.copyWith(ratio: v)),
                 ),
                 FilterParamSlider(
                   label: 'Attack',
-                  value: _cmpAttack,
+                  value: c.attack.inMilliseconds.toDouble(),
                   min: 1,
                   max: 2000,
                   divisions: 200,
                   defaultValue: 20,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} ms',
-                  onChanged: (v) {
-                    setState(() => _cmpAttack = v);
-                    if (cmpActive) {
-                      _toggle(
-                        active,
-                        'acompressor',
-                        true,
-                        specific: AudioFilter.compressor(
-                          threshold: _cmpThreshold,
-                          ratio: _cmpRatio,
-                          attack: v,
-                          release: _cmpRelease,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) => player.setCompressor(
+                    c.copyWith(attack: Duration(milliseconds: v.toInt())),
+                  ),
                 ),
                 FilterParamSlider(
                   label: 'Release',
-                  value: _cmpRelease,
+                  value: c.release.inMilliseconds.toDouble(),
                   min: 1,
                   max: 9000,
                   divisions: 200,
                   defaultValue: 250,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} ms',
-                  onChanged: (v) {
-                    setState(() => _cmpRelease = v);
-                    if (cmpActive) {
-                      _toggle(
-                        active,
-                        'acompressor',
-                        true,
-                        specific: AudioFilter.compressor(
-                          threshold: _cmpThreshold,
-                          ratio: _cmpRatio,
-                          attack: _cmpAttack,
-                          release: v,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) => player.setCompressor(
+                    c.copyWith(release: Duration(milliseconds: v.toInt())),
+                  ),
                 ),
               ],
-            ),
-            ExpandableFilterCard(
-              title: 'Loudnorm',
+            );
+          },
+        ),
+        StreamBuilder<LoudnessConfig>(
+          stream: player.stream.loudness,
+          initialData: player.state.loudness,
+          builder: (context, snap) {
+            final l = snap.data!;
+            return ExpandableFilterCard(
+              title: 'Loudness (EBU R128)',
               subtitle:
-                  'af=loudnorm I=${_lnIL.toStringAsFixed(0)}LUFS TP=${_lnTP.toStringAsFixed(1)}dBTP LRA=${_lnLRA.toStringAsFixed(0)}LU',
+                  'I=${l.integratedLoudness.toStringAsFixed(0)}LUFS '
+                  'TP=${l.truePeak.toStringAsFixed(1)}dBTP '
+                  'LRA=${l.lra.toStringAsFixed(0)}LU',
               icon: Icons.graphic_eq_rounded,
-              enabled: lnActive,
-              onToggle: (v) => _toggle(
-                active,
-                'loudnorm',
-                v,
-                specific: AudioFilter.loudnorm(
-                  integratedLoudness: _lnIL,
-                  truePeak: _lnTP,
-                  lra: _lnLRA,
-                ),
-              ),
+              enabled: l.enabled,
+              onToggle: (v) => player.setLoudness(l.copyWith(enabled: v)),
               params: [
                 FilterParamSlider(
                   label: 'Integrated Loudness',
-                  value: _lnIL,
+                  value: l.integratedLoudness,
                   min: -70,
                   max: -5,
                   divisions: 65,
                   defaultValue: -16,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} LUFS',
-                  onChanged: (v) {
-                    setState(() => _lnIL = v);
-                    if (lnActive) {
-                      _toggle(
-                        active,
-                        'loudnorm',
-                        true,
-                        specific: AudioFilter.loudnorm(
-                          integratedLoudness: v,
-                          truePeak: _lnTP,
-                          lra: _lnLRA,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) =>
+                      player.setLoudness(l.copyWith(integratedLoudness: v)),
                 ),
                 FilterParamSlider(
                   label: 'True Peak',
-                  value: _lnTP,
+                  value: l.truePeak,
                   min: -9,
                   max: 0,
                   divisions: 90,
                   defaultValue: -1.5,
                   labelBuilder: (v) => '${v.toStringAsFixed(1)} dBTP',
-                  onChanged: (v) {
-                    setState(() => _lnTP = v);
-                    if (lnActive) {
-                      _toggle(
-                        active,
-                        'loudnorm',
-                        true,
-                        specific: AudioFilter.loudnorm(
-                          integratedLoudness: _lnIL,
-                          truePeak: v,
-                          lra: _lnLRA,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) =>
+                      player.setLoudness(l.copyWith(truePeak: v)),
                 ),
                 FilterParamSlider(
                   label: 'Loudness Range',
-                  value: _lnLRA,
+                  value: l.lra,
                   min: 1,
                   max: 50,
                   divisions: 49,
                   defaultValue: 11,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} LU',
-                  onChanged: (v) {
-                    setState(() => _lnLRA = v);
-                    if (lnActive) {
-                      _toggle(
-                        active,
-                        'loudnorm',
-                        true,
-                        specific: AudioFilter.loudnorm(
-                          integratedLoudness: _lnIL,
-                          truePeak: _lnTP,
-                          lra: v,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) =>
+                      player.setLoudness(l.copyWith(lra: v)),
                 ),
               ],
-            ),
+            );
+          },
+        ),
 
-            // ── Stereo & Effects ───────────────────────────────────────────
-            const PropertySectionHeader(title: 'Stereo & Effects'),
-            ExpandableFilterCard(
-              title: 'Extra Stereo',
-              subtitle: 'af=extrastereo m=${_esM.toStringAsFixed(1)}',
-              icon: Icons.surround_sound_rounded,
-              enabled: esActive,
-              onToggle: (v) => _toggle(
-                active,
-                'extrastereo',
-                v,
-                specific: AudioFilter.extraStereo(m: _esM),
-              ),
-              params: [
-                FilterParamSlider(
-                  label: 'Width',
-                  value: _esM,
-                  min: 0.0,
-                  max: 5.0,
-                  divisions: 50,
-                  defaultValue: 2.0,
-                  labelBuilder: (v) => v.toStringAsFixed(1),
-                  onChanged: (v) {
-                    setState(() => _esM = v);
-                    if (esActive) {
-                      _toggle(
-                        active,
-                        'extrastereo',
-                        true,
-                        specific: AudioFilter.extraStereo(m: v),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-            ExpandableFilterCard(
-              title: 'Crystalizer',
-              subtitle: 'af=crystalizer i=${_cryIntensity.toStringAsFixed(1)}',
-              icon: Icons.auto_fix_high_rounded,
-              enabled: cryActive,
-              onToggle: (v) => _toggle(
-                active,
-                'crystalizer',
-                v,
-                specific: AudioFilter.crystalizer(intensity: _cryIntensity),
-              ),
-              params: [
-                FilterParamSlider(
-                  label: 'Intensity',
-                  value: _cryIntensity,
-                  min: 0.0,
-                  max: 10.0,
-                  divisions: 100,
-                  defaultValue: 2.0,
-                  labelBuilder: (v) => v.toStringAsFixed(1),
-                  onChanged: (v) {
-                    setState(() => _cryIntensity = v);
-                    if (cryActive) {
-                      _toggle(
-                        active,
-                        'crystalizer',
-                        true,
-                        specific: AudioFilter.crystalizer(intensity: v),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-            ExpandableFilterCard(
-              title: 'Echo',
+        // ── Pitch / Tempo ──────────────────────────────────────────────
+        const PropertySectionHeader(title: 'Pitch / Tempo'),
+        StreamBuilder<PitchTempoConfig>(
+          stream: player.stream.pitchTempo,
+          initialData: player.state.pitchTempo,
+          builder: (context, snap) {
+            final p = snap.data!;
+            return ExpandableFilterCard(
+              title: 'Rubberband',
               subtitle:
-                  'af=aecho delay=${_echoDelay.toStringAsFixed(0)}ms falloff=${_echoFalloff.toStringAsFixed(2)}',
-              icon: Icons.settings_input_antenna_rounded,
-              enabled: echoActive,
-              onToggle: (v) => _toggle(
-                active,
-                'aecho',
-                v,
-                specific: AudioFilter.echo(
-                  delay: _echoDelay.toInt(),
-                  falloff: _echoFalloff,
-                ),
-              ),
+                  'pitch=${p.pitch.toStringAsFixed(2)} tempo=${p.tempo.toStringAsFixed(2)}',
+              icon: Icons.tune_rounded,
+              enabled: p.enabled,
+              onToggle: (v) =>
+                  player.setPitchTempo(p.copyWith(enabled: v)),
               params: [
                 FilterParamSlider(
-                  label: 'Delay',
-                  value: _echoDelay,
-                  min: 0,
-                  max: 1000,
-                  divisions: 100,
-                  defaultValue: 200,
-                  labelBuilder: (v) => '${v.toStringAsFixed(0)} ms',
-                  onChanged: (v) {
-                    setState(() => _echoDelay = v);
-                    if (echoActive) {
-                      _toggle(
-                        active,
-                        'aecho',
-                        true,
-                        specific: AudioFilter.echo(
-                          delay: v.toInt(),
-                          falloff: _echoFalloff,
-                        ),
-                      );
-                    }
-                  },
+                  label: 'Pitch',
+                  value: p.pitch,
+                  min: 0.25,
+                  max: 4.0,
+                  divisions: 75,
+                  defaultValue: 1.0,
+                  labelBuilder: (v) => v.toStringAsFixed(2),
+                  onChanged: (v) =>
+                      player.setPitchTempo(p.copyWith(pitch: v)),
                 ),
                 FilterParamSlider(
-                  label: 'Falloff',
-                  value: _echoFalloff,
-                  min: 0.0,
-                  max: 1.0,
-                  divisions: 100,
-                  defaultValue: 0.4,
+                  label: 'Tempo',
+                  value: p.tempo,
+                  min: 0.25,
+                  max: 4.0,
+                  divisions: 75,
+                  defaultValue: 1.0,
                   labelBuilder: (v) => v.toStringAsFixed(2),
-                  onChanged: (v) {
-                    setState(() => _echoFalloff = v);
-                    if (echoActive) {
-                      _toggle(
-                        active,
-                        'aecho',
-                        true,
-                        specific: AudioFilter.echo(
-                          delay: _echoDelay.toInt(),
-                          falloff: v,
-                        ),
-                      );
-                    }
-                  },
+                  onChanged: (v) =>
+                      player.setPitchTempo(p.copyWith(tempo: v)),
                 ),
               ],
-            ),
-            TogglePropertyCard(
-              title: 'Crossfeed',
-              subtitle: 'af=crossfeed',
-              icon: Icons.headphones_rounded,
-              value: cfActive,
-              onChanged: (v) => _toggle(
-                active,
-                'crossfeed',
-                v,
-                specific: AudioFilter.crossfeed(),
-              ),
-            ),
+            );
+          },
+        ),
 
-            const SizedBox(height: 16),
-          ],
-        );
-      },
+        // ── Stereo & Effects (custom mpv filters) ──────────────────────
+        const PropertySectionHeader(title: 'Stereo & Effects'),
+        StreamBuilder<List<String>>(
+          stream: player.stream.customAudioFilters,
+          initialData: player.state.customAudioFilters,
+          builder: (context, snap) {
+            final customs = snap.data ?? const <String>[];
+            final esActive = _customActive(customs, _kExtraStereoPrefix);
+            final cryActive = _customActive(customs, _kCrystalizerPrefix);
+            final echoActive = _customActive(customs, _kEchoPrefix);
+            final cfActive = _customActive(customs, _kCrossfeedPrefix);
+
+            return Column(
+              children: [
+                ExpandableFilterCard(
+                  title: 'Extra Stereo',
+                  subtitle: '$_kExtraStereoPrefix m=${_esM.toStringAsFixed(1)}',
+                  icon: Icons.surround_sound_rounded,
+                  enabled: esActive,
+                  onToggle: (v) => _upsertCustom(
+                    customs,
+                    _kExtraStereoPrefix,
+                    v,
+                    newValue: '$_kExtraStereoPrefix=m=$_esM',
+                  ),
+                  params: [
+                    FilterParamSlider(
+                      label: 'Width',
+                      value: _esM,
+                      min: 0.0,
+                      max: 5.0,
+                      divisions: 50,
+                      defaultValue: 2.0,
+                      labelBuilder: (v) => v.toStringAsFixed(1),
+                      onChanged: (v) {
+                        setState(() => _esM = v);
+                        if (esActive) {
+                          _upsertCustom(
+                            customs,
+                            _kExtraStereoPrefix,
+                            true,
+                            newValue: '$_kExtraStereoPrefix=m=$v',
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                ExpandableFilterCard(
+                  title: 'Crystalizer',
+                  subtitle:
+                      '$_kCrystalizerPrefix i=${_cryIntensity.toStringAsFixed(1)}',
+                  icon: Icons.auto_fix_high_rounded,
+                  enabled: cryActive,
+                  onToggle: (v) => _upsertCustom(
+                    customs,
+                    _kCrystalizerPrefix,
+                    v,
+                    newValue: '$_kCrystalizerPrefix=i=$_cryIntensity',
+                  ),
+                  params: [
+                    FilterParamSlider(
+                      label: 'Intensity',
+                      value: _cryIntensity,
+                      min: 0.0,
+                      max: 10.0,
+                      divisions: 100,
+                      defaultValue: 2.0,
+                      labelBuilder: (v) => v.toStringAsFixed(1),
+                      onChanged: (v) {
+                        setState(() => _cryIntensity = v);
+                        if (cryActive) {
+                          _upsertCustom(
+                            customs,
+                            _kCrystalizerPrefix,
+                            true,
+                            newValue: '$_kCrystalizerPrefix=i=$v',
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                ExpandableFilterCard(
+                  title: 'Echo',
+                  subtitle:
+                      '$_kEchoPrefix delay=${_echoDelay.toStringAsFixed(0)}ms '
+                      'falloff=${_echoFalloff.toStringAsFixed(2)}',
+                  icon: Icons.settings_input_antenna_rounded,
+                  enabled: echoActive,
+                  onToggle: (v) => _upsertCustom(
+                    customs,
+                    _kEchoPrefix,
+                    v,
+                    newValue:
+                        '$_kEchoPrefix=0.8:0.8:${_echoDelay.toInt()}:$_echoFalloff',
+                  ),
+                  params: [
+                    FilterParamSlider(
+                      label: 'Delay',
+                      value: _echoDelay,
+                      min: 0,
+                      max: 1000,
+                      divisions: 100,
+                      defaultValue: 200,
+                      labelBuilder: (v) => '${v.toStringAsFixed(0)} ms',
+                      onChanged: (v) {
+                        setState(() => _echoDelay = v);
+                        if (echoActive) {
+                          _upsertCustom(
+                            customs,
+                            _kEchoPrefix,
+                            true,
+                            newValue:
+                                '$_kEchoPrefix=0.8:0.8:${v.toInt()}:$_echoFalloff',
+                          );
+                        }
+                      },
+                    ),
+                    FilterParamSlider(
+                      label: 'Falloff',
+                      value: _echoFalloff,
+                      min: 0.0,
+                      max: 1.0,
+                      divisions: 100,
+                      defaultValue: 0.4,
+                      labelBuilder: (v) => v.toStringAsFixed(2),
+                      onChanged: (v) {
+                        setState(() => _echoFalloff = v);
+                        if (echoActive) {
+                          _upsertCustom(
+                            customs,
+                            _kEchoPrefix,
+                            true,
+                            newValue:
+                                '$_kEchoPrefix=0.8:0.8:${_echoDelay.toInt()}:$v',
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                TogglePropertyCard(
+                  title: 'Crossfeed',
+                  subtitle: _kCrossfeedPrefix,
+                  icon: Icons.headphones_rounded,
+                  value: cfActive,
+                  onChanged: (v) =>
+                      _upsertCustom(customs, _kCrossfeedPrefix, v),
+                ),
+              ],
+            );
+          },
+        ),
+
+        const SizedBox(height: 16),
+      ],
     );
   }
 }

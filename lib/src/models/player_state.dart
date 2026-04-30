@@ -4,14 +4,17 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'package:mpv_audio_kit/src/models/playlist.dart';
-import 'package:mpv_audio_kit/src/models/audio_device.dart';
-import 'package:mpv_audio_kit/src/models/audio_params.dart';
-import 'package:mpv_audio_kit/src/models/audio_filter.dart';
+import 'package:mpv_audio_kit/src/models/playback/playlist.dart';
+import 'package:mpv_audio_kit/src/models/audio/audio_device.dart';
+import 'package:mpv_audio_kit/src/models/audio/audio_params.dart';
 import 'package:mpv_audio_kit/src/models/cache_config.dart';
-import 'package:mpv_audio_kit/src/models/chapter.dart';
+import 'package:mpv_audio_kit/src/models/playback/chapter.dart';
+import 'package:mpv_audio_kit/src/models/dsp/compressor_config.dart';
 import 'package:mpv_audio_kit/src/models/enums.dart';
-import 'package:mpv_audio_kit/src/models/mpv_track.dart';
+import 'package:mpv_audio_kit/src/models/dsp/equalizer_config.dart';
+import 'package:mpv_audio_kit/src/models/dsp/loudness_config.dart';
+import 'package:mpv_audio_kit/src/models/playback/mpv_track.dart';
+import 'package:mpv_audio_kit/src/models/dsp/pitch_tempo_config.dart';
 import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
 
 export 'package:mpv_audio_kit/src/models/enums.dart';
@@ -20,18 +23,6 @@ part 'player_state.freezed.dart';
 
 const _kEmptyPlaylist = Playlist.empty();
 const _kAutoDevice = AudioDevice('auto', 'Auto');
-const _kDefaultEqualizerGains = <double>[
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-  0.0,
-];
 const _kDefaultAudioDevices = <AudioDevice>[_kAutoDevice];
 const _kDemuxerMaxBytesDefault = 150 * 1024 * 1024;
 const _kDemuxerMaxBackBytesDefault = 50 * 1024 * 1024;
@@ -144,8 +135,9 @@ abstract class PlayerState with _$PlayerState {
     /// Max bytes for seekback buffer.
     @Default(_kDemuxerMaxBackBytesDefault) int demuxerMaxBackBytes,
 
-    /// Network connection timeout.
-    @Default(Duration(seconds: 30)) Duration networkTimeout,
+    /// Network connection timeout. Default 60s mirrors mpv's
+    /// `--network-timeout=60`.
+    @Default(Duration(seconds: 60)) Duration networkTimeout,
 
     /// Whether playback is paused because the network cache ran empty.
     ///
@@ -160,7 +152,9 @@ abstract class PlayerState with _$PlayerState {
     /// whether an error is likely network-related.
     @Default(false) bool demuxerViaNetwork,
 
-    /// Whether to verify TLS/SSL certificates.
+    /// Whether to verify TLS/SSL certificates on `https://` streams.
+    /// Default `true` (security-conscious). Diverges intentionally from
+    /// mpv's own default of `false` for `--tls-verify`.
     @Default(true) bool tlsVerify,
 
     /// Whether audio exclusive mode is enabled.
@@ -209,11 +203,30 @@ abstract class PlayerState with _$PlayerState {
     /// `failed`). See [AudioOutputState].
     @Default(AudioOutputState.closed) AudioOutputState audioOutputState,
 
-    /// Currently active audio filters.
-    @Default(<AudioFilter>[]) List<AudioFilter> activeFilters,
+    /// 10-band graphic equalizer config. Set atomically via
+    /// [Player.setEqualizer]; modify a single field through
+    /// `state.equalizer.copyWith(...)`.
+    @Default(EqualizerConfig()) EqualizerConfig equalizer,
 
-    /// Current 10-band equalizer gains in dB.
-    @Default(_kDefaultEqualizerGains) List<double> equalizerGains,
+    /// Dynamic-range compressor config. Set atomically via
+    /// [Player.setCompressor]; modify a single field through
+    /// `state.compressor.copyWith(...)`.
+    @Default(CompressorConfig()) CompressorConfig compressor,
+
+    /// EBU R128 loudness normalization config. Set atomically via
+    /// [Player.setLoudness]; modify a single field through
+    /// `state.loudness.copyWith(...)`.
+    @Default(LoudnessConfig()) LoudnessConfig loudness,
+
+    /// Pitch / tempo shifter config (rubberband). Set atomically via
+    /// [Player.setPitchTempo]; modify a single field through
+    /// `state.pitchTempo.copyWith(...)`.
+    @Default(PitchTempoConfig()) PitchTempoConfig pitchTempo,
+
+    /// Raw mpv `--af` filter strings inserted at the head of the chain,
+    /// before any wrapper-managed DSP stage. For filters not covered by
+    /// the typed setters (e.g. `pan`, `aecho`, `lavfi-bridge=...`).
+    @Default(<String>[]) List<String> customAudioFilters,
 
     /// Controls how mpv handles embedded and external cover images. See
     /// [AudioDisplayMode] for the available variants.
@@ -295,5 +308,96 @@ abstract class PlayerState with _$PlayerState {
     /// Chapters in the current file (audiobook / podcast markers).
     /// Empty list when the file carries no chapter table.
     @Default(<Chapter>[]) List<Chapter> chapters,
+
+    /// Full path or URI of the current file as canonicalized by mpv after
+    /// any redirect. Empty when no file is loaded. Mirrors mpv's `path`.
+    @Default('') String path,
+
+    /// File name only (no directory) of the current file. Mirrors mpv's
+    /// `filename`. Empty when no file is loaded.
+    @Default('') String filename,
+
+    /// URI of the current file as originally requested, before any
+    /// redirect from `on_load` hooks or protocol resolution. Mirrors
+    /// mpv's `stream-path`. Empty when no file is loaded.
+    @Default('') String streamPath,
+
+    /// URI of the current file as actually opened post-redirect.
+    /// Identical to [streamPath] when no `on_load` hook rewrote the URL.
+    /// Mirrors mpv's `stream-open-filename`.
+    @Default('') String streamOpenFilename,
+
+    /// A-B loop start point. `null` when disabled. Setter:
+    /// [Player.setAbLoopA]. Mirrors mpv's `ab-loop-a`.
+    Duration? abLoopA,
+
+    /// A-B loop end point. `null` when disabled. Setter:
+    /// [Player.setAbLoopB]. Mirrors mpv's `ab-loop-b`.
+    Duration? abLoopB,
+
+    /// Total number of A-B loop repetitions configured. `null` =
+    /// infinite loop (mpv's `inf`); positive = explicit count. Setter:
+    /// [Player.setAbLoopCount]. Mirrors mpv's `ab-loop-count`.
+    int? abLoopCount,
+
+    /// Remaining number of A-B loop repetitions in the active loop.
+    /// `null` when no loop is active or when the count is infinite.
+    /// Read-only — mirrors mpv's `remaining-ab-loops`.
+    int? remainingAbLoops,
+
+    /// Whether mpv is currently seeking. Useful as a UI gate to prevent
+    /// new seek commands from racing the in-flight one (slider drag
+    /// during a long network seek). Mirrors mpv's `seeking`.
+    @Default(false) bool seeking,
+
+    /// Playback position as a percentage of the file duration (0–100).
+    /// Convenience for progress bar UIs that want a single normalized
+    /// value rather than `position / duration` math. Mirrors mpv's
+    /// `percent-pos`.
+    @Default(0.0) double percentPos,
+
+    /// Current demuxer cache download speed in bytes per second.
+    /// `0.0` when no network reads are active. Mirrors mpv's
+    /// `cache-speed`.
+    @Default(0.0) double cacheSpeed,
+
+    /// Cache fill state as a percentage (0–100). Distinct from
+    /// [bufferingPercentage] (which the wrapper computes against
+    /// `cache.secs`): this is mpv's own assessment of how much of the
+    /// configured cache is full. Mirrors mpv's `cache-buffering-state`.
+    /// `0` when no caching is active.
+    @Default(0) int cacheBufferingState,
+
+    /// Name of the demuxer in use (e.g. `mkv`, `lavf`, `mp3`). Empty
+    /// when no file is loaded. Mirrors mpv's `current-demuxer`.
+    @Default('') String currentDemuxer,
+
+    /// Name of the audio output driver in use (e.g. `coreaudio`,
+    /// `pulse`, `wasapi`). Differs from [audioDriver] (which is the
+    /// requested driver, possibly `auto`): this is what mpv actually
+    /// resolved at runtime. Mirrors mpv's `current-ao`.
+    @Default('') String currentAo,
+
+    /// Initial timestamp offset of the current file, as reported by the
+    /// demuxer. Useful when the container's first frame isn't at zero
+    /// (chapter-skipped files, edited cuts). Mirrors mpv's
+    /// `demuxer-start-time`.
+    @Default(Duration.zero) Duration demuxerStartTime,
+
+    /// Tag dictionary for the active chapter (per-chapter metadata).
+    /// Empty when no chapter is active or the file has no chapter tags.
+    /// Mirrors mpv's `chapter-metadata`. Distinct from [metadata] (file
+    /// level) and from [Chapter.title] (chapter list, just the title).
+    @Default(<String, String>{}) Map<String, String> chapterMetadata,
+
+    /// Version of mpv linked into the current build (e.g. `0.41.0`).
+    /// Read once at first observe and stable for the lifetime of the
+    /// [Player]. Mirrors mpv's `mpv-version`.
+    @Default('') String mpvVersion,
+
+    /// Version of FFmpeg linked into the current mpv build (e.g.
+    /// `7.1.1`). Read once at first observe. Mirrors mpv's
+    /// `ffmpeg-version`.
+    @Default('') String ffmpegVersion,
   }) = _PlayerState;
 }

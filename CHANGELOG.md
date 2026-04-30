@@ -6,8 +6,82 @@ at the root, not patched at the symptom level. A second pass on the
 public API consolidated runtime-mutable properties as typed setters,
 collapsed redundant granular config setters into atomic config
 objects, replaced the stringly-typed track API with a typed model,
-and added 13 new observable mpv properties for audiobook / podcast /
+and added 21 new observable mpv properties for audiobook / podcast /
 streaming use cases.
+
+### Added — path / URI introspection (4 properties)
+
+`PlayerState` and `PlayerStream` gain four read-only string fields
+mirroring mpv's filename / URI properties:
+
+- `path` (mpv `path`) — full canonicalized path/URI of the current file.
+- `filename` (mpv `filename`) — file name only (no directory).
+- `streamPath` (mpv `stream-path`) — URI as originally requested.
+- `streamOpenFilename` (mpv `stream-open-filename`) — URI as actually
+  opened post-redirect (rewritten by `on_load` hooks).
+
+### Added — Tier 2 introspection (9 properties)
+
+Read-only observable properties surfacing mpv's runtime state for
+diagnostics, UI bindings, and capability checks:
+
+- `seeking` (bool) — UI gate for in-flight seeks.
+- `percentPos` (double 0–100) — playback position as percentage.
+- `cacheSpeed` (double, bytes/s) — demuxer download rate.
+- `cacheBufferingState` (int 0–100) — mpv's own cache fill metric.
+- `currentDemuxer` / `currentAo` (String) — debug "what's actually
+  in use" for the demuxer and audio-output backend.
+- `demuxerStartTime` (Duration) — initial timestamp offset for
+  chapter-skipped or edited files.
+- `chapterMetadata` (Map<String,String>) — per-chapter tag dictionary,
+  complementary to `state.chapters`.
+- `mpvVersion` / `ffmpegVersion` (String) — runtime version strings
+  for capability gating.
+
+### Added — `MpvPrefetchState.failed`
+
+The `prefetch-state` event surface gains a fifth variant: `failed`,
+emitted when the background opener thread fails to create the demuxer
+for the next playlist item (network error, unsupported codec,
+`on_load` hook abort). Edge-triggered like `used` — the state
+persists until the next `prefetch_next` (loading) clears it, so
+observers reliably see the failure event.
+
+### Added — A-B loop API (4 properties + 3 setters)
+
+`PlayerState` exposes the full A-B loop control surface:
+
+- `abLoopA` / `abLoopB`: `Duration?` (null = disabled). Setters
+  [Player.setAbLoopA] / [Player.setAbLoopB] accept `Duration?`.
+- `abLoopCount`: `int?` (null = infinite). Setter
+  [Player.setAbLoopCount] rejects negative values; null maps to mpv's
+  `inf`.
+- `remainingAbLoops`: `int?` read-only. `null` when no loop is active
+  or count is infinite (mpv emits `-1` in that case).
+
+### Fixed — hook continuation idempotency
+
+`registerHook(name)` is now idempotent per `name`: subsequent calls
+for the same hook on the same [Player] only update the optional
+`timeout`, not register an additional mpv-side hook. Multiple
+registrations of the same name on the same handle could leave mpv's
+shutdown path stuck waiting on the second hook's continue, leading
+to a 2 s tearDown stall and a SIGSEGV at process teardown — the
+wrapper now collapses duplicates before they reach mpv.
+
+`continueHook(id)` is now also idempotent per id: a second call for
+the same id (consumer double-dispatch, or manual continue racing the
+auto-timeout fallback) is dropped on the wrapper side and never
+reaches mpv. Tracked via an internal active-id set.
+
+### Fixed — demuxer max-bytes precision
+
+`Player.setDemuxerMaxBytes` and `Player.setDemuxerMaxBackBytes` no
+longer truncate sub-MiB precision. The wrapper used to convert the
+byte argument to `MiB` integer + suffix before forwarding; now it
+forwards the raw byte count exactly. Internal `state.demuxerMaxBytes`
+already stored the precise value, so this fix only aligns mpv's actual
+cap with the optimistic state.
 
 ### BREAKING — `Player.openPlaylist` → `Player.openAll`
 
@@ -23,12 +97,20 @@ The single stringly-typed `state.audioTrack: String` (`'auto'` /
 
 - **`state.tracks: List<MpvTrack>`** + `Player.stream.tracks` — every
   track mpv reports for the current file (audio + embedded picture +
-  any other type the demuxer surfaced). Each [MpvTrack] carries
-  `id`, `type`, `title`, `lang`, `selected`, `defaultTrack`,
-  `forced`, `image`/`albumart` flags, `codec`, `codecDesc`,
-  `samplerate`, `channels`, `channelCount`. UI track switchers
-  filter by `type == 'audio' && !image && !albumart` to skip the
-  embedded `attached_pic` pseudo-tracks.
+  any other type the demuxer surfaced). Each [MpvTrack] carries the
+  full audio-relevant subset of mpv's `track-list/N/*` fields: `id`,
+  `type`, `title`, `lang`, `selected`, `defaultTrack`, `forced`,
+  accessibility flags (`dependent`, `visualImpaired`,
+  `hearingImpaired`), `image`/`albumart` flags, container codec
+  (`codec`, `codecDesc`), runtime decoder (`decoder`, `decoderDesc`),
+  sample format (`formatName`, `samplerate`, `channels`,
+  `channelCount`), demuxer-side `demuxBitrate` / `demuxDuration`,
+  `hlsBitrate` for HLS streams, per-track ReplayGain values
+  (`replaygainTrackGain`, `replaygainTrackPeak`,
+  `replaygainAlbumGain`, `replaygainAlbumPeak`), and per-track
+  `metadata` map. UI track switchers filter by
+  `type == 'audio' && !image && !albumart` to skip the embedded
+  `attached_pic` pseudo-tracks.
 - **`state.currentAudioTrack: MpvTrack?`** + `Player.stream.currentAudioTrack`
   — the active audio track, `null` when none is selected. Backed by
   mpv's `current-tracks/audio`.
@@ -123,6 +205,69 @@ five time-based setters already documented above.
 matches the 40+ typed setters that have always been
 `Future<void>`. Calls without `await` continue to work
 fire-and-forget; reading `getRawProperty` requires `await`.
+
+### BREAKING — DSP filter API redesigned
+
+The single `AudioFilter` typed value + `setActiveFilters` /
+`addAudioFilter` / `clearAudioFilters` / `stageEqualizerGains` / `setEqualizerGains`
+chain-management surface is replaced by four typed config aggregates,
+each with its own atomic setter. The chain composition is now wholly
+managed by the wrapper — consumers configure DSP stages, not filter
+strings.
+
+- **`EqualizerConfig`** + `Player.setEqualizer(EqualizerConfig)` —
+  10-band graphic EQ. `enabled` toggles the stage in mpv's filter chain
+  while preserving the gains for re-enable.
+- **`CompressorConfig`** + `Player.setCompressor(...)` — dynamic-range
+  compressor (libavfilter `acompressor`). Threshold / ratio / attack /
+  release.
+- **`LoudnessConfig`** + `Player.setLoudness(...)` — EBU R128 loudness
+  normalization (libavfilter `loudnorm`).
+- **`PitchTempoConfig`** + `Player.setPitchTempo(...)` — independent
+  pitch / tempo shifting via librubberband.
+- **`Player.setCustomAudioFilters(List<String>)`** — escape hatch for
+  filters not covered by the four typed setters (e.g. `pan`, `aecho`,
+  `lavfi-bridge=...`); the strings live at the head of the chain.
+
+State + streams follow the established 0.1.0 config-aggregate pattern:
+`state.equalizer` / `state.compressor` / `state.loudness` /
+`state.pitchTempo` / `state.customAudioFilters` are the source of truth;
+modify a single field via `state.X.copyWith(...)`. Each managed stage
+uses a reserved mpv label (`@_mak_eq`, `@_mak_comp`, `@_mak_loud`,
+`@_mak_pt`) so the wrapper can upsert one stage without disturbing the
+others. The chain order is fixed:
+
+```
+custom filters → compressor → equalizer → pitch/tempo → loudnorm
+```
+
+Migration:
+```dart
+// 0.0.x
+await player.setActiveFilters([
+  AudioFilter.equalizer([0, 0, 0, 4, 0, 0, 0, 0, 0, 0]),
+  AudioFilter.compressor(threshold: -18, ratio: 4),
+]);
+
+// 0.1.0
+await player.setEqualizer(state.equalizer.copyWith(
+  enabled: true,
+  gains: [0, 0, 0, 4, 0, 0, 0, 0, 0, 0],
+));
+await player.setCompressor(state.compressor.copyWith(
+  enabled: true, threshold: -18, ratio: 4,
+));
+```
+
+Removed types and methods: `AudioFilter` (and all its named factories
+— `equalizer`, `compressor`, `loudnorm`, `scaleTempo`, `echo`,
+`extraStereo`, `crystalizer`, `crossfeed`, `custom`, `raw`),
+`Player.setActiveFilters`, `Player.addAudioFilter`,
+`Player.clearAudioFilters`, `Player.setEqualizerGains`,
+`PlayerState.activeFilters`, `PlayerState.equalizerGains`,
+`PlayerStream.activeFilters`, `PlayerStream.equalizerGains`. The four
+niche named factories (`echo`, `extraStereo`, `crystalizer`,
+`crossfeed`) are reproducible verbatim through `setCustomAudioFilters`.
 
 ### BREAKING — `Player.playOrPause` removed
 

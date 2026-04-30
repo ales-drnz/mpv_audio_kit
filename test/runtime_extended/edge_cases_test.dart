@@ -59,10 +59,15 @@ void main() {
         return;
       }
       await player.open(Media(tinyPath), play: false);
-      // Give mpv a moment to demux a near-zero-length file.
-      await Future.delayed(const Duration(milliseconds: 300));
-      // Duration may report 50ms or 0 depending on container precision;
-      // we assert that the wrapper isn't stuck / crashed.
+      // Wait for the duration observer to settle on the demuxed value
+      // rather than gambling on a fixed delay. Some containers report 0
+      // for a 50 ms fixture (precision floor), some report exactly 50 ms;
+      // either is fine — what matters is the wrapper isn't stuck. We
+      // bound on the file-loaded signal rather than duration to handle
+      // the 0-duration case.
+      await player.stream.fileFormat
+          .firstWhere((fmt) => fmt.isNotEmpty)
+          .timeout(const Duration(seconds: 5));
       expect(player.state.duration.inMilliseconds, lessThan(200));
     }, timeout: const Timeout(Duration(seconds: 15)));
 
@@ -134,5 +139,55 @@ void main() {
       expect(player.state.volume, 69.0,
           reason: 'last setVolume(20 + 49 = 69) wins');
     }, timeout: const Timeout(Duration(seconds: 15)));
+
+    // ── Numeric boundary contracts ─────────────────────────────────────
+    //
+    // mpv applies its own M_RANGE clamp on the way in; the wrapper
+    // optimistically writes the *requested* value to PlayerState before
+    // the observer event arrives. The observer then emits the clamped
+    // value, and state catches up. These tests document that contract:
+    // the optimistic value is what the consumer last set, and the
+    // observed value is what mpv accepted. Both surfaces are valid; UI
+    // widgets bound to the stream always converge on the clamped value.
+    test('setVolume above 100 retains the optimistic value (mpv clamps to '
+        'volume-max in its own time)', () async {
+      await player.setVolume(150.0);
+      expect(player.state.volume, 150.0,
+          reason: 'wrapper writes the requested value optimistically; mpv '
+              'clamps to volume-max (130 by default) on its side');
+    }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test('setRate at the M_RANGE boundaries passes through', () async {
+      // mpv's M_RANGE for speed is (0.01, 100.0). Values inside the
+      // range pass through unchanged.
+      await player.setRate(0.01);
+      expect(player.state.rate, 0.01);
+
+      await player.setRate(100.0);
+      expect(player.state.rate, 100.0);
+
+      // Restore a normal rate so subsequent tests aren't disturbed.
+      await player.setRate(1.0);
+    }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test('setDemuxerMaxBytes preserves sub-MiB precision (no MiB rounding)',
+        () async {
+      // 100 MiB + 1 byte. Pre-fix the wrapper truncated to 100 MiB and
+      // state diverged from mpv's actual cap. The byte-precise contract
+      // forwards the exact int.
+      const bytes = 100 * 1024 * 1024 + 1;
+      await player.setDemuxerMaxBytes(bytes);
+      expect(player.state.demuxerMaxBytes, bytes);
+
+      // Restore to default so subsequent tests aren't disturbed.
+      await player.setDemuxerMaxBytes(150 * 1024 * 1024);
+    }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test('setAbLoopCount rejects negative ints', () {
+      // null / non-negative int are valid; negative values are an error
+      // because mpv's `--ab-loop-count` accepts only `inf` (encoded as
+      // null) or `M_RANGE(0, INT_MAX)`.
+      expect(() => player.setAbLoopCount(-1), throwsArgumentError);
+    });
   });
 }

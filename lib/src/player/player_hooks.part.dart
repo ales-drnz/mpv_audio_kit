@@ -36,15 +36,34 @@ mixin _HooksModule on _PlayerBase {
   /// prevents mpv from stalling indefinitely due to unhandled exceptions in
   /// hook listeners.
   ///
-  /// Common hook names:
-  /// - `"on_load"` — before a stream is opened; can redirect the URL.
-  /// - `"on_load_fail"` — after a stream fails to open.
-  /// - `"on_preloaded"` — after the file is pre-loaded but before playback starts.
+  /// Idempotent per [name]: calling [registerHook] more than once for the
+  /// same hook name on the same [Player] only updates the optional
+  /// [timeout]; the underlying mpv registration happens once. mpv allows
+  /// multiple registrations per name but its shutdown path can stall when
+  /// several events for the same hook are still active at `quit` — the
+  /// wrapper avoids that race by collapsing duplicates here.
+  ///
+  /// Available hook names (mpv 0.41):
+  /// - `"on_load"` — before a stream is opened; can redirect the URL via
+  ///   `stream-open-filename` or set per-file options.
+  /// - `"on_load_fail"` — after a stream failed to open; useful for
+  ///   fallback URLs (only retried if `stream-open-filename` is rewritten).
+  /// - `"on_preloaded"` — after open, before track selection / decoder
+  ///   creation. Useful for manual track selection.
+  /// - `"on_loaded"` — after track selection, before playback starts.
+  ///   Useful for acting on selected-track metadata.
+  /// - `"on_unload"` — before closing a file. Cannot resume playback in
+  ///   this state.
+  /// - `"on_before_start_file"` — drains property changes before a new
+  ///   file's `start-file` event fires.
+  /// - `"on_after_end_file"` — drains property changes after `end-file`.
   ///
   /// Higher [priority] values run earlier. The default (0) is fine for most uses.
   void registerHook(String name, {int priority = 0, Duration? timeout}) {
     _checkNotDisposed();
     if (timeout != null) _hookTimeouts[name] = timeout;
+    if (_registeredHookNames.contains(name)) return;
+    _registeredHookNames.add(name);
     using((arena) {
       _lib.mpvHookAdd(
         _handle,
@@ -57,16 +76,20 @@ mixin _HooksModule on _PlayerBase {
 
   /// Signals mpv that hook processing for [id] is complete.
   ///
-  /// Must be called exactly once per [MpvHookEvent] received on
+  /// Should be called exactly once per [MpvHookEvent] received on
   /// [PlayerStream.hook], even if your processing fails — otherwise mpv
   /// will stall indefinitely waiting for the hook to return.
   ///
+  /// Idempotent on a per-id basis: a second [continueHook] call for the
+  /// same id (a buggy double-dispatch in the consumer, or a manual
+  /// continue racing the auto-timeout fallback) is dropped on the
+  /// wrapper side and never reaches mpv. mpv's behaviour for an
+  /// already-continued id is undefined across versions, so the wrapper
+  /// tracks the active set in [_activeHookIds].
+  ///
   /// Calling with an invalid [id] (zero or negative — typo in a consumer
-  /// dispatch table) is a no-op: the wrapper logs a warning on
-  /// [PlayerStream.internalLog] and skips the FFI call rather than
-  /// passing a bogus id to `mpv_hook_continue`. mpv's behaviour on
-  /// unknown ids is undefined across versions, and the cost of an
-  /// extra integer compare here is negligible compared to the FFI call.
+  /// dispatch table) is also a no-op: the wrapper logs a warning on
+  /// [PlayerStream.internalLog] and skips the FFI call.
   void continueHook(int id) {
     _checkNotDisposed();
     if (id <= 0) {
@@ -75,6 +98,12 @@ mixin _HooksModule on _PlayerBase {
         'integer obtained from MpvHookEvent.id)',
         level: 'warn',
       );
+      return;
+    }
+    if (!_activeHookIds.remove(id)) {
+      // Already continued (manual + auto-timer race, or consumer
+      // double-dispatch). Drop silently — the first continue already
+      // unblocked mpv.
       return;
     }
     _hookTimers.remove(id)?.cancel();

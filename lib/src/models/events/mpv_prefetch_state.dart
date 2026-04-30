@@ -32,7 +32,16 @@ enum MpvPrefetchState {
   /// is an edge-triggered notification: the property fires [used] and
   /// then immediately returns to [idle], so observers see two
   /// consecutive events and can treat [used] as a one-shot signal.
-  used;
+  used,
+
+  /// The opener thread failed to create a demuxer for the next playlist
+  /// item — typically a network error (404 / timeout / DNS), an
+  /// unsupported codec, or a deliberate abort by an `on_load` hook
+  /// rewrite. Distinct from a silent return to [idle] because no
+  /// gapless transition is armed: the next track will be re-opened
+  /// from scratch when playback reaches it. Edge-triggered, same as
+  /// [used] — the property emits [failed] and then returns to [idle].
+  failed;
 
   /// Parses the string emitted by mpv. Unknown values fall back to
   /// [idle] so future mpv additions don't crash clients — they just
@@ -45,6 +54,8 @@ enum MpvPrefetchState {
         return MpvPrefetchState.ready;
       case 'used':
         return MpvPrefetchState.used;
+      case 'failed':
+        return MpvPrefetchState.failed;
       default:
         return MpvPrefetchState.idle;
     }

@@ -4,11 +4,12 @@
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/src/models/cache_config.dart';
-import 'package:mpv_audio_kit/src/models/mpv_prefetch_state.dart';
+import 'package:mpv_audio_kit/src/models/events/mpv_prefetch_state.dart';
 import 'package:mpv_audio_kit/src/models/player_state.dart';
 import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
+import 'package:mpv_audio_kit/src/utils/duration_seconds.dart';
 
 /// End-to-end test of the default registry — every mpv property the public
 /// API surfaces gets dispatched once with a representative payload and the
@@ -171,14 +172,18 @@ void main() {
       expect(state.audioBitrate, isNull);
     });
 
-    test('af string is split into List<AudioFilter>', () {
-      dispatch('af', 'lavfi-equalizer=g=3,lavfi-loudnorm');
-      expect(state.activeFilters.length, 2);
-      expect(state.activeFilters[0].value, 'lavfi-equalizer=g=3');
-      expect(state.activeFilters[1].value, 'lavfi-loudnorm');
+    test(
+        'af observer surfaces unmanaged entries as customAudioFilters; '
+        'wrapper-labelled entries are ignored', () {
+      // External raw mutation (e.g. via setRawProperty('af', ...)) bypasses
+      // the typed setters. The af observer mirrors only the unmanaged tail
+      // back into state.customAudioFilters; the four managed labels stay
+      // owned by their setters' own state.
+      dispatch('af', 'lavfi-pan=stereo|c0=c1|c1=c0,@_mak_eq:lavfi-equalizer=g=3');
+      expect(state.customAudioFilters, ['lavfi-pan=stereo|c0=c1|c1=c0']);
 
       dispatch('af', '');
-      expect(state.activeFilters, isEmpty);
+      expect(state.customAudioFilters, isEmpty);
     });
   });
 
@@ -219,58 +224,57 @@ void main() {
   });
 
   group('Default registry — new mpv properties (XS)', () {
-    test('audio-pts (double → Duration)', () {
-      dispatch('audio-pts', 1.5);
-      expect(state.audioPts, const Duration(milliseconds: 1500));
-      expect(reactives.audioPts.value, const Duration(milliseconds: 1500));
-    });
-
-    test('time-remaining + playtime-remaining (double → Duration)', () {
-      dispatch('time-remaining', 30.0);
-      dispatch('playtime-remaining', 15.0);
-      expect(state.timeRemaining, const Duration(seconds: 30));
-      expect(state.playtimeRemaining, const Duration(seconds: 15));
-    });
-
-    test('eof-reached (flag → bool)', () {
-      dispatch('eof-reached', true);
-      expect(state.eofReached, isTrue);
-      dispatch('eof-reached', false);
-      expect(state.eofReached, isFalse);
-    });
-
-    test('seekable + partially-seekable (flag → bool)', () {
-      dispatch('seekable', true);
-      dispatch('partially-seekable', false);
-      expect(state.seekable, isTrue);
-      expect(state.partiallySeekable, isFalse);
-    });
-
-    test('media-title (string → String)', () {
-      dispatch('media-title', 'My Song - Artist');
-      expect(state.mediaTitle, 'My Song - Artist');
-    });
-
-    test('file-format (string → String)', () {
-      dispatch('file-format', 'mp4,m4a,3gp');
-      expect(state.fileFormat, 'mp4,m4a,3gp');
-    });
-
-    test('file-size (int64 → int)', () {
-      dispatch('file-size', 1234567890);
-      expect(state.fileSize, 1234567890);
-    });
+    // Single round-trip per scalar property: dispatch → assert state +
+    // reactive. Each tuple covers one wire format (double / flag / int64
+    // / string) so a regression in dispatch wiring fails on the exact
+    // property that lost it. Special parsers (chapter -1 → null,
+    // demuxer-cache-duration → bufferDuration field rename, etc.) live
+    // in their own tests below.
+    final xsProperties = <(String, Object, Object Function(PlayerState))>[
+      ('audio-pts', 1.5, (s) => s.audioPts),
+      ('time-remaining', 30.0, (s) => s.timeRemaining),
+      ('playtime-remaining', 15.0, (s) => s.playtimeRemaining),
+      ('eof-reached', true, (s) => s.eofReached),
+      ('seekable', true, (s) => s.seekable),
+      ('partially-seekable', true, (s) => s.partiallySeekable),
+      ('media-title', 'My Song - Artist', (s) => s.mediaTitle),
+      ('file-format', 'mp4,m4a,3gp', (s) => s.fileFormat),
+      ('file-size', 1234567890, (s) => s.fileSize),
+      ('demuxer-cache-idle', false, (s) => s.demuxerIdle),
+      ('path', '/audio/track.flac', (s) => s.path),
+      ('filename', 'track.flac', (s) => s.filename),
+      ('stream-path', 'https://cdn.example/track.flac', (s) => s.streamPath),
+      (
+        'stream-open-filename',
+        'https://cdn.example/redirected.flac',
+        (s) => s.streamOpenFilename,
+      ),
+      ('seeking', true, (s) => s.seeking),
+      ('percent-pos', 42.5, (s) => s.percentPos),
+      ('cache-speed', 65536.0, (s) => s.cacheSpeed),
+      ('cache-buffering-state', 87, (s) => s.cacheBufferingState),
+      ('current-demuxer', 'mkv', (s) => s.currentDemuxer),
+      ('current-ao', 'coreaudio', (s) => s.currentAo),
+      ('mpv-version', '0.41.0', (s) => s.mpvVersion),
+      ('ffmpeg-version', '7.1.1', (s) => s.ffmpegVersion),
+    ];
+    for (final (name, payload, getter) in xsProperties) {
+      test('$name round-trip into state', () {
+        dispatch(name, payload);
+        // Duration / Map fields surface as-is for non-Duration payloads;
+        // Duration parsers are exercised by the dedicated test below.
+        if (payload is double && (name.endsWith('-pts') ||
+            name.endsWith('-remaining'))) {
+          expect(getter(state), secondsToDuration(payload));
+        } else {
+          expect(getter(state), payload);
+        }
+      });
+    }
 
     test('demuxer-cache-duration (double → Duration) → bufferDuration', () {
       dispatch('demuxer-cache-duration', 12.5);
       expect(state.bufferDuration, const Duration(milliseconds: 12500));
-    });
-
-    test('demuxer-cache-idle (flag → bool)', () {
-      dispatch('demuxer-cache-idle', false);
-      expect(state.demuxerIdle, isFalse);
-      dispatch('demuxer-cache-idle', true);
-      expect(state.demuxerIdle, isTrue);
     });
 
     test('chapter (int64 → int?, -1 maps to null)', () {
@@ -281,6 +285,51 @@ void main() {
       expect(state.currentChapter, isNull,
           reason: 'mpv emits chapter=-1 when no chapter is active; the '
               'parser must surface that as `null`');
+    });
+
+    test('ab-loop-a / ab-loop-b ("no" → null, numeric → Duration)', () {
+      dispatch('ab-loop-a', '12.5');
+      dispatch('ab-loop-b', '20.0');
+      expect(state.abLoopA, const Duration(milliseconds: 12500));
+      expect(state.abLoopB, const Duration(seconds: 20));
+
+      dispatch('ab-loop-a', 'no');
+      expect(state.abLoopA, isNull);
+    });
+
+    test('ab-loop-count ("inf" → null, numeric → int)', () {
+      dispatch('ab-loop-count', '5');
+      expect(state.abLoopCount, 5);
+
+      dispatch('ab-loop-count', 'inf');
+      expect(state.abLoopCount, isNull);
+    });
+
+    test('remaining-ab-loops (int64 → int?, -1 maps to null)', () {
+      dispatch('remaining-ab-loops', 3);
+      expect(state.remainingAbLoops, 3);
+
+      dispatch('remaining-ab-loops', -1);
+      expect(state.remainingAbLoops, isNull);
+    });
+
+    test('demuxer-start-time (double → Duration)', () {
+      dispatch('demuxer-start-time', 12.5);
+      expect(state.demuxerStartTime, const Duration(milliseconds: 12500));
+    });
+
+    test('chapter-metadata (NODE_MAP → Map<String,String>)', () {
+      dispatch('chapter-metadata', <String, dynamic>{
+        'title': 'Chapter One',
+        'lang': 'eng',
+      });
+      expect(state.chapterMetadata, {
+        'title': 'Chapter One',
+        'lang': 'eng',
+      });
+
+      dispatch('chapter-metadata', <String, dynamic>{});
+      expect(state.chapterMetadata, isEmpty);
     });
 
     test('chapter-list (NODE_ARRAY → List<Chapter>)', () {
@@ -481,6 +530,14 @@ void main() {
         'demuxer-cache-duration', 'demuxer-cache-idle',
         // Chapter navigation
         'chapter', 'chapter-list',
+        // Path / URI introspection
+        'path', 'filename', 'stream-path', 'stream-open-filename',
+        // A-B loop
+        'ab-loop-a', 'ab-loop-b', 'ab-loop-count', 'remaining-ab-loops',
+        // Tier 2 introspection
+        'seeking', 'percent-pos', 'cache-speed', 'cache-buffering-state',
+        'current-demuxer', 'current-ao', 'demuxer-start-time',
+        'chapter-metadata', 'mpv-version', 'ffmpeg-version',
       };
 
       expect(actual, equals(documented),

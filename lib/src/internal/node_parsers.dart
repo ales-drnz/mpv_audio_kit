@@ -2,12 +2,12 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../models/audio_device.dart';
-import '../models/audio_params.dart';
-import '../models/chapter.dart';
-import '../models/media.dart';
-import '../models/mpv_track.dart';
-import '../models/playlist.dart';
+import '../models/audio/audio_device.dart';
+import '../models/audio/audio_params.dart';
+import '../models/playback/chapter.dart';
+import '../models/playback/media.dart';
+import '../models/playback/mpv_track.dart';
+import '../models/playback/playlist.dart';
 import '../utils/duration_seconds.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,6 +39,11 @@ Playlist parsePlaylistNode({
   required Map<String, Media> mediaCache,
   required Playlist previous,
 }) {
+  // Non-list payload means mpv emitted something we don't recognize for
+  // the `playlist` property — keep [previous] rather than clobbering the
+  // consumer's view with an empty playlist. mpv has consistently emitted
+  // `MPV_FORMAT_NODE_ARRAY` for this property across every release we
+  // support, so this branch is purely defensive.
   if (raw is! List) {
     return previous;
   }
@@ -156,6 +161,7 @@ MpvTrack? parseCurrentAudioTrackNode(dynamic raw) {
 
 MpvTrack _parseTrackEntry(dynamic entry) {
   final m = entry is Map ? entry : const <String, dynamic>{};
+  final demuxDurationSecs = (m['demux-duration'] as num?)?.toDouble();
   return MpvTrack(
     id: m['id'] is int ? m['id'] as int : -1,
     type: m['type'] is String ? m['type'] as String : '',
@@ -164,13 +170,30 @@ MpvTrack _parseTrackEntry(dynamic entry) {
     lang: _stringOrNull(m['lang']),
     defaultTrack: m['default'] == true,
     forced: m['forced'] == true,
+    dependent: m['dependent'] == true,
+    visualImpaired: m['visual-impaired'] == true,
+    hearingImpaired: m['hearing-impaired'] == true,
     image: m['image'] == true,
     albumart: m['albumart'] == true,
     codec: _stringOrNull(m['codec']),
     codecDesc: _stringOrNull(m['codec-desc']),
+    decoder: _stringOrNull(m['decoder']),
+    decoderDesc: _stringOrNull(m['decoder-desc']),
+    formatName: _stringOrNull(m['format-name']),
     samplerate: _intOrNull(m['demux-samplerate']),
     channels: _stringOrNull(m['demux-channels']),
     channelCount: _intOrNull(m['demux-channel-count']),
+    demuxBitrate: _doubleOrNull(m['demux-bitrate']),
+    demuxDuration:
+        demuxDurationSecs != null && demuxDurationSecs > 0
+            ? secondsToDuration(demuxDurationSecs)
+            : null,
+    hlsBitrate: _doubleOrNull(m['hls-bitrate']),
+    replaygainTrackGain: _doubleOrNull(m['replaygain-track-gain']),
+    replaygainTrackPeak: _doubleOrNull(m['replaygain-track-peak']),
+    replaygainAlbumGain: _doubleOrNull(m['replaygain-album-gain']),
+    replaygainAlbumPeak: _doubleOrNull(m['replaygain-album-peak']),
+    metadata: _stringMap(m['metadata']),
   );
 }
 
@@ -200,4 +223,16 @@ int? _intOrNull(dynamic v) {
   if (v is int) return v == 0 ? null : v;
   if (v is num) return v == 0 ? null : v.toInt();
   return null;
+}
+
+double? _doubleOrNull(dynamic v) {
+  if (v is! num) return null;
+  final d = v.toDouble();
+  return d == 0.0 ? null : d;
+}
+
+Map<String, String> _stringMap(dynamic v) {
+  if (v is! Map) return const <String, String>{};
+  if (v.isEmpty) return const <String, String>{};
+  return v.map((k, val) => MapEntry(k.toString(), val.toString()));
 }

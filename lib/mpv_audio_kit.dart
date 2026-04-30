@@ -26,14 +26,17 @@ library;
 export 'src/player.dart' show Player;
 export 'src/cover/cover_art_raw.dart' show CoverArtRaw;
 export 'src/models/cache_config.dart' show CacheConfig;
-export 'src/models/chapter.dart' show Chapter;
-export 'src/models/media.dart' show Media;
-export 'src/models/mpv_track.dart' show MpvTrack;
+export 'src/models/playback/chapter.dart' show Chapter;
+export 'src/models/dsp/compressor_config.dart' show CompressorConfig;
+export 'src/models/dsp/equalizer_config.dart' show EqualizerConfig;
+export 'src/models/dsp/loudness_config.dart' show LoudnessConfig;
+export 'src/models/playback/media.dart' show Media;
+export 'src/models/playback/mpv_track.dart' show MpvTrack;
+export 'src/models/dsp/pitch_tempo_config.dart' show PitchTempoConfig;
 export 'src/models/replay_gain_config.dart' show ReplayGainConfig;
-export 'src/models/playlist.dart' show Playlist, PlaylistMode;
-export 'src/models/audio_device.dart' show AudioDevice;
-export 'src/models/audio_filter.dart' show AudioFilter;
-export 'src/models/audio_params.dart' show AudioParams;
+export 'src/models/playback/playlist.dart' show Playlist, PlaylistMode;
+export 'src/models/audio/audio_device.dart' show AudioDevice;
+export 'src/models/audio/audio_params.dart' show AudioParams;
 export 'src/models/enums.dart'
     show
         GaplessMode,
@@ -43,10 +46,10 @@ export 'src/models/enums.dart'
         CacheMode,
         AudioOutputState,
         PlaybackLifecycle;
-export 'src/models/mpv_log_entry.dart' show MpvLogEntry;
-export 'src/models/mpv_hook_event.dart' show MpvHookEvent;
-export 'src/models/mpv_prefetch_state.dart' show MpvPrefetchState;
-export 'src/models/mpv_player_error.dart'
+export 'src/models/events/mpv_log_entry.dart' show MpvLogEntry;
+export 'src/models/events/mpv_hook_event.dart' show MpvHookEvent;
+export 'src/models/events/mpv_prefetch_state.dart' show MpvPrefetchState;
+export 'src/models/events/mpv_player_error.dart'
     show
         MpvPlayerError,
         MpvEndFileError,

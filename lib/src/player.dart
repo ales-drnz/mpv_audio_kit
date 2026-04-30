@@ -22,28 +22,35 @@ import 'reactive/reactive_property.dart';
 import 'utils/duration_seconds.dart';
 import 'utils/uri_resolver.dart';
 
-import 'models/media.dart';
-import 'models/playlist.dart';
-import 'models/audio_device.dart';
-import 'models/audio_filter.dart';
+import 'internal/audio_filter_chain.dart';
+import 'models/playback/media.dart';
+import 'models/playback/playlist.dart';
+import 'models/audio/audio_device.dart';
 import 'models/cache_config.dart';
-import 'models/mpv_log_entry.dart';
-import 'models/mpv_hook_event.dart';
-import 'models/mpv_player_error.dart';
-import 'models/mpv_track.dart';
+import 'models/dsp/compressor_config.dart';
+import 'models/dsp/equalizer_config.dart';
+import 'models/dsp/loudness_config.dart';
+import 'models/events/mpv_log_entry.dart';
+import 'models/events/mpv_hook_event.dart';
+import 'models/events/mpv_player_error.dart';
+import 'models/playback/mpv_track.dart';
+import 'models/dsp/pitch_tempo_config.dart';
 import 'models/player_configuration.dart';
 import 'models/player_state.dart';
 import 'models/replay_gain_config.dart';
 import 'player_stream.dart';
 
 export 'cover/cover_art_raw.dart';
-export 'models/media.dart';
-export 'models/playlist.dart';
-export 'models/audio_device.dart';
-export 'models/audio_filter.dart';
-export 'models/audio_params.dart';
-export 'models/mpv_log_entry.dart';
-export 'models/mpv_hook_event.dart';
+export 'models/playback/media.dart';
+export 'models/playback/playlist.dart';
+export 'models/audio/audio_device.dart';
+export 'models/audio/audio_params.dart';
+export 'models/dsp/compressor_config.dart';
+export 'models/dsp/equalizer_config.dart';
+export 'models/dsp/loudness_config.dart';
+export 'models/events/mpv_log_entry.dart';
+export 'models/events/mpv_hook_event.dart';
+export 'models/dsp/pitch_tempo_config.dart';
 export 'models/player_configuration.dart';
 export 'models/player_state.dart';
 export 'player_stream.dart';
@@ -225,6 +232,21 @@ abstract class _PlayerBase {
   // Hook timeout state — lives here because _handleEvent dispatches hooks.
   final _hookTimeouts = <String, Duration>{};
   final _hookTimers = <int, Timer>{};
+  // Set of hook event ids that are currently `active=true` on mpv's
+  // side — populated when `MpvEventHookFired` arrives, drained by
+  // [Player.continueHook] (and the auto-timeout path). Lets the wrapper
+  // reject a duplicate `continueHook(id)` for an already-completed hook
+  // before it reaches the FFI, avoiding mpv's documented-undefined
+  // behaviour for unknown / stale ids.
+  final _activeHookIds = <int>{};
+  // Tracks which hook names have a live mpv-side registration. Used by
+  // [Player.registerHook] to deduplicate consecutive calls for the same
+  // name on the same handle: mpv allows multiple registrations and
+  // emits a separate event per registration, but its `mp_shutdown_clients`
+  // path can stall during dispose when several events for the same hook
+  // are still active. Treat the registration as a one-per-name idempotent
+  // operation; later calls only refresh the optional timeout.
+  final _registeredHookNames = <String>{};
 
   PlayerState _state = const PlayerState();
   final Map<String, Media> _mediaCache = {};
@@ -249,10 +271,6 @@ abstract class _PlayerBase {
       ReactiveProperty<Map<String, String>>(const <String, String>{});
   final ReactiveProperty<double> _bufferingPercentage =
       ReactiveProperty<double>(0.0);
-  // User-driven (no observed mpv property).
-  final ReactiveProperty<List<double>> _equalizerGains =
-      ReactiveProperty<List<double>>(
-          const [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
   // ── Pure event streams (no current value) ───────────────────────────────
   final StreamController<MpvFileEndedEvent> _endFileCtrl =
@@ -330,7 +348,11 @@ abstract class _PlayerBase {
       audioDevices: _audioDevices,
       metadata: _metadata,
       bufferingPercentage: _bufferingPercentage,
-      equalizerGains: _equalizerGains,
+      equalizer: _reactives.equalizer,
+      compressor: _reactives.compressor,
+      loudness: _reactives.loudness,
+      pitchTempo: _reactives.pitchTempo,
+      customAudioFilters: _reactives.customAudioFilters,
       endFile: _endFileCtrl.stream,
       error: _errorCtrl.stream,
       log: _logCtrl.stream,
@@ -370,6 +392,11 @@ abstract class _PlayerBase {
     _opt('load-scripts', 'no');
     _opt('input-builtin-bindings', 'no');
     _opt('audio-client-name', 'mpv_audio_kit');
+
+    // Wrapper diverges from mpv's permissive `tls-verify=no` default for
+    // security. Consumers that need self-signed cert support can opt out
+    // via `setTlsVerify(false)` post-construction.
+    _opt('tls-verify', 'yes');
 
     if (configuration.logLevel != 'no') {
       using((arena) {
@@ -456,15 +483,10 @@ abstract class _PlayerBase {
           ));
         }
       case MpvEventHookFired(:final id, :final name):
+        _activeHookIds.add(id);
         final timeout = _hookTimeouts[name];
         if (timeout != null) _startHookTimeout(id, name, timeout);
         _hookCtrl.add(MpvHookEvent(id, name));
-      case MpvEventError(:final message):
-        _errorCtrl.add(MpvLogError(
-          prefix: 'mpv',
-          level: 'error',
-          text: message,
-        ));
     }
   }
 
@@ -547,6 +569,11 @@ abstract class _PlayerBase {
   void _startHookTimeout(int id, String name, Duration timeout) {
     _hookTimers[id] = Timer(timeout, () {
       _hookTimers.remove(id);
+      // Race with [Player.continueHook]: the consumer may complete the
+      // hook between the timer arming and firing. The active-id set
+      // is the source of truth — if it doesn't contain `id`, the
+      // manual continue won and we skip the redundant FFI call.
+      if (!_activeHookIds.remove(id)) return;
       _internalLog(
         'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s — '
         'auto-continuing to unblock mpv',
@@ -561,6 +588,9 @@ abstract class _PlayerBase {
       timer.cancel();
     }
     _hookTimers.clear();
+    // Forget any still-active ids: their hooks are already in flight on
+    // mpv's side and will be torn down with the handle.
+    _activeHookIds.clear();
   }
 
   /// Indirection for the consumer-supplied [UriResolver]; falls back to
@@ -779,7 +809,13 @@ abstract class _PlayerBase {
       _audioDevices.close(),
       _metadata.close(),
       _bufferingPercentage.close(),
-      _equalizerGains.close(),
+      // The four DSP config reactives are owned by the typed setters
+      // (no mpv property observer drives them), so the registry's
+      // closeAll() does not see them.
+      _reactives.equalizer.close(),
+      _reactives.compressor.close(),
+      _reactives.loudness.close(),
+      _reactives.pitchTempo.close(),
     ]);
     await Future.wait<void>([
       _endFileCtrl.close(),

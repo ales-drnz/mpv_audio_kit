@@ -42,7 +42,12 @@ mixin _NetworkModule on _PlayerBase {
         config.pauseWait);
   }
 
-  /// Sets the audio buffer size.
+  /// Sets the audio output buffer depth.
+  ///
+  /// Range: 0 to 10 seconds. Default 200 ms — matches mpv's default and is
+  /// a sane trade-off between latency and underrun resistance. Increase
+  /// for high-latency wireless outputs (Bluetooth, network speakers);
+  /// decrease for live monitoring or low-latency listening.
   Future<void> setAudioBuffer(Duration size) async {
     _checkNotDisposed();
     _prop('audio-buffer', durationToSeconds(size).toStringAsFixed(3));
@@ -57,8 +62,12 @@ mixin _NetworkModule on _PlayerBase {
     _updateField((s) => s.copyWith(audioStreamSilence: enable), _reactives.audioStreamSilence, enable);
   }
 
-  /// Network connection timeout. mpv accepts integer seconds only, so the
-  /// value is rounded down before being sent.
+  /// Sets the network connection timeout.
+  ///
+  /// Default 60 seconds. Pass [Duration.zero] to fall back to FFmpeg's
+  /// own protocol-specific defaults. Applied to every connection attempt
+  /// mpv makes (HTTP, HTTPS, RTMP, …); mpv accepts integer seconds only,
+  /// so the value is rounded down before being sent.
   Future<void> setNetworkTimeout(Duration timeout) async {
     _checkNotDisposed();
     final seconds = timeout.inSeconds;
@@ -75,18 +84,22 @@ mixin _NetworkModule on _PlayerBase {
   }
 
   /// Sets the maximum bytes the demuxer is allowed to cache.
+  ///
+  /// Default 150 MiB (matches mpv's `--demuxer-max-bytes=150MiB`). The
+  /// argument is forwarded to mpv as a raw byte count, so sub-MiB
+  /// precision is preserved (mpv accepts plain integers and SI / IEC
+  /// suffixes interchangeably).
   Future<void> setDemuxerMaxBytes(int bytes) async {
     _checkNotDisposed();
-    final mib = bytes ~/ (1024 * 1024);
-    _prop('demuxer-max-bytes', '${mib}MiB');
+    _prop('demuxer-max-bytes', bytes.toString());
     _updateField((s) => s.copyWith(demuxerMaxBytes: bytes), _reactives.demuxerMaxBytes, bytes);
   }
 
-  /// Sets the maximum seekback buffer size.
+  /// Sets the maximum seekback buffer size in bytes. Default 50 MiB.
+  /// See [setDemuxerMaxBytes] for the byte-precision contract.
   Future<void> setDemuxerMaxBackBytes(int bytes) async {
     _checkNotDisposed();
-    final mib = bytes ~/ (1024 * 1024);
-    _prop('demuxer-max-back-bytes', '${mib}MiB');
+    _prop('demuxer-max-back-bytes', bytes.toString());
     _updateField((s) => s.copyWith(demuxerMaxBackBytes: bytes), _reactives.demuxerMaxBackBytes, bytes);
   }
 

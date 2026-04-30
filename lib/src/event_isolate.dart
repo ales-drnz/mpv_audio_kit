@@ -21,6 +21,13 @@ import 'mpv_bindings.dart' as mpv;
 /// a progress bar update and keeps the message bus uncluttered.
 const int _kTimePosThrottleMs = 33;
 
+/// Maximum time [MpvEventIsolate.stop] waits for the background isolate
+/// to finish unwinding after `MPV_EVENT_SHUTDOWN`. The loop's natural
+/// exit is fast on every supported platform; this bound caps the worst
+/// case (e.g. a stalled syscall in libmpv) before the caller proceeds
+/// with `mpv_terminate_destroy`.
+const Duration _kIsolateExitTimeout = Duration(seconds: 2);
+
 // ── Messages: main → isolate ─────────────────────────────────────────────────
 
 /// Sent once when the isolate starts to hand it the mpv handle address and
@@ -94,11 +101,6 @@ class MpvEventLog extends MpvIsolateEvent {
   final String level;
   final String text;
   MpvEventLog(this.prefix, this.level, this.text);
-}
-
-class MpvEventError extends MpvIsolateEvent {
-  final String message;
-  MpvEventError(this.message);
 }
 
 class MpvEventHookFired extends MpvIsolateEvent {
@@ -294,6 +296,14 @@ void _dispatchProperty(
     toMain.send(MpvEventPropertyNode(name, decoded));
     return;
   }
+
+  // Fallthrough: format is one mpv emitted that the wrapper does not
+  // observe (NONE / OSD_STRING / NODE_ARRAY / NODE_MAP / BYTE_ARRAY at
+  // the top level — those types only appear inside a NODE for our
+  // property set), or `data == nullptr` which mpv uses to signal
+  // "property unavailable" mid-stream. Silently drop: re-emitting the
+  // last cached value would be wrong, and pushing a sentinel would
+  // break dedup downstream.
 }
 
 void _dispatchLog(SendPort toMain, mpv.MpvEventLogMessage msg) {
@@ -466,7 +476,7 @@ class MpvEventIsolate {
     // 2-second cap is a safety net for a libmpv stuck in a
     // pathological state — we'd rather return than hang dispose().
     try {
-      await exitPort.first.timeout(const Duration(seconds: 2));
+      await exitPort.first.timeout(_kIsolateExitTimeout);
     } on TimeoutException {
       // Fall through.
     } finally {

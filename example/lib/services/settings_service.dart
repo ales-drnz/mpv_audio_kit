@@ -104,7 +104,7 @@ class SettingsService {
     if (eqGains != null) {
       final List<dynamic> decoded = jsonDecode(eqGains);
       final gains = decoded.map((e) => (e as num).toDouble()).toList();
-      player.setEqualizerGains(gains);
+      await player.setEqualizer(player.state.equalizer.copyWith(gains: gains));
     }
 
     // Gapless audio playback (typed enum since 0.1.0)

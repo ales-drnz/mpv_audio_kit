@@ -10,25 +10,25 @@ part 'cache_config.freezed.dart';
 
 /// Aggregate of mpv's five cache properties.
 ///
-/// Useful when restoring a saved configuration or applying a coherent
-/// preset (e.g. "low-latency streaming" vs. "long-buffer audiobook")
-/// via [Player.setCache] — the wrapper writes `cache`, `cache-secs`,
-/// `cache-on-disk`, `cache-pause`, and `cache-pause-wait` atomically.
-///
-/// For one-off tweaks the granular setters ([Player.setCacheMode],
-/// [Player.setCacheSecs], …) remain available and slightly more
-/// ergonomic.
+/// Set the whole config atomically via [Player.setCache] — the wrapper
+/// writes `cache`, `cache-secs`, `cache-on-disk`, `cache-pause`, and
+/// `cache-pause-wait` atomically. Modify a single field through
+/// `state.cache.copyWith(...)`.
 ///
 /// Read the current configuration via [PlayerState.cache] or observe
 /// live changes via [PlayerStream.cache].
 @freezed
 abstract class CacheConfig with _$CacheConfig {
   const factory CacheConfig({
-    /// Caching policy (auto = enabled for network sources).
+    /// Caching policy (auto = enabled for network sources). Mirrors
+    /// mpv's `--cache=<no|auto|yes>` default of `auto`.
     @Default(CacheMode.auto) CacheMode mode,
 
-    /// Target cache duration ahead of the playhead.
-    @Default(Duration(seconds: 1)) Duration secs,
+    /// Target cache duration ahead of the playhead. Default 1 hour
+    /// mirrors mpv's `--cache-secs=3600`. Actual memory usage is bounded
+    /// by [PlayerState.demuxerMaxBytes] (150 MiB by default), whichever
+    /// comes first.
+    @Default(Duration(hours: 1)) Duration secs,
 
     /// Whether to spill cache to disk instead of holding it in memory.
     @Default(false) bool onDisk,
@@ -36,7 +36,8 @@ abstract class CacheConfig with _$CacheConfig {
     /// Whether playback pauses when the cache runs empty (network stall).
     @Default(true) bool pause,
 
-    /// Pre-buffer required before resuming after a [pause] stall.
+    /// Pre-buffer required before resuming after a [pause] stall. Default
+    /// 1 second mirrors mpv's `--cache-pause-wait=1.0`.
     @Default(Duration(seconds: 1)) Duration pauseWait,
   }) = _CacheConfig;
 }

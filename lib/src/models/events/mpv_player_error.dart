@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../mpv_bindings.dart';
+import '../../mpv_bindings.dart';
 
 part 'mpv_player_error.freezed.dart';
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../widgets/property_cards.dart';
@@ -80,14 +81,14 @@ class CoverArtPage extends StatelessWidget {
               onSubmitted: (raw) {
                 final trimmed = raw.trim().toLowerCase();
                 if (trimmed.isEmpty || trimmed == 'inf') {
-                  player.setImageDisplayDuration(null);
+                  unawaited(player.setImageDisplayDuration(null));
                   return;
                 }
                 final secs = double.tryParse(trimmed.replaceAll('s', ''));
                 if (secs == null) return;
-                player.setImageDisplayDuration(
+                unawaited(player.setImageDisplayDuration(
                   Duration(microseconds: (secs * 1e6).round()),
-                );
+                ));
               },
             );
           },

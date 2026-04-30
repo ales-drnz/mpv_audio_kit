@@ -99,5 +99,41 @@ void main() {
       player.continueHook(0);
       player.continueHook(-1);
     }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test(
+        'a hook with a timeout auto-continues when the consumer never '
+        'calls continueHook', () async {
+      // Edge case: the consumer registers a hook but never calls
+      // continueHook (a buggy or deliberately silent listener). With
+      // [registerHook]'s `timeout` argument the wrapper auto-continues
+      // after the deadline so mpv doesn't hang forever waiting for the
+      // hook to complete. This is the contract that lets a buggy
+      // listener fail gracefully instead of freezing the player.
+      //
+      // The wait below is intentionally on `fileFormat` (file-load
+      // confirmation) and not on `endFile` (which fires from the
+      // previous file's replace, before the new load settles): the
+      // test must NOT return while mpv is still in the middle of a
+      // hook cycle, otherwise tearDownAll's `quit` arrives while a
+      // hook is active and mpv's shutdown path stalls.
+      final hookSub = player.stream.hook.listen((_) {
+        // Deliberately empty — exercising the auto-timeout safety net.
+      });
+
+      try {
+        player.registerHook('on_load',
+            timeout: const Duration(milliseconds: 200));
+        unawaited(player.open(Media(fixturePath), play: false));
+
+        // Wait for the new file to fully load (post-hook). When the
+        // auto-timeout has continued every hook event, mpv proceeds
+        // and we observe `fileFormat` flip to non-empty.
+        await player.stream.fileFormat
+            .firstWhere((fmt) => fmt.isNotEmpty)
+            .timeout(const Duration(seconds: 5));
+      } finally {
+        await hookSub.cancel();
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

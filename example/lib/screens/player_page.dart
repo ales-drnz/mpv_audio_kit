@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -21,6 +22,11 @@ class _PlayerPageState extends State<PlayerPage> {
   bool _isConsolePinned =
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   int _navIndex = 0;
+
+  // Aggregate of every persistence / log subscription opened in
+  // [initState]. Cancelled wholesale in [dispose] to keep the page free
+  // of leaked listeners on hot-reload, navigation, or rebuild.
+  final List<StreamSubscription<dynamic>> _subs = [];
 
   void _pushLog(String line) {
     if (!mounted) return;
@@ -57,107 +63,94 @@ class _PlayerPageState extends State<PlayerPage> {
   void initState() {
     super.initState();
     try {
-      // Listen for changes and save them
-      player.stream.volume.listen((v) => settingsService.save('volume', v));
-      player.stream.volumeMax.listen(
-        (v) => settingsService.save('volume-max', v),
-      );
-      player.stream.rate.listen((v) => settingsService.save('rate', v));
-      player.stream.pitch.listen((v) => settingsService.save('pitch', v));
-      player.stream.mute.listen((v) => settingsService.save('mute', v));
-
-      player.stream.playlistMode.listen(
-        (v) => settingsService.save('playlist_mode', v.name),
-      );
-      player.stream.shuffle.listen((v) => settingsService.save('shuffle', v));
-
-      player.stream.audioSampleRate.listen(
-        (v) => settingsService.save('audio-samplerate', v),
-      );
-      player.stream.audioFormat.listen(
-        (v) => settingsService.save('audio-format', v),
-      );
-      player.stream.audioChannels.listen(
-        (v) => settingsService.save('audio-channels', v),
-      );
-      player.stream.audioClientName.listen(
-        (v) => settingsService.save('audio-client-name', v),
-      );
-      player.stream.audioDevice.listen(
-        (v) => settingsService.save('audio-device', v.name),
-      );
-      player.stream.audioSpdif.listen(
-        (v) => settingsService.save('audio-spdif', v),
-      );
-      player.stream.audioExclusive.listen(
-        (v) => settingsService.save('audio-exclusive', v),
-      );
-      player.stream.audioBuffer.listen(
-        (v) => settingsService.save('audio-buffer', v),
-      );
-      player.stream.audioDelay.listen(
-        (v) => settingsService.save('audio-delay', v),
-      );
-
-      player.stream.gaplessMode.listen(
-        (v) => settingsService.save('gapless-audio', v),
-      );
-      player.stream.replayGain.listen((c) {
-        settingsService.save('replaygain', c.mode);
-        settingsService.save('replaygain-preamp', c.preamp);
-        settingsService.save('replaygain-fallback', c.fallback);
-        settingsService.save('replaygain-clip', c.clip);
-      });
-      player.stream.volumeGain.listen(
-        (v) => settingsService.save('volume-gain', v),
-      );
-      player.stream.pitchCorrection.listen(
-        (v) => settingsService.save('pitch-correction', v),
-      );
-
-      player.stream.cache.listen((c) {
-        settingsService.save('cache', c.mode);
-        settingsService.save('cache-secs', c.secs);
-        settingsService.save('cache-on-disk', c.onDisk);
-        settingsService.save('cache-pause', c.pause);
-        settingsService.save('cache-pause-wait', c.pauseWait);
-      });
-      player.stream.demuxerMaxBytes.listen(
-        (v) => settingsService.save('demuxer-max-bytes', v),
-      );
-      player.stream.demuxerReadaheadSecs.listen(
-        (v) => settingsService.save('demuxer-readahead-secs', v),
-      );
-      player.stream.demuxerMaxBackBytes.listen(
-        (v) => settingsService.save('demuxer-max-back-bytes', v),
-      );
-
-      player.stream.networkTimeout.listen(
-        (v) => settingsService.save('network-timeout', v),
-      );
-      player.stream.tlsVerify.listen(
-        (v) => settingsService.save('tls-verify', v),
-      );
-      player.stream.audioStreamSilence.listen(
-        (v) => settingsService.save('audio-stream-silence', v),
-      );
-      player.stream.audioNullUntimed.listen(
-        (v) => settingsService.save('ao-null-untimed', v),
-      );
-      player.stream.currentAudioTrack
-          .listen((t) => settingsService.save('aid', t?.id ?? -1));
-      player.stream.equalizerGains.listen(
-        (v) => settingsService.save('equalizer_gains', v),
-      );
-
-      player.stream.log.listen((line) => _pushLog(line.toString()));
-      player.stream.internalLog.listen((line) => _pushLog(line.toString()));
-      player.stream.playing.listen((p) {
-        debugPrint('[player] playing → $p');
-      });
+      // Persistence wiring — every observable that we mirror to the
+      // settings service. Each subscription is tracked for cancellation
+      // in [dispose] to avoid leaks across rebuilds.
+      _subs.addAll([
+        player.stream.volume.listen((v) => settingsService.save('volume', v)),
+        player.stream.volumeMax
+            .listen((v) => settingsService.save('volume-max', v)),
+        player.stream.rate.listen((v) => settingsService.save('rate', v)),
+        player.stream.pitch.listen((v) => settingsService.save('pitch', v)),
+        player.stream.mute.listen((v) => settingsService.save('mute', v)),
+        player.stream.playlistMode
+            .listen((v) => settingsService.save('playlist_mode', v.name)),
+        player.stream.shuffle
+            .listen((v) => settingsService.save('shuffle', v)),
+        player.stream.audioSampleRate
+            .listen((v) => settingsService.save('audio-samplerate', v)),
+        player.stream.audioFormat
+            .listen((v) => settingsService.save('audio-format', v)),
+        player.stream.audioChannels
+            .listen((v) => settingsService.save('audio-channels', v)),
+        player.stream.audioClientName
+            .listen((v) => settingsService.save('audio-client-name', v)),
+        player.stream.audioDevice
+            .listen((v) => settingsService.save('audio-device', v.name)),
+        player.stream.audioSpdif
+            .listen((v) => settingsService.save('audio-spdif', v)),
+        player.stream.audioExclusive
+            .listen((v) => settingsService.save('audio-exclusive', v)),
+        player.stream.audioBuffer
+            .listen((v) => settingsService.save('audio-buffer', v)),
+        player.stream.audioDelay
+            .listen((v) => settingsService.save('audio-delay', v)),
+        player.stream.gaplessMode
+            .listen((v) => settingsService.save('gapless-audio', v)),
+        player.stream.replayGain.listen((c) {
+          settingsService.save('replaygain', c.mode);
+          settingsService.save('replaygain-preamp', c.preamp);
+          settingsService.save('replaygain-fallback', c.fallback);
+          settingsService.save('replaygain-clip', c.clip);
+        }),
+        player.stream.volumeGain
+            .listen((v) => settingsService.save('volume-gain', v)),
+        player.stream.pitchCorrection
+            .listen((v) => settingsService.save('pitch-correction', v)),
+        player.stream.cache.listen((c) {
+          settingsService.save('cache', c.mode);
+          settingsService.save('cache-secs', c.secs);
+          settingsService.save('cache-on-disk', c.onDisk);
+          settingsService.save('cache-pause', c.pause);
+          settingsService.save('cache-pause-wait', c.pauseWait);
+        }),
+        player.stream.demuxerMaxBytes
+            .listen((v) => settingsService.save('demuxer-max-bytes', v)),
+        player.stream.demuxerReadaheadSecs
+            .listen((v) => settingsService.save('demuxer-readahead-secs', v)),
+        player.stream.demuxerMaxBackBytes
+            .listen((v) => settingsService.save('demuxer-max-back-bytes', v)),
+        player.stream.networkTimeout
+            .listen((v) => settingsService.save('network-timeout', v)),
+        player.stream.tlsVerify
+            .listen((v) => settingsService.save('tls-verify', v)),
+        player.stream.audioStreamSilence
+            .listen((v) => settingsService.save('audio-stream-silence', v)),
+        player.stream.audioNullUntimed
+            .listen((v) => settingsService.save('ao-null-untimed', v)),
+        player.stream.currentAudioTrack
+            .listen((t) => settingsService.save('aid', t?.id ?? -1)),
+        player.stream.equalizer.listen(
+          (cfg) => settingsService.save('equalizer_gains', cfg.gains),
+        ),
+        player.stream.log.listen((line) => _pushLog(line.toString())),
+        player.stream.internalLog.listen((line) => _pushLog(line.toString())),
+        player.stream.playing.listen((p) {
+          debugPrint('[player] playing → $p');
+        }),
+      ]);
     } catch (e) {
       setState(() => _error = e.toString());
     }
+  }
+
+  @override
+  void dispose() {
+    for (final s in _subs) {
+      s.cancel();
+    }
+    _subs.clear();
+    super.dispose();
   }
 
   @override

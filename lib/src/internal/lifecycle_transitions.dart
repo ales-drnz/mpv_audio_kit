@@ -5,7 +5,7 @@
 import 'package:meta/meta.dart';
 
 import '../models/player_state.dart';
-import '../models/playlist.dart';
+import '../models/playback/playlist.dart';
 
 /// Result of a lifecycle transition, used by [computeLifecycle].
 ///

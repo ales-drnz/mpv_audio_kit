@@ -60,41 +60,51 @@ void main() {
       await player.dispose();
     });
 
-    test('setActiveFilters replaces the chain; clearAudioFilters empties',
+    test('setEqualizer round-trip — gains stored, enabled toggles chain',
         () async {
-      await player.setActiveFilters([
-        AudioFilter.custom('lavfi-volume=2'),
-        AudioFilter.custom('lavfi-aecho=0.8:0.5:50:0.4'),
-      ]);
-      expect(player.state.activeFilters.length, 2);
+      final gains = List<double>.generate(10, (i) => i.toDouble() - 5);
+      await player.setEqualizer(EqualizerConfig(enabled: true, gains: gains));
+      expect(player.state.equalizer.enabled, isTrue);
+      expect(player.state.equalizer.gains, gains);
 
-      await player.clearAudioFilters();
-      expect(player.state.activeFilters, isEmpty);
-    }, timeout: const Timeout(Duration(seconds: 15)));
-
-    test('setEqualizerGains stores the 10-band list (state-only, no mpv '
-        'commit)', () async {
-      final gains = List<double>.generate(10, (i) => i.toDouble());
-      await player.setEqualizerGains(gains);
-      expect(player.state.equalizerGains, gains);
-      // Note: setEqualizerGains is state-only by design — consumers
-      // commit the gains to mpv via setActiveFilters(...
-      // AudioFilter.equalizer(gains)). See setter dartdoc.
+      await player.setEqualizer(player.state.equalizer.copyWith(enabled: false));
+      expect(player.state.equalizer.enabled, isFalse);
+      // Gains preserved while disabled.
+      expect(player.state.equalizer.gains, gains);
     }, timeout: const Timeout(Duration(seconds: 5)));
 
-    test('addAudioFilter appends to the mpv chain (round-trip via observer)',
-        () async {
-      // Start from an empty chain so the assertion below is unambiguous.
-      await player.clearAudioFilters();
-      expect(player.state.activeFilters, isEmpty);
+    test('setCompressor / setLoudness / setPitchTempo round-trip', () async {
+      await player.setCompressor(
+        const CompressorConfig(enabled: true, threshold: -18, ratio: 6),
+      );
+      expect(player.state.compressor.enabled, isTrue);
+      expect(player.state.compressor.threshold, -18);
+      expect(player.state.compressor.ratio, 6);
 
-      await player.addAudioFilter(AudioFilter.custom('lavfi-volume=2'));
-      // The `af` observer fires asynchronously after the `af add` mpv
-      // command — wait for the typed list to update.
-      await player.stream.activeFilters
-          .firstWhere((list) => list.isNotEmpty)
-          .timeout(const Duration(seconds: 3));
-      expect(player.state.activeFilters, hasLength(1));
+      await player.setLoudness(
+        const LoudnessConfig(enabled: true, integratedLoudness: -23),
+      );
+      expect(player.state.loudness.enabled, isTrue);
+      expect(player.state.loudness.integratedLoudness, -23);
+
+      await player.setPitchTempo(
+        const PitchTempoConfig(enabled: true, pitch: 1.5, tempo: 0.8),
+      );
+      expect(player.state.pitchTempo.enabled, isTrue);
+      expect(player.state.pitchTempo.pitch, 1.5);
+      expect(player.state.pitchTempo.tempo, 0.8);
+    }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('setCustomAudioFilters stores raw mpv filter strings', () async {
+      await player.setCustomAudioFilters([
+        'lavfi-volume=2',
+        'lavfi-aecho=0.8:0.5:50:0.4',
+      ]);
+      expect(player.state.customAudioFilters.length, 2);
+      expect(player.state.customAudioFilters[0], 'lavfi-volume=2');
+
+      await player.setCustomAudioFilters(const []);
+      expect(player.state.customAudioFilters, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('gaplessMode / audioDisplayMode / coverArtAutoMode enum round-trip',
