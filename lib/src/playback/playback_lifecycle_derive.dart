@@ -4,7 +4,7 @@
 
 import 'package:meta/meta.dart';
 
-import '../models/enums.dart';
+import '../playback/playback_lifecycle.dart';
 
 /// Pure derivation of the aggregate [PlaybackLifecycle] from the five
 /// underlying observables the wrapper already tracks.

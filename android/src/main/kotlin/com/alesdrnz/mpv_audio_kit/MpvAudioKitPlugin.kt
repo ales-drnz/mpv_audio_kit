@@ -80,8 +80,21 @@ class MpvAudioKitPlugin :
                 }
             }
             "closeFileDescriptor" -> {
-                // Currently handled by libmpv after detaching the FD.
-                result.success(null)
+                // Closes a raw FD previously detached in `openFileDescriptor`
+                // when libmpv never consumed it (e.g. the load was aborted on
+                // the Dart side after `_disposed` flipped). Without this the
+                // descriptor leaks for the process lifetime.
+                val fd = call.argument<Int>("fd")
+                if (fd != null) {
+                    try {
+                        ParcelFileDescriptor.adoptFd(fd).close()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", e.message, null)
+                    }
+                } else {
+                    result.error("INVALID", "fd is null", null)
+                }
             }
             else -> {
                 result.notImplemented()

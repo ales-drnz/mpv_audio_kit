@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
 
 import 'dart:io';
@@ -66,7 +66,7 @@ void main() {
       // channels between tracks. Loading the same fixture twice is the
       // simplest way to satisfy that contract — the encoder boundary is
       // identical by construction.
-      await player.setGaplessMode(GaplessMode.yes);
+      await player.setGapless(GaplessMode.yes);
 
       // Pre-subscribe to the playlist index transition before issuing
       // openAll — broadcast emits during the load phase shouldn't be

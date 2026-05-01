@@ -3,10 +3,11 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/models/cache_config.dart';
-import 'package:mpv_audio_kit/src/models/events/mpv_prefetch_state.dart';
-import 'package:mpv_audio_kit/src/models/player_state.dart';
-import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
+import 'package:mpv_audio_kit/src/audio/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/network/cache_config.dart';
+import 'package:mpv_audio_kit/src/events/mpv_prefetch_state.dart';
+import 'package:mpv_audio_kit/src/player_state.dart';
+import 'package:mpv_audio_kit/src/audio/replay_gain_config.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
 import 'package:mpv_audio_kit/src/utils/duration_seconds.dart';
@@ -499,7 +500,9 @@ void main() {
         'time-pos', 'duration', 'demuxer-cache-time',
         'core-idle', 'volume', 'speed', 'pitch', 'mute', 'idle-active',
         'shuffle', 'audio-pitch-correction', 'audio-delay', 'audio-bitrate',
-        'audio-device',
+        // `audio-device` lives outside the registry — its description
+        // is cross-referenced against `audio-device-list` by the
+        // player's custom dispatcher, which specs cannot see.
         // Audio params
         'audio-params', 'audio-codec', 'audio-codec-name', 'audio-out-params',
         // ReplayGain & gapless

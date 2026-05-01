@@ -6,41 +6,26 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
-import 'package:mpv_audio_kit/src/internal/debug_log.dart';
+import 'package:mpv_audio_kit/src/utils/debug_log.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 
-/// Cross-restart tracker for libmpv handles created by this Dart VM.
+/// Recovers libmpv handles leaked across a Flutter Hot-Restart.
 ///
-/// Flutter Hot-Restart replaces the Dart VM but keeps the parent
-/// native process alive: any libmpv handle the previous VM allocated
-/// stays alive too, holding exclusive-mode audio devices (e.g.
-/// WASAPI) open until the parent process exits. The new VM never
-/// gets a chance to run [Player.dispose] for those handles because
-/// the Dart objects that owned them are gone.
+/// Flutter replaces the Dart VM but keeps the parent process alive,
+/// so handles allocated by the previous VM stay open (and block
+/// exclusive-mode audio devices like WASAPI) until the process exits.
+/// The tracker stashes a per-pid native buffer of live handle
+/// addresses in a tmp file; on startup the new VM rehydrates that
+/// buffer and surfaces every still-tracked handle to the caller's
+/// cleanup callback.
 ///
-/// To recover the leaked handles, this tracker writes the address of
-/// a process-wide native buffer to a tmp file keyed by the process
-/// pid. On startup, the new VM:
-/// 1. reads the file (still present because the process didn't
-///    restart, only the Dart VM did);
-/// 2. recovers the buffer pointer;
-/// 3. iterates the buffer and forwards every still-tracked handle to
-///    the [ensureInitialized] callback so the caller can issue a
-///    `quit` command on each.
+/// **Production no-op** — guarded by `dart.vm.product`. Hot-Restart
+/// is a development concern; in product builds the parent process
+/// dies with the VM and there are no orphans to rescue.
 ///
-/// **Production no-op.** The tracker only runs in non-product builds
-/// (the [bool.fromEnvironment] guard) — Hot-Restart is a development
-/// concern, not a production one. In production the parent process
-/// terminates whenever the Dart VM does, so there are no orphans to
-/// rescue.
-///
-/// **Single-isolate.** [add] / [remove] are not synchronized across
-/// isolates that all import this package. Tracking handles created
-/// from multiple isolates simultaneously is not currently supported;
-/// the test suite explicitly disables the tracker via
-/// `MpvAudioKit.ensureInitialized(hotRestartCleanup: false)` to
-/// avoid the file-based state being mis-attributed across `dart test`
-/// isolates that share a pid.
+/// **Single-isolate** — [add] / [remove] are not synchronized across
+/// isolates that share a pid. The test suite disables the tracker
+/// via `MpvAudioKit.ensureInitialized(hotRestartCleanup: false)`.
 class OrphanHandleTracker {
   static const int _kBufferSize = 256;
   static final OrphanHandleTracker instance = OrphanHandleTracker._();

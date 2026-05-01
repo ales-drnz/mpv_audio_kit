@@ -5,7 +5,7 @@
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
-import '../models/player_state.dart';
+import '../player_state.dart';
 import '../mpv_bindings.dart';
 import 'mpv_property_spec.dart';
 

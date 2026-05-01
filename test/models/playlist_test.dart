@@ -20,22 +20,21 @@ void main() {
       expect(playlist.index, 0);
     });
 
-    test('Playlist.empty() has zero medias and index=0', () {
-      const playlist = Playlist.empty();
+    test('Playlist.empty has zero medias and index=0', () {
+      const playlist = Playlist.empty;
       expect(playlist.medias, isEmpty);
       expect(playlist.index, 0);
     });
   });
 
   group('Playlist equality', () {
-    test('two empties are equal', () {
-      // Important regression test: 0.1.0 keeps Playlist with manual `==`
-      // (NOT migrated to Freezed) precisely so deep-list equality keeps
-      // working — `Playlist.empty()` must therefore be `==` to itself
-      // across instances.
-      expect(const Playlist.empty(), const Playlist.empty());
-      expect(
-          const Playlist.empty().hashCode, const Playlist.empty().hashCode);
+    test('the const Playlist.empty singleton is == to itself', () {
+      // Freezed generates structural `==` on (medias, index); the
+      // singleton is the canonical empty playlist used as the default
+      // seed for `state.playlist` and the `previous` fallback in
+      // `parsePlaylistNode`.
+      expect(Playlist.empty, Playlist.empty);
+      expect(Playlist.empty.hashCode, Playlist.empty.hashCode);
     });
 
     test('same medias same index = equal', () {
@@ -81,15 +80,32 @@ void main() {
       expect(identical(playlist, playlist), isTrue);
       expect(playlist == playlist, isTrue);
     });
+
+    test('hashCode follows == for non-identical equal medias lists', () {
+      // Regression: hashCode used to be `medias.hashCode ^ index.hashCode`,
+      // which falls back to List's identity-based hashCode. Two playlists
+      // with structurally-equal but separately-allocated `medias` lists
+      // were `==` but had different hashCodes — violating
+      // `a == b ⇒ a.hashCode == b.hashCode`. The fix uses
+      // `Object.hashAll(medias)` so structural equality drives the hash.
+      final a = Playlist(<Media>[const Media('x'), const Media('y')]);
+      final b = Playlist(<Media>[const Media('x'), const Media('y')]);
+      expect(identical(a.medias, b.medias), isFalse,
+          reason: 'lists must be separate instances for this test to bite');
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+      // Set membership: equal-but-non-identical playlists must collapse.
+      expect(<Playlist>{a, b}.length, 1);
+    });
   });
 
-  group('PlaylistMode enum', () {
+  group('LoopMode enum', () {
     test('three variants present', () {
-      expect(PlaylistMode.values.length, 3);
-      expect(PlaylistMode.values, containsAll([
-        PlaylistMode.none,
-        PlaylistMode.single,
-        PlaylistMode.loop,
+      expect(LoopMode.values.length, 3);
+      expect(LoopMode.values, containsAll([
+        LoopMode.off,
+        LoopMode.file,
+        LoopMode.playlist,
       ]));
     });
   });

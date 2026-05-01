@@ -53,11 +53,11 @@ class SettingsService {
         player.stream.audioDelay, 'audio-delay', player.setAudioDelay);
 
     // ── Playlist mode + shuffle ───────────────────────────────────────
-    await _bindEnumByName<PlaylistMode>(
-      player.stream.playlistMode,
+    await _bindEnumByName<LoopMode>(
+      player.stream.loop,
       'playlist_mode',
-      PlaylistMode.values,
-      player.setPlaylistMode,
+      LoopMode.values,
+      player.setLoop,
     );
     await _bindBool(player.stream.shuffle, 'shuffle', player.setShuffle);
     await _bindBool(player.stream.prefetchPlaylist, 'prefetch-playlist',
@@ -100,10 +100,10 @@ class SettingsService {
     await _bindCache(player);
     await _bindReplayGain(player);
     await _bindMpvEnum<GaplessMode>(
-      player.stream.gaplessMode,
+      player.stream.gapless,
       'gapless-audio',
       GaplessMode.fromMpv,
-      player.setGaplessMode,
+      player.setGapless,
     );
 
     // ── Demuxer ───────────────────────────────────────────────────────
@@ -121,16 +121,16 @@ class SettingsService {
 
     // ── Cover art ─────────────────────────────────────────────────────
     await _bindMpvEnum<AudioDisplayMode>(
-      player.stream.audioDisplayMode,
+      player.stream.audioDisplay,
       'audio-display',
       AudioDisplayMode.fromMpv,
-      player.setAudioDisplayMode,
+      player.setAudioDisplay,
     );
     await _bindMpvEnum<CoverArtAutoMode>(
-      player.stream.coverArtAutoMode,
+      player.stream.coverArtAuto,
       'cover-art-auto',
       CoverArtAutoMode.fromMpv,
-      player.setCoverArtAutoMode,
+      player.setCoverArtAuto,
     );
 
     // ── Active audio track ────────────────────────────────────────────
@@ -228,7 +228,7 @@ class SettingsService {
         (v) => _prefs.setDouble(fk, v.inMicroseconds / 1e6)));
   }
 
-  /// Enum stored by `.name` — for Dart-native enums like [PlaylistMode].
+  /// Enum stored by `.name` — for Dart-native enums like [LoopMode].
   Future<void> _bindEnumByName<E extends Enum>(
     Stream<E> stream,
     String key,
@@ -388,7 +388,7 @@ class SettingsService {
     const fk = '${_keyPrefix}aid';
     final raw = _prefs.get(fk);
     if (raw is int && raw >= 0) {
-      await player.setAudioTrack(raw);
+      await player.setAudioTrack(AudioTrackMode.id(raw));
     } else if (raw != null && raw is! int) {
       await _prefs.remove(fk);
     }

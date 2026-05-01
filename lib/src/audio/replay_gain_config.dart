@@ -4,9 +4,33 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'enums.dart';
-
 part 'replay_gain_config.freezed.dart';
+
+/// ReplayGain normalization mode, mirroring `--replaygain=<no|track|album>`.
+enum ReplayGainMode {
+  /// Disabled — no normalization.
+  no('no'),
+
+  /// Per-track ReplayGain.
+  track('track'),
+
+  /// Per-album ReplayGain. Useful for cohesive albums where inter-track
+  /// dynamics matter.
+  album('album');
+
+  const ReplayGainMode(this.mpvValue);
+
+  /// The wire-level string mpv expects.
+  final String mpvValue;
+
+  /// Maps a raw mpv-side value back to the enum. Unknown → [no].
+  static ReplayGainMode fromMpv(String raw) => switch (raw) {
+        'no' => no,
+        'track' => track,
+        'album' => album,
+        _ => no,
+      };
+}
 
 /// Aggregate of mpv's four ReplayGain properties.
 ///

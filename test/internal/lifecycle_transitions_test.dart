@@ -4,7 +4,7 @@
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:mpv_audio_kit/src/internal/lifecycle_transitions.dart';
+import 'package:mpv_audio_kit/src/playback/lifecycle_transitions.dart';
 
 void main() {
   group('computeLifecycle — partial updates', () {

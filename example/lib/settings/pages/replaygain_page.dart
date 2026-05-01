@@ -73,8 +73,8 @@ class ReplayGainPage extends StatelessWidget {
 
         const PropertySectionHeader(title: 'Gapless'),
         StreamBuilder<GaplessMode>(
-          stream: player.stream.gaplessMode,
-          initialData: player.state.gaplessMode,
+          stream: player.stream.gapless,
+          initialData: player.state.gapless,
           builder: (context, snap) {
             final mode = snap.data ?? GaplessMode.weak;
             return SegmentedPropertyCard<GaplessMode>(
@@ -87,7 +87,7 @@ class ReplayGainPage extends StatelessWidget {
                 (GaplessMode.yes, 'YES'),
                 (GaplessMode.weak, 'WEAK'),
               ],
-              onChanged: player.setGaplessMode,
+              onChanged: player.setGapless,
             );
           },
         ),

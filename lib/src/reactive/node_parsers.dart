@@ -2,12 +2,12 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../models/audio/audio_device.dart';
-import '../models/audio/audio_params.dart';
-import '../models/playback/chapter.dart';
-import '../models/playback/media.dart';
-import '../models/playback/mpv_track.dart';
-import '../models/playback/playlist.dart';
+import '../audio/audio_device.dart';
+import '../audio/audio_params.dart';
+import '../playback/chapter.dart';
+import '../playback/media.dart';
+import '../playback/mpv_track.dart';
+import '../playback/playlist.dart';
 import '../utils/duration_seconds.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────

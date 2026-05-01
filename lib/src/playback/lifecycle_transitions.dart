@@ -4,8 +4,8 @@
 
 import 'package:meta/meta.dart';
 
-import '../models/player_state.dart';
-import '../models/playback/playlist.dart';
+import '../player_state.dart';
+import 'loop_mode.dart';
 
 /// Result of a lifecycle transition, used by [computeLifecycle].
 ///
@@ -62,11 +62,11 @@ LifecycleResult computeLifecycle({
 }
 
 /// Pure mapping from mpv's two boolean-ish loop properties (`loop-file`,
-/// `loop-playlist`) to the typed [PlaylistMode] state field.
+/// `loop-playlist`) to the typed [LoopMode] state field.
 ///
 /// mpv reports each loop independently: `loop-file=inf` → repeat current
 /// track, `loop-playlist=inf` → repeat the queue, both `'no'` → no loop.
-/// The wrapper aggregates these two events into one `playlistMode` value
+/// The wrapper aggregates these two events into one `loop` value
 /// because consumers care about the user-facing repeat mode, not the raw
 /// pair.
 ///
@@ -75,19 +75,19 @@ LifecycleResult computeLifecycle({
 /// playlist-loop side — toggling loop-file off shouldn't reset the
 /// playlist loop).
 @internal
-PlaylistMode? derivePlaylistMode(
+LoopMode? deriveLoopMode(
   String mpvName,
   String value,
-  PlaylistMode prevMode,
+  LoopMode prevMode,
 ) {
   switch (mpvName) {
     case 'loop-file':
-      if (value == 'inf') return PlaylistMode.single;
-      if (prevMode == PlaylistMode.single) return PlaylistMode.none;
+      if (value == 'inf') return LoopMode.file;
+      if (prevMode == LoopMode.file) return LoopMode.off;
       return null;
     case 'loop-playlist':
-      if (value == 'inf') return PlaylistMode.loop;
-      if (prevMode == PlaylistMode.loop) return PlaylistMode.none;
+      if (value == 'inf') return LoopMode.playlist;
+      if (prevMode == LoopMode.playlist) return LoopMode.off;
       return null;
     default:
       return null;

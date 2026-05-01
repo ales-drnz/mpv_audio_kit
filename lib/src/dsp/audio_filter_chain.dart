@@ -2,10 +2,10 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../models/dsp/compressor_config.dart';
-import '../models/dsp/equalizer_config.dart';
-import '../models/dsp/loudness_config.dart';
-import '../models/dsp/pitch_tempo_config.dart';
+import '../dsp/compressor_config.dart';
+import '../dsp/equalizer_config.dart';
+import '../dsp/loudness_config.dart';
+import '../dsp/pitch_tempo_config.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composition of mpv's `af` filter chain from typed configs + custom strings.

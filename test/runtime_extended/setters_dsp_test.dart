@@ -2,46 +2,23 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
-
-import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+  final fixturePath = defaultFixturePath();
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('DSP / filter / mode setters end-to-end', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 500)
-          .timeout(const Duration(seconds: 5));
+      player = await buildPlayerWithFixture(fixturePath: fixturePath);
     });
 
     tearDownAll(() async {
@@ -95,18 +72,36 @@ final fixturePath =
       expect(player.state.customAudioFilters, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('gaplessMode / audioDisplayMode / coverArtAutoMode enum round-trip',
+    test('setCustomAudioFilters rejects wrapper-reserved labels', () async {
+      // The four wrapper-managed DSP stages own labels `@_mak_eq`,
+      // `@_mak_comp`, `@_mak_loud`, `@_mak_pt`. A custom filter carrying
+      // any of those would silently shadow the typed setter on the next
+      // composeAfChain pass; validating up-front turns it into an
+      // explicit ArgumentError instead.
+      expect(
+        () => player.setCustomAudioFilters([
+          '@_mak_eq:lavfi-equalizer=f=1000:t=o:w=1:g=6',
+        ]),
+        throwsA(isA<ArgumentError>()),
+      );
+      // User-defined labels are still allowed.
+      await player.setCustomAudioFilters(['@my_label:lavfi-volume=2']);
+      expect(player.state.customAudioFilters, hasLength(1));
+      await player.setCustomAudioFilters(const []);
+    }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('gapless / audioDisplay / coverArtAuto enum round-trip',
         () async {
-      await player.setGaplessMode(GaplessMode.yes);
-      expect(player.state.gaplessMode, GaplessMode.yes);
-      await player.setGaplessMode(GaplessMode.no);
-      expect(player.state.gaplessMode, GaplessMode.no);
+      await player.setGapless(GaplessMode.yes);
+      expect(player.state.gapless, GaplessMode.yes);
+      await player.setGapless(GaplessMode.no);
+      expect(player.state.gapless, GaplessMode.no);
 
-      await player.setAudioDisplayMode(AudioDisplayMode.no);
-      expect(player.state.audioDisplayMode, AudioDisplayMode.no);
+      await player.setAudioDisplay(AudioDisplayMode.no);
+      expect(player.state.audioDisplay, AudioDisplayMode.no);
 
-      await player.setCoverArtAutoMode(CoverArtAutoMode.exact);
-      expect(player.state.coverArtAutoMode, CoverArtAutoMode.exact);
+      await player.setCoverArtAuto(CoverArtAutoMode.exact);
+      expect(player.state.coverArtAuto, CoverArtAutoMode.exact);
     }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

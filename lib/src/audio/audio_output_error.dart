@@ -4,8 +4,8 @@
 
 import 'package:meta/meta.dart';
 
-import '../models/enums.dart';
-import '../models/events/mpv_player_error.dart';
+import '../audio/audio_output_state.dart';
+import '../events/mpv_player_error.dart';
 
 /// Pure mapping from an [AudioOutputState] transition to an optional
 /// [MpvLogError] surfaced on `Player.stream.error`.

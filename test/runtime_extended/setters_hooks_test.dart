@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
 
 import 'dart:async';
@@ -109,16 +109,20 @@ final fixturePath =
       });
 
       try {
+        // Anchor on `seekCompleted` (= MPV_EVENT_PLAYBACK_RESTART, fires
+        // exactly once per `loadfile` after the demuxer has settled).
+        // Anchoring on `fileFormat` here would race the broadcast-stream
+        // dedup: the previous test in this group loaded the same fixture,
+        // so `state.fileFormat` is already 'wav' and the next load emits
+        // no new value to firstWhere on. seekCompleted fires
+        // unconditionally per file load and is independent of property
+        // dedup.
+        final loaded = player.stream.seekCompleted.first
+            .timeout(const Duration(seconds: 5));
         player.registerHook('on_load',
             timeout: const Duration(milliseconds: 200));
         unawaited(player.open(Media(fixturePath), play: false));
-
-        // Wait for the new file to fully load (post-hook). When the
-        // auto-timeout has continued every hook event, mpv proceeds
-        // and we observe `fileFormat` flip to non-empty.
-        await player.stream.fileFormat
-            .firstWhere((fmt) => fmt.isNotEmpty)
-            .timeout(const Duration(seconds: 5));
+        await loaded;
       } finally {
         await hookSub.cancel();
       }

@@ -6,53 +6,60 @@ import 'dart:async';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
-import 'package:mpv_audio_kit/src/utils/orphan_handle_tracker.dart';
 
 import 'cover/cover_art_extractor.dart';
 import 'cover/cover_art_raw.dart';
 import 'event_isolate.dart';
-import 'internal/audio_output_error.dart';
-import 'internal/lifecycle_transitions.dart';
-import 'internal/node_parsers.dart';
+import 'exceptions.dart';
+import 'audio/audio_output_error.dart';
+import 'playback/lifecycle_transitions.dart';
+import 'reactive/node_parsers.dart';
 import 'library_loader.dart';
 import 'mpv_bindings.dart' hide MpvEndFileReason;
+import 'utils/orphan_handle_tracker.dart';
 import 'reactive/default_specs.dart';
 import 'reactive/property_registry.dart';
 import 'reactive/reactive_property.dart';
 import 'utils/duration_seconds.dart';
-import 'utils/uri_resolver.dart';
+import 'playback/uri_resolver.dart';
 
-import 'internal/audio_filter_chain.dart';
-import 'models/playback/media.dart';
-import 'models/playback/playlist.dart';
-import 'models/audio/audio_device.dart';
-import 'models/cache_config.dart';
-import 'models/dsp/compressor_config.dart';
-import 'models/dsp/equalizer_config.dart';
-import 'models/dsp/loudness_config.dart';
-import 'models/events/mpv_log_entry.dart';
-import 'models/events/mpv_hook_event.dart';
-import 'models/events/mpv_player_error.dart';
-import 'models/playback/mpv_track.dart';
-import 'models/dsp/pitch_tempo_config.dart';
-import 'models/player_configuration.dart';
-import 'models/player_state.dart';
-import 'models/replay_gain_config.dart';
+import 'dsp/audio_filter_chain.dart';
+import 'playback/audio_track_mode.dart';
+import 'playback/loop_mode.dart';
+import 'playback/media.dart';
+import 'playback/playlist.dart';
+import 'audio/audio_device.dart';
+import 'cover/audio_display_mode.dart';
+import 'cover/cover_art_auto_mode.dart';
+import 'audio/gapless_mode.dart';
+import 'network/cache_config.dart';
+import 'dsp/compressor_config.dart';
+import 'dsp/equalizer_config.dart';
+import 'dsp/loudness_config.dart';
+import 'events/mpv_log_entry.dart';
+import 'events/mpv_hook_event.dart';
+import 'events/mpv_player_error.dart';
+import 'dsp/pitch_tempo_config.dart';
+import 'player_configuration.dart';
+import 'player_state.dart';
+import 'audio/replay_gain_config.dart';
 import 'player_stream.dart';
 
 export 'cover/cover_art_raw.dart';
-export 'models/playback/media.dart';
-export 'models/playback/playlist.dart';
-export 'models/audio/audio_device.dart';
-export 'models/audio/audio_params.dart';
-export 'models/dsp/compressor_config.dart';
-export 'models/dsp/equalizer_config.dart';
-export 'models/dsp/loudness_config.dart';
-export 'models/events/mpv_log_entry.dart';
-export 'models/events/mpv_hook_event.dart';
-export 'models/dsp/pitch_tempo_config.dart';
-export 'models/player_configuration.dart';
-export 'models/player_state.dart';
+export 'playback/loop_mode.dart';
+export 'playback/media.dart';
+export 'playback/playlist.dart';
+export 'audio/audio_device.dart';
+export 'audio/audio_params.dart';
+export 'playback/audio_track_mode.dart';
+export 'dsp/compressor_config.dart';
+export 'dsp/equalizer_config.dart';
+export 'dsp/loudness_config.dart';
+export 'events/mpv_log_entry.dart';
+export 'events/mpv_hook_event.dart';
+export 'dsp/pitch_tempo_config.dart';
+export 'player_configuration.dart';
+export 'player_state.dart';
 export 'player_stream.dart';
 
 part 'player/player_playback.part.dart';
@@ -76,49 +83,32 @@ class Player extends _PlayerBase
 
   /// Opens a [Media] and optionally starts playback immediately.
   ///
-  /// The play/pause decision is committed to mpv's global `pause` property
-  /// BEFORE the `loadfile` command. mpv processes commands in arrival order
-  /// on a single thread, so rapid consecutive calls
-  /// (e.g. `open(A, play:true)` followed immediately by `open(B, play:false)`)
-  /// cannot race: each `open()` issues a `(set pause, loadfile replace)`
-  /// pair atomically, and the *last* pair wins because `replace` aborts any
-  /// in-flight load. Setting `pause` as a global property (rather than as
-  /// a `loadfile` per-file option) also guarantees the property observer
-  /// fires — the file-local-option route can silently skip the
-  /// `PROPERTY_CHANGE` emission, leaving `state.playing` stale on the very
-  /// first `open()`.
+  /// `pause` is set as a global property before `loadfile` so the
+  /// property observer always fires on the first-load transition
+  /// (a per-file option can skip the `PROPERTY_CHANGE` emit).
+  /// Rapid back-to-back `open()` calls don't race: `loadfile replace`
+  /// aborts the previous load, so the last `(pause, loadfile)` pair wins.
   Future<void> open(Media media, {bool? play}) async {
     _checkNotDisposed();
     _mediaCache.clear();
     _mediaCache[media.uri] = media;
-    if (media.httpHeaders != null) {
-      final headers = media.httpHeaders!.entries
-          .map((e) => '${e.key}: ${e.value}')
-          .join(',');
-      _opt('http-header-fields', headers);
+    final resolved = await _resolveUri(media.uri);
+    if (_disposed) {
+      await resolved.dispose?.call();
+      return;
     }
-    final normalizedUri = await _resolveUri(media.uri);
-    if (_disposed) return;
-    _mediaCache[normalizedUri] = media;
+    _mediaCache[resolved.uri] = media;
     final shouldPlay = play ?? configuration.autoPlay;
+    _applyFileLocalHeaders(media.httpHeaders);
     _prop('pause', shouldPlay ? 'no' : 'yes');
-    _command(['loadfile', normalizedUri, 'replace']);
+    _command(['loadfile', resolved.uri, 'replace']);
   }
 
   /// Opens a list of [Media] items as the new playlist, optionally starting at [index].
   ///
-  /// Multi-media counterpart of [open] (Dart-canonical `addAll`/`openAll`
-  /// pattern). If [index] is greater than zero, the player immediately
-  /// jumps to that position after loading the playlist (the first item
-  /// is loaded briefly then replaced — this is imperceptible and is the
-  /// standard mpv approach).
-  ///
-  /// [index] is clamped to `medias.length - 1`; passing an out-of-range
-  /// value silently falls back to the last entry rather than no-oping
-  /// like raw mpv.
-  ///
-  /// As with [open], `pause` is committed globally before `loadfile` so
-  /// the property observer drives `state.playing`.
+  /// Multi-media counterpart of [open]. [index] is clamped to
+  /// `[0, medias.length - 1]`. When non-zero the first item is loaded
+  /// briefly, then mpv jumps to the requested position.
   Future<void> openAll(List<Media> medias,
       {bool? play, int index = 0}) async {
     _checkNotDisposed();
@@ -128,21 +118,34 @@ class Player extends _PlayerBase
     final clampedIndex = index.clamp(0, medias.length - 1);
     final shouldPlay = play ?? configuration.autoPlay;
     _mediaCache.clear();
+    // Resolve once per media — content:// resolutions detach a JVM-side
+    // FD, doing it twice would leak one FD per track.
+    final resolved = <ResolvedUri>[];
     for (final m in medias) {
       _mediaCache[m.uri] = m;
-      final normalizedUri = await _resolveUri(m.uri);
-      if (_disposed) return;
-      _mediaCache[normalizedUri] = m;
+      final r = await _resolveUri(m.uri);
+      if (_disposed) {
+        await r.dispose?.call();
+        for (final prior in resolved) {
+          await prior.dispose?.call();
+        }
+        return;
+      }
+      _mediaCache[r.uri] = m;
+      resolved.add(r);
     }
-    final firstNormalizedUri =
-        await _resolveUri(medias.first.uri);
-    if (_disposed) return;
+    // Apply per-file headers only for the first item — it's the one
+    // mpv loads synchronously on `loadfile replace`. Headers for
+    // queued items (append) cannot be applied here without racing
+    // mpv's playlist advance; consumers needing per-track headers on
+    // a playlist should register an `on_load` hook (see
+    // [_HooksModule.registerHook]) and set the per-file option from
+    // the hook handler.
+    _applyFileLocalHeaders(medias.first.httpHeaders);
     _prop('pause', shouldPlay ? 'no' : 'yes');
-    _command(['loadfile', firstNormalizedUri, 'replace']);
-    for (final m in medias.skip(1)) {
-      final normalizedUri = await _resolveUri(m.uri);
-      if (_disposed) return;
-      _command(['loadfile', normalizedUri, 'append']);
+    _command(['loadfile', resolved.first.uri, 'replace']);
+    for (var i = 1; i < medias.length; i++) {
+      _command(['loadfile', resolved[i].uri, 'append']);
     }
     if (clampedIndex > 0) {
       _command(['playlist-play-index', clampedIndex.toString()]);
@@ -184,10 +187,19 @@ class Player extends _PlayerBase
   /// typed setters (`setVolume`, `setCache`, `setReplayGain`, …) when
   /// they exist, both for type-safety and for synchronous state update.
   ///
-  /// Throws [StateError] if the player has been disposed.
+  /// Throws [StateError] if the player has been disposed, or
+  /// [MpvException] if mpv rejects the property write (unknown name,
+  /// out-of-range value, etc.).
   Future<void> setRawProperty(String name, String value) async {
     _checkNotDisposed();
-    _prop(name, value);
+    final rc = _prop(name, value);
+    if (rc < 0) {
+      throw MpvException(
+        name: name,
+        code: rc,
+        message: _errorString(rc),
+      );
+    }
   }
 
   /// Sends a raw mpv command.
@@ -196,10 +208,21 @@ class Player extends _PlayerBase
   /// typed playback / playlist methods (`play`, `pause`, `seek`,
   /// `add`, `jump`, …) when they cover your use case.
   ///
-  /// Throws [StateError] if the player has been disposed.
+  /// Throws [StateError] if the player has been disposed, or
+  /// [MpvException] if mpv rejects the command (unknown command,
+  /// invalid argument, etc.). A successful return guarantees mpv
+  /// accepted the command; the actual side-effect on playback state
+  /// is observed asynchronously via [Player.stream].
   Future<void> sendRawCommand(List<String> args) async {
     _checkNotDisposed();
-    _command(args);
+    final rc = _command(args);
+    if (rc < 0) {
+      throw MpvException(
+        name: args.isEmpty ? '<empty>' : args.first,
+        code: rc,
+        message: _errorString(rc),
+      );
+    }
   }
 
   @override
@@ -229,23 +252,15 @@ abstract class _PlayerBase {
   StreamSubscription<MpvIsolateEvent>? _eventSub;
   bool _disposed = false;
 
-  // Hook timeout state — lives here because _handleEvent dispatches hooks.
+  // Hook bookkeeping. `_activeHookIds` is the source of truth for
+  // [Player.continueHook] validity (rejects duplicate continues before
+  // they reach mpv, where the behaviour for stale ids is undefined).
+  // `_registeredHookNames` collapses duplicate registrations per name:
+  // mpv allows multiple, but its shutdown path can stall when several
+  // events for the same hook are still in flight at quit time.
   final _hookTimeouts = <String, Duration>{};
   final _hookTimers = <int, Timer>{};
-  // Set of hook event ids that are currently `active=true` on mpv's
-  // side — populated when `MpvEventHookFired` arrives, drained by
-  // [Player.continueHook] (and the auto-timeout path). Lets the wrapper
-  // reject a duplicate `continueHook(id)` for an already-completed hook
-  // before it reaches the FFI, avoiding mpv's documented-undefined
-  // behaviour for unknown / stale ids.
   final _activeHookIds = <int>{};
-  // Tracks which hook names have a live mpv-side registration. Used by
-  // [Player.registerHook] to deduplicate consecutive calls for the same
-  // name on the same handle: mpv allows multiple registrations and
-  // emits a separate event per registration, but its `mp_shutdown_clients`
-  // path can stall during dispose when several events for the same hook
-  // are still active. Treat the registration as a one-per-name idempotent
-  // operation; later calls only refresh the optional timeout.
   final _registeredHookNames = <String>{};
 
   PlayerState _state = const PlayerState();
@@ -261,9 +276,9 @@ abstract class _PlayerBase {
   final ReactiveProperty<bool> _completed = ReactiveProperty<bool>(false);
   // Derived from JSON properties that need access to player-side context.
   final ReactiveProperty<Playlist> _playlist =
-      ReactiveProperty<Playlist>(const Playlist.empty());
-  final ReactiveProperty<PlaylistMode> _playlistMode =
-      ReactiveProperty<PlaylistMode>(PlaylistMode.none);
+      ReactiveProperty<Playlist>(Playlist.empty);
+  final ReactiveProperty<LoopMode> _loop =
+      ReactiveProperty<LoopMode>(LoopMode.off);
   final ReactiveProperty<List<AudioDevice>> _audioDevices =
       ReactiveProperty<List<AudioDevice>>(
           const [AudioDevice('auto', 'Auto')]);
@@ -329,15 +344,13 @@ abstract class _PlayerBase {
       ));
     _registry.observeAll(_lib, _handle);
 
-    // Properties handled outside the registry need an explicit observe call
-    // (the registry only observes specs it knows about). Most go through
-    // MPV_FORMAT_NODE — mpv exposes them as structured Map/List trees, and
-    // observing them as STRING + JSON-parsing every change burns one extra
-    // string allocation, one extra parse, and rounds int64 sample rates
-    // through string conversion. The two `loop-*` properties stay STRING
-    // because they hold flag-like values (`no` / `inf` / a number).
+    // Out-of-registry observers. NODE for structured data (avoids a
+    // string-encode/JSON-parse round trip); STRING for `loop-*` (flag-
+    // like values: `no` / `inf` / a number) and `audio-device` (whose
+    // description is cross-referenced from `audio-device-list`).
     _observe('playlist', MpvFormat.mpvFormatNode);
     _observe('audio-device-list', MpvFormat.mpvFormatNode);
+    _observe('audio-device', MpvFormat.mpvFormatString);
     _observe('metadata', MpvFormat.mpvFormatNode);
     _observe('demuxer-cache-state', MpvFormat.mpvFormatNode);
     _observe('loop-file', MpvFormat.mpvFormatString);
@@ -348,7 +361,7 @@ abstract class _PlayerBase {
       buffering: _buffering,
       completed: _completed,
       playlist: _playlist,
-      playlistMode: _playlistMode,
+      loop: _loop,
       audioDevices: _audioDevices,
       metadata: _metadata,
       bufferingPercentage: _bufferingPercentage,
@@ -421,32 +434,24 @@ abstract class _PlayerBase {
   }
 
   void _handleEvent(MpvIsolateEvent event) {
-    // Single defensive guard for every controller add() below (and inside
-    // any helper invoked from this switch). dispose() flips `_disposed`
-    // BEFORE awaiting `_eventSub.cancel()`, which in turn awaits the
-    // currently-running `_handleEvent` invocation before closing any
-    // controller — so once we pass this check, every `_xCtrl.add(...)`
-    // in this method is guaranteed to land on an open controller. Per-
-    // controller `isClosed` checks would be cruft duplicating this fence.
+    // Single fence for every controller add() in this method — dispose()
+    // flips `_disposed` before awaiting `_eventSub.cancel()`, so passing
+    // this check guarantees every downstream add() lands on an open
+    // controller without per-call isClosed checks.
     if (_disposed) return;
     switch (event) {
       case MpvEventStartFile():
         _updateLifecycle(buffering: true, completed: false);
       case MpvEventFileLoaded():
-        // `pause` is set globally via `_prop('pause', ...)` BEFORE the
-        // `loadfile` command in open() / openAll() / jump(). That
-        // path triggers mpv's property observer, so the registry
-        // updates `state.playing` and `_reactives.playing` on its own
-        // — we don't touch them here. We only clear buffering /
-        // completed and kick the cover-art pipeline.
+        // `state.playing` is driven by the `pause` property observer
+        // (set globally before each `loadfile`); here we only clear
+        // buffering/completed and kick the cover-art pipeline.
         _updateLifecycle(buffering: false, completed: false);
         _pollPosition();
         _extractEmbeddedCover();
       case MpvEventPlaybackSeek():
-        // mpv accepted the seek; playback is suspended until
-        // MpvEventPlaybackRestart fires. Intentionally a no-op:
-        // mutating the position stream here would briefly flash 0
-        // before the post-restart re-poll lands.
+        // No-op: position mutation here would flash 0 before the
+        // post-restart re-poll lands.
         break;
       case MpvEventPlaybackRestart():
         _pollPosition();
@@ -511,13 +516,15 @@ abstract class _PlayerBase {
     // Custom out-of-registry handlers for the few properties whose update
     // logic touches more than `(parse → reduce)` (player-side context like
     // `_mediaCache`, `_state.playlist`, `_state.cache.secs`, or the
-    // two-property aggregation behind `playlistMode`).
+    // two-property aggregation behind `loop`).
     switch (name) {
       case 'loop-file':
       case 'loop-playlist':
-        _updatePlaylistModeFromMpv(name, raw as String);
+        _updateLoopModeFromMpv(name, raw as String);
       case 'playlist':
         _updatePlaylistFromNode(raw);
+      case 'audio-device':
+        _updateActiveAudioDevice(raw as String);
       case 'audio-device-list':
         _updateAudioDevicesFromNode(raw);
       case 'metadata':
@@ -529,36 +536,37 @@ abstract class _PlayerBase {
 
   // --- Low Level Native Bridge ---
 
-  void _opt(String name, String value) {
-    using((arena) => _lib.mpvSetOptionString(
+  /// Returns the mpv error code (negative on failure, 0 on success).
+  /// Internal setters discard it; the public escape hatches surface it
+  /// via [MpvException].
+  int _opt(String name, String value) {
+    return using((arena) => _lib.mpvSetOptionString(
         _handle,
         name.toNativeUtf8(allocator: arena),
         value.toNativeUtf8(allocator: arena)));
   }
 
-  void _prop(String name, String value) {
-    using((arena) => _lib.mpvSetPropertyString(
+  int _prop(String name, String value) {
+    return using((arena) => _lib.mpvSetPropertyString(
         _handle,
         name.toNativeUtf8(allocator: arena),
         value.toNativeUtf8(allocator: arena)));
   }
 
-  void _command(List<String> args) {
-    using((arena) {
+  int _command(List<String> args) {
+    return using((arena) {
       final arr = arena<Pointer<Utf8>>(args.length + 1);
       for (var i = 0; i < args.length; i++) {
         arr[i] = args[i].toNativeUtf8(allocator: arena);
       }
       arr[args.length] = nullptr;
-      _lib.mpvCommand(_handle, arr);
+      return _lib.mpvCommand(_handle, arr);
     });
   }
 
-  /// One-off observe — the registry handles the bulk of properties; this
-  /// helper covers the few hand-rolled ones (playlist, metadata, etc.).
-  /// Reply IDs are diagnostic-only on the receive side, so we use a high
-  /// pool starting just past the registry's reserved range so the two
-  /// dispatch paths are visually distinguishable in `mpv -v` logs.
+  // Reply IDs for hand-rolled observers, starting past the registry's
+  // reserved range so the two dispatch paths are distinguishable in
+  // `mpv -v` logs. Diagnostic-only — mpv dispatches by name on receive.
   int _customReplyId = PropertyRegistry.registryReplyIdMax + 1;
   void _observe(String name, int format) {
     using((arena) => _lib.mpvObserveProperty(_handle, _customReplyId++,
@@ -573,10 +581,9 @@ abstract class _PlayerBase {
   void _startHookTimeout(int id, String name, Duration timeout) {
     _hookTimers[id] = Timer(timeout, () {
       _hookTimers.remove(id);
-      // Race with [Player.continueHook]: the consumer may complete the
-      // hook between the timer arming and firing. The active-id set
-      // is the source of truth — if it doesn't contain `id`, the
-      // manual continue won and we skip the redundant FFI call.
+      // The active-id set is the source of truth: if a manual
+      // continueHook beat us to it, the id is gone and we skip the
+      // redundant FFI call.
       if (!_activeHookIds.remove(id)) return;
       _internalLog(
         'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s — '
@@ -592,17 +599,37 @@ abstract class _PlayerBase {
       timer.cancel();
     }
     _hookTimers.clear();
-    // Forget any still-active ids: their hooks are already in flight on
-    // mpv's side and will be torn down with the handle.
+    // Continue every still-active hook on mpv's side BEFORE we drop
+    // them from the active set. Without this, mpv blocks on the
+    // pending hooks during its shutdown path: `dispose()` issues
+    // `quit`, mpv tries to drain the hook queue first, and never
+    // fires MPV_EVENT_SHUTDOWN — so the event isolate never exits.
+    // `_cancelHookTimers` is called from dispose BEFORE `_disposed`
+    // is flipped, so the handle is still valid here.
+    for (final id in _activeHookIds) {
+      _lib.mpvHookContinue(_handle, id);
+    }
     _activeHookIds.clear();
   }
 
   /// Single touchpoint for translating non-libmpv-native URI schemes
   /// (`asset://`, Android `content://`) into something `loadfile` can
-  /// open. Implementation lives in `src/utils/uri_resolver.dart`;
-  /// keeping the indirection here means the 6 call-sites in this file
-  /// don't have to know about platform-specific URI logic.
-  Future<String> _resolveUri(String uri) => normalizeUri(uri);
+  /// open. Returns a [ResolvedUri] whose `dispose` callback callers
+  /// MUST invoke when the URI is never handed to mpv (e.g. abort path
+  /// when `_disposed` flips before `loadfile`) — otherwise Android
+  /// content:// FDs leak.
+  Future<ResolvedUri> _resolveUri(String uri) => resolveUri(uri);
+
+  /// Sets `file-local-options/http-header-fields` for the next
+  /// `loadfile`. mpv resets the option once the loaded file stops
+  /// playing, so the headers do NOT leak to subsequent loads.
+  /// No-op when [headers] is null or empty.
+  void _applyFileLocalHeaders(Map<String, String>? headers) {
+    if (headers == null || headers.isEmpty) return;
+    final joined =
+        headers.entries.map((e) => '${e.key}: ${e.value}').join(',');
+    _prop('file-local-options/http-header-fields', joined);
+  }
 
   void _checkNotDisposed() {
     if (_disposed) {
@@ -612,20 +639,11 @@ abstract class _PlayerBase {
 
   // --- Internal State Pipeline ---
 
-  /// Updates [_state] and writes [value] into [reactive]. The reactive
-  /// dedups so equal-value writes are silent on the stream.
-  ///
-  /// This is the API the setter-mixins (audio, network, …) call after
-  /// pushing a value to mpv via `_prop`/`_command`, so the public state
-  /// reflects the requested value optimistically.
-  ///
-  /// Short-circuits when [reactive] dedups the write: writing a value the
-  /// reactive already holds means the new state would be `==` to the old
-  /// one too (Freezed structural equality on [PlayerState]), so the
-  /// `_state = updater(_state)` allocation would just produce a structurally
-  /// identical snapshot. Skipping it avoids one [PlayerState] allocation
-  /// per redundant setter call (matches the registry dispatch behaviour
-  /// for property-change events).
+  /// Optimistic state update used by every typed setter after pushing
+  /// a value to mpv. Writes [value] into [reactive] (which dedups, so
+  /// equal writes are silent on the stream) and folds it into [_state]
+  /// via [updater]. Short-circuits on dedup to skip a redundant
+  /// [PlayerState] allocation.
   void _updateField<T>(
     PlayerState Function(PlayerState) updater,
     ReactiveProperty<T> reactive,
@@ -635,16 +653,10 @@ abstract class _PlayerBase {
     _state = updater(_state);
   }
 
-  /// Updates the playback-lifecycle triple (playing / buffering / completed)
-  /// and emits on each underlying reactive only for fields whose value
-  /// actually changed. Use this for compound transitions (start-file,
-  /// file-loaded, end-file, shutdown, idle-active) so all three streams stay
-  /// in sync with `state` instead of going silent on `_patchState`.
-  ///
-  /// The pure-function core lives in [computeLifecycle] (in
-  /// `lib/src/internal/lifecycle_transitions.dart`) so the diff logic
-  /// can be regression-tested without spinning up a real player — see
-  /// `test/internal/lifecycle_transitions_test.dart`.
+  /// Updates the lifecycle triple (playing/buffering/completed) and
+  /// emits per-reactive only for fields that actually changed. Used
+  /// for compound transitions (start-file, file-loaded, end-file,
+  /// shutdown, idle-active). The pure diff lives in [computeLifecycle].
   void _updateLifecycle({bool? playing, bool? buffering, bool? completed}) {
     final result = computeLifecycle(
       prev: _state,
@@ -660,12 +672,12 @@ abstract class _PlayerBase {
 
   // --- Custom property handlers (JSON / derived) ---
 
-  void _updatePlaylistModeFromMpv(String name, String value) {
-    final next = derivePlaylistMode(name, value, _state.playlistMode);
+  void _updateLoopModeFromMpv(String name, String value) {
+    final next = deriveLoopMode(name, value, _state.loop);
     if (next == null) return;
     _updateField(
-      (s) => s.copyWith(playlistMode: next),
-      _playlistMode,
+      (s) => s.copyWith(loop: next),
+      _loop,
       next,
     );
   }
@@ -682,6 +694,27 @@ abstract class _PlayerBase {
     } catch (e) {
       _internalLog('Failed to parse playlist: $e', level: 'warn');
     }
+  }
+
+  void _updateActiveAudioDevice(String name) {
+    // mpv only echoes the device name back on `audio-device`. Recover
+    // the proper description by looking it up in the parsed
+    // `audio-device-list` (state.audioDevices). Falls back to the name
+    // on cache miss — typical at boot, before the list arrives.
+    final list = _state.audioDevices;
+    String description = name;
+    for (final d in list) {
+      if (d.name == name) {
+        description = d.description;
+        break;
+      }
+    }
+    final device = AudioDevice(name, description);
+    _updateField(
+      (s) => s.copyWith(audioDevice: device),
+      _reactives.audioDevice,
+      device,
+    );
   }
 
   void _updateAudioDevicesFromNode(dynamic raw) {
@@ -741,34 +774,34 @@ abstract class _PlayerBase {
 
   void _extractEmbeddedCover() {
     if (_disposed) return;
-    // Emit unconditionally: `null` signals "the new file has no cover"
-    // so listeners can clear stale artwork on track changes.
+    // Emit unconditionally — `null` signals "no cover on the new
+    // file" so consumers can clear stale artwork on track changes.
     _coverArtRawCtrl.add(CoverArtExtractor.capture(_lib, _handle));
   }
 
   /// Tears down the player.
   ///
-  /// The teardown order is load-bearing — changing it has caused crashes
-  /// in past releases. The current sequence is:
+  /// The teardown order is load-bearing. The sequence is:
   ///
   /// 1. **Flip `_disposed`** so any subsequent setter / public-API call
   ///    fails fast via `_checkNotDisposed()`.
   /// 2. **Drop the [OrphanHandleTracker] entry** so a hot-restart that
   ///    fires before the destroy completes doesn't try to clean up a
   ///    handle we're already cleaning up.
-  /// 3. **Await `_eventSub.cancel()`** before destroying the handle. This
-  ///    prevents new `_handleEvent` invocations from landing after the
-  ///    destroy. In-flight events queued on the isolate's stream are
-  ///    dropped on the floor by Dart's async-cancel semantics.
-  /// 4. **`mpvTerminateDestroy(_handle)` BEFORE stopping the isolate**.
-  ///    mpv's blocking `mpv_wait_event()` unblocks with
-  ///    `MPV_EVENT_SHUTDOWN` as soon as the handle is destroyed, letting
-  ///    the isolate's run-loop exit cleanly. The reverse order (stop
-  ///    isolate → destroy handle) had a window where the isolate could
-  ///    re-enter `mpv_wait_event` between the kill-queue and the destroy.
-  /// 5. **Stop the isolate**, which is now guaranteed to exit on its
-  ///    next loop iteration.
-  /// 6. **Close all reactive properties + controllers**. Order within
+  /// 3. **Await `_eventSub.cancel()`** so no further `_handleEvent`
+  ///    invocations land after this point.
+  /// 4. **Send the `quit` command** to mpv. mpv processes it
+  ///    asynchronously and fires `MPV_EVENT_SHUTDOWN` inside its own
+  ///    event queue, which unblocks the isolate's `mpv_wait_event`
+  ///    on the next iteration.
+  /// 5. **Await `_eventIsolate.stop()`**: waits for the isolate to
+  ///    actually exit (the `quit`-driven `MPV_EVENT_SHUTDOWN` lets the
+  ///    run-loop unwind naturally).
+  /// 6. **`mpvTerminateDestroy(_handle)`** AFTER the isolate is gone.
+  ///    Calling destroy while the isolate is still inside
+  ///    `mpv_wait_event` would race the event-loop thread and crash
+  ///    libmpv when the handle is freed mid-syscall.
+  /// 7. **Close all reactive properties + controllers**. Order within
   ///    this group does not matter for correctness (they tolerate
   ///    `close()` while a listener is attached); grouping by ownership
   ///    is for auditability.
@@ -780,35 +813,23 @@ abstract class _PlayerBase {
 
     OrphanHandleTracker.instance.remove(_handle);
     await _eventSub?.cancel();
-    // Ask mpv to shut down cooperatively via the `quit` command. mpv
-    // processes it asynchronously, fires MPV_EVENT_SHUTDOWN inside
-    // its own event queue, and the next call to `mpv_wait_event` in
-    // the isolate's loop returns with that event — at which point
-    // the loop unwinds NATURALLY. This is the only way to unblock
-    // `mpv_wait_event` from outside the isolate without poking at
-    // libmpv internals; calling `mpv_terminate_destroy` first races
-    // the event-loop thread and crashes inside libmpv when the
-    // handle is freed mid-syscall.
+    // Cooperative quit: mpv fires MPV_EVENT_SHUTDOWN, the isolate's
+    // mpv_wait_event returns, and the loop unwinds naturally. Calling
+    // mpv_terminate_destroy here would race the isolate and crash
+    // libmpv when the handle is freed mid-syscall.
     _command(['quit']);
-    // Wait for the isolate to actually exit (it returns from
-    // mpv_wait_event with MPV_EVENT_SHUTDOWN, breaks out of the loop,
-    // and the VM tears it down).
     await _eventIsolate.stop();
-    // Now safe to terminate — the isolate is no longer touching the
-    // handle.
     _lib.mpvTerminateDestroy(_handle);
 
-    // Close the registry-backed reactives, then the standalone ones, then
-    // the pure-event stream controllers. Order doesn't matter for
-    // correctness — the controllers tolerate close() being called while a
-    // listener is still attached — but grouping by ownership keeps
-    // teardown auditable.
+    // Close registry-backed reactives, then standalone ones, then
+    // pure-event controllers. Order is for auditability — close() is
+    // safe with attached listeners.
     await _registry.closeAll();
     await Future.wait<void>([
       _buffering.close(),
       _completed.close(),
       _playlist.close(),
-      _playlistMode.close(),
+      _loop.close(),
       _audioDevices.close(),
       _metadata.close(),
       _bufferingPercentage.close(),

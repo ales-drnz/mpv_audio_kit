@@ -4,24 +4,26 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'package:mpv_audio_kit/src/models/playback/playlist.dart';
-import 'package:mpv_audio_kit/src/models/audio/audio_device.dart';
-import 'package:mpv_audio_kit/src/models/audio/audio_params.dart';
-import 'package:mpv_audio_kit/src/models/cache_config.dart';
-import 'package:mpv_audio_kit/src/models/playback/chapter.dart';
-import 'package:mpv_audio_kit/src/models/dsp/compressor_config.dart';
-import 'package:mpv_audio_kit/src/models/enums.dart';
-import 'package:mpv_audio_kit/src/models/dsp/equalizer_config.dart';
-import 'package:mpv_audio_kit/src/models/dsp/loudness_config.dart';
-import 'package:mpv_audio_kit/src/models/playback/mpv_track.dart';
-import 'package:mpv_audio_kit/src/models/dsp/pitch_tempo_config.dart';
-import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
-
-export 'package:mpv_audio_kit/src/models/enums.dart';
+import 'package:mpv_audio_kit/src/playback/loop_mode.dart';
+import 'package:mpv_audio_kit/src/playback/playlist.dart';
+import 'package:mpv_audio_kit/src/audio/audio_device.dart';
+import 'package:mpv_audio_kit/src/audio/audio_params.dart';
+import 'package:mpv_audio_kit/src/cover/audio_display_mode.dart';
+import 'package:mpv_audio_kit/src/audio/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/cover/cover_art_auto_mode.dart';
+import 'package:mpv_audio_kit/src/audio/gapless_mode.dart';
+import 'package:mpv_audio_kit/src/network/cache_config.dart';
+import 'package:mpv_audio_kit/src/playback/chapter.dart';
+import 'package:mpv_audio_kit/src/dsp/compressor_config.dart';
+import 'package:mpv_audio_kit/src/dsp/equalizer_config.dart';
+import 'package:mpv_audio_kit/src/dsp/loudness_config.dart';
+import 'package:mpv_audio_kit/src/playback/mpv_track.dart';
+import 'package:mpv_audio_kit/src/dsp/pitch_tempo_config.dart';
+import 'package:mpv_audio_kit/src/audio/replay_gain_config.dart';
 
 part 'player_state.freezed.dart';
 
-const _kEmptyPlaylist = Playlist.empty();
+const _kEmptyPlaylist = Playlist.empty;
 const _kAutoDevice = AudioDevice('auto', 'Auto');
 const _kDefaultAudioDevices = <AudioDevice>[_kAutoDevice];
 const _kDemuxerMaxBytesDefault = 150 * 1024 * 1024;
@@ -76,7 +78,7 @@ abstract class PlayerState with _$PlayerState {
     @Default(0.0) double bufferingPercentage,
 
     /// Current loop / repeat mode.
-    @Default(PlaylistMode.none) PlaylistMode playlistMode,
+    @Default(LoopMode.off) LoopMode loop,
 
     /// Whether the playlist is in shuffle mode.
     @Default(false) bool shuffle,
@@ -110,7 +112,7 @@ abstract class PlayerState with _$PlayerState {
     @Default(<String, String>{}) Map<String, String> metadata,
 
     /// Gapless playback mode.
-    @Default(GaplessMode.weak) GaplessMode gaplessMode,
+    @Default(GaplessMode.weak) GaplessMode gapless,
 
     /// ReplayGain configuration aggregate (mode + preamp + clip +
     /// fallback). Set the whole config atomically via
@@ -230,11 +232,11 @@ abstract class PlayerState with _$PlayerState {
 
     /// Controls how mpv handles embedded and external cover images. See
     /// [AudioDisplayMode] for the available variants.
-    @Default(AudioDisplayMode.embeddedFirst) AudioDisplayMode audioDisplayMode,
+    @Default(AudioDisplayMode.embeddedFirst) AudioDisplayMode audioDisplay,
 
     /// Controls whether mpv automatically loads external cover art files.
     /// See [CoverArtAutoMode] for the available variants.
-    @Default(CoverArtAutoMode.no) CoverArtAutoMode coverArtAutoMode,
+    @Default(CoverArtAutoMode.no) CoverArtAutoMode coverArtAuto,
 
     /// How long a still image (e.g. cover art) is held as a displayable
     /// video frame after the file is loaded.

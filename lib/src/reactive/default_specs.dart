@@ -2,21 +2,24 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../internal/audio_filter_chain.dart';
-import '../internal/node_parsers.dart';
-import '../models/audio/audio_device.dart';
-import '../models/audio/audio_params.dart';
-import '../models/cache_config.dart';
-import '../models/playback/chapter.dart';
-import '../models/dsp/compressor_config.dart';
-import '../models/dsp/equalizer_config.dart';
-import '../models/dsp/loudness_config.dart';
-import '../models/events/mpv_prefetch_state.dart';
-import '../models/playback/mpv_track.dart';
-import '../models/dsp/pitch_tempo_config.dart';
-// player_state.dart re-exports enums.dart, so we don't need a direct import.
-import '../models/player_state.dart';
-import '../models/replay_gain_config.dart';
+import '../dsp/audio_filter_chain.dart';
+import '../reactive/node_parsers.dart';
+import '../audio/audio_device.dart';
+import '../cover/audio_display_mode.dart';
+import '../audio/audio_output_state.dart';
+import '../audio/audio_params.dart';
+import '../cover/cover_art_auto_mode.dart';
+import '../audio/gapless_mode.dart';
+import '../network/cache_config.dart';
+import '../playback/chapter.dart';
+import '../dsp/compressor_config.dart';
+import '../dsp/equalizer_config.dart';
+import '../dsp/loudness_config.dart';
+import '../events/mpv_prefetch_state.dart';
+import '../playback/mpv_track.dart';
+import '../dsp/pitch_tempo_config.dart';
+import '../player_state.dart';
+import '../audio/replay_gain_config.dart';
 import '../utils/duration_seconds.dart';
 import 'mpv_property_spec.dart';
 import 'reactive_property.dart';
@@ -69,7 +72,7 @@ class DefaultPropertyReactives {
   final ReactiveProperty<ReplayGainConfig> replayGain =
       ReactiveProperty<ReplayGainConfig>(const ReplayGainConfig());
   final ReactiveProperty<double> volumeGain = ReactiveProperty<double>(0.0);
-  final ReactiveProperty<GaplessMode> gaplessMode =
+  final ReactiveProperty<GaplessMode> gapless =
       ReactiveProperty<GaplessMode>(GaplessMode.weak);
 
   // Cache — aggregate of the 5 mpv cache properties (cache, cache-secs,
@@ -128,9 +131,9 @@ class DefaultPropertyReactives {
       ReactiveProperty<AudioOutputState>(AudioOutputState.closed);
 
   // Cover art.
-  final ReactiveProperty<AudioDisplayMode> audioDisplayMode =
+  final ReactiveProperty<AudioDisplayMode> audioDisplay =
       ReactiveProperty<AudioDisplayMode>(AudioDisplayMode.embeddedFirst);
-  final ReactiveProperty<CoverArtAutoMode> coverArtAutoMode =
+  final ReactiveProperty<CoverArtAutoMode> coverArtAuto =
       ReactiveProperty<CoverArtAutoMode>(CoverArtAutoMode.no);
   // null = `inf` (mpv's "keep frame indefinitely"); finite Duration is the
   // hold time. Default mirrors the wrapper's pre-init `image-display-duration=inf`.
@@ -248,21 +251,10 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: _toDuration,
       reduce: (v, s) => s.copyWith(buffer: v),
     ),
-    // We bind `state.playing` to mpv's `core-idle` property, NOT `pause`.
-    //
-    // `pause` is just "audio output suspended" — it is `no` by default
-    // even when mpv has no file loaded. Subscribing to `pause` therefore
-    // gave us false positives at boot (`pause=no` while idle) and false
-    // negatives mid-session (calling `set pause no` when pause was
-    // already `no` doesn't trigger PROPERTY_CHANGE, so the observer
-    // never sees the load → playing transition for the *first* file).
-    //
-    // `core-idle` is the property that genuinely tracks "is mpv producing
-    // audio right now": it flips to `false` when a file actually starts
-    // playing, back to `true` when paused / seeking / buffering / EOF.
-    // The mapping is identical (`playing = !core-idle`) but the events
-    // arrive on every meaningful transition. mpv docs:
-    // https://mpv.io/manual/master/#command-interface-core-idle
+    // `state.playing = !core-idle`. mpv's `pause` defaults to `no`
+    // while idle and doesn't fire PROPERTY_CHANGE on the load → playing
+    // transition for the first file; `core-idle` flips reliably on
+    // every start/stop/pause/seek/buffer/EOF.
     MpvPropertySpec<bool>.flag(
       name: 'core-idle',
       reactive: r.playing,
@@ -327,12 +319,10 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: (raw, _) => raw > 0 ? raw : null,
       reduce: (v, s) => s.copyWith(audioBitrate: v),
     ),
-    MpvPropertySpec<AudioDevice>.string(
-      name: 'audio-device',
-      reactive: r.audioDevice,
-      parse: (raw, _) => AudioDevice(raw, raw),
-      reduce: (v, s) => s.copyWith(audioDevice: v),
-    ),
+    // `audio-device` lives outside the registry: the description must
+    // cross-reference `state.audioDevices` (parsed from
+    // `audio-device-list`), and specs don't have access to that
+    // sibling state — the player's custom dispatcher does.
 
     // ── Audio params (decoder side) ──────────────────────────────────────
     //
@@ -358,6 +348,11 @@ List<MpvPropertySpec> buildDefaultSpecs(
       },
       reduce: (v, s) => s.copyWith(audioParams: v),
     ),
+    // `codec` and `codecName` mirror mpv's two codec properties one-to-one;
+    // their content varies across mpv builds (`mp3` vs `mp3float`, `aac`
+    // vs `aac_lc`, and the short-vs-descriptive split is not stable
+    // either). Treat both fields as opaque hints — see the field-level
+    // dartdoc on [AudioParams] for the matching contract.
     MpvPropertySpec<AudioParams>.string(
       name: 'audio-codec',
       reactive: r.audioParams,
@@ -384,9 +379,9 @@ List<MpvPropertySpec> buildDefaultSpecs(
     // ── ReplayGain & gapless ─────────────────────────────────────────────
     MpvPropertySpec<GaplessMode>.string(
       name: 'gapless-audio',
-      reactive: r.gaplessMode,
+      reactive: r.gapless,
       parse: (raw, _) => GaplessMode.fromMpv(raw),
-      reduce: (v, s) => s.copyWith(gaplessMode: v),
+      reduce: (v, s) => s.copyWith(gapless: v),
     ),
     // ── ReplayGain ───────────────────────────────────────────────────────
     // Aggregate cell: the 4 mpv properties (replaygain, replaygain-preamp,
@@ -603,15 +598,15 @@ List<MpvPropertySpec> buildDefaultSpecs(
     // ── Cover art ────────────────────────────────────────────────────────
     MpvPropertySpec<AudioDisplayMode>.string(
       name: 'audio-display',
-      reactive: r.audioDisplayMode,
+      reactive: r.audioDisplay,
       parse: (raw, _) => AudioDisplayMode.fromMpv(raw),
-      reduce: (v, s) => s.copyWith(audioDisplayMode: v),
+      reduce: (v, s) => s.copyWith(audioDisplay: v),
     ),
     MpvPropertySpec<CoverArtAutoMode>.string(
       name: 'cover-art-auto',
-      reactive: r.coverArtAutoMode,
+      reactive: r.coverArtAuto,
       parse: (raw, _) => CoverArtAutoMode.fromMpv(raw),
-      reduce: (v, s) => s.copyWith(coverArtAutoMode: v),
+      reduce: (v, s) => s.copyWith(coverArtAuto: v),
     ),
     MpvPropertySpec<Duration?>.string(
       name: 'image-display-duration',

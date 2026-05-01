@@ -34,10 +34,15 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Sets the active audio output device.
+  ///
+  /// The `description` field of [device] is ignored — the wrapper
+  /// resolves the description from `state.audioDevices` (mpv's
+  /// authoritative `audio-device-list`). Pass [AudioDevice]s built
+  /// from that list, or use the `name` only.
   Future<void> setAudioDevice(AudioDevice device) async {
     _checkNotDisposed();
     _prop('audio-device', device.name);
-    _updateField((s) => s.copyWith(audioDevice: device), _reactives.audioDevice, device);
+    _updateActiveAudioDevice(device.name);
   }
 
   /// Enables or disables pitch correction (mpv's `scaletempo` engine)
@@ -68,11 +73,11 @@ mixin _AudioModule on _PlayerBase {
 
   /// Enables or disables gapless playback. See [GaplessMode] for the
   /// available variants.
-  Future<void> setGaplessMode(GaplessMode mode) async {
+  Future<void> setGapless(GaplessMode mode) async {
     _checkNotDisposed();
     _prop('gapless-audio', mode.mpvValue);
     _updateField(
-        (s) => s.copyWith(gaplessMode: mode), _reactives.gaplessMode, mode);
+        (s) => s.copyWith(gapless: mode), _reactives.gapless, mode);
   }
 
   /// Sets the ReplayGain normalization configuration atomically.
@@ -129,29 +134,18 @@ mixin _AudioModule on _PlayerBase {
     _updateField((s) => s.copyWith(audioSpdif: codecs), _reactives.audioSpdif, codecs);
   }
 
-  /// Selects the audio track with [trackId].
+  /// Selects the audio track via a typed [AudioTrackMode] —
+  /// [AudioTrackMode.auto] defers to mpv's automatic choice
+  /// (container default or first audio track),
+  /// [AudioTrackMode.off] disables audio output entirely, and
+  /// [AudioTrackMode.id] selects a specific track by its mpv ID
+  /// (match an entry in [PlayerState.tracks]).
   ///
-  /// IDs match [MpvTrack.id] entries in [PlayerState.tracks] / [Player.stream.tracks].
-  /// State updates flow through the `current-tracks/audio` observer (no
-  /// optimistic update — mpv may reject an unknown id).
-  Future<void> setAudioTrack(int trackId) async {
+  /// State updates flow through the `current-tracks/audio` observer
+  /// (no optimistic update — mpv may reject an unknown id).
+  Future<void> setAudioTrack(AudioTrackMode mode) async {
     _checkNotDisposed();
-    _prop('aid', trackId.toString());
-  }
-
-  /// Reverts audio track selection to mpv's automatic choice (the
-  /// container's default track or the first audio track if no default
-  /// is flagged).
-  Future<void> setAudioTrackAuto() async {
-    _checkNotDisposed();
-    _prop('aid', 'auto');
-  }
-
-  /// Disables audio output entirely (`aid=no`). Useful for files where
-  /// the consumer wants only metadata / cover art without playing audio.
-  Future<void> setAudioTrackOff() async {
-    _checkNotDisposed();
-    _prop('aid', 'no');
+    _prop('aid', mode.mpvValue);
   }
 
   /// Forcibly reloads the audio output.
@@ -240,6 +234,22 @@ mixin _AudioModule on _PlayerBase {
   /// label (`@_mak_eq`, `@_mak_comp`, `@_mak_loud`, `@_mak_pt`).
   Future<void> setCustomAudioFilters(List<String> filters) async {
     _checkNotDisposed();
+    for (final f in filters) {
+      final trimmed = f.trimLeft();
+      if (!trimmed.startsWith('@')) continue;
+      final colon = trimmed.indexOf(':');
+      if (colon <= 1) continue;
+      final label = trimmed.substring(1, colon);
+      if (AudioFilterChainLabels.all.contains(label)) {
+        throw ArgumentError.value(
+          f,
+          'filters',
+          'Custom filter carries a wrapper-reserved label `@$label:` — use '
+              'the matching typed setter (setEqualizer / setCompressor / '
+              'setLoudness / setPitchTempo) instead.',
+        );
+      }
+    }
     final copy = List<String>.from(filters);
     _writeAfChain(customFilters: copy);
     _updateField(
@@ -275,20 +285,20 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Has no effect on files that already have a normal video track.
   /// Changes take effect on the next [open] call.
-  Future<void> setAudioDisplayMode(AudioDisplayMode mode) async {
+  Future<void> setAudioDisplay(AudioDisplayMode mode) async {
     _checkNotDisposed();
     _prop('audio-display', mode.mpvValue);
     _updateField(
-        (s) => s.copyWith(audioDisplayMode: mode), _reactives.audioDisplayMode, mode);
+        (s) => s.copyWith(audioDisplay: mode), _reactives.audioDisplay, mode);
   }
 
   /// Controls whether mpv automatically loads external cover art files.
   /// See [CoverArtAutoMode] for the available variants.
-  Future<void> setCoverArtAutoMode(CoverArtAutoMode mode) async {
+  Future<void> setCoverArtAuto(CoverArtAutoMode mode) async {
     _checkNotDisposed();
     _prop('cover-art-auto', mode.mpvValue);
     _updateField(
-        (s) => s.copyWith(coverArtAutoMode: mode), _reactives.coverArtAutoMode, mode);
+        (s) => s.copyWith(coverArtAuto: mode), _reactives.coverArtAuto, mode);
   }
 
   /// Sets how long an image frame (e.g. cover art) is held as a

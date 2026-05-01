@@ -28,22 +28,56 @@ final Map<String, String> _assetCache = {};
 // second writer could truncate the first writer's file mid-flush.
 final Map<String, Future<String>> _assetInflight = {};
 
-Future<String> normalizeUri(String uri) async {
+/// Resolution result for a URI passed through [resolveUri].
+///
+/// Carries the libmpv-loadable [uri] plus an optional [dispose] callback
+/// the caller MUST invoke if the URI is never handed to mpv (e.g. when
+/// the caller's `_disposed` flag flips between resolve and `loadfile`).
+/// For Android `content://` URIs the call detaches a file descriptor
+/// from the JVM side; without disposing on abort the FD is leaked for
+/// the process lifetime.
+///
+/// For URIs that don't allocate platform resources (asset://, plain
+/// paths, network URLs) [dispose] is `null`.
+class ResolvedUri {
+  const ResolvedUri(this.uri, [this.dispose]);
+
+  /// The URI as libmpv accepts it (`fd://N`, an absolute filesystem
+  /// path, or the original string for pass-through schemes).
+  final String uri;
+
+  /// Releases any platform resources allocated by the resolution.
+  /// `null` when the resolution allocated nothing.
+  final Future<void> Function()? dispose;
+}
+
+/// Resolves [uri] for libmpv and returns a [ResolvedUri] whose
+/// [ResolvedUri.dispose] callback must be invoked if the result is
+/// never passed to `loadfile`.
+Future<ResolvedUri> resolveUri(String uri) async {
   try {
     if (uri.startsWith('asset://')) {
-      return await _copyAssetToCache(uri);
+      return ResolvedUri(await _copyAssetToCache(uri));
     }
     if (Platform.isAndroid && uri.startsWith('content://')) {
       final fd = await _channel
           .invokeMethod<int>('openFileDescriptor', {'uri': uri});
       if (fd != null && fd > 0) {
-        return 'fd://$fd';
+        return ResolvedUri('fd://$fd', () => _closeAndroidFd(fd));
       }
     }
   } catch (e) {
-    debugPrint('mpv_audio_kit: normalizeUri error for $uri: $e');
+    debugPrint('mpv_audio_kit: resolveUri error for $uri: $e');
   }
-  return uri;
+  return ResolvedUri(uri);
+}
+
+Future<void> _closeAndroidFd(int fd) async {
+  try {
+    await _channel.invokeMethod<void>('closeFileDescriptor', {'fd': fd});
+  } catch (e) {
+    debugPrint('mpv_audio_kit: closeFileDescriptor failed for fd=$fd: $e');
+  }
 }
 
 Future<String> _copyAssetToCache(String uri) {
@@ -66,9 +100,11 @@ Future<String> _doCopyAsset(String uri) async {
 
     final data = await rootBundle.load(assetPath);
 
-    final safeName = assetPath
-        .replaceAll(Platform.pathSeparator, '_')
-        .replaceAll('/', '_');
+    // Both POSIX (`/`) and Windows (`\`) separators are flattened so the
+    // temp filename never contains directory parts. On POSIX
+    // `Platform.pathSeparator` is `/` and the second pass is a no-op.
+    final safeName =
+        assetPath.replaceAll(Platform.pathSeparator, '_').replaceAll('/', '_');
     final file = File(
         '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_asset_$safeName');
 

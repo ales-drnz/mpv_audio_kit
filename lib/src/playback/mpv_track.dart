@@ -10,7 +10,8 @@ part 'mpv_track.freezed.dart';
 /// `current-tracks/audio`).
 ///
 /// mpv reports every track in a multi-track file as a node-map: an
-/// integer [id] (used for switching via [Player.setAudioTrack]), a
+/// integer [id] (used for switching via
+/// `Player.setAudioTrack(AudioTrackMode.id(...))`), a
 /// [type] (`'audio'`, `'video'`, `'sub'`, etc.), and metadata like
 /// [title] / [lang] / [defaultTrack] / [forced]. Audio tracks
 /// additionally expose decoder-side parameters ([samplerate],
@@ -22,7 +23,8 @@ part 'mpv_track.freezed.dart';
 @freezed
 abstract class MpvTrack with _$MpvTrack {
   const factory MpvTrack({
-    /// mpv's integer track ID. Pass to [Player.setAudioTrack] to switch.
+    /// mpv's integer track ID. Wrap in [AudioTrackMode.id] and pass to
+    /// `Player.setAudioTrack` to switch to this track.
     required int id,
 
     /// `'audio'` / `'video'` / `'sub'`. Empty when mpv omits the field.

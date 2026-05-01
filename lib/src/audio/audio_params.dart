@@ -25,10 +25,18 @@ abstract class AudioParams with _$AudioParams {
     /// Human-readable channel layout description.
     String? hrChannels,
 
-    /// The codec identifier (e.g. `"flac"`, `"mp3"`).
+    /// Raw value of mpv's `audio-codec` property. The exact form
+    /// (short id vs descriptive name) varies by mpv build and codec
+    /// (`mp3` vs `mp3float`, `aac` vs `aac_lc`, `FLAC` vs
+    /// `FLAC (Free Lossless Audio Codec)`); treat as an opaque hint.
+    /// For reliable codec-family matching, do a case-insensitive
+    /// substring check against BOTH [codec] and [codecName].
     String? codec,
 
-    /// Descriptive codec name (e.g. `"FLAC (Free Lossless Audio Codec)"`).
+    /// Raw value of mpv's `audio-codec-name` property. Same volatility
+    /// caveat as [codec] — the short/descriptive split is not stable
+    /// across mpv versions, and one of the two may be absent on a
+    /// given file.
     String? codecName,
   }) = _AudioParams;
 }

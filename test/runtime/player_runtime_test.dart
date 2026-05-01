@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
 
 import 'dart:async';
@@ -206,23 +206,24 @@ void main() {
         return;
       }
 
-      final restartCompleter = Completer<void>();
-      final restartSub = player.stream.seekCompleted.listen((_) {
-        if (!restartCompleter.isCompleted) restartCompleter.complete();
-      });
-      try {
-        await player.open(Media(multitrackPath), play: false);
-        await restartCompleter.future
-            .timeout(const Duration(seconds: 5), onTimeout: () {
-          fail('seekCompleted never fired for multitrack MKA — bundled '
-              'libmpv may lack matroska demuxer / FLAC decoder');
-        });
-      } finally {
-        await restartSub.cancel();
-      }
-
-      final audioTracks =
-          player.state.tracks.where((t) => t.type == 'audio').toList();
+      // mpv emits `MP_EVENT_TRACKS_CHANGED` and `MPV_EVENT_PLAYBACK_RESTART`
+      // (= seekCompleted) on different code paths in `player/loadfile.c` —
+      // their arrival order at the client API is not guaranteed. Anchor
+      // on the typed `tracks` stream (which mirrors mpv's `track-list`
+      // property) so the assertion only runs once track-list has actually
+      // populated. Pre-fix this test occasionally read state.tracks before
+      // the property-change event landed.
+      final tracksFuture = _firstWhereWithTimeout(
+        player.stream.tracks,
+        (tracks) => tracks.where((t) => t.type == 'audio').length == 2,
+        timeout: const Duration(seconds: 10),
+        description:
+            '2 audio tracks from multitrack_two_audio.mka — bundled libmpv '
+            'may lack matroska demuxer / FLAC decoder',
+      );
+      await player.open(Media(multitrackPath), play: false);
+      final tracks = await tracksFuture;
+      final audioTracks = tracks.where((t) => t.type == 'audio').toList();
       expect(audioTracks.length, 2,
           reason:
               'fixture has 2 audio tracks (440Hz + 880Hz); track-list must '

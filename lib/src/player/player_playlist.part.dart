@@ -6,19 +6,24 @@ part of '../player.dart';
 /// Module for managing the media queue and track selection.
 mixin _PlaylistModule on _PlayerBase {
   /// Appends [media] to the end of the current playlist.
+  ///
+  /// `media.httpHeaders` is NOT applied automatically — the appended
+  /// entry may be loaded much later by mpv (after the current track
+  /// ends), and the wrapper has no synchronous moment to attach
+  /// per-file options. Consumers that need per-track HTTP headers on a
+  /// playlist should register an `on_load` hook
+  /// (see [_HooksModule.registerHook]) and set
+  /// `file-local-options/http-header-fields` from the handler.
   Future<void> add(Media media) async {
     _checkNotDisposed();
     _mediaCache[media.uri] = media;
-    if (media.httpHeaders != null) {
-      final headers = media.httpHeaders!.entries
-          .map((e) => '${e.key}: ${e.value}')
-          .join(',');
-      _opt('http-header-fields', headers);
+    final resolved = await _resolveUri(media.uri);
+    if (_disposed) {
+      await resolved.dispose?.call();
+      return;
     }
-    final normalizedUri = await _resolveUri(media.uri);
-    if (_disposed) return;
-    _mediaCache[normalizedUri] = media;
-    _command(['loadfile', normalizedUri, 'append']);
+    _mediaCache[resolved.uri] = media;
+    _command(['loadfile', resolved.uri, 'append']);
   }
 
   /// Removes the track at [index] from the playlist.
@@ -57,14 +62,20 @@ mixin _PlaylistModule on _PlayerBase {
   }
 
   /// Replaces the track at [index] with a new [media] item.
+  ///
+  /// `media.httpHeaders` is NOT applied automatically — see [add] for
+  /// the rationale and the recommended `on_load` hook pattern.
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
     _mediaCache[media.uri] = media;
-    final normalizedUri = await _resolveUri(media.uri);
-    if (_disposed) return;
-    _mediaCache[normalizedUri] = media;
+    final resolved = await _resolveUri(media.uri);
+    if (_disposed) {
+      await resolved.dispose?.call();
+      return;
+    }
+    _mediaCache[resolved.uri] = media;
     _command(['playlist-remove', index.toString()]);
-    _command(['loadfile', normalizedUri, 'insert-at', index.toString()]);
+    _command(['loadfile', resolved.uri, 'insert-at', index.toString()]);
   }
 
   /// Clears all tracks from the playlist.
@@ -76,26 +87,26 @@ mixin _PlaylistModule on _PlayerBase {
   }
 
   /// Sets the playlist repeat mode.
-  Future<void> setPlaylistMode(PlaylistMode mode) async {
+  Future<void> setLoop(LoopMode mode) async {
     _checkNotDisposed();
     switch (mode) {
-      case PlaylistMode.none:
+      case LoopMode.off:
         _prop('loop-file', 'no');
         _prop('loop-playlist', 'no');
-      case PlaylistMode.single:
+      case LoopMode.file:
         _prop('loop-file', 'inf');
         _prop('loop-playlist', 'no');
-      case PlaylistMode.loop:
+      case LoopMode.playlist:
         _prop('loop-file', 'no');
         _prop('loop-playlist', 'inf');
     }
-    // Optimistic update so `state.playlistMode` and the matching stream
+    // Optimistic update so `state.loop` and the matching stream
     // reflect the requested mode without waiting for the two `loop-file`
     // and `loop-playlist` observers to round-trip from mpv. Matches the
     // pattern used by every other setter in this package.
     _updateField(
-      (s) => s.copyWith(playlistMode: mode),
-      _playlistMode,
+      (s) => s.copyWith(loop: mode),
+      _loop,
       mode,
     );
   }

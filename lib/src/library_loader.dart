@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:ffi/ffi.dart';
-import 'package:mpv_audio_kit/src/internal/debug_log.dart';
+import 'package:mpv_audio_kit/src/utils/debug_log.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 import 'package:mpv_audio_kit/src/utils/orphan_handle_tracker.dart';
 
@@ -38,17 +38,11 @@ abstract final class MpvAudioKit {
   /// Pass an explicit path only when shipping a custom libmpv build
   /// alongside your app.
   ///
-  /// [hotRestartCleanup] (default: `true`) — enables the file-backed
-  /// orphan-handle tracker that cleans up libmpv handles leaked across
-  /// a Flutter Hot-Restart (the Dart VM is replaced but the native
-  /// process keeps running, so handles allocated by the previous VM
-  /// would otherwise stay alive and block exclusive-mode audio
-  /// devices on Windows). Set to `false` in `dart test` and other
-  /// multi-isolate scenarios where one VM creates the handles and
-  /// another (later) VM in the same process must not touch them —
-  /// the tracker uses the process pid to share state across VMs and
-  /// would mis-attribute handles disposed by the previous VM as
-  /// "orphans".
+  /// [hotRestartCleanup] (default: `true`) — recovers libmpv handles
+  /// leaked across a Flutter Hot-Restart so they don't block
+  /// exclusive-mode audio devices. Set to `false` in `dart test` and
+  /// other multi-VM scenarios that share a pid; the tracker would
+  /// otherwise mis-attribute prior-VM handles as orphans.
   static void ensureInitialized({
     String? libmpv,
     bool hotRestartCleanup = true,
@@ -101,9 +95,14 @@ abstract final class MpvAudioKit {
 
   /// Applies platform-specific native quirks.
   ///
-  /// On Linux and macOS, mpv requires the `LC_NUMERIC` locale to be set to "C"
-  /// to ensure proper parsing of floating-point numbers regardless of the
-  /// user's system language settings (e.g., using a dot instead of a comma).
+  /// Sets `LC_NUMERIC=C` on Linux and macOS so libmpv parses floats with
+  /// a dot regardless of the user's locale.
+  ///
+  /// **Process-wide side effect.** `setlocale` affects every C library
+  /// in this process — `printf("%f", ...)`, `strtod`, and any locale-
+  /// aware numeric formatter will switch to the C locale. Use the
+  /// `intl` package (or explicit `NumberFormat`) for user-facing
+  /// numeric formatting in apps that integrate this library.
   static void _applyPlatformQuirks() {
     if (Platform.isWindows || Platform.isAndroid) {
       return;

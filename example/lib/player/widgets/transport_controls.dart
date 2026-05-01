@@ -82,30 +82,30 @@ class TransportControls extends StatelessWidget {
             color: cs.primary,
           ),
           const SizedBox(width: 8),
-          StreamBuilder<PlaylistMode>(
-            stream: player.stream.playlistMode,
-            initialData: player.state.playlistMode,
+          StreamBuilder<LoopMode>(
+            stream: player.stream.loop,
+            initialData: player.state.loop,
             builder: (context, snap) {
-              final mode = snap.data ?? PlaylistMode.none;
+              final mode = snap.data ?? LoopMode.off;
               final (icon, active, tooltip) = switch (mode) {
-                PlaylistMode.none =>
+                LoopMode.off =>
                   (Icons.repeat_rounded, false, 'Repeat off'),
-                PlaylistMode.loop =>
+                LoopMode.playlist =>
                   (Icons.repeat_rounded, true, 'Repeat all'),
-                PlaylistMode.single =>
+                LoopMode.file =>
                   (Icons.repeat_one_rounded, true, 'Repeat one'),
               };
               // Cycle order matches every mainstream music app:
               // none → all → single → none.
               final next = switch (mode) {
-                PlaylistMode.none => PlaylistMode.loop,
-                PlaylistMode.loop => PlaylistMode.single,
-                PlaylistMode.single => PlaylistMode.none,
+                LoopMode.off => LoopMode.playlist,
+                LoopMode.playlist => LoopMode.file,
+                LoopMode.file => LoopMode.off,
               };
               return IconButton(
                 iconSize: (availableHeight * 0.045).clamp(22.0, 28.0),
                 icon: Icon(icon),
-                onPressed: () => player.setPlaylistMode(next),
+                onPressed: () => player.setLoop(next),
                 color: active
                     ? cs.primary
                     : cs.onSurfaceVariant.withValues(alpha: 0.7),

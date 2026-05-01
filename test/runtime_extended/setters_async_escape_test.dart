@@ -2,47 +2,24 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
-
-import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+  final fixturePath = defaultFixturePath();
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('Async escape hatches (getRawProperty / setRawProperty / sendRawCommand)',
       () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 500)
-          .timeout(const Duration(seconds: 5));
+      player = await buildPlayerWithFixture(fixturePath: fixturePath);
     });
 
     tearDownAll(() async {
@@ -67,5 +44,27 @@ final fixturePath =
       final after = await player.getRawProperty('volume');
       expect(double.parse(after!), 50.0);
     }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('setRawProperty surfaces mpv errors as MpvException', () async {
+      // Typo in the property name — mpv returns
+      // MPV_ERROR_PROPERTY_NOT_FOUND (-8). Pre-fix, the rc was
+      // discarded and the call silently succeeded.
+      await expectLater(
+        () => player.setRawProperty('voluem', '50'),
+        throwsA(isA<MpvException>()
+            .having((e) => e.name, 'name', 'voluem')
+            .having((e) => e.code, 'code', lessThan(0))),
+      );
+    }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test('sendRawCommand surfaces mpv errors as MpvException', () async {
+      // Unknown command — mpv returns MPV_ERROR_INVALID_PARAMETER.
+      await expectLater(
+        () => player.sendRawCommand(['this-command-does-not-exist']),
+        throwsA(isA<MpvException>()
+            .having((e) => e.name, 'name', 'this-command-does-not-exist')
+            .having((e) => e.code, 'code', lessThan(0))),
+      );
+    }, timeout: const Timeout(Duration(seconds: 5)));
   });
 }

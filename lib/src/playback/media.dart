@@ -49,6 +49,15 @@ abstract class Media with _$Media {
     Map<String, dynamic>? extras,
 
     /// Optional HTTP headers for network streams.
+    ///
+    /// Applied automatically by [Player.open] (the single-file replace
+    /// path is the only one that can synchronously attach the headers
+    /// to the next mpv load). For [Player.add], [Player.replace], and
+    /// [Player.openAll] entries beyond the first, register an
+    /// `on_load` hook and set
+    /// `file-local-options/http-header-fields` from the handler — the
+    /// wrapper does not auto-apply headers there to avoid races with
+    /// mpv's playlist advance.
     Map<String, String>? httpHeaders,
   }) = _Media;
 }

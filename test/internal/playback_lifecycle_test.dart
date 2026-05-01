@@ -3,8 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/internal/playback_lifecycle.dart';
-import 'package:mpv_audio_kit/src/models/enums.dart';
+import 'package:mpv_audio_kit/src/playback/playback_lifecycle_derive.dart';
+import 'package:mpv_audio_kit/src/playback/playback_lifecycle.dart';
 
 PlaybackLifecycle _derive({
   bool playing = false,

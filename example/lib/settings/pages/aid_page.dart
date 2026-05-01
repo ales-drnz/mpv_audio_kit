@@ -52,13 +52,12 @@ class AidPage extends StatelessWidget {
                   items: items,
                   onChanged: (v) {
                     if (v == null) return;
-                    if (v == -1) {
-                      player.setAudioTrackAuto();
-                    } else if (v == -2) {
-                      player.setAudioTrackOff();
-                    } else {
-                      player.setAudioTrack(v);
-                    }
+                    final mode = switch (v) {
+                      -1 => const AudioTrackMode.auto(),
+                      -2 => const AudioTrackMode.off(),
+                      _ => AudioTrackMode.id(v),
+                    };
+                    player.setAudioTrack(mode);
                   },
                 );
               },

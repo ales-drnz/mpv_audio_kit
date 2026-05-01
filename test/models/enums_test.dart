@@ -3,7 +3,13 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/models/enums.dart';
+import 'package:mpv_audio_kit/src/cover/audio_display_mode.dart';
+import 'package:mpv_audio_kit/src/audio/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/cover/cover_art_auto_mode.dart';
+import 'package:mpv_audio_kit/src/audio/gapless_mode.dart';
+import 'package:mpv_audio_kit/src/network/cache_config.dart' show CacheMode;
+import 'package:mpv_audio_kit/src/audio/replay_gain_config.dart'
+    show ReplayGainMode;
 
 /// Pairs every enum the wrapper exposes via `setX(...)` / `state.X` / mpv
 /// property dispatch with its documented fallback variant. The fallback

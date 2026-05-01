@@ -4,9 +4,32 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'enums.dart';
-
 part 'cache_config.freezed.dart';
+
+/// Network cache mode, mirroring `--cache=<auto|yes|no>`.
+enum CacheMode {
+  /// Auto (mpv default): enabled for network sources, disabled for local files.
+  auto('auto'),
+
+  /// Always cache.
+  yes('yes'),
+
+  /// Never cache.
+  no('no');
+
+  const CacheMode(this.mpvValue);
+
+  /// The wire-level string mpv expects.
+  final String mpvValue;
+
+  /// Maps a raw mpv-side value back to the enum. Unknown → [auto].
+  static CacheMode fromMpv(String raw) => switch (raw) {
+        'auto' => auto,
+        'yes' => yes,
+        'no' => no,
+        _ => auto,
+      };
+}
 
 /// Aggregate of mpv's five cache properties.
 ///

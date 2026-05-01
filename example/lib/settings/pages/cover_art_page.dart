@@ -14,8 +14,8 @@ class CoverArtPage extends StatelessWidget {
       children: [
         const PropertySectionHeader(title: 'Display'),
         StreamBuilder<AudioDisplayMode>(
-          stream: player.stream.audioDisplayMode,
-          initialData: player.state.audioDisplayMode,
+          stream: player.stream.audioDisplay,
+          initialData: player.state.audioDisplay,
           builder: (context, snap) {
             final val = snap.data ?? AudioDisplayMode.embeddedFirst;
             return DropdownPropertyCard<AudioDisplayMode>(
@@ -35,13 +35,13 @@ class CoverArtPage extends StatelessWidget {
                   child: Text('External first'),
                 ),
               ],
-              onChanged: (v) => v != null ? player.setAudioDisplayMode(v) : null,
+              onChanged: (v) => v != null ? player.setAudioDisplay(v) : null,
             );
           },
         ),
         StreamBuilder<CoverArtAutoMode>(
-          stream: player.stream.coverArtAutoMode,
-          initialData: player.state.coverArtAutoMode,
+          stream: player.stream.coverArtAuto,
+          initialData: player.state.coverArtAuto,
           builder: (context, snap) {
             final val = snap.data ?? CoverArtAutoMode.no;
             return DropdownPropertyCard<CoverArtAutoMode>(
@@ -59,7 +59,7 @@ class CoverArtPage extends StatelessWidget {
                 DropdownMenuItem(
                     value: CoverArtAutoMode.all, child: Text('All images')),
               ],
-              onChanged: (v) => v != null ? player.setCoverArtAutoMode(v) : null,
+              onChanged: (v) => v != null ? player.setCoverArtAuto(v) : null,
             );
           },
         ),

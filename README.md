@@ -764,9 +764,9 @@ await player.setAudioClientName('MyMusicApp');
 For containers with multiple audio tracks (e.g. MKV, MP4 with language tracks), select which one to decode:
 
 ```dart
-await player.setAudioTrack('1');   // First audio track
-await player.setAudioTrack('2');   // Second audio track
-await player.setAudioTrack('auto'); // Let mpv choose (default)
+await player.setAudioTrackMode('1');   // First audio track
+await player.setAudioTrackMode('2');   // Second audio track
+await player.setAudioTrackMode('auto'); // Let mpv choose (default)
 ```
 
 #### 6.8 Reload Audio

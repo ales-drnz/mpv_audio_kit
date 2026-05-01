@@ -3,9 +3,9 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/internal/audio_output_error.dart';
-import 'package:mpv_audio_kit/src/models/enums.dart';
-import 'package:mpv_audio_kit/src/models/events/mpv_player_error.dart';
+import 'package:mpv_audio_kit/src/audio/audio_output_error.dart';
+import 'package:mpv_audio_kit/src/audio/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/events/mpv_player_error.dart';
 
 void main() {
   group('buildAudioOutputError', () {

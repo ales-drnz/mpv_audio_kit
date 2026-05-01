@@ -5,23 +5,28 @@
 import 'dart:async';
 
 import 'package:mpv_audio_kit/src/cover/cover_art_raw.dart';
-import 'package:mpv_audio_kit/src/models/playback/playlist.dart';
-import 'package:mpv_audio_kit/src/models/audio/audio_device.dart';
-import 'package:mpv_audio_kit/src/models/audio/audio_params.dart';
-import 'package:mpv_audio_kit/src/models/cache_config.dart';
-import 'package:mpv_audio_kit/src/models/playback/chapter.dart';
-import 'package:mpv_audio_kit/src/models/dsp/compressor_config.dart';
-import 'package:mpv_audio_kit/src/models/enums.dart';
-import 'package:mpv_audio_kit/src/models/dsp/equalizer_config.dart';
-import 'package:mpv_audio_kit/src/models/dsp/loudness_config.dart';
-import 'package:mpv_audio_kit/src/models/playback/mpv_track.dart';
-import 'package:mpv_audio_kit/src/models/dsp/pitch_tempo_config.dart';
-import 'package:mpv_audio_kit/src/models/replay_gain_config.dart';
-import 'package:mpv_audio_kit/src/models/events/mpv_log_entry.dart';
-import 'package:mpv_audio_kit/src/models/events/mpv_hook_event.dart';
-import 'package:mpv_audio_kit/src/models/events/mpv_prefetch_state.dart';
-import 'package:mpv_audio_kit/src/models/events/mpv_player_error.dart';
-import 'package:mpv_audio_kit/src/internal/playback_lifecycle.dart';
+import 'package:mpv_audio_kit/src/playback/loop_mode.dart';
+import 'package:mpv_audio_kit/src/playback/playlist.dart';
+import 'package:mpv_audio_kit/src/audio/audio_device.dart';
+import 'package:mpv_audio_kit/src/audio/audio_params.dart';
+import 'package:mpv_audio_kit/src/cover/audio_display_mode.dart';
+import 'package:mpv_audio_kit/src/audio/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/cover/cover_art_auto_mode.dart';
+import 'package:mpv_audio_kit/src/audio/gapless_mode.dart';
+import 'package:mpv_audio_kit/src/network/cache_config.dart';
+import 'package:mpv_audio_kit/src/playback/chapter.dart';
+import 'package:mpv_audio_kit/src/playback/playback_lifecycle.dart';
+import 'package:mpv_audio_kit/src/dsp/compressor_config.dart';
+import 'package:mpv_audio_kit/src/dsp/equalizer_config.dart';
+import 'package:mpv_audio_kit/src/dsp/loudness_config.dart';
+import 'package:mpv_audio_kit/src/playback/mpv_track.dart';
+import 'package:mpv_audio_kit/src/dsp/pitch_tempo_config.dart';
+import 'package:mpv_audio_kit/src/audio/replay_gain_config.dart';
+import 'package:mpv_audio_kit/src/events/mpv_log_entry.dart';
+import 'package:mpv_audio_kit/src/events/mpv_hook_event.dart';
+import 'package:mpv_audio_kit/src/events/mpv_prefetch_state.dart';
+import 'package:mpv_audio_kit/src/events/mpv_player_error.dart';
+import 'package:mpv_audio_kit/src/playback/playback_lifecycle_derive.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
 
@@ -43,7 +48,7 @@ class PlayerStream {
     required ReactiveProperty<bool> buffering,
     required ReactiveProperty<bool> completed,
     required ReactiveProperty<Playlist> playlist,
-    required ReactiveProperty<PlaylistMode> playlistMode,
+    required ReactiveProperty<LoopMode> loop,
     required ReactiveProperty<List<AudioDevice>> audioDevices,
     required ReactiveProperty<Map<String, String>> metadata,
     required ReactiveProperty<double> bufferingPercentage,
@@ -77,7 +82,7 @@ class PlayerStream {
         // and there is no codec / codec-name sibling on the output side, so
         // the aggregator is a direct passthrough of the node reactive.
         audioOutParams = reactives.audioOutParamsNode.stream,
-        gaplessMode = reactives.gaplessMode.stream,
+        gapless = reactives.gapless.stream,
         replayGain = reactives.replayGain.stream,
         volumeGain = reactives.volumeGain.stream,
         cache = reactives.cache.stream,
@@ -102,8 +107,8 @@ class PlayerStream {
         audioClientName = reactives.audioClientName.stream,
         audioDriver = reactives.audioDriver.stream,
         audioOutputState = reactives.audioOutputState.stream,
-        audioDisplayMode = reactives.audioDisplayMode.stream,
-        coverArtAutoMode = reactives.coverArtAutoMode.stream,
+        audioDisplay = reactives.audioDisplay.stream,
+        coverArtAuto = reactives.coverArtAuto.stream,
         imageDisplayDuration = reactives.imageDisplayDuration.stream,
         prefetchState = reactives.prefetchState.stream,
         prefetchPlaylist = reactives.prefetchPlaylist.stream,
@@ -143,7 +148,7 @@ class PlayerStream {
         playbackLifecycle =
             _playbackLifecycleStream(reactives, buffering, completed),
         playlist = playlist.stream,
-        playlistMode = playlistMode.stream,
+        loop = loop.stream,
         audioDevices = audioDevices.stream,
         metadata = metadata.stream,
         bufferingPercentage = bufferingPercentage.stream,
@@ -251,8 +256,8 @@ class PlayerStream {
   /// Emits the buffer fill percentage (0.0–100.0).
   final Stream<double> bufferingPercentage;
 
-  /// Emits the current [PlaylistMode] when it changes.
-  final Stream<PlaylistMode> playlistMode;
+  /// Emits the current [LoopMode] when it changes.
+  final Stream<LoopMode> loop;
 
   /// Emits `true` when shuffle mode is enabled.
   final Stream<bool> shuffle;
@@ -285,7 +290,7 @@ class PlayerStream {
   final Stream<Map<String, String>> metadata;
 
   /// Emits the gapless playback mode.
-  final Stream<GaplessMode> gaplessMode;
+  final Stream<GaplessMode> gapless;
 
   /// Aggregate ReplayGain configuration — emits a fresh
   /// [ReplayGainConfig] whenever any of mode / preamp / clip /
@@ -396,10 +401,10 @@ class PlayerStream {
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
   /// Emits the current cover-art display mode.
-  final Stream<AudioDisplayMode> audioDisplayMode;
+  final Stream<AudioDisplayMode> audioDisplay;
 
   /// Emits the current external cover-art auto-load mode.
-  final Stream<CoverArtAutoMode> coverArtAutoMode;
+  final Stream<CoverArtAutoMode> coverArtAuto;
 
   /// Emits the current `image-display-duration` value. `null` = mpv's `inf`
   /// (frame held indefinitely); finite Duration = explicit hold time.

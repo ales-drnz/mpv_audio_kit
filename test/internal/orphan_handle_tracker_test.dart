@@ -11,7 +11,7 @@
 // remove(0xdeadbeef) must complete without throwing, and the file at
 // `<tmp>/mpv_audio_kit_refs_<pid>.txt` must exist after init.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
 
 import 'dart:ffi';

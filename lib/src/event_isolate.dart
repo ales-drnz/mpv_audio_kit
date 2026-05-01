@@ -129,10 +129,25 @@ void _isolateEntry(SendPort initialReplyPort) {
       toMain = message.toMain;
       lib = mpv.MpvLibrary.open(message.libraryPath);
       handle = Pointer<mpv.MpvHandle>.fromAddress(message.handleAddress);
-      // Start the blocking event loop.
+      // Blocking call — returns when `_runEventLoop` breaks out of
+      // its loop on MPV_EVENT_SHUTDOWN (sent by mpv after the main
+      // isolate's `quit` command in dispose()).
       _runEventLoop(
           lib!, handle!, toMain!, () => running, lastValues, lastTimestamps);
+      // Close `fromMain` so the listener subscription drops its hold
+      // on the isolate event loop. With no other ReceivePort kept
+      // alive, the VM tears the isolate down and the
+      // `addOnExitListener` registered in `MpvEventIsolate.start()`
+      // fires. We deliberately do NOT call `Isolate.exit()`: it
+      // bypasses the per-isolate finalizers that release the
+      // libmpv-side state we loaded via `MpvLibrary.open(...)` in
+      // this isolate, which leaves subsequent Player creations
+      // observing degraded process-wide libmpv state.
+      fromMain.close();
     } else if (message is _ShutdownMessage) {
+      // Defensive: only reachable if `_InitMessage` never arrived
+      // (race during isolate spawn). The flag-based exit on
+      // `_runEventLoop` is the steady-state path.
       running = false;
       fromMain.close();
     }
@@ -148,12 +163,6 @@ void _runEventLoop(
   Map<String, int> lastTimestamps,
 ) {
   while (isRunning()) {
-    // Short timeout (50 ms) so the cooperative-shutdown signal from
-    // the main isolate is picked up promptly by the next iteration
-    // — avoids racing `mpv_terminate_destroy` against an in-flight
-    // `mpv_wait_event` call. mpv produces audio-frame ticks at
-    // ~10 ms granularity so 50 ms here is well under the
-    // event-emission cadence.
     final event = lib.mpvWaitEvent(handle, 0.05);
     final id = event.ref.eventId;
 
@@ -386,6 +395,7 @@ class MpvEventIsolate {
   Isolate? _isolate;
   SendPort? _toIsolate;
   ReceivePort? _fromIsolate;
+  ReceivePort? _exitPort;
   final _events = StreamController<MpvIsolateEvent>.broadcast();
 
   Stream<MpvIsolateEvent> get events => _events.stream;
@@ -406,6 +416,17 @@ class MpvEventIsolate {
     _toIsolate = await completer.future;
     await sub.cancel();
     initPort.close();
+
+    // Register the exit listener BEFORE the isolate can possibly exit.
+    // The isolate self-terminates with `Isolate.exit()` after
+    // `_runEventLoop` returns on `MPV_EVENT_SHUTDOWN`, which can race
+    // a `stop()` call on the main side: if we registered the exit
+    // listener inside `stop()` we'd potentially attach it AFTER the
+    // isolate had already exited, and `addOnExitListener` on an
+    // already-dead isolate never fires — leaving `stop()` to fall
+    // through its 2 s safety timeout on every clean teardown.
+    _exitPort = ReceivePort();
+    _isolate!.addOnExitListener(_exitPort!.sendPort);
 
     // Open the main ReceivePort, tell the isolate to start.
     final fromIsolate = ReceivePort();
@@ -448,33 +469,31 @@ class MpvEventIsolate {
     _fromIsolate = null;
     if (!_events.isClosed) _events.close();
 
+    final exitPort = _exitPort;
     final isolate = _isolate;
-    if (isolate == null) {
+    if (isolate == null || exitPort == null) {
       _toIsolate = null;
+      _exitPort = null;
       return;
     }
 
-    // Register the exit listener BEFORE we ask the isolate to leave;
-    // the port must be alive when the isolate posts its termination.
-    final exitPort = ReceivePort();
-    isolate.addOnExitListener(exitPort.sendPort);
-
-    // Cooperative shutdown only — sending [_ShutdownMessage] flips the
-    // isolate's `running` flag, the next mpv_wait_event poll (50 ms
-    // max) returns, the loop body exits, the isolate's main function
-    // completes, and the VM tears the isolate down cleanly. We do NOT
-    // call [Isolate.kill] here: forcibly killing an isolate while it
-    // is inside an FFI call to libmpv produces a non-deterministic
-    // SIGSEGV at process teardown — a price the cooperative path
-    // does not pay.
+    // Belt-and-braces: by the time `stop()` runs, the main side has
+    // already sent the `quit` mpv command (in dispose()), so the
+    // isolate's `_runEventLoop` is on its way out via
+    // `MPV_EVENT_SHUTDOWN`. The `_ShutdownMessage` here only matters
+    // for the corner case where `_InitMessage` somehow never reached
+    // the isolate. We do NOT call `Isolate.kill`: killing an isolate
+    // mid-FFI to libmpv produces a non-deterministic SIGSEGV at
+    // process teardown.
     _toIsolate?.send(_ShutdownMessage());
     _isolate = null;
     _toIsolate = null;
+    _exitPort = null;
 
-    // Wait for the isolate to actually exit. ~100 ms in practice
-    // (one mpv_wait_event poll cycle + microtask drain). The
-    // 2-second cap is a safety net for a libmpv stuck in a
-    // pathological state — we'd rather return than hang dispose().
+    // The exit listener was attached in `start()` so it is armed
+    // before the isolate can possibly self-exit via `Isolate.exit()`.
+    // The 2 s timeout is a safety net for a pathologically stuck
+    // libmpv — clean exits land in single-digit ms.
     try {
       await exitPort.first.timeout(_kIsolateExitTimeout);
     } on TimeoutException {

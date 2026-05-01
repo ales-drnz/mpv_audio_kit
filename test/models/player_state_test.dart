@@ -26,8 +26,8 @@ void main() {
 
     test('playlist starts empty', () {
       const s = PlayerState();
-      expect(s.playlist, const Playlist.empty());
-      expect(s.playlistMode, PlaylistMode.none);
+      expect(s.playlist, Playlist.empty);
+      expect(s.loop, LoopMode.off);
     });
 
     test('Duration fields default to mpv-aligned values', () {
@@ -50,13 +50,13 @@ void main() {
       // Regression test for 0.1.0: the enum migration must preserve
       // the previous string defaults' semantics.
       const s = PlayerState();
-      expect(s.gaplessMode, GaplessMode.weak,
+      expect(s.gapless, GaplessMode.weak,
           reason: 'matches mpv default `gapless-audio=weak`');
       expect(s.replayGain.mode, ReplayGainMode.no);
       expect(s.cache.mode, CacheMode.auto);
-      expect(s.audioDisplayMode, AudioDisplayMode.embeddedFirst,
+      expect(s.audioDisplay, AudioDisplayMode.embeddedFirst,
           reason: 'matches mpv default `audio-display=embedded-first`');
-      expect(s.coverArtAutoMode, CoverArtAutoMode.no,
+      expect(s.coverArtAuto, CoverArtAutoMode.no,
           reason:
               'library default is `no` (mpv default would be `exact`); '
               'we disable to avoid implicit file scanning');
@@ -163,8 +163,8 @@ void main() {
     });
 
     test('enum fields participate in equality', () {
-      const a = PlayerState(gaplessMode: GaplessMode.weak);
-      final b = a.copyWith(gaplessMode: GaplessMode.yes);
+      const a = PlayerState(gapless: GaplessMode.weak);
+      final b = a.copyWith(gapless: GaplessMode.yes);
       expect(a, isNot(b));
     });
   });

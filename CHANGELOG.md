@@ -1,4 +1,4 @@
-## [0.1.0] - WIP
+## [0.1.0]
 
 Major Dart-side refactor. Native build pipeline is unchanged. Six
 structural problems reported in the 0.0.9 review have been resolved
@@ -7,7 +7,128 @@ public API consolidated runtime-mutable properties as typed setters,
 collapsed redundant granular config setters into atomic config
 objects, replaced the stringly-typed track API with a typed model,
 and added 21 new observable mpv properties for audiobook / podcast /
-streaming use cases.
+streaming use cases. A pre-release code review pass (post-WIP) closed
+two HIGH and seven MEDIUM correctness findings — the highlights are
+listed under "Fixed" below.
+
+### Fixed — HTTP header isolation across `open()` calls
+
+`Media.httpHeaders` previously routed through
+`mpv_set_option_string('http-header-fields', …)`, a GLOBAL option
+that persisted for the entire `Player` lifetime. A subsequent
+`open(media2)` without headers loaded `media2` with `media1`'s
+headers — leaking authentication tokens (e.g. `X-Plex-Token`) onto
+unrelated downstream loads. Per-file headers now route through
+`file-local-options/http-header-fields`, which mpv resets at the
+file boundary. `Player.add` / `Player.replace` / `Player.openAll`
+no longer auto-apply the per-file headers (they cannot synchronously
+attach the option to a track that may load arbitrarily later); use
+an `on_load` hook for those paths — see [Media.httpHeaders] dartdoc.
+
+### Fixed — Android `content://` FD leak
+
+`Player.open` / `Player.add` / `Player.replace` / `Player.openAll`
+now release the JVM-detached file descriptor when the load is
+aborted (e.g. `_disposed` flips between `_resolveUri` and `loadfile`).
+The Kotlin plugin's `closeFileDescriptor` handler now actually
+closes the FD via `ParcelFileDescriptor.adoptFd(fd).close()`.
+
+### Fixed — `Player.openAll` resolves URIs once per item
+
+Previously each entry's URI was resolved twice (once during caching,
+once during the `loadfile` loop), which leaked one Android `content://`
+FD per track. Single-pass resolution, abort path frees pending FDs
+on dispose race.
+
+### Fixed — Active `AudioDevice.description` no longer mirrors the name
+
+`state.audioDevice.description` previously held a duplicate of the
+device name ("coreaudio/AppleHDA:1") instead of the human-readable
+description from `audio-device-list` ("Built-in Output"). The
+property now lives outside the registry and cross-references
+`state.audioDevices` to recover the proper description, with a fallback
+to the name on cache miss (boot, before the list arrives).
+`Player.setAudioDevice` ignores the `description` field of the
+[AudioDevice] argument — pass instances built from
+`state.audioDevices`, or use the `name` only.
+
+### Fixed — `Playlist.hashCode` honours value equality
+
+`Playlist.hashCode` used to return `medias.hashCode ^ index.hashCode`,
+which falls back to `List`'s identity-based hash. Two playlists
+with structurally-equal but separately-allocated `medias` lists
+were `==` but had different hashCodes — violating
+`a == b ⇒ a.hashCode == b.hashCode`. The hash is now
+`Object.hashAll(medias) ^ index.hashCode`, so `Set<Playlist>` and
+`Map<Playlist, …>` collapse equal entries correctly.
+
+### Fixed — `setRawProperty` / `sendRawCommand` surface mpv errors
+
+The two escape hatches used to discard mpv's return code, so a typo
+in the property name (`'voluem'`) or an unknown command silently
+no-op'd. Both now throw the new [MpvException] with `name`, mpv
+`code`, and the human-readable `message` from `mpv_error_string`.
+
+### Fixed — `setCustomAudioFilters` rejects wrapper-reserved labels
+
+A custom filter carrying `@_mak_eq:` / `@_mak_comp:` / `@_mak_loud:`
+/ `@_mak_pt:` would silently shadow the matching typed setter on
+the next `composeAfChain` pass. The setter now throws
+[ArgumentError] up-front pointing at the offending entry.
+
+### Fixed — `Player.dispose()` no longer pays a 2 s isolate-stop timeout
+
+Every `Player.dispose()` call used to spend ~2 seconds inside
+`MpvEventIsolate.stop()` regardless of how clean the shutdown was.
+flutter_test's surface symptom was a sporadic
+`(tearDownAll) - did not complete` on long-cycle tests
+(`setters_hooks_test.dart`, `setters_playback_test.dart`); the
+underlying cost was paid silently on every dispose.
+
+Root cause was a registration race: the isolate self-exits via
+`Isolate.exit()` the instant `_runEventLoop` returns on
+`MPV_EVENT_SHUTDOWN`, and the main side used to register
+`addOnExitListener` only inside `stop()` — by which point the
+isolate could have already exited. `addOnExitListener` on an
+already-dead isolate never fires, so the await fell through to the
+2 s safety timeout every time.
+
+The exit listener is now registered in `start()`, before any
+shutdown signal can reach the isolate. With both pieces in place
+(the isolate calls `Isolate.exit()` deterministically on shutdown,
+and the main side has the listener armed beforehand), clean
+disposes complete in ~1 ms.
+
+### BREAKING — `Playlist` migrated to Freezed; `Playlist.empty()` is now `Playlist.empty`
+
+`Playlist` is now a Freezed model so its equality and `copyWith`
+follow the same contract as the rest of the model layer. Two
+consequences:
+
+- `Playlist.empty()` factory is replaced by a const static field
+  `Playlist.empty`. Migrate `const Playlist.empty()` →
+  `Playlist.empty`. The runtime behaviour is identical (zero medias,
+  index 0); only the call shape changes.
+- `Playlist.copyWith(medias: ..., index: ...)` is generated, so
+  consumers no longer need to ferry the unchanged field through the
+  positional constructor.
+
+The positional `Playlist(medias, {index})` constructor is preserved.
+
+### Added — `MpvException`
+
+Public exception type thrown by [Player.setRawProperty] and
+[Player.sendRawCommand] when libmpv rejects the request. Carries
+`name`, mpv `code`, and `message`.
+
+### Changed — Documented `AudioParams.codec` / `codecName` volatility
+
+The two fields now mirror mpv's raw `audio-codec` / `audio-codec-name`
+without claiming a stable short-vs-descriptive split — both vary by
+mpv build (`mp3` vs `mp3float`, `aac` vs `aac_lc`) and either may be
+empty on a given file. The dartdoc now recommends a
+case-insensitive substring match against BOTH fields for codec-family
+detection.
 
 ### Added — path / URI introspection (4 properties)
 
@@ -114,14 +235,19 @@ The single stringly-typed `state.audioTrack: String` (`'auto'` /
 - **`state.currentAudioTrack: MpvTrack?`** + `Player.stream.currentAudioTrack`
   — the active audio track, `null` when none is selected. Backed by
   mpv's `current-tracks/audio`.
-- **`Player.setAudioTrack(int trackId)`** — switches to the track
-  with that id. Replaces the old `setAudioTrack(String)` that
-  accepted `'auto'` / `'no'` / a numeric string.
-- **`Player.setAudioTrackAuto()`** — defers to mpv's automatic
-  choice (the container's default-flagged track, or the first audio
-  track if none is flagged).
-- **`Player.setAudioTrackOff()`** — disables audio output entirely
-  (`aid=no`).
+- **`Player.setAudioTrack(AudioTrackMode mode)`** — single setter
+  taking a sealed `AudioTrackMode`:
+  - `AudioTrackMode.auto()` defers to mpv's automatic choice
+    (container default-flagged track, or first audio track).
+  - `AudioTrackMode.off()` disables audio output entirely
+    (`aid=no`).
+  - `AudioTrackMode.id(int trackId)` selects a specific track by
+    its mpv ID.
+
+  Replaces both the old stringly-typed `setAudioTrack(String)` from
+  0.0.x and the three-method shape (`setAudioTrack(int)` /
+  `setAudioTrackAuto()` / `setAudioTrackOff()`) that briefly existed
+  in pre-release 0.1.0 builds.
 
 Migration:
 ```dart
@@ -131,9 +257,9 @@ player.setAudioTrack('auto');
 player.setAudioTrack('no');
 
 // 0.1.0
-await player.setAudioTrack(1);
-await player.setAudioTrackAuto();
-await player.setAudioTrackOff();
+await player.setAudioTrack(const AudioTrackMode.id(1));
+await player.setAudioTrack(const AudioTrackMode.auto());
+await player.setAudioTrack(const AudioTrackMode.off());
 ```
 
 ### BREAKING — config aggregates (`ReplayGainConfig`, `CacheConfig`)

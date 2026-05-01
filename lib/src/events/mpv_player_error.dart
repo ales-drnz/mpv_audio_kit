@@ -4,7 +4,10 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../mpv_bindings.dart';
+// `mpv_bindings.dart` defines its own integer-typed `MpvEndFileReason`
+// (auto-generated FFI). The enum below shadows that name, so we hide
+// the bindings symbol to keep the import free of name conflicts.
+import '../mpv_bindings.dart' hide MpvEndFileReason;
 
 part 'mpv_player_error.freezed.dart';
 

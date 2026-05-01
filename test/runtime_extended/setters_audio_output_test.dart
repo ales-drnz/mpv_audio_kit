@@ -2,46 +2,23 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
-
-import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+  final fixturePath = defaultFixturePath();
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('Audio output config setters end-to-end', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 500)
-          .timeout(const Duration(seconds: 5));
+      player = await buildPlayerWithFixture(fixturePath: fixturePath);
     });
 
     tearDownAll(() async {
@@ -83,6 +60,30 @@ final fixturePath =
       const dev = AudioDevice('null', 'Null Driver');
       await player.setAudioDevice(dev);
       expect(player.state.audioDevice.name, 'null');
+    }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('audioDevice description is sourced from audioDevices list, '
+        'not duplicated from name', () async {
+      // Regression: the spec used to parse `audio-device` as
+      // AudioDevice(raw, raw) — both name AND description were the
+      // raw mpv name. With the cross-reference fix the description
+      // mirrors the entry in `state.audioDevices` (parsed from the
+      // `audio-device-list` node observer).
+      //
+      // mpv always exposes a built-in 'auto' device with description
+      // 'Autoselect device' across every backend on every platform —
+      // it's the most stable assertion target.
+      await player.setAudioDevice(const AudioDevice('auto', 'whatever'));
+      // Allow the property observer round-trip to land.
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      final autoEntry = player.state.audioDevices
+          .firstWhere((d) => d.name == 'auto',
+              orElse: () => const AudioDevice('auto', 'auto'));
+      expect(player.state.audioDevice.name, 'auto');
+      expect(player.state.audioDevice.description, autoEntry.description,
+          reason: 'active device description must match the audioDevices '
+              'entry, not be a copy of the name');
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('reloadAudio is a fire-and-forget command (no state mutation)',

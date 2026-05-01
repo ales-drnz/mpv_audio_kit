@@ -4,7 +4,7 @@
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:mpv_audio_kit/src/internal/node_parsers.dart';
+import 'package:mpv_audio_kit/src/reactive/node_parsers.dart';
 
 void main() {
   group('parsePlaylistNode', () {
@@ -15,7 +15,7 @@ void main() {
           {'filename': 'b.mp3'},
         ],
         mediaCache: const {},
-        previous: const Playlist.empty(),
+        previous: Playlist.empty,
       );
       expect(p.medias.length, 2);
       expect(p.medias[0].uri, 'a.mp3');
@@ -30,7 +30,7 @@ void main() {
           {'filename': 'b.mp3', 'current': true},
         ],
         mediaCache: const {},
-        previous: const Playlist.empty(),
+        previous: Playlist.empty,
       );
       expect(p.index, 1);
     });
@@ -43,7 +43,7 @@ void main() {
           {'filename': 'a.mp3', 'current': true},
         ],
         mediaCache: {'a.mp3': cached},
-        previous: const Playlist.empty(),
+        previous: Playlist.empty,
       );
       expect(p.medias[0], same(cached),
           reason:
@@ -58,7 +58,7 @@ void main() {
           {'filename': 'unknown.mp3'},
         ],
         mediaCache: const {},
-        previous: const Playlist.empty(),
+        previous: Playlist.empty,
       );
       expect(p.medias[0], Media('unknown.mp3'));
     });
@@ -103,7 +103,7 @@ void main() {
       final p = parsePlaylistNode(
         raw: const [],
         mediaCache: const {},
-        previous: const Playlist.empty(),
+        previous: Playlist.empty,
       );
       expect(p.medias, isEmpty);
       expect(p.index, 0);
@@ -134,7 +134,7 @@ void main() {
           {'filename': 'b.mp3', 'current': true},
         ],
         mediaCache: const {},
-        previous: const Playlist.empty(),
+        previous: Playlist.empty,
       );
       expect(p.medias.length, 3);
       expect(p.medias[0].uri, 'a.mp3');

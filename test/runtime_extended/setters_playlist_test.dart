@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-@TestOn('mac-os || linux')
+@TestOn('mac-os || linux || windows')
 library;
 
 import 'dart:io';
@@ -101,7 +101,7 @@ final fixturePath =
       expect(player.state.playlist.medias, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('setShuffle / setPlaylistMode round-trip', () async {
+    test('setShuffle / setLoop round-trip', () async {
       await player.openAll(
         [Media(fixturePath), Media(fixturePath)],
         play: false,
@@ -115,12 +115,12 @@ final fixturePath =
       await player.setShuffle(false);
       expect(player.state.shuffle, isFalse);
 
-      await player.setPlaylistMode(PlaylistMode.single);
-      expect(player.state.playlistMode, PlaylistMode.single);
-      await player.setPlaylistMode(PlaylistMode.loop);
-      expect(player.state.playlistMode, PlaylistMode.loop);
-      await player.setPlaylistMode(PlaylistMode.none);
-      expect(player.state.playlistMode, PlaylistMode.none);
+      await player.setLoop(LoopMode.file);
+      expect(player.state.loop, LoopMode.file);
+      await player.setLoop(LoopMode.playlist);
+      expect(player.state.loop, LoopMode.playlist);
+      await player.setLoop(LoopMode.off);
+      expect(player.state.loop, LoopMode.off);
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('next() / previous() advance the playlist index', () async {
