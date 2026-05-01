@@ -9,22 +9,10 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import '../_helpers/libmpv_resolver.dart';
 
 void main() {
-  String? resolveLibmpv() {
-    final root = Directory.current.path;
-    if (Platform.isMacOS) {
-      final p = '$root/macos/libs/libmpv.dylib';
-      return File(p).existsSync() ? p : null;
-    }
-    if (Platform.isLinux) {
-      final p = '$root/linux/libs/libmpv.so';
-      return File(p).existsSync() ? p : null;
-    }
-    return null;
-  }
-
-  // 5-second fixture lets sustained-playback observers (audioBitrate,
+// 5-second fixture lets sustained-playback observers (audioBitrate,
   // bufferDuration, audioPts, position) emit several values before EOF.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_5s.flac';

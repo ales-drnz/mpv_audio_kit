@@ -9,22 +9,10 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import '../_helpers/libmpv_resolver.dart';
 
 void main() {
-  String? resolveLibmpv() {
-    final root = Directory.current.path;
-    if (Platform.isMacOS) {
-      final p = '$root/macos/libs/libmpv.dylib';
-      return File(p).existsSync() ? p : null;
-    }
-    if (Platform.isLinux) {
-      final p = '$root/linux/libs/libmpv.so';
-      return File(p).existsSync() ? p : null;
-    }
-    return null;
-  }
-
-  final fixturePath =
+final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
 
   setUpAll(() {
@@ -133,6 +121,81 @@ void main() {
       expect(player.state.playlistMode, PlaylistMode.loop);
       await player.setPlaylistMode(PlaylistMode.none);
       expect(player.state.playlistMode, PlaylistMode.none);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('next() / previous() advance the playlist index', () async {
+      // 3-item playlist so next/previous have a clear before/after to
+      // anchor on. jump(0) is the documented entry point; next/prev
+      // are the convenience wrappers tested here.
+      await player.openAll(
+        [Media(fixturePath), Media(fixturePath), Media(fixturePath)],
+        play: false,
+      );
+      await player.stream.playlist
+          .firstWhere((p) => p.medias.length == 3)
+          .timeout(const Duration(seconds: 5));
+
+      // Pre-subscribe to the index transition before each command —
+      // the playlist observer can fire before a late firstWhere binds.
+      Future<void> waitFor(int idx) => player.stream.playlist
+          .firstWhere((p) => p.index == idx)
+          .timeout(const Duration(seconds: 5));
+
+      final advancedTo1 = waitFor(1);
+      await player.next();
+      await advancedTo1;
+      expect(player.state.playlist.index, 1);
+
+      final advancedTo2 = waitFor(2);
+      await player.next();
+      await advancedTo2;
+      expect(player.state.playlist.index, 2);
+
+      final backTo1 = waitFor(1);
+      await player.previous();
+      await backTo1;
+      expect(player.state.playlist.index, 1);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('replace(index, media) swaps the entry without changing the length',
+        () async {
+      // Use two distinct fixture URIs so the replaced entry is
+      // observably different. The primary fixture above is
+      // sine_440hz_1s.wav; with_chapters.mka serves as the alt.
+      final altPath =
+          '${Directory.current.path}/test/fixtures/with_chapters.mka';
+      if (!File(altPath).existsSync()) {
+        markTestSkipped('Alt fixture missing for replace()');
+        return;
+      }
+
+      // Reset to a known 2-item playlist of the primary fixture.
+      await player.openAll(
+        [Media(fixturePath), Media(fixturePath)],
+        play: false,
+      );
+      await player.stream.playlist
+          .firstWhere((p) => p.medias.length == 2)
+          .timeout(const Duration(seconds: 5));
+
+      // After replace(1, alt), the playlist must still have length 2
+      // and entry 1 must point at the alt URI. The wrapper implements
+      // this as `playlist-remove 1` + `loadfile insert-at 1`, so we
+      // wait for the entry's URI to flip while length stays 2.
+      final swapped = player.stream.playlist
+          .firstWhere((p) =>
+              p.medias.length == 2 &&
+              p.medias[1].uri.endsWith('with_chapters.mka'))
+          .timeout(const Duration(seconds: 10));
+      await player.replace(1, Media(altPath));
+      await swapped;
+      expect(player.state.playlist.medias.length, 2);
+      expect(
+          player.state.playlist.medias[1].uri.endsWith('with_chapters.mka'),
+          isTrue);
+      expect(player.state.playlist.medias[0].uri.endsWith('sine_440hz_1s.wav'),
+          isTrue,
+          reason: 'replace(1) must not touch entry 0');
     }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

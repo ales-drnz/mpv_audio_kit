@@ -5,26 +5,15 @@
 @TestOn('mac-os || linux')
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import '../_helpers/libmpv_resolver.dart';
 
 void main() {
-  String? resolveLibmpv() {
-    final root = Directory.current.path;
-    if (Platform.isMacOS) {
-      final p = '$root/macos/libs/libmpv.dylib';
-      return File(p).existsSync() ? p : null;
-    }
-    if (Platform.isLinux) {
-      final p = '$root/linux/libs/libmpv.so';
-      return File(p).existsSync() ? p : null;
-    }
-    return null;
-  }
-
-  final fixturePath =
+final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
 
   setUpAll(() {
@@ -89,5 +78,50 @@ void main() {
       await player.setPrefetchPlaylist(false);
       expect(player.state.prefetchPlaylist, isFalse);
     }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('prefetchState stream emits non-idle when prefetch is active',
+        () async {
+      // The `prefetch-state` mpv property is part of the patched build:
+      // it reports loading / ready / used / failed during background
+      // prefetch of the next playlist item. With prefetch enabled and a
+      // 2-item playlist playing through, at least one non-idle emission
+      // must reach the typed stream — otherwise the FFI bridge for
+      // MpvPrefetchState is broken end-to-end.
+      //
+      // Skip if the loaded libmpv lacks the patched property — same
+      // pattern as the cover-art-mime smoke on iOS/Android.
+      // Pre-subscribe so a fast prefetch.loading emit isn't missed.
+      final emitted = player.stream.prefetchState
+          .firstWhere((s) => s != MpvPrefetchState.idle)
+          .timeout(const Duration(seconds: 10));
+
+      await player.setPrefetchPlaylist(true);
+      await player.openAll(
+        [Media(fixturePath), Media(fixturePath)],
+        play: true,
+      );
+
+      try {
+        final state = await emitted;
+        expect(
+          state,
+          isIn([
+            MpvPrefetchState.loading,
+            MpvPrefetchState.ready,
+            MpvPrefetchState.used,
+            MpvPrefetchState.failed,
+          ]),
+          reason: 'mpv must emit at least one non-idle prefetch state '
+              'while a 2-item playlist plays through with prefetch enabled',
+        );
+      } on TimeoutException {
+        markTestSkipped('prefetch-state property is not exposed by the '
+            'libmpv build loaded on this platform — rebuild with the '
+            'prefetch-state patch applied to enable this assertion');
+      } finally {
+        await player.setPrefetchPlaylist(false);
+        await player.stop();
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

@@ -9,22 +9,10 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import '../_helpers/libmpv_resolver.dart';
 
 void main() {
-  String? resolveLibmpv() {
-    final root = Directory.current.path;
-    if (Platform.isMacOS) {
-      final p = '$root/macos/libs/libmpv.dylib';
-      return File(p).existsSync() ? p : null;
-    }
-    if (Platform.isLinux) {
-      final p = '$root/linux/libs/libmpv.so';
-      return File(p).existsSync() ? p : null;
-    }
-    return null;
-  }
-
-  // Use the 3-second chapters fixture: long enough that seek tests can
+// Use the 3-second chapters fixture: long enough that seek tests can
   // assert past 400ms without racing mpv's EOF on a 1-second file.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
@@ -137,5 +125,46 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 300));
       expect(player.state.playing, isFalse);
     }, timeout: const Timeout(Duration(seconds: 15)));
+
+    test('setAbLoopA / setAbLoopB round-trip Duration ↔ state', () async {
+      // Re-open the fixture: stop() above unloaded the demuxer, and
+      // ab-loop properties only stick once mpv has a live file. Anchor
+      // on seekCompleted (PLAYBACK_RESTART) — duration may dedup at the
+      // 3-second value cached from earlier tests in this group.
+      final loaded = player.stream.seekCompleted.first
+          .timeout(const Duration(seconds: 10));
+      await player.open(Media(fixturePath), play: false);
+      await loaded;
+
+      // Pre-subscribe BEFORE the setter — the optimistic emit from
+      // `_updateField` is synchronous, so a late firstWhere would miss
+      // it and time out.
+      Future<Duration?> nextA(bool Function(Duration?) pred) =>
+          player.stream.abLoopA.firstWhere(pred).timeout(const Duration(seconds: 3));
+      Future<Duration?> nextB(bool Function(Duration?) pred) =>
+          player.stream.abLoopB.firstWhere(pred).timeout(const Duration(seconds: 3));
+
+      final waitASet = nextA((d) => d?.inMilliseconds == 500);
+      await player.setAbLoopA(const Duration(milliseconds: 500));
+      await waitASet;
+      expect(player.state.abLoopA, const Duration(milliseconds: 500));
+
+      final waitBSet = nextB((d) => d?.inMilliseconds == 1500);
+      await player.setAbLoopB(const Duration(milliseconds: 1500));
+      await waitBSet;
+      expect(player.state.abLoopB, const Duration(milliseconds: 1500));
+
+      // Clearing with `null` writes mpv's "no" sentinel; the stream
+      // emits `null` and state catches up.
+      final waitAClear = nextA((d) => d == null);
+      await player.setAbLoopA(null);
+      await waitAClear;
+      expect(player.state.abLoopA, isNull);
+
+      final waitBClear = nextB((d) => d == null);
+      await player.setAbLoopB(null);
+      await waitBClear;
+      expect(player.state.abLoopB, isNull);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

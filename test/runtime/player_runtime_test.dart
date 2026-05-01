@@ -10,23 +10,9 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import '../_helpers/libmpv_resolver.dart';
 
 /// Locates the libmpv shared library bundled with the package for the host
-/// platform. Skips the test (returns `null`) if the binary isn't present —
-/// useful for environments that don't ship the native side (`pub.dev`
-/// analyzer, CI without the native build pipeline, etc.).
-String? _resolveLibmpvPath() {
-  final root = Directory.current.path;
-  if (Platform.isMacOS) {
-    final p = '$root/macos/libs/libmpv.dylib';
-    return File(p).existsSync() ? p : null;
-  }
-  if (Platform.isLinux) {
-    final p = '$root/linux/libs/libmpv.so';
-    return File(p).existsSync() ? p : null;
-  }
-  return null;
-}
 
 /// Awaits the first stream value matching [predicate] within [timeout],
 /// failing the test with a descriptive message if no value arrives in time.
@@ -57,7 +43,7 @@ void main() {
       '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
 
   setUpAll(() {
-    final lib = _resolveLibmpvPath();
+    final lib = resolveLibmpv();
     if (lib == null) {
       markTestSkipped(
           'libmpv not found for ${Platform.operatingSystem} — skipping '

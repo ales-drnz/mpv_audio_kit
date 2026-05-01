@@ -1,0 +1,37 @@
+name: mpv_audio_kit_test_app
+description: >
+  Internal test harness for mpv_audio_kit integration tests on iOS and Android
+  (and any other Flutter platform that needs FFI-on-device coverage).
+  Not a demo, not published. The example/ app is the user-facing demo.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.6.0
+  flutter: '>=3.27.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mpv_audio_kit:
+    path: ../
+  # path_provider is required by the integration_test fixture helper, which
+  # materializes bundled .wav/.flac/.mka assets to a temp file on the device
+  # so libmpv can open them by path. Lives in `dependencies` rather than
+  # `dev_dependencies` because Flutter packages it into the app build.
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    # Each subdirectory must be listed explicitly; trailing slash declares
+    # only the directory's direct children, not its descendants.
+    - assets/fixtures/
+    - assets/fixtures/codec/

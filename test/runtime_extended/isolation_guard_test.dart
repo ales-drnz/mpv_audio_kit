@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import '../_helpers/libmpv_resolver.dart';
 
 /// Permanent guard: verifies that the file-split workaround for the
 /// SIGSEGV-on-3rd-Player quirk (documented in CLAUDE.md) keeps holding.
@@ -25,20 +26,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 ///
 /// Do not delete; do not collapse into a `setters_*` file.
 void main() {
-  String? resolveLibmpv() {
-    final root = Directory.current.path;
-    if (Platform.isMacOS) {
-      final p = '$root/macos/libs/libmpv.dylib';
-      return File(p).existsSync() ? p : null;
-    }
-    if (Platform.isLinux) {
-      final p = '$root/linux/libs/libmpv.so';
-      return File(p).existsSync() ? p : null;
-    }
-    return null;
-  }
-
-  final fixturePath =
+final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
 
   setUpAll(() {
