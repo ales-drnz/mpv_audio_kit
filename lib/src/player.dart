@@ -597,13 +597,12 @@ abstract class _PlayerBase {
     _activeHookIds.clear();
   }
 
-  /// Indirection for the consumer-supplied [UriResolver]; falls back to
-  /// the identity pass-through when no resolver was configured. The
-  /// indirection is the single touchpoint for all 6 call-sites that
-  /// used to call `FlutterUriResolver.normalizeUri` directly — keeps
-  /// platform-specific URI logic out of `lib/src/player.dart`.
-  Future<String> _resolveUri(String uri) =>
-      (configuration.uriResolver ?? defaultUriResolver)(uri);
+  /// Single touchpoint for translating non-libmpv-native URI schemes
+  /// (`asset://`, Android `content://`) into something `loadfile` can
+  /// open. Implementation lives in `src/utils/uri_resolver.dart`;
+  /// keeping the indirection here means the 6 call-sites in this file
+  /// don't have to know about platform-specific URI logic.
+  Future<String> _resolveUri(String uri) => normalizeUri(uri);
 
   void _checkNotDisposed() {
     if (_disposed) {

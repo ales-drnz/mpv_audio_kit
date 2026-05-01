@@ -2,10 +2,6 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:mpv_audio_kit/src/utils/uri_resolver.dart';
-
-export 'package:mpv_audio_kit/src/utils/uri_resolver.dart' show UriResolver;
-
 /// Initial configuration for a [Player] instance.
 ///
 /// All fields are immutable and must be set at construction time.
@@ -29,20 +25,9 @@ class PlayerConfiguration {
   /// Default: `'warn'`.
   final String logLevel;
 
-  /// Async hook invoked on every media URI before it reaches `loadfile`.
-  ///
-  /// Used to translate host-platform-specific schemes that libmpv does
-  /// not handle natively — Android `content://` intent URIs and Flutter
-  /// `asset://` bundle paths in particular. The package ships
-  /// `FlutterUriResolver.normalizeUri` (in `package:mpv_audio_kit/uri_resolver_flutter.dart`)
-  /// for the Flutter case; consumers running pure Dart can leave this
-  /// `null` (the default) to pass URIs through unchanged.
-  final UriResolver? uriResolver;
-
   const PlayerConfiguration({
     this.autoPlay = false,
     this.initialVolume = 100.0,
     this.logLevel = 'warn',
-    this.uriResolver,
   });
 }
