@@ -290,8 +290,12 @@ abstract class _PlayerBase {
       StreamController<MpvHookEvent>.broadcast();
   final StreamController<void> _seekCompletedCtrl =
       StreamController<void>.broadcast();
-  final StreamController<CoverArtRaw> _coverArtRawCtrl =
-      StreamController<CoverArtRaw>.broadcast();
+  // Nullable payload: each file-loaded transition emits exactly once,
+  // with `null` when the new file has no embedded cover. This lets
+  // consumers clear / reset their UI on every track change without
+  // having to compare against a separate file-transition signal.
+  final StreamController<CoverArtRaw?> _coverArtRawCtrl =
+      StreamController<CoverArtRaw?>.broadcast();
 
   PlayerState get state => _state;
   late final PlayerStream stream;
@@ -738,9 +742,9 @@ abstract class _PlayerBase {
 
   void _extractEmbeddedCover() {
     if (_disposed) return;
-    final raw = CoverArtExtractor.capture(_lib, _handle);
-    if (raw == null) return;
-    _coverArtRawCtrl.add(raw);
+    // Emit unconditionally: `null` signals "the new file has no cover"
+    // so listeners can clear stale artwork on track changes.
+    _coverArtRawCtrl.add(CoverArtExtractor.capture(_lib, _handle));
   }
 
   /// Tears down the player.

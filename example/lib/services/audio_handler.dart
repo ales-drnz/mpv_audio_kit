@@ -28,6 +28,15 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
   /// observe new bytes when the path stays the same.
   int _coverCounter = 0;
 
+  /// Last [CoverArtRaw] observed on `Player.stream.coverArtRaw`, kept
+  /// here so widgets that get rebuilt mid-session (e.g. the player
+  /// page on a mobile↔desktop layout flip) can re-bootstrap their
+  /// local state instead of losing the cover until the next track.
+  /// The mpv stream is broadcast and does not replay past events to
+  /// new listeners.
+  CoverArtRaw? _lastCover;
+  CoverArtRaw? get lastCover => _lastCover;
+
   MpvAudioHandler(this.player) {
     _bindStreams();
     // Populate initial state synchronously.
@@ -47,7 +56,15 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(player.stream.coverArtRaw.listen(_persistCover));
   }
 
-  Future<void> _persistCover(CoverArtRaw raw) async {
+  Future<void> _persistCover(CoverArtRaw? raw) async {
+    _lastCover = raw;
+    if (raw == null) {
+      // New track has no embedded cover: clear the cached path so the
+      // MediaItem stops pointing at the previous track's artwork.
+      _coverPath = null;
+      _updateMediaItem();
+      return;
+    }
     final ext = raw.mimeType.split('/').last;
     final id = ++_coverCounter;
     final path = '${Directory.systemTemp.path}'

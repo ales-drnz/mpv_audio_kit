@@ -1,293 +1,398 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-/// A service to persist and restore player settings across app restarts.
+/// Persists Player settings across app restarts.
+///
+/// Single source of truth for what is persisted and how — every property
+/// is wired with one declarative line in [wire]. Each binding handles
+/// both directions:
+///   - **Restore**: read from SharedPreferences (with stale-type cleanup)
+///     and apply to the live Player on first call.
+///   - **Save**: subscribe to the matching stream and write back on every
+///     change.
+///
+/// Adding a new persistent property = one line in [wire]. No matching
+/// pair to maintain in [player_page.dart].
 class SettingsService {
   static const String _keyPrefix = 'audio_kit_';
 
   final SharedPreferences _prefs;
+  final List<StreamSubscription<dynamic>> _subs = [];
 
   SettingsService(this._prefs);
-
-  /// Helper: load-time SharedPreferences store seconds as `double`, but the
-  /// 0.1.0 API takes [Duration] for every time-based setter.
-  static Duration _secondsToDuration(double seconds) =>
-      Duration(microseconds: (seconds * 1e6).round());
 
   static Future<SettingsService> init() async {
     final prefs = await SharedPreferences.getInstance();
     return SettingsService(prefs);
   }
 
-  /// Saves any player property to disk.
-  Future<void> save(String key, dynamic value) async {
-    final fullKey = '$_keyPrefix$key';
-    if (value is String) {
-      await _prefs.setString(fullKey, value);
-    } else if (value is int) {
-      await _prefs.setInt(fullKey, value);
-    } else if (value is double) {
-      await _prefs.setDouble(fullKey, value);
-    } else if (value is bool) {
-      await _prefs.setBool(fullKey, value);
-    } else if (value is Duration) {
-      await _prefs.setDouble(fullKey, value.inMicroseconds / 1e6);
-    } else if (value is List<String>) {
-      await _prefs.setStringList(fullKey, value);
-    } else if (value is List<double>) {
-      await _prefs.setString(fullKey, jsonEncode(value));
-    } else if (value is Enum) {
-      // Persist enums by their `mpvValue` (set via `dynamic`-checked
-      // accessor below); the restore path uses the same wire format.
-      final mpvValue = (value as dynamic).mpvValue as String?;
-      if (mpvValue != null) await _prefs.setString(fullKey, mpvValue);
+  /// Cancels every persistence subscription. Call from app shutdown if
+  /// you ever construct more than one [SettingsService] in a process.
+  Future<void> dispose() async {
+    for (final s in _subs) {
+      await s.cancel();
     }
+    _subs.clear();
   }
 
-  /// Restores all saved settings to the [player] instance.
-  Future<void> restore(Player player) async {
-    // ── Volume & Basic Controls ──────────────────────────────────────────────
+  /// Wires save + restore for every persisted property in one pass.
+  /// Call once after Player construction.
+  Future<void> wire(Player player) async {
+    // ── Volume / playback transport ───────────────────────────────────
+    await _bindDouble(player.stream.volume, 'volume', player.setVolume);
+    await _bindDouble(player.stream.volumeMax, 'volume-max', player.setVolumeMax);
+    await _bindDouble(player.stream.volumeGain, 'volume-gain', player.setVolumeGain);
+    await _bindDouble(player.stream.rate, 'rate', player.setRate);
+    await _bindDouble(player.stream.pitch, 'pitch', player.setPitch);
+    await _bindBool(player.stream.mute, 'mute', player.setMute);
+    await _bindBool(player.stream.pitchCorrection, 'pitch-correction',
+        player.setPitchCorrection);
+    await _bindDuration(
+        player.stream.audioDelay, 'audio-delay', player.setAudioDelay);
 
-    // Playback volume (0.0 – volumeMax)
-    final volume = _prefs.getDouble('${_keyPrefix}volume');
-    if (volume != null) {
-      await player.setVolume(volume);
+    // ── Playlist mode + shuffle ───────────────────────────────────────
+    await _bindEnumByName<PlaylistMode>(
+      player.stream.playlistMode,
+      'playlist_mode',
+      PlaylistMode.values,
+      player.setPlaylistMode,
+    );
+    await _bindBool(player.stream.shuffle, 'shuffle', player.setShuffle);
+    await _bindBool(player.stream.prefetchPlaylist, 'prefetch-playlist',
+        player.setPrefetchPlaylist);
+
+    // ── Audio output / driver / device ────────────────────────────────
+    await _bindString(player.stream.audioDriver, 'ao', player.setAudioDriver);
+    await _bindMapped<AudioDevice, String>(
+      stream: player.stream.audioDevice,
+      key: 'audio-device',
+      apply: player.setAudioDevice,
+      toStored: (d) => d.name,
+      fromStored: (s) => AudioDevice(s, s),
+    );
+    await _bindString(
+        player.stream.audioSpdif, 'audio-spdif', player.setAudioSpdif);
+    await _bindBool(player.stream.audioExclusive, 'audio-exclusive',
+        player.setAudioExclusive);
+    await _bindDuration(
+        player.stream.audioBuffer, 'audio-buffer', player.setAudioBuffer);
+    await _bindBool(player.stream.audioStreamSilence, 'audio-stream-silence',
+        player.setAudioStreamSilence);
+    await _bindBool(player.stream.audioNullUntimed, 'ao-null-untimed',
+        player.setAudioNullUntimed);
+
+    // ── Audio signal format ───────────────────────────────────────────
+    await _bindInt(player.stream.audioSampleRate, 'audio-samplerate',
+        player.setAudioSampleRate);
+    await _bindString(
+        player.stream.audioFormat, 'audio-format', player.setAudioFormat);
+    await _bindString(player.stream.audioChannels, 'audio-channels',
+        player.setAudioChannels);
+    await _bindString(player.stream.audioClientName, 'audio-client-name',
+        player.setAudioClientName);
+
+    // ── DSP ───────────────────────────────────────────────────────────
+    await _bindEqualizerGains(player);
+
+    // ── Aggregates (cache, replayGain) ────────────────────────────────
+    await _bindCache(player);
+    await _bindReplayGain(player);
+    await _bindMpvEnum<GaplessMode>(
+      player.stream.gaplessMode,
+      'gapless-audio',
+      GaplessMode.fromMpv,
+      player.setGaplessMode,
+    );
+
+    // ── Demuxer ───────────────────────────────────────────────────────
+    await _bindInt(player.stream.demuxerMaxBytes, 'demuxer-max-bytes',
+        player.setDemuxerMaxBytes);
+    await _bindInt(player.stream.demuxerReadaheadSecs,
+        'demuxer-readahead-secs', player.setDemuxerReadaheadSecs);
+    await _bindInt(player.stream.demuxerMaxBackBytes,
+        'demuxer-max-back-bytes', player.setDemuxerMaxBackBytes);
+
+    // ── Network ───────────────────────────────────────────────────────
+    await _bindDuration(player.stream.networkTimeout, 'network-timeout',
+        player.setNetworkTimeout);
+    await _bindBool(player.stream.tlsVerify, 'tls-verify', player.setTlsVerify);
+
+    // ── Cover art ─────────────────────────────────────────────────────
+    await _bindMpvEnum<AudioDisplayMode>(
+      player.stream.audioDisplayMode,
+      'audio-display',
+      AudioDisplayMode.fromMpv,
+      player.setAudioDisplayMode,
+    );
+    await _bindMpvEnum<CoverArtAutoMode>(
+      player.stream.coverArtAutoMode,
+      'cover-art-auto',
+      CoverArtAutoMode.fromMpv,
+      player.setCoverArtAutoMode,
+    );
+
+    // ── Active audio track ────────────────────────────────────────────
+    await _bindAudioTrack(player);
+  }
+
+  // ── Generic helpers ─────────────────────────────────────────────────
+  //
+  // Each helper:
+  //   1. reads the stored value with stale-type cleanup (untyped get +
+  //      runtime check, so a value saved by an older app build with a
+  //      different type doesn't throw _TypeError),
+  //   2. applies it to the player,
+  //   3. subscribes to the stream and writes every future emit.
+
+  Future<void> _bindBool(
+    Stream<bool> stream,
+    String key,
+    Future<void> Function(bool) apply,
+  ) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is bool) {
+      await apply(raw);
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen((v) => _prefs.setBool(fk, v)));
+  }
 
-    // Maximum volume ceiling (default 100.0, allows software boost above 100)
-    final volumeMax = _prefs.getDouble('${_keyPrefix}volume-max');
-    if (volumeMax != null) {
-      await player.setVolumeMax(volumeMax);
+  Future<void> _bindInt(
+    Stream<int> stream,
+    String key,
+    Future<void> Function(int) apply,
+  ) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is int) {
+      await apply(raw);
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen((v) => _prefs.setInt(fk, v)));
+  }
 
-    // Playback speed multiplier (1.0 = normal)
-    final rate = _prefs.getDouble('${_keyPrefix}rate');
-    if (rate != null) {
-      await player.setRate(rate);
+  Future<void> _bindDouble(
+    Stream<double> stream,
+    String key,
+    Future<void> Function(double) apply,
+  ) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is double) {
+      await apply(raw);
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen((v) => _prefs.setDouble(fk, v)));
+  }
 
-    // Audio pitch multiplier (1.0 = normal)
-    final pitch = _prefs.getDouble('${_keyPrefix}pitch');
-    if (pitch != null) {
-      await player.setPitch(pitch);
+  Future<void> _bindString(
+    Stream<String> stream,
+    String key,
+    Future<void> Function(String) apply,
+  ) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is String) {
+      await apply(raw);
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen((v) => _prefs.setString(fk, v)));
+  }
 
-    // Mute toggle (does not affect volume level)
-    final mute = _prefs.getBool('${_keyPrefix}mute');
-    if (mute != null) {
-      await player.setMute(mute);
+  /// `Duration` <-> `double` (seconds, fractional).
+  Future<void> _bindDuration(
+    Stream<Duration> stream,
+    String key,
+    Future<void> Function(Duration) apply,
+  ) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is double) {
+      // Defensive: previous app builds wrote tens-of-seconds-as-int; an
+      // unreasonably large value (> 1e6 seconds = ~12 days) is almost
+      // certainly corrupt. Skip rather than apply.
+      if (raw < 1e6) {
+        await apply(Duration(microseconds: (raw * 1e6).round()));
+      }
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen(
+        (v) => _prefs.setDouble(fk, v.inMicroseconds / 1e6)));
+  }
 
-    // ── Playlist / Playback Mode ─────────────────────────────────────────────
-
-    // Loop mode: none, single, playlist
-    final mode = _prefs.getString('${_keyPrefix}playlist_mode');
-    if (mode != null) {
-      final pMode = PlaylistMode.values.firstWhere(
-        (e) => e.name == mode,
-        orElse: () => PlaylistMode.none,
-      );
-      await player.setPlaylistMode(pMode);
+  /// Enum stored by `.name` — for Dart-native enums like [PlaylistMode].
+  Future<void> _bindEnumByName<E extends Enum>(
+    Stream<E> stream,
+    String key,
+    List<E> values,
+    Future<void> Function(E) apply,
+  ) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is String) {
+      final found = values.where((e) => e.name == raw).cast<E?>().firstOrNull;
+      if (found != null) {
+        await apply(found);
+      } else {
+        await _prefs.remove(fk);
+      }
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen((v) => _prefs.setString(fk, v.name)));
+  }
 
-    // Shuffle playback order
-    final shuffle = _prefs.getBool('${_keyPrefix}shuffle');
-    if (shuffle != null) {
-      await player.setShuffle(shuffle);
+  /// Enum stored by `.mpvValue` — for the package-level enums (those
+  /// expose `.fromMpv` / `.mpvValue` on the wire format mpv uses).
+  Future<void> _bindMpvEnum<E>(
+    Stream<E> stream,
+    String key,
+    E Function(String raw) fromMpv,
+    Future<void> Function(E) apply,
+  ) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is String) {
+      await apply(fromMpv(raw));
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen(
+        (v) => _prefs.setString(fk, (v as dynamic).mpvValue as String)));
+  }
 
-    // ── Audio Engine / DSP ───────────────────────────────────────────────────
-
-    // 10-band equalizer gains (JSON-encoded list of doubles, dB)
-    final eqGains = _prefs.getString('${_keyPrefix}equalizer_gains');
-    if (eqGains != null) {
-      final List<dynamic> decoded = jsonDecode(eqGains);
-      final gains = decoded.map((e) => (e as num).toDouble()).toList();
-      await player.setEqualizer(player.state.equalizer.copyWith(gains: gains));
+  /// Bidirectional mapped binding for non-primitive values stored as
+  /// strings (e.g. `AudioDevice` ↔ `AudioDevice.name`).
+  Future<void> _bindMapped<T, S>({
+    required Stream<T> stream,
+    required String key,
+    required Future<void> Function(T) apply,
+    required S Function(T) toStored,
+    required T Function(S) fromStored,
+  }) async {
+    final fk = '$_keyPrefix$key';
+    final raw = _prefs.get(fk);
+    if (raw is S) {
+      await apply(fromStored(raw));
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(stream.listen((v) {
+      final s = toStored(v);
+      if (s is String) {
+        _prefs.setString(fk, s);
+      } else if (s is int) {
+        _prefs.setInt(fk, s);
+      }
+    }));
+  }
 
-    // Gapless audio playback (typed enum since 0.1.0)
-    final gapless = _prefs.getString('${_keyPrefix}gapless-audio');
-    if (gapless != null) {
-      await player.setGaplessMode(GaplessMode.fromMpv(gapless));
+  // ── Special-case bindings ───────────────────────────────────────────
+
+  /// `EqualizerConfig.gains` is `List<double>` — JSON-encoded as String.
+  Future<void> _bindEqualizerGains(Player player) async {
+    const fk = '${_keyPrefix}equalizer_gains';
+    final raw = _prefs.get(fk);
+    if (raw is String) {
+      try {
+        final decoded = (jsonDecode(raw) as List<dynamic>)
+            .map((e) => (e as num).toDouble())
+            .toList();
+        await player
+            .setEqualizer(player.state.equalizer.copyWith(gains: decoded));
+      } catch (_) {
+        await _prefs.remove(fk);
+      }
+    } else if (raw != null) {
+      await _prefs.remove(fk);
     }
+    _subs.add(player.stream.equalizer
+        .listen((cfg) => _prefs.setString(fk, jsonEncode(cfg.gains))));
+  }
 
-    // ReplayGain configuration aggregate. Each subkey is optional; we
-    // start from the in-memory defaults so unset prefs don't override
-    // them with zeros.
-    final rgMode = _prefs.getString('${_keyPrefix}replaygain');
-    final rgPreamp = _prefs.getDouble('${_keyPrefix}replaygain-preamp');
-    final rgFallback = _prefs.getDouble('${_keyPrefix}replaygain-fallback');
-    final rgClip = _prefs.getBool('${_keyPrefix}replaygain-clip');
-    if (rgMode != null ||
-        rgPreamp != null ||
-        rgFallback != null ||
-        rgClip != null) {
-      await player.setReplayGain(player.state.replayGain.copyWith(
-        mode: rgMode != null
-            ? ReplayGainMode.fromMpv(rgMode)
-            : player.state.replayGain.mode,
-        preamp: rgPreamp ?? player.state.replayGain.preamp,
-        fallback: rgFallback ?? player.state.replayGain.fallback,
-        clip: rgClip ?? player.state.replayGain.clip,
+  /// `CacheConfig` is a 5-field aggregate — restore each field
+  /// independently (preserving the in-memory default for missing keys),
+  /// then save the whole config on every emit.
+  Future<void> _bindCache(Player player) async {
+    final mode = _prefs.get('${_keyPrefix}cache');
+    final secs = _prefs.get('${_keyPrefix}cache-secs');
+    final onDisk = _prefs.get('${_keyPrefix}cache-on-disk');
+    final pause = _prefs.get('${_keyPrefix}cache-pause');
+    final pauseWait = _prefs.get('${_keyPrefix}cache-pause-wait');
+    if (mode is String ||
+        secs is double ||
+        onDisk is bool ||
+        pause is bool ||
+        pauseWait is double) {
+      final c = player.state.cache;
+      await player.setCache(c.copyWith(
+        mode: mode is String ? CacheMode.fromMpv(mode) : c.mode,
+        secs: secs is double && secs < 1e6
+            ? Duration(microseconds: (secs * 1e6).round())
+            : c.secs,
+        onDisk: onDisk is bool ? onDisk : c.onDisk,
+        pause: pause is bool ? pause : c.pause,
+        pauseWait: pauseWait is double
+            ? Duration(microseconds: (pauseWait * 1e6).round())
+            : c.pauseWait,
       ));
     }
+    _subs.add(player.stream.cache.listen((c) {
+      _prefs.setString('${_keyPrefix}cache', c.mode.mpvValue);
+      _prefs.setDouble(
+          '${_keyPrefix}cache-secs', c.secs.inMicroseconds / 1e6);
+      _prefs.setBool('${_keyPrefix}cache-on-disk', c.onDisk);
+      _prefs.setBool('${_keyPrefix}cache-pause', c.pause);
+      _prefs.setDouble('${_keyPrefix}cache-pause-wait',
+          c.pauseWait.inMicroseconds / 1e6);
+    }));
+  }
 
-    // Additional volume gain in dB (applied after ReplayGain)
-    final volumeGain = _prefs.getDouble('${_keyPrefix}volume-gain');
-    if (volumeGain != null) {
-      await player.setVolumeGain(volumeGain);
-    }
-
-    // Preserve pitch when changing playback speed
-    final pitchCorrection = _prefs.getBool('${_keyPrefix}pitch-correction');
-    if (pitchCorrection != null) {
-      await player.setPitchCorrection(pitchCorrection);
-    }
-
-    // Audio delay offset (positive = audio later, since 0.1.0 takes Duration)
-    final audioDelay = _prefs.getDouble('${_keyPrefix}audio-delay');
-    if (audioDelay != null) {
-      await player.setAudioDelay(_secondsToDuration(audioDelay));
-    }
-
-    // ── Routing & Hardware ───────────────────────────────────────────────────
-
-    // Target sample rate in Hz (0 = auto/pass-through)
-    final sampleRate = _prefs.getInt('${_keyPrefix}audio-samplerate');
-    if (sampleRate != null) {
-      await player.setAudioSampleRate(sampleRate);
-    }
-
-    // Target sample format (e.g. "s16", "float", "auto" to reset)
-    final format = _prefs.getString('${_keyPrefix}audio-format');
-    if (format != null) {
-      await player.setAudioFormat(format);
-    }
-
-    // Target channel layout (e.g. "stereo", "5.1", "no" to reset to auto)
-    final channels = _prefs.getString('${_keyPrefix}audio-channels');
-    if (channels != null) {
-      await player.setAudioChannels(channels);
-    }
-
-    // Application name reported to the audio server (e.g. PulseAudio)
-    final clientName = _prefs.getString('${_keyPrefix}audio-client-name');
-    if (clientName != null) {
-      await player.setAudioClientName(clientName);
-    }
-
-    // Audio output driver (e.g. "coreaudio", "wasapi", "pipewire")
-    final audioDriver = _prefs.getString('${_keyPrefix}ao');
-    if (audioDriver != null) {
-      await player.setAudioDriver(audioDriver);
-    }
-
-    // Audio output device identifier
-    final deviceName = _prefs.getString('${_keyPrefix}audio-device');
-    if (deviceName != null) {
-      await player.setAudioDevice(AudioDevice(deviceName, deviceName));
-    }
-
-    // S/PDIF passthrough codecs (e.g. "ac3,dts", "" to disable)
-    final spdif = _prefs.getString('${_keyPrefix}audio-spdif');
-    if (spdif != null) {
-      await player.setAudioSpdif(spdif);
-    }
-
-    // Exclusive access to the audio device (bypasses system mixer)
-    final exclusive = _prefs.getBool('${_keyPrefix}audio-exclusive');
-    if (exclusive != null) {
-      await player.setAudioExclusive(exclusive);
-    }
-
-    // Audio buffer size (Duration since 0.1.0)
-    final audioBuffer = _prefs.getDouble('${_keyPrefix}audio-buffer');
-    if (audioBuffer != null) {
-      await player.setAudioBuffer(_secondsToDuration(audioBuffer));
-    }
-
-    // ── Cache & Demuxer ──────────────────────────────────────────────────────
-
-    // Cache configuration aggregate. Same partial-restore strategy as
-    // ReplayGain: missing prefs keep the current defaults.
-    final cMode = _prefs.getString('${_keyPrefix}cache');
-    final cSecs = _prefs.getDouble('${_keyPrefix}cache-secs');
-    final cOnDisk = _prefs.getBool('${_keyPrefix}cache-on-disk');
-    final cPause = _prefs.getBool('${_keyPrefix}cache-pause');
-    final cPauseWait = _prefs.getDouble('${_keyPrefix}cache-pause-wait');
-    if (cMode != null ||
-        cSecs != null ||
-        cOnDisk != null ||
-        cPause != null ||
-        cPauseWait != null) {
-      await player.setCache(player.state.cache.copyWith(
-        mode: cMode != null
-            ? CacheMode.fromMpv(cMode)
-            : player.state.cache.mode,
-        secs: cSecs != null && cSecs < 1000000
-            ? _secondsToDuration(cSecs)
-            : player.state.cache.secs,
-        onDisk: cOnDisk ?? player.state.cache.onDisk,
-        pause: cPause ?? player.state.cache.pause,
-        pauseWait: cPauseWait != null
-            ? _secondsToDuration(cPauseWait)
-            : player.state.cache.pauseWait,
+  /// `ReplayGainConfig` is a 4-field aggregate — same shape as `_bindCache`.
+  Future<void> _bindReplayGain(Player player) async {
+    final mode = _prefs.get('${_keyPrefix}replaygain');
+    final preamp = _prefs.get('${_keyPrefix}replaygain-preamp');
+    final fallback = _prefs.get('${_keyPrefix}replaygain-fallback');
+    final clip = _prefs.get('${_keyPrefix}replaygain-clip');
+    if (mode is String ||
+        preamp is double ||
+        fallback is double ||
+        clip is bool) {
+      final c = player.state.replayGain;
+      await player.setReplayGain(c.copyWith(
+        mode: mode is String ? ReplayGainMode.fromMpv(mode) : c.mode,
+        preamp: preamp is double ? preamp : c.preamp,
+        fallback: fallback is double ? fallback : c.fallback,
+        clip: clip is bool ? clip : c.clip,
       ));
     }
+    _subs.add(player.stream.replayGain.listen((c) {
+      _prefs.setString('${_keyPrefix}replaygain', c.mode.mpvValue);
+      _prefs.setDouble('${_keyPrefix}replaygain-preamp', c.preamp);
+      _prefs.setDouble('${_keyPrefix}replaygain-fallback', c.fallback);
+      _prefs.setBool('${_keyPrefix}replaygain-clip', c.clip);
+    }));
+  }
 
-    // Maximum bytes the demuxer may buffer
-    final demuxMaxBytes = _prefs.getInt('${_keyPrefix}demuxer-max-bytes');
-    if (demuxMaxBytes != null) {
-      await player.setDemuxerMaxBytes(demuxMaxBytes);
+  /// Active audio track id — int with negative sentinel for "no track
+  /// persisted; defer to mpv auto choice".
+  Future<void> _bindAudioTrack(Player player) async {
+    const fk = '${_keyPrefix}aid';
+    final raw = _prefs.get(fk);
+    if (raw is int && raw >= 0) {
+      await player.setAudioTrack(raw);
+    } else if (raw != null && raw is! int) {
+      await _prefs.remove(fk);
     }
-
-    // Demuxer read-ahead duration in seconds
-    final demuxReadahead = _prefs.getInt('${_keyPrefix}demuxer-readahead-secs');
-    if (demuxReadahead != null) {
-      await player.setDemuxerReadaheadSecs(demuxReadahead);
-    }
-
-    // Maximum bytes the demuxer keeps for backward seeking
-    final demuxMaxBack = _prefs.getInt('${_keyPrefix}demuxer-max-back-bytes');
-    if (demuxMaxBack != null) {
-      await player.setDemuxerMaxBackBytes(demuxMaxBack);
-    }
-
-    // ── Network ──────────────────────────────────────────────────────────────
-
-    // Network request timeout (Duration since 0.1.0)
-    final networkTimeout = _prefs.getDouble('${_keyPrefix}network-timeout');
-    if (networkTimeout != null) {
-      await player.setNetworkTimeout(_secondsToDuration(networkTimeout));
-    }
-
-    // Enable TLS certificate verification
-    final tlsVerify = _prefs.getBool('${_keyPrefix}tls-verify');
-    if (tlsVerify != null) {
-      await player.setTlsVerify(tlsVerify);
-    }
-
-    // ── Streaming & Misc ─────────────────────────────────────────────────────
-
-    // Keep audio device open with silence when idle
-    final streamSilence = _prefs.getBool('${_keyPrefix}audio-stream-silence');
-    if (streamSilence != null) {
-      await player.setAudioStreamSilence(streamSilence);
-    }
-
-    // Null audio output runs without timing (useful for benchmarking)
-    final audioNullUntimed = _prefs.getBool('${_keyPrefix}ao-null-untimed');
-    if (audioNullUntimed != null) {
-      await player.setAudioNullUntimed(audioNullUntimed);
-    }
-
-    // Active audio track ID — saved as int via stream.currentAudioTrack.
-    // Negative sentinel = no track persisted; defer to mpv's auto choice.
-    final audioTrackId = _prefs.getInt('${_keyPrefix}aid');
-    if (audioTrackId != null && audioTrackId >= 0) {
-      await player.setAudioTrack(audioTrackId);
-    }
+    _subs.add(player.stream.currentAudioTrack
+        .listen((t) => _prefs.setInt(fk, t?.id ?? -1)));
   }
 }

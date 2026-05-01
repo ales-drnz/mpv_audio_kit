@@ -568,5 +568,9 @@ class PlayerStream {
   /// picture stream, plus the MIME type. Hand straight to
   /// `Image.memory(raw.bytes)` or run your own pipeline (resize, encode,
   /// cache) — the wrapper does not process the bytes.
-  final Stream<CoverArtRaw> coverArtRaw;
+  ///
+  /// Emits exactly once per file load: a [CoverArtRaw] when the new
+  /// file has embedded artwork, or `null` when it does not. Listen for
+  /// `null` to clear stale artwork on tracks without a cover.
+  final Stream<CoverArtRaw?> coverArtRaw;
 }
