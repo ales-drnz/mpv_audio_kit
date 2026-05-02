@@ -54,11 +54,13 @@ void main() async {
 
   await settingsService.wire(player);
 
-  runApp(MyApp(
-    player: player,
-    audioHandler: audioHandler,
-    settingsService: settingsService,
-  ));
+  runApp(
+    MyApp(
+      player: player,
+      audioHandler: audioHandler,
+      settingsService: settingsService,
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

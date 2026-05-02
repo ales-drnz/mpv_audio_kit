@@ -2,25 +2,30 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../dsp/audio_filter_chain.dart';
+import '../internals/audio_filter_chain.dart';
 import '../reactive/node_parsers.dart';
-import '../audio/audio_device.dart';
-import '../cover/audio_display_mode.dart';
-import '../audio/audio_output_state.dart';
-import '../audio/audio_params.dart';
-import '../cover/cover_art_auto_mode.dart';
-import '../audio/gapless_mode.dart';
-import '../network/cache_config.dart';
-import '../playback/chapter.dart';
-import '../dsp/compressor_config.dart';
-import '../dsp/equalizer_config.dart';
-import '../dsp/loudness_config.dart';
-import '../events/mpv_prefetch_state.dart';
-import '../playback/mpv_track.dart';
-import '../dsp/pitch_tempo_config.dart';
-import '../player_state.dart';
-import '../audio/replay_gain_config.dart';
-import '../utils/duration_seconds.dart';
+import '../types/sealed/channels.dart';
+import '../models/device.dart';
+import '../types/enums/display.dart';
+import '../types/enums/format.dart';
+import '../types/state/audio_output_state.dart';
+import '../models/audio_params.dart';
+import '../types/enums/spdif.dart';
+import '../types/enums/cover.dart';
+import '../types/enums/gapless.dart';
+import '../types/settings/cache_settings.dart';
+import '../types/enums/cache.dart';
+import '../models/chapter.dart';
+import '../types/settings/compressor_settings.dart';
+import '../types/settings/equalizer_settings.dart';
+import '../types/settings/loudness_settings.dart';
+import '../types/state/mpv_prefetch_state.dart';
+import '../models/mpv_track.dart';
+import '../types/settings/pitch_tempo_settings.dart';
+import '../player/player_state.dart';
+import '../types/settings/replay_gain_settings.dart';
+import '../types/enums/replay_gain.dart';
+import '../internals/duration_seconds.dart';
 import 'mpv_property_spec.dart';
 import 'reactive_property.dart';
 
@@ -51,8 +56,8 @@ class DefaultPropertyReactives {
       ReactiveProperty<Duration>(Duration.zero);
   final ReactiveProperty<double?> audioBitrate =
       ReactiveProperty<double?>(null);
-  final ReactiveProperty<AudioDevice> audioDevice =
-      ReactiveProperty<AudioDevice>(const AudioDevice('auto', 'Auto'));
+  final ReactiveProperty<Device> audioDevice =
+      ReactiveProperty<Device>(const Device('auto', 'Auto'));
 
   // Audio params (decoder side) — aggregate of `audio-params` (NODE) +
   // `audio-codec` + `audio-codec-name`. The 3 specs all dedup and emit
@@ -69,17 +74,17 @@ class DefaultPropertyReactives {
   // ReplayGain — aggregate of the 4 mpv properties (replaygain,
   // replaygain-preamp, replaygain-fallback, replaygain-clip). All 4 specs
   // dedup and emit on this single cell.
-  final ReactiveProperty<ReplayGainConfig> replayGain =
-      ReactiveProperty<ReplayGainConfig>(const ReplayGainConfig());
+  final ReactiveProperty<ReplayGainSettings> replayGain =
+      ReactiveProperty<ReplayGainSettings>(const ReplayGainSettings());
   final ReactiveProperty<double> volumeGain = ReactiveProperty<double>(0.0);
-  final ReactiveProperty<GaplessMode> gapless =
-      ReactiveProperty<GaplessMode>(GaplessMode.weak);
+  final ReactiveProperty<Gapless> gapless =
+      ReactiveProperty<Gapless>(Gapless.weak);
 
   // Cache — aggregate of the 5 mpv cache properties (cache, cache-secs,
   // cache-on-disk, cache-pause, cache-pause-wait). All 5 specs dedup and
   // emit on this single cell.
-  final ReactiveProperty<CacheConfig> cache =
-      ReactiveProperty<CacheConfig>(const CacheConfig());
+  final ReactiveProperty<CacheSettings> cache =
+      ReactiveProperty<CacheSettings>(const CacheSettings());
   final ReactiveProperty<int> demuxerMaxBytes =
       ReactiveProperty<int>(150 * 1024 * 1024);
   final ReactiveProperty<int> demuxerReadaheadSecs = ReactiveProperty<int>(1);
@@ -103,26 +108,28 @@ class DefaultPropertyReactives {
       ReactiveProperty<List<MpvTrack>>(const []);
   final ReactiveProperty<MpvTrack?> currentAudioTrack =
       ReactiveProperty<MpvTrack?>(null);
-  final ReactiveProperty<String> audioSpdif = ReactiveProperty<String>('');
+  final ReactiveProperty<Set<Spdif>> audioSpdif =
+      ReactiveProperty<Set<Spdif>>(const <Spdif>{});
   final ReactiveProperty<double> volumeMax = ReactiveProperty<double>(130.0);
   final ReactiveProperty<int> audioSampleRate = ReactiveProperty<int>(0);
-  final ReactiveProperty<String> audioFormat = ReactiveProperty<String>('auto');
-  final ReactiveProperty<String> audioChannels =
-      ReactiveProperty<String>('auto');
+  final ReactiveProperty<Format> audioFormat =
+      ReactiveProperty<Format>(Format.auto);
+  final ReactiveProperty<Channels> audioChannels =
+      ReactiveProperty<Channels>(Channels.auto);
   final ReactiveProperty<String> audioClientName =
       ReactiveProperty<String>('mpv_audio_kit');
   final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
   // DSP filter chain stages — each owns a reserved label and is upserted
   // atomically by the matching typed setter. Custom filters carry no
   // managed label and live at the head of the chain.
-  final ReactiveProperty<EqualizerConfig> equalizer =
-      ReactiveProperty<EqualizerConfig>(const EqualizerConfig());
-  final ReactiveProperty<CompressorConfig> compressor =
-      ReactiveProperty<CompressorConfig>(const CompressorConfig());
-  final ReactiveProperty<LoudnessConfig> loudness =
-      ReactiveProperty<LoudnessConfig>(const LoudnessConfig());
-  final ReactiveProperty<PitchTempoConfig> pitchTempo =
-      ReactiveProperty<PitchTempoConfig>(const PitchTempoConfig());
+  final ReactiveProperty<EqualizerSettings> equalizer =
+      ReactiveProperty<EqualizerSettings>(const EqualizerSettings());
+  final ReactiveProperty<CompressorSettings> compressor =
+      ReactiveProperty<CompressorSettings>(const CompressorSettings());
+  final ReactiveProperty<LoudnessSettings> loudness =
+      ReactiveProperty<LoudnessSettings>(const LoudnessSettings());
+  final ReactiveProperty<PitchTempoSettings> pitchTempo =
+      ReactiveProperty<PitchTempoSettings>(const PitchTempoSettings());
   final ReactiveProperty<List<String>> customAudioFilters =
       ReactiveProperty<List<String>>(const []);
 
@@ -131,10 +138,10 @@ class DefaultPropertyReactives {
       ReactiveProperty<AudioOutputState>(AudioOutputState.closed);
 
   // Cover art.
-  final ReactiveProperty<AudioDisplayMode> audioDisplay =
-      ReactiveProperty<AudioDisplayMode>(AudioDisplayMode.embeddedFirst);
-  final ReactiveProperty<CoverArtAutoMode> coverArtAuto =
-      ReactiveProperty<CoverArtAutoMode>(CoverArtAutoMode.no);
+  final ReactiveProperty<Display> audioDisplay =
+      ReactiveProperty<Display>(Display.embeddedFirst);
+  final ReactiveProperty<Cover> coverArtAuto =
+      ReactiveProperty<Cover>(Cover.no);
   // `null` = mpv's `inf` (frame held indefinitely); finite Duration is
   // the explicit hold time.
   final ReactiveProperty<Duration?> imageDisplayDuration =
@@ -187,10 +194,8 @@ class DefaultPropertyReactives {
       ReactiveProperty<String>('');
 
   // A-B loop. Setters write `no` for null; observers parse it back.
-  final ReactiveProperty<Duration?> abLoopA =
-      ReactiveProperty<Duration?>(null);
-  final ReactiveProperty<Duration?> abLoopB =
-      ReactiveProperty<Duration?>(null);
+  final ReactiveProperty<Duration?> abLoopA = ReactiveProperty<Duration?>(null);
+  final ReactiveProperty<Duration?> abLoopB = ReactiveProperty<Duration?>(null);
   final ReactiveProperty<int?> abLoopCount = ReactiveProperty<int?>(null);
   final ReactiveProperty<int?> remainingAbLoops = ReactiveProperty<int?>(null);
 
@@ -199,8 +204,7 @@ class DefaultPropertyReactives {
   final ReactiveProperty<double> percentPos = ReactiveProperty<double>(0.0);
   final ReactiveProperty<double> cacheSpeed = ReactiveProperty<double>(0.0);
   final ReactiveProperty<int> cacheBufferingState = ReactiveProperty<int>(0);
-  final ReactiveProperty<String> currentDemuxer =
-      ReactiveProperty<String>('');
+  final ReactiveProperty<String> currentDemuxer = ReactiveProperty<String>('');
   final ReactiveProperty<String> currentAo = ReactiveProperty<String>('');
   final ReactiveProperty<Duration> demuxerStartTime =
       ReactiveProperty<Duration>(Duration.zero);
@@ -368,35 +372,34 @@ List<MpvPropertySpec> buildDefaultSpecs(
     ),
 
     // ── ReplayGain & gapless ─────────────────────────────────────────────
-    MpvPropertySpec<GaplessMode>.string(
+    MpvPropertySpec<Gapless>.string(
       name: 'gapless-audio',
       reactive: r.gapless,
-      parse: (raw, _) => GaplessMode.fromMpv(raw),
+      parse: (raw, _) => Gapless.fromMpv(raw),
       reduce: (v, s) => s.copyWith(gapless: v),
     ),
     // ── ReplayGain ───────────────────────────────────────────────────────
     // Aggregate cell — same pattern as audio-params above: four specs
-    // share one reactive that dedups on the full [ReplayGainConfig].
-    MpvPropertySpec<ReplayGainConfig>.string(
+    // share one reactive that dedups on the full [ReplayGainSettings].
+    MpvPropertySpec<ReplayGainSettings>.string(
       name: 'replaygain',
       reactive: r.replayGain,
-      parse: (raw, s) =>
-          s.replayGain.copyWith(mode: ReplayGainMode.fromMpv(raw)),
+      parse: (raw, s) => s.replayGain.copyWith(mode: ReplayGain.fromMpv(raw)),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
-    MpvPropertySpec<ReplayGainConfig>.double(
+    MpvPropertySpec<ReplayGainSettings>.double(
       name: 'replaygain-preamp',
       reactive: r.replayGain,
       parse: (raw, s) => s.replayGain.copyWith(preamp: raw),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
-    MpvPropertySpec<ReplayGainConfig>.double(
+    MpvPropertySpec<ReplayGainSettings>.double(
       name: 'replaygain-fallback',
       reactive: r.replayGain,
       parse: (raw, s) => s.replayGain.copyWith(fallback: raw),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
-    MpvPropertySpec<ReplayGainConfig>.flag(
+    MpvPropertySpec<ReplayGainSettings>.flag(
       name: 'replaygain-clip',
       reactive: r.replayGain,
       parse: (raw, s) => s.replayGain.copyWith(clip: raw),
@@ -411,32 +414,32 @@ List<MpvPropertySpec> buildDefaultSpecs(
 
     // ── Cache ────────────────────────────────────────────────────────────
     // Aggregate cell — five specs share one reactive that dedups on the
-    // full [CacheConfig].
-    MpvPropertySpec<CacheConfig>.string(
+    // full [CacheSettings].
+    MpvPropertySpec<CacheSettings>.string(
       name: 'cache',
       reactive: r.cache,
-      parse: (raw, s) => s.cache.copyWith(mode: CacheMode.fromMpv(raw)),
+      parse: (raw, s) => s.cache.copyWith(mode: Cache.fromMpv(raw)),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<CacheConfig>.double(
+    MpvPropertySpec<CacheSettings>.double(
       name: 'cache-secs',
       reactive: r.cache,
       parse: (raw, s) => s.cache.copyWith(secs: secondsToDuration(raw)),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<CacheConfig>.flag(
+    MpvPropertySpec<CacheSettings>.flag(
       name: 'cache-on-disk',
       reactive: r.cache,
       parse: (raw, s) => s.cache.copyWith(onDisk: raw),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<CacheConfig>.flag(
+    MpvPropertySpec<CacheSettings>.flag(
       name: 'cache-pause',
       reactive: r.cache,
       parse: (raw, s) => s.cache.copyWith(pause: raw),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
-    MpvPropertySpec<CacheConfig>.double(
+    MpvPropertySpec<CacheSettings>.double(
       name: 'cache-pause-wait',
       reactive: r.cache,
       parse: (raw, s) => s.cache.copyWith(pauseWait: secondsToDuration(raw)),
@@ -523,13 +526,13 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<MpvTrack?>.node(
       name: 'current-tracks/audio',
       reactive: r.currentAudioTrack,
-      parse: (raw, _) => parseCurrentAudioTrackNode(raw),
+      parse: (raw, _) => parseCurrentTrackNode(raw),
       reduce: (v, s) => s.copyWith(currentAudioTrack: v),
     ),
-    MpvPropertySpec<String>.string(
+    MpvPropertySpec<Set<Spdif>>.string(
       name: 'audio-spdif',
       reactive: r.audioSpdif,
-      parse: _identityString,
+      parse: (raw, _) => Spdif.parseMpvList(raw),
       reduce: (v, s) => s.copyWith(audioSpdif: v),
     ),
     MpvPropertySpec<double>.double(
@@ -544,18 +547,16 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: _identityInt,
       reduce: (v, s) => s.copyWith(audioSampleRate: v),
     ),
-    MpvPropertySpec<String>.string(
+    MpvPropertySpec<Format>.string(
       name: 'audio-format',
       reactive: r.audioFormat,
-      // mpv emits an empty string when the format has been reset; surface
-      // that as 'no' to keep the public API consistent with the setter.
-      parse: (raw, _) => raw.isEmpty ? 'no' : raw,
+      parse: (raw, _) => Format.fromMpv(raw),
       reduce: (v, s) => s.copyWith(audioFormat: v),
     ),
-    MpvPropertySpec<String>.string(
+    MpvPropertySpec<Channels>.string(
       name: 'audio-channels',
       reactive: r.audioChannels,
-      parse: _identityString,
+      parse: (raw, _) => Channels.fromMpv(raw),
       reduce: (v, s) => s.copyWith(audioChannels: v),
     ),
     MpvPropertySpec<String>.string(
@@ -584,16 +585,16 @@ List<MpvPropertySpec> buildDefaultSpecs(
     ),
 
     // ── Cover art ────────────────────────────────────────────────────────
-    MpvPropertySpec<AudioDisplayMode>.string(
+    MpvPropertySpec<Display>.string(
       name: 'audio-display',
       reactive: r.audioDisplay,
-      parse: (raw, _) => AudioDisplayMode.fromMpv(raw),
+      parse: (raw, _) => Display.fromMpv(raw),
       reduce: (v, s) => s.copyWith(audioDisplay: v),
     ),
-    MpvPropertySpec<CoverArtAutoMode>.string(
+    MpvPropertySpec<Cover>.string(
       name: 'cover-art-auto',
       reactive: r.coverArtAuto,
-      parse: (raw, _) => CoverArtAutoMode.fromMpv(raw),
+      parse: (raw, _) => Cover.fromMpv(raw),
       reduce: (v, s) => s.copyWith(coverArtAuto: v),
     ),
     MpvPropertySpec<Duration?>.string(

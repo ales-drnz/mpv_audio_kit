@@ -5,8 +5,8 @@
 @TestOn('mac-os || linux || windows')
 library;
 
-
 import 'package:test/test.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
@@ -17,9 +17,9 @@ void main() {
   // when running the full dispose-contract suite. This file uses
   // exactly ONE Player.
 
-  group('Dispose safety — escape hatches throw StateError after dispose',
-      () {
-    test('getRawProperty / setRawProperty / sendRawCommand / registerHook / '
+  group('Dispose safety — escape hatches throw StateError after dispose', () {
+    test(
+        'getRawProperty / setRawProperty / sendRawCommand / registerHook / '
         'continueHook all throw StateError post-dispose', () async {
       final player = await buildPlayer();
       // Allow the event isolate to spawn fully before disposing.
@@ -27,11 +27,10 @@ void main() {
       await player.dispose();
 
       expect(() => player.getRawProperty('volume'), throwsStateError);
-      expect(
-          () => player.setRawProperty('volume', '50'), throwsStateError);
+      expect(() => player.setRawProperty('volume', '50'), throwsStateError);
       expect(() => player.sendRawCommand(['set', 'volume', '50']),
           throwsStateError);
-      expect(() => player.registerHook('on_load'), throwsStateError);
+      expect(() => player.registerHook(Hook.load), throwsStateError);
       expect(() => player.continueHook(1), throwsStateError);
 
       // Let libmpv's background threads wind down (see

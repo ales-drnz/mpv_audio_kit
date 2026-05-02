@@ -3,13 +3,12 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/cover/audio_display_mode.dart';
-import 'package:mpv_audio_kit/src/audio/audio_output_state.dart';
-import 'package:mpv_audio_kit/src/cover/cover_art_auto_mode.dart';
-import 'package:mpv_audio_kit/src/audio/gapless_mode.dart';
-import 'package:mpv_audio_kit/src/network/cache_config.dart' show CacheMode;
-import 'package:mpv_audio_kit/src/audio/replay_gain_config.dart'
-    show ReplayGainMode;
+import 'package:mpv_audio_kit/src/types/enums/display.dart';
+import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/types/enums/cover.dart';
+import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
+import 'package:mpv_audio_kit/src/types/enums/cache.dart';
+import 'package:mpv_audio_kit/src/types/enums/replay_gain.dart';
 
 /// Pairs every enum the wrapper exposes via `setX(...)` / `state.X` / mpv
 /// property dispatch with its documented fallback variant. The fallback
@@ -18,34 +17,34 @@ import 'package:mpv_audio_kit/src/audio/replay_gain_config.dart'
 /// want a property change to crash the app.
 final _typed = <(List<dynamic>, dynamic Function(String), dynamic, String)>[
   (
-    GaplessMode.values,
-    GaplessMode.fromMpv,
-    GaplessMode.weak,
-    'GaplessMode',
+    Gapless.values,
+    Gapless.fromMpv,
+    Gapless.weak,
+    'Gapless',
   ),
   (
-    ReplayGainMode.values,
-    ReplayGainMode.fromMpv,
-    ReplayGainMode.no,
-    'ReplayGainMode',
+    ReplayGain.values,
+    ReplayGain.fromMpv,
+    ReplayGain.no,
+    'ReplayGain',
   ),
   (
-    AudioDisplayMode.values,
-    AudioDisplayMode.fromMpv,
-    AudioDisplayMode.embeddedFirst,
-    'AudioDisplayMode',
+    Display.values,
+    Display.fromMpv,
+    Display.embeddedFirst,
+    'Display',
   ),
   (
-    CoverArtAutoMode.values,
-    CoverArtAutoMode.fromMpv,
-    CoverArtAutoMode.no,
-    'CoverArtAutoMode',
+    Cover.values,
+    Cover.fromMpv,
+    Cover.no,
+    'Cover',
   ),
   (
-    CacheMode.values,
-    CacheMode.fromMpv,
-    CacheMode.auto,
-    'CacheMode',
+    Cache.values,
+    Cache.fromMpv,
+    Cache.auto,
+    'Cache',
   ),
   (
     AudioOutputState.values,
@@ -78,8 +77,8 @@ void main() {
     test('mpvValue uses kebab-case for multi-word variants', () {
       // Spot-check: kebab-case is the contract for mpv option strings.
       // Single-word variants are uniformly lowercase, no test needed.
-      expect(AudioDisplayMode.embeddedFirst.mpvValue, 'embedded-first');
-      expect(AudioDisplayMode.externalFirst.mpvValue, 'external-first');
+      expect(Display.embeddedFirst.mpvValue, 'embedded-first');
+      expect(Display.externalFirst.mpvValue, 'external-first');
     });
   });
 }

@@ -36,7 +36,7 @@ class _HooksPageState extends State<HooksPage> {
     if (enable) {
       // The 5-second timeout is a safety net: if our handler errors or
       // forgets to call continueHook, mpv won't stall indefinitely.
-      player.registerHook('on_load', timeout: const Duration(seconds: 5));
+      player.registerHook(Hook.load, timeout: const Duration(seconds: 5));
       _hookSub = player.stream.hook.listen(_handleHook);
     } else {
       _hookSub?.cancel();
@@ -49,7 +49,7 @@ class _HooksPageState extends State<HooksPage> {
   }
 
   Future<void> _handleHook(MpvHookEvent event) async {
-    if (event.name != 'on_load') return;
+    if (event.hook != Hook.load) return;
     final originalUrl =
         await player.getRawProperty('stream-open-filename') ?? '';
     String? rewrittenUrl;
@@ -62,7 +62,7 @@ class _HooksPageState extends State<HooksPage> {
         _log.insert(
           0,
           _HookLogEntry(
-            name: event.name,
+            name: event.hook.mpvName,
             id: event.id,
             url: originalUrl,
             rewrittenUrl: rewrittenUrl,
@@ -117,10 +117,7 @@ class _HooksPageState extends State<HooksPage> {
                     _hookActive
                         ? 'Waiting for the next file load…'
                         : 'Enable the hook above to start capturing events',
-                    style: TextStyle(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -175,8 +172,10 @@ class _HookLogTile extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: cs.primary,
                     borderRadius: BorderRadius.circular(6),

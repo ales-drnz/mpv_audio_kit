@@ -34,7 +34,8 @@ void main() {
       await player.dispose();
     });
 
-    test('jumps to chapter index 1 (Verse) — optimistic update + observer '
+    test(
+        'jumps to chapter index 1 (Verse) — optimistic update + observer '
         'confirmation', () async {
       expect(player.state.chapters.length, 3);
 

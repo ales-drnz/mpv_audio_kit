@@ -37,9 +37,7 @@ class FileInfoPage extends StatelessWidget {
           format: (bytes) {
             if (bytes == 0) return '—';
             final mib = bytes / (1024 * 1024);
-            return mib >= 1
-                ? '${mib.toStringAsFixed(2)} MiB'
-                : '$bytes B';
+            return mib >= 1 ? '${mib.toStringAsFixed(2)} MiB' : '$bytes B';
           },
         ),
 
@@ -128,4 +126,3 @@ class FileInfoPage extends StatelessWidget {
     );
   }
 }
-

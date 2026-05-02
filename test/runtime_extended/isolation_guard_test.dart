@@ -39,7 +39,8 @@ void main() {
       await player.dispose();
     });
 
-    test('Player constructs, opens fixture, sets volume, disposes — without '
+    test(
+        'Player constructs, opens fixture, sets volume, disposes — without '
         'crashing on the 3rd-Player SIGSEGV quirk because flutter_test '
         'puts each file in its own isolate group', () async {
       // Open the file to confirm the AO + demuxer init path completes

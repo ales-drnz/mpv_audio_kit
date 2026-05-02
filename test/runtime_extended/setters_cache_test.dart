@@ -26,15 +26,15 @@ void main() {
     });
 
     test('writes 5 backing properties atomically', () async {
-      const cfg = CacheConfig(
-        mode: CacheMode.yes,
+      const cfg = CacheSettings(
+        mode: Cache.yes,
         secs: Duration(seconds: 5),
         onDisk: true,
         pause: false,
         pauseWait: Duration(seconds: 2),
       );
       await player.setCache(cfg);
-      expect(player.state.cache.mode, CacheMode.yes);
+      expect(player.state.cache.mode, Cache.yes);
       expect(player.state.cache.secs, const Duration(seconds: 5));
       expect(player.state.cache.onDisk, isTrue);
       expect(player.state.cache.pause, isFalse);

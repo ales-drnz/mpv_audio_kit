@@ -25,23 +25,44 @@ void main() {
       await player.dispose();
     });
 
-    test('audioExclusive / audioSpdif / audioFormat / audioChannels / '
+    test(
+        'audioExclusive / audioSpdif / audioFormat / audioChannels / '
         'audioSampleRate round-trip', () async {
       await player.setAudioExclusive(true);
       expect(player.state.audioExclusive, isTrue);
       await player.setAudioExclusive(false);
       expect(player.state.audioExclusive, isFalse);
 
-      await player.setAudioSpdif('ac3');
-      expect(player.state.audioSpdif, 'ac3');
-      await player.setAudioSpdif('');
-      expect(player.state.audioSpdif, '');
+      await player.setAudioSpdif({Spdif.ac3});
+      expect(player.state.audioSpdif, {Spdif.ac3});
+      await player.setAudioSpdif({Spdif.ac3, Spdif.dts, Spdif.eac3});
+      expect(
+        player.state.audioSpdif,
+        {Spdif.ac3, Spdif.dts, Spdif.eac3},
+      );
+      await player.setAudioSpdif(<Spdif>{});
+      expect(player.state.audioSpdif, isEmpty);
 
-      await player.setAudioFormat('s16');
-      expect(player.state.audioFormat, 's16');
+      await player.setAudioFormat(Format.s16);
+      expect(player.state.audioFormat, Format.s16);
 
-      await player.setAudioChannels('stereo');
-      expect(player.state.audioChannels, 'stereo');
+      await player.setAudioChannels(Channels.stereo);
+      expect(player.state.audioChannels, Channels.stereo);
+
+      await player.setAudioChannels(Channels.fiveOneSide);
+      expect(
+        player.state.audioChannels,
+        Channels.fiveOneSide,
+      );
+
+      // Custom escape — anything outside the named-layout set.
+      await player.setAudioChannels(
+        const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
+      );
+      expect(
+        player.state.audioChannels,
+        const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
+      );
 
       await player.setAudioSampleRate(48000);
       expect(player.state.audioSampleRate, 48000);
@@ -55,17 +76,17 @@ void main() {
       expect(player.state.audioDriver, 'null');
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('audioDevice round-trips by name (description is metadata)',
-        () async {
-      const dev = AudioDevice('null', 'Null Driver');
+    test('audioDevice round-trips by name (description is metadata)', () async {
+      const dev = Device('null', 'Null Driver');
       await player.setAudioDevice(dev);
       expect(player.state.audioDevice.name, 'null');
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('audioDevice description is sourced from audioDevices list, '
+    test(
+        'audioDevice description is sourced from audioDevices list, '
         'not duplicated from name', () async {
       // Regression: the spec used to parse `audio-device` as
-      // AudioDevice(raw, raw) — both name AND description were the
+      // Device(raw, raw) — both name AND description were the
       // raw mpv name. With the cross-reference fix the description
       // mirrors the entry in `state.audioDevices` (parsed from the
       // `audio-device-list` node observer).
@@ -73,13 +94,13 @@ void main() {
       // mpv always exposes a built-in 'auto' device with description
       // 'Autoselect device' across every backend on every platform —
       // it's the most stable assertion target.
-      await player.setAudioDevice(const AudioDevice('auto', 'whatever'));
+      await player.setAudioDevice(const Device('auto', 'whatever'));
       // Allow the property observer round-trip to land.
       await Future.delayed(const Duration(milliseconds: 200));
 
-      final autoEntry = player.state.audioDevices
-          .firstWhere((d) => d.name == 'auto',
-              orElse: () => const AudioDevice('auto', 'auto'));
+      final autoEntry = player.state.audioDevices.firstWhere(
+          (d) => d.name == 'auto',
+          orElse: () => const Device('auto', 'auto'));
       expect(player.state.audioDevice.name, 'auto');
       expect(player.state.audioDevice.description, autoEntry.description,
           reason: 'active device description must match the audioDevices '

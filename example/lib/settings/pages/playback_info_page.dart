@@ -14,10 +14,10 @@ class PlaybackInfoPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Lifecycle'),
-        StreamBuilder<PlaybackLifecycle>(
-          stream: player.stream.playbackLifecycle,
+        StreamBuilder<MpvPlaybackState>(
+          stream: player.stream.playbackState,
           builder: (_, snap) {
-            final lifecycle = snap.data ?? PlaybackLifecycle.idle;
+            final lifecycle = snap.data ?? MpvPlaybackState.idle;
             return ReadOnlyPropertyCard(
               title: 'Playback Lifecycle',
               subtitle: 'core-idle / paused-for-cache / eof-reached',
@@ -115,4 +115,3 @@ class PlaybackInfoPage extends StatelessWidget {
     );
   }
 }
-

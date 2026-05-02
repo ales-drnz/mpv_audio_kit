@@ -12,25 +12,24 @@ class ReplayGainPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'ReplayGain'),
-        StreamBuilder<ReplayGainConfig>(
+        StreamBuilder<ReplayGainSettings>(
           stream: player.stream.replayGain,
           initialData: player.state.replayGain,
           builder: (context, snap) {
-            final cfg = snap.data ?? const ReplayGainConfig();
+            final cfg = snap.data ?? const ReplayGainSettings();
             return Column(
               children: [
-                SegmentedPropertyCard<ReplayGainMode>(
+                SegmentedPropertyCard<ReplayGain>(
                   title: 'Mode',
                   subtitle: 'replaygain=${cfg.mode.mpvValue}',
                   icon: Icons.av_timer_rounded,
                   value: cfg.mode,
                   segments: const [
-                    (ReplayGainMode.no, 'NONE'),
-                    (ReplayGainMode.track, 'TRACK'),
-                    (ReplayGainMode.album, 'ALBUM'),
+                    (ReplayGain.no, 'NONE'),
+                    (ReplayGain.track, 'TRACK'),
+                    (ReplayGain.album, 'ALBUM'),
                   ],
-                  onChanged: (m) =>
-                      player.setReplayGain(cfg.copyWith(mode: m)),
+                  onChanged: (m) => player.setReplayGain(cfg.copyWith(mode: m)),
                 ),
                 SliderPropertyCard(
                   title: 'Preamp',
@@ -63,8 +62,7 @@ class ReplayGainPage extends StatelessWidget {
                   subtitle: 'replaygain-clip=${cfg.clip ? 'yes' : 'no'}',
                   icon: Icons.high_quality_rounded,
                   value: cfg.clip,
-                  onChanged: (v) =>
-                      player.setReplayGain(cfg.copyWith(clip: v)),
+                  onChanged: (v) => player.setReplayGain(cfg.copyWith(clip: v)),
                 ),
               ],
             );
@@ -72,20 +70,20 @@ class ReplayGainPage extends StatelessWidget {
         ),
 
         const PropertySectionHeader(title: 'Gapless'),
-        StreamBuilder<GaplessMode>(
+        StreamBuilder<Gapless>(
           stream: player.stream.gapless,
           initialData: player.state.gapless,
           builder: (context, snap) {
-            final mode = snap.data ?? GaplessMode.weak;
-            return SegmentedPropertyCard<GaplessMode>(
+            final mode = snap.data ?? Gapless.weak;
+            return SegmentedPropertyCard<Gapless>(
               title: 'Gapless Playback',
               subtitle: 'gapless-audio=${mode.mpvValue}',
               icon: Icons.leak_add_rounded,
               value: mode,
               segments: const [
-                (GaplessMode.no, 'NONE'),
-                (GaplessMode.yes, 'YES'),
-                (GaplessMode.weak, 'WEAK'),
+                (Gapless.no, 'NONE'),
+                (Gapless.yes, 'YES'),
+                (Gapless.weak, 'WEAK'),
               ],
               onChanged: player.setGapless,
             );

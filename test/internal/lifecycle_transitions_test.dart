@@ -4,13 +4,13 @@
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:mpv_audio_kit/src/playback/lifecycle_transitions.dart';
+import 'package:mpv_audio_kit/src/internals/lifecycle_transitions.dart';
 
 void main() {
   group('computeLifecycle — partial updates', () {
     test('null fields leave state and "did-change" flags untouched', () {
-      const prev = PlayerState(
-          playing: true, buffering: false, completed: false);
+      const prev =
+          PlayerState(playing: true, buffering: false, completed: false);
       final r = computeLifecycle(prev: prev);
       expect(r.newState, prev);
       expect(r.playingDidChange, isFalse);
@@ -19,8 +19,8 @@ void main() {
     });
 
     test('only the supplied fields are written into newState', () {
-      const prev = PlayerState(
-          playing: true, buffering: true, completed: false);
+      const prev =
+          PlayerState(playing: true, buffering: true, completed: false);
       final r = computeLifecycle(prev: prev, completed: true);
       expect(r.newState.playing, isTrue, reason: 'untouched');
       expect(r.newState.buffering, isTrue, reason: 'untouched');
@@ -38,8 +38,8 @@ void main() {
       // *different* reactives. A spurious emit on `_buffering` from
       // `_updateLifecycle(buffering: true)` when buffering was already
       // true would re-trigger consumers' loading-spinner UX.
-      const prev = PlayerState(
-          playing: true, buffering: false, completed: false);
+      const prev =
+          PlayerState(playing: true, buffering: false, completed: false);
       final r = computeLifecycle(
           prev: prev, playing: true, buffering: false, completed: false);
       expect(r.newState, prev);
@@ -54,12 +54,10 @@ void main() {
         'StartFile: prev=idle → buffering=true must signal change on '
         'buffering (the missing emit that broke loading spinners)', () {
       const prev = PlayerState(buffering: false);
-      final r = computeLifecycle(
-          prev: prev, buffering: true, completed: false);
+      final r = computeLifecycle(prev: prev, buffering: true, completed: false);
       expect(r.newState.buffering, isTrue);
       expect(r.bufferingDidChange, isTrue,
-          reason:
-              '0.0.9 silently kept _bufferingCtrl unfed across the whole '
+          reason: '0.0.9 silently kept _bufferingCtrl unfed across the whole '
               'lifecycle — this assertion fails if that path returns');
     });
 
@@ -74,16 +72,15 @@ void main() {
     test(
         'EndFile (eof): prev=playing → playing=false + completed=true '
         '(both flags must change on a clean finish)', () {
-      const prev = PlayerState(
-          playing: true, buffering: false, completed: false);
+      const prev =
+          PlayerState(playing: true, buffering: false, completed: false);
       final r = computeLifecycle(
           prev: prev, playing: false, buffering: false, completed: true);
       expect(r.newState.playing, isFalse);
       expect(r.newState.completed, isTrue);
       expect(r.playingDidChange, isTrue);
       expect(r.completedDidChange, isTrue,
-          reason:
-              '0.0.9 dropped the completed emit, breaking custom queue '
+          reason: '0.0.9 dropped the completed emit, breaking custom queue '
               '"track finished" handlers');
     });
 
@@ -98,11 +95,9 @@ void main() {
 
     test(
         'idle-active=true: clears both playing and buffering '
-        '(matches the onIdleActive callback wiring in default specs)',
-        () {
+        '(matches the onIdleActive callback wiring in default specs)', () {
       const prev = PlayerState(playing: true, buffering: true);
-      final r = computeLifecycle(
-          prev: prev, playing: false, buffering: false);
+      final r = computeLifecycle(prev: prev, playing: false, buffering: false);
       expect(r.newState.playing, isFalse);
       expect(r.newState.buffering, isFalse);
       expect(r.playingDidChange, isTrue);

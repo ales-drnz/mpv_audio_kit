@@ -5,7 +5,6 @@
 @TestOn('mac-os || linux || windows')
 library;
 
-
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../_helpers/setter_test_helpers.dart';
@@ -16,7 +15,8 @@ void main() {
   // ONE Player per file (see dispose_safety_test.dart for the rationale).
 
   group('Dispose safety — typed setters throw StateError post-dispose', () {
-    test('representative setter sample across the 5 mixin modules throws '
+    test(
+        'representative setter sample across the 5 mixin modules throws '
         'StateError after dispose', () async {
       final player = await buildPlayer();
       // Allow the event isolate to spawn fully before disposing.
@@ -29,10 +29,9 @@ void main() {
       expect(() => player.setMute(true), throwsStateError);
       expect(() => player.setShuffle(true), throwsStateError);
       expect(() => player.setRate(1.5), throwsStateError);
-      expect(
-          () => player.setReplayGain(const ReplayGainConfig()),
+      expect(() => player.setReplayGain(const ReplayGainSettings()),
           throwsStateError);
-      expect(() => player.setCache(const CacheConfig()), throwsStateError);
+      expect(() => player.setCache(const CacheSettings()), throwsStateError);
       expect(() => player.play(), throwsStateError);
       expect(() => player.pause(), throwsStateError);
       expect(() => player.stop(), throwsStateError);

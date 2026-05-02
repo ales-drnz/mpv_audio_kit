@@ -28,11 +28,12 @@ void main() {
     test('setEqualizer round-trip — gains stored, enabled toggles chain',
         () async {
       final gains = List<double>.generate(10, (i) => i.toDouble() - 5);
-      await player.setEqualizer(EqualizerConfig(enabled: true, gains: gains));
+      await player.setEqualizer(EqualizerSettings(enabled: true, gains: gains));
       expect(player.state.equalizer.enabled, isTrue);
       expect(player.state.equalizer.gains, gains);
 
-      await player.setEqualizer(player.state.equalizer.copyWith(enabled: false));
+      await player
+          .setEqualizer(player.state.equalizer.copyWith(enabled: false));
       expect(player.state.equalizer.enabled, isFalse);
       // Gains preserved while disabled.
       expect(player.state.equalizer.gains, gains);
@@ -40,20 +41,20 @@ void main() {
 
     test('setCompressor / setLoudness / setPitchTempo round-trip', () async {
       await player.setCompressor(
-        const CompressorConfig(enabled: true, threshold: -18, ratio: 6),
+        const CompressorSettings(enabled: true, threshold: -18, ratio: 6),
       );
       expect(player.state.compressor.enabled, isTrue);
       expect(player.state.compressor.threshold, -18);
       expect(player.state.compressor.ratio, 6);
 
       await player.setLoudness(
-        const LoudnessConfig(enabled: true, integratedLoudness: -23),
+        const LoudnessSettings(enabled: true, integratedLoudness: -23),
       );
       expect(player.state.loudness.enabled, isTrue);
       expect(player.state.loudness.integratedLoudness, -23);
 
       await player.setPitchTempo(
-        const PitchTempoConfig(enabled: true, pitch: 1.5, tempo: 0.8),
+        const PitchTempoSettings(enabled: true, pitch: 1.5, tempo: 0.8),
       );
       expect(player.state.pitchTempo.enabled, isTrue);
       expect(player.state.pitchTempo.pitch, 1.5);
@@ -90,18 +91,17 @@ void main() {
       await player.setCustomAudioFilters(const []);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('gapless / audioDisplay / coverArtAuto enum round-trip',
-        () async {
-      await player.setGapless(GaplessMode.yes);
-      expect(player.state.gapless, GaplessMode.yes);
-      await player.setGapless(GaplessMode.no);
-      expect(player.state.gapless, GaplessMode.no);
+    test('gapless / audioDisplay / coverArtAuto enum round-trip', () async {
+      await player.setGapless(Gapless.yes);
+      expect(player.state.gapless, Gapless.yes);
+      await player.setGapless(Gapless.no);
+      expect(player.state.gapless, Gapless.no);
 
-      await player.setAudioDisplay(AudioDisplayMode.no);
-      expect(player.state.audioDisplay, AudioDisplayMode.no);
+      await player.setAudioDisplay(Display.no);
+      expect(player.state.audioDisplay, Display.no);
 
-      await player.setCoverArtAuto(CoverArtAutoMode.exact);
-      expect(player.state.coverArtAuto, CoverArtAutoMode.exact);
+      await player.setCoverArtAuto(Cover.exact);
+      expect(player.state.coverArtAuto, Cover.exact);
     }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

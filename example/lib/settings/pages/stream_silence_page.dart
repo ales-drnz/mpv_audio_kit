@@ -24,10 +24,9 @@ class StreamSilencePage extends StatelessWidget {
               subtitle: 'audio-stream-silence=${val ? 'yes' : 'no'}',
               icon: Icons.shutter_speed_rounded,
               value: val,
-              onChanged: (v) => unawaited(player.setRawProperty(
-                'audio-stream-silence',
-                v ? 'yes' : 'no',
-              )),
+              onChanged: (v) => unawaited(
+                player.setRawProperty('audio-stream-silence', v ? 'yes' : 'no'),
+              ),
             );
           },
         ),

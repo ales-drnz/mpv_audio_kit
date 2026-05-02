@@ -120,9 +120,13 @@ void main() {
       // `_updateField` is synchronous, so a late firstWhere would miss
       // it and time out.
       Future<Duration?> nextA(bool Function(Duration?) pred) =>
-          player.stream.abLoopA.firstWhere(pred).timeout(const Duration(seconds: 3));
+          player.stream.abLoopA
+              .firstWhere(pred)
+              .timeout(const Duration(seconds: 3));
       Future<Duration?> nextB(bool Function(Duration?) pred) =>
-          player.stream.abLoopB.firstWhere(pred).timeout(const Duration(seconds: 3));
+          player.stream.abLoopB
+              .firstWhere(pred)
+              .timeout(const Duration(seconds: 3));
 
       final waitASet = nextA((d) => d?.inMilliseconds == 500);
       await player.setAbLoopA(const Duration(milliseconds: 500));

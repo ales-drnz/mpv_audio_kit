@@ -91,10 +91,12 @@ class _AoPageState extends State<AoPage> {
               subtitle: 'ao-null-untimed=${val ? 'yes' : 'no'}',
               icon: Icons.layers_clear_rounded,
               value: val,
-              onChanged: (v) => unawaited(widget.player.setRawProperty(
-                'ao-null-untimed',
-                v ? 'yes' : 'no',
-              )),
+              onChanged: (v) => unawaited(
+                widget.player.setRawProperty(
+                  'ao-null-untimed',
+                  v ? 'yes' : 'no',
+                ),
+              ),
             );
           },
         ),
@@ -158,4 +160,3 @@ class _AoPageState extends State<AoPage> {
     );
   }
 }
-

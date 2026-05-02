@@ -17,23 +17,23 @@ class AudioPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Physical Output'),
-        StreamBuilder<List<AudioDevice>>(
+        StreamBuilder<List<Device>>(
           stream: player.stream.audioDevices,
           initialData: player.state.audioDevices,
           builder: (context, snapshot) {
             var devices = snapshot.data ?? [];
             if (!devices.any((d) => d.name == 'auto')) {
               devices = [
-                const AudioDevice('auto', 'Default (auto)'),
+                const Device('auto', 'Default (auto)'),
                 ...devices,
               ];
             }
-            return StreamBuilder<AudioDevice>(
+            return StreamBuilder<Device>(
               stream: player.stream.audioDevice,
               initialData: player.state.audioDevice,
               builder: (context, deviceSnap) {
                 final currentDevice =
-                    deviceSnap.data ?? const AudioDevice('auto', 'Auto');
+                    deviceSnap.data ?? const Device('auto', 'Auto');
                 final currentValue =
                     devices.any((d) => d.name == currentDevice.name)
                     ? currentDevice.name
@@ -58,7 +58,7 @@ class AudioPage extends StatelessWidget {
                     if (v != null) {
                       final device = devices.firstWhere(
                         (d) => d.name == v,
-                        orElse: () => AudioDevice(v, v),
+                        orElse: () => Device(v, v),
                       );
                       player.setAudioDevice(device);
                     }
@@ -68,27 +68,36 @@ class AudioPage extends StatelessWidget {
             );
           },
         ),
-        StreamBuilder<String>(
+        StreamBuilder<Set<Spdif>>(
           stream: player.stream.audioSpdif,
           initialData: player.state.audioSpdif,
           builder: (context, snap) {
-            final val = snap.data ?? '';
-            final options = ['', 'ac3', 'dts', 'ac3,dts'];
-            if (!options.contains(val)) options.add(val);
-            return DropdownPropertyCard<String>(
+            final selected = snap.data ?? const <Spdif>{};
+            final wire = selected.isEmpty
+                ? 'none'
+                : Spdif.formatMpvList(selected);
+            return PropertyBaseCard(
               title: 'S/PDIF Passthrough',
-              subtitle: 'audio-spdif=${val.isEmpty ? 'none' : val}',
+              subtitle: 'audio-spdif=$wire',
               icon: Icons.settings_input_hdmi_rounded,
-              value: val,
-              items: options
-                  .map(
-                    (v) => DropdownMenuItem(
-                      value: v,
-                      child: Text(v == '' ? 'None/Decode' : 'Passthrough: $v'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => v != null ? player.setAudioSpdif(v) : null,
+              isActive: selected.isNotEmpty,
+              body: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: Spdif.values
+                    .map(
+                      (codec) => FilterChip(
+                        label: Text(codec.mpvValue),
+                        selected: selected.contains(codec),
+                        onSelected: (on) {
+                          final next = {...selected};
+                          on ? next.add(codec) : next.remove(codec);
+                          player.setAudioSpdif(next);
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
             );
           },
         ),
@@ -118,50 +127,52 @@ class AudioPage extends StatelessWidget {
             );
           },
         ),
-        StreamBuilder<String>(
+        StreamBuilder<Format>(
           stream: player.stream.audioFormat,
           initialData: player.state.audioFormat,
           builder: (context, snap) {
-            final val = snap.data ?? 'no';
-            final options = ['no', 'u8', 'u8p', 's16', 's16p', 's32', 's32p', 'float', 'floatp', 'double', 'doublep'];
-            if (!options.contains(val)) options.add(val);
-            return DropdownPropertyCard<String>(
+            final val = snap.data ?? Format.auto;
+            return DropdownPropertyCard<Format>(
               title: 'Output Format',
-              subtitle: 'audio-format=$val',
+              subtitle: 'audio-format=${val.mpvValue}',
               icon: Icons.settings_applications_rounded,
               value: val,
-              items: options
-                  .map((v) => DropdownMenuItem(
-                        value: v,
-                        child: Text(v == 'no' ? 'Auto' : v),
-                      ))
+              items: Format.values
+                  .map(
+                    (v) => DropdownMenuItem(
+                      value: v,
+                      child: Text(v == Format.auto ? 'Auto' : v.mpvValue),
+                    ),
+                  )
                   .toList(),
               onChanged: (v) => v != null ? player.setAudioFormat(v) : null,
             );
           },
         ),
-        StreamBuilder<String>(
+        StreamBuilder<Channels>(
           stream: player.stream.audioChannels,
           initialData: player.state.audioChannels,
           builder: (context, snap) {
-            final val = snap.data ?? 'auto';
-            final options = [
-              'auto',
-              'mono',
-              'stereo',
-              '2.1',
-              '5.1',
-              '7.1',
-              'auto-safe',
+            final val = snap.data ?? Channels.auto;
+            final options = <Channels>[
+              Channels.auto,
+              Channels.mono,
+              Channels.stereo,
+              Channels.twoOne,
+              Channels.fiveOne,
+              Channels.sevenOne,
+              Channels.autoSafe,
             ];
             if (!options.contains(val)) options.add(val);
-            return DropdownPropertyCard<String>(
+            return DropdownPropertyCard<Channels>(
               title: 'Audio Channels',
-              subtitle: 'audio-channels=$val',
+              subtitle: 'audio-channels=${val.mpvValue}',
               icon: Icons.settings_input_component_rounded,
               value: val,
               items: options
-                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                  .map(
+                    (v) => DropdownMenuItem(value: v, child: Text(v.mpvValue)),
+                  )
                   .toList(),
               onChanged: (v) => v != null ? player.setAudioChannels(v) : null,
             );
@@ -187,8 +198,7 @@ class AudioPage extends StatelessWidget {
           stream: player.stream.audioDelay,
           initialData: player.state.audioDelay,
           builder: (context, snap) {
-            final secs =
-                (snap.data ?? Duration.zero).inMicroseconds / 1e6;
+            final secs = (snap.data ?? Duration.zero).inMicroseconds / 1e6;
             return SliderPropertyCard(
               title: 'Audio Sync Delay',
               subtitle: 'audio-delay=${secs.toStringAsFixed(3)}s',
@@ -199,7 +209,8 @@ class AudioPage extends StatelessWidget {
               defaultValue: 0.0,
               labelBuilder: (v) => '${v.toStringAsFixed(3)}s',
               onChanged: (v) => player.setAudioDelay(
-                  Duration(microseconds: (v * 1e6).round())),
+                Duration(microseconds: (v * 1e6).round()),
+              ),
             );
           },
         ),
@@ -209,7 +220,8 @@ class AudioPage extends StatelessWidget {
           stream: player.stream.audioBuffer,
           initialData: player.state.audioBuffer,
           builder: (context, snap) {
-            final secs = (snap.data ?? const Duration(milliseconds: 200))
+            final secs =
+                (snap.data ?? const Duration(milliseconds: 200))
                     .inMicroseconds /
                 1e6;
             return SliderPropertyCard(
@@ -222,7 +234,8 @@ class AudioPage extends StatelessWidget {
               defaultValue: 0.2,
               labelBuilder: (v) => '${v.toStringAsFixed(1)}s',
               onChanged: (v) => player.setAudioBuffer(
-                  Duration(microseconds: (v * 1e6).round())),
+                Duration(microseconds: (v * 1e6).round()),
+              ),
             );
           },
         ),

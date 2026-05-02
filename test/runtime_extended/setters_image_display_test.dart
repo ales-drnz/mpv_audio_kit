@@ -38,8 +38,7 @@ void main() {
       // Set a finite value first so we can verify the null-write
       // actually transitions the state.
       await player.setImageDisplayDuration(const Duration(seconds: 2));
-      expect(player.state.imageDisplayDuration,
-          const Duration(seconds: 2));
+      expect(player.state.imageDisplayDuration, const Duration(seconds: 2));
 
       await player.setImageDisplayDuration(null);
       expect(player.state.imageDisplayDuration, isNull,

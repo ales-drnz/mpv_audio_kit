@@ -14,8 +14,7 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   // 5-second fixture lets sustained-playback observers (audioBitrate,
   // bufferDuration, audioPts, position) emit several values before EOF.
-  final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_5s.flac';
+  final fixturePath = '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
   setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
@@ -32,7 +31,8 @@ void main() {
       await player.dispose();
     });
 
-    test('mediaTitle / fileFormat / fileSize / seekable / partiallySeekable '
+    test(
+        'mediaTitle / fileFormat / fileSize / seekable / partiallySeekable '
         'populate from a real file', () async {
       // Some properties land at file-load time; some at first
       // play / first audio frame. Wait briefly to give them a chance.
@@ -92,8 +92,7 @@ void main() {
       }
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('audioPts emits a Duration distinct from time-pos baseline',
-        () async {
+    test('audioPts emits a Duration distinct from time-pos baseline', () async {
       // audio-pts may or may not differ from time-pos depending on
       // driver latency; assert only that it emits a non-zero value
       // during playback.

@@ -26,8 +26,8 @@ void main() {
     });
 
     test('writes 4 backing properties atomically', () async {
-      const cfg = ReplayGainConfig(
-        mode: ReplayGainMode.track,
+      const cfg = ReplayGainSettings(
+        mode: ReplayGain.track,
         preamp: -3.0,
         clip: true,
         fallback: 1.5,
@@ -36,7 +36,7 @@ void main() {
       // Optimistic update is synchronous (state is set inside the setter
       // via _updateField on the 4 granular reactives, then the aggregate
       // is reduced into state.replayGain).
-      expect(player.state.replayGain.mode, ReplayGainMode.track);
+      expect(player.state.replayGain.mode, ReplayGain.track);
       expect(player.state.replayGain.preamp, -3.0);
       expect(player.state.replayGain.clip, isTrue);
       expect(player.state.replayGain.fallback, 1.5);
@@ -44,21 +44,21 @@ void main() {
 
     test('partial update via copyWith preserves untouched fields', () async {
       // Start from a known state.
-      await player.setReplayGain(const ReplayGainConfig(
-        mode: ReplayGainMode.album,
+      await player.setReplayGain(const ReplayGainSettings(
+        mode: ReplayGain.album,
         preamp: -6.0,
         clip: false,
         fallback: 0.5,
       ));
-      expect(player.state.replayGain.mode, ReplayGainMode.album);
+      expect(player.state.replayGain.mode, ReplayGain.album);
 
       // Tweak only preamp; the aggregate setter rewrites all 4 props,
       // but since the consumer copyWith'd from the existing state, the
       // other 3 fields are unchanged.
-      await player.setReplayGain(
-          player.state.replayGain.copyWith(preamp: -10.0));
+      await player
+          .setReplayGain(player.state.replayGain.copyWith(preamp: -10.0));
       expect(player.state.replayGain.preamp, -10.0);
-      expect(player.state.replayGain.mode, ReplayGainMode.album,
+      expect(player.state.replayGain.mode, ReplayGain.album,
           reason: 'mode must survive a copyWith-only-preamp update');
       expect(player.state.replayGain.fallback, 0.5);
       expect(player.state.replayGain.clip, isFalse);

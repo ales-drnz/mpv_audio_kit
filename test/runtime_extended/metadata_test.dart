@@ -79,9 +79,8 @@ void main() {
       // the previous map, but the stream emits even when both maps are
       // non-empty (different contents, no dedup).
       final mdFuture = player.stream.metadata
-          .firstWhere((m) =>
-              m.isNotEmpty &&
-              m.values.any((v) => v.contains('Vorbis')))
+          .firstWhere(
+              (m) => m.isNotEmpty && m.values.any((v) => v.contains('Vorbis')))
           .timeout(const Duration(seconds: 10));
       await player.open(Media(path), play: false);
       final md = await mdFuture;

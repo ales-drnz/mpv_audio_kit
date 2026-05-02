@@ -13,25 +13,27 @@ class CoverArtPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Display'),
-        StreamBuilder<AudioDisplayMode>(
+        StreamBuilder<Display>(
           stream: player.stream.audioDisplay,
           initialData: player.state.audioDisplay,
           builder: (context, snap) {
-            final val = snap.data ?? AudioDisplayMode.embeddedFirst;
-            return DropdownPropertyCard<AudioDisplayMode>(
+            final val = snap.data ?? Display.embeddedFirst;
+            return DropdownPropertyCard<Display>(
               title: 'Audio Display',
               subtitle: 'audio-display=${val.mpvValue}',
               icon: Icons.image_rounded,
               value: val,
               items: const [
                 DropdownMenuItem(
-                    value: AudioDisplayMode.no, child: Text('Disabled')),
+                  value: Display.no,
+                  child: Text('Disabled'),
+                ),
                 DropdownMenuItem(
-                  value: AudioDisplayMode.embeddedFirst,
+                  value: Display.embeddedFirst,
                   child: Text('Embedded first'),
                 ),
                 DropdownMenuItem(
-                  value: AudioDisplayMode.externalFirst,
+                  value: Display.externalFirst,
                   child: Text('External first'),
                 ),
               ],
@@ -39,25 +41,33 @@ class CoverArtPage extends StatelessWidget {
             );
           },
         ),
-        StreamBuilder<CoverArtAutoMode>(
+        StreamBuilder<Cover>(
           stream: player.stream.coverArtAuto,
           initialData: player.state.coverArtAuto,
           builder: (context, snap) {
-            final val = snap.data ?? CoverArtAutoMode.no;
-            return DropdownPropertyCard<CoverArtAutoMode>(
+            final val = snap.data ?? Cover.no;
+            return DropdownPropertyCard<Cover>(
               title: 'Auto-load Cover Art',
               subtitle: 'cover-art-auto=${val.mpvValue}',
               icon: Icons.upload_rounded,
               value: val,
               items: const [
                 DropdownMenuItem(
-                    value: CoverArtAutoMode.no, child: Text('Disabled')),
+                  value: Cover.no,
+                  child: Text('Disabled'),
+                ),
                 DropdownMenuItem(
-                    value: CoverArtAutoMode.exact, child: Text('Exact match')),
+                  value: Cover.exact,
+                  child: Text('Exact match'),
+                ),
                 DropdownMenuItem(
-                    value: CoverArtAutoMode.fuzzy, child: Text('Fuzzy match')),
+                  value: Cover.fuzzy,
+                  child: Text('Fuzzy match'),
+                ),
                 DropdownMenuItem(
-                    value: CoverArtAutoMode.all, child: Text('All images')),
+                  value: Cover.all,
+                  child: Text('All images'),
+                ),
               ],
               onChanged: (v) => v != null ? player.setCoverArtAuto(v) : null,
             );
@@ -86,9 +96,11 @@ class CoverArtPage extends StatelessWidget {
                 }
                 final secs = double.tryParse(trimmed.replaceAll('s', ''));
                 if (secs == null) return;
-                unawaited(player.setImageDisplayDuration(
-                  Duration(microseconds: (secs * 1e6).round()),
-                ));
+                unawaited(
+                  player.setImageDisplayDuration(
+                    Duration(microseconds: (secs * 1e6).round()),
+                  ),
+                );
               },
             );
           },

@@ -37,8 +37,8 @@ class ChaptersPage extends StatelessWidget {
                 final chapters = chaptersSnap.data ?? const <Chapter>[];
                 final hasChapters = chapters.isNotEmpty;
                 final atFirst = current == null || current <= 0;
-                final atLast = current == null ||
-                    current >= chapters.length - 1;
+                final atLast =
+                    current == null || current >= chapters.length - 1;
                 return PropertyBaseCard(
                   title: 'Current Chapter',
                   subtitle: 'chapter=${current ?? -1}',

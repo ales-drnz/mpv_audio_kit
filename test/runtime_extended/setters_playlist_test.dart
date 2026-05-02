@@ -98,12 +98,12 @@ void main() {
       await player.setShuffle(false);
       expect(player.state.shuffle, isFalse);
 
-      await player.setLoop(LoopMode.file);
-      expect(player.state.loop, LoopMode.file);
-      await player.setLoop(LoopMode.playlist);
-      expect(player.state.loop, LoopMode.playlist);
-      await player.setLoop(LoopMode.off);
-      expect(player.state.loop, LoopMode.off);
+      await player.setLoop(Loop.file);
+      expect(player.state.loop, Loop.file);
+      await player.setLoop(Loop.playlist);
+      expect(player.state.loop, Loop.playlist);
+      await player.setLoop(Loop.off);
+      expect(player.state.loop, Loop.off);
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('next() / previous() advance the playlist index', () async {
@@ -173,8 +173,7 @@ void main() {
       await player.replace(1, Media(altPath));
       await swapped;
       expect(player.state.playlist.medias.length, 2);
-      expect(
-          player.state.playlist.medias[1].uri.endsWith('with_chapters.mka'),
+      expect(player.state.playlist.medias[1].uri.endsWith('with_chapters.mka'),
           isTrue);
       expect(player.state.playlist.medias[0].uri.endsWith('sine_440hz_1s.wav'),
           isTrue,

@@ -31,28 +31,28 @@ void main() {
       await player.dispose();
     });
 
-    test('registerHook(on_load) fires on file load; continueHook unblocks '
+    test(
+        'registerHook(on_load) fires on file load; continueHook unblocks '
         'mpv', () async {
       final hookEvents = <MpvHookEvent>[];
       final hookFiredCompleter = Completer<MpvHookEvent>();
       final sub = player.stream.hook.listen((event) {
         hookEvents.add(event);
-        if (!hookFiredCompleter.isCompleted &&
-            event.name == 'on_load') {
+        if (!hookFiredCompleter.isCompleted && event.hook == Hook.load) {
           hookFiredCompleter.complete(event);
         }
       });
 
       try {
-        player.registerHook('on_load');
+        player.registerHook(Hook.load);
         // Open a file — mpv should fire the on_load hook before opening
         // the demuxer. The hook stream emits MpvHookEvent with the
         // event id; we must call continueHook to unblock mpv.
         unawaited(player.open(Media(fixturePath), play: false));
 
-        final event = await hookFiredCompleter.future
-            .timeout(const Duration(seconds: 5));
-        expect(event.name, 'on_load');
+        final event =
+            await hookFiredCompleter.future.timeout(const Duration(seconds: 5));
+        expect(event.hook, Hook.load);
         expect(event.id, greaterThan(0),
             reason: 'mpv assigns positive ids to hook events');
 
@@ -101,7 +101,7 @@ void main() {
         // dedup.
         final loaded = player.stream.seekCompleted.first
             .timeout(const Duration(seconds: 5));
-        player.registerHook('on_load',
+        player.registerHook(Hook.load,
             timeout: const Duration(milliseconds: 200));
         unawaited(player.open(Media(fixturePath), play: false));
         await loaded;

@@ -1,7 +1,7 @@
 // Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
-part of '../player.dart';
+part of 'player.dart';
 
 /// Audio setters: volume, mute, output device, format / channel layout,
 /// the four typed DSP stages, and the cover-art display options.
@@ -38,9 +38,9 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// The `description` field of [device] is ignored — the wrapper
   /// resolves the description from `state.audioDevices` (mpv's
-  /// authoritative `audio-device-list`). Pass [AudioDevice]s built
+  /// authoritative `audio-device-list`). Pass [Device]s built
   /// from that list, or use the `name` only.
-  Future<void> setAudioDevice(AudioDevice device) async {
+  Future<void> setAudioDevice(Device device) async {
     _checkNotDisposed();
     _prop('audio-device', device.name);
     _updateActiveAudioDevice(device.name);
@@ -52,7 +52,8 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setPitchCorrection(bool enable) async {
     _checkNotDisposed();
     _prop('audio-pitch-correction', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(pitchCorrection: enable), _reactives.pitchCorrection, enable);
+    _updateField((s) => s.copyWith(pitchCorrection: enable),
+        _reactives.pitchCorrection, enable);
   }
 
   /// Sets the audio delay relative to video (mpv's `audio-delay`).
@@ -72,13 +73,12 @@ mixin _AudioModule on _PlayerBase {
         (s) => s.copyWith(audioDelay: delay), _reactives.audioDelay, delay);
   }
 
-  /// Enables or disables gapless playback. See [GaplessMode] for the
+  /// Enables or disables gapless playback. See [Gapless] for the
   /// available variants.
-  Future<void> setGapless(GaplessMode mode) async {
+  Future<void> setGapless(Gapless mode) async {
     _checkNotDisposed();
     _prop('gapless-audio', mode.mpvValue);
-    _updateField(
-        (s) => s.copyWith(gapless: mode), _reactives.gapless, mode);
+    _updateField((s) => s.copyWith(gapless: mode), _reactives.gapless, mode);
   }
 
   /// Sets the ReplayGain normalization configuration atomically.
@@ -87,7 +87,7 @@ mixin _AudioModule on _PlayerBase {
   /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`) in
   /// one shot. Modify a single field via
   /// `await player.setReplayGain(state.replayGain.copyWith(preamp: -3))`.
-  Future<void> setReplayGain(ReplayGainConfig config) async {
+  Future<void> setReplayGain(ReplayGainSettings config) async {
     _checkNotDisposed();
     _prop('replaygain', config.mode.mpvValue);
     _prop('replaygain-preamp', config.preamp.toStringAsFixed(2));
@@ -106,7 +106,8 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setVolumeGain(double gainDb) async {
     _checkNotDisposed();
     _prop('volume-gain', gainDb.toStringAsFixed(2));
-    _updateField((s) => s.copyWith(volumeGain: gainDb), _reactives.volumeGain, gainDb);
+    _updateField(
+        (s) => s.copyWith(volumeGain: gainDb), _reactives.volumeGain, gainDb);
   }
 
   /// Sets the upper bound the user-facing volume scale is clamped to.
@@ -125,26 +126,32 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setAudioExclusive(bool exclusive) async {
     _checkNotDisposed();
     _prop('audio-exclusive', exclusive ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(audioExclusive: exclusive), _reactives.audioExclusive, exclusive);
+    _updateField((s) => s.copyWith(audioExclusive: exclusive),
+        _reactives.audioExclusive, exclusive);
   }
 
-  /// Sets HDMI/S/PDIF audio passthrough codecs (e.g. `'ac3,dts'`).
-  Future<void> setAudioSpdif(String codecs) async {
+  /// Sets HDMI/S/PDIF audio passthrough codecs.
+  ///
+  /// Pass a [Set] of [Spdif] values to enable passthrough for those
+  /// codecs (e.g. `{Spdif.ac3, Spdif.dts}`); pass `{}` to disable
+  /// passthrough entirely. Order does not matter.
+  Future<void> setAudioSpdif(Set<Spdif> codecs) async {
     _checkNotDisposed();
-    _prop('audio-spdif', codecs);
-    _updateField((s) => s.copyWith(audioSpdif: codecs), _reactives.audioSpdif, codecs);
+    _prop('audio-spdif', Spdif.formatMpvList(codecs));
+    _updateField(
+        (s) => s.copyWith(audioSpdif: codecs), _reactives.audioSpdif, codecs);
   }
 
-  /// Selects the audio track via a typed [AudioTrackMode] —
-  /// [AudioTrackMode.auto] defers to mpv's automatic choice
+  /// Selects the audio track via a typed [Track] —
+  /// [Track.auto] defers to mpv's automatic choice
   /// (container default or first audio track),
-  /// [AudioTrackMode.off] disables audio output entirely, and
-  /// [AudioTrackMode.id] selects a specific track by its mpv ID
+  /// [Track.off] disables audio output entirely, and
+  /// [Track.id] selects a specific track by its mpv ID
   /// (match an entry in [PlayerState.tracks]).
   ///
   /// State updates flow through the `current-tracks/audio` observer
   /// (no optimistic update — mpv may reject an unknown id).
-  Future<void> setAudioTrack(AudioTrackMode mode) async {
+  Future<void> setAudioTrack(Track mode) async {
     _checkNotDisposed();
     _prop('aid', mode.mpvValue);
   }
@@ -167,16 +174,16 @@ mixin _AudioModule on _PlayerBase {
   /// filter chain in one atomic operation.
   ///
   /// Modify a single field via `state.equalizer.copyWith(...)`. Reset
-  /// with [EqualizerConfig.flat]. Toggle on/off via
+  /// with [EqualizerSettings.flat]. Toggle on/off via
   /// `state.equalizer.copyWith(enabled: ...)` — the gains are preserved
   /// while disabled.
-  Future<void> setEqualizer(EqualizerConfig config) async {
+  Future<void> setEqualizer(EqualizerSettings config) async {
     _checkNotDisposed();
     if (config.gains.length != 10) {
       throw ArgumentError.value(
         config.gains.length,
         'config.gains',
-        'EqualizerConfig requires exactly 10 gain values',
+        'EqualizerSettings requires exactly 10 gain values',
       );
     }
     final copy = config.copyWith(gains: List<double>.from(config.gains));
@@ -190,7 +197,7 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the dynamic-range compressor config and applies it to mpv's
   /// filter chain in one atomic operation.
-  Future<void> setCompressor(CompressorConfig config) async {
+  Future<void> setCompressor(CompressorSettings config) async {
     _checkNotDisposed();
     _writeAfChain(compressor: config);
     _updateField(
@@ -202,7 +209,7 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the EBU R128 loudness normalization config and applies it to
   /// mpv's filter chain in one atomic operation.
-  Future<void> setLoudness(LoudnessConfig config) async {
+  Future<void> setLoudness(LoudnessSettings config) async {
     _checkNotDisposed();
     _writeAfChain(loudness: config);
     _updateField(
@@ -214,7 +221,7 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the pitch / tempo shifter config (rubberband) and applies it
   /// to mpv's filter chain in one atomic operation.
-  Future<void> setPitchTempo(PitchTempoConfig config) async {
+  Future<void> setPitchTempo(PitchTempoSettings config) async {
     _checkNotDisposed();
     _writeAfChain(pitchTempo: config);
     _updateField(
@@ -262,10 +269,10 @@ mixin _AudioModule on _PlayerBase {
   /// Recomposes the full mpv `af` value from the current state, with the
   /// caller's overrides applied. Internal helper for the five DSP setters.
   void _writeAfChain({
-    EqualizerConfig? equalizer,
-    CompressorConfig? compressor,
-    LoudnessConfig? loudness,
-    PitchTempoConfig? pitchTempo,
+    EqualizerSettings? equalizer,
+    CompressorSettings? compressor,
+    LoudnessSettings? loudness,
+    PitchTempoSettings? pitchTempo,
     List<String>? customFilters,
   }) {
     final af = composeAfChain(
@@ -281,11 +288,11 @@ mixin _AudioModule on _PlayerBase {
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
   /// Controls how mpv handles embedded and external cover images. See
-  /// [AudioDisplayMode] for the available variants.
+  /// [Display] for the available variants.
   ///
   /// Has no effect on files that already have a normal video track.
   /// Changes take effect on the next [open] call.
-  Future<void> setAudioDisplay(AudioDisplayMode mode) async {
+  Future<void> setAudioDisplay(Display mode) async {
     _checkNotDisposed();
     _prop('audio-display', mode.mpvValue);
     _updateField(
@@ -293,8 +300,8 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Controls whether mpv automatically loads external cover art files.
-  /// See [CoverArtAutoMode] for the available variants.
-  Future<void> setCoverArtAuto(CoverArtAutoMode mode) async {
+  /// See [Cover] for the available variants.
+  Future<void> setCoverArtAuto(Cover mode) async {
     _checkNotDisposed();
     _prop('cover-art-auto', mode.mpvValue);
     _updateField(
@@ -320,34 +327,43 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setAudioSampleRate(int rate) async {
     _checkNotDisposed();
     _prop('audio-samplerate', rate.toString());
-    _updateField((s) => s.copyWith(audioSampleRate: rate), _reactives.audioSampleRate, rate);
+    _updateField((s) => s.copyWith(audioSampleRate: rate),
+        _reactives.audioSampleRate, rate);
   }
 
-  /// Sets the target audio output format.
-  Future<void> setAudioFormat(String format) async {
+  /// Sets the target audio sample format. Use [Format.auto] to
+  /// reset to mpv's pick.
+  Future<void> setAudioFormat(Format format) async {
     _checkNotDisposed();
-    _prop('audio-format', format);
-    _updateField((s) => s.copyWith(audioFormat: format), _reactives.audioFormat, format);
+    _prop('audio-format', format.mpvValue);
+    _updateField(
+        (s) => s.copyWith(audioFormat: format), _reactives.audioFormat, format);
   }
 
-  /// Sets the target audio channel layout.
-  Future<void> setAudioChannels(String channels) async {
+  /// Sets the target audio channel layout. Use the named static
+  /// constants on [Channels] for common presets, or
+  /// [Channels.custom] for any other mpv-recognised layout
+  /// string.
+  Future<void> setAudioChannels(Channels channels) async {
     _checkNotDisposed();
-    _prop('audio-channels', channels);
-    _updateField((s) => s.copyWith(audioChannels: channels), _reactives.audioChannels, channels);
+    _prop('audio-channels', channels.mpvValue);
+    _updateField((s) => s.copyWith(audioChannels: channels),
+        _reactives.audioChannels, channels);
   }
 
   /// Sets the audio client name.
   Future<void> setAudioClientName(String name) async {
     _checkNotDisposed();
     _prop('audio-client-name', name);
-    _updateField((s) => s.copyWith(audioClientName: name), _reactives.audioClientName, name);
+    _updateField((s) => s.copyWith(audioClientName: name),
+        _reactives.audioClientName, name);
   }
 
   /// Sets the audio output driver (e.g. 'auto', 'coreaudio', 'pulse', 'alsa', 'wasapi').
   Future<void> setAudioDriver(String driver) async {
     _checkNotDisposed();
     _prop('ao', driver);
-    _updateField((s) => s.copyWith(audioDriver: driver), _reactives.audioDriver, driver);
+    _updateField(
+        (s) => s.copyWith(audioDriver: driver), _reactives.audioDriver, driver);
   }
 }

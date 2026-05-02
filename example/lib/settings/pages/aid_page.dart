@@ -46,16 +46,16 @@ class AidPage extends StatelessWidget {
                   subtitle: current == null
                       ? 'no audio'
                       : 'aid=${current.id}'
-                          '${current.lang != null ? ' (${current.lang})' : ''}',
+                            '${current.lang != null ? ' (${current.lang})' : ''}',
                   icon: Icons.audiotrack_rounded,
                   value: selected,
                   items: items,
                   onChanged: (v) {
                     if (v == null) return;
                     final mode = switch (v) {
-                      -1 => const AudioTrackMode.auto(),
-                      -2 => const AudioTrackMode.off(),
-                      _ => AudioTrackMode.id(v),
+                      -1 => Track.auto,
+                      -2 => Track.off,
+                      _ => Track.id(v),
                     };
                     player.setAudioTrack(mode);
                   },

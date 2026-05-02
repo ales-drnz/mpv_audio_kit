@@ -27,8 +27,7 @@ void main() {
       await player.dispose();
     });
 
-    test('opening a non-existent file emits MpvFileEndedEvent.error',
-        () async {
+    test('opening a non-existent file emits MpvFileEndedEvent.error', () async {
       final endFileEvents = <MpvFileEndedEvent>[];
       final completer = Completer<MpvFileEndedEvent>();
       final sub = player.stream.endFile.listen((event) {
@@ -41,8 +40,8 @@ void main() {
           Media('/tmp/this-file-does-not-exist.flac'),
           play: false,
         );
-        final event = await completer.future
-            .timeout(const Duration(seconds: 5));
+        final event =
+            await completer.future.timeout(const Duration(seconds: 5));
         expect(event.reason, MpvEndFileReason.error,
             reason: 'mpv reports loadfile failure as endFile.error');
         expect(event.error, lessThan(0),
@@ -56,8 +55,7 @@ void main() {
     test('opening a malformed URL also reports endFile error', () async {
       final completer = Completer<MpvFileEndedEvent>();
       final sub = player.stream.endFile.listen((event) {
-        if (event.reason == MpvEndFileReason.error &&
-            !completer.isCompleted) {
+        if (event.reason == MpvEndFileReason.error && !completer.isCompleted) {
           completer.complete(event);
         }
       });
@@ -67,8 +65,8 @@ void main() {
           Media('totally-not-a-valid-url://??'),
           play: false,
         );
-        final event = await completer.future
-            .timeout(const Duration(seconds: 5));
+        final event =
+            await completer.future.timeout(const Duration(seconds: 5));
         expect(event.reason, MpvEndFileReason.error);
       } finally {
         await sub.cancel();
@@ -88,10 +86,8 @@ void main() {
       });
 
       try {
-        await player.open(Media('/tmp/another-missing-file.flac'),
-            play: false);
-        final err = await completer.future
-            .timeout(const Duration(seconds: 5));
+        await player.open(Media('/tmp/another-missing-file.flac'), play: false);
+        final err = await completer.future.timeout(const Duration(seconds: 5));
         expect(err, isA<MpvEndFileError>());
         final endErr = err as MpvEndFileError;
         expect(endErr.reason, MpvEndFileReason.error);

@@ -99,14 +99,16 @@ void main() {
     });
   });
 
-  group('LoopMode enum', () {
+  group('Loop enum', () {
     test('three variants present', () {
-      expect(LoopMode.values.length, 3);
-      expect(LoopMode.values, containsAll([
-        LoopMode.off,
-        LoopMode.file,
-        LoopMode.playlist,
-      ]));
+      expect(Loop.values.length, 3);
+      expect(
+          Loop.values,
+          containsAll([
+            Loop.off,
+            Loop.file,
+            Loop.playlist,
+          ]));
     });
   });
 }

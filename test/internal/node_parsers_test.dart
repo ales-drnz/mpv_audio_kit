@@ -46,8 +46,7 @@ void main() {
         previous: Playlist.empty,
       );
       expect(p.medias[0], same(cached),
-          reason:
-              'consumer-supplied Media must round-trip identically; mpv '
+          reason: 'consumer-supplied Media must round-trip identically; mpv '
               'only echoes the URI back so the wrapper has to re-attach '
               'extras + headers from cache');
     });
@@ -77,9 +76,8 @@ void main() {
           {'filename': 'c'},
         ],
         mediaCache: const {},
-        previous: const Playlist(
-            [Media('a'), Media('b'), Media('c')],
-            index: 2),
+        previous:
+            const Playlist([Media('a'), Media('b'), Media('c')], index: 2),
       );
       expect(p.index, 2);
     });
@@ -91,9 +89,8 @@ void main() {
           {'filename': 'a'},
         ],
         mediaCache: const {},
-        previous: const Playlist(
-            [Media('a'), Media('b'), Media('c')],
-            index: 2),
+        previous:
+            const Playlist([Media('a'), Media('b'), Media('c')], index: 2),
       );
       expect(p.index, 0,
           reason: 'clamp prev.index=2 into [0, length-1] = [0, 0]');
@@ -114,16 +111,20 @@ void main() {
       // during a brief unobservable window. The wrapper must keep the
       // previous playlist visible rather than collapsing to empty.
       final previous = const Playlist([Media('a')], index: 0);
-      expect(parsePlaylistNode(
-        raw: null,
-        mediaCache: const {},
-        previous: previous,
-      ), same(previous));
-      expect(parsePlaylistNode(
-        raw: 'unexpected scalar',
-        mediaCache: const {},
-        previous: previous,
-      ), same(previous));
+      expect(
+          parsePlaylistNode(
+            raw: null,
+            mediaCache: const {},
+            previous: previous,
+          ),
+          same(previous));
+      expect(
+          parsePlaylistNode(
+            raw: 'unexpected scalar',
+            mediaCache: const {},
+            previous: previous,
+          ),
+          same(previous));
     });
 
     test('malformed entry (non-map) is tolerated, fills empty slot', () {
@@ -144,9 +145,9 @@ void main() {
     });
   });
 
-  group('parseAudioDeviceListNode', () {
+  group('parseDeviceListNode', () {
     test('parses a typical mpv audio-device-list payload', () {
-      final list = parseAudioDeviceListNode([
+      final list = parseDeviceListNode([
         {'name': 'auto', 'description': 'Autoselect'},
         {'name': 'coreaudio/AppleHDA', 'description': 'Built-in'},
       ]);
@@ -158,7 +159,7 @@ void main() {
     });
 
     test('missing name / description → "unknown" / "" defaults', () {
-      final list = parseAudioDeviceListNode([
+      final list = parseDeviceListNode([
         {'name': 'x'},
         const <String, dynamic>{},
       ]);
@@ -169,9 +170,9 @@ void main() {
     });
 
     test('non-list raw → empty list', () {
-      expect(parseAudioDeviceListNode(null), isEmpty);
-      expect(parseAudioDeviceListNode('garbage'), isEmpty);
-      expect(parseAudioDeviceListNode(<String, dynamic>{}), isEmpty);
+      expect(parseDeviceListNode(null), isEmpty);
+      expect(parseDeviceListNode('garbage'), isEmpty);
+      expect(parseDeviceListNode(<String, dynamic>{}), isEmpty);
     });
   });
 
@@ -221,20 +222,20 @@ void main() {
     test('cache-duration / target * 100, clamped to 0..100', () {
       // Full window: 30s out of 30s target → 100%
       expect(
-        parseDemuxerCacheStateNode(
-            <String, dynamic>{'cache-duration': 30}, const Duration(seconds: 30)),
+        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 30},
+            const Duration(seconds: 30)),
         100.0,
       );
       // Half full: 15s / 30s → 50%
       expect(
-        parseDemuxerCacheStateNode(
-            <String, dynamic>{'cache-duration': 15}, const Duration(seconds: 30)),
+        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 15},
+            const Duration(seconds: 30)),
         50.0,
       );
       // Empty: 0s / 30s → 0%
       expect(
-        parseDemuxerCacheStateNode(
-            <String, dynamic>{'cache-duration': 0}, const Duration(seconds: 30)),
+        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 0},
+            const Duration(seconds: 30)),
         0.0,
       );
     });
@@ -243,8 +244,8 @@ void main() {
       // mpv occasionally reports cache-duration slightly past the target
       // because of demuxer fluctuations.
       expect(
-        parseDemuxerCacheStateNode(
-            <String, dynamic>{'cache-duration': 50}, const Duration(seconds: 30)),
+        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 50},
+            const Duration(seconds: 30)),
         100.0,
       );
     });
@@ -275,10 +276,8 @@ void main() {
     });
 
     test('non-map raw → 0%', () {
-      expect(
-          parseDemuxerCacheStateNode(null, const Duration(seconds: 1)), 0.0);
-      expect(
-          parseDemuxerCacheStateNode('garbage', const Duration(seconds: 1)),
+      expect(parseDemuxerCacheStateNode(null, const Duration(seconds: 1)), 0.0);
+      expect(parseDemuxerCacheStateNode('garbage', const Duration(seconds: 1)),
           0.0);
     });
   });
@@ -525,9 +524,9 @@ void main() {
     });
   });
 
-  group('parseCurrentAudioTrackNode', () {
+  group('parseCurrentTrackNode', () {
     test('parses a single audio track map', () {
-      final t = parseCurrentAudioTrackNode({
+      final t = parseCurrentTrackNode({
         'id': 2,
         'type': 'audio',
         'selected': true,
@@ -541,9 +540,9 @@ void main() {
     });
 
     test('non-map raw → null (no audio track active)', () {
-      expect(parseCurrentAudioTrackNode(null), isNull);
-      expect(parseCurrentAudioTrackNode('garbage'), isNull);
-      expect(parseCurrentAudioTrackNode(<dynamic>[]), isNull);
+      expect(parseCurrentTrackNode(null), isNull);
+      expect(parseCurrentTrackNode('garbage'), isNull);
+      expect(parseCurrentTrackNode(<dynamic>[]), isNull);
     });
   });
 }

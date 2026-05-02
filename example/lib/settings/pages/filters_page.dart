@@ -48,20 +48,19 @@ class _FiltersPageState extends State<FiltersPage> {
       children: [
         // ── Equalizer ──────────────────────────────────────────────────
         const PropertySectionHeader(title: 'Equalizer'),
-        StreamBuilder<EqualizerConfig>(
+        StreamBuilder<EqualizerSettings>(
           stream: player.stream.equalizer,
           initialData: player.state.equalizer,
           builder: (context, snap) {
             final eq = snap.data!;
             return PropertyBaseCard(
               title: '10-Band Equalizer',
-              subtitle: 'EqualizerConfig',
+              subtitle: 'EqualizerSettings',
               icon: Icons.equalizer_rounded,
               isActive: eq.enabled,
               trailing: Switch(
                 value: eq.enabled,
-                onChanged: (v) =>
-                    player.setEqualizer(eq.copyWith(enabled: v)),
+                onChanged: (v) => player.setEqualizer(eq.copyWith(enabled: v)),
               ),
               body: EQWidget(
                 gains: eq.gains,
@@ -77,7 +76,7 @@ class _FiltersPageState extends State<FiltersPage> {
 
         // ── Dynamics ───────────────────────────────────────────────────
         const PropertySectionHeader(title: 'Dynamics'),
-        StreamBuilder<CompressorConfig>(
+        StreamBuilder<CompressorSettings>(
           stream: player.stream.compressor,
           initialData: player.state.compressor,
           builder: (context, snap) {
@@ -89,8 +88,7 @@ class _FiltersPageState extends State<FiltersPage> {
                   'attack=${c.attack.inMilliseconds}ms release=${c.release.inMilliseconds}ms',
               icon: Icons.vignette_rounded,
               enabled: c.enabled,
-              onToggle: (v) =>
-                  player.setCompressor(c.copyWith(enabled: v)),
+              onToggle: (v) => player.setCompressor(c.copyWith(enabled: v)),
               params: [
                 FilterParamSlider(
                   label: 'Threshold',
@@ -111,8 +109,7 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 38,
                   defaultValue: 4,
                   labelBuilder: (v) => '${v.toStringAsFixed(1)}:1',
-                  onChanged: (v) =>
-                      player.setCompressor(c.copyWith(ratio: v)),
+                  onChanged: (v) => player.setCompressor(c.copyWith(ratio: v)),
                 ),
                 FilterParamSlider(
                   label: 'Attack',
@@ -142,7 +139,7 @@ class _FiltersPageState extends State<FiltersPage> {
             );
           },
         ),
-        StreamBuilder<LoudnessConfig>(
+        StreamBuilder<LoudnessSettings>(
           stream: player.stream.loudness,
           initialData: player.state.loudness,
           builder: (context, snap) {
@@ -176,8 +173,7 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 90,
                   defaultValue: -1.5,
                   labelBuilder: (v) => '${v.toStringAsFixed(1)} dBTP',
-                  onChanged: (v) =>
-                      player.setLoudness(l.copyWith(truePeak: v)),
+                  onChanged: (v) => player.setLoudness(l.copyWith(truePeak: v)),
                 ),
                 FilterParamSlider(
                   label: 'Loudness Range',
@@ -187,8 +183,7 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 49,
                   defaultValue: 11,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} LU',
-                  onChanged: (v) =>
-                      player.setLoudness(l.copyWith(lra: v)),
+                  onChanged: (v) => player.setLoudness(l.copyWith(lra: v)),
                 ),
               ],
             );
@@ -197,7 +192,7 @@ class _FiltersPageState extends State<FiltersPage> {
 
         // ── Pitch / Tempo ──────────────────────────────────────────────
         const PropertySectionHeader(title: 'Pitch / Tempo'),
-        StreamBuilder<PitchTempoConfig>(
+        StreamBuilder<PitchTempoSettings>(
           stream: player.stream.pitchTempo,
           initialData: player.state.pitchTempo,
           builder: (context, snap) {
@@ -208,8 +203,7 @@ class _FiltersPageState extends State<FiltersPage> {
                   'pitch=${p.pitch.toStringAsFixed(2)} tempo=${p.tempo.toStringAsFixed(2)}',
               icon: Icons.tune_rounded,
               enabled: p.enabled,
-              onToggle: (v) =>
-                  player.setPitchTempo(p.copyWith(enabled: v)),
+              onToggle: (v) => player.setPitchTempo(p.copyWith(enabled: v)),
               params: [
                 FilterParamSlider(
                   label: 'Pitch',
@@ -219,8 +213,7 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 75,
                   defaultValue: 1.0,
                   labelBuilder: (v) => v.toStringAsFixed(2),
-                  onChanged: (v) =>
-                      player.setPitchTempo(p.copyWith(pitch: v)),
+                  onChanged: (v) => player.setPitchTempo(p.copyWith(pitch: v)),
                 ),
                 FilterParamSlider(
                   label: 'Tempo',
@@ -230,8 +223,7 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 75,
                   defaultValue: 1.0,
                   labelBuilder: (v) => v.toStringAsFixed(2),
-                  onChanged: (v) =>
-                      player.setPitchTempo(p.copyWith(tempo: v)),
+                  onChanged: (v) => player.setPitchTempo(p.copyWith(tempo: v)),
                 ),
               ],
             );

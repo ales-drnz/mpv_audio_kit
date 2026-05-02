@@ -99,7 +99,8 @@ class DemuxerPage extends StatelessWidget {
           stream: player.stream.demuxerIdle,
           builder: (_, snap) => ReadOnlyPropertyCard(
             title: 'Demuxer Idle',
-            subtitle: 'demuxer-cache-idle=${(snap.data ?? true) ? 'yes' : 'no'}',
+            subtitle:
+                'demuxer-cache-idle=${(snap.data ?? true) ? 'yes' : 'no'}',
             icon: Icons.bedtime_rounded,
             value: (snap.data ?? true) ? 'yes' : 'no',
           ),
@@ -133,4 +134,3 @@ class DemuxerPage extends StatelessWidget {
     );
   }
 }
-

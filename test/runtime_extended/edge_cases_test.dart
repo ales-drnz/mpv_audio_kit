@@ -28,8 +28,7 @@ void main() {
     });
 
     test('50 ms fixture loads without crashing the demuxer', () async {
-      final tinyPath =
-          '${Directory.current.path}/test/fixtures/sine_50ms.wav';
+      final tinyPath = '${Directory.current.path}/test/fixtures/sine_50ms.wav';
       if (!File(tinyPath).existsSync()) {
         markTestSkipped('Tiny fixture missing');
         return;
@@ -116,7 +115,8 @@ void main() {
           reason: 'last setVolume(20 + 49 = 69) wins');
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('concurrent open() calls — last one wins (replace aborts the '
+    test(
+        'concurrent open() calls — last one wins (replace aborts the '
         'in-flight load)', () async {
       // Two open() calls fired without await between them. mpv processes
       // commands in arrival order on a single thread and each open()
@@ -124,10 +124,8 @@ void main() {
       // *last* pair wins because `replace` aborts any in-flight load.
       // We use two fixtures with distinct sample rates so the
       // audio-params observer emits an unambiguous "B has settled" value.
-      final fixA =
-          '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
-      final fixB =
-          '${Directory.current.path}/test/fixtures/sine_88200hz.flac';
+      final fixA = '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      final fixB = '${Directory.current.path}/test/fixtures/sine_88200hz.flac';
       if (!File(fixA).existsSync() || !File(fixB).existsSync()) {
         markTestSkipped('Fixtures missing');
         return;
@@ -155,7 +153,8 @@ void main() {
     // the optimistic value is what the consumer last set, and the
     // observed value is what mpv accepted. Both surfaces are valid; UI
     // widgets bound to the stream always converge on the clamped value.
-    test('setVolume above 100 retains the optimistic value (mpv clamps to '
+    test(
+        'setVolume above 100 retains the optimistic value (mpv clamps to '
         'volume-max in its own time)', () async {
       await player.setVolume(150.0);
       expect(player.state.volume, 150.0,
@@ -176,7 +175,8 @@ void main() {
       await player.setRate(1.0);
     }, timeout: const Timeout(Duration(seconds: 5)));
 
-    test('setRate above 100.0 retains the optimistic value (mpv clamps to '
+    test(
+        'setRate above 100.0 retains the optimistic value (mpv clamps to '
         'M_RANGE max in its own time)', () async {
       await player.setRate(150.0);
       expect(player.state.rate, 150.0,
@@ -186,7 +186,8 @@ void main() {
       await player.setRate(1.0);
     }, timeout: const Timeout(Duration(seconds: 5)));
 
-    test('setRate below 0.01 retains the optimistic value (mpv clamps to '
+    test(
+        'setRate below 0.01 retains the optimistic value (mpv clamps to '
         'M_RANGE min in its own time)', () async {
       await player.setRate(-1.0);
       expect(player.state.rate, -1.0,

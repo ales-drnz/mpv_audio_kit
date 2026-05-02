@@ -12,24 +12,24 @@ class CachePage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const PropertySectionHeader(title: 'Cache Configuration'),
-        StreamBuilder<CacheConfig>(
+        StreamBuilder<CacheSettings>(
           stream: player.stream.cache,
           initialData: player.state.cache,
           builder: (context, snap) {
-            final cfg = snap.data ?? const CacheConfig();
+            final cfg = snap.data ?? const CacheSettings();
             final secs = cfg.secs.inMicroseconds / 1e6;
             final waitSecs = cfg.pauseWait.inMicroseconds / 1e6;
             return Column(
               children: [
-                SegmentedPropertyCard<CacheMode>(
+                SegmentedPropertyCard<Cache>(
                   title: 'Cache Mode',
                   subtitle: 'cache=${cfg.mode.mpvValue}',
                   icon: Icons.cached_rounded,
                   value: cfg.mode,
                   segments: const [
-                    (CacheMode.auto, 'AUTO'),
-                    (CacheMode.yes, 'YES'),
-                    (CacheMode.no, 'NO'),
+                    (Cache.auto, 'AUTO'),
+                    (Cache.yes, 'YES'),
+                    (Cache.no, 'NO'),
                   ],
                   onChanged: (m) => player.setCache(cfg.copyWith(mode: m)),
                 ),
@@ -43,29 +43,29 @@ class CachePage extends StatelessWidget {
                   divisions: 360,
                   defaultValue: 1.0,
                   labelBuilder: (v) => '${v.toInt()}s',
-                  onChanged: (v) => player.setCache(cfg.copyWith(
-                      secs: Duration(microseconds: (v * 1e6).round()))),
+                  onChanged: (v) => player.setCache(
+                    cfg.copyWith(
+                      secs: Duration(microseconds: (v * 1e6).round()),
+                    ),
+                  ),
                 ),
                 TogglePropertyCard(
                   title: 'Cache on Disk',
                   subtitle: 'cache-on-disk=${cfg.onDisk ? 'yes' : 'no'}',
                   icon: Icons.save_alt_rounded,
                   value: cfg.onDisk,
-                  onChanged: (v) =>
-                      player.setCache(cfg.copyWith(onDisk: v)),
+                  onChanged: (v) => player.setCache(cfg.copyWith(onDisk: v)),
                 ),
                 TogglePropertyCard(
                   title: 'Pause on Buffer',
                   subtitle: 'cache-pause=${cfg.pause ? 'yes' : 'no'}',
                   icon: Icons.pause_circle_outline_rounded,
                   value: cfg.pause,
-                  onChanged: (v) =>
-                      player.setCache(cfg.copyWith(pause: v)),
+                  onChanged: (v) => player.setCache(cfg.copyWith(pause: v)),
                 ),
                 SliderPropertyCard(
                   title: 'Buffer Wait',
-                  subtitle:
-                      'cache-pause-wait=${waitSecs.toStringAsFixed(1)}',
+                  subtitle: 'cache-pause-wait=${waitSecs.toStringAsFixed(1)}',
                   icon: Icons.hourglass_bottom_rounded,
                   value: waitSecs,
                   min: 0.1,
@@ -73,8 +73,11 @@ class CachePage extends StatelessWidget {
                   divisions: 600,
                   defaultValue: 1.0,
                   labelBuilder: (v) => '${v.toStringAsFixed(1)}s',
-                  onChanged: (v) => player.setCache(cfg.copyWith(
-                      pauseWait: Duration(microseconds: (v * 1e6).round()))),
+                  onChanged: (v) => player.setCache(
+                    cfg.copyWith(
+                      pauseWait: Duration(microseconds: (v * 1e6).round()),
+                    ),
+                  ),
                 ),
               ],
             );
@@ -119,4 +122,3 @@ class CachePage extends StatelessWidget {
     );
   }
 }
-

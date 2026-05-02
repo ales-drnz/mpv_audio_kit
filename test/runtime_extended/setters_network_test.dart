@@ -35,7 +35,8 @@ void main() {
       expect(player.state.tlsVerify, isTrue);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('demuxerMaxBytes / demuxerMaxBackBytes / demuxerReadaheadSecs '
+    test(
+        'demuxerMaxBytes / demuxerMaxBackBytes / demuxerReadaheadSecs '
         'round-trip', () async {
       // mpv accepts these in MiB units (the wrapper floors bytes →
       // MiB). 100 MiB is well within the default range.

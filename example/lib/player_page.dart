@@ -80,7 +80,9 @@ class _PlayerPageState extends State<PlayerPage> {
       // settings: log routing, typed error → SnackBar, debug print.
       _subs.addAll([
         widget.player.stream.log.listen((line) => _pushLog(line.toString())),
-        widget.player.stream.internalLog.listen((line) => _pushLog(line.toString())),
+        widget.player.stream.internalLog.listen(
+          (line) => _pushLog(line.toString()),
+        ),
         widget.player.stream.playing.listen((p) {
           debugPrint('[player] playing → $p');
         }),
@@ -91,13 +93,13 @@ class _PlayerPageState extends State<PlayerPage> {
           if (!mounted) return;
           final (label, detail) = switch (err) {
             MpvEndFileError(:final reason, :final message) => (
-                'Playback error: ${reason.name}',
-                message,
-              ),
+              'Playback error: ${reason.name}',
+              message,
+            ),
             MpvLogError(:final prefix, :final text) => (
-                '[$prefix] error',
-                text,
-              ),
+              '[$prefix] error',
+              text,
+            ),
           };
           _showFloatingSnack(
             Text(detail.isEmpty ? label : '$label — $detail'),
@@ -133,7 +135,8 @@ class _PlayerPageState extends State<PlayerPage> {
     Color? background,
   }) {
     final width = MediaQuery.of(context).size.width;
-    final showPinned = _isConsolePinned && width >= AppMetrics.wideLayoutThreshold;
+    final showPinned =
+        _isConsolePinned && width >= AppMetrics.wideLayoutThreshold;
     // 16 px breathing room from the side edge; +console width when the
     // console occupies the right portion of the screen.
     final rightMargin = showPinned ? AppMetrics.consolePinnedWidth + 16 : 16.0;

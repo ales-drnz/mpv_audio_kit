@@ -2,13 +2,13 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../audio/audio_device.dart';
-import '../audio/audio_params.dart';
-import '../playback/chapter.dart';
-import '../playback/media.dart';
-import '../playback/mpv_track.dart';
-import '../playback/playlist.dart';
-import '../utils/duration_seconds.dart';
+import '../models/device.dart';
+import '../models/audio_params.dart';
+import '../models/chapter.dart';
+import '../models/media.dart';
+import '../models/mpv_track.dart';
+import '../models/playlist.dart';
+import '../internals/duration_seconds.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure parsers for mpv properties delivered as `MPV_FORMAT_NODE`.
@@ -71,11 +71,11 @@ Playlist parsePlaylistNode({
 /// rather than throwing — `audio-device-list` is queried on every
 /// `audio-reconfig` and a single malformed entry shouldn't tear down the
 /// stream.
-List<AudioDevice> parseAudioDeviceListNode(dynamic raw) {
+List<Device> parseDeviceListNode(dynamic raw) {
   if (raw is! List) return const [];
   return raw.map((entry) {
     final m = entry is Map ? entry : const <String, dynamic>{};
-    return AudioDevice(
+    return Device(
       m['name'] as String? ?? 'unknown',
       m['description'] as String? ?? '',
     );
@@ -152,7 +152,7 @@ List<MpvTrack> parseTrackListNode(dynamic raw) {
 /// Decodes mpv's `current-tracks/audio` property (`MPV_FORMAT_NODE_MAP`)
 /// — the metadata of the currently-active audio track. Returns `null`
 /// when no audio track is active (mpv emits `null` / non-map).
-MpvTrack? parseCurrentAudioTrackNode(dynamic raw) {
+MpvTrack? parseCurrentTrackNode(dynamic raw) {
   if (raw is! Map) return null;
   return _parseTrackEntry(raw);
 }
@@ -182,10 +182,9 @@ MpvTrack _parseTrackEntry(dynamic entry) {
     channels: _stringOrNull(m['demux-channels']),
     channelCount: _intOrNull(m['demux-channel-count']),
     demuxBitrate: _doubleOrNull(m['demux-bitrate']),
-    demuxDuration:
-        demuxDurationSecs != null && demuxDurationSecs > 0
-            ? secondsToDuration(demuxDurationSecs)
-            : null,
+    demuxDuration: demuxDurationSecs != null && demuxDurationSecs > 0
+        ? secondsToDuration(demuxDurationSecs)
+        : null,
     hlsBitrate: _doubleOrNull(m['hls-bitrate']),
     replaygainTrackGain: _doubleOrNull(m['replaygain-track-gain']),
     replaygainTrackPeak: _doubleOrNull(m['replaygain-track-peak']),

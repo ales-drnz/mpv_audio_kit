@@ -101,8 +101,7 @@ class _PlaybackTabState extends State<PlaybackTab> {
         // Responsive cover size — ~35 % of the available height, capped
         // so the artwork doesn't dominate small windows.
         final double coverSize = (availableHeight * 0.35).clamp(160, 280);
-        final double verticalPadding =
-            (availableHeight * 0.05).clamp(8, 32);
+        final double verticalPadding = (availableHeight * 0.05).clamp(8, 32);
 
         return Padding(
           padding: EdgeInsets.symmetric(

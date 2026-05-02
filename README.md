@@ -32,14 +32,15 @@ dependencies:
   mpv_audio_kit: ^0.1.0
 ```
 
-> **Migrating from 0.0.x?** 0.1.0 introduces typed enums (`GaplessMode`,
-> `ReplayGainMode`, `CacheMode`, `AudioDisplay`, `CoverArtAuto`) and
-> `Duration` on every time-based setter (`setAudioDelay`, `setNetworkTimeout`,
-> `setCacheSecs`, `setCachePauseWait`, `setAudioBuffer`). `PlayerState` now
-> has structural equality, and `Player.stream.log` is now mpv-engine-only —
-> wrapper-side messages moved to `Player.stream.internalLog`. See the
-> [CHANGELOG](CHANGELOG.md#010---wip) for the full breaking-change list and
-> migration recipes.
+### ⚠️ 0.1.0 is a major breaking release
+
+The Dart API has been rewritten from scratch: typed enums everywhere,
+atomic config aggregates (`CacheSettings`, `ReplayGainSettings`), a
+redesigned DSP pipeline (`EqualizerSettings`, `CompressorSettings`,
+`LoudnessSettings`, `PitchTempoSettings`), and the escape hatches are
+now async. Jump to the [Migration guide](#migration) for a side-by-side
+cross-walk from 0.0.9, or read the full breaking-change list in the
+[CHANGELOG](CHANGELOG.md#migration-from-009).
 
 ### Platform Requirements
 
@@ -83,25 +84,23 @@ dependencies:
         *   [3.3 Modifying the Queue at Runtime](#33-modifying-the-queue-at-runtime)
         *   [3.4 Navigation](#34-navigation)
         *   [3.5 Repeat & Shuffle](#35-repeat--shuffle)
+        *   [3.6 Chapter Navigation](#36-chapter-navigation)
     *   [4. Playback Control](#4-playback-control)
         *   [4.1 Basic Controls](#41-basic-controls)
         *   [4.2 Seeking](#42-seeking)
-        *   [4.3 Speed & Pitch](#43-speed--pitch)
-        *   [4.4 Volume & Mute](#44-volume--mute)
-        *   [4.5 Audio Delay](#45-audio-delay)
+        *   [4.3 A-B Loop](#43-a-b-loop)
+        *   [4.4 Speed & Pitch](#44-speed--pitch)
+        *   [4.5 Volume & Mute](#45-volume--mute)
+        *   [4.6 Audio Delay](#46-audio-delay)
     *   [5. Audio Quality & DSP](#5-audio-quality--dsp)
-        *   [5.1 Applying Filters](#51-applying-filters)
+        *   [5.1 Filter Chain](#51-filter-chain)
         *   [5.2 Equalizer](#52-equalizer)
-        *   [5.3 EBU R128 Loudness Normalization](#53-ebu-r128-loudness-normalization)
-        *   [5.4 Dynamic Range Compression](#54-dynamic-range-compression)
-        *   [5.5 Crossfeed](#55-crossfeed)
-        *   [5.6 Pitch & Tempo Shift](#56-pitch--tempo-shift)
-        *   [5.7 Echo / Delay](#57-echo--delay)
-        *   [5.8 Stereo Widening](#58-stereo-widening)
-        *   [5.9 Crystalizer](#59-crystalizer)
-        *   [5.10 Custom Filter](#510-custom-filter)
-        *   [5.11 ReplayGain](#511-replaygain)
-        *   [5.12 Gapless Playback](#512-gapless-playback)
+        *   [5.3 Compressor](#53-compressor)
+        *   [5.4 Loudness](#54-loudness)
+        *   [5.5 Pitch / Tempo](#55-pitch--tempo)
+        *   [5.6 Custom Filters](#56-custom-filters)
+        *   [5.7 ReplayGain](#57-replaygain)
+        *   [5.8 Gapless Playback](#58-gapless-playback)
     *   [6. Hardware & Routing](#6-hardware--routing)
         *   [6.1 Audio Output Driver](#61-audio-output-driver)
         *   [6.2 Exclusive Mode](#62-exclusive-mode)
@@ -112,7 +111,7 @@ dependencies:
         *   [6.7 Audio Track Selection](#67-audio-track-selection)
         *   [6.8 Reload Audio](#68-reload-audio)
     *   [7. Network & Caching](#7-network--caching)
-        *   [7.1 Cache Control](#71-cache-control)
+        *   [7.1 Cache Configuration](#71-cache-configuration)
         *   [7.2 Demuxer Memory Pool](#72-demuxer-memory-pool)
         *   [7.3 Network Timeout](#73-network-timeout)
         *   [7.4 TLS/SSL Verification](#74-tlsssl-verification)
@@ -125,31 +124,37 @@ dependencies:
         *   [8.2 Cover Art](#82-cover-art)
     *   [9. State & Streams](#9-state--streams)
         *   [9.1 Core Streams](#91-core-streams)
-        *   [9.2 Playlist Streams](#92-playlist-streams)
+        *   [9.2 Playlist & Track Streams](#92-playlist--track-streams)
         *   [9.3 Audio Hardware Streams](#93-audio-hardware-streams)
         *   [9.4 DSP & Filter Streams](#94-dsp--filter-streams)
-        *   [9.5 Network Streams](#95-network-streams)
-        *   [9.6 Prefetch Lifecycle Stream](#96-prefetch-lifecycle-stream)
-        *   [9.7 Complete State Snapshot](#97-complete-state-snapshot)
+        *   [9.5 Network & Cache Streams](#95-network--cache-streams)
+        *   [9.6 File Metadata & Path Streams](#96-file-metadata--path-streams)
+        *   [9.7 Playback Timing Streams](#97-playback-timing-streams)
+        *   [9.8 A-B Loop Streams](#98-a-b-loop-streams)
+        *   [9.9 Cover Art & Display Streams](#99-cover-art--display-streams)
+        *   [9.10 Runtime Diagnostics](#910-runtime-diagnostics)
+        *   [9.11 Prefetch Lifecycle Stream](#911-prefetch-lifecycle-stream)
+        *   [9.12 Aggregate Lifecycle](#912-aggregate-lifecycle)
+        *   [9.13 Complete State Snapshot](#913-complete-state-snapshot)
     *   [10. Raw API](#10-raw-api)
         *   [10.1 Read a Property](#101-read-a-property)
         *   [10.2 Write a Property](#102-write-a-property)
         *   [10.3 Send a Command](#103-send-a-command)
-        *   [10.4 Log Injection](#104-log-injection)
     *   [11. Error Handling & Logging](#11-error-handling--logging)
         *   [11.1 Typed Error Stream](#111-typed-error-stream)
         *   [11.2 End File Stream](#112-end-file-stream)
         *   [11.3 Network State](#113-network-state)
-        *   [11.4 Log Stream](#114-log-stream)
+        *   [11.4 Audio Output Lifecycle](#114-audio-output-lifecycle)
+        *   [11.5 Log Streams](#115-log-streams)
     *   [12. Hooks](#12-hooks)
         *   [12.1 Registering a Hook](#121-registering-a-hook)
         *   [12.2 Listening and Continuing](#122-listening-and-continuing)
         *   [12.3 HTTP Headers via Hook](#123-http-headers-via-hook)
         *   [12.4 Lazy URL Resolution](#124-lazy-url-resolution)
+*   [Migration](#migration)
 *   [Permissions](#permissions)
 *   [Troubleshooting](#troubleshooting)
 *   [Project Background](#project-background)
-*   [Credits](#credits)
 *   [Funding](#funding)
 
 ---
@@ -192,17 +197,21 @@ The following images demonstrate the example app included in the `example/` dire
 
 ## Features
 
-- ⚡ **Async Event Loop**: `libmpv` events are processed in a background isolate — the UI thread is never blocked.
-- 🎵 **Gapless Playback**: Seamless audio transitions between tracks using mpv's native gapless pipeline.
-- ⚖️ **ReplayGain**: Industry-standard track & album normalization, pre-amplification, and fallback gain.
-- 🎛️ **High-Fidelity Filters**: 10-band EQ (ISO centers), EBU R128 loudness normalization, dynamic range compression, crossfeed, pitch/tempo shift, echo, stereo widening.
-- 📜 **Dynamic Playlist**: Add, remove, move, and replace tracks at runtime without stopping playback.
-- ⚙️ **Audiophile Hardware**: Exclusive mode (WASAPI/ALSA/CoreAudio), output device selection, sample rate and format forcing.
-- 🔍 **Metadata & Cover Art**: Native extraction of embedded cover images and metadata tags.
-- 🌐 **Network Streams**: HLS, DASH, RTSP, RTMP, SMB, SHOUTcast/Icecast, and any format libmpv supports — with native HTTP headers.
-- 🪝 **Stream Hooks**: Intercept mpv's file-loading pipeline via `on_load` to lazily resolve URLs, redirect streams, or inject per-file headers.
-- 📦 **Granular Caching**: Fine-tuned control over demuxer memory pool, disk overflow cache, and cache-pause behavior.
-- 🔧 **Raw Access**: Read and write any mpv property directly, or send any mpv command.
+- ⚡ **Non-blocking** — mpv events run in a background isolate; the UI thread stays free.
+- 🧬 **Type-safe API** — typed enums, sealed selectors, `*Settings` bundles. No stringly-typed setters.
+- 📡 **Reactive state** — synchronous [`state`](#913-complete-state-snapshot) snapshot + [90+ observable streams](#9-state--streams) covering every mpv property.
+- 🎵 **Gapless playback** — seamless track transitions with an observable [prefetch lifecycle](#911-prefetch-lifecycle-stream).
+- 🎛️ **DSP pipeline** — typed [equalizer](#52-equalizer), [compressor](#53-compressor), [loudness](#54-loudness), [pitch / tempo](#55-pitch--tempo), plus any custom `--af` filter.
+- ⚖️ **ReplayGain** — track & album normalization, preamp, fallback gain.
+- 📜 **Dynamic playlist** — add, remove, move, replace mid-playback; [chapters](#36-chapter-navigation) and [A-B loop](#43-a-b-loop) included.
+- 🎼 **Multi-track audio** — typed [track selection](#67-audio-track-selection) for multilingual containers (MKV, MP4) with codec / language / gain metadata per track.
+- ⚙️ **Hardware control** — [exclusive mode](#62-exclusive-mode), [device selection](#63-device-selection), [bit-perfect sample-rate / format](#64-output-format), [S/PDIF passthrough](#65-spdif-passthrough).
+- 🔍 **Metadata & cover art** — [embedded artwork bytes](#82-cover-art) and [tags](#81-metadata-tags), no re-encode round-trip.
+- 🌐 **Network streams** — HLS, DASH, [SMB2/3](https://github.com/sahlberg/libsmb2), Icecast / SHOUTcast, plus any libmpv-supported HTTP/HTTPS audio format.
+- 📦 **Cache control** — atomic [`CacheSettings`](#71-cache-configuration) for memory pool, disk overflow, pause-on-empty.
+- 🪝 **Hooks** — intercept the file-loading pipeline (also during [prefetch](#12-hooks)) to resolve URLs, redirect, or inject headers.
+- 🚨 **Typed errors** — sealed [`MpvPlayerError`](#111-typed-error-stream) hierarchy + dedicated sinks for engine errors, end-file events, AO failures, and logs.
+- 🔧 **Raw access** — read / write any mpv property or command; failures surface as typed [`MpvException`](#10-raw-api).
 
 ---
 
@@ -249,7 +258,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => player.playOrPause(),
+        onPressed: () =>
+            player.state.playing ? player.pause() : player.play(),
         child: const Icon(Icons.play_arrow),
       ),
     );
@@ -262,6 +272,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 ## Guide
 
 ### 1. Initialization & Lifecycle
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/player_lifecycle.svg" width="100%">
 
 #### 1.1 Global Initialization
 
@@ -284,23 +296,28 @@ MpvAudioKit.ensureInitialized(libmpv: '/usr/local/lib/libmpv.so');
 
 ```dart
 final player = Player(
-  configuration: PlayerConfiguration(
-    logLevel: 'info',       // mpv log verbosity: 'trace','debug','v','info','warn','error','fatal','no'
-    initialVolume: 100.0,   // Volume at startup (0–100)
-    autoPlay: true,         // Start playing automatically on open()
-    audioClientName: 'my_app', // Name shown in system mixers (PulseAudio, PipeWire, etc.)
+  configuration: const PlayerConfiguration(
+    logLevel: 'info',     // mpv log verbosity
+    initialVolume: 100.0, // Volume at startup (0–100)
+    autoPlay: true,       // Start playing automatically on open()
   ),
 );
 ```
 
-All `PlayerConfiguration` fields are optional. Their defaults are:
+All `PlayerConfiguration` fields are optional. Their defaults:
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
 | `autoPlay` | `false` | Whether `open()` starts playback immediately |
 | `initialVolume` | `100.0` | Volume at startup |
-| `logLevel` | `'warn'` | mpv log level forwarded to `player.stream.log` |
-| `audioClientName` | `null` | Audio client name (falls back to `'mpv_audio_kit'`) |
+| `logLevel` | `'warn'` | mpv log level (`'trace'`, `'debug'`, `'v'`, `'info'`, `'warn'`, `'error'`, `'fatal'`, `'no'`) forwarded to `player.stream.log` |
+
+The audio client name (the label shown in PulseAudio / PipeWire / Audio
+MIDI Setup) is set after construction:
+
+```dart
+await player.setAudioClientName('MyMusicApp');
+```
 
 #### 1.3 Disposing a Player
 
@@ -332,18 +349,22 @@ final content = Media('content://com.android.externalstorage.documents/...');
 
 #### 2.1 Supported URI Schemes
 
-| Scheme | Description |
-| :--- | :--- |
-| `https://` / `http://` | Network streams, CDN audio, radio |
-| `file://` | Local files with absolute path |
-| `asset:///` | Flutter assets bundled in the app |
-| `content://` | Android content provider URIs (file picker, media store) |
-| `rtsp://` | Real-Time Streaming Protocol |
-| `rtmp://` | Real-Time Messaging Protocol (live streaming) |
-| `smb2://` | SMB2/3 network shares (Samba/CIFS via libsmb2) |
-| `hls://` / `m3u8` | HTTP Live Streaming (HLS), as used by Jellyfin transcoding |
-| `mpd` | Dynamic Adaptive Streaming over HTTP (DASH), as used by Plex transcoding |
-| Any URL | libmpv accepts any scheme it has a protocol handler for |
+##### Local & app-bundled sources
+
+|  | Scheme | Description |
+| :---: | :--- | :--- |
+| <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/file.png" width="20" alt="File"> | `file://` | Local files with absolute path |
+| <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/flutter.png" width="20" alt="Flutter"> | `asset:///` | Flutter assets bundled in the app |
+| <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/android.png" width="20" alt="Android"> | `content://` | Android content provider URIs (file picker, media store) |
+
+##### Streaming sources
+
+|  | Scheme | Description |
+| :---: | :--- | :--- |
+| <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/https.png" width="20" alt="HTTPS"> | `https://` / `http://` | Network streams, CDN audio, radio |
+| <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/jellyfin.png" width="20" alt="Jellyfin"> | `https://…/*.m3u8` | HTTP Live Streaming (HLS) manifest, as used by Jellyfin transcoding |
+| <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/plex.png" width="20" alt="Plex"> | `https://…/*.mpd` | Dynamic Adaptive Streaming over HTTP (DASH) manifest, as used by Plex transcoding |
+| <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/samba.png" width="20" alt="Samba"> | `smb2://` | SMB2/3 network shares (Samba/CIFS via libsmb2) |
 
 #### 2.2 HTTP Headers
 
@@ -363,7 +384,9 @@ await player.open(media);
 
 #### 2.3 Extras
 
-Attach arbitrary data to a track. The player carries it through the playlist so your UI can access it without a separate lookup:
+Attach arbitrary data to a track. The player carries it through the
+playlist so your UI can access it without a separate lookup. Keys are
+opaque to the wrapper — pick whatever fits your app:
 
 ```dart
 final media = Media(
@@ -372,13 +395,16 @@ final media = Media(
     'title': 'Track Title',
     'artist': 'Artist Name',
     'album': 'Album Name',
-    'artUri': 'https://cdn.example.com/cover.jpg',
-    'duration': Duration(minutes: 4, seconds: 12),
+    'duration': const Duration(minutes: 4, seconds: 12),
+    'isPodcast': true,
   },
 );
 ```
 
 Access later via `player.state.playlist.medias[index].extras`.
+
+> Embedded cover-art bytes are no longer pushed back into `extras` —
+> they flow through the dedicated [`coverArtRaw`](#82-cover-art) stream.
 
 ---
 
@@ -398,14 +424,20 @@ await player.open(media, play: false); // Load but do not start
 #### 3.2 Opening Multiple Tracks
 
 ```dart
-await player.openPlaylist([track1, track2, track3]);
+await player.openAll([track1, track2, track3]);
 
 // Start at a specific index
-await player.openPlaylist([track1, track2, track3], index: 1);
+await player.openAll([track1, track2, track3], index: 1);
 
 // Override auto-play
-await player.openPlaylist([track1, track2], play: false);
+await player.openAll([track1, track2], play: false);
 ```
+
+> Per-track HTTP headers from `Media.httpHeaders` are applied
+> automatically only to the first item — for the rest, register an
+> `on_load` hook (see [§12](#12-hooks)). This is a deliberate choice:
+> the wrapper has no synchronous moment to attach per-file options
+> for entries that will be loaded later by mpv on its own schedule.
 
 #### 3.3 Modifying the Queue at Runtime
 
@@ -430,14 +462,44 @@ await player.jump(2);      // Jump to track at index 2 (0-indexed)
 
 ```dart
 // Repeat modes
-await player.setPlaylistMode(PlaylistMode.none);    // No repeat
-await player.setPlaylistMode(PlaylistMode.single);  // Loop current track
-await player.setPlaylistMode(PlaylistMode.loop);    // Loop entire playlist
+await player.setLoop(Loop.off);       // No repeat (default)
+await player.setLoop(Loop.file);      // Loop the current track
+await player.setLoop(Loop.playlist);  // Loop the entire playlist
 
 // Shuffle
 await player.setShuffle(true);   // Shuffle the queue
 await player.setShuffle(false);  // Restore original order
 ```
+
+`Loop` aggregates mpv's two underlying loop properties (`loop-file`
+and `loop-playlist`) into a single mutually-exclusive choice. Subscribe
+via `player.stream.loop` for live updates.
+
+#### 3.6 Chapter Navigation
+
+For audiobooks, podcasts, and any container that ships chapter markers:
+
+```dart
+// Subscribe to the chapter list (populated after each load)
+player.stream.chapters.listen((chapters) {
+  for (var i = 0; i < chapters.length; i++) {
+    print('${i}. ${chapters[i].title} @ ${chapters[i].time}');
+  }
+});
+
+// Active chapter index (0-based; null when no chapter is active)
+player.stream.currentChapter.listen((idx) => print('chapter: $idx'));
+
+// Per-chapter metadata (mpv `chapter-metadata`)
+player.stream.chapterMetadata.listen((tags) => print(tags));
+
+// Jump to a chapter by index
+await player.setChapter(2);
+```
+
+`Chapter` exposes `time` (`Duration`) and an optional `title`
+(`String?`). Use `state.demuxerStartTime` if you need the source-side
+offset (chapter-edited or stream-trimmed files).
 
 ---
 
@@ -446,47 +508,78 @@ await player.setShuffle(false);  // Restore original order
 #### 4.1 Basic Controls
 
 ```dart
-await player.play();         // Start or resume
-await player.pause();        // Pause
-await player.playOrPause();  // Toggle
-await player.stop();         // Stop and unload current file
+await player.play();    // Start or resume
+await player.pause();   // Pause
+await player.stop();    // Stop and unload current file
+
+// Toggle pattern (replaces the removed playOrPause())
+player.state.playing ? await player.pause() : await player.play();
 ```
 
 #### 4.2 Seeking
 
 ```dart
 // Seek to an absolute position
-await player.seek(Duration(seconds: 30));
+await player.seek(const Duration(seconds: 30));
 
 // Seek forward/backward relative to current position
-await player.seek(Duration(seconds: 10), relative: true);
-await player.seek(Duration(seconds: -5), relative: true);
+await player.seek(const Duration(seconds: 10), relative: true);
+await player.seek(const Duration(seconds: -5), relative: true);
 ```
 
-mpv uses the `absolute` seek mode by default, which works correctly on all formats including HLS, providing precise seeking even during transcoded streams.
+mpv uses the `absolute` seek mode by default, which works correctly on
+all formats including HLS, providing precise seeking even during
+transcoded streams.
 
-#### 4.3 Speed & Pitch
+#### 4.3 A-B Loop
+
+Define a sub-region of the current track and loop between two
+timestamps. Useful for language-learning apps, transcript review, or
+practising a passage on repeat.
 
 ```dart
-await player.setRate(1.5);             // 1.5× speed (0.01 – 100.0)
-await player.setPitch(0.9);            // Lower pitch without affecting speed
-await player.setPitchCorrection(true); // Pitch correction when changing rate
+// Set the A and B markers (null disables the marker)
+await player.setAbLoopA(const Duration(seconds: 30));
+await player.setAbLoopB(const Duration(seconds: 45));
+
+// Limit the number of repetitions; null = infinite
+await player.setAbLoopCount(3);
+
+// Read remaining iterations (null = no loop or infinite)
+player.stream.remainingAbLoops.listen((n) => print('left: $n'));
+
+// Disable
+await player.setAbLoopA(null);
+await player.setAbLoopB(null);
 ```
 
-`setPitchCorrection` enables mpv's `scaletempo` algorithm, which adjusts playback speed while preserving the original pitch. Set it to `false` for "vinyl-speed" effects where pitch follows rate.
-
-#### 4.4 Volume & Mute
+#### 4.4 Speed & Pitch
 
 ```dart
-await player.setVolume(80.0);   // 0–100 (values above 100 amplify)
+await player.setRate(1.5);              // 1.5× speed (0.01 – 100.0)
+await player.setPitch(0.9);             // Lower pitch without affecting speed
+await player.setPitchCorrection(true);  // Pitch correction when changing rate
+```
+
+`setPitchCorrection` enables mpv's `scaletempo` algorithm, which
+adjusts playback speed while preserving the original pitch. Set it to
+`false` for "vinyl-speed" effects where pitch follows rate.
+
+For high-quality time-stretching that decouples pitch and tempo, see
+the [Pitch / Tempo DSP stage](#55-pitch--tempo) (rubberband).
+
+#### 4.5 Volume & Mute
+
+```dart
+await player.setVolume(80.0);     // 0–100 (values above 100 amplify)
 await player.setMute(true);
 await player.setMute(false);
 
-await player.setVolumeMax(150.0);      // Raise the software volume ceiling
-await player.setVolumeGain(6.0);       // Pre-amplify by +6 dB
+await player.setVolumeMax(150.0); // Raise the software volume ceiling
+await player.setVolumeGain(6.0);  // Pre-amplify by +6 dB
 ```
 
-#### 4.5 Audio Delay
+#### 4.6 Audio Delay
 
 ```dart
 // Shift audio forward by 50 ms (useful for Bluetooth A2DP sync)
@@ -500,165 +593,202 @@ await player.setAudioDelay(const Duration(milliseconds: -200));
 
 ### 5. Audio Quality & DSP
 
-All filters in this section run in libmpv's `libavfilter` pipeline and work on **every platform**.
+All processing in this section runs in libmpv's `libavfilter` pipeline
+and works on **every platform**.
 
-#### 5.1 Applying Filters
+#### 5.1 Filter Chain
 
-Pass a list of `AudioFilter` objects. The list **replaces** the entire filter chain atomically:
+The wrapper exposes four typed DSP stages, each with its own atomic
+setter. Stages are inserted into mpv's `--af` chain in a fixed order
+and can be toggled independently — disabling a stage strips it from
+the chain at zero CPU cost while preserving its parameters.
 
-```dart
-await player.setAudioFilters([
-  AudioFilter.equalizer([0.0, 0.0, 2.0, 4.0, 2.0, 0.0, -2.0, -4.0, -4.0, 0.0]),
-  AudioFilter.loudnorm(),
-]);
+```
+custom… → compressor → equalizer → pitch/tempo → loudnorm
 ```
 
-Remove all filters:
-```dart
-await player.clearAudioFilters();
-```
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/dsp_chain.svg" width="100%">
 
-Append a single filter to the current chain without replacing it:
+For anything the four stages don't cover (echo, crossfeed, stereo
+widening, crystalizer, format conversion), use
+[Custom Filters](#56-custom-filters) — a list of raw mpv `--af`
+strings that runs at the head of the chain.
+
+> **About the `enabled` flag.** Every typed config defaults to
+> `enabled: false`. The flag controls whether the stage is **inserted
+> into mpv's `af` chain at all** — not whether the parameters exist.
+> This lets a UI toggle ("EQ on / off") flip the stage in and out at
+> zero CPU cost without losing the user's gain / threshold / pitch
+> preset, which would otherwise need to be stashed and restored
+> manually. Disabled stages are stripped from the chain entirely —
+> their parameters live only in `PlayerState`, ready to be
+> recomposed on the next `enabled: true` write.
+
 ```dart
-await player.addAudioFilter(AudioFilter.crossfeed());
+// Read the live aggregate config back through the stream:
+player.stream.equalizer.listen((cfg) => print('eq: ${cfg.gains}'));
+
+// Or peek synchronously:
+final eq = player.state.equalizer;
+print('${eq.enabled} / ${eq.gains}');
 ```
 
 #### 5.2 Equalizer
 
-10-band graphic EQ using ISO standard center frequencies:
-`31 Hz`, `63 Hz`, `125 Hz`, `250 Hz`, `500 Hz`, `1 kHz`, `2 kHz`, `4 kHz`, `8 kHz`, `16 kHz`.
-
-Values are in **dB** — positive = boost, negative = cut.
+10-band graphic EQ on the ISO centre frequencies
+`31.25 Hz`, `62.5 Hz`, `125 Hz`, `250 Hz`, `500 Hz`, `1 kHz`, `2 kHz`,
+`4 kHz`, `8 kHz`, `16 kHz`. Gains are in dB — positive = boost,
+negative = cut.
 
 ```dart
-// Flat (no processing)
-AudioFilter.equalizer([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+// Bass boost preset
+await player.setEqualizer(const EqualizerSettings(
+  enabled: true,
+  gains: [4.0, 3.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+));
 
-// Bass boost
-AudioFilter.equalizer([4.0, 3.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+// Tweak a single band (most useful with a slider UI on top of state)
+await player.setEqualizer(
+  player.state.equalizer.copyWith(
+    gains: [...player.state.equalizer.gains]..[5] = 2.5,
+  ),
+);
 
-// Vocal presence
-AudioFilter.equalizer([0.0, 0.0, 0.0, -2.0, -2.0, 2.0, 3.0, 3.0, 1.0, 0.0])
+// Reset to the flat curve
+await player.setEqualizer(EqualizerSettings.flat);
+
+// Disable the stage; the gains are preserved for re-enable
+await player.setEqualizer(player.state.equalizer.copyWith(enabled: false));
 ```
 
-> **Note:** `AudioFilter.equalizer` requires a `List<double>` of exactly 10 elements. Passing integer literals without the `.0` suffix will cause a compile error.
+The list must contain exactly **10** values; the setter throws
+`ArgumentError` otherwise.
 
-To track gain values in Dart state without touching mpv (e.g. while a slider is still being dragged), use `setEqualizerGains`. It only updates `player.state.equalizerGains` and emits on `player.stream.equalizerGains` — it does **not** apply anything to the engine. Call `setAudioFilters` to commit:
+#### 5.3 Compressor
+
+Dynamic-range compressor (libavfilter `acompressor`). Reduces the gap
+between loud and quiet passages. Defaults match a transparent music
+preset.
 
 ```dart
-// Called on every slider drag — updates state, no mpv call
-player.setEqualizerGains([0.0, 0.0, 3.0, 5.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+await player.setCompressor(const CompressorSettings(
+  enabled: true,
+  threshold: -20.0,                     // dB; -60 to 0
+  ratio: 4.0,                           // 1.0 (off) to 20.0 (limiter)
+  attack: Duration(milliseconds: 20),   // 0.01–2000 ms
+  release: Duration(milliseconds: 250), // 0.01–9000 ms
+));
+```
 
-// Called on slider release — actually applies to mpv
-await player.setAudioFilters([
-  AudioFilter.equalizer(player.state.equalizerGains),
+#### 5.4 Loudness
+
+EBU R128 loudness normalization (libavfilter `loudnorm`). Targets a
+consistent perceived loudness across mixed content (broadcast,
+podcasts, mixed-album streams).
+
+```dart
+await player.setLoudness(const LoudnessSettings(
+  enabled: true,
+  integratedLoudness: -16.0, // LUFS; -23 broadcast, -16 streaming, -14 loud
+  truePeak: -1.5,            // dBTP; -9 to 0
+  lra: 11.0,                 // Loudness range; 1 to 50 LU
+));
+```
+
+#### 5.5 Pitch / Tempo
+
+High-quality independent pitch / tempo shifting via librubberband
+(`rubberband` filter). CPU cost is non-trivial vs. mpv's built-in
+`scaletempo` engine — enable only when the consumer needs the extra
+quality. Independent of [`setRate`](#44-speed--pitch).
+
+```dart
+// Raise pitch by one semitone, keep speed
+await player.setPitchTempo(const PitchTempoSettings(
+  enabled: true,
+  pitch: 1.0594,
+  tempo: 1.0,
+));
+
+// Slow down to 75% without changing pitch
+await player.setPitchTempo(const PitchTempoSettings(
+  enabled: true,
+  pitch: 1.0,
+  tempo: 0.75,
+));
+```
+
+#### 5.6 Custom Filters
+
+Raw mpv `--af` strings inserted at the head of the chain, before any
+wrapper-managed DSP stage. Use this for anything the four typed
+stages don't cover (echo, crossfeed, format conversion, custom
+lavfi):
+
+```dart
+await player.setCustomAudioFilters([
+  // Crossfeed for headphone listening
+  'lavfi-bs2b',
+  // Echo: 300 ms decay, 30% falloff
+  'lavfi-aecho=0.8:0.5:60:0.4',
+  // Resample everything to 48 kHz
+  'lavfi-aresample=48000',
 ]);
+
+// Clear all custom filters; typed stages stay in place
+await player.setCustomAudioFilters(const []);
 ```
 
-#### 5.3 EBU R128 Loudness Normalization
+The setter rejects entries carrying the wrapper-reserved labels
+(`@_mak_eq:`, `@_mak_comp:`, `@_mak_loud:`, `@_mak_pt:`) with an
+`ArgumentError` — those slots belong to the typed setters above.
 
-Normalizes perceived loudness to a broadcast-standard target. Essential for consistent volume across mixed content (podcasts, radio streams, music libraries):
+#### 5.7 ReplayGain
+
+ReplayGain reads per-track or per-album gain tags embedded by tools
+like `mp3gain`, `metaflac`, or any modern music tagger. The full
+configuration is set atomically via `setReplayGain(ReplayGainSettings)`:
 
 ```dart
-AudioFilter.loudnorm()  // Default: -16 LUFS target, -1.5 dBTP true-peak limit
+await player.setReplayGain(const ReplayGainSettings(
+  mode: ReplayGain.track, // .no, .track, .album
+  preamp: 2.0,                // +2 dB on top of the RG value
+  fallback: -6.0,             // -6 dB on files without RG tags
+  clip: false,                // false = peak-limit; true = allow clipping
+));
 
-// Custom targets
-AudioFilter.loudnorm(
-  integratedLoudness: -23.0,  // EBU R128 broadcast standard
-  truePeak: -1.0,
-  lra: 7.0,                   // Loudness range in LU
-)
+// Tweak a single field via copyWith
+await player.setReplayGain(
+  player.state.replayGain.copyWith(mode: ReplayGain.album),
+);
 ```
 
-#### 5.4 Dynamic Range Compression
-
-Reduces the difference between loud and quiet passages — useful for listening in noisy environments:
+#### 5.8 Gapless Playback
 
 ```dart
-AudioFilter.compressor()  // Defaults: threshold -20 dB, ratio 4:1
-
-AudioFilter.compressor(
-  threshold: -18.0,  // Onset level in dB
-  ratio: 3.0,        // Compression ratio (3:1)
-  attack: 10.0,      // Attack time in ms
-  release: 200.0,    // Release time in ms
-)
+await player.setGapless(Gapless.yes);   // Full gapless — re-uses the decoder
+await player.setGapless(Gapless.weak);  // Gapless only on compatible formats (default)
+await player.setGapless(Gapless.no);    // Close and re-open the AO between tracks
 ```
 
-#### 5.5 Crossfeed
+`weak` is the safest default: it delivers gapless transitions between
+tracks of the same format (e.g. consecutive FLAC or MP3) without the
+risk of breaking when the format changes mid-playlist.
 
-Simulates speaker placement for headphone listening, reducing the artificial hard left/right stereo separation that causes listening fatigue on long sessions:
+For seamless transitions between tracks of any format, combine
+`Gapless.yes` with `setPrefetchPlaylist(true)` and observe the
+[prefetch lifecycle](#911-prefetch-lifecycle-stream).
 
 ```dart
-AudioFilter.crossfeed()
+// Pre-open the next playlist entry in the background — first audio
+// frame ready before the current track ends.
+await player.setPrefetchPlaylist(true);
 ```
 
-#### 5.6 Pitch & Tempo Shift
-
-Independent pitch and tempo control.
-
-```dart
-AudioFilter.scaleTempo(pitch: 1.0594, tempo: 1.0)  // Raise pitch by one semitone
-AudioFilter.scaleTempo(pitch: 1.0, tempo: 0.75)    // Slow down to 75% without changing pitch
-```
-
-#### 5.7 Echo / Delay
-
-```dart
-AudioFilter.echo(delay: 300, falloff: 0.3)  // 300 ms echo, 30% falloff
-```
-
-#### 5.8 Stereo Widening
-
-```dart
-AudioFilter.extraStereo(m: 2.5)  // 2.5× stereo expansion (1.0 = no change, 0.0 = mono)
-```
-
-#### 5.9 Crystalizer
-
-Emphasizes harmonic details and transients:
-
-```dart
-AudioFilter.crystalizer(intensity: 2.0)
-```
-
-#### 5.10 Custom Filter
-
-Any valid mpv `--af` string:
-
-```dart
-AudioFilter.custom('lavfi-aresample=48000')
-AudioFilter.custom('lavfi-agate=threshold=0.1:ratio=2')
-```
-
-#### 5.11 ReplayGain
-
-ReplayGain reads per-track or per-album gain tags embedded by tools like `mp3gain`, `metaflac`, or any modern music tagger:
-
-```dart
-await player.setReplayGain(ReplayGainMode.track);   // Use track-level gain (most common)
-await player.setReplayGain(ReplayGainMode.album);   // Use album-level gain (preserves relative track levels)
-await player.setReplayGain(ReplayGainMode.no);      // Disable
-
-// Pre-amplification applied on top of the ReplayGain value
-await player.setReplayGainPreamp(2.0);    // +2 dB pre-amp
-
-// Gain applied to files that have no ReplayGain tags
-await player.setReplayGainFallback(-6.0); // -6 dB fallback
-
-// Allow the engine to clip (not recommended)
-await player.setReplayGainClip(false);
-```
-
-#### 5.12 Gapless Playback
-
-```dart
-await player.setGaplessPlayback(GaplessMode.yes);   // Full gapless — decode next track before current ends
-await player.setGaplessPlayback(GaplessMode.weak);  // Gapless only between compatible formats (default)
-await player.setGaplessPlayback(GaplessMode.no);    // Gap between all tracks
-```
-
-`'weak'` is the safest default: it provides gapless transitions between tracks of the same format (e.g. consecutive FLAC or MP3 files) without the risk of breaking on format changes.
+Disabled by default (mpv's own default) because background prefetch
+opens an extra demuxer + cache for the next track, which costs memory.
+Enable it for music players where seamless transitions matter; leave
+it off for radio / single-track sessions.
 
 ---
 
@@ -719,37 +849,118 @@ await player.setAudioSampleRate(96000);   // 96 kHz (hi-res)
 await player.setAudioSampleRate(192000);  // 192 kHz (studio)
 await player.setAudioSampleRate(384000);  // 384 kHz (DXD)
 
-// Bit depth / sample format
-await player.setAudioFormat('no');      // Auto
-await player.setAudioFormat('u8');      // 8-bit unsigned integer (interleaved)
-await player.setAudioFormat('u8p');     // 8-bit unsigned integer (planar)
-await player.setAudioFormat('s16');     // 16-bit signed integer (interleaved)
-await player.setAudioFormat('s16p');    // 16-bit signed integer (planar)
-await player.setAudioFormat('s32');     // 32-bit signed integer (interleaved)
-await player.setAudioFormat('s32p');    // 32-bit signed integer (planar)
-await player.setAudioFormat('float');   // 32-bit float (interleaved)
-await player.setAudioFormat('floatp');  // 32-bit float (planar)
-await player.setAudioFormat('double');  // 64-bit float (interleaved)
-await player.setAudioFormat('doublep'); // 64-bit float (planar)
+// Bit depth / sample format — typed Format enum
+await player.setAudioFormat(Format.auto);          // mpv picks (default)
+await player.setAudioFormat(Format.u8);            // 8-bit unsigned, interleaved
+await player.setAudioFormat(Format.u8Planar);      // 8-bit unsigned, planar
+await player.setAudioFormat(Format.s16);           // 16-bit signed, interleaved
+await player.setAudioFormat(Format.s16Planar);     // 16-bit signed, planar
+await player.setAudioFormat(Format.s32);           // 32-bit signed, interleaved
+await player.setAudioFormat(Format.s32Planar);     // 32-bit signed, planar
+await player.setAudioFormat(Format.float32);       // 32-bit float, interleaved
+await player.setAudioFormat(Format.float32Planar); // 32-bit float, planar
+await player.setAudioFormat(Format.float64);       // 64-bit float, interleaved
+await player.setAudioFormat(Format.float64Planar); // 64-bit float, planar
 
-// Channel layout
-await player.setAudioChannels('auto');         // Auto
-await player.setAudioChannels('auto-safe');    // Reject multichannel unless verified
-await player.setAudioChannels('mono');         // 1 channel
-await player.setAudioChannels('stereo');       // 2 channels, triggers decoder-level downmix
-await player.setAudioChannels('2.1');          // 2 main + LFE (subwoofer)
-await player.setAudioChannels('5.1');          // 5 main + LFE (surround)
-await player.setAudioChannels('7.1');          // 7 main + LFE (surround + rear)
+// Channel layout — sealed Channels with named static constants
+// (mirror of mpv's std_layout_names[] table 1-to-1).
+
+// Special modes
+await player.setAudioChannels(Channels.auto);            // mpv picks
+await player.setAudioChannels(Channels.autoSafe);        // mpv picks, reject multichannel unless verified
+
+// 1 channel
+await player.setAudioChannels(Channels.mono);            // mono
+await player.setAudioChannels(Channels.oneZero);         // 1.0 (alias of mono)
+
+// 2 channels
+await player.setAudioChannels(Channels.stereo);          // stereo
+await player.setAudioChannels(Channels.twoZero);         // 2.0 (alias of stereo)
+await player.setAudioChannels(Channels.downmix);         // downmix (semantic alias of stereo)
+
+// 3 channels
+await player.setAudioChannels(Channels.twoOne);          // 2.1
+await player.setAudioChannels(Channels.threeZero);       // 3.0
+await player.setAudioChannels(Channels.threeZeroBack);   // 3.0(back)
+
+// 4 channels
+await player.setAudioChannels(Channels.fourZero);        // 4.0
+await player.setAudioChannels(Channels.quad);            // quad
+await player.setAudioChannels(Channels.quadSide);        // quad(side)
+await player.setAudioChannels(Channels.threeOne);        // 3.1
+await player.setAudioChannels(Channels.threeOneBack);    // 3.1(back)
+
+// 5 channels
+await player.setAudioChannels(Channels.fiveZero);        // 5.0
+await player.setAudioChannels(Channels.fiveZeroAlsa);    // 5.0(alsa)
+await player.setAudioChannels(Channels.fiveZeroSide);    // 5.0(side)
+await player.setAudioChannels(Channels.fourOne);         // 4.1
+await player.setAudioChannels(Channels.fourOneAlsa);     // 4.1(alsa)
+
+// 6 channels
+await player.setAudioChannels(Channels.fiveOne);         // 5.1 (back surround)
+await player.setAudioChannels(Channels.fiveOneAlsa);     // 5.1(alsa)
+await player.setAudioChannels(Channels.fiveOneSide);     // 5.1 (side surround)
+await player.setAudioChannels(Channels.sixZero);         // 6.0
+await player.setAudioChannels(Channels.sixZeroFront);    // 6.0(front)
+await player.setAudioChannels(Channels.hexagonal);       // hexagonal
+
+// 7 channels
+await player.setAudioChannels(Channels.sixOne);          // 6.1
+await player.setAudioChannels(Channels.sixOneBack);      // 6.1(back)
+await player.setAudioChannels(Channels.sixOneTop);       // 6.1(top)
+await player.setAudioChannels(Channels.sixOneFront);     // 6.1(front)
+await player.setAudioChannels(Channels.sevenZero);       // 7.0
+await player.setAudioChannels(Channels.sevenZeroFront);  // 7.0(front)
+await player.setAudioChannels(Channels.sevenZeroRear);   // 7.0(rear)
+
+// 8 channels
+await player.setAudioChannels(Channels.sevenOne);        // 7.1 canonical
+await player.setAudioChannels(Channels.sevenOneAlsa);    // 7.1(alsa)
+await player.setAudioChannels(Channels.sevenOneWide);    // 7.1(wide)
+await player.setAudioChannels(Channels.sevenOneWideSide); // 7.1(wide-side)
+await player.setAudioChannels(Channels.sevenOneTop);     // 7.1(top)
+await player.setAudioChannels(Channels.sevenOneRear);    // 7.1(rear)
+await player.setAudioChannels(Channels.octagonal);       // octagonal
+await player.setAudioChannels(Channels.cube);            // cube
+
+// Cinema / immersive
+await player.setAudioChannels(Channels.hexadecagonal);   // hexadecagonal (16ch)
+await player.setAudioChannels(Channels.surround222);     // 22.2 (NHK / ITU-R BS.775)
+
+// Custom escape — anything mpv recognises but isn't in the named set
+// (comma-separated lists, raw speaker-tag arrays).
+await player.setAudioChannels(
+  const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
+);
 ```
+
+Every named constant maps 1-to-1 to mpv's `audio-channels` parser
+output — the variant qualifier in parentheses (`(side)`, `(back)`,
+`(alsa)`, `(top)`, `(front)`, `(rear)`, `(wide-side)`, `(wide)`) is
+preserved in the Dart identifier.
 
 #### 6.5 S/PDIF Passthrough
 
-Send compressed audio (AC3, DTS) directly to an AV receiver over S/PDIF or HDMI:
+Send compressed audio (AC3, DTS, TrueHD, …) directly to an AV receiver
+over S/PDIF or HDMI. Pass a typed `Set<Spdif>` (7 codecs from mpv's
+internal whitelist):
 
 ```dart
-await player.setAudioSpdif('ac3,dts'); // Passthrough AC3 and DTS
-await player.setAudioSpdif('');        // Disable passthrough
+// Home-theater Dolby + DTS-HD passthrough
+await player.setAudioSpdif({Spdif.ac3, Spdif.eac3, Spdif.trueHd, Spdif.dtsHd});
+
+// Dolby only
+await player.setAudioSpdif({Spdif.ac3, Spdif.eac3, Spdif.trueHd});
+
+// Disable passthrough
+await player.setAudioSpdif({});
 ```
+
+Available codecs: `Spdif.aac`, `Spdif.ac3`, `Spdif.dts`, `Spdif.dtsHd`,
+`Spdif.eac3`, `Spdif.mp3`, `Spdif.trueHd`. `dtsHd` implicitly enables
+the standard DTS path on top of DTS-HD MA — specifying both `dts` and
+`dtsHd` is equivalent to `dtsHd` alone.
 
 #### 6.6 Audio Client Name
 
@@ -761,13 +972,37 @@ await player.setAudioClientName('MyMusicApp');
 
 #### 6.7 Audio Track Selection
 
-For containers with multiple audio tracks (e.g. MKV, MP4 with language tracks), select which one to decode:
+For containers with multiple audio tracks (e.g. MKV, MP4 with language
+variants), the wrapper exposes both the **inventory** of tracks the
+demuxer surfaced and the **active** track — plus a typed setter.
 
 ```dart
-await player.setAudioTrackMode('1');   // First audio track
-await player.setAudioTrackMode('2');   // Second audio track
-await player.setAudioTrackMode('auto'); // Let mpv choose (default)
+// Walk the audio inventory:
+for (final t in player.state.tracks.where((tr) => tr.type == 'audio')) {
+  print('${t.id}: ${t.title ?? t.lang ?? "audio"} '
+        '(${t.codec} ${t.samplerate} Hz ${t.channelCount}ch)');
+}
+
+// Currently selected track
+player.stream.currentAudioTrack.listen((track) {
+  if (track == null) return;
+  print('Now decoding track #${track.id}: ${track.title}');
+});
+
+// Switch by id
+await player.setAudioTrack(const Track.id(2));
+
+// Defer to mpv's automatic choice (container default or first audio)
+await player.setAudioTrack(Track.auto);
+
+// Disable audio output entirely (e.g. show only metadata + cover art)
+await player.setAudioTrack(Track.off);
 ```
+
+`MpvTrack` ships rich per-track introspection — codec, decoder, sample
+rate, channel count, ReplayGain tags, language, default / forced
+flags, and `image` / `albumart` flags so you can skip embedded picture
+streams when populating a track-switcher UI.
 
 #### 6.8 Reload Audio
 
@@ -781,24 +1016,28 @@ await player.reloadAudio();
 
 ### 7. Network & Caching
 
-#### 7.1 Cache Control
+#### 7.1 Cache Configuration
+
+The five backing mpv cache properties (`cache`, `cache-secs`,
+`cache-on-disk`, `cache-pause`, `cache-pause-wait`) are written
+atomically through `setCache(CacheSettings)`:
 
 ```dart
-await player.setCache(CacheMode.yes);    // Always cache network streams
-await player.setCache(CacheMode.no);     // Never cache (live streams, minimize latency)
-await player.setCache(CacheMode.auto);   // Cache only seekable streams (default)
+await player.setCache(const CacheSettings(
+  mode: Cache.yes,                 // .auto (default), .yes, .no
+  secs: Duration(seconds: 30),         // target cache duration ahead of the playhead
+  onDisk: true,                        // spill overflow cache to disk
+  pause: true,                         // auto-pause when cache runs dry
+  pauseWait: Duration(seconds: 3),     // pre-buffer required before resume
+));
 
-// How many seconds ahead to buffer
-await player.setCacheSecs(const Duration(seconds: 30));
+// Tweak a single field via copyWith
+await player.setCache(
+  player.state.cache.copyWith(secs: const Duration(seconds: 60)),
+);
 
-// Pause automatically when the cache runs dry, resume when refilled
-await player.setCachePause(true);
-
-// How many seconds must be buffered before auto-resuming after a stall
-await player.setCachePauseWait(const Duration(seconds: 3));
-
-// Spill overflow cache to temporary disk files
-await player.setCacheOnDisk(true);
+// Subscribe to live changes
+player.stream.cache.listen((cfg) => print('cache: ${cfg.mode} ${cfg.secs}'));
 ```
 
 #### 7.2 Demuxer Memory Pool
@@ -858,7 +1097,7 @@ await player.setAudioStreamSilence(true);
 When using the `null` audio driver (e.g. for server-side processing or testing without a sound device), this makes the null output run as fast as possible instead of at real time:
 
 ```dart
-await player.setAoNullUntimed(true);
+await player.setAudioNullUntimed(true);
 ```
 
 #### 7.8 Radio & Live Streams
@@ -867,8 +1106,7 @@ For Icecast/SHOUTcast radio, disable caching and cache-pause to minimize latency
 
 ```dart
 await player.open(Media('https://stream.radio.example.com/live.mp3'));
-await player.setCache(CacheMode.no);
-await player.setCachePause(false);
+await player.setCache(const CacheSettings(mode: Cache.no, pause: false));
 await player.setNetworkTimeout(const Duration(seconds: 10));
 ```
 
@@ -905,83 +1143,88 @@ Common tag keys (case as returned by mpv): `title`, `artist`, `album`, `album_ar
 
 #### 8.2 Cover Art
 
-When a track loads, mpv decodes its embedded cover art into a video frame (`audio-display = 'embedded-first'`). The library captures that frame with `screenshot-raw`, converts it to PNG (resized to a maximum of 800 px on the longest side), and attaches it to the `Media` extras as `artBytes` / `artUri`. This happens automatically — no extra calls needed.
+The wrapper extracts the **raw codec bytes** of the embedded picture
+the moment a file finishes loading and emits them on
+`player.stream.coverArtRaw` as a `CoverArtRaw(bytes, mimeType)`. No
+decode → BGRA → PNG re-encode round-trip — the bytes are the original
+PNG / JPEG / WEBP / BMP / GIF as embedded by the tagger.
 
 ```dart
-player.stream.playlist.listen((playlist) {
-  final current = playlist.medias[playlist.index];
-  final artBytes = current.extras?['artBytes'] as Uint8List?;  // PNG bytes
-  final artUri   = current.extras?['artUri']   as String?;     // data:image/png;base64,...
-});
+Uint8List? _cover;
+
+@override
+void initState() {
+  super.initState();
+  player.stream.coverArtRaw.listen((raw) {
+    setState(() => _cover = raw?.bytes);
+  });
+}
+
+// Hand straight to Image.memory — no helper needed.
+@override
+Widget build(BuildContext context) {
+  return _cover != null ? Image.memory(_cover!) : const SizedBox.shrink();
+}
 ```
 
-Three properties control when and how cover art is processed. All are fully observable via `player.state` and `player.stream`.
+The stream emits **exactly once per file load** — a `CoverArtRaw` when
+the new file has embedded artwork, `null` otherwise. Listen for the
+`null` to clear stale artwork on track changes.
+
+Three mpv-level options control how mpv treats cover-art metadata.
+Each has a typed setter and an observable getter.
 
 ##### `audio-display`
 
-Controls which image source mpv decodes into the video pipeline.
+Which image source mpv decodes into its video pipeline.
+
+```dart
+await player.setAudioDisplay(Display.embeddedFirst); // default
+await player.setAudioDisplay(Display.externalFirst);
+await player.setAudioDisplay(Display.no);            // skip cover art entirely
+```
 
 | Value | Behaviour |
 |-------|-----------|
-| `'embedded-first'` | Display cover art, preferring embedded images over external files. **Required for automatic cover extraction.** mpv default. |
-| `'external-first'` | Display cover art, preferring external files over embedded images. |
-| `'no'` | Disable video/cover-art display entirely — no video pipeline overhead. Use this when your app reads artwork out-of-band (e.g. via `metadata_god` or a tag library). |
-
-```dart
-// Default — embedded art decoded and extracted automatically on load
-await player.setAudioDisplay(AudioDisplay.embeddedFirst);
-
-// Disable when you read artwork from file tags directly
-await player.setAudioDisplay(AudioDisplay.no);
-
-// React to changes
-player.stream.audioDisplay.listen((mode) => print('audio-display: $mode'));
-```
+| `embeddedFirst` | Prefer embedded images; fall back to external files. (mpv default.) |
+| `externalFirst` | Prefer external files; fall back to embedded. |
+| `no` | Skip cover-art display entirely — useful when you read artwork via a tag library. |
 
 ##### `cover-art-auto`
 
-Controls whether mpv scans for an external cover art file next to the audio file (e.g. `cover.jpg`, `folder.jpg`).
-
-| Value | Behaviour |
-|-------|-----------|
-| `'no'` | Disabled. Recommended for apps that manage artwork themselves. The library sets this by default; mpv's own default is `'exact'`. |
-| `'exact'` | Load a file whose base name matches the audio file with an image extension (e.g. `song.flac` → `song.jpg`), plus names from `--cover-art-whitelist` (`cover`, `folder`, `album`, …). mpv default. |
-| `'fuzzy'` | Load any file whose name *contains* the audio file's base name. |
-| `'all'` | Load all image files in the same directory as the audio file. |
+Whether mpv scans for an external cover-art file next to the audio
+file (`cover.jpg`, `folder.jpg`, …).
 
 ```dart
-// Disabled by default — prevents unrelated images from loading
-await player.setCoverArtAuto(CoverArtAuto.no);
-
-// Enable fuzzy scanning (e.g. for a local file player)
-await player.setCoverArtAuto(CoverArtAuto.fuzzy);
-
-player.stream.coverArtAuto.listen((mode) => print('cover-art-auto: $mode'));
+await player.setCoverArtAuto(Cover.no); // library default
+await player.setCoverArtAuto(Cover.exact);
+await player.setCoverArtAuto(Cover.fuzzy);
+await player.setCoverArtAuto(Cover.all);
 ```
+
+The library defaults to `no` (mpv's own default is `exact`) so
+unrelated images can't sneak in. Switch to `exact` or `fuzzy` for a
+local-file player that wants disk-side artwork.
 
 ##### `image-display-duration`
 
-How long (in seconds) the decoded cover frame is held as a displayable video frame after the file loads.
+How long the cover frame is held as a displayable video frame after
+the file loads.
 
 ```dart
-// 'inf' (default) — frame lives forever; required for automatic cover extraction
-await player.setImageDisplayDuration('inf');
-
-// '0' — frame is discarded immediately; saves memory when cover art is not needed
-await player.setImageDisplayDuration('0');
-
-// Any number of seconds
-await player.setImageDisplayDuration('5');
-
-player.stream.imageDisplayDuration.listen((d) => print('image-display-duration: $d'));
+await player.setImageDisplayDuration(null);                            // mpv's `inf` (default)
+await player.setImageDisplayDuration(Duration.zero);                   // drop immediately
+await player.setImageDisplayDuration(const Duration(seconds: 5));      // explicit hold
 ```
 
-> **Tip — disabling the video pipeline entirely:** if your app reads artwork via a tag library (e.g. `metadata_god`) rather than through mpv, set both `audio-display = 'no'` and `cover-art-auto = 'no'`. mpv will skip video decoding altogether, reducing CPU and memory usage:
+> **Tip — disabling the video pipeline entirely:** if your app reads
+> artwork via a tag library and never uses `coverArtRaw`, you can
+> turn the whole video pipeline off:
 >
 > ```dart
-> await player.setAudioDisplay(AudioDisplay.no);
-> await player.setCoverArtAuto(CoverArtAuto.no);
-> await player.setImageDisplayDuration('0');
+> await player.setAudioDisplay(Display.no);
+> await player.setCoverArtAuto(Cover.no);
+> await player.setImageDisplayDuration(Duration.zero);
 > ```
 
 ---
@@ -993,68 +1236,192 @@ player.stream.imageDisplayDuration.listen((d) => print('image-display-duration: 
 - **`player.state`** — a synchronous, immutable snapshot of the current state. Safe to read from anywhere.
 - **`player.stream`** — reactive streams that emit on every change. Use with `StreamBuilder` or `.listen()`.
 
+> Every entry below has a synchronous mirror on `player.state` (same
+> field name, same type) for snapshot-style reads. Subscribing to the
+> stream is the right tool when the UI must react to changes;
+> reading from `state` is the right tool inside event handlers and
+> one-shot logic.
+
 #### 9.1 Core Streams
 
-```dart
-player.stream.playing.listen((isPlaying) { ... });   // bool
-player.stream.position.listen((pos) { ... });         // Duration
-player.stream.duration.listen((dur) { ... });         // Duration
-player.stream.buffering.listen((isBuffering) { ... }); // bool
-player.stream.buffer.listen((pos) { ... });           // Duration (absolute buffered position)
-player.stream.bufferingPercentage.listen((pct) { ... }); // double (0.0–100.0)
-player.stream.completed.listen((done) { ... });       // bool (true when track ends)
-player.stream.volume.listen((vol) { ... });           // double
-player.stream.mute.listen((isMuted) { ... });         // bool
-player.stream.rate.listen((speed) { ... });              // double
-player.stream.pitch.listen((p) { ... });                 // double
-player.stream.pitchCorrection.listen((on) { ... });      // bool
-player.stream.audioDelay.listen((secs) { ... });         // double
-```
+Transport, lifecycle, volume, and the playback metric trio.
 
-#### 9.2 Playlist Streams
+| Stream | Type | Notes |
+| :--- | :--- | :--- |
+| `playing` | `bool` | `true` when audio is being produced; tracks mpv's `core-idle` (inverted). |
+| `completed` | `bool` | `true` once the current track reaches natural EOF. |
+| `eofReached` | `bool` | mpv's `eof-reached`; `true` while paused at the end of a file with `keep-open=yes`. |
+| `position` | `Duration` | Current playhead, throttled to ~30 Hz. |
+| `duration` | `Duration` | Total duration of the current file; `Duration.zero` for live streams. |
+| `seekCompleted` | `void` | Fires once per `loadfile` / seek when mpv re-initialises (PLAYBACK_RESTART). Use as the authoritative "file ready" signal. |
+| `buffering` | `bool` | `true` between `start-file` and `file-loaded`. |
+| `buffer` | `Duration` | Absolute timestamp the demuxer has buffered up to. |
+| `bufferDuration` | `Duration` | Headroom ahead of the playhead (`demuxer-cache-duration`). |
+| `bufferingPercentage` | `double` (0–100) | Wrapper-computed cache fill against `state.cache.secs`. |
+| `volume` | `double` | 0–100; values above 100 amplify. |
+| `mute` | `bool` | |
+| `rate` | `double` | Playback speed multiplier. |
+| `pitch` | `double` | Pitch multiplier. |
+| `pitchCorrection` | `bool` | Whether `scaletempo` is engaged. |
+| `audioDelay` | `Duration` | Audio offset relative to video (sub-millisecond precision is rounded). |
 
-```dart
-player.stream.playlist.listen((pl) {
-  print('${pl.medias.length} tracks, current index: ${pl.index}');
-});
-player.stream.playlistMode.listen((mode) { ... }); // PlaylistMode enum
-player.stream.shuffle.listen((isShuffled) { ... }); // bool
-```
+#### 9.2 Playlist & Track Streams
+
+Playlist / chapters / available tracks. Detailed usage in
+[§3](#3-playlist-management), [§3.6](#36-chapter-navigation), and
+[§6.7](#67-audio-track-selection).
+
+| Stream | Type | Setter |
+| :--- | :--- | :--- |
+| `playlist` | `Playlist` | `open` / `openAll` / `add` / `remove` / `move` / `replace` / `clearPlaylist` |
+| `loop` | `Loop` | `setLoop` |
+| `shuffle` | `bool` | `setShuffle` |
+| `prefetchPlaylist` | `bool` | `setPrefetchPlaylist` |
+| `tracks` | `List<MpvTrack>` | _(observed; populated by demuxer)_ |
+| `currentAudioTrack` | `MpvTrack?` | `setAudioTrack` |
+| `chapters` | `List<Chapter>` | _(observed; populated by demuxer)_ |
+| `currentChapter` | `int?` | `setChapter` |
 
 #### 9.3 Audio Hardware Streams
 
-```dart
-player.stream.audioDevice.listen((device) { ... });    // AudioDevice (current)
-player.stream.audioDevices.listen((list) { ... });     // List<AudioDevice> (all available)
-player.stream.audioParams.listen((p) { ... });         // AudioParams (decoder output)
-player.stream.audioOutParams.listen((p) { ... });      // AudioParams (hardware output)
-player.stream.audioBitrate.listen((bps) { ... });      // double? (current bitrate)
-```
+Decoder side, hardware side, and every audio-output knob. Setters live
+in [§4.5](#45-volume--mute), [§6](#6-hardware--routing), and
+[§7.5–7.7](#75-audio-buffer).
 
-`AudioParams` contains: `format`, `sampleRate`, `channels`, `channelCount`, `hrChannels`, `codec`, `codecName`.
+| Stream | Type | Setter |
+| :--- | :--- | :--- |
+| `audioDevice` | `Device` | `setAudioDevice` |
+| `audioDevices` | `List<Device>` | _(read-only)_ |
+| `audioParams` | `AudioParams` | _(decoder; observed)_ |
+| `audioOutParams` | `AudioParams` | _(hardware; observed)_ |
+| `audioBitrate` | `double?` | _(observed)_ |
+| `audioOutputState` | `AudioOutputState` | _(see [§11.4](#114-audio-output-lifecycle))_ |
+| `audioDriver` | `String` | `setAudioDriver` |
+| `audioExclusive` | `bool` | `setAudioExclusive` |
+| `audioBuffer` | `Duration` | `setAudioBuffer` |
+| `audioStreamSilence` | `bool` | `setAudioStreamSilence` |
+| `audioNullUntimed` | `bool` | `setAudioNullUntimed` |
+| `audioSpdif` | `Set<Spdif>` | `setAudioSpdif` |
+| `volumeMax` | `double` | `setVolumeMax` |
+| `volumeGain` | `double` | `setVolumeGain` |
+| `audioSampleRate` | `int` | `setAudioSampleRate` |
+| `audioFormat` | `Format` | `setAudioFormat` |
+| `audioChannels` | `Channels` | `setAudioChannels` |
+| `audioClientName` | `String` | `setAudioClientName` |
+
+`AudioParams` carries: `format`, `sampleRate`, `channels`,
+`channelCount`, `hrChannels`, `codec`, `codecName`. `codec` /
+`codecName` mirror mpv's two raw codec properties — both vary by mpv
+build, so do a case-insensitive substring match against **both** for
+codec-family detection.
 
 #### 9.4 DSP & Filter Streams
 
-```dart
-player.stream.activeFilters.listen((filters) { ... });   // List<AudioFilter>
-player.stream.equalizerGains.listen((gains) { ... });    // List<double> (10 bands)
-player.stream.replayGainMode.listen((mode) { ... });     // String
-player.stream.gaplessMode.listen((mode) { ... });        // String
-```
+Every typed DSP stage emits its full aggregate settings — peek at
+`.value` synchronously through `state` for one-shot reads. Detailed
+usage in [§5](#5-audio-quality--dsp).
 
-#### 9.5 Network Streams
+| Stream | Type | Setter |
+| :--- | :--- | :--- |
+| `equalizer` | `EqualizerSettings` | `setEqualizer` |
+| `compressor` | `CompressorSettings` | `setCompressor` |
+| `loudness` | `LoudnessSettings` | `setLoudness` |
+| `pitchTempo` | `PitchTempoSettings` | `setPitchTempo` |
+| `customAudioFilters` | `List<String>` | `setCustomAudioFilters` |
+| `replayGain` | `ReplayGainSettings` | `setReplayGain` |
+| `gapless` | `Gapless` | `setGapless` |
 
-```dart
-player.stream.cacheMode.listen((mode) { ... });          // String
-player.stream.cacheSecs.listen((secs) { ... });          // double
-player.stream.networkTimeout.listen((t) { ... });        // double
-```
+#### 9.5 Network & Cache Streams
 
-#### 9.6 Prefetch Lifecycle Stream
+| Stream | Type | Setter |
+| :--- | :--- | :--- |
+| `cache` | `CacheSettings` | `setCache` |
+| `networkTimeout` | `Duration` | `setNetworkTimeout` |
+| `tlsVerify` | `bool` | `setTlsVerify` |
+| `pausedForCache` | `bool` | _(observed; auto-pause signal)_ |
+| `demuxerViaNetwork` | `bool` | _(observed)_ |
+| `cacheSpeed` | `double` (bytes/s) | _(observed)_ |
+| `cacheBufferingState` | `int` (0–100) | _(observed)_ |
+| `demuxerMaxBytes` | `int` | `setDemuxerMaxBytes` |
+| `demuxerMaxBackBytes` | `int` | `setDemuxerMaxBackBytes` |
+| `demuxerReadaheadSecs` | `int` | `setDemuxerReadaheadSecs` |
 
-mpv pre-opens the next playlist entry in the background to make the transition between tracks gapless. Upstream this lifecycle is tracked internally across several `MPContext` fields but never exposed through the client API — the only native hint is a handful of `MP_VERBOSE` log lines, which is brittle to act on.
+`pausedForCache` is the authoritative network-stall signal — prefer
+it over interpreting error events. See also [§11.3](#113-network-state).
 
-`mpv_audio_kit` ships a small mpv patch (`patch_prefetch_state`) that adds a proper read-only property `prefetch-state`, surfaced as a typed stream in the Dart API. The signal comes from mpv's own state — works uniformly across every demuxer backend (HLS, DASH, raw HTTP range reads, SMB, local files) without any URL parsing or log scraping.
+#### 9.6 File Metadata & Path Streams
+
+Display name, container info, and the four path / URI fields.
+
+| Stream | Type | mpv property |
+| :--- | :--- | :--- |
+| `metadata` | `Map<String, String>` | `metadata` |
+| `mediaTitle` | `String` | `media-title` (falls back to filename when no `title` tag) |
+| `fileFormat` | `String` | `file-format` |
+| `fileSize` | `int` | `file-size` |
+| `path` | `String` | `path` (canonicalised, post-redirect) |
+| `filename` | `String` | `filename` (no directory) |
+| `streamPath` | `String` | `stream-path` (URI as originally requested) |
+| `streamOpenFilename` | `String` | `stream-open-filename` (URI as opened post-redirect) |
+| `seekable` | `bool` | `seekable` |
+| `partiallySeekable` | `bool` | `partially-seekable` (HLS / DASH window) |
+| `demuxerIdle` | `bool` | `demuxer-cache-idle` |
+
+#### 9.7 Playback Timing Streams
+
+Fine-grained playhead diagnostics for sync calculations.
+
+| Stream | Type | Notes |
+| :--- | :--- | :--- |
+| `audioPts` | `Duration` | mpv's `audio-pts`; per-frame timestamp including AO latency. More granular than [`position`](#91-core-streams). |
+| `timeRemaining` | `Duration` | Wall-clock time to EOF, **ignoring** playback rate. |
+| `playtimeRemaining` | `Duration` | Time to EOF **adjusted** for playback rate. |
+
+#### 9.8 A-B Loop Streams
+
+Mirrors of the [§4.3](#43-a-b-loop) setters plus a read-only counter.
+
+| Stream | Type | Setter |
+| :--- | :--- | :--- |
+| `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` |
+| `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` |
+| `abLoopCount` | `int?` (`null` = infinite) | `setAbLoopCount` |
+| `remainingAbLoops` | `int?` (`null` when no loop / infinite) | _(observed; counts down)_ |
+
+#### 9.9 Cover Art & Display Streams
+
+Cover-art capture and the three display-related options. See
+[§8.2](#82-cover-art) for the consumer-facing usage.
+
+| Stream | Type | Setter |
+| :--- | :--- | :--- |
+| `coverArtRaw` | `CoverArtRaw?` (one emit per file load) | _(observed; from embedded picture)_ |
+| `audioDisplay` | `Display` | `setAudioDisplay` |
+| `coverArtAuto` | `Cover` | `setCoverArtAuto` |
+| `imageDisplayDuration` | `Duration?` (`null` = mpv's `inf`) | `setImageDisplayDuration` |
+
+#### 9.10 Runtime Diagnostics
+
+Tier-2 introspection — useful for diagnostic overlays and capability
+gating. All read-only.
+
+| Stream | Type | mpv property |
+| :--- | :--- | :--- |
+| `seeking` | `bool` | `seeking` (UI gate against concurrent seeks) |
+| `percentPos` | `double` (0–100) | `percent-pos` |
+| `currentDemuxer` | `String` | `current-demuxer` |
+| `currentAo` | `String` | `current-ao` |
+| `demuxerStartTime` | `Duration` | `demuxer-start-time` (initial timestamp offset) |
+| `chapterMetadata` | `Map<String, String>` | `chapter-metadata` (per-chapter tags) |
+| `mpvVersion` | `String` | `mpv-version` |
+| `ffmpegVersion` | `String` | `ffmpeg-version` |
+
+#### 9.11 Prefetch Lifecycle Stream
+
+mpv pre-opens the next playlist entry in the background to make the
+transition between tracks gapless. The wrapper exposes a typed stream
+so consumers can drive a "Prefetching…" UI, verify gapless, or log
+warnings when a prefetch is dropped — without parsing log lines.
 
 ```dart
 player.stream.prefetchState.listen((state) {
@@ -1062,30 +1429,34 @@ player.stream.prefetchState.listen((state) {
     case MpvPrefetchState.idle:
       // No background prefetch in progress.
     case MpvPrefetchState.loading:
-      // prefetch_next() fired: the opener thread is creating the
-      // demuxer for the next item and the secondary cache is filling.
+      // The opener thread is creating the demuxer for the next item
+      // and the secondary cache is filling.
       showIndicator('Prefetching…');
     case MpvPrefetchState.ready:
-      // Secondary demuxer is open AND its reader reports idle
-      // (= cache-secs reached, no segment fetches outstanding).
-      // Gapless is armed.
+      // Secondary demuxer is open AND idle (cache-secs reached,
+      // no segment fetches outstanding). Gapless is armed.
       showIndicator('Ready');
     case MpvPrefetchState.used:
       // Edge-trigger: the track just transitioned gaplessly.
-      // Fires once and then immediately returns to `idle`.
+      // Fires once and then drops back to `idle`.
       showIndicator('Using prefetched');
+    case MpvPrefetchState.failed:
+      // Edge-trigger: the opener thread failed (network error,
+      // unsupported codec, on_load hook abort).
+      showIndicator('Prefetch failed');
   }
 });
 ```
 
-State-machine reference:
+State machine:
 
 | State | When it fires | Notes |
 | :--- | :--- | :--- |
-| `idle` | Default, and after every cancel / drop | Also fires immediately after `used` so the transient can be one-shot |
-| `loading` | `prefetch_next()` → opener thread running | Persists until the demuxer is open and the reader goes idle |
-| `ready` | Secondary demuxer is open + reader idle | Detected by polling `demux_reader_state.idle` inside `handle_update_cache` |
-| `used` | The "Using prefetched/prefetching URL" code path hit | Edge-triggered — pairs with the subsequent `idle` |
+| `idle` | Default; after every cancel / drop | Also fires right after `used` and `failed` so they read as one-shot transients |
+| `loading` | Opener thread running | Persists until the demuxer is open and the reader goes idle |
+| `ready` | Secondary demuxer open + reader idle | Gapless is armed |
+| `used` | Track transitioned via the prefetched stream | Edge-triggered; pairs with the subsequent `idle` |
+| `failed` | Opener thread error | Edge-triggered; pairs with the subsequent `idle` |
 
 Typical happy-path sequence for a gapless transition:
 
@@ -1093,27 +1464,60 @@ Typical happy-path sequence for a gapless transition:
 idle → loading → ready → used → idle
 ```
 
-For a dropped prefetch (e.g. demuxer options changed mid-flight):
+For a dropped or failed prefetch:
 
 ```
 idle → loading → idle
+idle → loading → failed → idle
 ```
 
-#### 9.7 Complete State Snapshot
+#### 9.12 Aggregate Lifecycle
+
+`player.stream.playbackState` collapses the four underlying flags
+(`playing` / `buffering` / `completed` / `pausedForCache`) plus
+`duration` into a single mutually-exclusive `MpvPlaybackState` enum
+— ideal when the UI wants one indicator instead of three.
+
+```dart
+player.stream.playbackState.listen((phase) {
+  switch (phase) {
+    case MpvPlaybackState.idle:       // No file loaded
+    case MpvPlaybackState.loading:    // File is opening (demuxer/decoder init)
+    case MpvPlaybackState.buffering:  // Mid-playback network stall
+    case MpvPlaybackState.playing:    // Producing audio
+    case MpvPlaybackState.paused:     // File loaded, audio paused
+    case MpvPlaybackState.completed:  // Reached natural EOF
+  }
+});
+```
+
+Subscriptions are lazy: the upstream sources are only listened to
+while a consumer is attached, and the aggregate is deduped before
+emission so consecutive equal values don't refire.
+
+#### 9.13 Complete State Snapshot
+
+`player.state` mirrors every stream above — use it for one-shot reads
+inside event handlers and `build()` methods. A small sample:
 
 ```dart
 final s = player.state;
-print(s.playing);
-print(s.position);
-print(s.duration);
-print(s.volume);
-print(s.buffering);
-print(s.buffer);
-print(s.playlist.medias[s.playlist.index].uri);
-print(s.metadata['title']);
-print(s.audioSampleRate);
-print(s.audioFormat);
-print(s.audioChannels);
+print(s.playing);                                // bool
+print(s.position);                               // Duration
+print(s.duration);                               // Duration
+print(s.volume);                                 // double
+print(s.buffer);                                 // Duration
+print(s.playlist.medias[s.playlist.index].uri);  // String
+print(s.metadata['title']);                      // String?
+print(s.audioParams.codec);                      // String?
+print(s.equalizer.gains);                        // List<double>
+print(s.cache.secs);                             // Duration
+print(s.replayGain.preamp);                      // double
+print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
+print(s.chapters);                               // List<Chapter>
+print(s.audioOutputState);                       // AudioOutputState
+print(s.mpvVersion);                             // e.g. '0.41.0'
+print(s.ffmpegVersion);                          // e.g. '7.1.1'
 ```
 
 ---
@@ -1124,40 +1528,52 @@ For anything not covered by the typed API, you can access mpv directly.
 
 #### 10.1 Read a Property
 
+Returns `null` if the property does not exist or the FFI call fails.
+
 ```dart
-final String? value = player.getRawProperty('audio-codec');
-final String? samplerate = player.getRawProperty('audio-params/samplerate');
+final String? value = await player.getRawProperty('audio-codec');
+final String? samplerate = await player.getRawProperty('audio-params/samplerate');
 ```
 
 #### 10.2 Write a Property
 
+Throws `MpvException` if libmpv rejects the write (typo, out-of-range
+value, …). Carries `name`, mpv `code`, and the human-readable
+`message` from `mpv_error_string`.
+
 ```dart
-player.setRawProperty('audio-samplerate', '96000');
-player.setRawProperty('audio-channels', 'stereo');
+try {
+  await player.setRawProperty('audio-samplerate', '96000');
+  await player.setRawProperty('audio-channels', 'stereo');
+} on MpvException catch (e) {
+  print('mpv rejected ${e.name}: ${e.message} (code=${e.code})');
+}
 ```
 
 #### 10.3 Send a Command
 
-```dart
-player.sendRawCommand(['af', 'add', 'lavfi-aresample=48000']);
-player.sendRawCommand(['playlist-shuffle']);
-player.sendRawCommand(['ao-reload']);
-```
-
-Any command or property from the [mpv documentation](https://mpv.io/manual/master/) is accessible through these methods.
-
-#### 10.4 Log Injection
-
-You can inject your own messages into the player's log stream:
+Same `MpvException` contract on rejection.
 
 ```dart
-player.log('Loaded user playlist', level: 'info');
-player.log('Cache miss — refetching segment', level: 'warn');
+await player.sendRawCommand(['af', 'add', 'lavfi-aresample=48000']);
+await player.sendRawCommand(['playlist-shuffle']);
+await player.sendRawCommand(['ao-reload']);
 ```
+
+Any command or property from the
+[mpv documentation](https://mpv.io/manual/master/) is accessible
+through these methods.
+
+> Prefer the typed setters (`setVolume`, `setCache`,
+> `setReplayGain`, …) when they cover your use case — they update
+> `state` synchronously instead of waiting for the property observer
+> round-trip.
 
 ---
 
 ### 11. Error Handling & Logging
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.svg" width="100%">
 
 #### 11.1 Typed Error Stream
 
@@ -1235,16 +1651,50 @@ player.stream.demuxerViaNetwork.listen((isNetwork) {
 
 Both are also available synchronously via `player.state.pausedForCache` and `player.state.demuxerViaNetwork`.
 
-#### 11.4 Log Stream
+#### 11.4 Audio Output Lifecycle
+
+mpv exposes the audio output's lifecycle as a typed stream — read it
+to drive a "Connecting…" UI on slow backends, or to detect a silent
+player without polling format params.
 
 ```dart
+player.stream.audioOutputState.listen((state) {
+  switch (state) {
+    case AudioOutputState.closed:        // No AO active
+    case AudioOutputState.initializing:  // ao_init_best in flight
+    case AudioOutputState.active:        // AO open, producing samples
+    case AudioOutputState.failed:        // ao_init_best returned NULL
+  }
+});
+```
+
+The wrapper also surfaces a typed `MpvLogError` on `stream.error` the
+moment the AO transitions to `failed`, so you don't need a separate
+listener for the "no sound" case.
+
+#### 11.5 Log Streams
+
+Two streams keep engine and wrapper messages disjoint — route them to
+different sinks (e.g. show only `log` in a debug overlay while
+forwarding `internalLog` to crash reporting).
+
+```dart
+// mpv engine messages: ffmpeg, demux, ao, cplayer, …
 player.stream.log.listen((entry) {
   // MpvLogEntry has: prefix (String), level (String), text (String)
   print('[${entry.level}] ${entry.prefix}: ${entry.text}');
 });
+
+// Wrapper-side diagnostics: JSON parse warnings, hook timeouts,
+// resolution errors. Always carries prefix: 'mpv_audio_kit'.
+player.stream.internalLog.listen((entry) {
+  print('[wrapper:${entry.level}] ${entry.text}');
+});
 ```
 
-Set `logLevel` in `PlayerConfiguration` to control verbosity. `'warn'` is appropriate for production; `'debug'` or `'v'` for development.
+Set `logLevel` in `PlayerConfiguration` to control engine-side
+verbosity. `'warn'` is appropriate for production; `'debug'` or `'v'`
+for development.
 
 ---
 
@@ -1252,29 +1702,34 @@ Set `logLevel` in `PlayerConfiguration` to control verbosity. `'warn'` is approp
 
 Hooks intercept mpv's file-loading pipeline before a stream is opened. Use them to lazily resolve URLs, inject per-file HTTP headers, or redirect to a different source — without a local proxy server.
 
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.svg" width="100%">
+
 #### 12.1 Registering a Hook
 
-Call `registerHook` **once** after creating the player (before any `open` call):
+Call `registerHook` **once** after creating the player (before any `open` call). Pass a typed [`Hook`](#) value — typo-proof and exhaustive in `switch`:
 
 ```dart
-player.registerHook('on_load');
+player.registerHook(Hook.load);
 ```
 
 You can add a safety timeout — if `continueHook` isn't called within the given duration, the library auto-continues to prevent mpv from stalling indefinitely (e.g. due to an unhandled exception):
 
 ```dart
-player.registerHook('on_load', timeout: const Duration(seconds: 10));
+player.registerHook(Hook.load, timeout: const Duration(seconds: 10));
 ```
 
-Common hook names:
+The full set of mpv lifecycle hooks (mpv 0.41 — `process_hooks` calls in `player/loadfile.c`):
 
-| Name | When it fires |
+| Hook | When it fires |
 | :--- | :--- |
-| `on_load` | Before a stream is opened — can redirect the URL |
-| `on_load_fail` | After a stream fails to open |
-| `on_preloaded` | After the file is pre-loaded but before playback starts |
+| `Hook.beforeStartFile` | Before any per-file work begins (drains stale property changes) |
+| `Hook.load` | Before a stream is opened — redirect the URL or attach per-file headers |
+| `Hook.loadFail` | After a stream failed to open — useful for fallback URLs |
+| `Hook.preloaded` | File open, demuxer ready, before track selection / decoder init |
+| `Hook.unload` | Before a file is closed — cleanup hook tied to the current file |
+| `Hook.afterEndFile` | After a file finished and was fully unloaded |
 
-> **Hooks fire during prefetch too.** Upstream mpv's `prefetch_next()` bypasses the hook pipeline and opens the next playlist entry's raw URL directly — so `on_load` would never see prefetched tracks. `mpv_audio_kit` ships a patched `prefetch_next()` that runs `on_load` synchronously on the core thread before the opener thread starts, with a re-entry guard and demuxer NULL-mask so the `stream-open-filename` property setter accepts hook-driven rewrites while the previous track is still playing. This means custom URL schemes (e.g. `plex-transcode://` → resolved HLS URL) are resolved for **every** track, including the one being prefetched in the background — your listener is called once per track regardless of whether playback is active or prefetching.
+> **Hooks fire during prefetch too.** When mpv pre-opens the next playlist entry to enable gapless transitions, `on_load` is invoked for that track too — so custom URL schemes (e.g. `plex-transcode://` → resolved HLS URL) are resolved for **every** track, including the one being prefetched in the background. Your listener is called once per track regardless of whether playback is active or prefetching, and `setRawProperty('stream-open-filename', …)` accepts hook-driven rewrites in either context.
 
 #### 12.2 Listening and Continuing
 
@@ -1282,21 +1737,21 @@ Subscribe to `player.stream.hook` and call `continueHook` when processing is don
 
 ```dart
 player.stream.hook.listen((event) async {
-  if (event.name == 'on_load') {
-    final url = player.getRawProperty('stream-open-filename') ?? '';
+  if (event.hook == Hook.load) {
+    final url = await player.getRawProperty('stream-open-filename') ?? '';
 
     try {
       if (url.startsWith('my-scheme://')) {
         // Redirect to a real URL
         final resolved = await myResolver(url);
-        player.setRawProperty('stream-open-filename', resolved.url);
+        await player.setRawProperty('stream-open-filename', resolved.url);
 
         // Inject per-file HTTP headers (direct HTTP only — for HLS use URL query params)
         if (resolved.headers.isNotEmpty) {
           final headerString = resolved.headers.entries
               .map((e) => '${e.key}: ${e.value}')
               .join(',');
-          player.setRawProperty(
+          await player.setRawProperty(
             'file-local-options/http-header-fields',
             headerString,
           );
@@ -1338,11 +1793,154 @@ final medias = await Future.wait(tracks.map((t) async {
   final url = await service.getStreamUrl(t.id); // returns "my-scheme://abc"
   return Media(url);
 }));
-await player.openPlaylist(medias);
+await player.openAll(medias);
 
 // When mpv reaches each track, the hook resolves it on demand:
 // on_load → myResolver("my-scheme://abc") → /decision + start.m3u8 URL
 ```
+
+---
+
+
+## Migration
+
+0.1.0 is a **major breaking release**. The Dart-side surface was
+rewritten from scratch: every setter is typed, every observable is
+either a typed enum or a Freezed config aggregate, and the escape
+hatches now propagate mpv errors instead of swallowing them. This
+section is a side-by-side cross-walk against 0.0.9 — for the
+exhaustive change log (with rationale per breaking change), see
+[CHANGELOG.md → Migration from 0.0.9](CHANGELOG.md#migration-from-009).
+
+### Renames at a glance
+
+#### Setters & methods
+
+| 0.0.9 | 0.1.0 |
+| :--- | :--- |
+| `Player.openPlaylist(...)` | `Player.openAll(...)` |
+| `Player.playOrPause()` | _Removed_ — use `state.playing ? pause() : play()` |
+| `Player.appendLog(text)` | _Removed_ — use `Player.stream.internalLog` for wrapper messages |
+| `Player.setGaplessPlayback(Gapless)` | `Player.setGapless(Gapless)` |
+| `Player.setAudioTrack('1')` | `Player.setAudioTrack(Track.id(1))` |
+| `Player.setAoNullUntimed(...)` | `Player.setAudioNullUntimed(...)` |
+| `Player.setCoverArtAuto('exact')` | `Player.setCoverArtAuto(Cover.exact)` |
+| `Player.registerHook('on_load')` | `Player.registerHook(Hook.load)` |
+| `event.name == 'on_load'` (on `MpvHookEvent`) | `event.hook == Hook.load` |
+| `setAudioFilters([AudioFilter.equalizer(...)])` | `setEqualizer(EqualizerSettings(...))` (and three peers) |
+| `setReplayGainPreamp` / `setReplayGainFallback` / `setReplayGainClip` | `setReplayGain(ReplayGainSettings(...))` |
+| `setCacheSecs` / `setCachePause` / `setCachePauseWait` / `setCacheOnDisk` | `setCache(CacheSettings(...))` |
+
+#### State fields & types
+
+| 0.0.9 | 0.1.0 |
+| :--- | :--- |
+| `state.audioDisplay: String` | `state.audioDisplay: Display` |
+| `state.coverArtAuto: String` | `state.coverArtAuto: Cover` |
+| `state.audioFormat: String` | `state.audioFormat: Format` |
+| `state.audioChannels: String` | `state.audioChannels: Channels` |
+| `state.audioSpdif: String` | `state.audioSpdif: Set<Spdif>` |
+| `state.activeFilters` / `state.equalizerGains` | `state.equalizer` / `state.compressor` / `state.loudness` / `state.pitchTempo` / `state.customAudioFilters` |
+| `state.playlistMode` | `state.loop` |
+| `Playlist.empty()` (factory) | `Playlist.empty` (const static field) |
+
+#### Type renames
+
+| 0.0.9 | 0.1.0 |
+| :--- | :--- |
+| `GaplessMode`, `LoopMode`, `CacheMode`, `ReplayGainMode`, `CoverArtAutoMode`, `AudioDisplayMode`, `AudioTrackMode`, `AudioChannelsMode` | `Gapless`, `Loop`, `Cache`, `ReplayGain`, `Cover`, `Display`, `Track`, `Channels` (drop redundant `*Mode` suffix) |
+| `AudioFormat`, `AudioChannels`, `AudioTrack`, `AudioDisplay`, `AudioDevice` | `Format`, `Channels`, `Track`, `Display`, `Device` (drop redundant `Audio` prefix on setter-argument types; setter and state-field names keep it) |
+| `CacheConfig`, `ReplayGainConfig`, `EqualizerConfig`, `CompressorConfig`, `LoudnessConfig`, `PitchTempoConfig` | `CacheSettings`, `ReplayGainSettings`, `EqualizerSettings`, `CompressorSettings`, `LoudnessSettings`, `PitchTempoSettings` (multi-field bundles end in `*Settings`) |
+| `PlaybackLifecycle` | `MpvPlaybackState` (the `Mpv` prefix avoids a name clash with `audio_service.PlaybackState`) |
+
+### Async escape hatches
+
+```dart
+// 0.0.9
+final v = player.getRawProperty('audio-codec');
+player.setRawProperty('audio-samplerate', '96000');
+player.sendRawCommand(['ao-reload']);
+
+// 0.1.0 — all three are Future<...>; failures throw MpvException
+final v = await player.getRawProperty('audio-codec');
+await player.setRawProperty('audio-samplerate', '96000');
+await player.sendRawCommand(['ao-reload']);
+```
+
+### DSP filters
+
+```dart
+// 0.0.9
+await player.setAudioFilters([
+  AudioFilter.equalizer([0, 0, 2, 4, 2, 0, -2, -4, -4, 0]),
+  AudioFilter.loudnorm(),
+  AudioFilter.compressor(threshold: -18, ratio: 3),
+]);
+
+// 0.1.0 — typed configs, one setter per stage; chain composed atomically
+await player.setEqualizer(const EqualizerSettings(
+  enabled: true,
+  gains: [0, 0, 2, 4, 2, 0, -2, -4, -4, 0],
+));
+await player.setLoudness(const LoudnessSettings(enabled: true));
+await player.setCompressor(const CompressorSettings(
+  enabled: true, threshold: -18, ratio: 3,
+));
+
+// Anything outside the four typed stages goes through setCustomAudioFilters
+await player.setCustomAudioFilters(['lavfi-bs2b', 'lavfi-aecho=0.8:0.5:60:0.4']);
+```
+
+The 0.0.9 factories that aren't typed setters in 0.1.0
+(`AudioFilter.crossfeed`, `.echo`, `.extraStereo`, `.crystalizer`,
+`.scaleTempo`) move into `setCustomAudioFilters` as raw mpv `--af`
+strings. `scaleTempo` is also superseded by the new typed
+[Pitch / Tempo stage](#55-pitch--tempo) (rubberband).
+
+### Time-based setters now take `Duration`
+
+| 0.0.9 | 0.1.0 |
+| :--- | :--- |
+| `setAudioDelay(0.05)` | `setAudioDelay(const Duration(milliseconds: 50))` |
+| `setNetworkTimeout(60)` | `setNetworkTimeout(const Duration(seconds: 60))` |
+| `setAudioBuffer(0.2)` | `setAudioBuffer(const Duration(milliseconds: 200))` |
+| `setCacheSecs(30)` | _Folded into_ `setCache(CacheSettings(secs: ...))` |
+| `setCachePauseWait(1)` | _Folded into_ `setCache(CacheSettings(pauseWait: ...))` |
+
+### Cover art
+
+```dart
+// 0.0.9 — wrapper mutated Media.extras with PNG bytes
+final art = playlist.medias[playlist.index].extras?['artBytes'] as Uint8List?;
+
+// 0.1.0 — dedicated stream emits raw codec bytes per file load
+player.stream.coverArtRaw.listen((raw) {
+  if (raw == null) return;          // current file has no embedded art
+  Image.memory(raw.bytes);          // PNG / JPEG / WEBP / BMP / GIF as embedded
+  print('mime: ${raw.mimeType}');
+});
+```
+
+### `PlayerConfiguration` slimmed
+
+`audioClientName` is no longer a constructor parameter — set it
+post-construction via `Player.setAudioClientName(...)`. The other
+three fields (`autoPlay`, `initialVolume`, `logLevel`) are unchanged.
+
+### What you gain in addition
+
+- **Track inventory** (`state.tracks`, `state.currentAudioTrack`).
+- **A-B loop** (`setAbLoopA` / `setAbLoopB` / `setAbLoopCount`).
+- **Chapter navigation** (`state.chapters`, `state.currentChapter`,
+  `setChapter`).
+- **`MpvPlaybackState` aggregate stream**.
+- **`MpvException`** for raw-API failures.
+- **Path / URI introspection** (`state.path`, `filename`,
+  `streamPath`, `streamOpenFilename`).
+- **Tier 2 introspection** (`seeking`, `percentPos`, `cacheSpeed`,
+  `cacheBufferingState`, `currentDemuxer`, `currentAo`,
+  `demuxerStartTime`, `chapterMetadata`, `mpvVersion`,
+  `ffmpegVersion`).
 
 ---
 

@@ -3,7 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/player_state.dart';
+import 'package:mpv_audio_kit/src/types/enums/format.dart';
+import 'package:mpv_audio_kit/src/player/player_state.dart';
 import 'package:mpv_audio_kit/src/reactive/mpv_property_spec.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
 import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
@@ -92,20 +93,21 @@ void main() {
       expect(next!.mute, isTrue);
     });
 
-    test('parse can transform raw values (empty string → "no")', () {
-      final audioFormat = ReactiveProperty<String>('auto');
+    test('parse can transform raw values (empty string → Format.auto)',
+        () {
+      final audioFormat = ReactiveProperty<Format>(Format.s16);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<String>.string(
+        ..register(MpvPropertySpec<Format>.string(
           name: 'audio-format',
           reactive: audioFormat,
-          parse: (raw, _) => raw.isEmpty ? 'no' : raw,
+          parse: (raw, _) => Format.fromMpv(raw),
           reduce: (v, s) => s.copyWith(audioFormat: v),
         ));
 
       const initial = PlayerState();
       final next = registry.dispatch('audio-format', '', initial);
       expect(next, isNotNull);
-      expect(next!.audioFormat, 'no');
+      expect(next!.audioFormat, Format.auto);
     });
 
     test('onChange fires after reactive update + state reduce', () {
@@ -150,8 +152,7 @@ void main() {
       expect(next, isNotNull);
       expect(next!.demuxerReadaheadSecs, 5);
       expect(readahead.value, 5,
-          reason:
-              'reactive must update in lockstep with the state reducer');
+          reason: 'reactive must update in lockstep with the state reducer');
 
       // Same value → dedup → no state allocation.
       expect(registry.dispatch('demuxer-readahead-secs', 5, next), isNull);

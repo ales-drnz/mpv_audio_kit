@@ -39,7 +39,8 @@ void main() {
     // Probe radiomast.io with a short HEAD timeout — if it fails the
     // whole group is skipped, no point burning 30s of timeouts per test.
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 4);
       final req = await client.headUrl(Uri.parse(icyRadio));
       final resp = await req.close().timeout(const Duration(seconds: 4));
       await resp.drain();
@@ -79,7 +80,8 @@ void main() {
       await player.open(Media(icyRadio), play: false);
       final params = await paramsFuture;
       expect(params.sampleRate, isNotNull,
-          reason: 'demuxer must report sampleRate after the network buffer fills');
+          reason:
+              'demuxer must report sampleRate after the network buffer fills');
       expect(params.channelCount, anyOf(1, 2),
           reason: 'reference stream is mono or stereo');
     }, timeout: const Timeout(Duration(seconds: 30)));

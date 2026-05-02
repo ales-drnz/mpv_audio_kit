@@ -32,7 +32,8 @@ class TrackInfo extends StatelessWidget {
       initialData: player.state.metadata,
       builder: (context, metaSnap) {
         final metadata = metaSnap.data ?? const <String, String>{};
-        final artist = metadata['artist'] ??
+        final artist =
+            metadata['artist'] ??
             metadata['ARTIST'] ??
             metadata['album_artist'];
 
@@ -50,10 +51,9 @@ class TrackInfo extends StatelessWidget {
                 return Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize:
-                            (availableHeight * 0.03).clamp(18.0, 24.0),
-                      ),
+                    fontWeight: FontWeight.bold,
+                    fontSize: (availableHeight * 0.03).clamp(18.0, 24.0),
+                  ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -64,9 +64,9 @@ class TrackInfo extends StatelessWidget {
               Text(
                 artist,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontSize: (availableHeight * 0.02).clamp(14.0, 16.0),
-                    ),
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: (availableHeight * 0.02).clamp(14.0, 16.0),
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 1,
               ),
@@ -113,8 +113,7 @@ class _AudioParamsChips extends StatelessWidget {
             if (p.codec != null) InfoChip(label: p.codec!.toUpperCase()),
             if (p.sampleRate != null)
               InfoChip(
-                label:
-                    '${(p.sampleRate! / 1000).toStringAsFixed(1)} kHz',
+                label: '${(p.sampleRate! / 1000).toStringAsFixed(1)} kHz',
               ),
             if (p.format != null) InfoChip(label: p.format!.toUpperCase()),
             StreamBuilder<double?>(

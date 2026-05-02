@@ -23,9 +23,7 @@ Future<T> _firstWhereWithTimeout<T>(
   required String description,
 }) async {
   try {
-    return await stream
-        .firstWhere(predicate)
-        .timeout(timeout, onTimeout: () {
+    return await stream.firstWhere(predicate).timeout(timeout, onTimeout: () {
       throw TimeoutException(
           'Timed out after ${timeout.inSeconds}s waiting for: $description');
     });
@@ -119,8 +117,8 @@ void main() {
         // Wait for audio-out-params to be populated (the new NODE_MAP
         // observer; previously this was 5 sub-property observers and went
         // through string + JSON parsing).
-        final out = await outParamsCompleter.future
-            .timeout(const Duration(seconds: 5));
+        final out =
+            await outParamsCompleter.future.timeout(const Duration(seconds: 5));
         expect(out.sampleRate, isNotNull,
             reason: 'audio-out-params NODE_MAP must populate sampleRate');
         expect(out.format, isNotNull);
@@ -156,8 +154,8 @@ void main() {
         // observer-driven change event with MPV_FORMAT_INT64.
         await player.setRawProperty('demuxer-max-bytes', '50MiB');
 
-        final value = await completer.future
-            .timeout(const Duration(seconds: 3), onTimeout: () {
+        final value = await completer.future.timeout(const Duration(seconds: 3),
+            onTimeout: () {
           fail('demuxer-max-bytes (Int64) change event never arrived — '
               'regression: dispatch is dropping Int64 again');
         });
@@ -192,8 +190,7 @@ void main() {
       expect(player.state.audioOutputState, AudioOutputState.active);
     }, timeout: const Timeout(Duration(seconds: 5)));
 
-    test(
-        'multitrack MKA fixture populates state.tracks with 2 audio tracks',
+    test('multitrack MKA fixture populates state.tracks with 2 audio tracks',
         () async {
       // Smoke test: verifies the multitrack MKA fixture is decoded by the
       // bundled libmpv (FLAC-in-Matroska + multi-track demux). If this
@@ -225,8 +222,7 @@ void main() {
       final tracks = await tracksFuture;
       final audioTracks = tracks.where((t) => t.type == 'audio').toList();
       expect(audioTracks.length, 2,
-          reason:
-              'fixture has 2 audio tracks (440Hz + 880Hz); track-list must '
+          reason: 'fixture has 2 audio tracks (440Hz + 880Hz); track-list must '
               'expose both via the new MpvPropertySpec.node spec');
       expect(audioTracks.map((t) => t.codec), everyElement('flac'));
       expect(audioTracks.map((t) => t.lang), containsAll(['eng', 'fra']));
@@ -283,8 +279,8 @@ void main() {
       });
       try {
         await player.open(Media(coverFixturePath), play: false);
-        await restartCompleter.future
-            .timeout(const Duration(seconds: 5), onTimeout: () {
+        await restartCompleter.future.timeout(const Duration(seconds: 5),
+            onTimeout: () {
           fail('seekCompleted (PLAYBACK_RESTART) never fired for the '
               'cover fixture — mpv may have failed to demux the FLAC');
         });
@@ -293,8 +289,7 @@ void main() {
       }
 
       final mime = await player.getRawProperty('embedded-cover-art-mime');
-      expect(mime, 'image/png',
-          reason: 'fixture was muxed with a PNG cover');
+      expect(mime, 'image/png', reason: 'fixture was muxed with a PNG cover');
     }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

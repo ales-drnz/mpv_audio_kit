@@ -5,7 +5,7 @@
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
-import '../player_state.dart';
+import '../player/player_state.dart';
 import '../mpv_bindings.dart';
 import 'mpv_property_spec.dart';
 
@@ -67,7 +67,8 @@ class PropertyRegistry {
   /// out-of-registry observers (in `Player._observe`) can use a disjoint
   /// range — see [registryReplyIdMax].
   void observeAll(MpvLibrary lib, Pointer<MpvHandle> handle) {
-    assert(_byName.length <= registryReplyIdMax,
+    assert(
+        _byName.length <= registryReplyIdMax,
         'PropertyRegistry has ${_byName.length} specs, exceeding the '
         'reply-id boundary of $registryReplyIdMax. Bump the boundary or '
         'split the registry — IDs at or above the boundary are reserved '

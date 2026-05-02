@@ -14,7 +14,8 @@ void main() {
 
   setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
-  group('Async escape hatches (getRawProperty / setRawProperty / sendRawCommand)',
+  group(
+      'Async escape hatches (getRawProperty / setRawProperty / sendRawCommand)',
       () {
     late Player player;
 

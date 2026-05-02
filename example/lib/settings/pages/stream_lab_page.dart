@@ -134,12 +134,9 @@ class _StreamItemCard extends StatelessWidget {
   const _StreamItemCard({required this.player, required this.item});
 
   Media _toMedia() => Media(
-        item.url,
-        extras: {
-          'title': item.label,
-          'artist': 'Stream Lab Reference',
-        },
-      );
+    item.url,
+    extras: {'title': item.label, 'artist': 'Stream Lab Reference'},
+  );
 
   @override
   Widget build(BuildContext context) {

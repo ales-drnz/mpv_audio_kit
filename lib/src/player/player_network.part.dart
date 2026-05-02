@@ -1,7 +1,7 @@
 // Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
-part of '../player.dart';
+part of 'player.dart';
 
 /// Network setters: cache configuration, demuxer limits, network
 /// timeouts, TLS verification, and audio-output buffering.
@@ -12,7 +12,7 @@ mixin _NetworkModule on _PlayerBase {
   /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`) in one shot.
   /// Modify a single field via
   /// `await player.setCache(state.cache.copyWith(secs: const Duration(seconds: 30)))`.
-  Future<void> setCache(CacheConfig config) async {
+  Future<void> setCache(CacheSettings config) async {
     _checkNotDisposed();
     _prop('cache', config.mode.mpvValue);
     _prop('cache-secs', durationToSeconds(config.secs).toStringAsFixed(3));
@@ -40,7 +40,8 @@ mixin _NetworkModule on _PlayerBase {
   Future<void> setAudioStreamSilence(bool enable) async {
     _checkNotDisposed();
     _prop('audio-stream-silence', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(audioStreamSilence: enable), _reactives.audioStreamSilence, enable);
+    _updateField((s) => s.copyWith(audioStreamSilence: enable),
+        _reactives.audioStreamSilence, enable);
   }
 
   /// Sets the network connection timeout.
@@ -61,7 +62,8 @@ mixin _NetworkModule on _PlayerBase {
   Future<void> setTlsVerify(bool enable) async {
     _checkNotDisposed();
     _prop('tls-verify', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(tlsVerify: enable), _reactives.tlsVerify, enable);
+    _updateField(
+        (s) => s.copyWith(tlsVerify: enable), _reactives.tlsVerify, enable);
   }
 
   /// Sets the maximum bytes the demuxer is allowed to cache.
@@ -73,7 +75,8 @@ mixin _NetworkModule on _PlayerBase {
   Future<void> setDemuxerMaxBytes(int bytes) async {
     _checkNotDisposed();
     _prop('demuxer-max-bytes', bytes.toString());
-    _updateField((s) => s.copyWith(demuxerMaxBytes: bytes), _reactives.demuxerMaxBytes, bytes);
+    _updateField((s) => s.copyWith(demuxerMaxBytes: bytes),
+        _reactives.demuxerMaxBytes, bytes);
   }
 
   /// Sets the maximum seekback buffer size in bytes. Default 50 MiB.
@@ -81,20 +84,23 @@ mixin _NetworkModule on _PlayerBase {
   Future<void> setDemuxerMaxBackBytes(int bytes) async {
     _checkNotDisposed();
     _prop('demuxer-max-back-bytes', bytes.toString());
-    _updateField((s) => s.copyWith(demuxerMaxBackBytes: bytes), _reactives.demuxerMaxBackBytes, bytes);
+    _updateField((s) => s.copyWith(demuxerMaxBackBytes: bytes),
+        _reactives.demuxerMaxBackBytes, bytes);
   }
 
   /// Sets the demuxer readahead time.
   Future<void> setDemuxerReadaheadSecs(int seconds) async {
     _checkNotDisposed();
     _prop('demuxer-readahead-secs', seconds.toString());
-    _updateField((s) => s.copyWith(demuxerReadaheadSecs: seconds), _reactives.demuxerReadaheadSecs, seconds);
+    _updateField((s) => s.copyWith(demuxerReadaheadSecs: seconds),
+        _reactives.demuxerReadaheadSecs, seconds);
   }
 
   /// Whether to fallback to untimed null output if audio output fails.
   Future<void> setAudioNullUntimed(bool enable) async {
     _checkNotDisposed();
     _prop('ao-null-untimed', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(audioNullUntimed: enable), _reactives.audioNullUntimed, enable);
+    _updateField((s) => s.copyWith(audioNullUntimed: enable),
+        _reactives.audioNullUntimed, enable);
   }
 }

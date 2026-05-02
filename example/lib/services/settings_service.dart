@@ -42,56 +42,104 @@ class SettingsService {
   Future<void> wire(Player player) async {
     // ── Volume / playback transport ───────────────────────────────────
     await _bindDouble(player.stream.volume, 'volume', player.setVolume);
-    await _bindDouble(player.stream.volumeMax, 'volume-max', player.setVolumeMax);
-    await _bindDouble(player.stream.volumeGain, 'volume-gain', player.setVolumeGain);
+    await _bindDouble(
+      player.stream.volumeMax,
+      'volume-max',
+      player.setVolumeMax,
+    );
+    await _bindDouble(
+      player.stream.volumeGain,
+      'volume-gain',
+      player.setVolumeGain,
+    );
     await _bindDouble(player.stream.rate, 'rate', player.setRate);
     await _bindDouble(player.stream.pitch, 'pitch', player.setPitch);
     await _bindBool(player.stream.mute, 'mute', player.setMute);
-    await _bindBool(player.stream.pitchCorrection, 'pitch-correction',
-        player.setPitchCorrection);
+    await _bindBool(
+      player.stream.pitchCorrection,
+      'pitch-correction',
+      player.setPitchCorrection,
+    );
     await _bindDuration(
-        player.stream.audioDelay, 'audio-delay', player.setAudioDelay);
+      player.stream.audioDelay,
+      'audio-delay',
+      player.setAudioDelay,
+    );
 
     // ── Playlist mode + shuffle ───────────────────────────────────────
-    await _bindEnumByName<LoopMode>(
+    await _bindEnumByName<Loop>(
       player.stream.loop,
       'playlist_mode',
-      LoopMode.values,
+      Loop.values,
       player.setLoop,
     );
     await _bindBool(player.stream.shuffle, 'shuffle', player.setShuffle);
-    await _bindBool(player.stream.prefetchPlaylist, 'prefetch-playlist',
-        player.setPrefetchPlaylist);
+    await _bindBool(
+      player.stream.prefetchPlaylist,
+      'prefetch-playlist',
+      player.setPrefetchPlaylist,
+    );
 
     // ── Audio output / driver / device ────────────────────────────────
     await _bindString(player.stream.audioDriver, 'ao', player.setAudioDriver);
-    await _bindMapped<AudioDevice, String>(
+    await _bindMapped<Device, String>(
       stream: player.stream.audioDevice,
       key: 'audio-device',
       apply: player.setAudioDevice,
       toStored: (d) => d.name,
-      fromStored: (s) => AudioDevice(s, s),
+      fromStored: (s) => Device(s, s),
     );
-    await _bindString(
-        player.stream.audioSpdif, 'audio-spdif', player.setAudioSpdif);
-    await _bindBool(player.stream.audioExclusive, 'audio-exclusive',
-        player.setAudioExclusive);
+    await _bindMapped<Set<Spdif>, String>(
+      stream: player.stream.audioSpdif,
+      key: 'audio-spdif',
+      apply: player.setAudioSpdif,
+      toStored: Spdif.formatMpvList,
+      fromStored: Spdif.parseMpvList,
+    );
+    await _bindBool(
+      player.stream.audioExclusive,
+      'audio-exclusive',
+      player.setAudioExclusive,
+    );
     await _bindDuration(
-        player.stream.audioBuffer, 'audio-buffer', player.setAudioBuffer);
-    await _bindBool(player.stream.audioStreamSilence, 'audio-stream-silence',
-        player.setAudioStreamSilence);
-    await _bindBool(player.stream.audioNullUntimed, 'ao-null-untimed',
-        player.setAudioNullUntimed);
+      player.stream.audioBuffer,
+      'audio-buffer',
+      player.setAudioBuffer,
+    );
+    await _bindBool(
+      player.stream.audioStreamSilence,
+      'audio-stream-silence',
+      player.setAudioStreamSilence,
+    );
+    await _bindBool(
+      player.stream.audioNullUntimed,
+      'ao-null-untimed',
+      player.setAudioNullUntimed,
+    );
 
     // ── Audio signal format ───────────────────────────────────────────
-    await _bindInt(player.stream.audioSampleRate, 'audio-samplerate',
-        player.setAudioSampleRate);
+    await _bindInt(
+      player.stream.audioSampleRate,
+      'audio-samplerate',
+      player.setAudioSampleRate,
+    );
+    await _bindMpvEnum<Format>(
+      player.stream.audioFormat,
+      'audio-format',
+      Format.fromMpv,
+      player.setAudioFormat,
+    );
+    await _bindMpvEnum<Channels>(
+      player.stream.audioChannels,
+      'audio-channels',
+      Channels.fromMpv,
+      player.setAudioChannels,
+    );
     await _bindString(
-        player.stream.audioFormat, 'audio-format', player.setAudioFormat);
-    await _bindString(player.stream.audioChannels, 'audio-channels',
-        player.setAudioChannels);
-    await _bindString(player.stream.audioClientName, 'audio-client-name',
-        player.setAudioClientName);
+      player.stream.audioClientName,
+      'audio-client-name',
+      player.setAudioClientName,
+    );
 
     // ── DSP ───────────────────────────────────────────────────────────
     await _bindEqualizerGains(player);
@@ -99,37 +147,49 @@ class SettingsService {
     // ── Aggregates (cache, replayGain) ────────────────────────────────
     await _bindCache(player);
     await _bindReplayGain(player);
-    await _bindMpvEnum<GaplessMode>(
+    await _bindMpvEnum<Gapless>(
       player.stream.gapless,
       'gapless-audio',
-      GaplessMode.fromMpv,
+      Gapless.fromMpv,
       player.setGapless,
     );
 
     // ── Demuxer ───────────────────────────────────────────────────────
-    await _bindInt(player.stream.demuxerMaxBytes, 'demuxer-max-bytes',
-        player.setDemuxerMaxBytes);
-    await _bindInt(player.stream.demuxerReadaheadSecs,
-        'demuxer-readahead-secs', player.setDemuxerReadaheadSecs);
-    await _bindInt(player.stream.demuxerMaxBackBytes,
-        'demuxer-max-back-bytes', player.setDemuxerMaxBackBytes);
+    await _bindInt(
+      player.stream.demuxerMaxBytes,
+      'demuxer-max-bytes',
+      player.setDemuxerMaxBytes,
+    );
+    await _bindInt(
+      player.stream.demuxerReadaheadSecs,
+      'demuxer-readahead-secs',
+      player.setDemuxerReadaheadSecs,
+    );
+    await _bindInt(
+      player.stream.demuxerMaxBackBytes,
+      'demuxer-max-back-bytes',
+      player.setDemuxerMaxBackBytes,
+    );
 
     // ── Network ───────────────────────────────────────────────────────
-    await _bindDuration(player.stream.networkTimeout, 'network-timeout',
-        player.setNetworkTimeout);
+    await _bindDuration(
+      player.stream.networkTimeout,
+      'network-timeout',
+      player.setNetworkTimeout,
+    );
     await _bindBool(player.stream.tlsVerify, 'tls-verify', player.setTlsVerify);
 
     // ── Cover art ─────────────────────────────────────────────────────
-    await _bindMpvEnum<AudioDisplayMode>(
+    await _bindMpvEnum<Display>(
       player.stream.audioDisplay,
       'audio-display',
-      AudioDisplayMode.fromMpv,
+      Display.fromMpv,
       player.setAudioDisplay,
     );
-    await _bindMpvEnum<CoverArtAutoMode>(
+    await _bindMpvEnum<Cover>(
       player.stream.coverArtAuto,
       'cover-art-auto',
-      CoverArtAutoMode.fromMpv,
+      Cover.fromMpv,
       player.setCoverArtAuto,
     );
 
@@ -224,11 +284,12 @@ class SettingsService {
     } else if (raw != null) {
       await _prefs.remove(fk);
     }
-    _subs.add(stream.listen(
-        (v) => _prefs.setDouble(fk, v.inMicroseconds / 1e6)));
+    _subs.add(
+      stream.listen((v) => _prefs.setDouble(fk, v.inMicroseconds / 1e6)),
+    );
   }
 
-  /// Enum stored by `.name` — for Dart-native enums like [LoopMode].
+  /// Enum stored by `.name` — for Dart-native enums like [Loop].
   Future<void> _bindEnumByName<E extends Enum>(
     Stream<E> stream,
     String key,
@@ -265,12 +326,15 @@ class SettingsService {
     } else if (raw != null) {
       await _prefs.remove(fk);
     }
-    _subs.add(stream.listen(
-        (v) => _prefs.setString(fk, (v as dynamic).mpvValue as String)));
+    _subs.add(
+      stream.listen(
+        (v) => _prefs.setString(fk, (v as dynamic).mpvValue as String),
+      ),
+    );
   }
 
   /// Bidirectional mapped binding for non-primitive values stored as
-  /// strings (e.g. `AudioDevice` ↔ `AudioDevice.name`).
+  /// strings (e.g. `Device` ↔ `Device.name`).
   Future<void> _bindMapped<T, S>({
     required Stream<T> stream,
     required String key,
@@ -285,19 +349,21 @@ class SettingsService {
     } else if (raw != null) {
       await _prefs.remove(fk);
     }
-    _subs.add(stream.listen((v) {
-      final s = toStored(v);
-      if (s is String) {
-        _prefs.setString(fk, s);
-      } else if (s is int) {
-        _prefs.setInt(fk, s);
-      }
-    }));
+    _subs.add(
+      stream.listen((v) {
+        final s = toStored(v);
+        if (s is String) {
+          _prefs.setString(fk, s);
+        } else if (s is int) {
+          _prefs.setInt(fk, s);
+        }
+      }),
+    );
   }
 
   // ── Special-case bindings ───────────────────────────────────────────
 
-  /// `EqualizerConfig.gains` is `List<double>` — JSON-encoded as String.
+  /// `EqualizerSettings.gains` is `List<double>` — JSON-encoded as String.
   Future<void> _bindEqualizerGains(Player player) async {
     const fk = '${_keyPrefix}equalizer_gains';
     final raw = _prefs.get(fk);
@@ -306,19 +372,23 @@ class SettingsService {
         final decoded = (jsonDecode(raw) as List<dynamic>)
             .map((e) => (e as num).toDouble())
             .toList();
-        await player
-            .setEqualizer(player.state.equalizer.copyWith(gains: decoded));
+        await player.setEqualizer(
+          player.state.equalizer.copyWith(gains: decoded),
+        );
       } catch (_) {
         await _prefs.remove(fk);
       }
     } else if (raw != null) {
       await _prefs.remove(fk);
     }
-    _subs.add(player.stream.equalizer
-        .listen((cfg) => _prefs.setString(fk, jsonEncode(cfg.gains))));
+    _subs.add(
+      player.stream.equalizer.listen(
+        (cfg) => _prefs.setString(fk, jsonEncode(cfg.gains)),
+      ),
+    );
   }
 
-  /// `CacheConfig` is a 5-field aggregate — restore each field
+  /// `CacheSettings` is a 5-field aggregate — restore each field
   /// independently (preserving the in-memory default for missing keys),
   /// then save the whole config on every emit.
   Future<void> _bindCache(Player player) async {
@@ -333,30 +403,38 @@ class SettingsService {
         pause is bool ||
         pauseWait is double) {
       final c = player.state.cache;
-      await player.setCache(c.copyWith(
-        mode: mode is String ? CacheMode.fromMpv(mode) : c.mode,
-        secs: secs is double && secs < 1e6
-            ? Duration(microseconds: (secs * 1e6).round())
-            : c.secs,
-        onDisk: onDisk is bool ? onDisk : c.onDisk,
-        pause: pause is bool ? pause : c.pause,
-        pauseWait: pauseWait is double
-            ? Duration(microseconds: (pauseWait * 1e6).round())
-            : c.pauseWait,
-      ));
+      await player.setCache(
+        c.copyWith(
+          mode: mode is String ? Cache.fromMpv(mode) : c.mode,
+          secs: secs is double && secs < 1e6
+              ? Duration(microseconds: (secs * 1e6).round())
+              : c.secs,
+          onDisk: onDisk is bool ? onDisk : c.onDisk,
+          pause: pause is bool ? pause : c.pause,
+          pauseWait: pauseWait is double
+              ? Duration(microseconds: (pauseWait * 1e6).round())
+              : c.pauseWait,
+        ),
+      );
     }
-    _subs.add(player.stream.cache.listen((c) {
-      _prefs.setString('${_keyPrefix}cache', c.mode.mpvValue);
-      _prefs.setDouble(
-          '${_keyPrefix}cache-secs', c.secs.inMicroseconds / 1e6);
-      _prefs.setBool('${_keyPrefix}cache-on-disk', c.onDisk);
-      _prefs.setBool('${_keyPrefix}cache-pause', c.pause);
-      _prefs.setDouble('${_keyPrefix}cache-pause-wait',
-          c.pauseWait.inMicroseconds / 1e6);
-    }));
+    _subs.add(
+      player.stream.cache.listen((c) {
+        _prefs.setString('${_keyPrefix}cache', c.mode.mpvValue);
+        _prefs.setDouble(
+          '${_keyPrefix}cache-secs',
+          c.secs.inMicroseconds / 1e6,
+        );
+        _prefs.setBool('${_keyPrefix}cache-on-disk', c.onDisk);
+        _prefs.setBool('${_keyPrefix}cache-pause', c.pause);
+        _prefs.setDouble(
+          '${_keyPrefix}cache-pause-wait',
+          c.pauseWait.inMicroseconds / 1e6,
+        );
+      }),
+    );
   }
 
-  /// `ReplayGainConfig` is a 4-field aggregate — same shape as `_bindCache`.
+  /// `ReplayGainSettings` is a 4-field aggregate — same shape as `_bindCache`.
   Future<void> _bindReplayGain(Player player) async {
     final mode = _prefs.get('${_keyPrefix}replaygain');
     final preamp = _prefs.get('${_keyPrefix}replaygain-preamp');
@@ -367,19 +445,23 @@ class SettingsService {
         fallback is double ||
         clip is bool) {
       final c = player.state.replayGain;
-      await player.setReplayGain(c.copyWith(
-        mode: mode is String ? ReplayGainMode.fromMpv(mode) : c.mode,
-        preamp: preamp is double ? preamp : c.preamp,
-        fallback: fallback is double ? fallback : c.fallback,
-        clip: clip is bool ? clip : c.clip,
-      ));
+      await player.setReplayGain(
+        c.copyWith(
+          mode: mode is String ? ReplayGain.fromMpv(mode) : c.mode,
+          preamp: preamp is double ? preamp : c.preamp,
+          fallback: fallback is double ? fallback : c.fallback,
+          clip: clip is bool ? clip : c.clip,
+        ),
+      );
     }
-    _subs.add(player.stream.replayGain.listen((c) {
-      _prefs.setString('${_keyPrefix}replaygain', c.mode.mpvValue);
-      _prefs.setDouble('${_keyPrefix}replaygain-preamp', c.preamp);
-      _prefs.setDouble('${_keyPrefix}replaygain-fallback', c.fallback);
-      _prefs.setBool('${_keyPrefix}replaygain-clip', c.clip);
-    }));
+    _subs.add(
+      player.stream.replayGain.listen((c) {
+        _prefs.setString('${_keyPrefix}replaygain', c.mode.mpvValue);
+        _prefs.setDouble('${_keyPrefix}replaygain-preamp', c.preamp);
+        _prefs.setDouble('${_keyPrefix}replaygain-fallback', c.fallback);
+        _prefs.setBool('${_keyPrefix}replaygain-clip', c.clip);
+      }),
+    );
   }
 
   /// Active audio track id — int with negative sentinel for "no track
@@ -388,11 +470,14 @@ class SettingsService {
     const fk = '${_keyPrefix}aid';
     final raw = _prefs.get(fk);
     if (raw is int && raw >= 0) {
-      await player.setAudioTrack(AudioTrackMode.id(raw));
+      await player.setAudioTrack(Track.id(raw));
     } else if (raw != null && raw is! int) {
       await _prefs.remove(fk);
     }
-    _subs.add(player.stream.currentAudioTrack
-        .listen((t) => _prefs.setInt(fk, t?.id ?? -1)));
+    _subs.add(
+      player.stream.currentAudioTrack.listen(
+        (t) => _prefs.setInt(fk, t?.id ?? -1),
+      ),
+    );
   }
 }

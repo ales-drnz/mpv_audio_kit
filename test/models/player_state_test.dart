@@ -27,7 +27,7 @@ void main() {
     test('playlist starts empty', () {
       const s = PlayerState();
       expect(s.playlist, Playlist.empty);
-      expect(s.loop, LoopMode.off);
+      expect(s.loop, Loop.off);
     });
 
     test('Duration fields default to mpv-aligned values', () {
@@ -50,29 +50,28 @@ void main() {
       // Regression test for 0.1.0: the enum migration must preserve
       // the previous string defaults' semantics.
       const s = PlayerState();
-      expect(s.gapless, GaplessMode.weak,
+      expect(s.gapless, Gapless.weak,
           reason: 'matches mpv default `gapless-audio=weak`');
-      expect(s.replayGain.mode, ReplayGainMode.no);
-      expect(s.cache.mode, CacheMode.auto);
-      expect(s.audioDisplay, AudioDisplayMode.embeddedFirst,
+      expect(s.replayGain.mode, ReplayGain.no);
+      expect(s.cache.mode, Cache.auto);
+      expect(s.audioDisplay, Display.embeddedFirst,
           reason: 'matches mpv default `audio-display=embedded-first`');
-      expect(s.coverArtAuto, CoverArtAutoMode.no,
-          reason:
-              'library default is `no` (mpv default would be `exact`); '
+      expect(s.coverArtAuto, Cover.no,
+          reason: 'library default is `no` (mpv default would be `exact`); '
               'we disable to avoid implicit file scanning');
     });
 
     test('replayGain + cache config defaults aggregate the granular fields',
         () {
       const s = PlayerState();
-      expect(s.replayGain, const ReplayGainConfig());
-      expect(s.replayGain.mode, ReplayGainMode.no);
+      expect(s.replayGain, const ReplayGainSettings());
+      expect(s.replayGain.mode, ReplayGain.no);
       expect(s.replayGain.preamp, 0.0);
       expect(s.replayGain.clip, isFalse);
       expect(s.replayGain.fallback, 0.0);
 
-      expect(s.cache, const CacheConfig());
-      expect(s.cache.mode, CacheMode.auto);
+      expect(s.cache, const CacheSettings());
+      expect(s.cache.mode, Cache.auto);
       expect(s.cache.secs, const Duration(hours: 1));
       expect(s.cache.onDisk, isFalse);
       expect(s.cache.pause, isTrue);
@@ -163,8 +162,8 @@ void main() {
     });
 
     test('enum fields participate in equality', () {
-      const a = PlayerState(gapless: GaplessMode.weak);
-      final b = a.copyWith(gapless: GaplessMode.yes);
+      const a = PlayerState(gapless: Gapless.weak);
+      final b = a.copyWith(gapless: Gapless.yes);
       expect(a, isNot(b));
     });
   });

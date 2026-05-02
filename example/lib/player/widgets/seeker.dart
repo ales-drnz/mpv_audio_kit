@@ -246,9 +246,9 @@ class _SeekerState extends State<Seeker> {
     if (_isDragging) {
       progress = _dragValue!;
     } else {
-      progress = ((pos.inMicroseconds - rangeStart.inMicroseconds) /
-              rangeMicros)
-          .clamp(0.0, 1.0);
+      progress =
+          ((pos.inMicroseconds - rangeStart.inMicroseconds) / rangeMicros)
+              .clamp(0.0, 1.0);
     }
 
     // Buffer indicator: anchored at [_maxBufferEnd], the furthest-ahead
@@ -266,8 +266,8 @@ class _SeekerState extends State<Seeker> {
 
     final displayPos = _isDragging
         ? Duration(
-            microseconds: rangeStart.inMicroseconds +
-                (progress * rangeMicros).round(),
+            microseconds:
+                rangeStart.inMicroseconds + (progress * rangeMicros).round(),
           )
         : pos;
 
@@ -303,16 +303,13 @@ class _SeekerState extends State<Seeker> {
               onChangeStart: canSeek
                   ? (v) => setState(() => _dragValue = v)
                   : null,
-              onChanged: canSeek
-                  ? (v) => setState(() => _dragValue = v)
-                  : null,
+              onChanged: canSeek ? (v) => setState(() => _dragValue = v) : null,
               onChangeEnd: canSeek
                   ? (v) {
-                      final targetMicros = rangeStart.inMicroseconds +
-                          (v * rangeMicros).round();
+                      final targetMicros =
+                          rangeStart.inMicroseconds + (v * rangeMicros).round();
                       _seekTargetMicros = targetMicros;
-                      widget.player
-                          .seek(Duration(microseconds: targetMicros));
+                      widget.player.seek(Duration(microseconds: targetMicros));
                     }
                   : null,
             );
@@ -385,8 +382,7 @@ class _SeekerState extends State<Seeker> {
                           builder: (context, snap) {
                             final state = snap.data ?? MpvPrefetchState.idle;
                             return InfoChip(
-                              label:
-                                  'PREFETCH ${state.name.toUpperCase()}',
+                              label: 'PREFETCH ${state.name.toUpperCase()}',
                               muted: state == MpvPrefetchState.idle,
                             );
                           },
@@ -432,8 +428,7 @@ class _LiveChip extends StatelessWidget {
       onTap: onJumpToLive,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(6),
@@ -441,11 +436,7 @@ class _LiveChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.fiber_manual_record_rounded,
-              size: 8,
-              color: fg,
-            ),
+            Icon(Icons.fiber_manual_record_rounded, size: 8, color: fg),
             const SizedBox(width: 3),
             Text(
               atLiveEdge ? 'LIVE' : 'LIVE -${formatDuration(liveLag)}',

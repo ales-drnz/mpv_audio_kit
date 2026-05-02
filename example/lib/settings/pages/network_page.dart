@@ -16,8 +16,8 @@ class NetworkPage extends StatelessWidget {
           stream: player.stream.networkTimeout,
           initialData: player.state.networkTimeout,
           builder: (context, snap) {
-            final secs =
-                (snap.data ?? const Duration(seconds: 30)).inSeconds.toDouble();
+            final secs = (snap.data ?? const Duration(seconds: 30)).inSeconds
+                .toDouble();
             return SliderPropertyCard(
               title: 'Network Timeout',
               subtitle: 'network-timeout=${secs.toInt()}',

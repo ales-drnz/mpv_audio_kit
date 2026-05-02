@@ -33,8 +33,7 @@ void main() {
       await player.dispose();
     });
 
-    test(
-        'openAll([m, m]) loads a 2-item playlist and updates state.playlist',
+    test('openAll([m, m]) loads a 2-item playlist and updates state.playlist',
         () async {
       await player.openAll(
         [Media(fixturePath), Media(fixturePath)],

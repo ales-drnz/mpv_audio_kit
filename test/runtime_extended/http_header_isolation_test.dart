@@ -64,8 +64,7 @@ void main() {
       // mpv applies for the active file only and never writes to the
       // global option. Confirm the global stays empty — the leak the
       // regression test guards against.
-      final globalAfter =
-          await player.getRawProperty('http-header-fields');
+      final globalAfter = await player.getRawProperty('http-header-fields');
       expect(globalAfter == null || globalAfter.isEmpty, isTrue,
           reason: 'global http-header-fields must NOT carry per-file '
               'headers — those belong to file-local-options/...');
@@ -92,11 +91,9 @@ void main() {
       await player.stream.seekCompleted.first
           .timeout(const Duration(seconds: 5));
 
-      final global =
-          await player.getRawProperty('http-header-fields');
+      final global = await player.getRawProperty('http-header-fields');
       expect(global == null || global.isEmpty, isTrue,
-          reason:
-              'consecutive open() calls must not pollute the global '
+          reason: 'consecutive open() calls must not pollute the global '
               'http-header-fields option');
     }, timeout: const Timeout(Duration(seconds: 30)));
   });

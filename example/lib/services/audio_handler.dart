@@ -67,7 +67,8 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
     final ext = raw.mimeType.split('/').last;
     final id = ++_coverCounter;
-    final path = '${Directory.systemTemp.path}'
+    final path =
+        '${Directory.systemTemp.path}'
         '${Platform.pathSeparator}'
         'mpv_audio_kit_cover_$id.$ext';
     try {

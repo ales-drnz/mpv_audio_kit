@@ -7,7 +7,7 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/event_isolate.dart';
+import 'package:mpv_audio_kit/src/internals/event_isolate.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 
 /// Allocates an [MpvNode] tree on the native heap and returns a typed
@@ -23,10 +23,13 @@ _NodeAlloc _scalarString(String value) {
   final str = value.toNativeUtf8();
   node.ref.format = MpvFormat.mpvFormatString;
   node.ref.u.string = str.cast();
-  return (node, () {
-    calloc.free(str);
-    calloc.free(node);
-  });
+  return (
+    node,
+    () {
+      calloc.free(str);
+      calloc.free(node);
+    }
+  );
 }
 
 _NodeAlloc _scalarInt64(int value) {
@@ -67,11 +70,14 @@ _NodeAlloc _byteArray(List<int> bytes) {
   ba.ref.size = bytes.length;
   node.ref.format = MpvFormat.mpvFormatByteArray;
   node.ref.u.ba = ba;
-  return (node, () {
-    calloc.free(data);
-    calloc.free(ba);
-    calloc.free(node);
-  });
+  return (
+    node,
+    () {
+      calloc.free(data);
+      calloc.free(ba);
+      calloc.free(node);
+    }
+  );
 }
 
 /// Build a tree, run an assertion on the decoded value, free everything.
@@ -150,8 +156,7 @@ void main() {
       }
     });
 
-    test('MPV_FORMAT_BYTE_ARRAY → Uint8List (deep-copied out of mpv heap)',
-        () {
+    test('MPV_FORMAT_BYTE_ARRAY → Uint8List (deep-copied out of mpv heap)', () {
       final (node, dispose) = _byteArray([0x42, 0x99, 0x00, 0xFF]);
       try {
         final result = decodeMpvNode(node.ref);

@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/utils/duration_seconds.dart';
+import 'package:mpv_audio_kit/src/internals/duration_seconds.dart';
 
 void main() {
   group('secondsToDuration', () {
@@ -26,8 +26,7 @@ void main() {
     });
 
     test('negative values (e.g. negative audio-delay) work', () {
-      expect(secondsToDuration(-1.5),
-          const Duration(milliseconds: -1500));
+      expect(secondsToDuration(-1.5), const Duration(milliseconds: -1500));
     });
 
     test('large values for network-timeout-style use', () {
@@ -58,12 +57,10 @@ void main() {
       expect(durationToSeconds(const Duration(milliseconds: -50)), -0.05);
     });
 
-    test('large durations don\'t lose precision in IEEE-754 double range',
-        () {
+    test('large durations don\'t lose precision in IEEE-754 double range', () {
       // Even at 24h (86400s), microsecond precision still fits in a
       // double (~15-17 sig figs).
-      expect(
-          durationToSeconds(const Duration(hours: 24, microseconds: 1)),
+      expect(durationToSeconds(const Duration(hours: 24, microseconds: 1)),
           closeTo(86400.000001, 1e-9));
     });
   });

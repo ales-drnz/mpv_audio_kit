@@ -6,76 +6,73 @@ import 'package:flutter/material.dart';
 /// interactive surface + 12 px border radius on buttons.
 class AppTheme {
   static ThemeData get light => ThemeData(
-        colorSchemeSeed: Colors.blue,
-        useMaterial3: true,
-        // Opt into Material 3 expressive (year2024) slider design:
-        // wider track, squared "stadium" thumb, visible gap between
-        // thumb and track. Applies to every Slider in the app.
-        // The `year2023` flag is marked deprecated because in a future
-        // Flutter release the 2024 design becomes the default; until
-        // then the explicit opt-in is the only way to get it.
-        // ignore: deprecated_member_use
-        sliderTheme: const SliderThemeData(year2023: false),
-        scrollbarTheme: ScrollbarThemeData(
-          thumbVisibility: WidgetStateProperty.all(true),
-          interactive: true,
+    colorSchemeSeed: Colors.blue,
+    useMaterial3: true,
+    // Opt into Material 3 expressive (year2024) slider design:
+    // wider track, squared "stadium" thumb, visible gap between
+    // thumb and track. Applies to every Slider in the app.
+    // The `year2023` flag is marked deprecated because in a future
+    // Flutter release the 2024 design becomes the default; until
+    // then the explicit opt-in is the only way to get it.
+    // ignore: deprecated_member_use
+    sliderTheme: const SliderThemeData(year2023: false),
+    scrollbarTheme: ScrollbarThemeData(
+      thumbVisibility: WidgetStateProperty.all(true),
+      interactive: true,
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: ButtonStyle(
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: ButtonStyle(
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            mouseCursor:
-                const WidgetStatePropertyAll(SystemMouseCursors.click),
-          ),
+        mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: ButtonStyle(
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            mouseCursor:
-                const WidgetStatePropertyAll(SystemMouseCursors.click),
-          ),
+        mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: ButtonStyle(
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        textButtonTheme: TextButtonThemeData(
-          style: ButtonStyle(
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            mouseCursor:
-                const WidgetStatePropertyAll(SystemMouseCursors.click),
-          ),
-        ),
-        iconButtonTheme: const IconButtonThemeData(
-          style: ButtonStyle(
-            mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
-          ),
-        ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
-        ),
-        switchTheme: SwitchThemeData(
-          mouseCursor: WidgetStateProperty.resolveWith(
-            (states) => SystemMouseCursors.click,
-          ),
-        ),
-        checkboxTheme: CheckboxThemeData(
-          mouseCursor: WidgetStateProperty.resolveWith(
-            (states) => SystemMouseCursors.click,
-          ),
-        ),
-        radioTheme: RadioThemeData(
-          mouseCursor: WidgetStateProperty.resolveWith(
-            (states) => SystemMouseCursors.click,
-          ),
-        ),
-        dropdownMenuTheme: const DropdownMenuThemeData(
-          menuStyle: MenuStyle(
-            mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
-          ),
-        ),
-      );
+        mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
+      ),
+    ),
+    iconButtonTheme: const IconButtonThemeData(
+      style: ButtonStyle(
+        mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
+      ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
+    ),
+    switchTheme: SwitchThemeData(
+      mouseCursor: WidgetStateProperty.resolveWith(
+        (states) => SystemMouseCursors.click,
+      ),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      mouseCursor: WidgetStateProperty.resolveWith(
+        (states) => SystemMouseCursors.click,
+      ),
+    ),
+    radioTheme: RadioThemeData(
+      mouseCursor: WidgetStateProperty.resolveWith(
+        (states) => SystemMouseCursors.click,
+      ),
+    ),
+    dropdownMenuTheme: const DropdownMenuThemeData(
+      menuStyle: MenuStyle(
+        mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
+      ),
+    ),
+  );
 
   static ScrollBehavior get scrollBehavior =>
       const MaterialScrollBehavior().copyWith(

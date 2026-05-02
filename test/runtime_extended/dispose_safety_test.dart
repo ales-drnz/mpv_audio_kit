@@ -5,7 +5,6 @@
 @TestOn('mac-os || linux || windows')
 library;
 
-
 import 'package:test/test.dart';
 import '../_helpers/setter_test_helpers.dart';
 

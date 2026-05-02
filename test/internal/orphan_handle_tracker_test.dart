@@ -19,7 +19,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
-import 'package:mpv_audio_kit/src/utils/orphan_handle_tracker.dart';
+import 'package:mpv_audio_kit/src/internals/orphan_handle_tracker.dart';
 
 void main() {
   test('OrphanHandleTracker.ensureInitialized + add + remove smoke', () {

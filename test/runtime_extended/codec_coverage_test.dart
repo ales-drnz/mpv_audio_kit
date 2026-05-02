@@ -73,7 +73,8 @@ void main() {
       test(expected.label, () async {
         final path = '$fixturesDir/$filename';
         if (!File(path).existsSync()) {
-          markTestSkipped('Fixture missing: run scripts/generate_codec_fixtures.sh');
+          markTestSkipped(
+              'Fixture missing: run scripts/generate_codec_fixtures.sh');
           return;
         }
         final result = await verifyCodec(player, path, expected);
@@ -81,7 +82,8 @@ void main() {
         expect(result.params.sampleRate, expected.sampleRate,
             reason: 'sample rate must match the fixture for ${expected.label}');
         expect(result.params.channelCount, expected.channels,
-            reason: 'channel count must match the fixture for ${expected.label}');
+            reason:
+                'channel count must match the fixture for ${expected.label}');
         expect(result.duration.inMilliseconds, greaterThan(0),
             reason: 'duration must be reported by the demuxer');
 

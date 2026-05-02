@@ -2,16 +2,19 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../types/enums/hook.dart';
+
 /// Emitted by [PlayerStream.hook] when mpv fires a registered hook.
 ///
-/// The consumer **must** call [Player.continueHook] with [id] exactly once,
-/// even if processing fails — otherwise mpv will stall indefinitely.
+/// The consumer **must** call [Player.continueHook] with [id] exactly
+/// once, even if processing fails — otherwise mpv will stall
+/// indefinitely.
 ///
 /// Example:
 /// ```dart
-/// player.registerHook('on_load');
+/// player.registerHook(Hook.load);
 /// player.stream.hook.listen((event) async {
-///   if (event.name == 'on_load') {
+///   if (event.hook == Hook.load) {
 ///     final url = await player.getRawProperty('stream-open-filename') ?? '';
 ///     if (url.startsWith('my-scheme://')) {
 ///       await player.setRawProperty(
@@ -27,11 +30,11 @@ class MpvHookEvent {
   /// Opaque identifier required by [Player.continueHook].
   final int id;
 
-  /// The hook name, e.g. `"on_load"` or `"on_load_fail"`.
-  final String name;
+  /// The lifecycle phase mpv is asking the consumer to handle.
+  final Hook hook;
 
-  const MpvHookEvent(this.id, this.name);
+  const MpvHookEvent(this.id, this.hook);
 
   @override
-  String toString() => 'MpvHookEvent(name: $name, id: $id)';
+  String toString() => 'MpvHookEvent(hook: ${hook.name}, id: $id)';
 }

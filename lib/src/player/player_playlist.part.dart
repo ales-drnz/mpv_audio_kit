@@ -1,7 +1,7 @@
 // Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
-part of '../player.dart';
+part of 'player.dart';
 
 /// Playlist setters: queue mutation (add / remove / move / replace),
 /// navigation (next / previous / jump), repeat / shuffle / prefetch
@@ -89,16 +89,16 @@ mixin _PlaylistModule on _PlayerBase {
   }
 
   /// Sets the playlist repeat mode.
-  Future<void> setLoop(LoopMode mode) async {
+  Future<void> setLoop(Loop mode) async {
     _checkNotDisposed();
     switch (mode) {
-      case LoopMode.off:
+      case Loop.off:
         _prop('loop-file', 'no');
         _prop('loop-playlist', 'no');
-      case LoopMode.file:
+      case Loop.file:
         _prop('loop-file', 'inf');
         _prop('loop-playlist', 'no');
-      case LoopMode.playlist:
+      case Loop.playlist:
         _prop('loop-file', 'no');
         _prop('loop-playlist', 'inf');
     }

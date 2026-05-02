@@ -46,7 +46,7 @@ void main() {
       // channels between tracks. Loading the same fixture twice is the
       // simplest way to satisfy that contract — the encoder boundary is
       // identical by construction.
-      await player.setGapless(GaplessMode.yes);
+      await player.setGapless(Gapless.yes);
 
       // Pre-subscribe to the playlist index transition before issuing
       // openAll — broadcast emits during the load phase shouldn't be

@@ -1,7 +1,7 @@
 // Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
-part of '../player.dart';
+part of 'player.dart';
 
 /// Transport setters: play / pause / stop / seek, chapter navigation,
 /// and the A-B loop controls.
@@ -71,8 +71,11 @@ mixin _PlaybackModule on _PlayerBase {
   /// or audiobook apps for repeated practice of a passage.
   Future<void> setAbLoopA(Duration? position) async {
     _checkNotDisposed();
-    _prop('ab-loop-a',
-        position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6));
+    _prop(
+        'ab-loop-a',
+        position == null
+            ? 'no'
+            : durationToSeconds(position).toStringAsFixed(6));
     _updateField(
         (s) => s.copyWith(abLoopA: position), _reactives.abLoopA, position);
   }
@@ -80,8 +83,11 @@ mixin _PlaybackModule on _PlayerBase {
   /// Sets the A-B loop end point. Pass `null` to disable. See [setAbLoopA].
   Future<void> setAbLoopB(Duration? position) async {
     _checkNotDisposed();
-    _prop('ab-loop-b',
-        position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6));
+    _prop(
+        'ab-loop-b',
+        position == null
+            ? 'no'
+            : durationToSeconds(position).toStringAsFixed(6));
     _updateField(
         (s) => s.copyWith(abLoopB: position), _reactives.abLoopB, position);
   }

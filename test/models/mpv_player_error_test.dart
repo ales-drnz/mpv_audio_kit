@@ -30,8 +30,7 @@ void main() {
         };
       }
 
-      expect(describe(endFile),
-          'end:${MpvError.mpvErrorLoadingFailed}');
+      expect(describe(endFile), 'end:${MpvError.mpvErrorLoadingFailed}');
       expect(describe(log), 'log:ffmpeg');
     });
 
@@ -104,16 +103,13 @@ void main() {
 
   group('MpvFileEndedEventX.reachedNaturalEnd', () {
     test('true only for eof reason', () {
-      const eof = MpvFileEndedEvent(
-          reason: MpvEndFileReason.eof, error: 0);
+      const eof = MpvFileEndedEvent(reason: MpvEndFileReason.eof, error: 0);
       expect(eof.reachedNaturalEnd, isTrue);
 
-      const stop = MpvFileEndedEvent(
-          reason: MpvEndFileReason.stop, error: 0);
+      const stop = MpvFileEndedEvent(reason: MpvEndFileReason.stop, error: 0);
       expect(stop.reachedNaturalEnd, isFalse);
 
-      const quit = MpvFileEndedEvent(
-          reason: MpvEndFileReason.quit, error: 0);
+      const quit = MpvFileEndedEvent(reason: MpvEndFileReason.quit, error: 0);
       expect(quit.reachedNaturalEnd, isFalse);
 
       const error = MpvFileEndedEvent(
@@ -121,8 +117,8 @@ void main() {
           error: MpvError.mpvErrorLoadingFailed);
       expect(error.reachedNaturalEnd, isFalse);
 
-      const redirect = MpvFileEndedEvent(
-          reason: MpvEndFileReason.redirect, error: 0);
+      const redirect =
+          MpvFileEndedEvent(reason: MpvEndFileReason.redirect, error: 0);
       expect(redirect.reachedNaturalEnd, isFalse);
     });
   });

@@ -53,8 +53,9 @@ class TransportControls extends StatelessWidget {
             initialData: player.state.playing,
             builder: (context, snap) {
               final isPlaying = snap.data ?? false;
-              final iconSize =
-                  (availableHeight * 0.08).clamp(48.0, 56.0).toDouble();
+              final iconSize = (availableHeight * 0.08)
+                  .clamp(48.0, 56.0)
+                  .toDouble();
               return Container(
                 decoration: BoxDecoration(
                   color: cs.primary,
@@ -64,12 +65,9 @@ class TransportControls extends StatelessWidget {
                   iconSize: iconSize,
                   color: cs.onPrimary,
                   icon: Icon(
-                    isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
+                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   ),
-                  onPressed: () =>
-                      isPlaying ? player.pause() : player.play(),
+                  onPressed: () => isPlaying ? player.pause() : player.play(),
                 ),
               );
             },
@@ -82,25 +80,22 @@ class TransportControls extends StatelessWidget {
             color: cs.primary,
           ),
           const SizedBox(width: 8),
-          StreamBuilder<LoopMode>(
+          StreamBuilder<Loop>(
             stream: player.stream.loop,
             initialData: player.state.loop,
             builder: (context, snap) {
-              final mode = snap.data ?? LoopMode.off;
+              final mode = snap.data ?? Loop.off;
               final (icon, active, tooltip) = switch (mode) {
-                LoopMode.off =>
-                  (Icons.repeat_rounded, false, 'Repeat off'),
-                LoopMode.playlist =>
-                  (Icons.repeat_rounded, true, 'Repeat all'),
-                LoopMode.file =>
-                  (Icons.repeat_one_rounded, true, 'Repeat one'),
+                Loop.off => (Icons.repeat_rounded, false, 'Repeat off'),
+                Loop.playlist => (Icons.repeat_rounded, true, 'Repeat all'),
+                Loop.file => (Icons.repeat_one_rounded, true, 'Repeat one'),
               };
               // Cycle order matches every mainstream music app:
               // none → all → single → none.
               final next = switch (mode) {
-                LoopMode.off => LoopMode.playlist,
-                LoopMode.playlist => LoopMode.file,
-                LoopMode.file => LoopMode.off,
+                Loop.off => Loop.playlist,
+                Loop.playlist => Loop.file,
+                Loop.file => Loop.off,
               };
               return IconButton(
                 iconSize: (availableHeight * 0.045).clamp(22.0, 28.0),

@@ -3,14 +3,18 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/audio/audio_output_state.dart';
-import 'package:mpv_audio_kit/src/network/cache_config.dart';
-import 'package:mpv_audio_kit/src/events/mpv_prefetch_state.dart';
-import 'package:mpv_audio_kit/src/player_state.dart';
-import 'package:mpv_audio_kit/src/audio/replay_gain_config.dart';
+import 'package:mpv_audio_kit/src/types/sealed/channels.dart';
+import 'package:mpv_audio_kit/src/types/enums/format.dart';
+import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
+import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
+import 'package:mpv_audio_kit/src/types/enums/cache.dart';
+import 'package:mpv_audio_kit/src/types/state/mpv_prefetch_state.dart';
+import 'package:mpv_audio_kit/src/player/player_state.dart';
+import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
+import 'package:mpv_audio_kit/src/types/enums/replay_gain.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
-import 'package:mpv_audio_kit/src/utils/duration_seconds.dart';
+import 'package:mpv_audio_kit/src/internals/duration_seconds.dart';
 
 /// End-to-end test of the default registry — every mpv property the public
 /// API surfaces gets dispatched once with a representative payload and the
@@ -74,8 +78,7 @@ void main() {
       expect(reactives.playing.value, isFalse);
     });
 
-    test('time-pos / duration / demuxer-cache-time map to Duration fields',
-        () {
+    test('time-pos / duration / demuxer-cache-time map to Duration fields', () {
       dispatch('time-pos', 1.5); // 1.5 seconds
       dispatch('duration', 90.0); // 1m30
       dispatch('demuxer-cache-time', 30.0);
@@ -131,8 +134,7 @@ void main() {
       expect(state.audioParams.format, 'floatp');
       expect(state.audioParams.sampleRate, 48000);
       expect(state.audioParams.codec, 'flac',
-          reason:
-              'audio-params node reduce must not reset the codec fields '
+          reason: 'audio-params node reduce must not reset the codec fields '
               'populated by audio-codec / audio-codec-name siblings');
       expect(state.audioParams.codecName, 'FLAC');
     });
@@ -157,9 +159,38 @@ void main() {
   });
 
   group('Default registry — special parsers', () {
-    test('audio-format empty string is normalized to "no"', () {
+    test('audio-format empty string maps to Format.auto', () {
       dispatch('audio-format', '');
-      expect(state.audioFormat, 'no');
+      expect(state.audioFormat, Format.auto);
+    });
+
+    test('audio-format known values round-trip via fromMpv', () {
+      dispatch('audio-format', 's16');
+      expect(state.audioFormat, Format.s16);
+      dispatch('audio-format', 'floatp');
+      expect(state.audioFormat, Format.float32Planar);
+      dispatch('audio-format', 'doublep');
+      expect(state.audioFormat, Format.float64Planar);
+    });
+
+    test('audio-channels named layouts and custom round-trip', () {
+      dispatch('audio-channels', 'stereo');
+      expect(state.audioChannels, Channels.stereo);
+      dispatch('audio-channels', '5.1');
+      expect(state.audioChannels, Channels.fiveOne);
+      dispatch('audio-channels', 'auto-safe');
+      expect(state.audioChannels, Channels.autoSafe);
+      // Variant qualifier preserved.
+      dispatch('audio-channels', '5.1(side)');
+      expect(state.audioChannels, Channels.fiveOneSide);
+      dispatch('audio-channels', '7.1(wide-side)');
+      expect(state.audioChannels, Channels.sevenOneWideSide);
+      // Raw speaker-tag list — falls through to .custom().
+      dispatch('audio-channels', 'fl-fr-fc-bl-br-sl-sr-lfe');
+      expect(
+        state.audioChannels,
+        const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
+      );
     });
 
     test('audio-bitrate <= 0 becomes null', () {
@@ -180,7 +211,8 @@ void main() {
       // the typed setters. The af observer mirrors only the unmanaged tail
       // back into state.customAudioFilters; the four managed labels stay
       // owned by their setters' own state.
-      dispatch('af', 'lavfi-pan=stereo|c0=c1|c1=c0,@_mak_eq:lavfi-equalizer=g=3');
+      dispatch(
+          'af', 'lavfi-pan=stereo|c0=c1|c1=c0,@_mak_eq:lavfi-equalizer=g=3');
       expect(state.customAudioFilters, ['lavfi-pan=stereo|c0=c1|c1=c0']);
 
       dispatch('af', '');
@@ -208,8 +240,7 @@ void main() {
       expect(reactives.prefetchState.value, MpvPrefetchState.idle);
     });
 
-    test('prefetch-playlist flag round-trips into state.prefetchPlaylist',
-        () {
+    test('prefetch-playlist flag round-trips into state.prefetchPlaylist', () {
       // Default mirrors mpv 0.41 (off). Toggle via setPrefetchPlaylist
       // (or any property write) drives the observed flag.
       expect(state.prefetchPlaylist, isFalse);
@@ -264,8 +295,8 @@ void main() {
         dispatch(name, payload);
         // Duration / Map fields surface as-is for non-Duration payloads;
         // Duration parsers are exercised by the dedicated test below.
-        if (payload is double && (name.endsWith('-pts') ||
-            name.endsWith('-remaining'))) {
+        if (payload is double &&
+            (name.endsWith('-pts') || name.endsWith('-remaining'))) {
           expect(getter(state), secondsToDuration(payload));
         } else {
           expect(getter(state), payload);
@@ -348,13 +379,11 @@ void main() {
       expect(state.imageDisplayDuration, isNull);
 
       dispatch('image-display-duration', '5.5');
-      expect(state.imageDisplayDuration,
-          const Duration(milliseconds: 5500));
+      expect(state.imageDisplayDuration, const Duration(milliseconds: 5500));
     });
   });
 
-  group('Default registry — config aggregate copyWith preserves siblings',
-      () {
+  group('Default registry — config aggregate copyWith preserves siblings', () {
     // Cruciale: i 9 spec ReplayGain/Cache fanno reduce su
     // `s.copyWith(replayGain: s.replayGain.copyWith(field: v))` —
     // un cambio su un campo NON deve sovrascrivere gli altri 3-4.
@@ -371,8 +400,8 @@ void main() {
       dispatch('replaygain-fallback', 1.5);
       expect(
           state.replayGain,
-          const ReplayGainConfig(
-            mode: ReplayGainMode.album,
+          const ReplayGainSettings(
+            mode: ReplayGain.album,
             preamp: -3.0,
             clip: true,
             fallback: 1.5,
@@ -381,7 +410,7 @@ void main() {
       // Change just preamp; assert the other 3 fields are untouched.
       dispatch('replaygain-preamp', -10.0);
       expect(state.replayGain.preamp, -10.0);
-      expect(state.replayGain.mode, ReplayGainMode.album,
+      expect(state.replayGain.mode, ReplayGain.album,
           reason: 'mode must survive a preamp-only dispatch');
       expect(state.replayGain.clip, isTrue);
       expect(state.replayGain.fallback, 1.5);
@@ -389,7 +418,7 @@ void main() {
       // Change just clip.
       dispatch('replaygain-clip', false);
       expect(state.replayGain.clip, isFalse);
-      expect(state.replayGain.mode, ReplayGainMode.album);
+      expect(state.replayGain.mode, ReplayGain.album);
       expect(state.replayGain.preamp, -10.0,
           reason: 'preamp from the previous dispatch must survive');
     });
@@ -403,8 +432,8 @@ void main() {
       dispatch('cache-pause-wait', 5.0);
       expect(
           state.cache,
-          const CacheConfig(
-            mode: CacheMode.yes,
+          const CacheSettings(
+            mode: Cache.yes,
             secs: Duration(seconds: 30),
             onDisk: true,
             pause: false,
@@ -413,7 +442,7 @@ void main() {
 
       dispatch('cache-secs', 60.0);
       expect(state.cache.secs, const Duration(seconds: 60));
-      expect(state.cache.mode, CacheMode.yes);
+      expect(state.cache.mode, Cache.yes);
       expect(state.cache.onDisk, isTrue);
       expect(state.cache.pause, isFalse);
       expect(state.cache.pauseWait, const Duration(seconds: 5));
@@ -423,20 +452,19 @@ void main() {
       expect(state.cache.secs, const Duration(seconds: 60));
 
       dispatch('cache', 'no');
-      expect(state.cache.mode, CacheMode.no);
+      expect(state.cache.mode, Cache.no);
       expect(state.cache.secs, const Duration(seconds: 60));
       expect(state.cache.onDisk, isTrue);
     });
 
-    test('replayGain: dispatch on initial PlayerState (default) is safe',
-        () {
+    test('replayGain: dispatch on initial PlayerState (default) is safe', () {
       // Edge case: dispatching the first property after a fresh state
       // must not throw on the `s.replayGain.copyWith(...)` chain.
-      expect(state.replayGain, const ReplayGainConfig());
+      expect(state.replayGain, const ReplayGainSettings());
       dispatch('replaygain-preamp', 1.0);
       expect(state.replayGain.preamp, 1.0);
-      expect(state.replayGain.mode, ReplayGainMode.no,
-          reason: 'default ReplayGainConfig.mode must survive');
+      expect(state.replayGain.mode, ReplayGain.no,
+          reason: 'default ReplayGainSettings.mode must survive');
     });
   });
 
@@ -484,8 +512,7 @@ void main() {
   });
 
   group('Default registry — coverage contract', () {
-    test('registry holds exactly the documented set of mpv property names',
-        () {
+    test('registry holds exactly the documented set of mpv property names', () {
       // Bidirectional check: extracts the live spec names from the registry
       // and asserts equality with the documented set below. A drift in
       // either direction triggers a failure:
@@ -544,8 +571,7 @@ void main() {
       };
 
       expect(actual, equals(documented),
-          reason:
-              'Default registry drifted from the documented contract. '
+          reason: 'Default registry drifted from the documented contract. '
               'Missing: ${documented.difference(actual)}. '
               'Extra: ${actual.difference(documented)}. '
               'Update the `documented` set in this test if the change is '
