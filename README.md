@@ -273,7 +273,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
 ### 1. Initialization & Lifecycle
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/player_lifecycle.svg" width="100%">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/player_lifecycle.png" width="100%">
 
 #### 1.1 Global Initialization
 
@@ -607,7 +607,7 @@ the chain at zero CPU cost while preserving its parameters.
 custom… → compressor → equalizer → pitch/tempo → loudnorm
 ```
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/dsp_chain.svg" width="100%">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/dsp_chain.png" width="100%">
 
 For anything the four stages don't cover (echo, crossfeed, stereo
 widening, crystalizer, format conversion), use
@@ -1573,7 +1573,7 @@ through these methods.
 
 ### 11. Error Handling & Logging
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.svg" width="100%">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.png" width="100%">
 
 #### 11.1 Typed Error Stream
 
@@ -1702,7 +1702,7 @@ for development.
 
 Hooks intercept mpv's file-loading pipeline before a stream is opened. Use them to lazily resolve URLs, inject per-file HTTP headers, or redirect to a different source — without a local proxy server.
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.svg" width="100%">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.png" width="100%">
 
 #### 12.1 Registering a Hook
 
