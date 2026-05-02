@@ -403,9 +403,6 @@ final media = Media(
 
 Access later via `player.state.playlist.medias[index].extras`.
 
-> Embedded cover-art bytes are no longer pushed back into `extras` —
-> they flow through the dedicated [`coverArtRaw`](#82-cover-art) stream.
-
 ---
 
 ### 3. Playlist Management
@@ -512,7 +509,7 @@ await player.play();    // Start or resume
 await player.pause();   // Pause
 await player.stop();    // Stop and unload current file
 
-// Toggle pattern (replaces the removed playOrPause())
+// Toggle pattern
 player.state.playing ? await player.pause() : await player.play();
 ```
 
@@ -614,15 +611,10 @@ widening, crystalizer, format conversion), use
 [Custom Filters](#56-custom-filters) — a list of raw mpv `--af`
 strings that runs at the head of the chain.
 
-> **About the `enabled` flag.** Every typed config defaults to
-> `enabled: false`. The flag controls whether the stage is **inserted
-> into mpv's `af` chain at all** — not whether the parameters exist.
-> This lets a UI toggle ("EQ on / off") flip the stage in and out at
-> zero CPU cost without losing the user's gain / threshold / pitch
-> preset, which would otherwise need to be stashed and restored
-> manually. Disabled stages are stripped from the chain entirely —
-> their parameters live only in `PlayerState`, ready to be
-> recomposed on the next `enabled: true` write.
+Each typed stage carries an `enabled` flag (default `false`). When
+`true` the stage is inserted into the chain; when `false` it's stripped
+out at zero CPU cost while its parameters stay in `PlayerState` for
+the next toggle.
 
 ```dart
 // Read the live aggregate config back through the stream:
@@ -1145,9 +1137,9 @@ Common tag keys (case as returned by mpv): `title`, `artist`, `album`, `album_ar
 
 The wrapper extracts the **raw codec bytes** of the embedded picture
 the moment a file finishes loading and emits them on
-`player.stream.coverArtRaw` as a `CoverArtRaw(bytes, mimeType)`. No
-decode → BGRA → PNG re-encode round-trip — the bytes are the original
-PNG / JPEG / WEBP / BMP / GIF as embedded by the tagger.
+`player.stream.coverArtRaw` as a `CoverArtRaw(bytes, mimeType)`. The
+bytes are the original PNG / JPEG / WEBP / BMP / GIF as embedded by
+the tagger.
 
 ```dart
 Uint8List? _cover;
