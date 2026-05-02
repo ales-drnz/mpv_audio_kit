@@ -11,13 +11,11 @@ import '../mpv_bindings.dart' hide MpvEndFileReason;
 
 part 'mpv_player_error.freezed.dart';
 
-/// Typed error events from the mpv engine.
+/// Typed error events delivered on [PlayerStream.error]. A sealed union
+/// over [MpvEndFileError] (playback failures) and [MpvLogError]
+/// (`error` / `fatal` log lines from an mpv subsystem). Pattern-match on
+/// the variant to distinguish them.
 ///
-/// Sealed union of structured events that lets consumers distinguish
-/// between playback failures, log-level errors, and internal engine
-/// issues with a `switch`.
-///
-/// Use a `switch` on the sealed subtypes:
 /// ```dart
 /// player.stream.error.listen((error) {
 ///   switch (error) {
@@ -174,6 +172,6 @@ enum MpvEndFileReason {
         _quit => quit,
         _error => error,
         _redirect => redirect,
-        _ => eof, // Defensive fallback for unknown values.
+        _ => eof,
       };
 }

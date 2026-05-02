@@ -10,10 +10,9 @@ part 'playlist.freezed.dart';
 
 /// An ordered list of [Media] items loaded into the [Player].
 ///
-/// Equality is structural across both [medias] (deep comparison) and
-/// [index] — Freezed-generated, so `Playlist.copyWith(...)` and
-/// `==`/`hashCode` follow the same contract as the rest of the
-/// model layer.
+/// Two playlists compare equal only when both [medias] (deep equality)
+/// and [index] match — useful when consumers diff playlists for
+/// re-render decisions.
 @freezed
 abstract class Playlist with _$Playlist {
   const Playlist._();

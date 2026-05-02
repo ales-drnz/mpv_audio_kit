@@ -39,11 +39,9 @@ Playlist parsePlaylistNode({
   required Map<String, Media> mediaCache,
   required Playlist previous,
 }) {
-  // Non-list payload means mpv emitted something we don't recognize for
-  // the `playlist` property — keep [previous] rather than clobbering the
-  // consumer's view with an empty playlist. mpv has consistently emitted
-  // `MPV_FORMAT_NODE_ARRAY` for this property across every release we
-  // support, so this branch is purely defensive.
+  // Defensive: a non-list payload means mpv emitted something unexpected
+  // for `playlist`. Preserve the previous value rather than clobber the
+  // consumer's view with an empty playlist.
   if (raw is! List) {
     return previous;
   }

@@ -7,29 +7,16 @@ import '../dsp/equalizer_config.dart';
 import '../dsp/loudness_config.dart';
 import '../dsp/pitch_tempo_config.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Composition of mpv's `af` filter chain from typed configs + custom strings.
-//
-// Each typed stage owns a reserved label so the wrapper can identify and
-// upsert that stage independently of the others. Custom filter strings are
-// emitted at the head of the chain — running before any wrapper-managed
-// stage — and never carry a reserved label.
-//
-// Chain order (DSP-correct, fixed):
-//
+// Chain order is fixed:
 //   custom... → compressor → equalizer → pitch/tempo → loudnorm
 //
-// Rationale: dynamic-range control (compressor) operates on the raw signal
-// before tonal shaping (equalizer); pitch/tempo follows so timing changes
-// see a stable spectrum; loudness normalization runs last so it adapts to
-// whatever earlier stages produced.
-// ─────────────────────────────────────────────────────────────────────────────
+// Compression on the raw signal before tonal shaping (EQ); pitch/tempo
+// after so timing changes see a stable spectrum; loudness normalization
+// last so it adapts to whatever the earlier stages produced.
 
-/// Reserved labels the wrapper applies to its managed filter stages.
-///
-/// Filters carrying these labels are owned by the typed setters
-/// ([Player.setEqualizer] et al.) and must not be set via
-/// [Player.setCustomAudioFilters].
+/// Reserved labels for the wrapper-managed filter stages. Filters carrying
+/// these labels are owned by the typed setters ([Player.setEqualizer] et
+/// al.) and must not be passed to [Player.setCustomAudioFilters].
 class AudioFilterChainLabels {
   static const equalizer = '_mak_eq';
   static const compressor = '_mak_comp';
@@ -52,11 +39,11 @@ const _kEqualizerCenters = <double>[
   16000.0,
 ];
 
-/// Builds the full mpv `af` value from all five sources.
-///
-/// Returns the empty string when nothing is enabled — mpv interprets that
-/// as "no filters". Each enabled stage is emitted as `@label:filter=args`
-/// so it can be identified later. Custom filters are emitted verbatim.
+/// Builds the full mpv `af` value, joining custom filters with the four
+/// typed DSP stages in fixed order. Returns the empty string when nothing
+/// is enabled — mpv interprets that as "no filters". Each typed stage is
+/// emitted as `@label:filter=args` so [extractCustomFilters] can later
+/// strip them on the inverse path.
 String composeAfChain({
   required List<String> customFilters,
   required CompressorConfig compressor,
@@ -79,12 +66,18 @@ String composeAfChain({
   return parts.join(',');
 }
 
+// Fixed-precision formatting for double-valued filter parameters. Stops
+// floating-point noise (e.g. 1.0 vs 1.0000000001 from a copyWith chain)
+// from changing the `af` string and triggering spurious filter-chain
+// reloads in mpv.
+String _f(double v) => v.toStringAsFixed(3);
+
 String _buildCompressor(CompressorConfig c) {
   return '@${AudioFilterChainLabels.compressor}:lavfi-acompressor='
-      'threshold=${c.threshold}dB'
-      ':ratio=${c.ratio}'
-      ':attack=${c.attack.inMicroseconds / 1000}'
-      ':release=${c.release.inMicroseconds / 1000}';
+      'threshold=${_f(c.threshold)}dB'
+      ':ratio=${_f(c.ratio)}'
+      ':attack=${_f(c.attack.inMicroseconds / 1000)}'
+      ':release=${_f(c.release.inMicroseconds / 1000)}';
 }
 
 String _buildEqualizer(EqualizerConfig eq) {
@@ -110,25 +103,24 @@ String _buildEqualizer(EqualizerConfig eq) {
 
 String _buildPitchTempo(PitchTempoConfig p) {
   return '@${AudioFilterChainLabels.pitchTempo}:rubberband='
-      'pitch=${p.pitch}'
-      ':tempo=${p.tempo}';
+      'pitch=${_f(p.pitch)}'
+      ':tempo=${_f(p.tempo)}';
 }
 
 String _buildLoudness(LoudnessConfig l) {
   return '@${AudioFilterChainLabels.loudness}:lavfi-loudnorm='
-      'I=${l.integratedLoudness}'
-      ':TP=${l.truePeak}'
-      ':LRA=${l.lra}';
+      'I=${_f(l.integratedLoudness)}'
+      ':TP=${_f(l.truePeak)}'
+      ':LRA=${_f(l.lra)}';
 }
 
-/// Splits an mpv `af` value into the wrapper-managed labelled entries
-/// (dropped — the typed configs are the source of truth) and the
-/// remaining unlabelled / unknown-labelled entries (returned as
-/// custom-filter strings).
+/// Returns the unmanaged segment of an mpv `af` value — every entry whose
+/// label is NOT one of the wrapper-reserved [AudioFilterChainLabels].
 ///
-/// Used by the `af` observer to surface external chain mutations as
-/// updates to [PlayerState.customAudioFilters] without trying to
-/// back-parse the typed configs.
+/// Used by the `af` observer so external mutations to the chain (raw
+/// `setRawProperty('af', ...)` writes) propagate into
+/// [PlayerState.customAudioFilters]. Wrapper-managed stages stay owned by
+/// their typed setters and are never reverse-parsed from the af string.
 List<String> extractCustomFilters(String afValue) {
   if (afValue.trim().isEmpty) return const [];
   final entries = _splitAfTopLevel(afValue);
@@ -141,10 +133,8 @@ List<String> extractCustomFilters(String afValue) {
   return out;
 }
 
-/// Splits an `af` chain on top-level commas — i.e. commas that are not
-/// inside parentheses (graph-style filters such as
-/// `lavfi-bridge=[g] aresample=48000 [out]; [g]` aren't currently used
-/// by the wrapper, but parens-aware splitting is cheap and forward-safe).
+/// Splits an `af` chain on top-level commas — commas inside parentheses
+/// belong to a graph-style sub-expression and stay attached.
 List<String> _splitAfTopLevel(String chain) {
   final out = <String>[];
   final buf = StringBuffer();

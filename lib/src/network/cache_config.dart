@@ -31,20 +31,16 @@ enum CacheMode {
       };
 }
 
-/// Aggregate of mpv's five cache properties.
+/// Aggregate of mpv's five cache properties (`cache`, `cache-secs`,
+/// `cache-on-disk`, `cache-pause`, `cache-pause-wait`).
 ///
-/// Set the whole config atomically via [Player.setCache] — the wrapper
-/// writes `cache`, `cache-secs`, `cache-on-disk`, `cache-pause`, and
-/// `cache-pause-wait` atomically. Modify a single field through
-/// `state.cache.copyWith(...)`.
-///
-/// Read the current configuration via [PlayerState.cache] or observe
-/// live changes via [PlayerStream.cache].
+/// Apply atomically via [Player.setCache]. For one-off tweaks use
+/// `state.cache.copyWith(...)`. Read the current configuration via
+/// [PlayerState.cache] or observe live changes via [PlayerStream.cache].
 @freezed
 abstract class CacheConfig with _$CacheConfig {
   const factory CacheConfig({
-    /// Caching policy (auto = enabled for network sources). Mirrors
-    /// mpv's `--cache=<no|auto|yes>` default of `auto`.
+    /// Caching policy. Default mirrors mpv's `--cache=auto`.
     @Default(CacheMode.auto) CacheMode mode,
 
     /// Target cache duration ahead of the playhead. Default 1 hour

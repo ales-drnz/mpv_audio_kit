@@ -33,7 +33,12 @@ const _kFlatGains = <double>[
 @freezed
 abstract class EqualizerConfig with _$EqualizerConfig {
   const factory EqualizerConfig({
+    /// Whether the stage is inserted into mpv's filter chain. Disabling
+    /// preserves the configuration.
     @Default(false) bool enabled,
+
+    /// Per-band gain in dB, ordered by ascending centre frequency.
+    /// Must contain exactly 10 entries.
     @Default(_kFlatGains) List<double> gains,
   }) = _EqualizerConfig;
 

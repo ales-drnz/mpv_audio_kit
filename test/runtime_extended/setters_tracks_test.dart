@@ -9,41 +9,27 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-final multitrackPath =
+  final multitrackPath =
       '${Directory.current.path}/test/fixtures/multitrack_two_audio.mka';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(multitrackPath).existsSync()) {
-      markTestSkipped('Multitrack fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: multitrackPath));
 
   group('Audio track typed setters end-to-end (multi-track MKA)', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(multitrackPath), play: false);
-      // Wait for tracks to populate.
-      await player.stream.tracks
-          .firstWhere(
-              (t) => t.where((tr) => tr.type == 'audio').length == 2)
+      player = await buildPlayer();
+      // Pre-subscribe so the tracks emit isn't lost while open() runs.
+      final tracksReady = player.stream.tracks
+          .firstWhere((t) => t.where((tr) => tr.type == 'audio').length == 2)
           .timeout(const Duration(seconds: 5));
+      await openAndWaitForLoad(player, multitrackPath);
+      if (player.state.tracks.where((tr) => tr.type == 'audio').length != 2) {
+        await tracksReady;
+      }
     });
 
     tearDownAll(() async {

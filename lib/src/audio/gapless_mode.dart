@@ -4,7 +4,7 @@
 
 /// Gapless playback mode, mirroring `--gapless-audio=<no|yes|weak>`.
 enum GaplessMode {
-  /// Disabled.
+  /// Disabled — close and re-open the audio output between tracks.
   no('no'),
 
   /// Strict gapless: re-uses the audio decoder across track boundaries.

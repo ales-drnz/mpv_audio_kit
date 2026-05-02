@@ -9,39 +9,19 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-final fixturePath =
+  final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_with_cover.flac';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Cover fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('setImageDisplayDuration end-to-end', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 500)
-          .timeout(const Duration(seconds: 5));
+      player = await buildPlayerWithFixture(fixturePath: fixturePath);
     });
 
     tearDownAll(() async {

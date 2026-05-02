@@ -5,8 +5,8 @@
 /// Cover-art display priority, mirroring
 /// `--audio-display=<no|embedded-first|external-first>`.
 enum AudioDisplayMode {
-  /// Disable video/cover-art display entirely. Recommended when the host
-  /// app reads artwork out-of-band (e.g. via `metadata_god`).
+  /// Disable cover-art display entirely. Recommended when the host app
+  /// reads artwork out-of-band.
   no('no'),
 
   /// Show embedded cover art first, fall back to external files (mpv default).

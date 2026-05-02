@@ -6,11 +6,9 @@
 @TestOn('mac-os || linux || windows')
 library;
 
-import 'dart:io';
-
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // Gapless playback transition — verifies that mpv's playlist advances
@@ -25,33 +23,15 @@ void main() {
   // Uses sine_440hz_1s.wav (1-second fixture) twice in a playlist; with
   // `ao=null` mpv's decoder runs ahead of realtime so the test
   // completes in well under the wall-clock 1s + 1s.
-  final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+  final fixturePath = defaultFixturePath();
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('Gapless playback — playlist transition', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-        configuration: const PlayerConfiguration(
-          autoPlay: false,
-          logLevel: 'no',
-        ),
-      );
-      await player.setRawProperty('ao', 'null');
+      player = await buildPlayer();
     });
 
     tearDownAll(() async {

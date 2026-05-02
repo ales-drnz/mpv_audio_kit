@@ -13,9 +13,6 @@ import 'package:meta/meta.dart';
 /// is intentionally minimal — the wrapper only uses it for one-shot
 /// diagnostic warnings (orphan-handle cleanup, locale init failure,
 /// JSON parse warnings). Throughput protection isn't relevant.
-///
-/// Living in `lib/src/internal/` because it must not appear in the
-/// public API surface, but the wrapper modules import it directly.
 @internal
 void debugLog(String message) {
   // ignore: avoid_print

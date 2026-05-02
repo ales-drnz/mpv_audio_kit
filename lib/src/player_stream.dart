@@ -186,22 +186,38 @@ class PlayerStream {
 
   /// Generic helper for building a broadcast aggregator stream.
   ///
-  /// On the first listener, subscribes to every input [sources] stream and
-  /// pipes a fresh `snapshot()` value to the output controller on each
-  /// upstream event. On the last cancel, tears the subscriptions down. The
-  /// controller itself is reused across listen/cancel cycles, so the same
-  /// [Stream] instance can be passed around freely (e.g. as a `final`
-  /// `PlayerStream.audioParams` field).
+  /// On the first listener, emits a synchronous initial snapshot and
+  /// subscribes to every input [sources] stream, piping a fresh
+  /// `snapshot()` value to the output controller on each upstream event.
+  /// Repeated upstream events that resolve to the same aggregate value
+  /// are deduplicated so the consumer sees one emission per actual change.
+  /// On the last cancel, tears the subscriptions down.
   static Stream<T> _bindAggregate<T>(
     T Function() snapshot,
     List<Stream<dynamic>> sources,
   ) {
     late final StreamController<T> ctrl;
     List<StreamSubscription<dynamic>>? subs;
+    late T last;
+    var primed = false;
+    void pump() {
+      final next = snapshot();
+      if (primed && last == next) return;
+      last = next;
+      primed = true;
+      ctrl.add(next);
+    }
+
     ctrl = StreamController<T>.broadcast(
       onListen: () {
+        // Reset the dedup memory on every fresh subscription cycle so a
+        // late subscriber receives the current aggregate as its first
+        // event regardless of whether the previous cycle saw the same
+        // value.
+        primed = false;
+        pump();
         subs = [
-          for (final s in sources) s.listen((_) => ctrl.add(snapshot())),
+          for (final s in sources) s.listen((_) => pump()),
         ];
       },
       onCancel: () async {

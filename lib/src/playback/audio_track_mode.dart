@@ -7,13 +7,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'audio_track_mode.freezed.dart';
 
 /// How [Player.setAudioTrack] should resolve mpv's `aid` property.
-///
-/// Sealed (rather than `enum`) because the [AudioTrackMode.id] variant
-/// carries an `int` payload that enums cannot model. Every other
-/// `*Mode` in the package is a plain enum; this one follows the same
-/// naming convention but uses Freezed-generated sealed variants — so
-/// equality, hashCode, and toString are derived automatically and
-/// stay in sync with the variants.
+/// Sealed because [AudioTrackMode.id] carries an `int` payload that
+/// plain enums can't model.
 @freezed
 sealed class AudioTrackMode with _$AudioTrackMode {
   const AudioTrackMode._();

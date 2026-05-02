@@ -5,11 +5,9 @@
 @TestOn('mac-os || linux || windows')
 library;
 
-import 'dart:io';
-
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 /// Permanent guard: verifies that the file-split workaround for the
 /// SIGSEGV-on-3rd-Player quirk (documented in CLAUDE.md) keeps holding.
@@ -26,32 +24,15 @@ import '../_helpers/libmpv_resolver.dart';
 ///
 /// Do not delete; do not collapse into a `setters_*` file.
 void main() {
-final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+  final fixturePath = defaultFixturePath();
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found — skipping isolation smoke test.');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing: $fixturePath');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('runtime_extended file split — fresh Player in a new file', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
+      player = await buildPlayer();
     });
 
     tearDownAll(() async {
@@ -64,12 +45,13 @@ final fixturePath =
       // Open the file to confirm the AO + demuxer init path completes
       // (this is the path most likely to expose any cross-isolate
       // libmpv state corruption from the parallel runtime test file).
-      await player.open(Media(fixturePath), play: false);
-
-      // Wait for state.duration so we know mpv finished demux.
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 500)
+      // Pre-subscribe BEFORE openAndWaitForLoad so the duration emit
+      // isn't missed if it lands before seekCompleted resolves.
+      final durationSettled = player.stream.duration
+          .firstWhere((d) => d.inMilliseconds > 0)
           .timeout(const Duration(seconds: 5));
+      await openAndWaitForLoad(player, fixturePath);
+      if (player.state.duration == Duration.zero) await durationSettled;
       expect(player.state.duration.inMilliseconds, inInclusiveRange(900, 1100));
 
       // Exercise a setter: setVolume runs an optimistic state update,

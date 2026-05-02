@@ -11,7 +11,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../_helpers/codec.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // The full codec matrix (18 fixtures, ~2 MB) lives in
@@ -23,14 +23,7 @@ void main() {
   // the patched build under the maintainer's control).
   final fixturesDir = '${Directory.current.path}/test/fixtures/codec';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip());
 
   group('Codec coverage — host build', () {
     late Player player;

@@ -7,18 +7,10 @@ library;
 
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip());
 
   // Companion of `dispose_safety_test.dart` — split into a separate
   // file so the SIGSEGV-on-3rd-Player ceiling (CLAUDE.md) doesn't bite
@@ -29,12 +21,7 @@ setUpAll(() {
       () {
     test('getRawProperty / setRawProperty / sendRawCommand / registerHook / '
         'continueHook all throw StateError post-dispose', () async {
-      final player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
+      final player = await buildPlayer();
       // Allow the event isolate to spawn fully before disposing.
       await Future.delayed(const Duration(milliseconds: 200));
       await player.dispose();

@@ -9,41 +9,21 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-// Use the 3-second chapters fixture: long enough that seek tests can
+  // Use the 3-second chapters fixture: long enough that seek tests can
   // assert past 400ms without racing mpv's EOF on a 1-second file.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('Playback transport (play / pause / stop / seek) end-to-end', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 2500)
-          .timeout(const Duration(seconds: 5));
+      player = await buildPlayerWithFixture(fixturePath: fixturePath);
     });
 
     tearDownAll(() async {

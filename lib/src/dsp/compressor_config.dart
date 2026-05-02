@@ -17,6 +17,8 @@ part 'compressor_config.freezed.dart';
 @freezed
 abstract class CompressorConfig with _$CompressorConfig {
   const factory CompressorConfig({
+    /// Whether the stage is inserted into mpv's filter chain. Disabling
+    /// preserves the configuration.
     @Default(false) bool enabled,
 
     /// Onset level above which compression kicks in, in dB. Hard range

@@ -18,6 +18,8 @@ part 'loudness_config.freezed.dart';
 @freezed
 abstract class LoudnessConfig with _$LoudnessConfig {
   const factory LoudnessConfig({
+    /// Whether the stage is inserted into mpv's filter chain. Disabling
+    /// preserves the configuration.
     @Default(false) bool enabled,
 
     /// Integrated loudness target in LUFS. Common values: -23 (EBU R128

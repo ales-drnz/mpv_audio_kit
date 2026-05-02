@@ -8,32 +8,19 @@ import 'reactive_property.dart';
 
 /// Declarative description of a single mpv property exposed by the player.
 ///
-/// One spec collects everything needed to bridge an mpv property to a
-/// Dart-side value: the [ReactiveProperty] that owns the cell, the mpv
-/// property name + format used to call `mpv_observe_property`, the
-/// raw → typed parser, and the reducer that folds the new value into
-/// [PlayerState]. Adding an observed property to the public API is a
+/// One spec bundles the mpv property name + format, the [ReactiveProperty]
+/// cell that owns the value, a `(raw, state) → T` parser, and a
+/// `(T, state) → PlayerState` reducer. The full update pipeline runs on
+/// every observed change: parse → dedup → reactive update → state reduce
+/// → onChange. Adding an observed property to the public API is a
 /// one-line edit to the spec list.
 ///
-/// The five named factory constructors ([MpvPropertySpec.double],
-/// [MpvPropertySpec.flag], [MpvPropertySpec.int64], [MpvPropertySpec.string],
-/// [MpvPropertySpec.node]) only differ in which [MpvFormat] they bind to mpv
-/// and what raw Dart type the parser accepts. Funnelling them through a
-/// single `parseAndDispatch` pipeline (parse → dedup → reactive update →
-/// state reduce → onChange) keeps "format → spec → dispatch" a single
-/// source of truth — adding a format is one new factory and one new branch
-/// in the event isolate, no chance to wire one and forget the other.
-///
-/// The [T] generic is the type of the [reactive] cell. For most
-/// properties [T] is also the parsed value type (a scalar like `double` or
-/// `bool`). For aggregate properties — where a single mpv property updates
-/// only one field of a larger config — the parser folds the parsed value
-/// into the current [PlayerState]'s aggregate and returns the *whole*
-/// aggregate, so the reactive holds and dedups on the full struct. This
-/// is why every parse callback receives the current [PlayerState].
+/// The generic [T] is the type of the [reactive] cell. For scalar
+/// properties [T] is also the parsed value type. For aggregate properties
+/// the parser folds the new value into a larger config (read out of
+/// [PlayerState] via the parser's `state` argument) and returns the
+/// whole aggregate, so the reactive dedups on the full struct.
 class MpvPropertySpec<T> {
-  /// Internal canonical constructor. All factories funnel through here so the
-  /// dispatch pipeline ([parseAndDispatch]) is implemented exactly once.
   MpvPropertySpec._({
     required this.name,
     required this.format,
@@ -63,9 +50,9 @@ class MpvPropertySpec<T> {
       );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_FLAG`. The event
-  /// isolate forwards flag values as `int` (0/1); we accept either
-  /// representation defensively so future format changes don't silently
-  /// miss flags.
+  /// isolate forwards flag values as `int` (0/1); the parser accepts
+  /// either representation so a format change in the isolate doesn't
+  /// silently break flags here.
   factory MpvPropertySpec.flag({
     required String name,
     required ReactiveProperty<T> reactive,

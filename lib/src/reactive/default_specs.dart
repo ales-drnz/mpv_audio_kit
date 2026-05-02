@@ -31,7 +31,7 @@ import 'reactive_property.dart';
 class DefaultPropertyReactives {
   DefaultPropertyReactives();
 
-  // Lifecycle (shared with custom lifecycle helpers in Player).
+  // Lifecycle.
   final ReactiveProperty<bool> playing = ReactiveProperty<bool>(false);
 
   // Playback / timing.
@@ -135,20 +135,15 @@ class DefaultPropertyReactives {
       ReactiveProperty<AudioDisplayMode>(AudioDisplayMode.embeddedFirst);
   final ReactiveProperty<CoverArtAutoMode> coverArtAuto =
       ReactiveProperty<CoverArtAutoMode>(CoverArtAutoMode.no);
-  // null = `inf` (mpv's "keep frame indefinitely"); finite Duration is the
-  // hold time. Default mirrors the wrapper's pre-init `image-display-duration=inf`.
+  // `null` = mpv's `inf` (frame held indefinitely); finite Duration is
+  // the explicit hold time.
   final ReactiveProperty<Duration?> imageDisplayDuration =
       ReactiveProperty<Duration?>(null);
 
-  // Stream-only by design: `prefetch-state` is an event-shaped signal
-  // (idle → loading → ready → used cycles per playlist transition), not
-  // a snapshot value. Surfacing it as a [PlayerState] field would let
-  // consumers `.copyWith` it, which would race the wrapper's reducer.
-  // Exposed exclusively through `Player.stream.prefetchState`. The
-  // [ReactiveProperty] storage exists so the registry can dedup
-  // duplicate emissions and so `Player.dispose` can close the
-  // controller, but `_reactives.prefetchState.value` is not a public
-  // surface — never read it from outside the wrapper.
+  // Stream-only: `prefetch-state` is an event-shaped signal, not a
+  // snapshot value. The reactive cell exists for dedup + dispose
+  // bookkeeping, but the value is exposed exclusively through
+  // [PlayerStream.prefetchState] — never read `.value` from outside.
   final ReactiveProperty<MpvPrefetchState> prefetchState =
       ReactiveProperty<MpvPrefetchState>(MpvPrefetchState.idle);
 
@@ -325,14 +320,10 @@ List<MpvPropertySpec> buildDefaultSpecs(
     // sibling state — the player's custom dispatcher does.
 
     // ── Audio params (decoder side) ──────────────────────────────────────
-    //
-    // Aggregate cell: 3 specs (`audio-params`, `audio-codec`,
-    // `audio-codec-name`) share `r.audioParams`. Each spec parses its
-    // own mpv property and folds the result into the current
-    // [AudioParams] via copyWith — the reactive holds and dedups on the
-    // full struct. The `audio-params` node carries 5 of the 8 fields
-    // (format / sampleRate / channels / channelCount / hrChannels);
-    // codec and codecName arrive as separate string properties.
+    // Aggregate cell shared by three specs. The `audio-params` node
+    // carries five of the eight fields; codec and codecName arrive as
+    // separate string properties below. Each spec folds its slice via
+    // copyWith so the reactive dedups on the full struct.
     MpvPropertySpec<AudioParams>.node(
       name: 'audio-params',
       reactive: r.audioParams,
@@ -384,10 +375,8 @@ List<MpvPropertySpec> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(gapless: v),
     ),
     // ── ReplayGain ───────────────────────────────────────────────────────
-    // Aggregate cell: the 4 mpv properties (replaygain, replaygain-preamp,
-    // replaygain-fallback, replaygain-clip) share `r.replayGain` — each
-    // spec folds its own value into the current [ReplayGainConfig] via
-    // copyWith and the reactive dedups on the full struct.
+    // Aggregate cell — same pattern as audio-params above: four specs
+    // share one reactive that dedups on the full [ReplayGainConfig].
     MpvPropertySpec<ReplayGainConfig>.string(
       name: 'replaygain',
       reactive: r.replayGain,
@@ -421,9 +410,8 @@ List<MpvPropertySpec> buildDefaultSpecs(
     ),
 
     // ── Cache ────────────────────────────────────────────────────────────
-    // Aggregate cell: the 5 mpv cache properties share `r.cache` — each
-    // spec folds its own value into the current [CacheConfig] via
-    // copyWith and the reactive dedups on the full struct.
+    // Aggregate cell — five specs share one reactive that dedups on the
+    // full [CacheConfig].
     MpvPropertySpec<CacheConfig>.string(
       name: 'cache',
       reactive: r.cache,

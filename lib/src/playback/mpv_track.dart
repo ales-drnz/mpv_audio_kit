@@ -113,13 +113,12 @@ abstract class MpvTrack with _$MpvTrack {
     /// information.
     double? replaygainTrackPeak,
 
-    /// ReplayGain album-level gain in dB. Falls back to per-track value
-    /// when the file carries only per-track information (mpv-side
-    /// behavior; future versions may stop the fallback).
+    /// ReplayGain album-level gain in dB. mpv falls back to the
+    /// per-track value when the file carries only per-track tags.
     double? replaygainAlbumGain,
 
-    /// ReplayGain album-level peak as a linear amplitude. Same fallback
-    /// behavior as [replaygainAlbumGain].
+    /// ReplayGain album-level peak as a linear amplitude. Same per-track
+    /// fallback as [replaygainAlbumGain].
     double? replaygainAlbumPeak,
 
     /// Per-track tag dictionary. Distinct from [PlayerState.metadata]

@@ -7,18 +7,10 @@ library;
 
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip());
 
   // ONE Player per file, by convention. Companion files in this
   // directory cover the rest of the dispose-contract surface:
@@ -30,12 +22,7 @@ setUpAll(() {
 
   group('Dispose safety — idempotency', () {
     test('dispose() called twice is a no-op', () async {
-      final player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
+      final player = await buildPlayer();
       // Let the event isolate spawn fully before we tear it down — a
       // dispose that races the isolate's first `mpv_wait_event` lands
       // a non-graceful subprocess exit at flutter_test teardown.

@@ -25,6 +25,8 @@ part 'pitch_tempo_config.freezed.dart';
 @freezed
 abstract class PitchTempoConfig with _$PitchTempoConfig {
   const factory PitchTempoConfig({
+    /// Whether the stage is inserted into mpv's filter chain. Disabling
+    /// preserves the configuration.
     @Default(false) bool enabled,
 
     /// Pitch multiplier. Hard range 0.01–100. Practical sweet spot

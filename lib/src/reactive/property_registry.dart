@@ -28,14 +28,11 @@ class PropertyRegistry {
   PropertyRegistry();
 
   /// Upper bound on reply-IDs the registry assigns in [observeAll].
-  ///
-  /// Out-of-registry observers (the few JSON / aggregate properties wired
+  /// Out-of-registry observers (JSON / aggregate properties wired
   /// directly in `Player._observe`) must use IDs strictly greater than
-  /// this so nobody can mis-attribute an event to the wrong half of the
-  /// dispatch pipeline. mpv treats the integer as opaque user data, so the
-  /// boundary is purely an internal convention — but it costs ~zero to
-  /// enforce and made the bug class "registry overlapped custom range"
-  /// impossible by construction.
+  /// this so the two dispatch halves stay distinguishable in `mpv -v`
+  /// logs. mpv itself treats the integer as opaque user data — the
+  /// boundary is purely an internal convention.
   static const int registryReplyIdMax = 10000;
 
   final Map<String, MpvPropertySpec> _byName = {};

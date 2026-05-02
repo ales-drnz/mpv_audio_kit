@@ -8,6 +8,7 @@
 // for `state.duration` to be populated. This helper collapses that
 // boilerplate into one call.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -43,12 +44,10 @@ bool initLibmpvOrSkip({String? fixturePath}) {
   return true;
 }
 
-/// Builds a [Player] wired for tests (no audio device, no auto-play,
-/// no logs) and, if [fixturePath] is non-null, opens it and waits for
-/// the duration observer to land.
-///
-/// Mirrors the body that every `setters_*_test.dart` repeats today.
-Future<Player> buildPlayerWithFixture({String? fixturePath}) async {
+/// Builds a [Player] wired for tests: no audio device, no auto-play,
+/// no logs. Use when the test wants to drive `open()` itself (e.g.
+/// dispose-during-load races, multi-fixture suites).
+Future<Player> buildPlayer() async {
   final player = Player(
     configuration: const PlayerConfiguration(
       autoPlay: false,
@@ -56,11 +55,37 @@ Future<Player> buildPlayerWithFixture({String? fixturePath}) async {
     ),
   );
   await player.setRawProperty('ao', 'null');
-  if (fixturePath != null) {
+  return player;
+}
+
+/// Opens [fixturePath] on [player] and waits for the file-loaded
+/// signal. Anchors on `seekCompleted` (mpv's PLAYBACK_RESTART), which
+/// fires exactly once per `loadfile` after the demuxer has settled —
+/// robust against `ReactiveProperty` dedup on identical-duration
+/// fixtures.
+Future<void> openAndWaitForLoad(
+  Player player,
+  String fixturePath, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final c = Completer<void>();
+  final sub = player.stream.seekCompleted.listen((_) {
+    if (!c.isCompleted) c.complete();
+  });
+  try {
     await player.open(Media(fixturePath), play: false);
-    await player.stream.duration
-        .firstWhere((d) => d.inMilliseconds > 500)
-        .timeout(const Duration(seconds: 5));
+    await c.future.timeout(timeout);
+  } finally {
+    await sub.cancel();
+  }
+}
+
+/// Convenience for the most common setUpAll body: builds a [Player] and,
+/// if [fixturePath] is non-null, opens it and waits for file-loaded.
+Future<Player> buildPlayerWithFixture({String? fixturePath}) async {
+  final player = await buildPlayer();
+  if (fixturePath != null) {
+    await openAndWaitForLoad(player, fixturePath);
   }
   return player;
 }

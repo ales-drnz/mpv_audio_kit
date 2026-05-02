@@ -32,19 +32,13 @@ enum ReplayGainMode {
       };
 }
 
-/// Aggregate of mpv's four ReplayGain properties.
+/// Aggregate of mpv's four ReplayGain properties (`replaygain`,
+/// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`).
 ///
-/// Useful when restoring a saved preset or applying a complete change
-/// in one shot via [Player.setReplayGain] — the wrapper writes the
-/// four backing properties (`replaygain`, `replaygain-preamp`,
-/// `replaygain-clip`, `replaygain-fallback`) atomically.
-///
-/// For one-off tweaks, modify a single field via
-/// `state.replayGain.copyWith(preamp: -3)` and pass the result to
-/// [Player.setReplayGain].
-///
-/// Read the current configuration via [PlayerState.replayGain] or
-/// observe live changes via [PlayerStream.replayGain].
+/// Apply atomically via [Player.setReplayGain]. For one-off tweaks
+/// use `state.replayGain.copyWith(preamp: -3)`. Read the current
+/// configuration via [PlayerState.replayGain] or observe live changes
+/// via [PlayerStream.replayGain].
 @freezed
 abstract class ReplayGainConfig with _$ReplayGainConfig {
   const factory ReplayGainConfig({

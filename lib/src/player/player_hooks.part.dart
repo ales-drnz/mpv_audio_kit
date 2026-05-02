@@ -3,10 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Module for mpv hook registration and continuation.
-///
-/// Hooks let you intercept mpv's file-loading pipeline and modify how a
-/// stream is opened — for example to lazily resolve a URL, inject per-file
+/// Hook setters: register / continue mpv hooks. Hooks let you intercept
+/// mpv's file-loading pipeline to lazily resolve a URL, inject per-file
 /// HTTP headers, or redirect to a different source.
 ///
 /// Usage pattern:

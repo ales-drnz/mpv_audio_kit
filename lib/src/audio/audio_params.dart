@@ -6,7 +6,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'audio_params.freezed.dart';
 
-/// Audio format parameters as reported by the mpv audio output pipeline.
+/// Audio format parameters reported by mpv. Used both for the decoder
+/// side (`audio-params` + `audio-codec*`) and for the hardware output
+/// side (`audio-out-params`).
 @freezed
 abstract class AudioParams with _$AudioParams {
   const factory AudioParams({

@@ -3,7 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Module for comprehensive audio control, DSP, and hardware synchronization.
+/// Audio setters: volume, mute, output device, format / channel layout,
+/// the four typed DSP stages, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
   /// Sets volume (0–100; values above 100 amplify the signal).
   Future<void> setVolume(double volume) async {
@@ -154,14 +155,13 @@ mixin _AudioModule on _PlayerBase {
     _command(['ao-reload']);
   }
 
-  // ── DSP filter chain ───────────────────────────────────────────────────────
-  //
-  // Four typed DSP stages plus a raw escape for everything else. Each
-  // typed stage is upserted into mpv's `af` chain via a reserved label so
-  // the wrapper can flip a single stage without touching the others. Chain
-  // order is fixed: custom filters first, then compressor → equalizer →
-  // pitch/tempo → loudnorm. `enabled=false` removes the stage from the
-  // chain (zero-CPU) but preserves its parameters in state for re-enable.
+  // ── DSP filter chain ────────────────────────────────────────────────
+  // Four typed stages (compressor / equalizer / pitch-tempo / loudnorm)
+  // plus a raw escape ([setCustomAudioFilters]). Each typed stage owns a
+  // reserved label and is upserted independently of the others. Chain
+  // order is fixed: custom → compressor → equalizer → pitch/tempo →
+  // loudnorm. `enabled=false` strips the stage from the chain at zero
+  // CPU cost while preserving its parameters in state.
 
   /// Sets the 10-band graphic equalizer config and applies it to mpv's
   /// filter chain in one atomic operation.

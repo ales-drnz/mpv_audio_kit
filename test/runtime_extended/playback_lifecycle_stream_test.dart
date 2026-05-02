@@ -10,7 +10,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // PlaybackLifecycle aggregate stream — the derivation logic is unit-
@@ -25,28 +25,11 @@ void main() {
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   test('playbackLifecycle stream emits PlaybackLifecycle.playing during '
       'normal playback', () async {
-    final player = Player(
-      configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ),
-    );
-    await player.setRawProperty('ao', 'null');
+    final player = await buildPlayer();
 
     try {
       // Pre-subscribe BEFORE play() — the lazy-bind only attaches the

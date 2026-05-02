@@ -9,41 +9,21 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-// 5-second fixture lets sustained-playback observers (audioBitrate,
+  // 5-second fixture lets sustained-playback observers (audioBitrate,
   // bufferDuration, audioPts, position) emit several values before EOF.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('5s fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('Runtime state — sustained-playback observers populate', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 4500)
-          .timeout(const Duration(seconds: 5));
+      player = await buildPlayerWithFixture(fixturePath: fixturePath);
     });
 
     tearDownAll(() async {
@@ -142,11 +122,7 @@ void main() {
         markTestSkipped('1s fixture missing');
         return;
       }
-      await player.open(Media(shortPath), play: false);
-      await player.stream.duration
-          .firstWhere((d) => d.inMilliseconds > 500 &&
-              d.inMilliseconds < 1500)
-          .timeout(const Duration(seconds: 5));
+      await openAndWaitForLoad(player, shortPath);
 
       await player.play();
       // 1s file + a comfortable margin for AO + observer roundtrip.

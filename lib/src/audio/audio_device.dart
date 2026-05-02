@@ -12,7 +12,6 @@ class AudioDevice {
   /// Human-readable description shown in system mixer / device pickers.
   final String description;
 
-  /// Creates an [AudioDevice] with the specified [name] and [description].
   const AudioDevice(this.name, this.description);
 
   /// The default automatic device selection.
@@ -20,6 +19,9 @@ class AudioDevice {
       : name = 'auto',
         description = 'Auto';
 
+  // Equality on [name] only — same-name instances must dedup even when
+  // [description] differs, since mpv echoes only the name and the
+  // description is reattached from `audio-device-list` afterwards.
   @override
   bool operator ==(Object other) =>
       identical(this, other) || other is AudioDevice && name == other.name;

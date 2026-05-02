@@ -3,7 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Module for network, cache, and buffering configuration.
+/// Network setters: cache configuration, demuxer limits, network
+/// timeouts, TLS verification, and audio-output buffering.
 mixin _NetworkModule on _PlayerBase {
   /// Sets the cache configuration atomically.
   ///

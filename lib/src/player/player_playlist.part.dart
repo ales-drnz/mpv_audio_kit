@@ -3,7 +3,9 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Module for managing the media queue and track selection.
+/// Playlist setters: queue mutation (add / remove / move / replace),
+/// navigation (next / previous / jump), repeat / shuffle / prefetch
+/// modes.
 mixin _PlaylistModule on _PlayerBase {
   /// Appends [media] to the end of the current playlist.
   ///
@@ -17,7 +19,7 @@ mixin _PlaylistModule on _PlayerBase {
   Future<void> add(Media media) async {
     _checkNotDisposed();
     _mediaCache[media.uri] = media;
-    final resolved = await _resolveUri(media.uri);
+    final resolved = await resolveUri(media.uri);
     if (_disposed) {
       await resolved.dispose?.call();
       return;
@@ -68,7 +70,7 @@ mixin _PlaylistModule on _PlayerBase {
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
     _mediaCache[media.uri] = media;
-    final resolved = await _resolveUri(media.uri);
+    final resolved = await resolveUri(media.uri);
     if (_disposed) {
       await resolved.dispose?.call();
       return;
@@ -100,10 +102,8 @@ mixin _PlaylistModule on _PlayerBase {
         _prop('loop-file', 'no');
         _prop('loop-playlist', 'inf');
     }
-    // Optimistic update so `state.loop` and the matching stream
-    // reflect the requested mode without waiting for the two `loop-file`
-    // and `loop-playlist` observers to round-trip from mpv. Matches the
-    // pattern used by every other setter in this package.
+    // Optimistic update — `state.loop` reflects the requested mode
+    // without waiting for the two underlying observers to round-trip.
     _updateField(
       (s) => s.copyWith(loop: mode),
       _loop,
@@ -120,8 +120,6 @@ mixin _PlaylistModule on _PlayerBase {
     } else {
       _command(['playlist-unshuffle']);
     }
-    // Optimistic update *after* the FFI side-effects, matching the
-    // `_prop → _updateField` ordering of every other setter.
     _updateField(
         (s) => s.copyWith(shuffle: shuffle), _reactives.shuffle, shuffle);
   }

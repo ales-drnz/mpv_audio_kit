@@ -10,6 +10,11 @@ import 'dart:typed_data';
 /// GIF) exactly as it was embedded in the audio file's attached
 /// picture stream. Consumers can hand the bytes directly to
 /// `Image.memory(bytes)` or `dart:ui.instantiateImageCodec`.
+///
+/// Equality follows reference identity: two [CoverArtRaw] instances
+/// with the same byte content compare unequal because [Uint8List]
+/// itself does not implement value equality. Use the bytes directly
+/// for image cache keys.
 class CoverArtRaw {
   const CoverArtRaw({required this.bytes, required this.mimeType});
 

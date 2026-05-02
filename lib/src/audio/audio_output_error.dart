@@ -7,16 +7,10 @@ import 'package:meta/meta.dart';
 import '../audio/audio_output_state.dart';
 import '../events/mpv_player_error.dart';
 
-/// Pure mapping from an [AudioOutputState] transition to an optional
-/// [MpvLogError] surfaced on `Player.stream.error`.
-///
-/// `audio-output-state` reaches `failed` the moment `ao_init_best()`
-/// returns NULL — the wrapper turns that into a typed error so consumers
-/// can react immediately to a silent player without polling
-/// `audio-out-params/format`. All other states return `null`.
-///
-/// Extracted from the player constructor for testability — see
-/// `test/internal/audio_output_error_test.dart`.
+/// Maps an [AudioOutputState] transition to an optional [MpvLogError] for
+/// `Player.stream.error`. Only [AudioOutputState.failed] produces an error;
+/// every other state returns `null` so consumers see a typed signal the
+/// moment the audio output stops producing samples.
 @internal
 MpvLogError? buildAudioOutputError(AudioOutputState state) {
   if (state == AudioOutputState.failed) {

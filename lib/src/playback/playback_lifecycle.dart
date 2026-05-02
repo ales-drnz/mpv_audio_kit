@@ -2,17 +2,15 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// Aggregate playback lifecycle.
+/// Aggregate playback lifecycle, derived from `playing` / `buffering` /
+/// `completed` / `pausedForCache` / `duration`. Subscribe via
+/// `PlayerStream.playbackLifecycle` when a single mutually-exclusive
+/// state fits the UI better than three separate booleans. The underlying
+/// booleans remain available on `PlayerStream` for granular use cases.
 ///
-/// Convenience enum derived from `playing` / `buffering` / `completed` /
-/// `pausedForCache` / `duration`. Subscribe via
-/// `PlayerStream.playbackLifecycle` when a single, mutually-exclusive
-/// state fits the UI better than three separate booleans (e.g. a single
-/// "▶ / ⏸ / ⏳" indicator). The underlying booleans are still available
-/// on `PlayerStream` for granular use cases.
-///
-/// Named `PlaybackLifecycle` rather than `PlaybackState` to avoid an
-/// import collision with `audio_service`'s own `PlaybackState`.
+/// Named `PlaybackLifecycle` rather than `PlaybackState` to avoid a
+/// symbol clash with the `audio_service` package, which is a common
+/// downstream consumer.
 enum PlaybackLifecycle {
   /// No file loaded. UI should hide transport controls.
   idle,

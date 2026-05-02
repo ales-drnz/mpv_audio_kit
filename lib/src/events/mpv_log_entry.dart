@@ -2,9 +2,11 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// A structured log entry emitted by the mpv engine.
-///
-/// Received via [PlayerStream.log]. Filter by [level] to reduce noise.
+/// A structured log entry. Emitted on [PlayerStream.log] for messages
+/// from the mpv engine (`'ffmpeg'`, `'demux'`, `'ao'`, …) and on
+/// [PlayerStream.internalLog] for wrapper-side diagnostics (parse
+/// warnings, hook timeouts; always carries `prefix: 'mpv_audio_kit'`).
+/// Filter by [level] to reduce noise.
 ///
 /// Example:
 /// ```dart
@@ -19,7 +21,9 @@ class MpvLogEntry {
   /// Severity level: `'trace'`, `'debug'`, `'v'`, `'info'`, `'warn'`, `'error'`, `'fatal'`.
   final String level;
 
-  /// The raw log message text (may include a trailing newline).
+  /// The log message text. Trailing newlines are stripped before delivery
+  /// so consumers can concatenate or render entries without per-line
+  /// trimming.
   final String text;
 
   const MpvLogEntry({

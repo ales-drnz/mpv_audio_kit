@@ -58,8 +58,14 @@ class OrphanHandleTracker {
     }
     _initialized = true;
 
+    _sweepStaleSentinelFiles();
+
     try {
       if (!_file.existsSync()) {
+        // Intentionally never freed: the buffer must outlive the Dart VM
+        // so the next Hot-Restart can rehydrate orphan addresses from it.
+        // The OS reclaims the allocation when the host process eventually
+        // exits.
         _buffer = calloc<IntPtr>(_kBufferSize);
         _file.writeAsStringSync(_buffer.address.toString());
       } else {
@@ -89,6 +95,57 @@ class OrphanHandleTracker {
         _completer.complete();
       }
     }
+  }
+
+  /// Cleans up `mpv_audio_kit_refs_<pid>.txt` files from previous Dart
+  /// VMs whose host process is no longer alive. Without this sweep the
+  /// system temp directory accumulates one file per dev session for the
+  /// lifetime of the host machine.
+  ///
+  /// Safe under `flutter test` because the harness disables this tracker
+  /// (`hotRestartCleanup: false`), so the sweep never runs in CI / test
+  /// processes that share a pid namespace.
+  void _sweepStaleSentinelFiles() {
+    try {
+      final tmp = Directory(Directory.systemTemp.path);
+      if (!tmp.existsSync()) return;
+      final keepName = _file.uri.pathSegments.last;
+      for (final entry in tmp.listSync(followLinks: false)) {
+        if (entry is! File) continue;
+        final name = entry.uri.pathSegments.last;
+        if (!name.startsWith('mpv_audio_kit_refs_') ||
+            !name.endsWith('.txt') ||
+            name == keepName) {
+          continue;
+        }
+        final pidStr = name.substring(
+            'mpv_audio_kit_refs_'.length, name.length - '.txt'.length);
+        final otherPid = int.tryParse(pidStr);
+        if (otherPid == null || otherPid == pid) continue;
+        if (_isPidAlive(otherPid)) continue;
+        try {
+          entry.deleteSync();
+        } catch (_) {
+          // Best-effort: another VM may be racing the same sweep.
+        }
+      }
+    } catch (e) {
+      debugLog('mpv_audio_kit: stale-sentinel sweep failed: $e');
+    }
+  }
+
+  /// Returns `true` when [otherPid] points at a live process (POSIX:
+  /// `kill -0`; Windows: best-effort assume alive). The check is purely
+  /// to avoid wiping the sentinel of a still-running sibling Dart VM
+  /// (rare in practice, but the tracker is shared per-pid).
+  bool _isPidAlive(int otherPid) {
+    if (Platform.isWindows) {
+      // No cheap POSIX-equivalent without an FFI call; err on the side
+      // of keeping the file so we never delete a live VM's sentinel.
+      return true;
+    }
+    final result = Process.runSync('kill', ['-0', otherPid.toString()]);
+    return result.exitCode == 0;
   }
 
   /// Records [handle] in the first free slot.

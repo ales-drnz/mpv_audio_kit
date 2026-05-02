@@ -21,11 +21,11 @@ import 'package:flutter/foundation.dart';
 const MethodChannel _channel = MethodChannel('mpv_audio_kit');
 final Map<String, String> _assetCache = {};
 
-// De-duplicates concurrent `normalizeUri()` calls for the same asset:
-// the first caller does the bundle load + file write, any concurrent
-// callers await the same Future. Without this, two open() calls on
-// the same asset could both call writeAsBytes() in parallel and the
-// second writer could truncate the first writer's file mid-flush.
+// Deduplicates concurrent [resolveUri] calls for the same asset: the
+// first caller does the bundle load + file write, concurrent callers
+// await the same Future. Without this, two open() calls on the same
+// asset could both reach `writeAsBytes` and the second writer could
+// truncate the first writer's file mid-flush.
 final Map<String, Future<String>> _assetInflight = {};
 
 /// Resolution result for a URI passed through [resolveUri].
@@ -54,20 +54,40 @@ class ResolvedUri {
 /// Resolves [uri] for libmpv and returns a [ResolvedUri] whose
 /// [ResolvedUri.dispose] callback must be invoked if the result is
 /// never passed to `loadfile`.
+///
+/// Throws a [StateError] when an Android `content://` URI cannot be
+/// resolved to an open file descriptor — letting the failure surface
+/// at the `Player.open()` call site rather than silently handing mpv
+/// a URI it cannot open. `asset://` failures keep the soft-fallback
+/// behaviour: the original URI is returned and mpv emits a typed
+/// end-file error if the path does not work either.
 Future<ResolvedUri> resolveUri(String uri) async {
-  try {
-    if (uri.startsWith('asset://')) {
+  if (uri.startsWith('asset://')) {
+    try {
       return ResolvedUri(await _copyAssetToCache(uri));
+    } catch (e) {
+      debugPrint('mpv_audio_kit: asset resolution failed for $uri: $e');
+      return ResolvedUri(uri);
     }
-    if (Platform.isAndroid && uri.startsWith('content://')) {
+  }
+  if (Platform.isAndroid && uri.startsWith('content://')) {
+    try {
       final fd = await _channel
           .invokeMethod<int>('openFileDescriptor', {'uri': uri});
       if (fd != null && fd > 0) {
         return ResolvedUri('fd://$fd', () => _closeAndroidFd(fd));
       }
+      throw StateError(
+        'mpv_audio_kit: content:// resolution returned no file descriptor '
+        'for $uri (the ContentResolver may have rejected the URI or the '
+        'caller lacks read permission)',
+      );
+    } on PlatformException catch (e) {
+      throw StateError(
+        'mpv_audio_kit: content:// resolution failed for $uri '
+        '(${e.code}: ${e.message})',
+      );
     }
-  } catch (e) {
-    debugPrint('mpv_audio_kit: resolveUri error for $uri: $e');
   }
   return ResolvedUri(uri);
 }
@@ -82,7 +102,12 @@ Future<void> _closeAndroidFd(int fd) async {
 
 Future<String> _copyAssetToCache(String uri) {
   final cached = _assetCache[uri];
-  if (cached != null) return Future.value(cached);
+  // Re-check the file on every hit. macOS / Linux may evict /tmp between
+  // sessions or under disk pressure; without this guard a cached path
+  // outlives its file and `loadfile` fails opaquely. The miss path
+  // re-extracts the asset.
+  if (cached != null && File(cached).existsSync()) return Future.value(cached);
+  if (cached != null) _assetCache.remove(uri);
   return _assetInflight.putIfAbsent(uri, () => _doCopyAsset(uri));
 }
 

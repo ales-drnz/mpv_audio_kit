@@ -8,29 +8,17 @@ library;
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip());
 
   // ONE Player per file (see dispose_safety_test.dart for the rationale).
 
   group('Dispose safety — typed setters throw StateError post-dispose', () {
     test('representative setter sample across the 5 mixin modules throws '
         'StateError after dispose', () async {
-      final player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
+      final player = await buildPlayer();
       // Allow the event isolate to spawn fully before disposing.
       await Future.delayed(const Duration(milliseconds: 200));
       await player.dispose();

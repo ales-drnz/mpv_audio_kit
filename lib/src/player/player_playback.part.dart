@@ -3,7 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Module for controlling the core playback pipeline.
+/// Transport setters: play / pause / stop / seek, chapter navigation,
+/// and the A-B loop controls.
 mixin _PlaybackModule on _PlayerBase {
   /// Starts or resumes playback. Idempotent: a no-op when already
   /// playing. Returns immediately; the actual `pause=no` round-trip

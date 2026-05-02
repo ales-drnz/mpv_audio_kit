@@ -92,7 +92,7 @@ class Player extends _PlayerBase
     _checkNotDisposed();
     _mediaCache.clear();
     _mediaCache[media.uri] = media;
-    final resolved = await _resolveUri(media.uri);
+    final resolved = await resolveUri(media.uri);
     if (_disposed) {
       await resolved.dispose?.call();
       return;
@@ -123,7 +123,7 @@ class Player extends _PlayerBase
     final resolved = <ResolvedUri>[];
     for (final m in medias) {
       _mediaCache[m.uri] = m;
-      final r = await _resolveUri(m.uri);
+      final r = await resolveUri(m.uri);
       if (_disposed) {
         await r.dispose?.call();
         for (final prior in resolved) {
@@ -252,11 +252,11 @@ abstract class _PlayerBase {
   StreamSubscription<MpvIsolateEvent>? _eventSub;
   bool _disposed = false;
 
-  // Hook bookkeeping. `_activeHookIds` is the source of truth for
-  // [Player.continueHook] validity (rejects duplicate continues before
-  // they reach mpv, where the behaviour for stale ids is undefined).
-  // `_registeredHookNames` collapses duplicate registrations per name:
-  // mpv allows multiple, but its shutdown path can stall when several
+  // `_activeHookIds` is authoritative for [Player.continueHook]: mpv's
+  // behaviour on stale ids is undefined across versions, so duplicate
+  // continues are rejected here before they reach FFI.
+  // `_registeredHookNames` collapses duplicate registrations per name —
+  // mpv allows multiples, but its shutdown path can stall when several
   // events for the same hook are still in flight at quit time.
   final _hookTimeouts = <String, Duration>{};
   final _hookTimers = <int, Timer>{};
@@ -388,15 +388,18 @@ abstract class _PlayerBase {
   void _applyPreInitOptions() {
     _opt('vid', 'auto');
     _opt('vo', 'null');
-    // Standard mpv cover art logic
+    // Cover-art handling: prefer the embedded picture, never scan the
+    // surrounding directory, and hold the still frame alive so the
+    // wrapper can extract it via `embedded-cover-art-data` after load.
     _opt('audio-display', 'embedded-first');
-    _opt('cover-art-auto', 'no'); // Disable external file scanning
-    _opt('image-display-duration', 'inf'); // Keep frame alive for screenshot
+    _opt('cover-art-auto', 'no');
+    _opt('image-display-duration', 'inf');
 
     _opt('keep-open', 'yes');
     _opt('idle', 'yes');
 
-    // Disable all builtin scripts and bindings — not needed for a library.
+    // Disable mpv's built-in scripts and key bindings — irrelevant for a
+    // library embedded in a host app.
     _opt('osc', 'no');
     _opt('ytdl', 'no');
     _opt('load-stats-overlay', 'no');
@@ -443,15 +446,14 @@ abstract class _PlayerBase {
       case MpvEventStartFile():
         _updateLifecycle(buffering: true, completed: false);
       case MpvEventFileLoaded():
-        // `state.playing` is driven by the `pause` property observer
-        // (set globally before each `loadfile`); here we only clear
-        // buffering/completed and kick the cover-art pipeline.
+        // `state.playing` is driven by the `core-idle` observer; here we
+        // only clear buffering/completed and trigger cover-art capture.
         _updateLifecycle(buffering: false, completed: false);
         _pollPosition();
         _extractEmbeddedCover();
       case MpvEventPlaybackSeek():
-        // No-op: position mutation here would flash 0 before the
-        // post-restart re-poll lands.
+        // No-op: mutating position here would flash 0 before the
+        // post-restart poll lands.
         break;
       case MpvEventPlaybackRestart():
         _pollPosition();
@@ -611,14 +613,6 @@ abstract class _PlayerBase {
     }
     _activeHookIds.clear();
   }
-
-  /// Single touchpoint for translating non-libmpv-native URI schemes
-  /// (`asset://`, Android `content://`) into something `loadfile` can
-  /// open. Returns a [ResolvedUri] whose `dispose` callback callers
-  /// MUST invoke when the URI is never handed to mpv (e.g. abort path
-  /// when `_disposed` flips before `loadfile`) — otherwise Android
-  /// content:// FDs leak.
-  Future<ResolvedUri> _resolveUri(String uri) => resolveUri(uri);
 
   /// Sets `file-local-options/http-header-fields` for the next
   /// `loadfile`. mpv resets the option once the loaded file stops

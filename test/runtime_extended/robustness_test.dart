@@ -11,7 +11,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // File robustness — covers what happens when consumers feed garbage
@@ -27,26 +27,13 @@ void main() {
   // user pick arbitrary files.
   final fixturesDir = '${Directory.current.path}/test/fixtures/extra';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip());
 
   group('Robustness — broken / corrupted files', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-        configuration: const PlayerConfiguration(
-          autoPlay: false,
-          logLevel: 'no',
-        ),
-      );
-      await player.setRawProperty('ao', 'null');
+      player = await buildPlayer();
     });
 
     tearDownAll(() async {

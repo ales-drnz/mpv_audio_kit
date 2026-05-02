@@ -10,11 +10,9 @@ import 'package:mpv_audio_kit/src/utils/orphan_handle_tracker.dart';
 import 'dart:ffi';
 import 'dart:io';
 
-/// Global configuration / one-time initialization for `mpv_audio_kit`.
-///
-/// Despite living next to `Player`, this is *not* the player itself —
-/// it owns the libmpv `DynamicLibrary` lookup and the orphaned-handle
-/// cleanup that fires across hot-restarts.
+/// One-time initialization for `mpv_audio_kit`. Owns the libmpv
+/// `DynamicLibrary` lookup and the orphaned-handle cleanup that fires
+/// across Flutter Hot-Restarts.
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 
@@ -39,9 +37,9 @@ abstract final class MpvAudioKit {
   /// alongside your app.
   ///
   /// [hotRestartCleanup] (default: `true`) — recovers libmpv handles
-  /// leaked across a Flutter Hot-Restart so they don't block
-  /// exclusive-mode audio devices. Set to `false` in `dart test` and
-  /// other multi-VM scenarios that share a pid; the tracker would
+  /// leaked across a Flutter Hot-Restart so they don't keep
+  /// exclusive-mode audio devices locked. Pass `false` in test runners
+  /// or other multi-VM scenarios that share a pid; the tracker would
   /// otherwise mis-attribute prior-VM handles as orphans.
   static void ensureInitialized({
     String? libmpv,
@@ -51,7 +49,6 @@ abstract final class MpvAudioKit {
       return;
     }
 
-    // Apply platform-specific fixes (e.g., LC_NUMERIC for libmpv on Linux/macOS)
     _applyPlatformQuirks();
 
     if (!hotRestartCleanup) {
@@ -67,16 +64,16 @@ abstract final class MpvAudioKit {
 
       const tag = 'mpv_audio_kit: OrphanHandleTracker:';
       debugLog('$tag Found ${references.length} orphaned reference(s).');
-      debugLog(
-          '$tag Disposing over-leaked native pointers (Hot-Restart fix):');
+      debugLog('$tag Releasing leaked handles (Hot-Restart fix):');
 
-      // Load mpv library
       final lib = MpvLibrary.open(libmpv);
       for (final ref in references) {
         debugLog(' - Address: ${ref.address}');
         try {
-          // We can't use mpv_terminate_destroy because the handle thread might have panicked or exited improperly.
-          // Sending the 'quit' command is much safer and lets MPV clean up its own context in its thread.
+          // `mpv_terminate_destroy` is not safe here: the handle's
+          // worker thread may have panicked or exited mid-callback in
+          // the previous VM. Sending `quit` lets mpv unwind from inside
+          // its own thread.
           final cmd = 'quit'.toNativeUtf8();
           try {
             lib.mpvCommandString(ref, cmd);

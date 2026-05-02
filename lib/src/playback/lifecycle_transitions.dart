@@ -29,19 +29,11 @@ class LifecycleResult {
   final bool completedDidChange;
 }
 
-/// Pure-function core of the lifecycle update used on file boundaries
-/// (`MpvEventStartFile`, `MpvEventFileLoaded`, `MpvEndFileEvent`,
-/// `MpvEventShutdown`, `idle-active=true`).
-///
+/// Pure-function core of the lifecycle update used on file boundaries.
 /// Given the previous [PlayerState] and any subset of `playing` /
 /// `buffering` / `completed` overrides, returns the new state plus a
-/// per-field "did-change" flag. The caller is responsible for pushing
-/// those flags to the corresponding broadcast reactives.
-///
-/// The design intentionally keeps the dispatch logic out of this
-/// function so it stays trivially testable — see
-/// `test/internal/lifecycle_transitions_test.dart` for the suite that
-/// pins down every transition produced by the player.
+/// per-field "did-change" flag the caller pushes to the corresponding
+/// broadcast reactives.
 @internal
 LifecycleResult computeLifecycle({
   required PlayerState prev,
@@ -61,32 +53,36 @@ LifecycleResult computeLifecycle({
   );
 }
 
-/// Pure mapping from mpv's two boolean-ish loop properties (`loop-file`,
-/// `loop-playlist`) to the typed [LoopMode] state field.
-///
-/// mpv reports each loop independently: `loop-file=inf` → repeat current
-/// track, `loop-playlist=inf` → repeat the queue, both `'no'` → no loop.
-/// The wrapper aggregates these two events into one `loop` value
-/// because consumers care about the user-facing repeat mode, not the raw
-/// pair.
-///
-/// Returns `null` when the event isn't a meaningful state change (e.g.
-/// `loop-file=no` arrives but the previous mode was `loop` from the
-/// playlist-loop side — toggling loop-file off shouldn't reset the
-/// playlist loop).
+/// Folds an event from one of mpv's two loop properties (`loop-file`,
+/// `loop-playlist`) into a typed [LoopMode]. Returns `null` when the
+/// event isn't a meaningful state change — e.g. `loop-file=no` while the
+/// active mode is [LoopMode.playlist], where the file-side toggle must
+/// not reset the playlist loop.
 @internal
 LoopMode? deriveLoopMode(
   String mpvName,
   String value,
   LoopMode prevMode,
 ) {
+  // `loop-file` / `loop-playlist` accept `'inf'`, `'no'`, or a non-negative
+  // integer (finite repeat count). Any value other than `'no'` / `'0'` is
+  // an active loop; the wrapper collapses both `'inf'` and `'N>0'` into
+  // the corresponding [LoopMode].
+  bool isActiveLoopValue(String v) {
+    if (v == 'inf') return true;
+    if (v == 'no' || v.isEmpty) return false;
+    final n = int.tryParse(v);
+    return n != null && n > 0;
+  }
+
+  final active = isActiveLoopValue(value);
   switch (mpvName) {
     case 'loop-file':
-      if (value == 'inf') return LoopMode.file;
+      if (active) return LoopMode.file;
       if (prevMode == LoopMode.file) return LoopMode.off;
       return null;
     case 'loop-playlist':
-      if (value == 'inf') return LoopMode.playlist;
+      if (active) return LoopMode.playlist;
       if (prevMode == LoopMode.playlist) return LoopMode.off;
       return null;
     default:

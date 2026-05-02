@@ -134,15 +134,11 @@ void _isolateEntry(SendPort initialReplyPort) {
       // isolate's `quit` command in dispose()).
       _runEventLoop(
           lib!, handle!, toMain!, () => running, lastValues, lastTimestamps);
-      // Close `fromMain` so the listener subscription drops its hold
-      // on the isolate event loop. With no other ReceivePort kept
-      // alive, the VM tears the isolate down and the
-      // `addOnExitListener` registered in `MpvEventIsolate.start()`
-      // fires. We deliberately do NOT call `Isolate.exit()`: it
-      // bypasses the per-isolate finalizers that release the
-      // libmpv-side state we loaded via `MpvLibrary.open(...)` in
-      // this isolate, which leaves subsequent Player creations
-      // observing degraded process-wide libmpv state.
+      // Drop the last live ReceivePort so the VM tears the isolate
+      // down naturally — this runs the per-isolate finalizers that
+      // release libmpv-side state loaded via `MpvLibrary.open`.
+      // `Isolate.exit()` would skip those finalizers and leave
+      // subsequent Player creations observing degraded process state.
       fromMain.close();
     } else if (message is _ShutdownMessage) {
       // Defensive: only reachable if `_InitMessage` never arrived
@@ -222,9 +218,9 @@ void _dispatchEvent(
       toMain.send(MpvEventPlaybackSeek());
 
     case mpv.MpvEventId.mpvEventPlaybackRestart:
-      // Authoritative "seek finished" signal. The main isolate polls
-      // time-pos synchronously in response so the new position is
-      // visible on the stream before any throttled time-pos event.
+      // The main isolate polls time-pos synchronously in response, so
+      // the new position lands on the stream before any throttled
+      // time-pos event from the property observer.
       toMain.send(MpvEventPlaybackRestart());
   }
 }
@@ -291,12 +287,10 @@ void _dispatchProperty(
 
   if (prop.format == mpv.MpvFormat.mpvFormatNode && prop.data != nullptr) {
     final decoded = decodeMpvNode(prop.data.cast<mpv.MpvNode>().ref);
-    // Best-effort dedup via JSON encoding: deterministic for Map/List/scalar
-    // trees that mpv emits and avoids walking the tree twice with a
-    // dedicated deep-equality check. Falls through with no dedup if the
-    // decoded value contains something `jsonEncode` can't serialize (e.g. a
-    // Uint8List from MPV_FORMAT_BYTE_ARRAY embedded inside a node — not
-    // observed in practice for our property set).
+    // Dedup against the JSON encoding of the decoded tree. Cheap, and
+    // sufficient because mpv only emits Map/List/scalar shapes for the
+    // properties the wrapper observes. Falls through without dedup when
+    // jsonEncode rejects the tree (no observed cases today).
     final key = _nodeDedupKey(decoded);
     if (key != null && lastValues[name] == key) {
       return;
@@ -306,13 +300,10 @@ void _dispatchProperty(
     return;
   }
 
-  // Fallthrough: format is one mpv emitted that the wrapper does not
-  // observe (NONE / OSD_STRING / NODE_ARRAY / NODE_MAP / BYTE_ARRAY at
-  // the top level — those types only appear inside a NODE for our
-  // property set), or `data == nullptr` which mpv uses to signal
-  // "property unavailable" mid-stream. Silently drop: re-emitting the
-  // last cached value would be wrong, and pushing a sentinel would
-  // break dedup downstream.
+  // Fallthrough: an unobserved format (NONE / OSD_STRING / top-level
+  // BYTE_ARRAY) or `data == nullptr` ("property unavailable" mid-stream).
+  // Drop silently — re-emitting a cached value would be wrong and a
+  // sentinel would break downstream dedup.
 }
 
 void _dispatchLog(SendPort toMain, mpv.MpvEventLogMessage msg) {
@@ -406,7 +397,6 @@ class MpvEventIsolate {
     final initPort = ReceivePort();
     _isolate = await Isolate.spawn(_isolateEntry, initPort.sendPort);
 
-    // The isolate immediately sends back its own receive port.
     final completer = Completer<SendPort>();
     final sub = initPort.listen((msg) {
       if (msg is SendPort && !completer.isCompleted) {
@@ -417,29 +407,24 @@ class MpvEventIsolate {
     await sub.cancel();
     initPort.close();
 
-    // Register the exit listener BEFORE the isolate can possibly exit.
-    // The isolate self-terminates with `Isolate.exit()` after
-    // `_runEventLoop` returns on `MPV_EVENT_SHUTDOWN`, which can race
-    // a `stop()` call on the main side: if we registered the exit
-    // listener inside `stop()` we'd potentially attach it AFTER the
-    // isolate had already exited, and `addOnExitListener` on an
-    // already-dead isolate never fires — leaving `stop()` to fall
-    // through its 2 s safety timeout on every clean teardown.
+    // Arm the exit listener BEFORE the isolate can possibly tear down.
+    // The isolate ends naturally after `_runEventLoop` returns and its
+    // ReceivePort closes, which can race a `stop()` call from the main
+    // side: registering the listener inside `stop()` could attach it
+    // AFTER teardown, and `addOnExitListener` on an already-dead isolate
+    // never fires — leaving `stop()` to fall through its 2 s safety
+    // timeout on every clean shutdown.
     _exitPort = ReceivePort();
     _isolate!.addOnExitListener(_exitPort!.sendPort);
 
-    // Open the main ReceivePort, tell the isolate to start.
     final fromIsolate = ReceivePort();
     _fromIsolate = fromIsolate;
     fromIsolate.listen((msg) {
-      // Defensive against the teardown race: stop() closes [_events]
-      // immediately after asking the isolate to shut down, but messages
-      // already queued on the receive port may still drain through this
-      // listener afterwards. Without this guard the queued message would
-      // throw "Bad state: Cannot add new events after calling close" on
-      // the broadcast controller — visible only when many Player
-      // instances are created and disposed in rapid succession (e.g. a
-      // test suite).
+      // Drop messages that arrive after `stop()` has closed the
+      // broadcast controller. Without this guard the queued message
+      // would throw "Bad state: Cannot add new events after calling
+      // close" — visible only when many Player instances are created
+      // and disposed in rapid succession.
       if (msg is MpvIsolateEvent && !_events.isClosed) {
         _events.add(msg);
       }
@@ -477,23 +462,20 @@ class MpvEventIsolate {
       return;
     }
 
-    // Belt-and-braces: by the time `stop()` runs, the main side has
-    // already sent the `quit` mpv command (in dispose()), so the
-    // isolate's `_runEventLoop` is on its way out via
-    // `MPV_EVENT_SHUTDOWN`. The `_ShutdownMessage` here only matters
-    // for the corner case where `_InitMessage` somehow never reached
-    // the isolate. We do NOT call `Isolate.kill`: killing an isolate
-    // mid-FFI to libmpv produces a non-deterministic SIGSEGV at
-    // process teardown.
+    // The main side has already sent `quit` to mpv (in dispose), so
+    // `_runEventLoop` is on its way out via `MPV_EVENT_SHUTDOWN`. The
+    // `_ShutdownMessage` here only covers the corner case where
+    // `_InitMessage` never reached the isolate. `Isolate.kill` is
+    // never used: killing mid-FFI to libmpv yields a non-deterministic
+    // SIGSEGV at process teardown.
     _toIsolate?.send(_ShutdownMessage());
     _isolate = null;
     _toIsolate = null;
     _exitPort = null;
 
-    // The exit listener was attached in `start()` so it is armed
-    // before the isolate can possibly self-exit via `Isolate.exit()`.
-    // The 2 s timeout is a safety net for a pathologically stuck
-    // libmpv — clean exits land in single-digit ms.
+    // The exit listener was armed in `start()` before the isolate
+    // could possibly tear down. The 2 s timeout is a safety net for a
+    // pathologically stuck libmpv — clean exits land in single-digit ms.
     try {
       await exitPort.first.timeout(_kIsolateExitTimeout);
     } on TimeoutException {

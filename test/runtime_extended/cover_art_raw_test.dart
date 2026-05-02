@@ -10,7 +10,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // Cover-art-raw stream contract — verifies the public typed surface
@@ -25,24 +25,11 @@ void main() {
   // The two emissions are observed in succession on the same Player.
   final fixturesDir = '${Directory.current.path}/test/fixtures';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip());
 
   test('coverArtRaw stream emits bytes for cover, null for non-cover',
       () async {
-    final player = Player(
-      configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ),
-    );
-    await player.setRawProperty('ao', 'null');
+    final player = await buildPlayer();
 
     try {
       // Pre-subscribe BEFORE open: `_extractEmbeddedCover` fires on

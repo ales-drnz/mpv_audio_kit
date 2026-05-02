@@ -9,41 +9,25 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-final chapterPath =
+  final chapterPath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(chapterPath).existsSync()) {
-      markTestSkipped('Chapter fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: chapterPath));
 
   group('setChapter end-to-end', () {
     late Player player;
 
     setUpAll(() async {
-      player = Player(
-          configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ));
-      await player.setRawProperty('ao', 'null');
-      await player.open(Media(chapterPath), play: false);
-      // Wait for chapters to populate (observer-driven, lands after
-      // file-loaded event).
-      await player.stream.chapters
+      player = await buildPlayer();
+      // Pre-subscribe so the chapters emit isn't lost while open() runs.
+      final chaptersReady = player.stream.chapters
           .firstWhere((c) => c.length == 3)
           .timeout(const Duration(seconds: 5));
+      await openAndWaitForLoad(player, chapterPath);
+      if (player.state.chapters.length != 3) await chaptersReady;
     });
 
     tearDownAll(() async {

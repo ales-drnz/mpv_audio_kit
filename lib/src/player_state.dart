@@ -114,18 +114,13 @@ abstract class PlayerState with _$PlayerState {
     /// Gapless playback mode.
     @Default(GaplessMode.weak) GaplessMode gapless,
 
-    /// ReplayGain configuration aggregate (mode + preamp + clip +
-    /// fallback). Set the whole config atomically via
-    /// [Player.setReplayGain]; modify a single field through
-    /// `state.replayGain.copyWith(...)`.
+    /// ReplayGain configuration. Set via [Player.setReplayGain].
     @Default(ReplayGainConfig()) ReplayGainConfig replayGain,
 
     /// Software volume gain in dB.
     @Default(0.0) double volumeGain,
 
-    /// Cache configuration aggregate (mode + secs + onDisk + pause +
-    /// pauseWait). Set atomically via [Player.setCache]; modify a single
-    /// field through `state.cache.copyWith(...)`.
+    /// Cache configuration. Set via [Player.setCache].
     @Default(CacheConfig()) CacheConfig cache,
 
     /// Max bytes the demuxer can cache.
@@ -145,7 +140,7 @@ abstract class PlayerState with _$PlayerState {
     ///
     /// This is mpv's `paused-for-cache` property — the authoritative signal
     /// for network buffering stalls. When `true`, mpv is waiting for data
-    /// and will auto-resume once [cachePauseWait] seconds are buffered.
+    /// and will auto-resume once [CacheConfig.pauseWait] seconds are buffered.
     @Default(false) bool pausedForCache,
 
     /// Whether the current stream is being read via a network protocol.
@@ -176,8 +171,10 @@ abstract class PlayerState with _$PlayerState {
     /// "audio tracks only" view; switch via [Player.setAudioTrack].
     @Default(<MpvTrack>[]) List<MpvTrack> tracks,
 
-    /// Currently-active audio track, or `null` when no audio is
-    /// selected. Mirrors mpv's `current-tracks/audio`.
+    /// The single audio track currently selected for output, or `null`
+    /// when audio is muted at the track level. Distinct from [tracks],
+    /// which lists every track the demuxer surfaced. Mirrors mpv's
+    /// `current-tracks/audio`.
     MpvTrack? currentAudioTrack,
 
     /// S/PDIF passthrough mode.
@@ -205,24 +202,16 @@ abstract class PlayerState with _$PlayerState {
     /// `failed`). See [AudioOutputState].
     @Default(AudioOutputState.closed) AudioOutputState audioOutputState,
 
-    /// 10-band graphic equalizer config. Set atomically via
-    /// [Player.setEqualizer]; modify a single field through
-    /// `state.equalizer.copyWith(...)`.
+    /// 10-band graphic equalizer config. Set via [Player.setEqualizer].
     @Default(EqualizerConfig()) EqualizerConfig equalizer,
 
-    /// Dynamic-range compressor config. Set atomically via
-    /// [Player.setCompressor]; modify a single field through
-    /// `state.compressor.copyWith(...)`.
+    /// Dynamic-range compressor config. Set via [Player.setCompressor].
     @Default(CompressorConfig()) CompressorConfig compressor,
 
-    /// EBU R128 loudness normalization config. Set atomically via
-    /// [Player.setLoudness]; modify a single field through
-    /// `state.loudness.copyWith(...)`.
+    /// EBU R128 loudness normalization config. Set via [Player.setLoudness].
     @Default(LoudnessConfig()) LoudnessConfig loudness,
 
-    /// Pitch / tempo shifter config (rubberband). Set atomically via
-    /// [Player.setPitchTempo]; modify a single field through
-    /// `state.pitchTempo.copyWith(...)`.
+    /// Pitch / tempo shifter (rubberband) config. Set via [Player.setPitchTempo].
     @Default(PitchTempoConfig()) PitchTempoConfig pitchTempo,
 
     /// Raw mpv `--af` filter strings inserted at the head of the chain,
@@ -241,9 +230,9 @@ abstract class PlayerState with _$PlayerState {
     /// How long a still image (e.g. cover art) is held as a displayable
     /// video frame after the file is loaded.
     ///
-    /// `null` keeps the frame alive indefinitely (mpv's `inf`);
-    /// `Duration.zero` drops it as soon as audio playback starts. Mirrors
-    /// mpv's `--image-display-duration` option.
+    /// `null` maps to mpv's `inf` (frame held indefinitely);
+    /// `Duration.zero` drops it as soon as audio playback starts.
+    /// Mirrors mpv's `--image-display-duration` option.
     Duration? imageDisplayDuration,
 
     /// Whether mpv prefetches the next playlist item in the background.

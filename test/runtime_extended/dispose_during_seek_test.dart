@@ -9,8 +9,7 @@ library;
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // Dispose-during-seek — verifies the cooperative shutdown protocol
@@ -23,33 +22,11 @@ void main() {
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
 
-  setUpAll(() {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-  });
+  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   test('dispose() called while a seek is in flight teardowns cleanly',
       () async {
-    final player = Player(
-      configuration: const PlayerConfiguration(
-        autoPlay: false,
-        logLevel: 'no',
-      ),
-    );
-    await player.setRawProperty('ao', 'null');
-
-    final loaded = player.stream.seekCompleted.first
-        .timeout(const Duration(seconds: 10));
-    await player.open(Media(fixturePath), play: false);
-    await loaded;
+    final player = await buildPlayerWithFixture(fixturePath: fixturePath);
 
     // Kick off a seek WITHOUT awaiting — dispose() races the seek's
     // PLAYBACK_RESTART. The wrapper's dispose protocol issues `quit` to
