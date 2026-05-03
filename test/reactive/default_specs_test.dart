@@ -213,10 +213,10 @@ void main() {
       // owned by their setters' own state.
       dispatch(
           'af', 'lavfi-pan=stereo|c0=c1|c1=c0,@_mak_eq:lavfi-equalizer=g=3');
-      expect(state.customAudioFilters, ['lavfi-pan=stereo|c0=c1|c1=c0']);
+      expect(state.audioEffects.custom, ['lavfi-pan=stereo|c0=c1|c1=c0']);
 
       dispatch('af', '');
-      expect(state.customAudioFilters, isEmpty);
+      expect(state.audioEffects.custom, isEmpty);
     });
   });
 
@@ -374,13 +374,6 @@ void main() {
       expect(state.chapters[1].time, const Duration(seconds: 60));
     });
 
-    test('image-display-duration ("inf" → null)', () {
-      dispatch('image-display-duration', 'inf');
-      expect(state.imageDisplayDuration, isNull);
-
-      dispatch('image-display-duration', '5.5');
-      expect(state.imageDisplayDuration, const Duration(milliseconds: 5500));
-    });
   });
 
   group('Default registry — config aggregate copyWith preserves siblings', () {
@@ -547,7 +540,7 @@ void main() {
         'audio-samplerate', 'audio-format', 'audio-channels',
         'audio-client-name', 'af', 'ao',
         // Cover art
-        'audio-display', 'cover-art-auto', 'image-display-duration',
+        'cover-art-auto',
         // Patched / stream-only
         'prefetch-state', 'audio-output-state', 'prefetch-playlist',
         // Playback timing extras

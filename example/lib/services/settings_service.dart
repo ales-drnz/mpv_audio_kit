@@ -180,12 +180,6 @@ class SettingsService {
     await _bindBool(player.stream.tlsVerify, 'tls-verify', player.setTlsVerify);
 
     // ── Cover art ─────────────────────────────────────────────────────
-    await _bindMpvEnum<Display>(
-      player.stream.audioDisplay,
-      'audio-display',
-      Display.fromMpv,
-      player.setAudioDisplay,
-    );
     await _bindMpvEnum<Cover>(
       player.stream.coverArtAuto,
       'cover-art-auto',
@@ -372,8 +366,11 @@ class SettingsService {
         final decoded = (jsonDecode(raw) as List<dynamic>)
             .map((e) => (e as num).toDouble())
             .toList();
-        await player.setEqualizer(
-          player.state.equalizer.copyWith(gains: decoded),
+        await player.updateAudioEffects(
+          (e) => e.copyWith(
+            equalizer: player.state.audioEffects.equalizer
+                .copyWith(gains: decoded),
+          ),
         );
       } catch (_) {
         await _prefs.remove(fk);
@@ -382,9 +379,12 @@ class SettingsService {
       await _prefs.remove(fk);
     }
     _subs.add(
-      player.stream.equalizer.listen(
-        (cfg) => _prefs.setString(fk, jsonEncode(cfg.gains)),
-      ),
+      player.stream.audioEffects
+          .map((e) => e.equalizer)
+          .distinct()
+          .listen(
+            (cfg) => _prefs.setString(fk, jsonEncode(cfg.gains)),
+          ),
     );
   }
 

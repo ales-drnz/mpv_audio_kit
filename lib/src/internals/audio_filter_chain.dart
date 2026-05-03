@@ -2,28 +2,45 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../types/settings/audio_effects.dart';
+import '../types/settings/bass_treble_settings.dart';
 import '../types/settings/compressor_settings.dart';
+import '../types/settings/crossfeed_settings.dart';
 import '../types/settings/equalizer_settings.dart';
 import '../types/settings/loudness_settings.dart';
 import '../types/settings/pitch_tempo_settings.dart';
+import '../types/settings/silence_trim_settings.dart';
+import '../types/settings/stereo_settings.dart';
 
-// Chain order is fixed:
-//   custom... → compressor → equalizer → pitch/tempo → loudnorm
-//
-// Compression on the raw signal before tonal shaping (EQ); pitch/tempo
-// after so timing changes see a stable spectrum; loudness normalization
-// last so it adapts to whatever the earlier stages produced.
+// Chain order (see AudioEffects dartdoc for rationale):
+//   custom… → compressor → equalizer → bassTreble → stereo →
+//   crossfeed → silenceTrim → pitchTempo → crossfade → loudnorm
 
-/// Reserved labels for the wrapper-managed filter stages. Filters carrying
-/// these labels are owned by the typed setters ([Player.setEqualizer] et
-/// al.) and must not be passed to [Player.setCustomAudioFilters].
+/// Reserved labels for wrapper-managed filter stages. Filters carrying
+/// these labels are owned by the typed [AudioEffects] bundle and must
+/// not appear in [AudioEffects.custom].
 class AudioFilterChainLabels {
-  static const equalizer = '_mak_eq';
   static const compressor = '_mak_comp';
-  static const loudness = '_mak_loud';
+  static const equalizer = '_mak_eq';
+  static const bassTreble = '_mak_bt';
+  static const stereo = '_mak_st';
+  static const crossfeed = '_mak_cf';
+  static const silenceTrim = '_mak_str';
   static const pitchTempo = '_mak_pt';
+  static const crossfade = '_mak_xf';
+  static const loudness = '_mak_loud';
 
-  static const all = <String>{equalizer, compressor, loudness, pitchTempo};
+  static const all = <String>{
+    compressor,
+    equalizer,
+    bassTreble,
+    stereo,
+    crossfeed,
+    silenceTrim,
+    pitchTempo,
+    crossfade,
+    loudness,
+  };
 }
 
 const _kEqualizerCenters = <double>[
@@ -39,29 +56,30 @@ const _kEqualizerCenters = <double>[
   16000.0,
 ];
 
-/// Builds the full mpv `af` value, joining custom filters with the four
-/// typed DSP stages in fixed order. Returns the empty string when nothing
-/// is enabled — mpv interprets that as "no filters". Each typed stage is
-/// emitted as `@label:filter=args` so [extractCustomFilters] can later
-/// strip them on the inverse path.
-String composeAfChain({
-  required List<String> customFilters,
-  required CompressorSettings compressor,
-  required EqualizerSettings equalizer,
-  required PitchTempoSettings pitchTempo,
-  required LoudnessSettings loudness,
-}) {
+/// Builds the full mpv `af` value from an [AudioEffects] bundle.
+/// Returns the empty string when nothing is enabled — mpv interprets
+/// that as "no filters". Each typed stage is emitted as
+/// `@label:filter=args` so [extractCustomFilters] can later strip
+/// wrapper-managed entries on the inverse path.
+String composeAfChain(AudioEffects effects) {
   final parts = <String>[];
 
-  for (final raw in customFilters) {
+  for (final raw in effects.custom) {
     final trimmed = raw.trim();
     if (trimmed.isNotEmpty) parts.add(trimmed);
   }
 
-  if (compressor.enabled) parts.add(_buildCompressor(compressor));
-  if (equalizer.enabled) parts.add(_buildEqualizer(equalizer));
-  if (pitchTempo.enabled) parts.add(_buildPitchTempo(pitchTempo));
-  if (loudness.enabled) parts.add(_buildLoudness(loudness));
+  if (effects.compressor.enabled) parts.add(_buildCompressor(effects.compressor));
+  if (effects.equalizer.enabled) parts.add(_buildEqualizer(effects.equalizer));
+  if (effects.bassTreble.enabled) parts.add(_buildBassTreble(effects.bassTreble));
+  if (effects.stereo.enabled) parts.add(_buildStereo(effects.stereo));
+  if (effects.crossfeed.enabled) parts.add(_buildCrossfeed(effects.crossfeed));
+  final silence = _buildSilenceTrim(effects.silenceTrim);
+  if (silence != null) parts.add(silence);
+  if (effects.pitchTempo.enabled) parts.add(_buildPitchTempo(effects.pitchTempo));
+  final xfade = _buildCrossfade(effects.crossfade);
+  if (xfade != null) parts.add(xfade);
+  if (effects.loudness.enabled) parts.add(_buildLoudness(effects.loudness));
 
   return parts.join(',');
 }
@@ -95,15 +113,62 @@ String _buildEqualizer(EqualizerSettings eq) {
   }
   // Multiple `equalizer` filter instances must each carry the wrapper
   // label so removal via `af del @_mak_eq` strips the whole bank.
-  final labelled =
-      bands.map((b) => '@${AudioFilterChainLabels.equalizer}:$b').join(',');
-  return labelled;
+  return bands
+      .map((b) => '@${AudioFilterChainLabels.equalizer}:$b')
+      .join(',');
+}
+
+String _buildBassTreble(BassTrebleSettings b) {
+  // bass + treble run as two libavfilter shelving stages, both labelled
+  // so the af-del invariant strips the pair atomically.
+  final bass = '@${AudioFilterChainLabels.bassTreble}:lavfi-bass='
+      'g=${_f(b.bassDb)}:f=${_f(b.bassFrequency)}';
+  final treble = '@${AudioFilterChainLabels.bassTreble}:lavfi-treble='
+      'g=${_f(b.trebleDb)}:f=${_f(b.trebleFrequency)}';
+  return '$bass,$treble';
+}
+
+String _buildStereo(StereoSettings s) {
+  // `slev` (side level) controls stereo width — increasing widens the
+  // L–R difference signal. `mlev` (middle level) is pinned to 1.0 so
+  // the centre image stays untouched. `balance_in` shifts L/R balance
+  // pre-processing.
+  return '@${AudioFilterChainLabels.stereo}:lavfi-stereotools='
+      'slev=${_f(s.width)}:mlev=1.0:balance_in=${_f(s.balance)}';
+}
+
+String _buildCrossfeed(CrossfeedSettings c) {
+  return '@${AudioFilterChainLabels.crossfeed}:lavfi-bs2b='
+      'profile=${c.intensity.mpvValue}';
+}
+
+String? _buildSilenceTrim(SilenceTrimSettings t) {
+  if (!t.trimStart && !t.trimEnd) return null;
+  final parts = <String>[];
+  if (t.trimStart) {
+    parts.add('start_periods=1');
+    parts.add('start_duration=${_f(t.minDuration.inMicroseconds / 1e6)}');
+    parts.add('start_threshold=${_f(t.thresholdDb)}dB');
+  }
+  if (t.trimEnd) {
+    parts.add('stop_periods=1');
+    parts.add('stop_duration=${_f(t.minDuration.inMicroseconds / 1e6)}');
+    parts.add('stop_threshold=${_f(t.thresholdDb)}dB');
+  }
+  return '@${AudioFilterChainLabels.silenceTrim}:lavfi-silenceremove='
+      '${parts.join(":")}';
 }
 
 String _buildPitchTempo(PitchTempoSettings p) {
   return '@${AudioFilterChainLabels.pitchTempo}:rubberband='
       'pitch=${_f(p.pitch)}'
       ':tempo=${_f(p.tempo)}';
+}
+
+String? _buildCrossfade(Duration? d) {
+  if (d == null || d == Duration.zero) return null;
+  return '@${AudioFilterChainLabels.crossfade}:lavfi-acrossfade='
+      'd=${_f(d.inMicroseconds / 1e6)}';
 }
 
 String _buildLoudness(LoudnessSettings l) {
@@ -118,8 +183,8 @@ String _buildLoudness(LoudnessSettings l) {
 ///
 /// Used by the `af` observer so external mutations to the chain (raw
 /// `setRawProperty('af', ...)` writes) propagate into
-/// [PlayerState.customAudioFilters]. Wrapper-managed stages stay owned by
-/// their typed setters and are never reverse-parsed from the af string.
+/// [AudioEffects.custom]. Wrapper-managed stages stay owned by the
+/// bundle setter and are never reverse-parsed from the af string.
 List<String> extractCustomFilters(String afValue) {
   if (afValue.trim().isEmpty) return const [];
   final entries = _splitAfTopLevel(afValue);

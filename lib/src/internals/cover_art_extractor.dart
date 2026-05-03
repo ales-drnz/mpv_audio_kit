@@ -8,10 +8,10 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 
 import '../mpv_bindings.dart';
-import '../models/cover_art_raw.dart';
+import '../models/cover_art.dart';
 
 /// Pure-FFI helper that captures the embedded cover art of the
-/// currently loaded file as a [CoverArtRaw] (codec bytes + MIME type).
+/// currently loaded file as a [CoverArt] (codec bytes + MIME type).
 ///
 /// Stateless: the player owns the mpv handle and decides when to call
 /// [capture] (typically right after `MPV_EVENT_FILE_LOADED`).
@@ -25,13 +25,13 @@ abstract final class CoverArtExtractor {
   ///
   /// The returned bytes are the original PNG / JPEG / … as embedded —
   /// no decode, no pixel format conversion.
-  static CoverArtRaw? capture(
+  static CoverArt? capture(
     MpvLibrary lib,
     Pointer<MpvHandle> handle,
   ) {
     final result = calloc<MpvNode>();
     try {
-      return using<CoverArtRaw?>((arena) {
+      return using<CoverArt?>((arena) {
         final propName =
             'embedded-cover-art-data'.toNativeUtf8(allocator: arena);
         final rc = lib.mpvGetProperty(
@@ -46,7 +46,7 @@ abstract final class CoverArtExtractor {
             Uint8List.fromList(ba.data.cast<Uint8>().asTypedList(ba.size));
         final mime = _getPropString(lib, handle, 'embedded-cover-art-mime') ??
             'application/octet-stream';
-        return CoverArtRaw(bytes: bytes, mimeType: mime);
+        return CoverArt(bytes: bytes, mimeType: mime);
       });
     } finally {
       lib.mpvFreeNodeContents(result);

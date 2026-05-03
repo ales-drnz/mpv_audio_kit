@@ -54,8 +54,6 @@ void main() {
           reason: 'matches mpv default `gapless-audio=weak`');
       expect(s.replayGain.mode, ReplayGain.no);
       expect(s.cache.mode, Cache.auto);
-      expect(s.audioDisplay, Display.embeddedFirst,
-          reason: 'matches mpv default `audio-display=embedded-first`');
       expect(s.coverArtAuto, Cover.no,
           reason: 'library default is `no` (mpv default would be `exact`); '
               'we disable to avoid implicit file scanning');
@@ -88,21 +86,21 @@ void main() {
 
     test('equalizer is disabled with 10 zero-band gains by default', () {
       const s = PlayerState();
-      expect(s.equalizer.enabled, isFalse);
-      expect(s.equalizer.gains.length, 10);
-      expect(s.equalizer.gains, everyElement(0.0));
+      expect(s.audioEffects.equalizer.enabled, isFalse);
+      expect(s.audioEffects.equalizer.gains.length, 10);
+      expect(s.audioEffects.equalizer.gains, everyElement(0.0));
     });
 
     test('compressor / loudness / pitchTempo all start disabled', () {
       const s = PlayerState();
-      expect(s.compressor.enabled, isFalse);
-      expect(s.loudness.enabled, isFalse);
-      expect(s.pitchTempo.enabled, isFalse);
+      expect(s.audioEffects.compressor.enabled, isFalse);
+      expect(s.audioEffects.loudness.enabled, isFalse);
+      expect(s.audioEffects.pitchTempo.enabled, isFalse);
     });
 
     test('customAudioFilters is empty by default', () {
       const s = PlayerState();
-      expect(s.customAudioFilters, isEmpty);
+      expect(s.audioEffects.custom, isEmpty);
     });
 
     test('audioParams + audioOutParams default to all-null AudioParams', () {

@@ -1,49 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 160" font-family="system-ui, -apple-system, sans-serif" font-size="13" role="img" aria-label="DSP filter chain">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 160" font-family="system-ui, -apple-system, sans-serif" font-size="13" role="img" aria-label="Audio filter chain">
   <defs>
-    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#7a8190"/>
     </marker>
   </defs>
+
   <style>
-    rect    { fill: #f8f9fb; rx: 10; ry: 10; }
-    .title  { font-weight: 600; fill: #1e2329; }
-    .sub    { font-size: 10.5px; fill: #5b6371; }
-    .arrow  { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#ar); }
+    rect       { fill: #f8f9fb; rx: 10; ry: 10; }
+    .title     { font-weight: 600; fill: #1e2329; }
+    .sub       { font-size: 10.5px; fill: #5b6371; }
+    .arrow     { stroke: #7a8190; stroke-width: 1.6; fill: none;
+                 marker-end: url(#ar); }
+    .ellipsis  { font-weight: 700; font-size: 22px; fill: #5b6371;
+                 letter-spacing: 4px; }
   </style>
 
+  <!-- decoded audio (3 lines) — box y=40 h=80 cy=80 → y values 67, 85, 101 -->
   <rect x="10" y="40" width="100" height="80"/>
-  <text class="title" x="60" y="72" text-anchor="middle">decoded</text>
-  <text class="title" x="60" y="90" text-anchor="middle">audio</text>
-  <text class="sub" x="60" y="108" text-anchor="middle">from demuxer</text>
+  <text class="title" x="60" y="67"  text-anchor="middle">decoded</text>
+  <text class="title" x="60" y="85"  text-anchor="middle">audio</text>
+  <text class="sub"   x="60" y="101" text-anchor="middle">from demuxer</text>
 
+  <!-- custom (2 lines) → 75, 93 -->
   <rect x="135" y="40" width="120" height="80"/>
-  <text class="title" x="195" y="72" text-anchor="middle">custom</text>
-  <text class="sub" x="195" y="90" text-anchor="middle">setCustomAudio</text>
-  <text class="sub" x="195" y="104" text-anchor="middle">Filters([...])</text>
+  <text class="title" x="195" y="75" text-anchor="middle">custom</text>
+  <text class="sub"   x="195" y="93" text-anchor="middle">raw lavfi</text>
 
+  <!-- compressor (2 lines) -->
   <rect x="280" y="40" width="120" height="80"/>
   <text class="title" x="340" y="75" text-anchor="middle">compressor</text>
-  <text class="sub" x="340" y="95" text-anchor="middle">acompressor</text>
+  <text class="sub"   x="340" y="93" text-anchor="middle">acompressor</text>
 
+  <!-- equalizer (2 lines) -->
   <rect x="425" y="40" width="120" height="80"/>
   <text class="title" x="485" y="75" text-anchor="middle">equalizer</text>
-  <text class="sub" x="485" y="95" text-anchor="middle">10-band ISO</text>
+  <text class="sub"   x="485" y="93" text-anchor="middle">ten frequency bands</text>
 
+  <!-- bassTreble (2 lines) -->
   <rect x="570" y="40" width="120" height="80"/>
-  <text class="title" x="630" y="75" text-anchor="middle">pitch / tempo</text>
-  <text class="sub" x="630" y="95" text-anchor="middle">rubberband</text>
+  <text class="title" x="630" y="75" text-anchor="middle">bassTreble</text>
+  <text class="sub"   x="630" y="93" text-anchor="middle">two shelving bands</text>
 
-  <rect x="715" y="40" width="120" height="80"/>
-  <text class="title" x="775" y="75" text-anchor="middle">loudnorm</text>
-  <text class="sub" x="775" y="95" text-anchor="middle">EBU R128</text>
+  <!-- ellipsis (1 line, big font) -->
+  <rect x="715" y="40" width="80" height="80"/>
+  <text class="ellipsis" x="755" y="90" text-anchor="middle">···</text>
 
-  <rect x="855" y="40" width="55" height="80"/>
-  <text class="title" x="882" y="85" text-anchor="middle">AO</text>
+  <!-- AO (2 lines) → 75, 93 -->
+  <rect x="820" y="40" width="80" height="80"/>
+  <text class="title" x="860" y="75" text-anchor="middle">AO</text>
+  <text class="sub"   x="860" y="93" text-anchor="middle">audio out</text>
 
+  <!-- arrows -->
   <path class="arrow" d="M110,80 L135,80"/>
   <path class="arrow" d="M255,80 L280,80"/>
   <path class="arrow" d="M400,80 L425,80"/>
   <path class="arrow" d="M545,80 L570,80"/>
   <path class="arrow" d="M690,80 L715,80"/>
-  <path class="arrow" d="M835,80 L855,80"/>
+  <path class="arrow" d="M795,80 L820,80"/>
 </svg>

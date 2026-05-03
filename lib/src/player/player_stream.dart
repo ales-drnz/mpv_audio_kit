@@ -4,7 +4,7 @@
 
 import 'dart:async';
 
-import 'package:mpv_audio_kit/src/models/cover_art_raw.dart';
+import 'package:mpv_audio_kit/src/models/cover_art.dart';
 import 'package:mpv_audio_kit/src/types/enums/loop.dart';
 import 'package:mpv_audio_kit/src/models/playlist.dart';
 import 'package:mpv_audio_kit/src/types/sealed/channels.dart';
@@ -12,18 +12,14 @@ import 'package:mpv_audio_kit/src/models/device.dart';
 import 'package:mpv_audio_kit/src/types/enums/format.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/types/enums/spdif.dart';
-import 'package:mpv_audio_kit/src/types/enums/display.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:mpv_audio_kit/src/types/enums/cover.dart';
 import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
+import 'package:mpv_audio_kit/src/types/settings/audio_effects.dart';
 import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
 import 'package:mpv_audio_kit/src/models/chapter.dart';
 import 'package:mpv_audio_kit/src/types/state/mpv_playback_state.dart';
-import 'package:mpv_audio_kit/src/types/settings/compressor_settings.dart';
-import 'package:mpv_audio_kit/src/types/settings/equalizer_settings.dart';
-import 'package:mpv_audio_kit/src/types/settings/loudness_settings.dart';
 import 'package:mpv_audio_kit/src/models/mpv_track.dart';
-import 'package:mpv_audio_kit/src/types/settings/pitch_tempo_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
 import 'package:mpv_audio_kit/src/events/mpv_log_entry.dart';
 import 'package:mpv_audio_kit/src/events/mpv_hook_event.dart';
@@ -55,18 +51,14 @@ class PlayerStream {
     required ReactiveProperty<List<Device>> audioDevices,
     required ReactiveProperty<Map<String, String>> metadata,
     required ReactiveProperty<double> bufferingPercentage,
-    required ReactiveProperty<EqualizerSettings> equalizer,
-    required ReactiveProperty<CompressorSettings> compressor,
-    required ReactiveProperty<LoudnessSettings> loudness,
-    required ReactiveProperty<PitchTempoSettings> pitchTempo,
-    required ReactiveProperty<List<String>> customAudioFilters,
+    required ReactiveProperty<AudioEffects> audioEffects,
     required this.endFile,
     required this.error,
     required this.log,
     required this.internalLog,
     required this.hook,
     required this.seekCompleted,
-    required this.coverArtRaw,
+    required this.coverArt,
   })  : playing = reactives.playing.stream,
         position = reactives.position.stream,
         duration = reactives.duration.stream,
@@ -110,9 +102,7 @@ class PlayerStream {
         audioClientName = reactives.audioClientName.stream,
         audioDriver = reactives.audioDriver.stream,
         audioOutputState = reactives.audioOutputState.stream,
-        audioDisplay = reactives.audioDisplay.stream,
         coverArtAuto = reactives.coverArtAuto.stream,
-        imageDisplayDuration = reactives.imageDisplayDuration.stream,
         prefetchState = reactives.prefetchState.stream,
         prefetchPlaylist = reactives.prefetchPlaylist.stream,
         audioPts = reactives.audioPts.stream,
@@ -155,11 +145,7 @@ class PlayerStream {
         audioDevices = audioDevices.stream,
         metadata = metadata.stream,
         bufferingPercentage = bufferingPercentage.stream,
-        equalizer = equalizer.stream,
-        compressor = compressor.stream,
-        loudness = loudness.stream,
-        pitchTempo = pitchTempo.stream,
-        customAudioFilters = customAudioFilters.stream;
+        audioEffects = audioEffects.stream;
 
   /// Aggregate [MpvPlaybackState] derived from the 5 underlying signals
   /// the wrapper already tracks (`playing`, `buffering`, `completed`,
@@ -396,39 +382,16 @@ class PlayerStream {
   /// [error] the moment this stream emits [AudioOutputState.failed].
   final Stream<AudioOutputState> audioOutputState;
 
-  /// 10-band graphic equalizer config (`@_mak_eq` filter stage).
-  /// Set with [Player.setEqualizer]; modify a single field through
-  /// `state.equalizer.copyWith(...)`.
-  final Stream<EqualizerSettings> equalizer;
-
-  /// Dynamic-range compressor config (`@_mak_comp` filter stage).
-  /// Set with [Player.setCompressor].
-  final Stream<CompressorSettings> compressor;
-
-  /// EBU R128 loudness normalization config (`@_mak_loud` filter stage).
-  /// Set with [Player.setLoudness].
-  final Stream<LoudnessSettings> loudness;
-
-  /// Pitch / tempo shifter config (`@_mak_pt` filter stage; rubberband).
-  /// Set with [Player.setPitchTempo].
-  final Stream<PitchTempoSettings> pitchTempo;
-
-  /// Raw mpv `--af` filter strings inserted at the head of the chain
-  /// (before any wrapper-managed DSP stage). Set with
-  /// [Player.setCustomAudioFilters].
-  final Stream<List<String>> customAudioFilters;
+  /// All DSP effects in mpv's `--af` filter chain, bundled into a
+  /// single atomic snapshot. Set with [Player.setAudioEffects] /
+  /// [Player.updateAudioEffects]. Sub-stream a single effect via
+  /// `audioEffects.map((e) => e.equalizer).distinct()`.
+  final Stream<AudioEffects> audioEffects;
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
-  /// Emits the current cover-art display mode.
-  final Stream<Display> audioDisplay;
-
-  /// Emits the current external cover-art auto-load mode.
+  /// Emits the current external cover-art auto-load policy.
   final Stream<Cover> coverArtAuto;
-
-  /// Emits the current `image-display-duration` value. `null` = mpv's `inf`
-  /// (frame held indefinitely); finite Duration = explicit hold time.
-  final Stream<Duration?> imageDisplayDuration;
 
   /// Emits for **every** file-end event — clean completions, stops, errors,
   /// and premature EOFs alike.
@@ -594,8 +557,8 @@ class PlayerStream {
   /// `Image.memory(raw.bytes)` or run your own pipeline (resize, encode,
   /// cache) — the wrapper does not process the bytes.
   ///
-  /// Emits exactly once per file load: a [CoverArtRaw] when the new
+  /// Emits exactly once per file load: a [CoverArt] when the new
   /// file has embedded artwork, or `null` when it does not. Listen for
   /// `null` to clear stale artwork on tracks without a cover.
-  final Stream<CoverArtRaw?> coverArtRaw;
+  final Stream<CoverArt?> coverArt;
 }

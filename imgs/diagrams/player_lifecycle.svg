@@ -11,30 +11,32 @@
     .arrow    { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
   </style>
 
+  <!-- All boxes h=100, y=40 → cy=90.  3-line layout: 77, 95, 111 -->
+
   <rect x="20" y="40" width="140" height="100"/>
-  <text class="title" x="90" y="80" text-anchor="middle">MpvAudioKit</text>
-  <text class="title" x="90" y="98" text-anchor="middle">.ensureInitialized()</text>
-  <text class="subtitle" x="90" y="120" text-anchor="middle">once at startup</text>
+  <text class="title"    x="90" y="77"  text-anchor="middle">Initialize</text>
+  <text class="subtitle" x="90" y="95"  text-anchor="middle">once, at app start</text>
+  <text class="subtitle" x="90" y="111" text-anchor="middle">sets up the engine</text>
 
   <rect x="190" y="40" width="140" height="100"/>
-  <text class="title" x="260" y="85" text-anchor="middle">Player()</text>
-  <text class="subtitle" x="260" y="105" text-anchor="middle">construct with</text>
-  <text class="subtitle" x="260" y="120" text-anchor="middle">PlayerConfiguration</text>
+  <text class="title"    x="260" y="77"  text-anchor="middle">Create player</text>
+  <text class="subtitle" x="260" y="95"  text-anchor="middle">one player handles</text>
+  <text class="subtitle" x="260" y="111" text-anchor="middle">one playback session</text>
 
   <rect x="360" y="40" width="140" height="100"/>
-  <text class="title" x="430" y="80" text-anchor="middle">player.open(</text>
-  <text class="title" x="430" y="98" text-anchor="middle">Media(...))</text>
-  <text class="subtitle" x="430" y="120" text-anchor="middle">load + autoPlay</text>
+  <text class="title"    x="430" y="77"  text-anchor="middle">Open audio</text>
+  <text class="subtitle" x="430" y="95"  text-anchor="middle">load a track</text>
+  <text class="subtitle" x="430" y="111" text-anchor="middle">or playlist</text>
 
   <rect x="530" y="40" width="170" height="100"/>
-  <text class="title" x="615" y="80" text-anchor="middle">player.stream.*</text>
-  <text class="subtitle" x="615" y="100" text-anchor="middle">90+ reactive streams</text>
-  <text class="subtitle" x="615" y="118" text-anchor="middle">player.state for snapshots</text>
+  <text class="title"    x="615" y="77"  text-anchor="middle">Listen and control</text>
+  <text class="subtitle" x="615" y="95"  text-anchor="middle">subscribe to streams,</text>
+  <text class="subtitle" x="615" y="111" text-anchor="middle">change settings live</text>
 
   <rect x="730" y="40" width="130" height="100"/>
-  <text class="title" x="795" y="85" text-anchor="middle">player.dispose()</text>
-  <text class="subtitle" x="795" y="105" text-anchor="middle">release native</text>
-  <text class="subtitle" x="795" y="120" text-anchor="middle">handles + AO lock</text>
+  <text class="title"    x="795" y="77"  text-anchor="middle">Dispose</text>
+  <text class="subtitle" x="795" y="95"  text-anchor="middle">release everything</text>
+  <text class="subtitle" x="795" y="111" text-anchor="middle">when you are done</text>
 
   <path class="arrow" d="M160,90 L190,90"/>
   <path class="arrow" d="M330,90 L360,90"/>

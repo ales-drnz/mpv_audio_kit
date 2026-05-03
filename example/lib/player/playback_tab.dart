@@ -11,7 +11,7 @@ import 'widgets/volume_control.dart';
 
 /// Player tab — composes the cover artwork, track info chips, seek
 /// slider, transport controls, and volume slider into the responsive
-/// layout. Owns the [CoverArtRaw] subscription because two children
+/// layout. Owns the [CoverArt] subscription because two children
 /// (`CoverArtwork` and `TrackInfo`) need to read the same bytes:
 /// keeping the listener here avoids duplicating it.
 class PlaybackTab extends StatefulWidget {
@@ -29,18 +29,18 @@ class PlaybackTab extends StatefulWidget {
 }
 
 class _PlaybackTabState extends State<PlaybackTab> {
-  CoverArtRaw? _cover;
+  CoverArt? _cover;
   // Pixel dimensions of the current cover, decoded asynchronously after
   // it arrives. `null` while the decode is in flight or if the bytes
   // were undecodable.
   int? _coverWidth;
   int? _coverHeight;
-  StreamSubscription<CoverArtRaw?>? _coverSub;
+  StreamSubscription<CoverArt?>? _coverSub;
 
   @override
   void initState() {
     super.initState();
-    // Bootstrap from the audio handler: the mpv coverArtRaw stream is
+    // Bootstrap from the audio handler: the mpv coverArt stream is
     // broadcast (no replay), so without this the cover would disappear
     // every time this widget gets rebuilt mid-session — e.g. when the
     // player page swaps its layout between mobile and desktop.
@@ -49,7 +49,7 @@ class _PlaybackTabState extends State<PlaybackTab> {
       _cover = bootstrap;
       _decodeDimensions(bootstrap);
     }
-    _coverSub = widget.player.stream.coverArtRaw.listen((raw) {
+    _coverSub = widget.player.stream.coverArt.listen((raw) {
       if (!mounted) return;
       setState(() {
         _cover = raw;
@@ -62,7 +62,7 @@ class _PlaybackTabState extends State<PlaybackTab> {
     });
   }
 
-  Future<void> _decodeDimensions(CoverArtRaw raw) async {
+  Future<void> _decodeDimensions(CoverArt raw) async {
     try {
       // ignore: deprecated_member_use
       final codec = await ui.instantiateImageCodec(raw.bytes);

@@ -36,11 +36,9 @@ dependencies:
 
 The Dart API has been rewritten from scratch: typed enums everywhere,
 atomic config aggregates (`CacheSettings`, `ReplayGainSettings`), a
-redesigned DSP pipeline (`EqualizerSettings`, `CompressorSettings`,
-`LoudnessSettings`, `PitchTempoSettings`), and the escape hatches are
-now async. Jump to the [Migration guide](#migration) for a side-by-side
-cross-walk from 0.0.9, or read the full breaking-change list in the
-[CHANGELOG](CHANGELOG.md#migration-from-009).
+redesigned DSP pipeline unified under a single [`AudioEffects`] bundle,
+and the escape hatches are now async. Jump to the
+[Migration guide](#migration) for a side-by-side cross-walk from 0.0.9.
 
 ### Platform Requirements
 
@@ -93,14 +91,19 @@ cross-walk from 0.0.9, or read the full breaking-change list in the
         *   [4.5 Volume & Mute](#45-volume--mute)
         *   [4.6 Audio Delay](#46-audio-delay)
     *   [5. Audio Quality & DSP](#5-audio-quality--dsp)
-        *   [5.1 Filter Chain](#51-filter-chain)
+        *   [5.1 The AudioEffects Bundle](#51-the-audioeffects-bundle)
         *   [5.2 Equalizer](#52-equalizer)
         *   [5.3 Compressor](#53-compressor)
         *   [5.4 Loudness](#54-loudness)
         *   [5.5 Pitch / Tempo](#55-pitch--tempo)
-        *   [5.6 Custom Filters](#56-custom-filters)
-        *   [5.7 ReplayGain](#57-replaygain)
-        *   [5.8 Gapless Playback](#58-gapless-playback)
+        *   [5.6 Bass / Treble](#56-bass--treble)
+        *   [5.7 Stereo Width / Balance](#57-stereo-width--balance)
+        *   [5.8 Headphone Crossfeed](#58-headphone-crossfeed)
+        *   [5.9 Silence Trim](#59-silence-trim)
+        *   [5.10 Crossfade](#510-crossfade)
+        *   [5.11 Custom Filters](#511-custom-filters)
+        *   [5.12 ReplayGain](#512-replaygain)
+        *   [5.13 Gapless Playback](#513-gapless-playback)
     *   [6. Hardware & Routing](#6-hardware--routing)
         *   [6.1 Audio Output Driver](#61-audio-output-driver)
         *   [6.2 Exclusive Mode](#62-exclusive-mode)
@@ -131,7 +134,7 @@ cross-walk from 0.0.9, or read the full breaking-change list in the
         *   [9.6 File Metadata & Path Streams](#96-file-metadata--path-streams)
         *   [9.7 Playback Timing Streams](#97-playback-timing-streams)
         *   [9.8 A-B Loop Streams](#98-a-b-loop-streams)
-        *   [9.9 Cover Art & Display Streams](#99-cover-art--display-streams)
+        *   [9.9 Cover Art Streams](#99-cover-art-streams)
         *   [9.10 Runtime Diagnostics](#910-runtime-diagnostics)
         *   [9.11 Prefetch Lifecycle Stream](#911-prefetch-lifecycle-stream)
         *   [9.12 Aggregate Lifecycle](#912-aggregate-lifecycle)
@@ -201,12 +204,12 @@ The following images demonstrate the example app included in the `example/` dire
 - 🧬 **Type-safe API** — typed enums, sealed selectors, `*Settings` bundles. No stringly-typed setters.
 - 📡 **Reactive state** — synchronous [`state`](#913-complete-state-snapshot) snapshot + [90+ observable streams](#9-state--streams) covering every mpv property.
 - 🎵 **Gapless playback** — seamless track transitions with an observable [prefetch lifecycle](#911-prefetch-lifecycle-stream).
-- 🎛️ **DSP pipeline** — typed [equalizer](#52-equalizer), [compressor](#53-compressor), [loudness](#54-loudness), [pitch / tempo](#55-pitch--tempo), plus any custom `--af` filter.
+- 🎛️ **DSP pipeline** — single atomic [`AudioEffects`](#5-audio-quality--dsp) bundle: 10-band equalizer, compressor, loudness, pitch / tempo, bass / treble, stereo width, headphone crossfeed, silence trim, crossfade, plus any custom `--af` filter.
 - ⚖️ **ReplayGain** — track & album normalization, preamp, fallback gain.
 - 📜 **Dynamic playlist** — add, remove, move, replace mid-playback; [chapters](#36-chapter-navigation) and [A-B loop](#43-a-b-loop) included.
 - 🎼 **Multi-track audio** — typed [track selection](#67-audio-track-selection) for multilingual containers (MKV, MP4) with codec / language / gain metadata per track.
 - ⚙️ **Hardware control** — [exclusive mode](#62-exclusive-mode), [device selection](#63-device-selection), [bit-perfect sample-rate / format](#64-output-format), [S/PDIF passthrough](#65-spdif-passthrough).
-- 🔍 **Metadata & cover art** — [embedded artwork bytes](#82-cover-art) and [tags](#81-metadata-tags), no re-encode round-trip.
+- 🔍 **Metadata & cover art** — [embedded artwork](#82-cover-art) as raw bytes plus a Flutter [`ImageProvider`](#82-cover-art) helper, and [tags](#81-metadata-tags) — no re-encode round-trip.
 - 🌐 **Network streams** — HLS, DASH, [SMB2/3](https://github.com/sahlberg/libsmb2), Icecast / SHOUTcast, plus any libmpv-supported HTTP/HTTPS audio format.
 - 📦 **Cache control** — atomic [`CacheSettings`](#71-cache-configuration) for memory pool, disk overflow, pause-on-empty.
 - 🪝 **Hooks** — intercept the file-loading pipeline (also during [prefetch](#12-hooks)) to resolve URLs, redirect, or inject headers.
@@ -593,23 +596,27 @@ await player.setAudioDelay(const Duration(milliseconds: -200));
 All processing in this section runs in libmpv's `libavfilter` pipeline
 and works on **every platform**.
 
-#### 5.1 Filter Chain
+#### 5.1 The AudioEffects Bundle
 
-The wrapper exposes four typed DSP stages, each with its own atomic
-setter. Stages are inserted into mpv's `--af` chain in a fixed order
-and can be toggled independently — disabling a stage strips it from
-the chain at zero CPU cost while preserving its parameters.
+Every DSP stage lives inside a single immutable [`AudioEffects`] value
+applied atomically via two setters on `Player`:
 
+```dart
+// Replace the whole bundle (presets, factory defaults, JSON restore):
+Future<void> setAudioEffects(AudioEffects effects);
+
+// Mutate one or more fields with a Freezed-style copyWith mapper:
+Future<void> updateAudioEffects(AudioEffects Function(AudioEffects) f);
 ```
-custom… → compressor → equalizer → pitch/tempo → loudnorm
-```
+
+Stages are inserted into mpv's `--af` chain in a fixed order:
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/dsp_chain.png" width="100%">
 
-For anything the four stages don't cover (echo, crossfeed, stereo
-widening, crystalizer, format conversion), use
-[Custom Filters](#56-custom-filters) — a list of raw mpv `--af`
-strings that runs at the head of the chain.
+```
+custom… → compressor → equalizer → bassTreble → stereo
+       → crossfeed → silenceTrim → pitchTempo → crossfade → loudnorm
+```
 
 Each typed stage carries an `enabled` flag (default `false`). When
 `true` the stage is inserted into the chain; when `false` it's stripped
@@ -617,12 +624,53 @@ out at zero CPU cost while its parameters stay in `PlayerState` for
 the next toggle.
 
 ```dart
-// Read the live aggregate config back through the stream:
-player.stream.equalizer.listen((cfg) => print('eq: ${cfg.gains}'));
+// Read the live bundle synchronously
+final fx = player.state.audioEffects;
+print('eq enabled: ${fx.equalizer.enabled} / gains: ${fx.equalizer.gains}');
 
-// Or peek synchronously:
-final eq = player.state.equalizer;
-print('${eq.enabled} / ${eq.gains}');
+// Or via stream — sub-stream a single effect with .map().distinct()
+player.stream.audioEffects
+  .map((e) => e.equalizer)
+  .distinct()
+  .listen((eq) => print('eq: ${eq.gains}'));
+```
+
+Apply a multi-effect preset atomically (one `--af` write):
+
+```dart
+await player.setAudioEffects(const AudioEffects(
+  compressor:
+      CompressorSettings(enabled: true, threshold: -20, ratio: 4),
+  loudness:
+      LoudnessSettings(enabled: true, integratedLoudness: -16),
+  bassTreble:
+      BassTrebleSettings(enabled: true, bassDb: 3, trebleDb: -2),
+  crossfade: Duration(seconds: 2),
+));
+```
+
+Toggle a single stage:
+
+```dart
+await player.updateAudioEffects((e) => e.copyWith(
+  equalizer: e.equalizer.copyWith(enabled: !e.equalizer.enabled),
+));
+```
+
+Save / restore a preset in one line each (Freezed-generated
+`toJson` / `fromJson`):
+
+```dart
+final json = jsonEncode(player.state.audioEffects.toJson());
+await player.setAudioEffects(
+  AudioEffects.fromJson(jsonDecode(json) as Map<String, dynamic>),
+);
+```
+
+Reset everything:
+
+```dart
+await player.setAudioEffects(const AudioEffects());
 ```
 
 #### 5.2 Equalizer
@@ -634,27 +682,28 @@ negative = cut.
 
 ```dart
 // Bass boost preset
-await player.setEqualizer(const EqualizerSettings(
-  enabled: true,
-  gains: [4.0, 3.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+await player.updateAudioEffects((e) => e.copyWith(
+  equalizer: const EqualizerSettings(
+    enabled: true,
+    gains: [4.0, 3.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  ),
 ));
 
-// Tweak a single band (most useful with a slider UI on top of state)
-await player.setEqualizer(
-  player.state.equalizer.copyWith(
-    gains: [...player.state.equalizer.gains]..[5] = 2.5,
+// Tweak a single band (most useful with a slider UI)
+await player.updateAudioEffects((e) => e.copyWith(
+  equalizer: e.equalizer.copyWith(
+    gains: [...e.equalizer.gains]..[5] = 2.5,
   ),
-);
+));
 
 // Reset to the flat curve
-await player.setEqualizer(EqualizerSettings.flat);
-
-// Disable the stage; the gains are preserved for re-enable
-await player.setEqualizer(player.state.equalizer.copyWith(enabled: false));
+await player.updateAudioEffects(
+  (e) => e.copyWith(equalizer: EqualizerSettings.flat),
+);
 ```
 
-The list must contain exactly **10** values; the setter throws
-`ArgumentError` otherwise.
+The gains list must contain exactly **10** values; `setAudioEffects`
+throws `ArgumentError` otherwise.
 
 #### 5.3 Compressor
 
@@ -663,12 +712,14 @@ between loud and quiet passages. Defaults match a transparent music
 preset.
 
 ```dart
-await player.setCompressor(const CompressorSettings(
-  enabled: true,
-  threshold: -20.0,                     // dB; -60 to 0
-  ratio: 4.0,                           // 1.0 (off) to 20.0 (limiter)
-  attack: Duration(milliseconds: 20),   // 0.01–2000 ms
-  release: Duration(milliseconds: 250), // 0.01–9000 ms
+await player.updateAudioEffects((e) => e.copyWith(
+  compressor: const CompressorSettings(
+    enabled: true,
+    threshold: -20.0,                     // dB; -60 to 0
+    ratio: 4.0,                           // 1.0 (off) to 20.0 (limiter)
+    attack: Duration(milliseconds: 20),   // 0.01–2000 ms
+    release: Duration(milliseconds: 250), // 0.01–9000 ms
+  ),
 ));
 ```
 
@@ -679,11 +730,13 @@ consistent perceived loudness across mixed content (broadcast,
 podcasts, mixed-album streams).
 
 ```dart
-await player.setLoudness(const LoudnessSettings(
-  enabled: true,
-  integratedLoudness: -16.0, // LUFS; -23 broadcast, -16 streaming, -14 loud
-  truePeak: -1.5,            // dBTP; -9 to 0
-  lra: 11.0,                 // Loudness range; 1 to 50 LU
+await player.updateAudioEffects((e) => e.copyWith(
+  loudness: const LoudnessSettings(
+    enabled: true,
+    integratedLoudness: -16.0, // LUFS; -23 broadcast, -16 streaming, -14 loud
+    truePeak: -1.5,            // dBTP; -9 to 0
+    lra: 11.0,                 // Loudness range; 1 to 50 LU
+  ),
 ));
 ```
 
@@ -696,54 +749,148 @@ quality. Independent of [`setRate`](#44-speed--pitch).
 
 ```dart
 // Raise pitch by one semitone, keep speed
-await player.setPitchTempo(const PitchTempoSettings(
-  enabled: true,
-  pitch: 1.0594,
-  tempo: 1.0,
+await player.updateAudioEffects((e) => e.copyWith(
+  pitchTempo: const PitchTempoSettings(
+    enabled: true, pitch: 1.0594, tempo: 1.0,
+  ),
 ));
 
 // Slow down to 75% without changing pitch
-await player.setPitchTempo(const PitchTempoSettings(
-  enabled: true,
-  pitch: 1.0,
-  tempo: 0.75,
+await player.updateAudioEffects((e) => e.copyWith(
+  pitchTempo: const PitchTempoSettings(
+    enabled: true, pitch: 1.0, tempo: 0.75,
+  ),
 ));
 ```
 
-#### 5.6 Custom Filters
+#### 5.6 Bass / Treble
 
-Raw mpv `--af` strings inserted at the head of the chain, before any
-wrapper-managed DSP stage. Use this for anything the four typed
-stages don't cover (echo, crossfeed, format conversion, custom
-lavfi):
+Two-band shelving tone control (libavfilter `bass` + `treble`). Use
+for low-end / high-end colouring without touching the 10-band EQ.
 
 ```dart
-await player.setCustomAudioFilters([
-  // Crossfeed for headphone listening
-  'lavfi-bs2b',
-  // Echo: 300 ms decay, 30% falloff
-  'lavfi-aecho=0.8:0.5:60:0.4',
-  // Resample everything to 48 kHz
-  'lavfi-aresample=48000',
-]);
-
-// Clear all custom filters; typed stages stay in place
-await player.setCustomAudioFilters(const []);
+await player.updateAudioEffects((e) => e.copyWith(
+  bassTreble: const BassTrebleSettings(
+    enabled: true,
+    bassDb: 4.0,           // shelf gain in dB; musical -20…+20
+    bassFrequency: 100.0,  // Hz; typical 80–250
+    trebleDb: -2.0,
+    trebleFrequency: 3000.0,
+  ),
+));
 ```
 
-The setter rejects entries carrying the wrapper-reserved labels
-(`@_mak_eq:`, `@_mak_comp:`, `@_mak_loud:`, `@_mak_pt:`) with an
-`ArgumentError` — those slots belong to the typed setters above.
+#### 5.7 Stereo Width / Balance
 
-#### 5.7 ReplayGain
+Stereo image control (libavfilter `stereotools`). [`width`] = 1.0 is
+unchanged, < 1.0 narrows toward mono, > 1.0 widens. [`balance`] pans
+the image left / right.
 
-ReplayGain reads per-track or per-album gain tags embedded by tools
-like `mp3gain`, `metaflac`, or any modern music tagger. The full
-configuration is set atomically via `setReplayGain(ReplayGainSettings)`:
+```dart
+await player.updateAudioEffects((e) => e.copyWith(
+  stereo: const StereoSettings(
+    enabled: true,
+    width: 1.5,    // 0.0 = mono, 1.0 = unchanged, > 1.0 widens
+    balance: 0.0,  // -1.0 (full left) to +1.0 (full right)
+  ),
+));
+```
+
+#### 5.8 Headphone Crossfeed
+
+Bauer Stereophonic-to-Binaural processor (libavfilter `bs2b`). Bleeds
+a low-passed copy of each channel into the opposite ear, simulating
+the natural crosstalk of a loudspeaker setup. Reduces "head-in-a-vise"
+fatigue on hard-panned mixes when listening on headphones.
+
+```dart
+await player.updateAudioEffects((e) => e.copyWith(
+  crossfeed: const CrossfeedSettings(
+    enabled: true,
+    intensity: CrossfeedIntensity.cmoy, // .defaultProfile, .cmoy, .jmeier
+  ),
+));
+```
+
+The three profiles map to the upstream `bs2b` presets:
+
+| Profile          | Cutoff | Crossfeed level |
+|------------------|--------|-----------------|
+| `defaultProfile` | 700 Hz | 4.5 dB          |
+| `cmoy`           | 700 Hz | 6.0 dB          |
+| `jmeier`         | 650 Hz | 9.5 dB          |
+
+#### 5.9 Silence Trim
+
+Auto-trim leading and / or trailing silence (libavfilter
+`silenceremove`). Common in podcast / audiobook apps to skip dead air
+without manual seeking.
+
+```dart
+await player.updateAudioEffects((e) => e.copyWith(
+  silenceTrim: const SilenceTrimSettings(
+    trimStart: true,
+    trimEnd: true,
+    thresholdDb: -50.0, // samples below this count as silence; -90…-20
+    minDuration: Duration(milliseconds: 250),
+  ),
+));
+```
+
+Both flags off (default) → the stage is not inserted in the chain.
+
+#### 5.10 Crossfade
+
+Fade between consecutive playlist entries (libavfilter `acrossfade`).
+Adds a smooth transition on top of the gapless decoder reuse.
+
+```dart
+await player.updateAudioEffects(
+  (e) => e.copyWith(crossfade: const Duration(seconds: 3)),
+);
+
+// Disable
+await player.updateAudioEffects((e) => e.copyWith(crossfade: null));
+```
+
+#### 5.11 Custom Filters
+
+Raw mpv `--af` strings inserted at the head of the chain, before any
+wrapper-managed DSP stage. Use this for anything the typed effects
+don't cover (echo, phaser, custom lavfi):
+
+```dart
+await player.updateAudioEffects((e) => e.copyWith(custom: [
+  'lavfi-aecho=0.8:0.5:60:0.4',
+  'lavfi-aphaser=type=t',
+  'lavfi-aresample=48000',
+]));
+
+// Append
+await player.updateAudioEffects(
+  (e) => e.copyWith(custom: [...e.custom, 'lavfi-volume=2']),
+);
+
+// Clear
+await player.updateAudioEffects((e) => e.copyWith(custom: const []));
+```
+
+`custom` entries must NOT carry the wrapper-reserved labels
+(`@_mak_eq:`, `@_mak_comp:`, `@_mak_loud:`, `@_mak_pt:`,
+`@_mak_bt:`, `@_mak_st:`, `@_mak_cf:`, `@_mak_str:`, `@_mak_xf:`) —
+those slots belong to the typed effects. `setAudioEffects` /
+`updateAudioEffects` throws `ArgumentError` otherwise.
+
+#### 5.12 ReplayGain
+
+ReplayGain is decoder-side gain adjustment (NOT a lavfi filter), so
+it stays outside [`AudioEffects`]. It reads per-track or per-album
+gain tags embedded by tools like `mp3gain`, `metaflac`, or any modern
+music tagger.
 
 ```dart
 await player.setReplayGain(const ReplayGainSettings(
-  mode: ReplayGain.track, // .no, .track, .album
+  mode: ReplayGain.track,     // .no, .track, .album
   preamp: 2.0,                // +2 dB on top of the RG value
   fallback: -6.0,             // -6 dB on files without RG tags
   clip: false,                // false = peak-limit; true = allow clipping
@@ -755,7 +902,7 @@ await player.setReplayGain(
 );
 ```
 
-#### 5.8 Gapless Playback
+#### 5.13 Gapless Playback
 
 ```dart
 await player.setGapless(Gapless.yes);   // Full gapless — re-uses the decoder
@@ -1135,89 +1282,90 @@ Common tag keys (case as returned by mpv): `title`, `artist`, `album`, `album_ar
 
 #### 8.2 Cover Art
 
-The wrapper extracts the **raw codec bytes** of the embedded picture
-the moment a file finishes loading and emits them on
-`player.stream.coverArtRaw` as a `CoverArtRaw(bytes, mimeType)`. The
-bytes are the original PNG / JPEG / WEBP / BMP / GIF as embedded by
-the tagger.
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/cover_art_flow.png" width="100%">
+
+Embedded cover art is exposed as **raw codec bytes** plus a few
+Flutter conveniences, on a synchronous-state + reactive-stream pair:
 
 ```dart
-Uint8List? _cover;
-
-@override
-void initState() {
-  super.initState();
-  player.stream.coverArtRaw.listen((raw) {
-    setState(() => _cover = raw?.bytes);
-  });
+// Synchronous read — peek at the current track's cover
+final art = player.state.coverArt;
+if (art != null) {
+  print('Format: ${art.extension}, ${art.bytes.length} bytes');
 }
 
-// Hand straight to Image.memory — no helper needed.
-@override
-Widget build(BuildContext context) {
-  return _cover != null ? Image.memory(_cover!) : const SizedBox.shrink();
+// Reactive — emits on every file load, null when no cover is embedded
+player.stream.coverArt.listen((art) {
+  if (art != null) updateUi(art.image);
+});
+```
+
+The [`CoverArt`] type carries the bytes plus a few helpers:
+
+```dart
+class CoverArt {
+  Uint8List bytes;       // raw codec bytes
+  String mimeType;       // 'image/png' | 'image/jpeg' | 'image/webp' | …
+
+  ImageProvider image;   // ready to drop into Flutter `Image(image: …)`
+  String extension;      // 'png' | 'jpg' | 'webp' | 'bmp' | 'gif'
+  bool isPng;            // and isJpeg / isWebp / isBmp / isGif
 }
 ```
 
-The stream emits **exactly once per file load** — a `CoverArtRaw` when
-the new file has embedded artwork, `null` otherwise. Listen for the
-`null` to clear stale artwork on track changes.
-
-Three mpv-level options control how mpv treats cover-art metadata.
-Each has a typed setter and an observable getter.
-
-##### `audio-display`
-
-Which image source mpv decodes into its video pipeline.
+##### In a Flutter widget
 
 ```dart
-await player.setAudioDisplay(Display.embeddedFirst); // default
-await player.setAudioDisplay(Display.externalFirst);
-await player.setAudioDisplay(Display.no);            // skip cover art entirely
+StreamBuilder<CoverArt?>(
+  stream: player.stream.coverArt,
+  builder: (ctx, snap) {
+    final art = snap.data;
+    if (art == null) {
+      return const Icon(Icons.music_note, size: 96);
+    }
+    return Image(
+      image: art.image,         // MemoryImage backed by the raw bytes
+      fit: BoxFit.cover,
+    );
+  },
+)
 ```
 
-| Value | Behaviour |
-|-------|-----------|
-| `embeddedFirst` | Prefer embedded images; fall back to external files. (mpv default.) |
-| `externalFirst` | Prefer external files; fall back to embedded. |
-| `no` | Skip cover-art display entirely — useful when you read artwork via a tag library. |
-
-##### `cover-art-auto`
-
-Whether mpv scans for an external cover-art file next to the audio
-file (`cover.jpg`, `folder.jpg`, …).
+##### Saving the cover to disk
 
 ```dart
-await player.setCoverArtAuto(Cover.no); // library default
-await player.setCoverArtAuto(Cover.exact);
-await player.setCoverArtAuto(Cover.fuzzy);
-await player.setCoverArtAuto(Cover.all);
+final art = player.state.coverArt;
+if (art != null) {
+  await File('${dir.path}/cover.${art.extension}').writeAsBytes(art.bytes);
+}
+```
+
+##### Lifecycle
+
+- `stream.coverArt` emits **once per `open()` call** — on file load,
+  before playback starts.
+- The emitted value is `null` when the file has no embedded picture.
+  The stream emits the `null` (rather than skipping the file) so a UI
+  bound to it clears the previous cover on every track change.
+- `state.coverArt` mirrors the latest stream emit synchronously.
+- No re-encoding, no thumbnail generation — the bytes are exactly what
+  the demuxer pulled out of the file.
+
+##### External cover files (`cover-art-auto`)
+
+If you want mpv to *also* look for a `cover.jpg` (or similar) sitting
+next to the audio file on disk:
+
+```dart
+await player.setCoverArtAuto(Cover.no);     // library default — disabled
+await player.setCoverArtAuto(Cover.exact);  // match the audio filename
+await player.setCoverArtAuto(Cover.fuzzy);  // any image in the same folder
+await player.setCoverArtAuto(Cover.all);    // any image, even loosely matched
 ```
 
 The library defaults to `no` (mpv's own default is `exact`) so
 unrelated images can't sneak in. Switch to `exact` or `fuzzy` for a
 local-file player that wants disk-side artwork.
-
-##### `image-display-duration`
-
-How long the cover frame is held as a displayable video frame after
-the file loads.
-
-```dart
-await player.setImageDisplayDuration(null);                            // mpv's `inf` (default)
-await player.setImageDisplayDuration(Duration.zero);                   // drop immediately
-await player.setImageDisplayDuration(const Duration(seconds: 5));      // explicit hold
-```
-
-> **Tip — disabling the video pipeline entirely:** if your app reads
-> artwork via a tag library and never uses `coverArtRaw`, you can
-> turn the whole video pipeline off:
->
-> ```dart
-> await player.setAudioDisplay(Display.no);
-> await player.setCoverArtAuto(Cover.no);
-> await player.setImageDisplayDuration(Duration.zero);
-> ```
 
 ---
 
@@ -1309,19 +1457,22 @@ codec-family detection.
 
 #### 9.4 DSP & Filter Streams
 
-Every typed DSP stage emits its full aggregate settings — peek at
-`.value` synchronously through `state` for one-shot reads. Detailed
-usage in [§5](#5-audio-quality--dsp).
+The full DSP rack is a single bundle on `audioEffects`. Sub-stream a
+single effect with `stream.audioEffects.map((e) => e.equalizer).distinct()`,
+or peek at `state.audioEffects` synchronously. Detailed usage in
+[§5](#5-audio-quality--dsp).
 
 | Stream | Type | Setter |
 | :--- | :--- | :--- |
-| `equalizer` | `EqualizerSettings` | `setEqualizer` |
-| `compressor` | `CompressorSettings` | `setCompressor` |
-| `loudness` | `LoudnessSettings` | `setLoudness` |
-| `pitchTempo` | `PitchTempoSettings` | `setPitchTempo` |
-| `customAudioFilters` | `List<String>` | `setCustomAudioFilters` |
+| `audioEffects` | `AudioEffects` | `setAudioEffects` / `updateAudioEffects` |
 | `replayGain` | `ReplayGainSettings` | `setReplayGain` |
 | `gapless` | `Gapless` | `setGapless` |
+
+`audioEffects` is a single bundle holding ten typed effects
+(`equalizer`, `compressor`, `loudness`, `pitchTempo`, `bassTreble`,
+`stereo`, `crossfeed`, `silenceTrim`, `crossfade`) plus a raw
+`custom: List<String>` slot. Sub-stream a single effect with
+`stream.audioEffects.map((e) => e.equalizer).distinct()`.
 
 #### 9.5 Network & Cache Streams
 
@@ -1380,17 +1531,15 @@ Mirrors of the [§4.3](#43-a-b-loop) setters plus a read-only counter.
 | `abLoopCount` | `int?` (`null` = infinite) | `setAbLoopCount` |
 | `remainingAbLoops` | `int?` (`null` when no loop / infinite) | _(observed; counts down)_ |
 
-#### 9.9 Cover Art & Display Streams
+#### 9.9 Cover Art Streams
 
-Cover-art capture and the three display-related options. See
+Cover-art capture + external file scan policy. See
 [§8.2](#82-cover-art) for the consumer-facing usage.
 
 | Stream | Type | Setter |
 | :--- | :--- | :--- |
-| `coverArtRaw` | `CoverArtRaw?` (one emit per file load) | _(observed; from embedded picture)_ |
-| `audioDisplay` | `Display` | `setAudioDisplay` |
+| `coverArt` | `CoverArt?` (one emit per file load) | _(observed; from embedded picture)_ |
 | `coverArtAuto` | `Cover` | `setCoverArtAuto` |
-| `imageDisplayDuration` | `Duration?` (`null` = mpv's `inf`) | `setImageDisplayDuration` |
 
 #### 9.10 Runtime Diagnostics
 
@@ -1502,7 +1651,7 @@ print(s.buffer);                                 // Duration
 print(s.playlist.medias[s.playlist.index].uri);  // String
 print(s.metadata['title']);                      // String?
 print(s.audioParams.codec);                      // String?
-print(s.equalizer.gains);                        // List<double>
+print(s.audioEffects.equalizer.gains);           // List<double>
 print(s.cache.secs);                             // Duration
 print(s.replayGain.preamp);                      // double
 print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
@@ -1800,9 +1949,7 @@ await player.openAll(medias);
 rewritten from scratch: every setter is typed, every observable is
 either a typed enum or a Freezed config aggregate, and the escape
 hatches now propagate mpv errors instead of swallowing them. This
-section is a side-by-side cross-walk against 0.0.9 — for the
-exhaustive change log (with rationale per breaking change), see
-[CHANGELOG.md → Migration from 0.0.9](CHANGELOG.md#migration-from-009).
+section is a side-by-side cross-walk against 0.0.9.
 
 ### Renames at a glance
 
@@ -1819,7 +1966,7 @@ exhaustive change log (with rationale per breaking change), see
 | `Player.setCoverArtAuto('exact')` | `Player.setCoverArtAuto(Cover.exact)` |
 | `Player.registerHook('on_load')` | `Player.registerHook(Hook.load)` |
 | `event.name == 'on_load'` (on `MpvHookEvent`) | `event.hook == Hook.load` |
-| `setAudioFilters([AudioFilter.equalizer(...)])` | `setEqualizer(EqualizerSettings(...))` (and three peers) |
+| `setAudioFilters([AudioFilter.equalizer(...)])` | `setAudioEffects(AudioEffects(equalizer: ...))` / `updateAudioEffects((e) => ...)` |
 | `setReplayGainPreamp` / `setReplayGainFallback` / `setReplayGainClip` | `setReplayGain(ReplayGainSettings(...))` |
 | `setCacheSecs` / `setCachePause` / `setCachePauseWait` / `setCacheOnDisk` | `setCache(CacheSettings(...))` |
 
@@ -1827,14 +1974,16 @@ exhaustive change log (with rationale per breaking change), see
 
 | 0.0.9 | 0.1.0 |
 | :--- | :--- |
-| `state.audioDisplay: String` | `state.audioDisplay: Display` |
+| `state.audioDisplay: String` | _Removed_ — covered by the `coverArt` stream-and-state pair (no video pipeline in the audio-only build) |
 | `state.coverArtAuto: String` | `state.coverArtAuto: Cover` |
 | `state.audioFormat: String` | `state.audioFormat: Format` |
 | `state.audioChannels: String` | `state.audioChannels: Channels` |
 | `state.audioSpdif: String` | `state.audioSpdif: Set<Spdif>` |
-| `state.activeFilters` / `state.equalizerGains` | `state.equalizer` / `state.compressor` / `state.loudness` / `state.pitchTempo` / `state.customAudioFilters` |
+| `state.activeFilters` / `state.equalizerGains` | `state.audioEffects` (single bundle: `.equalizer`, `.compressor`, `.loudness`, `.pitchTempo`, `.bassTreble`, `.stereo`, `.crossfeed`, `.silenceTrim`, `.crossfade`, `.custom`) |
 | `state.playlistMode` | `state.loop` |
 | `Playlist.empty()` (factory) | `Playlist.empty` (const static field) |
+| `Player.stream.coverArtRaw: Stream<CoverArtRaw?>` | `Player.stream.coverArt: Stream<CoverArt?>` (+ new `Player.state.coverArt`) |
+| `setAudioDisplay` / `setImageDisplayDuration` (mpv video-pipeline policy) | _Removed_ — audio-only build, no video pipeline; cover bytes are surfaced by `state.coverArt` regardless |
 
 #### Type renames
 
@@ -1862,32 +2011,51 @@ await player.sendRawCommand(['ao-reload']);
 ### DSP filters
 
 ```dart
-// 0.0.9
+// 0.0.9 — 5+ separate setters, mpv `--af` rewritten on every call
 await player.setAudioFilters([
   AudioFilter.equalizer([0, 0, 2, 4, 2, 0, -2, -4, -4, 0]),
   AudioFilter.loudnorm(),
   AudioFilter.compressor(threshold: -18, ratio: 3),
 ]);
 
-// 0.1.0 — typed configs, one setter per stage; chain composed atomically
-await player.setEqualizer(const EqualizerSettings(
-  enabled: true,
-  gains: [0, 0, 2, 4, 2, 0, -2, -4, -4, 0],
-));
-await player.setLoudness(const LoudnessSettings(enabled: true));
-await player.setCompressor(const CompressorSettings(
-  enabled: true, threshold: -18, ratio: 3,
+// 0.1.0 — single AudioEffects bundle, one atomic write
+await player.setAudioEffects(const AudioEffects(
+  equalizer: EqualizerSettings(
+    enabled: true, gains: [0, 0, 2, 4, 2, 0, -2, -4, -4, 0],
+  ),
+  loudness: LoudnessSettings(enabled: true),
+  compressor: CompressorSettings(
+    enabled: true, threshold: -18, ratio: 3,
+  ),
+  // Built-in 0.1.0 effects:
+  bassTreble: BassTrebleSettings(enabled: true, bassDb: 3, trebleDb: -1),
+  stereo: StereoSettings(enabled: true, width: 1.2),
+  crossfeed: CrossfeedSettings(
+    enabled: true, intensity: CrossfeedIntensity.cmoy,
+  ),
+  silenceTrim: SilenceTrimSettings(trimStart: true, trimEnd: true),
+  crossfade: Duration(seconds: 2),
+  // Anything outside the typed effects (echo, phaser, …):
+  custom: ['lavfi-aecho=0.8:0.5:60:0.4'],
 ));
 
-// Anything outside the four typed stages goes through setCustomAudioFilters
-await player.setCustomAudioFilters(['lavfi-bs2b', 'lavfi-aecho=0.8:0.5:60:0.4']);
+// Single-effect update — Freezed copyWith mapper
+await player.updateAudioEffects((e) => e.copyWith(
+  equalizer: e.equalizer.copyWith(enabled: !e.equalizer.enabled),
+));
 ```
 
-The 0.0.9 factories that aren't typed setters in 0.1.0
-(`AudioFilter.crossfeed`, `.echo`, `.extraStereo`, `.crystalizer`,
-`.scaleTempo`) move into `setCustomAudioFilters` as raw mpv `--af`
-strings. `scaleTempo` is also superseded by the new typed
-[Pitch / Tempo stage](#55-pitch--tempo) (rubberband).
+All DSP — every effect plus any raw lavfi entry — goes through the
+single `setAudioEffects` / `updateAudioEffects` API and the unified
+`AudioEffects` bundle.
+
+The 0.0.9 factories now superseded by typed effects on the bundle:
+`AudioFilter.crossfeed` → `crossfeed`,
+`AudioFilter.extraStereo` → `stereo`,
+`AudioFilter.scaleTempo` → `pitchTempo` (rubberband).
+The remaining 0.0.9 factories (`.echo`, `.crystalizer`, `.aphaser`,
+`.flanger`, `.vibrato`, …) move into `audioEffects.custom` as raw
+mpv `--af` strings.
 
 ### Time-based setters now take `Duration`
 
@@ -1902,16 +2070,26 @@ strings. `scaleTempo` is also superseded by the new typed
 ### Cover art
 
 ```dart
-// 0.0.9 — wrapper mutated Media.extras with PNG bytes
+// 0.0.9 — wrapper mutated Media.extras with PNG bytes (per-track, on load)
 final art = playlist.medias[playlist.index].extras?['artBytes'] as Uint8List?;
 
-// 0.1.0 — dedicated stream emits raw codec bytes per file load
-player.stream.coverArtRaw.listen((raw) {
-  if (raw == null) return;          // current file has no embedded art
-  Image.memory(raw.bytes);          // PNG / JPEG / WEBP / BMP / GIF as embedded
-  print('mime: ${raw.mimeType}');
+// 0.1.0 — Media is immutable; cover bytes flow through a dedicated
+// stream-and-state pair, with Flutter conveniences on the model.
+player.stream.coverArt.listen((art) {
+  if (art != null) imageController.update(art.image);
 });
+
+// Or peek synchronously
+final art = player.state.coverArt;
+if (art != null) {
+  Image(image: art.image, fit: BoxFit.cover);
+  await File('cover.${art.extension}').writeAsBytes(art.bytes);
+}
 ```
+
+`setAudioDisplay` and `setImageDisplayDuration` are gone — they
+controlled mpv's video pipeline, which the audio-only build doesn't
+ship. Cover bytes still arrive via `state.coverArt` regardless.
 
 ### `PlayerConfiguration` slimmed
 

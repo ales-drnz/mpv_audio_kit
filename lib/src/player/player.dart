@@ -8,7 +8,7 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
 import '../internals/cover_art_extractor.dart';
-import '../models/cover_art_raw.dart';
+import '../models/cover_art.dart';
 import '../internals/event_isolate.dart';
 import '../events/exceptions.dart';
 import '../internals/audio_output_error.dart';
@@ -31,25 +31,21 @@ import '../models/playlist.dart';
 import '../types/sealed/channels.dart';
 import '../models/device.dart';
 import '../types/enums/format.dart';
-import '../types/enums/display.dart';
 import '../types/enums/cover.dart';
 import '../types/enums/gapless.dart';
 import '../types/enums/hook.dart';
+import '../types/settings/audio_effects.dart';
 import '../types/settings/cache_settings.dart';
-import '../types/settings/compressor_settings.dart';
-import '../types/settings/equalizer_settings.dart';
-import '../types/settings/loudness_settings.dart';
 import '../events/mpv_log_entry.dart';
 import '../events/mpv_hook_event.dart';
 import '../events/mpv_player_error.dart';
-import '../types/settings/pitch_tempo_settings.dart';
 import 'player_configuration.dart';
 import 'player_state.dart';
 import '../types/settings/replay_gain_settings.dart';
 import '../types/enums/spdif.dart';
 import 'player_stream.dart';
 
-export '../models/cover_art_raw.dart';
+export '../models/cover_art.dart';
 export '../types/enums/loop.dart';
 export '../models/media.dart';
 export '../models/playlist.dart';
@@ -58,12 +54,17 @@ export '../models/device.dart';
 export '../types/enums/format.dart';
 export '../models/audio_params.dart';
 export '../types/sealed/track.dart';
+export '../types/settings/audio_effects.dart';
+export '../types/settings/bass_treble_settings.dart';
 export '../types/settings/compressor_settings.dart';
+export '../types/settings/crossfeed_settings.dart';
 export '../types/settings/equalizer_settings.dart';
 export '../types/settings/loudness_settings.dart';
 export '../events/mpv_log_entry.dart';
 export '../events/mpv_hook_event.dart';
 export '../types/settings/pitch_tempo_settings.dart';
+export '../types/settings/silence_trim_settings.dart';
+export '../types/settings/stereo_settings.dart';
 export 'player_configuration.dart';
 export 'player_state.dart';
 export 'player_stream.dart';
@@ -312,8 +313,8 @@ abstract class _PlayerBase {
   // with `null` when the new file has no embedded cover. This lets
   // consumers clear / reset their UI on every track change without
   // having to compare against a separate file-transition signal.
-  final StreamController<CoverArtRaw?> _coverArtRawCtrl =
-      StreamController<CoverArtRaw?>.broadcast();
+  final StreamController<CoverArt?> _coverArtCtrl =
+      StreamController<CoverArt?>.broadcast();
 
   PlayerState get state => _state;
   late final PlayerStream stream;
@@ -368,18 +369,14 @@ abstract class _PlayerBase {
       audioDevices: _audioDevices,
       metadata: _metadata,
       bufferingPercentage: _bufferingPercentage,
-      equalizer: _reactives.equalizer,
-      compressor: _reactives.compressor,
-      loudness: _reactives.loudness,
-      pitchTempo: _reactives.pitchTempo,
-      customAudioFilters: _reactives.customAudioFilters,
+      audioEffects: _reactives.audioEffects,
       endFile: _endFileCtrl.stream,
       error: _errorCtrl.stream,
       log: _logCtrl.stream,
       internalLog: _internalLogCtrl.stream,
       hook: _hookCtrl.stream,
       seekCompleted: _seekCompletedCtrl.stream,
-      coverArtRaw: _coverArtRawCtrl.stream,
+      coverArt: _coverArtCtrl.stream,
     );
 
     _startEventIsolate();
@@ -389,11 +386,15 @@ abstract class _PlayerBase {
   // --- Core Lifecycle ---
 
   void _applyPreInitOptions() {
-    _opt('vid', 'auto');
+    // Audio-only build: no video / subtitle track selection. Suppresses
+    // mpv warnings about missing MJPEG / libass decoders that would
+    // otherwise fire on every file with embedded cover art or text
+    // metadata streams. Cover-art bytes still flow through the patched
+    // `embedded-cover-art-data` property, which reads at the demuxer
+    // level before any decoder runs.
+    _opt('vid', 'no');
+    _opt('sid', 'no');
     _opt('vo', 'null');
-    // Cover-art handling: prefer the embedded picture, never scan the
-    // surrounding directory, and hold the still frame alive so the
-    // wrapper can extract it via `embedded-cover-art-data` after load.
     _opt('audio-display', 'embedded-first');
     _opt('cover-art-auto', 'no');
     _opt('image-display-duration', 'inf');
@@ -782,7 +783,7 @@ abstract class _PlayerBase {
     if (_disposed) return;
     // Emit unconditionally — `null` signals "no cover on the new
     // file" so consumers can clear stale artwork on track changes.
-    _coverArtRawCtrl.add(CoverArtExtractor.capture(_lib, _handle));
+    _coverArtCtrl.add(CoverArtExtractor.capture(_lib, _handle));
   }
 
   /// Tears down the player.
@@ -839,13 +840,6 @@ abstract class _PlayerBase {
       _audioDevices.close(),
       _metadata.close(),
       _bufferingPercentage.close(),
-      // The four DSP config reactives are owned by the typed setters
-      // (no mpv property observer drives them), so the registry's
-      // closeAll() does not see them.
-      _reactives.equalizer.close(),
-      _reactives.compressor.close(),
-      _reactives.loudness.close(),
-      _reactives.pitchTempo.close(),
     ]);
     await Future.wait<void>([
       _endFileCtrl.close(),
@@ -854,7 +848,7 @@ abstract class _PlayerBase {
       _internalLogCtrl.close(),
       _hookCtrl.close(),
       _seekCompletedCtrl.close(),
-      _coverArtRawCtrl.close(),
+      _coverArtCtrl.close(),
     ]);
   }
 }

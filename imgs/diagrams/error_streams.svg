@@ -5,43 +5,42 @@
     </marker>
   </defs>
   <style>
-    rect       { rx: 10; ry: 10; fill: #f8f9fb; }
-    .title     { font-weight: 700; fill: #1e2329; font-size: 14px; }
-    .sub       { fill: #5b6371; font-size: 11px; }
-    .typename  { font-family: 'SF Mono', Menlo, monospace; font-size: 11.5px; fill: #2d3748; font-weight: 600; }
-    .arrow     { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#ar2); }
+    rect     { rx: 10; ry: 10; fill: #f8f9fb; }
+    .title   { font-weight: 700; fill: #1e2329; font-size: 14px; }
+    .sub     { fill: #5b6371; font-size: 11px; }
+    .arrow   { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#ar2); }
+    .h       { font-weight: 700; fill: #1e2329; font-size: 14px; }
   </style>
 
-  <rect x="350" y="20" width="180" height="70"/>
-  <text class="title" x="440" y="48" text-anchor="middle">mpv engine</text>
-  <text class="sub" x="440" y="68" text-anchor="middle">events + property changes</text>
+  <!-- Engine source: h=70, y=40 → cy=75. 2 lines: 70, 88 -->
+  <rect x="350" y="40" width="180" height="70"/>
+  <text class="title" x="440" y="70" text-anchor="middle">Player engine</text>
+  <text class="sub"   x="440" y="88" text-anchor="middle">events, errors, state changes</text>
 
-  <rect x="20"  y="200" width="200" height="90"/>
-  <text class="title"    x="120" y="225" text-anchor="middle">stream.error</text>
-  <text class="typename" x="120" y="245" text-anchor="middle">Stream&lt;MpvPlayerError&gt;</text>
-  <text class="sub"      x="120" y="262" text-anchor="middle">sealed:</text>
-  <text class="sub"      x="120" y="276" text-anchor="middle">MpvEndFileError | MpvLogError</text>
+  <!-- 4 stream cards: h=90, y=200 → cy=245. 3 lines: 232, 250, 266 -->
+
+  <rect x="20" y="200" width="200" height="90"/>
+  <text class="title" x="120" y="232" text-anchor="middle">Errors</text>
+  <text class="sub"   x="120" y="250" text-anchor="middle">playback failures,</text>
+  <text class="sub"   x="120" y="266" text-anchor="middle">decoder or network errors</text>
 
   <rect x="240" y="200" width="200" height="90"/>
-  <text class="title"    x="340" y="225" text-anchor="middle">stream.endFile</text>
-  <text class="typename" x="340" y="245" text-anchor="middle">Stream&lt;MpvFileEndedEvent&gt;</text>
-  <text class="sub"      x="340" y="262" text-anchor="middle">every file boundary —</text>
-  <text class="sub"      x="340" y="276" text-anchor="middle">EOF, stop, error, redirect</text>
+  <text class="title" x="340" y="232" text-anchor="middle">End of file</text>
+  <text class="sub"   x="340" y="250" text-anchor="middle">every track boundary,</text>
+  <text class="sub"   x="340" y="266" text-anchor="middle">EOF, stop, error, redirect</text>
 
   <rect x="460" y="200" width="200" height="90"/>
-  <text class="title"    x="560" y="225" text-anchor="middle">stream.audioOutputState</text>
-  <text class="typename" x="560" y="245" text-anchor="middle">Stream&lt;AudioOutputState&gt;</text>
-  <text class="sub"      x="560" y="262" text-anchor="middle">closed / initializing /</text>
-  <text class="sub"      x="560" y="276" text-anchor="middle">active / failed</text>
+  <text class="title" x="560" y="232" text-anchor="middle">Audio output</text>
+  <text class="sub"   x="560" y="250" text-anchor="middle">device status</text>
+  <text class="sub"   x="560" y="266" text-anchor="middle">closed, starting, active, or failed</text>
 
   <rect x="680" y="200" width="180" height="90"/>
-  <text class="title"    x="770" y="225" text-anchor="middle">stream.log</text>
-  <text class="typename" x="770" y="244" text-anchor="middle">Stream&lt;MpvLogEntry&gt;</text>
-  <text class="sub"      x="770" y="262" text-anchor="middle">+ stream.internalLog</text>
-  <text class="sub"      x="770" y="276" text-anchor="middle">(wrapper-side)</text>
+  <text class="title" x="770" y="232" text-anchor="middle">Logs</text>
+  <text class="sub"   x="770" y="250" text-anchor="middle">engine and wrapper messages</text>
+  <text class="sub"   x="770" y="266" text-anchor="middle">filtered by level</text>
 
-  <path class="arrow" d="M440,90 V140 H120 V200"/>
-  <path class="arrow" d="M440,90 V140 H340 V200"/>
-  <path class="arrow" d="M440,90 V140 H560 V200"/>
-  <path class="arrow" d="M440,90 V140 H770 V200"/>
+  <path class="arrow" d="M440,110 V160 H120 V200"/>
+  <path class="arrow" d="M440,110 V160 H340 V200"/>
+  <path class="arrow" d="M440,110 V160 H560 V200"/>
+  <path class="arrow" d="M440,110 V160 H770 V200"/>
 </svg>

@@ -36,7 +36,7 @@ class _FiltersPageState extends State<FiltersPage> {
   }) {
     final next = customs.where((f) => !f.startsWith(prefix)).toList();
     if (enable) next.add(newValue ?? prefix);
-    return widget.player.setCustomAudioFilters(next);
+    return widget.player.updateAudioEffects((e) => e.copyWith(custom: next));
   }
 
   @override
@@ -49,8 +49,10 @@ class _FiltersPageState extends State<FiltersPage> {
         // ── Equalizer ──────────────────────────────────────────────────
         const PropertySectionHeader(title: 'Equalizer'),
         StreamBuilder<EqualizerSettings>(
-          stream: player.stream.equalizer,
-          initialData: player.state.equalizer,
+          stream: player.stream.audioEffects
+              .map((e) => e.equalizer)
+              .distinct(),
+          initialData: player.state.audioEffects.equalizer,
           builder: (context, snap) {
             final eq = snap.data!;
             return PropertyBaseCard(
@@ -60,14 +62,18 @@ class _FiltersPageState extends State<FiltersPage> {
               isActive: eq.enabled,
               trailing: Switch(
                 value: eq.enabled,
-                onChanged: (v) => player.setEqualizer(eq.copyWith(enabled: v)),
+                onChanged: (v) => player.updateAudioEffects(
+                  (e) => e.copyWith(equalizer: eq.copyWith(enabled: v)),
+                ),
               ),
               body: EQWidget(
                 gains: eq.gains,
                 enabled: eq.enabled,
                 onChanged: (i, v) {
                   final newGains = List<double>.from(eq.gains)..[i] = v;
-                  player.setEqualizer(eq.copyWith(gains: newGains));
+                  player.updateAudioEffects(
+                    (e) => e.copyWith(equalizer: eq.copyWith(gains: newGains)),
+                  );
                 },
               ),
             );
@@ -77,8 +83,10 @@ class _FiltersPageState extends State<FiltersPage> {
         // ── Dynamics ───────────────────────────────────────────────────
         const PropertySectionHeader(title: 'Dynamics'),
         StreamBuilder<CompressorSettings>(
-          stream: player.stream.compressor,
-          initialData: player.state.compressor,
+          stream: player.stream.audioEffects
+              .map((e) => e.compressor)
+              .distinct(),
+          initialData: player.state.audioEffects.compressor,
           builder: (context, snap) {
             final c = snap.data!;
             return ExpandableFilterCard(
@@ -88,7 +96,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   'attack=${c.attack.inMilliseconds}ms release=${c.release.inMilliseconds}ms',
               icon: Icons.vignette_rounded,
               enabled: c.enabled,
-              onToggle: (v) => player.setCompressor(c.copyWith(enabled: v)),
+              onToggle: (v) => player.updateAudioEffects(
+                (e) => e.copyWith(compressor: c.copyWith(enabled: v)),
+              ),
               params: [
                 FilterParamSlider(
                   label: 'Threshold',
@@ -98,8 +108,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 60,
                   defaultValue: -20,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} dB',
-                  onChanged: (v) =>
-                      player.setCompressor(c.copyWith(threshold: v)),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(compressor: c.copyWith(threshold: v)),
+                  ),
                 ),
                 FilterParamSlider(
                   label: 'Ratio',
@@ -109,7 +120,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 38,
                   defaultValue: 4,
                   labelBuilder: (v) => '${v.toStringAsFixed(1)}:1',
-                  onChanged: (v) => player.setCompressor(c.copyWith(ratio: v)),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(compressor: c.copyWith(ratio: v)),
+                  ),
                 ),
                 FilterParamSlider(
                   label: 'Attack',
@@ -119,8 +132,12 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 200,
                   defaultValue: 20,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} ms',
-                  onChanged: (v) => player.setCompressor(
-                    c.copyWith(attack: Duration(milliseconds: v.toInt())),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(
+                      compressor: c.copyWith(
+                        attack: Duration(milliseconds: v.toInt()),
+                      ),
+                    ),
                   ),
                 ),
                 FilterParamSlider(
@@ -131,8 +148,12 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 200,
                   defaultValue: 250,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} ms',
-                  onChanged: (v) => player.setCompressor(
-                    c.copyWith(release: Duration(milliseconds: v.toInt())),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(
+                      compressor: c.copyWith(
+                        release: Duration(milliseconds: v.toInt()),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -140,8 +161,10 @@ class _FiltersPageState extends State<FiltersPage> {
           },
         ),
         StreamBuilder<LoudnessSettings>(
-          stream: player.stream.loudness,
-          initialData: player.state.loudness,
+          stream: player.stream.audioEffects
+              .map((e) => e.loudness)
+              .distinct(),
+          initialData: player.state.audioEffects.loudness,
           builder: (context, snap) {
             final l = snap.data!;
             return ExpandableFilterCard(
@@ -152,7 +175,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   'LRA=${l.lra.toStringAsFixed(0)}LU',
               icon: Icons.graphic_eq_rounded,
               enabled: l.enabled,
-              onToggle: (v) => player.setLoudness(l.copyWith(enabled: v)),
+              onToggle: (v) => player.updateAudioEffects(
+                (e) => e.copyWith(loudness: l.copyWith(enabled: v)),
+              ),
               params: [
                 FilterParamSlider(
                   label: 'Integrated Loudness',
@@ -162,8 +187,11 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 65,
                   defaultValue: -16,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} LUFS',
-                  onChanged: (v) =>
-                      player.setLoudness(l.copyWith(integratedLoudness: v)),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(
+                      loudness: l.copyWith(integratedLoudness: v),
+                    ),
+                  ),
                 ),
                 FilterParamSlider(
                   label: 'True Peak',
@@ -173,7 +201,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 90,
                   defaultValue: -1.5,
                   labelBuilder: (v) => '${v.toStringAsFixed(1)} dBTP',
-                  onChanged: (v) => player.setLoudness(l.copyWith(truePeak: v)),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(loudness: l.copyWith(truePeak: v)),
+                  ),
                 ),
                 FilterParamSlider(
                   label: 'Loudness Range',
@@ -183,7 +213,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 49,
                   defaultValue: 11,
                   labelBuilder: (v) => '${v.toStringAsFixed(0)} LU',
-                  onChanged: (v) => player.setLoudness(l.copyWith(lra: v)),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(loudness: l.copyWith(lra: v)),
+                  ),
                 ),
               ],
             );
@@ -193,8 +225,10 @@ class _FiltersPageState extends State<FiltersPage> {
         // ── Pitch / Tempo ──────────────────────────────────────────────
         const PropertySectionHeader(title: 'Pitch / Tempo'),
         StreamBuilder<PitchTempoSettings>(
-          stream: player.stream.pitchTempo,
-          initialData: player.state.pitchTempo,
+          stream: player.stream.audioEffects
+              .map((e) => e.pitchTempo)
+              .distinct(),
+          initialData: player.state.audioEffects.pitchTempo,
           builder: (context, snap) {
             final p = snap.data!;
             return ExpandableFilterCard(
@@ -203,7 +237,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   'pitch=${p.pitch.toStringAsFixed(2)} tempo=${p.tempo.toStringAsFixed(2)}',
               icon: Icons.tune_rounded,
               enabled: p.enabled,
-              onToggle: (v) => player.setPitchTempo(p.copyWith(enabled: v)),
+              onToggle: (v) => player.updateAudioEffects(
+                (e) => e.copyWith(pitchTempo: p.copyWith(enabled: v)),
+              ),
               params: [
                 FilterParamSlider(
                   label: 'Pitch',
@@ -213,7 +249,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 75,
                   defaultValue: 1.0,
                   labelBuilder: (v) => v.toStringAsFixed(2),
-                  onChanged: (v) => player.setPitchTempo(p.copyWith(pitch: v)),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(pitchTempo: p.copyWith(pitch: v)),
+                  ),
                 ),
                 FilterParamSlider(
                   label: 'Tempo',
@@ -223,7 +261,9 @@ class _FiltersPageState extends State<FiltersPage> {
                   divisions: 75,
                   defaultValue: 1.0,
                   labelBuilder: (v) => v.toStringAsFixed(2),
-                  onChanged: (v) => player.setPitchTempo(p.copyWith(tempo: v)),
+                  onChanged: (v) => player.updateAudioEffects(
+                    (e) => e.copyWith(pitchTempo: p.copyWith(tempo: v)),
+                  ),
                 ),
               ],
             );
@@ -233,8 +273,10 @@ class _FiltersPageState extends State<FiltersPage> {
         // ── Stereo & Effects (custom mpv filters) ──────────────────────
         const PropertySectionHeader(title: 'Stereo & Effects'),
         StreamBuilder<List<String>>(
-          stream: player.stream.customAudioFilters,
-          initialData: player.state.customAudioFilters,
+          stream: player.stream.audioEffects
+              .map((e) => e.custom)
+              .distinct(),
+          initialData: player.state.audioEffects.custom,
           builder: (context, snap) {
             final customs = snap.data ?? const <String>[];
             final esActive = _customActive(customs, _kExtraStereoPrefix);

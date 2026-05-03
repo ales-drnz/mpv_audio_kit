@@ -6,7 +6,6 @@ import '../internals/audio_filter_chain.dart';
 import '../reactive/node_parsers.dart';
 import '../types/sealed/channels.dart';
 import '../models/device.dart';
-import '../types/enums/display.dart';
 import '../types/enums/format.dart';
 import '../types/state/audio_output_state.dart';
 import '../models/audio_params.dart';
@@ -16,12 +15,9 @@ import '../types/enums/gapless.dart';
 import '../types/settings/cache_settings.dart';
 import '../types/enums/cache.dart';
 import '../models/chapter.dart';
-import '../types/settings/compressor_settings.dart';
-import '../types/settings/equalizer_settings.dart';
-import '../types/settings/loudness_settings.dart';
+import '../types/settings/audio_effects.dart';
 import '../types/state/mpv_prefetch_state.dart';
 import '../models/mpv_track.dart';
-import '../types/settings/pitch_tempo_settings.dart';
 import '../player/player_state.dart';
 import '../types/settings/replay_gain_settings.dart';
 import '../types/enums/replay_gain.dart';
@@ -119,33 +115,20 @@ class DefaultPropertyReactives {
   final ReactiveProperty<String> audioClientName =
       ReactiveProperty<String>('mpv_audio_kit');
   final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
-  // DSP filter chain stages — each owns a reserved label and is upserted
-  // atomically by the matching typed setter. Custom filters carry no
-  // managed label and live at the head of the chain.
-  final ReactiveProperty<EqualizerSettings> equalizer =
-      ReactiveProperty<EqualizerSettings>(const EqualizerSettings());
-  final ReactiveProperty<CompressorSettings> compressor =
-      ReactiveProperty<CompressorSettings>(const CompressorSettings());
-  final ReactiveProperty<LoudnessSettings> loudness =
-      ReactiveProperty<LoudnessSettings>(const LoudnessSettings());
-  final ReactiveProperty<PitchTempoSettings> pitchTempo =
-      ReactiveProperty<PitchTempoSettings>(const PitchTempoSettings());
-  final ReactiveProperty<List<String>> customAudioFilters =
-      ReactiveProperty<List<String>>(const []);
+  // DSP filter chain — single bundle reactive backing every effect.
+  // Each effect owns a reserved label inside the `af` chain (see
+  // AudioFilterChainLabels) and is upserted atomically when the bundle
+  // is replaced via Player.setAudioEffects / updateAudioEffects.
+  final ReactiveProperty<AudioEffects> audioEffects =
+      ReactiveProperty<AudioEffects>(const AudioEffects());
 
   // Audio output lifecycle (read-only string).
   final ReactiveProperty<AudioOutputState> audioOutputState =
       ReactiveProperty<AudioOutputState>(AudioOutputState.closed);
 
-  // Cover art.
-  final ReactiveProperty<Display> audioDisplay =
-      ReactiveProperty<Display>(Display.embeddedFirst);
+  // Cover art (external file scan policy).
   final ReactiveProperty<Cover> coverArtAuto =
       ReactiveProperty<Cover>(Cover.no);
-  // `null` = mpv's `inf` (frame held indefinitely); finite Duration is
-  // the explicit hold time.
-  final ReactiveProperty<Duration?> imageDisplayDuration =
-      ReactiveProperty<Duration?>(null);
 
   // Stream-only: `prefetch-state` is an event-shaped signal, not a
   // snapshot value. The reactive cell exists for dedup + dispose
@@ -567,15 +550,18 @@ List<MpvPropertySpec> buildDefaultSpecs(
     ),
     // The `af` observer surfaces *external* mutations to the filter
     // chain (e.g. via `setRawProperty('af', ...)`) by recomputing the
-    // unmanaged segment as `customAudioFilters`. Wrapper-managed stages
-    // (equalizer/compressor/loudness/pitchTempo) are owned by their typed
-    // setters, not parsed back from the af string — bypassing the typed
-    // setters with a raw write leaves their state stale by design.
-    MpvPropertySpec<List<String>>.string(
+    // unmanaged segment as `audioEffects.custom`. Wrapper-managed
+    // stages (equalizer / compressor / loudness / pitchTempo / bassTreble
+    // / stereo / crossfeed / silenceTrim / crossfade) are owned by the
+    // bundle setter, not parsed back from the af string — bypassing
+    // setAudioEffects with a raw write leaves their state stale by
+    // design.
+    MpvPropertySpec<AudioEffects>.string(
       name: 'af',
-      reactive: r.customAudioFilters,
-      parse: (raw, _) => extractCustomFilters(raw),
-      reduce: (v, s) => s.copyWith(customAudioFilters: v),
+      reactive: r.audioEffects,
+      parse: (raw, state) =>
+          state.audioEffects.copyWith(custom: extractCustomFilters(raw)),
+      reduce: (v, s) => s.copyWith(audioEffects: v),
     ),
     MpvPropertySpec<String>.string(
       name: 'ao',
@@ -584,24 +570,12 @@ List<MpvPropertySpec> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(audioDriver: v),
     ),
 
-    // ── Cover art ────────────────────────────────────────────────────────
-    MpvPropertySpec<Display>.string(
-      name: 'audio-display',
-      reactive: r.audioDisplay,
-      parse: (raw, _) => Display.fromMpv(raw),
-      reduce: (v, s) => s.copyWith(audioDisplay: v),
-    ),
+    // ── Cover art (external file scan policy) ────────────────────────────
     MpvPropertySpec<Cover>.string(
       name: 'cover-art-auto',
       reactive: r.coverArtAuto,
       parse: (raw, _) => Cover.fromMpv(raw),
       reduce: (v, s) => s.copyWith(coverArtAuto: v),
-    ),
-    MpvPropertySpec<Duration?>.string(
-      name: 'image-display-duration',
-      reactive: r.imageDisplayDuration,
-      parse: (raw, _) => _parseImageDisplayDuration(raw),
-      reduce: (v, s) => s.copyWith(imageDisplayDuration: v),
     ),
 
     // `prefetch-state` is stream-only (no PlayerState field) — the
@@ -870,12 +844,3 @@ int? _parseAbLoopCount(String raw) {
   return int.tryParse(raw);
 }
 
-/// `image-display-duration` parser: mpv emits `'inf'` for "keep
-/// indefinitely", a numeric string (seconds) otherwise. Maps to
-/// `Duration?` with `null = inf`. Unparseable values fall back to `null`.
-Duration? _parseImageDisplayDuration(String raw) {
-  if (raw == 'inf' || raw.isEmpty) return null;
-  final secs = double.tryParse(raw);
-  if (secs == null) return null;
-  return secondsToDuration(secs);
-}

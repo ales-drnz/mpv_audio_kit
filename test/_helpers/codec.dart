@@ -276,6 +276,142 @@ const codecMatrix = <(String, CodecExpectation)>[
         codecHint: 'pcm')
   ),
 
+  // Pro / broadcast / lossless extras
+  (
+    'dts_48000_stereo.dts',
+    CodecExpectation(
+        label: 'DTS Coherent Acoustics 48 kHz stereo',
+        sampleRate: 48000,
+        channels: 2,
+        codecHint: 'dts')
+  ),
+  (
+    'mlp_48000_stereo.mlp',
+    CodecExpectation(
+        label: 'Dolby MLP 48 kHz stereo',
+        sampleRate: 48000,
+        channels: 2,
+        codecHint: 'mlp')
+  ),
+  (
+    'truehd_48000_stereo.thd',
+    CodecExpectation(
+        label: 'Dolby TrueHD 48 kHz stereo',
+        sampleRate: 48000,
+        channels: 2,
+        codecHint: 'truehd')
+  ),
+  (
+    'tta_44100.tta',
+    CodecExpectation(
+        label: 'TrueAudio (TTA) 44.1 kHz stereo',
+        sampleRate: 44100,
+        channels: 2,
+        codecHint: 'tta')
+  ),
+  (
+    'wavpack_44100.wv',
+    CodecExpectation(
+        label: 'WavPack 44.1 kHz stereo',
+        sampleRate: 44100,
+        channels: 2,
+        codecHint: 'wavpack')
+  ),
+  (
+    'mp2_44100.mp2',
+    CodecExpectation(
+        label: 'MPEG Audio Layer II 44.1 kHz stereo',
+        sampleRate: 44100,
+        channels: 2,
+        codecHint: 'mp2')
+  ),
+
+  // WMA family
+  (
+    'wma_v1_44100.wma',
+    CodecExpectation(
+        label: 'WMA v1 44.1 kHz stereo',
+        sampleRate: 44100,
+        channels: 2,
+        codecHint: 'wmav1')
+  ),
+  (
+    'wma_v2_44100.wma',
+    CodecExpectation(
+        label: 'WMA v2 44.1 kHz stereo',
+        sampleRate: 44100,
+        channels: 2,
+        codecHint: 'wmav2')
+  ),
+
+  // ADPCM (telephony / legacy)
+  (
+    'adpcm_ms_22050.wav',
+    CodecExpectation(
+        label: 'ADPCM Microsoft 22.05 kHz stereo',
+        sampleRate: 22050,
+        channels: 2,
+        codecHint: 'adpcm')
+  ),
+  (
+    'adpcm_ima_qt_22050.mov',
+    CodecExpectation(
+        label: 'ADPCM IMA QuickTime 22.05 kHz stereo',
+        sampleRate: 22050,
+        channels: 2,
+        codecHint: 'adpcm')
+  ),
+
+  // PCM long-tail (μ-law / a-law / float / big-endian)
+  (
+    'pcm_alaw_8000.wav',
+    CodecExpectation(
+        label: 'PCM A-law 8 kHz stereo',
+        sampleRate: 8000,
+        channels: 2,
+        codecHint: 'pcm')
+  ),
+  (
+    'pcm_mulaw_8000.wav',
+    CodecExpectation(
+        label: 'PCM μ-law 8 kHz stereo',
+        sampleRate: 8000,
+        channels: 2,
+        codecHint: 'pcm')
+  ),
+  (
+    'pcm_f32le_44100.wav',
+    CodecExpectation(
+        label: 'PCM 32-bit float LE 44.1 kHz',
+        sampleRate: 44100,
+        channels: 2,
+        codecHint: 'pcm')
+  ),
+  (
+    'pcm_f64le_44100.wav',
+    CodecExpectation(
+        label: 'PCM 64-bit float LE 44.1 kHz',
+        sampleRate: 44100,
+        channels: 2,
+        codecHint: 'pcm')
+  ),
+  (
+    'pcm_s32be_48000.aiff',
+    CodecExpectation(
+        label: 'PCM s32 big-endian 48 kHz (AIFF)',
+        sampleRate: 48000,
+        channels: 2,
+        codecHint: 'pcm')
+  ),
+  (
+    'pcm_s24be_48000.aiff',
+    CodecExpectation(
+        label: 'PCM s24 big-endian 48 kHz (AIFF)',
+        sampleRate: 48000,
+        channels: 2,
+        codecHint: 'pcm')
+  ),
+
   // Containers
   (
     'mka_flac.mka',

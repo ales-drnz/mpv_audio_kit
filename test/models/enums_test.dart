@@ -3,7 +3,6 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/types/enums/display.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:mpv_audio_kit/src/types/enums/cover.dart';
 import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
@@ -27,12 +26,6 @@ final _typed = <(List<dynamic>, dynamic Function(String), dynamic, String)>[
     ReplayGain.fromMpv,
     ReplayGain.no,
     'ReplayGain',
-  ),
-  (
-    Display.values,
-    Display.fromMpv,
-    Display.embeddedFirst,
-    'Display',
   ),
   (
     Cover.values,
@@ -72,13 +65,6 @@ void main() {
             reason: '$name fallback');
         expect(fromMpv(''), fallback, reason: '$name empty fallback');
       }
-    });
-
-    test('mpvValue uses kebab-case for multi-word variants', () {
-      // Spot-check: kebab-case is the contract for mpv option strings.
-      // Single-word variants are uniformly lowercase, no test needed.
-      expect(Display.embeddedFirst.mpvValue, 'embedded-first');
-      expect(Display.externalFirst.mpvValue, 'external-first');
     });
   });
 }

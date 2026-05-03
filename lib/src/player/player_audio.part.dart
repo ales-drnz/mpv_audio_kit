@@ -163,85 +163,35 @@ mixin _AudioModule on _PlayerBase {
   }
 
   // ── DSP filter chain ────────────────────────────────────────────────
-  // Four typed stages (compressor / equalizer / pitch-tempo / loudnorm)
-  // plus a raw escape ([setCustomAudioFilters]). Each typed stage owns a
-  // reserved label and is upserted independently of the others. Chain
-  // order is fixed: custom → compressor → equalizer → pitch/tempo →
-  // loudnorm. `enabled=false` strips the stage from the chain at zero
-  // CPU cost while preserving its parameters in state.
+  // The full DSP rack lives in a single [AudioEffects] bundle. Apply
+  // it atomically with [setAudioEffects] (replace) or
+  // [updateAudioEffects] (Freezed-style copyWith mapper). Each effect
+  // inside the bundle owns a reserved label (see
+  // [AudioFilterChainLabels]) and a per-effect `enabled` flag —
+  // disabling a stage strips it from the chain at zero CPU cost while
+  // preserving its parameters.
 
-  /// Sets the 10-band graphic equalizer config and applies it to mpv's
-  /// filter chain in one atomic operation.
+  /// Replaces the entire DSP filter chain in one atomic mpv `af`
+  /// write.
   ///
-  /// Modify a single field via `state.equalizer.copyWith(...)`. Reset
-  /// with [EqualizerSettings.flat]. Toggle on/off via
-  /// `state.equalizer.copyWith(enabled: ...)` — the gains are preserved
-  /// while disabled.
-  Future<void> setEqualizer(EqualizerSettings config) async {
+  /// Use for full-bundle config (initial setup, preset application,
+  /// preset restore from JSON). To mutate a single field — typical of
+  /// UI sliders — prefer [updateAudioEffects].
+  ///
+  /// `effects.custom` carries raw mpv lavfi filter strings; each
+  /// entry must NOT begin with a wrapper-reserved label
+  /// ([AudioFilterChainLabels.all]) — those are owned by the typed
+  /// effects in the bundle.
+  Future<void> setAudioEffects(AudioEffects effects) async {
     _checkNotDisposed();
-    if (config.gains.length != 10) {
+    if (effects.equalizer.gains.length != 10) {
       throw ArgumentError.value(
-        config.gains.length,
-        'config.gains',
+        effects.equalizer.gains.length,
+        'effects.equalizer.gains',
         'EqualizerSettings requires exactly 10 gain values',
       );
     }
-    final copy = config.copyWith(gains: List<double>.from(config.gains));
-    _writeAfChain(equalizer: copy);
-    _updateField(
-      (s) => s.copyWith(equalizer: copy),
-      _reactives.equalizer,
-      copy,
-    );
-  }
-
-  /// Sets the dynamic-range compressor config and applies it to mpv's
-  /// filter chain in one atomic operation.
-  Future<void> setCompressor(CompressorSettings config) async {
-    _checkNotDisposed();
-    _writeAfChain(compressor: config);
-    _updateField(
-      (s) => s.copyWith(compressor: config),
-      _reactives.compressor,
-      config,
-    );
-  }
-
-  /// Sets the EBU R128 loudness normalization config and applies it to
-  /// mpv's filter chain in one atomic operation.
-  Future<void> setLoudness(LoudnessSettings config) async {
-    _checkNotDisposed();
-    _writeAfChain(loudness: config);
-    _updateField(
-      (s) => s.copyWith(loudness: config),
-      _reactives.loudness,
-      config,
-    );
-  }
-
-  /// Sets the pitch / tempo shifter config (rubberband) and applies it
-  /// to mpv's filter chain in one atomic operation.
-  Future<void> setPitchTempo(PitchTempoSettings config) async {
-    _checkNotDisposed();
-    _writeAfChain(pitchTempo: config);
-    _updateField(
-      (s) => s.copyWith(pitchTempo: config),
-      _reactives.pitchTempo,
-      config,
-    );
-  }
-
-  /// Sets raw mpv `--af` filter strings to live at the head of the chain,
-  /// before any wrapper-managed DSP stage.
-  ///
-  /// Use for filters not covered by the typed setters
-  /// ([setEqualizer], [setCompressor], [setLoudness], [setPitchTempo]) —
-  /// e.g. `pan=stereo|c0=c1|c1=c0`, `aresample=async=1`,
-  /// `lavfi-aecho=...`. Each entry must NOT carry a wrapper-reserved
-  /// label (`@_mak_eq`, `@_mak_comp`, `@_mak_loud`, `@_mak_pt`).
-  Future<void> setCustomAudioFilters(List<String> filters) async {
-    _checkNotDisposed();
-    for (final f in filters) {
+    for (final f in effects.custom) {
       final trimmed = f.trimLeft();
       if (!trimmed.startsWith('@')) continue;
       final colon = trimmed.indexOf(':');
@@ -250,77 +200,61 @@ mixin _AudioModule on _PlayerBase {
       if (AudioFilterChainLabels.all.contains(label)) {
         throw ArgumentError.value(
           f,
-          'filters',
-          'Custom filter carries a wrapper-reserved label `@$label:` — use '
-              'the matching typed setter (setEqualizer / setCompressor / '
-              'setLoudness / setPitchTempo) instead.',
+          'effects.custom',
+          'Custom filter carries a wrapper-reserved label `@$label:` — '
+              'configure the matching typed effect on the bundle instead.',
         );
       }
     }
-    final copy = List<String>.from(filters);
-    _writeAfChain(customFilters: copy);
+    final normalised = effects.copyWith(
+      equalizer: effects.equalizer.copyWith(
+        gains: List<double>.from(effects.equalizer.gains),
+      ),
+      custom: List<String>.from(effects.custom),
+    );
+    _prop('af', composeAfChain(normalised));
     _updateField(
-      (s) => s.copyWith(customAudioFilters: copy),
-      _reactives.customAudioFilters,
-      copy,
+      (s) => s.copyWith(audioEffects: normalised),
+      _reactives.audioEffects,
+      normalised,
     );
   }
 
-  /// Recomposes the full mpv `af` value from the current state, with the
-  /// caller's overrides applied. Internal helper for the five DSP setters.
-  void _writeAfChain({
-    EqualizerSettings? equalizer,
-    CompressorSettings? compressor,
-    LoudnessSettings? loudness,
-    PitchTempoSettings? pitchTempo,
-    List<String>? customFilters,
-  }) {
-    final af = composeAfChain(
-      customFilters: customFilters ?? _state.customAudioFilters,
-      compressor: compressor ?? _state.compressor,
-      equalizer: equalizer ?? _state.equalizer,
-      pitchTempo: pitchTempo ?? _state.pitchTempo,
-      loudness: loudness ?? _state.loudness,
-    );
-    _prop('af', af);
+  /// Mutates the audio-effects bundle with a Freezed-style copyWith
+  /// mapper.
+  ///
+  /// Convenience over `setAudioEffects(state.audioEffects.copyWith(...))`.
+  /// The mapper receives the current bundle and must return the new
+  /// one — same semantics as Riverpod's `update`.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Toggle the equalizer:
+  /// await player.updateAudioEffects((e) =>
+  ///   e.copyWith(equalizer: e.equalizer.copyWith(enabled: !e.equalizer.enabled)));
+  ///
+  /// // Replace one effect entirely:
+  /// await player.updateAudioEffects((e) => e.copyWith(
+  ///   compressor: CompressorSettings(enabled: true, threshold: -20, ratio: 4),
+  /// ));
+  /// ```
+  Future<void> updateAudioEffects(
+    AudioEffects Function(AudioEffects) mapper,
+  ) async {
+    await setAudioEffects(mapper(_state.audioEffects));
   }
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
-  /// Controls how mpv handles embedded and external cover images. See
-  /// [Display] for the available variants.
-  ///
-  /// Has no effect on files that already have a normal video track.
-  /// Changes take effect on the next [open] call.
-  Future<void> setAudioDisplay(Display mode) async {
-    _checkNotDisposed();
-    _prop('audio-display', mode.mpvValue);
-    _updateField(
-        (s) => s.copyWith(audioDisplay: mode), _reactives.audioDisplay, mode);
-  }
-
-  /// Controls whether mpv automatically loads external cover art files.
-  /// See [Cover] for the available variants.
+  /// Controls whether mpv automatically loads external cover art files
+  /// sitting next to the audio file (e.g. `cover.jpg`). See [Cover] for
+  /// the available variants. Embedded cover bytes are surfaced through
+  /// [Player.stream.coverArt] regardless of this setting.
   Future<void> setCoverArtAuto(Cover mode) async {
     _checkNotDisposed();
     _prop('cover-art-auto', mode.mpvValue);
     _updateField(
         (s) => s.copyWith(coverArtAuto: mode), _reactives.coverArtAuto, mode);
-  }
-
-  /// Sets how long an image frame (e.g. cover art) is held as a
-  /// displayable video frame after the file is loaded.
-  ///
-  /// Pass `null` (default) to keep the frame alive indefinitely (mpv's
-  /// `inf`); pass [Duration.zero] to drop it as soon as audio playback
-  /// starts. Mirrors mpv's `--image-display-duration` option.
-  Future<void> setImageDisplayDuration(Duration? duration) async {
-    _checkNotDisposed();
-    final mpvValue =
-        duration == null ? 'inf' : durationToSeconds(duration).toString();
-    _prop('image-display-duration', mpvValue);
-    _updateField((s) => s.copyWith(imageDisplayDuration: duration),
-        _reactives.imageDisplayDuration, duration);
   }
 
   /// Sets the target audio sample rate.

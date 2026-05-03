@@ -13,11 +13,11 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  // Cover-art-raw stream contract — verifies the public typed surface
+  // Cover-art stream contract — verifies the public typed surface
   // for embedded artwork. The runtime tests in `runtime/` already assert
   // the underlying mpv property `embedded-cover-art-mime`; this file
   // covers the **stream** wiring on top of that property:
-  //   - file with attached cover  → emit a CoverArtRaw with non-empty
+  //   - file with attached cover  → emit a CoverArt with non-empty
   //     bytes and the right mime
   //   - file without artwork      → emit `null` so consumers can clear
   //     stale UI on track change
@@ -27,7 +27,7 @@ void main() {
 
   setUpAll(() => initLibmpvOrSkip());
 
-  test('coverArtRaw stream emits bytes for cover, null for non-cover',
+  test('coverArt stream emits bytes for cover, null for non-cover',
       () async {
     final player = await buildPlayer();
 
@@ -35,7 +35,7 @@ void main() {
       // Pre-subscribe BEFORE open: `_extractEmbeddedCover` fires on
       // FILE_LOADED inside the event isolate, and a late firstWhere
       // would race the broadcast emit.
-      final coverFuture = player.stream.coverArtRaw
+      final coverFuture = player.stream.coverArt
           .firstWhere((c) => c != null && c.bytes.isNotEmpty)
           .timeout(const Duration(seconds: 10));
 
@@ -56,7 +56,7 @@ void main() {
       // Now load a fixture WITHOUT attached art. The stream contract says
       // we should observe a `null` emit so consumers can clear the
       // previous track's artwork.
-      final clearedFuture = player.stream.coverArtRaw
+      final clearedFuture = player.stream.coverArt
           .firstWhere((c) => c == null)
           .timeout(const Duration(seconds: 10));
 

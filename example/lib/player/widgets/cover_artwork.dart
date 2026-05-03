@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 /// Pure rendering of the album cover artwork. Stateless: the parent
-/// owns the [CoverArtRaw] subscription so a sibling widget (e.g. the
+/// owns the [CoverArt] subscription so a sibling widget (e.g. the
 /// track-info chip wrap) can read the same bytes without duplicating
 /// the listener.
 class CoverArtwork extends StatelessWidget {
-  final CoverArtRaw? cover;
+  final CoverArt? cover;
   final double size;
 
   const CoverArtwork({super.key, required this.cover, required this.size});

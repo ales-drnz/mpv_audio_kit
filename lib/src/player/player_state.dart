@@ -10,18 +10,15 @@ import 'package:mpv_audio_kit/src/types/sealed/channels.dart';
 import 'package:mpv_audio_kit/src/models/device.dart';
 import 'package:mpv_audio_kit/src/types/enums/format.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
+import 'package:mpv_audio_kit/src/models/cover_art.dart';
 import 'package:mpv_audio_kit/src/types/enums/spdif.dart';
-import 'package:mpv_audio_kit/src/types/enums/display.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:mpv_audio_kit/src/types/enums/cover.dart';
 import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
+import 'package:mpv_audio_kit/src/types/settings/audio_effects.dart';
 import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
 import 'package:mpv_audio_kit/src/models/chapter.dart';
-import 'package:mpv_audio_kit/src/types/settings/compressor_settings.dart';
-import 'package:mpv_audio_kit/src/types/settings/equalizer_settings.dart';
-import 'package:mpv_audio_kit/src/types/settings/loudness_settings.dart';
 import 'package:mpv_audio_kit/src/models/mpv_track.dart';
-import 'package:mpv_audio_kit/src/types/settings/pitch_tempo_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
 
 part 'player_state.freezed.dart';
@@ -211,38 +208,22 @@ abstract class PlayerState with _$PlayerState {
     /// `failed`). See [AudioOutputState].
     @Default(AudioOutputState.closed) AudioOutputState audioOutputState,
 
-    /// 10-band graphic equalizer config. Set via [Player.setEqualizer].
-    @Default(EqualizerSettings()) EqualizerSettings equalizer,
+    /// All DSP effects in mpv's `--af` filter chain, bundled into a
+    /// single atomic configuration object. Set via
+    /// [Player.setAudioEffects] (replace) or [Player.updateAudioEffects]
+    /// (mutate one or more fields). Read live via
+    /// [PlayerStream.audioEffects].
+    @Default(AudioEffects()) AudioEffects audioEffects,
 
-    /// Dynamic-range compressor config. Set via [Player.setCompressor].
-    @Default(CompressorSettings()) CompressorSettings compressor,
-
-    /// EBU R128 loudness normalization config. Set via [Player.setLoudness].
-    @Default(LoudnessSettings()) LoudnessSettings loudness,
-
-    /// Pitch / tempo shifter (rubberband) config. Set via [Player.setPitchTempo].
-    @Default(PitchTempoSettings()) PitchTempoSettings pitchTempo,
-
-    /// Raw mpv `--af` filter strings inserted at the head of the chain,
-    /// before any wrapper-managed DSP stage. For filters not covered by
-    /// the typed setters (e.g. `pan`, `aecho`, `lavfi-bridge=...`).
-    @Default(<String>[]) List<String> customAudioFilters,
-
-    /// Controls how mpv handles embedded and external cover images. See
-    /// [Display] for the available variants.
-    @Default(Display.embeddedFirst) Display audioDisplay,
+    /// Embedded cover art of the currently loaded track, or `null`
+    /// when the file has no embedded picture. Refreshes on every
+    /// `Player.open()` / playlist transition. Read live via
+    /// [PlayerStream.coverArt].
+    CoverArt? coverArt,
 
     /// Controls whether mpv automatically loads external cover art files.
     /// See [Cover] for the available variants.
     @Default(Cover.no) Cover coverArtAuto,
-
-    /// How long a still image (e.g. cover art) is held as a displayable
-    /// video frame after the file is loaded.
-    ///
-    /// `null` maps to mpv's `inf` (frame held indefinitely);
-    /// `Duration.zero` drops it as soon as audio playback starts.
-    /// Mirrors mpv's `--image-display-duration` option.
-    Duration? imageDisplayDuration,
 
     /// Whether mpv prefetches the next playlist item in the background.
     ///

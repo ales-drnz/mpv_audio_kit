@@ -7,11 +7,11 @@ import 'info_chip.dart';
 /// muted chips for cover-art metadata when one is present).
 ///
 /// Receives the cover bytes + decoded dimensions from the parent
-/// because the parent already owns the `coverArtRaw` stream
+/// because the parent already owns the `coverArt` stream
 /// subscription (also feeding [CoverArtwork] above).
 class TrackInfo extends StatelessWidget {
   final Player player;
-  final CoverArtRaw? cover;
+  final CoverArt? cover;
   final int? coverWidth;
   final int? coverHeight;
   final double availableHeight;
@@ -86,7 +86,7 @@ class TrackInfo extends StatelessWidget {
 
 class _AudioParamsChips extends StatelessWidget {
   final Player player;
-  final CoverArtRaw? cover;
+  final CoverArt? cover;
   final int? coverWidth;
   final int? coverHeight;
 

@@ -9,7 +9,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 /// and delegates all control commands (play, pause, seek, skip) back to it.
 ///
 /// Cover art is propagated to [MediaItem.artUri] by persisting the bytes
-/// emitted on `Player.stream.coverArtRaw` to a temp file and passing a
+/// emitted on `Player.stream.coverArt` to a temp file and passing a
 /// `file://` URI to audio_service. Android MediaSession, iOS Now
 /// Playing, and Windows SMTC all render `file://` URIs reliably; raw
 /// bytes can't be passed directly (the API takes a [Uri]) and base64
@@ -28,14 +28,14 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
   /// observe new bytes when the path stays the same.
   int _coverCounter = 0;
 
-  /// Last [CoverArtRaw] observed on `Player.stream.coverArtRaw`, kept
+  /// Last [CoverArt] observed on `Player.stream.coverArt`, kept
   /// here so widgets that get rebuilt mid-session (e.g. the player
   /// page on a mobile↔desktop layout flip) can re-bootstrap their
   /// local state instead of losing the cover until the next track.
   /// The mpv stream is broadcast and does not replay past events to
   /// new listeners.
-  CoverArtRaw? _lastCover;
-  CoverArtRaw? get lastCover => _lastCover;
+  CoverArt? _lastCover;
+  CoverArt? get lastCover => _lastCover;
 
   MpvAudioHandler(this.player) {
     _bindStreams();
@@ -53,10 +53,10 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     _subs.add(player.stream.playlist.listen(_syncQueue));
     _subs.add(player.stream.metadata.listen((_) => _updateMediaItem()));
     _subs.add(player.stream.duration.listen((_) => _updateMediaItem()));
-    _subs.add(player.stream.coverArtRaw.listen(_persistCover));
+    _subs.add(player.stream.coverArt.listen(_persistCover));
   }
 
-  Future<void> _persistCover(CoverArtRaw? raw) async {
+  Future<void> _persistCover(CoverArt? raw) async {
     _lastCover = raw;
     if (raw == null) {
       // New track has no embedded cover: clear the cached path so the
