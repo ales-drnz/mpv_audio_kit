@@ -134,14 +134,20 @@ void main() {
       expect(whitelist, isNotEmpty,
           reason: 'failed to parse AUDIO_FILTERS from _audio_only.sh');
 
-      // Capture log entries that mention "Cannot find filter" or similar
-      // so we can fail with an exhaustive list rather than the first one.
+      // Capture log entries that signal a filter wasn't registered. Cover
+      // every phrasing libmpv / libavfilter currently emit:
+      //   - "no such filter"        (libavfilter)
+      //   - "cannot find filter"    (libavfilter older)
+      //   - "unknown filter"        (libavfilter newer)
+      //   - "isn't supported"       (mpv option-parser, e.g. when the
+      //                              `lavfi-XYZ` shortcut can't resolve XYZ)
       final cannotFind = <String>[];
       final logSub = player.stream.log.listen((entry) {
         final m = entry.text.toLowerCase();
         if (m.contains('no such filter') ||
             m.contains('cannot find filter') ||
-            m.contains('unknown filter')) {
+            m.contains('unknown filter') ||
+            m.contains("isn't supported")) {
           cannotFind.add(entry.text.trim());
         }
       });
@@ -174,23 +180,17 @@ void main() {
         'anlmf': 'order=1',
         'anlms': 'order=1',
         'arnndn': 'model=test.rnnn',
-        'sofalizer': 'sofa=test.sofa',
         'apsnr': '',
         'asisdr': '',
         'asdr': '',
       };
 
-      // Filters that need an external resource (model files, SOFA HRTF
-      // files) which we don't ship — we only verify they're registered,
-      // not that they apply on real audio.
+      // Filters that need an external resource (model files, etc.) we
+      // don't ship — we only verify they're registered, not that they
+      // apply on real audio. Everything in this set still has to live in
+      // the AUDIO_FILTERS whitelist.
       const registrationOnly = <String>{
-        'arnndn',
-        'sofalizer',
-        'asr',
-        'azmq',
-        'ladspa',
-        'lv2',
-        'flite',
+        'arnndn', // requires a .rnnn model file
       };
 
       final missing = <String>[];
@@ -227,5 +227,33 @@ void main() {
               'NOT registered in the libmpv binary:\n  '
               '${missing.join("\n  ")}');
     }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('AUDIO_FILTERS does not re-introduce dead entries (deps we do not ship)',
+        () {
+      // These filters have external library dependencies (libbs2b,
+      // pocketsphinx, libzmq, libmysofa, libflite, libladspa, lilv) that
+      // we deliberately don't bundle. Putting them back in the whitelist
+      // means ffmpeg silently skips them at configure time — the binary
+      // ends up missing them and any consumer that tries `lavfi-bs2b`
+      // gets `'isn't supported'`. Native equivalents already in the
+      // whitelist:  bs2b → crossfeed,  sofalizer → headphone.
+      const dead = <String>{
+        'bs2b',
+        'asr',
+        'azmq',
+        'sofalizer',
+        'flite',
+        'ladspa',
+        'lv2',
+      };
+      final whitelist = readAudioOnlyList('AUDIO_FILTERS').toSet();
+      final accidentallyAdded = dead.intersection(whitelist);
+      expect(accidentallyAdded, isEmpty,
+          reason: 'These filters require libraries we do not bundle and '
+              'will silently no-op at runtime:\n  '
+              '${accidentallyAdded.join("\n  ")}\n'
+              'Either remove them from AUDIO_FILTERS, or wire up the '
+              'matching dep in the per-platform build_libmpv_*.sh scripts.');
+    });
   });
 }

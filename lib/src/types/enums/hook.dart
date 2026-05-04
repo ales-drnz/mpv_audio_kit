@@ -4,10 +4,9 @@
 
 /// Lifecycle hook fired by mpv during file loading and unloading.
 ///
-/// The closed set mirrors `process_hooks(...)` calls in mpv's
-/// `player/loadfile.c` (mpv 0.41) — six phases the consumer can
-/// intercept to lazily resolve a URL, attach per-file HTTP headers,
-/// drive a fallback path, or react to a track boundary.
+/// Six phases you can intercept to lazily resolve a URL, attach
+/// per-file HTTP headers, drive a fallback path, or react to a track
+/// boundary.
 ///
 /// Pass to [Player.registerHook] to subscribe; the matching
 /// [MpvHookEvent] arrives on [PlayerStream.hook].
@@ -58,10 +57,10 @@ enum Hook {
   /// The wire-level name mpv expects in `mpv_hook_add()`.
   final String mpvName;
 
-  /// Maps an mpv-side hook name to the typed enum. Returns `null`
-  /// for unknown values — forward-compat with future mpv builds
-  /// that may add new hook phases (the wrapper logs a warning and
-  /// auto-continues unknown hooks so mpv never stalls).
+  /// Maps an mpv-side hook name to the typed enum. Returns `null` for
+  /// unknown values — forward-compat with future mpv builds that may
+  /// add new hook phases (a warning is logged and the hook auto-
+  /// continues so mpv never stalls).
   static Hook? fromMpv(String raw) => switch (raw) {
         'on_before_start_file' => beforeStartFile,
         'on_load' => load,

@@ -2,9 +2,11 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:freezed_annotation/freezed_annotation.dart';
+const _Unset _unset = _Unset();
 
-part 'chapter.freezed.dart';
+class _Unset {
+  const _Unset();
+}
 
 /// A chapter entry in the current track's `chapter-list`.
 ///
@@ -13,14 +15,29 @@ part 'chapter.freezed.dart';
 /// [PlayerStream.chapters] for the live list; observe
 /// [PlayerStream.currentChapter] for the active index, or jump with
 /// [Player.setChapter].
-@freezed
-abstract class Chapter with _$Chapter {
-  const factory Chapter({
-    /// Start time of the chapter from the file origin.
-    required Duration time,
+final class Chapter {
+  /// Start time of the chapter from the file origin.
+  final Duration time;
 
-    /// Optional human-readable title. mpv leaves this null when the
-    /// container provides no chapter name.
-    String? title,
-  }) = _Chapter;
+  /// Optional human-readable title. mpv leaves this null when the
+  /// container provides no chapter name.
+  final String? title;
+
+  const Chapter({required this.time, this.title});
+
+  Chapter copyWith({Duration? time, Object? title = _unset}) => Chapter(
+        time: time ?? this.time,
+        title: identical(title, _unset) ? this.title : title as String?,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Chapter && other.time == time && other.title == title);
+
+  @override
+  int get hashCode => Object.hash(time, title);
+
+  @override
+  String toString() => 'Chapter(time: $time, title: $title)';
 }

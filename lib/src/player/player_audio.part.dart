@@ -4,7 +4,7 @@
 part of 'player.dart';
 
 /// Audio setters: volume, mute, output device, format / channel layout,
-/// the four typed DSP stages, and the cover-art display options.
+/// the [AudioEffects] DSP pipeline, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
   /// Sets volume (0–100; values above 100 amplify the signal).
   Future<void> setVolume(double volume) async {
@@ -36,10 +36,10 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the active audio output device.
   ///
-  /// The `description` field of [device] is ignored — the wrapper
-  /// resolves the description from `state.audioDevices` (mpv's
-  /// authoritative `audio-device-list`). Pass [Device]s built
-  /// from that list, or use the `name` only.
+  /// The `description` field of [device] is ignored — the description
+  /// is resolved from `state.audioDevices` (mpv's authoritative
+  /// `audio-device-list`). Pass [Device]s built from that list, or use
+  /// the `name` only.
   Future<void> setAudioDevice(Device device) async {
     _checkNotDisposed();
     _prop('audio-device', device.name);
@@ -162,61 +162,33 @@ mixin _AudioModule on _PlayerBase {
     _command(['ao-reload']);
   }
 
-  // ── DSP filter chain ────────────────────────────────────────────────
-  // The full DSP rack lives in a single [AudioEffects] bundle. Apply
-  // it atomically with [setAudioEffects] (replace) or
-  // [updateAudioEffects] (Freezed-style copyWith mapper). Each effect
-  // inside the bundle owns a reserved label (see
-  // [AudioFilterChainLabels]) and a per-effect `enabled` flag —
-  // disabling a stage strips it from the chain at zero CPU cost while
-  // preserving its parameters.
+  // ── DSP pipeline ────────────────────────────────────────────────────
+  // The DSP pipeline lives in a single [AudioEffects] bundle. Apply it
+  // atomically with [setAudioEffects] (replace) or [updateAudioEffects]
+  // (Freezed-style copyWith mapper). Each per-effect Settings owns an
+  // `enabled` flag — disabling a stage drops it from the pipeline while
+  // preserving its parameters on the bundle for the next toggle.
 
-  /// Replaces the entire DSP filter chain in one atomic mpv `af`
-  /// write.
+  /// Replaces the entire DSP pipeline in one atomic write.
   ///
   /// Use for full-bundle config (initial setup, preset application,
   /// preset restore from JSON). To mutate a single field — typical of
   /// UI sliders — prefer [updateAudioEffects].
   ///
-  /// `effects.custom` carries raw mpv lavfi filter strings; each
-  /// entry must NOT begin with a wrapper-reserved label
-  /// ([AudioFilterChainLabels.all]) — those are owned by the typed
-  /// effects in the bundle.
+  /// `effects.custom` carries raw mpv `--af` effect strings consumed
+  /// verbatim — useful for expression-based effects (`pan`, `aeval`)
+  /// or any effect without a typed equivalent on the bundle.
+  /// The bundle is the only writer of mpv's `af` property: raw writes
+  /// via `setRawProperty('af', ...)` are rejected, and any pre-existing
+  /// `af` value (e.g. from `mpv.conf`) is overridden by the first call
+  /// here.
   Future<void> setAudioEffects(AudioEffects effects) async {
     _checkNotDisposed();
-    if (effects.equalizer.gains.length != 10) {
-      throw ArgumentError.value(
-        effects.equalizer.gains.length,
-        'effects.equalizer.gains',
-        'EqualizerSettings requires exactly 10 gain values',
-      );
-    }
-    for (final f in effects.custom) {
-      final trimmed = f.trimLeft();
-      if (!trimmed.startsWith('@')) continue;
-      final colon = trimmed.indexOf(':');
-      if (colon <= 1) continue;
-      final label = trimmed.substring(1, colon);
-      if (AudioFilterChainLabels.all.contains(label)) {
-        throw ArgumentError.value(
-          f,
-          'effects.custom',
-          'Custom filter carries a wrapper-reserved label `@$label:` — '
-              'configure the matching typed effect on the bundle instead.',
-        );
-      }
-    }
-    final normalised = effects.copyWith(
-      equalizer: effects.equalizer.copyWith(
-        gains: List<double>.from(effects.equalizer.gains),
-      ),
-      custom: List<String>.from(effects.custom),
-    );
-    _prop('af', composeAfChain(normalised));
+    _prop('af', effects.toAfChain());
     _updateField(
-      (s) => s.copyWith(audioEffects: normalised),
+      (s) => s.copyWith(audioEffects: effects),
       _reactives.audioEffects,
-      normalised,
+      effects,
     );
   }
 
@@ -229,13 +201,15 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Example:
   /// ```dart
-  /// // Toggle the equalizer:
-  /// await player.updateAudioEffects((e) =>
-  ///   e.copyWith(equalizer: e.equalizer.copyWith(enabled: !e.equalizer.enabled)));
+  /// // Toggle the compressor:
+  /// await player.updateAudioEffects((e) => e.copyWith(
+  ///   acompressor: e.acompressor.copyWith(enabled: !e.acompressor.enabled),
+  /// ));
   ///
   /// // Replace one effect entirely:
   /// await player.updateAudioEffects((e) => e.copyWith(
-  ///   compressor: CompressorSettings(enabled: true, threshold: -20, ratio: 4),
+  ///   acompressor: const AcompressorSettings(
+  ///     enabled: true, threshold: 0.1, ratio: 4),
   /// ));
   /// ```
   Future<void> updateAudioEffects(
@@ -249,7 +223,7 @@ mixin _AudioModule on _PlayerBase {
   /// Controls whether mpv automatically loads external cover art files
   /// sitting next to the audio file (e.g. `cover.jpg`). See [Cover] for
   /// the available variants. Embedded cover bytes are surfaced through
-  /// [Player.stream.coverArt] regardless of this setting.
+  /// [PlayerStream.coverArt] regardless of this setting.
   Future<void> setCoverArtAuto(Cover mode) async {
     _checkNotDisposed();
     _prop('cover-art-auto', mode.mpvValue);
@@ -300,4 +274,56 @@ mixin _AudioModule on _PlayerBase {
     _updateField(
         (s) => s.copyWith(audioDriver: driver), _reactives.audioDriver, driver);
   }
+
+  // ── Spectrum / PCM streams ───────────────────────────────────────────
+  // The FFT spectrum + raw PCM streams are a separate subsystem from
+  // the typed mpv setters above — they don't write any mpv property,
+  // they configure the polling pipeline that reads the
+  // `pcm-tap-frame` property at the configured emit rate.
+
+  /// Replaces the spectrum / PCM pipeline configuration.
+  ///
+  /// Use for full-bundle config (initial setup, preset application).
+  /// To mutate a single field — typical of UI sliders — prefer
+  /// [updateSpectrum].
+  ///
+  /// Reallocates FFT memory only when [SpectrumSettings.fftSize] /
+  /// window / band layout actually changes; idempotent on no-op
+  /// settings. Re-arms the poll timer when [SpectrumSettings.emitInterval]
+  /// changes mid-stream.
+  ///
+  /// The pipeline is **lazy** — calling this when nobody has
+  /// subscribed to [PlayerStream.spectrum] / [PlayerStream.pcm] just
+  /// updates the pending configuration; the poll loop only starts on
+  /// the first subscriber.
+  Future<void> setSpectrum(SpectrumSettings settings) async {
+    _checkNotDisposed();
+    _spectrumPipeline.setSettings(settings);
+  }
+
+  /// Mutates the spectrum settings with a Freezed-style copyWith
+  /// mapper.
+  ///
+  /// Convenience over `setSpectrum(spectrumSettings.copyWith(...))`.
+  /// The mapper receives the current bundle and must return the new
+  /// one — same semantics as `Player.updateAudioEffects`.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Switch to 60 fps with a Blackman-Harris window:
+  /// await player.updateSpectrum((s) => s.copyWith(
+  ///   emitInterval: const Duration(milliseconds: 16),
+  ///   window: WindowFunction.blackmanHarris,
+  /// ));
+  /// ```
+  Future<void> updateSpectrum(
+    SpectrumSettings Function(SpectrumSettings) mapper,
+  ) async {
+    await setSpectrum(mapper(_spectrumPipeline.settings));
+  }
+
+  /// Current spectrum / PCM pipeline configuration. Reflects the last
+  /// [setSpectrum] / [updateSpectrum] call (or [SpectrumSettings.defaults]
+  /// when never set).
+  SpectrumSettings get spectrumSettings => _spectrumPipeline.settings;
 }

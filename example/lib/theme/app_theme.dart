@@ -4,9 +4,21 @@ import 'package:flutter/material.dart';
 /// App-wide theme. Aligned with the maintainer's other Flutter project
 /// (`dart_smb2`): Material 3 + Colors.blue seed + click cursor on every
 /// interactive surface + 12 px border radius on buttons.
+///
+/// Light/dark variants are derived from a single shared builder that
+/// flips only the [Brightness] — all surfaces, buttons, sliders, and
+/// scrollbars are brightness-agnostic and resolve via the seeded
+/// [ColorScheme]. [MaterialApp.themeMode] should be set to
+/// [ThemeMode.system] so the OS preference drives the choice.
 class AppTheme {
-  static ThemeData get light => ThemeData(
-    colorSchemeSeed: Colors.blue,
+  static ThemeData get light => _build(Brightness.light);
+  static ThemeData get dark => _build(Brightness.dark);
+
+  static ThemeData _build(Brightness brightness) => ThemeData(
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: Colors.blue,
+      brightness: brightness,
+    ),
     useMaterial3: true,
     // Opt into Material 3 expressive (year2024) slider design:
     // wider track, squared "stadium" thumb, visible gap between

@@ -16,46 +16,34 @@
                  letter-spacing: 4px; }
   </style>
 
-  <!-- decoded audio (3 lines) — box y=40 h=80 cy=80 → y values 67, 85, 101 -->
-  <rect x="10" y="40" width="100" height="80"/>
-  <text class="title" x="60" y="67"  text-anchor="middle">decoded</text>
-  <text class="title" x="60" y="85"  text-anchor="middle">audio</text>
-  <text class="sub"   x="60" y="101" text-anchor="middle">from demuxer</text>
+  <!-- Decoded audio (3 lines) — box y=40 h=80 cy=80 → y values 67, 85, 101 -->
+  <rect x="85" y="40" width="100" height="80"/>
+  <text class="title" x="135" y="67"  text-anchor="middle">Decoded</text>
+  <text class="title" x="135" y="85"  text-anchor="middle">audio</text>
+  <text class="sub"   x="135" y="101" text-anchor="middle">From demuxer</text>
 
-  <!-- custom (2 lines) → 75, 93 -->
-  <rect x="135" y="40" width="120" height="80"/>
-  <text class="title" x="195" y="75" text-anchor="middle">custom</text>
-  <text class="sub"   x="195" y="93" text-anchor="middle">raw lavfi</text>
+  <!-- Custom (2 lines) → 75, 93 -->
+  <rect x="215" y="40" width="130" height="80"/>
+  <text class="title" x="280" y="75" text-anchor="middle">Custom</text>
+  <text class="sub"   x="280" y="93" text-anchor="middle">Raw lavfi</text>
 
-  <!-- compressor (2 lines) -->
-  <rect x="280" y="40" width="120" height="80"/>
-  <text class="title" x="340" y="75" text-anchor="middle">compressor</text>
-  <text class="sub"   x="340" y="93" text-anchor="middle">acompressor</text>
-
-  <!-- equalizer (2 lines) -->
-  <rect x="425" y="40" width="120" height="80"/>
-  <text class="title" x="485" y="75" text-anchor="middle">equalizer</text>
-  <text class="sub"   x="485" y="93" text-anchor="middle">ten frequency bands</text>
-
-  <!-- bassTreble (2 lines) -->
-  <rect x="570" y="40" width="120" height="80"/>
-  <text class="title" x="630" y="75" text-anchor="middle">bassTreble</text>
-  <text class="sub"   x="630" y="93" text-anchor="middle">two shelving bands</text>
+  <!-- Superequalizer (2 lines) -->
+  <rect x="375" y="40" width="200" height="80"/>
+  <text class="title" x="475" y="75" text-anchor="middle">Superequalizer</text>
+  <text class="sub"   x="475" y="93" text-anchor="middle">18 frequency bands</text>
 
   <!-- ellipsis (1 line, big font) -->
-  <rect x="715" y="40" width="80" height="80"/>
-  <text class="ellipsis" x="755" y="90" text-anchor="middle">···</text>
+  <rect x="605" y="40" width="100" height="80"/>
+  <text class="ellipsis" x="655" y="90" text-anchor="middle">···</text>
 
-  <!-- AO (2 lines) → 75, 93 -->
-  <rect x="820" y="40" width="80" height="80"/>
-  <text class="title" x="860" y="75" text-anchor="middle">AO</text>
-  <text class="sub"   x="860" y="93" text-anchor="middle">audio out</text>
+  <!-- Output (2 lines) → 75, 93 -->
+  <rect x="735" y="40" width="100" height="80"/>
+  <text class="title" x="785" y="75" text-anchor="middle">Output</text>
+  <text class="sub"   x="785" y="93" text-anchor="middle">To the speakers</text>
 
   <!-- arrows -->
-  <path class="arrow" d="M110,80 L135,80"/>
-  <path class="arrow" d="M255,80 L280,80"/>
-  <path class="arrow" d="M400,80 L425,80"/>
-  <path class="arrow" d="M545,80 L570,80"/>
-  <path class="arrow" d="M690,80 L715,80"/>
-  <path class="arrow" d="M795,80 L820,80"/>
+  <path class="arrow" d="M185,80 L215,80"/>
+  <path class="arrow" d="M345,80 L375,80"/>
+  <path class="arrow" d="M575,80 L605,80"/>
+  <path class="arrow" d="M705,80 L735,80"/>
 </svg>

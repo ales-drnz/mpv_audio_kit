@@ -6,9 +6,8 @@ import '../types/enums/hook.dart';
 
 /// Emitted by [PlayerStream.hook] when mpv fires a registered hook.
 ///
-/// The consumer **must** call [Player.continueHook] with [id] exactly
-/// once, even if processing fails — otherwise mpv will stall
-/// indefinitely.
+/// You **must** call [Player.continueHook] with [id] exactly once,
+/// even if processing fails — otherwise mpv will stall indefinitely.
 ///
 /// Example:
 /// ```dart
@@ -30,7 +29,7 @@ class MpvHookEvent {
   /// Opaque identifier required by [Player.continueHook].
   final int id;
 
-  /// The lifecycle phase mpv is asking the consumer to handle.
+  /// The lifecycle phase mpv is asking you to handle.
   final Hook hook;
 
   const MpvHookEvent(this.id, this.hook);

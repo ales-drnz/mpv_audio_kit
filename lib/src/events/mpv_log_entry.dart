@@ -4,7 +4,7 @@
 
 /// A structured log entry. Emitted on [PlayerStream.log] for messages
 /// from the mpv engine (`'ffmpeg'`, `'demux'`, `'ao'`, …) and on
-/// [PlayerStream.internalLog] for wrapper-side diagnostics (parse
+/// [PlayerStream.internalLog] for library-side diagnostics (parse
 /// warnings, hook timeouts; always carries `prefix: 'mpv_audio_kit'`).
 /// Filter by [level] to reduce noise.
 ///
@@ -22,8 +22,7 @@ class MpvLogEntry {
   final String level;
 
   /// The log message text. Trailing newlines are stripped before delivery
-  /// so consumers can concatenate or render entries without per-line
-  /// trimming.
+  /// so you can concatenate or render entries without per-line trimming.
   final String text;
 
   const MpvLogEntry({

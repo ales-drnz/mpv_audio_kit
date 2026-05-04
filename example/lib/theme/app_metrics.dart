@@ -5,7 +5,7 @@ class AppMetrics {
   AppMetrics._();
 
   /// Width of the pinned console sidebar in desktop layout. Must
-  /// match the `SizedBox(width: ...)` in `player_page.dart`.
+  /// match the `SizedBox(width: ...)` in `screens/home/home_page.dart`.
   static const double consolePinnedWidth = 380;
 
   /// Below this width the layout falls back to single-column mobile

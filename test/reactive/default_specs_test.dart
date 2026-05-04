@@ -204,20 +204,10 @@ void main() {
       expect(state.audioBitrate, isNull);
     });
 
-    test(
-        'af observer surfaces unmanaged entries as customAudioFilters; '
-        'wrapper-labelled entries are ignored', () {
-      // External raw mutation (e.g. via setRawProperty('af', ...)) bypasses
-      // the typed setters. The af observer mirrors only the unmanaged tail
-      // back into state.customAudioFilters; the four managed labels stay
-      // owned by their setters' own state.
-      dispatch(
-          'af', 'lavfi-pan=stereo|c0=c1|c1=c0,@_mak_eq:lavfi-equalizer=g=3');
-      expect(state.audioEffects.custom, ['lavfi-pan=stereo|c0=c1|c1=c0']);
-
-      dispatch('af', '');
-      expect(state.audioEffects.custom, isEmpty);
-    });
+    // The `af` property has NO observer — the typed bundle is the
+    // single writer of mpv's `af` and we do not reverse-parse external
+    // raw writes back into state.audioEffects. Documented in
+    // `default_specs.dart` next to the property block.
   });
 
   group('Default registry — stream-only properties', () {
@@ -538,7 +528,10 @@ void main() {
         'ao-null-untimed', 'track-list', 'current-tracks/audio',
         'audio-spdif', 'volume-max',
         'audio-samplerate', 'audio-format', 'audio-channels',
-        'audio-client-name', 'af', 'ao',
+        'audio-client-name', 'ao',
+        // NOTE: `af` is NOT observed — the typed [AudioEffects] bundle
+        // is the single writer of mpv's `af` property, so external raw
+        // writes are not reverse-parsed back into state.audioEffects.
         // Cover art
         'cover-art-auto',
         // Patched / stream-only

@@ -31,17 +31,16 @@ mixin _HooksModule on _PlayerBase {
   /// this hook.
   ///
   /// If [timeout] is provided, the library automatically calls
-  /// [continueHook] after the given duration if the consumer hasn't
-  /// called it yet. Prevents mpv from stalling indefinitely on
-  /// unhandled exceptions in the listener.
+  /// [continueHook] after the given duration if you haven't called it
+  /// yet. Prevents mpv from stalling indefinitely on unhandled
+  /// exceptions in the listener.
   ///
   /// Idempotent per [hook]: calling [registerHook] more than once for
   /// the same hook on the same [Player] only updates the optional
   /// [timeout]; the underlying mpv registration happens once. mpv
   /// allows multiple registrations per name but its shutdown path can
   /// stall when several events for the same hook are still active at
-  /// `quit` — the wrapper avoids that race by collapsing duplicates
-  /// here.
+  /// `quit` — duplicates are collapsed here to avoid that race.
   ///
   /// See [Hook] for the full set of available phases. Higher
   /// [priority] values run earlier; the default (0) is fine for most
@@ -69,15 +68,14 @@ mixin _HooksModule on _PlayerBase {
   /// will stall indefinitely waiting for the hook to return.
   ///
   /// Idempotent on a per-id basis: a second [continueHook] call for the
-  /// same id (a buggy double-dispatch in the consumer, or a manual
-  /// continue racing the auto-timeout fallback) is dropped on the
-  /// wrapper side and never reaches mpv. mpv's behaviour for an
-  /// already-continued id is undefined across versions, so the wrapper
-  /// tracks the active set in [_activeHookIds].
+  /// same id (a buggy double-dispatch in your code, or a manual continue
+  /// racing the auto-timeout fallback) is dropped before reaching mpv.
+  /// mpv's behaviour for an already-continued id is undefined across
+  /// versions, so the active set is tracked internally.
   ///
-  /// Calling with an invalid [id] (zero or negative — typo in a consumer
-  /// dispatch table) is also a no-op: the wrapper logs a warning on
-  /// [PlayerStream.internalLog] and skips the FFI call.
+  /// Calling with an invalid [id] (zero or negative — typo in a dispatch
+  /// table) is also a no-op: a warning is logged on
+  /// [PlayerStream.internalLog] and the FFI call is skipped.
   void continueHook(int id) {
     _checkNotDisposed();
     if (id <= 0) {
@@ -89,7 +87,7 @@ mixin _HooksModule on _PlayerBase {
       return;
     }
     if (!_activeHookIds.remove(id)) {
-      // Already continued (manual + auto-timer race, or consumer
+      // Already continued (manual + auto-timer race, or caller
       // double-dispatch). Drop silently — the first continue already
       // unblocked mpv.
       return;

@@ -1,10 +1,14 @@
 #
 # mpv_audio_kit iOS podspec
 #
-# libmpv on iOS is distributed as a static XCFramework downloaded from GitHub Releases.
+# libmpv on iOS is distributed as a static XCFramework downloaded from GitHub
+# Releases. Each slice ships as a `libmpv.framework/` static-library wrapper
+# (the layout CocoaPods needs for `vendored_frameworks` linking to work).
 # The xcframework includes:
-#   ios-arm64                  – device (arm64)
-#   ios-arm64_x86_64-simulator – simulator fat binary (arm64 + x86_64)
+#   ios-arm64           – device (arm64)
+#   ios-arm64-simulator – simulator (arm64 only, Apple Silicon Macs)
+# Apple removed Rosetta for the iOS 26 simulator, so x86_64 sim is no longer
+# supported. EXCLUDED_ARCHS below propagates this constraint to the consumer.
 #
 Pod::Spec.new do |s|
   s.name             = 'mpv_audio_kit'
@@ -19,7 +23,7 @@ Pod::Spec.new do |s|
   s.source           = { :path => '.' }
   s.source_files     = 'mpv_audio_kit/Sources/mpv_audio_kit/**/*'
   s.dependency 'Flutter'
-  s.platform         = :ios, '13.0'
+  s.platform         = :ios, '15.0'
 
   # Required frameworks for Audio Session and Core functions
   s.frameworks = 'AVFoundation', 'AudioToolbox', 'Security', 'CoreFoundation'
@@ -29,7 +33,7 @@ Pod::Spec.new do |s|
   # Run `scripts/generate_checksums.sh` to get the SHA-256 for your new release.
   s.prepare_command = <<-CMD
     MPV_RELEASE_VERSION="libmpv-r5"
-    EXPECTED_SHA256="18a8d7335e2c3172339aece46e260c7ee5f2dee4c1d1eb5028eec7c97eb179fe"
+    EXPECTED_SHA256="9f9a47b133f1ec5ac5bde03d807f1280518251b7785ce42a515f26ae0f2933d3"
     URL="https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_ios-arm64.xcframework.zip"
 
     mkdir -p Frameworks
@@ -69,9 +73,18 @@ Pod::Spec.new do |s|
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE'                      => 'YES',
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    # The XCFramework ships only ios-arm64-simulator (no x86_64). Exclude
+    # x86_64 from simulator builds so CocoaPods' slice picker matches.
+    # Apple removed Rosetta for the iOS 26 simulator; on Apple Silicon
+    # x86_64 sim is no longer reachable anyway.
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386 x86_64',
     'ENABLE_BITCODE'                      => 'NO',
     'OTHER_LDFLAGS'                       => '-liconv',
+  }
+  # Propagate the architecture exclusion to the consuming app target so the
+  # Flutter Runner doesn't ask for a x86_64-simulator slice we don't ship.
+  s.user_target_xcconfig = {
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386 x86_64',
   }
   s.swift_version = '5.0'
 end

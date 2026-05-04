@@ -8,13 +8,14 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
 import '../internals/cover_art_extractor.dart';
+import '../internals/spectrum_pipeline.dart';
 import '../models/cover_art.dart';
 import '../internals/event_isolate.dart';
-import '../events/exceptions.dart';
-import '../internals/audio_output_error.dart';
-import '../internals/lifecycle_transitions.dart';
+import '../events/mpv_exception.dart';
+import 'audio_output_error.dart';
+import 'lifecycle_transitions.dart';
 import '../reactive/node_parsers.dart';
-import '../internals/library_loader.dart';
+import '../library_loader.dart';
 import '../mpv_bindings.dart' hide MpvEndFileReason;
 import '../internals/orphan_handle_tracker.dart';
 import '../reactive/default_specs.dart';
@@ -23,7 +24,6 @@ import '../reactive/reactive_property.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/uri_resolver.dart';
 
-import '../internals/audio_filter_chain.dart';
 import '../types/sealed/track.dart';
 import '../types/enums/loop.dart';
 import '../models/media.dart';
@@ -34,11 +34,13 @@ import '../types/enums/format.dart';
 import '../types/enums/cover.dart';
 import '../types/enums/gapless.dart';
 import '../types/enums/hook.dart';
-import '../types/settings/audio_effects.dart';
+import '../types/settings/audio_effects_settings.dart';
 import '../types/settings/cache_settings.dart';
+import '../types/settings/spectrum_settings.dart';
 import '../events/mpv_log_entry.dart';
 import '../events/mpv_hook_event.dart';
 import '../events/mpv_player_error.dart';
+import 'player_api.dart';
 import 'player_configuration.dart';
 import 'player_state.dart';
 import '../types/settings/replay_gain_settings.dart';
@@ -54,17 +56,11 @@ export '../models/device.dart';
 export '../types/enums/format.dart';
 export '../models/audio_params.dart';
 export '../types/sealed/track.dart';
-export '../types/settings/audio_effects.dart';
-export '../types/settings/bass_treble_settings.dart';
-export '../types/settings/compressor_settings.dart';
-export '../types/settings/crossfeed_settings.dart';
-export '../types/settings/equalizer_settings.dart';
-export '../types/settings/loudness_settings.dart';
+export '../types/enums/audio_effects.dart';
+export '../types/settings/audio_effects_settings.dart';
 export '../events/mpv_log_entry.dart';
 export '../events/mpv_hook_event.dart';
-export '../types/settings/pitch_tempo_settings.dart';
-export '../types/settings/silence_trim_settings.dart';
-export '../types/settings/stereo_settings.dart';
+export '../types/settings/spectrum_settings.dart';
 export 'player_configuration.dart';
 export 'player_state.dart';
 export 'player_stream.dart';
@@ -76,13 +72,18 @@ part 'player_network.part.dart';
 part 'player_hooks.part.dart';
 
 /// A high-performance audio player powered by libmpv.
+///
+/// Implements [PlayerApi] so test code can mock the player without
+/// dragging in the FFI handle and event isolate
+/// (`class MockPlayer extends Mock implements PlayerApi {}`).
 class Player extends _PlayerBase
     with
         _PlaybackModule,
         _PlaylistModule,
         _AudioModule,
         _NetworkModule,
-        _HooksModule {
+        _HooksModule
+    implements PlayerApi {
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration});
 
@@ -143,10 +144,9 @@ class Player extends _PlayerBase
     // Apply per-file headers only for the first item — it's the one
     // mpv loads synchronously on `loadfile replace`. Headers for
     // queued items (append) cannot be applied here without racing
-    // mpv's playlist advance; consumers needing per-track headers on
-    // a playlist should register an `on_load` hook (see
-    // [_HooksModule.registerHook]) and set the per-file option from
-    // the hook handler.
+    // mpv's playlist advance; per-track headers on a playlist need an
+    // `on_load` hook (see [_HooksModule.registerHook]) that sets the
+    // per-file option from the handler.
     _applyFileLocalHeaders(medias.first.httpHeaders);
     _prop('pause', shouldPlay ? 'no' : 'yes');
     _command(['loadfile', resolved.first.uri, 'replace']);
@@ -185,7 +185,7 @@ class Player extends _PlayerBase
   ///
   /// **Warning:** this is an escape hatch for properties the typed API
   /// doesn't yet cover. If [name] is one of the registry-observed
-  /// properties (volume, pause, cache-*, replaygain*, ao, af, …), the
+  /// properties (volume, pause, cache-*, replaygain*, ao, …), the
   /// resulting state mutation will *also* flow through the property
   /// observer on mpv's side, so `player.state` and `player.stream` will
   /// stay consistent — but expect a one-event-loop-tick delay between
@@ -193,11 +193,26 @@ class Player extends _PlayerBase
   /// typed setters (`setVolume`, `setCache`, `setReplayGain`, …) when
   /// they exist, both for type-safety and for synchronous state update.
   ///
-  /// Throws [StateError] if the player has been disposed, or
-  /// [MpvException] if mpv rejects the property write (unknown name,
-  /// out-of-range value, etc.).
+  /// `af` is reserved: the typed [AudioEffects] bundle owns it
+  /// (including raw passthroughs via [AudioEffects.custom]), and a
+  /// raw write would silently desync `state.audioEffects`. Use
+  /// [setAudioEffects] / [updateAudioEffects] instead.
+  ///
+  /// Throws [StateError] if the player has been disposed,
+  /// [ArgumentError] if [name] is reserved, or [MpvException] if mpv
+  /// rejects the property write (unknown name, out-of-range value, etc.).
   Future<void> setRawProperty(String name, String value) async {
     _checkNotDisposed();
+    if (name == 'af') {
+      throw ArgumentError.value(
+        name,
+        'name',
+        'Property `af` is owned by the typed AudioEffects bundle. '
+            'Use Player.setAudioEffects / updateAudioEffects, and pass '
+            'experimental or expression-based filters via '
+            'AudioEffects.custom.',
+      );
+    }
     final rc = _prop(name, value);
     if (rc < 0) {
       throw MpvException(
@@ -299,9 +314,9 @@ abstract class _PlayerBase {
   // Log stream from the mpv engine itself (codec / demux / ao / …).
   final StreamController<MpvLogEntry> _logCtrl =
       StreamController<MpvLogEntry>.broadcast();
-  // Log stream from the Dart wrapper itself — JSON parse warnings, hook
-  // timeouts, etc. Kept disjoint from `_logCtrl` so consumers can filter
-  // wrapper-side noise from genuine engine messages without inspecting
+  // Log stream from the Dart layer itself — JSON parse warnings, hook
+  // timeouts, etc. Kept disjoint from `_logCtrl` so library-side noise
+  // can be filtered from genuine engine messages without inspecting
   // the prefix.
   final StreamController<MpvLogEntry> _internalLogCtrl =
       StreamController<MpvLogEntry>.broadcast();
@@ -310,11 +325,15 @@ abstract class _PlayerBase {
   final StreamController<void> _seekCompletedCtrl =
       StreamController<void>.broadcast();
   // Nullable payload: each file-loaded transition emits exactly once,
-  // with `null` when the new file has no embedded cover. This lets
-  // consumers clear / reset their UI on every track change without
-  // having to compare against a separate file-transition signal.
+  // with `null` when the new file has no embedded cover. This lets a
+  // UI clear / reset on every track change without having to compare
+  // against a separate file-transition signal.
   final StreamController<CoverArt?> _coverArtCtrl =
       StreamController<CoverArt?>.broadcast();
+
+  // Real-time FFT + raw PCM pipeline. Lazy: the poll loop starts only
+  // when something subscribes to `stream.spectrum` or `stream.pcm`.
+  late final SpectrumPipeline _spectrumPipeline;
 
   PlayerState get state => _state;
   late final PlayerStream stream;
@@ -360,6 +379,8 @@ abstract class _PlayerBase {
     _observe('loop-file', MpvFormat.mpvFormatString);
     _observe('loop-playlist', MpvFormat.mpvFormatString);
 
+    _spectrumPipeline = SpectrumPipeline(lib: _lib, handle: _handle);
+
     stream = PlayerStream.fromInternals(
       reactives: _reactives,
       buffering: _buffering,
@@ -377,6 +398,8 @@ abstract class _PlayerBase {
       hook: _hookCtrl.stream,
       seekCompleted: _seekCompletedCtrl.stream,
       coverArt: _coverArtCtrl.stream,
+      spectrum: _spectrumPipeline.spectrumStream,
+      pcm: _spectrumPipeline.pcmStream,
     );
 
     _startEventIsolate();
@@ -389,7 +412,7 @@ abstract class _PlayerBase {
     // Audio-only build: no video / subtitle track selection. Suppresses
     // mpv warnings about missing MJPEG / libass decoders that would
     // otherwise fire on every file with embedded cover art or text
-    // metadata streams. Cover-art bytes still flow through the patched
+    // metadata streams. Cover-art bytes still flow through the
     // `embedded-cover-art-data` property, which reads at the demuxer
     // level before any decoder runs.
     _opt('vid', 'no');
@@ -773,16 +796,16 @@ abstract class _PlayerBase {
     });
   }
 
-  /// Internal log helper — emits on the wrapper-side log channel
-  /// ([Player.stream.internalLog]), kept separate from mpv's engine log
-  /// stream ([Player.stream.log]).
+  /// Internal log helper — emits on the library-side log channel
+  /// ([PlayerStream.internalLog]), kept separate from mpv's engine log
+  /// stream ([PlayerStream.log]).
   void _internalLog(String message, {String level = 'info'}) => _internalLogCtrl
       .add(MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message));
 
   void _extractEmbeddedCover() {
     if (_disposed) return;
     // Emit unconditionally — `null` signals "no cover on the new
-    // file" so consumers can clear stale artwork on track changes.
+    // file" so subscribers can clear stale artwork on track changes.
     _coverArtCtrl.add(CoverArtExtractor.capture(_lib, _handle));
   }
 
@@ -819,6 +842,7 @@ abstract class _PlayerBase {
     _disposed = true;
 
     OrphanHandleTracker.instance.remove(_handle);
+    await _spectrumPipeline.dispose();
     await _eventSub?.cancel();
     // Cooperative quit: mpv fires MPV_EVENT_SHUTDOWN, the isolate's
     // mpv_wait_event returns, and the loop unwinds naturally. Calling

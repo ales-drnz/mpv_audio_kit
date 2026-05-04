@@ -22,8 +22,8 @@ sealed class Track {
   static const Track auto = TrackAuto._();
 
   /// Disable audio output entirely. Equivalent to mpv's `aid=no`.
-  /// Useful for files where the consumer wants only metadata / cover
-  /// art without playing audio.
+  /// Useful for files where you want only metadata / cover art without
+  /// playing audio.
   static const Track off = TrackOff._();
 
   /// Select the audio track with the given mpv [trackId]. IDs match

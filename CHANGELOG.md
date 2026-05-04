@@ -3,20 +3,22 @@
 A major release. The Dart API has been redesigned for type safety, ergonomics, and atomic state mutations.
 
 ### Added
-- A new audio-effects bundle covering equalizer, compressor, loudness, pitch / tempo, bass / treble, stereo width, headphone crossfeed, silence trim, crossfade, and raw lavfi filters — applied atomically through one setter.
+- A new `AudioEffects` bundle covering equalizer, compressor, loudness, pitch / tempo, bass / treble, stereo width, headphone crossfeed, silence trim, and raw lavfi effects — applied atomically through one setter.
 - A-B loop and chapter navigation.
 - Aggregate playback-state stream (idle / loading / buffering / playing / paused / completed) for one-line UI bindings.
 - 20+ new observable streams covering timing, file metadata, cache, demuxer, and version info.
 - Typed `Hook` enum for the file-loading lifecycle (was a free-form string in 0.0.9).
 - New `MpvPrefetchState.failed` variant for when background prefetch fails.
 - Typed errors via the `MpvPlayerError` hierarchy and a public `MpvException` for raw-API failures.
+- Real-time FFT spectrum and raw PCM streams (`Player.stream.spectrum` / `Player.stream.pcm`) captured post-DSP for visualizers.
+- `PlayerApi` abstract interface so test code can mock the player with `class MockPlayer extends Mock implements PlayerApi {}` instead of subclassing the FFI-backed `Player`.
 
 ### Changed
 - DSP effects, ReplayGain, and cache settings now live in atomic config objects applied in one call instead of multiple granular setters.
 - Track selection, format, channel layout, S/PDIF passthrough, and hooks are now typed instead of free-form strings.
 - Embedded cover art is exposed as raw codec bytes through a dedicated `state.coverArt` + `stream.coverArt` pair, with Flutter conveniences (`art.image` returns an `ImageProvider`, plus `art.extension`, `art.isPng`, `art.isJpeg`, …).
-- `setAudioDisplay`, `setImageDisplayDuration`, and the `Display` enum are removed — they controlled mpv's video pipeline, which the audio-only build doesn't ship. Cover bytes are surfaced regardless via `state.coverArt`.
-- Raw-API escape hatches (`getRawProperty`, `setRawProperty`, `sendRawCommand`) are now `Future<...>` and surface mpv errors as `MpvException` instead of silently no-oping.
+- `setAudioDisplay`, `setImageDisplayDuration`, and the `Display` enum are removed — they controlled mpv's video pipeline, which the audio-only build doesn't ship anymore from now on. Cover bytes are surfaced regardless via `state.coverArt`.
+- Raw-API escape hatches (`getRawProperty`, `setRawProperty`, `sendRawCommand`) are now `Future<...>`. `setRawProperty` and `sendRawCommand` surface mpv errors as `MpvException` instead of silently no-oping; `getRawProperty` still returns `null` on failure.
 - `Player.openPlaylist` renamed to `Player.openAll` (matches Dart's `addAll` / `removeAll` convention).
 - See the [Migration](README.md#migration) section in the README for the full 0.0.9 → 0.1.0 table.
 
@@ -26,8 +28,14 @@ A major release. The Dart API has been redesigned for type safety, ergonomics, a
 - `Player.dispose()` completes in milliseconds instead of waiting for a 2-second timeout.
 - Several correctness fixes around playlist equality, hook idempotency, cache precision, and lifecycle stream synchronisation.
 
+### Example
+- Spectrum visualizer in the Player tab driven by `Player.stream.spectrum`, plus a Settings page exposing every `SpectrumSettings` knob (FFT size, window, band count / range, emit rate, attack / release smoothing, dB range) for live exploration.
+- Filters page reorganised into eight category sub-pages (dynamics, EQ, cut/pass, pitch & time, stereo, modulation, denoise, utilities) covering every filter shipped with the build, plus a dedicated 18-band visualizer for `superequalizer`.
+
 ### Build
 - Bundled libmpv binaries reduced by ~55% (e.g. macOS arm64: 29 MB → 13 MB).
+- Bumped minimum deployment targets to iOS 15.0 and macOS 12.0.
+- iOS XCFramework is now Apple Silicon only.
 - Updated libmpv to `libmpv-r5` across all platforms.
 
 ## [0.0.9] - 27-04-2026

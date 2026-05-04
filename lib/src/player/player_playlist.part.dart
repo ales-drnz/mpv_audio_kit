@@ -11,11 +11,10 @@ mixin _PlaylistModule on _PlayerBase {
   ///
   /// `media.httpHeaders` is NOT applied automatically — the appended
   /// entry may be loaded much later by mpv (after the current track
-  /// ends), and the wrapper has no synchronous moment to attach
-  /// per-file options. Consumers that need per-track HTTP headers on a
-  /// playlist should register an `on_load` hook
-  /// (see [_HooksModule.registerHook]) and set
-  /// `file-local-options/http-header-fields` from the handler.
+  /// ends), with no synchronous moment available to attach per-file
+  /// options. If you need per-track HTTP headers on a playlist,
+  /// register an `on_load` hook (see [_HooksModule.registerHook]) and
+  /// set `file-local-options/http-header-fields` from the handler.
   Future<void> add(Media media) async {
     _checkNotDisposed();
     _mediaCache[media.uri] = media;

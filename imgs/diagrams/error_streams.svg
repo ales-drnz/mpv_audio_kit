@@ -6,38 +6,37 @@
   </defs>
   <style>
     rect     { rx: 10; ry: 10; fill: #f8f9fb; }
-    .title   { font-weight: 700; fill: #1e2329; font-size: 14px; }
-    .sub     { fill: #5b6371; font-size: 11px; }
+    .title   { font-weight: 600; fill: #1e2329; }
+    .sub     { fill: #5b6371; font-size: 10.5px; }
     .arrow   { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#ar2); }
-    .h       { font-weight: 700; fill: #1e2329; font-size: 14px; }
   </style>
 
   <!-- Engine source: h=70, y=40 → cy=75. 2 lines: 70, 88 -->
   <rect x="350" y="40" width="180" height="70"/>
   <text class="title" x="440" y="70" text-anchor="middle">Player engine</text>
-  <text class="sub"   x="440" y="88" text-anchor="middle">events, errors, state changes</text>
+  <text class="sub"   x="440" y="88" text-anchor="middle">Events, errors, state changes</text>
 
   <!-- 4 stream cards: h=90, y=200 → cy=245. 3 lines: 232, 250, 266 -->
 
   <rect x="20" y="200" width="200" height="90"/>
   <text class="title" x="120" y="232" text-anchor="middle">Errors</text>
-  <text class="sub"   x="120" y="250" text-anchor="middle">playback failures,</text>
+  <text class="sub"   x="120" y="250" text-anchor="middle">Playback failures,</text>
   <text class="sub"   x="120" y="266" text-anchor="middle">decoder or network errors</text>
 
   <rect x="240" y="200" width="200" height="90"/>
   <text class="title" x="340" y="232" text-anchor="middle">End of file</text>
-  <text class="sub"   x="340" y="250" text-anchor="middle">every track boundary,</text>
+  <text class="sub"   x="340" y="250" text-anchor="middle">Every track boundary,</text>
   <text class="sub"   x="340" y="266" text-anchor="middle">EOF, stop, error, redirect</text>
 
   <rect x="460" y="200" width="200" height="90"/>
   <text class="title" x="560" y="232" text-anchor="middle">Audio output</text>
-  <text class="sub"   x="560" y="250" text-anchor="middle">device status</text>
-  <text class="sub"   x="560" y="266" text-anchor="middle">closed, starting, active, or failed</text>
+  <text class="sub"   x="560" y="250" text-anchor="middle">Device status</text>
+  <text class="sub"   x="560" y="266" text-anchor="middle">Closed, starting, active, or failed</text>
 
   <rect x="680" y="200" width="180" height="90"/>
   <text class="title" x="770" y="232" text-anchor="middle">Logs</text>
-  <text class="sub"   x="770" y="250" text-anchor="middle">engine and wrapper messages</text>
-  <text class="sub"   x="770" y="266" text-anchor="middle">filtered by level</text>
+  <text class="sub"   x="770" y="250" text-anchor="middle">Engine and wrapper messages</text>
+  <text class="sub"   x="770" y="266" text-anchor="middle">Filtered by level</text>
 
   <path class="arrow" d="M440,110 V160 H120 V200"/>
   <path class="arrow" d="M440,110 V160 H340 V200"/>

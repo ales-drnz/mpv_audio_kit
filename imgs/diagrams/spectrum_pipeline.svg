@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" font-family="system-ui, -apple-system, sans-serif" font-size="13" role="img" aria-label="Spectrum and PCM pipeline">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7a8190"/>
+    </marker>
+  </defs>
+
+  <style>
+    rect       { fill: #f8f9fb; rx: 10; ry: 10; }
+    .title     { font-weight: 600; fill: #1e2329; }
+    .sub       { font-size: 10.5px; fill: #5b6371; }
+    .arrow     { stroke: #7a8190; stroke-width: 1.6; fill: none;
+                 marker-end: url(#ar); }
+  </style>
+
+  <!-- Row 1 — five-stage pipeline. Boxes 150w × 100h, gap 22. -->
+
+  <!-- 1. Audio frames -->
+  <rect x="15" y="40" width="150" height="100"/>
+  <text class="title" x="90" y="80"  text-anchor="middle">Audio frames</text>
+  <text class="sub"   x="90" y="104" text-anchor="middle">From the player</text>
+
+  <!-- 2. Frequency analysis -->
+  <rect x="187" y="40" width="150" height="100"/>
+  <text class="title" x="262" y="72"  text-anchor="middle">Frequency</text>
+  <text class="title" x="262" y="92"  text-anchor="middle">analysis</text>
+  <text class="sub"   x="262" y="116" text-anchor="middle">Windowed FFT</text>
+
+  <!-- 3. Perceptual bands -->
+  <rect x="359" y="40" width="150" height="100"/>
+  <text class="title" x="434" y="72"  text-anchor="middle">Perceptual</text>
+  <text class="title" x="434" y="92"  text-anchor="middle">bands</text>
+  <text class="sub"   x="434" y="116" text-anchor="middle">Log scale</text>
+
+  <!-- 4. Smoothing -->
+  <rect x="531" y="40" width="150" height="100"/>
+  <text class="title" x="606" y="78"  text-anchor="middle">Smoothing</text>
+  <text class="sub"   x="606" y="102" text-anchor="middle">Fast attack</text>
+  <text class="sub"   x="606" y="118" text-anchor="middle">Slow release</text>
+
+  <!-- 5. FftFrame out -->
+  <rect x="703" y="40" width="150" height="100"/>
+  <text class="title" x="778" y="80"  text-anchor="middle">FftFrame</text>
+  <text class="sub"   x="778" y="104" text-anchor="middle">Ready to draw</text>
+
+  <!-- Row-1 arrows -->
+  <path class="arrow" d="M165,90 L187,90"/>
+  <path class="arrow" d="M337,90 L359,90"/>
+  <path class="arrow" d="M509,90 L531,90"/>
+  <path class="arrow" d="M681,90 L703,90"/>
+
+  <!-- Row 2 — raw-PCM branch tapped off the very first stage. -->
+
+  <rect x="15" y="180" width="150" height="60"/>
+  <text class="title" x="90" y="206" text-anchor="middle">PcmFrame</text>
+  <text class="sub"   x="90" y="225" text-anchor="middle">Raw samples</text>
+
+  <!-- Drop arrow from box 1 down to PcmFrame -->
+  <path class="arrow" d="M90,140 L90,180"/>
+</svg>

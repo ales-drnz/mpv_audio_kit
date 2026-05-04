@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:test/test.dart';
-import 'package:mpv_audio_kit/src/internals/audio_output_error.dart';
+import 'package:mpv_audio_kit/src/player/audio_output_error.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:mpv_audio_kit/src/events/mpv_player_error.dart';
 

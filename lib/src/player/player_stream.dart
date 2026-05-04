@@ -5,6 +5,8 @@
 import 'dart:async';
 
 import 'package:mpv_audio_kit/src/models/cover_art.dart';
+import 'package:mpv_audio_kit/src/models/fft_frame.dart';
+import 'package:mpv_audio_kit/src/models/pcm_frame.dart';
 import 'package:mpv_audio_kit/src/types/enums/loop.dart';
 import 'package:mpv_audio_kit/src/models/playlist.dart';
 import 'package:mpv_audio_kit/src/types/sealed/channels.dart';
@@ -15,7 +17,7 @@ import 'package:mpv_audio_kit/src/types/enums/spdif.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:mpv_audio_kit/src/types/enums/cover.dart';
 import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
-import 'package:mpv_audio_kit/src/types/settings/audio_effects.dart';
+import 'package:mpv_audio_kit/src/types/settings/audio_effects_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
 import 'package:mpv_audio_kit/src/models/chapter.dart';
 import 'package:mpv_audio_kit/src/types/state/mpv_playback_state.dart';
@@ -25,7 +27,7 @@ import 'package:mpv_audio_kit/src/events/mpv_log_entry.dart';
 import 'package:mpv_audio_kit/src/events/mpv_hook_event.dart';
 import 'package:mpv_audio_kit/src/types/state/mpv_prefetch_state.dart';
 import 'package:mpv_audio_kit/src/events/mpv_player_error.dart';
-import 'package:mpv_audio_kit/src/internals/mpv_playback_state_derive.dart';
+import 'package:mpv_audio_kit/src/player/mpv_playback_state_derive.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
 
@@ -59,6 +61,8 @@ class PlayerStream {
     required this.hook,
     required this.seekCompleted,
     required this.coverArt,
+    required this.spectrum,
+    required this.pcm,
   })  : playing = reactives.playing.stream,
         position = reactives.position.stream,
         duration = reactives.duration.stream,
@@ -148,7 +152,7 @@ class PlayerStream {
         audioEffects = audioEffects.stream;
 
   /// Aggregate [MpvPlaybackState] derived from the 5 underlying signals
-  /// the wrapper already tracks (`playing`, `buffering`, `completed`,
+  /// the library already tracks (`playing`, `buffering`, `completed`,
   /// `pausedForCache`, `duration`). Lazy: subscriptions to the source
   /// streams open only on the first listener.
   static Stream<MpvPlaybackState> _playbackStateStream(
@@ -179,7 +183,7 @@ class PlayerStream {
   /// subscribes to every input [sources] stream, piping a fresh
   /// `snapshot()` value to the output controller on each upstream event.
   /// Repeated upstream events that resolve to the same aggregate value
-  /// are deduplicated so the consumer sees one emission per actual change.
+  /// are deduplicated so subscribers see one emission per actual change.
   /// On the last cancel, tears the subscriptions down.
   static Stream<T> _bindAggregate<T>(
     T Function() snapshot,
@@ -378,14 +382,14 @@ class PlayerStream {
 
   /// Lifecycle of mpv's audio output: `closed → initializing → active`
   /// in the success path, `→ failed` if `ao_init_best()` returns a
-  /// NULL handle. The wrapper surfaces a typed [MpvLogError] on
-  /// [error] the moment this stream emits [AudioOutputState.failed].
+  /// NULL handle. A typed [MpvLogError] is emitted on [error] the
+  /// moment this stream emits [AudioOutputState.failed].
   final Stream<AudioOutputState> audioOutputState;
 
-  /// All DSP effects in mpv's `--af` filter chain, bundled into a
-  /// single atomic snapshot. Set with [Player.setAudioEffects] /
+  /// All DSP effects in mpv's `--af` pipeline, bundled into a single
+  /// atomic snapshot. Set with [Player.setAudioEffects] /
   /// [Player.updateAudioEffects]. Sub-stream a single effect via
-  /// `audioEffects.map((e) => e.equalizer).distinct()`.
+  /// `audioEffects.map((e) => e.acompressor).distinct()`.
   final Stream<AudioEffects> audioEffects;
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
@@ -410,16 +414,16 @@ class PlayerStream {
   /// (`PlayerConfiguration.logLevel`).
   ///
   /// Prefix examples: `'ffmpeg'`, `'demux'`, `'ao'`, `'cplayer'`.
-  /// For wrapper-side messages (parse warnings, hook timeouts, manual
-  /// `Player.log()` injections), see [internalLog].
+  /// For library-side messages (parse warnings, hook timeouts), see
+  /// [internalLog].
   final Stream<MpvLogEntry> log;
 
-  /// Wrapper-side log entries — JSON parse warnings, hook timeouts, and
-  /// other messages produced by the Dart wrapper itself. Always carries
+  /// Library-side log entries — JSON parse warnings, hook timeouts, and
+  /// other messages produced by the Dart layer itself. Always carries
   /// `prefix: 'mpv_audio_kit'`.
   ///
-  /// Disjoint from [log] so consumers can route engine and wrapper noise
-  /// to different sinks (e.g. show only [log] in a debug overlay while
+  /// Disjoint from [log] so you can route engine and library noise to
+  /// different sinks (e.g. show only [log] in a debug overlay while
   /// routing [internalLog] to crash reporting).
   final Stream<MpvLogEntry> internalLog;
 
@@ -555,10 +559,44 @@ class PlayerStream {
   /// codec bytes (PNG / JPEG / WEBP / …) from the file's attached
   /// picture stream, plus the MIME type. Hand straight to
   /// `Image.memory(raw.bytes)` or run your own pipeline (resize, encode,
-  /// cache) — the wrapper does not process the bytes.
+  /// cache) — the bytes are passed through unchanged.
   ///
   /// Emits exactly once per file load: a [CoverArt] when the new
   /// file has embedded artwork, or `null` when it does not. Listen for
   /// `null` to clear stale artwork on tracks without a cover.
   final Stream<CoverArt?> coverArt;
+
+  /// Real-time FFT frequency spectrum of the audio currently playing
+  /// through the player's output, captured post-DSP (after volume,
+  /// EQ, compressor, etc. — what you actually hear).
+  ///
+  /// Emit rate, FFT size, perceptual band layout, smoothing and dB
+  /// clipping are all configured via [Player.setSpectrum]. The default
+  /// preset emits 30 frames/sec with 64 log-spaced bands ready for a
+  /// `CustomPainter`-style visualizer.
+  ///
+  /// **Lazy** — the FFT pipeline allocates and the FFI poll loop
+  /// starts on the first listener, and tears down on the last cancel.
+  /// Both [spectrum] and [pcm] share the same upstream tap, so
+  /// subscribing to both costs only the FFT computation, not a second
+  /// tap.
+  ///
+  /// Stops emitting while playback is paused (the AO ring stops
+  /// receiving samples). The last [FftFrame] is "frozen" in the sense
+  /// that no further events fire — hold the last value as the
+  /// displayed state until playback resumes.
+  final Stream<FftFrame> spectrum;
+
+  /// Real-time raw PCM samples of the audio currently playing through
+  /// the player's output, captured post-DSP. Use for time-domain
+  /// visualisations: Audacity-style waveforms, accurate VU/peak
+  /// meters, oscilloscopes, custom feature extractors.
+  ///
+  /// For frequency-domain visualisations (spectrum bars, glow
+  /// effects), prefer [spectrum] which is computed from the same tap.
+  ///
+  /// Same lazy / pause semantics as [spectrum]. Configured by the
+  /// emit rate of [Player.setSpectrum] (the FFT-side knobs are
+  /// ignored for this stream).
+  final Stream<PcmFrame> pcm;
 }

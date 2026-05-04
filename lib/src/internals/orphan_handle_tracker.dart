@@ -179,7 +179,7 @@ class OrphanHandleTracker {
 
   /// Clears [handle] from the buffer when [Player.dispose] runs
   /// normally — keeps the orphan list accurate so the next
-  /// Hot-Restart only sees handles the consumer actually leaked.
+  /// Hot-Restart only sees handles that actually leaked.
   void remove(Pointer<MpvHandle> handle) {
     if (!_isDebug || !_initialized) {
       return;

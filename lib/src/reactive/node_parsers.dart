@@ -23,17 +23,17 @@ import '../internals/duration_seconds.dart';
 /// Decodes mpv's `playlist` property (`MPV_FORMAT_NODE_ARRAY`) into a
 /// [Playlist].
 ///
-/// [mediaCache] is the wrapper-side `uri → Media` map that retains the
+/// [mediaCache] is the library-side `uri → Media` map that retains the
 /// `extras` and `httpHeaders` (mpv only echoes back the filename, never the
-/// extras a consumer attached). On cache miss we fall back to a bare
+/// extras attached at construction). On cache miss we fall back to a bare
 /// `Media(uri)` so the playlist stays consistent rather than dropping
 /// entries silently.
 ///
 /// [previous] is the previous [Playlist] state, used to recover a reasonable
 /// `index` when mpv's payload omits the `current` flag (which it does
 /// transiently during `playlist-move`). Without this fallback the index
-/// would snap to 0 mid-reorder, briefly highlighting the wrong entry on the
-/// consumer's UI.
+/// would snap to 0 mid-reorder, briefly highlighting the wrong entry in the
+/// UI.
 Playlist parsePlaylistNode({
   required dynamic raw,
   required Map<String, Media> mediaCache,
@@ -41,7 +41,7 @@ Playlist parsePlaylistNode({
 }) {
   // Defensive: a non-list payload means mpv emitted something unexpected
   // for `playlist`. Preserve the previous value rather than clobber the
-  // consumer's view with an empty playlist.
+  // current view with an empty playlist.
   if (raw is! List) {
     return previous;
   }
@@ -87,9 +87,9 @@ List<Device> parseDeviceListNode(dynamic raw) {
 ///
 /// Returns `null` (rather than `{}`) on empty / null input. mpv sometimes
 /// emits an empty payload when a track has no tags, and overwriting the
-/// existing map with an empty one would clobber tags consumers had already
-/// observed (e.g. during a brief track-change window). The caller treats
-/// `null` as "no update".
+/// existing map with an empty one would clobber tags already observed
+/// (e.g. during a brief track-change window). The caller treats `null`
+/// as "no update".
 Map<String, String>? parseMetadataNode(dynamic raw) {
   if (raw == null) return null;
   if (raw is! Map) return null;

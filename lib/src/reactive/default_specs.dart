@@ -2,7 +2,6 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../internals/audio_filter_chain.dart';
 import '../reactive/node_parsers.dart';
 import '../types/sealed/channels.dart';
 import '../models/device.dart';
@@ -15,7 +14,7 @@ import '../types/enums/gapless.dart';
 import '../types/settings/cache_settings.dart';
 import '../types/enums/cache.dart';
 import '../models/chapter.dart';
-import '../types/settings/audio_effects.dart';
+import '../types/settings/audio_effects_settings.dart';
 import '../types/state/mpv_prefetch_state.dart';
 import '../models/mpv_track.dart';
 import '../player/player_state.dart';
@@ -115,8 +114,8 @@ class DefaultPropertyReactives {
   final ReactiveProperty<String> audioClientName =
       ReactiveProperty<String>('mpv_audio_kit');
   final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
-  // DSP filter chain — single bundle reactive backing every effect.
-  // Each effect owns a reserved label inside the `af` chain (see
+  // DSP pipeline — single bundle reactive backing every effect.
+  // Each effect owns a reserved label inside the `af` pipeline (see
   // AudioFilterChainLabels) and is upserted atomically when the bundle
   // is replaced via Player.setAudioEffects / updateAudioEffects.
   final ReactiveProperty<AudioEffects> audioEffects =
@@ -497,9 +496,8 @@ List<MpvPropertySpec> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(audioNullUntimed: v),
     ),
     // Track inventory + currently-active audio track. mpv exposes these
-    // as structured node trees; the typed [MpvTrack] model lets the
-    // consumer build a "switch audio track" UI without touching `aid`
-    // strings.
+    // as structured node trees; the typed [MpvTrack] model lets a UI
+    // build a "switch audio track" picker without touching `aid` strings.
     MpvPropertySpec<List<MpvTrack>>.node(
       name: 'track-list',
       reactive: r.tracks,
@@ -548,21 +546,11 @@ List<MpvPropertySpec> buildDefaultSpecs(
       parse: _identityString,
       reduce: (v, s) => s.copyWith(audioClientName: v),
     ),
-    // The `af` observer surfaces *external* mutations to the filter
-    // chain (e.g. via `setRawProperty('af', ...)`) by recomputing the
-    // unmanaged segment as `audioEffects.custom`. Wrapper-managed
-    // stages (equalizer / compressor / loudness / pitchTempo / bassTreble
-    // / stereo / crossfeed / silenceTrim / crossfade) are owned by the
-    // bundle setter, not parsed back from the af string — bypassing
-    // setAudioEffects with a raw write leaves their state stale by
-    // design.
-    MpvPropertySpec<AudioEffects>.string(
-      name: 'af',
-      reactive: r.audioEffects,
-      parse: (raw, state) =>
-          state.audioEffects.copyWith(custom: extractCustomFilters(raw)),
-      reduce: (v, s) => s.copyWith(audioEffects: v),
-    ),
+    // mpv's `af` property is owned exclusively by `setAudioEffects` /
+    // `updateAudioEffects` — the typed [AudioEffects] bundle (including
+    // its `custom` raw passthrough slot) is the only writer. Raw writes
+    // to `af` are rejected by `setRawProperty`, so the property is not
+    // observed here.
     MpvPropertySpec<String>.string(
       name: 'ao',
       reactive: r.audioDriver,
@@ -578,8 +566,8 @@ List<MpvPropertySpec> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(coverArtAuto: v),
     ),
 
-    // `prefetch-state` is stream-only (no PlayerState field) — the
-    // wrapper exposes it through `Player.stream.prefetchState`.
+    // `prefetch-state` is stream-only (no PlayerState field) —
+    // exposed through `Player.stream.prefetchState`.
     MpvPropertySpec<MpvPrefetchState>.string(
       name: 'prefetch-state',
       reactive: r.prefetchState,
@@ -813,7 +801,7 @@ List<MpvPropertySpec> buildDefaultSpecs(
 /// Decodes a `MPV_FORMAT_NODE_MAP` whose values are uniformly strings
 /// (mpv emits this shape for `chapter-metadata`, `vf-metadata`, …).
 /// Falls back to an empty map on a non-map payload — a single malformed
-/// emission shouldn't tear down the consumer's metadata view.
+/// emission shouldn't tear down the metadata view.
 Map<String, String> _parseStringMap(dynamic raw) {
   if (raw is! Map) return const <String, String>{};
   return raw.map((k, v) => MapEntry(k.toString(), v.toString()));

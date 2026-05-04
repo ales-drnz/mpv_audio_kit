@@ -2,11 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:freezed_annotation/freezed_annotation.dart';
-
 import 'package:mpv_audio_kit/src/types/enums/replay_gain.dart';
-
-part 'replay_gain_settings.freezed.dart';
 
 /// Aggregate of mpv's four ReplayGain properties (`replaygain`,
 /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`).
@@ -15,19 +11,53 @@ part 'replay_gain_settings.freezed.dart';
 /// use `state.replayGain.copyWith(preamp: -3)`. Read the current
 /// configuration via [PlayerState.replayGain] or observe live changes
 /// via [PlayerStream.replayGain].
-@freezed
-abstract class ReplayGainSettings with _$ReplayGainSettings {
-  const factory ReplayGainSettings({
-    /// Normalization mode (off / per-track / per-album).
-    @Default(ReplayGain.no) ReplayGain mode,
+final class ReplayGainSettings {
+  /// Normalization mode (off / per-track / per-album).
+  final ReplayGain mode;
 
-    /// Pre-amplification in dB applied before normalization.
-    @Default(0.0) double preamp,
+  /// Pre-amplification in dB applied before normalization.
+  final double preamp;
 
-    /// Whether to allow output clipping when normalizing loud tracks.
-    @Default(false) bool clip,
+  /// Whether to allow output clipping when normalizing loud tracks.
+  final bool clip;
 
-    /// Gain in dB applied to files without ReplayGain tags.
-    @Default(0.0) double fallback,
-  }) = _ReplayGainSettings;
+  /// Gain in dB applied to files without ReplayGain tags.
+  final double fallback;
+
+  const ReplayGainSettings({
+    this.mode = ReplayGain.no,
+    this.preamp = 0.0,
+    this.clip = false,
+    this.fallback = 0.0,
+  });
+
+  ReplayGainSettings copyWith({
+    ReplayGain? mode,
+    double? preamp,
+    bool? clip,
+    double? fallback,
+  }) =>
+      ReplayGainSettings(
+        mode: mode ?? this.mode,
+        preamp: preamp ?? this.preamp,
+        clip: clip ?? this.clip,
+        fallback: fallback ?? this.fallback,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReplayGainSettings &&
+          other.mode == mode &&
+          other.preamp == preamp &&
+          other.clip == clip &&
+          other.fallback == fallback);
+
+  @override
+  int get hashCode => Object.hash(mode, preamp, clip, fallback);
+
+  @override
+  String toString() =>
+      'ReplayGainSettings(mode: $mode, preamp: $preamp, '
+      'clip: $clip, fallback: $fallback)';
 }

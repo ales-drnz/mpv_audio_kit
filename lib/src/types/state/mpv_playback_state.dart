@@ -9,7 +9,7 @@
 /// booleans remain available on `PlayerStream` for granular use cases.
 ///
 /// The `Mpv` prefix avoids a name clash with `audio_service.PlaybackState`,
-/// a common downstream consumer.
+/// a common downstream library.
 enum MpvPlaybackState {
   /// No file loaded. UI should hide transport controls.
   idle,
@@ -28,6 +28,6 @@ enum MpvPlaybackState {
   /// completion, etc.).
   paused,
 
-  /// Reached natural end-of-file. Consumers can advance the queue here.
+  /// Reached natural end-of-file. Advance the queue here.
   completed,
 }

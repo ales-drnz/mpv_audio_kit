@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'snack_messenger.dart';
+
+/// Shared height for compact trailing controls (dropdown / text field) so
+/// every property card renders the same row height regardless of which
+/// control sits on the right.
+const double _kTrailingHeight = 40.0;
+
 /// A base layout for all property-based cards to ensure visual consistency.
 ///
 /// `icon` is optional — pass `null` to render the card without the
@@ -81,14 +88,7 @@ class PropertyBaseCard extends StatelessWidget {
                               ClipboardData(text: subtitle),
                             ).then((_) {
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Copied: $subtitle'),
-                                    duration: const Duration(seconds: 1),
-                                    behavior: SnackBarBehavior.floating,
-                                    width: 280,
-                                  ),
-                                );
+                                showCopiedSnack(context, subtitle);
                               }
                             });
                           },
@@ -241,66 +241,84 @@ class _SliderPropertyCardState extends State<SliderPropertyCard> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final displayValue = (_dragValue ?? widget.value).clamp(
       widget.min,
       widget.max,
     );
     final def = widget.defaultValue;
     final atDefault = def == null || (displayValue - def).abs() < 1e-9;
+    final showReset = def != null && !atDefault;
 
     return PropertyBaseCard(
       title: widget.title,
       subtitle: widget.subtitle,
       icon: widget.icon,
       isActive: true,
-      trailing: (def != null && !atDefault)
-          ? Tooltip(
-              message: 'Reset to default',
-              child: InkWell(
-                onTap: () {
-                  setState(() => _dragValue = def);
-                  widget.onChanged(def);
-                },
-                customBorder: const CircleBorder(),
-                child: SizedBox(
-                  width: 26,
-                  height: 26,
-                  child: Icon(
-                    Icons.refresh_rounded,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+      // Value pill + (optional) reset pill in the trailing slot, on the
+      // same row as icon / title / subtitle so the row height stays
+      // consistent with [TogglePropertyCard] / [DropdownPropertyCard] /
+      // [TextPropertyCard]. The two pills are visually separate so the
+      // reset reads as a distinct action, not a sub-element of the value.
+      trailing: SizedBox(
+        height: _kTrailingHeight,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                widget.labelBuilder?.call(displayValue) ??
+                    displayValue.toStringAsFixed(2),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+            if (showReset) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Reset to default',
+                child: Material(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      setState(() => _dragValue = def);
+                      widget.onChanged(def);
+                    },
+                    child: SizedBox(
+                      width: _kTrailingHeight,
+                      height: _kTrailingHeight,
+                      child: Icon(
+                        Icons.refresh_rounded,
+                        size: 18,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            )
-          : null,
-      body: Row(
-        children: [
-          Expanded(
-            child: Slider(
-              value: displayValue,
-              min: widget.min,
-              max: widget.max,
-              divisions: widget.divisions,
-              onChanged: (v) => setState(() => _dragValue = v),
-              onChangeEnd: (v) => widget.onChanged(v),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 50,
-            child: Text(
-              widget.labelBuilder?.call(displayValue) ??
-                  displayValue.toStringAsFixed(2),
-              textAlign: TextAlign.end,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-        ],
+            ],
+          ],
+        ),
+      ),
+      body: Slider(
+        value: displayValue,
+        min: widget.min,
+        max: widget.max,
+        divisions: widget.divisions,
+        onChanged: (v) => setState(() => _dragValue = v),
+        onChangeEnd: (v) => widget.onChanged(v),
       ),
     );
   }
@@ -336,6 +354,7 @@ class DropdownPropertyCard<T> extends StatelessWidget {
       isActive: true,
       trailing: SizedBox(
         width: 130,
+        height: _kTrailingHeight,
         child: Container(
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -347,6 +366,22 @@ class DropdownPropertyCard<T> extends StatelessWidget {
               child: DropdownButton<T>(
                 value: value,
                 items: items,
+                // Custom builder for the CLOSED state of the dropdown:
+                // truncates long labels with ellipsis instead of wrapping
+                // to a second line. The expanded menu items still use the
+                // original `child` (free-form, can be multi-line if the
+                // caller wants).
+                selectedItemBuilder: (context) => items
+                    .map((item) => Align(
+                          alignment: Alignment.centerLeft,
+                          child: DefaultTextStyle.merge(
+                            softWrap: false,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            child: item.child,
+                          ),
+                        ))
+                    .toList(),
                 onChanged: onChanged,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -354,7 +389,7 @@ class DropdownPropertyCard<T> extends StatelessWidget {
                 ),
                 isDense: true,
                 isExpanded: true,
-                alignment: Alignment.centerRight,
+                alignment: Alignment.centerLeft,
                 iconSize: 18,
                 dropdownColor: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
@@ -367,6 +402,90 @@ class DropdownPropertyCard<T> extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A card for multi-select properties shown as toggleable check pills in
+/// the card body. Visually aligned with the rest of the property cards:
+/// the same primaryContainer / onSurfaceVariant palette used by the icon
+/// badge, a leading check icon when selected, and pill-shape rows wrapping
+/// onto new lines on narrow widths.
+class CheckPillsPropertyCard<T> extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Set<T> values;
+  final List<(T, String)> options;
+  final ValueChanged<Set<T>> onChanged;
+
+  const CheckPillsPropertyCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.values,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return PropertyBaseCard(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      isActive: values.isNotEmpty,
+      body: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: options.map((o) {
+          final selected = values.contains(o.$1);
+          return Material(
+            color: selected
+                ? cs.primaryContainer
+                : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                final next = {...values};
+                selected ? next.remove(o.$1) : next.add(o.$1);
+                onChanged(next);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      selected
+                          ? Icons.check_rounded
+                          : Icons.add_rounded,
+                      size: 14,
+                      color: selected ? cs.primary : cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      o.$2,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: selected ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -486,29 +605,36 @@ class _TextPropertyCardState extends State<TextPropertyCard> {
       isActive: true,
       trailing: SizedBox(
         width: 130,
+        height: _kTrailingHeight,
         child: Container(
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(12),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            onSubmitted: widget.onSubmitted,
-            onTapOutside: (_) {
-              _focusNode.unfocus();
-              widget.onSubmitted(_controller.text);
-            },
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: cs.onSurface,
-            ),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          // [DropdownButton] centres its content via the iconSize+padding
+          // intrinsic; the TextField has no equivalent baseline, so we
+          // pin the same height on the SizedBox and let [Center] handle
+          // vertical alignment of the dense input.
+          child: Center(
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              onSubmitted: widget.onSubmitted,
+              onTapOutside: (_) {
+                _focusNode.unfocus();
+                widget.onSubmitted(_controller.text);
+              },
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: cs.onSurface,
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
             ),
           ),
         ),
@@ -599,14 +725,7 @@ class _ExpandableFilterCardState extends State<ExpandableFilterCard> {
                               ClipboardData(text: widget.subtitle),
                             ).then((_) {
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Copied: ${widget.subtitle}'),
-                                    duration: const Duration(seconds: 1),
-                                    behavior: SnackBarBehavior.floating,
-                                    width: 280,
-                                  ),
-                                );
+                                showCopiedSnack(context, widget.subtitle);
                               }
                             });
                           },
@@ -625,26 +744,27 @@ class _ExpandableFilterCardState extends State<ExpandableFilterCard> {
                     ],
                   ),
                 ),
-                AnimatedRotation(
-                  turns: _expanded ? 0.5 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.expand_more_rounded,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
+                if (widget.params.isNotEmpty)
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.expand_more_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
+                      onPressed: () => setState(() => _expanded = !_expanded),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
                     ),
                   ),
-                ),
                 Switch(value: widget.enabled, onChanged: widget.onToggle),
               ],
             ),
-            if (_expanded)
+            if (_expanded && widget.params.isNotEmpty)
               IgnorePointer(
                 ignoring: !widget.enabled,
                 child: Opacity(
@@ -653,7 +773,11 @@ class _ExpandableFilterCardState extends State<ExpandableFilterCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Divider(height: 20, thickness: 0.5),
-                      ...widget.params,
+                      for (var i = 0; i < widget.params.length; i++) ...[
+                        if (i > 0)
+                          const Divider(height: 12, thickness: 0.5),
+                        widget.params[i],
+                      ],
                     ],
                   ),
                 ),
@@ -694,6 +818,67 @@ class FilterParamSlider extends StatefulWidget {
   State<FilterParamSlider> createState() => _FilterParamSliderState();
 }
 
+// Shared trailing pill height for filter-param widgets — 32 (instead of
+// the standalone `_kTrailingHeight = 40`) keeps the rows compact inside
+// the already-padded ExpandableFilterCard while preserving the same
+// visual language as PropertyBaseCard's trailing pills.
+const double _kFilterParamHeight = 32.0;
+
+/// Bordered "pill" container shared by FilterParamSlider's value display,
+/// FilterParamDropdown, and the reset button — same fill / radius as
+/// PropertyBaseCard's trailing pills, scaled down for the in-card use.
+Widget _filterParamPill({
+  required ColorScheme cs,
+  required Widget child,
+  EdgeInsets? padding,
+}) {
+  return Container(
+    height: _kFilterParamHeight,
+    padding: padding ?? const EdgeInsets.symmetric(horizontal: 12),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: child,
+  );
+}
+
+Widget _filterParamResetPill({
+  required ColorScheme cs,
+  required VoidCallback onPressed,
+}) {
+  return Tooltip(
+    message: 'Reset to default',
+    child: Material(
+      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onPressed,
+        child: SizedBox(
+          width: _kFilterParamHeight,
+          height: _kFilterParamHeight,
+          child: Icon(
+            Icons.refresh_rounded,
+            size: 16,
+            color: cs.onSurfaceVariant,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _filterParamLabel(String label, ColorScheme cs) => Text(
+      label,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        color: cs.onSurface,
+      ),
+    );
+
 class _FilterParamSliderState extends State<FilterParamSlider> {
   double? _dragValue;
 
@@ -716,51 +901,33 @@ class _FilterParamSliderState extends State<FilterParamSlider> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, right: 0),
-            child: Row(
-              children: [
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
-                  ),
-                ),
-                const Spacer(),
-                Text(
+          Row(
+            children: [
+              Expanded(child: _filterParamLabel(widget.label, cs)),
+              const SizedBox(width: 8),
+              _filterParamPill(
+                cs: cs,
+                child: Text(
                   widget.labelBuilder(display),
                   style: TextStyle(
                     fontSize: 12,
                     fontFamily: 'monospace',
                     fontWeight: FontWeight.bold,
-                    color: cs.primary,
+                    color: cs.onSurface,
                   ),
                 ),
-                SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: atDefault
-                      ? null
-                      : Tooltip(
-                          message: 'Reset to default',
-                          child: InkWell(
-                            onTap: () {
-                              setState(() => _dragValue = null);
-                              widget.onChanged(widget.defaultValue);
-                            },
-                            customBorder: const CircleBorder(),
-                            child: Icon(
-                              Icons.refresh_rounded,
-                              size: 16,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
+              ),
+              if (!atDefault) ...[
+                const SizedBox(width: 6),
+                _filterParamResetPill(
+                  cs: cs,
+                  onPressed: () {
+                    setState(() => _dragValue = null);
+                    widget.onChanged(widget.defaultValue);
+                  },
                 ),
               ],
-            ),
+            ],
           ),
           Slider(
             value: display,
@@ -773,6 +940,119 @@ class _FilterParamSliderState extends State<FilterParamSlider> {
               widget.onChanged(v);
             },
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact labeled dropdown for use inside [ExpandableFilterCard].
+class FilterParamDropdown<T> extends StatelessWidget {
+  final String label;
+  final T value;
+  final T defaultValue;
+  final List<T> options;
+  final String Function(T) optionLabel;
+  final ValueChanged<T> onChanged;
+
+  const FilterParamDropdown({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.defaultValue,
+    required this.options,
+    required this.optionLabel,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final atDefault = value == defaultValue;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(child: _filterParamLabel(label, cs)),
+          const SizedBox(width: 8),
+          _filterParamPill(
+            cs: cs,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                isDense: true,
+                iconSize: 18,
+                borderRadius: BorderRadius.circular(12),
+                dropdownColor: cs.surfaceContainerHighest,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
+                ),
+                items: options
+                    .map((o) => DropdownMenuItem<T>(
+                          value: o,
+                          child: Text(optionLabel(o)),
+                        ))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) onChanged(v);
+                },
+              ),
+            ),
+          ),
+          if (!atDefault) ...[
+            const SizedBox(width: 6),
+            _filterParamResetPill(
+              cs: cs,
+              onPressed: () => onChanged(defaultValue),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact labeled toggle for use inside [ExpandableFilterCard].
+class FilterParamSwitch extends StatelessWidget {
+  final String label;
+  final bool value;
+  final bool defaultValue;
+  final ValueChanged<bool> onChanged;
+
+  const FilterParamSwitch({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.defaultValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final atDefault = value == defaultValue;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(child: _filterParamLabel(label, cs)),
+          const SizedBox(width: 8),
+          SizedBox(
+            height: _kFilterParamHeight,
+            child: Switch(value: value, onChanged: onChanged),
+          ),
+          if (!atDefault) ...[
+            const SizedBox(width: 6),
+            _filterParamResetPill(
+              cs: cs,
+              onPressed: () => onChanged(defaultValue),
+            ),
+          ],
         ],
       ),
     );

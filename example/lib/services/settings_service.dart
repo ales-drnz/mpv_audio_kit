@@ -14,7 +14,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 ///     change.
 ///
 /// Adding a new persistent property = one line in [wire]. No matching
-/// pair to maintain in [player_page.dart].
+/// pair to maintain in [screens/home/home_page.dart].
 class SettingsService {
   static const String _keyPrefix = 'audio_kit_';
 
@@ -142,7 +142,7 @@ class SettingsService {
     );
 
     // ── DSP ───────────────────────────────────────────────────────────
-    await _bindEqualizerGains(player);
+    await _bindSuperequalizerBands(player);
 
     // ── Aggregates (cache, replayGain) ────────────────────────────────
     await _bindCache(player);
@@ -357,19 +357,19 @@ class SettingsService {
 
   // ── Special-case bindings ───────────────────────────────────────────
 
-  /// `EqualizerSettings.gains` is `List<double>` — JSON-encoded as String.
-  Future<void> _bindEqualizerGains(Player player) async {
-    const fk = '${_keyPrefix}equalizer_gains';
+  /// `SuperequalizerSettings.params` is a `Map<String, double>` keyed
+  /// by ffmpeg's exact band names (`'1b'..'18b'`) — JSON-encoded.
+  Future<void> _bindSuperequalizerBands(Player player) async {
+    const fk = '${_keyPrefix}superequalizer_bands';
     final raw = _prefs.get(fk);
     if (raw is String) {
       try {
-        final decoded = (jsonDecode(raw) as List<dynamic>)
-            .map((e) => (e as num).toDouble())
-            .toList();
+        final decoded = (jsonDecode(raw) as Map<String, dynamic>)
+            .map((k, v) => MapEntry(k, (v as num).toDouble()));
         await player.updateAudioEffects(
           (e) => e.copyWith(
-            equalizer: player.state.audioEffects.equalizer
-                .copyWith(gains: decoded),
+            superequalizer: player.state.audioEffects.superequalizer
+                .copyWith(params: decoded),
           ),
         );
       } catch (_) {
@@ -380,10 +380,10 @@ class SettingsService {
     }
     _subs.add(
       player.stream.audioEffects
-          .map((e) => e.equalizer)
+          .map((e) => e.superequalizer)
           .distinct()
           .listen(
-            (cfg) => _prefs.setString(fk, jsonEncode(cfg.gains)),
+            (cfg) => _prefs.setString(fk, jsonEncode(cfg.params)),
           ),
     );
   }

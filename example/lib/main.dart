@@ -3,7 +3,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:window_manager/window_manager.dart';
-import 'player_page.dart';
+import 'screens/home/home_page.dart';
 import 'services/audio_handler.dart';
 import 'services/settings_service.dart';
 import 'theme/app_theme.dart';
@@ -82,8 +82,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       scrollBehavior: AppTheme.scrollBehavior,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       home: ExcludeSemantics(
-        child: PlayerPage(
+        child: HomePage(
           player: player,
           audioHandler: audioHandler,
           settingsService: settingsService,

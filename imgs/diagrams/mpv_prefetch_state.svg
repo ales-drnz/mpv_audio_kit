@@ -6,50 +6,50 @@
   </defs>
   <style>
     circle     { fill: #f8f9fb; }
-    .lbl       { font-weight: 700; fill: #1e2329; font-size: 14px; }
+    .lbl       { font-weight: 600; fill: #1e2329; }
     .sub       { fill: #5b6371; font-size: 10.5px; }
     .arrow     { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#a); }
     .edge-text { fill: #5b6371; font-size: 10.5px; }
-    .title     { font-weight: 700; fill: #1e2329; font-size: 14px; }
+    .title     { font-weight: 600; fill: #1e2329; }
   </style>
 
   <!-- Each circle has 2 lines centred at cy: lbl at cy-5, sub at cy+13 -->
 
   <circle cx="350" cy="100" r="56"/>
-  <text class="lbl" x="350" y="95"  text-anchor="middle">idle</text>
-  <text class="sub" x="350" y="113" text-anchor="middle">nothing pending</text>
+  <text class="lbl" x="350" y="95"  text-anchor="middle">Idle</text>
+  <text class="sub" x="350" y="113" text-anchor="middle">Nothing pending</text>
 
   <circle cx="580" cy="260" r="56"/>
-  <text class="lbl" x="580" y="255" text-anchor="middle">loading</text>
-  <text class="sub" x="580" y="273" text-anchor="middle">preparing next</text>
+  <text class="lbl" x="580" y="255" text-anchor="middle">Loading</text>
+  <text class="sub" x="580" y="273" text-anchor="middle">Preparing next</text>
 
   <circle cx="470" cy="450" r="56"/>
-  <text class="lbl" x="470" y="445" text-anchor="middle">ready</text>
-  <text class="sub" x="470" y="463" text-anchor="middle">queued, waiting</text>
+  <text class="lbl" x="470" y="445" text-anchor="middle">Ready</text>
+  <text class="sub" x="470" y="463" text-anchor="middle">Queued, waiting</text>
 
   <circle cx="230" cy="450" r="56"/>
-  <text class="lbl" x="230" y="445" text-anchor="middle">used</text>
-  <text class="sub" x="230" y="463" text-anchor="middle">just played</text>
+  <text class="lbl" x="230" y="445" text-anchor="middle">Used</text>
+  <text class="sub" x="230" y="463" text-anchor="middle">Just played</text>
 
   <circle cx="120" cy="260" r="56"/>
-  <text class="lbl" x="120" y="255" text-anchor="middle">failed</text>
-  <text class="sub" x="120" y="273" text-anchor="middle">could not prepare</text>
+  <text class="lbl" x="120" y="255" text-anchor="middle">Failed</text>
+  <text class="sub" x="120" y="273" text-anchor="middle">Could not prepare</text>
 
   <path class="arrow" d="M396,132 L534,228"/>
-  <text class="edge-text" x="525" y="155" text-anchor="middle">starts preparing</text>
+  <text class="edge-text" x="525" y="155" text-anchor="middle">Starts preparing</text>
 
   <path class="arrow" d="M554,310 L496,400"/>
-  <text class="edge-text" x="595" y="365" text-anchor="middle">ready to play</text>
+  <text class="edge-text" x="595" y="365" text-anchor="middle">Ready to play</text>
 
   <path class="arrow" d="M414,450 L286,450"/>
-  <text class="edge-text" x="350" y="442" text-anchor="middle">previous track ended</text>
+  <text class="edge-text" x="350" y="442" text-anchor="middle">Previous track ended</text>
 
   <path class="arrow" d="M247,397 L333,153"/>
-  <text class="edge-text" x="225" y="285" text-anchor="middle">back to idle</text>
+  <text class="edge-text" x="225" y="285" text-anchor="middle">Back to idle</text>
 
   <path class="arrow" d="M524,260 L176,260"/>
-  <text class="edge-text" x="420" y="252" text-anchor="middle">error during prepare</text>
+  <text class="edge-text" x="420" y="252" text-anchor="middle">Error during prepare</text>
 
   <path class="arrow" d="M166,228 L304,132"/>
-  <text class="edge-text" x="180" y="155" text-anchor="middle">back to idle</text>
+  <text class="edge-text" x="180" y="155" text-anchor="middle">Back to idle</text>
 </svg>

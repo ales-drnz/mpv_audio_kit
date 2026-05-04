@@ -2,14 +2,10 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:freezed_annotation/freezed_annotation.dart';
-
 // `mpv_bindings.dart` defines its own integer-typed `MpvEndFileReason`
 // (auto-generated FFI). The enum below shadows that name, so we hide
 // the bindings symbol to keep the import free of name conflicts.
 import '../mpv_bindings.dart' hide MpvEndFileReason;
-
-part 'mpv_player_error.freezed.dart';
 
 /// Typed error events delivered on [PlayerStream.error]. A sealed union
 /// over [MpvEndFileError] (playback failures) and [MpvLogError]
@@ -26,57 +22,98 @@ part 'mpv_player_error.freezed.dart';
 ///   }
 /// });
 /// ```
-@freezed
-sealed class MpvPlayerError with _$MpvPlayerError {
-  const MpvPlayerError._();
-
-  /// Playback of a file ended with an error or unexpected EOF.
-  ///
-  /// Emitted when mpv fires `MPV_EVENT_END_FILE` with a non-zero error code.
-  ///
-  /// **Network note:** according to the mpv documentation, a network
-  /// disconnection mid-stream may report as [MpvEndFileReason.eof] rather
-  /// than [MpvEndFileReason.error]. Use `Player.stream.endFile` and compare
-  /// the player's position against duration to detect premature endings.
-  const factory MpvPlayerError.endFile({
-    /// Why the file ended.
-    required MpvEndFileReason reason,
-
-    /// mpv error code (one of [MpvError] constants, e.g.
-    /// [MpvError.mpvErrorLoadingFailed]). Only meaningful when [reason]
-    /// is [MpvEndFileReason.error]; otherwise `0`.
-    required int code,
-
-    /// Human-readable error description.
-    required String message,
-  }) = MpvEndFileError;
-
-  /// A log message at `error` or `fatal` level from an mpv subsystem.
-  ///
-  /// These are informational errors from mpv's internal logging — they don't
-  /// necessarily mean playback has stopped. For example, a codec warning or
-  /// a filter configuration issue.
-  const factory MpvPlayerError.log({
-    /// The mpv subsystem that produced the message (e.g. `'ffmpeg'`,
-    /// `'demux'`, `'ao'`).
-    required String prefix,
-
-    /// The log level — either `'error'` or `'fatal'`.
-    required String level,
-
-    /// Raw log text from the mpv subsystem.
-    required String text,
-  }) = MpvLogError;
+sealed class MpvPlayerError {
+  const MpvPlayerError();
 
   /// Human-readable error description.
   ///
   /// For [MpvEndFileError] this is the mpv-supplied error string; for
   /// [MpvLogError] it is `'[prefix] level: text'`.
-  String get message => switch (this) {
-        MpvEndFileError(:final message) => message,
-        MpvLogError(:final prefix, :final level, :final text) =>
-          '[$prefix] $level: $text',
-      };
+  String get message;
+}
+
+/// Playback of a file ended with an error or unexpected EOF.
+///
+/// Emitted when mpv fires `MPV_EVENT_END_FILE` with a non-zero error code.
+///
+/// **Network note:** according to the mpv documentation, a network
+/// disconnection mid-stream may report as [MpvEndFileReason.eof] rather
+/// than [MpvEndFileReason.error]. Use `Player.stream.endFile` and compare
+/// the player's position against duration to detect premature endings.
+final class MpvEndFileError extends MpvPlayerError {
+  /// Why the file ended.
+  final MpvEndFileReason reason;
+
+  /// mpv error code (one of [MpvError] constants, e.g.
+  /// [MpvError.mpvErrorLoadingFailed]). Only meaningful when [reason]
+  /// is [MpvEndFileReason.error]; otherwise `0`.
+  final int code;
+
+  /// Human-readable error description, supplied by mpv.
+  @override
+  final String message;
+
+  const MpvEndFileError({
+    required this.reason,
+    required this.code,
+    required this.message,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MpvEndFileError &&
+          other.reason == reason &&
+          other.code == code &&
+          other.message == message);
+
+  @override
+  int get hashCode => Object.hash(reason, code, message);
+
+  @override
+  String toString() =>
+      'MpvEndFileError(reason: $reason, code: $code, message: $message)';
+}
+
+/// A log message at `error` or `fatal` level from an mpv subsystem.
+///
+/// These are informational errors from mpv's internal logging — they don't
+/// necessarily mean playback has stopped. For example, a codec warning or
+/// a filter configuration issue.
+final class MpvLogError extends MpvPlayerError {
+  /// The mpv subsystem that produced the message (e.g. `'ffmpeg'`,
+  /// `'demux'`, `'ao'`).
+  final String prefix;
+
+  /// The log level — either `'error'` or `'fatal'`.
+  final String level;
+
+  /// Raw log text from the mpv subsystem.
+  final String text;
+
+  const MpvLogError({
+    required this.prefix,
+    required this.level,
+    required this.text,
+  });
+
+  @override
+  String get message => '[$prefix] $level: $text';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MpvLogError &&
+          other.prefix == prefix &&
+          other.level == level &&
+          other.text == text);
+
+  @override
+  int get hashCode => Object.hash(prefix, level, text);
+
+  @override
+  String toString() =>
+      'MpvLogError(prefix: $prefix, level: $level, text: $text)';
 }
 
 /// Convenience predicates for [MpvEndFileError].
@@ -108,15 +145,27 @@ extension MpvEndFileErrorX on MpvEndFileError {
 ///   }
 /// });
 /// ```
-@freezed
-abstract class MpvFileEndedEvent with _$MpvFileEndedEvent {
-  const factory MpvFileEndedEvent({
-    /// Why the file ended.
-    required MpvEndFileReason reason,
+final class MpvFileEndedEvent {
+  /// Why the file ended.
+  final MpvEndFileReason reason;
 
-    /// mpv error code. Non-zero only when [reason] is [MpvEndFileReason.error].
-    required int error,
-  }) = _MpvFileEndedEvent;
+  /// mpv error code. Non-zero only when [reason] is [MpvEndFileReason.error].
+  final int error;
+
+  const MpvFileEndedEvent({required this.reason, required this.error});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MpvFileEndedEvent &&
+          other.reason == reason &&
+          other.error == error);
+
+  @override
+  int get hashCode => Object.hash(reason, error);
+
+  @override
+  String toString() => 'MpvFileEndedEvent(reason: $reason, error: $error)';
 }
 
 /// Whether the file ended naturally and not because of a stop, error, redirect,

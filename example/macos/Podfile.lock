@@ -62,12 +62,12 @@ SPEC CHECKSUMS:
   desktop_drop: e0b672a7d84c0a6cbc378595e82cdb15f2970a43
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  mpv_audio_kit: 93bbd29beb9dd45891eead040c8742bd9f3aa768
+  mpv_audio_kit: bed4601e1a96741a0899cf0684bd007db2a46d02
   screen_retriever_macos: 452e51764a9e1cdb74b3c541238795849f21557f
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   window_manager: b729e31d38fb04905235df9ea896128991cad99e
 
-PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
+PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
 
 COCOAPODS: 1.16.2

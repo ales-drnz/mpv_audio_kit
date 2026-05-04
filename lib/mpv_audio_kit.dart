@@ -24,22 +24,19 @@
 library;
 
 export 'src/player/player.dart' show Player;
+export 'src/player/player_api.dart' show PlayerApi;
 export 'src/models/cover_art.dart' show CoverArt;
-export 'src/types/settings/audio_effects.dart' show AudioEffects;
-export 'src/types/settings/bass_treble_settings.dart' show BassTrebleSettings;
+export 'src/models/fft_frame.dart' show FftFrame;
+export 'src/models/pcm_frame.dart' show PcmFrame;
+export 'src/types/settings/spectrum_settings.dart' show SpectrumSettings;
+export 'src/types/enums/window_function.dart' show WindowFunction;
+export 'src/types/enums/audio_effects.dart';
+export 'src/types/settings/audio_effects_settings.dart';
 export 'src/types/settings/cache_settings.dart' show CacheSettings;
 export 'src/types/enums/cache.dart' show Cache;
 export 'src/models/chapter.dart' show Chapter;
-export 'src/types/settings/compressor_settings.dart' show CompressorSettings;
-export 'src/types/settings/crossfeed_settings.dart'
-    show CrossfeedSettings, CrossfeedIntensity;
-export 'src/types/settings/equalizer_settings.dart' show EqualizerSettings;
-export 'src/types/settings/loudness_settings.dart' show LoudnessSettings;
 export 'src/models/media.dart' show Media;
 export 'src/models/mpv_track.dart' show MpvTrack;
-export 'src/types/settings/pitch_tempo_settings.dart' show PitchTempoSettings;
-export 'src/types/settings/silence_trim_settings.dart' show SilenceTrimSettings;
-export 'src/types/settings/stereo_settings.dart' show StereoSettings;
 export 'src/types/settings/replay_gain_settings.dart' show ReplayGainSettings;
 export 'src/types/enums/replay_gain.dart' show ReplayGain;
 export 'src/models/playlist.dart' show Playlist;
@@ -71,5 +68,5 @@ export 'src/player/player_configuration.dart' show PlayerConfiguration;
 export 'src/player/player_state.dart' show PlayerState;
 export 'src/player/player_stream.dart' show PlayerStream;
 export 'src/mpv_bindings.dart' show MpvLibraryException, MpvError;
-export 'src/events/exceptions.dart' show MpvException;
-export 'src/internals/library_loader.dart' show MpvAudioKit;
+export 'src/events/mpv_exception.dart' show MpvException;
+export 'src/library_loader.dart' show MpvAudioKit;

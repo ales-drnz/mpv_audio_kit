@@ -16,9 +16,9 @@ import '../mpv_bindings.dart' as mpv;
 
 /// Throttle window for the high-frequency `time-pos` property. mpv emits a
 /// position update on every output sample buffer, which is roughly the audio
-/// device's tick (~10ms on most outputs) — way more than any consumer UI
-/// needs. ~33ms ≈ 30Hz is comfortably inside human-perception territory for
-/// a progress bar update and keeps the message bus uncluttered.
+/// device's tick (~10ms on most outputs) — way more than any UI needs.
+/// ~33ms ≈ 30Hz is comfortably inside human-perception territory for a
+/// progress bar update and keeps the message bus uncluttered.
 const int _kTimePosThrottleMs = 33;
 
 /// Maximum time [MpvEventIsolate.stop] waits for the background isolate
@@ -289,8 +289,8 @@ void _dispatchProperty(
     final decoded = decodeMpvNode(prop.data.cast<mpv.MpvNode>().ref);
     // Dedup against the JSON encoding of the decoded tree. Cheap, and
     // sufficient because mpv only emits Map/List/scalar shapes for the
-    // properties the wrapper observes. Falls through without dedup when
-    // jsonEncode rejects the tree (no observed cases today).
+    // properties the library observes. Falls through without dedup
+    // when jsonEncode rejects the tree (no observed cases today).
     final key = _nodeDedupKey(decoded);
     if (key != null && lastValues[name] == key) {
       return;

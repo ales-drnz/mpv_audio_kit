@@ -84,23 +84,25 @@ void main() {
       expect(s.audioBitrate, isNull);
     });
 
-    test('equalizer is disabled with 10 zero-band gains by default', () {
+    test('superequalizer disabled by default with empty band map', () {
       const s = PlayerState();
-      expect(s.audioEffects.equalizer.enabled, isFalse);
-      expect(s.audioEffects.equalizer.gains.length, 10);
-      expect(s.audioEffects.equalizer.gains, everyElement(0.0));
+      expect(s.audioEffects.superequalizer.enabled, isFalse);
+      expect(s.audioEffects.superequalizer.params, isEmpty);
     });
 
-    test('compressor / loudness / pitchTempo all start disabled', () {
+    test('acompressor / loudnorm / rubberband all start disabled', () {
       const s = PlayerState();
-      expect(s.audioEffects.compressor.enabled, isFalse);
-      expect(s.audioEffects.loudness.enabled, isFalse);
-      expect(s.audioEffects.pitchTempo.enabled, isFalse);
+      expect(s.audioEffects.acompressor.enabled, isFalse);
+      expect(s.audioEffects.loudnorm.enabled, isFalse);
+      expect(s.audioEffects.rubberband.enabled, isFalse);
     });
 
-    test('customAudioFilters is empty by default', () {
+    test('default-constructed AudioEffects emits an empty af chain', () {
+      // Every libavfilter audio filter is a typed Settings on the bundle;
+      // the bundle is the source of truth for mpv's `af` property and
+      // `toAfChain()` returns '' when nothing is enabled.
       const s = PlayerState();
-      expect(s.audioEffects.custom, isEmpty);
+      expect(s.audioEffects.toAfChain(), '');
     });
 
     test('audioParams + audioOutParams default to all-null AudioParams', () {

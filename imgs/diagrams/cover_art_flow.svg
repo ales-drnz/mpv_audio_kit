@@ -9,7 +9,7 @@
   <style>
     rect      { fill: #f8f9fb; rx: 10; ry: 10; }
     .title    { font-weight: 600; fill: #1e2329; }
-    .subtitle { font-size: 11px; fill: #5b6371; }
+    .subtitle { font-size: 10.5px; fill: #5b6371; }
     .arrow    { stroke: #7a8190; stroke-width: 1.6; fill: none;
                 marker-end: url(#ar); }
     .merge    { stroke: #7a8190; stroke-width: 1.6; fill: none; }
@@ -20,18 +20,18 @@
 
   <rect x="70"  y="24" width="240" height="64"/>
   <text class="title"    x="190" y="51" text-anchor="middle">Picture inside the audio</text>
-  <text class="subtitle" x="190" y="69" text-anchor="middle">embedded by the file tagger</text>
+  <text class="subtitle" x="190" y="69" text-anchor="middle">Embedded by the file tagger</text>
 
   <rect x="410" y="24" width="240" height="64"/>
   <text class="title"    x="530" y="51" text-anchor="middle">Picture file in the folder</text>
-  <text class="subtitle" x="530" y="69" text-anchor="middle">for example a cover image next to the track</text>
+  <text class="subtitle" x="530" y="69" text-anchor="middle">For example a cover image next to the track</text>
 
   <!-- ── Right path: down to gate, through it, down to merge ───────── -->
   <path class="merge" d="M530 88 L530 116"/>
 
   <!-- gate h=40 y=118 cy=138, 1 line at y=142 -->
   <rect x="420" y="118" width="220" height="40"/>
-  <text class="title" x="530" y="142" text-anchor="middle">only if folder scan is on</text>
+  <text class="title" x="530" y="142" text-anchor="middle">Only if folder scan is on</text>
 
   <path class="merge" d="M530 158 L530 192"/>
 
@@ -46,7 +46,7 @@
   <!-- h=64 y=222 cy=254, 2 lines: 249, 267 -->
   <rect x="200" y="222" width="320" height="64"/>
   <text class="title"    x="360" y="249" text-anchor="middle">All available pictures</text>
-  <text class="subtitle" x="360" y="267" text-anchor="middle">the player keeps a list of all of them</text>
+  <text class="subtitle" x="360" y="267" text-anchor="middle">The player keeps a list of all of them</text>
 
   <path class="arrow" d="M360 286 L360 314"/>
 
@@ -54,12 +54,12 @@
   <!-- h=64 y=316 cy=348, 2 lines: 343, 361 -->
   <rect x="160" y="316" width="400" height="64"/>
   <text class="title"    x="360" y="343" text-anchor="middle">Cover art</text>
-  <text class="subtitle" x="360" y="361" text-anchor="middle">ready bytes the consumer can show</text>
+  <text class="subtitle" x="360" y="361" text-anchor="middle">Ready bytes the consumer can show</text>
 
   <path class="arrow" d="M360 380 L360 408"/>
 
   <!-- ── Consumer sink ─────────────────────────────────────────────── -->
   <!-- h=44 y=410 cy=432, but viewBox 440 → use 1 line at y=434 -->
   <rect x="240" y="396" width="240" height="44"/>
-  <text class="title" x="360" y="422" text-anchor="middle">your Flutter widget</text>
+  <text class="title" x="360" y="422" text-anchor="middle">Your Flutter widget</text>
 </svg>

@@ -16,8 +16,8 @@ enum AudioOutputState {
   /// AO opened successfully and is producing samples.
   active('active'),
 
-  /// AO initialization failed. The wrapper surfaces a typed `MpvLogError`
-  /// on `Player.stream.error` when this state arrives.
+  /// AO initialization failed. A typed [MpvLogError] is emitted on
+  /// [PlayerStream.error] when this state arrives.
   failed('failed');
 
   const AudioOutputState(this.mpvValue);

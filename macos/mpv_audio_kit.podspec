@@ -21,7 +21,7 @@ Pod::Spec.new do |s|
 
   s.dependency 'FlutterMacOS'
 
-  s.platform    = :osx, '10.14'
+  s.platform    = :osx, '12.0'
   s.swift_version = '5.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 
@@ -30,7 +30,7 @@ Pod::Spec.new do |s|
   # Run `scripts/generate_checksums.sh` to get the SHA-256 for your new release.
   s.prepare_command = <<-CMD
     MPV_RELEASE_VERSION="libmpv-r5"
-    EXPECTED_SHA256="c16a9f297ddeb0f33e6ede4f3589fa91a0faeae30b48584a0d8cc7ec09047223"
+    EXPECTED_SHA256="daa06716ba6ed2de1542713fa11848801faae83b14548c26de9348f123ff69a5"
     URL="https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_macos-arm64.dylib"
     FILE_DEST="libs/libmpv.dylib"
     
