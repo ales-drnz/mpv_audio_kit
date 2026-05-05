@@ -168,7 +168,7 @@ The following images demonstrate the example app included in the `example/` dire
 
 <table width="100%">
   <tr>
-    <td width="60%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_player_console.png" width="100%"></td>
+    <td width="60%"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/desktop_player_console.gif" width="100%"></td>
     <td align="left"><b>Player</b><br>Cover art, metadata, and controls alongside pinned logs.</td>
   </tr>
   <tr>
