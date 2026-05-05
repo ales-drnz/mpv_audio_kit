@@ -77,7 +77,7 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('audioDevice round-trips by name (description is metadata)', () async {
-      const dev = Device('null', 'Null Driver');
+      const dev = Device(name: 'null', description: 'Null Driver');
       await player.setAudioDevice(dev);
       expect(player.state.audioDevice.name, 'null');
     }, timeout: const Timeout(Duration(seconds: 15)));
@@ -86,7 +86,7 @@ void main() {
         'audioDevice description is sourced from audioDevices list, '
         'not duplicated from name', () async {
       // Regression: the spec used to parse `audio-device` as
-      // Device(raw, raw) — both name AND description were the
+      // Device(name: raw, description: raw) — both name AND description were the
       // raw mpv name. With the cross-reference fix the description
       // mirrors the entry in `state.audioDevices` (parsed from the
       // `audio-device-list` node observer).
@@ -94,13 +94,13 @@ void main() {
       // mpv always exposes a built-in 'auto' device with description
       // 'Autoselect device' across every backend on every platform —
       // it's the most stable assertion target.
-      await player.setAudioDevice(const Device('auto', 'whatever'));
+      await player.setAudioDevice(const Device(name: 'auto', description: 'whatever'));
       // Allow the property observer round-trip to land.
       await Future.delayed(const Duration(milliseconds: 200));
 
       final autoEntry = player.state.audioDevices.firstWhere(
           (d) => d.name == 'auto',
-          orElse: () => const Device('auto', 'auto'));
+          orElse: () => const Device(name: 'auto', description: 'auto'));
       expect(player.state.audioDevice.name, 'auto');
       expect(player.state.audioDevice.description, autoEntry.description,
           reason: 'active device description must match the audioDevices '

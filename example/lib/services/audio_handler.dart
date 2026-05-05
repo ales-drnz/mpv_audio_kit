@@ -113,7 +113,7 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   void _updateMediaItem() {
     final s = player.state;
-    final media = s.playlist.medias;
+    final media = s.playlist.items;
     final idx = s.playlist.index;
     if (media.isEmpty || idx < 0 || idx >= media.length) {
       mediaItem.add(null);
@@ -135,7 +135,7 @@ class MpvAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   void _syncQueue(Playlist playlist) {
     queue.add(
-      playlist.medias.map((m) {
+      playlist.items.map((m) {
         return MediaItem(id: m.uri, title: _titleFromUri(m.uri));
       }).toList(),
     );

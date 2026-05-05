@@ -59,7 +59,7 @@ Future<Player> createTestPlayer() async {
   final p = Player(
     configuration: const PlayerConfiguration(
       autoPlay: false,
-      logLevel: 'no',
+      logLevel: LogLevel.off,
     ),
   );
   await p.setRawProperty('ao', 'null');

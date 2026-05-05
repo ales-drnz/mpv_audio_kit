@@ -19,7 +19,7 @@ void main() {
       );
       const log = MpvLogError(
         prefix: 'ffmpeg',
-        level: 'error',
+        level: LogLevel.error,
         text: 'codec not found',
       );
 
@@ -44,7 +44,7 @@ void main() {
 
       const log = MpvLogError(
         prefix: 'demux',
-        level: 'error',
+        level: LogLevel.error,
         text: 'failed to open',
       );
       expect(log.message, '[demux] error: failed to open');

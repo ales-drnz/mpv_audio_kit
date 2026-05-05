@@ -2,13 +2,9 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-const _Unset _unset = _Unset();
+import '../internals/unset_sentinel.dart';
 
-class _Unset {
-  const _Unset();
-}
-
-bool _mapEqDyn(Map<String, dynamic>? a, Map<String, dynamic>? b) {
+bool _mapEqDyn(Map<String, Object?>? a, Map<String, Object?>? b) {
   if (identical(a, b)) return true;
   if (a == null || b == null) return false;
   if (a.length != b.length) return false;
@@ -67,7 +63,7 @@ final class Media {
   /// The player itself does not interpret these values; they are carried
   /// through the playlist so the UI layer can access them without a
   /// separate lookup.
-  final Map<String, dynamic>? extras;
+  final Map<String, Object?>? extras;
 
   /// Optional HTTP headers for network streams.
   ///
@@ -85,15 +81,15 @@ final class Media {
 
   Media copyWith({
     String? uri,
-    Object? extras = _unset,
-    Object? httpHeaders = _unset,
+    Object? extras = unset,
+    Object? httpHeaders = unset,
   }) =>
       Media(
         uri ?? this.uri,
-        extras: identical(extras, _unset)
+        extras: identical(extras, unset)
             ? this.extras
-            : extras as Map<String, dynamic>?,
-        httpHeaders: identical(httpHeaders, _unset)
+            : extras as Map<String, Object?>?,
+        httpHeaders: identical(httpHeaders, unset)
             ? this.httpHeaders
             : httpHeaders as Map<String, String>?,
       );

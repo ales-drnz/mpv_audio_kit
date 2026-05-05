@@ -120,108 +120,6 @@ class _FiltersPitchTimePageState extends State<FiltersPitchTimePage> {
             );
           },
         ),
-        StreamBuilder<AreverseSettings>(
-          stream: _watch((e) => e.areverse),
-          initialData: player.state.audioEffects.areverse,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'areverse',
-              subtitle: 'lavfi-areverse',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(areverse: s.copyWith(enabled: v)),
-              ),
-              params: [],
-            );
-          },
-        ),
-        StreamBuilder<AsetnsamplesSettings>(
-          stream: _watch((e) => e.asetnsamples),
-          initialData: player.state.audioEffects.asetnsamples,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'asetnsamples',
-              subtitle: 'lavfi-asetnsamples',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(asetnsamples: s.copyWith(enabled: v)),
-              ),
-              params: [
-                FilterParamSwitch(
-                  label: 'p',
-                  value: s.p,
-                  defaultValue: true,
-                  onChanged: (v) => player.updateAudioEffects(
-                    (e) => e.copyWith(asetnsamples: s.copyWith(p: v)),
-                  ),
-                ),
-                FilterParamSwitch(
-                  label: 'pad',
-                  value: s.pad,
-                  defaultValue: true,
-                  onChanged: (v) => player.updateAudioEffects(
-                    (e) => e.copyWith(asetnsamples: s.copyWith(pad: v)),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        StreamBuilder<AsetptsSettings>(
-          stream: _watch((e) => e.asetpts),
-          initialData: player.state.audioEffects.asetpts,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'asetpts',
-              subtitle: 'lavfi-asetpts',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(asetpts: s.copyWith(enabled: v)),
-              ),
-              params: [],
-            );
-          },
-        ),
-        StreamBuilder<AsetrateSettings>(
-          stream: _watch((e) => e.asetrate),
-          initialData: player.state.audioEffects.asetrate,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'asetrate',
-              subtitle: 'lavfi-asetrate',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(asetrate: s.copyWith(enabled: v)),
-              ),
-              params: [],
-            );
-          },
-        ),
-        StreamBuilder<AsettbSettings>(
-          stream: _watch((e) => e.asettb),
-          initialData: player.state.audioEffects.asettb,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'asettb',
-              subtitle: 'lavfi-asettb',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(asettb: s.copyWith(enabled: v)),
-              ),
-              params: [],
-            );
-          },
-        ),
         StreamBuilder<AtempoSettings>(
           stream: _watch((e) => e.atempo),
           initialData: player.state.audioEffects.atempo,
@@ -234,23 +132,6 @@ class _FiltersPitchTimePageState extends State<FiltersPitchTimePage> {
               enabled: s.enabled,
               onToggle: (v) => player.updateAudioEffects(
                 (e) => e.copyWith(atempo: s.copyWith(enabled: v)),
-              ),
-              params: [],
-            );
-          },
-        ),
-        StreamBuilder<AtrimSettings>(
-          stream: _watch((e) => e.atrim),
-          initialData: player.state.audioEffects.atrim,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'atrim',
-              subtitle: 'lavfi-atrim',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(atrim: s.copyWith(enabled: v)),
               ),
               params: [],
             );

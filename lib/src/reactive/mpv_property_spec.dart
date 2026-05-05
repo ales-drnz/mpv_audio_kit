@@ -44,7 +44,11 @@ class MpvPropertySpec<T> {
         name: name,
         format: MpvFormat.mpvFormatDouble,
         reactive: reactive,
-        parse: (raw, state) => parse(raw as double, state),
+        // Permissive cast: accepts both double and int wire payloads
+        // so an isolate-side format demotion (mpv occasionally promotes
+        // an int64 property to a double when crossing 2^53) doesn't
+        // crash the dispatch pipeline.
+        parse: (raw, state) => parse((raw as num).toDouble(), state),
         reduce: reduce,
         onChange: onChange,
       );
@@ -82,7 +86,11 @@ class MpvPropertySpec<T> {
         name: name,
         format: MpvFormat.mpvFormatInt64,
         reactive: reactive,
-        parse: (raw, state) => parse(raw as int, state),
+        // Permissive cast: accepts both int and double wire payloads.
+        // Without this, a format-mismatch in the isolate (e.g. a
+        // float-typed event for an int64-observed property) would
+        // crash the dispatch pipeline instead of degrading gracefully.
+        parse: (raw, state) => parse((raw as num).toInt(), state),
         reduce: reduce,
         onChange: onChange,
       );

@@ -6,6 +6,7 @@
 // (auto-generated FFI). The enum below shadows that name, so we hide
 // the bindings symbol to keep the import free of name conflicts.
 import '../mpv_bindings.dart' hide MpvEndFileReason;
+import '../types/enums/log_level.dart';
 
 /// Typed error events delivered on [PlayerStream.error]. A sealed union
 /// over [MpvEndFileError] (playback failures) and [MpvLogError]
@@ -85,8 +86,8 @@ final class MpvLogError extends MpvPlayerError {
   /// `'demux'`, `'ao'`).
   final String prefix;
 
-  /// The log level — either `'error'` or `'fatal'`.
-  final String level;
+  /// The log level — either [LogLevel.error] or [LogLevel.fatal].
+  final LogLevel level;
 
   /// Raw log text from the mpv subsystem.
   final String text;
@@ -98,7 +99,7 @@ final class MpvLogError extends MpvPlayerError {
   });
 
   @override
-  String get message => '[$prefix] $level: $text';
+  String get message => '[$prefix] ${level.mpvValue}: $text';
 
   @override
   bool operator ==(Object other) =>

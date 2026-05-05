@@ -28,6 +28,14 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 /// via `MpvAudioKit.ensureInitialized(hotRestartCleanup: false)`.
 class OrphanHandleTracker {
   static const int _kBufferSize = 256;
+  // Magic cookie stored alongside every address. Hot-Restart cleanup
+  // verifies this before calling `mpv_command_string` so a pid-reuse /
+  // file-corruption scenario can't trick us into invoking FFI on a
+  // pointer that wasn't ours. Slots are laid out as
+  // [cookie₀, addr₀, cookie₁, addr₁, …] in the underlying buffer.
+  static const int _kCookie = 0x4D414B5F4D5056AB; // "MAK_MPV\xab"
+  // 2 IntPtrs per slot (cookie + address).
+  static const int _kSlotStride = 2;
   static final OrphanHandleTracker instance = OrphanHandleTracker._();
   static bool _initialized = false;
 
@@ -66,7 +74,7 @@ class OrphanHandleTracker {
         // so the next Hot-Restart can rehydrate orphan addresses from it.
         // The OS reclaims the allocation when the host process eventually
         // exits.
-        _buffer = calloc<IntPtr>(_kBufferSize);
+        _buffer = calloc<IntPtr>(_kBufferSize * _kSlotStride);
         _file.writeAsStringSync(_buffer.address.toString());
       } else {
         final addressStr = _file.readAsStringSync().trim();
@@ -76,11 +84,19 @@ class OrphanHandleTracker {
 
       final orphans = <Pointer<MpvHandle>>[];
       for (int i = 0; i < _kBufferSize; i++) {
-        final ref = _buffer + i;
-        final refAddr = ref.value;
+        final cookieRef = _buffer + (i * _kSlotStride);
+        final addrRef = _buffer + (i * _kSlotStride + 1);
+        final cookieVal = cookieRef.value;
+        final refAddr = addrRef.value;
+        // Skip slots that lack the magic cookie — either empty (cookie=0)
+        // or filled by something other than us (pid reuse hitting the
+        // same buffer address). This is the load-bearing safety check
+        // against handing libmpv a dangling pointer.
+        if (cookieVal != _kCookie) continue;
         if (refAddr != 0) {
           orphans.add(Pointer.fromAddress(refAddr));
-          ref.value = 0;
+          cookieRef.value = 0;
+          addrRef.value = 0;
         }
       }
 
@@ -162,9 +178,11 @@ class OrphanHandleTracker {
         return;
       }
       for (int i = 0; i < _kBufferSize; i++) {
-        final ref = _buffer + i;
-        if (ref.value == 0) {
-          ref.value = handle.address;
+        final cookieRef = _buffer + (i * _kSlotStride);
+        final addrRef = _buffer + (i * _kSlotStride + 1);
+        if (cookieRef.value == 0 && addrRef.value == 0) {
+          cookieRef.value = _kCookie;
+          addrRef.value = handle.address;
           return;
         }
       }
@@ -189,9 +207,12 @@ class OrphanHandleTracker {
         return;
       }
       for (int i = 0; i < _kBufferSize; i++) {
-        final ref = _buffer + i;
-        if (ref.value == handle.address) {
-          ref.value = 0;
+        final cookieRef = _buffer + (i * _kSlotStride);
+        final addrRef = _buffer + (i * _kSlotStride + 1);
+        if (cookieRef.value == _kCookie &&
+            addrRef.value == handle.address) {
+          cookieRef.value = 0;
+          addrRef.value = 0;
           break;
         }
       }

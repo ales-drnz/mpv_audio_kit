@@ -52,7 +52,7 @@ class DefaultPropertyReactives {
   final ReactiveProperty<double?> audioBitrate =
       ReactiveProperty<double?>(null);
   final ReactiveProperty<Device> audioDevice =
-      ReactiveProperty<Device>(const Device('auto', 'Auto'));
+      ReactiveProperty<Device>(const Device(name: 'auto', description: 'Auto'));
 
   // Audio params (decoder side) — aggregate of `audio-params` (NODE) +
   // `audio-codec` + `audio-codec-name`. The 3 specs all dedup and emit
@@ -571,7 +571,7 @@ List<MpvPropertySpec> buildDefaultSpecs(
     MpvPropertySpec<MpvPrefetchState>.string(
       name: 'prefetch-state',
       reactive: r.prefetchState,
-      parse: (raw, _) => MpvPrefetchState.parse(raw),
+      parse: (raw, _) => MpvPrefetchState.fromMpv(raw),
       reduce: (_, s) => s,
     ),
     MpvPropertySpec<AudioOutputState>.string(

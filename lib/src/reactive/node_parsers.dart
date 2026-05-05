@@ -2,13 +2,15 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../models/device.dart';
+import '../internals/duration_seconds.dart';
 import '../models/audio_params.dart';
 import '../models/chapter.dart';
+import '../models/device.dart';
 import '../models/media.dart';
 import '../models/mpv_track.dart';
 import '../models/playlist.dart';
-import '../internals/duration_seconds.dart';
+import '../types/enums/format.dart';
+import '../types/sealed/channels.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure parsers for mpv properties delivered as `MPV_FORMAT_NODE`.
@@ -75,10 +77,7 @@ List<Device> parseDeviceListNode(dynamic raw) {
   if (raw is! List) return const [];
   return raw.map((entry) {
     final m = entry is Map ? entry : const <String, dynamic>{};
-    return Device(
-      m['name'] as String? ?? 'unknown',
-      m['description'] as String? ?? '',
-    );
+    return Device(name: m['name'] as String? ?? 'unknown', description: m['description'] as String? ?? '',);
   }).toList(growable: false);
 }
 
@@ -119,7 +118,7 @@ double parseDemuxerCacheStateNode(
 
 /// Decodes mpv's `audio-params` (or `audio-out-params`) property
 /// (`MPV_FORMAT_NODE_MAP`) into an [AudioParams] populated with the 5 fields
-/// mpv exposes on the wire (`format`, `samplerate`, `channels`,
+/// mpv exposes on the wire (`format`, `sampleRate`, `channels`,
 /// `channel-count`, `hr-channels`).
 ///
 /// `codec` and `codecName` are NOT emitted by these node maps — they live
@@ -129,10 +128,12 @@ double parseDemuxerCacheStateNode(
 /// the merge.
 AudioParams parseAudioParamsNode(dynamic raw) {
   if (raw is! Map) return const AudioParams();
+  final formatStr = _stringOrNull(raw['format']);
+  final channelsStr = _stringOrNull(raw['channels']);
   return AudioParams(
-    format: _stringOrNull(raw['format']),
+    format: formatStr == null ? null : Format.fromMpv(formatStr),
     sampleRate: _intOrNull(raw['samplerate']),
-    channels: _stringOrNull(raw['channels']),
+    channels: channelsStr == null ? null : Channels.fromMpv(channelsStr),
     channelCount: _intOrNull(raw['channel-count']),
     hrChannels: _stringOrNull(raw['hr-channels']),
   );
@@ -172,13 +173,13 @@ MpvTrack _parseTrackEntry(dynamic entry) {
     visualImpaired: m['visual-impaired'] == true,
     hearingImpaired: m['hearing-impaired'] == true,
     image: m['image'] == true,
-    albumart: m['albumart'] == true,
+    albumArt: m['albumart'] == true,
     codec: _stringOrNull(m['codec']),
     codecDesc: _stringOrNull(m['codec-desc']),
     decoder: _stringOrNull(m['decoder']),
     decoderDesc: _stringOrNull(m['decoder-desc']),
     formatName: _stringOrNull(m['format-name']),
-    samplerate: _intOrNull(m['demux-samplerate']),
+    sampleRate: _intOrNull(m['demux-samplerate']),
     channels: _stringOrNull(m['demux-channels']),
     channelCount: _intOrNull(m['demux-channel-count']),
     demuxBitrate: _doubleOrNull(m['demux-bitrate']),
@@ -186,10 +187,10 @@ MpvTrack _parseTrackEntry(dynamic entry) {
         ? secondsToDuration(demuxDurationSecs)
         : null,
     hlsBitrate: _doubleOrNull(m['hls-bitrate']),
-    replaygainTrackGain: _doubleOrNull(m['replaygain-track-gain']),
-    replaygainTrackPeak: _doubleOrNull(m['replaygain-track-peak']),
-    replaygainAlbumGain: _doubleOrNull(m['replaygain-album-gain']),
-    replaygainAlbumPeak: _doubleOrNull(m['replaygain-album-peak']),
+    replayGainTrackGain: _doubleOrNull(m['replaygain-track-gain']),
+    replayGainTrackPeak: _doubleOrNull(m['replaygain-track-peak']),
+    replayGainAlbumGain: _doubleOrNull(m['replaygain-album-gain']),
+    replayGainAlbumPeak: _doubleOrNull(m['replaygain-album-peak']),
     metadata: _stringMap(m['metadata']),
   );
 }

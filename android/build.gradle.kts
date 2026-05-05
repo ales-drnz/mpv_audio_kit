@@ -111,11 +111,11 @@ val downloadMpvTask = tasks.register("downloadMpvLibraries") {
     val abis = mapOf(
         "arm64-v8a" to mapOf(
             "file" to "libmpv_android-arm64-v8a.so",
-            "sha256" to "9a7af86a272c2980e613528b18b96c1d803a1907731f1da07117facedb4063ee"
+            "sha256" to "01a4903482b7c2e73260228fbce2548e6dd848f334a622ba932bf6a2f2e42fe9"
         ),
         "x86_64" to mapOf(
             "file" to "libmpv_android-x86_64.so",
-            "sha256" to "ad2ca3c99bf4f4f7b1cdd21c1f81b2ce2df3279dc62c50b18a31fa84fe9cdfbc"
+            "sha256" to "af100d4862294a77b94b8356e0e5068871d3643f0fb536d5fc5de2acadea4185"
         )
     )
     

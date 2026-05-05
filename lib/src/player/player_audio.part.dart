@@ -9,6 +9,7 @@ mixin _AudioModule on _PlayerBase {
   /// Sets volume (0–100; values above 100 amplify the signal).
   Future<void> setVolume(double volume) async {
     _checkNotDisposed();
+    _checkFinite(volume, 'volume');
     _prop('volume', volume.toStringAsFixed(1));
     _updateField((s) => s.copyWith(volume: volume), _reactives.volume, volume);
   }
@@ -16,6 +17,7 @@ mixin _AudioModule on _PlayerBase {
   /// Sets playback rate (1.0 = normal speed).
   Future<void> setRate(double rate) async {
     _checkNotDisposed();
+    _checkFinite(rate, 'rate');
     _prop('speed', rate.toStringAsFixed(4));
     _updateField((s) => s.copyWith(rate: rate), _reactives.rate, rate);
   }
@@ -23,6 +25,7 @@ mixin _AudioModule on _PlayerBase {
   /// Sets pitch (1.0 = original pitch).
   Future<void> setPitch(double pitch) async {
     _checkNotDisposed();
+    _checkFinite(pitch, 'pitch');
     _prop('pitch', pitch.toStringAsFixed(4));
     _updateField((s) => s.copyWith(pitch: pitch), _reactives.pitch, pitch);
   }
@@ -75,10 +78,11 @@ mixin _AudioModule on _PlayerBase {
 
   /// Enables or disables gapless playback. See [Gapless] for the
   /// available variants.
-  Future<void> setGapless(Gapless mode) async {
+  Future<void> setGapless(Gapless gapless) async {
     _checkNotDisposed();
-    _prop('gapless-audio', mode.mpvValue);
-    _updateField((s) => s.copyWith(gapless: mode), _reactives.gapless, mode);
+    _prop('gapless-audio', gapless.mpvValue);
+    _updateField(
+        (s) => s.copyWith(gapless: gapless), _reactives.gapless, gapless);
   }
 
   /// Sets the ReplayGain normalization configuration atomically.
@@ -87,14 +91,14 @@ mixin _AudioModule on _PlayerBase {
   /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`) in
   /// one shot. Modify a single field via
   /// `await player.setReplayGain(state.replayGain.copyWith(preamp: -3))`.
-  Future<void> setReplayGain(ReplayGainSettings config) async {
+  Future<void> setReplayGain(ReplayGainSettings settings) async {
     _checkNotDisposed();
-    _prop('replaygain', config.mode.mpvValue);
-    _prop('replaygain-preamp', config.preamp.toStringAsFixed(2));
-    _prop('replaygain-clip', config.clip ? 'yes' : 'no');
-    _prop('replaygain-fallback', config.fallback.toStringAsFixed(2));
-    _updateField(
-        (s) => s.copyWith(replayGain: config), _reactives.replayGain, config);
+    _prop('replaygain', settings.mode.mpvValue);
+    _prop('replaygain-preamp', settings.preamp.toStringAsFixed(2));
+    _prop('replaygain-clip', settings.clip ? 'yes' : 'no');
+    _prop('replaygain-fallback', settings.fallback.toStringAsFixed(2));
+    _updateField((s) => s.copyWith(replayGain: settings),
+        _reactives.replayGain, settings);
   }
 
   /// Sets volume gain in dB (pre-amplification on top of [setVolume]).
@@ -105,6 +109,7 @@ mixin _AudioModule on _PlayerBase {
   /// unless [setReplayGain] or a downstream limiter is in the chain.
   Future<void> setVolumeGain(double gainDb) async {
     _checkNotDisposed();
+    _checkFinite(gainDb, 'gainDb');
     _prop('volume-gain', gainDb.toStringAsFixed(2));
     _updateField(
         (s) => s.copyWith(volumeGain: gainDb), _reactives.volumeGain, gainDb);
@@ -116,10 +121,12 @@ mixin _AudioModule on _PlayerBase {
   /// range most apps expose). Setting above 100 lets [setVolume] amplify
   /// past unity; values up to 1000 = +20 dB digital boost. mpv hard-rejects
   /// values below 100.
-  Future<void> setVolumeMax(double max) async {
+  Future<void> setVolumeMax(double limit) async {
     _checkNotDisposed();
-    _prop('volume-max', max.toStringAsFixed(1));
-    _updateField((s) => s.copyWith(volumeMax: max), _reactives.volumeMax, max);
+    _checkFinite(limit, 'limit');
+    _prop('volume-max', limit.toStringAsFixed(1));
+    _updateField(
+        (s) => s.copyWith(volumeMax: limit), _reactives.volumeMax, limit);
   }
 
   /// Enables exclusive audio mode (WASAPI / ALSA / CoreAudio).
@@ -151,9 +158,9 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// State updates flow through the `current-tracks/audio` observer
   /// (no optimistic update — mpv may reject an unknown id).
-  Future<void> setAudioTrack(Track mode) async {
+  Future<void> setAudioTrack(Track track) async {
     _checkNotDisposed();
-    _prop('aid', mode.mpvValue);
+    _prop('aid', track.mpvValue);
   }
 
   /// Forcibly reloads the audio output.
@@ -224,11 +231,11 @@ mixin _AudioModule on _PlayerBase {
   /// sitting next to the audio file (e.g. `cover.jpg`). See [Cover] for
   /// the available variants. Embedded cover bytes are surfaced through
   /// [PlayerStream.coverArt] regardless of this setting.
-  Future<void> setCoverArtAuto(Cover mode) async {
+  Future<void> setCoverArtAuto(Cover cover) async {
     _checkNotDisposed();
-    _prop('cover-art-auto', mode.mpvValue);
-    _updateField(
-        (s) => s.copyWith(coverArtAuto: mode), _reactives.coverArtAuto, mode);
+    _prop('cover-art-auto', cover.mpvValue);
+    _updateField((s) => s.copyWith(coverArtAuto: cover),
+        _reactives.coverArtAuto, cover);
   }
 
   /// Sets the target audio sample rate.

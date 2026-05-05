@@ -4,8 +4,9 @@
 
 import 'package:meta/meta.dart';
 
-import '../types/state/audio_output_state.dart';
 import '../events/mpv_player_error.dart';
+import '../types/enums/log_level.dart';
+import '../types/state/audio_output_state.dart';
 
 /// Maps an [AudioOutputState] transition to an optional [MpvLogError] for
 /// `Player.stream.error`. Only [AudioOutputState.failed] produces an error;
@@ -16,7 +17,7 @@ MpvLogError? buildAudioOutputError(AudioOutputState state) {
   if (state == AudioOutputState.failed) {
     return const MpvLogError(
       prefix: 'mpv_audio_kit',
-      level: 'error',
+      level: LogLevel.error,
       text: 'Audio output failed to initialize — playback is silent',
     );
   }

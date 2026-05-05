@@ -122,7 +122,7 @@ class _QueuePageState extends State<QueuePage> {
   void _applyPlaylist(Playlist p) {
     if (mounted) {
       setState(() {
-        _list = List.from(p.medias);
+        _list = List.from(p.items);
         _currentIndex = p.index;
       });
     }
@@ -172,7 +172,7 @@ class _QueuePageState extends State<QueuePage> {
                           allowMultiple: true,
                         );
                         if (result != null) {
-                          final wasEmpty = player.state.playlist.medias.isEmpty;
+                          final wasEmpty = player.state.playlist.items.isEmpty;
                           final medias = [
                             for (final file in result.files)
                               if (file.path != null) Media(file.path!),
@@ -217,7 +217,7 @@ class _QueuePageState extends State<QueuePage> {
                 if (detail.files.isEmpty) return;
                 final paths = await _collectAudioPaths(detail.files);
                 if (paths.isEmpty) return;
-                final wasEmpty = player.state.playlist.medias.isEmpty;
+                final wasEmpty = player.state.playlist.items.isEmpty;
                 final medias = [for (final p in paths) Media(p)];
                 if (wasEmpty) {
                   await player.openAll(medias, play: true);

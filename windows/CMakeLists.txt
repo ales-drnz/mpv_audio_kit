@@ -50,63 +50,74 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 # dependencies here.
 target_include_directories(${PLUGIN_NAME}
   INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  # Add libmpv headers path if available in windows/libs/include
+  # libmpv headers (optional; populate windows/libs/include/ if needed).
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/include"
 )
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
 # ── libmpv Bundling ──────────────────────────────────────────────────────────
-# The dynamic library is automatically downloaded from GitHub Releases if 
-# missing or if the checksum does not match the expected value.
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.lib")
-  target_link_libraries(${PLUGIN_NAME} PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.lib"
-  )
+# libmpv.dll is auto-downloaded from GitHub Releases per target arch. Two
+# arches are supported (x86_64, arm64) and the binaries live in arch-scoped
+# subdirectories: windows/libs/<arch>/libmpv.dll. The CMake config detects
+# the build's target arch and picks the matching subdir.
+set(MPV_RELEASE_VERSION "libmpv-r5")
+set(EXPECTED_SHA256_X86_64  "14e0eeaa3d29d6ba11969443de5a6a31c25bc9d4db04e66b5b4cad58188e7368")
+set(EXPECTED_SHA256_ARM64  "140a3fc6ebed13e83cbcad5d4abfeac23ec8d688604ebcdb63abcf62e18234a7")
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
+  set(_MPV_ARCH "arm64")
+  set(_MPV_RELEASE_NAME "libmpv_windows-arm64.dll")
+  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_ARM64}")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|x86_64|amd64)$")
+  set(_MPV_ARCH "x86_64")
+  set(_MPV_RELEASE_NAME "libmpv_windows-x86_64.dll")
+  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_X86_64}")
+else()
+  message(FATAL_ERROR "[mpv_audio_kit] Unsupported Windows arch: ${CMAKE_SYSTEM_PROCESSOR}. Supported: x86_64 (AMD64), arm64 (ARM64).")
 endif()
 
-set(_MPV_DLL "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv-2.dll")
-set(MPV_RELEASE_VERSION "libmpv-r5")
-set(EXPECTED_SHA256 "183c2b36e3d8ff0dd035740ce24327c29dced75ba44a4c2064acdaf4a40174bd")
+set(_MPV_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/${_MPV_ARCH}")
+set(_MPV_DLL "${_MPV_LIB_DIR}/libmpv.dll")
+
+# Optional import library (only used when statically linking against the DLL).
+if(EXISTS "${_MPV_LIB_DIR}/libmpv.lib")
+  target_link_libraries(${PLUGIN_NAME} PRIVATE "${_MPV_LIB_DIR}/libmpv.lib")
+endif()
 
 set(DOWNLOAD_NEEDED TRUE)
-
 if(EXISTS "${_MPV_DLL}")
   file(SHA256 "${_MPV_DLL}" ACTUAL_SHA256)
-  if(ACTUAL_SHA256 STREQUAL EXPECTED_SHA256)
+  if(ACTUAL_SHA256 STREQUAL _MPV_EXPECTED_SHA)
     set(DOWNLOAD_NEEDED FALSE)
   else()
-    message(STATUS "[mpv_audio_kit] SHA-256 mismatch! Expected ${EXPECTED_SHA256} but got ${ACTUAL_SHA256}. Redownloading...")
+    message(STATUS "[mpv_audio_kit] SHA-256 mismatch for ${_MPV_ARCH}: expected ${_MPV_EXPECTED_SHA} but got ${ACTUAL_SHA256}. Redownloading...")
     file(REMOVE "${_MPV_DLL}")
   endif()
 endif()
 
 if(DOWNLOAD_NEEDED)
-  message(STATUS "[mpv_audio_kit] Downloading libmpv_windows-x86_64.dll from Github Releases...")
-  file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/libs")
-  file(DOWNLOAD 
-    "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_windows-x86_64.dll"
+  message(STATUS "[mpv_audio_kit] Downloading ${_MPV_RELEASE_NAME} from GitHub Releases...")
+  file(MAKE_DIRECTORY "${_MPV_LIB_DIR}")
+  file(DOWNLOAD
+    "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/${_MPV_RELEASE_NAME}"
     "${_MPV_DLL}"
     SHOW_PROGRESS
-    EXPECTED_HASH SHA256=${EXPECTED_SHA256}
+    EXPECTED_HASH SHA256=${_MPV_EXPECTED_SHA}
     STATUS DOWNLOAD_STATUS
   )
   list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
   if(NOT STATUS_CODE EQUAL 0)
     list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-    message(FATAL_ERROR "[mpv_audio_kit] Failed to download libmpv.dll: ${ERROR_MSG}")
+    message(FATAL_ERROR "[mpv_audio_kit] Failed to download ${_MPV_RELEASE_NAME}: ${ERROR_MSG}. Place it manually at ${_MPV_DLL}")
   endif()
 endif()
 
-# Collect all DLLs from the libs directory to bundle them with the application.
-file(GLOB _MPV_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/libs/*.dll")
-
-if(_MPV_DLLS)
+# Bundle the DLL with the application output.
+if(EXISTS "${_MPV_DLL}")
   set(mpv_audio_kit_bundled_libraries
-    ${_MPV_DLLS}
+    "${_MPV_DLL}"
     PARENT_SCOPE
   )
 else()
-  # DLL not found in libs folder.
-  message(FATAL_ERROR "[mpv_audio_kit] libmpv-2.dll not found. It must be present in windows/libs/libmpv-2.dll")
+  message(FATAL_ERROR "[mpv_audio_kit] libmpv.dll not found. It must be present at ${_MPV_DLL}")
 endif()
-

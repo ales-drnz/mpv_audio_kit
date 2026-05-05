@@ -52,10 +52,10 @@ enum Hook {
   /// (if any) hasn't started yet.
   afterEndFile('on_after_end_file');
 
-  const Hook(this.mpvName);
+  const Hook(this.mpvValue);
 
   /// The wire-level name mpv expects in `mpv_hook_add()`.
-  final String mpvName;
+  final String mpvValue;
 
   /// Maps an mpv-side hook name to the typed enum. Returns `null` for
   /// unknown values — forward-compat with future mpv builds that may

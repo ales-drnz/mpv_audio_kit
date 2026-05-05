@@ -2,24 +2,27 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-const _Unset _unset = _Unset();
-
-class _Unset {
-  const _Unset();
-}
+import '../internals/unset_sentinel.dart';
+import '../types/enums/format.dart';
+import '../types/sealed/channels.dart';
 
 /// Audio format parameters reported by mpv. Used both for the decoder
 /// side (`audio-params` + `audio-codec*`) and for the hardware output
 /// side (`audio-out-params`).
 final class AudioParams {
-  /// Sample format string (e.g. `"floatp"`, `"s16"`).
-  final String? format;
+  /// Sample format reported by mpv. `null` when no audio is currently
+  /// being decoded. mpv occasionally emits a format string the wrapper
+  /// doesn't recognise (e.g. a future-version sample type) — those fall
+  /// back to [Format.s16] via [Format.fromMpv].
+  final Format? format;
 
   /// Sample rate in Hz.
   final int? sampleRate;
 
-  /// Channel layout string in mpv notation (e.g. `"stereo"`, `"5.1"`).
-  final String? channels;
+  /// Channel layout reported by mpv. `null` when no audio is currently
+  /// being decoded. Unknown layouts fall back to [Channels.custom] via
+  /// [Channels.fromMpv].
+  final Channels? channels;
 
   /// Number of audio channels.
   final int? channelCount;
@@ -52,29 +55,30 @@ final class AudioParams {
   });
 
   AudioParams copyWith({
-    Object? format = _unset,
-    Object? sampleRate = _unset,
-    Object? channels = _unset,
-    Object? channelCount = _unset,
-    Object? hrChannels = _unset,
-    Object? codec = _unset,
-    Object? codecName = _unset,
+    Object? format = unset,
+    Object? sampleRate = unset,
+    Object? channels = unset,
+    Object? channelCount = unset,
+    Object? hrChannels = unset,
+    Object? codec = unset,
+    Object? codecName = unset,
   }) =>
       AudioParams(
-        format: identical(format, _unset) ? this.format : format as String?,
-        sampleRate: identical(sampleRate, _unset)
+        format: identical(format, unset) ? this.format : format as Format?,
+        sampleRate: identical(sampleRate, unset)
             ? this.sampleRate
             : sampleRate as int?,
-        channels:
-            identical(channels, _unset) ? this.channels : channels as String?,
-        channelCount: identical(channelCount, _unset)
+        channels: identical(channels, unset)
+            ? this.channels
+            : channels as Channels?,
+        channelCount: identical(channelCount, unset)
             ? this.channelCount
             : channelCount as int?,
-        hrChannels: identical(hrChannels, _unset)
+        hrChannels: identical(hrChannels, unset)
             ? this.hrChannels
             : hrChannels as String?,
-        codec: identical(codec, _unset) ? this.codec : codec as String?,
-        codecName: identical(codecName, _unset)
+        codec: identical(codec, unset) ? this.codec : codec as String?,
+        codecName: identical(codecName, unset)
             ? this.codecName
             : codecName as String?,
       );
@@ -103,7 +107,8 @@ final class AudioParams {
       );
 
   @override
-  String toString() => 'AudioParams(format: $format, sampleRate: $sampleRate, '
+  String toString() =>
+      'AudioParams(format: ${format?.mpvValue}, sampleRate: $sampleRate, '
       'channels: $channels, channelCount: $channelCount, '
       'hrChannels: $hrChannels, codec: $codec, codecName: $codecName)';
 }

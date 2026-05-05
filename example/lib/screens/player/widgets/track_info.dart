@@ -115,7 +115,7 @@ class _AudioParamsChips extends StatelessWidget {
               InfoChip(
                 label: '${(p.sampleRate! / 1000).toStringAsFixed(1)} kHz',
               ),
-            if (p.format != null) InfoChip(label: p.format!.toUpperCase()),
+            if (p.format != null) InfoChip(label: p.format!.mpvValue.toUpperCase()),
             StreamBuilder<double?>(
               stream: player.stream.audioBitrate,
               builder: (_, bSnap) {

@@ -17,9 +17,9 @@ void main() {
         mediaCache: const {},
         previous: Playlist.empty,
       );
-      expect(p.medias.length, 2);
-      expect(p.medias[0].uri, 'a.mp3');
-      expect(p.medias[1].uri, 'b.mp3');
+      expect(p.items.length, 2);
+      expect(p.items[0].uri, 'a.mp3');
+      expect(p.items[1].uri, 'b.mp3');
       expect(p.index, 0);
     });
 
@@ -45,7 +45,7 @@ void main() {
         mediaCache: {'a.mp3': cached},
         previous: Playlist.empty,
       );
-      expect(p.medias[0], same(cached),
+      expect(p.items[0], same(cached),
           reason: 'consumer-supplied Media must round-trip identically; mpv '
               'only echoes the URI back so the wrapper has to re-attach '
               'extras + headers from cache');
@@ -59,7 +59,7 @@ void main() {
         mediaCache: const {},
         previous: Playlist.empty,
       );
-      expect(p.medias[0], Media('unknown.mp3'));
+      expect(p.items[0], Media('unknown.mp3'));
     });
 
     test(
@@ -102,7 +102,7 @@ void main() {
         mediaCache: const {},
         previous: Playlist.empty,
       );
-      expect(p.medias, isEmpty);
+      expect(p.items, isEmpty);
       expect(p.index, 0);
     });
 
@@ -137,10 +137,10 @@ void main() {
         mediaCache: const {},
         previous: Playlist.empty,
       );
-      expect(p.medias.length, 3);
-      expect(p.medias[0].uri, 'a.mp3');
-      expect(p.medias[1].uri, '');
-      expect(p.medias[2].uri, 'b.mp3');
+      expect(p.items.length, 3);
+      expect(p.items[0].uri, 'a.mp3');
+      expect(p.items[1].uri, '');
+      expect(p.items[2].uri, 'b.mp3');
       expect(p.index, 2);
     });
   });
@@ -291,9 +291,9 @@ void main() {
         'channel-count': 6,
         'hr-channels': '5.1 surround',
       });
-      expect(p.format, 'floatp');
+      expect(p.format, Format.float32Planar);
       expect(p.sampleRate, 48000);
-      expect(p.channels, '5.1');
+      expect(p.channels, Channels.fiveOne);
       expect(p.channelCount, 6);
       expect(p.hrChannels, '5.1 surround');
       // codec / codecName are NOT in the node map — separate properties.
@@ -328,7 +328,7 @@ void main() {
       expect(p.hrChannels, isNull);
     });
 
-    test('accepts num for samplerate (defensive — mpv uses int64)', () {
+    test('accepts num for sampleRate (defensive — mpv uses int64)', () {
       final p = parseAudioParamsNode(<String, dynamic>{
         'samplerate': 44100.0, // implausible but safe to coerce
       });
@@ -433,17 +433,17 @@ void main() {
       expect(tracks[0].title, 'Stereo');
       expect(tracks[0].codec, 'flac');
       expect(tracks[0].codecDesc, contains('FLAC'));
-      expect(tracks[0].samplerate, 48000);
+      expect(tracks[0].sampleRate, 48000);
       expect(tracks[0].channels, 'stereo');
       expect(tracks[0].channelCount, 2);
 
       expect(tracks[1].selected, isFalse);
       expect(tracks[1].defaultTrack, isFalse);
 
-      // Cover-art track is recognisable via image / albumart flags so a
+      // Cover-art track is recognisable via image / albumArt flags so a
       // "switch audio track" UI can skip it.
       expect(tracks[2].image, isTrue);
-      expect(tracks[2].albumart, isTrue);
+      expect(tracks[2].albumArt, isTrue);
     });
 
     test('missing fields fall back to safe defaults', () {
@@ -500,10 +500,10 @@ void main() {
       expect(t.demuxBitrate, 850000.0);
       expect(t.demuxDuration, const Duration(milliseconds: 184500));
       expect(t.hlsBitrate, 192000.0);
-      expect(t.replaygainTrackGain, -3.5);
-      expect(t.replaygainTrackPeak, 0.98);
-      expect(t.replaygainAlbumGain, -2.1);
-      expect(t.replaygainAlbumPeak, 0.99);
+      expect(t.replayGainTrackGain, -3.5);
+      expect(t.replayGainTrackPeak, 0.98);
+      expect(t.replayGainAlbumGain, -2.1);
+      expect(t.replayGainAlbumPeak, 0.99);
       expect(t.metadata['TITLE'], 'Track One');
       expect(t.metadata['ARTIST'], 'Some Artist');
     });
@@ -519,7 +519,7 @@ void main() {
       expect(t.formatName, isNull);
       expect(t.demuxBitrate, isNull);
       expect(t.demuxDuration, isNull);
-      expect(t.replaygainTrackGain, isNull);
+      expect(t.replayGainTrackGain, isNull);
       expect(t.metadata, isEmpty);
     });
   });

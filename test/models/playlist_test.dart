@@ -11,7 +11,7 @@ void main() {
       const a = Media('a');
       const b = Media('b');
       const playlist = Playlist([a, b], index: 1);
-      expect(playlist.medias, [a, b]);
+      expect(playlist.items, [a, b]);
       expect(playlist.index, 1);
     });
 
@@ -22,14 +22,14 @@ void main() {
 
     test('Playlist.empty has zero medias and index=0', () {
       const playlist = Playlist.empty;
-      expect(playlist.medias, isEmpty);
+      expect(playlist.items, isEmpty);
       expect(playlist.index, 0);
     });
   });
 
   group('Playlist equality', () {
     test('the const Playlist.empty singleton is == to itself', () {
-      // Freezed generates structural `==` on (medias, index); the
+      // Freezed generates structural `==` on (items, index); the
       // singleton is the canonical empty playlist used as the default
       // seed for `state.playlist` and the `previous` fallback in
       // `parsePlaylistNode`.
@@ -90,7 +90,7 @@ void main() {
       // `Object.hashAll(medias)` so structural equality drives the hash.
       final a = Playlist(<Media>[const Media('x'), const Media('y')]);
       final b = Playlist(<Media>[const Media('x'), const Media('y')]);
-      expect(identical(a.medias, b.medias), isFalse,
+      expect(identical(a.items, b.items), isFalse,
           reason: 'lists must be separate instances for this test to bite');
       expect(a, b);
       expect(a.hashCode, b.hashCode);

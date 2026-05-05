@@ -20,17 +20,6 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 void main() {
   group('Per-filter wire coverage', () {
-    group('AbenchSettings (abench)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(abench: AbenchSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(abench: AbenchSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-abench');
-      });
-    });
     group('AcompressorSettings (acompressor)', () {
       test('disabled by default → drops out of toAfChain', () {
         const fx = AudioEffects(acompressor: AcompressorSettings());
@@ -140,17 +129,6 @@ void main() {
         expect(s.toFilterString(), contains('contrast=100.000'));
       });
     });
-    group('AcopySettings (acopy)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(acopy: AcopySettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(acopy: AcopySettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-acopy');
-      });
-    });
     group('AcrusherSettings (acrusher)', () {
       test('disabled by default → drops out of toAfChain', () {
         const fx = AudioEffects(acrusher: AcrusherSettings());
@@ -228,29 +206,6 @@ void main() {
         final s = const AcrusherSettings(enabled: true, samples: 250.0);
         expect(s.toFilterString(), contains('samples='));
         expect(s.toFilterString(), contains('samples=250.000'));
-      });
-    });
-    group('AcueSettings (acue)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(acue: AcueSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(acue: AcueSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-acue');
-      });
-
-      test('param `buffer` lands in wire when set to a non-default value', () {
-        final s = const AcueSettings(
-            enabled: true, buffer: const Duration(microseconds: 1000000));
-        expect(s.toFilterString(), contains('buffer='));
-      });
-
-      test('param `preroll` lands in wire when set to a non-default value', () {
-        final s = const AcueSettings(
-            enabled: true, preroll: const Duration(microseconds: 1000000));
-        expect(s.toFilterString(), contains('preroll='));
       });
     });
     group('AdeclickSettings (adeclick)', () {
@@ -1432,28 +1387,6 @@ void main() {
         expect(s.toFilterString(), contains('zeros='));
       });
     });
-    group('AintegralSettings (aintegral)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(aintegral: AintegralSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(aintegral: AintegralSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-aintegral');
-      });
-    });
-    group('AlatencySettings (alatency)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(alatency: AlatencySettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(alatency: AlatencySettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-alatency');
-      });
-    });
     group('AlimiterSettings (alimiter)', () {
       test('disabled by default → drops out of toAfChain', () {
         const fx = AudioEffects(alimiter: AlimiterSettings());
@@ -1553,40 +1486,6 @@ void main() {
         final s = const AllpassSettings(enabled: true, order: 1);
         expect(s.toFilterString(), contains('order='));
         expect(s.toFilterString(), contains('order=1'));
-      });
-    });
-    group('AloopSettings (aloop)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(aloop: AloopSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(aloop: AloopSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-aloop');
-      });
-
-      test('param `loop` lands in wire when set to a non-default value', () {
-        final s = const AloopSettings(enabled: true, loop: -1);
-        expect(s.toFilterString(), contains('loop='));
-        expect(s.toFilterString(), contains('loop=-1'));
-      });
-
-      test('param `time` lands in wire when set to a non-default value', () {
-        final s = const AloopSettings(
-            enabled: true, time: const Duration(microseconds: 1000000));
-        expect(s.toFilterString(), contains('time='));
-      });
-    });
-    group('AmetadataSettings (ametadata)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(ametadata: AmetadataSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(ametadata: AmetadataSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-ametadata');
       });
     });
     group('AnequalizerSettings (anequalizer)', () {
@@ -1704,17 +1603,6 @@ void main() {
         expect(s.toFilterString(), contains('strength=10000.000'));
       });
     });
-    group('AnullSettings (anull)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(anull: AnullSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(anull: AnullSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-anull');
-      });
-    });
     group('ApadSettings (apad)', () {
       test('disabled by default → drops out of toAfChain', () {
         const fx = AudioEffects(apad: ApadSettings());
@@ -1744,23 +1632,6 @@ void main() {
         final s = const ApadSettings(
             enabled: true, whole_dur: const Duration(microseconds: 999999));
         expect(s.toFilterString(), contains('whole_dur='));
-      });
-    });
-    group('ApermsSettings (aperms)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(aperms: ApermsSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(aperms: ApermsSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-aperms');
-      });
-
-      test('param `mode` lands in wire when set to a non-default value', () {
-        final s = const ApermsSettings(enabled: true, mode: ApermsMode.ro);
-        expect(s.toFilterString(), contains('mode='));
-        expect(s.toFilterString(), contains('mode=ro'));
       });
     });
     group('AphaserSettings (aphaser)', () {
@@ -1979,29 +1850,6 @@ void main() {
         expect(s.toFilterString(), contains('width=2.000'));
       });
     });
-    group('ArealtimeSettings (arealtime)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(arealtime: ArealtimeSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(arealtime: ArealtimeSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-arealtime');
-      });
-
-      test('param `limit` lands in wire when set to a non-default value', () {
-        final s = const ArealtimeSettings(
-            enabled: true, limit: const Duration(microseconds: 3000000));
-        expect(s.toFilterString(), contains('limit='));
-      });
-
-      test('param `speed` lands in wire when set to a non-default value', () {
-        final s = const ArealtimeSettings(enabled: true, speed: 2.0);
-        expect(s.toFilterString(), contains('speed='));
-        expect(s.toFilterString(), contains('speed=2.000'));
-      });
-    });
     group('AresampleSettings (aresample)', () {
       test('disabled by default → drops out of toAfChain', () {
         const fx = AudioEffects(aresample: AresampleSettings());
@@ -2018,17 +1866,6 @@ void main() {
         final s = const AresampleSettings(enabled: true, sample_rate: 1);
         expect(s.toFilterString(), contains('sample_rate='));
         expect(s.toFilterString(), contains('sample_rate=1'));
-      });
-    });
-    group('AreverseSettings (areverse)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(areverse: AreverseSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(areverse: AreverseSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-areverse');
       });
     });
     group('ArnndnSettings (arnndn)', () {
@@ -2056,160 +1893,6 @@ void main() {
       test('param `model` lands in wire when set to a non-default value', () {
         final s = const ArnndnSettings(enabled: true, model: 'wire_test_alt');
         expect(s.toFilterString(), contains('model='));
-      });
-    });
-    group('AsegmentSettings (asegment)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(asegment: AsegmentSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(asegment: AsegmentSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-asegment');
-      });
-
-      test('param `samples` lands in wire when set to a non-default value', () {
-        final s =
-            const AsegmentSettings(enabled: true, samples: 'wire_test_alt');
-        expect(s.toFilterString(), contains('samples='));
-      });
-    });
-    group('AselectSettings (aselect)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(aselect: AselectSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(aselect: AselectSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-aselect');
-      });
-    });
-    group('AsendcmdSettings (asendcmd)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(asendcmd: AsendcmdSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(asendcmd: AsendcmdSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-asendcmd');
-      });
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const AsendcmdSettings(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
-
-      test('param `commands` lands in wire when set to a non-default value',
-          () {
-        final s =
-            const AsendcmdSettings(enabled: true, commands: 'wire_test_alt');
-        expect(s.toFilterString(), contains('commands='));
-      });
-
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const AsendcmdSettings(enabled: true, f: 'wire_test_alt');
-        expect(s.toFilterString(), contains('f='));
-      });
-
-      test('param `filename` lands in wire when set to a non-default value',
-          () {
-        final s =
-            const AsendcmdSettings(enabled: true, filename: 'wire_test_alt');
-        expect(s.toFilterString(), contains('filename='));
-      });
-    });
-    group('AsetnsamplesSettings (asetnsamples)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(asetnsamples: AsetnsamplesSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx =
-            AudioEffects(asetnsamples: AsetnsamplesSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-asetnsamples');
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const AsetnsamplesSettings(enabled: true, n: 1);
-        expect(s.toFilterString(), contains('n='));
-        expect(s.toFilterString(), contains('n=1'));
-      });
-
-      test(
-          'param `nb_out_samples` lands in wire when set to a non-default value',
-          () {
-        final s = const AsetnsamplesSettings(enabled: true, nb_out_samples: 1);
-        expect(s.toFilterString(), contains('nb_out_samples='));
-        expect(s.toFilterString(), contains('nb_out_samples=1'));
-      });
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const AsetnsamplesSettings(enabled: true, p: false);
-        expect(s.toFilterString(), contains('p='));
-      });
-
-      test('param `pad` lands in wire when set to a non-default value', () {
-        final s = const AsetnsamplesSettings(enabled: true, pad: false);
-        expect(s.toFilterString(), contains('pad='));
-      });
-    });
-    group('AsetptsSettings (asetpts)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(asetpts: AsetptsSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(asetpts: AsetptsSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-asetpts');
-      });
-    });
-    group('AsetrateSettings (asetrate)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(asetrate: AsetrateSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(asetrate: AsetrateSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-asetrate');
-      });
-    });
-    group('AsettbSettings (asettb)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(asettb: AsettbSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(asettb: AsettbSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-asettb');
-      });
-    });
-    group('AshowinfoSettings (ashowinfo)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(ashowinfo: AshowinfoSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(ashowinfo: AshowinfoSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-ashowinfo');
-      });
-    });
-    group('AsidedataSettings (asidedata)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(asidedata: AsidedataSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(asidedata: AsidedataSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-asidedata');
       });
     });
     group('AsoftclipSettings (asoftclip)', () {
@@ -2254,106 +1937,6 @@ void main() {
             const AsoftclipSettings(enabled: true, type: AsoftclipTypes.tanh);
         expect(s.toFilterString(), contains('type='));
         expect(s.toFilterString(), contains('type=tanh'));
-      });
-    });
-    group('AspectralstatsSettings (aspectralstats)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(aspectralstats: AspectralstatsSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx =
-            AudioEffects(aspectralstats: AspectralstatsSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-aspectralstats');
-      });
-
-      test('param `measure` lands in wire when set to a non-default value', () {
-        final s = const AspectralstatsSettings(
-            enabled: true, measure: const {AspectralstatsMeasure.none});
-        expect(s.toFilterString(), contains('measure='));
-      });
-
-      test('param `overlap` lands in wire when set to a non-default value', () {
-        final s = const AspectralstatsSettings(enabled: true, overlap: 1.0);
-        expect(s.toFilterString(), contains('overlap='));
-        expect(s.toFilterString(), contains('overlap=1.000'));
-      });
-
-      test('param `win_size` lands in wire when set to a non-default value',
-          () {
-        final s = const AspectralstatsSettings(enabled: true, win_size: 65536);
-        expect(s.toFilterString(), contains('win_size='));
-        expect(s.toFilterString(), contains('win_size=65536'));
-      });
-    });
-    group('AstatsSettings (astats)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(astats: AstatsSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(astats: AstatsSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-astats');
-      });
-
-      test('param `length` lands in wire when set to a non-default value', () {
-        final s = const AstatsSettings(enabled: true, length: 10.0);
-        expect(s.toFilterString(), contains('length='));
-        expect(s.toFilterString(), contains('length=10.000'));
-      });
-
-      test(
-          'param `measure_overall` lands in wire when set to a non-default value',
-          () {
-        final s = const AstatsSettings(
-            enabled: true, measure_overall: const {AstatsMeasure.none});
-        expect(s.toFilterString(), contains('measure_overall='));
-      });
-
-      test(
-          'param `measure_perchannel` lands in wire when set to a non-default value',
-          () {
-        final s = const AstatsSettings(
-            enabled: true, measure_perchannel: const {AstatsMeasure.none});
-        expect(s.toFilterString(), contains('measure_perchannel='));
-      });
-
-      test('param `metadata` lands in wire when set to a non-default value',
-          () {
-        final s = const AstatsSettings(enabled: true, metadata: true);
-        expect(s.toFilterString(), contains('metadata='));
-      });
-
-      test('param `reset` lands in wire when set to a non-default value', () {
-        final s = const AstatsSettings(enabled: true, reset: 1);
-        expect(s.toFilterString(), contains('reset='));
-        expect(s.toFilterString(), contains('reset=1'));
-      });
-    });
-    group('AstreamselectSettings (astreamselect)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(astreamselect: AstreamselectSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx =
-            AudioEffects(astreamselect: AstreamselectSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-astreamselect');
-      });
-
-      test('param `inputs` lands in wire when set to a non-default value', () {
-        final s = const AstreamselectSettings(enabled: true, inputs: 3);
-        expect(s.toFilterString(), contains('inputs='));
-        expect(s.toFilterString(), contains('inputs=3'));
-      });
-
-      test('param `map` lands in wire when set to a non-default value', () {
-        final s =
-            const AstreamselectSettings(enabled: true, map: 'wire_test_alt');
-        expect(s.toFilterString(), contains('map='));
       });
     });
     group('AsubboostSettings (asubboost)', () {
@@ -2607,17 +2190,6 @@ void main() {
         final s = const AtiltSettings(enabled: true, width: 10000.0);
         expect(s.toFilterString(), contains('width='));
         expect(s.toFilterString(), contains('width=10000.000'));
-      });
-    });
-    group('AtrimSettings (atrim)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(atrim: AtrimSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(atrim: AtrimSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-atrim');
       });
     });
     group('BandpassSettings (bandpass)', () {
@@ -4151,31 +3723,6 @@ void main() {
         expect(s.toFilterString(), contains('args='));
       });
     });
-    group('ReplaygainSettings (replaygain)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(replaygain: ReplaygainSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(replaygain: ReplaygainSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-replaygain');
-      });
-
-      test('param `track_gain` lands in wire when set to a non-default value',
-          () {
-        final s = const ReplaygainSettings(enabled: true, track_gain: 1.0);
-        expect(s.toFilterString(), contains('track_gain='));
-        expect(s.toFilterString(), contains('track_gain=1.000'));
-      });
-
-      test('param `track_peak` lands in wire when set to a non-default value',
-          () {
-        final s = const ReplaygainSettings(enabled: true, track_peak: 1.0);
-        expect(s.toFilterString(), contains('track_peak='));
-        expect(s.toFilterString(), contains('track_peak=1.000'));
-      });
-    });
     group('RubberbandSettings (rubberband)', () {
       test('disabled by default → drops out of toAfChain', () {
         const fx = AudioEffects(rubberband: RubberbandSettings());
@@ -4257,53 +3804,6 @@ void main() {
             enabled: true, window: RubberbandWindow.short);
         expect(s.toFilterString(), contains('window='));
         expect(s.toFilterString(), contains('window=short'));
-      });
-    });
-    group('SilencedetectSettings (silencedetect)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(silencedetect: SilencedetectSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx =
-            AudioEffects(silencedetect: SilencedetectSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-silencedetect');
-      });
-
-      test('param `d` lands in wire when set to a non-default value', () {
-        final s = const SilencedetectSettings(
-            enabled: true, d: const Duration(microseconds: 3000000));
-        expect(s.toFilterString(), contains('d='));
-      });
-
-      test('param `duration` lands in wire when set to a non-default value',
-          () {
-        final s = const SilencedetectSettings(
-            enabled: true, duration: const Duration(microseconds: 3000000));
-        expect(s.toFilterString(), contains('duration='));
-      });
-
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const SilencedetectSettings(enabled: true, m: true);
-        expect(s.toFilterString(), contains('m='));
-      });
-
-      test('param `mono` lands in wire when set to a non-default value', () {
-        final s = const SilencedetectSettings(enabled: true, mono: true);
-        expect(s.toFilterString(), contains('mono='));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const SilencedetectSettings(enabled: true, n: 0.0);
-        expect(s.toFilterString(), contains('n='));
-        expect(s.toFilterString(), contains('n=0.000'));
-      });
-
-      test('param `noise` lands in wire when set to a non-default value', () {
-        final s = const SilencedetectSettings(enabled: true, noise: 0.0);
-        expect(s.toFilterString(), contains('noise='));
-        expect(s.toFilterString(), contains('noise=0.000'));
       });
     });
     group('SilenceremoveSettings (silenceremove)', () {
@@ -5337,71 +4837,6 @@ void main() {
         expect(s.toFilterString(), contains('strength=0.500'));
       });
     });
-    group('VolumeSettings (volume)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(volume: VolumeSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx = AudioEffects(volume: VolumeSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-volume');
-      });
-
-      test('param `eval` lands in wire when set to a non-default value', () {
-        final s = const VolumeSettings(enabled: true, eval: VolumeEval.frame);
-        expect(s.toFilterString(), contains('eval='));
-        expect(s.toFilterString(), contains('eval=frame'));
-      });
-
-      test('param `precision` lands in wire when set to a non-default value',
-          () {
-        final s = const VolumeSettings(
-            enabled: true, precision: VolumePrecision.float);
-        expect(s.toFilterString(), contains('precision='));
-        expect(s.toFilterString(), contains('precision=float'));
-      });
-
-      test('param `replaygain` lands in wire when set to a non-default value',
-          () {
-        final s = const VolumeSettings(
-            enabled: true, replaygain: VolumeReplaygain.ignore);
-        expect(s.toFilterString(), contains('replaygain='));
-        expect(s.toFilterString(), contains('replaygain=ignore'));
-      });
-
-      test(
-          'param `replaygain_noclip` lands in wire when set to a non-default value',
-          () {
-        final s = const VolumeSettings(enabled: true, replaygain_noclip: false);
-        expect(s.toFilterString(), contains('replaygain_noclip='));
-      });
-
-      test(
-          'param `replaygain_preamp` lands in wire when set to a non-default value',
-          () {
-        final s = const VolumeSettings(enabled: true, replaygain_preamp: 15.0);
-        expect(s.toFilterString(), contains('replaygain_preamp='));
-        expect(s.toFilterString(), contains('replaygain_preamp=15.000'));
-      });
-
-      test('param `volume` lands in wire when set to a non-default value', () {
-        final s = const VolumeSettings(enabled: true, volume: 'wire_test_alt');
-        expect(s.toFilterString(), contains('volume='));
-      });
-    });
-    group('VolumedetectSettings (volumedetect)', () {
-      test('disabled by default → drops out of toAfChain', () {
-        const fx = AudioEffects(volumedetect: VolumedetectSettings());
-        expect(fx.toAfChain(), '');
-      });
-
-      test('enabled with every param at default → bare lavfi name', () {
-        const fx =
-            AudioEffects(volumedetect: VolumedetectSettings(enabled: true));
-        expect(fx.toAfChain(), 'lavfi-volumedetect');
-      });
-    });
   });
 
   group('Per-enum round-trip coverage', () {
@@ -5801,19 +5236,6 @@ void main() {
         expect(AnlmdnMode.fromMpv(null), AnlmdnMode.i);
       });
     });
-    group('ApermsMode (codegen enum)', () {
-      test('every member round-trips via mpvValue / fromMpv', () {
-        for (final v in ApermsMode.values) {
-          expect(v.mpvValue, isNotEmpty);
-          expect(ApermsMode.fromMpv(v.mpvValue), v);
-        }
-      });
-
-      test('fromMpv unknown / null → first member (safe fallback)', () {
-        expect(ApermsMode.fromMpv('this_will_never_match'), ApermsMode.none);
-        expect(ApermsMode.fromMpv(null), ApermsMode.none);
-      });
-    });
     group('AphaserType (codegen enum)', () {
       test('every member round-trips via mpvValue / fromMpv', () {
         for (final v in AphaserType.values) {
@@ -5868,34 +5290,6 @@ void main() {
         expect(AsoftclipTypes.fromMpv('this_will_never_match'),
             AsoftclipTypes.hard);
         expect(AsoftclipTypes.fromMpv(null), AsoftclipTypes.hard);
-      });
-    });
-    group('AspectralstatsMeasure (codegen enum)', () {
-      test('every member round-trips via mpvValue / fromMpv', () {
-        for (final v in AspectralstatsMeasure.values) {
-          expect(v.mpvValue, isNotEmpty);
-          expect(AspectralstatsMeasure.fromMpv(v.mpvValue), v);
-        }
-      });
-
-      test('fromMpv unknown / null → first member (safe fallback)', () {
-        expect(AspectralstatsMeasure.fromMpv('this_will_never_match'),
-            AspectralstatsMeasure.none);
-        expect(AspectralstatsMeasure.fromMpv(null), AspectralstatsMeasure.none);
-      });
-    });
-    group('AstatsMeasure (codegen enum)', () {
-      test('every member round-trips via mpvValue / fromMpv', () {
-        for (final v in AstatsMeasure.values) {
-          expect(v.mpvValue, isNotEmpty);
-          expect(AstatsMeasure.fromMpv(v.mpvValue), v);
-        }
-      });
-
-      test('fromMpv unknown / null → first member (safe fallback)', () {
-        expect(
-            AstatsMeasure.fromMpv('this_will_never_match'), AstatsMeasure.none);
-        expect(AstatsMeasure.fromMpv(null), AstatsMeasure.none);
       });
     });
     group('DeesserMode (codegen enum)', () {
@@ -6301,47 +5695,6 @@ void main() {
         expect(SurroundLfeMode.fromMpv('this_will_never_match'),
             SurroundLfeMode.add);
         expect(SurroundLfeMode.fromMpv(null), SurroundLfeMode.add);
-      });
-    });
-    group('VolumeEval (codegen enum)', () {
-      test('every member round-trips via mpvValue / fromMpv', () {
-        for (final v in VolumeEval.values) {
-          expect(v.mpvValue, isNotEmpty);
-          expect(VolumeEval.fromMpv(v.mpvValue), v);
-        }
-      });
-
-      test('fromMpv unknown / null → first member (safe fallback)', () {
-        expect(VolumeEval.fromMpv('this_will_never_match'), VolumeEval.once);
-        expect(VolumeEval.fromMpv(null), VolumeEval.once);
-      });
-    });
-    group('VolumePrecision (codegen enum)', () {
-      test('every member round-trips via mpvValue / fromMpv', () {
-        for (final v in VolumePrecision.values) {
-          expect(v.mpvValue, isNotEmpty);
-          expect(VolumePrecision.fromMpv(v.mpvValue), v);
-        }
-      });
-
-      test('fromMpv unknown / null → first member (safe fallback)', () {
-        expect(VolumePrecision.fromMpv('this_will_never_match'),
-            VolumePrecision.fixed);
-        expect(VolumePrecision.fromMpv(null), VolumePrecision.fixed);
-      });
-    });
-    group('VolumeReplaygain (codegen enum)', () {
-      test('every member round-trips via mpvValue / fromMpv', () {
-        for (final v in VolumeReplaygain.values) {
-          expect(v.mpvValue, isNotEmpty);
-          expect(VolumeReplaygain.fromMpv(v.mpvValue), v);
-        }
-      });
-
-      test('fromMpv unknown / null → first member (safe fallback)', () {
-        expect(VolumeReplaygain.fromMpv('this_will_never_match'),
-            VolumeReplaygain.drop);
-        expect(VolumeReplaygain.fromMpv(null), VolumeReplaygain.drop);
       });
     });
   });

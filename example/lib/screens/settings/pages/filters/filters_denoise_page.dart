@@ -700,23 +700,6 @@ class _FiltersDenoisePageState extends State<FiltersDenoisePage> {
             );
           },
         ),
-        StreamBuilder<AintegralSettings>(
-          stream: _watch((e) => e.aintegral),
-          initialData: player.state.audioEffects.aintegral,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'aintegral',
-              subtitle: 'lavfi-aintegral',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(aintegral: s.copyWith(enabled: v)),
-              ),
-              params: [],
-            );
-          },
-        ),
         StreamBuilder<AnlmdnSettings>(
           stream: _watch((e) => e.anlmdn),
           initialData: player.state.audioEffects.anlmdn,

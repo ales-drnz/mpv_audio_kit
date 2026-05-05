@@ -87,7 +87,7 @@ class SettingsService {
       key: 'audio-device',
       apply: player.setAudioDevice,
       toStored: (d) => d.name,
-      fromStored: (s) => Device(s, s),
+      fromStored: (s) => Device(name: s, description: s),
     );
     await _bindMapped<Set<Spdif>, String>(
       stream: player.stream.audioSpdif,

@@ -106,9 +106,9 @@ void main() {
       dispatch('audio-codec', 'flac');
       dispatch('audio-codec-name', 'FLAC');
 
-      expect(state.audioParams.format, 'floatp');
+      expect(state.audioParams.format, Format.float32Planar);
       expect(state.audioParams.sampleRate, 48000);
-      expect(state.audioParams.channels, 'stereo');
+      expect(state.audioParams.channels, Channels.stereo);
       expect(state.audioParams.channelCount, 2);
       expect(state.audioParams.hrChannels, 'L+R');
       expect(state.audioParams.codec, 'flac');
@@ -131,7 +131,7 @@ void main() {
       });
 
       // Both node-side and sibling-side fields must coexist on state.
-      expect(state.audioParams.format, 'floatp');
+      expect(state.audioParams.format, Format.float32Planar);
       expect(state.audioParams.sampleRate, 48000);
       expect(state.audioParams.codec, 'flac',
           reason: 'audio-params node reduce must not reset the codec fields '
@@ -150,9 +150,9 @@ void main() {
         'hr-channels': '2.0',
       });
 
-      expect(state.audioOutParams.format, 's16');
+      expect(state.audioOutParams.format, Format.s16);
       expect(state.audioOutParams.sampleRate, 44100);
-      expect(state.audioOutParams.channels, 'stereo');
+      expect(state.audioOutParams.channels, Channels.stereo);
       expect(state.audioOutParams.channelCount, 2);
       expect(state.audioOutParams.hrChannels, '2.0');
     });

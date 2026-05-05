@@ -17,7 +17,7 @@ class AidPage extends StatelessWidget {
           initialData: player.state.tracks,
           builder: (context, tracksSnap) {
             final audioTracks = (tracksSnap.data ?? const <MpvTrack>[])
-                .where((t) => t.type == 'audio' && !t.image && !t.albumart)
+                .where((t) => t.type == 'audio' && !t.image && !t.albumArt)
                 .toList();
             return StreamBuilder<MpvTrack?>(
               stream: player.stream.currentAudioTrack,

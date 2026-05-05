@@ -2,11 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-const _Unset _unset = _Unset();
-
-class _Unset {
-  const _Unset();
-}
+import '../internals/unset_sentinel.dart';
 
 bool _mapEq(Map<String, String> a, Map<String, String> b) {
   if (identical(a, b)) return true;
@@ -25,10 +21,10 @@ bool _mapEq(Map<String, String> a, Map<String, String> b) {
 /// `Player.setAudioTrack(Track.id(...))`), a
 /// [type] (`'audio'`, `'video'`, `'sub'`, etc.), and metadata like
 /// [title] / [lang] / [defaultTrack] / [forced]. Audio tracks
-/// additionally expose decoder-side parameters ([samplerate],
+/// additionally expose decoder-side parameters ([sampleRate],
 /// [channels], [channelCount]).
 ///
-/// The [image] / [albumart] flags distinguish embedded picture streams
+/// The [image] / [albumArt] flags distinguish embedded picture streams
 /// (`attached_pic`) from regular audio tracks — set [image] to skip
 /// such pseudo-tracks when populating a "switch audio track" UI.
 final class MpvTrack {
@@ -71,7 +67,7 @@ final class MpvTrack {
   final bool image;
 
   /// Whether this track is specifically marked as album art.
-  final bool albumart;
+  final bool albumArt;
 
   /// Codec short name (e.g. `'flac'`, `'aac'`).
   final String? codec;
@@ -92,7 +88,7 @@ final class MpvTrack {
   final String? formatName;
 
   /// Decoder-side sample rate in Hz. Audio tracks only.
-  final int? samplerate;
+  final int? sampleRate;
 
   /// Decoder-side channel layout (e.g. `'stereo'`, `'5.1'`).
   final String? channels;
@@ -115,20 +111,20 @@ final class MpvTrack {
 
   /// ReplayGain track-level gain in dB. Only present for audio tracks
   /// with corresponding tag information.
-  final double? replaygainTrackGain;
+  final double? replayGainTrackGain;
 
   /// ReplayGain track-level peak as a linear amplitude (1.0 = full
   /// scale). Only present for audio tracks with corresponding tag
   /// information.
-  final double? replaygainTrackPeak;
+  final double? replayGainTrackPeak;
 
   /// ReplayGain album-level gain in dB. mpv falls back to the
   /// per-track value when the file carries only per-track tags.
-  final double? replaygainAlbumGain;
+  final double? replayGainAlbumGain;
 
   /// ReplayGain album-level peak as a linear amplitude. Same per-track
-  /// fallback as [replaygainAlbumGain].
-  final double? replaygainAlbumPeak;
+  /// fallback as [replayGainAlbumGain].
+  final double? replayGainAlbumPeak;
 
   /// Per-track tag dictionary. Distinct from [PlayerState.metadata]
   /// (which is global / file-level): this is the metadata mpv keeps
@@ -148,22 +144,22 @@ final class MpvTrack {
     this.visualImpaired = false,
     this.hearingImpaired = false,
     this.image = false,
-    this.albumart = false,
+    this.albumArt = false,
     this.codec,
     this.codecDesc,
     this.decoder,
     this.decoderDesc,
     this.formatName,
-    this.samplerate,
+    this.sampleRate,
     this.channels,
     this.channelCount,
     this.demuxBitrate,
     this.demuxDuration,
     this.hlsBitrate,
-    this.replaygainTrackGain,
-    this.replaygainTrackPeak,
-    this.replaygainAlbumGain,
-    this.replaygainAlbumPeak,
+    this.replayGainTrackGain,
+    this.replayGainTrackPeak,
+    this.replayGainAlbumGain,
+    this.replayGainAlbumPeak,
     this.metadata = const <String, String>{},
   });
 
@@ -171,85 +167,85 @@ final class MpvTrack {
     int? id,
     String? type,
     bool? selected,
-    Object? title = _unset,
-    Object? lang = _unset,
+    Object? title = unset,
+    Object? lang = unset,
     bool? defaultTrack,
     bool? forced,
     bool? dependent,
     bool? visualImpaired,
     bool? hearingImpaired,
     bool? image,
-    bool? albumart,
-    Object? codec = _unset,
-    Object? codecDesc = _unset,
-    Object? decoder = _unset,
-    Object? decoderDesc = _unset,
-    Object? formatName = _unset,
-    Object? samplerate = _unset,
-    Object? channels = _unset,
-    Object? channelCount = _unset,
-    Object? demuxBitrate = _unset,
-    Object? demuxDuration = _unset,
-    Object? hlsBitrate = _unset,
-    Object? replaygainTrackGain = _unset,
-    Object? replaygainTrackPeak = _unset,
-    Object? replaygainAlbumGain = _unset,
-    Object? replaygainAlbumPeak = _unset,
+    bool? albumArt,
+    Object? codec = unset,
+    Object? codecDesc = unset,
+    Object? decoder = unset,
+    Object? decoderDesc = unset,
+    Object? formatName = unset,
+    Object? sampleRate = unset,
+    Object? channels = unset,
+    Object? channelCount = unset,
+    Object? demuxBitrate = unset,
+    Object? demuxDuration = unset,
+    Object? hlsBitrate = unset,
+    Object? replayGainTrackGain = unset,
+    Object? replayGainTrackPeak = unset,
+    Object? replayGainAlbumGain = unset,
+    Object? replayGainAlbumPeak = unset,
     Map<String, String>? metadata,
   }) =>
       MpvTrack(
         id: id ?? this.id,
         type: type ?? this.type,
         selected: selected ?? this.selected,
-        title: identical(title, _unset) ? this.title : title as String?,
-        lang: identical(lang, _unset) ? this.lang : lang as String?,
+        title: identical(title, unset) ? this.title : title as String?,
+        lang: identical(lang, unset) ? this.lang : lang as String?,
         defaultTrack: defaultTrack ?? this.defaultTrack,
         forced: forced ?? this.forced,
         dependent: dependent ?? this.dependent,
         visualImpaired: visualImpaired ?? this.visualImpaired,
         hearingImpaired: hearingImpaired ?? this.hearingImpaired,
         image: image ?? this.image,
-        albumart: albumart ?? this.albumart,
-        codec: identical(codec, _unset) ? this.codec : codec as String?,
-        codecDesc: identical(codecDesc, _unset)
+        albumArt: albumArt ?? this.albumArt,
+        codec: identical(codec, unset) ? this.codec : codec as String?,
+        codecDesc: identical(codecDesc, unset)
             ? this.codecDesc
             : codecDesc as String?,
         decoder:
-            identical(decoder, _unset) ? this.decoder : decoder as String?,
-        decoderDesc: identical(decoderDesc, _unset)
+            identical(decoder, unset) ? this.decoder : decoder as String?,
+        decoderDesc: identical(decoderDesc, unset)
             ? this.decoderDesc
             : decoderDesc as String?,
-        formatName: identical(formatName, _unset)
+        formatName: identical(formatName, unset)
             ? this.formatName
             : formatName as String?,
-        samplerate:
-            identical(samplerate, _unset) ? this.samplerate : samplerate as int?,
+        sampleRate:
+            identical(sampleRate, unset) ? this.sampleRate : sampleRate as int?,
         channels:
-            identical(channels, _unset) ? this.channels : channels as String?,
-        channelCount: identical(channelCount, _unset)
+            identical(channels, unset) ? this.channels : channels as String?,
+        channelCount: identical(channelCount, unset)
             ? this.channelCount
             : channelCount as int?,
-        demuxBitrate: identical(demuxBitrate, _unset)
+        demuxBitrate: identical(demuxBitrate, unset)
             ? this.demuxBitrate
             : demuxBitrate as double?,
-        demuxDuration: identical(demuxDuration, _unset)
+        demuxDuration: identical(demuxDuration, unset)
             ? this.demuxDuration
             : demuxDuration as Duration?,
-        hlsBitrate: identical(hlsBitrate, _unset)
+        hlsBitrate: identical(hlsBitrate, unset)
             ? this.hlsBitrate
             : hlsBitrate as double?,
-        replaygainTrackGain: identical(replaygainTrackGain, _unset)
-            ? this.replaygainTrackGain
-            : replaygainTrackGain as double?,
-        replaygainTrackPeak: identical(replaygainTrackPeak, _unset)
-            ? this.replaygainTrackPeak
-            : replaygainTrackPeak as double?,
-        replaygainAlbumGain: identical(replaygainAlbumGain, _unset)
-            ? this.replaygainAlbumGain
-            : replaygainAlbumGain as double?,
-        replaygainAlbumPeak: identical(replaygainAlbumPeak, _unset)
-            ? this.replaygainAlbumPeak
-            : replaygainAlbumPeak as double?,
+        replayGainTrackGain: identical(replayGainTrackGain, unset)
+            ? this.replayGainTrackGain
+            : replayGainTrackGain as double?,
+        replayGainTrackPeak: identical(replayGainTrackPeak, unset)
+            ? this.replayGainTrackPeak
+            : replayGainTrackPeak as double?,
+        replayGainAlbumGain: identical(replayGainAlbumGain, unset)
+            ? this.replayGainAlbumGain
+            : replayGainAlbumGain as double?,
+        replayGainAlbumPeak: identical(replayGainAlbumPeak, unset)
+            ? this.replayGainAlbumPeak
+            : replayGainAlbumPeak as double?,
         metadata: metadata ?? this.metadata,
       );
 
@@ -268,22 +264,22 @@ final class MpvTrack {
           other.visualImpaired == visualImpaired &&
           other.hearingImpaired == hearingImpaired &&
           other.image == image &&
-          other.albumart == albumart &&
+          other.albumArt == albumArt &&
           other.codec == codec &&
           other.codecDesc == codecDesc &&
           other.decoder == decoder &&
           other.decoderDesc == decoderDesc &&
           other.formatName == formatName &&
-          other.samplerate == samplerate &&
+          other.sampleRate == sampleRate &&
           other.channels == channels &&
           other.channelCount == channelCount &&
           other.demuxBitrate == demuxBitrate &&
           other.demuxDuration == demuxDuration &&
           other.hlsBitrate == hlsBitrate &&
-          other.replaygainTrackGain == replaygainTrackGain &&
-          other.replaygainTrackPeak == replaygainTrackPeak &&
-          other.replaygainAlbumGain == replaygainAlbumGain &&
-          other.replaygainAlbumPeak == replaygainAlbumPeak &&
+          other.replayGainTrackGain == replayGainTrackGain &&
+          other.replayGainTrackPeak == replayGainTrackPeak &&
+          other.replayGainAlbumGain == replayGainAlbumGain &&
+          other.replayGainAlbumPeak == replayGainAlbumPeak &&
           _mapEq(metadata, other.metadata));
 
   @override
@@ -299,22 +295,22 @@ final class MpvTrack {
         visualImpaired,
         hearingImpaired,
         image,
-        albumart,
+        albumArt,
         codec,
         codecDesc,
         decoder,
         decoderDesc,
         formatName,
-        samplerate,
+        sampleRate,
         channels,
         channelCount,
         demuxBitrate,
         demuxDuration,
         hlsBitrate,
-        replaygainTrackGain,
-        replaygainTrackPeak,
-        replaygainAlbumGain,
-        replaygainAlbumPeak,
+        replayGainTrackGain,
+        replayGainTrackPeak,
+        replayGainAlbumGain,
+        replayGainAlbumPeak,
         Object.hashAllUnordered(
           metadata.entries.map((e) => Object.hash(e.key, e.value)),
         ),

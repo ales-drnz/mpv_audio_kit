@@ -52,7 +52,7 @@ void main() {
       // openAll — broadcast emits during the load phase shouldn't be
       // missed by a late firstWhere.
       final advanced = player.stream.playlist
-          .firstWhere((p) => p.medias.length == 2 && p.index == 1)
+          .firstWhere((p) => p.items.length == 2 && p.index == 1)
           .timeout(const Duration(seconds: 30));
 
       await player.openAll([
@@ -64,7 +64,7 @@ void main() {
       expect(player.state.playlist.index, 1,
           reason: 'mpv must advance to the second track when the first '
               'reaches EOF naturally');
-      expect(player.state.playlist.medias.length, 2);
+      expect(player.state.playlist.items.length, 2);
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 }

@@ -54,6 +54,7 @@ export 'src/types/state/mpv_playback_state.dart' show MpvPlaybackState;
 export 'src/events/mpv_log_entry.dart' show MpvLogEntry;
 export 'src/events/mpv_hook_event.dart' show MpvHookEvent;
 export 'src/types/enums/hook.dart' show Hook;
+export 'src/types/enums/log_level.dart' show LogLevel;
 export 'src/types/state/mpv_prefetch_state.dart' show MpvPrefetchState;
 export 'src/events/mpv_player_error.dart'
     show
@@ -69,4 +70,4 @@ export 'src/player/player_state.dart' show PlayerState;
 export 'src/player/player_stream.dart' show PlayerStream;
 export 'src/mpv_bindings.dart' show MpvLibraryException, MpvError;
 export 'src/events/mpv_exception.dart' show MpvException;
-export 'src/library_loader.dart' show MpvAudioKit;
+export 'src/internals/library_loader.dart' show MpvAudioKit;

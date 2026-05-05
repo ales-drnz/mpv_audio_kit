@@ -88,9 +88,9 @@ mixin _PlaylistModule on _PlayerBase {
   }
 
   /// Sets the playlist repeat mode.
-  Future<void> setLoop(Loop mode) async {
+  Future<void> setLoop(Loop loop) async {
     _checkNotDisposed();
-    switch (mode) {
+    switch (loop) {
       case Loop.off:
         _prop('loop-file', 'no');
         _prop('loop-playlist', 'no');
@@ -104,9 +104,9 @@ mixin _PlaylistModule on _PlayerBase {
     // Optimistic update — `state.loop` reflects the requested mode
     // without waiting for the two underlying observers to round-trip.
     _updateField(
-      (s) => s.copyWith(loop: mode),
+      (s) => s.copyWith(loop: loop),
       _loop,
-      mode,
+      loop,
     );
   }
 

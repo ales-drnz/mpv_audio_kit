@@ -385,13 +385,31 @@ class MpvEventIsolate {
   SendPort? _toIsolate;
   ReceivePort? _fromIsolate;
   ReceivePort? _exitPort;
-  final _events = StreamController<MpvIsolateEvent>.broadcast();
+  // Non-broadcast: a single subscriber and buffering for events that
+  // arrive between isolate-start and the main-side listen registration.
+  // Using a broadcast controller dropped the initial PROPERTY_CHANGE
+  // burst (mpv emits one per `mpv_observe_property` call right after
+  // the isolate begins polling — ~70 properties), leaving downstream
+  // state partially populated.
+  final _events = StreamController<MpvIsolateEvent>();
 
   Stream<MpvIsolateEvent> get events => _events.stream;
 
   /// Spawns the event loop isolate and wires it to [handle].
-  Future<void> start(Pointer<mpv.MpvHandle> handle,
-      {String? libraryPath}) async {
+  ///
+  /// If [onEvent] is provided, the listener is registered BEFORE the
+  /// init message is sent to the isolate, eliminating the broadcast
+  /// race that otherwise drops the initial property-change burst. When
+  /// [onEvent] is omitted the controller buffers and the caller can
+  /// subscribe via [events] later — but is responsible for ensuring no
+  /// events are dropped (the stream is single-subscription).
+  Future<void> start(
+    Pointer<mpv.MpvHandle> handle, {
+    String? libraryPath,
+    void Function(MpvIsolateEvent)? onEvent,
+  }) async {
+    if (onEvent != null) _events.stream.listen(onEvent);
+
     final initPort = ReceivePort();
     _isolate = await Isolate.spawn(_isolateEntry, initPort.sendPort);
 
@@ -419,10 +437,10 @@ class MpvEventIsolate {
     _fromIsolate = fromIsolate;
     fromIsolate.listen((msg) {
       // Drop messages that arrive after `stop()` has closed the
-      // broadcast controller. Without this guard the queued message
-      // would throw "Bad state: Cannot add new events after calling
-      // close" — visible only when many Player instances are created
-      // and disposed in rapid succession.
+      // controller. Without this guard the queued message would throw
+      // "Bad state: Cannot add new events after calling close" —
+      // visible only when many Player instances are created and
+      // disposed in rapid succession.
       if (msg is MpvIsolateEvent && !_events.isClosed) {
         _events.add(msg);
       }

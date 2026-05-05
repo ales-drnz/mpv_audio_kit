@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 void main() {
-  group('MpvPrefetchState.parse', () {
+  group('MpvPrefetchState.fromMpv', () {
     test('round-trips every known value', () {
       // Pair each enum variant with its expected mpv wire string. If a
       // future maintenance breaks the parse map, this test fails before
@@ -19,7 +19,7 @@ void main() {
         'failed': MpvPrefetchState.failed,
       };
       for (final entry in cases.entries) {
-        expect(MpvPrefetchState.parse(entry.key), entry.value,
+        expect(MpvPrefetchState.fromMpv(entry.key), entry.value,
             reason: 'parse("${entry.key}") should be ${entry.value}');
       }
     });
@@ -29,15 +29,15 @@ void main() {
       // future mpv values rather than throwing — this is a
       // forward-compatibility guarantee for hosts running mismatched
       // wrapper / mpv versions.
-      expect(MpvPrefetchState.parse('totally-bogus'), MpvPrefetchState.idle);
-      expect(MpvPrefetchState.parse(''), MpvPrefetchState.idle);
-      expect(MpvPrefetchState.parse('IDLE'), MpvPrefetchState.idle,
+      expect(MpvPrefetchState.fromMpv('totally-bogus'), MpvPrefetchState.idle);
+      expect(MpvPrefetchState.fromMpv(''), MpvPrefetchState.idle);
+      expect(MpvPrefetchState.fromMpv('IDLE'), MpvPrefetchState.idle,
           reason: 'parse is case-sensitive (mpv emits lowercase)');
     });
 
     test('every variant is reachable via parse', () {
       final reachable = MpvPrefetchState.values
-          .map((v) => MpvPrefetchState.parse(v.name))
+          .map((v) => MpvPrefetchState.fromMpv(v.name))
           .toSet();
       expect(reachable.length, MpvPrefetchState.values.length);
     });

@@ -40,7 +40,7 @@ void main() {
       player = Player(
         configuration: const PlayerConfiguration(
           autoPlay: false,
-          logLevel: 'no',
+          logLevel: LogLevel.off,
         ),
       );
       // Force the null audio output so the test harness never holds a real

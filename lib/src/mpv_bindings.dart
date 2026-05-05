@@ -449,8 +449,8 @@ class MpvLibrary {
     } else if (Platform.isLinux) {
       // Check local folder first (common for portable builds/AppImage)
       final exeDir = File(Platform.resolvedExecutable).parent.path;
-      final localSo = '$exeDir/lib/libmpv.so.2';
-      final bundleSo = '$exeDir/libmpv.so.2';
+      final localSo = '$exeDir/lib/libmpv.so';
+      final bundleSo = '$exeDir/libmpv.so';
 
       if (File(localSo).existsSync()) {
         return localSo;
@@ -460,16 +460,16 @@ class MpvLibrary {
       }
 
       // Fallback to system search path
-      return 'libmpv.so.2';
+      return 'libmpv.so';
     } else if (Platform.isWindows) {
       // On Windows, use an absolute path relative to the executable.
       final exeDir = File(Platform.resolvedExecutable).parent.path;
-      final localDll = '$exeDir\\libmpv-2.dll';
+      final localDll = '$exeDir\\libmpv.dll';
       if (File(localDll).existsSync()) {
         return localDll;
       }
       // Fallback to searching in PATH.
-      return 'libmpv-2.dll';
+      return 'libmpv.dll';
     } else if (Platform.isAndroid) {
       // Precompiled in android/src/main/jniLibs/<abi>/libmpv.so
       return 'libmpv.so';

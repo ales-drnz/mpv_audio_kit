@@ -36,7 +36,7 @@ void main() async {
     configuration: const PlayerConfiguration(
       initialVolume: 50.0,
       autoPlay: true,
-      logLevel: 'debug',
+      logLevel: LogLevel.debug,
     ),
   );
 

@@ -73,7 +73,7 @@ void main() {
       player = Player(
           configuration: const PlayerConfiguration(
         autoPlay: false,
-        logLevel: 'no',
+        logLevel: LogLevel.off,
       ));
       // Avoid a real audio device in CI / sandbox. Keep mpv silent so the
       // log channel is uncluttered during tests.

@@ -15,24 +15,24 @@
 /// SMB, local files.
 enum MpvPrefetchState {
   /// No background prefetch is active. Default state.
-  idle,
+  idle('idle'),
 
   /// `prefetch_next()` fired: the opener thread is creating the demuxer
   /// for the next playlist item, and once open, the secondary cache is
   /// filling in the background.
-  loading,
+  loading('loading'),
 
   /// The secondary demuxer is open AND its reader reports idle (= mpv's
   /// `cache-secs` threshold has been hit and no further segment fetches
   /// are outstanding). Gapless transition is armed.
-  ready,
+  ready('ready'),
 
   /// The prefetched stream was just consumed — the current track ended
   /// and mpv reused the secondary demuxer instead of re-opening. This
   /// is an edge-triggered notification: the property fires [used] and
   /// then immediately returns to [idle], so observers see two
   /// consecutive events and can treat [used] as a one-shot signal.
-  used,
+  used('used'),
 
   /// The opener thread failed to create a demuxer for the next playlist
   /// item — typically a network error (404 / timeout / DNS), an
@@ -41,23 +41,20 @@ enum MpvPrefetchState {
   /// gapless transition is armed: the next track will be re-opened
   /// from scratch when playback reaches it. Edge-triggered, same as
   /// [used] — the property emits [failed] and then returns to [idle].
-  failed;
+  failed('failed');
+
+  const MpvPrefetchState(this.mpvValue);
+
+  /// The wire-level string mpv emits for this phase.
+  final String mpvValue;
 
   /// Parses the string emitted by mpv. Unknown values fall back to
   /// [idle] so future mpv additions don't crash clients — they just
   /// see the phase treated as "not actively prefetching".
-  static MpvPrefetchState parse(String value) {
-    switch (value) {
-      case 'loading':
-        return MpvPrefetchState.loading;
-      case 'ready':
-        return MpvPrefetchState.ready;
-      case 'used':
-        return MpvPrefetchState.used;
-      case 'failed':
-        return MpvPrefetchState.failed;
-      default:
-        return MpvPrefetchState.idle;
+  static MpvPrefetchState fromMpv(String value) {
+    for (final v in MpvPrefetchState.values) {
+      if (v.mpvValue == value) return v;
     }
+    return MpvPrefetchState.idle;
   }
 }

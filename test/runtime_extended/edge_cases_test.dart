@@ -95,7 +95,7 @@ void main() {
       // the same observer event as the playlist length change, so
       // chaining two waits would race.
       await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 2 && p.index == 1)
+          .firstWhere((p) => p.items.length == 2 && p.index == 1)
           .timeout(const Duration(seconds: 5));
       expect(player.state.playlist.index, 1);
     }, timeout: const Timeout(Duration(seconds: 30)));
@@ -176,25 +176,32 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 5)));
 
     test(
-        'setRate above 100.0 retains the optimistic value (mpv clamps to '
-        'M_RANGE max in its own time)', () async {
-      await player.setRate(150.0);
-      expect(player.state.rate, 150.0,
-          reason: 'wrapper writes the requested value optimistically; mpv '
-              'clamps to its M_RANGE max (100.0) on its side');
-
-      await player.setRate(1.0);
+        'setRate above 100.0 throws MpvException (mpv hard-rejects the '
+        'out-of-range write; state stays at the prior value)', () async {
+      // 0.1.0 contract: typed setters surface mpv rejections via
+      // MpvException instead of swallowing the rc and leaving the
+      // optimistic state desynced. The wrapper writes nothing to state
+      // when mpv rejects, so the prior `1.0` from the previous test
+      // survives.
+      final priorRate = player.state.rate;
+      await expectLater(
+        player.setRate(150.0),
+        throwsA(isA<MpvException>().having((e) => e.name, 'name', 'speed')),
+      );
+      expect(player.state.rate, priorRate,
+          reason: 'optimistic state must not advance past a rejected write');
     }, timeout: const Timeout(Duration(seconds: 5)));
 
     test(
-        'setRate below 0.01 retains the optimistic value (mpv clamps to '
-        'M_RANGE min in its own time)', () async {
-      await player.setRate(-1.0);
-      expect(player.state.rate, -1.0,
-          reason: 'wrapper writes the requested value optimistically; mpv '
-              'rejects / clamps sub-0.01 speeds on its side');
-
-      await player.setRate(1.0);
+        'setRate below 0.01 throws MpvException (mpv hard-rejects sub-0.01 '
+        'speeds; state stays at the prior value)', () async {
+      final priorRate = player.state.rate;
+      await expectLater(
+        player.setRate(-1.0),
+        throwsA(isA<MpvException>().having((e) => e.name, 'name', 'speed')),
+      );
+      expect(player.state.rate, priorRate,
+          reason: 'optimistic state must not advance past a rejected write');
     }, timeout: const Timeout(Duration(seconds: 5)));
 
     test('setDemuxerMaxBytes preserves sub-MiB precision (no MiB rounding)',

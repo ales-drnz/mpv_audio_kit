@@ -35,15 +35,15 @@ void main() {
     test('add appends a track and updates state.playlist length', () async {
       await player.openAll([Media(fixturePath)], play: false);
       await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 1)
+          .firstWhere((p) => p.items.length == 1)
           .timeout(const Duration(seconds: 5));
-      expect(player.state.playlist.medias.length, 1);
+      expect(player.state.playlist.items.length, 1);
 
       await player.add(Media(fixturePath));
       await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 2)
+          .firstWhere((p) => p.items.length == 2)
           .timeout(const Duration(seconds: 5));
-      expect(player.state.playlist.medias.length, 2);
+      expect(player.state.playlist.items.length, 2);
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('jump moves to the requested index', () async {
@@ -62,16 +62,16 @@ void main() {
       // throw. Index tracking after a move depends on the current
       // entry's position, which may shift.
       await Future.delayed(const Duration(milliseconds: 200));
-      expect(player.state.playlist.medias.length, 2);
+      expect(player.state.playlist.items.length, 2);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('remove drops an entry', () async {
       // Drop position 1.
       await player.remove(1);
       await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 1)
+          .firstWhere((p) => p.items.length == 1)
           .timeout(const Duration(seconds: 5));
-      expect(player.state.playlist.medias.length, 1);
+      expect(player.state.playlist.items.length, 1);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('clearPlaylist empties the queue', () async {
@@ -79,9 +79,9 @@ void main() {
       // mpv's `playlist-clear` + `playlist-remove current` collapses
       // the queue. The observer eventually emits an empty playlist.
       await player.stream.playlist
-          .firstWhere((p) => p.medias.isEmpty)
+          .firstWhere((p) => p.items.isEmpty)
           .timeout(const Duration(seconds: 5));
-      expect(player.state.playlist.medias, isEmpty);
+      expect(player.state.playlist.items, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('setShuffle / setLoop round-trip', () async {
@@ -90,7 +90,7 @@ void main() {
         play: false,
       );
       await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 2)
+          .firstWhere((p) => p.items.length == 2)
           .timeout(const Duration(seconds: 5));
 
       await player.setShuffle(true);
@@ -115,7 +115,7 @@ void main() {
         play: false,
       );
       await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 3)
+          .firstWhere((p) => p.items.length == 3)
           .timeout(const Duration(seconds: 5));
 
       // Pre-subscribe to the index transition before each command —
@@ -158,7 +158,7 @@ void main() {
         play: false,
       );
       await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 2)
+          .firstWhere((p) => p.items.length == 2)
           .timeout(const Duration(seconds: 5));
 
       // After replace(1, alt), the playlist must still have length 2
@@ -167,15 +167,15 @@ void main() {
       // wait for the entry's URI to flip while length stays 2.
       final swapped = player.stream.playlist
           .firstWhere((p) =>
-              p.medias.length == 2 &&
-              p.medias[1].uri.endsWith('with_chapters.mka'))
+              p.items.length == 2 &&
+              p.items[1].uri.endsWith('with_chapters.mka'))
           .timeout(const Duration(seconds: 10));
       await player.replace(1, Media(altPath));
       await swapped;
-      expect(player.state.playlist.medias.length, 2);
-      expect(player.state.playlist.medias[1].uri.endsWith('with_chapters.mka'),
+      expect(player.state.playlist.items.length, 2);
+      expect(player.state.playlist.items[1].uri.endsWith('with_chapters.mka'),
           isTrue);
-      expect(player.state.playlist.medias[0].uri.endsWith('sine_440hz_1s.wav'),
+      expect(player.state.playlist.items[0].uri.endsWith('sine_440hz_1s.wav'),
           isTrue,
           reason: 'replace(1) must not touch entry 0');
     }, timeout: const Timeout(Duration(seconds: 30)));

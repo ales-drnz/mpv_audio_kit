@@ -14,12 +14,17 @@
 //      decoder libavcodec registered) and assert each name in
 //      `AUDIO_DECODERS` is present.
 //
-//   2. Filters — for each name in `AUDIO_FILTERS`, set `af` to
-//      `lavfi=<name>` and assert mpv accepts it. A missing filter
-//      surfaces as `MpvException` from `setRawProperty`, or as a
-//      "Cannot find filter" log entry. Filters with required arguments
-//      may report "missing argument" errors — those still prove the
-//      filter is registered (the registration check ran first).
+//   2. Filters — for each name in `AUDIO_FILTERS`, push it through
+//      `setAudioEffects(AudioEffects(custom: ['lavfi-<name>']))` and
+//      watch the log channel. A missing filter surfaces as a
+//      "Cannot find filter" / "no such filter" / "unknown filter"
+//      entry. Filters with required arguments may report
+//      "missing argument" errors — those still prove the filter is
+//      registered (the registration check ran first).
+//      We deliberately do NOT use `setRawProperty('af', ...)` here:
+//      that path is reserved by the typed `AudioEffects` bundle and
+//      throws `ArgumentError` unconditionally in 0.1.0+, which would
+//      make this test pass vacuously without ever probing libmpv.
 //
 // The whitelists come from `scripts/_audio_only.sh`, parsed once at
 // suite setup. That keeps the bash file as the single source of truth.
@@ -122,10 +127,28 @@ void main() {
     late Player player;
 
     setUpAll(() async {
-      player = await buildPlayer();
+      // The default test player uses `logLevel: LogLevel.off` which suppresses
+      // every libmpv log entry. The filter-not-found surface shows up
+      // at warning level on the `lavfi` log prefix — we need at least
+      // 'warn' to observe it.
+      player = Player(
+        configuration: const PlayerConfiguration(
+          autoPlay: false,
+          logLevel: LogLevel.warn,
+        ),
+      );
+      await player.setRawProperty('ao', 'null');
+      // Filters are only instantiated by libavfilter when a file is
+      // active — without one, `setAudioEffects` only stores the chain
+      // string and the "filter not found" log line never fires.
+      final fix = '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      if (File(fix).existsSync()) {
+        await openAndWaitForLoad(player, fix);
+      }
     });
 
     tearDownAll(() async {
+      await player.stop();
       await player.dispose();
     });
 
@@ -202,12 +225,13 @@ void main() {
         final filterStr = arg == null || arg.isEmpty
             ? 'lavfi-$name'
             : 'lavfi-$name=$arg';
+        // Use the typed bundle's `custom` slot — same effect as writing
+        // the `af` property, but routed through the supported public API.
         try {
-          await player.setRawProperty('af', filterStr);
-        } catch (e) {
-          // setRawProperty may throw MpvException on rejection — that's
-          // OK only if the rejection is because of args, not missing
-          // filter. Inspect the log for "cannot find filter".
+          await player.setAudioEffects(AudioEffects(custom: [filterStr]));
+        } catch (_) {
+          // Rejection at the typed-setter boundary is fine — what we
+          // care about is whether a "filter not found" log entry fires.
         }
         // Allow the log channel to flush.
         await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -216,7 +240,7 @@ void main() {
         }
         // Reset the af chain before the next iteration.
         try {
-          await player.setRawProperty('af', '');
+          await player.setAudioEffects(const AudioEffects());
         } catch (_) {}
       }
 
@@ -228,6 +252,38 @@ void main() {
               '${missing.join("\n  ")}');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
+    // Meta-test: verifies the detection mechanism itself. If this ever
+    // stops failing, the filter coverage test above would silently pass
+    // even when a real whitelisted filter goes missing (the previous
+    // `setRawProperty('af', ...)` regression from 0.0.x → 0.1.0).
+    test('detection mechanism actually catches a known-missing filter',
+        () async {
+      final cannotFind = <String>[];
+      final logSub = player.stream.log.listen((entry) {
+        final m = entry.text.toLowerCase();
+        if (m.contains('no such filter') ||
+            m.contains('cannot find filter') ||
+            m.contains('unknown filter') ||
+            m.contains("isn't supported")) {
+          cannotFind.add(entry.text.trim());
+        }
+      });
+      try {
+        await player.setAudioEffects(
+            const AudioEffects(custom: ['lavfi-this-filter-does-not-exist']));
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+      await logSub.cancel();
+      expect(cannotFind, isNotEmpty,
+          reason: 'A bogus lavfi-* filter must produce a recognizable log '
+              'entry. If this fires, libmpv changed its phrasing — update '
+              'the substrings above.');
+      // Reset the af chain.
+      try {
+        await player.setAudioEffects(const AudioEffects());
+      } catch (_) {}
+    });
+
     test('AUDIO_FILTERS does not re-introduce dead entries (deps we do not ship)',
         () {
       // These filters have external library dependencies (libbs2b,
@@ -238,6 +294,7 @@ void main() {
       // gets `'isn't supported'`. Native equivalents already in the
       // whitelist:  bs2b → crossfeed,  sofalizer → headphone.
       const dead = <String>{
+        // External-dep filters we don't bundle (silent no-op at runtime).
         'bs2b',
         'asr',
         'azmq',
@@ -245,6 +302,37 @@ void main() {
         'flite',
         'ladspa',
         'lv2',
+        // Debug / utility filters dropped from the whitelist in 0.1.0 —
+        // they're in the music-player API surface for no good reason.
+        'abench',
+        'acopy',
+        'acue',
+        'aintegral',
+        'alatency',
+        'aloop',
+        'ametadata',
+        'anull',
+        'aperms',
+        'arealtime',
+        'areverse',
+        'asegment',
+        'aselect',
+        'asendcmd',
+        'asetnsamples',
+        'asetpts',
+        'asetrate',
+        'asettb',
+        'ashowinfo',
+        'asidedata',
+        'aspectralstats',
+        'astats',
+        'astreamselect',
+        'atrim',
+        'silencedetect',
+        'volume',
+        'volumedetect',
+        // Naming clash with the decoder-side ReplayGainSettings.
+        'replaygain',
       };
       final whitelist = readAudioOnlyList('AUDIO_FILTERS').toSet();
       final accidentallyAdded = dead.intersection(whitelist);

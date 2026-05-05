@@ -2,11 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-const _Unset _unset = _Unset();
-
-class _Unset {
-  const _Unset();
-}
+import '../internals/unset_sentinel.dart';
 
 /// A chapter entry in the current track's `chapter-list`.
 ///
@@ -25,9 +21,9 @@ final class Chapter {
 
   const Chapter({required this.time, this.title});
 
-  Chapter copyWith({Duration? time, Object? title = _unset}) => Chapter(
+  Chapter copyWith({Duration? time, Object? title = unset}) => Chapter(
         time: time ?? this.time,
-        title: identical(title, _unset) ? this.title : title as String?,
+        title: identical(title, unset) ? this.title : title as String?,
       );
 
   @override

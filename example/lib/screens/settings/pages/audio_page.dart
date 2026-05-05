@@ -24,7 +24,7 @@ class AudioPage extends StatelessWidget {
             var devices = snapshot.data ?? [];
             if (!devices.any((d) => d.name == 'auto')) {
               devices = [
-                const Device('auto', 'Default (auto)'),
+                const Device(name: 'auto', description: 'Default (auto)'),
                 ...devices,
               ];
             }
@@ -33,7 +33,7 @@ class AudioPage extends StatelessWidget {
               initialData: player.state.audioDevice,
               builder: (context, deviceSnap) {
                 final currentDevice =
-                    deviceSnap.data ?? const Device('auto', 'Auto');
+                    deviceSnap.data ?? const Device(name: 'auto', description: 'Auto');
                 final currentValue =
                     devices.any((d) => d.name == currentDevice.name)
                     ? currentDevice.name
@@ -58,7 +58,7 @@ class AudioPage extends StatelessWidget {
                     if (v != null) {
                       final device = devices.firstWhere(
                         (d) => d.name == v,
-                        orElse: () => Device(v, v),
+                        orElse: () => Device(name: v, description: v),
                       );
                       player.setAudioDevice(device);
                     }

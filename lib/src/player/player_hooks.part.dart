@@ -45,9 +45,10 @@ mixin _HooksModule on _PlayerBase {
   /// See [Hook] for the full set of available phases. Higher
   /// [priority] values run earlier; the default (0) is fine for most
   /// uses.
-  void registerHook(Hook hook, {int priority = 0, Duration? timeout}) {
+  Future<void> registerHook(Hook hook,
+      {int priority = 0, Duration? timeout}) async {
     _checkNotDisposed();
-    final name = hook.mpvName;
+    final name = hook.mpvValue;
     if (timeout != null) _hookTimeouts[name] = timeout;
     if (_registeredHookNames.contains(name)) return;
     _registeredHookNames.add(name);
@@ -76,13 +77,13 @@ mixin _HooksModule on _PlayerBase {
   /// Calling with an invalid [id] (zero or negative — typo in a dispatch
   /// table) is also a no-op: a warning is logged on
   /// [PlayerStream.internalLog] and the FFI call is skipped.
-  void continueHook(int id) {
+  Future<void> continueHook(int id) async {
     _checkNotDisposed();
     if (id <= 0) {
       _internalLog(
         'continueHook: ignored invalid hook id $id (must be a positive '
         'integer obtained from MpvHookEvent.id)',
-        level: 'warn',
+        level: LogLevel.warn,
       );
       return;
     }

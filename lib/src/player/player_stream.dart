@@ -4,6 +4,8 @@
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 import 'package:mpv_audio_kit/src/models/cover_art.dart';
 import 'package:mpv_audio_kit/src/models/fft_frame.dart';
 import 'package:mpv_audio_kit/src/models/pcm_frame.dart';
@@ -44,6 +46,10 @@ import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
 /// plain [Stream] from a [StreamController] (for transient events like
 /// `error`, `endFile`, `log`).
 class PlayerStream {
+  /// Internal constructor wired by `Player`. Not part of the public API —
+  /// the `DefaultPropertyReactives` argument is library-private, so a
+  /// downstream call cannot satisfy it without reaching into `src/`.
+  @internal
   PlayerStream.fromInternals({
     required DefaultPropertyReactives reactives,
     required ReactiveProperty<bool> buffering,

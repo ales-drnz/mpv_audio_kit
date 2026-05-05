@@ -1465,23 +1465,6 @@ class _FiltersDynamicsPageState extends State<FiltersDynamicsPage> {
             );
           },
         ),
-        StreamBuilder<ReplaygainSettings>(
-          stream: _watch((e) => e.replaygain),
-          initialData: player.state.audioEffects.replaygain,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'replaygain',
-              subtitle: 'lavfi-replaygain',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(replaygain: s.copyWith(enabled: v)),
-              ),
-              params: [],
-            );
-          },
-        ),
         StreamBuilder<SpeechnormSettings>(
           stream: _watch((e) => e.speechnorm),
           initialData: player.state.audioEffects.speechnorm,
@@ -1683,60 +1666,6 @@ class _FiltersDynamicsPageState extends State<FiltersDynamicsPage> {
                   ),
                 ),
               ],
-            );
-          },
-        ),
-        StreamBuilder<VolumeSettings>(
-          stream: _watch((e) => e.volume),
-          initialData: player.state.audioEffects.volume,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'volume',
-              subtitle: 'lavfi-volume',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(volume: s.copyWith(enabled: v)),
-              ),
-              params: [
-                FilterParamSwitch(
-                  label: 'replaygain_noclip',
-                  value: s.replaygain_noclip,
-                  defaultValue: true,
-                  onChanged: (v) => player.updateAudioEffects(
-                    (e) => e.copyWith(volume: s.copyWith(replaygain_noclip: v)),
-                  ),
-                ),
-                FilterParamSlider(
-                  label: 'replaygain_preamp',
-                  value: s.replaygain_preamp,
-                  min: -15.0,
-                  max: 15.0,
-                  defaultValue: 0.0,
-                  labelBuilder: _f,
-                  onChanged: (v) => player.updateAudioEffects(
-                    (e) => e.copyWith(volume: s.copyWith(replaygain_preamp: v)),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        StreamBuilder<VolumedetectSettings>(
-          stream: _watch((e) => e.volumedetect),
-          initialData: player.state.audioEffects.volumedetect,
-          builder: (context, snap) {
-            final s = snap.data!;
-            return ExpandableFilterCard(
-              title: 'volumedetect',
-              subtitle: 'lavfi-volumedetect',
-              icon: Icons.tune,
-              enabled: s.enabled,
-              onToggle: (v) => player.updateAudioEffects(
-                (e) => e.copyWith(volumedetect: s.copyWith(enabled: v)),
-              ),
-              params: [],
             );
           },
         ),

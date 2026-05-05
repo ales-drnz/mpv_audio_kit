@@ -43,9 +43,9 @@ void main() {
       // Wait for the playlist observer event to populate state.playlist
       // with both entries.
       final playlist = await player.stream.playlist
-          .firstWhere((p) => p.medias.length == 2)
+          .firstWhere((p) => p.items.length == 2)
           .timeout(const Duration(seconds: 5));
-      expect(playlist.medias.length, 2);
+      expect(playlist.items.length, 2);
       expect(playlist.index, 0);
     }, timeout: const Timeout(Duration(seconds: 30)));
 

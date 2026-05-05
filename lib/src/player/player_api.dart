@@ -85,7 +85,7 @@ abstract interface class PlayerApi {
   Future<void> move(int from, int to);
   Future<void> replace(int index, Media media);
   Future<void> clearPlaylist();
-  Future<void> setLoop(Loop mode);
+  Future<void> setLoop(Loop loop);
   Future<void> setShuffle(bool shuffle);
   Future<void> setPrefetchPlaylist(bool enabled);
 
@@ -98,17 +98,17 @@ abstract interface class PlayerApi {
   Future<void> setAudioDevice(Device device);
   Future<void> setPitchCorrection(bool enable);
   Future<void> setAudioDelay(Duration delay);
-  Future<void> setGapless(Gapless mode);
-  Future<void> setReplayGain(ReplayGainSettings config);
+  Future<void> setGapless(Gapless gapless);
+  Future<void> setReplayGain(ReplayGainSettings settings);
   Future<void> setVolumeGain(double gainDb);
-  Future<void> setVolumeMax(double max);
+  Future<void> setVolumeMax(double limit);
   Future<void> setAudioExclusive(bool exclusive);
   Future<void> setAudioSpdif(Set<Spdif> codecs);
-  Future<void> setAudioTrack(Track mode);
+  Future<void> setAudioTrack(Track track);
   Future<void> reloadAudio();
   Future<void> setAudioEffects(AudioEffects effects);
   Future<void> updateAudioEffects(AudioEffects Function(AudioEffects) mapper);
-  Future<void> setCoverArtAuto(Cover mode);
+  Future<void> setCoverArtAuto(Cover cover);
   Future<void> setAudioSampleRate(int rate);
   Future<void> setAudioFormat(Format format);
   Future<void> setAudioChannels(Channels channels);
@@ -120,7 +120,7 @@ abstract interface class PlayerApi {
 
   // ── Cache / network ────────────────────────────────────────────────
 
-  Future<void> setCache(CacheSettings config);
+  Future<void> setCache(CacheSettings settings);
   Future<void> setAudioBuffer(Duration size);
   Future<void> setAudioStreamSilence(bool enable);
   Future<void> setNetworkTimeout(Duration timeout);
@@ -132,8 +132,9 @@ abstract interface class PlayerApi {
 
   // ── Hooks ──────────────────────────────────────────────────────────
 
-  void registerHook(Hook hook, {int priority = 0, Duration? timeout});
-  void continueHook(int id);
+  Future<void> registerHook(Hook hook,
+      {int priority = 0, Duration? timeout});
+  Future<void> continueHook(int id);
 
   // ── Raw escape hatch ───────────────────────────────────────────────
 

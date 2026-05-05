@@ -12,15 +12,16 @@ mixin _NetworkModule on _PlayerBase {
   /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`) in one shot.
   /// Modify a single field via
   /// `await player.setCache(state.cache.copyWith(secs: const Duration(seconds: 30)))`.
-  Future<void> setCache(CacheSettings config) async {
+  Future<void> setCache(CacheSettings settings) async {
     _checkNotDisposed();
-    _prop('cache', config.mode.mpvValue);
-    _prop('cache-secs', durationToSeconds(config.secs).toStringAsFixed(3));
-    _prop('cache-on-disk', config.onDisk ? 'yes' : 'no');
-    _prop('cache-pause', config.pause ? 'yes' : 'no');
+    _prop('cache', settings.mode.mpvValue);
+    _prop('cache-secs', durationToSeconds(settings.secs).toStringAsFixed(3));
+    _prop('cache-on-disk', settings.onDisk ? 'yes' : 'no');
+    _prop('cache-pause', settings.pause ? 'yes' : 'no');
     _prop('cache-pause-wait',
-        durationToSeconds(config.pauseWait).toStringAsFixed(3));
-    _updateField((s) => s.copyWith(cache: config), _reactives.cache, config);
+        durationToSeconds(settings.pauseWait).toStringAsFixed(3));
+    _updateField(
+        (s) => s.copyWith(cache: settings), _reactives.cache, settings);
   }
 
   /// Sets the audio output buffer depth.

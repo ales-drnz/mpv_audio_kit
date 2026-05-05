@@ -15,24 +15,24 @@ bool _listEq<T>(List<T> a, List<T> b) {
 
 /// An ordered list of [Media] items loaded into the [Player].
 ///
-/// Two playlists compare equal only when both [medias] (deep equality)
+/// Two playlists compare equal only when both [items] (deep equality)
 /// and [index] match — useful when diffing playlists for re-render
 /// decisions.
 final class Playlist {
   /// The ordered list of tracks.
-  final List<Media> medias;
+  final List<Media> items;
 
   /// The index of the currently active track. `0` for an empty playlist.
   final int index;
 
-  const Playlist(this.medias, {this.index = 0});
+  const Playlist(this.items, {this.index = 0});
 
   /// The empty playlist — no tracks, index 0. Const-evaluable so it can
   /// seed default fields without runtime allocation.
   static const Playlist empty = Playlist(<Media>[]);
 
-  Playlist copyWith({List<Media>? medias, int? index}) => Playlist(
-        medias ?? this.medias,
+  Playlist copyWith({List<Media>? items, int? index}) => Playlist(
+        items ?? this.items,
         index: index ?? this.index,
       );
 
@@ -41,11 +41,11 @@ final class Playlist {
       identical(this, other) ||
       (other is Playlist &&
           other.index == index &&
-          _listEq(medias, other.medias));
+          _listEq(items, other.items));
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(medias), index);
+  int get hashCode => Object.hash(Object.hashAll(items), index);
 
   @override
-  String toString() => 'Playlist(medias: $medias, index: $index)';
+  String toString() => 'Playlist(items: $items, index: $index)';
 }

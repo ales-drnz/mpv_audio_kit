@@ -17,22 +17,14 @@ import 'package:mpv_audio_kit/src/types/settings/audio_effects_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
 import 'package:mpv_audio_kit/src/models/chapter.dart';
 import 'package:mpv_audio_kit/src/models/mpv_track.dart';
+import 'package:mpv_audio_kit/src/internals/unset_sentinel.dart';
 import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
 
 const _kEmptyPlaylist = Playlist.empty;
-const _kAutoDevice = Device('auto', 'Auto');
+const _kAutoDevice = Device(name: 'auto', description: 'Auto');
 const _kDefaultDevices = <Device>[_kAutoDevice];
 const _kDemuxerMaxBytesDefault = 150 * 1024 * 1024;
 const _kDemuxerMaxBackBytesDefault = 50 * 1024 * 1024;
-
-// Sentinel used by [PlayerState.copyWith] to tell "not passed" apart
-// from "explicitly set to null". Lets the caller reset a nullable
-// field to null via copyWith without rebuilding the whole snapshot.
-class _Unset {
-  const _Unset();
-}
-
-const _Unset _unset = _Unset();
 
 // Collection equality helpers — kept inline to avoid a transitive
 // `package:collection` dependency. PlayerState only carries small
@@ -517,7 +509,7 @@ final class PlayerState {
     bool? shuffle,
     AudioParams? audioParams,
     AudioParams? audioOutParams,
-    Object? audioBitrate = _unset,
+    Object? audioBitrate = unset,
     Device? audioDevice,
     List<Device>? audioDevices,
     bool? mute,
@@ -540,7 +532,7 @@ final class PlayerState {
     bool? audioStreamSilence,
     bool? audioNullUntimed,
     List<MpvTrack>? tracks,
-    Object? currentAudioTrack = _unset,
+    Object? currentAudioTrack = unset,
     Set<Spdif>? audioSpdif,
     double? volumeMax,
     int? audioSampleRate,
@@ -550,7 +542,7 @@ final class PlayerState {
     String? audioDriver,
     AudioOutputState? audioOutputState,
     AudioEffects? audioEffects,
-    Object? coverArt = _unset,
+    Object? coverArt = unset,
     Cover? coverArtAuto,
     bool? prefetchPlaylist,
     Duration? audioPts,
@@ -564,16 +556,16 @@ final class PlayerState {
     int? fileSize,
     Duration? bufferDuration,
     bool? demuxerIdle,
-    Object? currentChapter = _unset,
+    Object? currentChapter = unset,
     List<Chapter>? chapters,
     String? path,
     String? filename,
     String? streamPath,
     String? streamOpenFilename,
-    Object? abLoopA = _unset,
-    Object? abLoopB = _unset,
-    Object? abLoopCount = _unset,
-    Object? remainingAbLoops = _unset,
+    Object? abLoopA = unset,
+    Object? abLoopB = unset,
+    Object? abLoopCount = unset,
+    Object? remainingAbLoops = unset,
     bool? seeking,
     double? percentPos,
     double? cacheSpeed,
@@ -601,7 +593,7 @@ final class PlayerState {
         shuffle: shuffle ?? this.shuffle,
         audioParams: audioParams ?? this.audioParams,
         audioOutParams: audioOutParams ?? this.audioOutParams,
-        audioBitrate: identical(audioBitrate, _unset) ? this.audioBitrate : audioBitrate as double?,
+        audioBitrate: identical(audioBitrate, unset) ? this.audioBitrate : audioBitrate as double?,
         audioDevice: audioDevice ?? this.audioDevice,
         audioDevices: audioDevices ?? this.audioDevices,
         mute: mute ?? this.mute,
@@ -624,7 +616,7 @@ final class PlayerState {
         audioStreamSilence: audioStreamSilence ?? this.audioStreamSilence,
         audioNullUntimed: audioNullUntimed ?? this.audioNullUntimed,
         tracks: tracks ?? this.tracks,
-        currentAudioTrack: identical(currentAudioTrack, _unset) ? this.currentAudioTrack : currentAudioTrack as MpvTrack?,
+        currentAudioTrack: identical(currentAudioTrack, unset) ? this.currentAudioTrack : currentAudioTrack as MpvTrack?,
         audioSpdif: audioSpdif ?? this.audioSpdif,
         volumeMax: volumeMax ?? this.volumeMax,
         audioSampleRate: audioSampleRate ?? this.audioSampleRate,
@@ -634,7 +626,7 @@ final class PlayerState {
         audioDriver: audioDriver ?? this.audioDriver,
         audioOutputState: audioOutputState ?? this.audioOutputState,
         audioEffects: audioEffects ?? this.audioEffects,
-        coverArt: identical(coverArt, _unset) ? this.coverArt : coverArt as CoverArt?,
+        coverArt: identical(coverArt, unset) ? this.coverArt : coverArt as CoverArt?,
         coverArtAuto: coverArtAuto ?? this.coverArtAuto,
         prefetchPlaylist: prefetchPlaylist ?? this.prefetchPlaylist,
         audioPts: audioPts ?? this.audioPts,
@@ -648,16 +640,16 @@ final class PlayerState {
         fileSize: fileSize ?? this.fileSize,
         bufferDuration: bufferDuration ?? this.bufferDuration,
         demuxerIdle: demuxerIdle ?? this.demuxerIdle,
-        currentChapter: identical(currentChapter, _unset) ? this.currentChapter : currentChapter as int?,
+        currentChapter: identical(currentChapter, unset) ? this.currentChapter : currentChapter as int?,
         chapters: chapters ?? this.chapters,
         path: path ?? this.path,
         filename: filename ?? this.filename,
         streamPath: streamPath ?? this.streamPath,
         streamOpenFilename: streamOpenFilename ?? this.streamOpenFilename,
-        abLoopA: identical(abLoopA, _unset) ? this.abLoopA : abLoopA as Duration?,
-        abLoopB: identical(abLoopB, _unset) ? this.abLoopB : abLoopB as Duration?,
-        abLoopCount: identical(abLoopCount, _unset) ? this.abLoopCount : abLoopCount as int?,
-        remainingAbLoops: identical(remainingAbLoops, _unset) ? this.remainingAbLoops : remainingAbLoops as int?,
+        abLoopA: identical(abLoopA, unset) ? this.abLoopA : abLoopA as Duration?,
+        abLoopB: identical(abLoopB, unset) ? this.abLoopB : abLoopB as Duration?,
+        abLoopCount: identical(abLoopCount, unset) ? this.abLoopCount : abLoopCount as int?,
+        remainingAbLoops: identical(remainingAbLoops, unset) ? this.remainingAbLoops : remainingAbLoops as int?,
         seeking: seeking ?? this.seeking,
         percentPos: percentPos ?? this.percentPos,
         cacheSpeed: cacheSpeed ?? this.cacheSpeed,
@@ -844,4 +836,5 @@ final class PlayerState {
       ]);
 
   @override
-  String toString() => 'PlayerState(playing: \$playing, position: \$position, duration: \$duration, volume: \$volume, mediaTitle: \$mediaTitle)';}
+  String toString() => 'PlayerState(playing: $playing, position: $position, duration: $duration, volume: $volume, mediaTitle: $mediaTitle)';
+}

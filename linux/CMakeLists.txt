@@ -16,38 +16,54 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 set(PLUGIN_NAME "mpv_audio_kit_plugin")
 
 # ── libmpv Bundling ──────────────────────────────────────────────────────────
-# The official libmpv.so.2 is automatically downloaded from GitHub Releases.
-# This ensures consistency and proper audio backend support.
-set(_BUNDLED_MPV "${CMAKE_CURRENT_SOURCE_DIR}/libs/libmpv.so.2")
+# The official libmpv.so is auto-downloaded from GitHub Releases per target
+# arch. Two arches are supported (x86_64, aarch64) and the binaries live in
+# arch-scoped subdirectories: linux/libs/<arch>/libmpv.so. The CMake config
+# detects the build's target arch and picks the matching subdir.
 set(MPV_RELEASE_VERSION "libmpv-r5")
-set(EXPECTED_SHA256 "353b5048cf5fd178e94b7925bc64cb6e03d4c18aa1145f8bcadb5987fc15473d")
+set(EXPECTED_SHA256_X86_64  "530a7c3454fb408bb7ebc19b7ede29b9cbd5b0f9af22795c73ebdb8c2cbf2841")
+set(EXPECTED_SHA256_AARCH64  "942071abaa8a2b129e8ffe2a784a457e75f090e5f51424b0db6056081ff505fc")
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+  set(_MPV_ARCH "aarch64")
+  set(_MPV_RELEASE_NAME "libmpv_linux-aarch64.so")
+  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_AARCH64}")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+  set(_MPV_ARCH "x86_64")
+  set(_MPV_RELEASE_NAME "libmpv_linux-x86_64.so")
+  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_X86_64}")
+else()
+  message(FATAL_ERROR "[mpv_audio_kit] Unsupported Linux arch: ${CMAKE_SYSTEM_PROCESSOR}. Supported: x86_64, aarch64.")
+endif()
+
+set(_MPV_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/${_MPV_ARCH}")
+set(_BUNDLED_MPV "${_MPV_LIB_DIR}/libmpv.so")
 
 set(DOWNLOAD_NEEDED TRUE)
-
 if(EXISTS "${_BUNDLED_MPV}")
   file(SHA256 "${_BUNDLED_MPV}" ACTUAL_SHA256)
-  if(ACTUAL_SHA256 STREQUAL EXPECTED_SHA256)
+  if(ACTUAL_SHA256 STREQUAL _MPV_EXPECTED_SHA)
     set(DOWNLOAD_NEEDED FALSE)
   else()
-    message(STATUS "[mpv_audio_kit] SHA-256 mismatch! Expected ${EXPECTED_SHA256} but got ${ACTUAL_SHA256}. Redownloading...")
+    message(STATUS "[mpv_audio_kit] SHA-256 mismatch for ${_MPV_ARCH}: expected ${_MPV_EXPECTED_SHA} but got ${ACTUAL_SHA256}. Redownloading...")
     file(REMOVE "${_BUNDLED_MPV}")
   endif()
 endif()
 
 if(DOWNLOAD_NEEDED)
-  message(STATUS "[mpv_audio_kit] Downloading libmpv_linux-x86_64.so from Github Releases...")
-  file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/libs")
-  file(DOWNLOAD 
-    "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_linux-x86_64.so"
+  message(STATUS "[mpv_audio_kit] Downloading ${_MPV_RELEASE_NAME} from GitHub Releases...")
+  file(MAKE_DIRECTORY "${_MPV_LIB_DIR}")
+  file(DOWNLOAD
+    "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/${_MPV_RELEASE_NAME}"
     "${_BUNDLED_MPV}"
     SHOW_PROGRESS
-    EXPECTED_HASH SHA256=${EXPECTED_SHA256}
+    EXPECTED_HASH SHA256=${_MPV_EXPECTED_SHA}
     STATUS DOWNLOAD_STATUS
   )
   list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
   if(NOT STATUS_CODE EQUAL 0)
     list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-    message(FATAL_ERROR "[mpv_audio_kit] Failed to download libmpv.so: ${ERROR_MSG}. Please download manually to linux/libs/libmpv.so.2")
+    message(FATAL_ERROR "[mpv_audio_kit] Failed to download ${_MPV_RELEASE_NAME}: ${ERROR_MSG}. Place it manually at ${_BUNDLED_MPV}")
   endif()
 endif()
 
@@ -57,7 +73,7 @@ if(EXISTS "${_BUNDLED_MPV}")
   set_target_properties(mpv_bundled PROPERTIES IMPORTED_LOCATION "${_BUNDLED_MPV}")
   set(mpv_audio_kit_bundled_libraries "${_BUNDLED_MPV}" PARENT_SCOPE)
 else()
-  message(FATAL_ERROR "[mpv_audio_kit] libmpv not found. It must be present in linux/libs/libmpv.so.2")
+  message(FATAL_ERROR "[mpv_audio_kit] libmpv not found. It must be present at ${_BUNDLED_MPV}")
 endif()
 
 # Any new source files that you add to the plugin should be added here.

@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../types/enums/log_level.dart';
+
 /// A structured log entry. Emitted on [PlayerStream.log] for messages
 /// from the mpv engine (`'ffmpeg'`, `'demux'`, `'ao'`, …) and on
 /// [PlayerStream.internalLog] for library-side diagnostics (parse
@@ -11,15 +13,17 @@
 /// Example:
 /// ```dart
 /// player.stream.log.listen((entry) {
-///   if (entry.level == 'error') print('[${entry.prefix}] ${entry.text}');
+///   if (entry.level == LogLevel.error) {
+///     print('[${entry.prefix}] ${entry.level.mpvValue}: ${entry.text}');
+///   }
 /// });
 /// ```
 class MpvLogEntry {
   /// The mpv subsystem that generated this message (e.g. `'ffmpeg'`, `'demux'`).
   final String prefix;
 
-  /// Severity level: `'trace'`, `'debug'`, `'v'`, `'info'`, `'warn'`, `'error'`, `'fatal'`.
-  final String level;
+  /// Severity level — see [LogLevel] for the closed set.
+  final LogLevel level;
 
   /// The log message text. Trailing newlines are stripped before delivery
   /// so you can concatenate or render entries without per-line trimming.
@@ -32,5 +36,5 @@ class MpvLogEntry {
   });
 
   @override
-  String toString() => '[$prefix] $level: $text';
+  String toString() => '[$prefix] ${level.mpvValue}: $text';
 }

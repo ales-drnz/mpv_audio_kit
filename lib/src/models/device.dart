@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 /// Represents an audio output device detected by mpv.
-class Device {
+final class Device {
   /// Internal mpv device name, used with [Player.setAudioDevice].
   ///
   /// The special value `"auto"` lets mpv choose the default system device.
@@ -12,12 +12,10 @@ class Device {
   /// Human-readable description shown in system mixer / device pickers.
   final String description;
 
-  const Device(this.name, this.description);
+  const Device({required this.name, required this.description});
 
   /// The default automatic device selection.
-  const Device.auto()
-      : name = 'auto',
-        description = 'Auto';
+  static const Device auto = Device(name: 'auto', description: 'Auto');
 
   // Equality on [name] only — same-name instances must dedup even when
   // [description] differs, since mpv echoes only the name and the

@@ -82,7 +82,7 @@ void main() {
     player = Player(
       configuration: const PlayerConfiguration(
         autoPlay: false,
-        logLevel: 'error',
+        logLevel: LogLevel.error,
       ),
     );
     await player.setRawProperty('ao', 'null');

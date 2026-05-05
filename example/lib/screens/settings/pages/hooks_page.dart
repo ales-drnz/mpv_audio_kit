@@ -465,7 +465,7 @@ class _HookChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        hook.mpvName,
+        hook.mpvValue,
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.bold,
@@ -525,7 +525,7 @@ class _LogTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    entry.hook.mpvName,
+                    entry.hook.mpvValue,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,

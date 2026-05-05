@@ -17,7 +17,7 @@ Future<List<MpvLogEntry>> captureMpvErrors(
 }) async {
   final errors = <MpvLogEntry>[];
   final sub = player.stream.log
-      .where((e) => e.level == 'error' || e.level == 'fatal')
+      .where((e) => e.level == LogLevel.error || e.level == LogLevel.fatal)
       .listen(errors.add);
   try {
     await body();

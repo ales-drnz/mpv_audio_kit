@@ -7,9 +7,9 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 
-import 'internals/debug_log.dart';
-import 'internals/orphan_handle_tracker.dart';
-import 'mpv_bindings.dart';
+import '../mpv_bindings.dart';
+import 'debug_log.dart';
+import 'orphan_handle_tracker.dart';
 
 /// One-time initialization for `mpv_audio_kit`. Owns the libmpv
 /// `DynamicLibrary` lookup and the orphaned-handle cleanup that fires
@@ -32,8 +32,8 @@ abstract final class MpvAudioKit {
   /// [libmpv] (optional) — explicit path or filename for the native
   /// `libmpv` library to load via `DynamicLibrary.open`. When `null`
   /// (the default), the platform's standard lookup is used:
-  /// `libmpv.so.2` on Linux, `libmpv.dylib` on macOS/iOS,
-  /// `mpv.dll` on Windows, and the bundled JNI library on Android.
+  /// `libmpv.so` on Linux, `libmpv.dylib` on macOS/iOS, `libmpv.dll`
+  /// on Windows, and the bundled JNI library on Android.
   /// Pass an explicit path only when shipping a custom libmpv build
   /// alongside your app.
   ///

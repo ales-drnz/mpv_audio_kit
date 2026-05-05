@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import '../types/enums/log_level.dart';
+
 /// Initial configuration for a [Player] instance.
 ///
 /// All fields are immutable and must be set at construction time.
@@ -16,18 +18,14 @@ class PlayerConfiguration {
   /// Initial volume level (0–100). Default: `100`.
   final double initialVolume;
 
-  /// mpv log level forwarded to the [Player.stream.log] stream.
+  /// Threshold forwarded to the [Player.stream.log] stream.
   ///
-  /// Valid values (from most to least verbose):
-  /// `'trace'`, `'debug'`, `'v'`, `'info'`, `'warn'`, `'error'`, `'fatal'`,
-  /// `'no'` (disabled).
-  ///
-  /// Default: `'warn'`.
-  final String logLevel;
+  /// Default: [LogLevel.warn] — surfaces warnings, errors, fatals.
+  final LogLevel logLevel;
 
   const PlayerConfiguration({
     this.autoPlay = false,
     this.initialVolume = 100.0,
-    this.logLevel = 'warn',
+    this.logLevel = LogLevel.warn,
   });
 }
