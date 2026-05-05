@@ -182,6 +182,15 @@ final class PlayerState {
   /// mpv's own default of `false` for `--tls-verify`.
   final bool tlsVerify;
 
+  /// Absolute filesystem path to a PEM bundle of trusted CA certificates,
+  /// or empty string when none is configured.
+  ///
+  /// Auto-populated at construction with a default bundle so [tlsVerify]
+  /// works on every platform out of the box. Override with
+  /// [Player.setTlsCaFile] to point at a custom bundle (e.g. a corporate
+  /// trust root).
+  final String tlsCaFile;
+
   /// Whether audio exclusive mode is enabled.
   final bool audioExclusive;
 
@@ -442,6 +451,7 @@ final class PlayerState {
     this.pausedForCache = false,
     this.demuxerViaNetwork = false,
     this.tlsVerify = true,
+    this.tlsCaFile = '',
     this.audioExclusive = false,
     this.audioBuffer = const Duration(milliseconds: 200),
     this.audioStreamSilence = false,
@@ -527,6 +537,7 @@ final class PlayerState {
     bool? pausedForCache,
     bool? demuxerViaNetwork,
     bool? tlsVerify,
+    String? tlsCaFile,
     bool? audioExclusive,
     Duration? audioBuffer,
     bool? audioStreamSilence,
@@ -611,6 +622,7 @@ final class PlayerState {
         pausedForCache: pausedForCache ?? this.pausedForCache,
         demuxerViaNetwork: demuxerViaNetwork ?? this.demuxerViaNetwork,
         tlsVerify: tlsVerify ?? this.tlsVerify,
+        tlsCaFile: tlsCaFile ?? this.tlsCaFile,
         audioExclusive: audioExclusive ?? this.audioExclusive,
         audioBuffer: audioBuffer ?? this.audioBuffer,
         audioStreamSilence: audioStreamSilence ?? this.audioStreamSilence,
@@ -699,6 +711,7 @@ final class PlayerState {
           && other.pausedForCache == pausedForCache
           && other.demuxerViaNetwork == demuxerViaNetwork
           && other.tlsVerify == tlsVerify
+          && other.tlsCaFile == tlsCaFile
           && other.audioExclusive == audioExclusive
           && other.audioBuffer == audioBuffer
           && other.audioStreamSilence == audioStreamSilence
@@ -784,6 +797,7 @@ final class PlayerState {
         pausedForCache,
         demuxerViaNetwork,
         tlsVerify,
+        tlsCaFile,
         audioExclusive,
         audioBuffer,
         audioStreamSilence,

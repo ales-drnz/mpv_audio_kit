@@ -88,6 +88,7 @@ class DefaultPropertyReactives {
   final ReactiveProperty<Duration> networkTimeout =
       ReactiveProperty<Duration>(const Duration(seconds: 60));
   final ReactiveProperty<bool> tlsVerify = ReactiveProperty<bool>(true);
+  final ReactiveProperty<String> tlsCaFile = ReactiveProperty<String>('');
   final ReactiveProperty<bool> pausedForCache = ReactiveProperty<bool>(false);
   final ReactiveProperty<bool> demuxerViaNetwork =
       ReactiveProperty<bool>(false);

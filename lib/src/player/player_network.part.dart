@@ -67,6 +67,22 @@ mixin _NetworkModule on _PlayerBase {
         (s) => s.copyWith(tlsVerify: enable), _reactives.tlsVerify, enable);
   }
 
+  /// Sets the absolute filesystem path to a PEM bundle of trusted CA
+  /// certificates used for `https://` peer verification.
+  ///
+  /// A sensible default bundle is configured automatically at player
+  /// construction, so [setTlsVerify] works out of the box on every
+  /// platform. Call this only to override the default — for example to
+  /// pin against a corporate root CA. Passing an empty string clears the
+  /// override; the auto-configured default is reapplied at the next
+  /// player construction.
+  Future<void> setTlsCaFile(String path) async {
+    _checkNotDisposed();
+    _prop('tls-ca-file', path);
+    _updateField(
+        (s) => s.copyWith(tlsCaFile: path), _reactives.tlsCaFile, path);
+  }
+
   /// Sets the maximum bytes the demuxer is allowed to cache.
   ///
   /// Default 150 MiB (matches mpv's `--demuxer-max-bytes=150MiB`). The

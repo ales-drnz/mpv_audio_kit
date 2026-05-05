@@ -11,6 +11,7 @@ Major release. The Dart API has been redesigned for type safety, ergonomics, and
 - New `MpvPrefetchState.failed` variant for when background prefetch fails.
 - Typed errors via the `MpvPlayerError` hierarchy and a public `MpvException` for raw-API failures.
 - Real-time FFT spectrum and raw PCM streams (`Player.stream.spectrum` / `Player.stream.pcm`) captured post-DSP for visualizers.
+- `setTlsCaFile(path)` with custom root-CA bundle.
 
 ### Changed
 - DSP effects, ReplayGain, and cache settings now live in atomic config objects applied in one call instead of multiple granular setters.
@@ -33,6 +34,7 @@ Major release. The Dart API has been redesigned for type safety, ergonomics, and
 - `print(state)` and `print(audioEffects)` now render the actual values instead of placeholder text.
 - Hot-Restart cleanup is hardened against false positives so a long-lived dev process can't have it trip on memory belonging to other tools.
 - Several correctness fixes around playlist equality, hook idempotency, cache precision, and lifecycle stream synchronisation.
+- HTTPS streams now connect on Android out of the box; previously TLS verification had no trust roots and every handshake failed.
 
 ### Example
 - Spectrum visualizer in the Player tab driven by `Player.stream.spectrum`, plus a Settings page exposing every `SpectrumSettings` knob (FFT size, window, band count, range, emit rate, attack, release smoothing, dB range) for live exploration.
@@ -42,6 +44,7 @@ Major release. The Dart API has been redesigned for type safety, ergonomics, and
 - Patched prefetch to also support `.failed` state.
 - Patched audio output state to report AO immediately.
 - Patched audio frames to extract PCM streams (visualizer).
+- Fixed Android `audiotrack` driver not working.
 - Bundled libmpv binaries reduced by ~55% (e.g. macOS 29 MB → 13 MB).
 - Bumped minimum deployment targets to iOS 15.0 and macOS 12.0.
 - iOS Simulator is now Apple Silicon only (dropped x86_64).

@@ -54,3 +54,8 @@ flutter:
         ffiPlugin: true
       windows:
         ffiPlugin: true
+  # CA certificate bundle used for `https://` peer verification on
+  # platforms whose OS trust store is not reachable from native code.
+  # Auto-extracted to a real filesystem path at player construction.
+  assets:
+    - lib/assets/cacert.pem

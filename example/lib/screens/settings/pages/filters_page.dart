@@ -20,42 +20,42 @@ class FiltersPage extends StatelessWidget {
 
   static const _categories = <_FilterCategory>[
     _FilterCategory(
-      title: 'Dynamics & loudness',
+      title: 'Dynamics and loudness',
       subtitle: '20 filters',
       icon: Icons.compress_rounded,
     ),
     _FilterCategory(
-      title: 'Equalization & tone',
+      title: 'Equalization and tone',
       subtitle: '12 filters',
       icon: Icons.equalizer_rounded,
     ),
     _FilterCategory(
-      title: 'Filters (cut / pass)',
+      title: 'Filters',
       subtitle: '9 filters',
       icon: Icons.tune_rounded,
     ),
     _FilterCategory(
-      title: 'Pitch, tempo & time',
+      title: 'Pitch, tempo and time',
       subtitle: '11 filters',
       icon: Icons.speed_rounded,
     ),
     _FilterCategory(
-      title: 'Stereo, channels & spatial',
+      title: 'Stereo, channels and spatial',
       subtitle: '12 filters',
       icon: Icons.surround_sound_rounded,
     ),
     _FilterCategory(
-      title: 'Modulation & creative',
+      title: 'Modulation and creative',
       subtitle: '13 filters',
       icon: Icons.auto_fix_high_rounded,
     ),
     _FilterCategory(
-      title: 'Denoise & restoration',
+      title: 'Denoise and restoration',
       subtitle: '12 filters',
       icon: Icons.graphic_eq_rounded,
     ),
     _FilterCategory(
-      title: 'Analysis, fade & utilities',
+      title: 'Spectral, fade and routing',
       subtitle: '25 filters',
       icon: Icons.science_rounded,
     ),

@@ -723,7 +723,7 @@ filters without a typed wrapper (`pan`, `aeval`, …) use `AudioEffects.custom: 
 <details>
 <summary><b>Browse the full catalogue</b> (click to expand)</summary>
 
-##### Dynamics & loudness
+##### Dynamics and loudness
 
 | Effect | Description |
 |---|---|

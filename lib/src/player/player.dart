@@ -24,6 +24,7 @@ import '../reactive/default_specs.dart';
 import '../reactive/property_registry.dart';
 import '../reactive/reactive_property.dart';
 import '../internals/duration_seconds.dart';
+import '../internals/tls_ca_bundle.dart';
 import '../internals/uri_resolver.dart';
 
 import '../types/sealed/track.dart';
@@ -103,7 +104,13 @@ class Player extends _PlayerBase
     _checkNotDisposed();
     _mediaCache.clear();
     _mediaCache[media.uri] = media;
+    // Gate on the trust-bundle Future so the first HTTPS load always
+    // sees `tls-ca-file` populated. Awaited in parallel with URI
+    // resolution so the bundle write overlaps with content://-handle
+    // detach / asset materialisation.
+    final tls = _tlsBundleReady;
     final resolved = await resolveUri(media.uri);
+    await tls;
     if (_disposed) {
       await resolved.dispose?.call();
       return;
@@ -128,6 +135,9 @@ class Player extends _PlayerBase
     final clampedIndex = index.clamp(0, medias.length - 1);
     final shouldPlay = play ?? configuration.autoPlay;
     _mediaCache.clear();
+    // Gate on the trust-bundle Future so HTTPS items in the playlist
+    // see `tls-ca-file` populated by the time `loadfile` fires.
+    await _tlsBundleReady;
     // Resolve once per media — content:// resolutions detach a JVM-side
     // FD, doing it twice would leak one FD per track.
     final resolved = <ResolvedUri>[];
@@ -443,6 +453,39 @@ abstract class _PlayerBase {
     // resources are flagged and the finalizer is a no-op.
     _nativeResources = PlayerNativeResources(_lib, _handle);
     playerFinalizer.attach(this, _nativeResources, detach: this);
+
+    // Wire `tls-ca-file` to the bundled CA pem so HTTPS verification
+    // works on platforms whose OS trust store the underlying TLS backend
+    // cannot read. Extraction is asynchronous; the resulting Future is
+    // awaited inside every URL-load entry point so the first
+    // `loadfile` always sees a populated trust path. Failures are
+    // non-fatal — surfaced on the internal log stream and recoverable
+    // via [setTlsCaFile].
+    _tlsBundleReady = _autoConfigureTlsCaBundle();
+  }
+
+  late final Future<void> _tlsBundleReady;
+
+  Future<void> _autoConfigureTlsCaBundle() async {
+    try {
+      final path = await TlsCaBundle.extract();
+      if (_disposed) return;
+      // Mirrors what [setTlsCaFile] does in the network mixin; that
+      // method is not visible from this class so we duplicate the two
+      // wire operations (property set + state update) inline.
+      _prop('tls-ca-file', path);
+      _updateField(
+          (s) => s.copyWith(tlsCaFile: path), _reactives.tlsCaFile, path);
+    } catch (e, st) {
+      // Surface to the internal-log stream; do NOT throw — the player
+      // still works for non-HTTPS streams or for consumers that bring
+      // their own CA bundle via `setTlsCaFile`.
+      _internalLogCtrl.add(MpvLogEntry(
+        level: LogLevel.warn,
+        prefix: 'mpv_audio_kit',
+        text: 'Failed to auto-configure tls-ca-file: $e\n$st',
+      ));
+    }
   }
 
   // --- Core Lifecycle ---
