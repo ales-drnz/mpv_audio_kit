@@ -29,9 +29,9 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 class OrphanHandleTracker {
   static const int _kBufferSize = 256;
   // Magic cookie stored alongside every address. Hot-Restart cleanup
-  // verifies this before calling `mpv_command_string` so a pid-reuse /
-  // file-corruption scenario can't trick us into invoking FFI on a
-  // pointer that wasn't ours. Slots are laid out as
+  // verifies this before calling into libmpv with a stored address so a
+  // pid-reuse / file-corruption scenario can't trick us into invoking FFI
+  // on a pointer that wasn't ours. Slots are laid out as
   // [cookie₀, addr₀, cookie₁, addr₁, …] in the underlying buffer.
   static const int _kCookie = 0x4D414B5F4D5056AB; // "MAK_MPV\xab"
   // 2 IntPtrs per slot (cookie + address).

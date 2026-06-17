@@ -2,14 +2,63 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:meta/meta.dart';
 
 import '../mpv_bindings.dart';
 import 'debug_log.dart';
 import 'orphan_handle_tracker.dart';
+
+/// How long Hot-Restart cleanup waits, after waking a leaked core with
+/// `quit`, before destroying its handle. The previous VM's event isolate
+/// may still be parked inside `mpv_wait_event` on that handle, and a Dart
+/// isolate blocked in a synchronous FFI call can't be killed until it
+/// returns to a safepoint — destroying the handle before then frees the
+/// mutex it sleeps on (use-after-free). This comfortably exceeds the
+/// 0.1 s debug wait-event timeout so the isolate has provably unwound.
+const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
+
+/// Two-phase teardown for libmpv handles leaked across a Hot-Restart.
+///
+/// Phase 1 sends `quit` to each handle, which wakes the leaked core so the
+/// previous VM's event isolate returns from `mpv_wait_event`, sees
+/// MPV_EVENT_SHUTDOWN and is reaped. `quit` alone does NOT free the core's
+/// worker threads or audio output. Phase 2, after [delay], destroys each
+/// handle (`mpv_terminate_destroy` joins the core thread and releases the
+/// audio output) — deferred so the destroy never races an isolate still
+/// inside the syscall (use-after-free).
+@internal
+Future<void> reapOrphanedHandles(
+  MpvLibrary lib,
+  List<Pointer<MpvHandle>> references, {
+  Duration delay = _kOrphanReapDelay,
+}) async {
+  const tag = 'mpv_audio_kit:';
+  for (final ref in references) {
+    final cmd = 'quit'.toNativeUtf8();
+    try {
+      lib.mpvCommandString(ref, cmd);
+    } catch (e) {
+      debugLog('$tag Error waking leaked handle: $e');
+    } finally {
+      calloc.free(cmd);
+    }
+  }
+
+  await Future<void>.delayed(delay);
+
+  for (final ref in references) {
+    try {
+      lib.mpvTerminateDestroy(ref);
+    } catch (e) {
+      debugLog('$tag Error terminating leaked handle: $e');
+    }
+  }
+}
 
 /// One-time initialization for `mpv_audio_kit`. Owns the libmpv
 /// `DynamicLibrary` lookup and the orphaned-handle cleanup that fires
@@ -68,24 +117,12 @@ abstract final class MpvAudioKit {
       debugLog('$tag Found ${references.length} orphaned reference(s).');
       debugLog('$tag Releasing leaked handles (Hot-Restart fix):');
 
-      final lib = MpvLibrary.open(libmpv);
       for (final ref in references) {
         debugLog(' - Address: ${ref.address}');
-        try {
-          // `mpv_terminate_destroy` is not safe here: the handle's
-          // worker thread may have panicked or exited mid-callback in
-          // the previous VM. Sending `quit` lets mpv unwind from inside
-          // its own thread.
-          final cmd = 'quit'.toNativeUtf8();
-          try {
-            lib.mpvCommandString(ref, cmd);
-          } finally {
-            calloc.free(cmd);
-          }
-        } catch (e) {
-          debugLog('$tag Error sending quit: $e');
-        }
       }
+
+      final lib = MpvLibrary.open(libmpv);
+      unawaited(reapOrphanedHandles(lib, references));
     });
 
     _libraryPath = libmpv;

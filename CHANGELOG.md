@@ -1,3 +1,9 @@
+## [0.4.1] - 17-06-2026
+
+### Fixed
+- A Flutter Hot-Restart no longer leaves the previous run's audio engine playing in the background. Each restart used to orphan a libmpv instance, the leaked engines are now fully torn down on the next restart instead of only being paused.
+- A `Player` dropped without `dispose()` now fully releases its native audio engine, instead of leaving it running until the app exits.
+
 ## [0.4.0] - 16-06-2026
 
 ### Breaking
