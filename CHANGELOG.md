@@ -1,3 +1,12 @@
+## [0.4.2] - 18-06-2026
+
+### Contributions
+- [@xiaobaimc](https://github.com/xiaobaimc): reported the Windows UI micro-stutter regression and helped finding the fix, pinpointing libmpv's timer-resolution changes as the root cause ([#12](https://github.com/ales-drnz/mpv_audio_kit/issues/12)).
+
+### Build
+- Windows UI micro-stutter and dropped frames are now fully resolved.
+- Updated libmpv to `libmpv-r12` across all platforms.
+
 ## [0.4.1] - 17-06-2026
 
 ### Fixed

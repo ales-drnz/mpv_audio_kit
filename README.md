@@ -50,7 +50,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.4.1
+  mpv_audio_kit: ^0.4.2
 ```
 
 ## Platforms requirements
