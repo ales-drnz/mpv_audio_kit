@@ -220,6 +220,7 @@ mixin _FfiModule on _PlayerBase {
   ///
   /// Returns `null` if the property doesn't exist or the read
   /// fails. Throws [StateError] if the player has been disposed.
+  @override
   Future<String?> getRawProperty(String name) async {
     await _gate();
     final (error, value) = await _getAsync(name, MpvFormat.mpvFormatString);
@@ -268,6 +269,7 @@ mixin _FfiModule on _PlayerBase {
   /// Throws [StateError] if the player has been disposed,
   /// [ArgumentError] if [name] is reserved, or [MpvException] if mpv
   /// rejects the property write (unknown name, out-of-range value, etc.).
+  @override
   Future<void> setRawProperty(String name, String value) async {
     await _gate();
     if (name == 'af') {

@@ -286,6 +286,11 @@ class _ApiProbe implements PlayerApi {
   Future<void> continueHook(int id) => _record('continueHook');
 
   @override
+  Future<void> setSourceResolver(SourceResolver? resolver,
+          {Duration? timeout = const Duration(seconds: 15),}) =>
+      _record('setSourceResolver');
+
+  @override
   Future<String?> getRawProperty(String name) async {
     calls.add('getRawProperty');
     return null;

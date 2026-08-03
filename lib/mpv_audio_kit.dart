@@ -53,6 +53,8 @@ export 'src/models/media_session.dart' show MediaSession;
 export 'src/models/mpv_track.dart' show MpvTrack;
 export 'src/models/pcm_frame.dart' show PcmFrame;
 export 'src/models/playlist.dart' show Playlist;
+export 'src/models/source_resolve_request.dart'
+    show SourceResolveRequest, SourceResolver;
 export 'src/models/waveform_data.dart' show WaveformData;
 export 'src/mpv_bindings.dart' show MpvLibraryException, MpvError;
 export 'src/player/player.dart' show Player;

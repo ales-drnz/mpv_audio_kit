@@ -3,9 +3,12 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Hook setters: register / continue mpv hooks. Hooks let you intercept
-/// mpv's file-loading pipeline to lazily resolve a URL, inject per-file
-/// HTTP headers, or redirect to a different source.
+/// Hook setters: register / continue mpv hooks, plus the high-level
+/// [Player.setSourceResolver] built on top of them. Hooks let you
+/// intercept mpv's file-loading pipeline to lazily resolve a URL, inject
+/// per-file HTTP headers, or redirect to a different source. For plain
+/// URL resolution prefer [Player.setSourceResolver]; the raw hook API
+/// below remains for headers, redirects, and custom per-load logic.
 ///
 /// Usage pattern:
 /// ```dart
@@ -48,6 +51,19 @@ mixin _HooksModule on _PlayerBase {
   Future<void> registerHook(Hook hook,
       {int priority = 0, Duration? timeout,}) async {
     await _gate();
+    // Mark the CONSUMER's interest even when the mpv-level registration
+    // already happened (e.g. the source resolver registered `on_load`
+    // internally first): from now on events for this hook surface on
+    // [PlayerStream.hook] and the continue obligation is the consumer's.
+    _userHookNames.add(hook.mpvValue);
+    await _ensureHookRegistered(hook, priority: priority, timeout: timeout);
+  }
+
+  /// mpv-level registration shared by [registerHook] and
+  /// [setSourceResolver]. Idempotent per hook name; a repeat call only
+  /// updates the optional [timeout].
+  Future<void> _ensureHookRegistered(Hook hook,
+      {int priority = 0, Duration? timeout,}) async {
     final name = hook.mpvValue;
     if (timeout != null) _hookTimeouts[name] = timeout;
     if (_registeredHookNames.contains(name)) return;
@@ -120,5 +136,117 @@ mixin _HooksModule on _PlayerBase {
     // dispatch point waiting for exactly this call, so the lock is granted
     // immediately — the playloop cannot simultaneously be busy elsewhere.
     _lib.mpvHookContinue(_handle, id);
+  }
+
+  /// Installs [resolver] as the player's source resolver — the official
+  /// callback for resolving or refreshing a playback URL right before a
+  /// track opens, without wiring `on_load` hooks by hand.
+  ///
+  /// The resolver is invoked with a [SourceResolveRequest] carrying the
+  /// entry's original [Media] ([Media.extras] and [Media.httpHeaders]
+  /// intact) once per load attempt, including gapless prefetch opens:
+  ///
+  /// - before every stream open (`on_load`), and
+  /// - once more after a failed open (`on_load_fail`) with
+  ///   [SourceResolveRequest.isRetry] `true` — return a fresh URL and mpv
+  ///   retries, covering expired CDN / token URLs. The retry fires at
+  ///   most once per load, and only when the returned URL differs from
+  ///   the one that failed.
+  ///
+  /// Return the URL to play, or `null` (or the incoming
+  /// [SourceResolveRequest.uri] unchanged) to leave the source alone —
+  /// the default no-resolver behaviour is unaffected for entries the
+  /// resolver doesn't care about. A thrown error is logged on
+  /// [PlayerStream.internalLog] and treated as "keep the current URL".
+  ///
+  /// [timeout] is the safety net for a hung resolver (default 15s): if a
+  /// resolution pass hasn't finished by then, the library auto-continues
+  /// the underlying hook so mpv never stalls indefinitely. Pass `null`
+  /// to disable the net. The value is stored per hook name, so it also
+  /// becomes the deadline of a consumer-registered `Hook.load` /
+  /// `Hook.loadFail` (the most recent registration's timeout wins).
+  ///
+  /// Composes with [registerHook]: when the consumer has registered
+  /// `Hook.load` themselves, the resolver runs FIRST, then the event
+  /// surfaces on [PlayerStream.hook] with the rewritten URL already in
+  /// `stream-open-filename`, and the consumer's [continueHook] releases
+  /// mpv as usual.
+  ///
+  /// Pass `null` to uninstall. mpv has no hook-removal API, so the
+  /// underlying registrations stay; the library just auto-continues
+  /// their events from then on.
+  Future<void> setSourceResolver(SourceResolver? resolver,
+      {Duration? timeout = const Duration(seconds: 15),}) async {
+    await _gate();
+    _sourceResolver = resolver;
+    if (resolver == null) return;
+    await _ensureHookRegistered(Hook.load, timeout: timeout);
+    await _ensureHookRegistered(Hook.loadFail, timeout: timeout);
+  }
+
+  /// Single entry point for every MPV_EVENT_HOOK, called by the dispatch
+  /// layer. Ordering per event: resolver pass (when installed and the
+  /// hook is `on_load` / `on_load_fail`) → consumer delivery on
+  /// [PlayerStream.hook] (only when the consumer registered this hook) →
+  /// otherwise internal [continueHook].
+  ///
+  /// When no resolver is installed and the hook is consumer-registered,
+  /// no await runs before the stream add — delivery stays in the same
+  /// microtask as the native event, preserving the pre-resolver timing.
+  @override
+  Future<void> _routeHookEvent(int id, Hook hook, String name) async {
+    final resolver = _sourceResolver;
+    if (resolver != null && (hook == Hook.load || hook == Hook.loadFail)) {
+      await _runSourceResolver(resolver, hook);
+    }
+    if (_disposed) return;
+    if (_userHookNames.contains(name)) {
+      _hookCtrl.add(MpvHookEvent(id, hook));
+    } else {
+      await continueHook(id);
+    }
+  }
+
+  /// One resolver pass: read the URL mpv is about to open, look up the
+  /// original [Media] in the media cache, invoke the consumer callback,
+  /// and rewrite `stream-open-filename` when it returns a different URL.
+  ///
+  /// Never throws — the hook MUST reach its continue in [_routeHookEvent]
+  /// regardless of what the consumer callback does, so failures are
+  /// logged on [PlayerStream.internalLog] and resolution is skipped.
+  Future<void> _runSourceResolver(SourceResolver resolver, Hook hook) async {
+    try {
+      final isRetry = hook == Hook.loadFail;
+      // One resolver-driven retry per load attempt — see
+      // [_resolverRetried] for the loop hazard this caps. The flag is
+      // cleared on START_FILE only, NOT on `on_load`: after an
+      // `on_load_fail` rewrite mpv re-enters the load cycle from
+      // `on_load` for the same attempt, and re-arming there would
+      // reopen the infinite loop the flag exists to prevent.
+      if (isRetry && _resolverRetried) return;
+      final current = await getRawProperty('stream-open-filename') ?? '';
+      if (current.isEmpty || _disposed) return;
+      final media = _mediaCache[current] ?? Media(current);
+      final resolved = await resolver(
+        SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
+      );
+      if (_disposed ||
+          resolved == null ||
+          resolved.isEmpty ||
+          resolved == current) {
+        return;
+      }
+      if (isRetry) _resolverRetried = true;
+      await setRawProperty('stream-open-filename', resolved);
+      // Keep the original Media reachable under the rewritten URL, so a
+      // later `on_load_fail` on this entry (expired token on the resolved
+      // URL) still hands the resolver the same Media and extras.
+      _mediaCache[resolved] = media;
+    } catch (e, st) {
+      _internalLog(
+        'Source resolver threw for ${hook.mpvValue}: $e\n$st',
+        level: LogLevel.warn,
+      );
+    }
   }
 }

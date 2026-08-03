@@ -1,3 +1,14 @@
+## [0.4.3] - 3-08-2026
+
+### Contributions
+- [@yhsj0919](https://github.com/yhsj0919): requested an official callback for resolving playback URLs at play time, for temporary CDN and token-based sources ([#15](https://github.com/ales-drnz/mpv_audio_kit/issues/15)).
+
+### Added
+- `Player.setSourceResolver`: official callback to resolve or refresh a playback URL right before each track opens, without wiring `on_load` hooks by hand. The resolver receives the entry's original `Media` (`extras` intact) and returns the URL to play; `null` keeps the current one. A failed open re-invokes it once with `isRetry: true`, so an expired URL can be refreshed and retried.
+
+### Fixed
+- Opening a new track or album right after the previous one finished no longer starts stuck paused (the engine parked at end of content swallowed the unpause, so a second tap was needed). `open`, `openAll`, `openPlaylistFile` and `jump` now start playback reliably from that state.
+
 ## [0.4.2] - 18-06-2026
 
 ### Contributions

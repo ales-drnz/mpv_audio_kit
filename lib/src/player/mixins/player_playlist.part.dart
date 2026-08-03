@@ -102,8 +102,15 @@ mixin _PlaylistModule on _PlayerBase {
     // stuck on "paused" while audio is audibly playing.
     _updateField((s) => s.copyWith(playWhenReady: true),
         _reactives.playWhenReady, true,);
+    // See [Player.open] — parked at EOF (`keep-open`) the unpause above
+    // doesn't survive: the playloop hits EOF again and re-pauses before
+    // the jump command is processed. The corrective write after it sticks.
+    final parkedAtEof = _state.completed;
     await _prop('pause', 'no');
     await _commandChecked(['playlist-play-index', index.toString()]);
+    if (parkedAtEof) {
+      await _prop('pause', 'no');
+    }
   }
 
   /// Moves the track at [from] to position [to].

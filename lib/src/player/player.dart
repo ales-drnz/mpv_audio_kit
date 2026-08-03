@@ -40,6 +40,7 @@ import '../models/media.dart';
 import '../models/media_session.dart';
 import '../models/pcm_frame.dart';
 import '../models/playlist.dart';
+import '../models/source_resolve_request.dart';
 import '../models/waveform_data.dart';
 import '../mpv_bindings.dart' hide MpvEndFileReason;
 import '../reactive/default_reactives.dart';
@@ -82,6 +83,7 @@ export '../models/loudness.dart';
 export '../models/media.dart';
 export '../models/media_session.dart';
 export '../models/playlist.dart';
+export '../models/source_resolve_request.dart';
 export '../types/enums/format.dart';
 export '../types/enums/interruption_policy.dart';
 export '../types/enums/loop.dart';
@@ -190,6 +192,13 @@ class Player extends _PlayerBase
       await resolved.dispose?.call();
       return;
     }
+    // Captured BEFORE the pause write: when true, mpv is parked paused on
+    // the last frame (`keep-open`), and the pre-loadfile `pause=no` below
+    // does not survive — unpausing at EOF makes the playloop hit EOF again
+    // and `keep-open-pause` re-pauses the core before the loadfile (queued
+    // behind this write's async reply round-trip) is ever processed. The
+    // corrective write after the replace is what actually sticks.
+    final parkedAtEof = _state.completed;
     await _prop('pause', shouldPlay ? 'no' : 'yes');
     final opts = _buildLoadfileOptions(media);
     if (opts.isEmpty) {
@@ -200,6 +209,9 @@ class Player extends _PlayerBase
       // present), so mpv scopes them as file-local for this exact playlist
       // entry — never writing the global `http-header-fields` / `stream-lavf-o`.
       await _commandChecked(['loadfile', resolved.uri, 'replace', '-1', opts]);
+    }
+    if (parkedAtEof && shouldPlay) {
+      await _prop('pause', 'no');
     }
     // Drop visible per-track state — cover art, chapter list and current
     // chapter index — so a UI that reads the state immediately after
@@ -283,6 +295,9 @@ class Player extends _PlayerBase
     // for every entry (initial replace + every append), so mpv scopes
     // them as file-local without ever writing the global
     // `http-header-fields` option.
+    // See [open] — parked at EOF the pre-loadfile unpause doesn't survive
+    // mpv's keep-open re-pause; a corrective write after the replace does.
+    final parkedAtEof = _state.completed;
     await _prop('pause', shouldPlay ? 'no' : 'yes');
     final firstOpts = _buildLoadfileOptions(medias.first);
     if (firstOpts.isEmpty) {
@@ -290,6 +305,9 @@ class Player extends _PlayerBase
     } else {
       await _commandChecked(
           ['loadfile', resolved.first.uri, 'replace', '-1', firstOpts],);
+    }
+    if (parkedAtEof && shouldPlay) {
+      await _prop('pause', 'no');
     }
     for (var i = 1; i < medias.length; i++) {
       final opts = _buildLoadfileOptions(medias[i]);
@@ -350,8 +368,14 @@ class Player extends _PlayerBase
       await resolved.dispose?.call();
       return;
     }
+    // See [open] — parked at EOF the pre-loadlist unpause doesn't survive
+    // mpv's keep-open re-pause; a corrective write after the replace does.
+    final parkedAtEof = _state.completed;
     await _prop('pause', shouldPlay ? 'no' : 'yes');
     await _commandChecked(['loadlist', resolved.uri, 'replace']);
+    if (parkedAtEof && shouldPlay) {
+      await _prop('pause', 'no');
+    }
     // Clear per-track state AFTER the replace's reply — see [open].
     _clearPerFileState();
   }
@@ -422,6 +446,25 @@ abstract class _PlayerBase {
   final _hookTimers = <int, Timer>{};
   final _activeHookIds = <int>{};
   final _registeredHookNames = <String>{};
+  // Hook names the CONSUMER registered via [Player.registerHook], a
+  // subset of `_registeredHookNames` (the resolver below registers
+  // `on_load` / `on_load_fail` internally without adding here). Only
+  // user-registered hooks surface on [PlayerStream.hook] and transfer
+  // the continue obligation to the consumer; internally-registered ones
+  // are continued by the library.
+  final _userHookNames = <String>{};
+
+  // The installed [SourceResolver]; null = feature off. Set by
+  // [Player.setSourceResolver], consulted by `_routeHookEvent` on every
+  // `on_load` / `on_load_fail` event.
+  SourceResolver? _sourceResolver;
+
+  // Latched when the resolver services an `on_load_fail` for the current
+  // load attempt, cleared on the next START_FILE / `on_load`. Caps the
+  // resolver-driven retry at ONE per load: a resolver that keeps minting
+  // fresh-but-broken URLs (e.g. a timestamped query string) would
+  // otherwise put mpv in an infinite open-fail-reopen loop.
+  bool _resolverRetried = false;
 
   PlayerState _state = const PlayerState();
 
@@ -608,6 +651,18 @@ abstract class _PlayerBase {
   /// See `_LoadValidationModule` (player_load_validation.part.dart).
   String _buildLoadfileOptions(Media media);
   void _validateLoadOptions(Media media);
+
+  /// See `_FfiModule` — the raw property escape hatches, redeclared here
+  /// so the source-resolver driver in `_HooksModule` can read and rewrite
+  /// `stream-open-filename` across the part boundary.
+  Future<String?> getRawProperty(String name);
+  Future<void> setRawProperty(String name, String value);
+
+  /// See `_HooksModule` (player_hooks.part.dart) — called by the dispatch
+  /// layer for every MPV_EVENT_HOOK: runs the source resolver when one is
+  /// installed, then either surfaces the event on [PlayerStream.hook]
+  /// (user-registered hook) or continues it internally.
+  Future<void> _routeHookEvent(int id, Hook hook, String name);
 
   // Set by the audio module when af-command updates leave the live graph
   // ahead of the `af` property string; cleared by the dispatch layer when

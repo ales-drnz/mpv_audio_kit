@@ -7,6 +7,7 @@ import '../models/chapter.dart';
 import '../models/device.dart';
 import '../models/media.dart';
 import '../models/media_session.dart';
+import '../models/source_resolve_request.dart';
 import '../types/enums/cover.dart';
 import '../types/enums/format.dart';
 import '../types/enums/gapless.dart';
@@ -364,12 +365,21 @@ abstract interface class PlayerApi {
 
   /// Registers a libmpv hook. Higher [priority] runs earlier; [timeout]
   /// caps how long mpv waits before auto-continuing. Hook events surface
-  /// on [PlayerStream.hooks] and must be released with [continueHook].
+  /// on [PlayerStream.hook] and must be released with [continueHook].
   Future<void> registerHook(Hook hook, {int priority = 0, Duration? timeout});
 
   /// Releases the hook stage identified by [id], letting mpv resume the
   /// gated operation.
   Future<void> continueHook(int id);
+
+  /// Installs a [SourceResolver] — the official callback for resolving or
+  /// refreshing a playback URL right before each track opens (and once
+  /// more after a failed open, with [SourceResolveRequest.isRetry] set),
+  /// driven internally by the `on_load` / `on_load_fail` hooks. Return
+  /// `null` to keep the current URL; pass `null` to uninstall. [timeout]
+  /// caps a hung resolver (default 15s, `null` disables).
+  Future<void> setSourceResolver(SourceResolver? resolver,
+      {Duration? timeout = const Duration(seconds: 15),});
 
   // ── Raw escape hatch ───────────────────────────────────────────────
 

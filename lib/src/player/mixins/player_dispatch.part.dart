@@ -61,6 +61,9 @@ mixin _DispatchModule on _PlayerBase {
           // idle-active burst (FIFO), so the latch still can't be tripped by
           // the startup burst.
           _hasLoadedFile = true;
+          // A new load attempt re-arms the source resolver's single
+          // retry allowance — see [_resolverRetried].
+          _resolverRetried = false;
           _updateLifecycle(buffering: true, completed: false);
         case MpvEventFileLoaded(
             :final path,
@@ -223,7 +226,13 @@ mixin _DispatchModule on _PlayerBase {
           _activeHookIds.add(id);
           final timeout = _hookTimeouts[name];
           if (timeout != null) _startHookTimeout(id, name, timeout);
-          _hookCtrl.add(MpvHookEvent(id, hook));
+          // Routed through the hooks module: runs the source resolver
+          // first when one is installed, then surfaces the event on
+          // [PlayerStream.hook] (user-registered hook) or continues it
+          // internally (resolver-only registration). With no resolver
+          // and a user registration the add() inside is still
+          // synchronous — same-microtask emission as before.
+          unawaited(_routeHookEvent(id, hook, name));
       }
     } catch (e, st) {
       _internalLog(

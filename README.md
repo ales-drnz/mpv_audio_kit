@@ -50,7 +50,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.4.2
+  mpv_audio_kit: ^0.4.3
 ```
 
 ## Platforms requirements
@@ -213,6 +213,7 @@ dependencies:
     * [12.2 Listening and continuing](#122-listening-and-continuing)
     * [12.3 HTTP headers via hook](#123-http-headers-via-hook)
     * [12.4 Lazy URL resolution](#124-lazy-url-resolution)
+    * [12.5 The source resolver](#125-the-source-resolver)
 
     </details>
 
@@ -601,11 +602,11 @@ await player.openPlaylistFile(Media('https://example.com/stations.m3u'));
 
 > Per-track HTTP headers from `Media.httpHeaders` are applied
 > automatically to every entry, both the first and the queued ones.
-> The wrapper holds an internal `on_load` hook that re-attaches them
-> via `file-local-options/http-header-fields` when mpv enters the
-> file-local scope for each track (the only safe moment per the mpv
-> manual). You only need to register your own [§12](#12-hooks) hook
-> for URL resolution, custom auth flows, etc.
+> The wrapper passes them to mpv as file-local `loadfile` options
+> (`http-header-fields`), so they ride along with that exact playlist
+> entry and never touch the global option. You only need a
+> [§12.5](#125-the-source-resolver) resolver or your own
+> [§12](#12-hooks) hook for URL resolution, custom auth flows, etc.
 
 #### 3.3 Modifying the queue at runtime
 
@@ -2189,11 +2190,12 @@ Hooks intercept mpv's file-loading pipeline before a stream is opened. Use them 
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.png" width="100%">
 
-> The library already registers an internal `on_load` hook so
-> `Media.httpHeaders` are applied automatically to every track via
-> `file-local-options/http-header-fields`. You only need to register
-> your own hook when you want to handle URL resolution, redirects, or
-> any other per-load logic on top of that.
+> `Media.httpHeaders` need no hook at all: the wrapper passes them as
+> file-local `loadfile` options, scoped to that exact playlist entry.
+> You only need to register your own hook when you want to handle URL
+> resolution, redirects, or any other per-load logic on top of that.
+> For plain URL resolution there is an official shortcut that skips
+> the wiring entirely: [`setSourceResolver`](#125-the-source-resolver).
 
 #### 12.1 Registering a hook
 
@@ -2294,6 +2296,33 @@ await player.openAll(medias);
 // When mpv reaches each track, the hook resolves it on demand:
 // on_load → myResolver("my-scheme://abc") → /decision + start.m3u8 URL
 ```
+
+#### 12.5 The source resolver
+
+`setSourceResolver` packages the whole [§12.4](#124-lazy-url-resolution) pattern into one official callback: no `registerHook` and `continueHook` wiring, no placeholder-scheme parsing. The resolver receives the entry's **original `Media`**, with `extras` and `httpHeaders` intact, so it can branch on consumer-attached data (a track id, a per-source auth flow) and return the URL to play:
+
+```dart
+player.setSourceResolver((request) async {
+  final id = request.media.extras?['trackId'] as String?;
+  if (id == null) return null;         // not ours, keep the URL as-is
+  return service.getPlaybackUrl(id);   // temporary CDN or token URL
+});
+
+// Queue by id, with no network calls until each track actually opens:
+await player.openAll([
+  Media('resolve://1', extras: {'trackId': '1'}),
+  Media('resolve://2', extras: {'trackId': '2'}),
+]);
+```
+
+The resolver is consulted:
+
+* **before every stream open** (`on_load`), gapless prefetch included;
+* **once more after a failed open** (`on_load_fail`) with `request.isRetry` set: return a fresh URL and mpv retries. This is the expired-token path. The retry fires at most once per load, and only when the returned URL differs from the one that failed.
+
+Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error is logged on `internalLog` and treated as "keep the current URL".
+
+> The resolver runs on top of the raw hook API, and the two compose: with a consumer-registered `Hook.load` the resolver runs **first**, then the event surfaces on `player.stream.hook` with `stream-open-filename` already rewritten, and your hook still owns `continueHook`. A hung resolver is capped by the `timeout` argument (default 15s), after which the library auto-continues the hook so mpv never stalls. Pass `null` as the resolver to uninstall.
 
 ---
 
