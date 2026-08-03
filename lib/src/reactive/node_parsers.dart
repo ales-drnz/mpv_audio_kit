@@ -36,7 +36,9 @@ import '../types/sealed/channels.dart';
 /// `index` when mpv's payload omits the `current` flag (which it does
 /// transiently during `playlist-move`). Without this fallback the index
 /// would snap to 0 mid-reorder, briefly highlighting the wrong entry in the
-/// UI.
+/// UI. When no entry has EVER been current (entries appended on an idle
+/// core, before playback starts) the index is `-1` instead — see
+/// [Playlist.index].
 Playlist parsePlaylistNode({
   required dynamic raw,
   required Map<String, Media> mediaCache,
@@ -61,9 +63,33 @@ Playlist parsePlaylistNode({
   }
   final medias =
       filenames.map((f) => mediaCache[f] ?? Media(f)).toList(growable: false);
-  final idx = currentIndex >= 0
-      ? currentIndex
-      : previous.index.clamp(0, medias.isEmpty ? 0 : medias.length - 1);
+  final int idx;
+  if (currentIndex >= 0) {
+    idx = currentIndex;
+  } else if (medias.isEmpty) {
+    // Documented empty-playlist value (matches [Playlist.empty]).
+    idx = 0;
+  } else if (previous.index >= 0 && previous.index < previous.items.length) {
+    // Transient current-flag omission (playlist-move, or a coalesced
+    // burst of playlist surgery). Follow the previously-current entry
+    // BY URI, not by raw position: during a move the entry may have
+    // shifted, and during [Player.openAll]'s rebuild it is gone
+    // entirely — mpv coalesces rapid notifications, so the payload can
+    // jump straight from the old playlist to the fully-swapped one with
+    // no current flag in between. Pinning the old NUMBER would mark an
+    // unrelated incoming entry as active; following the URI keeps the
+    // real track highlighted through a move and reports -1 ("no active
+    // entry yet") through a swap. With duplicate URIs the first
+    // occurrence wins — the transient lasts one event either way.
+    idx = filenames.indexOf(previous.items[previous.index].uri);
+  } else {
+    // Entries exist but none has EVER been current: the append build-up
+    // phase of [Player.openAll] (entries queued on an idle core before
+    // the playlist-play-index). Reporting a clamped 0 here would flash
+    // "track 1 active" in a UI bound to the index; -1 says "no active
+    // entry yet" and consumers guarding `index >= 0` skip the frame.
+    idx = -1;
+  }
   return Playlist(medias, index: idx);
 }
 

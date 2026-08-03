@@ -22,7 +22,10 @@ final class Playlist {
   /// The ordered list of tracks.
   final List<Media> items;
 
-  /// The index of the currently active track. `0` for an empty playlist.
+  /// The index of the currently active track. `0` for an empty playlist,
+  /// `-1` when entries exist but none is active yet (the append build-up
+  /// phase of [Player.openAll], before playback starts). Guard reads
+  /// with `index >= 0` before using it to address [items].
   final int index;
 
   /// Creates a playlist from an ordered list of [items], with [index]

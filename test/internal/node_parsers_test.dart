@@ -82,8 +82,10 @@ void main() {
       expect(p.index, 2);
     });
 
-    test('no current flag + prev.index out-of-range → clamped to bounds', () {
-      // Edge case: prev.index points past the new (shorter) playlist.
+    test('no current flag + previously-current entry gone → -1', () {
+      // Edge case: the playlist shrank and the entry that was current is
+      // no longer in it. There is genuinely no active entry to report;
+      // pinning position 0 would mark an unrelated track as playing.
       final p = parsePlaylistNode(
         raw: [
           {'filename': 'a'},
@@ -92,8 +94,48 @@ void main() {
         previous:
             const Playlist([Media('a'), Media('b'), Media('c')], index: 2),
       );
-      expect(p.index, 0,
-          reason: 'clamp prev.index=2 into [0, length-1] = [0, 0]',);
+      expect(p.index, -1,
+          reason: "the previously-current 'c' does not exist in the new "
+              'payload, so no entry is active',);
+    });
+
+    test('no current flag + current entry MOVED → followed by uri', () {
+      // playlist-move can shift the current entry while the flag is
+      // transiently absent; the index must follow the entry, not the
+      // old position.
+      final p = parsePlaylistNode(
+        raw: [
+          {'filename': 'b'},
+          {'filename': 'a'},
+          {'filename': 'c'},
+        ],
+        mediaCache: const {},
+        previous: const Playlist([Media('a'), Media('b'), Media('c')]),
+      );
+      expect(p.index, 1,
+          reason: "the current entry 'a' moved to position 1",);
+    });
+
+    test(
+        'no current flag + nothing was EVER current → -1, NOT 0 '
+        '(openAll append build-up phase)', () {
+      // Entries appended on an idle core (Player.openAll) before the
+      // playlist-play-index: no entry has ever been current. Clamping to
+      // 0 here would flash "track 1 active" in an index-bound UI.
+      var previous = Playlist.empty;
+      for (var n = 1; n <= 3; n++) {
+        final p = parsePlaylistNode(
+          raw: [
+            for (var i = 0; i < n; i++) {'filename': 'track$i'},
+          ],
+          mediaCache: const {},
+          previous: previous,
+        );
+        expect(p.index, -1,
+            reason: 'build-up emission with $n entries must report "no '
+                'active entry", not entry 0',);
+        previous = p;
+      }
     });
 
     test('empty array → empty playlist (index=0 not -1)', () {

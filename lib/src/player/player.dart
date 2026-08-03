@@ -229,8 +229,18 @@ class Player extends _PlayerBase
   /// Opens a list of [Media] items as the new playlist, optionally starting at [index].
   ///
   /// Multi-media counterpart of [open]. [index] is clamped to
-  /// `[0, medias.length - 1]`. When non-zero the first item is loaded
-  /// briefly, then mpv jumps to the requested position.
+  /// `[0, medias.length - 1]`.
+  ///
+  /// Entries are appended on the core WITHOUT starting playback (mpv's
+  /// `loadfile append` never autostarts), then a single
+  /// `playlist-play-index` starts directly at [index]. The entry at
+  /// position 0 is never loaded, played, or reported as current unless
+  /// it IS the requested index — so a UI bound to
+  /// [PlayerState.playlist]'s `index` never flashes track 1 before the
+  /// selected track, and no audio from track 1 leaks out. During the
+  /// transition the outgoing track keeps playing (or stays parked) until
+  /// the jump; while entries build up on an idle core the playlist
+  /// `index` reports `-1` (see [Playlist.index]).
   @override
   Future<void> openAll(List<Media> medias, {bool? play, int index = 0}) async {
     _checkNotDisposed();
@@ -255,7 +265,17 @@ class Player extends _PlayerBase
       _reactives.playWhenReady,
       shouldPlay,
     );
+    // Snapshot the outgoing current entry's Media so it keeps its
+    // metadata while still visible in playlist events during the
+    // transition (retained until the post-jump remove below).
+    final oldPlaylist = _state.playlist;
+    final oldCurrent = oldPlaylist.items.isNotEmpty &&
+            oldPlaylist.index >= 0 &&
+            oldPlaylist.index < oldPlaylist.items.length
+        ? oldPlaylist.items[oldPlaylist.index]
+        : null;
     _mediaCache.clear();
+    if (oldCurrent != null) _mediaCache[oldCurrent.uri] = oldCurrent;
     // Resolve once per media — content:// resolutions detach a JVM-side
     // FD, doing it twice would leak one FD per track.
     final resolved = <ResolvedUri>[];
@@ -291,38 +311,113 @@ class Player extends _PlayerBase
       }
       return;
     }
-    // Per-Media `httpHeaders` ride along as the 4th `loadfile` arg
-    // for every entry (initial replace + every append), so mpv scopes
-    // them as file-local without ever writing the global
-    // `http-header-fields` option.
-    // See [open] — parked at EOF the pre-loadfile unpause doesn't survive
-    // mpv's keep-open re-pause; a corrective write after the replace does.
-    final parkedAtEof = _state.completed;
-    await _prop('pause', shouldPlay ? 'no' : 'yes');
-    final firstOpts = _buildLoadfileOptions(medias.first);
-    if (firstOpts.isEmpty) {
-      await _commandChecked(['loadfile', resolved.first.uri, 'replace']);
-    } else {
-      await _commandChecked(
-          ['loadfile', resolved.first.uri, 'replace', '-1', firstOpts],);
+    // ── Phase 1: clear the outgoing playlist ──────────────────────────
+    // `playlist-clear` keeps ONLY the current entry (mpv's
+    // playlist_clear_except_current), so the outgoing track keeps
+    // playing while the new entries build up — no idle gap, no silence.
+    // The flow is decided from mpv's own properties AFTER the clear
+    // (`playlist-count`, `eof-reached`), not from the Dart-side state
+    // snapshot: state can lag the core by an event round-trip, and a
+    // wrong guess here would offset every append target below.
+    Future<void> bailDisposing() async {
+      for (final prior in resolved) {
+        await prior.dispose?.call();
+      }
     }
-    if (parkedAtEof && shouldPlay) {
-      await _prop('pause', 'no');
+
+    await _command(['playlist-clear']);
+    if (_disposed || epoch != _loadEpoch) return bailDisposing();
+    final retainedCount =
+        int.tryParse(await getRawProperty('playlist-count') ?? '') ?? 0;
+    if (_disposed || epoch != _loadEpoch) return bailDisposing();
+    var parkedAtEof = false;
+    if (retainedCount > 0) {
+      // A retained entry parked at EOF cannot survive the appends:
+      // `keep-open` holds the park only while no next entry exists (mpv's
+      // handle_keep_open), so the first append would create a "next" and
+      // mpv would auto-advance into the new album's entry 0 —
+      // resurrecting the exact transient this flow eliminates. Remove it
+      // NOW instead: the playlist is single-entry after the clear, so
+      // PT_NEXT_ENTRY finds nothing and the core goes idle — where
+      // appends provably never autostart.
+      parkedAtEof = await getRawProperty('eof-reached') == 'yes';
+      if (_disposed || epoch != _loadEpoch) return bailDisposing();
+      if (parkedAtEof) {
+        await _command(['playlist-remove', '0']);
+        if (_disposed || epoch != _loadEpoch) return bailDisposing();
+        // Barrier: wait for the core to actually reach idle before any
+        // append. The remove's playback teardown runs asynchronously on
+        // the playloop, and an append landing before it completes gets
+        // picked up by the end-of-file advancement — playlist_get_next
+        // from a NULL current with the playlist not started returns
+        // entry 0 — which would start the incoming album's first track:
+        // the exact transient this flow eliminates. Idle lands within a
+        // playloop iteration; the bound only guards a wedged core.
+        for (var i = 0; i < 100; i++) {
+          if (await getRawProperty('idle-active') == 'yes') break;
+          if (_disposed || epoch != _loadEpoch) return bailDisposing();
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        if (_disposed || epoch != _loadEpoch) return bailDisposing();
+      }
     }
-    for (var i = 1; i < medias.length; i++) {
+    // Whether an old entry is still occupying position 0 (the playing
+    // flow): the append targets shift by one until the post-jump remove
+    // drops it.
+    final retainedOld = retainedCount > 0 && !parkedAtEof;
+
+    // ── Phase 2: append every entry — playback never starts here ──────
+    // mpv's `loadfile append` is play=false unconditionally (unlike
+    // append-play), even on an idle core. Per-Media `httpHeaders` ride
+    // along as the 4th `loadfile` arg, so mpv scopes them as file-local
+    // without ever writing the global `http-header-fields` option.
+    for (var i = 0; i < medias.length; i++) {
       final opts = _buildLoadfileOptions(medias[i]);
       if (opts.isEmpty) {
         await _commandChecked(['loadfile', resolved[i].uri, 'append']);
       } else {
-        await _commandChecked(['loadfile', resolved[i].uri, 'append', '-1', opts]);
+        await _commandChecked(
+            ['loadfile', resolved[i].uri, 'append', '-1', opts],);
       }
+      if (_disposed || epoch != _loadEpoch) return bailDisposing();
     }
-    if (clampedIndex > 0) {
-      await _commandChecked(['playlist-play-index', clampedIndex.toString()]);
+
+    // ── Phase 3: intent, then one direct jump to the target ───────────
+    // The pause write cannot be fought by keep-open here: the parked
+    // flow already left EOF (idle after the remove above), and the
+    // playing flow is mid-track. `playlist-play-index` sets
+    // playlist->current straight to the target entry (mp_set_playlist_
+    // entry) — entries before it are never loaded or made current.
+    await _prop('pause', shouldPlay ? 'no' : 'yes');
+    final target = (retainedOld ? 1 : 0) + clampedIndex;
+    await _commandChecked(['playlist-play-index', target.toString()]);
+
+    // Parked flow traversed idle, and the idle-active observer resets
+    // playWhenReady (its job when content genuinely ends). By FIFO
+    // event delivery that reset has already been applied once the
+    // play-index reply lands, so re-asserting the intent here is the
+    // last word — without this the OS play button would stick on
+    // "paused" while the new album plays.
+    if (parkedAtEof) {
+      _updateField(
+        (s) => s.copyWith(playWhenReady: shouldPlay),
+        _reactives.playWhenReady,
+        shouldPlay,
+      );
     }
-    // Clear per-track state AFTER the replace's reply — see [open] for why
-    // the placement (post-reply) is what makes the clear the last word over
-    // trailing OLD-file PROPERTY_CHANGE events.
+
+    // ── Phase 4: drop the retained old entry ──────────────────────────
+    // Non-current by now (the jump moved current to the target), so the
+    // removal is pure bookkeeping; indices shift down to their final
+    // positions. Tolerant `_command`: a concurrent surgery that already
+    // emptied position 0 must not surface as an openAll error.
+    if (retainedOld) {
+      if (_disposed || epoch != _loadEpoch) return bailDisposing();
+      await _command(['playlist-remove', '0']);
+    }
+    // Clear per-track state AFTER the jump's reply — see [open] for why
+    // the placement (post-reply) is what makes the clear the last word
+    // over trailing OLD-file PROPERTY_CHANGE events.
     _clearPerFileState();
   }
 

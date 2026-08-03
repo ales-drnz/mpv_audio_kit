@@ -1,3 +1,10 @@
+## [0.4.4] - 3-08-2026
+
+### Changed
+- `openAll` no longer loads the first entry briefly before jumping to the requested index. Entries are appended without starting playback and a single jump starts directly at the selected track, so a UI bound to the playlist index never flashes track 1 during the transition and no audio from it leaks out. The outgoing track keeps playing until the jump.
+- `Playlist.index` can now be `-1` while entries exist but none is active yet (the build-up phase of `openAll`, before playback starts). Guard reads with `index >= 0` before addressing `items`; consumers that already did so are unaffected.
+- When mpv omits the current flag during playlist reorders, the playlist index now follows the current entry by URI instead of pinning its old position, so a `move` keeps the real track highlighted even when the entry shifted.
+
 ## [0.4.3] - 3-08-2026
 
 ### Contributions

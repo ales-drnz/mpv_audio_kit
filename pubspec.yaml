@@ -1,6 +1,6 @@
 name: mpv_audio_kit
 description: Dart audio player built on mpv v0.41.0. Supports audio filters, equalizer, visualizer, waveform and more. Targets macOS, Windows, Linux, iOS and Android.
-version: 0.4.3
+version: 0.4.4
 homepage: https://github.com/ales-drnz/mpv_audio_kit
 repository: https://github.com/ales-drnz/mpv_audio_kit
 issue_tracker: https://github.com/ales-drnz/mpv_audio_kit/issues
