@@ -1,3 +1,12 @@
+## [0.4.5] - 22-08-2026
+
+### Contributions
+- [@visionxStudio](https://github.com/visionxStudio): reported the startup crash on Android 10 ([#16](https://github.com/ales-drnz/mpv_audio_kit/issues/16)).
+
+### Build
+- Android apps no longer die at startup with a native SIGSEGV on API 24 to 29.
+- Updated libmpv to `libmpv-r13` across all platforms.
+
 ## [0.4.4] - 3-08-2026
 
 ### Changed

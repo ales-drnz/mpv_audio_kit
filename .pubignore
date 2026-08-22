@@ -41,6 +41,7 @@ graphify-out/
 # Tests
 /test/
 /test_app/
+/packages/
 
 # Shared-source plumbing (maintainer-only). `darwin/Sources/` is the single
 # source of truth for the Apple Swift the iOS/macOS plugins share; it is

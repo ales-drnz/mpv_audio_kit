@@ -19,7 +19,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'mpv_audio_kit'
-  s.version          = '0.4.4'
+  s.version          = '0.4.5'
   s.summary          = 'Flutter audio player powered by libmpv.'
   s.description      = <<-DESC
     Supports audio filters, pitch control, equalizer, and all mpv audio features.
@@ -61,7 +61,7 @@ Pod::Spec.new do |s|
   # mpv_audio_kit/ SwiftPM package directory so the vendored_frameworks below
   # and Package.swift's local .binaryTarget(path:) share one location.
   s.prepare_command = <<-CMD
-    MPV_RELEASE_VERSION="libmpv-r12"
+    MPV_RELEASE_VERSION="libmpv-r13"
     EXPECTED_SHA256="e9a56d359b3b2a2bdaa3485e1303c62f9c82370e4e2f5a5c5059930a90147edd"
     URL="https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_macos.xcframework.zip"
 

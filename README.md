@@ -50,14 +50,14 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.4.4
+  mpv_audio_kit: ^0.4.5
 ```
 
 ## Platforms requirements
 
 | Platform  | Minimum | Architecture | Size | Device | Emulator |
 | :--- | :--- | :--- | :---: | :---: | :---:
-| **Android** | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 8.2, 8.2, 8.7 MB | ✅ | ✅ |
+| **Android** | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 8.3, 8.2, 8.9 MB | ✅ | ✅ |
 | **iOS** | 15.0 | arm64, x86_64 | 7.5, 8.0 MB | ✅ | ✅ |
 | **macOS** | 12.0 | arm64, x86_64 | 7.5, 8.0 MB | ✅ | - |
 | **Windows**| 10 | arm64, x86_64 | 8.1, 9.1 MB | ✅ | - |
