@@ -1,3 +1,11 @@
+## [0.4.6] - 18-09-2026
+
+### Contributions
+- [@xiaobaimc](https://github.com/xiaobaimc): found and fixed the intermittent exit crash on Windows, tracing it to the SMTC teardown running after the process threadpool was gone ([#17](https://github.com/ales-drnz/mpv_audio_kit/pull/17)).
+
+### Fixed
+- Windows apps no longer crash on exit with `0xC000000D` inside `ntdll.dll` on some Windows 10 and 11 setups. The media session is now leaked on purpose instead of being torn down during DLL detach, so no WinRT handler is revoked once the OS has already dismantled the threadpool.
+
 ## [0.4.5] - 22-08-2026
 
 ### Contributions

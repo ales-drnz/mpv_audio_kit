@@ -53,8 +53,7 @@ void MpvAudioKitPlugin::RegisterWithRegistrar(
   // SystemMediaTransportControls controller, and the platform-thread
   // command marshaling. Leaked into static storage for the plugin
   // lifetime (matching the channel-ownership pattern Flutter uses).
-  static auto media_session =
-      std::make_unique<MediaSessionChannelWin>(registrar);
+  static auto* media_session = new MediaSessionChannelWin(registrar);
   (void)media_session;
 
   // Add the plugin instance to the registrar.
