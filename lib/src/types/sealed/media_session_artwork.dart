@@ -30,12 +30,11 @@ sealed class MediaSessionArtwork {
   const factory MediaSessionArtwork.custom(CoverArt cover) =
       MediaSessionArtworkCustom._;
 
-  /// Show the image at [uri], ignoring any embedded cover. The OS fetches
-  /// it natively (Android `setArtworkUri`, Windows SMTC `CreateFromUri`;
-  /// the Apple plugin loads it via `URLSession`), so only the URL — not
-  /// the bytes — crosses the channel. On Linux the package downloads an
-  /// `http(s)://` URL itself and publishes a private temp file, because
-  /// MPRIS `mpris:artUrl` is readable by every process in the session.
+  /// Show the image at [uri], ignoring any embedded cover. The URL itself
+  /// never reaches the OS, since cover URLs often carry credentials: on
+  /// Android, Windows and Linux the package downloads an `http(s)://` URL
+  /// and hands the native side the bytes, and the Apple plugin loads it
+  /// with `URLSession` and publishes only the image.
   ///
   /// [uri] must be self-resolvable by the OS: an `http(s)://` URL that
   /// needs no custom auth headers (a tokenised query string is fine), or a

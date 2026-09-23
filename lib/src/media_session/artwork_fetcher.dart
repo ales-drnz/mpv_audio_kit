@@ -6,7 +6,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/cover_art.dart';
 
@@ -19,11 +19,23 @@ const int _maxArtworkBytes = 20 * 1024 * 1024;
 
 const Duration _timeout = Duration(seconds: 15);
 
-/// Default [ArtworkFetcher] for Linux. MPRIS publishes `mpris:artUrl` on the
-/// session bus, where any process can read it, and remote cover URLs often
-/// carry credentials in the query (Subsonic `u`, `t` and `s`, Jellyfin
-/// `api_key`, Plex `X-Plex-Token`). Fetching the image here lets the native
-/// side write it to a private temp file and publish a `file://` URI instead.
+/// Whether the media session downloads remote artwork in Dart on
+/// [platform], handing the native side bytes instead of the URL. Remote
+/// cover URLs often carry credentials in the query (Subsonic `u`, `t` and
+/// `s`, Jellyfin `api_key`, Plex `X-Plex-Token`), and these platforms would
+/// publish them: MPRIS `mpris:artUrl` on the session bus (Linux), the
+/// session metadata other apps with notification access read (Android),
+/// the thumbnail source SMTC is given (Windows). The Apple plugin fetches
+/// the image itself and publishes only its bytes.
+@internal
+bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
+  TargetPlatform.linux ||
+  TargetPlatform.android ||
+  TargetPlatform.windows => true,
+  _ => false,
+};
+
+/// Default [ArtworkFetcher] where [downloadsArtworkOn] holds.
 @internal
 Future<CoverArt?> downloadArtwork(Uri uri) async {
   final client = HttpClient()..connectionTimeout = _timeout;

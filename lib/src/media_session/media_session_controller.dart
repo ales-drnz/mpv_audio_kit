@@ -105,8 +105,9 @@ class MediaSessionController {
   /// [MediaSessionInputs] from raw [StreamController]s and drive
   /// arbitrary event sequences.
   ///
-  /// [artworkFetcher] defaults to [downloadArtwork] on Linux and to none
-  /// elsewhere, where the native side fetches remote artwork privately.
+  /// [artworkFetcher] defaults to [downloadArtwork] where the OS would
+  /// otherwise publish the artwork URL (see [downloadsArtworkOn]), and to
+  /// none on Apple, where the native side fetches it privately.
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
@@ -122,9 +123,7 @@ class MediaSessionController {
       onAudioOutputReset: onAudioOutputReset,
       channel: channel,
       artworkFetcher: artworkFetcher ??
-          (defaultTargetPlatform == TargetPlatform.linux
-              ? downloadArtwork
-              : null),
+          (downloadsArtworkOn(defaultTargetPlatform) ? downloadArtwork : null),
     );
     await c._wireUp();
     return c;
@@ -178,7 +177,9 @@ class MediaSessionController {
     _commandSub = _channel.commandStream.listen(_onCommand);
     final onReset = _onAudioOutputReset;
     if (onReset != null) {
-      _audioOutputResetSub = _channel.audioOutputResets.listen((_) => onReset());
+      _audioOutputResetSub = _channel.audioOutputResets.listen(
+        (_) => onReset(),
+      );
     }
 
     // Push the initial full state.
