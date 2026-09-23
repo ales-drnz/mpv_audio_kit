@@ -5,6 +5,7 @@
 
 #include <winrt/Windows.Foundation.h>
 
+#include <appmodel.h>       // GetCurrentPackageFullName
 #include <shobjidl_core.h>  // SetCurrentProcessExplicitAppUserModelID
 
 #include <flutter/event_stream_handler_functions.h>
@@ -125,9 +126,24 @@ const EncodableMap* SubMap(const EncodableMap& m, const char* key) {
 // consumer-supplied app name (sanitised to AUMID-legal characters) with a
 // stable package fallback. Must run before SmtcController::EnsureCreated()
 // acquires the SMTC.
+//
+// The AUMID is process-wide and groups the app's taskbar buttons, so an
+// identity the app already has always wins: a packaged (MSIX) app's, or one
+// it set itself at startup, which is where Windows wants it set.
 void EnsureProcessIdentity(const std::string& app_name_utf8) {
   static std::atomic_flag done = ATOMIC_FLAG_INIT;
   if (done.test_and_set()) return;
+
+  UINT32 package_name_length = 0;
+  if (GetCurrentPackageFullName(&package_name_length, nullptr) !=
+      APPMODEL_ERROR_NO_PACKAGE) {
+    return;  // packaged: the package identity is the AUMID
+  }
+  PWSTR existing = nullptr;
+  if (SUCCEEDED(GetCurrentProcessExplicitAppUserModelID(&existing))) {
+    CoTaskMemFree(existing);
+    return;  // the app chose its own
+  }
 
   std::wstring aumid = L"mpv_audio_kit";
   if (!app_name_utf8.empty()) {
