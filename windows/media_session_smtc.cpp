@@ -464,6 +464,9 @@ void SmtcController::Disable() {
   metadata_ = SmtcMetadata{};
   playback_ = SmtcPlayback{};
   artwork_cache_key_.clear();
+  // Also the URI's: a re-enable with the same artwork URI would otherwise
+  // match the stale key and never republish the cover ClearAll removed.
+  artwork_uri_cache_key_.clear();
   ++publish_count_;
 }
 
