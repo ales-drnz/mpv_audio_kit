@@ -31,9 +31,11 @@ sealed class MediaSessionArtwork {
       MediaSessionArtworkCustom._;
 
   /// Show the image at [uri], ignoring any embedded cover. The OS fetches
-  /// it natively (Android `setArtworkUri`, Windows SMTC `CreateFromUri`,
-  /// Linux MPRIS `mpris:artUrl`; the Apple plugin loads it via
-  /// `URLSession`), so only the URL — not the bytes — crosses the channel.
+  /// it natively (Android `setArtworkUri`, Windows SMTC `CreateFromUri`;
+  /// the Apple plugin loads it via `URLSession`), so only the URL — not
+  /// the bytes — crosses the channel. On Linux the package downloads an
+  /// `http(s)://` URL itself and publishes a private temp file, because
+  /// MPRIS `mpris:artUrl` is readable by every process in the session.
   ///
   /// [uri] must be self-resolvable by the OS: an `http(s)://` URL that
   /// needs no custom auth headers (a tokenised query string is fine), or a

@@ -21,6 +21,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/media_session/artwork_fetcher.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_channel.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_controller.dart';
 import 'package:mpv_audio_kit/src/media_session/media_session_inputs.dart';
@@ -147,12 +148,14 @@ Future<MediaSessionController> _buildController({
   required _Rig rig,
   required _RecordingChannel channel,
   void Function(MediaSessionCommand)? onCommand,
+  ArtworkFetcher? artworkFetcher,
 }) =>
     MediaSessionController.create(
       stateSnapshot: () => rig.state,
       inputs: rig.inputs,
       onCommand: onCommand ?? (_) {},
       channel: channel,
+      artworkFetcher: artworkFetcher,
     );
 
 /// Pumps the Dart event loop until microtasks and any pending `await`
@@ -799,6 +802,128 @@ void main() {
       expect(snap.album, 'Real Album');
       expect(snap.albumArtist, 'Real Artist',
           reason: 'album-artist line falls back to extras artist',);
+    });
+  });
+  group('MediaSessionController — network URL privacy', () {
+    MediaSessionMetadataSnapshot lastSnap(_RecordingChannel ch) =>
+        ch.callsOfType('updateMetadata').last.args['metadata']
+            as MediaSessionMetadataSnapshot;
+
+    test('a network item URI is not published as url', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      ch.calls.clear();
+
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'Song'},
+        playlist: Playlist([
+          Media('https://nd.example/rest/stream.view?id=1&u=me&t=tok&s=salt'),
+        ]),
+      );
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(lastSnap(ch).url, isNull);
+
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'Song'},
+        playlist: Playlist([Media('/music/song.flac')]),
+      );
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(lastSnap(ch).url, '/music/song.flac',
+          reason: 'plain local paths are still published',);
+    });
+
+    test('a URL-derived media-title loses its query and userinfo', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      ch.calls.clear();
+
+      Future<String?> titleFor(String uri, String mediaTitle) async {
+        rig.state = PlayerState(
+          mediaSession: const MediaSession(),
+          mediaTitle: mediaTitle,
+          playlist: Playlist([Media(uri)]),
+        );
+        rig.mediaTitle.add(mediaTitle);
+        await _settle();
+        return lastSnap(ch).title;
+      }
+
+      const stream = 'https://nd.example/rest/stream.view?id=1&u=me&t=tok&s=s';
+      expect(await titleFor(stream, 'stream.view?id=1&u=me&t=tok&s=s'),
+          'stream.view',);
+      expect(
+        await titleFor(
+          'https://me:pw@radio.example/',
+          'https://me:pw@radio.example/',
+        ),
+        'https://radio.example/',
+      );
+      expect(await titleFor(stream, 'Who Are You?'), 'Who Are You?',
+          reason: 'a real title with a question mark is kept',);
+      expect(await titleFor('/music/a?b=c.flac', 'a?b=c.flac'), 'a?b=c.flac',
+          reason: 'local file names are never rewritten',);
+    });
+
+    test('with a fetcher, remote artwork is downloaded, never passed as a URL',
+        () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+
+      final cover = CoverArt(
+          bytes: Uint8List.fromList(const [7, 7]), mimeType: 'image/jpeg',);
+      final pending = Completer<CoverArt?>();
+      final fetched = <Uri>[];
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkFetcher: (uri) {
+          fetched.add(uri);
+          return pending.future;
+        },
+      );
+      addTearDown(controller.dispose);
+      ch.calls.clear();
+
+      const artUrl = 'https://nd.example/rest/getCoverArt.view?t=tok';
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'Song'},
+        playlist: Playlist([
+          Media('https://nd.example/rest/stream.view?id=1',
+              extras: {'art': artUrl},),
+        ]),
+      );
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      var snap = lastSnap(ch);
+      expect(snap.artworkUri, isNull);
+      expect(snap.artwork, isNull, reason: 'no art while downloading');
+      expect(fetched, [Uri.parse(artUrl)]);
+
+      pending.complete(cover);
+      await _settle();
+      snap = lastSnap(ch);
+      expect(snap.artworkUri, isNull);
+      expect(snap.artwork, cover);
+
+      // Another metadata tick reuses the download.
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(fetched, hasLength(1));
     });
   });
 }

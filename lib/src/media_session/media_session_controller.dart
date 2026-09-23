@@ -4,7 +4,7 @@
 
 import 'dart:async';
 
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/cover_art.dart';
 import '../models/media_session.dart';
@@ -12,6 +12,7 @@ import '../player/player_state.dart';
 import '../types/enums/loop.dart';
 import '../types/sealed/media_session_artwork.dart';
 import '../types/sealed/media_session_command.dart';
+import 'artwork_fetcher.dart';
 import 'media_session_channel.dart';
 import 'media_session_inputs.dart';
 
@@ -50,6 +51,10 @@ class MediaSessionController {
   final void Function(MediaSessionCommand) _onCommand;
   final MediaSessionChannel _channel;
 
+  /// Downloads remote artwork so only a local file reaches the OS (Linux,
+  /// see [downloadArtwork]); `null` passes artwork URLs through to native.
+  final ArtworkFetcher? _artworkFetcher;
+
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   StreamSubscription<MediaSessionCommand>? _commandSub;
   bool _disposed = false;
@@ -65,15 +70,25 @@ class MediaSessionController {
   bool _flushScheduled = false;
   MediaSessionMetadataSnapshot? _lastMetadata;
 
+  // ── Remote artwork download (only with an [_artworkFetcher]) ────────
+  // The last downloaded URL and its result (`null` on failure), plus the
+  // URL whose download is in flight. One cover at a time: a track change
+  // simply supersedes the pending one.
+  String? _fetchedArtUri;
+  CoverArt? _fetchedArt;
+  String? _pendingArtUri;
+
   MediaSessionController._({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
     required void Function(MediaSessionCommand) onCommand,
     MediaSessionChannel? channel,
+    ArtworkFetcher? artworkFetcher,
   })  : _stateSnapshot = stateSnapshot,
         _inputs = inputs,
         _onCommand = onCommand,
-        _channel = channel ?? MediaSessionChannel();
+        _channel = channel ?? MediaSessionChannel(),
+        _artworkFetcher = artworkFetcher;
 
   /// Wires the controller up and pushes the initial full state to the
   /// native side. Returns once the initial `enable` call has been
@@ -85,17 +100,25 @@ class MediaSessionController {
   /// `MediaSessionInputs.fromPlayer(...)`; tests can build a
   /// [MediaSessionInputs] from raw [StreamController]s and drive
   /// arbitrary event sequences.
+  ///
+  /// [artworkFetcher] defaults to [downloadArtwork] on Linux and to none
+  /// elsewhere, where the native side fetches remote artwork privately.
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
     required void Function(MediaSessionCommand) onCommand,
     @visibleForTesting MediaSessionChannel? channel,
+    @visibleForTesting ArtworkFetcher? artworkFetcher,
   }) async {
     final c = MediaSessionController._(
       stateSnapshot: stateSnapshot,
       inputs: inputs,
       onCommand: onCommand,
       channel: channel,
+      artworkFetcher: artworkFetcher ??
+          (defaultTargetPlatform == TargetPlatform.linux
+              ? downloadArtwork
+              : null),
     );
     await c._wireUp();
     return c;
@@ -249,10 +272,17 @@ class MediaSessionController {
     // Title falls through: explicit override → mpv's `metadata.title` tag
     // → consumer-attached `extras['title']` → mpv's `media-title` (which
     // itself falls back to the filename for files without a title tag).
+    // For a network item that last fallback is derived from the URL, so its
+    // query string (often credentials) is stripped first.
+    final remote = item != null && !_isLocalUri(item.uri);
     final title = override?.title ??
         _firstTagValue(mpvMeta, const ['title']) ??
         _extra(extras, 'title') ??
-        (state.mediaTitle.isEmpty ? null : state.mediaTitle);
+        (state.mediaTitle.isEmpty
+            ? null
+            : remote
+                ? _redactUrlTitle(state.mediaTitle)
+                : state.mediaTitle);
 
     final artist = override?.artist ??
         _firstTagValue(mpvMeta, const ['artist', 'album_artist']) ??
@@ -274,10 +304,15 @@ class MediaSessionController {
     final trackNumber = _parseLeadingInt(_firstTagValue(mpvMeta, const ['track']));
     final discNumber = _parseLeadingInt(_firstTagValue(mpvMeta, const ['disc']));
 
-    // Source URI of the current item, for MPRIS xesam:url.
-    final url = item?.uri;
+    // Source URI of the current item, for MPRIS xesam:url. Only local files:
+    // the bus is readable by every process in the session, and a network
+    // URL can carry credentials (Subsonic `u`, `t` and `s`, Jellyfin `api_key`).
+    final url = remote ? null : item?.uri;
 
-    final artwork = _resolveArtwork(override, state.coverArt, extras);
+    var artwork = _resolveArtwork(override, state.coverArt, extras);
+    if (_artworkFetcher != null && _isHttpUri(artwork.uri)) {
+      artwork = (bytes: _downloadedArtwork(artwork.uri!), uri: null);
+    }
 
     return MediaSessionMetadataSnapshot(
       title: title,
@@ -301,6 +336,58 @@ class MediaSessionController {
   String? _extra(Map<String, Object?>? extras, String key) {
     final v = extras?[key];
     return (v is String && v.isNotEmpty) ? v : null;
+  }
+
+  /// Whether [uri] names a local file: a `file:` URI, a plain path, or a
+  /// Windows drive path (which parses with a one-letter scheme).
+  static bool _isLocalUri(String uri) {
+    final scheme = Uri.tryParse(uri)?.scheme ?? '';
+    return scheme.isEmpty || scheme == 'file' || scheme.length == 1;
+  }
+
+  static bool _isHttpUri(String? uri) {
+    if (uri == null) return false;
+    final scheme = Uri.tryParse(uri)?.scheme.toLowerCase();
+    return scheme == 'http' || scheme == 'https';
+  }
+
+  /// Removes what could be credentials from a title mpv derived from a URL:
+  /// a trailing `key=value` query or fragment, and the userinfo of a full
+  /// URL. A real title with a `?` in it ("Who Are You?") has no `=` after
+  /// it and is left alone. `null` when nothing is left.
+  static String? _redactUrlTitle(String title) {
+    var t = title;
+    final query = RegExp(r'[?#]\S*$').firstMatch(t);
+    if (query != null && query.group(0)!.contains('=')) {
+      t = t.substring(0, query.start);
+    }
+    t = t.replaceFirstMapped(
+      RegExp(r'^([a-z][a-z0-9+.-]*://)[^/@\s]*@', caseSensitive: false),
+      (m) => m.group(1)!,
+    );
+    return t.isEmpty ? null : t;
+  }
+
+  /// The downloaded cover for the remote artwork [uri], or `null` while the
+  /// download is in flight or after it failed. Starts the download on first
+  /// sight of [uri]; its completion re-pushes metadata.
+  CoverArt? _downloadedArtwork(String uri) {
+    if (uri == _fetchedArtUri) return _fetchedArt;
+    if (uri != _pendingArtUri) {
+      _pendingArtUri = uri;
+      unawaited(
+        _artworkFetcher!(Uri.parse(uri))
+            .catchError((Object _) => null)
+            .then((cover) {
+          if (_disposed || uri != _pendingArtUri) return;
+          _pendingArtUri = null;
+          _fetchedArtUri = uri;
+          _fetchedArt = cover;
+          _markMetadata();
+        }),
+      );
+    }
+    return null;
   }
 
   /// Parses the leading integer from a tag like `"3"` or `"3/12"`; `null` if

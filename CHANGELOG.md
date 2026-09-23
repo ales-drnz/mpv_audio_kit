@@ -1,3 +1,12 @@
+## [0.4.7] - 23-09-2026
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): reported that stream URLs with credentials in the query reached the media session ([#18](https://github.com/ales-drnz/mpv_audio_kit/issues/18)).
+
+### Fixed
+- MPRIS on Linux no longer publishes network URLs. `xesam:url` is set only for local files, and a remote cover is downloaded and published as a private temp file instead of its URL.
+- A tag-less stream with no title no longer shows the URL query on the lockscreen, SMTC or Now Playing: the query and any userinfo are stripped from the URL-derived title.
+
 ## [0.4.6] - 18-09-2026
 
 ### Contributions
