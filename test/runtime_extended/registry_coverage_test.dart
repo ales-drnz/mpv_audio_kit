@@ -292,7 +292,7 @@ void main() {
               ? 'lavfi-$name'
               : 'lavfi-$name=$arg';
           try {
-            await player.setAudioEffects(AudioEffects(custom: [filterStr]));
+            await player.setAudioEffects([RawAudioEffect(filterStr)]);
           } catch (_) {
             // Rejection at the typed-setter boundary is fine — what we
             // care about is whether a "filter not found" log entry fires.
@@ -302,7 +302,7 @@ void main() {
             missing.add('$name → ${cannotFind.first}');
           }
           try {
-            await player.setAudioEffects(const AudioEffects());
+            await player.setAudioEffects(const []);
           } catch (_) {}
         }
 
@@ -335,9 +335,9 @@ void main() {
             }
           });
           try {
-            await player.setAudioEffects(
-              const AudioEffects(custom: ['lavfi-this-filter-does-not-exist']),
-            );
+            await player.setAudioEffects(const [
+              RawAudioEffect('lavfi-this-filter-does-not-exist'),
+            ]);
           } catch (_) {}
           await Future<void>.delayed(const Duration(milliseconds: 25));
           await logSub.cancel();
@@ -350,7 +350,7 @@ void main() {
                 'the substrings above.',
           );
           try {
-            await player.setAudioEffects(const AudioEffects());
+            await player.setAudioEffects(const []);
           } catch (_) {}
         },
       );

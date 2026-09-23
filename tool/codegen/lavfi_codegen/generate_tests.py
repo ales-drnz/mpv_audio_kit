@@ -40,6 +40,12 @@ from pathlib import Path
 from typing import Optional
 
 from .config import Config, NamingConfig, WireConfig
+from .generate import (
+    _enum_member_dart_name,
+    _param_dart_name,
+    _settings_class_name,
+    effect_params,
+)
 from .required_params import (
     ARNNDN_MODEL_FIXTURE,
     REQUIRED_PARAMS,
@@ -62,8 +68,10 @@ _LABELS: bool = False
 
 
 def _chain_label(filter_name: str) -> str:
+    """Label of the first `filter_name` stage in a list, as the chain
+    carries it."""
     return (
-        f"@{_NAMING.chain_label_prefix}_{_bundle_field_name(filter_name)}:"
+        f"@{_NAMING.chain_label_prefix}_{filter_name}_0:"
         if _LABELS
         else ""
     )
@@ -86,17 +94,12 @@ DART_RESERVED_WORDS = {
 _SPECIAL_CHAR_MAP = {">": "_to_", "+": "_plus_", "-": "_minus_"}
 
 
-def _settings_class_name(filter_name: str) -> str:
-    sanitised = re.sub(r"[^A-Za-z0-9_]", "_", filter_name)
-    return sanitised[:1].upper() + sanitised[1:] + "Settings"
 
 
 def _bundle_field_name(filter_name: str) -> str:
     return filter_name + "_" if filter_name in DART_RESERVED_WORDS else filter_name
 
 
-def _param_dart_name(name: str) -> str:
-    return name + "_" if name in DART_RESERVED_WORDS else name
 
 
 def _required_args_fragment(filter_name: str) -> str:
@@ -124,19 +127,6 @@ def _required_args_fragment_except(filter_name: str, skip: Optional[str]) -> str
     return ", " + ", ".join(parts)
 
 
-def _enum_member_dart_name(name: str) -> str:
-    if not name:
-        return "value_unknown"
-    sanitised = "".join(_SPECIAL_CHAR_MAP.get(ch, ch) for ch in name)
-    sanitised = re.sub(r"[^A-Za-z0-9_]", "_", sanitised)
-    sanitised = re.sub(r"_+", "_", sanitised).strip("_")
-    if not sanitised:
-        sanitised = "value_unknown"
-    if not re.match(r"^[A-Za-z_]", sanitised):
-        sanitised = "n" + sanitised
-    if sanitised in DART_RESERVED_WORDS:
-        sanitised += "_"
-    return sanitised
 
 
 def _normalise_double_literal(raw) -> str:
@@ -401,8 +391,7 @@ def _emit_header() -> str:
         "//\n"
         "// AUTO-GENERATED — do NOT edit by hand.\n"
         "//\n"
-        f"// Schema-driven coverage of `{_NAMING.bundle_name}."
-        f"to{_NAMING.wire_word.capitalize()}Chain()` and the\n"
+        "// Schema-driven coverage of the effects chain (`audioEffectsChain`) and the\n"
         "// per-filter `toFilterString()` wire output: every parameter of\n"
         f"// every libavfilter {_NAMING.noun} filter shipped with this build "
         "has at\n"
@@ -416,6 +405,8 @@ def _emit_header() -> str:
         "\n"
         "import 'package:test/test.dart';\n"
         "import 'package:" + pkg + "/" + pkg + ".dart';\n"
+        "import 'package:" + pkg + "/src/generated/audio_effects_settings.dart'\n"
+        "    show audioEffectsChain;\n"
         "\n"
         "void main() {\n"
     )
@@ -423,11 +414,10 @@ def _emit_header() -> str:
 
 def _emit_filter_group(filter_name: str, fdata: dict, enum_lookup: dict) -> str:
     cls = _settings_class_name(filter_name)
-    field = _bundle_field_name(filter_name)
     # Mirror generate.py: readonly+export options aren't input
     # parameters, so they don't get a Settings field and don't get a
     # coverage test either.
-    params = {n: p for n, p in fdata["params"].items() if not p.get("readonly")}
+    params = effect_params(fdata)
     invalid = {
         n: p
         for n, p in fdata.get("params_invalid", {}).items()
@@ -437,11 +427,9 @@ def _emit_filter_group(filter_name: str, fdata: dict, enum_lookup: dict) -> str:
     lines: list[str] = []
     lines.append(f"  group('{cls} ($filter_name)', () {{".replace(
         "$filter_name", filter_name))
-    chain = f"to{_NAMING.wire_word.capitalize()}Chain"
-    bundle = _NAMING.bundle_name
-    lines.append(f"    test('disabled by default → drops out of {chain}', () {{")
-    lines.append(f"      const fx = {bundle}({field}: {cls}(enabled: false{req_frag}));")
-    lines.append(f"      expect(fx.{chain}(), '');")
+    lines.append("    test('disabled → drops out of the chain', () {")
+    lines.append(f"      const fx = [{cls}(enabled: false{req_frag})];")
+    lines.append("      expect(audioEffectsChain(fx), '');")
     lines.append("    });")
     lines.append("")
     if req_frag:
@@ -452,18 +440,18 @@ def _emit_filter_group(filter_name: str, fdata: dict, enum_lookup: dict) -> str:
             "    test('enabled with required params → wire carries the filter name "
             "and required options', () {")
         lines.append(
-            f"      const fx = {bundle}({field}: {cls}(enabled: true{req_frag}));")
+            f"      const fx = [{cls}({req_frag.lstrip(', ')})];")
         lines.append(
-            f"      expect(fx.{chain}(), "
+            "      expect(audioEffectsChain(fx), "
             f"startsWith('{_chain_label(filter_name)}{_WIRE.label_prefix}{filter_name}'));")
         for pname in REQUIRED_PARAMS.get(filter_name, []):
-            lines.append(f"      expect(fx.{chain}(), contains('{pname}='));")
+            lines.append(f"      expect(audioEffectsChain(fx), contains('{pname}='));")
         lines.append("    });")
     else:
         lines.append("    test('enabled with every param at default → bare lavfi name', () {")
-        lines.append(f"      const fx = {bundle}({field}: {cls}(enabled: true));")
+        lines.append(f"      const fx = [{cls}()];")
         lines.append(
-            f"      expect(fx.{chain}(), "
+            "      expect(audioEffectsChain(fx), "
             f"'{_chain_label(filter_name)}{_WIRE.label_prefix}{filter_name}');")
         lines.append("    });")
 
@@ -622,8 +610,8 @@ def _emit_param_corners(filters: dict, sorted_names: list[str]) -> str:
         "",
         f"import 'package:{pkg}/{pkg}.dart';",
         "",
-        f"typedef ParamCorner = ({{String filter, String label, "
-        f"{_NAMING.bundle_name} bundle}});",
+        "typedef ParamCorner = ({String filter, String label, "
+        "List<AudioEffect> bundle});",
         "",
         "const List<ParamCorner> kFilterParamCorners = [",
     ]
@@ -631,14 +619,10 @@ def _emit_param_corners(filters: dict, sorted_names: list[str]) -> str:
         # Same readonly filter as _emit_filter_group / generate.py —
         # readonly params aren't settable so their bounds aren't
         # corner-testable.
-        params = {
-            n: p for n, p in (filters[fname].get("params") or {}).items()
-            if not p.get("readonly")
-        }
+        params = effect_params(filters[fname])
         if not params:
             continue
         cls = _settings_class_name(fname)
-        bundle_field = _bundle_field_name(fname)
         for pname, p in params.items():
             ptype = p.get("type")
             if ptype not in ("double", "int"):
@@ -658,11 +642,7 @@ def _emit_param_corners(filters: dict, sorted_names: list[str]) -> str:
                     continue
                 const_name = f"{cls}.{dart_pname}{suffix}"
                 req_extra = _required_args_fragment_except(fname, pname)
-                inner = (
-                    f"const {cls}(enabled: true, {dart_pname}: {const_name}"
-                    f"{req_extra})"
-                )
-                bundle_expr = f"{_NAMING.bundle_name}({bundle_field}: {inner})"
+                bundle_expr = f"[{cls}({dart_pname}: {const_name}{req_extra})]"
                 label = f"{pname}={dart_pname}{suffix}"
                 pieces.append(
                     f"  (filter: '{fname}', label: '{label}', "
@@ -699,10 +679,9 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
     for fname in sorted_names:
         if fname == "arnndn":
             continue  # runtime model path — appended to the loop below.
-        field = _bundle_field_name(fname)
         cls = _settings_class_name(fname)
         req_frag = _required_args_fragment(fname)
-        bundle = f"AudioEffects({field}: {cls}(enabled: true{req_frag}))"
+        bundle = f"[{cls}({req_frag.lstrip(', ')})]"
         runtime_cases.append((fname, bundle))
 
     lines: list[str] = []
@@ -740,7 +719,7 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
     lines.append("import '../_helpers/mpv_error_capture.dart';")
     lines.append("import '../_helpers/setter_test_helpers.dart';")
     lines.append("")
-    lines.append("typedef RuntimeCase = ({String filter, AudioEffects bundle});")
+    lines.append("typedef RuntimeCase = ({String filter, List<AudioEffect> bundle});")
     lines.append("")
     lines.append("const List<RuntimeCase> _kRuntimeCases = [")
     for fname, bundle in runtime_cases:
@@ -786,7 +765,6 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
     lines.append("    () async {")
     if has_arnndn:
         arnndn_cls = _settings_class_name("arnndn")
-        arnndn_field = _bundle_field_name("arnndn")
         arnndn_model_arg = _param_dart_name("model")
         lines.append("      // arnndn is appended here (not in the const list) because its")
         lines.append("      // model arg is a runtime-resolved fixture path.")
@@ -794,10 +772,9 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
         lines.append("        ..._kRuntimeCases,")
         lines.append("        (")
         lines.append("          filter: 'arnndn',")
-        lines.append(f"          bundle: AudioEffects(")
-        lines.append(f"            {arnndn_field}: {arnndn_cls}("
-                     f"enabled: true, {arnndn_model_arg}: arnndnModelPath),")
-        lines.append("          ),")
+        lines.append(
+            f"          bundle: [{arnndn_cls}({arnndn_model_arg}: arnndnModelPath)],"
+        )
         lines.append("        ),")
         lines.append("      ];")
         iter_name = "cases"
@@ -812,7 +789,7 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
     lines.append("          failures[c.filter] = errors.map((e) => e.text.trim()).toList();")
     lines.append("        }")
     lines.append("        // Reset between iterations so a failure doesn't bleed forward.")
-    lines.append("        await player.setAudioEffects(const AudioEffects());")
+    lines.append("        await player.setAudioEffects(const []);")
     lines.append("      }")
     lines.append("")
     lines.append("      if (failures.isNotEmpty) {")
@@ -846,12 +823,11 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
         if not req:
             continue
         cls = _settings_class_name(fname)
-        field = _bundle_field_name(fname)
         req_frag = _required_args_fragment(fname)
         note = " (also init-tested at runtime)" if fname == "arnndn" else ""
         lines.append(f"    test('{fname} wire string contains every required option"
                      f"{note}', () {{")
-        lines.append(f"      const s = {cls}(enabled: true{req_frag});")
+        lines.append(f"      const s = {cls}({req_frag.lstrip(', ')});")
         lines.append("      final wire = s.toFilterString();")
         for pname in req:
             lines.append(f"      expect(wire, contains('{pname}='),")
@@ -875,11 +851,6 @@ _AF_COMMAND_STRING_CASES: dict[str, dict] = {
 }
 
 
-def _updater_name(filter_name: str) -> str:
-    """Mirrors generate.py's per-slot updater naming: bundle field minus
-    the reserved-word trailing underscore, capitalized, `update`-prefixed."""
-    suffix = _bundle_field_name(filter_name).rstrip("_")
-    return "update" + suffix[:1].upper() + suffix[1:]
 
 
 def _af_command_probe_literal(p: dict) -> Optional[str]:
@@ -929,7 +900,7 @@ def _emit_af_command_coverage(
     filters: dict, sorted_names: list[str]
 ) -> tuple[str, int, int]:
     """Runtime af-command coverage test: for every filter whose schema
-    carries `supports_commands` (the gate for `AudioEffects.diffCommands`),
+    carries `supports_commands` (the gate for live updates in `audioEffectsDiff`),
     enable it on a live playing mpv, then change each runtime-tunable
     option through `Player.updateAudioEffects` and assert the `af`
     property string did NOT change — i.e. the update was applied in place
@@ -971,19 +942,13 @@ def _emit_af_command_coverage(
             uncovered.append(fname)
             continue
         cls = _settings_class_name(fname)
-        field = _bundle_field_name(fname)
         if fname == "arnndn":
-            bundle = (
-                f"AudioEffects({field}: {cls}("
-                "enabled: true, model: arnndnModelPath))"
-            )
+            bundle = f"[{cls}(model: arnndnModelPath)]"
             cases.append((fname, bundle, False, updates))
         else:
             req_frag = _required_args_fragment(fname)
-            bundle = (
-                f"AudioEffects({field}: {cls}"
-                f"(enabled: true{req_frag}{baseline_extra}))"
-            )
+            args = f"{req_frag}{baseline_extra}".lstrip(", ")
+            bundle = f"[{cls}({args})]"
             cases.append((fname, bundle, True, updates))
 
     lines: list[str] = []
@@ -997,7 +962,7 @@ def _emit_af_command_coverage(
     lines.append("//")
     lines.append("// Runtime af-command coverage. For every filter whose ffmpeg source")
     lines.append("// declares `.process_command` (the schema's `supports_commands` flag")
-    lines.append("// — the gate for `AudioEffects.diffCommands`), enable the filter on a")
+    lines.append("// — the gate for live updates in `audioEffectsDiff`), enable the filter on a")
     lines.append("// live playing mpv, then change each runtime-tunable option through")
     lines.append("// `Player.updateAudioEffects` and assert the `af` property string did")
     lines.append("// NOT change: the update was applied to the live graph in place via")
@@ -1036,13 +1001,13 @@ def _emit_af_command_coverage(
     lines.append("")
     lines.append("typedef AfCommandUpdate = ({")
     lines.append("  String label,")
-    lines.append("  AudioEffects Function(AudioEffects) apply,")
+    lines.append("  List<AudioEffect> Function(List<AudioEffect>) apply,")
     lines.append("});")
     lines.append("")
     lines.append("typedef AfCommandCase = ({")
     lines.append("  String filter,")
     lines.append("  String field,")
-    lines.append("  AudioEffects bundle,")
+    lines.append("  List<AudioEffect> bundle,")
     lines.append("  List<AfCommandUpdate> updates,")
     lines.append("});")
     lines.append("")
@@ -1088,11 +1053,10 @@ def _emit_af_command_coverage(
     lines.append("      final cases = <AfCommandCase>[")
     n_updates = 0
     for fname, bundle, is_const, updates in cases:
-        field = _bundle_field_name(fname)
-        updater = _updater_name(fname)
+        cls = _settings_class_name(fname)
         lines.append("        (")
         lines.append(f"          filter: '{fname}',")
-        lines.append(f"          field: '{field}',")
+        lines.append(f"          field: '{fname}_0',")
         lines.append(f"          bundle: {'const ' if is_const else ''}{bundle},")
         lines.append("          updates: <AfCommandUpdate>[")
         for dart_pname, lit in updates:
@@ -1100,8 +1064,10 @@ def _emit_af_command_coverage(
             label = f"{dart_pname}={lit}".replace("'", "")
             lines.append("            (")
             lines.append(f"              label: '{label}',")
-            lines.append(f"              apply: (AudioEffects e) => e.{updater}(")
-            lines.append(f"                  (s) => s.copyWith({dart_pname}: {lit}),),")
+            lines.append(
+                f"              apply: (e) => [(e.single as {cls})"
+                f".copyWith({dart_pname}: {lit})],"
+            )
             lines.append("            ),")
         lines.append("          ],")
         lines.append("        ),")
@@ -1149,7 +1115,7 @@ def _emit_af_command_coverage(
     lines.append("      }")
     lines.append("")
     lines.append("      // Leave a clean chain behind for whatever runs next.")
-    lines.append("      await player.setAudioEffects(const AudioEffects());")
+    lines.append("      await player.setAudioEffects(const []);")
     lines.append("    },")
     lines.append("    timeout: const Timeout(Duration(minutes: 4)),")
     lines.append("  );")

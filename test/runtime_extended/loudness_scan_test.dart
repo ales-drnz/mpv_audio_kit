@@ -79,11 +79,9 @@ void main() {
             .timeout(const Duration(seconds: 15)))!;
 
         // Live measurement: ebur128 in the chain, play the file to the end.
-        await player.setAudioEffects(
-          const AudioEffects(
-            ebur128: Ebur128Settings(enabled: true, metadata: true),
-          ),
-        );
+        await player.setAudioEffects(const [
+          Ebur128Effect(metadata: true),
+        ]);
         Loudness? last;
         final sub = player.stream.loudnessMeter.listen((l) => last = l);
         final done = player.stream.eofReached
@@ -93,7 +91,7 @@ void main() {
         await player.play();
         await done;
         await sub.cancel();
-        await player.setAudioEffects(const AudioEffects());
+        await player.setAudioEffects(const []);
 
         expect(
           last?.integrated,

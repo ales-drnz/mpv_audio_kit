@@ -47,7 +47,7 @@ final class AechoTap {
 /// The two CSVs are positional: the Nth delay pairs with the Nth
 /// decay. Mismatched lengths are clamped to the shorter list — the
 /// dropped tail would crash the filter at config time anyway.
-extension AechoTapsX on AechoSettings {
+extension AechoTapsX on AechoEffect {
   /// Decoded list of taps in declaration order.
   List<AechoTap> get taps {
     final ds = _splitCsv(delays);
@@ -61,7 +61,7 @@ extension AechoTapsX on AechoSettings {
   }
 
   /// Returns a copy whose [delays] / [decays] reflect [taps].
-  AechoSettings withTaps(List<AechoTap> taps) {
+  AechoEffect withTaps(List<AechoTap> taps) {
     if (taps.isEmpty) return copyWith(delays: '0', decays: '0');
     return copyWith(
       delays: taps.map((t) => t.delayMs.toStringAsFixed(2)).join('|'),
@@ -136,7 +136,7 @@ final class ChorusVoice {
 /// The four lists are positional: the Nth delay/decay/depth/speed
 /// quartet is one voice. Mismatched lengths collapse to the shortest
 /// — lavfi rejects asymmetric configs at chain-build time.
-extension ChorusVoicesX on ChorusSettings {
+extension ChorusVoicesX on ChorusEffect {
   /// Decoded list of voices in declaration order.
   List<ChorusVoice> get voices {
     final ds = _splitCsv(delays);
@@ -162,7 +162,7 @@ extension ChorusVoicesX on ChorusSettings {
   }
 
   /// Returns a copy whose four CSVs reflect [voices].
-  ChorusSettings withVoices(List<ChorusVoice> voices) {
+  ChorusEffect withVoices(List<ChorusVoice> voices) {
     if (voices.isEmpty) {
       return copyWith(delays: '', decays: '', depths: '', speeds: '');
     }
@@ -213,7 +213,7 @@ final class CompandPoint {
 
 /// Typed access over the `points` string lavfi's `compand` carries
 /// (space-separated `inDb/outDb` pairs).
-extension CompandPointsX on CompandSettings {
+extension CompandPointsX on CompandEffect {
   /// Decoded transfer-function points, sorted by ascending input.
   List<CompandPoint> get transferPoints {
     final src = points;
@@ -234,7 +234,7 @@ extension CompandPointsX on CompandSettings {
 
   /// Returns a copy whose [points] reflects [points] (ascending
   /// input order). Empty input clears the transfer function.
-  CompandSettings withTransferPoints(List<CompandPoint> points) {
+  CompandEffect withTransferPoints(List<CompandPoint> points) {
     if (points.isEmpty) return copyWith(points: '');
     final sorted = [...points]..sort((a, b) => a.inDb.compareTo(b.inDb));
     return copyWith(
@@ -295,7 +295,7 @@ final class CompandEnvelope {
 ///
 /// The two CSVs are positional per-channel: the Nth attack pairs
 /// with the Nth decay. Mismatched lengths clamp to the shorter list.
-extension CompandEnvelopesX on CompandSettings {
+extension CompandEnvelopesX on CompandEffect {
   /// Decoded list of per-channel envelopes in declaration order.
   List<CompandEnvelope> get envelopes {
     final atks = _splitCsv(attacks);
@@ -309,7 +309,7 @@ extension CompandEnvelopesX on CompandSettings {
   }
 
   /// Returns a copy whose [attacks] / [decays] reflect [envelopes].
-  CompandSettings withEnvelopes(List<CompandEnvelope> envelopes) {
+  CompandEffect withEnvelopes(List<CompandEnvelope> envelopes) {
     if (envelopes.isEmpty) return copyWith(attacks: '0', decays: '0.8');
     return copyWith(
       attacks: envelopes
@@ -332,7 +332,7 @@ const double kCompandSoftKneeDefault = 0.01;
 /// can't contain a hyphen. This extension hides that detail so
 /// consumers can write `s.withSoftKnee(0.5)` instead of building the
 /// map by hand.
-extension CompandSoftKneeX on CompandSettings {
+extension CompandSoftKneeX on CompandEffect {
   /// Soft-knee smoothing in dB. lavfi default is
   /// [kCompandSoftKneeDefault] — a hard knee.
   double get softKnee => params['soft-knee'] ?? kCompandSoftKneeDefault;
@@ -340,7 +340,7 @@ extension CompandSoftKneeX on CompandSettings {
   /// Returns a copy whose `params` map carries [v] under the
   /// `soft-knee` key. Values equal to [kCompandSoftKneeDefault] drop
   /// out of the map (the lavfi default applies implicitly).
-  CompandSettings withSoftKnee(double v) {
+  CompandEffect withSoftKnee(double v) {
     final next = Map<String, double>.from(params);
     if ((v - kCompandSoftKneeDefault).abs() < 1e-6) {
       next.remove('soft-knee');
@@ -394,12 +394,12 @@ final class FirequalizerEntry {
 
 /// Typed access over the `gain_entry` string lavfi's `firequalizer`
 /// carries (`entry(freq,gain);entry(freq,gain);…`).
-extension FirequalizerEntriesX on FirequalizerSettings {
+extension FirequalizerEntriesX on FirequalizerEffect {
   /// Decoded gain entries, sorted by ascending frequency.
   List<FirequalizerEntry> get gainEntries {
-    if (gain_entry.trim().isEmpty) return const [];
+    if (gainEntry.trim().isEmpty) return const [];
     final out = <FirequalizerEntry>[];
-    for (final m in _firequalizerEntryRe.allMatches(gain_entry)) {
+    for (final m in _firequalizerEntryRe.allMatches(gainEntry)) {
       final f = double.tryParse(m.group(1)!);
       final g = double.tryParse(m.group(2)!);
       if (f != null && g != null) {
@@ -410,14 +410,14 @@ extension FirequalizerEntriesX on FirequalizerSettings {
     return out;
   }
 
-  /// Returns a copy whose [gain_entry] reflects [entries] (ascending
+  /// Returns a copy whose [gainEntry] reflects [entries] (ascending
   /// frequency order). Empty input clears the filter's response.
-  FirequalizerSettings withGainEntries(List<FirequalizerEntry> entries) {
-    if (entries.isEmpty) return copyWith(gain_entry: '');
+  FirequalizerEffect withGainEntries(List<FirequalizerEntry> entries) {
+    if (entries.isEmpty) return copyWith(gainEntry: '');
     final sorted = [...entries]
       ..sort((a, b) => a.frequencyHz.compareTo(b.frequencyHz));
     return copyWith(
-      gain_entry: sorted
+      gainEntry: sorted
           .map(
             (e) =>
                 'entry(${e.frequencyHz.toStringAsFixed(1)},${e.gainDb.toStringAsFixed(2)})',
@@ -446,12 +446,12 @@ const double kAfftdnBandNoiseDefault = 0.0;
 ///
 /// The list is always exactly [kAfftdnBandCount] long; entries the
 /// consumer doesn't touch read as [kAfftdnBandNoiseDefault].
-extension AfftdnBandNoiseX on AfftdnSettings {
+extension AfftdnBandNoiseX on AfftdnEffect {
   /// Decoded per-band noise floors, lows-to-highs, in lavfi's
   /// 15-band logarithmic split. Always length [kAfftdnBandCount];
   /// missing entries fill with [kAfftdnBandNoiseDefault].
   List<double> get bandNoiseLevels {
-    final raw = band_noise.trim();
+    final raw = bandNoise.trim();
     final parsed = <double>[];
     if (raw.isNotEmpty) {
       for (final part in raw.split(RegExp(r'[ |]+'))) {
@@ -466,12 +466,12 @@ extension AfftdnBandNoiseX on AfftdnSettings {
     return List.unmodifiable(parsed);
   }
 
-  /// Returns a copy whose [band_noise] reflects [levels]. Lists
+  /// Returns a copy whose [bandNoise] reflects [levels]. Lists
   /// shorter than [kAfftdnBandCount] pad with
   /// [kAfftdnBandNoiseDefault]; longer lists are truncated. The
   /// emitted CSV uses pipe separation (lavfi accepts both space and
   /// pipe; pipe is unambiguous in mpv's filter-args parser).
-  AfftdnSettings withBandNoiseLevels(List<double> levels) {
+  AfftdnEffect withBandNoiseLevels(List<double> levels) {
     final padded = List<double>.filled(
       kAfftdnBandCount,
       kAfftdnBandNoiseDefault,
@@ -480,7 +480,7 @@ extension AfftdnBandNoiseX on AfftdnSettings {
       padded[i] = levels[i];
     }
     return copyWith(
-      band_noise: padded.map((v) => v.toStringAsFixed(2)).join('|'),
+      bandNoise: padded.map((v) => v.toStringAsFixed(2)).join('|'),
     );
   }
 }
@@ -584,8 +584,8 @@ enum AnequalizerBandType {
 /// left to mpv's automatic downmix.
 const int _anequalizerDefaultChannels = 2;
 
-/// Typed access over the raw `params` CSV held by [AnequalizerSettings].
-extension AnequalizerBandsX on AnequalizerSettings {
+/// Typed access over the raw `params` CSV held by [AnequalizerEffect].
+extension AnequalizerBandsX on AnequalizerEffect {
   /// Decoded list of bands in declaration order. Reads the underlying
   /// [params] string; the per-channel repeats `withBands` emits are
   /// collapsed back to one entry per logical band.
@@ -594,7 +594,7 @@ extension AnequalizerBandsX on AnequalizerSettings {
   /// Returns a copy whose [params] reflects [bands]. Each band is
   /// emitted once per channel up to [channels] (defaults to 2 — stereo)
   /// so signals get the band on every channel mpv can downmix to.
-  AnequalizerSettings withBands(
+  AnequalizerEffect withBands(
     List<AnequalizerBand> bands, {
     int channels = _anequalizerDefaultChannels,
   }) => copyWith(params: _serializeAnequalizerBands(bands, channels: channels));
@@ -727,7 +727,7 @@ final class AiirChannel {
 /// (`gains`, `poles`, `zeros`); the short aliases (`k`, `p`, `z`) are
 /// kept untouched on writes — consumers using both would conflict
 /// with themselves anyway.
-extension AiirChannelsX on AiirSettings {
+extension AiirChannelsX on AiirEffect {
   /// Decoded channel slots in declaration order. When the three
   /// underlying CSVs differ in length, the shortest list wins (lavfi
   /// rejects asymmetric configs at chain-build time).
@@ -744,7 +744,7 @@ extension AiirChannelsX on AiirSettings {
   }
 
   /// Returns a copy whose three CSV strings reflect [channels].
-  AiirSettings withChannels(List<AiirChannel> channels) {
+  AiirEffect withChannels(List<AiirChannel> channels) {
     if (channels.isEmpty) {
       return copyWith(gains: '', zeros: '', poles: '');
     }
@@ -785,8 +785,8 @@ List<List<double>> _splitChannelsListCsv(String? src) {
 /// to **milliseconds**: any suffix is stripped on parse, and the
 /// emitter always writes plain milliseconds. Consumers that need
 /// sample-accurate delay should write the raw string via
-/// [AdelaySettings.copyWith] instead.
-extension AdelayChannelsX on AdelaySettings {
+/// [AdelayEffect.copyWith] instead.
+extension AdelayChannelsX on AdelayEffect {
   /// Decoded list of channel delays in milliseconds, in declaration
   /// order (channel 0 first).
   List<double> get channelDelaysMs {
@@ -802,7 +802,7 @@ extension AdelayChannelsX on AdelaySettings {
 
   /// Returns a copy whose [delays] string reflects [delaysMs] in
   /// declaration order. Empty input clears the filter.
-  AdelaySettings withChannelDelaysMs(List<double> delaysMs) {
+  AdelayEffect withChannelDelaysMs(List<double> delaysMs) {
     if (delaysMs.isEmpty) return copyWith(delays: '');
     return copyWith(
       delays: delaysMs.map((d) => '${d.toStringAsFixed(2)}ms').join('|'),
@@ -820,7 +820,7 @@ extension AdelayChannelsX on AdelaySettings {
 /// frequencies (lows .. highs in ascending order), runs each band
 /// through its own [McompandBand], then sums them back. The band
 /// model carries the same six parameters as
-/// [AcompressorSettings] — threshold, ratio, attack, release, knee,
+/// [AcompressorEffect] — threshold, ratio, attack, release, knee,
 /// makeup — plus the band's upper-edge crossover, which lavfi reads
 /// as the boundary between this band and the next.
 ///
@@ -828,8 +828,8 @@ extension AdelayChannelsX on AdelaySettings {
 /// string with a positional grammar
 /// (`attack,decay knee points crossover [delay [init_vol [gain]]]`,
 /// bands joined by `|`). `McompandBandsX` hides that grammar — read
-/// [McompandSettings.bands] for the typed view, write back via
-/// [McompandSettings.withBands].
+/// [McompandEffect.bands] for the typed view, write back via
+/// [McompandEffect.withBands].
 final class McompandBand {
   /// dB. Where compression starts. Negative.
   final double thresholdDb;
@@ -916,7 +916,7 @@ final class McompandBand {
       'makeup: $makeupDb dB, crossover: $crossoverHz Hz)';
 }
 
-/// Typed access over the raw `args` string held by [McompandSettings].
+/// Typed access over the raw `args` string held by [McompandEffect].
 ///
 /// The underlying lavfi grammar
 /// (`attack,decay knee points crossover [delay [init_vol [gain]]]`,
@@ -926,13 +926,13 @@ final class McompandBand {
 /// with multi-segment transfer curves collapse to "ratio = last
 /// segment's slope, threshold = last break" — informative for
 /// editor display, lossy if echoed back unchanged.
-extension McompandBandsX on McompandSettings {
+extension McompandBandsX on McompandEffect {
   /// Decoded list of bands, sorted by ascending crossover.
   List<McompandBand> get bands => _parseMcompandBands(args);
 
   /// Returns a copy whose [args] reflects [bands] (ascending
   /// crossover order, lossless serialisation).
-  McompandSettings withBands(List<McompandBand> bands) =>
+  McompandEffect withBands(List<McompandBand> bands) =>
       copyWith(args: _serializeMcompandBands(bands));
 }
 
@@ -1074,7 +1074,7 @@ const double kSuperequalizerUnityGain = 1.0;
 /// is unity. Display-side (UI sliders, knobs) typically convert to
 /// dB via `20·log10(gain)` so the centerline of a slider sits at
 /// 0 dB instead of an arbitrary linear point.
-extension SuperequalizerBandsX on SuperequalizerSettings {
+extension SuperequalizerBandsX on SuperequalizerEffect {
   /// 18 band gains, lows-to-highs. Bands the user hasn't touched
   /// read as [kSuperequalizerUnityGain] (the lavfi default), so the
   /// returned list is always exactly [kSuperequalizerBandCount]
@@ -1092,7 +1092,7 @@ extension SuperequalizerBandsX on SuperequalizerSettings {
   /// unity), keeping the serialised filter chain compact. Lists
   /// shorter than [kSuperequalizerBandCount] leave the trailing
   /// bands at unity; longer lists are truncated.
-  SuperequalizerSettings withBands(List<double> gains) {
+  SuperequalizerEffect withBands(List<double> gains) {
     final next = <String, double>{};
     final n = gains.length < kSuperequalizerBandCount
         ? gains.length

@@ -6,6 +6,8 @@
 // AUTO-GENERATED — do not edit by hand.
 // ignore_for_file: non_constant_identifier_names, constant_identifier_names, camel_case_types, curly_braces_in_flow_control_structures, prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
 
+import 'package:meta/meta.dart';
+
 import '../internals/unset_sentinel.dart';
 import 'audio_effects.dart';
 
@@ -31,15 +33,6 @@ bool _mapEq<K, V>(Map<K, V> a, Map<K, V> b) {
   return true;
 }
 
-bool _listEq<T>(List<T> a, List<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
-
 /// Wire-format a double for the lavfi af-chain. Uses 3-decimal
 /// fixed-point for normal values; falls back to a 1-significant-
 /// figure exponential for tiny values that would otherwise round
@@ -53,6 +46,168 @@ String _wireDouble(double v) {
   if (v == 0 || double.parse(fixed) == v) return fixed;
   if (v.abs() < 0.001) return v.toStringAsExponential();
   return fixed;
+}
+
+/// One stage of the audio effects chain: an entry of the ordered list given
+/// to `Player.setAudioEffects`. Stages run in list order, and the same
+/// filter may appear more than once.
+///
+/// Every typed `XxxEffect` extends it; [RawAudioEffect] carries a lavfi
+/// entry written by hand.
+sealed class AudioEffect {
+  const AudioEffect();
+
+  /// Whether this stage is applied. `false` keeps it in the list, with
+  /// its settings, without inserting it in the chain.
+  bool get enabled;
+
+  /// The lavfi filter this stage runs, e.g. `equalizer`.
+  String get filterName;
+
+  /// The filter this stage runs, as a typed identifier (`null` for a
+  /// [RawAudioEffect]).
+  AudioFilter? get filter;
+
+  /// The chain entry for this stage.
+  String toFilterString();
+
+  /// Runtime-tunable option diff against [prev], the same filter one
+  /// step earlier: the `(option, wire value)` pairs the live graph can
+  /// apply via `af-command`, or `null` when the change needs a rebuild.
+  List<(String, String)>? _runtimeDiff(covariant AudioEffect prev) =>
+      this == prev ? const [] : null;
+}
+
+/// A chain stage written as a raw lavfi entry, for filters or option
+/// forms the typed effects do not cover, e.g.
+/// `RawAudioEffect('lavfi-aeval=val(0)*0.5|val(1)*0.5')`.
+///
+/// It is inserted as is, without a chain label, so it is never updated
+/// live: any change rebuilds the chain.
+final class RawAudioEffect extends AudioEffect {
+  /// Creates a raw chain stage from [entry].
+  const RawAudioEffect(this.entry, {this.enabled = true});
+
+  /// The lavfi entry, inserted verbatim.
+  final String entry;
+
+  @override
+  final bool enabled;
+
+  @override
+  String get filterName {
+    final start = entry.startsWith('lavfi-') ? 'lavfi-'.length : 0;
+    final end = entry.indexOf('=', start);
+    return entry.substring(start, end < 0 ? entry.length : end);
+  }
+
+  @override
+  AudioFilter? get filter => null;
+
+  @override
+  String toFilterString() => entry;
+
+  /// Returns a copy with the given fields replaced.
+  RawAudioEffect copyWith({String? entry, bool? enabled}) =>
+      RawAudioEffect(entry ?? this.entry, enabled: enabled ?? this.enabled);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RawAudioEffect &&
+          other.entry == entry &&
+          other.enabled == enabled);
+
+  @override
+  int get hashCode => Object.hash(entry, enabled);
+
+  @override
+  String toString() => 'RawAudioEffect($entry, enabled: $enabled)';
+}
+
+/// One incremental `af-command` update produced by [audioEffectsDiff]:
+/// applies [option] = [value] to the live chain stage labelled [label]
+/// (an instance of the ffmpeg filter [filterName]).
+typedef AfCommand = ({
+  String label,
+  String option,
+  String value,
+  String filterName,
+});
+
+/// The chain label of the [instance]th [filterName] stage in a list
+/// (0 for the first), e.g. `aek_equalizer_1`.
+@internal
+String audioEffectLabel(String filterName, int instance) =>
+    'aek_${filterName}_$instance';
+
+/// The chain labels of [effects], in order; `null` for raw stages,
+/// which carry none.
+@internal
+List<String?> audioEffectLabels(List<AudioEffect> effects) {
+  final seen = <String, int>{};
+  return [
+    for (final e in effects)
+      if (e is RawAudioEffect)
+        null
+      else
+        audioEffectLabel(
+          e.filterName,
+          seen.update(e.filterName, (i) => i + 1, ifAbsent: () => 0),
+        ),
+  ];
+}
+
+/// The `af` chain for [effects]: every enabled stage in list order,
+/// typed stages under their [audioEffectLabels]. A blank raw stage is
+/// skipped, since an empty chain entry is a syntax error for mpv.
+@internal
+String audioEffectsChain(List<AudioEffect> effects) {
+  final labels = audioEffectLabels(effects);
+  return [
+    for (var i = 0; i < effects.length; i++)
+      if (effects[i].enabled && effects[i].toFilterString().trim().isNotEmpty)
+        labels[i] == null
+            ? effects[i].toFilterString()
+            : '@${labels[i]}:${effects[i].toFilterString()}',
+  ].join(',');
+}
+
+/// The incremental `af-command` updates that turn the live chain built
+/// from [prev] into the one for [next], or `null` when only a rebuild
+/// can: a stage was added, removed, reordered, enabled or disabled, a
+/// non-runtime-tunable option changed, or the filter takes no live
+/// commands. Empty when the two lists build the same chain.
+@internal
+List<AfCommand>? audioEffectsDiff(
+  List<AudioEffect> prev,
+  List<AudioEffect> next,
+) {
+  if (prev.length != next.length) return null;
+  final labels = audioEffectLabels(next);
+  final out = <AfCommand>[];
+  for (var i = 0; i < next.length; i++) {
+    final a = prev[i];
+    final b = next[i];
+    if (identical(a, b)) continue;
+    if (a.runtimeType != b.runtimeType || a.enabled != b.enabled) return null;
+    if (b is RawAudioEffect) {
+      if (a != b) return null;
+      continue;
+    }
+    if (!b.enabled) continue;
+    final d = b._runtimeDiff(a);
+    if (d == null) return null;
+    for (final (option, value) in d) {
+      out.add((
+        label: labels[i]!,
+        option: option,
+        value: value,
+        filterName: b.filterName,
+      ));
+    }
+  }
+  return out;
 }
 
 /// Configuration for the `acompressor` audio effect.
@@ -90,8 +245,8 @@ String _wireDouble(double v) {
 /// - [attack]: Amount of milliseconds the signal has to rise above the threshold before gain reduction starts. Default is 20. Range is between 0.01 and 2000. (range 0.01..2000, default 20, runtime-tunable)
 /// - [detection]: Should the exact signal be taken in case of `peak` or an RMS one in case of `rms`. Default is `rms` which is mostly smoother. (range 0..1, default 1, runtime-tunable)
 /// - [knee]: Curve the sharp knee around the threshold to enter gain reduction more softly. Default is 2.82843. Range is between 1 and 8. (range 1..8, default 2.82843, runtime-tunable)
-/// - [level_in]: Set input gain. Default is 1. Range is between 0.015625 and 64. (range 0.015625..64, default 1, runtime-tunable)
-/// - [level_sc]: set sidechain gain (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelIn]: Set input gain. Default is 1. Range is between 0.015625 and 64. (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelSc]: set sidechain gain (range 0.015625..64, default 1, runtime-tunable)
 /// - [link]: Choose if the `average` level between all channels of input stream or the louder(`maximum`) channel of input stream affects the reduction. Default is `average`. (range 0..1, default 0, runtime-tunable)
 /// - [makeup]: Set the amount by how much signal will be amplified after processing. Default is 1. Range is from 1 to 64. (range 1..64, default 1, runtime-tunable)
 /// - [mix]: How much to use compressed signal in output. Default is 1. Range is between 0 and 1. (range 0..1, default 1, runtime-tunable)
@@ -99,7 +254,7 @@ String _wireDouble(double v) {
 /// - [ratio]: Set a ratio by which the signal is reduced. 1:2 means that if the level rose 4dB above the threshold, it will be only 2dB above after the reduction. Default is 2. Range is between 1 and 20. (range 1..20, default 2, runtime-tunable)
 /// - [release]: Amount of milliseconds the signal has to fall below the threshold before reduction is decreased again. Default is 250. Range is between 0.01 and 9000. (range 0.01..9000, default 250, runtime-tunable)
 /// - [threshold]: If a signal of stream rises above this level it will affect the gain reduction. By default it is 0.125. Range is between 0.00097563 and 1. (range 0.000976563..1, default 0.125, runtime-tunable)
-final class AcompressorSettings {
+final class AcompressorEffect extends AudioEffect {
   /// Default value for [attack].
   static const double attackDefault = 20.0;
 
@@ -118,23 +273,23 @@ final class AcompressorSettings {
   /// Maximum value for [knee].
   static const double kneeMax = 8.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_sc].
-  static const double level_scDefault = 1.0;
+  /// Default value for [levelSc].
+  static const double levelScDefault = 1.0;
 
-  /// Minimum value for [level_sc].
-  static const double level_scMin = 0.015625;
+  /// Minimum value for [levelSc].
+  static const double levelScMin = 0.015625;
 
-  /// Maximum value for [level_sc].
-  static const double level_scMax = 64.0;
+  /// Maximum value for [levelSc].
+  static const double levelScMax = 64.0;
 
   /// Default value for [makeup].
   static const double makeupDefault = 1.0;
@@ -181,7 +336,9 @@ final class AcompressorSettings {
   /// Maximum value for [threshold].
   static const double thresholdMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set attack
@@ -194,10 +351,10 @@ final class AcompressorSettings {
   final double knee;
 
   /// set input gain
-  final double level_in;
+  final double levelIn;
 
   /// set sidechain gain
-  final double level_sc;
+  final double levelSc;
 
   /// set link type
   final AcompressorLink link;
@@ -220,17 +377,16 @@ final class AcompressorSettings {
   /// set threshold
   final double threshold;
 
-  /// Creates an [AcompressorSettings] with the given parameter values.
+  /// Creates an [AcompressorEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AcompressorSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AcompressorEffect({
+    this.enabled = true,
     this.attack = 20.0,
     this.detection = AcompressorDetection.rms,
     this.knee = 2.82843,
-    this.level_in = 1.0,
-    this.level_sc = 1.0,
+    this.levelIn = 1.0,
+    this.levelSc = 1.0,
     this.link = AcompressorLink.average,
     this.makeup = 1.0,
     this.mix = 1.0,
@@ -240,14 +396,20 @@ final class AcompressorSettings {
     this.threshold = 0.125,
   });
 
-  /// Returns a copy of this [AcompressorSettings] with the given fields replaced.
-  AcompressorSettings copyWith({
+  @override
+  String get filterName => 'acompressor';
+
+  @override
+  AudioFilter get filter => AudioFilter.acompressor;
+
+  /// Returns a copy of this [AcompressorEffect] with the given fields replaced.
+  AcompressorEffect copyWith({
     bool? enabled,
     double? attack,
     AcompressorDetection? detection,
     double? knee,
-    double? level_in,
-    double? level_sc,
+    double? levelIn,
+    double? levelSc,
     AcompressorLink? link,
     double? makeup,
     double? mix,
@@ -255,13 +417,13 @@ final class AcompressorSettings {
     double? ratio,
     double? release,
     double? threshold,
-  }) => AcompressorSettings(
+  }) => AcompressorEffect(
     enabled: enabled ?? this.enabled,
     attack: attack ?? this.attack,
     detection: detection ?? this.detection,
     knee: knee ?? this.knee,
-    level_in: level_in ?? this.level_in,
-    level_sc: level_sc ?? this.level_sc,
+    levelIn: levelIn ?? this.levelIn,
+    levelSc: levelSc ?? this.levelSc,
     link: link ?? this.link,
     makeup: makeup ?? this.makeup,
     mix: mix ?? this.mix,
@@ -274,13 +436,13 @@ final class AcompressorSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AcompressorSettings &&
+      (other is AcompressorEffect &&
           other.enabled == enabled &&
           other.attack == attack &&
           other.detection == detection &&
           other.knee == knee &&
-          other.level_in == level_in &&
-          other.level_sc == level_sc &&
+          other.levelIn == levelIn &&
+          other.levelSc == levelSc &&
           other.link == link &&
           other.makeup == makeup &&
           other.mix == mix &&
@@ -295,8 +457,8 @@ final class AcompressorSettings {
     attack,
     detection,
     knee,
-    level_in,
-    level_sc,
+    levelIn,
+    levelSc,
     link,
     makeup,
     mix,
@@ -308,19 +470,20 @@ final class AcompressorSettings {
 
   @override
   String toString() =>
-      'AcompressorSettings(enabled: $enabled, attack: $attack, detection: $detection, knee: $knee, level_in: $level_in, level_sc: $level_sc, link: $link, makeup: $makeup, mix: $mix, mode: $mode, ratio: $ratio, release: $release, threshold: $threshold)';
+      'AcompressorEffect(enabled: $enabled, attack: $attack, detection: $detection, knee: $knee, levelIn: $levelIn, levelSc: $levelSc, link: $link, makeup: $makeup, mix: $mix, mode: $mode, ratio: $ratio, release: $release, threshold: $threshold)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(attack >= attackMin, 'acompressor.attack must be >= 0.01');
     assert(attack <= attackMax, 'acompressor.attack must be <= 2000');
     assert(knee >= kneeMin, 'acompressor.knee must be >= 1');
     assert(knee <= kneeMax, 'acompressor.knee must be <= 8');
-    assert(level_in >= level_inMin, 'acompressor.level_in must be >= 0.015625');
-    assert(level_in <= level_inMax, 'acompressor.level_in must be <= 64');
-    assert(level_sc >= level_scMin, 'acompressor.level_sc must be >= 0.015625');
-    assert(level_sc <= level_scMax, 'acompressor.level_sc must be <= 64');
+    assert(levelIn >= levelInMin, 'acompressor.level_in must be >= 0.015625');
+    assert(levelIn <= levelInMax, 'acompressor.level_in must be <= 64');
+    assert(levelSc >= levelScMin, 'acompressor.level_sc must be >= 0.015625');
+    assert(levelSc <= levelScMax, 'acompressor.level_sc must be <= 64');
     assert(makeup >= makeupMin, 'acompressor.makeup must be >= 1');
     assert(makeup <= makeupMax, 'acompressor.makeup must be <= 64');
     assert(mix >= mixMin, 'acompressor.mix must be >= 0');
@@ -339,8 +502,8 @@ final class AcompressorSettings {
     if (detection != AcompressorDetection.rms)
       parts.add('detection=' + detection.mpvValue);
     if (knee != 2.82843) parts.add('knee=' + _wireDouble(knee));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_sc != 1.0) parts.add('level_sc=' + _wireDouble(level_sc));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelSc != 1.0) parts.add('level_sc=' + _wireDouble(levelSc));
     if (link != AcompressorLink.average) parts.add('link=' + link.mpvValue);
     if (makeup != 1.0) parts.add('makeup=' + _wireDouble(makeup));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
@@ -356,7 +519,8 @@ final class AcompressorSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AcompressorSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AcompressorEffect prev) {
     final out = <(String, String)>[];
     if (attack != prev.attack) {
       out.add(('attack', _wireDouble(attack)));
@@ -367,11 +531,11 @@ final class AcompressorSettings {
     if (knee != prev.knee) {
       out.add(('knee', _wireDouble(knee)));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_sc != prev.level_sc) {
-      out.add(('level_sc', _wireDouble(level_sc)));
+    if (levelSc != prev.levelSc) {
+      out.add(('level_sc', _wireDouble(levelSc)));
     }
     if (link != prev.link) {
       out.add(('link', link.mpvValue));
@@ -406,7 +570,7 @@ final class AcompressorSettings {
 ///
 /// Parameters:
 /// - [contrast]: Set contrast. Default is 33. Allowed range is between 0 and 100. (range 0..100, default 33)
-final class AcontrastSettings {
+final class AcontrastEffect extends AudioEffect {
   /// Default value for [contrast].
   static const double contrastDefault = 33.0;
 
@@ -416,21 +580,28 @@ final class AcontrastSettings {
   /// Maximum value for [contrast].
   static const double contrastMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set contrast
   final double contrast;
 
-  /// Creates an [AcontrastSettings] with the given parameter values.
+  /// Creates an [AcontrastEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AcontrastSettings({this.enabled = false, this.contrast = 33.0});
+  /// Each parameter defaults to its ffmpeg default.
+  const AcontrastEffect({this.enabled = true, this.contrast = 33.0});
 
-  /// Returns a copy of this [AcontrastSettings] with the given fields replaced.
-  AcontrastSettings copyWith({bool? enabled, double? contrast}) =>
-      AcontrastSettings(
+  @override
+  String get filterName => 'acontrast';
+
+  @override
+  AudioFilter get filter => AudioFilter.acontrast;
+
+  /// Returns a copy of this [AcontrastEffect] with the given fields replaced.
+  AcontrastEffect copyWith({bool? enabled, double? contrast}) =>
+      AcontrastEffect(
         enabled: enabled ?? this.enabled,
         contrast: contrast ?? this.contrast,
       );
@@ -438,7 +609,7 @@ final class AcontrastSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AcontrastSettings &&
+      (other is AcontrastEffect &&
           other.enabled == enabled &&
           other.contrast == contrast);
 
@@ -447,10 +618,11 @@ final class AcontrastSettings {
 
   @override
   String toString() =>
-      'AcontrastSettings(enabled: $enabled, contrast: $contrast)';
+      'AcontrastEffect(enabled: $enabled, contrast: $contrast)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(contrast >= contrastMin, 'acontrast.contrast must be >= 0');
     assert(contrast <= contrastMax, 'acontrast.contrast must be <= 100');
@@ -489,15 +661,15 @@ final class AcontrastSettings {
 /// - [aa]: Set anti-aliasing. (range 0..1, default .5, runtime-tunable)
 /// - [bits]: Set bit reduction. (range 1..64, default 8, runtime-tunable)
 /// - [dc]: Set DC. (range .25..4, default 1, runtime-tunable)
-/// - [level_in]: Set level in. (range 0.015625..64, default 1, runtime-tunable)
-/// - [level_out]: Set level out. (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelIn]: Set level in. (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelOut]: Set level out. (range 0.015625..64, default 1, runtime-tunable)
 /// - [lfo]: Enable LFO. By default disabled. (range 0..1, default 0, runtime-tunable)
 /// - [lforange]: Set LFO range. (range 1..250, default 20, runtime-tunable)
 /// - [lforate]: Set LFO rate. (range .01..200, default .3, runtime-tunable)
 /// - [mix]: Set mixing amount. (range 0..1, default .5, runtime-tunable)
 /// - [mode]: Can be linear: `lin` or logarithmic: `log`. (range 0..1, default 0, runtime-tunable)
 /// - [samples]: Set sample reduction. (range 1..250, default 1, runtime-tunable)
-final class AcrusherSettings {
+final class AcrusherEffect extends AudioEffect {
   /// Default value for [aa].
   static const double aaDefault = .5;
 
@@ -525,23 +697,23 @@ final class AcrusherSettings {
   /// Maximum value for [dc].
   static const double dcMax = 4.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.015625;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.015625;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
   /// Default value for [lforange].
   static const double lforangeDefault = 20.0;
@@ -579,7 +751,9 @@ final class AcrusherSettings {
   /// Maximum value for [samples].
   static const double samplesMax = 250.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set anti-aliasing
@@ -592,10 +766,10 @@ final class AcrusherSettings {
   final double dc;
 
   /// set level in
-  final double level_in;
+  final double levelIn;
 
   /// set level out
-  final double level_out;
+  final double levelOut;
 
   /// enable LFO
   final bool lfo;
@@ -615,17 +789,16 @@ final class AcrusherSettings {
   /// set sample reduction
   final double samples;
 
-  /// Creates an [AcrusherSettings] with the given parameter values.
+  /// Creates an [AcrusherEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AcrusherSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AcrusherEffect({
+    this.enabled = true,
     this.aa = .5,
     this.bits = 8.0,
     this.dc = 1.0,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
     this.lfo = false,
     this.lforange = 20.0,
     this.lforate = .3,
@@ -634,27 +807,33 @@ final class AcrusherSettings {
     this.samples = 1.0,
   });
 
-  /// Returns a copy of this [AcrusherSettings] with the given fields replaced.
-  AcrusherSettings copyWith({
+  @override
+  String get filterName => 'acrusher';
+
+  @override
+  AudioFilter get filter => AudioFilter.acrusher;
+
+  /// Returns a copy of this [AcrusherEffect] with the given fields replaced.
+  AcrusherEffect copyWith({
     bool? enabled,
     double? aa,
     double? bits,
     double? dc,
-    double? level_in,
-    double? level_out,
+    double? levelIn,
+    double? levelOut,
     bool? lfo,
     double? lforange,
     double? lforate,
     double? mix,
     AcrusherMode? mode,
     double? samples,
-  }) => AcrusherSettings(
+  }) => AcrusherEffect(
     enabled: enabled ?? this.enabled,
     aa: aa ?? this.aa,
     bits: bits ?? this.bits,
     dc: dc ?? this.dc,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     lfo: lfo ?? this.lfo,
     lforange: lforange ?? this.lforange,
     lforate: lforate ?? this.lforate,
@@ -666,13 +845,13 @@ final class AcrusherSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AcrusherSettings &&
+      (other is AcrusherEffect &&
           other.enabled == enabled &&
           other.aa == aa &&
           other.bits == bits &&
           other.dc == dc &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.lfo == lfo &&
           other.lforange == lforange &&
           other.lforate == lforate &&
@@ -686,8 +865,8 @@ final class AcrusherSettings {
     aa,
     bits,
     dc,
-    level_in,
-    level_out,
+    levelIn,
+    levelOut,
     lfo,
     lforange,
     lforate,
@@ -698,19 +877,20 @@ final class AcrusherSettings {
 
   @override
   String toString() =>
-      'AcrusherSettings(enabled: $enabled, aa: $aa, bits: $bits, dc: $dc, level_in: $level_in, level_out: $level_out, lfo: $lfo, lforange: $lforange, lforate: $lforate, mix: $mix, mode: $mode, samples: $samples)';
+      'AcrusherEffect(enabled: $enabled, aa: $aa, bits: $bits, dc: $dc, levelIn: $levelIn, levelOut: $levelOut, lfo: $lfo, lforange: $lforange, lforate: $lforate, mix: $mix, mode: $mode, samples: $samples)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(aa >= aaMin, 'acrusher.aa must be >= 0');
     assert(aa <= aaMax, 'acrusher.aa must be <= 1');
     assert(bits >= bitsMin, 'acrusher.bits must be >= 1');
     assert(bits <= bitsMax, 'acrusher.bits must be <= 64');
-    assert(level_in >= level_inMin, 'acrusher.level_in must be >= 0.015625');
-    assert(level_in <= level_inMax, 'acrusher.level_in must be <= 64');
-    assert(level_out >= level_outMin, 'acrusher.level_out must be >= 0.015625');
-    assert(level_out <= level_outMax, 'acrusher.level_out must be <= 64');
+    assert(levelIn >= levelInMin, 'acrusher.level_in must be >= 0.015625');
+    assert(levelIn <= levelInMax, 'acrusher.level_in must be <= 64');
+    assert(levelOut >= levelOutMin, 'acrusher.level_out must be >= 0.015625');
+    assert(levelOut <= levelOutMax, 'acrusher.level_out must be <= 64');
     assert(lforange >= lforangeMin, 'acrusher.lforange must be >= 1');
     assert(lforange <= lforangeMax, 'acrusher.lforange must be <= 250');
     assert(lforate >= lforateMin, 'acrusher.lforate must be >= .01');
@@ -723,8 +903,8 @@ final class AcrusherSettings {
     if (aa != .5) parts.add('aa=' + _wireDouble(aa));
     if (bits != 8.0) parts.add('bits=' + _wireDouble(bits));
     if (dc != 1.0) parts.add('dc=' + _wireDouble(dc));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (lfo != false) parts.add('lfo=' + (lfo ? '1' : '0'));
     if (lforange != 20.0) parts.add('lforange=' + _wireDouble(lforange));
     if (lforate != .3) parts.add('lforate=' + _wireDouble(lforate));
@@ -739,7 +919,8 @@ final class AcrusherSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AcrusherSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AcrusherEffect prev) {
     final out = <(String, String)>[];
     if (aa != prev.aa) {
       out.add(('aa', _wireDouble(aa)));
@@ -750,11 +931,11 @@ final class AcrusherSettings {
     if (dc != prev.dc) {
       out.add(('dc', _wireDouble(dc)));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     if (lfo != prev.lfo) {
       out.add(('lfo', (lfo ? '1' : '0')));
@@ -798,7 +979,7 @@ final class AcrusherSettings {
 /// - [threshold]: Set threshold value. Allowed range is from `1` to `100`. Default value is `2`. This controls the strength of impulsive noise which is going to be removed. The lower value, the more samples will be detected as impulsive noise. (range 1..100, default 2)
 /// - [w]: Set window size, in milliseconds. Allowed range is from `10` to `100`. Default value is `55` milliseconds. This sets size of window which will be processed at once. (range 10..100, default 55)
 /// - [window]: Set window size, in milliseconds. Allowed range is from `10` to `100`. Default value is `55` milliseconds. This sets size of window which will be processed at once. (range 10..100, default 55)
-final class AdeclickSettings {
+final class AdeclickEffect extends AudioEffect {
   /// Default value for [a].
   static const double aDefault = 2.0;
 
@@ -889,7 +1070,9 @@ final class AdeclickSettings {
   /// Maximum value for [window].
   static const double windowMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set autoregression order
@@ -928,12 +1111,11 @@ final class AdeclickSettings {
   /// set window size
   final double window;
 
-  /// Creates an [AdeclickSettings] with the given parameter values.
+  /// Creates an [AdeclickEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdeclickSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AdeclickEffect({
+    this.enabled = true,
     this.a = 2.0,
     this.arorder = 2.0,
     this.b = 2.0,
@@ -948,8 +1130,14 @@ final class AdeclickSettings {
     this.window = 55.0,
   });
 
-  /// Returns a copy of this [AdeclickSettings] with the given fields replaced.
-  AdeclickSettings copyWith({
+  @override
+  String get filterName => 'adeclick';
+
+  @override
+  AudioFilter get filter => AudioFilter.adeclick;
+
+  /// Returns a copy of this [AdeclickEffect] with the given fields replaced.
+  AdeclickEffect copyWith({
     bool? enabled,
     double? a,
     double? arorder,
@@ -963,7 +1151,7 @@ final class AdeclickSettings {
     double? threshold,
     double? w,
     double? window,
-  }) => AdeclickSettings(
+  }) => AdeclickEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     arorder: arorder ?? this.arorder,
@@ -982,7 +1170,7 @@ final class AdeclickSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdeclickSettings &&
+      (other is AdeclickEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.arorder == arorder &&
@@ -1016,10 +1204,11 @@ final class AdeclickSettings {
 
   @override
   String toString() =>
-      'AdeclickSettings(enabled: $enabled, a: $a, arorder: $arorder, b: $b, burst: $burst, m: $m, method: $method, o: $o, overlap: $overlap, t: $t, threshold: $threshold, w: $w, window: $window)';
+      'AdeclickEffect(enabled: $enabled, a: $a, arorder: $arorder, b: $b, burst: $burst, m: $m, method: $method, o: $o, overlap: $overlap, t: $t, threshold: $threshold, w: $w, window: $window)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(a >= aMin, 'adeclick.a must be >= 0');
     assert(a <= aMax, 'adeclick.a must be <= 25');
@@ -1080,7 +1269,7 @@ final class AdeclickSettings {
 /// - [threshold]: Set threshold value. Allowed range is from `1` to `100`. Default value is `10`. Higher values make clip detection less aggressive. (range 1..100, default 10)
 /// - [w]: Set window size, in milliseconds. Allowed range is from `10` to `100`. Default value is `55` milliseconds. This sets size of window which will be processed at once. (range 10..100, default 55)
 /// - [window]: Set window size, in milliseconds. Allowed range is from `10` to `100`. Default value is `55` milliseconds. This sets size of window which will be processed at once. (range 10..100, default 55)
-final class AdeclipSettings {
+final class AdeclipEffect extends AudioEffect {
   /// Default value for [a].
   static const double aDefault = 8.0;
 
@@ -1171,7 +1360,9 @@ final class AdeclipSettings {
   /// Maximum value for [window].
   static const double windowMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set autoregression order
@@ -1210,12 +1401,11 @@ final class AdeclipSettings {
   /// set window size
   final double window;
 
-  /// Creates an [AdeclipSettings] with the given parameter values.
+  /// Creates an [AdeclipEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdeclipSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AdeclipEffect({
+    this.enabled = true,
     this.a = 8.0,
     this.arorder = 8.0,
     this.hsize = 1000,
@@ -1230,8 +1420,14 @@ final class AdeclipSettings {
     this.window = 55.0,
   });
 
-  /// Returns a copy of this [AdeclipSettings] with the given fields replaced.
-  AdeclipSettings copyWith({
+  @override
+  String get filterName => 'adeclip';
+
+  @override
+  AudioFilter get filter => AudioFilter.adeclip;
+
+  /// Returns a copy of this [AdeclipEffect] with the given fields replaced.
+  AdeclipEffect copyWith({
     bool? enabled,
     double? a,
     double? arorder,
@@ -1245,7 +1441,7 @@ final class AdeclipSettings {
     double? threshold,
     double? w,
     double? window,
-  }) => AdeclipSettings(
+  }) => AdeclipEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     arorder: arorder ?? this.arorder,
@@ -1264,7 +1460,7 @@ final class AdeclipSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdeclipSettings &&
+      (other is AdeclipEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.arorder == arorder &&
@@ -1298,10 +1494,11 @@ final class AdeclipSettings {
 
   @override
   String toString() =>
-      'AdeclipSettings(enabled: $enabled, a: $a, arorder: $arorder, hsize: $hsize, m: $m, method: $method, n: $n, o: $o, overlap: $overlap, t: $t, threshold: $threshold, w: $w, window: $window)';
+      'AdeclipEffect(enabled: $enabled, a: $a, arorder: $arorder, hsize: $hsize, m: $m, method: $method, n: $n, o: $o, overlap: $overlap, t: $t, threshold: $threshold, w: $w, window: $window)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(a >= aMin, 'adeclip.a must be >= 0');
     assert(a <= aMax, 'adeclip.a must be <= 25');
@@ -1349,7 +1546,7 @@ final class AdeclipSettings {
 /// Parameters:
 /// - [seed]: Set random seed used for setting delay in samples across channels. (range -1..4294967295, default -1)
 /// - [stages]: Set decorrelation stages of filtering. Allowed range is from 1 to 16. Default value is 6. (range 1..16, default 6)
-final class AdecorrelateSettings {
+final class AdecorrelateEffect extends AudioEffect {
   /// Default value for [seed].
   static const int seedDefault = -1;
 
@@ -1368,7 +1565,9 @@ final class AdecorrelateSettings {
   /// Maximum value for [stages].
   static const int stagesMax = 16;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set random seed
@@ -1377,19 +1576,24 @@ final class AdecorrelateSettings {
   /// set filtering stages
   final int stages;
 
-  /// Creates an [AdecorrelateSettings] with the given parameter values.
+  /// Creates an [AdecorrelateEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdecorrelateSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AdecorrelateEffect({
+    this.enabled = true,
     this.seed = -1,
     this.stages = 6,
   });
 
-  /// Returns a copy of this [AdecorrelateSettings] with the given fields replaced.
-  AdecorrelateSettings copyWith({bool? enabled, int? seed, int? stages}) =>
-      AdecorrelateSettings(
+  @override
+  String get filterName => 'adecorrelate';
+
+  @override
+  AudioFilter get filter => AudioFilter.adecorrelate;
+
+  /// Returns a copy of this [AdecorrelateEffect] with the given fields replaced.
+  AdecorrelateEffect copyWith({bool? enabled, int? seed, int? stages}) =>
+      AdecorrelateEffect(
         enabled: enabled ?? this.enabled,
         seed: seed ?? this.seed,
         stages: stages ?? this.stages,
@@ -1398,7 +1602,7 @@ final class AdecorrelateSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdecorrelateSettings &&
+      (other is AdecorrelateEffect &&
           other.enabled == enabled &&
           other.seed == seed &&
           other.stages == stages);
@@ -1408,10 +1612,11 @@ final class AdecorrelateSettings {
 
   @override
   String toString() =>
-      'AdecorrelateSettings(enabled: $enabled, seed: $seed, stages: $stages)';
+      'AdecorrelateEffect(enabled: $enabled, seed: $seed, stages: $stages)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(seed >= seedMin, 'adecorrelate.seed must be >= -1');
     assert(seed <= seedMax, 'adecorrelate.seed must be <= 4294967295');
@@ -1437,8 +1642,10 @@ final class AdecorrelateSettings {
 /// Parameters:
 /// - [all]: Use last set delay for all remaining channels. By default is disabled. This option if enabled changes how option `delays` is interpreted. (range 0..1, default 0)
 /// - [delays]: Set list of delays in milliseconds for each channel separated by '|'. Unused delays will be silently ignored. If number of given delays is smaller than number of channels all remaining channels will not be delayed. If you want to delay exact number of samples, append 'S' to number. If you want instead to delay in seconds, append 's' to number. (range 0..0, default "", runtime-tunable)
-final class AdelaySettings {
-  /// Whether this effect is inserted into the audio chain.
+final class AdelayEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// use last available delay for remained channels
@@ -1447,19 +1654,20 @@ final class AdelaySettings {
   /// set list of delays for each channel
   final String delays;
 
-  /// Creates an [AdelaySettings] with the given parameter values.
+  /// Creates an [AdelayEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdelaySettings({
-    this.enabled = false,
-    this.all = false,
-    this.delays = '',
-  });
+  /// Each parameter defaults to its ffmpeg default.
+  const AdelayEffect({this.enabled = true, this.all = false, this.delays = ''});
 
-  /// Returns a copy of this [AdelaySettings] with the given fields replaced.
-  AdelaySettings copyWith({bool? enabled, bool? all, String? delays}) =>
-      AdelaySettings(
+  @override
+  String get filterName => 'adelay';
+
+  @override
+  AudioFilter get filter => AudioFilter.adelay;
+
+  /// Returns a copy of this [AdelayEffect] with the given fields replaced.
+  AdelayEffect copyWith({bool? enabled, bool? all, String? delays}) =>
+      AdelayEffect(
         enabled: enabled ?? this.enabled,
         all: all ?? this.all,
         delays: delays ?? this.delays,
@@ -1468,7 +1676,7 @@ final class AdelaySettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdelaySettings &&
+      (other is AdelayEffect &&
           other.enabled == enabled &&
           other.all == all &&
           other.delays == delays);
@@ -1478,10 +1686,11 @@ final class AdelaySettings {
 
   @override
   String toString() =>
-      'AdelaySettings(enabled: $enabled, all: $all, delays: $delays)';
+      'AdelayEffect(enabled: $enabled, all: $all, delays: $delays)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     final parts = <String>[];
     if (all != false) parts.add('all=' + (all ? '1' : '0'));
@@ -1492,7 +1701,8 @@ final class AdelaySettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AdelaySettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AdelayEffect prev) {
     final out = <(String, String)>[];
     if (all != prev.all) return null;
     if (delays != prev.delays) {
@@ -1513,7 +1723,7 @@ final class AdelaySettings {
 /// Parameters:
 /// - [level]: Set level of added noise in dB. Default is `-351`. Allowed range is from -451 to -90. (range -451..-90, default -351, runtime-tunable)
 /// - [type]: Set type of added noise. (range 0..3, default DC_TYPE, runtime-tunable)
-final class AdenormSettings {
+final class AdenormEffect extends AudioEffect {
   /// Default value for [level].
   static const double levelDefault = -351.0;
 
@@ -1523,7 +1733,9 @@ final class AdenormSettings {
   /// Maximum value for [level].
   static const double levelMax = -90.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set level
@@ -1532,19 +1744,24 @@ final class AdenormSettings {
   /// set type
   final AdenormType type;
 
-  /// Creates an [AdenormSettings] with the given parameter values.
+  /// Creates an [AdenormEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdenormSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AdenormEffect({
+    this.enabled = true,
     this.level = -351.0,
     this.type = AdenormType.dc,
   });
 
-  /// Returns a copy of this [AdenormSettings] with the given fields replaced.
-  AdenormSettings copyWith({bool? enabled, double? level, AdenormType? type}) =>
-      AdenormSettings(
+  @override
+  String get filterName => 'adenorm';
+
+  @override
+  AudioFilter get filter => AudioFilter.adenorm;
+
+  /// Returns a copy of this [AdenormEffect] with the given fields replaced.
+  AdenormEffect copyWith({bool? enabled, double? level, AdenormType? type}) =>
+      AdenormEffect(
         enabled: enabled ?? this.enabled,
         level: level ?? this.level,
         type: type ?? this.type,
@@ -1553,7 +1770,7 @@ final class AdenormSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdenormSettings &&
+      (other is AdenormEffect &&
           other.enabled == enabled &&
           other.level == level &&
           other.type == type);
@@ -1563,10 +1780,11 @@ final class AdenormSettings {
 
   @override
   String toString() =>
-      'AdenormSettings(enabled: $enabled, level: $level, type: $type)';
+      'AdenormEffect(enabled: $enabled, level: $level, type: $type)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(level >= levelMin, 'adenorm.level must be >= -451');
     assert(level <= levelMax, 'adenorm.level must be <= -90');
@@ -1579,7 +1797,8 @@ final class AdenormSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AdenormSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AdenormEffect prev) {
     final out = <(String, String)>[];
     if (level != prev.level) {
       out.add(('level', _wireDouble(level)));
@@ -1596,33 +1815,41 @@ final class AdenormSettings {
 /// Compute derivative/integral of audio stream.
 ///
 /// Applying both filters one after another produces original audio.
-final class AderivativeSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class AderivativeEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
-  /// Creates an [AderivativeSettings] with the given parameter values.
+  /// Creates an [AderivativeEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AderivativeSettings({this.enabled = false});
+  /// Each parameter defaults to its ffmpeg default.
+  const AderivativeEffect({this.enabled = true});
 
-  /// Returns a copy of this [AderivativeSettings] with the given fields replaced.
-  AderivativeSettings copyWith({bool? enabled}) =>
-      AderivativeSettings(enabled: enabled ?? this.enabled);
+  @override
+  String get filterName => 'aderivative';
+
+  @override
+  AudioFilter get filter => AudioFilter.aderivative;
+
+  /// Returns a copy of this [AderivativeEffect] with the given fields replaced.
+  AderivativeEffect copyWith({bool? enabled}) =>
+      AderivativeEffect(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AderivativeSettings && other.enabled == enabled);
+      (other is AderivativeEffect && other.enabled == enabled);
 
   @override
   int get hashCode => enabled.hashCode;
 
   @override
-  String toString() => 'AderivativeSettings(enabled: $enabled)';
+  String toString() => 'AderivativeEffect(enabled: $enabled)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     return 'lavfi-aderivative';
   }
@@ -1639,7 +1866,7 @@ final class AderivativeSettings {
 /// - [channels]: Set which channels to filter, by default `all` channels in audio stream are filtered. (range 0..0, default "all", runtime-tunable)
 /// - [release]: Set the release in milliseconds. Default is `100` milliseconds. Allowed range is from 5 to 2000 milliseconds. (range 5..2000, default 100., runtime-tunable)
 /// - [transfer]: Set the transfer expression.  The expression can contain the following constants: (range 0..0, default "p", runtime-tunable)
-final class AdrcSettings {
+final class AdrcEffect extends AudioEffect {
   /// Default value for [attack].
   static const double attackDefault = 50.0;
 
@@ -1658,7 +1885,9 @@ final class AdrcSettings {
   /// Maximum value for [release].
   static const double releaseMax = 2000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set the attack
@@ -1673,26 +1902,31 @@ final class AdrcSettings {
   /// set the transfer expression
   final String transfer;
 
-  /// Creates an [AdrcSettings] with the given parameter values.
+  /// Creates an [AdrcEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdrcSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AdrcEffect({
+    this.enabled = true,
     this.attack = 50.0,
     this.channels = 'all',
     this.release = 100.0,
     this.transfer = 'p',
   });
 
-  /// Returns a copy of this [AdrcSettings] with the given fields replaced.
-  AdrcSettings copyWith({
+  @override
+  String get filterName => 'adrc';
+
+  @override
+  AudioFilter get filter => AudioFilter.adrc;
+
+  /// Returns a copy of this [AdrcEffect] with the given fields replaced.
+  AdrcEffect copyWith({
     bool? enabled,
     double? attack,
     String? channels,
     double? release,
     String? transfer,
-  }) => AdrcSettings(
+  }) => AdrcEffect(
     enabled: enabled ?? this.enabled,
     attack: attack ?? this.attack,
     channels: channels ?? this.channels,
@@ -1703,7 +1937,7 @@ final class AdrcSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdrcSettings &&
+      (other is AdrcEffect &&
           other.enabled == enabled &&
           other.attack == attack &&
           other.channels == channels &&
@@ -1715,10 +1949,11 @@ final class AdrcSettings {
 
   @override
   String toString() =>
-      'AdrcSettings(enabled: $enabled, attack: $attack, channels: $channels, release: $release, transfer: $transfer)';
+      'AdrcEffect(enabled: $enabled, attack: $attack, channels: $channels, release: $release, transfer: $transfer)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(attack >= attackMin, 'adrc.attack must be >= 1');
     assert(attack <= attackMax, 'adrc.attack must be <= 1000');
@@ -1735,7 +1970,8 @@ final class AdrcSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AdrcSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AdrcEffect prev) {
     final out = <(String, String)>[];
     if (attack != prev.attack) {
       out.add(('attack', _wireDouble(attack)));
@@ -1775,7 +2011,7 @@ final class AdrcSettings {
 /// - [tftype]: set target filter type (range 0..2, default 0, runtime-tunable)
 /// - [threshold]: Set the detection threshold used to trigger equalization. Threshold detection is using detection filter. Default value is 0. Allowed range is from 0 to 100. (range 0..100, default 0, runtime-tunable)
 /// - [tqfactor]: Set the target resonance factor for target equalization filter. Default value is 1. Allowed range is from 0.001 to 1000. (range 0.001..1000, default 1, runtime-tunable)
-final class AdynamicequalizerSettings {
+final class AdynamicequalizerEffect extends AudioEffect {
   /// Default value for [attack].
   static const double attackDefault = 20.0;
 
@@ -1866,7 +2102,9 @@ final class AdynamicequalizerSettings {
   /// Maximum value for [tqfactor].
   static const double tqfactorMax = 1000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set detection attack duration
@@ -1914,12 +2152,11 @@ final class AdynamicequalizerSettings {
   /// set target Q factor
   final double tqfactor;
 
-  /// Creates an [AdynamicequalizerSettings] with the given parameter values.
+  /// Creates an [AdynamicequalizerEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdynamicequalizerSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AdynamicequalizerEffect({
+    this.enabled = true,
     this.attack = 20.0,
     this.auto = AdynamicequalizerAuto.off,
     this.dfrequency = 1000.0,
@@ -1937,8 +2174,14 @@ final class AdynamicequalizerSettings {
     this.tqfactor = 1.0,
   });
 
-  /// Returns a copy of this [AdynamicequalizerSettings] with the given fields replaced.
-  AdynamicequalizerSettings copyWith({
+  @override
+  String get filterName => 'adynamicequalizer';
+
+  @override
+  AudioFilter get filter => AudioFilter.adynamicequalizer;
+
+  /// Returns a copy of this [AdynamicequalizerEffect] with the given fields replaced.
+  AdynamicequalizerEffect copyWith({
     bool? enabled,
     double? attack,
     AdynamicequalizerAuto? auto,
@@ -1955,7 +2198,7 @@ final class AdynamicequalizerSettings {
     AdynamicequalizerTftype? tftype,
     double? threshold,
     double? tqfactor,
-  }) => AdynamicequalizerSettings(
+  }) => AdynamicequalizerEffect(
     enabled: enabled ?? this.enabled,
     attack: attack ?? this.attack,
     auto: auto ?? this.auto,
@@ -1977,7 +2220,7 @@ final class AdynamicequalizerSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdynamicequalizerSettings &&
+      (other is AdynamicequalizerEffect &&
           other.enabled == enabled &&
           other.attack == attack &&
           other.auto == auto &&
@@ -2017,10 +2260,11 @@ final class AdynamicequalizerSettings {
 
   @override
   String toString() =>
-      'AdynamicequalizerSettings(enabled: $enabled, attack: $attack, auto: $auto, dfrequency: $dfrequency, dftype: $dftype, dqfactor: $dqfactor, makeup: $makeup, mode: $mode, precision: $precision, range: $range, ratio: $ratio, release: $release, tfrequency: $tfrequency, tftype: $tftype, threshold: $threshold, tqfactor: $tqfactor)';
+      'AdynamicequalizerEffect(enabled: $enabled, attack: $attack, auto: $auto, dfrequency: $dfrequency, dftype: $dftype, dqfactor: $dqfactor, makeup: $makeup, mode: $mode, precision: $precision, range: $range, ratio: $ratio, release: $release, tfrequency: $tfrequency, tftype: $tftype, threshold: $threshold, tqfactor: $tqfactor)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(attack >= attackMin, 'adynamicequalizer.attack must be >= 0.01');
     assert(attack <= attackMax, 'adynamicequalizer.attack must be <= 2000');
@@ -2102,7 +2346,8 @@ final class AdynamicequalizerSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AdynamicequalizerSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AdynamicequalizerEffect prev) {
     final out = <(String, String)>[];
     if (attack != prev.attack) {
       out.add(('attack', _wireDouble(attack)));
@@ -2160,7 +2405,7 @@ final class AdynamicequalizerSettings {
 /// Parameters:
 /// - [basefreq]: Set a base frequency for smoothing. Default value is 22050. Allowed range is from 2 to 1e+06. (range 2..1000000, default 22050, runtime-tunable)
 /// - [sensitivity]: Set an amount of sensitivity to frequency fluctations. Default is 2. Allowed range is from 0 to 1e+06. (range 0..1000000, default 2, runtime-tunable)
-final class AdynamicsmoothSettings {
+final class AdynamicsmoothEffect extends AudioEffect {
   /// Default value for [basefreq].
   static const double basefreqDefault = 22050.0;
 
@@ -2179,7 +2424,9 @@ final class AdynamicsmoothSettings {
   /// Maximum value for [sensitivity].
   static const double sensitivityMax = 1000000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set base frequency
@@ -2188,22 +2435,27 @@ final class AdynamicsmoothSettings {
   /// set smooth sensitivity
   final double sensitivity;
 
-  /// Creates an [AdynamicsmoothSettings] with the given parameter values.
+  /// Creates an [AdynamicsmoothEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AdynamicsmoothSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AdynamicsmoothEffect({
+    this.enabled = true,
     this.basefreq = 22050.0,
     this.sensitivity = 2.0,
   });
 
-  /// Returns a copy of this [AdynamicsmoothSettings] with the given fields replaced.
-  AdynamicsmoothSettings copyWith({
+  @override
+  String get filterName => 'adynamicsmooth';
+
+  @override
+  AudioFilter get filter => AudioFilter.adynamicsmooth;
+
+  /// Returns a copy of this [AdynamicsmoothEffect] with the given fields replaced.
+  AdynamicsmoothEffect copyWith({
     bool? enabled,
     double? basefreq,
     double? sensitivity,
-  }) => AdynamicsmoothSettings(
+  }) => AdynamicsmoothEffect(
     enabled: enabled ?? this.enabled,
     basefreq: basefreq ?? this.basefreq,
     sensitivity: sensitivity ?? this.sensitivity,
@@ -2212,7 +2464,7 @@ final class AdynamicsmoothSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AdynamicsmoothSettings &&
+      (other is AdynamicsmoothEffect &&
           other.enabled == enabled &&
           other.basefreq == basefreq &&
           other.sensitivity == sensitivity);
@@ -2222,10 +2474,11 @@ final class AdynamicsmoothSettings {
 
   @override
   String toString() =>
-      'AdynamicsmoothSettings(enabled: $enabled, basefreq: $basefreq, sensitivity: $sensitivity)';
+      'AdynamicsmoothEffect(enabled: $enabled, basefreq: $basefreq, sensitivity: $sensitivity)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(basefreq >= basefreqMin, 'adynamicsmooth.basefreq must be >= 2');
     assert(
@@ -2252,7 +2505,8 @@ final class AdynamicsmoothSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AdynamicsmoothSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AdynamicsmoothEffect prev) {
     final out = <(String, String)>[];
     if (basefreq != prev.basefreq) {
       out.add(('basefreq', _wireDouble(basefreq)));
@@ -2281,28 +2535,30 @@ final class AdynamicsmoothSettings {
 /// Parameters:
 /// - [decays]: Set list of loudness of reflected signals separated by '|'. Allowed range for each `decay` is `(0 - 1.0]`. Default is `0.5`. (range 0..0, default "0.5")
 /// - [delays]: Set list of time intervals in milliseconds between original signal and reflections separated by '|'. Allowed range for each `delay` is `(0 - 90000.0]`. Default is `1000`. (range 0..0, default "1000")
-/// - [in_gain]: Set input gain of reflected signal. Default is `0.6`. (range 0..1, default 0.6)
-/// - [out_gain]: Set output gain of reflected signal. Default is `0.3`. (range 0..1, default 0.3)
-final class AechoSettings {
-  /// Default value for [in_gain].
-  static const double in_gainDefault = 0.6;
+/// - [inGain]: Set input gain of reflected signal. Default is `0.6`. (range 0..1, default 0.6)
+/// - [outGain]: Set output gain of reflected signal. Default is `0.3`. (range 0..1, default 0.3)
+final class AechoEffect extends AudioEffect {
+  /// Default value for [inGain].
+  static const double inGainDefault = 0.6;
 
-  /// Minimum value for [in_gain].
-  static const double in_gainMin = 0.0;
+  /// Minimum value for [inGain].
+  static const double inGainMin = 0.0;
 
-  /// Maximum value for [in_gain].
-  static const double in_gainMax = 1.0;
+  /// Maximum value for [inGain].
+  static const double inGainMax = 1.0;
 
-  /// Default value for [out_gain].
-  static const double out_gainDefault = 0.3;
+  /// Default value for [outGain].
+  static const double outGainDefault = 0.3;
 
-  /// Minimum value for [out_gain].
-  static const double out_gainMin = 0.0;
+  /// Minimum value for [outGain].
+  static const double outGainMin = 0.0;
 
-  /// Maximum value for [out_gain].
-  static const double out_gainMax = 1.0;
+  /// Maximum value for [outGain].
+  static const double outGainMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set list of signal decays
@@ -2312,67 +2568,73 @@ final class AechoSettings {
   final String delays;
 
   /// set signal input gain
-  final double in_gain;
+  final double inGain;
 
   /// set signal output gain
-  final double out_gain;
+  final double outGain;
 
-  /// Creates an [AechoSettings] with the given parameter values.
+  /// Creates an [AechoEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AechoSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AechoEffect({
+    this.enabled = true,
     this.decays = '0.5',
     this.delays = '1000',
-    this.in_gain = 0.6,
-    this.out_gain = 0.3,
+    this.inGain = 0.6,
+    this.outGain = 0.3,
   });
 
-  /// Returns a copy of this [AechoSettings] with the given fields replaced.
-  AechoSettings copyWith({
+  @override
+  String get filterName => 'aecho';
+
+  @override
+  AudioFilter get filter => AudioFilter.aecho;
+
+  /// Returns a copy of this [AechoEffect] with the given fields replaced.
+  AechoEffect copyWith({
     bool? enabled,
     String? decays,
     String? delays,
-    double? in_gain,
-    double? out_gain,
-  }) => AechoSettings(
+    double? inGain,
+    double? outGain,
+  }) => AechoEffect(
     enabled: enabled ?? this.enabled,
     decays: decays ?? this.decays,
     delays: delays ?? this.delays,
-    in_gain: in_gain ?? this.in_gain,
-    out_gain: out_gain ?? this.out_gain,
+    inGain: inGain ?? this.inGain,
+    outGain: outGain ?? this.outGain,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AechoSettings &&
+      (other is AechoEffect &&
           other.enabled == enabled &&
           other.decays == decays &&
           other.delays == delays &&
-          other.in_gain == in_gain &&
-          other.out_gain == out_gain);
+          other.inGain == inGain &&
+          other.outGain == outGain);
 
   @override
-  int get hashCode => Object.hash(enabled, decays, delays, in_gain, out_gain);
+  int get hashCode => Object.hash(enabled, decays, delays, inGain, outGain);
 
   @override
   String toString() =>
-      'AechoSettings(enabled: $enabled, decays: $decays, delays: $delays, in_gain: $in_gain, out_gain: $out_gain)';
+      'AechoEffect(enabled: $enabled, decays: $decays, delays: $delays, inGain: $inGain, outGain: $outGain)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(in_gain >= in_gainMin, 'aecho.in_gain must be >= 0');
-    assert(in_gain <= in_gainMax, 'aecho.in_gain must be <= 1');
-    assert(out_gain >= out_gainMin, 'aecho.out_gain must be >= 0');
-    assert(out_gain <= out_gainMax, 'aecho.out_gain must be <= 1');
+    assert(inGain >= inGainMin, 'aecho.in_gain must be >= 0');
+    assert(inGain <= inGainMax, 'aecho.in_gain must be <= 1');
+    assert(outGain >= outGainMin, 'aecho.out_gain must be >= 0');
+    assert(outGain <= outGainMax, 'aecho.out_gain must be <= 1');
     final parts = <String>[];
     if (decays != '0.5') parts.add('decays=' + '[' + decays + ']');
     if (delays != '1000') parts.add('delays=' + '[' + delays + ']');
-    if (in_gain != 0.6) parts.add('in_gain=' + _wireDouble(in_gain));
-    if (out_gain != 0.3) parts.add('out_gain=' + _wireDouble(out_gain));
+    if (inGain != 0.6) parts.add('in_gain=' + _wireDouble(inGain));
+    if (outGain != 0.3) parts.add('out_gain=' + _wireDouble(outGain));
     return parts.isEmpty ? 'lavfi-aecho' : 'lavfi-aecho=' + parts.join(':');
   }
 }
@@ -2389,37 +2651,39 @@ final class AechoSettings {
 /// The filter accepts the following options:
 ///
 /// Parameters:
-/// - [level_in]: Set input gain. (range 0..64, default 1, runtime-tunable)
-/// - [level_out]: Set output gain. (range 0..64, default 1, runtime-tunable)
+/// - [levelIn]: Set input gain. (range 0..64, default 1, runtime-tunable)
+/// - [levelOut]: Set output gain. (range 0..64, default 1, runtime-tunable)
 /// - [mode]: Set filter mode. For restoring material use `reproduction` mode, otherwise use `production` mode. Default is `reproduction` mode. (range 0..1, default 0, runtime-tunable)
 /// - [type]: Set filter type. Selects medium. Can be one of the following: (range 0..8, default 4, runtime-tunable)
-final class AemphasisSettings {
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+final class AemphasisEffect extends AudioEffect {
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.0;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.0;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.0;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.0;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set input gain
-  final double level_in;
+  final double levelIn;
 
   /// set output gain
-  final double level_out;
+  final double levelOut;
 
   /// set filter mode
   final AemphasisMode mode;
@@ -2427,29 +2691,34 @@ final class AemphasisSettings {
   /// set filter type
   final AemphasisType type;
 
-  /// Creates an [AemphasisSettings] with the given parameter values.
+  /// Creates an [AemphasisEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AemphasisSettings({
-    this.enabled = false,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+  /// Each parameter defaults to its ffmpeg default.
+  const AemphasisEffect({
+    this.enabled = true,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
     this.mode = AemphasisMode.reproduction,
     this.type = AemphasisType.cd,
   });
 
-  /// Returns a copy of this [AemphasisSettings] with the given fields replaced.
-  AemphasisSettings copyWith({
+  @override
+  String get filterName => 'aemphasis';
+
+  @override
+  AudioFilter get filter => AudioFilter.aemphasis;
+
+  /// Returns a copy of this [AemphasisEffect] with the given fields replaced.
+  AemphasisEffect copyWith({
     bool? enabled,
-    double? level_in,
-    double? level_out,
+    double? levelIn,
+    double? levelOut,
     AemphasisMode? mode,
     AemphasisType? type,
-  }) => AemphasisSettings(
+  }) => AemphasisEffect(
     enabled: enabled ?? this.enabled,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     mode: mode ?? this.mode,
     type: type ?? this.type,
   );
@@ -2457,30 +2726,31 @@ final class AemphasisSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AemphasisSettings &&
+      (other is AemphasisEffect &&
           other.enabled == enabled &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.mode == mode &&
           other.type == type);
 
   @override
-  int get hashCode => Object.hash(enabled, level_in, level_out, mode, type);
+  int get hashCode => Object.hash(enabled, levelIn, levelOut, mode, type);
 
   @override
   String toString() =>
-      'AemphasisSettings(enabled: $enabled, level_in: $level_in, level_out: $level_out, mode: $mode, type: $type)';
+      'AemphasisEffect(enabled: $enabled, levelIn: $levelIn, levelOut: $levelOut, mode: $mode, type: $type)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(level_in >= level_inMin, 'aemphasis.level_in must be >= 0');
-    assert(level_in <= level_inMax, 'aemphasis.level_in must be <= 64');
-    assert(level_out >= level_outMin, 'aemphasis.level_out must be >= 0');
-    assert(level_out <= level_outMax, 'aemphasis.level_out must be <= 64');
+    assert(levelIn >= levelInMin, 'aemphasis.level_in must be >= 0');
+    assert(levelIn <= levelInMax, 'aemphasis.level_in must be <= 64');
+    assert(levelOut >= levelOutMin, 'aemphasis.level_out must be >= 0');
+    assert(levelOut <= levelOutMax, 'aemphasis.level_out must be <= 64');
     final parts = <String>[];
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (mode != AemphasisMode.reproduction) parts.add('mode=' + mode.mpvValue);
     if (type != AemphasisType.cd) parts.add('type=' + type.mpvValue);
     return parts.isEmpty
@@ -2491,13 +2761,14 @@ final class AemphasisSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AemphasisSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AemphasisEffect prev) {
     final out = <(String, String)>[];
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     if (mode != prev.mode) {
       out.add(('mode', mode.mpvValue));
@@ -2520,68 +2791,76 @@ final class AemphasisSettings {
 ///
 /// Parameters:
 /// - [c]: Set output channel layout. If not specified, the channel layout is specified by the number of expressions. If set to `same`, it will use by default the same input channel layout. (range 0..0, default "")
-/// - [channel_layout]: Set output channel layout. If not specified, the channel layout is specified by the number of expressions. If set to `same`, it will use by default the same input channel layout. (range 0..0, default "")
+/// - [channelLayout]: Set output channel layout. If not specified, the channel layout is specified by the number of expressions. If set to `same`, it will use by default the same input channel layout. (range 0..0, default "")
 /// - [exprs]: Set the '|'-separated expressions list for each separate channel. If the number of input channels is greater than the number of expressions, the last specified expression is used for the remaining output channels. (default "")
-final class AevalSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class AevalEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set channel layout
   final String c;
 
   /// set channel layout
-  final String channel_layout;
+  final String channelLayout;
 
   /// set the '|'-separated list of channels expressions
   final String exprs;
 
-  /// Creates an [AevalSettings] with the given parameter values.
+  /// Creates an [AevalEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AevalSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AevalEffect({
+    this.enabled = true,
     this.c = '',
-    this.channel_layout = '',
+    this.channelLayout = '',
     required this.exprs,
   });
 
-  /// Returns a copy of this [AevalSettings] with the given fields replaced.
-  AevalSettings copyWith({
+  @override
+  String get filterName => 'aeval';
+
+  @override
+  AudioFilter get filter => AudioFilter.aeval;
+
+  /// Returns a copy of this [AevalEffect] with the given fields replaced.
+  AevalEffect copyWith({
     bool? enabled,
     String? c,
-    String? channel_layout,
+    String? channelLayout,
     String? exprs,
-  }) => AevalSettings(
+  }) => AevalEffect(
     enabled: enabled ?? this.enabled,
     c: c ?? this.c,
-    channel_layout: channel_layout ?? this.channel_layout,
+    channelLayout: channelLayout ?? this.channelLayout,
     exprs: exprs ?? this.exprs,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AevalSettings &&
+      (other is AevalEffect &&
           other.enabled == enabled &&
           other.c == c &&
-          other.channel_layout == channel_layout &&
+          other.channelLayout == channelLayout &&
           other.exprs == exprs);
 
   @override
-  int get hashCode => Object.hash(enabled, c, channel_layout, exprs);
+  int get hashCode => Object.hash(enabled, c, channelLayout, exprs);
 
   @override
   String toString() =>
-      'AevalSettings(enabled: $enabled, c: $c, channel_layout: $channel_layout, exprs: $exprs)';
+      'AevalEffect(enabled: $enabled, c: $c, channelLayout: $channelLayout, exprs: $exprs)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     final parts = <String>[];
     if (c != '') parts.add('c=' + '[' + c + ']');
-    if (channel_layout != '')
-      parts.add('channel_layout=' + '[' + channel_layout + ']');
+    if (channelLayout != '')
+      parts.add('channel_layout=' + '[' + channelLayout + ']');
     parts.add('exprs=' + '[' + exprs + ']');
     return parts.isEmpty ? 'lavfi-aeval' : 'lavfi-aeval=' + parts.join(':');
   }
@@ -2604,10 +2883,10 @@ final class AevalSettings {
 /// - [ceil]: Set the upper frequency limit of producing harmonics. Allowed range is from 9999 to 20000 Hz. If value is lower than 10000 Hz no limit is applied. (range 9999..20000, default 9999, runtime-tunable)
 /// - [drive]: Set the amount of newly created harmonics. Allowed range is from 0.1 to 10. Default value is 8.5. (range 0.1..10, default 8.5, runtime-tunable)
 /// - [freq]: Set the lower frequency limit of producing harmonics in Hz. Allowed range is from 2000 to 12000 Hz. Default is 7500 Hz. (range 2000..12000, default 7500, runtime-tunable)
-/// - [level_in]: Set input level prior processing of signal. Allowed range is from 0 to 64. Default value is 1. (range 0..64, default 1, runtime-tunable)
-/// - [level_out]: Set output level after processing of signal. Allowed range is from 0 to 64. Default value is 1. (range 0..64, default 1, runtime-tunable)
+/// - [levelIn]: Set input level prior processing of signal. Allowed range is from 0 to 64. Default value is 1. (range 0..64, default 1, runtime-tunable)
+/// - [levelOut]: Set output level after processing of signal. Allowed range is from 0 to 64. Default value is 1. (range 0..64, default 1, runtime-tunable)
 /// - [listen]: Mute the original signal and output only added harmonics. By default is disabled. (range 0..1, default 0, runtime-tunable)
-final class AexciterSettings {
+final class AexciterEffect extends AudioEffect {
   /// Default value for [amount].
   static const double amountDefault = 1.0;
 
@@ -2653,25 +2932,27 @@ final class AexciterSettings {
   /// Maximum value for [freq].
   static const double freqMax = 12000.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.0;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.0;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.0;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.0;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set amount
@@ -2690,65 +2971,70 @@ final class AexciterSettings {
   final double freq;
 
   /// set level in
-  final double level_in;
+  final double levelIn;
 
   /// set level out
-  final double level_out;
+  final double levelOut;
 
   /// enable listen mode
   final bool listen;
 
-  /// Creates an [AexciterSettings] with the given parameter values.
+  /// Creates an [AexciterEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AexciterSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AexciterEffect({
+    this.enabled = true,
     this.amount = 1.0,
     this.blend = 0.0,
     this.ceil = 9999.0,
     this.drive = 8.5,
     this.freq = 7500.0,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
     this.listen = false,
   });
 
-  /// Returns a copy of this [AexciterSettings] with the given fields replaced.
-  AexciterSettings copyWith({
+  @override
+  String get filterName => 'aexciter';
+
+  @override
+  AudioFilter get filter => AudioFilter.aexciter;
+
+  /// Returns a copy of this [AexciterEffect] with the given fields replaced.
+  AexciterEffect copyWith({
     bool? enabled,
     double? amount,
     double? blend,
     double? ceil,
     double? drive,
     double? freq,
-    double? level_in,
-    double? level_out,
+    double? levelIn,
+    double? levelOut,
     bool? listen,
-  }) => AexciterSettings(
+  }) => AexciterEffect(
     enabled: enabled ?? this.enabled,
     amount: amount ?? this.amount,
     blend: blend ?? this.blend,
     ceil: ceil ?? this.ceil,
     drive: drive ?? this.drive,
     freq: freq ?? this.freq,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     listen: listen ?? this.listen,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AexciterSettings &&
+      (other is AexciterEffect &&
           other.enabled == enabled &&
           other.amount == amount &&
           other.blend == blend &&
           other.ceil == ceil &&
           other.drive == drive &&
           other.freq == freq &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.listen == listen);
 
   @override
@@ -2759,17 +3045,18 @@ final class AexciterSettings {
     ceil,
     drive,
     freq,
-    level_in,
-    level_out,
+    levelIn,
+    levelOut,
     listen,
   );
 
   @override
   String toString() =>
-      'AexciterSettings(enabled: $enabled, amount: $amount, blend: $blend, ceil: $ceil, drive: $drive, freq: $freq, level_in: $level_in, level_out: $level_out, listen: $listen)';
+      'AexciterEffect(enabled: $enabled, amount: $amount, blend: $blend, ceil: $ceil, drive: $drive, freq: $freq, levelIn: $levelIn, levelOut: $levelOut, listen: $listen)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(amount >= amountMin, 'aexciter.amount must be >= 0');
     assert(amount <= amountMax, 'aexciter.amount must be <= 64');
@@ -2781,18 +3068,18 @@ final class AexciterSettings {
     assert(drive <= driveMax, 'aexciter.drive must be <= 10');
     assert(freq >= freqMin, 'aexciter.freq must be >= 2000');
     assert(freq <= freqMax, 'aexciter.freq must be <= 12000');
-    assert(level_in >= level_inMin, 'aexciter.level_in must be >= 0');
-    assert(level_in <= level_inMax, 'aexciter.level_in must be <= 64');
-    assert(level_out >= level_outMin, 'aexciter.level_out must be >= 0');
-    assert(level_out <= level_outMax, 'aexciter.level_out must be <= 64');
+    assert(levelIn >= levelInMin, 'aexciter.level_in must be >= 0');
+    assert(levelIn <= levelInMax, 'aexciter.level_in must be <= 64');
+    assert(levelOut >= levelOutMin, 'aexciter.level_out must be >= 0');
+    assert(levelOut <= levelOutMax, 'aexciter.level_out must be <= 64');
     final parts = <String>[];
     if (amount != 1.0) parts.add('amount=' + _wireDouble(amount));
     if (blend != 0.0) parts.add('blend=' + _wireDouble(blend));
     if (ceil != 9999.0) parts.add('ceil=' + _wireDouble(ceil));
     if (drive != 8.5) parts.add('drive=' + _wireDouble(drive));
     if (freq != 7500.0) parts.add('freq=' + _wireDouble(freq));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (listen != false) parts.add('listen=' + (listen ? '1' : '0'));
     return parts.isEmpty
         ? 'lavfi-aexciter'
@@ -2802,7 +3089,8 @@ final class AexciterSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AexciterSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AexciterEffect prev) {
     final out = <(String, String)>[];
     if (amount != prev.amount) {
       out.add(('amount', _wireDouble(amount)));
@@ -2819,11 +3107,11 @@ final class AexciterSettings {
     if (freq != prev.freq) {
       out.add(('freq', _wireDouble(freq)));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     if (listen != prev.listen) {
       out.add(('listen', (listen ? '1' : '0')));
@@ -2843,25 +3131,25 @@ final class AexciterSettings {
 /// - [curve]: Set curve for fade transition.  It accepts the following values: (range -1..22, default TRI, runtime-tunable)
 /// - [d]: Specify the duration of the fade effect. See time duration syntax for the accepted syntax. At the end of the fade-in effect the output audio will have the same volume as the input audio, at the end of the fade-out transition the output audio will be silence. By default the duration is determined by `nb_samples`. If set this option is used instead of `nb_samples`. (range 0..9223372036854775807, default 0, runtime-tunable)
 /// - [duration]: Specify the duration of the fade effect. See time duration syntax for the accepted syntax. At the end of the fade-in effect the output audio will have the same volume as the input audio, at the end of the fade-out transition the output audio will be silence. By default the duration is determined by `nb_samples`. If set this option is used instead of `nb_samples`. (range 0..9223372036854775807, default 0, runtime-tunable)
-/// - [nb_samples]: Specify the number of samples for which the fade effect has to last. At the end of the fade-in effect the output audio will have the same volume as the input audio, at the end of the fade-out transition the output audio will be silence. Default is 44100. (range 1..9223372036854775807, default 44100, runtime-tunable)
+/// - [nbSamples]: Specify the number of samples for which the fade effect has to last. At the end of the fade-in effect the output audio will have the same volume as the input audio, at the end of the fade-out transition the output audio will be silence. Default is 44100. (range 1..9223372036854775807, default 44100, runtime-tunable)
 /// - [ns]: Specify the number of samples for which the fade effect has to last. At the end of the fade-in effect the output audio will have the same volume as the input audio, at the end of the fade-out transition the output audio will be silence. Default is 44100. (range 1..9223372036854775807, default 44100, runtime-tunable)
 /// - [silence]: Set the initial gain for fade-in or final gain for fade-out. Default value is `0.0`. (range 0..1, default 0, runtime-tunable)
 /// - [ss]: Specify the number of the start sample for starting to apply the fade effect. Default is 0. (range 0..9223372036854775807, default 0, runtime-tunable)
 /// - [st]: Specify the start time of the fade effect. Default is 0. The value must be specified as a time duration; see time duration syntax for the accepted syntax. If set this option is used instead of `start_sample`. (range 0..9223372036854775807, default 0, runtime-tunable)
-/// - [start_sample]: Specify the number of the start sample for starting to apply the fade effect. Default is 0. (range 0..9223372036854775807, default 0, runtime-tunable)
-/// - [start_time]: Specify the start time of the fade effect. Default is 0. The value must be specified as a time duration; see time duration syntax for the accepted syntax. If set this option is used instead of `start_sample`. (range 0..9223372036854775807, default 0, runtime-tunable)
+/// - [startSample]: Specify the number of the start sample for starting to apply the fade effect. Default is 0. (range 0..9223372036854775807, default 0, runtime-tunable)
+/// - [startTime]: Specify the start time of the fade effect. Default is 0. The value must be specified as a time duration; see time duration syntax for the accepted syntax. If set this option is used instead of `start_sample`. (range 0..9223372036854775807, default 0, runtime-tunable)
 /// - [t]: Specify the effect type, can be either `in` for fade-in, or `out` for a fade-out effect. Default is `in`. (range 0..1, default 0, runtime-tunable)
 /// - [type]: Specify the effect type, can be either `in` for fade-in, or `out` for a fade-out effect. Default is `in`. (range 0..1, default 0, runtime-tunable)
 /// - [unity]: Set the initial gain for fade-out or final gain for fade-in. Default value is `1.0`. (range 0..1, default 1, runtime-tunable)
-final class AfadeSettings {
-  /// Default value for [nb_samples].
-  static const int nb_samplesDefault = 44100;
+final class AfadeEffect extends AudioEffect {
+  /// Default value for [nbSamples].
+  static const int nbSamplesDefault = 44100;
 
-  /// Minimum value for [nb_samples].
-  static const int nb_samplesMin = 1;
+  /// Minimum value for [nbSamples].
+  static const int nbSamplesMin = 1;
 
-  /// Maximum value for [nb_samples].
-  static const int nb_samplesMax = 9223372036854775807;
+  /// Maximum value for [nbSamples].
+  static const int nbSamplesMax = 9223372036854775807;
 
   /// Default value for [ns].
   static const int nsDefault = 44100;
@@ -2890,14 +3178,14 @@ final class AfadeSettings {
   /// Maximum value for [ss].
   static const int ssMax = 9223372036854775807;
 
-  /// Default value for [start_sample].
-  static const int start_sampleDefault = 0;
+  /// Default value for [startSample].
+  static const int startSampleDefault = 0;
 
-  /// Minimum value for [start_sample].
-  static const int start_sampleMin = 0;
+  /// Minimum value for [startSample].
+  static const int startSampleMin = 0;
 
-  /// Maximum value for [start_sample].
-  static const int start_sampleMax = 9223372036854775807;
+  /// Maximum value for [startSample].
+  static const int startSampleMax = 9223372036854775807;
 
   /// Default value for [unity].
   static const double unityDefault = 1.0;
@@ -2908,7 +3196,9 @@ final class AfadeSettings {
   /// Maximum value for [unity].
   static const double unityMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set fade curve type
@@ -2924,7 +3214,7 @@ final class AfadeSettings {
   final Duration duration;
 
   /// set number of samples for fade duration
-  final int nb_samples;
+  final int nbSamples;
 
   /// set number of samples for fade duration
   final int ns;
@@ -2939,10 +3229,10 @@ final class AfadeSettings {
   final Duration st;
 
   /// set number of first sample to start fading
-  final int start_sample;
+  final int startSample;
 
   /// set time to start fading
-  final Duration start_time;
+  final Duration startTime;
 
   /// set the fade direction
   final AfadeType t;
@@ -2953,58 +3243,63 @@ final class AfadeSettings {
   /// set the unity gain
   final double unity;
 
-  /// Creates an [AfadeSettings] with the given parameter values.
+  /// Creates an [AfadeEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AfadeSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AfadeEffect({
+    this.enabled = true,
     this.c = AfadeCurve.tri,
     this.curve = AfadeCurve.tri,
     this.d = Duration.zero,
     this.duration = Duration.zero,
-    this.nb_samples = 44100,
+    this.nbSamples = 44100,
     this.ns = 44100,
     this.silence = 0.0,
     this.ss = 0,
     this.st = Duration.zero,
-    this.start_sample = 0,
-    this.start_time = Duration.zero,
+    this.startSample = 0,
+    this.startTime = Duration.zero,
     this.t = AfadeType.in_,
     this.type = AfadeType.in_,
     this.unity = 1.0,
   });
 
-  /// Returns a copy of this [AfadeSettings] with the given fields replaced.
-  AfadeSettings copyWith({
+  @override
+  String get filterName => 'afade';
+
+  @override
+  AudioFilter get filter => AudioFilter.afade;
+
+  /// Returns a copy of this [AfadeEffect] with the given fields replaced.
+  AfadeEffect copyWith({
     bool? enabled,
     AfadeCurve? c,
     AfadeCurve? curve,
     Duration? d,
     Duration? duration,
-    int? nb_samples,
+    int? nbSamples,
     int? ns,
     double? silence,
     int? ss,
     Duration? st,
-    int? start_sample,
-    Duration? start_time,
+    int? startSample,
+    Duration? startTime,
     AfadeType? t,
     AfadeType? type,
     double? unity,
-  }) => AfadeSettings(
+  }) => AfadeEffect(
     enabled: enabled ?? this.enabled,
     c: c ?? this.c,
     curve: curve ?? this.curve,
     d: d ?? this.d,
     duration: duration ?? this.duration,
-    nb_samples: nb_samples ?? this.nb_samples,
+    nbSamples: nbSamples ?? this.nbSamples,
     ns: ns ?? this.ns,
     silence: silence ?? this.silence,
     ss: ss ?? this.ss,
     st: st ?? this.st,
-    start_sample: start_sample ?? this.start_sample,
-    start_time: start_time ?? this.start_time,
+    startSample: startSample ?? this.startSample,
+    startTime: startTime ?? this.startTime,
     t: t ?? this.t,
     type: type ?? this.type,
     unity: unity ?? this.unity,
@@ -3013,19 +3308,19 @@ final class AfadeSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AfadeSettings &&
+      (other is AfadeEffect &&
           other.enabled == enabled &&
           other.c == c &&
           other.curve == curve &&
           other.d == d &&
           other.duration == duration &&
-          other.nb_samples == nb_samples &&
+          other.nbSamples == nbSamples &&
           other.ns == ns &&
           other.silence == silence &&
           other.ss == ss &&
           other.st == st &&
-          other.start_sample == start_sample &&
-          other.start_time == start_time &&
+          other.startSample == startSample &&
+          other.startTime == startTime &&
           other.t == t &&
           other.type == type &&
           other.unity == unity);
@@ -3037,13 +3332,13 @@ final class AfadeSettings {
     curve,
     d,
     duration,
-    nb_samples,
+    nbSamples,
     ns,
     silence,
     ss,
     st,
-    start_sample,
-    start_time,
+    startSample,
+    startTime,
     t,
     type,
     unity,
@@ -3051,14 +3346,15 @@ final class AfadeSettings {
 
   @override
   String toString() =>
-      'AfadeSettings(enabled: $enabled, c: $c, curve: $curve, d: $d, duration: $duration, nb_samples: $nb_samples, ns: $ns, silence: $silence, ss: $ss, st: $st, start_sample: $start_sample, start_time: $start_time, t: $t, type: $type, unity: $unity)';
+      'AfadeEffect(enabled: $enabled, c: $c, curve: $curve, d: $d, duration: $duration, nbSamples: $nbSamples, ns: $ns, silence: $silence, ss: $ss, st: $st, startSample: $startSample, startTime: $startTime, t: $t, type: $type, unity: $unity)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(nb_samples >= nb_samplesMin, 'afade.nb_samples must be >= 1');
+    assert(nbSamples >= nbSamplesMin, 'afade.nb_samples must be >= 1');
     assert(
-      nb_samples <= nb_samplesMax,
+      nbSamples <= nbSamplesMax,
       'afade.nb_samples must be <= 9223372036854775807',
     );
     assert(ns >= nsMin, 'afade.ns must be >= 1');
@@ -3067,9 +3363,9 @@ final class AfadeSettings {
     assert(silence <= silenceMax, 'afade.silence must be <= 1');
     assert(ss >= ssMin, 'afade.ss must be >= 0');
     assert(ss <= ssMax, 'afade.ss must be <= 9223372036854775807');
-    assert(start_sample >= start_sampleMin, 'afade.start_sample must be >= 0');
+    assert(startSample >= startSampleMin, 'afade.start_sample must be >= 0');
     assert(
-      start_sample <= start_sampleMax,
+      startSample <= startSampleMax,
       'afade.start_sample must be <= 9223372036854775807',
     );
     assert(unity >= unityMin, 'afade.unity must be >= 0');
@@ -3081,15 +3377,15 @@ final class AfadeSettings {
       parts.add('d=' + _wireDouble(d.inMicroseconds / 1e6));
     if (duration != Duration.zero)
       parts.add('duration=' + _wireDouble(duration.inMicroseconds / 1e6));
-    if (nb_samples != 44100) parts.add('nb_samples=' + nb_samples.toString());
+    if (nbSamples != 44100) parts.add('nb_samples=' + nbSamples.toString());
     if (ns != 44100) parts.add('ns=' + ns.toString());
     if (silence != 0.0) parts.add('silence=' + _wireDouble(silence));
     if (ss != 0) parts.add('ss=' + ss.toString());
     if (st != Duration.zero)
       parts.add('st=' + _wireDouble(st.inMicroseconds / 1e6));
-    if (start_sample != 0) parts.add('start_sample=' + start_sample.toString());
-    if (start_time != Duration.zero)
-      parts.add('start_time=' + _wireDouble(start_time.inMicroseconds / 1e6));
+    if (startSample != 0) parts.add('start_sample=' + startSample.toString());
+    if (startTime != Duration.zero)
+      parts.add('start_time=' + _wireDouble(startTime.inMicroseconds / 1e6));
     if (t != AfadeType.in_) parts.add('t=' + t.mpvValue);
     if (type != AfadeType.in_) parts.add('type=' + type.mpvValue);
     if (unity != 1.0) parts.add('unity=' + _wireDouble(unity));
@@ -3099,7 +3395,8 @@ final class AfadeSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AfadeSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AfadeEffect prev) {
     final out = <(String, String)>[];
     if (c != prev.c) {
       out.add(('c', c.mpvValue));
@@ -3113,8 +3410,8 @@ final class AfadeSettings {
     if (duration != prev.duration) {
       out.add(('duration', _wireDouble(duration.inMicroseconds / 1e6)));
     }
-    if (nb_samples != prev.nb_samples) {
-      out.add(('nb_samples', nb_samples.toString()));
+    if (nbSamples != prev.nbSamples) {
+      out.add(('nb_samples', nbSamples.toString()));
     }
     if (ns != prev.ns) {
       out.add(('ns', ns.toString()));
@@ -3128,11 +3425,11 @@ final class AfadeSettings {
     if (st != prev.st) {
       out.add(('st', _wireDouble(st.inMicroseconds / 1e6)));
     }
-    if (start_sample != prev.start_sample) {
-      out.add(('start_sample', start_sample.toString()));
+    if (startSample != prev.startSample) {
+      out.add(('start_sample', startSample.toString()));
     }
-    if (start_time != prev.start_time) {
-      out.add(('start_time', _wireDouble(start_time.inMicroseconds / 1e6)));
+    if (startTime != prev.startTime) {
+      out.add(('start_time', _wireDouble(startTime.inMicroseconds / 1e6)));
     }
     if (t != prev.t) {
       out.add(('t', t.mpvValue));
@@ -3156,33 +3453,33 @@ final class AfadeSettings {
 /// Parameters:
 /// - [ad]: Set the adaptivity factor, used how fast to adapt gains adjustments per each frequency bin. Value `0` enables instant adaptation, while higher values react much slower. Allowed range is from `0` to `1`. Default value is `0.5`. (range 0..1, default 0.5, runtime-tunable)
 /// - [adaptivity]: Set the adaptivity factor, used how fast to adapt gains adjustments per each frequency bin. Value `0` enables instant adaptation, while higher values react much slower. Allowed range is from `0` to `1`. Default value is `0.5`. (range 0..1, default 0.5, runtime-tunable)
-/// - [band_multiplier]: Set the band multiplier factor, used how much to spread bands across frequency bins. Allowed range is from `0.2` to `5`. Default value is `1.25`. (range 0.2..5, default 1.25)
-/// - [band_noise]: Set custom band noise profile for every one of 15 bands. Bands are separated by ' ' or '|'. (range 0..0, default "")
+/// - [bandMultiplier]: Set the band multiplier factor, used how much to spread bands across frequency bins. Allowed range is from `0.2` to `5`. Default value is `1.25`. (range 0.2..5, default 1.25)
+/// - [bandNoise]: Set custom band noise profile for every one of 15 bands. Bands are separated by ' ' or '|'. (range 0..0, default "")
 /// - [bm]: Set the band multiplier factor, used how much to spread bands across frequency bins. Allowed range is from `0.2` to `5`. Default value is `1.25`. (range 0.2..5, default 1.25)
 /// - [bn]: Set custom band noise profile for every one of 15 bands. Bands are separated by ' ' or '|'. (range 0..0, default "")
-/// - [floor_offset]: Set the noise floor offset factor. This option is used to adjust offset applied to measured noise floor. It is only effective when noise floor tracking is enabled. Allowed range is from `-2.0` to `2.0`. Default value is `1.0`. (range -2..2, default 1.0, runtime-tunable)
+/// - [floorOffset]: Set the noise floor offset factor. This option is used to adjust offset applied to measured noise floor. It is only effective when noise floor tracking is enabled. Allowed range is from `-2.0` to `2.0`. Default value is `1.0`. (range -2..2, default 1.0, runtime-tunable)
 /// - [fo]: Set the noise floor offset factor. This option is used to adjust offset applied to measured noise floor. It is only effective when noise floor tracking is enabled. Allowed range is from `-2.0` to `2.0`. Default value is `1.0`. (range -2..2, default 1.0, runtime-tunable)
-/// - [gain_smooth]: Set gain smooth spatial radius, used to smooth gains applied to each frequency bin. Useful to reduce random music noise artefacts. Higher values increases smoothing of gains. Allowed range is from `0` to `50`. Default value is `0`. (range 0..50, default 0, runtime-tunable)
+/// - [gainSmooth]: Set gain smooth spatial radius, used to smooth gains applied to each frequency bin. Useful to reduce random music noise artefacts. Higher values increases smoothing of gains. Allowed range is from `0` to `50`. Default value is `0`. (range 0..50, default 0, runtime-tunable)
 /// - [gs]: Set gain smooth spatial radius, used to smooth gains applied to each frequency bin. Useful to reduce random music noise artefacts. Higher values increases smoothing of gains. Allowed range is from `0` to `50`. Default value is `0`. (range 0..50, default 0, runtime-tunable)
 /// - [nf]: Set the noise floor in dB, allowed range is -80 to -20. Default value is -50 dB. (range -80..-20, default -50, runtime-tunable)
 /// - [nl]: Set the noise link used for multichannel audio.  It accepts the following values: (range 0..3, default MIN_LINK, runtime-tunable)
-/// - [noise_floor]: Set the noise floor in dB, allowed range is -80 to -20. Default value is -50 dB. (range -80..-20, default -50, runtime-tunable)
-/// - [noise_link]: Set the noise link used for multichannel audio.  It accepts the following values: (range 0..3, default MIN_LINK, runtime-tunable)
-/// - [noise_reduction]: Set the noise reduction in dB, allowed range is 0.01 to 97. Default value is 12 dB. (range .01..97, default 12, runtime-tunable)
-/// - [noise_type]: Set the noise type.  It accepts the following values: (range 0..3, default WHITE_NOISE)
+/// - [noiseFloor]: Set the noise floor in dB, allowed range is -80 to -20. Default value is -50 dB. (range -80..-20, default -50, runtime-tunable)
+/// - [noiseLink]: Set the noise link used for multichannel audio.  It accepts the following values: (range 0..3, default MIN_LINK, runtime-tunable)
+/// - [noiseReduction]: Set the noise reduction in dB, allowed range is 0.01 to 97. Default value is 12 dB. (range .01..97, default 12, runtime-tunable)
+/// - [noiseType]: Set the noise type.  It accepts the following values: (range 0..3, default WHITE_NOISE)
 /// - [nr]: Set the noise reduction in dB, allowed range is 0.01 to 97. Default value is 12 dB. (range .01..97, default 12, runtime-tunable)
 /// - [nt]: Set the noise type.  It accepts the following values: (range 0..3, default WHITE_NOISE)
 /// - [om]: Set the output mode.  It accepts the following values: (range 0..2, default OUT_MODE, runtime-tunable)
-/// - [output_mode]: Set the output mode.  It accepts the following values: (range 0..2, default OUT_MODE, runtime-tunable)
-/// - [residual_floor]: Set the residual floor in dB, allowed range is -80 to -20. Default value is -38 dB. (range -80..-20, default -38, runtime-tunable)
+/// - [outputMode]: Set the output mode.  It accepts the following values: (range 0..2, default OUT_MODE, runtime-tunable)
+/// - [residualFloor]: Set the residual floor in dB, allowed range is -80 to -20. Default value is -38 dB. (range -80..-20, default -38, runtime-tunable)
 /// - [rf]: Set the residual floor in dB, allowed range is -80 to -20. Default value is -38 dB. (range -80..-20, default -38, runtime-tunable)
-/// - [sample_noise]: Toggle capturing and measurement of noise profile from input audio.  It accepts the following values: (range 0..2, default SAMPLE_NONE, runtime-tunable)
+/// - [sampleNoise]: Toggle capturing and measurement of noise profile from input audio.  It accepts the following values: (range 0..2, default SAMPLE_NONE, runtime-tunable)
 /// - [sn]: Toggle capturing and measurement of noise profile from input audio.  It accepts the following values: (range 0..2, default SAMPLE_NONE, runtime-tunable)
 /// - [tn]: Enable noise floor tracking. By default is disabled. With this enabled, noise floor is automatically adjusted. (range 0..1, default 0, runtime-tunable)
 /// - [tr]: Enable residual tracking. By default is disabled. (range 0..1, default 0, runtime-tunable)
-/// - [track_noise]: Enable noise floor tracking. By default is disabled. With this enabled, noise floor is automatically adjusted. (range 0..1, default 0, runtime-tunable)
-/// - [track_residual]: Enable residual tracking. By default is disabled. (range 0..1, default 0, runtime-tunable)
-final class AfftdnSettings {
+/// - [trackNoise]: Enable noise floor tracking. By default is disabled. With this enabled, noise floor is automatically adjusted. (range 0..1, default 0, runtime-tunable)
+/// - [trackResidual]: Enable residual tracking. By default is disabled. (range 0..1, default 0, runtime-tunable)
+final class AfftdnEffect extends AudioEffect {
   /// Default value for [ad].
   static const double adDefault = 0.5;
 
@@ -3201,14 +3498,14 @@ final class AfftdnSettings {
   /// Maximum value for [adaptivity].
   static const double adaptivityMax = 1.0;
 
-  /// Default value for [band_multiplier].
-  static const double band_multiplierDefault = 1.25;
+  /// Default value for [bandMultiplier].
+  static const double bandMultiplierDefault = 1.25;
 
-  /// Minimum value for [band_multiplier].
-  static const double band_multiplierMin = 0.2;
+  /// Minimum value for [bandMultiplier].
+  static const double bandMultiplierMin = 0.2;
 
-  /// Maximum value for [band_multiplier].
-  static const double band_multiplierMax = 5.0;
+  /// Maximum value for [bandMultiplier].
+  static const double bandMultiplierMax = 5.0;
 
   /// Default value for [bm].
   static const double bmDefault = 1.25;
@@ -3219,14 +3516,14 @@ final class AfftdnSettings {
   /// Maximum value for [bm].
   static const double bmMax = 5.0;
 
-  /// Default value for [floor_offset].
-  static const double floor_offsetDefault = 1.0;
+  /// Default value for [floorOffset].
+  static const double floorOffsetDefault = 1.0;
 
-  /// Minimum value for [floor_offset].
-  static const double floor_offsetMin = -2.0;
+  /// Minimum value for [floorOffset].
+  static const double floorOffsetMin = -2.0;
 
-  /// Maximum value for [floor_offset].
-  static const double floor_offsetMax = 2.0;
+  /// Maximum value for [floorOffset].
+  static const double floorOffsetMax = 2.0;
 
   /// Default value for [fo].
   static const double foDefault = 1.0;
@@ -3237,14 +3534,14 @@ final class AfftdnSettings {
   /// Maximum value for [fo].
   static const double foMax = 2.0;
 
-  /// Default value for [gain_smooth].
-  static const int gain_smoothDefault = 0;
+  /// Default value for [gainSmooth].
+  static const int gainSmoothDefault = 0;
 
-  /// Minimum value for [gain_smooth].
-  static const int gain_smoothMin = 0;
+  /// Minimum value for [gainSmooth].
+  static const int gainSmoothMin = 0;
 
-  /// Maximum value for [gain_smooth].
-  static const int gain_smoothMax = 50;
+  /// Maximum value for [gainSmooth].
+  static const int gainSmoothMax = 50;
 
   /// Default value for [gs].
   static const int gsDefault = 0;
@@ -3264,23 +3561,23 @@ final class AfftdnSettings {
   /// Maximum value for [nf].
   static const double nfMax = -20.0;
 
-  /// Default value for [noise_floor].
-  static const double noise_floorDefault = -50.0;
+  /// Default value for [noiseFloor].
+  static const double noiseFloorDefault = -50.0;
 
-  /// Minimum value for [noise_floor].
-  static const double noise_floorMin = -80.0;
+  /// Minimum value for [noiseFloor].
+  static const double noiseFloorMin = -80.0;
 
-  /// Maximum value for [noise_floor].
-  static const double noise_floorMax = -20.0;
+  /// Maximum value for [noiseFloor].
+  static const double noiseFloorMax = -20.0;
 
-  /// Default value for [noise_reduction].
-  static const double noise_reductionDefault = 12.0;
+  /// Default value for [noiseReduction].
+  static const double noiseReductionDefault = 12.0;
 
-  /// Minimum value for [noise_reduction].
-  static const double noise_reductionMin = .01;
+  /// Minimum value for [noiseReduction].
+  static const double noiseReductionMin = .01;
 
-  /// Maximum value for [noise_reduction].
-  static const double noise_reductionMax = 97.0;
+  /// Maximum value for [noiseReduction].
+  static const double noiseReductionMax = 97.0;
 
   /// Default value for [nr].
   static const double nrDefault = 12.0;
@@ -3291,14 +3588,14 @@ final class AfftdnSettings {
   /// Maximum value for [nr].
   static const double nrMax = 97.0;
 
-  /// Default value for [residual_floor].
-  static const double residual_floorDefault = -38.0;
+  /// Default value for [residualFloor].
+  static const double residualFloorDefault = -38.0;
 
-  /// Minimum value for [residual_floor].
-  static const double residual_floorMin = -80.0;
+  /// Minimum value for [residualFloor].
+  static const double residualFloorMin = -80.0;
 
-  /// Maximum value for [residual_floor].
-  static const double residual_floorMax = -20.0;
+  /// Maximum value for [residualFloor].
+  static const double residualFloorMax = -20.0;
 
   /// Default value for [rf].
   static const double rfDefault = -38.0;
@@ -3309,7 +3606,9 @@ final class AfftdnSettings {
   /// Maximum value for [rf].
   static const double rfMax = -20.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set adaptivity factor
@@ -3319,10 +3618,10 @@ final class AfftdnSettings {
   final double adaptivity;
 
   /// set band multiplier
-  final double band_multiplier;
+  final double bandMultiplier;
 
   /// set the custom bands noise
-  final String band_noise;
+  final String bandNoise;
 
   /// set band multiplier
   final double bm;
@@ -3331,13 +3630,13 @@ final class AfftdnSettings {
   final String bn;
 
   /// set noise floor offset factor
-  final double floor_offset;
+  final double floorOffset;
 
   /// set noise floor offset factor
   final double fo;
 
   /// set gain smooth radius
-  final int gain_smooth;
+  final int gainSmooth;
 
   /// set gain smooth radius
   final int gs;
@@ -3349,16 +3648,16 @@ final class AfftdnSettings {
   final AfftdnLink nl;
 
   /// set the noise floor
-  final double noise_floor;
+  final double noiseFloor;
 
   /// set the noise floor link
-  final AfftdnLink noise_link;
+  final AfftdnLink noiseLink;
 
   /// set the noise reduction
-  final double noise_reduction;
+  final double noiseReduction;
 
   /// set the noise type
-  final AfftdnType noise_type;
+  final AfftdnType noiseType;
 
   /// set the noise reduction
   final double nr;
@@ -3370,16 +3669,16 @@ final class AfftdnSettings {
   final AfftdnMode om;
 
   /// set output mode
-  final AfftdnMode output_mode;
+  final AfftdnMode outputMode;
 
   /// set the residual floor
-  final double residual_floor;
+  final double residualFloor;
 
   /// set the residual floor
   final double rf;
 
   /// set sample noise mode
-  final AfftdnSample sample_noise;
+  final AfftdnSample sampleNoise;
 
   /// set sample noise mode
   final AfftdnSample sn;
@@ -3391,229 +3690,232 @@ final class AfftdnSettings {
   final bool tr;
 
   /// track noise
-  final bool track_noise;
+  final bool trackNoise;
 
   /// track residual
-  final bool track_residual;
+  final bool trackResidual;
 
-  /// Creates an [AfftdnSettings] with the given parameter values.
+  /// Creates an [AfftdnEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AfftdnSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AfftdnEffect({
+    this.enabled = true,
     this.ad = 0.5,
     this.adaptivity = 0.5,
-    this.band_multiplier = 1.25,
-    this.band_noise = '',
+    this.bandMultiplier = 1.25,
+    this.bandNoise = '',
     this.bm = 1.25,
     this.bn = '',
-    this.floor_offset = 1.0,
+    this.floorOffset = 1.0,
     this.fo = 1.0,
-    this.gain_smooth = 0,
+    this.gainSmooth = 0,
     this.gs = 0,
     this.nf = -50.0,
     this.nl = AfftdnLink.min,
-    this.noise_floor = -50.0,
-    this.noise_link = AfftdnLink.min,
-    this.noise_reduction = 12.0,
-    this.noise_type = AfftdnType.white,
+    this.noiseFloor = -50.0,
+    this.noiseLink = AfftdnLink.min,
+    this.noiseReduction = 12.0,
+    this.noiseType = AfftdnType.white,
     this.nr = 12.0,
     this.nt = AfftdnType.white,
     this.om = AfftdnMode.output,
-    this.output_mode = AfftdnMode.output,
-    this.residual_floor = -38.0,
+    this.outputMode = AfftdnMode.output,
+    this.residualFloor = -38.0,
     this.rf = -38.0,
-    this.sample_noise = AfftdnSample.none,
+    this.sampleNoise = AfftdnSample.none,
     this.sn = AfftdnSample.none,
     this.tn = false,
     this.tr = false,
-    this.track_noise = false,
-    this.track_residual = false,
+    this.trackNoise = false,
+    this.trackResidual = false,
   });
 
-  /// Returns a copy of this [AfftdnSettings] with the given fields replaced.
-  AfftdnSettings copyWith({
+  @override
+  String get filterName => 'afftdn';
+
+  @override
+  AudioFilter get filter => AudioFilter.afftdn;
+
+  /// Returns a copy of this [AfftdnEffect] with the given fields replaced.
+  AfftdnEffect copyWith({
     bool? enabled,
     double? ad,
     double? adaptivity,
-    double? band_multiplier,
-    String? band_noise,
+    double? bandMultiplier,
+    String? bandNoise,
     double? bm,
     String? bn,
-    double? floor_offset,
+    double? floorOffset,
     double? fo,
-    int? gain_smooth,
+    int? gainSmooth,
     int? gs,
     double? nf,
     AfftdnLink? nl,
-    double? noise_floor,
-    AfftdnLink? noise_link,
-    double? noise_reduction,
-    AfftdnType? noise_type,
+    double? noiseFloor,
+    AfftdnLink? noiseLink,
+    double? noiseReduction,
+    AfftdnType? noiseType,
     double? nr,
     AfftdnType? nt,
     AfftdnMode? om,
-    AfftdnMode? output_mode,
-    double? residual_floor,
+    AfftdnMode? outputMode,
+    double? residualFloor,
     double? rf,
-    AfftdnSample? sample_noise,
+    AfftdnSample? sampleNoise,
     AfftdnSample? sn,
     bool? tn,
     bool? tr,
-    bool? track_noise,
-    bool? track_residual,
-  }) => AfftdnSettings(
+    bool? trackNoise,
+    bool? trackResidual,
+  }) => AfftdnEffect(
     enabled: enabled ?? this.enabled,
     ad: ad ?? this.ad,
     adaptivity: adaptivity ?? this.adaptivity,
-    band_multiplier: band_multiplier ?? this.band_multiplier,
-    band_noise: band_noise ?? this.band_noise,
+    bandMultiplier: bandMultiplier ?? this.bandMultiplier,
+    bandNoise: bandNoise ?? this.bandNoise,
     bm: bm ?? this.bm,
     bn: bn ?? this.bn,
-    floor_offset: floor_offset ?? this.floor_offset,
+    floorOffset: floorOffset ?? this.floorOffset,
     fo: fo ?? this.fo,
-    gain_smooth: gain_smooth ?? this.gain_smooth,
+    gainSmooth: gainSmooth ?? this.gainSmooth,
     gs: gs ?? this.gs,
     nf: nf ?? this.nf,
     nl: nl ?? this.nl,
-    noise_floor: noise_floor ?? this.noise_floor,
-    noise_link: noise_link ?? this.noise_link,
-    noise_reduction: noise_reduction ?? this.noise_reduction,
-    noise_type: noise_type ?? this.noise_type,
+    noiseFloor: noiseFloor ?? this.noiseFloor,
+    noiseLink: noiseLink ?? this.noiseLink,
+    noiseReduction: noiseReduction ?? this.noiseReduction,
+    noiseType: noiseType ?? this.noiseType,
     nr: nr ?? this.nr,
     nt: nt ?? this.nt,
     om: om ?? this.om,
-    output_mode: output_mode ?? this.output_mode,
-    residual_floor: residual_floor ?? this.residual_floor,
+    outputMode: outputMode ?? this.outputMode,
+    residualFloor: residualFloor ?? this.residualFloor,
     rf: rf ?? this.rf,
-    sample_noise: sample_noise ?? this.sample_noise,
+    sampleNoise: sampleNoise ?? this.sampleNoise,
     sn: sn ?? this.sn,
     tn: tn ?? this.tn,
     tr: tr ?? this.tr,
-    track_noise: track_noise ?? this.track_noise,
-    track_residual: track_residual ?? this.track_residual,
+    trackNoise: trackNoise ?? this.trackNoise,
+    trackResidual: trackResidual ?? this.trackResidual,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AfftdnSettings &&
+      (other is AfftdnEffect &&
           other.enabled == enabled &&
           other.ad == ad &&
           other.adaptivity == adaptivity &&
-          other.band_multiplier == band_multiplier &&
-          other.band_noise == band_noise &&
+          other.bandMultiplier == bandMultiplier &&
+          other.bandNoise == bandNoise &&
           other.bm == bm &&
           other.bn == bn &&
-          other.floor_offset == floor_offset &&
+          other.floorOffset == floorOffset &&
           other.fo == fo &&
-          other.gain_smooth == gain_smooth &&
+          other.gainSmooth == gainSmooth &&
           other.gs == gs &&
           other.nf == nf &&
           other.nl == nl &&
-          other.noise_floor == noise_floor &&
-          other.noise_link == noise_link &&
-          other.noise_reduction == noise_reduction &&
-          other.noise_type == noise_type &&
+          other.noiseFloor == noiseFloor &&
+          other.noiseLink == noiseLink &&
+          other.noiseReduction == noiseReduction &&
+          other.noiseType == noiseType &&
           other.nr == nr &&
           other.nt == nt &&
           other.om == om &&
-          other.output_mode == output_mode &&
-          other.residual_floor == residual_floor &&
+          other.outputMode == outputMode &&
+          other.residualFloor == residualFloor &&
           other.rf == rf &&
-          other.sample_noise == sample_noise &&
+          other.sampleNoise == sampleNoise &&
           other.sn == sn &&
           other.tn == tn &&
           other.tr == tr &&
-          other.track_noise == track_noise &&
-          other.track_residual == track_residual);
+          other.trackNoise == trackNoise &&
+          other.trackResidual == trackResidual);
 
   @override
   int get hashCode => Object.hashAll([
     enabled,
     ad,
     adaptivity,
-    band_multiplier,
-    band_noise,
+    bandMultiplier,
+    bandNoise,
     bm,
     bn,
-    floor_offset,
+    floorOffset,
     fo,
-    gain_smooth,
+    gainSmooth,
     gs,
     nf,
     nl,
-    noise_floor,
-    noise_link,
-    noise_reduction,
-    noise_type,
+    noiseFloor,
+    noiseLink,
+    noiseReduction,
+    noiseType,
     nr,
     nt,
     om,
-    output_mode,
-    residual_floor,
+    outputMode,
+    residualFloor,
     rf,
-    sample_noise,
+    sampleNoise,
     sn,
     tn,
     tr,
-    track_noise,
-    track_residual,
+    trackNoise,
+    trackResidual,
   ]);
 
   @override
   String toString() =>
-      'AfftdnSettings(enabled: $enabled, ad: $ad, adaptivity: $adaptivity, band_multiplier: $band_multiplier, band_noise: $band_noise, bm: $bm, bn: $bn, floor_offset: $floor_offset, fo: $fo, gain_smooth: $gain_smooth, gs: $gs, nf: $nf, nl: $nl, noise_floor: $noise_floor, noise_link: $noise_link, noise_reduction: $noise_reduction, noise_type: $noise_type, nr: $nr, nt: $nt, om: $om, output_mode: $output_mode, residual_floor: $residual_floor, rf: $rf, sample_noise: $sample_noise, sn: $sn, tn: $tn, tr: $tr, track_noise: $track_noise, track_residual: $track_residual)';
+      'AfftdnEffect(enabled: $enabled, ad: $ad, adaptivity: $adaptivity, bandMultiplier: $bandMultiplier, bandNoise: $bandNoise, bm: $bm, bn: $bn, floorOffset: $floorOffset, fo: $fo, gainSmooth: $gainSmooth, gs: $gs, nf: $nf, nl: $nl, noiseFloor: $noiseFloor, noiseLink: $noiseLink, noiseReduction: $noiseReduction, noiseType: $noiseType, nr: $nr, nt: $nt, om: $om, outputMode: $outputMode, residualFloor: $residualFloor, rf: $rf, sampleNoise: $sampleNoise, sn: $sn, tn: $tn, tr: $tr, trackNoise: $trackNoise, trackResidual: $trackResidual)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(ad >= adMin, 'afftdn.ad must be >= 0');
     assert(ad <= adMax, 'afftdn.ad must be <= 1');
     assert(adaptivity >= adaptivityMin, 'afftdn.adaptivity must be >= 0');
     assert(adaptivity <= adaptivityMax, 'afftdn.adaptivity must be <= 1');
     assert(
-      band_multiplier >= band_multiplierMin,
+      bandMultiplier >= bandMultiplierMin,
       'afftdn.band_multiplier must be >= 0.2',
     );
     assert(
-      band_multiplier <= band_multiplierMax,
+      bandMultiplier <= bandMultiplierMax,
       'afftdn.band_multiplier must be <= 5',
     );
     assert(bm >= bmMin, 'afftdn.bm must be >= 0.2');
     assert(bm <= bmMax, 'afftdn.bm must be <= 5');
-    assert(
-      floor_offset >= floor_offsetMin,
-      'afftdn.floor_offset must be >= -2',
-    );
-    assert(floor_offset <= floor_offsetMax, 'afftdn.floor_offset must be <= 2');
+    assert(floorOffset >= floorOffsetMin, 'afftdn.floor_offset must be >= -2');
+    assert(floorOffset <= floorOffsetMax, 'afftdn.floor_offset must be <= 2');
     assert(fo >= foMin, 'afftdn.fo must be >= -2');
     assert(fo <= foMax, 'afftdn.fo must be <= 2');
-    assert(gain_smooth >= gain_smoothMin, 'afftdn.gain_smooth must be >= 0');
-    assert(gain_smooth <= gain_smoothMax, 'afftdn.gain_smooth must be <= 50');
+    assert(gainSmooth >= gainSmoothMin, 'afftdn.gain_smooth must be >= 0');
+    assert(gainSmooth <= gainSmoothMax, 'afftdn.gain_smooth must be <= 50');
     assert(gs >= gsMin, 'afftdn.gs must be >= 0');
     assert(gs <= gsMax, 'afftdn.gs must be <= 50');
     assert(nf >= nfMin, 'afftdn.nf must be >= -80');
     assert(nf <= nfMax, 'afftdn.nf must be <= -20');
-    assert(noise_floor >= noise_floorMin, 'afftdn.noise_floor must be >= -80');
-    assert(noise_floor <= noise_floorMax, 'afftdn.noise_floor must be <= -20');
+    assert(noiseFloor >= noiseFloorMin, 'afftdn.noise_floor must be >= -80');
+    assert(noiseFloor <= noiseFloorMax, 'afftdn.noise_floor must be <= -20');
     assert(
-      noise_reduction >= noise_reductionMin,
+      noiseReduction >= noiseReductionMin,
       'afftdn.noise_reduction must be >= .01',
     );
     assert(
-      noise_reduction <= noise_reductionMax,
+      noiseReduction <= noiseReductionMax,
       'afftdn.noise_reduction must be <= 97',
     );
     assert(nr >= nrMin, 'afftdn.nr must be >= .01');
     assert(nr <= nrMax, 'afftdn.nr must be <= 97');
     assert(
-      residual_floor >= residual_floorMin,
+      residualFloor >= residualFloorMin,
       'afftdn.residual_floor must be >= -80',
     );
     assert(
-      residual_floor <= residual_floorMax,
+      residualFloor <= residualFloorMax,
       'afftdn.residual_floor must be <= -20',
     );
     assert(rf >= rfMin, 'afftdn.rf must be >= -80');
@@ -3621,50 +3923,51 @@ final class AfftdnSettings {
     final parts = <String>[];
     if (ad != 0.5) parts.add('ad=' + _wireDouble(ad));
     if (adaptivity != 0.5) parts.add('adaptivity=' + _wireDouble(adaptivity));
-    if (band_multiplier != 1.25)
-      parts.add('band_multiplier=' + _wireDouble(band_multiplier));
-    if (band_noise != '') parts.add('band_noise=' + '[' + band_noise + ']');
+    if (bandMultiplier != 1.25)
+      parts.add('band_multiplier=' + _wireDouble(bandMultiplier));
+    if (bandNoise != '') parts.add('band_noise=' + '[' + bandNoise + ']');
     if (bm != 1.25) parts.add('bm=' + _wireDouble(bm));
     if (bn != '') parts.add('bn=' + '[' + bn + ']');
-    if (floor_offset != 1.0)
-      parts.add('floor_offset=' + _wireDouble(floor_offset));
+    if (floorOffset != 1.0)
+      parts.add('floor_offset=' + _wireDouble(floorOffset));
     if (fo != 1.0) parts.add('fo=' + _wireDouble(fo));
-    if (gain_smooth != 0) parts.add('gain_smooth=' + gain_smooth.toString());
+    if (gainSmooth != 0) parts.add('gain_smooth=' + gainSmooth.toString());
     if (gs != 0) parts.add('gs=' + gs.toString());
     if (nf != -50.0) parts.add('nf=' + _wireDouble(nf));
     if (nl != AfftdnLink.min) parts.add('nl=' + nl.mpvValue);
-    if (noise_floor != -50.0)
-      parts.add('noise_floor=' + _wireDouble(noise_floor));
-    if (noise_link != AfftdnLink.min)
-      parts.add('noise_link=' + noise_link.mpvValue);
-    if (noise_reduction != 12.0)
-      parts.add('noise_reduction=' + _wireDouble(noise_reduction));
-    if (noise_type != AfftdnType.white)
-      parts.add('noise_type=' + noise_type.mpvValue);
+    if (noiseFloor != -50.0)
+      parts.add('noise_floor=' + _wireDouble(noiseFloor));
+    if (noiseLink != AfftdnLink.min)
+      parts.add('noise_link=' + noiseLink.mpvValue);
+    if (noiseReduction != 12.0)
+      parts.add('noise_reduction=' + _wireDouble(noiseReduction));
+    if (noiseType != AfftdnType.white)
+      parts.add('noise_type=' + noiseType.mpvValue);
     if (nr != 12.0) parts.add('nr=' + _wireDouble(nr));
     if (nt != AfftdnType.white) parts.add('nt=' + nt.mpvValue);
     if (om != AfftdnMode.output) parts.add('om=' + om.mpvValue);
-    if (output_mode != AfftdnMode.output)
-      parts.add('output_mode=' + output_mode.mpvValue);
-    if (residual_floor != -38.0)
-      parts.add('residual_floor=' + _wireDouble(residual_floor));
+    if (outputMode != AfftdnMode.output)
+      parts.add('output_mode=' + outputMode.mpvValue);
+    if (residualFloor != -38.0)
+      parts.add('residual_floor=' + _wireDouble(residualFloor));
     if (rf != -38.0) parts.add('rf=' + _wireDouble(rf));
-    if (sample_noise != AfftdnSample.none)
-      parts.add('sample_noise=' + sample_noise.mpvValue);
+    if (sampleNoise != AfftdnSample.none)
+      parts.add('sample_noise=' + sampleNoise.mpvValue);
     if (sn != AfftdnSample.none) parts.add('sn=' + sn.mpvValue);
     if (tn != false) parts.add('tn=' + (tn ? '1' : '0'));
     if (tr != false) parts.add('tr=' + (tr ? '1' : '0'));
-    if (track_noise != false)
-      parts.add('track_noise=' + (track_noise ? '1' : '0'));
-    if (track_residual != false)
-      parts.add('track_residual=' + (track_residual ? '1' : '0'));
+    if (trackNoise != false)
+      parts.add('track_noise=' + (trackNoise ? '1' : '0'));
+    if (trackResidual != false)
+      parts.add('track_residual=' + (trackResidual ? '1' : '0'));
     return parts.isEmpty ? 'lavfi-afftdn' : 'lavfi-afftdn=' + parts.join(':');
   }
 
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AfftdnSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AfftdnEffect prev) {
     final out = <(String, String)>[];
     if (ad != prev.ad) {
       out.add(('ad', _wireDouble(ad)));
@@ -3672,18 +3975,18 @@ final class AfftdnSettings {
     if (adaptivity != prev.adaptivity) {
       out.add(('adaptivity', _wireDouble(adaptivity)));
     }
-    if (band_multiplier != prev.band_multiplier) return null;
-    if (band_noise != prev.band_noise) return null;
+    if (bandMultiplier != prev.bandMultiplier) return null;
+    if (bandNoise != prev.bandNoise) return null;
     if (bm != prev.bm) return null;
     if (bn != prev.bn) return null;
-    if (floor_offset != prev.floor_offset) {
-      out.add(('floor_offset', _wireDouble(floor_offset)));
+    if (floorOffset != prev.floorOffset) {
+      out.add(('floor_offset', _wireDouble(floorOffset)));
     }
     if (fo != prev.fo) {
       out.add(('fo', _wireDouble(fo)));
     }
-    if (gain_smooth != prev.gain_smooth) {
-      out.add(('gain_smooth', gain_smooth.toString()));
+    if (gainSmooth != prev.gainSmooth) {
+      out.add(('gain_smooth', gainSmooth.toString()));
     }
     if (gs != prev.gs) {
       out.add(('gs', gs.toString()));
@@ -3694,16 +3997,16 @@ final class AfftdnSettings {
     if (nl != prev.nl) {
       out.add(('nl', nl.mpvValue));
     }
-    if (noise_floor != prev.noise_floor) {
-      out.add(('noise_floor', _wireDouble(noise_floor)));
+    if (noiseFloor != prev.noiseFloor) {
+      out.add(('noise_floor', _wireDouble(noiseFloor)));
     }
-    if (noise_link != prev.noise_link) {
-      out.add(('noise_link', noise_link.mpvValue));
+    if (noiseLink != prev.noiseLink) {
+      out.add(('noise_link', noiseLink.mpvValue));
     }
-    if (noise_reduction != prev.noise_reduction) {
-      out.add(('noise_reduction', _wireDouble(noise_reduction)));
+    if (noiseReduction != prev.noiseReduction) {
+      out.add(('noise_reduction', _wireDouble(noiseReduction)));
     }
-    if (noise_type != prev.noise_type) return null;
+    if (noiseType != prev.noiseType) return null;
     if (nr != prev.nr) {
       out.add(('nr', _wireDouble(nr)));
     }
@@ -3711,17 +4014,17 @@ final class AfftdnSettings {
     if (om != prev.om) {
       out.add(('om', om.mpvValue));
     }
-    if (output_mode != prev.output_mode) {
-      out.add(('output_mode', output_mode.mpvValue));
+    if (outputMode != prev.outputMode) {
+      out.add(('output_mode', outputMode.mpvValue));
     }
-    if (residual_floor != prev.residual_floor) {
-      out.add(('residual_floor', _wireDouble(residual_floor)));
+    if (residualFloor != prev.residualFloor) {
+      out.add(('residual_floor', _wireDouble(residualFloor)));
     }
     if (rf != prev.rf) {
       out.add(('rf', _wireDouble(rf)));
     }
-    if (sample_noise != prev.sample_noise) {
-      out.add(('sample_noise', sample_noise.mpvValue));
+    if (sampleNoise != prev.sampleNoise) {
+      out.add(('sample_noise', sampleNoise.mpvValue));
     }
     if (sn != prev.sn) {
       out.add(('sn', sn.mpvValue));
@@ -3732,11 +4035,11 @@ final class AfftdnSettings {
     if (tr != prev.tr) {
       out.add(('tr', (tr ? '1' : '0')));
     }
-    if (track_noise != prev.track_noise) {
-      out.add(('track_noise', (track_noise ? '1' : '0')));
+    if (trackNoise != prev.trackNoise) {
+      out.add(('track_noise', (trackNoise ? '1' : '0')));
     }
-    if (track_residual != prev.track_residual) {
-      out.add(('track_residual', (track_residual ? '1' : '0')));
+    if (trackResidual != prev.trackResidual) {
+      out.add(('track_residual', (trackResidual ? '1' : '0')));
     }
     return out;
   }
@@ -3750,9 +4053,9 @@ final class AfftdnSettings {
 /// - [imag]: Set frequency domain imaginary expression for each separate channel separated by '|'. Default is "im".  Each expression in `real` and `imag` can contain the following constants and functions: (range 0..0, default "im")
 /// - [overlap]: set window overlap (range 0..1, default 0.75)
 /// - [real]: Set frequency domain real expression for each separate channel separated by '|'. Default is "re". If the number of input channels is greater than the number of expressions, the last specified expression is used for the remaining output channels. (range 0..0, default "re")
-/// - [win_func]: Set window function.  It accepts the following values: (default WFUNC_HANNING)
-/// - [win_size]: Set window size. Allowed range is from 16 to 131072. Default is `4096` (range 16..131072, default 4096)
-final class AfftfiltSettings {
+/// - [winFunc]: Set window function.  It accepts the following values: (default WFUNC_HANNING)
+/// - [winSize]: Set window size. Allowed range is from 16 to 131072. Default is `4096` (range 16..131072, default 4096)
+final class AfftfiltEffect extends AudioEffect {
   /// Default value for [overlap].
   static const double overlapDefault = 0.75;
 
@@ -3762,16 +4065,18 @@ final class AfftfiltSettings {
   /// Maximum value for [overlap].
   static const double overlapMax = 1.0;
 
-  /// Default value for [win_size].
-  static const int win_sizeDefault = 4096;
+  /// Default value for [winSize].
+  static const int winSizeDefault = 4096;
 
-  /// Minimum value for [win_size].
-  static const int win_sizeMin = 16;
+  /// Minimum value for [winSize].
+  static const int winSizeMin = 16;
 
-  /// Maximum value for [win_size].
-  static const int win_sizeMax = 131072;
+  /// Maximum value for [winSize].
+  static const int winSizeMax = 131072;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set channels imaginary expressions
@@ -3784,74 +4089,80 @@ final class AfftfiltSettings {
   final String real;
 
   /// set window function
-  final AfftfiltWinFunc win_func;
+  final AfftfiltWinFunc winFunc;
 
   /// set window size
-  final int win_size;
+  final int winSize;
 
-  /// Creates an [AfftfiltSettings] with the given parameter values.
+  /// Creates an [AfftfiltEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AfftfiltSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AfftfiltEffect({
+    this.enabled = true,
     this.imag = 'im',
     this.overlap = 0.75,
     this.real = 're',
-    this.win_func = AfftfiltWinFunc.hann,
-    this.win_size = 4096,
+    this.winFunc = AfftfiltWinFunc.hann,
+    this.winSize = 4096,
   });
 
-  /// Returns a copy of this [AfftfiltSettings] with the given fields replaced.
-  AfftfiltSettings copyWith({
+  @override
+  String get filterName => 'afftfilt';
+
+  @override
+  AudioFilter get filter => AudioFilter.afftfilt;
+
+  /// Returns a copy of this [AfftfiltEffect] with the given fields replaced.
+  AfftfiltEffect copyWith({
     bool? enabled,
     String? imag,
     double? overlap,
     String? real,
-    AfftfiltWinFunc? win_func,
-    int? win_size,
-  }) => AfftfiltSettings(
+    AfftfiltWinFunc? winFunc,
+    int? winSize,
+  }) => AfftfiltEffect(
     enabled: enabled ?? this.enabled,
     imag: imag ?? this.imag,
     overlap: overlap ?? this.overlap,
     real: real ?? this.real,
-    win_func: win_func ?? this.win_func,
-    win_size: win_size ?? this.win_size,
+    winFunc: winFunc ?? this.winFunc,
+    winSize: winSize ?? this.winSize,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AfftfiltSettings &&
+      (other is AfftfiltEffect &&
           other.enabled == enabled &&
           other.imag == imag &&
           other.overlap == overlap &&
           other.real == real &&
-          other.win_func == win_func &&
-          other.win_size == win_size);
+          other.winFunc == winFunc &&
+          other.winSize == winSize);
 
   @override
   int get hashCode =>
-      Object.hash(enabled, imag, overlap, real, win_func, win_size);
+      Object.hash(enabled, imag, overlap, real, winFunc, winSize);
 
   @override
   String toString() =>
-      'AfftfiltSettings(enabled: $enabled, imag: $imag, overlap: $overlap, real: $real, win_func: $win_func, win_size: $win_size)';
+      'AfftfiltEffect(enabled: $enabled, imag: $imag, overlap: $overlap, real: $real, winFunc: $winFunc, winSize: $winSize)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(overlap >= overlapMin, 'afftfilt.overlap must be >= 0');
     assert(overlap <= overlapMax, 'afftfilt.overlap must be <= 1');
-    assert(win_size >= win_sizeMin, 'afftfilt.win_size must be >= 16');
-    assert(win_size <= win_sizeMax, 'afftfilt.win_size must be <= 131072');
+    assert(winSize >= winSizeMin, 'afftfilt.win_size must be >= 16');
+    assert(winSize <= winSizeMax, 'afftfilt.win_size must be <= 131072');
     final parts = <String>[];
     if (imag != 'im') parts.add('imag=' + '[' + imag + ']');
     if (overlap != 0.75) parts.add('overlap=' + _wireDouble(overlap));
     if (real != 're') parts.add('real=' + '[' + real + ']');
-    if (win_func != AfftfiltWinFunc.hann)
-      parts.add('win_func=' + win_func.mpvValue);
-    if (win_size != 4096) parts.add('win_size=' + win_size.toString());
+    if (winFunc != AfftfiltWinFunc.hann)
+      parts.add('win_func=' + winFunc.mpvValue);
+    if (winSize != 4096) parts.add('win_size=' + winSize.toString());
     return parts.isEmpty
         ? 'lavfi-afftfilt'
         : 'lavfi-afftfilt=' + parts.join(':');
@@ -3866,18 +4177,20 @@ final class AfftfiltSettings {
 /// It accepts the following parameters:
 ///
 /// Parameters:
-/// - [channel_layouts]: A '|'-separated list of requested channel layouts.  See channel layout syntax for the required syntax. (array, base=AV_OPT_TYPE_CHLAYOUT, sep='|')
+/// - [channelLayouts]: A '|'-separated list of requested channel layouts.  See channel layout syntax for the required syntax. (array, base=AV_OPT_TYPE_CHLAYOUT, sep='|')
 /// - [cl]: A '|'-separated list of requested channel layouts.  See channel layout syntax for the required syntax. (array, base=AV_OPT_TYPE_CHLAYOUT, sep='|')
 /// - [f]: A '|'-separated list of requested sample formats. (array, base=AV_OPT_TYPE_SAMPLE_FMT, sep='|')
 /// - [r]: A '|'-separated list of requested sample rates. (range 1..2147483647, array, base=AV_OPT_TYPE_INT, sep='|')
-/// - [sample_fmts]: A '|'-separated list of requested sample formats. (array, base=AV_OPT_TYPE_SAMPLE_FMT, sep='|')
-/// - [sample_rates]: A '|'-separated list of requested sample rates. (range 1..2147483647, array, base=AV_OPT_TYPE_INT, sep='|')
-final class AformatSettings {
-  /// Whether this effect is inserted into the audio chain.
+/// - [sampleFmts]: A '|'-separated list of requested sample formats. (array, base=AV_OPT_TYPE_SAMPLE_FMT, sep='|')
+/// - [sampleRates]: A '|'-separated list of requested sample rates. (range 1..2147483647, array, base=AV_OPT_TYPE_INT, sep='|')
+final class AformatEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// A '|'-separated list of channel layouts.
-  final String? channel_layouts;
+  final String? channelLayouts;
 
   /// A '|'-separated list of channel layouts.
   final String? cl;
@@ -3889,90 +4202,88 @@ final class AformatSettings {
   final String? r;
 
   /// A '|'-separated list of sample formats.
-  final String? sample_fmts;
+  final String? sampleFmts;
 
   /// A '|'-separated list of sample rates.
-  final String? sample_rates;
+  final String? sampleRates;
 
-  /// Creates an [AformatSettings] with the given parameter values.
+  /// Creates an [AformatEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AformatSettings({
-    this.enabled = false,
-    this.channel_layouts,
+  /// Each parameter defaults to its ffmpeg default.
+  const AformatEffect({
+    this.enabled = true,
+    this.channelLayouts,
     this.cl,
     this.f,
     this.r,
-    this.sample_fmts,
-    this.sample_rates,
+    this.sampleFmts,
+    this.sampleRates,
   });
 
-  /// Returns a copy of this [AformatSettings] with the given fields replaced.
-  AformatSettings copyWith({
+  @override
+  String get filterName => 'aformat';
+
+  @override
+  AudioFilter get filter => AudioFilter.aformat;
+
+  /// Returns a copy of this [AformatEffect] with the given fields replaced.
+  AformatEffect copyWith({
     bool? enabled,
-    Object? channel_layouts = unset,
+    Object? channelLayouts = unset,
     Object? cl = unset,
     Object? f = unset,
     Object? r = unset,
-    Object? sample_fmts = unset,
-    Object? sample_rates = unset,
-  }) => AformatSettings(
+    Object? sampleFmts = unset,
+    Object? sampleRates = unset,
+  }) => AformatEffect(
     enabled: enabled ?? this.enabled,
-    channel_layouts: identical(channel_layouts, unset)
-        ? this.channel_layouts
-        : channel_layouts as String?,
+    channelLayouts: identical(channelLayouts, unset)
+        ? this.channelLayouts
+        : channelLayouts as String?,
     cl: identical(cl, unset) ? this.cl : cl as String?,
     f: identical(f, unset) ? this.f : f as String?,
     r: identical(r, unset) ? this.r : r as String?,
-    sample_fmts: identical(sample_fmts, unset)
-        ? this.sample_fmts
-        : sample_fmts as String?,
-    sample_rates: identical(sample_rates, unset)
-        ? this.sample_rates
-        : sample_rates as String?,
+    sampleFmts: identical(sampleFmts, unset)
+        ? this.sampleFmts
+        : sampleFmts as String?,
+    sampleRates: identical(sampleRates, unset)
+        ? this.sampleRates
+        : sampleRates as String?,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AformatSettings &&
+      (other is AformatEffect &&
           other.enabled == enabled &&
-          other.channel_layouts == channel_layouts &&
+          other.channelLayouts == channelLayouts &&
           other.cl == cl &&
           other.f == f &&
           other.r == r &&
-          other.sample_fmts == sample_fmts &&
-          other.sample_rates == sample_rates);
+          other.sampleFmts == sampleFmts &&
+          other.sampleRates == sampleRates);
 
   @override
-  int get hashCode => Object.hash(
-    enabled,
-    channel_layouts,
-    cl,
-    f,
-    r,
-    sample_fmts,
-    sample_rates,
-  );
+  int get hashCode =>
+      Object.hash(enabled, channelLayouts, cl, f, r, sampleFmts, sampleRates);
 
   @override
   String toString() =>
-      'AformatSettings(enabled: $enabled, channel_layouts: $channel_layouts, cl: $cl, f: $f, r: $r, sample_fmts: $sample_fmts, sample_rates: $sample_rates)';
+      'AformatEffect(enabled: $enabled, channelLayouts: $channelLayouts, cl: $cl, f: $f, r: $r, sampleFmts: $sampleFmts, sampleRates: $sampleRates)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     final parts = <String>[];
-    if (channel_layouts != null)
-      parts.add('channel_layouts=' + '[' + channel_layouts! + ']');
+    if (channelLayouts != null)
+      parts.add('channel_layouts=' + '[' + channelLayouts! + ']');
     if (cl != null) parts.add('cl=' + '[' + cl! + ']');
     if (f != null) parts.add('f=' + '[' + f! + ']');
     if (r != null) parts.add('r=' + '[' + r! + ']');
-    if (sample_fmts != null)
-      parts.add('sample_fmts=' + '[' + sample_fmts! + ']');
-    if (sample_rates != null)
-      parts.add('sample_rates=' + '[' + sample_rates! + ']');
+    if (sampleFmts != null) parts.add('sample_fmts=' + '[' + sampleFmts! + ']');
+    if (sampleRates != null)
+      parts.add('sample_rates=' + '[' + sampleRates! + ']');
     return parts.isEmpty ? 'lavfi-aformat' : 'lavfi-aformat=' + parts.join(':');
   }
 }
@@ -3987,7 +4298,7 @@ final class AformatSettings {
 /// - [level]: Set output gain applied to final output. Allowed range is from 0.0 to 1.0. Default value is 1.0. (range 0.0..1.0, default 1, runtime-tunable)
 /// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8, runtime-tunable)
 /// - [shift]: Specify frequency shift. Allowed range is -INT_MAX to INT_MAX. Default value is 0.0. (range -2147483647..2147483647, default 0, runtime-tunable)
-final class AfreqshiftSettings {
+final class AfreqshiftEffect extends AudioEffect {
   /// Default value for [level].
   static const double levelDefault = 1.0;
 
@@ -4015,7 +4326,9 @@ final class AfreqshiftSettings {
   /// Maximum value for [shift].
   static const double shiftMax = 2147483647.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set output level
@@ -4027,24 +4340,29 @@ final class AfreqshiftSettings {
   /// set frequency shift
   final double shift;
 
-  /// Creates an [AfreqshiftSettings] with the given parameter values.
+  /// Creates an [AfreqshiftEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AfreqshiftSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AfreqshiftEffect({
+    this.enabled = true,
     this.level = 1.0,
     this.order = 8,
     this.shift = 0.0,
   });
 
-  /// Returns a copy of this [AfreqshiftSettings] with the given fields replaced.
-  AfreqshiftSettings copyWith({
+  @override
+  String get filterName => 'afreqshift';
+
+  @override
+  AudioFilter get filter => AudioFilter.afreqshift;
+
+  /// Returns a copy of this [AfreqshiftEffect] with the given fields replaced.
+  AfreqshiftEffect copyWith({
     bool? enabled,
     double? level,
     int? order,
     double? shift,
-  }) => AfreqshiftSettings(
+  }) => AfreqshiftEffect(
     enabled: enabled ?? this.enabled,
     level: level ?? this.level,
     order: order ?? this.order,
@@ -4054,7 +4372,7 @@ final class AfreqshiftSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AfreqshiftSettings &&
+      (other is AfreqshiftEffect &&
           other.enabled == enabled &&
           other.level == level &&
           other.order == order &&
@@ -4065,10 +4383,11 @@ final class AfreqshiftSettings {
 
   @override
   String toString() =>
-      'AfreqshiftSettings(enabled: $enabled, level: $level, order: $order, shift: $shift)';
+      'AfreqshiftEffect(enabled: $enabled, level: $level, order: $order, shift: $shift)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(level >= levelMin, 'afreqshift.level must be >= 0.0');
     assert(level <= levelMax, 'afreqshift.level must be <= 1.0');
@@ -4088,7 +4407,8 @@ final class AfreqshiftSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AfreqshiftSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AfreqshiftEffect prev) {
     final out = <(String, String)>[];
     if (level != prev.level) {
       out.add(('level', _wireDouble(level)));
@@ -4118,7 +4438,7 @@ final class AfreqshiftSettings {
 /// - [sigma]: Set the noise sigma, allowed range is from 0 to 1. Default value is 0. This option controls strength of denoising applied to input samples. Most useful way to set this option is via decibels, eg. -45dB. (range 0..1, default 0, runtime-tunable)
 /// - [softness]: set thresholding softness (range 0..10, default 1, runtime-tunable)
 /// - [wavet]: Set wavelet type for decomposition of input frame. They are sorted by number of coefficients, from lowest to highest. More coefficients means worse filtering speed, but overall better quality. Available wavelets are: (range 0..6, default SYM10)
-final class AfwtdnSettings {
+final class AfwtdnEffect extends AudioEffect {
   /// Default value for [levels].
   static const int levelsDefault = 10;
 
@@ -4164,7 +4484,9 @@ final class AfwtdnSettings {
   /// Maximum value for [softness].
   static const double softnessMax = 10.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// adaptive profiling of noise
@@ -4191,12 +4513,11 @@ final class AfwtdnSettings {
   /// set wavelet type
   final AfwtdnWavet wavet;
 
-  /// Creates an [AfwtdnSettings] with the given parameter values.
+  /// Creates an [AfwtdnEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AfwtdnSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AfwtdnEffect({
+    this.enabled = true,
     this.adaptive = false,
     this.levels = 10,
     this.percent = 85.0,
@@ -4207,8 +4528,14 @@ final class AfwtdnSettings {
     this.wavet = AfwtdnWavet.sym10,
   });
 
-  /// Returns a copy of this [AfwtdnSettings] with the given fields replaced.
-  AfwtdnSettings copyWith({
+  @override
+  String get filterName => 'afwtdn';
+
+  @override
+  AudioFilter get filter => AudioFilter.afwtdn;
+
+  /// Returns a copy of this [AfwtdnEffect] with the given fields replaced.
+  AfwtdnEffect copyWith({
     bool? enabled,
     bool? adaptive,
     int? levels,
@@ -4218,7 +4545,7 @@ final class AfwtdnSettings {
     double? sigma,
     double? softness,
     AfwtdnWavet? wavet,
-  }) => AfwtdnSettings(
+  }) => AfwtdnEffect(
     enabled: enabled ?? this.enabled,
     adaptive: adaptive ?? this.adaptive,
     levels: levels ?? this.levels,
@@ -4233,7 +4560,7 @@ final class AfwtdnSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AfwtdnSettings &&
+      (other is AfwtdnEffect &&
           other.enabled == enabled &&
           other.adaptive == adaptive &&
           other.levels == levels &&
@@ -4259,10 +4586,11 @@ final class AfwtdnSettings {
 
   @override
   String toString() =>
-      'AfwtdnSettings(enabled: $enabled, adaptive: $adaptive, levels: $levels, percent: $percent, profile: $profile, samples: $samples, sigma: $sigma, softness: $softness, wavet: $wavet)';
+      'AfwtdnEffect(enabled: $enabled, adaptive: $adaptive, levels: $levels, percent: $percent, profile: $profile, samples: $samples, sigma: $sigma, softness: $softness, wavet: $wavet)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(levels >= levelsMin, 'afwtdn.levels must be >= 1');
     assert(levels <= levelsMax, 'afwtdn.levels must be <= 12');
@@ -4289,7 +4617,8 @@ final class AfwtdnSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AfwtdnSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AfwtdnEffect prev) {
     final out = <(String, String)>[];
     if (adaptive != prev.adaptive) {
       out.add(('adaptive', (adaptive ? '1' : '0')));
@@ -4333,8 +4662,8 @@ final class AfwtdnSettings {
 /// - [attack]: Amount of milliseconds the signal has to rise above the threshold before gain reduction stops. Default is 20 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 20, runtime-tunable)
 /// - [detection]: Choose if exact signal should be taken for detection or an RMS like one. Default is `rms`. Can be `peak` or `rms`. (range 0..1, default 1, runtime-tunable)
 /// - [knee]: Curve the sharp knee around the threshold to enter gain reduction more softly. Default is 2.828427125. Allowed range is from 1 to 8. (range 1..8, default 2.828427125, runtime-tunable)
-/// - [level_in]: Set input level before filtering. Default is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
-/// - [level_sc]: set sidechain gain (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelIn]: Set input level before filtering. Default is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelSc]: set sidechain gain (range 0.015625..64, default 1, runtime-tunable)
 /// - [link]: Choose if the average level between all channels or the louder channel affects the reduction. Default is `average`. Can be `average` or `maximum`. (range 0..1, default 0, runtime-tunable)
 /// - [makeup]: Set amount of amplification of signal after processing. Default is 1. Allowed range is from 1 to 64. (range 1..64, default 1, runtime-tunable)
 /// - [mode]: Set the mode of operation. Can be `upward` or `downward`. Default is `downward`. If set to `upward` mode, higher parts of signal will be amplified, expanding dynamic range in upward direction. Otherwise, in case of `downward` lower parts of signal will be reduced. (range 0..1, default 0, runtime-tunable)
@@ -4342,7 +4671,7 @@ final class AfwtdnSettings {
 /// - [ratio]: Set a ratio by which the signal is reduced. Default is 2. Allowed range is from 1 to 9000. (range 1..9000, default 2, runtime-tunable)
 /// - [release]: Amount of milliseconds the signal has to fall below the threshold before the reduction is increased again. Default is 250 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 250, runtime-tunable)
 /// - [threshold]: If a signal rises above this level the gain reduction is released. Default is 0.125. Allowed range is from 0 to 1. (range 0..1, default 0.125, runtime-tunable)
-final class AgateSettings {
+final class AgateEffect extends AudioEffect {
   /// Default value for [attack].
   static const double attackDefault = 20.0;
 
@@ -4361,23 +4690,23 @@ final class AgateSettings {
   /// Maximum value for [knee].
   static const double kneeMax = 8.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_sc].
-  static const double level_scDefault = 1.0;
+  /// Default value for [levelSc].
+  static const double levelScDefault = 1.0;
 
-  /// Minimum value for [level_sc].
-  static const double level_scMin = 0.015625;
+  /// Minimum value for [levelSc].
+  static const double levelScMin = 0.015625;
 
-  /// Maximum value for [level_sc].
-  static const double level_scMax = 64.0;
+  /// Maximum value for [levelSc].
+  static const double levelScMax = 64.0;
 
   /// Default value for [makeup].
   static const double makeupDefault = 1.0;
@@ -4424,7 +4753,9 @@ final class AgateSettings {
   /// Maximum value for [threshold].
   static const double thresholdMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set attack
@@ -4437,10 +4768,10 @@ final class AgateSettings {
   final double knee;
 
   /// set input level
-  final double level_in;
+  final double levelIn;
 
   /// set sidechain gain
-  final double level_sc;
+  final double levelSc;
 
   /// set link
   final AgateLink link;
@@ -4463,17 +4794,16 @@ final class AgateSettings {
   /// set threshold
   final double threshold;
 
-  /// Creates an [AgateSettings] with the given parameter values.
+  /// Creates an [AgateEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AgateSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AgateEffect({
+    this.enabled = true,
     this.attack = 20.0,
     this.detection = AgateDetection.rms,
     this.knee = 2.828427125,
-    this.level_in = 1.0,
-    this.level_sc = 1.0,
+    this.levelIn = 1.0,
+    this.levelSc = 1.0,
     this.link = AgateLink.average,
     this.makeup = 1.0,
     this.mode = AgateMode.downward,
@@ -4483,14 +4813,20 @@ final class AgateSettings {
     this.threshold = 0.125,
   });
 
-  /// Returns a copy of this [AgateSettings] with the given fields replaced.
-  AgateSettings copyWith({
+  @override
+  String get filterName => 'agate';
+
+  @override
+  AudioFilter get filter => AudioFilter.agate;
+
+  /// Returns a copy of this [AgateEffect] with the given fields replaced.
+  AgateEffect copyWith({
     bool? enabled,
     double? attack,
     AgateDetection? detection,
     double? knee,
-    double? level_in,
-    double? level_sc,
+    double? levelIn,
+    double? levelSc,
     AgateLink? link,
     double? makeup,
     AgateMode? mode,
@@ -4498,13 +4834,13 @@ final class AgateSettings {
     double? ratio,
     double? release,
     double? threshold,
-  }) => AgateSettings(
+  }) => AgateEffect(
     enabled: enabled ?? this.enabled,
     attack: attack ?? this.attack,
     detection: detection ?? this.detection,
     knee: knee ?? this.knee,
-    level_in: level_in ?? this.level_in,
-    level_sc: level_sc ?? this.level_sc,
+    levelIn: levelIn ?? this.levelIn,
+    levelSc: levelSc ?? this.levelSc,
     link: link ?? this.link,
     makeup: makeup ?? this.makeup,
     mode: mode ?? this.mode,
@@ -4517,13 +4853,13 @@ final class AgateSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AgateSettings &&
+      (other is AgateEffect &&
           other.enabled == enabled &&
           other.attack == attack &&
           other.detection == detection &&
           other.knee == knee &&
-          other.level_in == level_in &&
-          other.level_sc == level_sc &&
+          other.levelIn == levelIn &&
+          other.levelSc == levelSc &&
           other.link == link &&
           other.makeup == makeup &&
           other.mode == mode &&
@@ -4538,8 +4874,8 @@ final class AgateSettings {
     attack,
     detection,
     knee,
-    level_in,
-    level_sc,
+    levelIn,
+    levelSc,
     link,
     makeup,
     mode,
@@ -4551,19 +4887,20 @@ final class AgateSettings {
 
   @override
   String toString() =>
-      'AgateSettings(enabled: $enabled, attack: $attack, detection: $detection, knee: $knee, level_in: $level_in, level_sc: $level_sc, link: $link, makeup: $makeup, mode: $mode, range: $range, ratio: $ratio, release: $release, threshold: $threshold)';
+      'AgateEffect(enabled: $enabled, attack: $attack, detection: $detection, knee: $knee, levelIn: $levelIn, levelSc: $levelSc, link: $link, makeup: $makeup, mode: $mode, range: $range, ratio: $ratio, release: $release, threshold: $threshold)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(attack >= attackMin, 'agate.attack must be >= 0.01');
     assert(attack <= attackMax, 'agate.attack must be <= 9000');
     assert(knee >= kneeMin, 'agate.knee must be >= 1');
     assert(knee <= kneeMax, 'agate.knee must be <= 8');
-    assert(level_in >= level_inMin, 'agate.level_in must be >= 0.015625');
-    assert(level_in <= level_inMax, 'agate.level_in must be <= 64');
-    assert(level_sc >= level_scMin, 'agate.level_sc must be >= 0.015625');
-    assert(level_sc <= level_scMax, 'agate.level_sc must be <= 64');
+    assert(levelIn >= levelInMin, 'agate.level_in must be >= 0.015625');
+    assert(levelIn <= levelInMax, 'agate.level_in must be <= 64');
+    assert(levelSc >= levelScMin, 'agate.level_sc must be >= 0.015625');
+    assert(levelSc <= levelScMax, 'agate.level_sc must be <= 64');
     assert(makeup >= makeupMin, 'agate.makeup must be >= 1');
     assert(makeup <= makeupMax, 'agate.makeup must be <= 64');
     assert(range >= rangeMin, 'agate.range must be >= 0');
@@ -4579,8 +4916,8 @@ final class AgateSettings {
     if (detection != AgateDetection.rms)
       parts.add('detection=' + detection.mpvValue);
     if (knee != 2.828427125) parts.add('knee=' + _wireDouble(knee));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_sc != 1.0) parts.add('level_sc=' + _wireDouble(level_sc));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelSc != 1.0) parts.add('level_sc=' + _wireDouble(levelSc));
     if (link != AgateLink.average) parts.add('link=' + link.mpvValue);
     if (makeup != 1.0) parts.add('makeup=' + _wireDouble(makeup));
     if (mode != AgateMode.downward) parts.add('mode=' + mode.mpvValue);
@@ -4594,7 +4931,8 @@ final class AgateSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AgateSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AgateEffect prev) {
     final out = <(String, String)>[];
     if (attack != prev.attack) {
       out.add(('attack', _wireDouble(attack)));
@@ -4605,11 +4943,11 @@ final class AgateSettings {
     if (knee != prev.knee) {
       out.add(('knee', _wireDouble(knee)));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_sc != prev.level_sc) {
-      out.add(('level_sc', _wireDouble(level_sc)));
+    if (levelSc != prev.levelSc) {
+      out.add(('level_sc', _wireDouble(levelSc)));
     }
     if (link != prev.link) {
       out.add(('link', link.mpvValue));
@@ -4664,7 +5002,7 @@ final class AgateSettings {
 /// - [wet]: set wet gain (range 0..1, default 1)
 /// - [z]: Set B/numerator/zeros/reflection coefficients. (range 0..0, default "1+0i 1-0i")
 /// - [zeros]: Set B/numerator/zeros/reflection coefficients. (range 0..0, default "1+0i 1-0i")
-final class AiirSettings {
+final class AiirEffect extends AudioEffect {
   /// Default value for [channel].
   static const int channelDefault = 0;
 
@@ -4701,7 +5039,9 @@ final class AiirSettings {
   /// Maximum value for [wet].
   static const double wetMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set IR channel to display frequency response
@@ -4767,12 +5107,11 @@ final class AiirSettings {
   /// set B/numerator/zeros/reflection coefficients
   final String zeros;
 
-  /// Creates an [AiirSettings] with the given parameter values.
+  /// Creates an [AiirEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AiirSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AiirEffect({
+    this.enabled = true,
     this.channel = 0,
     this.dry = 1.0,
     this.e = AiirPrecision.dbl,
@@ -4796,8 +5135,14 @@ final class AiirSettings {
     this.zeros = '1+0i 1-0i',
   });
 
-  /// Returns a copy of this [AiirSettings] with the given fields replaced.
-  AiirSettings copyWith({
+  @override
+  String get filterName => 'aiir';
+
+  @override
+  AudioFilter get filter => AudioFilter.aiir;
+
+  /// Returns a copy of this [AiirEffect] with the given fields replaced.
+  AiirEffect copyWith({
     bool? enabled,
     int? channel,
     double? dry,
@@ -4820,7 +5165,7 @@ final class AiirSettings {
     double? wet,
     String? z,
     String? zeros,
-  }) => AiirSettings(
+  }) => AiirEffect(
     enabled: enabled ?? this.enabled,
     channel: channel ?? this.channel,
     dry: dry ?? this.dry,
@@ -4848,7 +5193,7 @@ final class AiirSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AiirSettings &&
+      (other is AiirEffect &&
           other.enabled == enabled &&
           other.channel == channel &&
           other.dry == dry &&
@@ -4900,10 +5245,11 @@ final class AiirSettings {
 
   @override
   String toString() =>
-      'AiirSettings(enabled: $enabled, channel: $channel, dry: $dry, e: $e, f: $f, format: $format, gains: $gains, k: $k, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, process: $process, r: $r, rate: $rate, response: $response, size: $size, wet: $wet, z: $z, zeros: $zeros)';
+      'AiirEffect(enabled: $enabled, channel: $channel, dry: $dry, e: $e, f: $f, format: $format, gains: $gains, k: $k, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, process: $process, r: $r, rate: $rate, response: $response, size: $size, wet: $wet, z: $z, zeros: $zeros)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(channel >= channelMin, 'aiir.channel must be >= 0');
     assert(channel <= channelMax, 'aiir.channel must be <= 1024');
@@ -4945,33 +5291,41 @@ final class AiirSettings {
 /// Compute derivative/integral of audio stream.
 ///
 /// Applying both filters one after another produces original audio.
-final class AintegralSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class AintegralEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
-  /// Creates an [AintegralSettings] with the given parameter values.
+  /// Creates an [AintegralEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AintegralSettings({this.enabled = false});
+  /// Each parameter defaults to its ffmpeg default.
+  const AintegralEffect({this.enabled = true});
 
-  /// Returns a copy of this [AintegralSettings] with the given fields replaced.
-  AintegralSettings copyWith({bool? enabled}) =>
-      AintegralSettings(enabled: enabled ?? this.enabled);
+  @override
+  String get filterName => 'aintegral';
+
+  @override
+  AudioFilter get filter => AudioFilter.aintegral;
+
+  /// Returns a copy of this [AintegralEffect] with the given fields replaced.
+  AintegralEffect copyWith({bool? enabled}) =>
+      AintegralEffect(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AintegralSettings && other.enabled == enabled);
+      (other is AintegralEffect && other.enabled == enabled);
 
   @override
   int get hashCode => enabled.hashCode;
 
   @override
-  String toString() => 'AintegralSettings(enabled: $enabled)';
+  String toString() => 'AintegralEffect(enabled: $enabled)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     return 'lavfi-aintegral';
   }
@@ -4988,23 +5342,23 @@ final class AintegralSettings {
 ///
 /// Parameters:
 /// - [asc]: When gain reduction is always needed ASC takes care of releasing to an average reduction level rather than reaching a reduction of 0 in the release time. (range 0..1, default 0, runtime-tunable)
-/// - [asc_level]: Select how much the release time is affected by ASC, 0 means nearly no changes in release time while 1 produces higher release times. (range 0..1, default 0.5, runtime-tunable)
+/// - [ascLevel]: Select how much the release time is affected by ASC, 0 means nearly no changes in release time while 1 produces higher release times. (range 0..1, default 0.5, runtime-tunable)
 /// - [attack]: The limiter will reach its attenuation level in this amount of time in milliseconds. Default is 5 milliseconds. (range 0.1..80, default 5, runtime-tunable)
 /// - [latency]: Compensate the delay introduced by using the lookahead buffer set with attack parameter. Also flush the valid audio data in the lookahead buffer when the stream hits EOF. (range 0..1, default 0, runtime-tunable)
 /// - [level]: Auto level output signal. Default is enabled. This normalizes audio back to 0dB if enabled. (range 0..1, default 1, runtime-tunable)
-/// - [level_in]: Set input gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
-/// - [level_out]: Set output gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
+/// - [levelIn]: Set input gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
+/// - [levelOut]: Set output gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
 /// - [limit]: Don't let signals above this level pass the limiter. Default is 1. (range 0.0625..1, default 1, runtime-tunable)
 /// - [release]: Come back from limiting to attenuation 1.0 in this amount of milliseconds. Default is 50 milliseconds. (range 1..8000, default 50, runtime-tunable)
-final class AlimiterSettings {
-  /// Default value for [asc_level].
-  static const double asc_levelDefault = 0.5;
+final class AlimiterEffect extends AudioEffect {
+  /// Default value for [ascLevel].
+  static const double ascLevelDefault = 0.5;
 
-  /// Minimum value for [asc_level].
-  static const double asc_levelMin = 0.0;
+  /// Minimum value for [ascLevel].
+  static const double ascLevelMin = 0.0;
 
-  /// Maximum value for [asc_level].
-  static const double asc_levelMax = 1.0;
+  /// Maximum value for [ascLevel].
+  static const double ascLevelMax = 1.0;
 
   /// Default value for [attack].
   static const double attackDefault = 5.0;
@@ -5015,23 +5369,23 @@ final class AlimiterSettings {
   /// Maximum value for [attack].
   static const double attackMax = 80.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = .015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = .015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = .015625;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = .015625;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
   /// Default value for [limit].
   static const double limitDefault = 1.0;
@@ -5051,14 +5405,16 @@ final class AlimiterSettings {
   /// Maximum value for [release].
   static const double releaseMax = 8000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// enable asc
   final bool asc;
 
   /// set asc level
-  final double asc_level;
+  final double ascLevel;
 
   /// set attack
   final double attack;
@@ -5070,10 +5426,10 @@ final class AlimiterSettings {
   final bool level;
 
   /// set input level
-  final double level_in;
+  final double levelIn;
 
   /// set output level
-  final double level_out;
+  final double levelOut;
 
   /// set limit
   final double limit;
@@ -5081,44 +5437,49 @@ final class AlimiterSettings {
   /// set release
   final double release;
 
-  /// Creates an [AlimiterSettings] with the given parameter values.
+  /// Creates an [AlimiterEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AlimiterSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AlimiterEffect({
+    this.enabled = true,
     this.asc = false,
-    this.asc_level = 0.5,
+    this.ascLevel = 0.5,
     this.attack = 5.0,
     this.latency = false,
     this.level = true,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
     this.limit = 1.0,
     this.release = 50.0,
   });
 
-  /// Returns a copy of this [AlimiterSettings] with the given fields replaced.
-  AlimiterSettings copyWith({
+  @override
+  String get filterName => 'alimiter';
+
+  @override
+  AudioFilter get filter => AudioFilter.alimiter;
+
+  /// Returns a copy of this [AlimiterEffect] with the given fields replaced.
+  AlimiterEffect copyWith({
     bool? enabled,
     bool? asc,
-    double? asc_level,
+    double? ascLevel,
     double? attack,
     bool? latency,
     bool? level,
-    double? level_in,
-    double? level_out,
+    double? levelIn,
+    double? levelOut,
     double? limit,
     double? release,
-  }) => AlimiterSettings(
+  }) => AlimiterEffect(
     enabled: enabled ?? this.enabled,
     asc: asc ?? this.asc,
-    asc_level: asc_level ?? this.asc_level,
+    ascLevel: ascLevel ?? this.ascLevel,
     attack: attack ?? this.attack,
     latency: latency ?? this.latency,
     level: level ?? this.level,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     limit: limit ?? this.limit,
     release: release ?? this.release,
   );
@@ -5126,15 +5487,15 @@ final class AlimiterSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AlimiterSettings &&
+      (other is AlimiterEffect &&
           other.enabled == enabled &&
           other.asc == asc &&
-          other.asc_level == asc_level &&
+          other.ascLevel == ascLevel &&
           other.attack == attack &&
           other.latency == latency &&
           other.level == level &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.limit == limit &&
           other.release == release);
 
@@ -5142,43 +5503,44 @@ final class AlimiterSettings {
   int get hashCode => Object.hash(
     enabled,
     asc,
-    asc_level,
+    ascLevel,
     attack,
     latency,
     level,
-    level_in,
-    level_out,
+    levelIn,
+    levelOut,
     limit,
     release,
   );
 
   @override
   String toString() =>
-      'AlimiterSettings(enabled: $enabled, asc: $asc, asc_level: $asc_level, attack: $attack, latency: $latency, level: $level, level_in: $level_in, level_out: $level_out, limit: $limit, release: $release)';
+      'AlimiterEffect(enabled: $enabled, asc: $asc, ascLevel: $ascLevel, attack: $attack, latency: $latency, level: $level, levelIn: $levelIn, levelOut: $levelOut, limit: $limit, release: $release)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(asc_level >= asc_levelMin, 'alimiter.asc_level must be >= 0');
-    assert(asc_level <= asc_levelMax, 'alimiter.asc_level must be <= 1');
+    assert(ascLevel >= ascLevelMin, 'alimiter.asc_level must be >= 0');
+    assert(ascLevel <= ascLevelMax, 'alimiter.asc_level must be <= 1');
     assert(attack >= attackMin, 'alimiter.attack must be >= 0.1');
     assert(attack <= attackMax, 'alimiter.attack must be <= 80');
-    assert(level_in >= level_inMin, 'alimiter.level_in must be >= .015625');
-    assert(level_in <= level_inMax, 'alimiter.level_in must be <= 64');
-    assert(level_out >= level_outMin, 'alimiter.level_out must be >= .015625');
-    assert(level_out <= level_outMax, 'alimiter.level_out must be <= 64');
+    assert(levelIn >= levelInMin, 'alimiter.level_in must be >= .015625');
+    assert(levelIn <= levelInMax, 'alimiter.level_in must be <= 64');
+    assert(levelOut >= levelOutMin, 'alimiter.level_out must be >= .015625');
+    assert(levelOut <= levelOutMax, 'alimiter.level_out must be <= 64');
     assert(limit >= limitMin, 'alimiter.limit must be >= 0.0625');
     assert(limit <= limitMax, 'alimiter.limit must be <= 1');
     assert(release >= releaseMin, 'alimiter.release must be >= 1');
     assert(release <= releaseMax, 'alimiter.release must be <= 8000');
     final parts = <String>[];
     if (asc != false) parts.add('asc=' + (asc ? '1' : '0'));
-    if (asc_level != 0.5) parts.add('asc_level=' + _wireDouble(asc_level));
+    if (ascLevel != 0.5) parts.add('asc_level=' + _wireDouble(ascLevel));
     if (attack != 5.0) parts.add('attack=' + _wireDouble(attack));
     if (latency != false) parts.add('latency=' + (latency ? '1' : '0'));
     if (level != true) parts.add('level=' + (level ? '1' : '0'));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (limit != 1.0) parts.add('limit=' + _wireDouble(limit));
     if (release != 50.0) parts.add('release=' + _wireDouble(release));
     return parts.isEmpty
@@ -5189,13 +5551,14 @@ final class AlimiterSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AlimiterSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AlimiterEffect prev) {
     final out = <(String, String)>[];
     if (asc != prev.asc) {
       out.add(('asc', (asc ? '1' : '0')));
     }
-    if (asc_level != prev.asc_level) {
-      out.add(('asc_level', _wireDouble(asc_level)));
+    if (ascLevel != prev.ascLevel) {
+      out.add(('asc_level', _wireDouble(ascLevel)));
     }
     if (attack != prev.attack) {
       out.add(('attack', _wireDouble(attack)));
@@ -5206,11 +5569,11 @@ final class AlimiterSettings {
     if (level != prev.level) {
       out.add(('level', (level ? '1' : '0')));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     if (limit != prev.limit) {
       out.add(('limit', _wireDouble(limit)));
@@ -5249,8 +5612,8 @@ final class AlimiterSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Specify the band-width of a filter in width_type units. (range 0..99999, default 0.707, runtime-tunable)
 /// - [width]: Specify the band-width of a filter in width_type units. (range 0..99999, default 0.707, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class AllpassSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class AllpassEffect extends AudioEffect {
   /// Default value for [f].
   static const double fDefault = 3000.0;
 
@@ -5323,7 +5686,9 @@ final class AllpassSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -5378,14 +5743,13 @@ final class AllpassSettings {
   final double width;
 
   /// set filter-width type
-  final AllpassWidthType width_type;
+  final AllpassWidthType widthType;
 
-  /// Creates an [AllpassSettings] with the given parameter values.
+  /// Creates an [AllpassEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AllpassSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AllpassEffect({
+    this.enabled = true,
     this.a = AllpassTransformType.di,
     this.c = 'all',
     this.channels = 'all',
@@ -5403,11 +5767,17 @@ final class AllpassSettings {
     this.transform = AllpassTransformType.di,
     this.w = 0.707,
     this.width = 0.707,
-    this.width_type = AllpassWidthType.q,
+    this.widthType = AllpassWidthType.q,
   });
 
-  /// Returns a copy of this [AllpassSettings] with the given fields replaced.
-  AllpassSettings copyWith({
+  @override
+  String get filterName => 'allpass';
+
+  @override
+  AudioFilter get filter => AudioFilter.allpass;
+
+  /// Returns a copy of this [AllpassEffect] with the given fields replaced.
+  AllpassEffect copyWith({
     bool? enabled,
     AllpassTransformType? a,
     String? c,
@@ -5426,8 +5796,8 @@ final class AllpassSettings {
     AllpassTransformType? transform,
     double? w,
     double? width,
-    AllpassWidthType? width_type,
-  }) => AllpassSettings(
+    AllpassWidthType? widthType,
+  }) => AllpassEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     c: c ?? this.c,
@@ -5446,13 +5816,13 @@ final class AllpassSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AllpassSettings &&
+      (other is AllpassEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.c == c &&
@@ -5471,7 +5841,7 @@ final class AllpassSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hash(
@@ -5493,15 +5863,16 @@ final class AllpassSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   );
 
   @override
   String toString() =>
-      'AllpassSettings(enabled: $enabled, a: $a, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, o: $o, order: $order, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'AllpassEffect(enabled: $enabled, a: $a, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, o: $o, order: $order, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(f >= fMin, 'allpass.f must be >= 0');
     assert(f <= fMax, 'allpass.f must be <= 999999');
@@ -5539,15 +5910,16 @@ final class AllpassSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.707) parts.add('w=' + _wireDouble(w));
     if (width != 0.707) parts.add('width=' + _wireDouble(width));
-    if (width_type != AllpassWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != AllpassWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty ? 'lavfi-allpass' : 'lavfi-allpass=' + parts.join(':');
   }
 
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AllpassSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AllpassEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (c != prev.c) {
@@ -5592,8 +5964,8 @@ final class AllpassSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -5612,7 +5984,7 @@ final class AllpassSettings {
 /// - [mgain]: set max gain (range -900..900, default 60)
 /// - [params]: This option string is in format: "c`chn` f=`cf` w=`w` g=`g` t=`f` | ..." Each equalizer band is separated by '|'. (range 0..0, default "")
 /// - [size]: set video size (range 0..0, default "hd720")
-final class AnequalizerSettings {
+final class AnequalizerEffect extends AudioEffect {
   /// Default value for [mgain].
   static const double mgainDefault = 60.0;
 
@@ -5622,7 +5994,9 @@ final class AnequalizerSettings {
   /// Maximum value for [mgain].
   static const double mgainMax = 900.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set channels curves colors
@@ -5644,12 +6018,11 @@ final class AnequalizerSettings {
   /// set video size
   final String size;
 
-  /// Creates an [AnequalizerSettings] with the given parameter values.
+  /// Creates an [AnequalizerEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AnequalizerSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AnequalizerEffect({
+    this.enabled = true,
     this.colors = 'red|green|blue|yellow|orange|lime|pink|magenta|brown',
     this.curves = false,
     this.fscale = AnequalizerFscale.log,
@@ -5658,8 +6031,14 @@ final class AnequalizerSettings {
     this.size = 'hd720',
   });
 
-  /// Returns a copy of this [AnequalizerSettings] with the given fields replaced.
-  AnequalizerSettings copyWith({
+  @override
+  String get filterName => 'anequalizer';
+
+  @override
+  AudioFilter get filter => AudioFilter.anequalizer;
+
+  /// Returns a copy of this [AnequalizerEffect] with the given fields replaced.
+  AnequalizerEffect copyWith({
     bool? enabled,
     String? colors,
     bool? curves,
@@ -5667,7 +6046,7 @@ final class AnequalizerSettings {
     double? mgain,
     String? params,
     String? size,
-  }) => AnequalizerSettings(
+  }) => AnequalizerEffect(
     enabled: enabled ?? this.enabled,
     colors: colors ?? this.colors,
     curves: curves ?? this.curves,
@@ -5680,7 +6059,7 @@ final class AnequalizerSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AnequalizerSettings &&
+      (other is AnequalizerEffect &&
           other.enabled == enabled &&
           other.colors == colors &&
           other.curves == curves &&
@@ -5695,10 +6074,11 @@ final class AnequalizerSettings {
 
   @override
   String toString() =>
-      'AnequalizerSettings(enabled: $enabled, colors: $colors, curves: $curves, fscale: $fscale, mgain: $mgain, params: $params, size: $size)';
+      'AnequalizerEffect(enabled: $enabled, colors: $colors, curves: $curves, fscale: $fscale, mgain: $mgain, params: $params, size: $size)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(mgain >= mgainMin, 'anequalizer.mgain must be >= -900');
     assert(mgain <= mgainMax, 'anequalizer.mgain must be <= 900');
@@ -5718,7 +6098,8 @@ final class AnequalizerSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AnequalizerSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AnequalizerEffect prev) {
     final out = <(String, String)>[];
     if (colors != prev.colors) return null;
     if (curves != prev.curves) return null;
@@ -5751,7 +6132,7 @@ final class AnequalizerSettings {
 /// - [s]: Set denoising strength. Allowed range is from 0.00001 to 10000. Default value is 0.00001. (range 0.00001..10000, default 0.00001, runtime-tunable)
 /// - [smooth]: Set smooth factor. Default value is `11`. Allowed range is from `1` to `1000`. (range 1..1000, default 11., runtime-tunable)
 /// - [strength]: Set denoising strength. Allowed range is from 0.00001 to 10000. Default value is 0.00001. (range 0.00001..10000, default 0.00001, runtime-tunable)
-final class AnlmdnSettings {
+final class AnlmdnEffect extends AudioEffect {
   /// Default value for [m].
   static const double mDefault = 11.0;
 
@@ -5788,7 +6169,9 @@ final class AnlmdnSettings {
   /// Maximum value for [strength].
   static const double strengthMax = 10000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set smooth factor
@@ -5821,12 +6204,11 @@ final class AnlmdnSettings {
   /// set denoising strength
   final double strength;
 
-  /// Creates an [AnlmdnSettings] with the given parameter values.
+  /// Creates an [AnlmdnEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AnlmdnSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AnlmdnEffect({
+    this.enabled = true,
     this.m = 11.0,
     this.o = AnlmdnMode.o,
     this.output = AnlmdnMode.o,
@@ -5839,8 +6221,14 @@ final class AnlmdnSettings {
     this.strength = 0.00001,
   });
 
-  /// Returns a copy of this [AnlmdnSettings] with the given fields replaced.
-  AnlmdnSettings copyWith({
+  @override
+  String get filterName => 'anlmdn';
+
+  @override
+  AudioFilter get filter => AudioFilter.anlmdn;
+
+  /// Returns a copy of this [AnlmdnEffect] with the given fields replaced.
+  AnlmdnEffect copyWith({
     bool? enabled,
     double? m,
     AnlmdnMode? o,
@@ -5852,7 +6240,7 @@ final class AnlmdnSettings {
     double? s,
     double? smooth,
     double? strength,
-  }) => AnlmdnSettings(
+  }) => AnlmdnEffect(
     enabled: enabled ?? this.enabled,
     m: m ?? this.m,
     o: o ?? this.o,
@@ -5869,7 +6257,7 @@ final class AnlmdnSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AnlmdnSettings &&
+      (other is AnlmdnEffect &&
           other.enabled == enabled &&
           other.m == m &&
           other.o == o &&
@@ -5899,10 +6287,11 @@ final class AnlmdnSettings {
 
   @override
   String toString() =>
-      'AnlmdnSettings(enabled: $enabled, m: $m, o: $o, output: $output, p: $p, patch: $patch, r: $r, research: $research, s: $s, smooth: $smooth, strength: $strength)';
+      'AnlmdnEffect(enabled: $enabled, m: $m, o: $o, output: $output, p: $p, patch: $patch, r: $r, research: $research, s: $s, smooth: $smooth, strength: $strength)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(m >= mMin, 'anlmdn.m must be >= 1');
     assert(m <= mMax, 'anlmdn.m must be <= 1000');
@@ -5933,7 +6322,8 @@ final class AnlmdnSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AnlmdnSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AnlmdnEffect prev) {
     final out = <(String, String)>[];
     if (m != prev.m) {
       out.add(('m', _wireDouble(m)));
@@ -5979,132 +6369,137 @@ final class AnlmdnSettings {
 /// A description of the accepted options follows.
 ///
 /// Parameters:
-/// - [packet_size]: Set silence packet size. Default value is 4096. (range 0..2147483647, default 4096)
-/// - [pad_dur]: Specify the duration of samples of silence to add. See time duration syntax for the accepted syntax. Used only if set to non-negative value. (range -1..9223372036854775807, default -1)
-/// - [pad_len]: Set the number of samples of silence to add to the end. After the value is reached, the stream is terminated. This option is mutually exclusive with @option{whole_len}. (range -1..9223372036854775807, default -1)
-/// - [whole_dur]: Specify the minimum total duration in the output audio stream. See time duration syntax for the accepted syntax. Used only if set to non-negative value. If the value is longer than the input audio length, silence is added to the end, until the value is reached. This option is mutually exclusive with @option{pad_dur} (range -1..9223372036854775807, default -1)
-/// - [whole_len]: Set the minimum total number of samples in the output audio stream. If the value is longer than the input audio length, silence is added to the end, until the value is reached. This option is mutually exclusive with @option{pad_len}. (range -1..9223372036854775807, default -1)
-final class ApadSettings {
-  /// Default value for [packet_size].
-  static const int packet_sizeDefault = 4096;
+/// - [packetSize]: Set silence packet size. Default value is 4096. (range 0..2147483647, default 4096)
+/// - [padDur]: Specify the duration of samples of silence to add. See time duration syntax for the accepted syntax. Used only if set to non-negative value. (range -1..9223372036854775807, default -1)
+/// - [padLen]: Set the number of samples of silence to add to the end. After the value is reached, the stream is terminated. This option is mutually exclusive with @option{whole_len}. (range -1..9223372036854775807, default -1)
+/// - [wholeDur]: Specify the minimum total duration in the output audio stream. See time duration syntax for the accepted syntax. Used only if set to non-negative value. If the value is longer than the input audio length, silence is added to the end, until the value is reached. This option is mutually exclusive with @option{pad_dur} (range -1..9223372036854775807, default -1)
+/// - [wholeLen]: Set the minimum total number of samples in the output audio stream. If the value is longer than the input audio length, silence is added to the end, until the value is reached. This option is mutually exclusive with @option{pad_len}. (range -1..9223372036854775807, default -1)
+final class ApadEffect extends AudioEffect {
+  /// Default value for [packetSize].
+  static const int packetSizeDefault = 4096;
 
-  /// Minimum value for [packet_size].
-  static const int packet_sizeMin = 0;
+  /// Minimum value for [packetSize].
+  static const int packetSizeMin = 0;
 
-  /// Maximum value for [packet_size].
-  static const int packet_sizeMax = 2147483647;
+  /// Maximum value for [packetSize].
+  static const int packetSizeMax = 2147483647;
 
-  /// Default value for [pad_len].
-  static const int pad_lenDefault = -1;
+  /// Default value for [padLen].
+  static const int padLenDefault = -1;
 
-  /// Minimum value for [pad_len].
-  static const int pad_lenMin = -1;
+  /// Minimum value for [padLen].
+  static const int padLenMin = -1;
 
-  /// Maximum value for [pad_len].
-  static const int pad_lenMax = 9223372036854775807;
+  /// Maximum value for [padLen].
+  static const int padLenMax = 9223372036854775807;
 
-  /// Default value for [whole_len].
-  static const int whole_lenDefault = -1;
+  /// Default value for [wholeLen].
+  static const int wholeLenDefault = -1;
 
-  /// Minimum value for [whole_len].
-  static const int whole_lenMin = -1;
+  /// Minimum value for [wholeLen].
+  static const int wholeLenMin = -1;
 
-  /// Maximum value for [whole_len].
-  static const int whole_lenMax = 9223372036854775807;
+  /// Maximum value for [wholeLen].
+  static const int wholeLenMax = 9223372036854775807;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set silence packet size
-  final int packet_size;
+  final int packetSize;
 
   /// set duration of silence to add
-  final Duration pad_dur;
+  final Duration padDur;
 
   /// set number of samples of silence to add
-  final int pad_len;
+  final int padLen;
 
   /// set minimum target duration in the audio stream
-  final Duration whole_dur;
+  final Duration wholeDur;
 
   /// set minimum target number of samples in the audio stream
-  final int whole_len;
+  final int wholeLen;
 
-  /// Creates an [ApadSettings] with the given parameter values.
+  /// Creates an [ApadEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const ApadSettings({
-    this.enabled = false,
-    this.packet_size = 4096,
-    this.pad_dur = const Duration(microseconds: -1),
-    this.pad_len = -1,
-    this.whole_dur = const Duration(microseconds: -1),
-    this.whole_len = -1,
+  /// Each parameter defaults to its ffmpeg default.
+  const ApadEffect({
+    this.enabled = true,
+    this.packetSize = 4096,
+    this.padDur = const Duration(microseconds: -1),
+    this.padLen = -1,
+    this.wholeDur = const Duration(microseconds: -1),
+    this.wholeLen = -1,
   });
 
-  /// Returns a copy of this [ApadSettings] with the given fields replaced.
-  ApadSettings copyWith({
+  @override
+  String get filterName => 'apad';
+
+  @override
+  AudioFilter get filter => AudioFilter.apad;
+
+  /// Returns a copy of this [ApadEffect] with the given fields replaced.
+  ApadEffect copyWith({
     bool? enabled,
-    int? packet_size,
-    Duration? pad_dur,
-    int? pad_len,
-    Duration? whole_dur,
-    int? whole_len,
-  }) => ApadSettings(
+    int? packetSize,
+    Duration? padDur,
+    int? padLen,
+    Duration? wholeDur,
+    int? wholeLen,
+  }) => ApadEffect(
     enabled: enabled ?? this.enabled,
-    packet_size: packet_size ?? this.packet_size,
-    pad_dur: pad_dur ?? this.pad_dur,
-    pad_len: pad_len ?? this.pad_len,
-    whole_dur: whole_dur ?? this.whole_dur,
-    whole_len: whole_len ?? this.whole_len,
+    packetSize: packetSize ?? this.packetSize,
+    padDur: padDur ?? this.padDur,
+    padLen: padLen ?? this.padLen,
+    wholeDur: wholeDur ?? this.wholeDur,
+    wholeLen: wholeLen ?? this.wholeLen,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ApadSettings &&
+      (other is ApadEffect &&
           other.enabled == enabled &&
-          other.packet_size == packet_size &&
-          other.pad_dur == pad_dur &&
-          other.pad_len == pad_len &&
-          other.whole_dur == whole_dur &&
-          other.whole_len == whole_len);
+          other.packetSize == packetSize &&
+          other.padDur == padDur &&
+          other.padLen == padLen &&
+          other.wholeDur == wholeDur &&
+          other.wholeLen == wholeLen);
 
   @override
   int get hashCode =>
-      Object.hash(enabled, packet_size, pad_dur, pad_len, whole_dur, whole_len);
+      Object.hash(enabled, packetSize, padDur, padLen, wholeDur, wholeLen);
 
   @override
   String toString() =>
-      'ApadSettings(enabled: $enabled, packet_size: $packet_size, pad_dur: $pad_dur, pad_len: $pad_len, whole_dur: $whole_dur, whole_len: $whole_len)';
+      'ApadEffect(enabled: $enabled, packetSize: $packetSize, padDur: $padDur, padLen: $padLen, wholeDur: $wholeDur, wholeLen: $wholeLen)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(packet_size >= packet_sizeMin, 'apad.packet_size must be >= 0');
+    assert(packetSize >= packetSizeMin, 'apad.packet_size must be >= 0');
     assert(
-      packet_size <= packet_sizeMax,
+      packetSize <= packetSizeMax,
       'apad.packet_size must be <= 2147483647',
     );
-    assert(pad_len >= pad_lenMin, 'apad.pad_len must be >= -1');
+    assert(padLen >= padLenMin, 'apad.pad_len must be >= -1');
+    assert(padLen <= padLenMax, 'apad.pad_len must be <= 9223372036854775807');
+    assert(wholeLen >= wholeLenMin, 'apad.whole_len must be >= -1');
     assert(
-      pad_len <= pad_lenMax,
-      'apad.pad_len must be <= 9223372036854775807',
-    );
-    assert(whole_len >= whole_lenMin, 'apad.whole_len must be >= -1');
-    assert(
-      whole_len <= whole_lenMax,
+      wholeLen <= wholeLenMax,
       'apad.whole_len must be <= 9223372036854775807',
     );
     final parts = <String>[];
-    if (packet_size != 4096) parts.add('packet_size=' + packet_size.toString());
-    if (pad_dur != const Duration(microseconds: -1))
-      parts.add('pad_dur=' + _wireDouble(pad_dur.inMicroseconds / 1e6));
-    if (pad_len != -1) parts.add('pad_len=' + pad_len.toString());
-    if (whole_dur != const Duration(microseconds: -1))
-      parts.add('whole_dur=' + _wireDouble(whole_dur.inMicroseconds / 1e6));
-    if (whole_len != -1) parts.add('whole_len=' + whole_len.toString());
+    if (packetSize != 4096) parts.add('packet_size=' + packetSize.toString());
+    if (padDur != const Duration(microseconds: -1))
+      parts.add('pad_dur=' + _wireDouble(padDur.inMicroseconds / 1e6));
+    if (padLen != -1) parts.add('pad_len=' + padLen.toString());
+    if (wholeDur != const Duration(microseconds: -1))
+      parts.add('whole_dur=' + _wireDouble(wholeDur.inMicroseconds / 1e6));
+    if (wholeLen != -1) parts.add('whole_len=' + wholeLen.toString());
     return parts.isEmpty ? 'lavfi-apad' : 'lavfi-apad=' + parts.join(':');
   }
 }
@@ -6121,11 +6516,11 @@ final class ApadSettings {
 /// Parameters:
 /// - [decay]: Set decay. Default is 0.4. (range 0...99, default .4)
 /// - [delay]: Set delay in milliseconds. Default is 3.0. (range 0..5, default 3.)
-/// - [in_gain]: Set input gain. Default is 0.4. (range 0..1, default .4)
-/// - [out_gain]: Set output gain. Default is 0.74 (range 0..1e9, default .74)
+/// - [inGain]: Set input gain. Default is 0.4. (range 0..1, default .4)
+/// - [outGain]: Set output gain. Default is 0.74 (range 0..1e9, default .74)
 /// - [speed]: Set modulation speed in Hz. Default is 0.5. (range .1..2, default .5)
 /// - [type]: Set modulation type. Default is triangular.  It accepts the following values: (default WAVE_TRI)
-final class AphaserSettings {
+final class AphaserEffect extends AudioEffect {
   /// Default value for [decay].
   static const double decayDefault = .4;
 
@@ -6144,23 +6539,23 @@ final class AphaserSettings {
   /// Maximum value for [delay].
   static const double delayMax = 5.0;
 
-  /// Default value for [in_gain].
-  static const double in_gainDefault = .4;
+  /// Default value for [inGain].
+  static const double inGainDefault = .4;
 
-  /// Minimum value for [in_gain].
-  static const double in_gainMin = 0.0;
+  /// Minimum value for [inGain].
+  static const double inGainMin = 0.0;
 
-  /// Maximum value for [in_gain].
-  static const double in_gainMax = 1.0;
+  /// Maximum value for [inGain].
+  static const double inGainMax = 1.0;
 
-  /// Default value for [out_gain].
-  static const double out_gainDefault = .74;
+  /// Default value for [outGain].
+  static const double outGainDefault = .74;
 
-  /// Minimum value for [out_gain].
-  static const double out_gainMin = 0.0;
+  /// Minimum value for [outGain].
+  static const double outGainMin = 0.0;
 
-  /// Maximum value for [out_gain].
-  static const double out_gainMax = 1e9;
+  /// Maximum value for [outGain].
+  static const double outGainMax = 1e9;
 
   /// Default value for [speed].
   static const double speedDefault = .5;
@@ -6171,7 +6566,9 @@ final class AphaserSettings {
   /// Maximum value for [speed].
   static const double speedMax = 2.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set decay
@@ -6181,10 +6578,10 @@ final class AphaserSettings {
   final double delay;
 
   /// set input gain
-  final double in_gain;
+  final double inGain;
 
   /// set output gain
-  final double out_gain;
+  final double outGain;
 
   /// set modulation speed
   final double speed;
@@ -6192,35 +6589,40 @@ final class AphaserSettings {
   /// set modulation type
   final AphaserType type;
 
-  /// Creates an [AphaserSettings] with the given parameter values.
+  /// Creates an [AphaserEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AphaserSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AphaserEffect({
+    this.enabled = true,
     this.decay = .4,
     this.delay = 3.0,
-    this.in_gain = .4,
-    this.out_gain = .74,
+    this.inGain = .4,
+    this.outGain = .74,
     this.speed = .5,
     this.type = AphaserType.triangular,
   });
 
-  /// Returns a copy of this [AphaserSettings] with the given fields replaced.
-  AphaserSettings copyWith({
+  @override
+  String get filterName => 'aphaser';
+
+  @override
+  AudioFilter get filter => AudioFilter.aphaser;
+
+  /// Returns a copy of this [AphaserEffect] with the given fields replaced.
+  AphaserEffect copyWith({
     bool? enabled,
     double? decay,
     double? delay,
-    double? in_gain,
-    double? out_gain,
+    double? inGain,
+    double? outGain,
     double? speed,
     AphaserType? type,
-  }) => AphaserSettings(
+  }) => AphaserEffect(
     enabled: enabled ?? this.enabled,
     decay: decay ?? this.decay,
     delay: delay ?? this.delay,
-    in_gain: in_gain ?? this.in_gain,
-    out_gain: out_gain ?? this.out_gain,
+    inGain: inGain ?? this.inGain,
+    outGain: outGain ?? this.outGain,
     speed: speed ?? this.speed,
     type: type ?? this.type,
   );
@@ -6228,41 +6630,42 @@ final class AphaserSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AphaserSettings &&
+      (other is AphaserEffect &&
           other.enabled == enabled &&
           other.decay == decay &&
           other.delay == delay &&
-          other.in_gain == in_gain &&
-          other.out_gain == out_gain &&
+          other.inGain == inGain &&
+          other.outGain == outGain &&
           other.speed == speed &&
           other.type == type);
 
   @override
   int get hashCode =>
-      Object.hash(enabled, decay, delay, in_gain, out_gain, speed, type);
+      Object.hash(enabled, decay, delay, inGain, outGain, speed, type);
 
   @override
   String toString() =>
-      'AphaserSettings(enabled: $enabled, decay: $decay, delay: $delay, in_gain: $in_gain, out_gain: $out_gain, speed: $speed, type: $type)';
+      'AphaserEffect(enabled: $enabled, decay: $decay, delay: $delay, inGain: $inGain, outGain: $outGain, speed: $speed, type: $type)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(decay >= decayMin, 'aphaser.decay must be >= 0');
     assert(decay <= decayMax, 'aphaser.decay must be <= .99');
     assert(delay >= delayMin, 'aphaser.delay must be >= 0');
     assert(delay <= delayMax, 'aphaser.delay must be <= 5');
-    assert(in_gain >= in_gainMin, 'aphaser.in_gain must be >= 0');
-    assert(in_gain <= in_gainMax, 'aphaser.in_gain must be <= 1');
-    assert(out_gain >= out_gainMin, 'aphaser.out_gain must be >= 0');
-    assert(out_gain <= out_gainMax, 'aphaser.out_gain must be <= 1e9');
+    assert(inGain >= inGainMin, 'aphaser.in_gain must be >= 0');
+    assert(inGain <= inGainMax, 'aphaser.in_gain must be <= 1');
+    assert(outGain >= outGainMin, 'aphaser.out_gain must be >= 0');
+    assert(outGain <= outGainMax, 'aphaser.out_gain must be <= 1e9');
     assert(speed >= speedMin, 'aphaser.speed must be >= .1');
     assert(speed <= speedMax, 'aphaser.speed must be <= 2');
     final parts = <String>[];
     if (decay != .4) parts.add('decay=' + _wireDouble(decay));
     if (delay != 3.0) parts.add('delay=' + _wireDouble(delay));
-    if (in_gain != .4) parts.add('in_gain=' + _wireDouble(in_gain));
-    if (out_gain != .74) parts.add('out_gain=' + _wireDouble(out_gain));
+    if (inGain != .4) parts.add('in_gain=' + _wireDouble(inGain));
+    if (outGain != .74) parts.add('out_gain=' + _wireDouble(outGain));
     if (speed != .5) parts.add('speed=' + _wireDouble(speed));
     if (type != AphaserType.triangular) parts.add('type=' + type.mpvValue);
     return parts.isEmpty ? 'lavfi-aphaser' : 'lavfi-aphaser=' + parts.join(':');
@@ -6279,7 +6682,7 @@ final class AphaserSettings {
 /// - [level]: Set output gain applied to final output. Allowed range is from 0.0 to 1.0. Default value is 1.0. (range 0.0..1.0, default 1, runtime-tunable)
 /// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8, runtime-tunable)
 /// - [shift]: Specify phase shift. Allowed range is from -1.0 to 1.0. Default value is 0.0. (range -1.0..1.0, default 0, runtime-tunable)
-final class AphaseshiftSettings {
+final class AphaseshiftEffect extends AudioEffect {
   /// Default value for [level].
   static const double levelDefault = 1.0;
 
@@ -6307,7 +6710,9 @@ final class AphaseshiftSettings {
   /// Maximum value for [shift].
   static const double shiftMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set output level
@@ -6319,24 +6724,29 @@ final class AphaseshiftSettings {
   /// set phase shift
   final double shift;
 
-  /// Creates an [AphaseshiftSettings] with the given parameter values.
+  /// Creates an [AphaseshiftEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AphaseshiftSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AphaseshiftEffect({
+    this.enabled = true,
     this.level = 1.0,
     this.order = 8,
     this.shift = 0.0,
   });
 
-  /// Returns a copy of this [AphaseshiftSettings] with the given fields replaced.
-  AphaseshiftSettings copyWith({
+  @override
+  String get filterName => 'aphaseshift';
+
+  @override
+  AudioFilter get filter => AudioFilter.aphaseshift;
+
+  /// Returns a copy of this [AphaseshiftEffect] with the given fields replaced.
+  AphaseshiftEffect copyWith({
     bool? enabled,
     double? level,
     int? order,
     double? shift,
-  }) => AphaseshiftSettings(
+  }) => AphaseshiftEffect(
     enabled: enabled ?? this.enabled,
     level: level ?? this.level,
     order: order ?? this.order,
@@ -6346,7 +6756,7 @@ final class AphaseshiftSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AphaseshiftSettings &&
+      (other is AphaseshiftEffect &&
           other.enabled == enabled &&
           other.level == level &&
           other.order == order &&
@@ -6357,10 +6767,11 @@ final class AphaseshiftSettings {
 
   @override
   String toString() =>
-      'AphaseshiftSettings(enabled: $enabled, level: $level, order: $order, shift: $shift)';
+      'AphaseshiftEffect(enabled: $enabled, level: $level, order: $order, shift: $shift)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(level >= levelMin, 'aphaseshift.level must be >= 0.0');
     assert(level <= levelMax, 'aphaseshift.level must be <= 1.0');
@@ -6380,7 +6791,8 @@ final class AphaseshiftSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AphaseshiftSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AphaseshiftEffect prev) {
     final out = <(String, String)>[];
     if (level != prev.level) {
       out.add(('level', _wireDouble(level)));
@@ -6407,9 +6819,9 @@ final class AphaseshiftSettings {
 /// - [diff]: Output only difference samples, useful to hear introduced distortions. By default is disabled. (range 0..1, default 0, runtime-tunable)
 /// - [iterations]: Set number of iterations of psychoacoustic clipper. Allowed range is from 1 to 20. Default value is 10. (range 1..20, default 10, runtime-tunable)
 /// - [level]: Auto level output signal. Default is disabled. This normalizes audio back to 0dBFS if enabled. (range 0..1, default 0, runtime-tunable)
-/// - [level_in]: Set input gain. By default it is 1. Range is [0.015625 - 64]. (range .015625..64, default 1, runtime-tunable)
-/// - [level_out]: Set output gain. By default it is 1. Range is [0.015625 - 64]. (range .015625..64, default 1, runtime-tunable)
-final class ApsyclipSettings {
+/// - [levelIn]: Set input gain. By default it is 1. Range is [0.015625 - 64]. (range .015625..64, default 1, runtime-tunable)
+/// - [levelOut]: Set output gain. By default it is 1. Range is [0.015625 - 64]. (range .015625..64, default 1, runtime-tunable)
+final class ApsyclipEffect extends AudioEffect {
   /// Default value for [adaptive].
   static const double adaptiveDefault = 0.5;
 
@@ -6437,25 +6849,27 @@ final class ApsyclipSettings {
   /// Maximum value for [iterations].
   static const int iterationsMax = 20;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = .015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = .015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = .015625;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = .015625;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set adaptive distortion
@@ -6474,59 +6888,64 @@ final class ApsyclipSettings {
   final bool level;
 
   /// set input level
-  final double level_in;
+  final double levelIn;
 
   /// set output level
-  final double level_out;
+  final double levelOut;
 
-  /// Creates an [ApsyclipSettings] with the given parameter values.
+  /// Creates an [ApsyclipEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const ApsyclipSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const ApsyclipEffect({
+    this.enabled = true,
     this.adaptive = 0.5,
     this.clip = 1.0,
     this.diff = false,
     this.iterations = 10,
     this.level = false,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
   });
 
-  /// Returns a copy of this [ApsyclipSettings] with the given fields replaced.
-  ApsyclipSettings copyWith({
+  @override
+  String get filterName => 'apsyclip';
+
+  @override
+  AudioFilter get filter => AudioFilter.apsyclip;
+
+  /// Returns a copy of this [ApsyclipEffect] with the given fields replaced.
+  ApsyclipEffect copyWith({
     bool? enabled,
     double? adaptive,
     double? clip,
     bool? diff,
     int? iterations,
     bool? level,
-    double? level_in,
-    double? level_out,
-  }) => ApsyclipSettings(
+    double? levelIn,
+    double? levelOut,
+  }) => ApsyclipEffect(
     enabled: enabled ?? this.enabled,
     adaptive: adaptive ?? this.adaptive,
     clip: clip ?? this.clip,
     diff: diff ?? this.diff,
     iterations: iterations ?? this.iterations,
     level: level ?? this.level,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ApsyclipSettings &&
+      (other is ApsyclipEffect &&
           other.enabled == enabled &&
           other.adaptive == adaptive &&
           other.clip == clip &&
           other.diff == diff &&
           other.iterations == iterations &&
           other.level == level &&
-          other.level_in == level_in &&
-          other.level_out == level_out);
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut);
 
   @override
   int get hashCode => Object.hash(
@@ -6536,16 +6955,17 @@ final class ApsyclipSettings {
     diff,
     iterations,
     level,
-    level_in,
-    level_out,
+    levelIn,
+    levelOut,
   );
 
   @override
   String toString() =>
-      'ApsyclipSettings(enabled: $enabled, adaptive: $adaptive, clip: $clip, diff: $diff, iterations: $iterations, level: $level, level_in: $level_in, level_out: $level_out)';
+      'ApsyclipEffect(enabled: $enabled, adaptive: $adaptive, clip: $clip, diff: $diff, iterations: $iterations, level: $level, levelIn: $levelIn, levelOut: $levelOut)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(adaptive >= adaptiveMin, 'apsyclip.adaptive must be >= 0');
     assert(adaptive <= adaptiveMax, 'apsyclip.adaptive must be <= 1');
@@ -6553,18 +6973,18 @@ final class ApsyclipSettings {
     assert(clip <= clipMax, 'apsyclip.clip must be <= 1');
     assert(iterations >= iterationsMin, 'apsyclip.iterations must be >= 1');
     assert(iterations <= iterationsMax, 'apsyclip.iterations must be <= 20');
-    assert(level_in >= level_inMin, 'apsyclip.level_in must be >= .015625');
-    assert(level_in <= level_inMax, 'apsyclip.level_in must be <= 64');
-    assert(level_out >= level_outMin, 'apsyclip.level_out must be >= .015625');
-    assert(level_out <= level_outMax, 'apsyclip.level_out must be <= 64');
+    assert(levelIn >= levelInMin, 'apsyclip.level_in must be >= .015625');
+    assert(levelIn <= levelInMax, 'apsyclip.level_in must be <= 64');
+    assert(levelOut >= levelOutMin, 'apsyclip.level_out must be >= .015625');
+    assert(levelOut <= levelOutMax, 'apsyclip.level_out must be <= 64');
     final parts = <String>[];
     if (adaptive != 0.5) parts.add('adaptive=' + _wireDouble(adaptive));
     if (clip != 1.0) parts.add('clip=' + _wireDouble(clip));
     if (diff != false) parts.add('diff=' + (diff ? '1' : '0'));
     if (iterations != 10) parts.add('iterations=' + iterations.toString());
     if (level != false) parts.add('level=' + (level ? '1' : '0'));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     return parts.isEmpty
         ? 'lavfi-apsyclip'
         : 'lavfi-apsyclip=' + parts.join(':');
@@ -6573,7 +6993,8 @@ final class ApsyclipSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(ApsyclipSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant ApsyclipEffect prev) {
     final out = <(String, String)>[];
     if (adaptive != prev.adaptive) {
       out.add(('adaptive', _wireDouble(adaptive)));
@@ -6590,11 +7011,11 @@ final class ApsyclipSettings {
     if (level != prev.level) {
       out.add(('level', (level ? '1' : '0')));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     return out;
   }
@@ -6622,15 +7043,15 @@ final class ApsyclipSettings {
 /// - [amount]: Set modulation. Define how much of original signal is affected by the LFO. (range 0..1, default 1)
 /// - [bpm]: Set bpm. Default is 120. Allowed range is [30 - 300]. Only used if timing is set to bpm. (range 30..300, default 120)
 /// - [hz]: Set frequency in Hz. Default is 2. Allowed range is [0.01 - 100]. Only used if timing is set to hz. (range 0.01..100, default 2)
-/// - [level_in]: Set input gain. By default it is 1. Range is [0.015625 - 64]. (range 0.015625..64, default 1)
-/// - [level_out]: Set output gain. By default it is 1. Range is [0.015625 - 64]. (range 0.015625..64, default 1)
+/// - [levelIn]: Set input gain. By default it is 1. Range is [0.015625 - 64]. (range 0.015625..64, default 1)
+/// - [levelOut]: Set output gain. By default it is 1. Range is [0.015625 - 64]. (range 0.015625..64, default 1)
 /// - [mode]: Set waveform shape the LFO will use. Can be one of: sine, triangle, square, sawup or sawdown. Default is sine. (range 0..4, default SINE)
 /// - [ms]: Set ms. Default is 500. Allowed range is [10 - 2000]. Only used if timing is set to ms. (range 10..2000, default 500)
-/// - [offset_l]: Set left channel offset. Default is 0. Allowed range is [0 - 1]. (range 0..1, default 0)
-/// - [offset_r]: Set right channel offset. Default is 0.5. Allowed range is [0 - 1]. (range 0..1, default .5)
+/// - [offsetL]: Set left channel offset. Default is 0. Allowed range is [0 - 1]. (range 0..1, default 0)
+/// - [offsetR]: Set right channel offset. Default is 0.5. Allowed range is [0 - 1]. (range 0..1, default .5)
 /// - [timing]: Set possible timing mode. Can be one of: bpm, ms or hz. Default is hz. (range 0..2, default 2)
 /// - [width]: Set pulse width. Default is 1. Allowed range is [0 - 2]. (range 0..2, default 1)
-final class ApulsatorSettings {
+final class ApulsatorEffect extends AudioEffect {
   /// Default value for [amount].
   static const double amountDefault = 1.0;
 
@@ -6658,23 +7079,23 @@ final class ApulsatorSettings {
   /// Maximum value for [hz].
   static const double hzMax = 100.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.015625;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.015625;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
   /// Default value for [ms].
   static const int msDefault = 500;
@@ -6685,23 +7106,23 @@ final class ApulsatorSettings {
   /// Maximum value for [ms].
   static const int msMax = 2000;
 
-  /// Default value for [offset_l].
-  static const double offset_lDefault = 0.0;
+  /// Default value for [offsetL].
+  static const double offsetLDefault = 0.0;
 
-  /// Minimum value for [offset_l].
-  static const double offset_lMin = 0.0;
+  /// Minimum value for [offsetL].
+  static const double offsetLMin = 0.0;
 
-  /// Maximum value for [offset_l].
-  static const double offset_lMax = 1.0;
+  /// Maximum value for [offsetL].
+  static const double offsetLMax = 1.0;
 
-  /// Default value for [offset_r].
-  static const double offset_rDefault = .5;
+  /// Default value for [offsetR].
+  static const double offsetRDefault = .5;
 
-  /// Minimum value for [offset_r].
-  static const double offset_rMin = 0.0;
+  /// Minimum value for [offsetR].
+  static const double offsetRMin = 0.0;
 
-  /// Maximum value for [offset_r].
-  static const double offset_rMax = 1.0;
+  /// Maximum value for [offsetR].
+  static const double offsetRMax = 1.0;
 
   /// Default value for [width].
   static const double widthDefault = 1.0;
@@ -6712,7 +7133,9 @@ final class ApulsatorSettings {
   /// Maximum value for [width].
   static const double widthMax = 2.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set modulation
@@ -6725,10 +7148,10 @@ final class ApulsatorSettings {
   final double hz;
 
   /// set input gain
-  final double level_in;
+  final double levelIn;
 
   /// set output gain
-  final double level_out;
+  final double levelOut;
 
   /// set mode
   final ApulsatorMode mode;
@@ -6737,10 +7160,10 @@ final class ApulsatorSettings {
   final int ms;
 
   /// set offset L
-  final double offset_l;
+  final double offsetL;
 
   /// set offset R
-  final double offset_r;
+  final double offsetR;
 
   /// set timing
   final ApulsatorTiming timing;
@@ -6748,50 +7171,55 @@ final class ApulsatorSettings {
   /// set pulse width
   final double width;
 
-  /// Creates an [ApulsatorSettings] with the given parameter values.
+  /// Creates an [ApulsatorEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const ApulsatorSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const ApulsatorEffect({
+    this.enabled = true,
     this.amount = 1.0,
     this.bpm = 120.0,
     this.hz = 2.0,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
     this.mode = ApulsatorMode.sine,
     this.ms = 500,
-    this.offset_l = 0.0,
-    this.offset_r = .5,
+    this.offsetL = 0.0,
+    this.offsetR = .5,
     this.timing = ApulsatorTiming.hz,
     this.width = 1.0,
   });
 
-  /// Returns a copy of this [ApulsatorSettings] with the given fields replaced.
-  ApulsatorSettings copyWith({
+  @override
+  String get filterName => 'apulsator';
+
+  @override
+  AudioFilter get filter => AudioFilter.apulsator;
+
+  /// Returns a copy of this [ApulsatorEffect] with the given fields replaced.
+  ApulsatorEffect copyWith({
     bool? enabled,
     double? amount,
     double? bpm,
     double? hz,
-    double? level_in,
-    double? level_out,
+    double? levelIn,
+    double? levelOut,
     ApulsatorMode? mode,
     int? ms,
-    double? offset_l,
-    double? offset_r,
+    double? offsetL,
+    double? offsetR,
     ApulsatorTiming? timing,
     double? width,
-  }) => ApulsatorSettings(
+  }) => ApulsatorEffect(
     enabled: enabled ?? this.enabled,
     amount: amount ?? this.amount,
     bpm: bpm ?? this.bpm,
     hz: hz ?? this.hz,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     mode: mode ?? this.mode,
     ms: ms ?? this.ms,
-    offset_l: offset_l ?? this.offset_l,
-    offset_r: offset_r ?? this.offset_r,
+    offsetL: offsetL ?? this.offsetL,
+    offsetR: offsetR ?? this.offsetR,
     timing: timing ?? this.timing,
     width: width ?? this.width,
   );
@@ -6799,17 +7227,17 @@ final class ApulsatorSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ApulsatorSettings &&
+      (other is ApulsatorEffect &&
           other.enabled == enabled &&
           other.amount == amount &&
           other.bpm == bpm &&
           other.hz == hz &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.mode == mode &&
           other.ms == ms &&
-          other.offset_l == offset_l &&
-          other.offset_r == offset_r &&
+          other.offsetL == offsetL &&
+          other.offsetR == offsetR &&
           other.timing == timing &&
           other.width == width);
 
@@ -6819,22 +7247,23 @@ final class ApulsatorSettings {
     amount,
     bpm,
     hz,
-    level_in,
-    level_out,
+    levelIn,
+    levelOut,
     mode,
     ms,
-    offset_l,
-    offset_r,
+    offsetL,
+    offsetR,
     timing,
     width,
   );
 
   @override
   String toString() =>
-      'ApulsatorSettings(enabled: $enabled, amount: $amount, bpm: $bpm, hz: $hz, level_in: $level_in, level_out: $level_out, mode: $mode, ms: $ms, offset_l: $offset_l, offset_r: $offset_r, timing: $timing, width: $width)';
+      'ApulsatorEffect(enabled: $enabled, amount: $amount, bpm: $bpm, hz: $hz, levelIn: $levelIn, levelOut: $levelOut, mode: $mode, ms: $ms, offsetL: $offsetL, offsetR: $offsetR, timing: $timing, width: $width)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(amount >= amountMin, 'apulsator.amount must be >= 0');
     assert(amount <= amountMax, 'apulsator.amount must be <= 1');
@@ -6842,31 +7271,28 @@ final class ApulsatorSettings {
     assert(bpm <= bpmMax, 'apulsator.bpm must be <= 300');
     assert(hz >= hzMin, 'apulsator.hz must be >= 0.01');
     assert(hz <= hzMax, 'apulsator.hz must be <= 100');
-    assert(level_in >= level_inMin, 'apulsator.level_in must be >= 0.015625');
-    assert(level_in <= level_inMax, 'apulsator.level_in must be <= 64');
-    assert(
-      level_out >= level_outMin,
-      'apulsator.level_out must be >= 0.015625',
-    );
-    assert(level_out <= level_outMax, 'apulsator.level_out must be <= 64');
+    assert(levelIn >= levelInMin, 'apulsator.level_in must be >= 0.015625');
+    assert(levelIn <= levelInMax, 'apulsator.level_in must be <= 64');
+    assert(levelOut >= levelOutMin, 'apulsator.level_out must be >= 0.015625');
+    assert(levelOut <= levelOutMax, 'apulsator.level_out must be <= 64');
     assert(ms >= msMin, 'apulsator.ms must be >= 10');
     assert(ms <= msMax, 'apulsator.ms must be <= 2000');
-    assert(offset_l >= offset_lMin, 'apulsator.offset_l must be >= 0');
-    assert(offset_l <= offset_lMax, 'apulsator.offset_l must be <= 1');
-    assert(offset_r >= offset_rMin, 'apulsator.offset_r must be >= 0');
-    assert(offset_r <= offset_rMax, 'apulsator.offset_r must be <= 1');
+    assert(offsetL >= offsetLMin, 'apulsator.offset_l must be >= 0');
+    assert(offsetL <= offsetLMax, 'apulsator.offset_l must be <= 1');
+    assert(offsetR >= offsetRMin, 'apulsator.offset_r must be >= 0');
+    assert(offsetR <= offsetRMax, 'apulsator.offset_r must be <= 1');
     assert(width >= widthMin, 'apulsator.width must be >= 0');
     assert(width <= widthMax, 'apulsator.width must be <= 2');
     final parts = <String>[];
     if (amount != 1.0) parts.add('amount=' + _wireDouble(amount));
     if (bpm != 120.0) parts.add('bpm=' + _wireDouble(bpm));
     if (hz != 2.0) parts.add('hz=' + _wireDouble(hz));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (mode != ApulsatorMode.sine) parts.add('mode=' + mode.mpvValue);
     if (ms != 500) parts.add('ms=' + ms.toString());
-    if (offset_l != 0.0) parts.add('offset_l=' + _wireDouble(offset_l));
-    if (offset_r != .5) parts.add('offset_r=' + _wireDouble(offset_r));
+    if (offsetL != 0.0) parts.add('offset_l=' + _wireDouble(offsetL));
+    if (offsetR != .5) parts.add('offset_r=' + _wireDouble(offsetR));
     if (timing != ApulsatorTiming.hz) parts.add('timing=' + timing.mpvValue);
     if (width != 1.0) parts.add('width=' + _wireDouble(width));
     return parts.isEmpty
@@ -6898,60 +7324,67 @@ final class ApulsatorSettings {
 /// samples per second compensation:
 ///
 /// Parameters:
-/// - [sample_rate]:  (range 0..2147483647, default 0)
-final class AresampleSettings {
-  /// Default value for [sample_rate].
-  static const int sample_rateDefault = 0;
+/// - [sampleRate]:  (range 0..2147483647, default 0)
+final class AresampleEffect extends AudioEffect {
+  /// Default value for [sampleRate].
+  static const int sampleRateDefault = 0;
 
-  /// Minimum value for [sample_rate].
-  static const int sample_rateMin = 0;
+  /// Minimum value for [sampleRate].
+  static const int sampleRateMin = 0;
 
-  /// Maximum value for [sample_rate].
-  static const int sample_rateMax = 2147483647;
+  /// Maximum value for [sampleRate].
+  static const int sampleRateMax = 2147483647;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
-  /// The `sample_rate` parameter.
-  final int sample_rate;
+  /// The `sampleRate` parameter.
+  final int sampleRate;
 
-  /// Creates an [AresampleSettings] with the given parameter values.
+  /// Creates an [AresampleEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AresampleSettings({this.enabled = false, this.sample_rate = 0});
+  /// Each parameter defaults to its ffmpeg default.
+  const AresampleEffect({this.enabled = true, this.sampleRate = 0});
 
-  /// Returns a copy of this [AresampleSettings] with the given fields replaced.
-  AresampleSettings copyWith({bool? enabled, int? sample_rate}) =>
-      AresampleSettings(
-        enabled: enabled ?? this.enabled,
-        sample_rate: sample_rate ?? this.sample_rate,
-      );
+  @override
+  String get filterName => 'aresample';
+
+  @override
+  AudioFilter get filter => AudioFilter.aresample;
+
+  /// Returns a copy of this [AresampleEffect] with the given fields replaced.
+  AresampleEffect copyWith({bool? enabled, int? sampleRate}) => AresampleEffect(
+    enabled: enabled ?? this.enabled,
+    sampleRate: sampleRate ?? this.sampleRate,
+  );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AresampleSettings &&
+      (other is AresampleEffect &&
           other.enabled == enabled &&
-          other.sample_rate == sample_rate);
+          other.sampleRate == sampleRate);
 
   @override
-  int get hashCode => Object.hash(enabled, sample_rate);
+  int get hashCode => Object.hash(enabled, sampleRate);
 
   @override
   String toString() =>
-      'AresampleSettings(enabled: $enabled, sample_rate: $sample_rate)';
+      'AresampleEffect(enabled: $enabled, sampleRate: $sampleRate)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(sample_rate >= sample_rateMin, 'aresample.sample_rate must be >= 0');
+    assert(sampleRate >= sampleRateMin, 'aresample.sample_rate must be >= 0');
     assert(
-      sample_rate <= sample_rateMax,
+      sampleRate <= sampleRateMax,
       'aresample.sample_rate must be <= 2147483647',
     );
     final parts = <String>[];
-    if (sample_rate != 0) parts.add('sample_rate=' + sample_rate.toString());
+    if (sampleRate != 0) parts.add('sample_rate=' + sampleRate.toString());
     return parts.isEmpty
         ? 'lavfi-aresample'
         : 'lavfi-aresample=' + parts.join(':');
@@ -6968,7 +7401,7 @@ final class AresampleSettings {
 /// - [m]: Set train model file to load. This option is always required. (range 0..0, default "", runtime-tunable)
 /// - [mix]: Set how much to mix filtered samples into final output. Allowed range is from -1 to 1. Default value is 1. Negative values are special, they set how much to keep filtered noise in the final filter output. Set this option to -1 to hear actual noise removed from input signal. (range -1..1, default 1.0, runtime-tunable)
 /// - [model]: Set train model file to load. This option is always required. (range 0..0, default "", runtime-tunable)
-final class ArnndnSettings {
+final class ArnndnEffect extends AudioEffect {
   /// Default value for [mix].
   static const double mixDefault = 1.0;
 
@@ -6978,7 +7411,9 @@ final class ArnndnSettings {
   /// Maximum value for [mix].
   static const double mixMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set model name
@@ -6990,24 +7425,29 @@ final class ArnndnSettings {
   /// set model name
   final String model;
 
-  /// Creates an [ArnndnSettings] with the given parameter values.
+  /// Creates an [ArnndnEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const ArnndnSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const ArnndnEffect({
+    this.enabled = true,
     this.m = '',
     this.mix = 1.0,
     required this.model,
   });
 
-  /// Returns a copy of this [ArnndnSettings] with the given fields replaced.
-  ArnndnSettings copyWith({
+  @override
+  String get filterName => 'arnndn';
+
+  @override
+  AudioFilter get filter => AudioFilter.arnndn;
+
+  /// Returns a copy of this [ArnndnEffect] with the given fields replaced.
+  ArnndnEffect copyWith({
     bool? enabled,
     String? m,
     double? mix,
     String? model,
-  }) => ArnndnSettings(
+  }) => ArnndnEffect(
     enabled: enabled ?? this.enabled,
     m: m ?? this.m,
     mix: mix ?? this.mix,
@@ -7017,7 +7457,7 @@ final class ArnndnSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ArnndnSettings &&
+      (other is ArnndnEffect &&
           other.enabled == enabled &&
           other.m == m &&
           other.mix == mix &&
@@ -7028,10 +7468,11 @@ final class ArnndnSettings {
 
   @override
   String toString() =>
-      'ArnndnSettings(enabled: $enabled, m: $m, mix: $mix, model: $model)';
+      'ArnndnEffect(enabled: $enabled, m: $m, mix: $mix, model: $model)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(mix >= mixMin, 'arnndn.mix must be >= -1');
     assert(mix <= mixMax, 'arnndn.mix must be <= 1');
@@ -7045,7 +7486,8 @@ final class ArnndnSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(ArnndnSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant ArnndnEffect prev) {
     final out = <(String, String)>[];
     if (m != prev.m) {
       out.add(('m', m));
@@ -7066,33 +7508,41 @@ final class ArnndnSettings {
 /// This will result in a change of speed and pitch.
 ///
 /// The filter accepts the following options:
-final class AsetrateSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class AsetrateEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
-  /// Creates an [AsetrateSettings] with the given parameter values.
+  /// Creates an [AsetrateEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AsetrateSettings({this.enabled = false});
+  /// Each parameter defaults to its ffmpeg default.
+  const AsetrateEffect({this.enabled = true});
 
-  /// Returns a copy of this [AsetrateSettings] with the given fields replaced.
-  AsetrateSettings copyWith({bool? enabled}) =>
-      AsetrateSettings(enabled: enabled ?? this.enabled);
+  @override
+  String get filterName => 'asetrate';
+
+  @override
+  AudioFilter get filter => AudioFilter.asetrate;
+
+  /// Returns a copy of this [AsetrateEffect] with the given fields replaced.
+  AsetrateEffect copyWith({bool? enabled}) =>
+      AsetrateEffect(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AsetrateSettings && other.enabled == enabled);
+      (other is AsetrateEffect && other.enabled == enabled);
 
   @override
   int get hashCode => enabled.hashCode;
 
   @override
-  String toString() => 'AsetrateSettings(enabled: $enabled)';
+  String toString() => 'AsetrateEffect(enabled: $enabled)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     return 'lavfi-asetrate';
   }
@@ -7113,7 +7563,7 @@ final class AsetrateSettings {
 /// - [param]: Set additional parameter which controls sigmoid function. (range 0.01..3, default 1, runtime-tunable)
 /// - [threshold]: Set threshold from where to start clipping. Default value is 0dB or 1. (range 0.000001..1, default 1, runtime-tunable)
 /// - [type]: Set type of soft-clipping.  It accepts the following values: (range -1..7, default 0, runtime-tunable)
-final class AsoftclipSettings {
+final class AsoftclipEffect extends AudioEffect {
   /// Default value for [output].
   static const double outputDefault = 1.0;
 
@@ -7150,7 +7600,9 @@ final class AsoftclipSettings {
   /// Maximum value for [threshold].
   static const double thresholdMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set softclip output gain
@@ -7168,12 +7620,11 @@ final class AsoftclipSettings {
   /// set softclip type
   final AsoftclipTypes type;
 
-  /// Creates an [AsoftclipSettings] with the given parameter values.
+  /// Creates an [AsoftclipEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AsoftclipSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AsoftclipEffect({
+    this.enabled = true,
     this.output = 1.0,
     this.oversample = 1,
     this.param = 1.0,
@@ -7181,15 +7632,21 @@ final class AsoftclipSettings {
     this.type = AsoftclipTypes.hard,
   });
 
-  /// Returns a copy of this [AsoftclipSettings] with the given fields replaced.
-  AsoftclipSettings copyWith({
+  @override
+  String get filterName => 'asoftclip';
+
+  @override
+  AudioFilter get filter => AudioFilter.asoftclip;
+
+  /// Returns a copy of this [AsoftclipEffect] with the given fields replaced.
+  AsoftclipEffect copyWith({
     bool? enabled,
     double? output,
     int? oversample,
     double? param,
     double? threshold,
     AsoftclipTypes? type,
-  }) => AsoftclipSettings(
+  }) => AsoftclipEffect(
     enabled: enabled ?? this.enabled,
     output: output ?? this.output,
     oversample: oversample ?? this.oversample,
@@ -7201,7 +7658,7 @@ final class AsoftclipSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AsoftclipSettings &&
+      (other is AsoftclipEffect &&
           other.enabled == enabled &&
           other.output == output &&
           other.oversample == oversample &&
@@ -7215,10 +7672,11 @@ final class AsoftclipSettings {
 
   @override
   String toString() =>
-      'AsoftclipSettings(enabled: $enabled, output: $output, oversample: $oversample, param: $param, threshold: $threshold, type: $type)';
+      'AsoftclipEffect(enabled: $enabled, output: $output, oversample: $oversample, param: $param, threshold: $threshold, type: $type)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(output >= outputMin, 'asoftclip.output must be >= 0.000001');
     assert(output <= outputMax, 'asoftclip.output must be <= 16');
@@ -7245,7 +7703,8 @@ final class AsoftclipSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AsoftclipSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AsoftclipEffect prev) {
     final out = <(String, String)>[];
     if (output != prev.output) {
       out.add(('output', _wireDouble(output)));
@@ -7282,7 +7741,7 @@ final class AsoftclipSettings {
 /// - [feedback]: Set delay line feedback gain value. Allowed range is from 0 to 1. Default value is 0.9. (range 0..1, default 0.9, runtime-tunable)
 /// - [slope]: Set slope amount for cutoff frequency. Allowed range is 0.0001 to 1. Default value is 0.5. (range 0.0001..1, default 0.5, runtime-tunable)
 /// - [wet]: Set wet gain, how much of filtered signal is kept. Allowed range is from 0 to 1. Default value is 1.0. (range 0..1, default 1.0, runtime-tunable)
-final class AsubboostSettings {
+final class AsubboostEffect extends AudioEffect {
   /// Default value for [boost].
   static const double boostDefault = 2.0;
 
@@ -7355,7 +7814,9 @@ final class AsubboostSettings {
   /// Maximum value for [wet].
   static const double wetMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set max boost
@@ -7385,12 +7846,11 @@ final class AsubboostSettings {
   /// set wet gain
   final double wet;
 
-  /// Creates an [AsubboostSettings] with the given parameter values.
+  /// Creates an [AsubboostEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AsubboostSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AsubboostEffect({
+    this.enabled = true,
     this.boost = 2.0,
     this.channels = 'all',
     this.cutoff = 100.0,
@@ -7402,8 +7862,14 @@ final class AsubboostSettings {
     this.wet = 1.0,
   });
 
-  /// Returns a copy of this [AsubboostSettings] with the given fields replaced.
-  AsubboostSettings copyWith({
+  @override
+  String get filterName => 'asubboost';
+
+  @override
+  AudioFilter get filter => AudioFilter.asubboost;
+
+  /// Returns a copy of this [AsubboostEffect] with the given fields replaced.
+  AsubboostEffect copyWith({
     bool? enabled,
     double? boost,
     String? channels,
@@ -7414,7 +7880,7 @@ final class AsubboostSettings {
     double? feedback,
     double? slope,
     double? wet,
-  }) => AsubboostSettings(
+  }) => AsubboostEffect(
     enabled: enabled ?? this.enabled,
     boost: boost ?? this.boost,
     channels: channels ?? this.channels,
@@ -7430,7 +7896,7 @@ final class AsubboostSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AsubboostSettings &&
+      (other is AsubboostEffect &&
           other.enabled == enabled &&
           other.boost == boost &&
           other.channels == channels &&
@@ -7458,10 +7924,11 @@ final class AsubboostSettings {
 
   @override
   String toString() =>
-      'AsubboostSettings(enabled: $enabled, boost: $boost, channels: $channels, cutoff: $cutoff, decay: $decay, delay: $delay, dry: $dry, feedback: $feedback, slope: $slope, wet: $wet)';
+      'AsubboostEffect(enabled: $enabled, boost: $boost, channels: $channels, cutoff: $cutoff, decay: $decay, delay: $delay, dry: $dry, feedback: $feedback, slope: $slope, wet: $wet)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(boost >= boostMin, 'asubboost.boost must be >= 1');
     assert(boost <= boostMax, 'asubboost.boost must be <= 12');
@@ -7497,7 +7964,8 @@ final class AsubboostSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AsubboostSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AsubboostEffect prev) {
     final out = <(String, String)>[];
     if (boost != prev.boost) {
       out.add(('boost', _wireDouble(boost)));
@@ -7544,7 +8012,7 @@ final class AsubboostSettings {
 /// - [cutoff]: Set cutoff frequency in Hertz. Allowed range is 2 to 200. Default value is 20. (range 2..200, default 20, runtime-tunable)
 /// - [level]: Set input gain level. Allowed range is from 0 to 1. Default value is 1. (range 0.0..1.0, default 1., runtime-tunable)
 /// - [order]: Set filter order. Available values are from 3 to 20. Default value is 10. (range 3..20, default 10, runtime-tunable)
-final class AsubcutSettings {
+final class AsubcutEffect extends AudioEffect {
   /// Default value for [cutoff].
   static const double cutoffDefault = 20.0;
 
@@ -7572,7 +8040,9 @@ final class AsubcutSettings {
   /// Maximum value for [order].
   static const int orderMax = 20;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set cutoff frequency
@@ -7584,24 +8054,29 @@ final class AsubcutSettings {
   /// set filter order
   final int order;
 
-  /// Creates an [AsubcutSettings] with the given parameter values.
+  /// Creates an [AsubcutEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AsubcutSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AsubcutEffect({
+    this.enabled = true,
     this.cutoff = 20.0,
     this.level = 1.0,
     this.order = 10,
   });
 
-  /// Returns a copy of this [AsubcutSettings] with the given fields replaced.
-  AsubcutSettings copyWith({
+  @override
+  String get filterName => 'asubcut';
+
+  @override
+  AudioFilter get filter => AudioFilter.asubcut;
+
+  /// Returns a copy of this [AsubcutEffect] with the given fields replaced.
+  AsubcutEffect copyWith({
     bool? enabled,
     double? cutoff,
     double? level,
     int? order,
-  }) => AsubcutSettings(
+  }) => AsubcutEffect(
     enabled: enabled ?? this.enabled,
     cutoff: cutoff ?? this.cutoff,
     level: level ?? this.level,
@@ -7611,7 +8086,7 @@ final class AsubcutSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AsubcutSettings &&
+      (other is AsubcutEffect &&
           other.enabled == enabled &&
           other.cutoff == cutoff &&
           other.level == level &&
@@ -7622,10 +8097,11 @@ final class AsubcutSettings {
 
   @override
   String toString() =>
-      'AsubcutSettings(enabled: $enabled, cutoff: $cutoff, level: $level, order: $order)';
+      'AsubcutEffect(enabled: $enabled, cutoff: $cutoff, level: $level, order: $order)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(cutoff >= cutoffMin, 'asubcut.cutoff must be >= 2');
     assert(cutoff <= cutoffMax, 'asubcut.cutoff must be <= 200');
@@ -7643,7 +8119,8 @@ final class AsubcutSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AsubcutSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AsubcutEffect prev) {
     final out = <(String, String)>[];
     if (cutoff != prev.cutoff) {
       out.add(('cutoff', _wireDouble(cutoff)));
@@ -7668,7 +8145,7 @@ final class AsubcutSettings {
 /// - [cutoff]: Set cutoff frequency in Hertz. Allowed range is 20000 to 192000. Default value is 20000. (range 20000..192000, default 20000, runtime-tunable)
 /// - [level]: Set input gain level. Allowed range is from 0 to 1. Default value is 1. (range 0.0..1.0, default 1., runtime-tunable)
 /// - [order]: Set filter order. Available values are from 3 to 20. Default value is 10. (range 3..20, default 10, runtime-tunable)
-final class AsupercutSettings {
+final class AsupercutEffect extends AudioEffect {
   /// Default value for [cutoff].
   static const double cutoffDefault = 20000.0;
 
@@ -7696,7 +8173,9 @@ final class AsupercutSettings {
   /// Maximum value for [order].
   static const int orderMax = 20;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set cutoff frequency
@@ -7708,24 +8187,29 @@ final class AsupercutSettings {
   /// set filter order
   final int order;
 
-  /// Creates an [AsupercutSettings] with the given parameter values.
+  /// Creates an [AsupercutEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AsupercutSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AsupercutEffect({
+    this.enabled = true,
     this.cutoff = 20000.0,
     this.level = 1.0,
     this.order = 10,
   });
 
-  /// Returns a copy of this [AsupercutSettings] with the given fields replaced.
-  AsupercutSettings copyWith({
+  @override
+  String get filterName => 'asupercut';
+
+  @override
+  AudioFilter get filter => AudioFilter.asupercut;
+
+  /// Returns a copy of this [AsupercutEffect] with the given fields replaced.
+  AsupercutEffect copyWith({
     bool? enabled,
     double? cutoff,
     double? level,
     int? order,
-  }) => AsupercutSettings(
+  }) => AsupercutEffect(
     enabled: enabled ?? this.enabled,
     cutoff: cutoff ?? this.cutoff,
     level: level ?? this.level,
@@ -7735,7 +8219,7 @@ final class AsupercutSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AsupercutSettings &&
+      (other is AsupercutEffect &&
           other.enabled == enabled &&
           other.cutoff == cutoff &&
           other.level == level &&
@@ -7746,10 +8230,11 @@ final class AsupercutSettings {
 
   @override
   String toString() =>
-      'AsupercutSettings(enabled: $enabled, cutoff: $cutoff, level: $level, order: $order)';
+      'AsupercutEffect(enabled: $enabled, cutoff: $cutoff, level: $level, order: $order)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(cutoff >= cutoffMin, 'asupercut.cutoff must be >= 20000');
     assert(cutoff <= cutoffMax, 'asupercut.cutoff must be <= 192000');
@@ -7769,7 +8254,8 @@ final class AsupercutSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AsupercutSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AsupercutEffect prev) {
     final out = <(String, String)>[];
     if (cutoff != prev.cutoff) {
       out.add(('cutoff', _wireDouble(cutoff)));
@@ -7795,7 +8281,7 @@ final class AsupercutSettings {
 /// - [level]: Set input gain level. Allowed range is from 0 to 2. Default value is 1. (range 0.0..2.0, default 1., runtime-tunable)
 /// - [order]: Set filter order. Available values are from 4 to 20. Default value is 4. (range 4..20, default 4, runtime-tunable)
 /// - [qfactor]: Set Q-factor. Allowed range is from 0.01 to 100. Default value is 1. (range 0.01..100.0, default 1., runtime-tunable)
-final class AsuperpassSettings {
+final class AsuperpassEffect extends AudioEffect {
   /// Default value for [centerf].
   static const double centerfDefault = 1000.0;
 
@@ -7832,7 +8318,9 @@ final class AsuperpassSettings {
   /// Maximum value for [qfactor].
   static const double qfactorMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set center frequency
@@ -7847,26 +8335,31 @@ final class AsuperpassSettings {
   /// set Q-factor
   final double qfactor;
 
-  /// Creates an [AsuperpassSettings] with the given parameter values.
+  /// Creates an [AsuperpassEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AsuperpassSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AsuperpassEffect({
+    this.enabled = true,
     this.centerf = 1000.0,
     this.level = 1.0,
     this.order = 4,
     this.qfactor = 1.0,
   });
 
-  /// Returns a copy of this [AsuperpassSettings] with the given fields replaced.
-  AsuperpassSettings copyWith({
+  @override
+  String get filterName => 'asuperpass';
+
+  @override
+  AudioFilter get filter => AudioFilter.asuperpass;
+
+  /// Returns a copy of this [AsuperpassEffect] with the given fields replaced.
+  AsuperpassEffect copyWith({
     bool? enabled,
     double? centerf,
     double? level,
     int? order,
     double? qfactor,
-  }) => AsuperpassSettings(
+  }) => AsuperpassEffect(
     enabled: enabled ?? this.enabled,
     centerf: centerf ?? this.centerf,
     level: level ?? this.level,
@@ -7877,7 +8370,7 @@ final class AsuperpassSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AsuperpassSettings &&
+      (other is AsuperpassEffect &&
           other.enabled == enabled &&
           other.centerf == centerf &&
           other.level == level &&
@@ -7889,10 +8382,11 @@ final class AsuperpassSettings {
 
   @override
   String toString() =>
-      'AsuperpassSettings(enabled: $enabled, centerf: $centerf, level: $level, order: $order, qfactor: $qfactor)';
+      'AsuperpassEffect(enabled: $enabled, centerf: $centerf, level: $level, order: $order, qfactor: $qfactor)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(centerf >= centerfMin, 'asuperpass.centerf must be >= 2');
     assert(centerf <= centerfMax, 'asuperpass.centerf must be <= 999999');
@@ -7915,7 +8409,8 @@ final class AsuperpassSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AsuperpassSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AsuperpassEffect prev) {
     final out = <(String, String)>[];
     if (centerf != prev.centerf) {
       out.add(('centerf', _wireDouble(centerf)));
@@ -7944,7 +8439,7 @@ final class AsuperpassSettings {
 /// - [level]: Set input gain level. Allowed range is from 0 to 2. Default value is 1. (range 0.0..2.0, default 1., runtime-tunable)
 /// - [order]: Set filter order. Available values are from 4 to 20. Default value is 4. (range 4..20, default 4, runtime-tunable)
 /// - [qfactor]: Set Q-factor. Allowed range is from 0.01 to 100. Default value is 1. (range 0.01..100.0, default 1., runtime-tunable)
-final class AsuperstopSettings {
+final class AsuperstopEffect extends AudioEffect {
   /// Default value for [centerf].
   static const double centerfDefault = 1000.0;
 
@@ -7981,7 +8476,9 @@ final class AsuperstopSettings {
   /// Maximum value for [qfactor].
   static const double qfactorMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set center frequency
@@ -7996,26 +8493,31 @@ final class AsuperstopSettings {
   /// set Q-factor
   final double qfactor;
 
-  /// Creates an [AsuperstopSettings] with the given parameter values.
+  /// Creates an [AsuperstopEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AsuperstopSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AsuperstopEffect({
+    this.enabled = true,
     this.centerf = 1000.0,
     this.level = 1.0,
     this.order = 4,
     this.qfactor = 1.0,
   });
 
-  /// Returns a copy of this [AsuperstopSettings] with the given fields replaced.
-  AsuperstopSettings copyWith({
+  @override
+  String get filterName => 'asuperstop';
+
+  @override
+  AudioFilter get filter => AudioFilter.asuperstop;
+
+  /// Returns a copy of this [AsuperstopEffect] with the given fields replaced.
+  AsuperstopEffect copyWith({
     bool? enabled,
     double? centerf,
     double? level,
     int? order,
     double? qfactor,
-  }) => AsuperstopSettings(
+  }) => AsuperstopEffect(
     enabled: enabled ?? this.enabled,
     centerf: centerf ?? this.centerf,
     level: level ?? this.level,
@@ -8026,7 +8528,7 @@ final class AsuperstopSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AsuperstopSettings &&
+      (other is AsuperstopEffect &&
           other.enabled == enabled &&
           other.centerf == centerf &&
           other.level == level &&
@@ -8038,10 +8540,11 @@ final class AsuperstopSettings {
 
   @override
   String toString() =>
-      'AsuperstopSettings(enabled: $enabled, centerf: $centerf, level: $level, order: $order, qfactor: $qfactor)';
+      'AsuperstopEffect(enabled: $enabled, centerf: $centerf, level: $level, order: $order, qfactor: $qfactor)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(centerf >= centerfMin, 'asuperstop.centerf must be >= 2');
     assert(centerf <= centerfMax, 'asuperstop.centerf must be <= 999999');
@@ -8064,7 +8567,8 @@ final class AsuperstopSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AsuperstopSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AsuperstopEffect prev) {
     final out = <(String, String)>[];
     if (centerf != prev.centerf) {
       out.add(('centerf', _wireDouble(centerf)));
@@ -8105,7 +8609,7 @@ final class AsuperstopSettings {
 ///
 /// Parameters:
 /// - [tempo]: Change filter tempo scale factor. Syntax for the command is : "`tempo`" (range 0.5..100.0, default 1.0, runtime-tunable)
-final class AtempoSettings {
+final class AtempoEffect extends AudioEffect {
   /// Default value for [tempo].
   static const double tempoDefault = 1.0;
 
@@ -8115,20 +8619,27 @@ final class AtempoSettings {
   /// Maximum value for [tempo].
   static const double tempoMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set tempo scale factor
   final double tempo;
 
-  /// Creates an [AtempoSettings] with the given parameter values.
+  /// Creates an [AtempoEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AtempoSettings({this.enabled = false, this.tempo = 1.0});
+  /// Each parameter defaults to its ffmpeg default.
+  const AtempoEffect({this.enabled = true, this.tempo = 1.0});
 
-  /// Returns a copy of this [AtempoSettings] with the given fields replaced.
-  AtempoSettings copyWith({bool? enabled, double? tempo}) => AtempoSettings(
+  @override
+  String get filterName => 'atempo';
+
+  @override
+  AudioFilter get filter => AudioFilter.atempo;
+
+  /// Returns a copy of this [AtempoEffect] with the given fields replaced.
+  AtempoEffect copyWith({bool? enabled, double? tempo}) => AtempoEffect(
     enabled: enabled ?? this.enabled,
     tempo: tempo ?? this.tempo,
   );
@@ -8136,7 +8647,7 @@ final class AtempoSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AtempoSettings &&
+      (other is AtempoEffect &&
           other.enabled == enabled &&
           other.tempo == tempo);
 
@@ -8144,10 +8655,11 @@ final class AtempoSettings {
   int get hashCode => Object.hash(enabled, tempo);
 
   @override
-  String toString() => 'AtempoSettings(enabled: $enabled, tempo: $tempo)';
+  String toString() => 'AtempoEffect(enabled: $enabled, tempo: $tempo)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(tempo >= tempoMin, 'atempo.tempo must be >= 0.5');
     assert(tempo <= tempoMax, 'atempo.tempo must be <= 100.0');
@@ -8159,7 +8671,8 @@ final class AtempoSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AtempoSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AtempoEffect prev) {
     final out = <(String, String)>[];
     if (tempo != prev.tempo) {
       out.add(('tempo', _wireDouble(tempo)));
@@ -8182,7 +8695,7 @@ final class AtempoSettings {
 /// - [order]: Set order of tilt filter. (range 2..30, default 5, runtime-tunable)
 /// - [slope]: Set slope direction of tilt. Default is 0. Allowed range is from -1 to 1. (range -1..1, default 0, runtime-tunable)
 /// - [width]: Set width of tilt. Default is 1000. Allowed range is from 100 to 10000. (range 100..10000, default 1000, runtime-tunable)
-final class AtiltSettings {
+final class AtiltEffect extends AudioEffect {
   /// Default value for [freq].
   static const double freqDefault = 10000.0;
 
@@ -8228,7 +8741,9 @@ final class AtiltSettings {
   /// Maximum value for [width].
   static const double widthMax = 10000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set central frequency
@@ -8246,12 +8761,11 @@ final class AtiltSettings {
   /// set filter width
   final double width;
 
-  /// Creates an [AtiltSettings] with the given parameter values.
+  /// Creates an [AtiltEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const AtiltSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const AtiltEffect({
+    this.enabled = true,
     this.freq = 10000.0,
     this.level = 1.0,
     this.order = 5,
@@ -8259,15 +8773,21 @@ final class AtiltSettings {
     this.width = 1000.0,
   });
 
-  /// Returns a copy of this [AtiltSettings] with the given fields replaced.
-  AtiltSettings copyWith({
+  @override
+  String get filterName => 'atilt';
+
+  @override
+  AudioFilter get filter => AudioFilter.atilt;
+
+  /// Returns a copy of this [AtiltEffect] with the given fields replaced.
+  AtiltEffect copyWith({
     bool? enabled,
     double? freq,
     double? level,
     int? order,
     double? slope,
     double? width,
-  }) => AtiltSettings(
+  }) => AtiltEffect(
     enabled: enabled ?? this.enabled,
     freq: freq ?? this.freq,
     level: level ?? this.level,
@@ -8279,7 +8799,7 @@ final class AtiltSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AtiltSettings &&
+      (other is AtiltEffect &&
           other.enabled == enabled &&
           other.freq == freq &&
           other.level == level &&
@@ -8292,10 +8812,11 @@ final class AtiltSettings {
 
   @override
   String toString() =>
-      'AtiltSettings(enabled: $enabled, freq: $freq, level: $level, order: $order, slope: $slope, width: $width)';
+      'AtiltEffect(enabled: $enabled, freq: $freq, level: $level, order: $order, slope: $slope, width: $width)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(freq >= freqMin, 'atilt.freq must be >= 20');
     assert(freq <= freqMax, 'atilt.freq must be <= 192000');
@@ -8319,7 +8840,8 @@ final class AtiltSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(AtiltSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant AtiltEffect prev) {
     final out = <(String, String)>[];
     if (freq != prev.freq) {
       out.add(('freq', _wireDouble(freq)));
@@ -8369,8 +8891,8 @@ final class AtiltSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Specify the band-width of a filter in width_type units. (range 0..99999, default 0.5, runtime-tunable)
 /// - [width]: Specify the band-width of a filter in width_type units. (range 0..99999, default 0.5, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class BandpassSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class BandpassEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -8443,7 +8965,9 @@ final class BandpassSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -8501,14 +9025,13 @@ final class BandpassSettings {
   final double width;
 
   /// set filter-width type
-  final BandpassWidthType width_type;
+  final BandpassWidthType widthType;
 
-  /// Creates an [BandpassSettings] with the given parameter values.
+  /// Creates an [BandpassEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const BandpassSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const BandpassEffect({
+    this.enabled = true,
     this.a = BandpassTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -8527,11 +9050,17 @@ final class BandpassSettings {
     this.transform = BandpassTransformType.di,
     this.w = 0.5,
     this.width = 0.5,
-    this.width_type = BandpassWidthType.q,
+    this.widthType = BandpassWidthType.q,
   });
 
-  /// Returns a copy of this [BandpassSettings] with the given fields replaced.
-  BandpassSettings copyWith({
+  @override
+  String get filterName => 'bandpass';
+
+  @override
+  AudioFilter get filter => AudioFilter.bandpass;
+
+  /// Returns a copy of this [BandpassEffect] with the given fields replaced.
+  BandpassEffect copyWith({
     bool? enabled,
     BandpassTransformType? a,
     int? b,
@@ -8551,8 +9080,8 @@ final class BandpassSettings {
     BandpassTransformType? transform,
     double? w,
     double? width,
-    BandpassWidthType? width_type,
-  }) => BandpassSettings(
+    BandpassWidthType? widthType,
+  }) => BandpassEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -8572,13 +9101,13 @@ final class BandpassSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is BandpassSettings &&
+      (other is BandpassEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -8598,7 +9127,7 @@ final class BandpassSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hash(
@@ -8621,15 +9150,16 @@ final class BandpassSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   );
 
   @override
   String toString() =>
-      'BandpassSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, csg: $csg, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'BandpassEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, csg: $csg, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'bandpass.b must be >= 0');
     assert(b <= bMax, 'bandpass.b must be <= 32768');
@@ -8668,8 +9198,8 @@ final class BandpassSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.5) parts.add('w=' + _wireDouble(w));
     if (width != 0.5) parts.add('width=' + _wireDouble(width));
-    if (width_type != BandpassWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != BandpassWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty
         ? 'lavfi-bandpass'
         : 'lavfi-bandpass=' + parts.join(':');
@@ -8678,7 +9208,8 @@ final class BandpassSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(BandpassSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant BandpassEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -8722,8 +9253,8 @@ final class BandpassSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -8755,8 +9286,8 @@ final class BandpassSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Specify the band-width of a filter in width_type units. (range 0..99999, default 0.5, runtime-tunable)
 /// - [width]: Specify the band-width of a filter in width_type units. (range 0..99999, default 0.5, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class BandrejectSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class BandrejectEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -8829,7 +9360,9 @@ final class BandrejectSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -8884,14 +9417,13 @@ final class BandrejectSettings {
   final double width;
 
   /// set filter-width type
-  final BandrejectWidthType width_type;
+  final BandrejectWidthType widthType;
 
-  /// Creates an [BandrejectSettings] with the given parameter values.
+  /// Creates an [BandrejectEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const BandrejectSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const BandrejectEffect({
+    this.enabled = true,
     this.a = BandrejectTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -8909,11 +9441,17 @@ final class BandrejectSettings {
     this.transform = BandrejectTransformType.di,
     this.w = 0.5,
     this.width = 0.5,
-    this.width_type = BandrejectWidthType.q,
+    this.widthType = BandrejectWidthType.q,
   });
 
-  /// Returns a copy of this [BandrejectSettings] with the given fields replaced.
-  BandrejectSettings copyWith({
+  @override
+  String get filterName => 'bandreject';
+
+  @override
+  AudioFilter get filter => AudioFilter.bandreject;
+
+  /// Returns a copy of this [BandrejectEffect] with the given fields replaced.
+  BandrejectEffect copyWith({
     bool? enabled,
     BandrejectTransformType? a,
     int? b,
@@ -8932,8 +9470,8 @@ final class BandrejectSettings {
     BandrejectTransformType? transform,
     double? w,
     double? width,
-    BandrejectWidthType? width_type,
-  }) => BandrejectSettings(
+    BandrejectWidthType? widthType,
+  }) => BandrejectEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -8952,13 +9490,13 @@ final class BandrejectSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is BandrejectSettings &&
+      (other is BandrejectEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -8977,7 +9515,7 @@ final class BandrejectSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hash(
@@ -8999,15 +9537,16 @@ final class BandrejectSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   );
 
   @override
   String toString() =>
-      'BandrejectSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'BandrejectEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'bandreject.b must be >= 0');
     assert(b <= bMax, 'bandreject.b must be <= 32768');
@@ -9045,8 +9584,8 @@ final class BandrejectSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.5) parts.add('w=' + _wireDouble(w));
     if (width != 0.5) parts.add('width=' + _wireDouble(width));
-    if (width_type != BandrejectWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != BandrejectWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty
         ? 'lavfi-bandreject'
         : 'lavfi-bandreject=' + parts.join(':');
@@ -9055,7 +9594,8 @@ final class BandrejectSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(BandrejectSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant BandrejectEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -9096,8 +9636,8 @@ final class BandrejectSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -9133,8 +9673,8 @@ final class BandrejectSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
 /// - [width]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class BassSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class BassEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -9243,7 +9783,9 @@ final class BassSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -9310,14 +9852,13 @@ final class BassSettings {
   final double width;
 
   /// set filter-width type
-  final BassWidthType width_type;
+  final BassWidthType widthType;
 
-  /// Creates an [BassSettings] with the given parameter values.
+  /// Creates an [BassEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const BassSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const BassEffect({
+    this.enabled = true,
     this.a = BassTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -9339,11 +9880,17 @@ final class BassSettings {
     this.transform = BassTransformType.di,
     this.w = 0.5,
     this.width = 0.5,
-    this.width_type = BassWidthType.q,
+    this.widthType = BassWidthType.q,
   });
 
-  /// Returns a copy of this [BassSettings] with the given fields replaced.
-  BassSettings copyWith({
+  @override
+  String get filterName => 'bass';
+
+  @override
+  AudioFilter get filter => AudioFilter.bass;
+
+  /// Returns a copy of this [BassEffect] with the given fields replaced.
+  BassEffect copyWith({
     bool? enabled,
     BassTransformType? a,
     int? b,
@@ -9366,8 +9913,8 @@ final class BassSettings {
     BassTransformType? transform,
     double? w,
     double? width,
-    BassWidthType? width_type,
-  }) => BassSettings(
+    BassWidthType? widthType,
+  }) => BassEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -9390,13 +9937,13 @@ final class BassSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is BassSettings &&
+      (other is BassEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -9419,7 +9966,7 @@ final class BassSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -9445,15 +9992,16 @@ final class BassSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'BassSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'BassEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'bass.b must be >= 0');
     assert(b <= bMax, 'bass.b must be <= 32768');
@@ -9503,15 +10051,16 @@ final class BassSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.5) parts.add('w=' + _wireDouble(w));
     if (width != 0.5) parts.add('width=' + _wireDouble(width));
-    if (width_type != BassWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != BassWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty ? 'lavfi-bass' : 'lavfi-bass=' + parts.join(':');
   }
 
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(BassSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant BassEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -9560,8 +10109,8 @@ final class BassSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -9596,7 +10145,7 @@ final class BassSettings {
 /// - [precision]: Set precision of filtering. (range -1..3, default -1)
 /// - [r]: Set precision of filtering. (range -1..3, default -1)
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
-final class BiquadSettings {
+final class BiquadEffect extends AudioEffect {
   /// Default value for [a0].
   static const double a0Default = 1.0;
 
@@ -9687,7 +10236,9 @@ final class BiquadSettings {
   /// Maximum value for [mix].
   static const double mixMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -9744,12 +10295,11 @@ final class BiquadSettings {
   /// set transform type
   final BiquadTransformType transform;
 
-  /// Creates an [BiquadSettings] with the given parameter values.
+  /// Creates an [BiquadEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const BiquadSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const BiquadEffect({
+    this.enabled = true,
     this.a = BiquadTransformType.di,
     this.a0 = 1.0,
     this.a1 = 0.0,
@@ -9770,8 +10320,14 @@ final class BiquadSettings {
     this.transform = BiquadTransformType.di,
   });
 
-  /// Returns a copy of this [BiquadSettings] with the given fields replaced.
-  BiquadSettings copyWith({
+  @override
+  String get filterName => 'biquad';
+
+  @override
+  AudioFilter get filter => AudioFilter.biquad;
+
+  /// Returns a copy of this [BiquadEffect] with the given fields replaced.
+  BiquadEffect copyWith({
     bool? enabled,
     BiquadTransformType? a,
     double? a0,
@@ -9791,7 +10347,7 @@ final class BiquadSettings {
     BiquadPrecision? precision,
     BiquadPrecision? r,
     BiquadTransformType? transform,
-  }) => BiquadSettings(
+  }) => BiquadEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     a0: a0 ?? this.a0,
@@ -9816,7 +10372,7 @@ final class BiquadSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is BiquadSettings &&
+      (other is BiquadEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.a0 == a0 &&
@@ -9862,10 +10418,11 @@ final class BiquadSettings {
 
   @override
   String toString() =>
-      'BiquadSettings(enabled: $enabled, a: $a, a0: $a0, a1: $a1, a2: $a2, b: $b, b0: $b0, b1: $b1, b2: $b2, blocksize: $blocksize, c: $c, channels: $channels, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, transform: $transform)';
+      'BiquadEffect(enabled: $enabled, a: $a, a0: $a0, a1: $a1, a2: $a2, b: $b, b0: $b0, b1: $b1, b2: $b2, blocksize: $blocksize, c: $c, channels: $channels, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, transform: $transform)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(a0 >= a0Min, 'biquad.a0 must be >= -2147483648');
     assert(a0 <= a0Max, 'biquad.a0 must be <= 2147483647');
@@ -9914,7 +10471,8 @@ final class BiquadSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(BiquadSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant BiquadEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (a0 != prev.a0) {
@@ -9969,62 +10527,70 @@ final class BiquadSettings {
 /// It accepts the following parameters:
 ///
 /// Parameters:
-/// - [channel_layout]: The channel layout of the output stream. If not specified, then filter will guess it based on the `out_channel` names or the number of mappings. Guessed layouts will not necessarily contain channels in the order of the mappings.
+/// - [channelLayout]: The channel layout of the output stream. If not specified, then filter will guess it based on the `out_channel` names or the number of mappings. Guessed layouts will not necessarily contain channels in the order of the mappings.
 /// - [map]: Map channels from input to output. The argument is a '|'-separated list of mappings, each in the `@var{in_channel`-`out_channel`} or `@var{in_channel`} form. `in_channel` can be either the name of the input channel (e.g. FL for front left) or its index in the input channel layout. `out_channel` is the name of the output channel or its index in the output channel layout. If `out_channel` is not given then it is implicitly an index, starting with zero and increasing by one for each mapping. Mixing different types of mappings is not allowed and will result in a parse error.
-final class ChannelmapSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class ChannelmapEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// Output channel layout.
-  final String? channel_layout;
+  final String? channelLayout;
 
   /// A comma-separated list of input channel numbers in output order.
   final String map;
 
-  /// Creates an [ChannelmapSettings] with the given parameter values.
+  /// Creates an [ChannelmapEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const ChannelmapSettings({
-    this.enabled = false,
-    this.channel_layout,
+  /// Each parameter defaults to its ffmpeg default.
+  const ChannelmapEffect({
+    this.enabled = true,
+    this.channelLayout,
     required this.map,
   });
 
-  /// Returns a copy of this [ChannelmapSettings] with the given fields replaced.
-  ChannelmapSettings copyWith({
+  @override
+  String get filterName => 'channelmap';
+
+  @override
+  AudioFilter get filter => AudioFilter.channelmap;
+
+  /// Returns a copy of this [ChannelmapEffect] with the given fields replaced.
+  ChannelmapEffect copyWith({
     bool? enabled,
-    Object? channel_layout = unset,
+    Object? channelLayout = unset,
     String? map,
-  }) => ChannelmapSettings(
+  }) => ChannelmapEffect(
     enabled: enabled ?? this.enabled,
-    channel_layout: identical(channel_layout, unset)
-        ? this.channel_layout
-        : channel_layout as String?,
+    channelLayout: identical(channelLayout, unset)
+        ? this.channelLayout
+        : channelLayout as String?,
     map: map ?? this.map,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ChannelmapSettings &&
+      (other is ChannelmapEffect &&
           other.enabled == enabled &&
-          other.channel_layout == channel_layout &&
+          other.channelLayout == channelLayout &&
           other.map == map);
 
   @override
-  int get hashCode => Object.hash(enabled, channel_layout, map);
+  int get hashCode => Object.hash(enabled, channelLayout, map);
 
   @override
   String toString() =>
-      'ChannelmapSettings(enabled: $enabled, channel_layout: $channel_layout, map: $map)';
+      'ChannelmapEffect(enabled: $enabled, channelLayout: $channelLayout, map: $map)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     final parts = <String>[];
-    if (channel_layout != null)
-      parts.add('channel_layout=' + '[' + channel_layout! + ']');
+    if (channelLayout != null)
+      parts.add('channel_layout=' + '[' + channelLayout! + ']');
     parts.add('map=' + '[' + map + ']');
     return parts.isEmpty
         ? 'lavfi-channelmap'
@@ -10051,29 +10617,31 @@ final class ChannelmapSettings {
 /// - [decays]: Set decays. (range 0..0, default "")
 /// - [delays]: Set delays. A typical delay is around 40ms to 60ms. (range 0..0, default "")
 /// - [depths]: Set depths. (range 0..0, default "")
-/// - [in_gain]: Set input gain. Default is 0.4. (range 0..1, default .4)
-/// - [out_gain]: Set output gain. Default is 0.4. (range 0..1, default .4)
+/// - [inGain]: Set input gain. Default is 0.4. (range 0..1, default .4)
+/// - [outGain]: Set output gain. Default is 0.4. (range 0..1, default .4)
 /// - [speeds]: Set speeds. (range 0..0, default "")
-final class ChorusSettings {
-  /// Default value for [in_gain].
-  static const double in_gainDefault = .4;
+final class ChorusEffect extends AudioEffect {
+  /// Default value for [inGain].
+  static const double inGainDefault = .4;
 
-  /// Minimum value for [in_gain].
-  static const double in_gainMin = 0.0;
+  /// Minimum value for [inGain].
+  static const double inGainMin = 0.0;
 
-  /// Maximum value for [in_gain].
-  static const double in_gainMax = 1.0;
+  /// Maximum value for [inGain].
+  static const double inGainMax = 1.0;
 
-  /// Default value for [out_gain].
-  static const double out_gainDefault = .4;
+  /// Default value for [outGain].
+  static const double outGainDefault = .4;
 
-  /// Minimum value for [out_gain].
-  static const double out_gainMin = 0.0;
+  /// Minimum value for [outGain].
+  static const double outGainMin = 0.0;
 
-  /// Maximum value for [out_gain].
-  static const double out_gainMax = 1.0;
+  /// Maximum value for [outGain].
+  static const double outGainMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set decays
@@ -10086,80 +10654,86 @@ final class ChorusSettings {
   final String depths;
 
   /// set input gain
-  final double in_gain;
+  final double inGain;
 
   /// set output gain
-  final double out_gain;
+  final double outGain;
 
   /// set speeds
   final String speeds;
 
-  /// Creates an [ChorusSettings] with the given parameter values.
+  /// Creates an [ChorusEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const ChorusSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const ChorusEffect({
+    this.enabled = true,
     required this.decays,
     required this.delays,
     required this.depths,
-    this.in_gain = .4,
-    this.out_gain = .4,
+    this.inGain = .4,
+    this.outGain = .4,
     required this.speeds,
   });
 
-  /// Returns a copy of this [ChorusSettings] with the given fields replaced.
-  ChorusSettings copyWith({
+  @override
+  String get filterName => 'chorus';
+
+  @override
+  AudioFilter get filter => AudioFilter.chorus;
+
+  /// Returns a copy of this [ChorusEffect] with the given fields replaced.
+  ChorusEffect copyWith({
     bool? enabled,
     String? decays,
     String? delays,
     String? depths,
-    double? in_gain,
-    double? out_gain,
+    double? inGain,
+    double? outGain,
     String? speeds,
-  }) => ChorusSettings(
+  }) => ChorusEffect(
     enabled: enabled ?? this.enabled,
     decays: decays ?? this.decays,
     delays: delays ?? this.delays,
     depths: depths ?? this.depths,
-    in_gain: in_gain ?? this.in_gain,
-    out_gain: out_gain ?? this.out_gain,
+    inGain: inGain ?? this.inGain,
+    outGain: outGain ?? this.outGain,
     speeds: speeds ?? this.speeds,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ChorusSettings &&
+      (other is ChorusEffect &&
           other.enabled == enabled &&
           other.decays == decays &&
           other.delays == delays &&
           other.depths == depths &&
-          other.in_gain == in_gain &&
-          other.out_gain == out_gain &&
+          other.inGain == inGain &&
+          other.outGain == outGain &&
           other.speeds == speeds);
 
   @override
   int get hashCode =>
-      Object.hash(enabled, decays, delays, depths, in_gain, out_gain, speeds);
+      Object.hash(enabled, decays, delays, depths, inGain, outGain, speeds);
 
   @override
   String toString() =>
-      'ChorusSettings(enabled: $enabled, decays: $decays, delays: $delays, depths: $depths, in_gain: $in_gain, out_gain: $out_gain, speeds: $speeds)';
+      'ChorusEffect(enabled: $enabled, decays: $decays, delays: $delays, depths: $depths, inGain: $inGain, outGain: $outGain, speeds: $speeds)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(in_gain >= in_gainMin, 'chorus.in_gain must be >= 0');
-    assert(in_gain <= in_gainMax, 'chorus.in_gain must be <= 1');
-    assert(out_gain >= out_gainMin, 'chorus.out_gain must be >= 0');
-    assert(out_gain <= out_gainMax, 'chorus.out_gain must be <= 1');
+    assert(inGain >= inGainMin, 'chorus.in_gain must be >= 0');
+    assert(inGain <= inGainMax, 'chorus.in_gain must be <= 1');
+    assert(outGain >= outGainMin, 'chorus.out_gain must be >= 0');
+    assert(outGain <= outGainMax, 'chorus.out_gain must be <= 1');
     final parts = <String>[];
     parts.add('decays=' + '[' + decays + ']');
     parts.add('delays=' + '[' + delays + ']');
     parts.add('depths=' + '[' + depths + ']');
-    if (in_gain != .4) parts.add('in_gain=' + _wireDouble(in_gain));
-    if (out_gain != .4) parts.add('out_gain=' + _wireDouble(out_gain));
+    if (inGain != .4) parts.add('in_gain=' + _wireDouble(inGain));
+    if (outGain != .4) parts.add('out_gain=' + _wireDouble(outGain));
     parts.add('speeds=' + '[' + speeds + ']');
     return parts.isEmpty ? 'lavfi-chorus' : 'lavfi-chorus=' + parts.join(':');
   }
@@ -10182,7 +10756,7 @@ final class ChorusSettings {
 /// Parameters whose names start with a digit, addressed by
 /// their original key in the [params] map:
 /// - `soft-knee`: Set the curve radius in dB for all joints. It defaults to 0.01. (range 0.01..900, default 0.01)
-final class CompandSettings {
+final class CompandEffect extends AudioEffect {
   /// Default value for [delay].
   static const double delayDefault = 0.0;
 
@@ -10210,7 +10784,9 @@ final class CompandSettings {
   /// Maximum value for [volume].
   static const double volumeMax = 0.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set time over which increase of volume is determined
@@ -10235,12 +10811,11 @@ final class CompandSettings {
   /// keyed by their original ffmpeg option name.
   final Map<String, double> params;
 
-  /// Creates an [CompandSettings] with the given parameter values.
+  /// Creates an [CompandEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const CompandSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const CompandEffect({
+    this.enabled = true,
     this.attacks = '0',
     this.decays = '0.8',
     this.delay = 0.0,
@@ -10250,8 +10825,14 @@ final class CompandSettings {
     this.params = const <String, double>{},
   });
 
-  /// Returns a copy of this [CompandSettings] with the given fields replaced.
-  CompandSettings copyWith({
+  @override
+  String get filterName => 'compand';
+
+  @override
+  AudioFilter get filter => AudioFilter.compand;
+
+  /// Returns a copy of this [CompandEffect] with the given fields replaced.
+  CompandEffect copyWith({
     bool? enabled,
     String? attacks,
     String? decays,
@@ -10260,7 +10841,7 @@ final class CompandSettings {
     String? points,
     double? volume,
     Map<String, double>? params,
-  }) => CompandSettings(
+  }) => CompandEffect(
     enabled: enabled ?? this.enabled,
     attacks: attacks ?? this.attacks,
     decays: decays ?? this.decays,
@@ -10274,7 +10855,7 @@ final class CompandSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CompandSettings &&
+      (other is CompandEffect &&
           other.enabled == enabled &&
           other.attacks == attacks &&
           other.decays == decays &&
@@ -10300,10 +10881,11 @@ final class CompandSettings {
 
   @override
   String toString() =>
-      'CompandSettings(enabled: $enabled, attacks: $attacks, decays: $decays, delay: $delay, gain: $gain, points: $points, volume: $volume, params: $params)';
+      'CompandEffect(enabled: $enabled, attacks: $attacks, decays: $decays, delay: $delay, gain: $gain, points: $points, volume: $volume, params: $params)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(delay >= delayMin, 'compand.delay must be >= 0');
     assert(delay <= delayMax, 'compand.delay must be <= 20');
@@ -10353,7 +10935,7 @@ final class CompandSettings {
 /// - [mm]: Set millimeters distance. This is compensation distance for fine tuning. Default is 0. (range 0..10, default 0)
 /// - [temp]: Set temperature in degrees Celsius. This is the temperature of the environment. Default is 20. (range -50..50, default 20)
 /// - [wet]: Set wet amount. Amount of processed (wet) signal. Default is 1. (range 0..1, default 1)
-final class CompensationdelaySettings {
+final class CompensationdelayEffect extends AudioEffect {
   /// Default value for [cm].
   static const int cmDefault = 0;
 
@@ -10408,7 +10990,9 @@ final class CompensationdelaySettings {
   /// Maximum value for [wet].
   static const double wetMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set cm distance
@@ -10429,12 +11013,11 @@ final class CompensationdelaySettings {
   /// set wet amount
   final double wet;
 
-  /// Creates an [CompensationdelaySettings] with the given parameter values.
+  /// Creates an [CompensationdelayEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const CompensationdelaySettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const CompensationdelayEffect({
+    this.enabled = true,
     this.cm = 0,
     this.dry = 0.0,
     this.m = 0,
@@ -10443,8 +11026,14 @@ final class CompensationdelaySettings {
     this.wet = 1.0,
   });
 
-  /// Returns a copy of this [CompensationdelaySettings] with the given fields replaced.
-  CompensationdelaySettings copyWith({
+  @override
+  String get filterName => 'compensationdelay';
+
+  @override
+  AudioFilter get filter => AudioFilter.compensationdelay;
+
+  /// Returns a copy of this [CompensationdelayEffect] with the given fields replaced.
+  CompensationdelayEffect copyWith({
     bool? enabled,
     int? cm,
     double? dry,
@@ -10452,7 +11041,7 @@ final class CompensationdelaySettings {
     int? mm,
     int? temp,
     double? wet,
-  }) => CompensationdelaySettings(
+  }) => CompensationdelayEffect(
     enabled: enabled ?? this.enabled,
     cm: cm ?? this.cm,
     dry: dry ?? this.dry,
@@ -10465,7 +11054,7 @@ final class CompensationdelaySettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CompensationdelaySettings &&
+      (other is CompensationdelayEffect &&
           other.enabled == enabled &&
           other.cm == cm &&
           other.dry == dry &&
@@ -10479,10 +11068,11 @@ final class CompensationdelaySettings {
 
   @override
   String toString() =>
-      'CompensationdelaySettings(enabled: $enabled, cm: $cm, dry: $dry, m: $m, mm: $mm, temp: $temp, wet: $wet)';
+      'CompensationdelayEffect(enabled: $enabled, cm: $cm, dry: $dry, m: $m, mm: $mm, temp: $temp, wet: $wet)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(cm >= cmMin, 'compensationdelay.cm must be >= 0');
     assert(cm <= cmMax, 'compensationdelay.cm must be <= 100');
@@ -10511,7 +11101,8 @@ final class CompensationdelaySettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(CompensationdelaySettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant CompensationdelayEffect prev) {
     final out = <(String, String)>[];
     if (cm != prev.cm) return null;
     if (dry != prev.dry) return null;
@@ -10536,39 +11127,39 @@ final class CompensationdelaySettings {
 /// The filter accepts the following options:
 ///
 /// Parameters:
-/// - [block_size]: Set block size used for reverse IIR processing. If this value is set to high enough value (higher than impulse response length truncated when reaches near zero values) filtering will become linear phase otherwise if not big enough it will just produce nasty artifacts.  Note that filter delay will be exactly this many samples when set to non-zero value. (range 0..32768, default 0)
-/// - [level_in]: Set input gain. Default is 0.9. (range 0..1, default .9, runtime-tunable)
-/// - [level_out]: Set output gain. Default is 1. (range 0..1, default 1., runtime-tunable)
+/// - [blockSize]: Set block size used for reverse IIR processing. If this value is set to high enough value (higher than impulse response length truncated when reaches near zero values) filtering will become linear phase otherwise if not big enough it will just produce nasty artifacts.  Note that filter delay will be exactly this many samples when set to non-zero value. (range 0..32768, default 0)
+/// - [levelIn]: Set input gain. Default is 0.9. (range 0..1, default .9, runtime-tunable)
+/// - [levelOut]: Set output gain. Default is 1. (range 0..1, default 1., runtime-tunable)
 /// - [range]: Set soundstage wideness. Default is 0.5. Allowed range is from 0 to 1. This sets cut off frequency of low shelf filter. Default is cut off near 1550 Hz. With range set to 1 cut off frequency is set to 2100 Hz. (range 0..1, default .5, runtime-tunable)
 /// - [slope]: Set curve slope of low shelf filter. Default is 0.5. Allowed range is from 0.01 to 1. (range .01..1, default .5, runtime-tunable)
 /// - [strength]: Set strength of crossfeed. Default is 0.2. Allowed range is from 0 to 1. This sets gain of low shelf filter for side part of stereo image. Default is -6dB. Max allowed is -30db when strength is set to 1. (range 0..1, default .2, runtime-tunable)
-final class CrossfeedSettings {
-  /// Default value for [block_size].
-  static const int block_sizeDefault = 0;
+final class CrossfeedEffect extends AudioEffect {
+  /// Default value for [blockSize].
+  static const int blockSizeDefault = 0;
 
-  /// Minimum value for [block_size].
-  static const int block_sizeMin = 0;
+  /// Minimum value for [blockSize].
+  static const int blockSizeMin = 0;
 
-  /// Maximum value for [block_size].
-  static const int block_sizeMax = 32768;
+  /// Maximum value for [blockSize].
+  static const int blockSizeMax = 32768;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = .9;
+  /// Default value for [levelIn].
+  static const double levelInDefault = .9;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.0;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.0;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 1.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 1.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.0;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.0;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 1.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 1.0;
 
   /// Default value for [range].
   static const double rangeDefault = .5;
@@ -10597,17 +11188,19 @@ final class CrossfeedSettings {
   /// Maximum value for [strength].
   static const double strengthMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set the block size
-  final int block_size;
+  final int blockSize;
 
   /// set level in
-  final double level_in;
+  final double levelIn;
 
   /// set level out
-  final double level_out;
+  final double levelOut;
 
   /// set soundstage wideness
   final double range;
@@ -10618,34 +11211,39 @@ final class CrossfeedSettings {
   /// set crossfeed strength
   final double strength;
 
-  /// Creates an [CrossfeedSettings] with the given parameter values.
+  /// Creates an [CrossfeedEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const CrossfeedSettings({
-    this.enabled = false,
-    this.block_size = 0,
-    this.level_in = .9,
-    this.level_out = 1.0,
+  /// Each parameter defaults to its ffmpeg default.
+  const CrossfeedEffect({
+    this.enabled = true,
+    this.blockSize = 0,
+    this.levelIn = .9,
+    this.levelOut = 1.0,
     this.range = .5,
     this.slope = .5,
     this.strength = .2,
   });
 
-  /// Returns a copy of this [CrossfeedSettings] with the given fields replaced.
-  CrossfeedSettings copyWith({
+  @override
+  String get filterName => 'crossfeed';
+
+  @override
+  AudioFilter get filter => AudioFilter.crossfeed;
+
+  /// Returns a copy of this [CrossfeedEffect] with the given fields replaced.
+  CrossfeedEffect copyWith({
     bool? enabled,
-    int? block_size,
-    double? level_in,
-    double? level_out,
+    int? blockSize,
+    double? levelIn,
+    double? levelOut,
     double? range,
     double? slope,
     double? strength,
-  }) => CrossfeedSettings(
+  }) => CrossfeedEffect(
     enabled: enabled ?? this.enabled,
-    block_size: block_size ?? this.block_size,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    blockSize: blockSize ?? this.blockSize,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     range: range ?? this.range,
     slope: slope ?? this.slope,
     strength: strength ?? this.strength,
@@ -10654,11 +11252,11 @@ final class CrossfeedSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CrossfeedSettings &&
+      (other is CrossfeedEffect &&
           other.enabled == enabled &&
-          other.block_size == block_size &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.blockSize == blockSize &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.range == range &&
           other.slope == slope &&
           other.strength == strength);
@@ -10666,9 +11264,9 @@ final class CrossfeedSettings {
   @override
   int get hashCode => Object.hash(
     enabled,
-    block_size,
-    level_in,
-    level_out,
+    blockSize,
+    levelIn,
+    levelOut,
     range,
     slope,
     strength,
@@ -10676,20 +11274,18 @@ final class CrossfeedSettings {
 
   @override
   String toString() =>
-      'CrossfeedSettings(enabled: $enabled, block_size: $block_size, level_in: $level_in, level_out: $level_out, range: $range, slope: $slope, strength: $strength)';
+      'CrossfeedEffect(enabled: $enabled, blockSize: $blockSize, levelIn: $levelIn, levelOut: $levelOut, range: $range, slope: $slope, strength: $strength)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(block_size >= block_sizeMin, 'crossfeed.block_size must be >= 0');
-    assert(
-      block_size <= block_sizeMax,
-      'crossfeed.block_size must be <= 32768',
-    );
-    assert(level_in >= level_inMin, 'crossfeed.level_in must be >= 0');
-    assert(level_in <= level_inMax, 'crossfeed.level_in must be <= 1');
-    assert(level_out >= level_outMin, 'crossfeed.level_out must be >= 0');
-    assert(level_out <= level_outMax, 'crossfeed.level_out must be <= 1');
+    assert(blockSize >= blockSizeMin, 'crossfeed.block_size must be >= 0');
+    assert(blockSize <= blockSizeMax, 'crossfeed.block_size must be <= 32768');
+    assert(levelIn >= levelInMin, 'crossfeed.level_in must be >= 0');
+    assert(levelIn <= levelInMax, 'crossfeed.level_in must be <= 1');
+    assert(levelOut >= levelOutMin, 'crossfeed.level_out must be >= 0');
+    assert(levelOut <= levelOutMax, 'crossfeed.level_out must be <= 1');
     assert(range >= rangeMin, 'crossfeed.range must be >= 0');
     assert(range <= rangeMax, 'crossfeed.range must be <= 1');
     assert(slope >= slopeMin, 'crossfeed.slope must be >= .01');
@@ -10697,9 +11293,9 @@ final class CrossfeedSettings {
     assert(strength >= strengthMin, 'crossfeed.strength must be >= 0');
     assert(strength <= strengthMax, 'crossfeed.strength must be <= 1');
     final parts = <String>[];
-    if (block_size != 0) parts.add('block_size=' + block_size.toString());
-    if (level_in != .9) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (blockSize != 0) parts.add('block_size=' + blockSize.toString());
+    if (levelIn != .9) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (range != .5) parts.add('range=' + _wireDouble(range));
     if (slope != .5) parts.add('slope=' + _wireDouble(slope));
     if (strength != .2) parts.add('strength=' + _wireDouble(strength));
@@ -10711,14 +11307,15 @@ final class CrossfeedSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(CrossfeedSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant CrossfeedEffect prev) {
     final out = <(String, String)>[];
-    if (block_size != prev.block_size) return null;
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (blockSize != prev.blockSize) return null;
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     if (range != prev.range) {
       out.add(('range', _wireDouble(range)));
@@ -10744,7 +11341,7 @@ final class CrossfeedSettings {
 /// Parameters:
 /// - [c]: Enable clipping. By default is enabled. (range 0..1, default 1, runtime-tunable)
 /// - [i]: Sets the intensity of effect (default: 2.0). Must be in range between -10.0 to 0 (unchanged sound) to 10.0 (maximum effect). To inverse filtering use negative value. (range -10..10, default 2.0, runtime-tunable)
-final class CrystalizerSettings {
+final class CrystalizerEffect extends AudioEffect {
   /// Default value for [i].
   static const double iDefault = 2.0;
 
@@ -10754,7 +11351,9 @@ final class CrystalizerSettings {
   /// Maximum value for [i].
   static const double iMax = 10.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// enable clipping
@@ -10763,19 +11362,20 @@ final class CrystalizerSettings {
   /// set intensity
   final double i;
 
-  /// Creates an [CrystalizerSettings] with the given parameter values.
+  /// Creates an [CrystalizerEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const CrystalizerSettings({
-    this.enabled = false,
-    this.c = true,
-    this.i = 2.0,
-  });
+  /// Each parameter defaults to its ffmpeg default.
+  const CrystalizerEffect({this.enabled = true, this.c = true, this.i = 2.0});
 
-  /// Returns a copy of this [CrystalizerSettings] with the given fields replaced.
-  CrystalizerSettings copyWith({bool? enabled, bool? c, double? i}) =>
-      CrystalizerSettings(
+  @override
+  String get filterName => 'crystalizer';
+
+  @override
+  AudioFilter get filter => AudioFilter.crystalizer;
+
+  /// Returns a copy of this [CrystalizerEffect] with the given fields replaced.
+  CrystalizerEffect copyWith({bool? enabled, bool? c, double? i}) =>
+      CrystalizerEffect(
         enabled: enabled ?? this.enabled,
         c: c ?? this.c,
         i: i ?? this.i,
@@ -10784,7 +11384,7 @@ final class CrystalizerSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CrystalizerSettings &&
+      (other is CrystalizerEffect &&
           other.enabled == enabled &&
           other.c == c &&
           other.i == i);
@@ -10793,10 +11393,11 @@ final class CrystalizerSettings {
   int get hashCode => Object.hash(enabled, c, i);
 
   @override
-  String toString() => 'CrystalizerSettings(enabled: $enabled, c: $c, i: $i)';
+  String toString() => 'CrystalizerEffect(enabled: $enabled, c: $c, i: $i)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(i >= iMin, 'crystalizer.i must be >= -10');
     assert(i <= iMax, 'crystalizer.i must be <= 10');
@@ -10811,7 +11412,8 @@ final class CrystalizerSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(CrystalizerSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant CrystalizerEffect prev) {
     final out = <(String, String)>[];
     if (c != prev.c) {
       out.add(('c', (c ? '1' : '0')));
@@ -10835,7 +11437,7 @@ final class CrystalizerSettings {
 /// Parameters:
 /// - [limitergain]: Optional. It should have a value much less than 1 (e.g. 0.05 or 0.02) and is used to prevent clipping. (range 0..1, default 0)
 /// - [shift]: Set the DC shift, allowed range is [-1, 1]. It indicates the amount to shift the audio. (range -1..1, default 0)
-final class DcshiftSettings {
+final class DcshiftEffect extends AudioEffect {
   /// Default value for [limitergain].
   static const double limitergainDefault = 0.0;
 
@@ -10854,7 +11456,9 @@ final class DcshiftSettings {
   /// Maximum value for [shift].
   static const double shiftMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set limiter gain
@@ -10863,31 +11467,33 @@ final class DcshiftSettings {
   /// set DC shift
   final double shift;
 
-  /// Creates an [DcshiftSettings] with the given parameter values.
+  /// Creates an [DcshiftEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const DcshiftSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const DcshiftEffect({
+    this.enabled = true,
     this.limitergain = 0.0,
     this.shift = 0.0,
   });
 
-  /// Returns a copy of this [DcshiftSettings] with the given fields replaced.
-  DcshiftSettings copyWith({
-    bool? enabled,
-    double? limitergain,
-    double? shift,
-  }) => DcshiftSettings(
-    enabled: enabled ?? this.enabled,
-    limitergain: limitergain ?? this.limitergain,
-    shift: shift ?? this.shift,
-  );
+  @override
+  String get filterName => 'dcshift';
+
+  @override
+  AudioFilter get filter => AudioFilter.dcshift;
+
+  /// Returns a copy of this [DcshiftEffect] with the given fields replaced.
+  DcshiftEffect copyWith({bool? enabled, double? limitergain, double? shift}) =>
+      DcshiftEffect(
+        enabled: enabled ?? this.enabled,
+        limitergain: limitergain ?? this.limitergain,
+        shift: shift ?? this.shift,
+      );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is DcshiftSettings &&
+      (other is DcshiftEffect &&
           other.enabled == enabled &&
           other.limitergain == limitergain &&
           other.shift == shift);
@@ -10897,10 +11503,11 @@ final class DcshiftSettings {
 
   @override
   String toString() =>
-      'DcshiftSettings(enabled: $enabled, limitergain: $limitergain, shift: $shift)';
+      'DcshiftEffect(enabled: $enabled, limitergain: $limitergain, shift: $shift)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(limitergain >= limitergainMin, 'dcshift.limitergain must be >= 0');
     assert(limitergain <= limitergainMax, 'dcshift.limitergain must be <= 1');
@@ -10923,7 +11530,7 @@ final class DcshiftSettings {
 /// - [i]: Set intensity for triggering de-essing. Allowed range is from 0 to 1. Default is 0. (range 0.0..1.0, default 0.0)
 /// - [m]: Set amount of ducking on treble part of sound. Allowed range is from 0 to 1. Default is 0.5. (range 0.0..1.0, default 0.5)
 /// - [s]: Set the output mode.  It accepts the following values: (range 0..2, default OUT_MODE)
-final class DeesserSettings {
+final class DeesserEffect extends AudioEffect {
   /// Default value for [f].
   static const double fDefault = 0.5;
 
@@ -10951,7 +11558,9 @@ final class DeesserSettings {
   /// Maximum value for [m].
   static const double mMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set frequency
@@ -10966,26 +11575,31 @@ final class DeesserSettings {
   /// set output mode
   final DeesserMode s;
 
-  /// Creates an [DeesserSettings] with the given parameter values.
+  /// Creates an [DeesserEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const DeesserSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const DeesserEffect({
+    this.enabled = true,
     this.f = 0.5,
     this.i = 0.0,
     this.m = 0.5,
     this.s = DeesserMode.o,
   });
 
-  /// Returns a copy of this [DeesserSettings] with the given fields replaced.
-  DeesserSettings copyWith({
+  @override
+  String get filterName => 'deesser';
+
+  @override
+  AudioFilter get filter => AudioFilter.deesser;
+
+  /// Returns a copy of this [DeesserEffect] with the given fields replaced.
+  DeesserEffect copyWith({
     bool? enabled,
     double? f,
     double? i,
     double? m,
     DeesserMode? s,
-  }) => DeesserSettings(
+  }) => DeesserEffect(
     enabled: enabled ?? this.enabled,
     f: f ?? this.f,
     i: i ?? this.i,
@@ -10996,7 +11610,7 @@ final class DeesserSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is DeesserSettings &&
+      (other is DeesserEffect &&
           other.enabled == enabled &&
           other.f == f &&
           other.i == i &&
@@ -11008,10 +11622,11 @@ final class DeesserSettings {
 
   @override
   String toString() =>
-      'DeesserSettings(enabled: $enabled, f: $f, i: $i, m: $m, s: $s)';
+      'DeesserEffect(enabled: $enabled, f: $f, i: $i, m: $m, s: $s)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(f >= fMin, 'deesser.f must be >= 0.0');
     assert(f <= fMax, 'deesser.f must be <= 1.0');
@@ -11043,7 +11658,7 @@ final class DeesserSettings {
 /// - [enhance]: Set the dialogue enhance factor to put in front center channel output. Allowed range is from 0 to 3. Default value is 1. (range 0..3, default 1, runtime-tunable)
 /// - [original]: Set the original center factor to keep in front center channel output. Allowed range is from 0 to 1. Default value is 1. (range 0..1, default 1, runtime-tunable)
 /// - [voice]: Set the voice detection factor. Allowed range is from 2 to 32. Default value is 2. (range 2..32, default 2, runtime-tunable)
-final class DialoguenhanceSettings {
+final class DialoguenhanceEffect extends AudioEffect {
   /// Default value for [enhance].
   static const double enhanceDefault = 1.0;
 
@@ -11071,7 +11686,9 @@ final class DialoguenhanceSettings {
   /// Maximum value for [voice].
   static const double voiceMax = 32.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set dialogue enhance factor
@@ -11083,24 +11700,29 @@ final class DialoguenhanceSettings {
   /// set voice detection factor
   final double voice;
 
-  /// Creates an [DialoguenhanceSettings] with the given parameter values.
+  /// Creates an [DialoguenhanceEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const DialoguenhanceSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const DialoguenhanceEffect({
+    this.enabled = true,
     this.enhance = 1.0,
     this.original = 1.0,
     this.voice = 2.0,
   });
 
-  /// Returns a copy of this [DialoguenhanceSettings] with the given fields replaced.
-  DialoguenhanceSettings copyWith({
+  @override
+  String get filterName => 'dialoguenhance';
+
+  @override
+  AudioFilter get filter => AudioFilter.dialoguenhance;
+
+  /// Returns a copy of this [DialoguenhanceEffect] with the given fields replaced.
+  DialoguenhanceEffect copyWith({
     bool? enabled,
     double? enhance,
     double? original,
     double? voice,
-  }) => DialoguenhanceSettings(
+  }) => DialoguenhanceEffect(
     enabled: enabled ?? this.enabled,
     enhance: enhance ?? this.enhance,
     original: original ?? this.original,
@@ -11110,7 +11732,7 @@ final class DialoguenhanceSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is DialoguenhanceSettings &&
+      (other is DialoguenhanceEffect &&
           other.enabled == enabled &&
           other.enhance == enhance &&
           other.original == original &&
@@ -11121,10 +11743,11 @@ final class DialoguenhanceSettings {
 
   @override
   String toString() =>
-      'DialoguenhanceSettings(enabled: $enabled, enhance: $enhance, original: $original, voice: $voice)';
+      'DialoguenhanceEffect(enabled: $enabled, enhance: $enhance, original: $original, voice: $voice)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(enhance >= enhanceMin, 'dialoguenhance.enhance must be >= 0');
     assert(enhance <= enhanceMax, 'dialoguenhance.enhance must be <= 3');
@@ -11144,7 +11767,8 @@ final class DialoguenhanceSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(DialoguenhanceSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant DialoguenhanceEffect prev) {
     final out = <(String, String)>[];
     if (enhance != prev.enhance) {
       out.add(('enhance', _wireDouble(enhance)));
@@ -11171,7 +11795,7 @@ final class DialoguenhanceSettings {
 ///
 /// Parameters:
 /// - [length]: Set window length in seconds used to split audio into segments of equal length. Default is 3 seconds. (range .01..10, default 3)
-final class DrmeterSettings {
+final class DrmeterEffect extends AudioEffect {
   /// Default value for [length].
   static const double lengthDefault = 3.0;
 
@@ -11181,20 +11805,27 @@ final class DrmeterSettings {
   /// Maximum value for [length].
   static const double lengthMax = 10.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set the window length
   final double length;
 
-  /// Creates an [DrmeterSettings] with the given parameter values.
+  /// Creates an [DrmeterEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const DrmeterSettings({this.enabled = false, this.length = 3.0});
+  /// Each parameter defaults to its ffmpeg default.
+  const DrmeterEffect({this.enabled = true, this.length = 3.0});
 
-  /// Returns a copy of this [DrmeterSettings] with the given fields replaced.
-  DrmeterSettings copyWith({bool? enabled, double? length}) => DrmeterSettings(
+  @override
+  String get filterName => 'drmeter';
+
+  @override
+  AudioFilter get filter => AudioFilter.drmeter;
+
+  /// Returns a copy of this [DrmeterEffect] with the given fields replaced.
+  DrmeterEffect copyWith({bool? enabled, double? length}) => DrmeterEffect(
     enabled: enabled ?? this.enabled,
     length: length ?? this.length,
   );
@@ -11202,7 +11833,7 @@ final class DrmeterSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is DrmeterSettings &&
+      (other is DrmeterEffect &&
           other.enabled == enabled &&
           other.length == length);
 
@@ -11210,10 +11841,11 @@ final class DrmeterSettings {
   int get hashCode => Object.hash(enabled, length);
 
   @override
-  String toString() => 'DrmeterSettings(enabled: $enabled, length: $length)';
+  String toString() => 'DrmeterEffect(enabled: $enabled, length: $length)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(length >= lengthMin, 'drmeter.length must be >= .01');
     assert(length <= lengthMax, 'drmeter.length must be <= 10');
@@ -11266,7 +11898,7 @@ final class DrmeterSettings {
 /// - [targetrms]: Set the target RMS. In range from 0.0 to 1.0. Default is 0.0 - disabled. By default, the Dynamic Audio Normalizer performs "peak" normalization. This means that the maximum local gain factor for each frame is defined (only) by the frame's highest magnitude sample. This way, the samples can be amplified as much as possible without exceeding the maximum signal level, i.e. without clipping. Optionally, however, the Dynamic Audio Normalizer can also take into account the frame's root mean square, abbreviated RMS. In electrical engineering, the RMS is commonly used to determine the power of a time-varying signal. It is therefore considered that the RMS is a better approximation of the "perceived loudness" than just looking at the signal's peak magnitude. Consequently, by adjusting all frames to a constant RMS value, a uniform "perceived loudness" can be established. If a target RMS value has been specified, a frame's local gain factor is defined as the factor that would result in exactly that RMS value. Note, however, that the maximum local gain factor is still restricted by the frame's highest magnitude sample, in order to prevent clipping. (range 0.0..1.0, default 0.0, runtime-tunable)
 /// - [threshold]: Set the target threshold value. This specifies the lowest permissible magnitude level for the audio input which will be normalized. If input frame volume is above this value frame will be normalized. Otherwise frame may not be normalized at all. The default value is set to 0, which means all input frames will be normalized. This option is mostly useful if digital noise is not wanted to be amplified. (range 0.0..1.0, default 0.0, runtime-tunable)
 /// - [v]: Specify the peak mapping curve expression which is going to be used when calculating gain applied to frames. The max output frame gain will still be limited by other options mentioned previously for this filter.  The expression can contain the following constants: (default "", runtime-tunable)
-final class DynaudnormSettings {
+final class DynaudnormEffect extends AudioEffect {
   /// Default value for [compress].
   static const double compressDefault = 0.0;
 
@@ -11411,7 +12043,9 @@ final class DynaudnormSettings {
   /// Maximum value for [threshold].
   static const double thresholdMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set alternative boundary mode
@@ -11492,12 +12126,11 @@ final class DynaudnormSettings {
   /// set the custom peak mapping curve
   final String v;
 
-  /// Creates an [DynaudnormSettings] with the given parameter values.
+  /// Creates an [DynaudnormEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const DynaudnormSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const DynaudnormEffect({
+    this.enabled = true,
     this.altboundary = false,
     this.b = false,
     this.c = false,
@@ -11526,8 +12159,14 @@ final class DynaudnormSettings {
     this.v = '',
   });
 
-  /// Returns a copy of this [DynaudnormSettings] with the given fields replaced.
-  DynaudnormSettings copyWith({
+  @override
+  String get filterName => 'dynaudnorm';
+
+  @override
+  AudioFilter get filter => AudioFilter.dynaudnorm;
+
+  /// Returns a copy of this [DynaudnormEffect] with the given fields replaced.
+  DynaudnormEffect copyWith({
     bool? enabled,
     bool? altboundary,
     bool? b,
@@ -11555,7 +12194,7 @@ final class DynaudnormSettings {
     double? targetrms,
     double? threshold,
     String? v,
-  }) => DynaudnormSettings(
+  }) => DynaudnormEffect(
     enabled: enabled ?? this.enabled,
     altboundary: altboundary ?? this.altboundary,
     b: b ?? this.b,
@@ -11588,7 +12227,7 @@ final class DynaudnormSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is DynaudnormSettings &&
+      (other is DynaudnormEffect &&
           other.enabled == enabled &&
           other.altboundary == altboundary &&
           other.b == b &&
@@ -11650,10 +12289,11 @@ final class DynaudnormSettings {
 
   @override
   String toString() =>
-      'DynaudnormSettings(enabled: $enabled, altboundary: $altboundary, b: $b, c: $c, channels: $channels, compress: $compress, correctdc: $correctdc, coupling: $coupling, curve: $curve, f: $f, framelen: $framelen, g: $g, gausssize: $gausssize, h: $h, m: $m, maxgain: $maxgain, n: $n, o: $o, overlap: $overlap, p: $p, peak: $peak, r: $r, s: $s, t: $t, targetrms: $targetrms, threshold: $threshold, v: $v)';
+      'DynaudnormEffect(enabled: $enabled, altboundary: $altboundary, b: $b, c: $c, channels: $channels, compress: $compress, correctdc: $correctdc, coupling: $coupling, curve: $curve, f: $f, framelen: $framelen, g: $g, gausssize: $gausssize, h: $h, m: $m, maxgain: $maxgain, n: $n, o: $o, overlap: $overlap, p: $p, peak: $peak, r: $r, s: $s, t: $t, targetrms: $targetrms, threshold: $threshold, v: $v)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(compress >= compressMin, 'dynaudnorm.compress must be >= 0.0');
     assert(compress <= compressMax, 'dynaudnorm.compress must be <= 30.0');
@@ -11723,7 +12363,8 @@ final class DynaudnormSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(DynaudnormSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant DynaudnormEffect prev) {
     final out = <(String, String)>[];
     if (altboundary != prev.altboundary) {
       out.add(('altboundary', (altboundary ? '1' : '0')));
@@ -11817,33 +12458,41 @@ final class DynaudnormSettings {
 /// the listener (standard for speakers).
 ///
 /// Ported from SoX.
-final class EarwaxSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class EarwaxEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
-  /// Creates an [EarwaxSettings] with the given parameter values.
+  /// Creates an [EarwaxEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const EarwaxSettings({this.enabled = false});
+  /// Each parameter defaults to its ffmpeg default.
+  const EarwaxEffect({this.enabled = true});
 
-  /// Returns a copy of this [EarwaxSettings] with the given fields replaced.
-  EarwaxSettings copyWith({bool? enabled}) =>
-      EarwaxSettings(enabled: enabled ?? this.enabled);
+  @override
+  String get filterName => 'earwax';
+
+  @override
+  AudioFilter get filter => AudioFilter.earwax;
+
+  /// Returns a copy of this [EarwaxEffect] with the given fields replaced.
+  EarwaxEffect copyWith({bool? enabled}) =>
+      EarwaxEffect(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is EarwaxSettings && other.enabled == enabled);
+      (other is EarwaxEffect && other.enabled == enabled);
 
   @override
   int get hashCode => enabled.hashCode;
 
   @override
-  String toString() => 'EarwaxSettings(enabled: $enabled)';
+  String toString() => 'EarwaxEffect(enabled: $enabled)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     return 'lavfi-earwax';
   }
@@ -11889,7 +12538,7 @@ final class EarwaxSettings {
 /// - [size]: Set the video size. This option is for video only. For the syntax of this option, check the video size syntax. Default and minimum resolution is `640x480`. (range 0..0, default "640x480")
 /// - [target]: set a specific target level in LUFS (-23 to 0) (range -23..0, default -23)
 /// - [video]: Activate the video output. The audio stream is passed unchanged whether this option is set or no. The video stream will be the first output stream if activated. Default is `0`. (range 0..1, default 0)
-final class Ebur128Settings {
+final class Ebur128Effect extends AudioEffect {
   /// Default value for [meter].
   static const int meterDefault = 9;
 
@@ -11917,7 +12566,9 @@ final class Ebur128Settings {
   /// Maximum value for [target].
   static const int targetMax = 0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// treat mono input files as dual-mono
@@ -11953,12 +12604,11 @@ final class Ebur128Settings {
   /// set video output
   final bool video;
 
-  /// Creates an [Ebur128Settings] with the given parameter values.
+  /// Creates an [Ebur128Effect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const Ebur128Settings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const Ebur128Effect({
+    this.enabled = true,
     this.dualmono = false,
     this.framelog,
     this.gauge = Ebur128Gaugetype.momentary,
@@ -11972,8 +12622,14 @@ final class Ebur128Settings {
     this.video = false,
   });
 
-  /// Returns a copy of this [Ebur128Settings] with the given fields replaced.
-  Ebur128Settings copyWith({
+  @override
+  String get filterName => 'ebur128';
+
+  @override
+  AudioFilter get filter => AudioFilter.ebur128;
+
+  /// Returns a copy of this [Ebur128Effect] with the given fields replaced.
+  Ebur128Effect copyWith({
     bool? enabled,
     bool? dualmono,
     Object? framelog = unset,
@@ -11986,7 +12642,7 @@ final class Ebur128Settings {
     String? size,
     int? target,
     bool? video,
-  }) => Ebur128Settings(
+  }) => Ebur128Effect(
     enabled: enabled ?? this.enabled,
     dualmono: dualmono ?? this.dualmono,
     framelog: identical(framelog, unset)
@@ -12006,7 +12662,7 @@ final class Ebur128Settings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Ebur128Settings &&
+      (other is Ebur128Effect &&
           other.enabled == enabled &&
           other.dualmono == dualmono &&
           other.framelog == framelog &&
@@ -12038,10 +12694,11 @@ final class Ebur128Settings {
 
   @override
   String toString() =>
-      'Ebur128Settings(enabled: $enabled, dualmono: $dualmono, framelog: $framelog, gauge: $gauge, metadata: $metadata, meter: $meter, panlaw: $panlaw, peak: $peak, scale: $scale, size: $size, target: $target, video: $video)';
+      'Ebur128Effect(enabled: $enabled, dualmono: $dualmono, framelog: $framelog, gauge: $gauge, metadata: $metadata, meter: $meter, panlaw: $panlaw, peak: $peak, scale: $scale, size: $size, target: $target, video: $video)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(meter >= meterMin, 'ebur128.meter must be >= 9');
     assert(meter <= meterMax, 'ebur128.meter must be <= 18');
@@ -12100,8 +12757,8 @@ final class Ebur128Settings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Specify the band-width of a filter in width_type units. (range 0..99999, default 1.0, runtime-tunable)
 /// - [width]: Specify the band-width of a filter in width_type units. (range 0..99999, default 1.0, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class EqualizerSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class EqualizerEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -12192,7 +12849,9 @@ final class EqualizerSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -12253,14 +12912,13 @@ final class EqualizerSettings {
   final double width;
 
   /// set filter-width type
-  final EqualizerWidthType width_type;
+  final EqualizerWidthType widthType;
 
-  /// Creates an [EqualizerSettings] with the given parameter values.
+  /// Creates an [EqualizerEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const EqualizerSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const EqualizerEffect({
+    this.enabled = true,
     this.a = EqualizerTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -12280,11 +12938,17 @@ final class EqualizerSettings {
     this.transform = EqualizerTransformType.di,
     this.w = 1.0,
     this.width = 1.0,
-    this.width_type = EqualizerWidthType.q,
+    this.widthType = EqualizerWidthType.q,
   });
 
-  /// Returns a copy of this [EqualizerSettings] with the given fields replaced.
-  EqualizerSettings copyWith({
+  @override
+  String get filterName => 'equalizer';
+
+  @override
+  AudioFilter get filter => AudioFilter.equalizer;
+
+  /// Returns a copy of this [EqualizerEffect] with the given fields replaced.
+  EqualizerEffect copyWith({
     bool? enabled,
     EqualizerTransformType? a,
     int? b,
@@ -12305,8 +12969,8 @@ final class EqualizerSettings {
     EqualizerTransformType? transform,
     double? w,
     double? width,
-    EqualizerWidthType? width_type,
-  }) => EqualizerSettings(
+    EqualizerWidthType? widthType,
+  }) => EqualizerEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -12327,13 +12991,13 @@ final class EqualizerSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is EqualizerSettings &&
+      (other is EqualizerEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -12354,7 +13018,7 @@ final class EqualizerSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -12378,15 +13042,16 @@ final class EqualizerSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'EqualizerSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'EqualizerEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'equalizer.b must be >= 0');
     assert(b <= bMax, 'equalizer.b must be <= 32768');
@@ -12430,8 +13095,8 @@ final class EqualizerSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 1.0) parts.add('w=' + _wireDouble(w));
     if (width != 1.0) parts.add('width=' + _wireDouble(width));
-    if (width_type != EqualizerWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != EqualizerWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty
         ? 'lavfi-equalizer'
         : 'lavfi-equalizer=' + parts.join(':');
@@ -12440,7 +13105,8 @@ final class EqualizerSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(EqualizerSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant EqualizerEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -12487,8 +13153,8 @@ final class EqualizerSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -12504,7 +13170,7 @@ final class EqualizerSettings {
 /// Parameters:
 /// - [c]: Enable clipping. By default is enabled. (range 0..1, default 1, runtime-tunable)
 /// - [m]: Sets the difference coefficient (default: 2.5). 0.0 means mono sound (average of both channels), with 1.0 sound will be unchanged, with -1.0 left and right channels will be swapped. (range -10..10, default 2.5, runtime-tunable)
-final class ExtrastereoSettings {
+final class ExtrastereoEffect extends AudioEffect {
   /// Default value for [m].
   static const double mDefault = 2.5;
 
@@ -12514,7 +13180,9 @@ final class ExtrastereoSettings {
   /// Maximum value for [m].
   static const double mMax = 10.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// enable clipping
@@ -12523,19 +13191,20 @@ final class ExtrastereoSettings {
   /// set the difference coefficient
   final double m;
 
-  /// Creates an [ExtrastereoSettings] with the given parameter values.
+  /// Creates an [ExtrastereoEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const ExtrastereoSettings({
-    this.enabled = false,
-    this.c = true,
-    this.m = 2.5,
-  });
+  /// Each parameter defaults to its ffmpeg default.
+  const ExtrastereoEffect({this.enabled = true, this.c = true, this.m = 2.5});
 
-  /// Returns a copy of this [ExtrastereoSettings] with the given fields replaced.
-  ExtrastereoSettings copyWith({bool? enabled, bool? c, double? m}) =>
-      ExtrastereoSettings(
+  @override
+  String get filterName => 'extrastereo';
+
+  @override
+  AudioFilter get filter => AudioFilter.extrastereo;
+
+  /// Returns a copy of this [ExtrastereoEffect] with the given fields replaced.
+  ExtrastereoEffect copyWith({bool? enabled, bool? c, double? m}) =>
+      ExtrastereoEffect(
         enabled: enabled ?? this.enabled,
         c: c ?? this.c,
         m: m ?? this.m,
@@ -12544,7 +13213,7 @@ final class ExtrastereoSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ExtrastereoSettings &&
+      (other is ExtrastereoEffect &&
           other.enabled == enabled &&
           other.c == c &&
           other.m == m);
@@ -12553,10 +13222,11 @@ final class ExtrastereoSettings {
   int get hashCode => Object.hash(enabled, c, m);
 
   @override
-  String toString() => 'ExtrastereoSettings(enabled: $enabled, c: $c, m: $m)';
+  String toString() => 'ExtrastereoEffect(enabled: $enabled, c: $c, m: $m)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(m >= mMin, 'extrastereo.m must be >= -10');
     assert(m <= mMax, 'extrastereo.m must be <= 10');
@@ -12571,7 +13241,8 @@ final class ExtrastereoSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(ExtrastereoSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant ExtrastereoEffect prev) {
     final out = <(String, String)>[];
     if (c != prev.c) {
       out.add(('c', (c ? '1' : '0')));
@@ -12597,13 +13268,13 @@ final class ExtrastereoSettings {
 /// - [fft2]: Enable 2-channel convolution using complex FFT. This improves speed significantly. Default is disabled. (range 0..1, default 0)
 /// - [fixed]: If enabled, use fixed number of audio samples. This improves speed when filtering with large delay. Default is disabled. (range 0..1, default 0)
 /// - [gain]: Set gain curve equation (in dB). The expression can contain variables: (range 0..0, default "gain_interpolate(f)", runtime-tunable)
-/// - [gain_entry]: Set gain entry for gain_interpolate function. The expression can contain functions: (range 0..0, default "", runtime-tunable)
-/// - [min_phase]: Enable minimum phase impulse response. Default is disabled. (range 0..1, default 0)
+/// - [gainEntry]: Set gain entry for gain_interpolate function. The expression can contain functions: (range 0..0, default "", runtime-tunable)
+/// - [minPhase]: Enable minimum phase impulse response. Default is disabled. (range 0..1, default 0)
 /// - [multi]: Enable multichannels evaluation on gain. Default is disabled. (range 0..1, default 0)
 /// - [scale]: Set scale used by gain. Acceptable values are: (range 0..3, default SCALE_LINLOG)
 /// - [wfunc]: Set window function. Acceptable values are: (range 0..9, default WFUNC_HANN)
-/// - [zero_phase]: Enable zero phase mode by subtracting timestamp to compensate delay. Default is disabled. (range 0..1, default 0)
-final class FirequalizerSettings {
+/// - [zeroPhase]: Enable zero phase mode by subtracting timestamp to compensate delay. Default is disabled. (range 0..1, default 0)
+final class FirequalizerEffect extends AudioEffect {
   /// Default value for [accuracy].
   static const double accuracyDefault = 5.0;
 
@@ -12622,7 +13293,9 @@ final class FirequalizerSettings {
   /// Maximum value for [delay].
   static const double delayMax = 1e10;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set accuracy
@@ -12647,10 +13320,10 @@ final class FirequalizerSettings {
   final String gain;
 
   /// set gain entry
-  final String gain_entry;
+  final String gainEntry;
 
   /// set minimum phase mode
-  final bool min_phase;
+  final bool minPhase;
 
   /// set multi channels mode
   final bool multi;
@@ -12662,14 +13335,13 @@ final class FirequalizerSettings {
   final FirequalizerWfunc wfunc;
 
   /// set zero phase mode
-  final bool zero_phase;
+  final bool zeroPhase;
 
-  /// Creates an [FirequalizerSettings] with the given parameter values.
+  /// Creates an [FirequalizerEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const FirequalizerSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const FirequalizerEffect({
+    this.enabled = true,
     this.accuracy = 5.0,
     this.delay = 0.01,
     this.dumpfile = '',
@@ -12677,16 +13349,22 @@ final class FirequalizerSettings {
     this.fft2 = false,
     this.fixed = false,
     this.gain = 'gain_interpolate(f)',
-    this.gain_entry = '',
-    this.min_phase = false,
+    this.gainEntry = '',
+    this.minPhase = false,
     this.multi = false,
     this.scale = FirequalizerScale.linlog,
     this.wfunc = FirequalizerWfunc.hann,
-    this.zero_phase = false,
+    this.zeroPhase = false,
   });
 
-  /// Returns a copy of this [FirequalizerSettings] with the given fields replaced.
-  FirequalizerSettings copyWith({
+  @override
+  String get filterName => 'firequalizer';
+
+  @override
+  AudioFilter get filter => AudioFilter.firequalizer;
+
+  /// Returns a copy of this [FirequalizerEffect] with the given fields replaced.
+  FirequalizerEffect copyWith({
     bool? enabled,
     double? accuracy,
     double? delay,
@@ -12695,13 +13373,13 @@ final class FirequalizerSettings {
     bool? fft2,
     bool? fixed,
     String? gain,
-    String? gain_entry,
-    bool? min_phase,
+    String? gainEntry,
+    bool? minPhase,
     bool? multi,
     FirequalizerScale? scale,
     FirequalizerWfunc? wfunc,
-    bool? zero_phase,
-  }) => FirequalizerSettings(
+    bool? zeroPhase,
+  }) => FirequalizerEffect(
     enabled: enabled ?? this.enabled,
     accuracy: accuracy ?? this.accuracy,
     delay: delay ?? this.delay,
@@ -12710,18 +13388,18 @@ final class FirequalizerSettings {
     fft2: fft2 ?? this.fft2,
     fixed: fixed ?? this.fixed,
     gain: gain ?? this.gain,
-    gain_entry: gain_entry ?? this.gain_entry,
-    min_phase: min_phase ?? this.min_phase,
+    gainEntry: gainEntry ?? this.gainEntry,
+    minPhase: minPhase ?? this.minPhase,
     multi: multi ?? this.multi,
     scale: scale ?? this.scale,
     wfunc: wfunc ?? this.wfunc,
-    zero_phase: zero_phase ?? this.zero_phase,
+    zeroPhase: zeroPhase ?? this.zeroPhase,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FirequalizerSettings &&
+      (other is FirequalizerEffect &&
           other.enabled == enabled &&
           other.accuracy == accuracy &&
           other.delay == delay &&
@@ -12730,12 +13408,12 @@ final class FirequalizerSettings {
           other.fft2 == fft2 &&
           other.fixed == fixed &&
           other.gain == gain &&
-          other.gain_entry == gain_entry &&
-          other.min_phase == min_phase &&
+          other.gainEntry == gainEntry &&
+          other.minPhase == minPhase &&
           other.multi == multi &&
           other.scale == scale &&
           other.wfunc == wfunc &&
-          other.zero_phase == zero_phase);
+          other.zeroPhase == zeroPhase);
 
   @override
   int get hashCode => Object.hash(
@@ -12747,20 +13425,21 @@ final class FirequalizerSettings {
     fft2,
     fixed,
     gain,
-    gain_entry,
-    min_phase,
+    gainEntry,
+    minPhase,
     multi,
     scale,
     wfunc,
-    zero_phase,
+    zeroPhase,
   );
 
   @override
   String toString() =>
-      'FirequalizerSettings(enabled: $enabled, accuracy: $accuracy, delay: $delay, dumpfile: $dumpfile, dumpscale: $dumpscale, fft2: $fft2, fixed: $fixed, gain: $gain, gain_entry: $gain_entry, min_phase: $min_phase, multi: $multi, scale: $scale, wfunc: $wfunc, zero_phase: $zero_phase)';
+      'FirequalizerEffect(enabled: $enabled, accuracy: $accuracy, delay: $delay, dumpfile: $dumpfile, dumpscale: $dumpscale, fft2: $fft2, fixed: $fixed, gain: $gain, gainEntry: $gainEntry, minPhase: $minPhase, multi: $multi, scale: $scale, wfunc: $wfunc, zeroPhase: $zeroPhase)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(accuracy >= accuracyMin, 'firequalizer.accuracy must be >= 0.0');
     assert(accuracy <= accuracyMax, 'firequalizer.accuracy must be <= 1e10');
@@ -12775,13 +13454,12 @@ final class FirequalizerSettings {
     if (fft2 != false) parts.add('fft2=' + (fft2 ? '1' : '0'));
     if (fixed != false) parts.add('fixed=' + (fixed ? '1' : '0'));
     if (gain != 'gain_interpolate(f)') parts.add('gain=' + '[' + gain + ']');
-    if (gain_entry != '') parts.add('gain_entry=' + '[' + gain_entry + ']');
-    if (min_phase != false) parts.add('min_phase=' + (min_phase ? '1' : '0'));
+    if (gainEntry != '') parts.add('gain_entry=' + '[' + gainEntry + ']');
+    if (minPhase != false) parts.add('min_phase=' + (minPhase ? '1' : '0'));
     if (multi != false) parts.add('multi=' + (multi ? '1' : '0'));
     if (scale != FirequalizerScale.linlog) parts.add('scale=' + scale.mpvValue);
     if (wfunc != FirequalizerWfunc.hann) parts.add('wfunc=' + wfunc.mpvValue);
-    if (zero_phase != false)
-      parts.add('zero_phase=' + (zero_phase ? '1' : '0'));
+    if (zeroPhase != false) parts.add('zero_phase=' + (zeroPhase ? '1' : '0'));
     return parts.isEmpty
         ? 'lavfi-firequalizer'
         : 'lavfi-firequalizer=' + parts.join(':');
@@ -12790,7 +13468,8 @@ final class FirequalizerSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(FirequalizerSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant FirequalizerEffect prev) {
     final out = <(String, String)>[];
     if (accuracy != prev.accuracy) return null;
     if (delay != prev.delay) return null;
@@ -12801,14 +13480,14 @@ final class FirequalizerSettings {
     if (gain != prev.gain) {
       out.add(('gain', gain));
     }
-    if (gain_entry != prev.gain_entry) {
-      out.add(('gain_entry', gain_entry));
+    if (gainEntry != prev.gainEntry) {
+      out.add(('gain_entry', gainEntry));
     }
-    if (min_phase != prev.min_phase) return null;
+    if (minPhase != prev.minPhase) return null;
     if (multi != prev.multi) return null;
     if (scale != prev.scale) return null;
     if (wfunc != prev.wfunc) return null;
-    if (zero_phase != prev.zero_phase) return null;
+    if (zeroPhase != prev.zeroPhase) return null;
     return out;
   }
 }
@@ -12828,7 +13507,7 @@ final class FirequalizerSettings {
 /// - [shape]: Set swept wave shape, can be `triangular` or `sinusoidal`. Default value is `sinusoidal`. (default WAVE_SIN)
 /// - [speed]: Set sweeps per second (Hz). Range from 0.1 to 10. Default value is 0.5. (range 0.1..10, default 0.5)
 /// - [width]: Set percentage of delayed signal mixed with original. Range from 0 to 100. Default value is 71. (range 0..100, default 71)
-final class FlangerSettings {
+final class FlangerEffect extends AudioEffect {
   /// Default value for [delay].
   static const double delayDefault = 0.0;
 
@@ -12883,7 +13562,9 @@ final class FlangerSettings {
   /// Maximum value for [width].
   static const double widthMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// base delay in milliseconds
@@ -12910,12 +13591,11 @@ final class FlangerSettings {
   /// percentage of delayed signal mixed with original
   final double width;
 
-  /// Creates an [FlangerSettings] with the given parameter values.
+  /// Creates an [FlangerEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const FlangerSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const FlangerEffect({
+    this.enabled = true,
     this.delay = 0.0,
     this.depth = 2.0,
     this.interp = FlangerItype.linear,
@@ -12926,8 +13606,14 @@ final class FlangerSettings {
     this.width = 71.0,
   });
 
-  /// Returns a copy of this [FlangerSettings] with the given fields replaced.
-  FlangerSettings copyWith({
+  @override
+  String get filterName => 'flanger';
+
+  @override
+  AudioFilter get filter => AudioFilter.flanger;
+
+  /// Returns a copy of this [FlangerEffect] with the given fields replaced.
+  FlangerEffect copyWith({
     bool? enabled,
     double? delay,
     double? depth,
@@ -12937,7 +13623,7 @@ final class FlangerSettings {
     FlangerType? shape,
     double? speed,
     double? width,
-  }) => FlangerSettings(
+  }) => FlangerEffect(
     enabled: enabled ?? this.enabled,
     delay: delay ?? this.delay,
     depth: depth ?? this.depth,
@@ -12952,7 +13638,7 @@ final class FlangerSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FlangerSettings &&
+      (other is FlangerEffect &&
           other.enabled == enabled &&
           other.delay == delay &&
           other.depth == depth &&
@@ -12978,10 +13664,11 @@ final class FlangerSettings {
 
   @override
   String toString() =>
-      'FlangerSettings(enabled: $enabled, delay: $delay, depth: $depth, interp: $interp, phase: $phase, regen: $regen, shape: $shape, speed: $speed, width: $width)';
+      'FlangerEffect(enabled: $enabled, delay: $delay, depth: $depth, interp: $interp, phase: $phase, regen: $regen, shape: $shape, speed: $speed, width: $width)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(delay >= delayMin, 'flanger.delay must be >= 0');
     assert(delay <= delayMax, 'flanger.delay must be <= 30');
@@ -13019,286 +13706,286 @@ final class FlangerSettings {
 /// The filter accepts the following options:
 ///
 /// Parameters:
-/// - [left_balance]: set left balance (range -1..1, default -1.0)
-/// - [left_delay]: set left delay (range 0..40, default 2.05)
-/// - [left_gain]: set left gain (range 0.015625..64, default 1)
-/// - [left_phase]: set left phase (range 0..1, default 0)
-/// - [level_in]: Set input level. By default is `1`, or 0dB (range 0.015625..64, default 1)
-/// - [level_out]: Set output level. By default is `1`, or 0dB. (range 0.015625..64, default 1)
-/// - [middle_phase]: set middle phase (range 0..1, default 0)
-/// - [middle_source]: Set kind of middle source. Can be one of the following: (range 0..3, default 2)
-/// - [right_balance]: set right balance (range -1..1, default 1)
-/// - [right_delay]: set right delay (range 0..40, default 2.12)
-/// - [right_gain]: set right gain (range 0.015625..64, default 1)
-/// - [right_phase]: set right phase (range 0..1, default 1)
-/// - [side_gain]: Set gain applied to side part of signal. By default is `1`. (range 0.015625..64, default 1)
-final class HaasSettings {
-  /// Default value for [left_balance].
-  static const double left_balanceDefault = -1.0;
+/// - [leftBalance]: set left balance (range -1..1, default -1.0)
+/// - [leftDelay]: set left delay (range 0..40, default 2.05)
+/// - [leftGain]: set left gain (range 0.015625..64, default 1)
+/// - [leftPhase]: set left phase (range 0..1, default 0)
+/// - [levelIn]: Set input level. By default is `1`, or 0dB (range 0.015625..64, default 1)
+/// - [levelOut]: Set output level. By default is `1`, or 0dB. (range 0.015625..64, default 1)
+/// - [middlePhase]: set middle phase (range 0..1, default 0)
+/// - [middleSource]: Set kind of middle source. Can be one of the following: (range 0..3, default 2)
+/// - [rightBalance]: set right balance (range -1..1, default 1)
+/// - [rightDelay]: set right delay (range 0..40, default 2.12)
+/// - [rightGain]: set right gain (range 0.015625..64, default 1)
+/// - [rightPhase]: set right phase (range 0..1, default 1)
+/// - [sideGain]: Set gain applied to side part of signal. By default is `1`. (range 0.015625..64, default 1)
+final class HaasEffect extends AudioEffect {
+  /// Default value for [leftBalance].
+  static const double leftBalanceDefault = -1.0;
 
-  /// Minimum value for [left_balance].
-  static const double left_balanceMin = -1.0;
+  /// Minimum value for [leftBalance].
+  static const double leftBalanceMin = -1.0;
 
-  /// Maximum value for [left_balance].
-  static const double left_balanceMax = 1.0;
+  /// Maximum value for [leftBalance].
+  static const double leftBalanceMax = 1.0;
 
-  /// Default value for [left_delay].
-  static const double left_delayDefault = 2.05;
+  /// Default value for [leftDelay].
+  static const double leftDelayDefault = 2.05;
 
-  /// Minimum value for [left_delay].
-  static const double left_delayMin = 0.0;
+  /// Minimum value for [leftDelay].
+  static const double leftDelayMin = 0.0;
 
-  /// Maximum value for [left_delay].
-  static const double left_delayMax = 40.0;
+  /// Maximum value for [leftDelay].
+  static const double leftDelayMax = 40.0;
 
-  /// Default value for [left_gain].
-  static const double left_gainDefault = 1.0;
+  /// Default value for [leftGain].
+  static const double leftGainDefault = 1.0;
 
-  /// Minimum value for [left_gain].
-  static const double left_gainMin = 0.015625;
+  /// Minimum value for [leftGain].
+  static const double leftGainMin = 0.015625;
 
-  /// Maximum value for [left_gain].
-  static const double left_gainMax = 64.0;
+  /// Maximum value for [leftGain].
+  static const double leftGainMax = 64.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.015625;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.015625;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
-  /// Default value for [right_balance].
-  static const double right_balanceDefault = 1.0;
+  /// Default value for [rightBalance].
+  static const double rightBalanceDefault = 1.0;
 
-  /// Minimum value for [right_balance].
-  static const double right_balanceMin = -1.0;
+  /// Minimum value for [rightBalance].
+  static const double rightBalanceMin = -1.0;
 
-  /// Maximum value for [right_balance].
-  static const double right_balanceMax = 1.0;
+  /// Maximum value for [rightBalance].
+  static const double rightBalanceMax = 1.0;
 
-  /// Default value for [right_delay].
-  static const double right_delayDefault = 2.12;
+  /// Default value for [rightDelay].
+  static const double rightDelayDefault = 2.12;
 
-  /// Minimum value for [right_delay].
-  static const double right_delayMin = 0.0;
+  /// Minimum value for [rightDelay].
+  static const double rightDelayMin = 0.0;
 
-  /// Maximum value for [right_delay].
-  static const double right_delayMax = 40.0;
+  /// Maximum value for [rightDelay].
+  static const double rightDelayMax = 40.0;
 
-  /// Default value for [right_gain].
-  static const double right_gainDefault = 1.0;
+  /// Default value for [rightGain].
+  static const double rightGainDefault = 1.0;
 
-  /// Minimum value for [right_gain].
-  static const double right_gainMin = 0.015625;
+  /// Minimum value for [rightGain].
+  static const double rightGainMin = 0.015625;
 
-  /// Maximum value for [right_gain].
-  static const double right_gainMax = 64.0;
+  /// Maximum value for [rightGain].
+  static const double rightGainMax = 64.0;
 
-  /// Default value for [side_gain].
-  static const double side_gainDefault = 1.0;
+  /// Default value for [sideGain].
+  static const double sideGainDefault = 1.0;
 
-  /// Minimum value for [side_gain].
-  static const double side_gainMin = 0.015625;
+  /// Minimum value for [sideGain].
+  static const double sideGainMin = 0.015625;
 
-  /// Maximum value for [side_gain].
-  static const double side_gainMax = 64.0;
+  /// Maximum value for [sideGain].
+  static const double sideGainMax = 64.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set left balance
-  final double left_balance;
+  final double leftBalance;
 
   /// set left delay
-  final double left_delay;
+  final double leftDelay;
 
   /// set left gain
-  final double left_gain;
+  final double leftGain;
 
   /// set left phase
-  final bool left_phase;
+  final bool leftPhase;
 
   /// set level in
-  final double level_in;
+  final double levelIn;
 
   /// set level out
-  final double level_out;
+  final double levelOut;
 
   /// set middle phase
-  final bool middle_phase;
+  final bool middlePhase;
 
   /// set middle source
-  final HaasSource middle_source;
+  final HaasSource middleSource;
 
   /// set right balance
-  final double right_balance;
+  final double rightBalance;
 
   /// set right delay
-  final double right_delay;
+  final double rightDelay;
 
   /// set right gain
-  final double right_gain;
+  final double rightGain;
 
   /// set right phase
-  final bool right_phase;
+  final bool rightPhase;
 
   /// set side gain
-  final double side_gain;
+  final double sideGain;
 
-  /// Creates an [HaasSettings] with the given parameter values.
+  /// Creates an [HaasEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const HaasSettings({
-    this.enabled = false,
-    this.left_balance = -1.0,
-    this.left_delay = 2.05,
-    this.left_gain = 1.0,
-    this.left_phase = false,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
-    this.middle_phase = false,
-    this.middle_source = HaasSource.mid,
-    this.right_balance = 1.0,
-    this.right_delay = 2.12,
-    this.right_gain = 1.0,
-    this.right_phase = true,
-    this.side_gain = 1.0,
+  /// Each parameter defaults to its ffmpeg default.
+  const HaasEffect({
+    this.enabled = true,
+    this.leftBalance = -1.0,
+    this.leftDelay = 2.05,
+    this.leftGain = 1.0,
+    this.leftPhase = false,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
+    this.middlePhase = false,
+    this.middleSource = HaasSource.mid,
+    this.rightBalance = 1.0,
+    this.rightDelay = 2.12,
+    this.rightGain = 1.0,
+    this.rightPhase = true,
+    this.sideGain = 1.0,
   });
 
-  /// Returns a copy of this [HaasSettings] with the given fields replaced.
-  HaasSettings copyWith({
+  @override
+  String get filterName => 'haas';
+
+  @override
+  AudioFilter get filter => AudioFilter.haas;
+
+  /// Returns a copy of this [HaasEffect] with the given fields replaced.
+  HaasEffect copyWith({
     bool? enabled,
-    double? left_balance,
-    double? left_delay,
-    double? left_gain,
-    bool? left_phase,
-    double? level_in,
-    double? level_out,
-    bool? middle_phase,
-    HaasSource? middle_source,
-    double? right_balance,
-    double? right_delay,
-    double? right_gain,
-    bool? right_phase,
-    double? side_gain,
-  }) => HaasSettings(
+    double? leftBalance,
+    double? leftDelay,
+    double? leftGain,
+    bool? leftPhase,
+    double? levelIn,
+    double? levelOut,
+    bool? middlePhase,
+    HaasSource? middleSource,
+    double? rightBalance,
+    double? rightDelay,
+    double? rightGain,
+    bool? rightPhase,
+    double? sideGain,
+  }) => HaasEffect(
     enabled: enabled ?? this.enabled,
-    left_balance: left_balance ?? this.left_balance,
-    left_delay: left_delay ?? this.left_delay,
-    left_gain: left_gain ?? this.left_gain,
-    left_phase: left_phase ?? this.left_phase,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
-    middle_phase: middle_phase ?? this.middle_phase,
-    middle_source: middle_source ?? this.middle_source,
-    right_balance: right_balance ?? this.right_balance,
-    right_delay: right_delay ?? this.right_delay,
-    right_gain: right_gain ?? this.right_gain,
-    right_phase: right_phase ?? this.right_phase,
-    side_gain: side_gain ?? this.side_gain,
+    leftBalance: leftBalance ?? this.leftBalance,
+    leftDelay: leftDelay ?? this.leftDelay,
+    leftGain: leftGain ?? this.leftGain,
+    leftPhase: leftPhase ?? this.leftPhase,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
+    middlePhase: middlePhase ?? this.middlePhase,
+    middleSource: middleSource ?? this.middleSource,
+    rightBalance: rightBalance ?? this.rightBalance,
+    rightDelay: rightDelay ?? this.rightDelay,
+    rightGain: rightGain ?? this.rightGain,
+    rightPhase: rightPhase ?? this.rightPhase,
+    sideGain: sideGain ?? this.sideGain,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is HaasSettings &&
+      (other is HaasEffect &&
           other.enabled == enabled &&
-          other.left_balance == left_balance &&
-          other.left_delay == left_delay &&
-          other.left_gain == left_gain &&
-          other.left_phase == left_phase &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
-          other.middle_phase == middle_phase &&
-          other.middle_source == middle_source &&
-          other.right_balance == right_balance &&
-          other.right_delay == right_delay &&
-          other.right_gain == right_gain &&
-          other.right_phase == right_phase &&
-          other.side_gain == side_gain);
+          other.leftBalance == leftBalance &&
+          other.leftDelay == leftDelay &&
+          other.leftGain == leftGain &&
+          other.leftPhase == leftPhase &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
+          other.middlePhase == middlePhase &&
+          other.middleSource == middleSource &&
+          other.rightBalance == rightBalance &&
+          other.rightDelay == rightDelay &&
+          other.rightGain == rightGain &&
+          other.rightPhase == rightPhase &&
+          other.sideGain == sideGain);
 
   @override
   int get hashCode => Object.hash(
     enabled,
-    left_balance,
-    left_delay,
-    left_gain,
-    left_phase,
-    level_in,
-    level_out,
-    middle_phase,
-    middle_source,
-    right_balance,
-    right_delay,
-    right_gain,
-    right_phase,
-    side_gain,
+    leftBalance,
+    leftDelay,
+    leftGain,
+    leftPhase,
+    levelIn,
+    levelOut,
+    middlePhase,
+    middleSource,
+    rightBalance,
+    rightDelay,
+    rightGain,
+    rightPhase,
+    sideGain,
   );
 
   @override
   String toString() =>
-      'HaasSettings(enabled: $enabled, left_balance: $left_balance, left_delay: $left_delay, left_gain: $left_gain, left_phase: $left_phase, level_in: $level_in, level_out: $level_out, middle_phase: $middle_phase, middle_source: $middle_source, right_balance: $right_balance, right_delay: $right_delay, right_gain: $right_gain, right_phase: $right_phase, side_gain: $side_gain)';
+      'HaasEffect(enabled: $enabled, leftBalance: $leftBalance, leftDelay: $leftDelay, leftGain: $leftGain, leftPhase: $leftPhase, levelIn: $levelIn, levelOut: $levelOut, middlePhase: $middlePhase, middleSource: $middleSource, rightBalance: $rightBalance, rightDelay: $rightDelay, rightGain: $rightGain, rightPhase: $rightPhase, sideGain: $sideGain)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(left_balance >= left_balanceMin, 'haas.left_balance must be >= -1');
-    assert(left_balance <= left_balanceMax, 'haas.left_balance must be <= 1');
-    assert(left_delay >= left_delayMin, 'haas.left_delay must be >= 0');
-    assert(left_delay <= left_delayMax, 'haas.left_delay must be <= 40');
-    assert(left_gain >= left_gainMin, 'haas.left_gain must be >= 0.015625');
-    assert(left_gain <= left_gainMax, 'haas.left_gain must be <= 64');
-    assert(level_in >= level_inMin, 'haas.level_in must be >= 0.015625');
-    assert(level_in <= level_inMax, 'haas.level_in must be <= 64');
-    assert(level_out >= level_outMin, 'haas.level_out must be >= 0.015625');
-    assert(level_out <= level_outMax, 'haas.level_out must be <= 64');
-    assert(
-      right_balance >= right_balanceMin,
-      'haas.right_balance must be >= -1',
-    );
-    assert(
-      right_balance <= right_balanceMax,
-      'haas.right_balance must be <= 1',
-    );
-    assert(right_delay >= right_delayMin, 'haas.right_delay must be >= 0');
-    assert(right_delay <= right_delayMax, 'haas.right_delay must be <= 40');
-    assert(right_gain >= right_gainMin, 'haas.right_gain must be >= 0.015625');
-    assert(right_gain <= right_gainMax, 'haas.right_gain must be <= 64');
-    assert(side_gain >= side_gainMin, 'haas.side_gain must be >= 0.015625');
-    assert(side_gain <= side_gainMax, 'haas.side_gain must be <= 64');
+    assert(leftBalance >= leftBalanceMin, 'haas.left_balance must be >= -1');
+    assert(leftBalance <= leftBalanceMax, 'haas.left_balance must be <= 1');
+    assert(leftDelay >= leftDelayMin, 'haas.left_delay must be >= 0');
+    assert(leftDelay <= leftDelayMax, 'haas.left_delay must be <= 40');
+    assert(leftGain >= leftGainMin, 'haas.left_gain must be >= 0.015625');
+    assert(leftGain <= leftGainMax, 'haas.left_gain must be <= 64');
+    assert(levelIn >= levelInMin, 'haas.level_in must be >= 0.015625');
+    assert(levelIn <= levelInMax, 'haas.level_in must be <= 64');
+    assert(levelOut >= levelOutMin, 'haas.level_out must be >= 0.015625');
+    assert(levelOut <= levelOutMax, 'haas.level_out must be <= 64');
+    assert(rightBalance >= rightBalanceMin, 'haas.right_balance must be >= -1');
+    assert(rightBalance <= rightBalanceMax, 'haas.right_balance must be <= 1');
+    assert(rightDelay >= rightDelayMin, 'haas.right_delay must be >= 0');
+    assert(rightDelay <= rightDelayMax, 'haas.right_delay must be <= 40');
+    assert(rightGain >= rightGainMin, 'haas.right_gain must be >= 0.015625');
+    assert(rightGain <= rightGainMax, 'haas.right_gain must be <= 64');
+    assert(sideGain >= sideGainMin, 'haas.side_gain must be >= 0.015625');
+    assert(sideGain <= sideGainMax, 'haas.side_gain must be <= 64');
     final parts = <String>[];
-    if (left_balance != -1.0)
-      parts.add('left_balance=' + _wireDouble(left_balance));
-    if (left_delay != 2.05) parts.add('left_delay=' + _wireDouble(left_delay));
-    if (left_gain != 1.0) parts.add('left_gain=' + _wireDouble(left_gain));
-    if (left_phase != false)
-      parts.add('left_phase=' + (left_phase ? '1' : '0'));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
-    if (middle_phase != false)
-      parts.add('middle_phase=' + (middle_phase ? '1' : '0'));
-    if (middle_source != HaasSource.mid)
-      parts.add('middle_source=' + middle_source.mpvValue);
-    if (right_balance != 1.0)
-      parts.add('right_balance=' + _wireDouble(right_balance));
-    if (right_delay != 2.12)
-      parts.add('right_delay=' + _wireDouble(right_delay));
-    if (right_gain != 1.0) parts.add('right_gain=' + _wireDouble(right_gain));
-    if (right_phase != true)
-      parts.add('right_phase=' + (right_phase ? '1' : '0'));
-    if (side_gain != 1.0) parts.add('side_gain=' + _wireDouble(side_gain));
+    if (leftBalance != -1.0)
+      parts.add('left_balance=' + _wireDouble(leftBalance));
+    if (leftDelay != 2.05) parts.add('left_delay=' + _wireDouble(leftDelay));
+    if (leftGain != 1.0) parts.add('left_gain=' + _wireDouble(leftGain));
+    if (leftPhase != false) parts.add('left_phase=' + (leftPhase ? '1' : '0'));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
+    if (middlePhase != false)
+      parts.add('middle_phase=' + (middlePhase ? '1' : '0'));
+    if (middleSource != HaasSource.mid)
+      parts.add('middle_source=' + middleSource.mpvValue);
+    if (rightBalance != 1.0)
+      parts.add('right_balance=' + _wireDouble(rightBalance));
+    if (rightDelay != 2.12) parts.add('right_delay=' + _wireDouble(rightDelay));
+    if (rightGain != 1.0) parts.add('right_gain=' + _wireDouble(rightGain));
+    if (rightPhase != true)
+      parts.add('right_phase=' + (rightPhase ? '1' : '0'));
+    if (sideGain != 1.0) parts.add('side_gain=' + _wireDouble(sideGain));
     return parts.isEmpty ? 'lavfi-haas' : 'lavfi-haas=' + parts.join(':');
   }
 }
@@ -13320,119 +14007,127 @@ final class HaasSettings {
 /// The filter accepts the following options:
 ///
 /// Parameters:
-/// - [analyze_mode]: Replace audio with a solid tone and adjust the amplitude to signal some specific aspect of the decoding process. The output file can be loaded in an audio editor alongside the original to aid analysis.  `analyze_mode=pe:force_pe=true` can be used to see all samples above the PE level.  Modes are: (range 0..4, default HDCD_ANA_OFF)
-/// - [bits_per_sample]: Valid bits per sample (location of the true LSB). (range 16..24, default 16)
-/// - [cdt_ms]: Set the code detect timer period in ms. (range 100..60000, default 2000)
-/// - [disable_autoconvert]: Disable any automatic format conversion or resampling in the filter graph. (range 0..1, default 1)
-/// - [force_pe]: Always extend peaks above -3dBFS even if PE isn't signaled. (range 0..1, default 0)
-/// - [process_stereo]: Process the stereo channels together. If target_gain does not match between channels, consider it invalid and use the last valid target_gain. (range 0..1, default HDCD_PROCESS_STEREO_DEFAULT)
-final class HdcdSettings {
-  /// Default value for [cdt_ms].
-  static const int cdt_msDefault = 2000;
+/// - [analyzeMode]: Replace audio with a solid tone and adjust the amplitude to signal some specific aspect of the decoding process. The output file can be loaded in an audio editor alongside the original to aid analysis.  `analyze_mode=pe:force_pe=true` can be used to see all samples above the PE level.  Modes are: (range 0..4, default HDCD_ANA_OFF)
+/// - [bitsPerSample]: Valid bits per sample (location of the true LSB). (range 16..24, default 16)
+/// - [cdtMs]: Set the code detect timer period in ms. (range 100..60000, default 2000)
+/// - [disableAutoconvert]: Disable any automatic format conversion or resampling in the filter graph. (range 0..1, default 1)
+/// - [forcePe]: Always extend peaks above -3dBFS even if PE isn't signaled. (range 0..1, default 0)
+/// - [processStereo]: Process the stereo channels together. If target_gain does not match between channels, consider it invalid and use the last valid target_gain. (range 0..1, default HDCD_PROCESS_STEREO_DEFAULT)
+final class HdcdEffect extends AudioEffect {
+  /// Default value for [cdtMs].
+  static const int cdtMsDefault = 2000;
 
-  /// Minimum value for [cdt_ms].
-  static const int cdt_msMin = 100;
+  /// Minimum value for [cdtMs].
+  static const int cdtMsMin = 100;
 
-  /// Maximum value for [cdt_ms].
-  static const int cdt_msMax = 60000;
+  /// Maximum value for [cdtMs].
+  static const int cdtMsMax = 60000;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// Replace audio with solid tone and signal some processing aspect in the amplitude.
-  final HdcdAnalyzeMode analyze_mode;
+  final HdcdAnalyzeMode analyzeMode;
 
   /// Valid bits per sample (location of the true LSB).
-  final HdcdBitsPerSample bits_per_sample;
+  final HdcdBitsPerSample bitsPerSample;
 
   /// Code detect timer period in ms.
-  final int cdt_ms;
+  final int cdtMs;
 
   /// Disable any format conversion or resampling in the filter graph.
-  final bool disable_autoconvert;
+  final bool disableAutoconvert;
 
   /// Always extend peaks above -3dBFS even when PE is not signaled.
-  final bool force_pe;
+  final bool forcePe;
 
   /// Process stereo channels together. Only apply target_gain when both channels match.
-  final bool process_stereo;
+  final bool processStereo;
 
-  /// Creates an [HdcdSettings] with the given parameter values.
+  /// Creates an [HdcdEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const HdcdSettings({
-    this.enabled = false,
-    this.analyze_mode = HdcdAnalyzeMode.off,
-    this.bits_per_sample = HdcdBitsPerSample.n16,
-    this.cdt_ms = 2000,
-    this.disable_autoconvert = true,
-    this.force_pe = false,
-    this.process_stereo = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const HdcdEffect({
+    this.enabled = true,
+    this.analyzeMode = HdcdAnalyzeMode.off,
+    this.bitsPerSample = HdcdBitsPerSample.n16,
+    this.cdtMs = 2000,
+    this.disableAutoconvert = true,
+    this.forcePe = false,
+    this.processStereo = false,
   });
 
-  /// Returns a copy of this [HdcdSettings] with the given fields replaced.
-  HdcdSettings copyWith({
+  @override
+  String get filterName => 'hdcd';
+
+  @override
+  AudioFilter get filter => AudioFilter.hdcd;
+
+  /// Returns a copy of this [HdcdEffect] with the given fields replaced.
+  HdcdEffect copyWith({
     bool? enabled,
-    HdcdAnalyzeMode? analyze_mode,
-    HdcdBitsPerSample? bits_per_sample,
-    int? cdt_ms,
-    bool? disable_autoconvert,
-    bool? force_pe,
-    bool? process_stereo,
-  }) => HdcdSettings(
+    HdcdAnalyzeMode? analyzeMode,
+    HdcdBitsPerSample? bitsPerSample,
+    int? cdtMs,
+    bool? disableAutoconvert,
+    bool? forcePe,
+    bool? processStereo,
+  }) => HdcdEffect(
     enabled: enabled ?? this.enabled,
-    analyze_mode: analyze_mode ?? this.analyze_mode,
-    bits_per_sample: bits_per_sample ?? this.bits_per_sample,
-    cdt_ms: cdt_ms ?? this.cdt_ms,
-    disable_autoconvert: disable_autoconvert ?? this.disable_autoconvert,
-    force_pe: force_pe ?? this.force_pe,
-    process_stereo: process_stereo ?? this.process_stereo,
+    analyzeMode: analyzeMode ?? this.analyzeMode,
+    bitsPerSample: bitsPerSample ?? this.bitsPerSample,
+    cdtMs: cdtMs ?? this.cdtMs,
+    disableAutoconvert: disableAutoconvert ?? this.disableAutoconvert,
+    forcePe: forcePe ?? this.forcePe,
+    processStereo: processStereo ?? this.processStereo,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is HdcdSettings &&
+      (other is HdcdEffect &&
           other.enabled == enabled &&
-          other.analyze_mode == analyze_mode &&
-          other.bits_per_sample == bits_per_sample &&
-          other.cdt_ms == cdt_ms &&
-          other.disable_autoconvert == disable_autoconvert &&
-          other.force_pe == force_pe &&
-          other.process_stereo == process_stereo);
+          other.analyzeMode == analyzeMode &&
+          other.bitsPerSample == bitsPerSample &&
+          other.cdtMs == cdtMs &&
+          other.disableAutoconvert == disableAutoconvert &&
+          other.forcePe == forcePe &&
+          other.processStereo == processStereo);
 
   @override
   int get hashCode => Object.hash(
     enabled,
-    analyze_mode,
-    bits_per_sample,
-    cdt_ms,
-    disable_autoconvert,
-    force_pe,
-    process_stereo,
+    analyzeMode,
+    bitsPerSample,
+    cdtMs,
+    disableAutoconvert,
+    forcePe,
+    processStereo,
   );
 
   @override
   String toString() =>
-      'HdcdSettings(enabled: $enabled, analyze_mode: $analyze_mode, bits_per_sample: $bits_per_sample, cdt_ms: $cdt_ms, disable_autoconvert: $disable_autoconvert, force_pe: $force_pe, process_stereo: $process_stereo)';
+      'HdcdEffect(enabled: $enabled, analyzeMode: $analyzeMode, bitsPerSample: $bitsPerSample, cdtMs: $cdtMs, disableAutoconvert: $disableAutoconvert, forcePe: $forcePe, processStereo: $processStereo)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(cdt_ms >= cdt_msMin, 'hdcd.cdt_ms must be >= 100');
-    assert(cdt_ms <= cdt_msMax, 'hdcd.cdt_ms must be <= 60000');
+    assert(cdtMs >= cdtMsMin, 'hdcd.cdt_ms must be >= 100');
+    assert(cdtMs <= cdtMsMax, 'hdcd.cdt_ms must be <= 60000');
     final parts = <String>[];
-    if (analyze_mode != HdcdAnalyzeMode.off)
-      parts.add('analyze_mode=' + analyze_mode.mpvValue);
-    if (bits_per_sample != HdcdBitsPerSample.n16)
-      parts.add('bits_per_sample=' + bits_per_sample.mpvValue);
-    if (cdt_ms != 2000) parts.add('cdt_ms=' + cdt_ms.toString());
-    if (disable_autoconvert != true)
-      parts.add('disable_autoconvert=' + (disable_autoconvert ? '1' : '0'));
-    if (force_pe != false) parts.add('force_pe=' + (force_pe ? '1' : '0'));
-    if (process_stereo != false)
-      parts.add('process_stereo=' + (process_stereo ? '1' : '0'));
+    if (analyzeMode != HdcdAnalyzeMode.off)
+      parts.add('analyze_mode=' + analyzeMode.mpvValue);
+    if (bitsPerSample != HdcdBitsPerSample.n16)
+      parts.add('bits_per_sample=' + bitsPerSample.mpvValue);
+    if (cdtMs != 2000) parts.add('cdt_ms=' + cdtMs.toString());
+    if (disableAutoconvert != true)
+      parts.add('disable_autoconvert=' + (disableAutoconvert ? '1' : '0'));
+    if (forcePe != false) parts.add('force_pe=' + (forcePe ? '1' : '0'));
+    if (processStereo != false)
+      parts.add('process_stereo=' + (processStereo ? '1' : '0'));
     return parts.isEmpty ? 'lavfi-hdcd' : 'lavfi-hdcd=' + parts.join(':');
   }
 }
@@ -13465,8 +14160,8 @@ final class HdcdSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Specify the band-width of a filter in width_type units. Applies only to double-pole filter. The default is 0.707q and gives a Butterworth response. (range 0..99999, default 0.707, runtime-tunable)
 /// - [width]: Specify the band-width of a filter in width_type units. Applies only to double-pole filter. The default is 0.707q and gives a Butterworth response. (range 0..99999, default 0.707, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class HighpassSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class HighpassEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -13557,7 +14252,9 @@ final class HighpassSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -13618,14 +14315,13 @@ final class HighpassSettings {
   final double width;
 
   /// set filter-width type
-  final HighpassWidthType width_type;
+  final HighpassWidthType widthType;
 
-  /// Creates an [HighpassSettings] with the given parameter values.
+  /// Creates an [HighpassEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const HighpassSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const HighpassEffect({
+    this.enabled = true,
     this.a = HighpassTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -13645,11 +14341,17 @@ final class HighpassSettings {
     this.transform = HighpassTransformType.di,
     this.w = 0.707,
     this.width = 0.707,
-    this.width_type = HighpassWidthType.q,
+    this.widthType = HighpassWidthType.q,
   });
 
-  /// Returns a copy of this [HighpassSettings] with the given fields replaced.
-  HighpassSettings copyWith({
+  @override
+  String get filterName => 'highpass';
+
+  @override
+  AudioFilter get filter => AudioFilter.highpass;
+
+  /// Returns a copy of this [HighpassEffect] with the given fields replaced.
+  HighpassEffect copyWith({
     bool? enabled,
     HighpassTransformType? a,
     int? b,
@@ -13670,8 +14372,8 @@ final class HighpassSettings {
     HighpassTransformType? transform,
     double? w,
     double? width,
-    HighpassWidthType? width_type,
-  }) => HighpassSettings(
+    HighpassWidthType? widthType,
+  }) => HighpassEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -13692,13 +14394,13 @@ final class HighpassSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is HighpassSettings &&
+      (other is HighpassEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -13719,7 +14421,7 @@ final class HighpassSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -13743,15 +14445,16 @@ final class HighpassSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'HighpassSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'HighpassEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'highpass.b must be >= 0');
     assert(b <= bMax, 'highpass.b must be <= 32768');
@@ -13795,8 +14498,8 @@ final class HighpassSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.707) parts.add('w=' + _wireDouble(w));
     if (width != 0.707) parts.add('width=' + _wireDouble(width));
-    if (width_type != HighpassWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != HighpassWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty
         ? 'lavfi-highpass'
         : 'lavfi-highpass=' + parts.join(':');
@@ -13805,7 +14508,8 @@ final class HighpassSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(HighpassSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant HighpassEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -13848,8 +14552,8 @@ final class HighpassSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -13885,8 +14589,8 @@ final class HighpassSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
 /// - [width]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class HighshelfSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class HighshelfEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -13995,7 +14699,9 @@ final class HighshelfSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -14062,14 +14768,13 @@ final class HighshelfSettings {
   final double width;
 
   /// set filter-width type
-  final HighshelfWidthType width_type;
+  final HighshelfWidthType widthType;
 
-  /// Creates an [HighshelfSettings] with the given parameter values.
+  /// Creates an [HighshelfEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const HighshelfSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const HighshelfEffect({
+    this.enabled = true,
     this.a = HighshelfTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -14091,11 +14796,17 @@ final class HighshelfSettings {
     this.transform = HighshelfTransformType.di,
     this.w = 0.5,
     this.width = 0.5,
-    this.width_type = HighshelfWidthType.q,
+    this.widthType = HighshelfWidthType.q,
   });
 
-  /// Returns a copy of this [HighshelfSettings] with the given fields replaced.
-  HighshelfSettings copyWith({
+  @override
+  String get filterName => 'highshelf';
+
+  @override
+  AudioFilter get filter => AudioFilter.highshelf;
+
+  /// Returns a copy of this [HighshelfEffect] with the given fields replaced.
+  HighshelfEffect copyWith({
     bool? enabled,
     HighshelfTransformType? a,
     int? b,
@@ -14118,8 +14829,8 @@ final class HighshelfSettings {
     HighshelfTransformType? transform,
     double? w,
     double? width,
-    HighshelfWidthType? width_type,
-  }) => HighshelfSettings(
+    HighshelfWidthType? widthType,
+  }) => HighshelfEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -14142,13 +14853,13 @@ final class HighshelfSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is HighshelfSettings &&
+      (other is HighshelfEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -14171,7 +14882,7 @@ final class HighshelfSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -14197,15 +14908,16 @@ final class HighshelfSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'HighshelfSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'HighshelfEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'highshelf.b must be >= 0');
     assert(b <= bMax, 'highshelf.b must be <= 32768');
@@ -14255,8 +14967,8 @@ final class HighshelfSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.5) parts.add('w=' + _wireDouble(w));
     if (width != 0.5) parts.add('width=' + _wireDouble(width));
-    if (width_type != HighshelfWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != HighshelfWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty
         ? 'lavfi-highshelf'
         : 'lavfi-highshelf=' + parts.join(':');
@@ -14265,7 +14977,8 @@ final class HighshelfSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(HighshelfSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant HighshelfEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -14314,8 +15027,8 @@ final class HighshelfSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -14332,52 +15045,21 @@ final class HighshelfSettings {
 /// The filter accepts the following options:
 ///
 /// Parameters:
-/// - [I]: Set integrated loudness target. Range is -70.0 - -5.0. Default value is -24.0. (range -70.0..-5.0, default -24.)
-/// - [LRA]: Set loudness range target. Range is 1.0 - 50.0. Default value is 7.0. (range 1.0..50.0, default 7.)
-/// - [TP]: Set maximum true peak. Range is -9.0 - +0.0. Default value is -2.0. (range -9.0..0.0, default -2.)
-/// - [dual_mono]: Treat mono input files as "dual-mono". If a mono file is intended for playback on a stereo system, its EBU R128 measurement will be perceptually incorrect. If set to `true`, this option will compensate for this effect. Multi-channel input files are not affected by this option. Options are true or false. Default is false. (range 0..1, default 0)
+/// - [dualMono]: Treat mono input files as "dual-mono". If a mono file is intended for playback on a stereo system, its EBU R128 measurement will be perceptually incorrect. If set to `true`, this option will compensate for this effect. Multi-channel input files are not affected by this option. Options are true or false. Default is false. (range 0..1, default 0)
 /// - [i]: Set integrated loudness target. Range is -70.0 - -5.0. Default value is -24.0. (range -70.0..-5.0, default -24.)
 /// - [linear]: Normalize by linearly scaling the source audio. `measured_I`, `measured_LRA`, `measured_TP`, and `measured_thresh` must all be specified. Target LRA shouldn't be lower than source LRA and the change in integrated loudness shouldn't result in a true peak which exceeds the target TP. If any of these conditions aren't met, normalization mode will revert to `dynamic`. Options are `true` or `false`. Default is `true`. (range 0..1, default 1)
 /// - [lra]: Set loudness range target. Range is 1.0 - 50.0. Default value is 7.0. (range 1.0..50.0, default 7.)
-/// - [measured_I]: Measured IL of input file. Range is -99.0 - +0.0. (range -99.0..0.0, default 0.)
-/// - [measured_LRA]: Measured LRA of input file. Range is  0.0 - 99.0. (range 0.0..99.0, default 0.)
-/// - [measured_TP]: Measured true peak of input file. Range is  -99.0 - +99.0. (range -99.0..99.0, default 99.)
-/// - [measured_i]: Measured IL of input file. Range is -99.0 - +0.0. (range -99.0..0.0, default 0.)
-/// - [measured_lra]: Measured LRA of input file. Range is  0.0 - 99.0. (range 0.0..99.0, default 0.)
-/// - [measured_thresh]: Measured threshold of input file. Range is -99.0 - +0.0. (range -99.0..0.0, default -70.)
-/// - [measured_tp]: Measured true peak of input file. Range is  -99.0 - +99.0. (range -99.0..99.0, default 99.)
+/// - [measuredLRA]: Measured LRA of input file. Range is  0.0 - 99.0. (range 0.0..99.0, default 0.)
+/// - [measuredTP]: Measured true peak of input file. Range is  -99.0 - +99.0. (range -99.0..99.0, default 99.)
+/// - [measuredI]: Measured IL of input file. Range is -99.0 - +0.0. (range -99.0..0.0, default 0.)
+/// - [measuredLra]: Measured LRA of input file. Range is  0.0 - 99.0. (range 0.0..99.0, default 0.)
+/// - [measuredThresh]: Measured threshold of input file. Range is -99.0 - +0.0. (range -99.0..0.0, default -70.)
+/// - [measuredTp]: Measured true peak of input file. Range is  -99.0 - +99.0. (range -99.0..99.0, default 99.)
 /// - [offset]: Set offset gain. Gain is applied before the true-peak limiter. Range is  -99.0 - +99.0. Default is +0.0. (range -99.0..99.0, default 0.)
-/// - [print_format]: Set print format for stats. Options are summary, json, or none. Default value is none. (range 0..2, default NONE)
-/// - [stats_file]: Write stats to specified file. Format is controlled by @option{print_format}, which must be set. Specify `-` to write to standard output. Default is unset. (range 0..0, default "")
+/// - [printFormat]: Set print format for stats. Options are summary, json, or none. Default value is none. (range 0..2, default NONE)
+/// - [statsFile]: Write stats to specified file. Format is controlled by @option{print_format}, which must be set. Specify `-` to write to standard output. Default is unset. (range 0..0, default "")
 /// - [tp]: Set maximum true peak. Range is -9.0 - +0.0. Default value is -2.0. (range -9.0..0.0, default -2.)
-final class LoudnormSettings {
-  /// Default value for [I].
-  static const double IDefault = -24.0;
-
-  /// Minimum value for [I].
-  static const double IMin = -70.0;
-
-  /// Maximum value for [I].
-  static const double IMax = -5.0;
-
-  /// Default value for [LRA].
-  static const double LRADefault = 7.0;
-
-  /// Minimum value for [LRA].
-  static const double LRAMin = 1.0;
-
-  /// Maximum value for [LRA].
-  static const double LRAMax = 50.0;
-
-  /// Default value for [TP].
-  static const double TPDefault = -2.0;
-
-  /// Minimum value for [TP].
-  static const double TPMin = -9.0;
-
-  /// Maximum value for [TP].
-  static const double TPMax = 0.0;
-
+final class LoudnormEffect extends AudioEffect {
   /// Default value for [i].
   static const double iDefault = -24.0;
 
@@ -14396,68 +15078,59 @@ final class LoudnormSettings {
   /// Maximum value for [lra].
   static const double lraMax = 50.0;
 
-  /// Default value for [measured_I].
-  static const double measured_IDefault = 0.0;
+  /// Default value for [measuredLRA].
+  static const double measuredLRADefault = 0.0;
 
-  /// Minimum value for [measured_I].
-  static const double measured_IMin = -99.0;
+  /// Minimum value for [measuredLRA].
+  static const double measuredLRAMin = 0.0;
 
-  /// Maximum value for [measured_I].
-  static const double measured_IMax = 0.0;
+  /// Maximum value for [measuredLRA].
+  static const double measuredLRAMax = 99.0;
 
-  /// Default value for [measured_LRA].
-  static const double measured_LRADefault = 0.0;
+  /// Default value for [measuredTP].
+  static const double measuredTPDefault = 99.0;
 
-  /// Minimum value for [measured_LRA].
-  static const double measured_LRAMin = 0.0;
+  /// Minimum value for [measuredTP].
+  static const double measuredTPMin = -99.0;
 
-  /// Maximum value for [measured_LRA].
-  static const double measured_LRAMax = 99.0;
+  /// Maximum value for [measuredTP].
+  static const double measuredTPMax = 99.0;
 
-  /// Default value for [measured_TP].
-  static const double measured_TPDefault = 99.0;
+  /// Default value for [measuredI].
+  static const double measuredIDefault = 0.0;
 
-  /// Minimum value for [measured_TP].
-  static const double measured_TPMin = -99.0;
+  /// Minimum value for [measuredI].
+  static const double measuredIMin = -99.0;
 
-  /// Maximum value for [measured_TP].
-  static const double measured_TPMax = 99.0;
+  /// Maximum value for [measuredI].
+  static const double measuredIMax = 0.0;
 
-  /// Default value for [measured_i].
-  static const double measured_iDefault = 0.0;
+  /// Default value for [measuredLra].
+  static const double measuredLraDefault = 0.0;
 
-  /// Minimum value for [measured_i].
-  static const double measured_iMin = -99.0;
+  /// Minimum value for [measuredLra].
+  static const double measuredLraMin = 0.0;
 
-  /// Maximum value for [measured_i].
-  static const double measured_iMax = 0.0;
+  /// Maximum value for [measuredLra].
+  static const double measuredLraMax = 99.0;
 
-  /// Default value for [measured_lra].
-  static const double measured_lraDefault = 0.0;
+  /// Default value for [measuredThresh].
+  static const double measuredThreshDefault = -70.0;
 
-  /// Minimum value for [measured_lra].
-  static const double measured_lraMin = 0.0;
+  /// Minimum value for [measuredThresh].
+  static const double measuredThreshMin = -99.0;
 
-  /// Maximum value for [measured_lra].
-  static const double measured_lraMax = 99.0;
+  /// Maximum value for [measuredThresh].
+  static const double measuredThreshMax = 0.0;
 
-  /// Default value for [measured_thresh].
-  static const double measured_threshDefault = -70.0;
+  /// Default value for [measuredTp].
+  static const double measuredTpDefault = 99.0;
 
-  /// Minimum value for [measured_thresh].
-  static const double measured_threshMin = -99.0;
+  /// Minimum value for [measuredTp].
+  static const double measuredTpMin = -99.0;
 
-  /// Maximum value for [measured_thresh].
-  static const double measured_threshMax = 0.0;
-
-  /// Default value for [measured_tp].
-  static const double measured_tpDefault = 99.0;
-
-  /// Minimum value for [measured_tp].
-  static const double measured_tpMin = -99.0;
-
-  /// Maximum value for [measured_tp].
-  static const double measured_tpMax = 99.0;
+  /// Maximum value for [measuredTp].
+  static const double measuredTpMax = 99.0;
 
   /// Default value for [offset].
   static const double offsetDefault = 0.0;
@@ -14477,20 +15150,13 @@ final class LoudnormSettings {
   /// Maximum value for [tp].
   static const double tpMax = 0.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
-  /// set integrated loudness target
-  final double I;
-
-  /// set loudness range target
-  final double LRA;
-
-  /// set maximum true peak
-  final double TP;
-
   /// treat mono input as dual-mono
-  final bool dual_mono;
+  final bool dualMono;
 
   /// set integrated loudness target
   final double i;
@@ -14501,244 +15167,207 @@ final class LoudnormSettings {
   /// set loudness range target
   final double lra;
 
-  /// measured IL of input file
-  final double measured_I;
-
   /// measured LRA of input file
-  final double measured_LRA;
+  final double measuredLRA;
 
   /// measured true peak of input file
-  final double measured_TP;
+  final double measuredTP;
 
   /// measured IL of input file
-  final double measured_i;
+  final double measuredI;
 
   /// measured LRA of input file
-  final double measured_lra;
+  final double measuredLra;
 
   /// measured threshold of input file
-  final double measured_thresh;
+  final double measuredThresh;
 
   /// measured true peak of input file
-  final double measured_tp;
+  final double measuredTp;
 
   /// set offset gain
   final double offset;
 
   /// set print format for stats
-  final LoudnormPrintFormat print_format;
+  final LoudnormPrintFormat printFormat;
 
   /// set stats output file
-  final String stats_file;
+  final String statsFile;
 
   /// set maximum true peak
   final double tp;
 
-  /// Creates an [LoudnormSettings] with the given parameter values.
+  /// Creates an [LoudnormEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const LoudnormSettings({
-    this.enabled = false,
-    this.I = -24.0,
-    this.LRA = 7.0,
-    this.TP = -2.0,
-    this.dual_mono = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const LoudnormEffect({
+    this.enabled = true,
+    this.dualMono = false,
     this.i = -24.0,
     this.linear = true,
     this.lra = 7.0,
-    this.measured_I = 0.0,
-    this.measured_LRA = 0.0,
-    this.measured_TP = 99.0,
-    this.measured_i = 0.0,
-    this.measured_lra = 0.0,
-    this.measured_thresh = -70.0,
-    this.measured_tp = 99.0,
+    this.measuredLRA = 0.0,
+    this.measuredTP = 99.0,
+    this.measuredI = 0.0,
+    this.measuredLra = 0.0,
+    this.measuredThresh = -70.0,
+    this.measuredTp = 99.0,
     this.offset = 0.0,
-    this.print_format = LoudnormPrintFormat.none,
-    this.stats_file = '',
+    this.printFormat = LoudnormPrintFormat.none,
+    this.statsFile = '',
     this.tp = -2.0,
   });
 
-  /// Returns a copy of this [LoudnormSettings] with the given fields replaced.
-  LoudnormSettings copyWith({
+  @override
+  String get filterName => 'loudnorm';
+
+  @override
+  AudioFilter get filter => AudioFilter.loudnorm;
+
+  /// Returns a copy of this [LoudnormEffect] with the given fields replaced.
+  LoudnormEffect copyWith({
     bool? enabled,
-    double? I,
-    double? LRA,
-    double? TP,
-    bool? dual_mono,
+    bool? dualMono,
     double? i,
     bool? linear,
     double? lra,
-    double? measured_I,
-    double? measured_LRA,
-    double? measured_TP,
-    double? measured_i,
-    double? measured_lra,
-    double? measured_thresh,
-    double? measured_tp,
+    double? measuredLRA,
+    double? measuredTP,
+    double? measuredI,
+    double? measuredLra,
+    double? measuredThresh,
+    double? measuredTp,
     double? offset,
-    LoudnormPrintFormat? print_format,
-    String? stats_file,
+    LoudnormPrintFormat? printFormat,
+    String? statsFile,
     double? tp,
-  }) => LoudnormSettings(
+  }) => LoudnormEffect(
     enabled: enabled ?? this.enabled,
-    I: I ?? this.I,
-    LRA: LRA ?? this.LRA,
-    TP: TP ?? this.TP,
-    dual_mono: dual_mono ?? this.dual_mono,
+    dualMono: dualMono ?? this.dualMono,
     i: i ?? this.i,
     linear: linear ?? this.linear,
     lra: lra ?? this.lra,
-    measured_I: measured_I ?? this.measured_I,
-    measured_LRA: measured_LRA ?? this.measured_LRA,
-    measured_TP: measured_TP ?? this.measured_TP,
-    measured_i: measured_i ?? this.measured_i,
-    measured_lra: measured_lra ?? this.measured_lra,
-    measured_thresh: measured_thresh ?? this.measured_thresh,
-    measured_tp: measured_tp ?? this.measured_tp,
+    measuredLRA: measuredLRA ?? this.measuredLRA,
+    measuredTP: measuredTP ?? this.measuredTP,
+    measuredI: measuredI ?? this.measuredI,
+    measuredLra: measuredLra ?? this.measuredLra,
+    measuredThresh: measuredThresh ?? this.measuredThresh,
+    measuredTp: measuredTp ?? this.measuredTp,
     offset: offset ?? this.offset,
-    print_format: print_format ?? this.print_format,
-    stats_file: stats_file ?? this.stats_file,
+    printFormat: printFormat ?? this.printFormat,
+    statsFile: statsFile ?? this.statsFile,
     tp: tp ?? this.tp,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LoudnormSettings &&
+      (other is LoudnormEffect &&
           other.enabled == enabled &&
-          other.I == I &&
-          other.LRA == LRA &&
-          other.TP == TP &&
-          other.dual_mono == dual_mono &&
+          other.dualMono == dualMono &&
           other.i == i &&
           other.linear == linear &&
           other.lra == lra &&
-          other.measured_I == measured_I &&
-          other.measured_LRA == measured_LRA &&
-          other.measured_TP == measured_TP &&
-          other.measured_i == measured_i &&
-          other.measured_lra == measured_lra &&
-          other.measured_thresh == measured_thresh &&
-          other.measured_tp == measured_tp &&
+          other.measuredLRA == measuredLRA &&
+          other.measuredTP == measuredTP &&
+          other.measuredI == measuredI &&
+          other.measuredLra == measuredLra &&
+          other.measuredThresh == measuredThresh &&
+          other.measuredTp == measuredTp &&
           other.offset == offset &&
-          other.print_format == print_format &&
-          other.stats_file == stats_file &&
+          other.printFormat == printFormat &&
+          other.statsFile == statsFile &&
           other.tp == tp);
 
   @override
   int get hashCode => Object.hash(
     enabled,
-    I,
-    LRA,
-    TP,
-    dual_mono,
+    dualMono,
     i,
     linear,
     lra,
-    measured_I,
-    measured_LRA,
-    measured_TP,
-    measured_i,
-    measured_lra,
-    measured_thresh,
-    measured_tp,
+    measuredLRA,
+    measuredTP,
+    measuredI,
+    measuredLra,
+    measuredThresh,
+    measuredTp,
     offset,
-    print_format,
-    stats_file,
+    printFormat,
+    statsFile,
     tp,
   );
 
   @override
   String toString() =>
-      'LoudnormSettings(enabled: $enabled, I: $I, LRA: $LRA, TP: $TP, dual_mono: $dual_mono, i: $i, linear: $linear, lra: $lra, measured_I: $measured_I, measured_LRA: $measured_LRA, measured_TP: $measured_TP, measured_i: $measured_i, measured_lra: $measured_lra, measured_thresh: $measured_thresh, measured_tp: $measured_tp, offset: $offset, print_format: $print_format, stats_file: $stats_file, tp: $tp)';
+      'LoudnormEffect(enabled: $enabled, dualMono: $dualMono, i: $i, linear: $linear, lra: $lra, measuredLRA: $measuredLRA, measuredTP: $measuredTP, measuredI: $measuredI, measuredLra: $measuredLra, measuredThresh: $measuredThresh, measuredTp: $measuredTp, offset: $offset, printFormat: $printFormat, statsFile: $statsFile, tp: $tp)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(I >= IMin, 'loudnorm.I must be >= -70.0');
-    assert(I <= IMax, 'loudnorm.I must be <= -5.0');
-    assert(LRA >= LRAMin, 'loudnorm.LRA must be >= 1.0');
-    assert(LRA <= LRAMax, 'loudnorm.LRA must be <= 50.0');
-    assert(TP >= TPMin, 'loudnorm.TP must be >= -9.0');
-    assert(TP <= TPMax, 'loudnorm.TP must be <= 0.0');
     assert(i >= iMin, 'loudnorm.i must be >= -70.0');
     assert(i <= iMax, 'loudnorm.i must be <= -5.0');
     assert(lra >= lraMin, 'loudnorm.lra must be >= 1.0');
     assert(lra <= lraMax, 'loudnorm.lra must be <= 50.0');
-    assert(measured_I >= measured_IMin, 'loudnorm.measured_I must be >= -99.0');
-    assert(measured_I <= measured_IMax, 'loudnorm.measured_I must be <= 0.0');
     assert(
-      measured_LRA >= measured_LRAMin,
+      measuredLRA >= measuredLRAMin,
       'loudnorm.measured_LRA must be >= 0.0',
     );
     assert(
-      measured_LRA <= measured_LRAMax,
+      measuredLRA <= measuredLRAMax,
       'loudnorm.measured_LRA must be <= 99.0',
     );
     assert(
-      measured_TP >= measured_TPMin,
+      measuredTP >= measuredTPMin,
       'loudnorm.measured_TP must be >= -99.0',
     );
+    assert(measuredTP <= measuredTPMax, 'loudnorm.measured_TP must be <= 99.0');
+    assert(measuredI >= measuredIMin, 'loudnorm.measured_i must be >= -99.0');
+    assert(measuredI <= measuredIMax, 'loudnorm.measured_i must be <= 0.0');
     assert(
-      measured_TP <= measured_TPMax,
-      'loudnorm.measured_TP must be <= 99.0',
-    );
-    assert(measured_i >= measured_iMin, 'loudnorm.measured_i must be >= -99.0');
-    assert(measured_i <= measured_iMax, 'loudnorm.measured_i must be <= 0.0');
-    assert(
-      measured_lra >= measured_lraMin,
+      measuredLra >= measuredLraMin,
       'loudnorm.measured_lra must be >= 0.0',
     );
     assert(
-      measured_lra <= measured_lraMax,
+      measuredLra <= measuredLraMax,
       'loudnorm.measured_lra must be <= 99.0',
     );
     assert(
-      measured_thresh >= measured_threshMin,
+      measuredThresh >= measuredThreshMin,
       'loudnorm.measured_thresh must be >= -99.0',
     );
     assert(
-      measured_thresh <= measured_threshMax,
+      measuredThresh <= measuredThreshMax,
       'loudnorm.measured_thresh must be <= 0.0',
     );
     assert(
-      measured_tp >= measured_tpMin,
+      measuredTp >= measuredTpMin,
       'loudnorm.measured_tp must be >= -99.0',
     );
-    assert(
-      measured_tp <= measured_tpMax,
-      'loudnorm.measured_tp must be <= 99.0',
-    );
+    assert(measuredTp <= measuredTpMax, 'loudnorm.measured_tp must be <= 99.0');
     assert(offset >= offsetMin, 'loudnorm.offset must be >= -99.0');
     assert(offset <= offsetMax, 'loudnorm.offset must be <= 99.0');
     assert(tp >= tpMin, 'loudnorm.tp must be >= -9.0');
     assert(tp <= tpMax, 'loudnorm.tp must be <= 0.0');
     final parts = <String>[];
-    if (I != -24.0) parts.add('I=' + _wireDouble(I));
-    if (LRA != 7.0) parts.add('LRA=' + _wireDouble(LRA));
-    if (TP != -2.0) parts.add('TP=' + _wireDouble(TP));
-    if (dual_mono != false) parts.add('dual_mono=' + (dual_mono ? '1' : '0'));
+    if (dualMono != false) parts.add('dual_mono=' + (dualMono ? '1' : '0'));
     if (i != -24.0) parts.add('i=' + _wireDouble(i));
     if (linear != true) parts.add('linear=' + (linear ? '1' : '0'));
     if (lra != 7.0) parts.add('lra=' + _wireDouble(lra));
-    if (measured_I != 0.0) parts.add('measured_I=' + _wireDouble(measured_I));
-    if (measured_LRA != 0.0)
-      parts.add('measured_LRA=' + _wireDouble(measured_LRA));
-    if (measured_TP != 99.0)
-      parts.add('measured_TP=' + _wireDouble(measured_TP));
-    if (measured_i != 0.0) parts.add('measured_i=' + _wireDouble(measured_i));
-    if (measured_lra != 0.0)
-      parts.add('measured_lra=' + _wireDouble(measured_lra));
-    if (measured_thresh != -70.0)
-      parts.add('measured_thresh=' + _wireDouble(measured_thresh));
-    if (measured_tp != 99.0)
-      parts.add('measured_tp=' + _wireDouble(measured_tp));
+    if (measuredLRA != 0.0)
+      parts.add('measured_LRA=' + _wireDouble(measuredLRA));
+    if (measuredTP != 99.0) parts.add('measured_TP=' + _wireDouble(measuredTP));
+    if (measuredI != 0.0) parts.add('measured_i=' + _wireDouble(measuredI));
+    if (measuredLra != 0.0)
+      parts.add('measured_lra=' + _wireDouble(measuredLra));
+    if (measuredThresh != -70.0)
+      parts.add('measured_thresh=' + _wireDouble(measuredThresh));
+    if (measuredTp != 99.0) parts.add('measured_tp=' + _wireDouble(measuredTp));
     if (offset != 0.0) parts.add('offset=' + _wireDouble(offset));
-    if (print_format != LoudnormPrintFormat.none)
-      parts.add('print_format=' + print_format.mpvValue);
-    if (stats_file != '') parts.add('stats_file=' + '[' + stats_file + ']');
+    if (printFormat != LoudnormPrintFormat.none)
+      parts.add('print_format=' + printFormat.mpvValue);
+    if (statsFile != '') parts.add('stats_file=' + '[' + statsFile + ']');
     if (tp != -2.0) parts.add('tp=' + _wireDouble(tp));
     return parts.isEmpty
         ? 'lavfi-loudnorm'
@@ -14774,8 +15403,8 @@ final class LoudnormSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Specify the band-width of a filter in width_type units. Applies only to double-pole filter. The default is 0.707q and gives a Butterworth response. (range 0..99999, default 0.707, runtime-tunable)
 /// - [width]: Specify the band-width of a filter in width_type units. Applies only to double-pole filter. The default is 0.707q and gives a Butterworth response. (range 0..99999, default 0.707, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class LowpassSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class LowpassEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -14866,7 +15495,9 @@ final class LowpassSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -14927,14 +15558,13 @@ final class LowpassSettings {
   final double width;
 
   /// set filter-width type
-  final LowpassWidthType width_type;
+  final LowpassWidthType widthType;
 
-  /// Creates an [LowpassSettings] with the given parameter values.
+  /// Creates an [LowpassEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const LowpassSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const LowpassEffect({
+    this.enabled = true,
     this.a = LowpassTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -14954,11 +15584,17 @@ final class LowpassSettings {
     this.transform = LowpassTransformType.di,
     this.w = 0.707,
     this.width = 0.707,
-    this.width_type = LowpassWidthType.q,
+    this.widthType = LowpassWidthType.q,
   });
 
-  /// Returns a copy of this [LowpassSettings] with the given fields replaced.
-  LowpassSettings copyWith({
+  @override
+  String get filterName => 'lowpass';
+
+  @override
+  AudioFilter get filter => AudioFilter.lowpass;
+
+  /// Returns a copy of this [LowpassEffect] with the given fields replaced.
+  LowpassEffect copyWith({
     bool? enabled,
     LowpassTransformType? a,
     int? b,
@@ -14979,8 +15615,8 @@ final class LowpassSettings {
     LowpassTransformType? transform,
     double? w,
     double? width,
-    LowpassWidthType? width_type,
-  }) => LowpassSettings(
+    LowpassWidthType? widthType,
+  }) => LowpassEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -15001,13 +15637,13 @@ final class LowpassSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LowpassSettings &&
+      (other is LowpassEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -15028,7 +15664,7 @@ final class LowpassSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -15052,15 +15688,16 @@ final class LowpassSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'LowpassSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'LowpassEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'lowpass.b must be >= 0');
     assert(b <= bMax, 'lowpass.b must be <= 32768');
@@ -15104,15 +15741,16 @@ final class LowpassSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.707) parts.add('w=' + _wireDouble(w));
     if (width != 0.707) parts.add('width=' + _wireDouble(width));
-    if (width_type != LowpassWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != LowpassWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty ? 'lavfi-lowpass' : 'lavfi-lowpass=' + parts.join(':');
   }
 
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(LowpassSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant LowpassEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -15155,8 +15793,8 @@ final class LowpassSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -15192,8 +15830,8 @@ final class LowpassSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
 /// - [width]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class LowshelfSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class LowshelfEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -15302,7 +15940,9 @@ final class LowshelfSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -15369,14 +16009,13 @@ final class LowshelfSettings {
   final double width;
 
   /// set filter-width type
-  final LowshelfWidthType width_type;
+  final LowshelfWidthType widthType;
 
-  /// Creates an [LowshelfSettings] with the given parameter values.
+  /// Creates an [LowshelfEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const LowshelfSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const LowshelfEffect({
+    this.enabled = true,
     this.a = LowshelfTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -15398,11 +16037,17 @@ final class LowshelfSettings {
     this.transform = LowshelfTransformType.di,
     this.w = 0.5,
     this.width = 0.5,
-    this.width_type = LowshelfWidthType.q,
+    this.widthType = LowshelfWidthType.q,
   });
 
-  /// Returns a copy of this [LowshelfSettings] with the given fields replaced.
-  LowshelfSettings copyWith({
+  @override
+  String get filterName => 'lowshelf';
+
+  @override
+  AudioFilter get filter => AudioFilter.lowshelf;
+
+  /// Returns a copy of this [LowshelfEffect] with the given fields replaced.
+  LowshelfEffect copyWith({
     bool? enabled,
     LowshelfTransformType? a,
     int? b,
@@ -15425,8 +16070,8 @@ final class LowshelfSettings {
     LowshelfTransformType? transform,
     double? w,
     double? width,
-    LowshelfWidthType? width_type,
-  }) => LowshelfSettings(
+    LowshelfWidthType? widthType,
+  }) => LowshelfEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -15449,13 +16094,13 @@ final class LowshelfSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LowshelfSettings &&
+      (other is LowshelfEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -15478,7 +16123,7 @@ final class LowshelfSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -15504,15 +16149,16 @@ final class LowshelfSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'LowshelfSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'LowshelfEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'lowshelf.b must be >= 0');
     assert(b <= bMax, 'lowshelf.b must be <= 32768');
@@ -15562,8 +16208,8 @@ final class LowshelfSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.5) parts.add('w=' + _wireDouble(w));
     if (width != 0.5) parts.add('width=' + _wireDouble(width));
-    if (width_type != LowshelfWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != LowshelfWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty
         ? 'lavfi-lowshelf'
         : 'lavfi-lowshelf=' + parts.join(':');
@@ -15572,7 +16218,8 @@ final class LowshelfSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(LowshelfSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant LowshelfEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -15621,8 +16268,8 @@ final class LowshelfSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -15640,33 +16287,38 @@ final class LowshelfSettings {
 ///
 /// Parameters:
 /// - [args]: This option syntax is: attack,decay,[attack,decay..] soft-knee points crossover_frequency [delay [initial_volume [gain]]] | attack,decay ... For explanation of each item refer to compand filter documentation. (range 0..0, default "0.005,0.1 6 -47/-40,-34/-34,-17/-33 100 | 0.003,0.05 6 -47/-40,-34/-34,-17/-33 400 | 0.000625,0.0125 6 -47/-40,-34/-34,-15/-33 1600 | 0.0001,0.025 6 -47/-40,-34/-34,-31/-31,-0/-30 6400 | 0,0.025 6 -38/-31,-28/-28,-0/-25 22000")
-final class McompandSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class McompandEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set parameters for each band
   final String args;
 
-  /// Creates an [McompandSettings] with the given parameter values.
+  /// Creates an [McompandEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const McompandSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const McompandEffect({
+    this.enabled = true,
     this.args =
         '0.005,0.1 6 -47/-40,-34/-34,-17/-33 100 | 0.003,0.05 6 -47/-40,-34/-34,-17/-33 400 | 0.000625,0.0125 6 -47/-40,-34/-34,-15/-33 1600 | 0.0001,0.025 6 -47/-40,-34/-34,-31/-31,-0/-30 6400 | 0,0.025 6 -38/-31,-28/-28,-0/-25 22000',
   });
 
-  /// Returns a copy of this [McompandSettings] with the given fields replaced.
-  McompandSettings copyWith({bool? enabled, String? args}) => McompandSettings(
-    enabled: enabled ?? this.enabled,
-    args: args ?? this.args,
-  );
+  @override
+  String get filterName => 'mcompand';
+
+  @override
+  AudioFilter get filter => AudioFilter.mcompand;
+
+  /// Returns a copy of this [McompandEffect] with the given fields replaced.
+  McompandEffect copyWith({bool? enabled, String? args}) =>
+      McompandEffect(enabled: enabled ?? this.enabled, args: args ?? this.args);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is McompandSettings &&
+      (other is McompandEffect &&
           other.enabled == enabled &&
           other.args == args);
 
@@ -15674,10 +16326,11 @@ final class McompandSettings {
   int get hashCode => Object.hash(enabled, args);
 
   @override
-  String toString() => 'McompandSettings(enabled: $enabled, args: $args)';
+  String toString() => 'McompandEffect(enabled: $enabled, args: $args)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     final parts = <String>[];
     if (args !=
@@ -15702,36 +16355,44 @@ final class McompandSettings {
 ///
 /// Parameters:
 /// - [args]:  (range 0..0, default "")
-final class PanSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class PanEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// The `args` parameter.
   final String args;
 
-  /// Creates an [PanSettings] with the given parameter values.
+  /// Creates an [PanEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const PanSettings({this.enabled = false, required this.args});
+  /// Each parameter defaults to its ffmpeg default.
+  const PanEffect({this.enabled = true, required this.args});
 
-  /// Returns a copy of this [PanSettings] with the given fields replaced.
-  PanSettings copyWith({bool? enabled, String? args}) =>
-      PanSettings(enabled: enabled ?? this.enabled, args: args ?? this.args);
+  @override
+  String get filterName => 'pan';
+
+  @override
+  AudioFilter get filter => AudioFilter.pan;
+
+  /// Returns a copy of this [PanEffect] with the given fields replaced.
+  PanEffect copyWith({bool? enabled, String? args}) =>
+      PanEffect(enabled: enabled ?? this.enabled, args: args ?? this.args);
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PanSettings && other.enabled == enabled && other.args == args);
+      (other is PanEffect && other.enabled == enabled && other.args == args);
 
   @override
   int get hashCode => Object.hash(enabled, args);
 
   @override
-  String toString() => 'PanSettings(enabled: $enabled, args: $args)';
+  String toString() => 'PanEffect(enabled: $enabled, args: $args)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     final parts = <String>[];
     parts.add('args=' + '[' + args + ']');
@@ -15759,7 +16420,7 @@ final class PanSettings {
 /// - [tempo]: Set tempo scale factor. (range 0.01..100, default 1, runtime-tunable)
 /// - [transients]: Set transients detector. Possible values are: (range 0..2147483647, default 0)
 /// - [window]: set window (range 0..2147483647, default 0)
-final class RubberbandSettings {
+final class RubberbandEffect extends AudioEffect {
   /// Default value for [pitch].
   static const double pitchDefault = 1.0;
 
@@ -15778,7 +16439,9 @@ final class RubberbandSettings {
   /// Maximum value for [tempo].
   static const double tempoMax = 100.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set channels
@@ -15811,12 +16474,11 @@ final class RubberbandSettings {
   /// set window
   final RubberbandWindow window;
 
-  /// Creates an [RubberbandSettings] with the given parameter values.
+  /// Creates an [RubberbandEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const RubberbandSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const RubberbandEffect({
+    this.enabled = true,
     this.channels = RubberbandChannels.apart,
     this.detector = RubberbandDetector.compound,
     this.formant = RubberbandFormant.shifted,
@@ -15829,8 +16491,14 @@ final class RubberbandSettings {
     this.window = RubberbandWindow.standard,
   });
 
-  /// Returns a copy of this [RubberbandSettings] with the given fields replaced.
-  RubberbandSettings copyWith({
+  @override
+  String get filterName => 'rubberband';
+
+  @override
+  AudioFilter get filter => AudioFilter.rubberband;
+
+  /// Returns a copy of this [RubberbandEffect] with the given fields replaced.
+  RubberbandEffect copyWith({
     bool? enabled,
     RubberbandChannels? channels,
     RubberbandDetector? detector,
@@ -15842,7 +16510,7 @@ final class RubberbandSettings {
     double? tempo,
     RubberbandTransients? transients,
     RubberbandWindow? window,
-  }) => RubberbandSettings(
+  }) => RubberbandEffect(
     enabled: enabled ?? this.enabled,
     channels: channels ?? this.channels,
     detector: detector ?? this.detector,
@@ -15859,7 +16527,7 @@ final class RubberbandSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is RubberbandSettings &&
+      (other is RubberbandEffect &&
           other.enabled == enabled &&
           other.channels == channels &&
           other.detector == detector &&
@@ -15889,10 +16557,11 @@ final class RubberbandSettings {
 
   @override
   String toString() =>
-      'RubberbandSettings(enabled: $enabled, channels: $channels, detector: $detector, formant: $formant, phase: $phase, pitch: $pitch, pitchq: $pitchq, smoothing: $smoothing, tempo: $tempo, transients: $transients, window: $window)';
+      'RubberbandEffect(enabled: $enabled, channels: $channels, detector: $detector, formant: $formant, phase: $phase, pitch: $pitch, pitchq: $pitchq, smoothing: $smoothing, tempo: $tempo, transients: $transients, window: $window)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(pitch >= pitchMin, 'rubberband.pitch must be >= 0.01');
     assert(pitch <= pitchMax, 'rubberband.pitch must be <= 100');
@@ -15924,7 +16593,8 @@ final class RubberbandSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(RubberbandSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant RubberbandEffect prev) {
     final out = <(String, String)>[];
     if (channels != prev.channels) return null;
     if (detector != prev.detector) return null;
@@ -15952,90 +16622,92 @@ final class RubberbandSettings {
 ///
 /// Parameters:
 /// - [detection]: Set how is silence detected. (range 0..5, default D_RMS)
-/// - [start_duration]: Specify the amount of time that non-silence must be detected before it stops trimming audio. By increasing the duration, bursts of noises can be treated as silence and trimmed off. Default value is `0`. (range 0..2147483647, default 0)
-/// - [start_mode]: Specify mode of detection of silence end at start of multi-channel audio. Can be `any` or `all`. Default is `any`. With `any`, any sample from any channel that is detected as non-silence will trigger end of silence trimming at start of audio stream. With `all`, only if every sample from every channel is detected as non-silence will trigger end of silence trimming at start of audio stream, limited usage. (range 0..1, default T_ANY, runtime-tunable)
-/// - [start_periods]: This value is used to indicate if audio should be trimmed at beginning of the audio. A value of zero indicates no silence should be trimmed from the beginning. When specifying a non-zero value, it trims audio up until it finds non-silence. Normally, when trimming silence from beginning of audio the `start_periods` will be `1` but it can be increased to higher values to trim all audio up to specific count of non-silence periods. Default value is `0`. (range 0..9000, default 0)
-/// - [start_silence]: Specify max duration of silence at beginning that will be kept after trimming. Default is 0, which is equal to trimming all samples detected as silence. (range 0..2147483647, default 0)
-/// - [start_threshold]: This indicates what sample value should be treated as silence. For digital audio, a value of `0` may be fine but for audio recorded from analog, you may wish to increase the value to account for background noise. Can be specified in dB (in case "dB" is appended to the specified value) or amplitude ratio. Default value is `0`. (range 0..1.7976931348623157e+308, default 0, runtime-tunable)
-/// - [stop_duration]: Specify a duration of silence that must exist before audio is not copied any more. By specifying a higher duration, silence that is wanted can be left in the audio. Default value is `0`. (range 0..2147483647, default 0)
-/// - [stop_mode]: Specify mode of detection of silence start after start of multi-channel audio. Can be `any` or `all`. Default is `all`. With `any`, any sample from any channel that is detected as silence will trigger start of silence trimming after start of audio stream, limited usage. With `all`, only if every sample from every channel is detected as silence will trigger start of silence trimming after start of audio stream. (range 0..1, default T_ALL, runtime-tunable)
-/// - [stop_periods]: Set the count for trimming silence from the end of audio. When specifying a positive value, it trims audio after it finds specified silence period. To remove silence from the middle of a file, specify a `stop_periods` that is negative. This value is then treated as a positive value and is used to indicate the effect should restart processing as specified by `stop_periods`, making it suitable for removing periods of silence in the middle of the audio. Default value is `0`. (range -9000..9000, default 0)
-/// - [stop_silence]: Specify max duration of silence at end that will be kept after trimming. Default is 0, which is equal to trimming all samples detected as silence. (range 0..2147483647, default 0)
-/// - [stop_threshold]: This is the same as @option{start_threshold} but for trimming silence from the end of audio. Can be specified in dB (in case "dB" is appended to the specified value) or amplitude ratio. Default value is `0`. (range 0..1.7976931348623157e+308, default 0, runtime-tunable)
+/// - [startDuration]: Specify the amount of time that non-silence must be detected before it stops trimming audio. By increasing the duration, bursts of noises can be treated as silence and trimmed off. Default value is `0`. (range 0..2147483647, default 0)
+/// - [startMode]: Specify mode of detection of silence end at start of multi-channel audio. Can be `any` or `all`. Default is `any`. With `any`, any sample from any channel that is detected as non-silence will trigger end of silence trimming at start of audio stream. With `all`, only if every sample from every channel is detected as non-silence will trigger end of silence trimming at start of audio stream, limited usage. (range 0..1, default T_ANY, runtime-tunable)
+/// - [startPeriods]: This value is used to indicate if audio should be trimmed at beginning of the audio. A value of zero indicates no silence should be trimmed from the beginning. When specifying a non-zero value, it trims audio up until it finds non-silence. Normally, when trimming silence from beginning of audio the `start_periods` will be `1` but it can be increased to higher values to trim all audio up to specific count of non-silence periods. Default value is `0`. (range 0..9000, default 0)
+/// - [startSilence]: Specify max duration of silence at beginning that will be kept after trimming. Default is 0, which is equal to trimming all samples detected as silence. (range 0..2147483647, default 0)
+/// - [startThreshold]: This indicates what sample value should be treated as silence. For digital audio, a value of `0` may be fine but for audio recorded from analog, you may wish to increase the value to account for background noise. Can be specified in dB (in case "dB" is appended to the specified value) or amplitude ratio. Default value is `0`. (range 0..1.7976931348623157e+308, default 0, runtime-tunable)
+/// - [stopDuration]: Specify a duration of silence that must exist before audio is not copied any more. By specifying a higher duration, silence that is wanted can be left in the audio. Default value is `0`. (range 0..2147483647, default 0)
+/// - [stopMode]: Specify mode of detection of silence start after start of multi-channel audio. Can be `any` or `all`. Default is `all`. With `any`, any sample from any channel that is detected as silence will trigger start of silence trimming after start of audio stream, limited usage. With `all`, only if every sample from every channel is detected as silence will trigger start of silence trimming after start of audio stream. (range 0..1, default T_ALL, runtime-tunable)
+/// - [stopPeriods]: Set the count for trimming silence from the end of audio. When specifying a positive value, it trims audio after it finds specified silence period. To remove silence from the middle of a file, specify a `stop_periods` that is negative. This value is then treated as a positive value and is used to indicate the effect should restart processing as specified by `stop_periods`, making it suitable for removing periods of silence in the middle of the audio. Default value is `0`. (range -9000..9000, default 0)
+/// - [stopSilence]: Specify max duration of silence at end that will be kept after trimming. Default is 0, which is equal to trimming all samples detected as silence. (range 0..2147483647, default 0)
+/// - [stopThreshold]: This is the same as @option{start_threshold} but for trimming silence from the end of audio. Can be specified in dB (in case "dB" is appended to the specified value) or amplitude ratio. Default value is `0`. (range 0..1.7976931348623157e+308, default 0, runtime-tunable)
 /// - [timestamp]: Set processing mode of every audio frame output timestamp. (range 0..1, default TS_WRITE)
 /// - [window]: Set duration in number of seconds used to calculate size of window in number of samples for detecting silence. Using `0` will effectively disable any windowing and use only single sample per channel for silence detection. In that case it may be needed to also set @option{start_silence} and/or @option{stop_silence} to nonzero values with also @option{start_duration} and/or @option{stop_duration} to nonzero values. Default value is `0.02`. Allowed range is from `0` to `10`. (range 0..100000000, default 20000)
-final class SilenceremoveSettings {
-  /// Default value for [start_periods].
-  static const int start_periodsDefault = 0;
+final class SilenceremoveEffect extends AudioEffect {
+  /// Default value for [startPeriods].
+  static const int startPeriodsDefault = 0;
 
-  /// Minimum value for [start_periods].
-  static const int start_periodsMin = 0;
+  /// Minimum value for [startPeriods].
+  static const int startPeriodsMin = 0;
 
-  /// Maximum value for [start_periods].
-  static const int start_periodsMax = 9000;
+  /// Maximum value for [startPeriods].
+  static const int startPeriodsMax = 9000;
 
-  /// Default value for [start_threshold].
-  static const double start_thresholdDefault = 0.0;
+  /// Default value for [startThreshold].
+  static const double startThresholdDefault = 0.0;
 
-  /// Minimum value for [start_threshold].
-  static const double start_thresholdMin = 0.0;
+  /// Minimum value for [startThreshold].
+  static const double startThresholdMin = 0.0;
 
-  /// Maximum value for [start_threshold].
-  static const double start_thresholdMax = 1.7976931348623157e+308;
+  /// Maximum value for [startThreshold].
+  static const double startThresholdMax = 1.7976931348623157e+308;
 
-  /// Default value for [stop_periods].
-  static const int stop_periodsDefault = 0;
+  /// Default value for [stopPeriods].
+  static const int stopPeriodsDefault = 0;
 
-  /// Minimum value for [stop_periods].
-  static const int stop_periodsMin = -9000;
+  /// Minimum value for [stopPeriods].
+  static const int stopPeriodsMin = -9000;
 
-  /// Maximum value for [stop_periods].
-  static const int stop_periodsMax = 9000;
+  /// Maximum value for [stopPeriods].
+  static const int stopPeriodsMax = 9000;
 
-  /// Default value for [stop_threshold].
-  static const double stop_thresholdDefault = 0.0;
+  /// Default value for [stopThreshold].
+  static const double stopThresholdDefault = 0.0;
 
-  /// Minimum value for [stop_threshold].
-  static const double stop_thresholdMin = 0.0;
+  /// Minimum value for [stopThreshold].
+  static const double stopThresholdMin = 0.0;
 
-  /// Maximum value for [stop_threshold].
-  static const double stop_thresholdMax = 1.7976931348623157e+308;
+  /// Maximum value for [stopThreshold].
+  static const double stopThresholdMax = 1.7976931348623157e+308;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set how silence is detected
   final SilenceremoveDetection detection;
 
   /// set start duration of non-silence part
-  final Duration start_duration;
+  final Duration startDuration;
 
   /// set which channel will trigger trimming from start
-  final SilenceremoveMode start_mode;
+  final SilenceremoveMode startMode;
 
   /// set periods of silence parts to skip from start
-  final int start_periods;
+  final int startPeriods;
 
   /// set start duration of silence part to keep
-  final Duration start_silence;
+  final Duration startSilence;
 
   /// set threshold for start silence detection
-  final double start_threshold;
+  final double startThreshold;
 
   /// set stop duration of silence part
-  final Duration stop_duration;
+  final Duration stopDuration;
 
   /// set which channel will trigger trimming from end
-  final SilenceremoveMode stop_mode;
+  final SilenceremoveMode stopMode;
 
   /// set periods of silence parts to skip from end
-  final int stop_periods;
+  final int stopPeriods;
 
   /// set stop duration of silence part to keep
-  final Duration stop_silence;
+  final Duration stopSilence;
 
   /// set threshold for stop silence detection
-  final double stop_threshold;
+  final double stopThreshold;
 
   /// set how every output frame timestamp is processed
   final SilenceremoveTimestamp timestamp;
@@ -16043,56 +16715,61 @@ final class SilenceremoveSettings {
   /// set duration of window for silence detection
   final Duration window;
 
-  /// Creates an [SilenceremoveSettings] with the given parameter values.
+  /// Creates an [SilenceremoveEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const SilenceremoveSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const SilenceremoveEffect({
+    this.enabled = true,
     this.detection = SilenceremoveDetection.rms,
-    this.start_duration = Duration.zero,
-    this.start_mode = SilenceremoveMode.any,
-    this.start_periods = 0,
-    this.start_silence = Duration.zero,
-    this.start_threshold = 0.0,
-    this.stop_duration = Duration.zero,
-    this.stop_mode = SilenceremoveMode.all,
-    this.stop_periods = 0,
-    this.stop_silence = Duration.zero,
-    this.stop_threshold = 0.0,
+    this.startDuration = Duration.zero,
+    this.startMode = SilenceremoveMode.any,
+    this.startPeriods = 0,
+    this.startSilence = Duration.zero,
+    this.startThreshold = 0.0,
+    this.stopDuration = Duration.zero,
+    this.stopMode = SilenceremoveMode.all,
+    this.stopPeriods = 0,
+    this.stopSilence = Duration.zero,
+    this.stopThreshold = 0.0,
     this.timestamp = SilenceremoveTimestamp.write,
     this.window = const Duration(microseconds: 20000),
   });
 
-  /// Returns a copy of this [SilenceremoveSettings] with the given fields replaced.
-  SilenceremoveSettings copyWith({
+  @override
+  String get filterName => 'silenceremove';
+
+  @override
+  AudioFilter get filter => AudioFilter.silenceremove;
+
+  /// Returns a copy of this [SilenceremoveEffect] with the given fields replaced.
+  SilenceremoveEffect copyWith({
     bool? enabled,
     SilenceremoveDetection? detection,
-    Duration? start_duration,
-    SilenceremoveMode? start_mode,
-    int? start_periods,
-    Duration? start_silence,
-    double? start_threshold,
-    Duration? stop_duration,
-    SilenceremoveMode? stop_mode,
-    int? stop_periods,
-    Duration? stop_silence,
-    double? stop_threshold,
+    Duration? startDuration,
+    SilenceremoveMode? startMode,
+    int? startPeriods,
+    Duration? startSilence,
+    double? startThreshold,
+    Duration? stopDuration,
+    SilenceremoveMode? stopMode,
+    int? stopPeriods,
+    Duration? stopSilence,
+    double? stopThreshold,
     SilenceremoveTimestamp? timestamp,
     Duration? window,
-  }) => SilenceremoveSettings(
+  }) => SilenceremoveEffect(
     enabled: enabled ?? this.enabled,
     detection: detection ?? this.detection,
-    start_duration: start_duration ?? this.start_duration,
-    start_mode: start_mode ?? this.start_mode,
-    start_periods: start_periods ?? this.start_periods,
-    start_silence: start_silence ?? this.start_silence,
-    start_threshold: start_threshold ?? this.start_threshold,
-    stop_duration: stop_duration ?? this.stop_duration,
-    stop_mode: stop_mode ?? this.stop_mode,
-    stop_periods: stop_periods ?? this.stop_periods,
-    stop_silence: stop_silence ?? this.stop_silence,
-    stop_threshold: stop_threshold ?? this.stop_threshold,
+    startDuration: startDuration ?? this.startDuration,
+    startMode: startMode ?? this.startMode,
+    startPeriods: startPeriods ?? this.startPeriods,
+    startSilence: startSilence ?? this.startSilence,
+    startThreshold: startThreshold ?? this.startThreshold,
+    stopDuration: stopDuration ?? this.stopDuration,
+    stopMode: stopMode ?? this.stopMode,
+    stopPeriods: stopPeriods ?? this.stopPeriods,
+    stopSilence: stopSilence ?? this.stopSilence,
+    stopThreshold: stopThreshold ?? this.stopThreshold,
     timestamp: timestamp ?? this.timestamp,
     window: window ?? this.window,
   );
@@ -16100,19 +16777,19 @@ final class SilenceremoveSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SilenceremoveSettings &&
+      (other is SilenceremoveEffect &&
           other.enabled == enabled &&
           other.detection == detection &&
-          other.start_duration == start_duration &&
-          other.start_mode == start_mode &&
-          other.start_periods == start_periods &&
-          other.start_silence == start_silence &&
-          other.start_threshold == start_threshold &&
-          other.stop_duration == stop_duration &&
-          other.stop_mode == stop_mode &&
-          other.stop_periods == stop_periods &&
-          other.stop_silence == stop_silence &&
-          other.stop_threshold == stop_threshold &&
+          other.startDuration == startDuration &&
+          other.startMode == startMode &&
+          other.startPeriods == startPeriods &&
+          other.startSilence == startSilence &&
+          other.startThreshold == startThreshold &&
+          other.stopDuration == stopDuration &&
+          other.stopMode == stopMode &&
+          other.stopPeriods == stopPeriods &&
+          other.stopSilence == stopSilence &&
+          other.stopThreshold == stopThreshold &&
           other.timestamp == timestamp &&
           other.window == window);
 
@@ -16120,89 +16797,90 @@ final class SilenceremoveSettings {
   int get hashCode => Object.hash(
     enabled,
     detection,
-    start_duration,
-    start_mode,
-    start_periods,
-    start_silence,
-    start_threshold,
-    stop_duration,
-    stop_mode,
-    stop_periods,
-    stop_silence,
-    stop_threshold,
+    startDuration,
+    startMode,
+    startPeriods,
+    startSilence,
+    startThreshold,
+    stopDuration,
+    stopMode,
+    stopPeriods,
+    stopSilence,
+    stopThreshold,
     timestamp,
     window,
   );
 
   @override
   String toString() =>
-      'SilenceremoveSettings(enabled: $enabled, detection: $detection, start_duration: $start_duration, start_mode: $start_mode, start_periods: $start_periods, start_silence: $start_silence, start_threshold: $start_threshold, stop_duration: $stop_duration, stop_mode: $stop_mode, stop_periods: $stop_periods, stop_silence: $stop_silence, stop_threshold: $stop_threshold, timestamp: $timestamp, window: $window)';
+      'SilenceremoveEffect(enabled: $enabled, detection: $detection, startDuration: $startDuration, startMode: $startMode, startPeriods: $startPeriods, startSilence: $startSilence, startThreshold: $startThreshold, stopDuration: $stopDuration, stopMode: $stopMode, stopPeriods: $stopPeriods, stopSilence: $stopSilence, stopThreshold: $stopThreshold, timestamp: $timestamp, window: $window)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(
-      start_periods >= start_periodsMin,
+      startPeriods >= startPeriodsMin,
       'silenceremove.start_periods must be >= 0',
     );
     assert(
-      start_periods <= start_periodsMax,
+      startPeriods <= startPeriodsMax,
       'silenceremove.start_periods must be <= 9000',
     );
     assert(
-      start_threshold >= start_thresholdMin,
+      startThreshold >= startThresholdMin,
       'silenceremove.start_threshold must be >= 0',
     );
     assert(
-      start_threshold <= start_thresholdMax,
+      startThreshold <= startThresholdMax,
       'silenceremove.start_threshold must be <= 1.7976931348623157e+308',
     );
     assert(
-      stop_periods >= stop_periodsMin,
+      stopPeriods >= stopPeriodsMin,
       'silenceremove.stop_periods must be >= -9000',
     );
     assert(
-      stop_periods <= stop_periodsMax,
+      stopPeriods <= stopPeriodsMax,
       'silenceremove.stop_periods must be <= 9000',
     );
     assert(
-      stop_threshold >= stop_thresholdMin,
+      stopThreshold >= stopThresholdMin,
       'silenceremove.stop_threshold must be >= 0',
     );
     assert(
-      stop_threshold <= stop_thresholdMax,
+      stopThreshold <= stopThresholdMax,
       'silenceremove.stop_threshold must be <= 1.7976931348623157e+308',
     );
     final parts = <String>[];
     if (detection != SilenceremoveDetection.rms)
       parts.add('detection=' + detection.mpvValue);
-    if (start_duration != Duration.zero)
+    if (startDuration != Duration.zero)
       parts.add(
-        'start_duration=' + _wireDouble(start_duration.inMicroseconds / 1e6),
+        'start_duration=' + _wireDouble(startDuration.inMicroseconds / 1e6),
       );
-    if (start_mode != SilenceremoveMode.any)
-      parts.add('start_mode=' + start_mode.mpvValue);
-    if (start_periods != 0)
-      parts.add('start_periods=' + start_periods.toString());
-    if (start_silence != Duration.zero)
+    if (startMode != SilenceremoveMode.any)
+      parts.add('start_mode=' + startMode.mpvValue);
+    if (startPeriods != 0)
+      parts.add('start_periods=' + startPeriods.toString());
+    if (startSilence != Duration.zero)
       parts.add(
-        'start_silence=' + _wireDouble(start_silence.inMicroseconds / 1e6),
+        'start_silence=' + _wireDouble(startSilence.inMicroseconds / 1e6),
       );
-    if (start_threshold != 0.0)
-      parts.add('start_threshold=' + _wireDouble(start_threshold));
-    if (stop_duration != Duration.zero)
+    if (startThreshold != 0.0)
+      parts.add('start_threshold=' + _wireDouble(startThreshold));
+    if (stopDuration != Duration.zero)
       parts.add(
-        'stop_duration=' + _wireDouble(stop_duration.inMicroseconds / 1e6),
+        'stop_duration=' + _wireDouble(stopDuration.inMicroseconds / 1e6),
       );
-    if (stop_mode != SilenceremoveMode.all)
-      parts.add('stop_mode=' + stop_mode.mpvValue);
-    if (stop_periods != 0) parts.add('stop_periods=' + stop_periods.toString());
-    if (stop_silence != Duration.zero)
+    if (stopMode != SilenceremoveMode.all)
+      parts.add('stop_mode=' + stopMode.mpvValue);
+    if (stopPeriods != 0) parts.add('stop_periods=' + stopPeriods.toString());
+    if (stopSilence != Duration.zero)
       parts.add(
-        'stop_silence=' + _wireDouble(stop_silence.inMicroseconds / 1e6),
+        'stop_silence=' + _wireDouble(stopSilence.inMicroseconds / 1e6),
       );
-    if (stop_threshold != 0.0)
-      parts.add('stop_threshold=' + _wireDouble(stop_threshold));
+    if (stopThreshold != 0.0)
+      parts.add('stop_threshold=' + _wireDouble(stopThreshold));
     if (timestamp != SilenceremoveTimestamp.write)
       parts.add('timestamp=' + timestamp.mpvValue);
     if (window != const Duration(microseconds: 20000))
@@ -16215,26 +16893,27 @@ final class SilenceremoveSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(SilenceremoveSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant SilenceremoveEffect prev) {
     final out = <(String, String)>[];
     if (detection != prev.detection) return null;
-    if (start_duration != prev.start_duration) return null;
-    if (start_mode != prev.start_mode) {
-      out.add(('start_mode', start_mode.mpvValue));
+    if (startDuration != prev.startDuration) return null;
+    if (startMode != prev.startMode) {
+      out.add(('start_mode', startMode.mpvValue));
     }
-    if (start_periods != prev.start_periods) return null;
-    if (start_silence != prev.start_silence) return null;
-    if (start_threshold != prev.start_threshold) {
-      out.add(('start_threshold', _wireDouble(start_threshold)));
+    if (startPeriods != prev.startPeriods) return null;
+    if (startSilence != prev.startSilence) return null;
+    if (startThreshold != prev.startThreshold) {
+      out.add(('start_threshold', _wireDouble(startThreshold)));
     }
-    if (stop_duration != prev.stop_duration) return null;
-    if (stop_mode != prev.stop_mode) {
-      out.add(('stop_mode', stop_mode.mpvValue));
+    if (stopDuration != prev.stopDuration) return null;
+    if (stopMode != prev.stopMode) {
+      out.add(('stop_mode', stopMode.mpvValue));
     }
-    if (stop_periods != prev.stop_periods) return null;
-    if (stop_silence != prev.stop_silence) return null;
-    if (stop_threshold != prev.stop_threshold) {
-      out.add(('stop_threshold', _wireDouble(stop_threshold)));
+    if (stopPeriods != prev.stopPeriods) return null;
+    if (stopSilence != prev.stopSilence) return null;
+    if (stopThreshold != prev.stopThreshold) {
+      out.add(('stop_threshold', _wireDouble(stopThreshold)));
     }
     if (timestamp != prev.timestamp) return null;
     if (window != prev.window) return null;
@@ -16273,7 +16952,7 @@ final class SilenceremoveSettings {
 /// - [rms]: Set the expansion target RMS value. This specifies the highest allowed RMS level for the normalized audio input. Default value is 0.0, thus disabled. Allowed range is from 0.0 to 1.0. (range 0.0..1.0, default 0.0, runtime-tunable)
 /// - [t]: Set the threshold value. Default value is 0.0. Allowed range is from 0.0 to 1.0. This option specifies which half-cycles of samples will be compressed and which will be expanded. Any half-cycle samples with their local peak value below or same as this option value will be compressed by current compression factor, otherwise, if greater than threshold value they will be expanded with expansion factor so that it could reach peak target value but never surpass it. (range 0.0..1.0, default 0, runtime-tunable)
 /// - [threshold]: Set the threshold value. Default value is 0.0. Allowed range is from 0.0 to 1.0. This option specifies which half-cycles of samples will be compressed and which will be expanded. Any half-cycle samples with their local peak value below or same as this option value will be compressed by current compression factor, otherwise, if greater than threshold value they will be expanded with expansion factor so that it could reach peak target value but never surpass it. (range 0.0..1.0, default 0, runtime-tunable)
-final class SpeechnormSettings {
+final class SpeechnormEffect extends AudioEffect {
   /// Default value for [c].
   static const double cDefault = 2.0;
 
@@ -16400,7 +17079,9 @@ final class SpeechnormSettings {
   /// Maximum value for [threshold].
   static const double thresholdMax = 1.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set the max compression factor
@@ -16463,12 +17144,11 @@ final class SpeechnormSettings {
   /// set the threshold value
   final double threshold;
 
-  /// Creates an [SpeechnormSettings] with the given parameter values.
+  /// Creates an [SpeechnormEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const SpeechnormSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const SpeechnormEffect({
+    this.enabled = true,
     this.c = 2.0,
     this.channels = 'all',
     this.compression = 2.0,
@@ -16491,8 +17171,14 @@ final class SpeechnormSettings {
     this.threshold = 0.0,
   });
 
-  /// Returns a copy of this [SpeechnormSettings] with the given fields replaced.
-  SpeechnormSettings copyWith({
+  @override
+  String get filterName => 'speechnorm';
+
+  @override
+  AudioFilter get filter => AudioFilter.speechnorm;
+
+  /// Returns a copy of this [SpeechnormEffect] with the given fields replaced.
+  SpeechnormEffect copyWith({
     bool? enabled,
     double? c,
     String? channels,
@@ -16514,7 +17200,7 @@ final class SpeechnormSettings {
     double? rms,
     double? t,
     double? threshold,
-  }) => SpeechnormSettings(
+  }) => SpeechnormEffect(
     enabled: enabled ?? this.enabled,
     c: c ?? this.c,
     channels: channels ?? this.channels,
@@ -16541,7 +17227,7 @@ final class SpeechnormSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SpeechnormSettings &&
+      (other is SpeechnormEffect &&
           other.enabled == enabled &&
           other.c == c &&
           other.channels == channels &&
@@ -16591,10 +17277,11 @@ final class SpeechnormSettings {
 
   @override
   String toString() =>
-      'SpeechnormSettings(enabled: $enabled, c: $c, channels: $channels, compression: $compression, e: $e, expansion: $expansion, f: $f, fall: $fall, h: $h, i: $i, invert: $invert, l: $l, link: $link, m: $m, p: $p, peak: $peak, r: $r, raise: $raise, rms: $rms, t: $t, threshold: $threshold)';
+      'SpeechnormEffect(enabled: $enabled, c: $c, channels: $channels, compression: $compression, e: $e, expansion: $expansion, f: $f, fall: $fall, h: $h, i: $i, invert: $invert, l: $l, link: $link, m: $m, p: $p, peak: $peak, r: $r, raise: $raise, rms: $rms, t: $t, threshold: $threshold)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(c >= cMin, 'speechnorm.c must be >= 1.0');
     assert(c <= cMax, 'speechnorm.c must be <= 50.0');
@@ -16660,7 +17347,8 @@ final class SpeechnormSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(SpeechnormSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant SpeechnormEffect prev) {
     final out = <(String, String)>[];
     if (c != prev.c) {
       out.add(('c', _wireDouble(c)));
@@ -16735,14 +17423,14 @@ final class SpeechnormSettings {
 /// The filter accepts the following options:
 ///
 /// Parameters:
-/// - [balance_in]: Set input balance between both channels. Default is 0. Allowed range is from -1 to 1. (range -1..1, default 0, runtime-tunable)
-/// - [balance_out]: Set output balance between both channels. Default is 0. Allowed range is from -1 to 1. (range -1..1, default 0, runtime-tunable)
+/// - [balanceIn]: Set input balance between both channels. Default is 0. Allowed range is from -1 to 1. (range -1..1, default 0, runtime-tunable)
+/// - [balanceOut]: Set output balance between both channels. Default is 0. Allowed range is from -1 to 1. (range -1..1, default 0, runtime-tunable)
 /// - [base]: set stereo base (range -1..1, default 0, runtime-tunable)
-/// - [bmode_in]: set balance in mode (range 0..2, default 0, runtime-tunable)
-/// - [bmode_out]: set balance out mode (range 0..2, default 0, runtime-tunable)
+/// - [bmodeIn]: set balance in mode (range 0..2, default 0, runtime-tunable)
+/// - [bmodeOut]: set balance out mode (range 0..2, default 0, runtime-tunable)
 /// - [delay]: set delay (range -20..20, default 0, runtime-tunable)
-/// - [level_in]: Set input level before filtering for both channels. Defaults is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
-/// - [level_out]: Set output level after filtering for both channels. Defaults is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelIn]: Set input level before filtering for both channels. Defaults is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
+/// - [levelOut]: Set output level after filtering for both channels. Defaults is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
 /// - [mlev]: set middle level (range 0.015625..64, default 1, runtime-tunable)
 /// - [mode]: Set stereo mode. Available values are: (range 0..10, default 0, runtime-tunable)
 /// - [mpan]: set middle pan (range -1..1, default 0, runtime-tunable)
@@ -16755,24 +17443,24 @@ final class SpeechnormSettings {
 /// - [sclevel]: set S/C level (range 1..100, default 1, runtime-tunable)
 /// - [slev]: set side level (range 0.015625..64, default 1, runtime-tunable)
 /// - [softclip]: Enable softclipping. Results in analog distortion instead of harsh digital 0dB clipping. Disabled by default. (range 0..1, default 0, runtime-tunable)
-final class StereotoolsSettings {
-  /// Default value for [balance_in].
-  static const double balance_inDefault = 0.0;
+final class StereotoolsEffect extends AudioEffect {
+  /// Default value for [balanceIn].
+  static const double balanceInDefault = 0.0;
 
-  /// Minimum value for [balance_in].
-  static const double balance_inMin = -1.0;
+  /// Minimum value for [balanceIn].
+  static const double balanceInMin = -1.0;
 
-  /// Maximum value for [balance_in].
-  static const double balance_inMax = 1.0;
+  /// Maximum value for [balanceIn].
+  static const double balanceInMax = 1.0;
 
-  /// Default value for [balance_out].
-  static const double balance_outDefault = 0.0;
+  /// Default value for [balanceOut].
+  static const double balanceOutDefault = 0.0;
 
-  /// Minimum value for [balance_out].
-  static const double balance_outMin = -1.0;
+  /// Minimum value for [balanceOut].
+  static const double balanceOutMin = -1.0;
 
-  /// Maximum value for [balance_out].
-  static const double balance_outMax = 1.0;
+  /// Maximum value for [balanceOut].
+  static const double balanceOutMax = 1.0;
 
   /// Default value for [base].
   static const double baseDefault = 0.0;
@@ -16792,23 +17480,23 @@ final class StereotoolsSettings {
   /// Maximum value for [delay].
   static const double delayMax = 20.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.015625;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.015625;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 64.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 64.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.015625;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.015625;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 64.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 64.0;
 
   /// Default value for [mlev].
   static const double mlevDefault = 1.0;
@@ -16864,32 +17552,34 @@ final class StereotoolsSettings {
   /// Maximum value for [slev].
   static const double slevMax = 64.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set balance in
-  final double balance_in;
+  final double balanceIn;
 
   /// set balance out
-  final double balance_out;
+  final double balanceOut;
 
   /// set stereo base
   final double base;
 
   /// set balance in mode
-  final StereotoolsBmode bmode_in;
+  final StereotoolsBmode bmodeIn;
 
   /// set balance out mode
-  final StereotoolsBmode bmode_out;
+  final StereotoolsBmode bmodeOut;
 
   /// set delay
   final double delay;
 
   /// set level in
-  final double level_in;
+  final double levelIn;
 
   /// set level out
-  final double level_out;
+  final double levelOut;
 
   /// set middle level
   final double mlev;
@@ -16927,22 +17617,21 @@ final class StereotoolsSettings {
   /// enable softclip
   final bool softclip;
 
-  /// Creates an [StereotoolsSettings] with the given parameter values.
+  /// Creates an [StereotoolsEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const StereotoolsSettings({
-    this.enabled = false,
-    this.balance_in = 0.0,
-    this.balance_out = 0.0,
+  /// Each parameter defaults to its ffmpeg default.
+  const StereotoolsEffect({
+    this.enabled = true,
+    this.balanceIn = 0.0,
+    this.balanceOut = 0.0,
     this.base = 0.0,
-    this.bmode_in = StereotoolsBmode.balance,
-    this.bmode_out = StereotoolsBmode.balance,
+    this.bmodeIn = StereotoolsBmode.balance,
+    this.bmodeOut = StereotoolsBmode.balance,
     this.delay = 0.0,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
     this.mlev = 1.0,
-    this.mode = StereotoolsMode.lr_to_lr,
+    this.mode = StereotoolsMode.lrToLr,
     this.mpan = 0.0,
     this.mutel = false,
     this.muter = false,
@@ -16955,17 +17644,23 @@ final class StereotoolsSettings {
     this.softclip = false,
   });
 
-  /// Returns a copy of this [StereotoolsSettings] with the given fields replaced.
-  StereotoolsSettings copyWith({
+  @override
+  String get filterName => 'stereotools';
+
+  @override
+  AudioFilter get filter => AudioFilter.stereotools;
+
+  /// Returns a copy of this [StereotoolsEffect] with the given fields replaced.
+  StereotoolsEffect copyWith({
     bool? enabled,
-    double? balance_in,
-    double? balance_out,
+    double? balanceIn,
+    double? balanceOut,
     double? base,
-    StereotoolsBmode? bmode_in,
-    StereotoolsBmode? bmode_out,
+    StereotoolsBmode? bmodeIn,
+    StereotoolsBmode? bmodeOut,
     double? delay,
-    double? level_in,
-    double? level_out,
+    double? levelIn,
+    double? levelOut,
     double? mlev,
     StereotoolsMode? mode,
     double? mpan,
@@ -16978,16 +17673,16 @@ final class StereotoolsSettings {
     double? sclevel,
     double? slev,
     bool? softclip,
-  }) => StereotoolsSettings(
+  }) => StereotoolsEffect(
     enabled: enabled ?? this.enabled,
-    balance_in: balance_in ?? this.balance_in,
-    balance_out: balance_out ?? this.balance_out,
+    balanceIn: balanceIn ?? this.balanceIn,
+    balanceOut: balanceOut ?? this.balanceOut,
     base: base ?? this.base,
-    bmode_in: bmode_in ?? this.bmode_in,
-    bmode_out: bmode_out ?? this.bmode_out,
+    bmodeIn: bmodeIn ?? this.bmodeIn,
+    bmodeOut: bmodeOut ?? this.bmodeOut,
     delay: delay ?? this.delay,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     mlev: mlev ?? this.mlev,
     mode: mode ?? this.mode,
     mpan: mpan ?? this.mpan,
@@ -17005,16 +17700,16 @@ final class StereotoolsSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is StereotoolsSettings &&
+      (other is StereotoolsEffect &&
           other.enabled == enabled &&
-          other.balance_in == balance_in &&
-          other.balance_out == balance_out &&
+          other.balanceIn == balanceIn &&
+          other.balanceOut == balanceOut &&
           other.base == base &&
-          other.bmode_in == bmode_in &&
-          other.bmode_out == bmode_out &&
+          other.bmodeIn == bmodeIn &&
+          other.bmodeOut == bmodeOut &&
           other.delay == delay &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.mlev == mlev &&
           other.mode == mode &&
           other.mpan == mpan &&
@@ -17031,14 +17726,14 @@ final class StereotoolsSettings {
   @override
   int get hashCode => Object.hashAll([
     enabled,
-    balance_in,
-    balance_out,
+    balanceIn,
+    balanceOut,
     base,
-    bmode_in,
-    bmode_out,
+    bmodeIn,
+    bmodeOut,
     delay,
-    level_in,
-    level_out,
+    levelIn,
+    levelOut,
     mlev,
     mode,
     mpan,
@@ -17055,32 +17750,30 @@ final class StereotoolsSettings {
 
   @override
   String toString() =>
-      'StereotoolsSettings(enabled: $enabled, balance_in: $balance_in, balance_out: $balance_out, base: $base, bmode_in: $bmode_in, bmode_out: $bmode_out, delay: $delay, level_in: $level_in, level_out: $level_out, mlev: $mlev, mode: $mode, mpan: $mpan, mutel: $mutel, muter: $muter, phase: $phase, phasel: $phasel, phaser: $phaser, sbal: $sbal, sclevel: $sclevel, slev: $slev, softclip: $softclip)';
+      'StereotoolsEffect(enabled: $enabled, balanceIn: $balanceIn, balanceOut: $balanceOut, base: $base, bmodeIn: $bmodeIn, bmodeOut: $bmodeOut, delay: $delay, levelIn: $levelIn, levelOut: $levelOut, mlev: $mlev, mode: $mode, mpan: $mpan, mutel: $mutel, muter: $muter, phase: $phase, phasel: $phasel, phaser: $phaser, sbal: $sbal, sclevel: $sclevel, slev: $slev, softclip: $softclip)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
-    assert(balance_in >= balance_inMin, 'stereotools.balance_in must be >= -1');
-    assert(balance_in <= balance_inMax, 'stereotools.balance_in must be <= 1');
+    assert(balanceIn >= balanceInMin, 'stereotools.balance_in must be >= -1');
+    assert(balanceIn <= balanceInMax, 'stereotools.balance_in must be <= 1');
     assert(
-      balance_out >= balance_outMin,
+      balanceOut >= balanceOutMin,
       'stereotools.balance_out must be >= -1',
     );
-    assert(
-      balance_out <= balance_outMax,
-      'stereotools.balance_out must be <= 1',
-    );
+    assert(balanceOut <= balanceOutMax, 'stereotools.balance_out must be <= 1');
     assert(base >= baseMin, 'stereotools.base must be >= -1');
     assert(base <= baseMax, 'stereotools.base must be <= 1');
     assert(delay >= delayMin, 'stereotools.delay must be >= -20');
     assert(delay <= delayMax, 'stereotools.delay must be <= 20');
-    assert(level_in >= level_inMin, 'stereotools.level_in must be >= 0.015625');
-    assert(level_in <= level_inMax, 'stereotools.level_in must be <= 64');
+    assert(levelIn >= levelInMin, 'stereotools.level_in must be >= 0.015625');
+    assert(levelIn <= levelInMax, 'stereotools.level_in must be <= 64');
     assert(
-      level_out >= level_outMin,
+      levelOut >= levelOutMin,
       'stereotools.level_out must be >= 0.015625',
     );
-    assert(level_out <= level_outMax, 'stereotools.level_out must be <= 64');
+    assert(levelOut <= levelOutMax, 'stereotools.level_out must be <= 64');
     assert(mlev >= mlevMin, 'stereotools.mlev must be >= 0.015625');
     assert(mlev <= mlevMax, 'stereotools.mlev must be <= 64');
     assert(mpan >= mpanMin, 'stereotools.mpan must be >= -1');
@@ -17094,19 +17787,18 @@ final class StereotoolsSettings {
     assert(slev >= slevMin, 'stereotools.slev must be >= 0.015625');
     assert(slev <= slevMax, 'stereotools.slev must be <= 64');
     final parts = <String>[];
-    if (balance_in != 0.0) parts.add('balance_in=' + _wireDouble(balance_in));
-    if (balance_out != 0.0)
-      parts.add('balance_out=' + _wireDouble(balance_out));
+    if (balanceIn != 0.0) parts.add('balance_in=' + _wireDouble(balanceIn));
+    if (balanceOut != 0.0) parts.add('balance_out=' + _wireDouble(balanceOut));
     if (base != 0.0) parts.add('base=' + _wireDouble(base));
-    if (bmode_in != StereotoolsBmode.balance)
-      parts.add('bmode_in=' + bmode_in.mpvValue);
-    if (bmode_out != StereotoolsBmode.balance)
-      parts.add('bmode_out=' + bmode_out.mpvValue);
+    if (bmodeIn != StereotoolsBmode.balance)
+      parts.add('bmode_in=' + bmodeIn.mpvValue);
+    if (bmodeOut != StereotoolsBmode.balance)
+      parts.add('bmode_out=' + bmodeOut.mpvValue);
     if (delay != 0.0) parts.add('delay=' + _wireDouble(delay));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (mlev != 1.0) parts.add('mlev=' + _wireDouble(mlev));
-    if (mode != StereotoolsMode.lr_to_lr) parts.add('mode=' + mode.mpvValue);
+    if (mode != StereotoolsMode.lrToLr) parts.add('mode=' + mode.mpvValue);
     if (mpan != 0.0) parts.add('mpan=' + _wireDouble(mpan));
     if (mutel != false) parts.add('mutel=' + (mutel ? '1' : '0'));
     if (muter != false) parts.add('muter=' + (muter ? '1' : '0'));
@@ -17125,31 +17817,32 @@ final class StereotoolsSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(StereotoolsSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant StereotoolsEffect prev) {
     final out = <(String, String)>[];
-    if (balance_in != prev.balance_in) {
-      out.add(('balance_in', _wireDouble(balance_in)));
+    if (balanceIn != prev.balanceIn) {
+      out.add(('balance_in', _wireDouble(balanceIn)));
     }
-    if (balance_out != prev.balance_out) {
-      out.add(('balance_out', _wireDouble(balance_out)));
+    if (balanceOut != prev.balanceOut) {
+      out.add(('balance_out', _wireDouble(balanceOut)));
     }
     if (base != prev.base) {
       out.add(('base', _wireDouble(base)));
     }
-    if (bmode_in != prev.bmode_in) {
-      out.add(('bmode_in', bmode_in.mpvValue));
+    if (bmodeIn != prev.bmodeIn) {
+      out.add(('bmode_in', bmodeIn.mpvValue));
     }
-    if (bmode_out != prev.bmode_out) {
-      out.add(('bmode_out', bmode_out.mpvValue));
+    if (bmodeOut != prev.bmodeOut) {
+      out.add(('bmode_out', bmodeOut.mpvValue));
     }
     if (delay != prev.delay) {
       out.add(('delay', _wireDouble(delay)));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     if (mlev != prev.mlev) {
       out.add(('mlev', _wireDouble(mlev)));
@@ -17204,7 +17897,7 @@ final class StereotoolsSettings {
 /// - [delay]: Time in milliseconds of the delay of left signal into right and vice versa. Default is 20 milliseconds. (range 1..100, default 20)
 /// - [drymix]: Set level of input signal of original channel. Default is 0.8. (range 0..1.0, default .8, runtime-tunable)
 /// - [feedback]: Amount of gain in delayed signal into right and vice versa. Gives a delay effect of left signal in right output and vice versa which gives widening effect. Default is 0.3. (range 0..0.9, default .3, runtime-tunable)
-final class StereowidenSettings {
+final class StereowidenEffect extends AudioEffect {
   /// Default value for [crossfeed].
   static const double crossfeedDefault = .3;
 
@@ -17241,7 +17934,9 @@ final class StereowidenSettings {
   /// Maximum value for [feedback].
   static const double feedbackMax = 0.9;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set cross feed
@@ -17256,26 +17951,31 @@ final class StereowidenSettings {
   /// set feedback gain
   final double feedback;
 
-  /// Creates an [StereowidenSettings] with the given parameter values.
+  /// Creates an [StereowidenEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const StereowidenSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const StereowidenEffect({
+    this.enabled = true,
     this.crossfeed = .3,
     this.delay = 20.0,
     this.drymix = .8,
     this.feedback = .3,
   });
 
-  /// Returns a copy of this [StereowidenSettings] with the given fields replaced.
-  StereowidenSettings copyWith({
+  @override
+  String get filterName => 'stereowiden';
+
+  @override
+  AudioFilter get filter => AudioFilter.stereowiden;
+
+  /// Returns a copy of this [StereowidenEffect] with the given fields replaced.
+  StereowidenEffect copyWith({
     bool? enabled,
     double? crossfeed,
     double? delay,
     double? drymix,
     double? feedback,
-  }) => StereowidenSettings(
+  }) => StereowidenEffect(
     enabled: enabled ?? this.enabled,
     crossfeed: crossfeed ?? this.crossfeed,
     delay: delay ?? this.delay,
@@ -17286,7 +17986,7 @@ final class StereowidenSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is StereowidenSettings &&
+      (other is StereowidenEffect &&
           other.enabled == enabled &&
           other.crossfeed == crossfeed &&
           other.delay == delay &&
@@ -17298,10 +17998,11 @@ final class StereowidenSettings {
 
   @override
   String toString() =>
-      'StereowidenSettings(enabled: $enabled, crossfeed: $crossfeed, delay: $delay, drymix: $drymix, feedback: $feedback)';
+      'StereowidenEffect(enabled: $enabled, crossfeed: $crossfeed, delay: $delay, drymix: $drymix, feedback: $feedback)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(crossfeed >= crossfeedMin, 'stereowiden.crossfeed must be >= 0');
     assert(crossfeed <= crossfeedMax, 'stereowiden.crossfeed must be <= 0.8');
@@ -17324,7 +18025,8 @@ final class StereowidenSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(StereowidenSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant StereowidenEffect prev) {
     final out = <(String, String)>[];
     if (crossfeed != prev.crossfeed) {
       out.add(('crossfeed', _wireDouble(crossfeed)));
@@ -17366,36 +18068,41 @@ final class StereowidenSettings {
 /// - `7b`: Set 523Hz band gain. (range 0..20, default 1)
 /// - `8b`: Set 740Hz band gain. (range 0..20, default 1)
 /// - `9b`: Set 1047Hz band gain. (range 0..20, default 1)
-final class SuperequalizerSettings {
-  /// Whether this effect is inserted into the audio chain.
+final class SuperequalizerEffect extends AudioEffect {
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// Raw values for parameters whose names start with a digit,
   /// keyed by their original ffmpeg option name.
   final Map<String, double> params;
 
-  /// Creates an [SuperequalizerSettings] with the given parameter values.
+  /// Creates an [SuperequalizerEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const SuperequalizerSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const SuperequalizerEffect({
+    this.enabled = true,
     this.params = const <String, double>{},
   });
 
-  /// Returns a copy of this [SuperequalizerSettings] with the given fields replaced.
-  SuperequalizerSettings copyWith({
-    bool? enabled,
-    Map<String, double>? params,
-  }) => SuperequalizerSettings(
-    enabled: enabled ?? this.enabled,
-    params: params ?? this.params,
-  );
+  @override
+  String get filterName => 'superequalizer';
+
+  @override
+  AudioFilter get filter => AudioFilter.superequalizer;
+
+  /// Returns a copy of this [SuperequalizerEffect] with the given fields replaced.
+  SuperequalizerEffect copyWith({bool? enabled, Map<String, double>? params}) =>
+      SuperequalizerEffect(
+        enabled: enabled ?? this.enabled,
+        params: params ?? this.params,
+      );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SuperequalizerSettings &&
+      (other is SuperequalizerEffect &&
           other.enabled == enabled &&
           _mapEq(params, other.params));
 
@@ -17409,10 +18116,11 @@ final class SuperequalizerSettings {
 
   @override
   String toString() =>
-      'SuperequalizerSettings(enabled: $enabled, params: $params)';
+      'SuperequalizerEffect(enabled: $enabled, params: $params)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     final parts = <String>[];
     params.forEach((k, v) => parts.add('$k=' + _wireDouble(v)));
@@ -17434,54 +18142,54 @@ final class SuperequalizerSettings {
 /// - [allx]: Set spread usage of stereo image across X axis for all channels. Allowed range is from `-1` to `15`. By default this value is negative `-1`, and thus unused. (range -1..15, default -1, runtime-tunable)
 /// - [ally]: Set spread usage of stereo image across Y axis for all channels. Allowed range is from `-1` to `15`. By default this value is negative `-1`, and thus unused. (range -1..15, default -1, runtime-tunable)
 /// - [angle]: Set angle of stereo surround transform, Allowed range is from `0` to `360`. Default is `90`. (range 0..360, default 90, runtime-tunable)
-/// - [bc_in]: Set back center input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [bc_out]: Set back center output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [bcIn]: Set back center input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [bcOut]: Set back center output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [bcx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [bcy]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
-/// - [bl_in]: Set back left input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [bl_out]: Set back left output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [blIn]: Set back left input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [blOut]: Set back left output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [blx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [bly]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
-/// - [br_in]: Set back right input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [br_out]: Set back right output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [brIn]: Set back right input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [brOut]: Set back right output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [brx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [bry]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
-/// - [chl_in]: Set input channel layout. By default, this is `stereo`.  See channel layout syntax for the required syntax. (range 0..0, default "stereo")
-/// - [chl_out]: Set output channel layout. By default, this is `5.1`.  See channel layout syntax for the required syntax. (range 0..0, default "5.1")
-/// - [fc_in]: Set front center input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [fc_out]: Set front center output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [chlIn]: Set input channel layout. By default, this is `stereo`.  See channel layout syntax for the required syntax. (range 0..0, default "stereo")
+/// - [chlOut]: Set output channel layout. By default, this is `5.1`.  See channel layout syntax for the required syntax. (range 0..0, default "5.1")
+/// - [fcIn]: Set front center input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [fcOut]: Set front center output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [fcx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [fcy]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
-/// - [fl_in]: Set front left input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [fl_out]: Set front left output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [flIn]: Set front left input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [flOut]: Set front left output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [flx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [fly]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [focus]: Set focus of stereo surround transform, Allowed range is from `-1` to `1`. Default is `0`. (range -1..1, default 0, runtime-tunable)
-/// - [fr_in]: Set front right input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [fr_out]: Set front right output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [frIn]: Set front right input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [frOut]: Set front right output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [frx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [fry]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
-/// - [level_in]: Set input volume level. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [level_out]: Set output volume level. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [levelIn]: Set input volume level. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [levelOut]: Set output volume level. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [lfe]: Enable LFE channel output if output channel layout has it. By default, this is enabled. (range 0..1, default 1, runtime-tunable)
-/// - [lfe_high]: Set LFE high cut off frequency. By default, this is `256` Hz. (range 0..512, default 256)
-/// - [lfe_in]: Set LFE input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [lfe_low]: Set LFE low cut off frequency. By default, this is `128` Hz. (range 0..256, default 128)
-/// - [lfe_mode]: Set LFE mode, can be `add` or `sub`. Default is `add`. In `add` mode, LFE channel is created from input audio and added to output. In `sub` mode, LFE channel is created from input audio and added to output but also all non-LFE output channels are subtracted with output LFE channel. (range 0..1, default 0, runtime-tunable)
-/// - [lfe_out]: Set LFE output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [lfeHigh]: Set LFE high cut off frequency. By default, this is `256` Hz. (range 0..512, default 256)
+/// - [lfeIn]: Set LFE input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [lfeLow]: Set LFE low cut off frequency. By default, this is `128` Hz. (range 0..256, default 128)
+/// - [lfeMode]: Set LFE mode, can be `add` or `sub`. Default is `add`. In `add` mode, LFE channel is created from input audio and added to output. In `sub` mode, LFE channel is created from input audio and added to output but also all non-LFE output channels are subtracted with output LFE channel. (range 0..1, default 0, runtime-tunable)
+/// - [lfeOut]: Set LFE output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [overlap]: set window overlap (range 0..1, default 0.5, runtime-tunable)
-/// - [sl_in]: Set side left input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [sl_out]: Set side left output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [slIn]: Set side left input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [slOut]: Set side left output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [slx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [sly]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [smooth]: Set temporal smoothness strength, used to gradually change factors when transforming stereo sound in time. Allowed range is from `0.0` to `1.0`. Useful to improve output quality with `focus` option values greater than `0.0`. Default is `0.0`. Only values inside this range and without edges are effective. (range 0..1, default 0, runtime-tunable)
-/// - [sr_in]: Set side right input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
-/// - [sr_out]: Set side right output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [srIn]: Set side right input volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
+/// - [srOut]: Set side right output volume. By default, this is `1`. (range 0..10, default 1, runtime-tunable)
 /// - [srx]: Set spread usage of stereo image across X axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
 /// - [sry]: Set spread usage of stereo image across Y axis for each channel. Allowed range is from `0.06` to `15`. By default this value is `0.5`. (range .06..15, default 0.5, runtime-tunable)
-/// - [win_func]: Set window function.  It accepts the following values: (default WFUNC_HANNING)
-/// - [win_size]: Set window size. Allowed range is from `1024` to `65536`. Default size is `4096`. (range 1024..65536, default 4096)
-final class SurroundSettings {
+/// - [winFunc]: Set window function.  It accepts the following values: (default WFUNC_HANNING)
+/// - [winSize]: Set window size. Allowed range is from `1024` to `65536`. Default size is `4096`. (range 1024..65536, default 4096)
+final class SurroundEffect extends AudioEffect {
   /// Default value for [allx].
   static const double allxDefault = -1.0;
 
@@ -17509,23 +18217,23 @@ final class SurroundSettings {
   /// Maximum value for [angle].
   static const double angleMax = 360.0;
 
-  /// Default value for [bc_in].
-  static const double bc_inDefault = 1.0;
+  /// Default value for [bcIn].
+  static const double bcInDefault = 1.0;
 
-  /// Minimum value for [bc_in].
-  static const double bc_inMin = 0.0;
+  /// Minimum value for [bcIn].
+  static const double bcInMin = 0.0;
 
-  /// Maximum value for [bc_in].
-  static const double bc_inMax = 10.0;
+  /// Maximum value for [bcIn].
+  static const double bcInMax = 10.0;
 
-  /// Default value for [bc_out].
-  static const double bc_outDefault = 1.0;
+  /// Default value for [bcOut].
+  static const double bcOutDefault = 1.0;
 
-  /// Minimum value for [bc_out].
-  static const double bc_outMin = 0.0;
+  /// Minimum value for [bcOut].
+  static const double bcOutMin = 0.0;
 
-  /// Maximum value for [bc_out].
-  static const double bc_outMax = 10.0;
+  /// Maximum value for [bcOut].
+  static const double bcOutMax = 10.0;
 
   /// Default value for [bcx].
   static const double bcxDefault = 0.5;
@@ -17545,23 +18253,23 @@ final class SurroundSettings {
   /// Maximum value for [bcy].
   static const double bcyMax = 15.0;
 
-  /// Default value for [bl_in].
-  static const double bl_inDefault = 1.0;
+  /// Default value for [blIn].
+  static const double blInDefault = 1.0;
 
-  /// Minimum value for [bl_in].
-  static const double bl_inMin = 0.0;
+  /// Minimum value for [blIn].
+  static const double blInMin = 0.0;
 
-  /// Maximum value for [bl_in].
-  static const double bl_inMax = 10.0;
+  /// Maximum value for [blIn].
+  static const double blInMax = 10.0;
 
-  /// Default value for [bl_out].
-  static const double bl_outDefault = 1.0;
+  /// Default value for [blOut].
+  static const double blOutDefault = 1.0;
 
-  /// Minimum value for [bl_out].
-  static const double bl_outMin = 0.0;
+  /// Minimum value for [blOut].
+  static const double blOutMin = 0.0;
 
-  /// Maximum value for [bl_out].
-  static const double bl_outMax = 10.0;
+  /// Maximum value for [blOut].
+  static const double blOutMax = 10.0;
 
   /// Default value for [blx].
   static const double blxDefault = 0.5;
@@ -17581,23 +18289,23 @@ final class SurroundSettings {
   /// Maximum value for [bly].
   static const double blyMax = 15.0;
 
-  /// Default value for [br_in].
-  static const double br_inDefault = 1.0;
+  /// Default value for [brIn].
+  static const double brInDefault = 1.0;
 
-  /// Minimum value for [br_in].
-  static const double br_inMin = 0.0;
+  /// Minimum value for [brIn].
+  static const double brInMin = 0.0;
 
-  /// Maximum value for [br_in].
-  static const double br_inMax = 10.0;
+  /// Maximum value for [brIn].
+  static const double brInMax = 10.0;
 
-  /// Default value for [br_out].
-  static const double br_outDefault = 1.0;
+  /// Default value for [brOut].
+  static const double brOutDefault = 1.0;
 
-  /// Minimum value for [br_out].
-  static const double br_outMin = 0.0;
+  /// Minimum value for [brOut].
+  static const double brOutMin = 0.0;
 
-  /// Maximum value for [br_out].
-  static const double br_outMax = 10.0;
+  /// Maximum value for [brOut].
+  static const double brOutMax = 10.0;
 
   /// Default value for [brx].
   static const double brxDefault = 0.5;
@@ -17617,23 +18325,23 @@ final class SurroundSettings {
   /// Maximum value for [bry].
   static const double bryMax = 15.0;
 
-  /// Default value for [fc_in].
-  static const double fc_inDefault = 1.0;
+  /// Default value for [fcIn].
+  static const double fcInDefault = 1.0;
 
-  /// Minimum value for [fc_in].
-  static const double fc_inMin = 0.0;
+  /// Minimum value for [fcIn].
+  static const double fcInMin = 0.0;
 
-  /// Maximum value for [fc_in].
-  static const double fc_inMax = 10.0;
+  /// Maximum value for [fcIn].
+  static const double fcInMax = 10.0;
 
-  /// Default value for [fc_out].
-  static const double fc_outDefault = 1.0;
+  /// Default value for [fcOut].
+  static const double fcOutDefault = 1.0;
 
-  /// Minimum value for [fc_out].
-  static const double fc_outMin = 0.0;
+  /// Minimum value for [fcOut].
+  static const double fcOutMin = 0.0;
 
-  /// Maximum value for [fc_out].
-  static const double fc_outMax = 10.0;
+  /// Maximum value for [fcOut].
+  static const double fcOutMax = 10.0;
 
   /// Default value for [fcx].
   static const double fcxDefault = 0.5;
@@ -17653,23 +18361,23 @@ final class SurroundSettings {
   /// Maximum value for [fcy].
   static const double fcyMax = 15.0;
 
-  /// Default value for [fl_in].
-  static const double fl_inDefault = 1.0;
+  /// Default value for [flIn].
+  static const double flInDefault = 1.0;
 
-  /// Minimum value for [fl_in].
-  static const double fl_inMin = 0.0;
+  /// Minimum value for [flIn].
+  static const double flInMin = 0.0;
 
-  /// Maximum value for [fl_in].
-  static const double fl_inMax = 10.0;
+  /// Maximum value for [flIn].
+  static const double flInMax = 10.0;
 
-  /// Default value for [fl_out].
-  static const double fl_outDefault = 1.0;
+  /// Default value for [flOut].
+  static const double flOutDefault = 1.0;
 
-  /// Minimum value for [fl_out].
-  static const double fl_outMin = 0.0;
+  /// Minimum value for [flOut].
+  static const double flOutMin = 0.0;
 
-  /// Maximum value for [fl_out].
-  static const double fl_outMax = 10.0;
+  /// Maximum value for [flOut].
+  static const double flOutMax = 10.0;
 
   /// Default value for [flx].
   static const double flxDefault = 0.5;
@@ -17698,23 +18406,23 @@ final class SurroundSettings {
   /// Maximum value for [focus].
   static const double focusMax = 1.0;
 
-  /// Default value for [fr_in].
-  static const double fr_inDefault = 1.0;
+  /// Default value for [frIn].
+  static const double frInDefault = 1.0;
 
-  /// Minimum value for [fr_in].
-  static const double fr_inMin = 0.0;
+  /// Minimum value for [frIn].
+  static const double frInMin = 0.0;
 
-  /// Maximum value for [fr_in].
-  static const double fr_inMax = 10.0;
+  /// Maximum value for [frIn].
+  static const double frInMax = 10.0;
 
-  /// Default value for [fr_out].
-  static const double fr_outDefault = 1.0;
+  /// Default value for [frOut].
+  static const double frOutDefault = 1.0;
 
-  /// Minimum value for [fr_out].
-  static const double fr_outMin = 0.0;
+  /// Minimum value for [frOut].
+  static const double frOutMin = 0.0;
 
-  /// Maximum value for [fr_out].
-  static const double fr_outMax = 10.0;
+  /// Maximum value for [frOut].
+  static const double frOutMax = 10.0;
 
   /// Default value for [frx].
   static const double frxDefault = 0.5;
@@ -17734,59 +18442,59 @@ final class SurroundSettings {
   /// Maximum value for [fry].
   static const double fryMax = 15.0;
 
-  /// Default value for [level_in].
-  static const double level_inDefault = 1.0;
+  /// Default value for [levelIn].
+  static const double levelInDefault = 1.0;
 
-  /// Minimum value for [level_in].
-  static const double level_inMin = 0.0;
+  /// Minimum value for [levelIn].
+  static const double levelInMin = 0.0;
 
-  /// Maximum value for [level_in].
-  static const double level_inMax = 10.0;
+  /// Maximum value for [levelIn].
+  static const double levelInMax = 10.0;
 
-  /// Default value for [level_out].
-  static const double level_outDefault = 1.0;
+  /// Default value for [levelOut].
+  static const double levelOutDefault = 1.0;
 
-  /// Minimum value for [level_out].
-  static const double level_outMin = 0.0;
+  /// Minimum value for [levelOut].
+  static const double levelOutMin = 0.0;
 
-  /// Maximum value for [level_out].
-  static const double level_outMax = 10.0;
+  /// Maximum value for [levelOut].
+  static const double levelOutMax = 10.0;
 
-  /// Default value for [lfe_high].
-  static const int lfe_highDefault = 256;
+  /// Default value for [lfeHigh].
+  static const int lfeHighDefault = 256;
 
-  /// Minimum value for [lfe_high].
-  static const int lfe_highMin = 0;
+  /// Minimum value for [lfeHigh].
+  static const int lfeHighMin = 0;
 
-  /// Maximum value for [lfe_high].
-  static const int lfe_highMax = 512;
+  /// Maximum value for [lfeHigh].
+  static const int lfeHighMax = 512;
 
-  /// Default value for [lfe_in].
-  static const double lfe_inDefault = 1.0;
+  /// Default value for [lfeIn].
+  static const double lfeInDefault = 1.0;
 
-  /// Minimum value for [lfe_in].
-  static const double lfe_inMin = 0.0;
+  /// Minimum value for [lfeIn].
+  static const double lfeInMin = 0.0;
 
-  /// Maximum value for [lfe_in].
-  static const double lfe_inMax = 10.0;
+  /// Maximum value for [lfeIn].
+  static const double lfeInMax = 10.0;
 
-  /// Default value for [lfe_low].
-  static const int lfe_lowDefault = 128;
+  /// Default value for [lfeLow].
+  static const int lfeLowDefault = 128;
 
-  /// Minimum value for [lfe_low].
-  static const int lfe_lowMin = 0;
+  /// Minimum value for [lfeLow].
+  static const int lfeLowMin = 0;
 
-  /// Maximum value for [lfe_low].
-  static const int lfe_lowMax = 256;
+  /// Maximum value for [lfeLow].
+  static const int lfeLowMax = 256;
 
-  /// Default value for [lfe_out].
-  static const double lfe_outDefault = 1.0;
+  /// Default value for [lfeOut].
+  static const double lfeOutDefault = 1.0;
 
-  /// Minimum value for [lfe_out].
-  static const double lfe_outMin = 0.0;
+  /// Minimum value for [lfeOut].
+  static const double lfeOutMin = 0.0;
 
-  /// Maximum value for [lfe_out].
-  static const double lfe_outMax = 10.0;
+  /// Maximum value for [lfeOut].
+  static const double lfeOutMax = 10.0;
 
   /// Default value for [overlap].
   static const double overlapDefault = 0.5;
@@ -17797,23 +18505,23 @@ final class SurroundSettings {
   /// Maximum value for [overlap].
   static const double overlapMax = 1.0;
 
-  /// Default value for [sl_in].
-  static const double sl_inDefault = 1.0;
+  /// Default value for [slIn].
+  static const double slInDefault = 1.0;
 
-  /// Minimum value for [sl_in].
-  static const double sl_inMin = 0.0;
+  /// Minimum value for [slIn].
+  static const double slInMin = 0.0;
 
-  /// Maximum value for [sl_in].
-  static const double sl_inMax = 10.0;
+  /// Maximum value for [slIn].
+  static const double slInMax = 10.0;
 
-  /// Default value for [sl_out].
-  static const double sl_outDefault = 1.0;
+  /// Default value for [slOut].
+  static const double slOutDefault = 1.0;
 
-  /// Minimum value for [sl_out].
-  static const double sl_outMin = 0.0;
+  /// Minimum value for [slOut].
+  static const double slOutMin = 0.0;
 
-  /// Maximum value for [sl_out].
-  static const double sl_outMax = 10.0;
+  /// Maximum value for [slOut].
+  static const double slOutMax = 10.0;
 
   /// Default value for [slx].
   static const double slxDefault = 0.5;
@@ -17842,23 +18550,23 @@ final class SurroundSettings {
   /// Maximum value for [smooth].
   static const double smoothMax = 1.0;
 
-  /// Default value for [sr_in].
-  static const double sr_inDefault = 1.0;
+  /// Default value for [srIn].
+  static const double srInDefault = 1.0;
 
-  /// Minimum value for [sr_in].
-  static const double sr_inMin = 0.0;
+  /// Minimum value for [srIn].
+  static const double srInMin = 0.0;
 
-  /// Maximum value for [sr_in].
-  static const double sr_inMax = 10.0;
+  /// Maximum value for [srIn].
+  static const double srInMax = 10.0;
 
-  /// Default value for [sr_out].
-  static const double sr_outDefault = 1.0;
+  /// Default value for [srOut].
+  static const double srOutDefault = 1.0;
 
-  /// Minimum value for [sr_out].
-  static const double sr_outMin = 0.0;
+  /// Minimum value for [srOut].
+  static const double srOutMin = 0.0;
 
-  /// Maximum value for [sr_out].
-  static const double sr_outMax = 10.0;
+  /// Maximum value for [srOut].
+  static const double srOutMax = 10.0;
 
   /// Default value for [srx].
   static const double srxDefault = 0.5;
@@ -17878,16 +18586,18 @@ final class SurroundSettings {
   /// Maximum value for [sry].
   static const double sryMax = 15.0;
 
-  /// Default value for [win_size].
-  static const int win_sizeDefault = 4096;
+  /// Default value for [winSize].
+  static const int winSizeDefault = 4096;
 
-  /// Minimum value for [win_size].
-  static const int win_sizeMin = 1024;
+  /// Minimum value for [winSize].
+  static const int winSizeMin = 1024;
 
-  /// Maximum value for [win_size].
-  static const int win_sizeMax = 65536;
+  /// Maximum value for [winSize].
+  static const int winSizeMax = 65536;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set all channel's x spread
@@ -17900,10 +18610,10 @@ final class SurroundSettings {
   final double angle;
 
   /// set back center channel input level
-  final double bc_in;
+  final double bcIn;
 
   /// set back center channel output level
-  final double bc_out;
+  final double bcOut;
 
   /// set back center channel x spread
   final double bcx;
@@ -17912,10 +18622,10 @@ final class SurroundSettings {
   final double bcy;
 
   /// set back left channel input level
-  final double bl_in;
+  final double blIn;
 
   /// set back left channel output level
-  final double bl_out;
+  final double blOut;
 
   /// set back left channel x spread
   final double blx;
@@ -17924,10 +18634,10 @@ final class SurroundSettings {
   final double bly;
 
   /// set back right channel input level
-  final double br_in;
+  final double brIn;
 
   /// set back right channel output level
-  final double br_out;
+  final double brOut;
 
   /// set back right channel x spread
   final double brx;
@@ -17936,16 +18646,16 @@ final class SurroundSettings {
   final double bry;
 
   /// set input channel layout
-  final String chl_in;
+  final String chlIn;
 
   /// set output channel layout
-  final String chl_out;
+  final String chlOut;
 
   /// set front center channel input level
-  final double fc_in;
+  final double fcIn;
 
   /// set front center channel output level
-  final double fc_out;
+  final double fcOut;
 
   /// set front center channel x spread
   final double fcx;
@@ -17954,10 +18664,10 @@ final class SurroundSettings {
   final double fcy;
 
   /// set front left channel input level
-  final double fl_in;
+  final double flIn;
 
   /// set front left channel output level
-  final double fl_out;
+  final double flOut;
 
   /// set front left channel x spread
   final double flx;
@@ -17969,10 +18679,10 @@ final class SurroundSettings {
   final double focus;
 
   /// set front right channel input level
-  final double fr_in;
+  final double frIn;
 
   /// set front right channel output level
-  final double fr_out;
+  final double frOut;
 
   /// set front right channel x spread
   final double frx;
@@ -17981,37 +18691,37 @@ final class SurroundSettings {
   final double fry;
 
   /// set input level
-  final double level_in;
+  final double levelIn;
 
   /// set output level
-  final double level_out;
+  final double levelOut;
 
   /// output LFE
   final bool lfe;
 
   /// LFE high cut off
-  final int lfe_high;
+  final int lfeHigh;
 
   /// set lfe channel input level
-  final double lfe_in;
+  final double lfeIn;
 
   /// LFE low cut off
-  final int lfe_low;
+  final int lfeLow;
 
   /// set LFE channel mode
-  final SurroundLfeMode lfe_mode;
+  final SurroundLfeMode lfeMode;
 
   /// set lfe channel output level
-  final double lfe_out;
+  final double lfeOut;
 
   /// set window overlap
   final double overlap;
 
   /// set side left channel input level
-  final double sl_in;
+  final double slIn;
 
   /// set side left channel output level
-  final double sl_out;
+  final double slOut;
 
   /// set side left channel x spread
   final double slx;
@@ -18023,10 +18733,10 @@ final class SurroundSettings {
   final double smooth;
 
   /// set side right channel input level
-  final double sr_in;
+  final double srIn;
 
   /// set side right channel output level
-  final double sr_out;
+  final double srOut;
 
   /// set side right channel x spread
   final double srx;
@@ -18035,231 +18745,236 @@ final class SurroundSettings {
   final double sry;
 
   /// set window function
-  final SurroundWinFunc win_func;
+  final SurroundWinFunc winFunc;
 
   /// set window size
-  final int win_size;
+  final int winSize;
 
-  /// Creates an [SurroundSettings] with the given parameter values.
+  /// Creates an [SurroundEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const SurroundSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const SurroundEffect({
+    this.enabled = true,
     this.allx = -1.0,
     this.ally = -1.0,
     this.angle = 90.0,
-    this.bc_in = 1.0,
-    this.bc_out = 1.0,
+    this.bcIn = 1.0,
+    this.bcOut = 1.0,
     this.bcx = 0.5,
     this.bcy = 0.5,
-    this.bl_in = 1.0,
-    this.bl_out = 1.0,
+    this.blIn = 1.0,
+    this.blOut = 1.0,
     this.blx = 0.5,
     this.bly = 0.5,
-    this.br_in = 1.0,
-    this.br_out = 1.0,
+    this.brIn = 1.0,
+    this.brOut = 1.0,
     this.brx = 0.5,
     this.bry = 0.5,
-    this.chl_in = 'stereo',
-    this.chl_out = '5.1',
-    this.fc_in = 1.0,
-    this.fc_out = 1.0,
+    this.chlIn = 'stereo',
+    this.chlOut = '5.1',
+    this.fcIn = 1.0,
+    this.fcOut = 1.0,
     this.fcx = 0.5,
     this.fcy = 0.5,
-    this.fl_in = 1.0,
-    this.fl_out = 1.0,
+    this.flIn = 1.0,
+    this.flOut = 1.0,
     this.flx = 0.5,
     this.fly = 0.5,
     this.focus = 0.0,
-    this.fr_in = 1.0,
-    this.fr_out = 1.0,
+    this.frIn = 1.0,
+    this.frOut = 1.0,
     this.frx = 0.5,
     this.fry = 0.5,
-    this.level_in = 1.0,
-    this.level_out = 1.0,
+    this.levelIn = 1.0,
+    this.levelOut = 1.0,
     this.lfe = true,
-    this.lfe_high = 256,
-    this.lfe_in = 1.0,
-    this.lfe_low = 128,
-    this.lfe_mode = SurroundLfeMode.add,
-    this.lfe_out = 1.0,
+    this.lfeHigh = 256,
+    this.lfeIn = 1.0,
+    this.lfeLow = 128,
+    this.lfeMode = SurroundLfeMode.add,
+    this.lfeOut = 1.0,
     this.overlap = 0.5,
-    this.sl_in = 1.0,
-    this.sl_out = 1.0,
+    this.slIn = 1.0,
+    this.slOut = 1.0,
     this.slx = 0.5,
     this.sly = 0.5,
     this.smooth = 0.0,
-    this.sr_in = 1.0,
-    this.sr_out = 1.0,
+    this.srIn = 1.0,
+    this.srOut = 1.0,
     this.srx = 0.5,
     this.sry = 0.5,
-    this.win_func = SurroundWinFunc.hann,
-    this.win_size = 4096,
+    this.winFunc = SurroundWinFunc.hann,
+    this.winSize = 4096,
   });
 
-  /// Returns a copy of this [SurroundSettings] with the given fields replaced.
-  SurroundSettings copyWith({
+  @override
+  String get filterName => 'surround';
+
+  @override
+  AudioFilter get filter => AudioFilter.surround;
+
+  /// Returns a copy of this [SurroundEffect] with the given fields replaced.
+  SurroundEffect copyWith({
     bool? enabled,
     double? allx,
     double? ally,
     double? angle,
-    double? bc_in,
-    double? bc_out,
+    double? bcIn,
+    double? bcOut,
     double? bcx,
     double? bcy,
-    double? bl_in,
-    double? bl_out,
+    double? blIn,
+    double? blOut,
     double? blx,
     double? bly,
-    double? br_in,
-    double? br_out,
+    double? brIn,
+    double? brOut,
     double? brx,
     double? bry,
-    String? chl_in,
-    String? chl_out,
-    double? fc_in,
-    double? fc_out,
+    String? chlIn,
+    String? chlOut,
+    double? fcIn,
+    double? fcOut,
     double? fcx,
     double? fcy,
-    double? fl_in,
-    double? fl_out,
+    double? flIn,
+    double? flOut,
     double? flx,
     double? fly,
     double? focus,
-    double? fr_in,
-    double? fr_out,
+    double? frIn,
+    double? frOut,
     double? frx,
     double? fry,
-    double? level_in,
-    double? level_out,
+    double? levelIn,
+    double? levelOut,
     bool? lfe,
-    int? lfe_high,
-    double? lfe_in,
-    int? lfe_low,
-    SurroundLfeMode? lfe_mode,
-    double? lfe_out,
+    int? lfeHigh,
+    double? lfeIn,
+    int? lfeLow,
+    SurroundLfeMode? lfeMode,
+    double? lfeOut,
     double? overlap,
-    double? sl_in,
-    double? sl_out,
+    double? slIn,
+    double? slOut,
     double? slx,
     double? sly,
     double? smooth,
-    double? sr_in,
-    double? sr_out,
+    double? srIn,
+    double? srOut,
     double? srx,
     double? sry,
-    SurroundWinFunc? win_func,
-    int? win_size,
-  }) => SurroundSettings(
+    SurroundWinFunc? winFunc,
+    int? winSize,
+  }) => SurroundEffect(
     enabled: enabled ?? this.enabled,
     allx: allx ?? this.allx,
     ally: ally ?? this.ally,
     angle: angle ?? this.angle,
-    bc_in: bc_in ?? this.bc_in,
-    bc_out: bc_out ?? this.bc_out,
+    bcIn: bcIn ?? this.bcIn,
+    bcOut: bcOut ?? this.bcOut,
     bcx: bcx ?? this.bcx,
     bcy: bcy ?? this.bcy,
-    bl_in: bl_in ?? this.bl_in,
-    bl_out: bl_out ?? this.bl_out,
+    blIn: blIn ?? this.blIn,
+    blOut: blOut ?? this.blOut,
     blx: blx ?? this.blx,
     bly: bly ?? this.bly,
-    br_in: br_in ?? this.br_in,
-    br_out: br_out ?? this.br_out,
+    brIn: brIn ?? this.brIn,
+    brOut: brOut ?? this.brOut,
     brx: brx ?? this.brx,
     bry: bry ?? this.bry,
-    chl_in: chl_in ?? this.chl_in,
-    chl_out: chl_out ?? this.chl_out,
-    fc_in: fc_in ?? this.fc_in,
-    fc_out: fc_out ?? this.fc_out,
+    chlIn: chlIn ?? this.chlIn,
+    chlOut: chlOut ?? this.chlOut,
+    fcIn: fcIn ?? this.fcIn,
+    fcOut: fcOut ?? this.fcOut,
     fcx: fcx ?? this.fcx,
     fcy: fcy ?? this.fcy,
-    fl_in: fl_in ?? this.fl_in,
-    fl_out: fl_out ?? this.fl_out,
+    flIn: flIn ?? this.flIn,
+    flOut: flOut ?? this.flOut,
     flx: flx ?? this.flx,
     fly: fly ?? this.fly,
     focus: focus ?? this.focus,
-    fr_in: fr_in ?? this.fr_in,
-    fr_out: fr_out ?? this.fr_out,
+    frIn: frIn ?? this.frIn,
+    frOut: frOut ?? this.frOut,
     frx: frx ?? this.frx,
     fry: fry ?? this.fry,
-    level_in: level_in ?? this.level_in,
-    level_out: level_out ?? this.level_out,
+    levelIn: levelIn ?? this.levelIn,
+    levelOut: levelOut ?? this.levelOut,
     lfe: lfe ?? this.lfe,
-    lfe_high: lfe_high ?? this.lfe_high,
-    lfe_in: lfe_in ?? this.lfe_in,
-    lfe_low: lfe_low ?? this.lfe_low,
-    lfe_mode: lfe_mode ?? this.lfe_mode,
-    lfe_out: lfe_out ?? this.lfe_out,
+    lfeHigh: lfeHigh ?? this.lfeHigh,
+    lfeIn: lfeIn ?? this.lfeIn,
+    lfeLow: lfeLow ?? this.lfeLow,
+    lfeMode: lfeMode ?? this.lfeMode,
+    lfeOut: lfeOut ?? this.lfeOut,
     overlap: overlap ?? this.overlap,
-    sl_in: sl_in ?? this.sl_in,
-    sl_out: sl_out ?? this.sl_out,
+    slIn: slIn ?? this.slIn,
+    slOut: slOut ?? this.slOut,
     slx: slx ?? this.slx,
     sly: sly ?? this.sly,
     smooth: smooth ?? this.smooth,
-    sr_in: sr_in ?? this.sr_in,
-    sr_out: sr_out ?? this.sr_out,
+    srIn: srIn ?? this.srIn,
+    srOut: srOut ?? this.srOut,
     srx: srx ?? this.srx,
     sry: sry ?? this.sry,
-    win_func: win_func ?? this.win_func,
-    win_size: win_size ?? this.win_size,
+    winFunc: winFunc ?? this.winFunc,
+    winSize: winSize ?? this.winSize,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SurroundSettings &&
+      (other is SurroundEffect &&
           other.enabled == enabled &&
           other.allx == allx &&
           other.ally == ally &&
           other.angle == angle &&
-          other.bc_in == bc_in &&
-          other.bc_out == bc_out &&
+          other.bcIn == bcIn &&
+          other.bcOut == bcOut &&
           other.bcx == bcx &&
           other.bcy == bcy &&
-          other.bl_in == bl_in &&
-          other.bl_out == bl_out &&
+          other.blIn == blIn &&
+          other.blOut == blOut &&
           other.blx == blx &&
           other.bly == bly &&
-          other.br_in == br_in &&
-          other.br_out == br_out &&
+          other.brIn == brIn &&
+          other.brOut == brOut &&
           other.brx == brx &&
           other.bry == bry &&
-          other.chl_in == chl_in &&
-          other.chl_out == chl_out &&
-          other.fc_in == fc_in &&
-          other.fc_out == fc_out &&
+          other.chlIn == chlIn &&
+          other.chlOut == chlOut &&
+          other.fcIn == fcIn &&
+          other.fcOut == fcOut &&
           other.fcx == fcx &&
           other.fcy == fcy &&
-          other.fl_in == fl_in &&
-          other.fl_out == fl_out &&
+          other.flIn == flIn &&
+          other.flOut == flOut &&
           other.flx == flx &&
           other.fly == fly &&
           other.focus == focus &&
-          other.fr_in == fr_in &&
-          other.fr_out == fr_out &&
+          other.frIn == frIn &&
+          other.frOut == frOut &&
           other.frx == frx &&
           other.fry == fry &&
-          other.level_in == level_in &&
-          other.level_out == level_out &&
+          other.levelIn == levelIn &&
+          other.levelOut == levelOut &&
           other.lfe == lfe &&
-          other.lfe_high == lfe_high &&
-          other.lfe_in == lfe_in &&
-          other.lfe_low == lfe_low &&
-          other.lfe_mode == lfe_mode &&
-          other.lfe_out == lfe_out &&
+          other.lfeHigh == lfeHigh &&
+          other.lfeIn == lfeIn &&
+          other.lfeLow == lfeLow &&
+          other.lfeMode == lfeMode &&
+          other.lfeOut == lfeOut &&
           other.overlap == overlap &&
-          other.sl_in == sl_in &&
-          other.sl_out == sl_out &&
+          other.slIn == slIn &&
+          other.slOut == slOut &&
           other.slx == slx &&
           other.sly == sly &&
           other.smooth == smooth &&
-          other.sr_in == sr_in &&
-          other.sr_out == sr_out &&
+          other.srIn == srIn &&
+          other.srOut == srOut &&
           other.srx == srx &&
           other.sry == sry &&
-          other.win_func == win_func &&
-          other.win_size == win_size);
+          other.winFunc == winFunc &&
+          other.winSize == winSize);
 
   @override
   int get hashCode => Object.hashAll([
@@ -18267,61 +18982,62 @@ final class SurroundSettings {
     allx,
     ally,
     angle,
-    bc_in,
-    bc_out,
+    bcIn,
+    bcOut,
     bcx,
     bcy,
-    bl_in,
-    bl_out,
+    blIn,
+    blOut,
     blx,
     bly,
-    br_in,
-    br_out,
+    brIn,
+    brOut,
     brx,
     bry,
-    chl_in,
-    chl_out,
-    fc_in,
-    fc_out,
+    chlIn,
+    chlOut,
+    fcIn,
+    fcOut,
     fcx,
     fcy,
-    fl_in,
-    fl_out,
+    flIn,
+    flOut,
     flx,
     fly,
     focus,
-    fr_in,
-    fr_out,
+    frIn,
+    frOut,
     frx,
     fry,
-    level_in,
-    level_out,
+    levelIn,
+    levelOut,
     lfe,
-    lfe_high,
-    lfe_in,
-    lfe_low,
-    lfe_mode,
-    lfe_out,
+    lfeHigh,
+    lfeIn,
+    lfeLow,
+    lfeMode,
+    lfeOut,
     overlap,
-    sl_in,
-    sl_out,
+    slIn,
+    slOut,
     slx,
     sly,
     smooth,
-    sr_in,
-    sr_out,
+    srIn,
+    srOut,
     srx,
     sry,
-    win_func,
-    win_size,
+    winFunc,
+    winSize,
   ]);
 
   @override
   String toString() =>
-      'SurroundSettings(enabled: $enabled, allx: $allx, ally: $ally, angle: $angle, bc_in: $bc_in, bc_out: $bc_out, bcx: $bcx, bcy: $bcy, bl_in: $bl_in, bl_out: $bl_out, blx: $blx, bly: $bly, br_in: $br_in, br_out: $br_out, brx: $brx, bry: $bry, chl_in: $chl_in, chl_out: $chl_out, fc_in: $fc_in, fc_out: $fc_out, fcx: $fcx, fcy: $fcy, fl_in: $fl_in, fl_out: $fl_out, flx: $flx, fly: $fly, focus: $focus, fr_in: $fr_in, fr_out: $fr_out, frx: $frx, fry: $fry, level_in: $level_in, level_out: $level_out, lfe: $lfe, lfe_high: $lfe_high, lfe_in: $lfe_in, lfe_low: $lfe_low, lfe_mode: $lfe_mode, lfe_out: $lfe_out, overlap: $overlap, sl_in: $sl_in, sl_out: $sl_out, slx: $slx, sly: $sly, smooth: $smooth, sr_in: $sr_in, sr_out: $sr_out, srx: $srx, sry: $sry, win_func: $win_func, win_size: $win_size)';
+      'SurroundEffect(enabled: $enabled, allx: $allx, ally: $ally, angle: $angle, bcIn: $bcIn, bcOut: $bcOut, bcx: $bcx, bcy: $bcy, blIn: $blIn, blOut: $blOut, blx: $blx, bly: $bly, brIn: $brIn, brOut: $brOut, brx: $brx, bry: $bry, chlIn: $chlIn, chlOut: $chlOut, fcIn: $fcIn, fcOut: $fcOut, fcx: $fcx, fcy: $fcy, flIn: $flIn, flOut: $flOut, flx: $flx, fly: $fly, focus: $focus, frIn: $frIn, frOut: $frOut, frx: $frx, fry: $fry, levelIn: $levelIn, levelOut: $levelOut, lfe: $lfe, lfeHigh: $lfeHigh, lfeIn: $lfeIn, lfeLow: $lfeLow, lfeMode: $lfeMode, lfeOut: $lfeOut, overlap: $overlap, slIn: $slIn, slOut: $slOut, slx: $slx, sly: $sly, smooth: $smooth, srIn: $srIn, srOut: $srOut, srx: $srx, sry: $sry, winFunc: $winFunc, winSize: $winSize)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(allx >= allxMin, 'surround.allx must be >= -1');
     assert(allx <= allxMax, 'surround.allx must be <= 15');
@@ -18329,143 +19045,143 @@ final class SurroundSettings {
     assert(ally <= allyMax, 'surround.ally must be <= 15');
     assert(angle >= angleMin, 'surround.angle must be >= 0');
     assert(angle <= angleMax, 'surround.angle must be <= 360');
-    assert(bc_in >= bc_inMin, 'surround.bc_in must be >= 0');
-    assert(bc_in <= bc_inMax, 'surround.bc_in must be <= 10');
-    assert(bc_out >= bc_outMin, 'surround.bc_out must be >= 0');
-    assert(bc_out <= bc_outMax, 'surround.bc_out must be <= 10');
+    assert(bcIn >= bcInMin, 'surround.bc_in must be >= 0');
+    assert(bcIn <= bcInMax, 'surround.bc_in must be <= 10');
+    assert(bcOut >= bcOutMin, 'surround.bc_out must be >= 0');
+    assert(bcOut <= bcOutMax, 'surround.bc_out must be <= 10');
     assert(bcx >= bcxMin, 'surround.bcx must be >= .06');
     assert(bcx <= bcxMax, 'surround.bcx must be <= 15');
     assert(bcy >= bcyMin, 'surround.bcy must be >= .06');
     assert(bcy <= bcyMax, 'surround.bcy must be <= 15');
-    assert(bl_in >= bl_inMin, 'surround.bl_in must be >= 0');
-    assert(bl_in <= bl_inMax, 'surround.bl_in must be <= 10');
-    assert(bl_out >= bl_outMin, 'surround.bl_out must be >= 0');
-    assert(bl_out <= bl_outMax, 'surround.bl_out must be <= 10');
+    assert(blIn >= blInMin, 'surround.bl_in must be >= 0');
+    assert(blIn <= blInMax, 'surround.bl_in must be <= 10');
+    assert(blOut >= blOutMin, 'surround.bl_out must be >= 0');
+    assert(blOut <= blOutMax, 'surround.bl_out must be <= 10');
     assert(blx >= blxMin, 'surround.blx must be >= .06');
     assert(blx <= blxMax, 'surround.blx must be <= 15');
     assert(bly >= blyMin, 'surround.bly must be >= .06');
     assert(bly <= blyMax, 'surround.bly must be <= 15');
-    assert(br_in >= br_inMin, 'surround.br_in must be >= 0');
-    assert(br_in <= br_inMax, 'surround.br_in must be <= 10');
-    assert(br_out >= br_outMin, 'surround.br_out must be >= 0');
-    assert(br_out <= br_outMax, 'surround.br_out must be <= 10');
+    assert(brIn >= brInMin, 'surround.br_in must be >= 0');
+    assert(brIn <= brInMax, 'surround.br_in must be <= 10');
+    assert(brOut >= brOutMin, 'surround.br_out must be >= 0');
+    assert(brOut <= brOutMax, 'surround.br_out must be <= 10');
     assert(brx >= brxMin, 'surround.brx must be >= .06');
     assert(brx <= brxMax, 'surround.brx must be <= 15');
     assert(bry >= bryMin, 'surround.bry must be >= .06');
     assert(bry <= bryMax, 'surround.bry must be <= 15');
-    assert(fc_in >= fc_inMin, 'surround.fc_in must be >= 0');
-    assert(fc_in <= fc_inMax, 'surround.fc_in must be <= 10');
-    assert(fc_out >= fc_outMin, 'surround.fc_out must be >= 0');
-    assert(fc_out <= fc_outMax, 'surround.fc_out must be <= 10');
+    assert(fcIn >= fcInMin, 'surround.fc_in must be >= 0');
+    assert(fcIn <= fcInMax, 'surround.fc_in must be <= 10');
+    assert(fcOut >= fcOutMin, 'surround.fc_out must be >= 0');
+    assert(fcOut <= fcOutMax, 'surround.fc_out must be <= 10');
     assert(fcx >= fcxMin, 'surround.fcx must be >= .06');
     assert(fcx <= fcxMax, 'surround.fcx must be <= 15');
     assert(fcy >= fcyMin, 'surround.fcy must be >= .06');
     assert(fcy <= fcyMax, 'surround.fcy must be <= 15');
-    assert(fl_in >= fl_inMin, 'surround.fl_in must be >= 0');
-    assert(fl_in <= fl_inMax, 'surround.fl_in must be <= 10');
-    assert(fl_out >= fl_outMin, 'surround.fl_out must be >= 0');
-    assert(fl_out <= fl_outMax, 'surround.fl_out must be <= 10');
+    assert(flIn >= flInMin, 'surround.fl_in must be >= 0');
+    assert(flIn <= flInMax, 'surround.fl_in must be <= 10');
+    assert(flOut >= flOutMin, 'surround.fl_out must be >= 0');
+    assert(flOut <= flOutMax, 'surround.fl_out must be <= 10');
     assert(flx >= flxMin, 'surround.flx must be >= .06');
     assert(flx <= flxMax, 'surround.flx must be <= 15');
     assert(fly >= flyMin, 'surround.fly must be >= .06');
     assert(fly <= flyMax, 'surround.fly must be <= 15');
     assert(focus >= focusMin, 'surround.focus must be >= -1');
     assert(focus <= focusMax, 'surround.focus must be <= 1');
-    assert(fr_in >= fr_inMin, 'surround.fr_in must be >= 0');
-    assert(fr_in <= fr_inMax, 'surround.fr_in must be <= 10');
-    assert(fr_out >= fr_outMin, 'surround.fr_out must be >= 0');
-    assert(fr_out <= fr_outMax, 'surround.fr_out must be <= 10');
+    assert(frIn >= frInMin, 'surround.fr_in must be >= 0');
+    assert(frIn <= frInMax, 'surround.fr_in must be <= 10');
+    assert(frOut >= frOutMin, 'surround.fr_out must be >= 0');
+    assert(frOut <= frOutMax, 'surround.fr_out must be <= 10');
     assert(frx >= frxMin, 'surround.frx must be >= .06');
     assert(frx <= frxMax, 'surround.frx must be <= 15');
     assert(fry >= fryMin, 'surround.fry must be >= .06');
     assert(fry <= fryMax, 'surround.fry must be <= 15');
-    assert(level_in >= level_inMin, 'surround.level_in must be >= 0');
-    assert(level_in <= level_inMax, 'surround.level_in must be <= 10');
-    assert(level_out >= level_outMin, 'surround.level_out must be >= 0');
-    assert(level_out <= level_outMax, 'surround.level_out must be <= 10');
-    assert(lfe_high >= lfe_highMin, 'surround.lfe_high must be >= 0');
-    assert(lfe_high <= lfe_highMax, 'surround.lfe_high must be <= 512');
-    assert(lfe_in >= lfe_inMin, 'surround.lfe_in must be >= 0');
-    assert(lfe_in <= lfe_inMax, 'surround.lfe_in must be <= 10');
-    assert(lfe_low >= lfe_lowMin, 'surround.lfe_low must be >= 0');
-    assert(lfe_low <= lfe_lowMax, 'surround.lfe_low must be <= 256');
-    assert(lfe_out >= lfe_outMin, 'surround.lfe_out must be >= 0');
-    assert(lfe_out <= lfe_outMax, 'surround.lfe_out must be <= 10');
+    assert(levelIn >= levelInMin, 'surround.level_in must be >= 0');
+    assert(levelIn <= levelInMax, 'surround.level_in must be <= 10');
+    assert(levelOut >= levelOutMin, 'surround.level_out must be >= 0');
+    assert(levelOut <= levelOutMax, 'surround.level_out must be <= 10');
+    assert(lfeHigh >= lfeHighMin, 'surround.lfe_high must be >= 0');
+    assert(lfeHigh <= lfeHighMax, 'surround.lfe_high must be <= 512');
+    assert(lfeIn >= lfeInMin, 'surround.lfe_in must be >= 0');
+    assert(lfeIn <= lfeInMax, 'surround.lfe_in must be <= 10');
+    assert(lfeLow >= lfeLowMin, 'surround.lfe_low must be >= 0');
+    assert(lfeLow <= lfeLowMax, 'surround.lfe_low must be <= 256');
+    assert(lfeOut >= lfeOutMin, 'surround.lfe_out must be >= 0');
+    assert(lfeOut <= lfeOutMax, 'surround.lfe_out must be <= 10');
     assert(overlap >= overlapMin, 'surround.overlap must be >= 0');
     assert(overlap <= overlapMax, 'surround.overlap must be <= 1');
-    assert(sl_in >= sl_inMin, 'surround.sl_in must be >= 0');
-    assert(sl_in <= sl_inMax, 'surround.sl_in must be <= 10');
-    assert(sl_out >= sl_outMin, 'surround.sl_out must be >= 0');
-    assert(sl_out <= sl_outMax, 'surround.sl_out must be <= 10');
+    assert(slIn >= slInMin, 'surround.sl_in must be >= 0');
+    assert(slIn <= slInMax, 'surround.sl_in must be <= 10');
+    assert(slOut >= slOutMin, 'surround.sl_out must be >= 0');
+    assert(slOut <= slOutMax, 'surround.sl_out must be <= 10');
     assert(slx >= slxMin, 'surround.slx must be >= .06');
     assert(slx <= slxMax, 'surround.slx must be <= 15');
     assert(sly >= slyMin, 'surround.sly must be >= .06');
     assert(sly <= slyMax, 'surround.sly must be <= 15');
     assert(smooth >= smoothMin, 'surround.smooth must be >= 0');
     assert(smooth <= smoothMax, 'surround.smooth must be <= 1');
-    assert(sr_in >= sr_inMin, 'surround.sr_in must be >= 0');
-    assert(sr_in <= sr_inMax, 'surround.sr_in must be <= 10');
-    assert(sr_out >= sr_outMin, 'surround.sr_out must be >= 0');
-    assert(sr_out <= sr_outMax, 'surround.sr_out must be <= 10');
+    assert(srIn >= srInMin, 'surround.sr_in must be >= 0');
+    assert(srIn <= srInMax, 'surround.sr_in must be <= 10');
+    assert(srOut >= srOutMin, 'surround.sr_out must be >= 0');
+    assert(srOut <= srOutMax, 'surround.sr_out must be <= 10');
     assert(srx >= srxMin, 'surround.srx must be >= .06');
     assert(srx <= srxMax, 'surround.srx must be <= 15');
     assert(sry >= sryMin, 'surround.sry must be >= .06');
     assert(sry <= sryMax, 'surround.sry must be <= 15');
-    assert(win_size >= win_sizeMin, 'surround.win_size must be >= 1024');
-    assert(win_size <= win_sizeMax, 'surround.win_size must be <= 65536');
+    assert(winSize >= winSizeMin, 'surround.win_size must be >= 1024');
+    assert(winSize <= winSizeMax, 'surround.win_size must be <= 65536');
     final parts = <String>[];
     if (allx != -1.0) parts.add('allx=' + _wireDouble(allx));
     if (ally != -1.0) parts.add('ally=' + _wireDouble(ally));
     if (angle != 90.0) parts.add('angle=' + _wireDouble(angle));
-    if (bc_in != 1.0) parts.add('bc_in=' + _wireDouble(bc_in));
-    if (bc_out != 1.0) parts.add('bc_out=' + _wireDouble(bc_out));
+    if (bcIn != 1.0) parts.add('bc_in=' + _wireDouble(bcIn));
+    if (bcOut != 1.0) parts.add('bc_out=' + _wireDouble(bcOut));
     if (bcx != 0.5) parts.add('bcx=' + _wireDouble(bcx));
     if (bcy != 0.5) parts.add('bcy=' + _wireDouble(bcy));
-    if (bl_in != 1.0) parts.add('bl_in=' + _wireDouble(bl_in));
-    if (bl_out != 1.0) parts.add('bl_out=' + _wireDouble(bl_out));
+    if (blIn != 1.0) parts.add('bl_in=' + _wireDouble(blIn));
+    if (blOut != 1.0) parts.add('bl_out=' + _wireDouble(blOut));
     if (blx != 0.5) parts.add('blx=' + _wireDouble(blx));
     if (bly != 0.5) parts.add('bly=' + _wireDouble(bly));
-    if (br_in != 1.0) parts.add('br_in=' + _wireDouble(br_in));
-    if (br_out != 1.0) parts.add('br_out=' + _wireDouble(br_out));
+    if (brIn != 1.0) parts.add('br_in=' + _wireDouble(brIn));
+    if (brOut != 1.0) parts.add('br_out=' + _wireDouble(brOut));
     if (brx != 0.5) parts.add('brx=' + _wireDouble(brx));
     if (bry != 0.5) parts.add('bry=' + _wireDouble(bry));
-    if (chl_in != 'stereo') parts.add('chl_in=' + '[' + chl_in + ']');
-    if (chl_out != '5.1') parts.add('chl_out=' + '[' + chl_out + ']');
-    if (fc_in != 1.0) parts.add('fc_in=' + _wireDouble(fc_in));
-    if (fc_out != 1.0) parts.add('fc_out=' + _wireDouble(fc_out));
+    if (chlIn != 'stereo') parts.add('chl_in=' + '[' + chlIn + ']');
+    if (chlOut != '5.1') parts.add('chl_out=' + '[' + chlOut + ']');
+    if (fcIn != 1.0) parts.add('fc_in=' + _wireDouble(fcIn));
+    if (fcOut != 1.0) parts.add('fc_out=' + _wireDouble(fcOut));
     if (fcx != 0.5) parts.add('fcx=' + _wireDouble(fcx));
     if (fcy != 0.5) parts.add('fcy=' + _wireDouble(fcy));
-    if (fl_in != 1.0) parts.add('fl_in=' + _wireDouble(fl_in));
-    if (fl_out != 1.0) parts.add('fl_out=' + _wireDouble(fl_out));
+    if (flIn != 1.0) parts.add('fl_in=' + _wireDouble(flIn));
+    if (flOut != 1.0) parts.add('fl_out=' + _wireDouble(flOut));
     if (flx != 0.5) parts.add('flx=' + _wireDouble(flx));
     if (fly != 0.5) parts.add('fly=' + _wireDouble(fly));
     if (focus != 0.0) parts.add('focus=' + _wireDouble(focus));
-    if (fr_in != 1.0) parts.add('fr_in=' + _wireDouble(fr_in));
-    if (fr_out != 1.0) parts.add('fr_out=' + _wireDouble(fr_out));
+    if (frIn != 1.0) parts.add('fr_in=' + _wireDouble(frIn));
+    if (frOut != 1.0) parts.add('fr_out=' + _wireDouble(frOut));
     if (frx != 0.5) parts.add('frx=' + _wireDouble(frx));
     if (fry != 0.5) parts.add('fry=' + _wireDouble(fry));
-    if (level_in != 1.0) parts.add('level_in=' + _wireDouble(level_in));
-    if (level_out != 1.0) parts.add('level_out=' + _wireDouble(level_out));
+    if (levelIn != 1.0) parts.add('level_in=' + _wireDouble(levelIn));
+    if (levelOut != 1.0) parts.add('level_out=' + _wireDouble(levelOut));
     if (lfe != true) parts.add('lfe=' + (lfe ? '1' : '0'));
-    if (lfe_high != 256) parts.add('lfe_high=' + lfe_high.toString());
-    if (lfe_in != 1.0) parts.add('lfe_in=' + _wireDouble(lfe_in));
-    if (lfe_low != 128) parts.add('lfe_low=' + lfe_low.toString());
-    if (lfe_mode != SurroundLfeMode.add)
-      parts.add('lfe_mode=' + lfe_mode.mpvValue);
-    if (lfe_out != 1.0) parts.add('lfe_out=' + _wireDouble(lfe_out));
+    if (lfeHigh != 256) parts.add('lfe_high=' + lfeHigh.toString());
+    if (lfeIn != 1.0) parts.add('lfe_in=' + _wireDouble(lfeIn));
+    if (lfeLow != 128) parts.add('lfe_low=' + lfeLow.toString());
+    if (lfeMode != SurroundLfeMode.add)
+      parts.add('lfe_mode=' + lfeMode.mpvValue);
+    if (lfeOut != 1.0) parts.add('lfe_out=' + _wireDouble(lfeOut));
     if (overlap != 0.5) parts.add('overlap=' + _wireDouble(overlap));
-    if (sl_in != 1.0) parts.add('sl_in=' + _wireDouble(sl_in));
-    if (sl_out != 1.0) parts.add('sl_out=' + _wireDouble(sl_out));
+    if (slIn != 1.0) parts.add('sl_in=' + _wireDouble(slIn));
+    if (slOut != 1.0) parts.add('sl_out=' + _wireDouble(slOut));
     if (slx != 0.5) parts.add('slx=' + _wireDouble(slx));
     if (sly != 0.5) parts.add('sly=' + _wireDouble(sly));
     if (smooth != 0.0) parts.add('smooth=' + _wireDouble(smooth));
-    if (sr_in != 1.0) parts.add('sr_in=' + _wireDouble(sr_in));
-    if (sr_out != 1.0) parts.add('sr_out=' + _wireDouble(sr_out));
+    if (srIn != 1.0) parts.add('sr_in=' + _wireDouble(srIn));
+    if (srOut != 1.0) parts.add('sr_out=' + _wireDouble(srOut));
     if (srx != 0.5) parts.add('srx=' + _wireDouble(srx));
     if (sry != 0.5) parts.add('sry=' + _wireDouble(sry));
-    if (win_func != SurroundWinFunc.hann)
-      parts.add('win_func=' + win_func.mpvValue);
-    if (win_size != 4096) parts.add('win_size=' + win_size.toString());
+    if (winFunc != SurroundWinFunc.hann)
+      parts.add('win_func=' + winFunc.mpvValue);
+    if (winSize != 4096) parts.add('win_size=' + winSize.toString());
     return parts.isEmpty
         ? 'lavfi-surround'
         : 'lavfi-surround=' + parts.join(':');
@@ -18474,7 +19190,8 @@ final class SurroundSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(SurroundSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant SurroundEffect prev) {
     final out = <(String, String)>[];
     if (allx != prev.allx) {
       out.add(('allx', _wireDouble(allx)));
@@ -18485,11 +19202,11 @@ final class SurroundSettings {
     if (angle != prev.angle) {
       out.add(('angle', _wireDouble(angle)));
     }
-    if (bc_in != prev.bc_in) {
-      out.add(('bc_in', _wireDouble(bc_in)));
+    if (bcIn != prev.bcIn) {
+      out.add(('bc_in', _wireDouble(bcIn)));
     }
-    if (bc_out != prev.bc_out) {
-      out.add(('bc_out', _wireDouble(bc_out)));
+    if (bcOut != prev.bcOut) {
+      out.add(('bc_out', _wireDouble(bcOut)));
     }
     if (bcx != prev.bcx) {
       out.add(('bcx', _wireDouble(bcx)));
@@ -18497,11 +19214,11 @@ final class SurroundSettings {
     if (bcy != prev.bcy) {
       out.add(('bcy', _wireDouble(bcy)));
     }
-    if (bl_in != prev.bl_in) {
-      out.add(('bl_in', _wireDouble(bl_in)));
+    if (blIn != prev.blIn) {
+      out.add(('bl_in', _wireDouble(blIn)));
     }
-    if (bl_out != prev.bl_out) {
-      out.add(('bl_out', _wireDouble(bl_out)));
+    if (blOut != prev.blOut) {
+      out.add(('bl_out', _wireDouble(blOut)));
     }
     if (blx != prev.blx) {
       out.add(('blx', _wireDouble(blx)));
@@ -18509,11 +19226,11 @@ final class SurroundSettings {
     if (bly != prev.bly) {
       out.add(('bly', _wireDouble(bly)));
     }
-    if (br_in != prev.br_in) {
-      out.add(('br_in', _wireDouble(br_in)));
+    if (brIn != prev.brIn) {
+      out.add(('br_in', _wireDouble(brIn)));
     }
-    if (br_out != prev.br_out) {
-      out.add(('br_out', _wireDouble(br_out)));
+    if (brOut != prev.brOut) {
+      out.add(('br_out', _wireDouble(brOut)));
     }
     if (brx != prev.brx) {
       out.add(('brx', _wireDouble(brx)));
@@ -18521,13 +19238,13 @@ final class SurroundSettings {
     if (bry != prev.bry) {
       out.add(('bry', _wireDouble(bry)));
     }
-    if (chl_in != prev.chl_in) return null;
-    if (chl_out != prev.chl_out) return null;
-    if (fc_in != prev.fc_in) {
-      out.add(('fc_in', _wireDouble(fc_in)));
+    if (chlIn != prev.chlIn) return null;
+    if (chlOut != prev.chlOut) return null;
+    if (fcIn != prev.fcIn) {
+      out.add(('fc_in', _wireDouble(fcIn)));
     }
-    if (fc_out != prev.fc_out) {
-      out.add(('fc_out', _wireDouble(fc_out)));
+    if (fcOut != prev.fcOut) {
+      out.add(('fc_out', _wireDouble(fcOut)));
     }
     if (fcx != prev.fcx) {
       out.add(('fcx', _wireDouble(fcx)));
@@ -18535,11 +19252,11 @@ final class SurroundSettings {
     if (fcy != prev.fcy) {
       out.add(('fcy', _wireDouble(fcy)));
     }
-    if (fl_in != prev.fl_in) {
-      out.add(('fl_in', _wireDouble(fl_in)));
+    if (flIn != prev.flIn) {
+      out.add(('fl_in', _wireDouble(flIn)));
     }
-    if (fl_out != prev.fl_out) {
-      out.add(('fl_out', _wireDouble(fl_out)));
+    if (flOut != prev.flOut) {
+      out.add(('fl_out', _wireDouble(flOut)));
     }
     if (flx != prev.flx) {
       out.add(('flx', _wireDouble(flx)));
@@ -18550,11 +19267,11 @@ final class SurroundSettings {
     if (focus != prev.focus) {
       out.add(('focus', _wireDouble(focus)));
     }
-    if (fr_in != prev.fr_in) {
-      out.add(('fr_in', _wireDouble(fr_in)));
+    if (frIn != prev.frIn) {
+      out.add(('fr_in', _wireDouble(frIn)));
     }
-    if (fr_out != prev.fr_out) {
-      out.add(('fr_out', _wireDouble(fr_out)));
+    if (frOut != prev.frOut) {
+      out.add(('fr_out', _wireDouble(frOut)));
     }
     if (frx != prev.frx) {
       out.add(('frx', _wireDouble(frx)));
@@ -18562,34 +19279,34 @@ final class SurroundSettings {
     if (fry != prev.fry) {
       out.add(('fry', _wireDouble(fry)));
     }
-    if (level_in != prev.level_in) {
-      out.add(('level_in', _wireDouble(level_in)));
+    if (levelIn != prev.levelIn) {
+      out.add(('level_in', _wireDouble(levelIn)));
     }
-    if (level_out != prev.level_out) {
-      out.add(('level_out', _wireDouble(level_out)));
+    if (levelOut != prev.levelOut) {
+      out.add(('level_out', _wireDouble(levelOut)));
     }
     if (lfe != prev.lfe) {
       out.add(('lfe', (lfe ? '1' : '0')));
     }
-    if (lfe_high != prev.lfe_high) return null;
-    if (lfe_in != prev.lfe_in) {
-      out.add(('lfe_in', _wireDouble(lfe_in)));
+    if (lfeHigh != prev.lfeHigh) return null;
+    if (lfeIn != prev.lfeIn) {
+      out.add(('lfe_in', _wireDouble(lfeIn)));
     }
-    if (lfe_low != prev.lfe_low) return null;
-    if (lfe_mode != prev.lfe_mode) {
-      out.add(('lfe_mode', lfe_mode.mpvValue));
+    if (lfeLow != prev.lfeLow) return null;
+    if (lfeMode != prev.lfeMode) {
+      out.add(('lfe_mode', lfeMode.mpvValue));
     }
-    if (lfe_out != prev.lfe_out) {
-      out.add(('lfe_out', _wireDouble(lfe_out)));
+    if (lfeOut != prev.lfeOut) {
+      out.add(('lfe_out', _wireDouble(lfeOut)));
     }
     if (overlap != prev.overlap) {
       out.add(('overlap', _wireDouble(overlap)));
     }
-    if (sl_in != prev.sl_in) {
-      out.add(('sl_in', _wireDouble(sl_in)));
+    if (slIn != prev.slIn) {
+      out.add(('sl_in', _wireDouble(slIn)));
     }
-    if (sl_out != prev.sl_out) {
-      out.add(('sl_out', _wireDouble(sl_out)));
+    if (slOut != prev.slOut) {
+      out.add(('sl_out', _wireDouble(slOut)));
     }
     if (slx != prev.slx) {
       out.add(('slx', _wireDouble(slx)));
@@ -18600,11 +19317,11 @@ final class SurroundSettings {
     if (smooth != prev.smooth) {
       out.add(('smooth', _wireDouble(smooth)));
     }
-    if (sr_in != prev.sr_in) {
-      out.add(('sr_in', _wireDouble(sr_in)));
+    if (srIn != prev.srIn) {
+      out.add(('sr_in', _wireDouble(srIn)));
     }
-    if (sr_out != prev.sr_out) {
-      out.add(('sr_out', _wireDouble(sr_out)));
+    if (srOut != prev.srOut) {
+      out.add(('sr_out', _wireDouble(srOut)));
     }
     if (srx != prev.srx) {
       out.add(('srx', _wireDouble(srx)));
@@ -18612,8 +19329,8 @@ final class SurroundSettings {
     if (sry != prev.sry) {
       out.add(('sry', _wireDouble(sry)));
     }
-    if (win_func != prev.win_func) return null;
-    if (win_size != prev.win_size) return null;
+    if (winFunc != prev.winFunc) return null;
+    if (winSize != prev.winSize) return null;
     return out;
   }
 }
@@ -18649,8 +19366,8 @@ final class SurroundSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
 /// - [width]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class TiltshelfSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class TiltshelfEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -18759,7 +19476,9 @@ final class TiltshelfSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -18826,14 +19545,13 @@ final class TiltshelfSettings {
   final double width;
 
   /// set filter-width type
-  final TiltshelfWidthType width_type;
+  final TiltshelfWidthType widthType;
 
-  /// Creates an [TiltshelfSettings] with the given parameter values.
+  /// Creates an [TiltshelfEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const TiltshelfSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const TiltshelfEffect({
+    this.enabled = true,
     this.a = TiltshelfTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -18855,11 +19573,17 @@ final class TiltshelfSettings {
     this.transform = TiltshelfTransformType.di,
     this.w = 0.5,
     this.width = 0.5,
-    this.width_type = TiltshelfWidthType.q,
+    this.widthType = TiltshelfWidthType.q,
   });
 
-  /// Returns a copy of this [TiltshelfSettings] with the given fields replaced.
-  TiltshelfSettings copyWith({
+  @override
+  String get filterName => 'tiltshelf';
+
+  @override
+  AudioFilter get filter => AudioFilter.tiltshelf;
+
+  /// Returns a copy of this [TiltshelfEffect] with the given fields replaced.
+  TiltshelfEffect copyWith({
     bool? enabled,
     TiltshelfTransformType? a,
     int? b,
@@ -18882,8 +19606,8 @@ final class TiltshelfSettings {
     TiltshelfTransformType? transform,
     double? w,
     double? width,
-    TiltshelfWidthType? width_type,
-  }) => TiltshelfSettings(
+    TiltshelfWidthType? widthType,
+  }) => TiltshelfEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -18906,13 +19630,13 @@ final class TiltshelfSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is TiltshelfSettings &&
+      (other is TiltshelfEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -18935,7 +19659,7 @@ final class TiltshelfSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -18961,15 +19685,16 @@ final class TiltshelfSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'TiltshelfSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'TiltshelfEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'tiltshelf.b must be >= 0');
     assert(b <= bMax, 'tiltshelf.b must be <= 32768');
@@ -19019,8 +19744,8 @@ final class TiltshelfSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.5) parts.add('w=' + _wireDouble(w));
     if (width != 0.5) parts.add('width=' + _wireDouble(width));
-    if (width_type != TiltshelfWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != TiltshelfWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty
         ? 'lavfi-tiltshelf'
         : 'lavfi-tiltshelf=' + parts.join(':');
@@ -19029,7 +19754,8 @@ final class TiltshelfSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(TiltshelfSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant TiltshelfEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -19078,8 +19804,8 @@ final class TiltshelfSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -19115,8 +19841,8 @@ final class TiltshelfSettings {
 /// - [transform]: Set transform type of IIR filter. (range 0..6, default DI)
 /// - [w]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
 /// - [width]: Determine how steep is the filter's shelf transition. (range 0..99999, default 0.5, runtime-tunable)
-/// - [width_type]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
-final class TrebleSettings {
+/// - [widthType]: Set method to specify band-width of filter. (range 1..5, default QFACTOR, runtime-tunable)
+final class TrebleEffect extends AudioEffect {
   /// Default value for [b].
   static const int bDefault = 0;
 
@@ -19225,7 +19951,9 @@ final class TrebleSettings {
   /// Maximum value for [width].
   static const double widthMax = 99999.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set transform type
@@ -19292,14 +20020,13 @@ final class TrebleSettings {
   final double width;
 
   /// set filter-width type
-  final TrebleWidthType width_type;
+  final TrebleWidthType widthType;
 
-  /// Creates an [TrebleSettings] with the given parameter values.
+  /// Creates an [TrebleEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const TrebleSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const TrebleEffect({
+    this.enabled = true,
     this.a = TrebleTransformType.di,
     this.b = 0,
     this.blocksize = 0,
@@ -19321,11 +20048,17 @@ final class TrebleSettings {
     this.transform = TrebleTransformType.di,
     this.w = 0.5,
     this.width = 0.5,
-    this.width_type = TrebleWidthType.q,
+    this.widthType = TrebleWidthType.q,
   });
 
-  /// Returns a copy of this [TrebleSettings] with the given fields replaced.
-  TrebleSettings copyWith({
+  @override
+  String get filterName => 'treble';
+
+  @override
+  AudioFilter get filter => AudioFilter.treble;
+
+  /// Returns a copy of this [TrebleEffect] with the given fields replaced.
+  TrebleEffect copyWith({
     bool? enabled,
     TrebleTransformType? a,
     int? b,
@@ -19348,8 +20081,8 @@ final class TrebleSettings {
     TrebleTransformType? transform,
     double? w,
     double? width,
-    TrebleWidthType? width_type,
-  }) => TrebleSettings(
+    TrebleWidthType? widthType,
+  }) => TrebleEffect(
     enabled: enabled ?? this.enabled,
     a: a ?? this.a,
     b: b ?? this.b,
@@ -19372,13 +20105,13 @@ final class TrebleSettings {
     transform: transform ?? this.transform,
     w: w ?? this.w,
     width: width ?? this.width,
-    width_type: width_type ?? this.width_type,
+    widthType: widthType ?? this.widthType,
   );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is TrebleSettings &&
+      (other is TrebleEffect &&
           other.enabled == enabled &&
           other.a == a &&
           other.b == b &&
@@ -19401,7 +20134,7 @@ final class TrebleSettings {
           other.transform == transform &&
           other.w == w &&
           other.width == width &&
-          other.width_type == width_type);
+          other.widthType == widthType);
 
   @override
   int get hashCode => Object.hashAll([
@@ -19427,15 +20160,16 @@ final class TrebleSettings {
     transform,
     w,
     width,
-    width_type,
+    widthType,
   ]);
 
   @override
   String toString() =>
-      'TrebleSettings(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, width_type: $width_type)';
+      'TrebleEffect(enabled: $enabled, a: $a, b: $b, blocksize: $blocksize, c: $c, channels: $channels, f: $f, frequency: $frequency, g: $g, gain: $gain, m: $m, mix: $mix, n: $n, normalize: $normalize, p: $p, poles: $poles, precision: $precision, r: $r, t: $t, transform: $transform, w: $w, width: $width, widthType: $widthType)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(b >= bMin, 'treble.b must be >= 0');
     assert(b <= bMax, 'treble.b must be <= 32768');
@@ -19485,15 +20219,16 @@ final class TrebleSettings {
       parts.add('transform=' + transform.mpvValue);
     if (w != 0.5) parts.add('w=' + _wireDouble(w));
     if (width != 0.5) parts.add('width=' + _wireDouble(width));
-    if (width_type != TrebleWidthType.q)
-      parts.add('width_type=' + width_type.mpvValue);
+    if (widthType != TrebleWidthType.q)
+      parts.add('width_type=' + widthType.mpvValue);
     return parts.isEmpty ? 'lavfi-treble' : 'lavfi-treble=' + parts.join(':');
   }
 
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(TrebleSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant TrebleEffect prev) {
     final out = <(String, String)>[];
     if (a != prev.a) return null;
     if (b != prev.b) return null;
@@ -19542,8 +20277,8 @@ final class TrebleSettings {
     if (width != prev.width) {
       out.add(('width', _wireDouble(width)));
     }
-    if (width_type != prev.width_type) {
-      out.add(('width_type', width_type.mpvValue));
+    if (widthType != prev.widthType) {
+      out.add(('width_type', widthType.mpvValue));
     }
     return out;
   }
@@ -19558,7 +20293,7 @@ final class TrebleSettings {
 /// Parameters:
 /// - [d]: Depth of modulation as a percentage. Range is 0.0 - 1.0. Default value is 0.5. (range 0.0..1.0, default 0.5)
 /// - [f]: Modulation frequency in Hertz. Modulation frequencies in the subharmonic range (20 Hz or lower) will result in a tremolo effect. This filter may also be used as a ring modulator by specifying a modulation frequency higher than 20 Hz. Range is 0.1 - 20000.0. Default value is 5.0 Hz. (range 0.1..20000.0, default 5.0)
-final class TremoloSettings {
+final class TremoloEffect extends AudioEffect {
   /// Default value for [d].
   static const double dDefault = 0.5;
 
@@ -19577,7 +20312,9 @@ final class TremoloSettings {
   /// Maximum value for [f].
   static const double fMax = 20000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set depth as percentage
@@ -19586,15 +20323,20 @@ final class TremoloSettings {
   /// set frequency in hertz
   final double f;
 
-  /// Creates an [TremoloSettings] with the given parameter values.
+  /// Creates an [TremoloEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const TremoloSettings({this.enabled = false, this.d = 0.5, this.f = 5.0});
+  /// Each parameter defaults to its ffmpeg default.
+  const TremoloEffect({this.enabled = true, this.d = 0.5, this.f = 5.0});
 
-  /// Returns a copy of this [TremoloSettings] with the given fields replaced.
-  TremoloSettings copyWith({bool? enabled, double? d, double? f}) =>
-      TremoloSettings(
+  @override
+  String get filterName => 'tremolo';
+
+  @override
+  AudioFilter get filter => AudioFilter.tremolo;
+
+  /// Returns a copy of this [TremoloEffect] with the given fields replaced.
+  TremoloEffect copyWith({bool? enabled, double? d, double? f}) =>
+      TremoloEffect(
         enabled: enabled ?? this.enabled,
         d: d ?? this.d,
         f: f ?? this.f,
@@ -19603,7 +20345,7 @@ final class TremoloSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is TremoloSettings &&
+      (other is TremoloEffect &&
           other.enabled == enabled &&
           other.d == d &&
           other.f == f);
@@ -19612,10 +20354,11 @@ final class TremoloSettings {
   int get hashCode => Object.hash(enabled, d, f);
 
   @override
-  String toString() => 'TremoloSettings(enabled: $enabled, d: $d, f: $f)';
+  String toString() => 'TremoloEffect(enabled: $enabled, d: $d, f: $f)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(d >= dMin, 'tremolo.d must be >= 0.0');
     assert(d <= dMax, 'tremolo.d must be <= 1.0');
@@ -19637,7 +20380,7 @@ final class TremoloSettings {
 /// Parameters:
 /// - [d]: Depth of modulation as a percentage. Range is 0.0 - 1.0. Default value is 0.5. (range 0.00..1.0, default 0.5)
 /// - [f]: Modulation frequency in Hertz. Range is 0.1 - 20000.0. Default value is 5.0 Hz. (range 0.1..20000.0, default 5.0)
-final class VibratoSettings {
+final class VibratoEffect extends AudioEffect {
   /// Default value for [d].
   static const double dDefault = 0.5;
 
@@ -19656,7 +20399,9 @@ final class VibratoSettings {
   /// Maximum value for [f].
   static const double fMax = 20000.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set depth as percentage
@@ -19665,15 +20410,20 @@ final class VibratoSettings {
   /// set frequency in hertz
   final double f;
 
-  /// Creates an [VibratoSettings] with the given parameter values.
+  /// Creates an [VibratoEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const VibratoSettings({this.enabled = false, this.d = 0.5, this.f = 5.0});
+  /// Each parameter defaults to its ffmpeg default.
+  const VibratoEffect({this.enabled = true, this.d = 0.5, this.f = 5.0});
 
-  /// Returns a copy of this [VibratoSettings] with the given fields replaced.
-  VibratoSettings copyWith({bool? enabled, double? d, double? f}) =>
-      VibratoSettings(
+  @override
+  String get filterName => 'vibrato';
+
+  @override
+  AudioFilter get filter => AudioFilter.vibrato;
+
+  /// Returns a copy of this [VibratoEffect] with the given fields replaced.
+  VibratoEffect copyWith({bool? enabled, double? d, double? f}) =>
+      VibratoEffect(
         enabled: enabled ?? this.enabled,
         d: d ?? this.d,
         f: f ?? this.f,
@@ -19682,7 +20432,7 @@ final class VibratoSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is VibratoSettings &&
+      (other is VibratoEffect &&
           other.enabled == enabled &&
           other.d == d &&
           other.f == f);
@@ -19691,10 +20441,11 @@ final class VibratoSettings {
   int get hashCode => Object.hash(enabled, d, f);
 
   @override
-  String toString() => 'VibratoSettings(enabled: $enabled, d: $d, f: $f)';
+  String toString() => 'VibratoEffect(enabled: $enabled, d: $d, f: $f)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(d >= dMin, 'vibrato.d must be >= 0.00');
     assert(d <= dMax, 'vibrato.d must be <= 1.0');
@@ -19720,7 +20471,7 @@ final class VibratoSettings {
 /// Parameters:
 /// - [cutoff]: Set the virtual bass cutoff frequency. Default value is 250 Hz. Allowed range is from 100 to 500 Hz. (range 100..500, default 250)
 /// - [strength]: Set the virtual bass strength. Allowed range is from 0.5 to 3. Default value is 3. (range 0.5..3, default 3, runtime-tunable)
-final class VirtualbassSettings {
+final class VirtualbassEffect extends AudioEffect {
   /// Default value for [cutoff].
   static const double cutoffDefault = 250.0;
 
@@ -19739,7 +20490,9 @@ final class VirtualbassSettings {
   /// Maximum value for [strength].
   static const double strengthMax = 3.0;
 
-  /// Whether this effect is inserted into the audio chain.
+  /// Whether this effect is applied. `false` keeps it in the
+  /// list, with its settings, without inserting it in the chain.
+  @override
   final bool enabled;
 
   /// set virtual bass cutoff
@@ -19748,22 +20501,27 @@ final class VirtualbassSettings {
   /// set virtual bass strength
   final double strength;
 
-  /// Creates an [VirtualbassSettings] with the given parameter values.
+  /// Creates an [VirtualbassEffect] with the given parameter values.
   ///
-  /// Each parameter defaults to its ffmpeg default; the effect stays
-  /// inactive until [enabled] is set to `true`.
-  const VirtualbassSettings({
-    this.enabled = false,
+  /// Each parameter defaults to its ffmpeg default.
+  const VirtualbassEffect({
+    this.enabled = true,
     this.cutoff = 250.0,
     this.strength = 3.0,
   });
 
-  /// Returns a copy of this [VirtualbassSettings] with the given fields replaced.
-  VirtualbassSettings copyWith({
+  @override
+  String get filterName => 'virtualbass';
+
+  @override
+  AudioFilter get filter => AudioFilter.virtualbass;
+
+  /// Returns a copy of this [VirtualbassEffect] with the given fields replaced.
+  VirtualbassEffect copyWith({
     bool? enabled,
     double? cutoff,
     double? strength,
-  }) => VirtualbassSettings(
+  }) => VirtualbassEffect(
     enabled: enabled ?? this.enabled,
     cutoff: cutoff ?? this.cutoff,
     strength: strength ?? this.strength,
@@ -19772,7 +20530,7 @@ final class VirtualbassSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is VirtualbassSettings &&
+      (other is VirtualbassEffect &&
           other.enabled == enabled &&
           other.cutoff == cutoff &&
           other.strength == strength);
@@ -19782,10 +20540,11 @@ final class VirtualbassSettings {
 
   @override
   String toString() =>
-      'VirtualbassSettings(enabled: $enabled, cutoff: $cutoff, strength: $strength)';
+      'VirtualbassEffect(enabled: $enabled, cutoff: $cutoff, strength: $strength)';
 
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
+  @override
   String toFilterString() {
     assert(cutoff >= cutoffMin, 'virtualbass.cutoff must be >= 100');
     assert(cutoff <= cutoffMax, 'virtualbass.cutoff must be <= 500');
@@ -19802,3142 +20561,13 @@ final class VirtualbassSettings {
   /// Runtime-tunable option diff against [prev]: the `(option,
   /// wire value)` pairs the live graph can apply via `af-command`,
   /// or `null` when a changed option requires a chain rebuild.
-  List<(String, String)>? _runtimeDiff(VirtualbassSettings prev) {
+  @override
+  List<(String, String)>? _runtimeDiff(covariant VirtualbassEffect prev) {
     final out = <(String, String)>[];
     if (cutoff != prev.cutoff) return null;
     if (strength != prev.strength) {
       out.add(('strength', _wireDouble(strength)));
     }
     return out;
-  }
-}
-
-/// One incremental `af-command` update produced by
-/// [AudioEffects.diffCommands]: applies [option] = [value] to the
-/// live chain stage labelled [label] (an instance of the ffmpeg
-/// filter [filterName]).
-typedef AfCommand = ({
-  String label,
-  String option,
-  String value,
-  String filterName,
-});
-
-/// All audio effects bundled into a single atomic configuration
-/// applied via `Player.setAudioEffects` / `Player.updateAudioEffects`.
-///
-/// Each effect has its own nullable `XxxSettings` field defaulting to
-/// `null` (not configured). Assign a settings instance with
-/// `enabled: true` to insert that stage in the audio chain; a `null`
-/// slot and a disabled instance are identical on the wire.
-///
-/// Fields you never assign cost nothing in your app binary: the
-/// compiler tree-shakes every `*Settings` class your code doesn't
-/// name.
-///
-/// `custom` carries raw lavfi-style filter strings (e.g.
-/// `'lavfi-aeval=val(0)|val(1)'`) emitted at the head of the chain,
-/// before any typed stage. Use it for expression-based filters or
-/// experimental ffmpeg filters that don't have a typed equivalent.
-final class AudioEffects {
-  /// Raw lavfi filter strings emitted at the head of the chain,
-  /// before any typed stage. Use for expression-based or
-  /// experimental filters without a typed equivalent.
-  final List<String> custom;
-
-  /// Configuration for the `acompressor` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AcompressorSettings? acompressor;
-
-  /// Configuration for the `acontrast` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AcontrastSettings? acontrast;
-
-  /// Configuration for the `acrusher` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AcrusherSettings? acrusher;
-
-  /// Configuration for the `adeclick` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdeclickSettings? adeclick;
-
-  /// Configuration for the `adeclip` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdeclipSettings? adeclip;
-
-  /// Configuration for the `adecorrelate` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdecorrelateSettings? adecorrelate;
-
-  /// Configuration for the `adelay` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdelaySettings? adelay;
-
-  /// Configuration for the `adenorm` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdenormSettings? adenorm;
-
-  /// Configuration for the `aderivative` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AderivativeSettings? aderivative;
-
-  /// Configuration for the `adrc` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdrcSettings? adrc;
-
-  /// Configuration for the `adynamicequalizer` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdynamicequalizerSettings? adynamicequalizer;
-
-  /// Configuration for the `adynamicsmooth` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AdynamicsmoothSettings? adynamicsmooth;
-
-  /// Configuration for the `aecho` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AechoSettings? aecho;
-
-  /// Configuration for the `aemphasis` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AemphasisSettings? aemphasis;
-
-  /// Configuration for the `aeval` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AevalSettings? aeval;
-
-  /// Configuration for the `aexciter` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AexciterSettings? aexciter;
-
-  /// Configuration for the `afade` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AfadeSettings? afade;
-
-  /// Configuration for the `afftdn` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AfftdnSettings? afftdn;
-
-  /// Configuration for the `afftfilt` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AfftfiltSettings? afftfilt;
-
-  /// Configuration for the `aformat` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AformatSettings? aformat;
-
-  /// Configuration for the `afreqshift` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AfreqshiftSettings? afreqshift;
-
-  /// Configuration for the `afwtdn` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AfwtdnSettings? afwtdn;
-
-  /// Configuration for the `agate` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AgateSettings? agate;
-
-  /// Configuration for the `aiir` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AiirSettings? aiir;
-
-  /// Configuration for the `aintegral` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AintegralSettings? aintegral;
-
-  /// Configuration for the `alimiter` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AlimiterSettings? alimiter;
-
-  /// Configuration for the `allpass` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AllpassSettings? allpass;
-
-  /// Configuration for the `anequalizer` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AnequalizerSettings? anequalizer;
-
-  /// Configuration for the `anlmdn` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AnlmdnSettings? anlmdn;
-
-  /// Configuration for the `apad` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final ApadSettings? apad;
-
-  /// Configuration for the `aphaser` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AphaserSettings? aphaser;
-
-  /// Configuration for the `aphaseshift` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AphaseshiftSettings? aphaseshift;
-
-  /// Configuration for the `apsyclip` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final ApsyclipSettings? apsyclip;
-
-  /// Configuration for the `apulsator` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final ApulsatorSettings? apulsator;
-
-  /// Configuration for the `aresample` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AresampleSettings? aresample;
-
-  /// Configuration for the `arnndn` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final ArnndnSettings? arnndn;
-
-  /// Configuration for the `asetrate` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AsetrateSettings? asetrate;
-
-  /// Configuration for the `asoftclip` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AsoftclipSettings? asoftclip;
-
-  /// Configuration for the `asubboost` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AsubboostSettings? asubboost;
-
-  /// Configuration for the `asubcut` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AsubcutSettings? asubcut;
-
-  /// Configuration for the `asupercut` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AsupercutSettings? asupercut;
-
-  /// Configuration for the `asuperpass` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AsuperpassSettings? asuperpass;
-
-  /// Configuration for the `asuperstop` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AsuperstopSettings? asuperstop;
-
-  /// Configuration for the `atempo` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AtempoSettings? atempo;
-
-  /// Configuration for the `atilt` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final AtiltSettings? atilt;
-
-  /// Configuration for the `bandpass` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final BandpassSettings? bandpass;
-
-  /// Configuration for the `bandreject` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final BandrejectSettings? bandreject;
-
-  /// Configuration for the `bass` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final BassSettings? bass;
-
-  /// Configuration for the `biquad` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final BiquadSettings? biquad;
-
-  /// Configuration for the `channelmap` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final ChannelmapSettings? channelmap;
-
-  /// Configuration for the `chorus` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final ChorusSettings? chorus;
-
-  /// Configuration for the `compand` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final CompandSettings? compand;
-
-  /// Configuration for the `compensationdelay` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final CompensationdelaySettings? compensationdelay;
-
-  /// Configuration for the `crossfeed` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final CrossfeedSettings? crossfeed;
-
-  /// Configuration for the `crystalizer` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final CrystalizerSettings? crystalizer;
-
-  /// Configuration for the `dcshift` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final DcshiftSettings? dcshift;
-
-  /// Configuration for the `deesser` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final DeesserSettings? deesser;
-
-  /// Configuration for the `dialoguenhance` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final DialoguenhanceSettings? dialoguenhance;
-
-  /// Configuration for the `drmeter` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final DrmeterSettings? drmeter;
-
-  /// Configuration for the `dynaudnorm` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final DynaudnormSettings? dynaudnorm;
-
-  /// Configuration for the `earwax` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final EarwaxSettings? earwax;
-
-  /// Configuration for the `ebur128` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final Ebur128Settings? ebur128;
-
-  /// Configuration for the `equalizer` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final EqualizerSettings? equalizer;
-
-  /// Configuration for the `extrastereo` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final ExtrastereoSettings? extrastereo;
-
-  /// Configuration for the `firequalizer` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final FirequalizerSettings? firequalizer;
-
-  /// Configuration for the `flanger` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final FlangerSettings? flanger;
-
-  /// Configuration for the `haas` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final HaasSettings? haas;
-
-  /// Configuration for the `hdcd` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final HdcdSettings? hdcd;
-
-  /// Configuration for the `highpass` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final HighpassSettings? highpass;
-
-  /// Configuration for the `highshelf` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final HighshelfSettings? highshelf;
-
-  /// Configuration for the `loudnorm` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final LoudnormSettings? loudnorm;
-
-  /// Configuration for the `lowpass` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final LowpassSettings? lowpass;
-
-  /// Configuration for the `lowshelf` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final LowshelfSettings? lowshelf;
-
-  /// Configuration for the `mcompand` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final McompandSettings? mcompand;
-
-  /// Configuration for the `pan` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final PanSettings? pan;
-
-  /// Configuration for the `rubberband` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final RubberbandSettings? rubberband;
-
-  /// Configuration for the `silenceremove` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final SilenceremoveSettings? silenceremove;
-
-  /// Configuration for the `speechnorm` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final SpeechnormSettings? speechnorm;
-
-  /// Configuration for the `stereotools` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final StereotoolsSettings? stereotools;
-
-  /// Configuration for the `stereowiden` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final StereowidenSettings? stereowiden;
-
-  /// Configuration for the `superequalizer` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final SuperequalizerSettings? superequalizer;
-
-  /// Configuration for the `surround` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final SurroundSettings? surround;
-
-  /// Configuration for the `tiltshelf` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final TiltshelfSettings? tiltshelf;
-
-  /// Configuration for the `treble` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final TrebleSettings? treble;
-
-  /// Configuration for the `tremolo` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final TremoloSettings? tremolo;
-
-  /// Configuration for the `vibrato` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final VibratoSettings? vibrato;
-
-  /// Configuration for the `virtualbass` audio effect.
-  ///
-  /// `null` = not configured (same wire output as a
-  /// disabled instance).
-  final VirtualbassSettings? virtualbass;
-
-  /// Creates an [AudioEffects] bundle.
-  ///
-  /// Every effect defaults to `null` (not configured); assign the
-  /// ones you need and apply the whole bundle atomically.
-  const AudioEffects({
-    this.custom = const <String>[],
-    this.acompressor,
-    this.acontrast,
-    this.acrusher,
-    this.adeclick,
-    this.adeclip,
-    this.adecorrelate,
-    this.adelay,
-    this.adenorm,
-    this.aderivative,
-    this.adrc,
-    this.adynamicequalizer,
-    this.adynamicsmooth,
-    this.aecho,
-    this.aemphasis,
-    this.aeval,
-    this.aexciter,
-    this.afade,
-    this.afftdn,
-    this.afftfilt,
-    this.aformat,
-    this.afreqshift,
-    this.afwtdn,
-    this.agate,
-    this.aiir,
-    this.aintegral,
-    this.alimiter,
-    this.allpass,
-    this.anequalizer,
-    this.anlmdn,
-    this.apad,
-    this.aphaser,
-    this.aphaseshift,
-    this.apsyclip,
-    this.apulsator,
-    this.aresample,
-    this.arnndn,
-    this.asetrate,
-    this.asoftclip,
-    this.asubboost,
-    this.asubcut,
-    this.asupercut,
-    this.asuperpass,
-    this.asuperstop,
-    this.atempo,
-    this.atilt,
-    this.bandpass,
-    this.bandreject,
-    this.bass,
-    this.biquad,
-    this.channelmap,
-    this.chorus,
-    this.compand,
-    this.compensationdelay,
-    this.crossfeed,
-    this.crystalizer,
-    this.dcshift,
-    this.deesser,
-    this.dialoguenhance,
-    this.drmeter,
-    this.dynaudnorm,
-    this.earwax,
-    this.ebur128,
-    this.equalizer,
-    this.extrastereo,
-    this.firequalizer,
-    this.flanger,
-    this.haas,
-    this.hdcd,
-    this.highpass,
-    this.highshelf,
-    this.loudnorm,
-    this.lowpass,
-    this.lowshelf,
-    this.mcompand,
-    this.pan,
-    this.rubberband,
-    this.silenceremove,
-    this.speechnorm,
-    this.stereotools,
-    this.stereowiden,
-    this.superequalizer,
-    this.surround,
-    this.tiltshelf,
-    this.treble,
-    this.tremolo,
-    this.vibrato,
-    this.virtualbass,
-  });
-
-  /// Returns a copy of this bundle with the given effects replaced.
-  ///
-  /// A `null` argument keeps the current value. To take a stage
-  /// out of the chain, disable it via its `enabled` flag — on the
-  /// wire that is identical to an unset slot.
-  AudioEffects copyWith({
-    List<String>? custom,
-    AcompressorSettings? acompressor,
-    AcontrastSettings? acontrast,
-    AcrusherSettings? acrusher,
-    AdeclickSettings? adeclick,
-    AdeclipSettings? adeclip,
-    AdecorrelateSettings? adecorrelate,
-    AdelaySettings? adelay,
-    AdenormSettings? adenorm,
-    AderivativeSettings? aderivative,
-    AdrcSettings? adrc,
-    AdynamicequalizerSettings? adynamicequalizer,
-    AdynamicsmoothSettings? adynamicsmooth,
-    AechoSettings? aecho,
-    AemphasisSettings? aemphasis,
-    AevalSettings? aeval,
-    AexciterSettings? aexciter,
-    AfadeSettings? afade,
-    AfftdnSettings? afftdn,
-    AfftfiltSettings? afftfilt,
-    AformatSettings? aformat,
-    AfreqshiftSettings? afreqshift,
-    AfwtdnSettings? afwtdn,
-    AgateSettings? agate,
-    AiirSettings? aiir,
-    AintegralSettings? aintegral,
-    AlimiterSettings? alimiter,
-    AllpassSettings? allpass,
-    AnequalizerSettings? anequalizer,
-    AnlmdnSettings? anlmdn,
-    ApadSettings? apad,
-    AphaserSettings? aphaser,
-    AphaseshiftSettings? aphaseshift,
-    ApsyclipSettings? apsyclip,
-    ApulsatorSettings? apulsator,
-    AresampleSettings? aresample,
-    ArnndnSettings? arnndn,
-    AsetrateSettings? asetrate,
-    AsoftclipSettings? asoftclip,
-    AsubboostSettings? asubboost,
-    AsubcutSettings? asubcut,
-    AsupercutSettings? asupercut,
-    AsuperpassSettings? asuperpass,
-    AsuperstopSettings? asuperstop,
-    AtempoSettings? atempo,
-    AtiltSettings? atilt,
-    BandpassSettings? bandpass,
-    BandrejectSettings? bandreject,
-    BassSettings? bass,
-    BiquadSettings? biquad,
-    ChannelmapSettings? channelmap,
-    ChorusSettings? chorus,
-    CompandSettings? compand,
-    CompensationdelaySettings? compensationdelay,
-    CrossfeedSettings? crossfeed,
-    CrystalizerSettings? crystalizer,
-    DcshiftSettings? dcshift,
-    DeesserSettings? deesser,
-    DialoguenhanceSettings? dialoguenhance,
-    DrmeterSettings? drmeter,
-    DynaudnormSettings? dynaudnorm,
-    EarwaxSettings? earwax,
-    Ebur128Settings? ebur128,
-    EqualizerSettings? equalizer,
-    ExtrastereoSettings? extrastereo,
-    FirequalizerSettings? firequalizer,
-    FlangerSettings? flanger,
-    HaasSettings? haas,
-    HdcdSettings? hdcd,
-    HighpassSettings? highpass,
-    HighshelfSettings? highshelf,
-    LoudnormSettings? loudnorm,
-    LowpassSettings? lowpass,
-    LowshelfSettings? lowshelf,
-    McompandSettings? mcompand,
-    PanSettings? pan,
-    RubberbandSettings? rubberband,
-    SilenceremoveSettings? silenceremove,
-    SpeechnormSettings? speechnorm,
-    StereotoolsSettings? stereotools,
-    StereowidenSettings? stereowiden,
-    SuperequalizerSettings? superequalizer,
-    SurroundSettings? surround,
-    TiltshelfSettings? tiltshelf,
-    TrebleSettings? treble,
-    TremoloSettings? tremolo,
-    VibratoSettings? vibrato,
-    VirtualbassSettings? virtualbass,
-  }) => AudioEffects(
-    custom: custom ?? this.custom,
-    acompressor: acompressor ?? this.acompressor,
-    acontrast: acontrast ?? this.acontrast,
-    acrusher: acrusher ?? this.acrusher,
-    adeclick: adeclick ?? this.adeclick,
-    adeclip: adeclip ?? this.adeclip,
-    adecorrelate: adecorrelate ?? this.adecorrelate,
-    adelay: adelay ?? this.adelay,
-    adenorm: adenorm ?? this.adenorm,
-    aderivative: aderivative ?? this.aderivative,
-    adrc: adrc ?? this.adrc,
-    adynamicequalizer: adynamicequalizer ?? this.adynamicequalizer,
-    adynamicsmooth: adynamicsmooth ?? this.adynamicsmooth,
-    aecho: aecho ?? this.aecho,
-    aemphasis: aemphasis ?? this.aemphasis,
-    aeval: aeval ?? this.aeval,
-    aexciter: aexciter ?? this.aexciter,
-    afade: afade ?? this.afade,
-    afftdn: afftdn ?? this.afftdn,
-    afftfilt: afftfilt ?? this.afftfilt,
-    aformat: aformat ?? this.aformat,
-    afreqshift: afreqshift ?? this.afreqshift,
-    afwtdn: afwtdn ?? this.afwtdn,
-    agate: agate ?? this.agate,
-    aiir: aiir ?? this.aiir,
-    aintegral: aintegral ?? this.aintegral,
-    alimiter: alimiter ?? this.alimiter,
-    allpass: allpass ?? this.allpass,
-    anequalizer: anequalizer ?? this.anequalizer,
-    anlmdn: anlmdn ?? this.anlmdn,
-    apad: apad ?? this.apad,
-    aphaser: aphaser ?? this.aphaser,
-    aphaseshift: aphaseshift ?? this.aphaseshift,
-    apsyclip: apsyclip ?? this.apsyclip,
-    apulsator: apulsator ?? this.apulsator,
-    aresample: aresample ?? this.aresample,
-    arnndn: arnndn ?? this.arnndn,
-    asetrate: asetrate ?? this.asetrate,
-    asoftclip: asoftclip ?? this.asoftclip,
-    asubboost: asubboost ?? this.asubboost,
-    asubcut: asubcut ?? this.asubcut,
-    asupercut: asupercut ?? this.asupercut,
-    asuperpass: asuperpass ?? this.asuperpass,
-    asuperstop: asuperstop ?? this.asuperstop,
-    atempo: atempo ?? this.atempo,
-    atilt: atilt ?? this.atilt,
-    bandpass: bandpass ?? this.bandpass,
-    bandreject: bandreject ?? this.bandreject,
-    bass: bass ?? this.bass,
-    biquad: biquad ?? this.biquad,
-    channelmap: channelmap ?? this.channelmap,
-    chorus: chorus ?? this.chorus,
-    compand: compand ?? this.compand,
-    compensationdelay: compensationdelay ?? this.compensationdelay,
-    crossfeed: crossfeed ?? this.crossfeed,
-    crystalizer: crystalizer ?? this.crystalizer,
-    dcshift: dcshift ?? this.dcshift,
-    deesser: deesser ?? this.deesser,
-    dialoguenhance: dialoguenhance ?? this.dialoguenhance,
-    drmeter: drmeter ?? this.drmeter,
-    dynaudnorm: dynaudnorm ?? this.dynaudnorm,
-    earwax: earwax ?? this.earwax,
-    ebur128: ebur128 ?? this.ebur128,
-    equalizer: equalizer ?? this.equalizer,
-    extrastereo: extrastereo ?? this.extrastereo,
-    firequalizer: firequalizer ?? this.firequalizer,
-    flanger: flanger ?? this.flanger,
-    haas: haas ?? this.haas,
-    hdcd: hdcd ?? this.hdcd,
-    highpass: highpass ?? this.highpass,
-    highshelf: highshelf ?? this.highshelf,
-    loudnorm: loudnorm ?? this.loudnorm,
-    lowpass: lowpass ?? this.lowpass,
-    lowshelf: lowshelf ?? this.lowshelf,
-    mcompand: mcompand ?? this.mcompand,
-    pan: pan ?? this.pan,
-    rubberband: rubberband ?? this.rubberband,
-    silenceremove: silenceremove ?? this.silenceremove,
-    speechnorm: speechnorm ?? this.speechnorm,
-    stereotools: stereotools ?? this.stereotools,
-    stereowiden: stereowiden ?? this.stereowiden,
-    superequalizer: superequalizer ?? this.superequalizer,
-    surround: surround ?? this.surround,
-    tiltshelf: tiltshelf ?? this.tiltshelf,
-    treble: treble ?? this.treble,
-    tremolo: tremolo ?? this.tremolo,
-    vibrato: vibrato ?? this.vibrato,
-    virtualbass: virtualbass ?? this.virtualbass,
-  );
-
-  /// Returns a copy with the `acompressor` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAcompressor(
-    AcompressorSettings Function(AcompressorSettings) f,
-  ) => copyWith(acompressor: f(acompressor ?? const AcompressorSettings()));
-
-  /// Returns a copy with the `acontrast` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAcontrast(
-    AcontrastSettings Function(AcontrastSettings) f,
-  ) => copyWith(acontrast: f(acontrast ?? const AcontrastSettings()));
-
-  /// Returns a copy with the `acrusher` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAcrusher(AcrusherSettings Function(AcrusherSettings) f) =>
-      copyWith(acrusher: f(acrusher ?? const AcrusherSettings()));
-
-  /// Returns a copy with the `adeclick` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdeclick(AdeclickSettings Function(AdeclickSettings) f) =>
-      copyWith(adeclick: f(adeclick ?? const AdeclickSettings()));
-
-  /// Returns a copy with the `adeclip` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdeclip(AdeclipSettings Function(AdeclipSettings) f) =>
-      copyWith(adeclip: f(adeclip ?? const AdeclipSettings()));
-
-  /// Returns a copy with the `adecorrelate` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdecorrelate(
-    AdecorrelateSettings Function(AdecorrelateSettings) f,
-  ) => copyWith(adecorrelate: f(adecorrelate ?? const AdecorrelateSettings()));
-
-  /// Returns a copy with the `adelay` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdelay(AdelaySettings Function(AdelaySettings) f) =>
-      copyWith(adelay: f(adelay ?? const AdelaySettings()));
-
-  /// Returns a copy with the `adenorm` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdenorm(AdenormSettings Function(AdenormSettings) f) =>
-      copyWith(adenorm: f(adenorm ?? const AdenormSettings()));
-
-  /// Returns a copy with the `aderivative` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAderivative(
-    AderivativeSettings Function(AderivativeSettings) f,
-  ) => copyWith(aderivative: f(aderivative ?? const AderivativeSettings()));
-
-  /// Returns a copy with the `adrc` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdrc(AdrcSettings Function(AdrcSettings) f) =>
-      copyWith(adrc: f(adrc ?? const AdrcSettings()));
-
-  /// Returns a copy with the `adynamicequalizer` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdynamicequalizer(
-    AdynamicequalizerSettings Function(AdynamicequalizerSettings) f,
-  ) => copyWith(
-    adynamicequalizer: f(
-      adynamicequalizer ?? const AdynamicequalizerSettings(),
-    ),
-  );
-
-  /// Returns a copy with the `adynamicsmooth` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAdynamicsmooth(
-    AdynamicsmoothSettings Function(AdynamicsmoothSettings) f,
-  ) => copyWith(
-    adynamicsmooth: f(adynamicsmooth ?? const AdynamicsmoothSettings()),
-  );
-
-  /// Returns a copy with the `aecho` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAecho(AechoSettings Function(AechoSettings) f) =>
-      copyWith(aecho: f(aecho ?? const AechoSettings()));
-
-  /// Returns a copy with the `aemphasis` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAemphasis(
-    AemphasisSettings Function(AemphasisSettings) f,
-  ) => copyWith(aemphasis: f(aemphasis ?? const AemphasisSettings()));
-
-  /// Returns a copy with the `aeval` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAeval(AevalSettings Function(AevalSettings) f) =>
-      copyWith(aeval: f(aeval ?? const AevalSettings(exprs: 'val(0)|val(1)')));
-
-  /// Returns a copy with the `aexciter` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAexciter(AexciterSettings Function(AexciterSettings) f) =>
-      copyWith(aexciter: f(aexciter ?? const AexciterSettings()));
-
-  /// Returns a copy with the `afade` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAfade(AfadeSettings Function(AfadeSettings) f) =>
-      copyWith(afade: f(afade ?? const AfadeSettings()));
-
-  /// Returns a copy with the `afftdn` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAfftdn(AfftdnSettings Function(AfftdnSettings) f) =>
-      copyWith(afftdn: f(afftdn ?? const AfftdnSettings()));
-
-  /// Returns a copy with the `afftfilt` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAfftfilt(AfftfiltSettings Function(AfftfiltSettings) f) =>
-      copyWith(afftfilt: f(afftfilt ?? const AfftfiltSettings()));
-
-  /// Returns a copy with the `aformat` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAformat(AformatSettings Function(AformatSettings) f) =>
-      copyWith(aformat: f(aformat ?? const AformatSettings()));
-
-  /// Returns a copy with the `afreqshift` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAfreqshift(
-    AfreqshiftSettings Function(AfreqshiftSettings) f,
-  ) => copyWith(afreqshift: f(afreqshift ?? const AfreqshiftSettings()));
-
-  /// Returns a copy with the `afwtdn` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAfwtdn(AfwtdnSettings Function(AfwtdnSettings) f) =>
-      copyWith(afwtdn: f(afwtdn ?? const AfwtdnSettings()));
-
-  /// Returns a copy with the `agate` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAgate(AgateSettings Function(AgateSettings) f) =>
-      copyWith(agate: f(agate ?? const AgateSettings()));
-
-  /// Returns a copy with the `aiir` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAiir(AiirSettings Function(AiirSettings) f) =>
-      copyWith(aiir: f(aiir ?? const AiirSettings()));
-
-  /// Returns a copy with the `aintegral` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAintegral(
-    AintegralSettings Function(AintegralSettings) f,
-  ) => copyWith(aintegral: f(aintegral ?? const AintegralSettings()));
-
-  /// Returns a copy with the `alimiter` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAlimiter(AlimiterSettings Function(AlimiterSettings) f) =>
-      copyWith(alimiter: f(alimiter ?? const AlimiterSettings()));
-
-  /// Returns a copy with the `allpass` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAllpass(AllpassSettings Function(AllpassSettings) f) =>
-      copyWith(allpass: f(allpass ?? const AllpassSettings()));
-
-  /// Returns a copy with the `anequalizer` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAnequalizer(
-    AnequalizerSettings Function(AnequalizerSettings) f,
-  ) => copyWith(anequalizer: f(anequalizer ?? const AnequalizerSettings()));
-
-  /// Returns a copy with the `anlmdn` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAnlmdn(AnlmdnSettings Function(AnlmdnSettings) f) =>
-      copyWith(anlmdn: f(anlmdn ?? const AnlmdnSettings()));
-
-  /// Returns a copy with the `apad` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateApad(ApadSettings Function(ApadSettings) f) =>
-      copyWith(apad: f(apad ?? const ApadSettings()));
-
-  /// Returns a copy with the `aphaser` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAphaser(AphaserSettings Function(AphaserSettings) f) =>
-      copyWith(aphaser: f(aphaser ?? const AphaserSettings()));
-
-  /// Returns a copy with the `aphaseshift` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAphaseshift(
-    AphaseshiftSettings Function(AphaseshiftSettings) f,
-  ) => copyWith(aphaseshift: f(aphaseshift ?? const AphaseshiftSettings()));
-
-  /// Returns a copy with the `apsyclip` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateApsyclip(ApsyclipSettings Function(ApsyclipSettings) f) =>
-      copyWith(apsyclip: f(apsyclip ?? const ApsyclipSettings()));
-
-  /// Returns a copy with the `apulsator` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateApulsator(
-    ApulsatorSettings Function(ApulsatorSettings) f,
-  ) => copyWith(apulsator: f(apulsator ?? const ApulsatorSettings()));
-
-  /// Returns a copy with the `aresample` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAresample(
-    AresampleSettings Function(AresampleSettings) f,
-  ) => copyWith(aresample: f(aresample ?? const AresampleSettings()));
-
-  /// Returns a copy with the `arnndn` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateArnndn(ArnndnSettings Function(ArnndnSettings) f) =>
-      copyWith(arnndn: f(arnndn ?? const ArnndnSettings(model: '')));
-
-  /// Returns a copy with the `asetrate` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAsetrate(AsetrateSettings Function(AsetrateSettings) f) =>
-      copyWith(asetrate: f(asetrate ?? const AsetrateSettings()));
-
-  /// Returns a copy with the `asoftclip` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAsoftclip(
-    AsoftclipSettings Function(AsoftclipSettings) f,
-  ) => copyWith(asoftclip: f(asoftclip ?? const AsoftclipSettings()));
-
-  /// Returns a copy with the `asubboost` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAsubboost(
-    AsubboostSettings Function(AsubboostSettings) f,
-  ) => copyWith(asubboost: f(asubboost ?? const AsubboostSettings()));
-
-  /// Returns a copy with the `asubcut` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAsubcut(AsubcutSettings Function(AsubcutSettings) f) =>
-      copyWith(asubcut: f(asubcut ?? const AsubcutSettings()));
-
-  /// Returns a copy with the `asupercut` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAsupercut(
-    AsupercutSettings Function(AsupercutSettings) f,
-  ) => copyWith(asupercut: f(asupercut ?? const AsupercutSettings()));
-
-  /// Returns a copy with the `asuperpass` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAsuperpass(
-    AsuperpassSettings Function(AsuperpassSettings) f,
-  ) => copyWith(asuperpass: f(asuperpass ?? const AsuperpassSettings()));
-
-  /// Returns a copy with the `asuperstop` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAsuperstop(
-    AsuperstopSettings Function(AsuperstopSettings) f,
-  ) => copyWith(asuperstop: f(asuperstop ?? const AsuperstopSettings()));
-
-  /// Returns a copy with the `atempo` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAtempo(AtempoSettings Function(AtempoSettings) f) =>
-      copyWith(atempo: f(atempo ?? const AtempoSettings()));
-
-  /// Returns a copy with the `atilt` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateAtilt(AtiltSettings Function(AtiltSettings) f) =>
-      copyWith(atilt: f(atilt ?? const AtiltSettings()));
-
-  /// Returns a copy with the `bandpass` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateBandpass(BandpassSettings Function(BandpassSettings) f) =>
-      copyWith(bandpass: f(bandpass ?? const BandpassSettings()));
-
-  /// Returns a copy with the `bandreject` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateBandreject(
-    BandrejectSettings Function(BandrejectSettings) f,
-  ) => copyWith(bandreject: f(bandreject ?? const BandrejectSettings()));
-
-  /// Returns a copy with the `bass` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateBass(BassSettings Function(BassSettings) f) =>
-      copyWith(bass: f(bass ?? const BassSettings()));
-
-  /// Returns a copy with the `biquad` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateBiquad(BiquadSettings Function(BiquadSettings) f) =>
-      copyWith(biquad: f(biquad ?? const BiquadSettings()));
-
-  /// Returns a copy with the `channelmap` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateChannelmap(
-    ChannelmapSettings Function(ChannelmapSettings) f,
-  ) => copyWith(
-    channelmap: f(channelmap ?? const ChannelmapSettings(map: '0|1')),
-  );
-
-  /// Returns a copy with the `chorus` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateChorus(ChorusSettings Function(ChorusSettings) f) =>
-      copyWith(
-        chorus: f(
-          chorus ??
-              const ChorusSettings(
-                delays: '55|60',
-                decays: '0.4|0.32',
-                speeds: '0.25|0.4',
-                depths: '2|1.3',
-              ),
-        ),
-      );
-
-  /// Returns a copy with the `compand` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateCompand(CompandSettings Function(CompandSettings) f) =>
-      copyWith(compand: f(compand ?? const CompandSettings()));
-
-  /// Returns a copy with the `compensationdelay` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateCompensationdelay(
-    CompensationdelaySettings Function(CompensationdelaySettings) f,
-  ) => copyWith(
-    compensationdelay: f(
-      compensationdelay ?? const CompensationdelaySettings(),
-    ),
-  );
-
-  /// Returns a copy with the `crossfeed` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateCrossfeed(
-    CrossfeedSettings Function(CrossfeedSettings) f,
-  ) => copyWith(crossfeed: f(crossfeed ?? const CrossfeedSettings()));
-
-  /// Returns a copy with the `crystalizer` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateCrystalizer(
-    CrystalizerSettings Function(CrystalizerSettings) f,
-  ) => copyWith(crystalizer: f(crystalizer ?? const CrystalizerSettings()));
-
-  /// Returns a copy with the `dcshift` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateDcshift(DcshiftSettings Function(DcshiftSettings) f) =>
-      copyWith(dcshift: f(dcshift ?? const DcshiftSettings()));
-
-  /// Returns a copy with the `deesser` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateDeesser(DeesserSettings Function(DeesserSettings) f) =>
-      copyWith(deesser: f(deesser ?? const DeesserSettings()));
-
-  /// Returns a copy with the `dialoguenhance` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateDialoguenhance(
-    DialoguenhanceSettings Function(DialoguenhanceSettings) f,
-  ) => copyWith(
-    dialoguenhance: f(dialoguenhance ?? const DialoguenhanceSettings()),
-  );
-
-  /// Returns a copy with the `drmeter` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateDrmeter(DrmeterSettings Function(DrmeterSettings) f) =>
-      copyWith(drmeter: f(drmeter ?? const DrmeterSettings()));
-
-  /// Returns a copy with the `dynaudnorm` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateDynaudnorm(
-    DynaudnormSettings Function(DynaudnormSettings) f,
-  ) => copyWith(dynaudnorm: f(dynaudnorm ?? const DynaudnormSettings()));
-
-  /// Returns a copy with the `earwax` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateEarwax(EarwaxSettings Function(EarwaxSettings) f) =>
-      copyWith(earwax: f(earwax ?? const EarwaxSettings()));
-
-  /// Returns a copy with the `ebur128` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateEbur128(Ebur128Settings Function(Ebur128Settings) f) =>
-      copyWith(ebur128: f(ebur128 ?? const Ebur128Settings()));
-
-  /// Returns a copy with the `equalizer` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateEqualizer(
-    EqualizerSettings Function(EqualizerSettings) f,
-  ) => copyWith(equalizer: f(equalizer ?? const EqualizerSettings()));
-
-  /// Returns a copy with the `extrastereo` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateExtrastereo(
-    ExtrastereoSettings Function(ExtrastereoSettings) f,
-  ) => copyWith(extrastereo: f(extrastereo ?? const ExtrastereoSettings()));
-
-  /// Returns a copy with the `firequalizer` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateFirequalizer(
-    FirequalizerSettings Function(FirequalizerSettings) f,
-  ) => copyWith(firequalizer: f(firequalizer ?? const FirequalizerSettings()));
-
-  /// Returns a copy with the `flanger` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateFlanger(FlangerSettings Function(FlangerSettings) f) =>
-      copyWith(flanger: f(flanger ?? const FlangerSettings()));
-
-  /// Returns a copy with the `haas` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateHaas(HaasSettings Function(HaasSettings) f) =>
-      copyWith(haas: f(haas ?? const HaasSettings()));
-
-  /// Returns a copy with the `hdcd` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateHdcd(HdcdSettings Function(HdcdSettings) f) =>
-      copyWith(hdcd: f(hdcd ?? const HdcdSettings()));
-
-  /// Returns a copy with the `highpass` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateHighpass(HighpassSettings Function(HighpassSettings) f) =>
-      copyWith(highpass: f(highpass ?? const HighpassSettings()));
-
-  /// Returns a copy with the `highshelf` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateHighshelf(
-    HighshelfSettings Function(HighshelfSettings) f,
-  ) => copyWith(highshelf: f(highshelf ?? const HighshelfSettings()));
-
-  /// Returns a copy with the `loudnorm` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateLoudnorm(LoudnormSettings Function(LoudnormSettings) f) =>
-      copyWith(loudnorm: f(loudnorm ?? const LoudnormSettings()));
-
-  /// Returns a copy with the `lowpass` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateLowpass(LowpassSettings Function(LowpassSettings) f) =>
-      copyWith(lowpass: f(lowpass ?? const LowpassSettings()));
-
-  /// Returns a copy with the `lowshelf` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateLowshelf(LowshelfSettings Function(LowshelfSettings) f) =>
-      copyWith(lowshelf: f(lowshelf ?? const LowshelfSettings()));
-
-  /// Returns a copy with the `mcompand` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateMcompand(McompandSettings Function(McompandSettings) f) =>
-      copyWith(mcompand: f(mcompand ?? const McompandSettings()));
-
-  /// Returns a copy with the `pan` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updatePan(PanSettings Function(PanSettings) f) =>
-      copyWith(pan: f(pan ?? const PanSettings(args: 'stereo|c0=c0|c1=c1')));
-
-  /// Returns a copy with the `rubberband` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateRubberband(
-    RubberbandSettings Function(RubberbandSettings) f,
-  ) => copyWith(rubberband: f(rubberband ?? const RubberbandSettings()));
-
-  /// Returns a copy with the `silenceremove` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateSilenceremove(
-    SilenceremoveSettings Function(SilenceremoveSettings) f,
-  ) => copyWith(
-    silenceremove: f(silenceremove ?? const SilenceremoveSettings()),
-  );
-
-  /// Returns a copy with the `speechnorm` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateSpeechnorm(
-    SpeechnormSettings Function(SpeechnormSettings) f,
-  ) => copyWith(speechnorm: f(speechnorm ?? const SpeechnormSettings()));
-
-  /// Returns a copy with the `stereotools` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateStereotools(
-    StereotoolsSettings Function(StereotoolsSettings) f,
-  ) => copyWith(stereotools: f(stereotools ?? const StereotoolsSettings()));
-
-  /// Returns a copy with the `stereowiden` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateStereowiden(
-    StereowidenSettings Function(StereowidenSettings) f,
-  ) => copyWith(stereowiden: f(stereowiden ?? const StereowidenSettings()));
-
-  /// Returns a copy with the `superequalizer` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateSuperequalizer(
-    SuperequalizerSettings Function(SuperequalizerSettings) f,
-  ) => copyWith(
-    superequalizer: f(superequalizer ?? const SuperequalizerSettings()),
-  );
-
-  /// Returns a copy with the `surround` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateSurround(SurroundSettings Function(SurroundSettings) f) =>
-      copyWith(surround: f(surround ?? const SurroundSettings()));
-
-  /// Returns a copy with the `tiltshelf` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateTiltshelf(
-    TiltshelfSettings Function(TiltshelfSettings) f,
-  ) => copyWith(tiltshelf: f(tiltshelf ?? const TiltshelfSettings()));
-
-  /// Returns a copy with the `treble` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateTreble(TrebleSettings Function(TrebleSettings) f) =>
-      copyWith(treble: f(treble ?? const TrebleSettings()));
-
-  /// Returns a copy with the `tremolo` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateTremolo(TremoloSettings Function(TremoloSettings) f) =>
-      copyWith(tremolo: f(tremolo ?? const TremoloSettings()));
-
-  /// Returns a copy with the `vibrato` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateVibrato(VibratoSettings Function(VibratoSettings) f) =>
-      copyWith(vibrato: f(vibrato ?? const VibratoSettings()));
-
-  /// Returns a copy with the `virtualbass` slot transformed by [f];
-  /// a never-configured (`null`) slot is seeded with its
-  /// defaults first.
-  AudioEffects updateVirtualbass(
-    VirtualbassSettings Function(VirtualbassSettings) f,
-  ) => copyWith(virtualbass: f(virtualbass ?? const VirtualbassSettings()));
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is AudioEffects &&
-          _listEq(custom, other.custom) &&
-          other.acompressor == acompressor &&
-          other.acontrast == acontrast &&
-          other.acrusher == acrusher &&
-          other.adeclick == adeclick &&
-          other.adeclip == adeclip &&
-          other.adecorrelate == adecorrelate &&
-          other.adelay == adelay &&
-          other.adenorm == adenorm &&
-          other.aderivative == aderivative &&
-          other.adrc == adrc &&
-          other.adynamicequalizer == adynamicequalizer &&
-          other.adynamicsmooth == adynamicsmooth &&
-          other.aecho == aecho &&
-          other.aemphasis == aemphasis &&
-          other.aeval == aeval &&
-          other.aexciter == aexciter &&
-          other.afade == afade &&
-          other.afftdn == afftdn &&
-          other.afftfilt == afftfilt &&
-          other.aformat == aformat &&
-          other.afreqshift == afreqshift &&
-          other.afwtdn == afwtdn &&
-          other.agate == agate &&
-          other.aiir == aiir &&
-          other.aintegral == aintegral &&
-          other.alimiter == alimiter &&
-          other.allpass == allpass &&
-          other.anequalizer == anequalizer &&
-          other.anlmdn == anlmdn &&
-          other.apad == apad &&
-          other.aphaser == aphaser &&
-          other.aphaseshift == aphaseshift &&
-          other.apsyclip == apsyclip &&
-          other.apulsator == apulsator &&
-          other.aresample == aresample &&
-          other.arnndn == arnndn &&
-          other.asetrate == asetrate &&
-          other.asoftclip == asoftclip &&
-          other.asubboost == asubboost &&
-          other.asubcut == asubcut &&
-          other.asupercut == asupercut &&
-          other.asuperpass == asuperpass &&
-          other.asuperstop == asuperstop &&
-          other.atempo == atempo &&
-          other.atilt == atilt &&
-          other.bandpass == bandpass &&
-          other.bandreject == bandreject &&
-          other.bass == bass &&
-          other.biquad == biquad &&
-          other.channelmap == channelmap &&
-          other.chorus == chorus &&
-          other.compand == compand &&
-          other.compensationdelay == compensationdelay &&
-          other.crossfeed == crossfeed &&
-          other.crystalizer == crystalizer &&
-          other.dcshift == dcshift &&
-          other.deesser == deesser &&
-          other.dialoguenhance == dialoguenhance &&
-          other.drmeter == drmeter &&
-          other.dynaudnorm == dynaudnorm &&
-          other.earwax == earwax &&
-          other.ebur128 == ebur128 &&
-          other.equalizer == equalizer &&
-          other.extrastereo == extrastereo &&
-          other.firequalizer == firequalizer &&
-          other.flanger == flanger &&
-          other.haas == haas &&
-          other.hdcd == hdcd &&
-          other.highpass == highpass &&
-          other.highshelf == highshelf &&
-          other.loudnorm == loudnorm &&
-          other.lowpass == lowpass &&
-          other.lowshelf == lowshelf &&
-          other.mcompand == mcompand &&
-          other.pan == pan &&
-          other.rubberband == rubberband &&
-          other.silenceremove == silenceremove &&
-          other.speechnorm == speechnorm &&
-          other.stereotools == stereotools &&
-          other.stereowiden == stereowiden &&
-          other.superequalizer == superequalizer &&
-          other.surround == surround &&
-          other.tiltshelf == tiltshelf &&
-          other.treble == treble &&
-          other.tremolo == tremolo &&
-          other.vibrato == vibrato &&
-          other.virtualbass == virtualbass);
-
-  @override
-  int get hashCode => Object.hashAll([
-    Object.hashAll(custom),
-    acompressor,
-    acontrast,
-    acrusher,
-    adeclick,
-    adeclip,
-    adecorrelate,
-    adelay,
-    adenorm,
-    aderivative,
-    adrc,
-    adynamicequalizer,
-    adynamicsmooth,
-    aecho,
-    aemphasis,
-    aeval,
-    aexciter,
-    afade,
-    afftdn,
-    afftfilt,
-    aformat,
-    afreqshift,
-    afwtdn,
-    agate,
-    aiir,
-    aintegral,
-    alimiter,
-    allpass,
-    anequalizer,
-    anlmdn,
-    apad,
-    aphaser,
-    aphaseshift,
-    apsyclip,
-    apulsator,
-    aresample,
-    arnndn,
-    asetrate,
-    asoftclip,
-    asubboost,
-    asubcut,
-    asupercut,
-    asuperpass,
-    asuperstop,
-    atempo,
-    atilt,
-    bandpass,
-    bandreject,
-    bass,
-    biquad,
-    channelmap,
-    chorus,
-    compand,
-    compensationdelay,
-    crossfeed,
-    crystalizer,
-    dcshift,
-    deesser,
-    dialoguenhance,
-    drmeter,
-    dynaudnorm,
-    earwax,
-    ebur128,
-    equalizer,
-    extrastereo,
-    firequalizer,
-    flanger,
-    haas,
-    hdcd,
-    highpass,
-    highshelf,
-    loudnorm,
-    lowpass,
-    lowshelf,
-    mcompand,
-    pan,
-    rubberband,
-    silenceremove,
-    speechnorm,
-    stereotools,
-    stereowiden,
-    superequalizer,
-    surround,
-    tiltshelf,
-    treble,
-    tremolo,
-    vibrato,
-    virtualbass,
-  ]);
-
-  @override
-  String toString() {
-    final enabled = <String>[];
-    if (acompressor?.enabled ?? false) enabled.add('acompressor');
-    if (acontrast?.enabled ?? false) enabled.add('acontrast');
-    if (acrusher?.enabled ?? false) enabled.add('acrusher');
-    if (adeclick?.enabled ?? false) enabled.add('adeclick');
-    if (adeclip?.enabled ?? false) enabled.add('adeclip');
-    if (adecorrelate?.enabled ?? false) enabled.add('adecorrelate');
-    if (adelay?.enabled ?? false) enabled.add('adelay');
-    if (adenorm?.enabled ?? false) enabled.add('adenorm');
-    if (aderivative?.enabled ?? false) enabled.add('aderivative');
-    if (adrc?.enabled ?? false) enabled.add('adrc');
-    if (adynamicequalizer?.enabled ?? false) enabled.add('adynamicequalizer');
-    if (adynamicsmooth?.enabled ?? false) enabled.add('adynamicsmooth');
-    if (aecho?.enabled ?? false) enabled.add('aecho');
-    if (aemphasis?.enabled ?? false) enabled.add('aemphasis');
-    if (aeval?.enabled ?? false) enabled.add('aeval');
-    if (aexciter?.enabled ?? false) enabled.add('aexciter');
-    if (afade?.enabled ?? false) enabled.add('afade');
-    if (afftdn?.enabled ?? false) enabled.add('afftdn');
-    if (afftfilt?.enabled ?? false) enabled.add('afftfilt');
-    if (aformat?.enabled ?? false) enabled.add('aformat');
-    if (afreqshift?.enabled ?? false) enabled.add('afreqshift');
-    if (afwtdn?.enabled ?? false) enabled.add('afwtdn');
-    if (agate?.enabled ?? false) enabled.add('agate');
-    if (aiir?.enabled ?? false) enabled.add('aiir');
-    if (aintegral?.enabled ?? false) enabled.add('aintegral');
-    if (alimiter?.enabled ?? false) enabled.add('alimiter');
-    if (allpass?.enabled ?? false) enabled.add('allpass');
-    if (anequalizer?.enabled ?? false) enabled.add('anequalizer');
-    if (anlmdn?.enabled ?? false) enabled.add('anlmdn');
-    if (apad?.enabled ?? false) enabled.add('apad');
-    if (aphaser?.enabled ?? false) enabled.add('aphaser');
-    if (aphaseshift?.enabled ?? false) enabled.add('aphaseshift');
-    if (apsyclip?.enabled ?? false) enabled.add('apsyclip');
-    if (apulsator?.enabled ?? false) enabled.add('apulsator');
-    if (aresample?.enabled ?? false) enabled.add('aresample');
-    if (arnndn?.enabled ?? false) enabled.add('arnndn');
-    if (asetrate?.enabled ?? false) enabled.add('asetrate');
-    if (asoftclip?.enabled ?? false) enabled.add('asoftclip');
-    if (asubboost?.enabled ?? false) enabled.add('asubboost');
-    if (asubcut?.enabled ?? false) enabled.add('asubcut');
-    if (asupercut?.enabled ?? false) enabled.add('asupercut');
-    if (asuperpass?.enabled ?? false) enabled.add('asuperpass');
-    if (asuperstop?.enabled ?? false) enabled.add('asuperstop');
-    if (atempo?.enabled ?? false) enabled.add('atempo');
-    if (atilt?.enabled ?? false) enabled.add('atilt');
-    if (bandpass?.enabled ?? false) enabled.add('bandpass');
-    if (bandreject?.enabled ?? false) enabled.add('bandreject');
-    if (bass?.enabled ?? false) enabled.add('bass');
-    if (biquad?.enabled ?? false) enabled.add('biquad');
-    if (channelmap?.enabled ?? false) enabled.add('channelmap');
-    if (chorus?.enabled ?? false) enabled.add('chorus');
-    if (compand?.enabled ?? false) enabled.add('compand');
-    if (compensationdelay?.enabled ?? false) enabled.add('compensationdelay');
-    if (crossfeed?.enabled ?? false) enabled.add('crossfeed');
-    if (crystalizer?.enabled ?? false) enabled.add('crystalizer');
-    if (dcshift?.enabled ?? false) enabled.add('dcshift');
-    if (deesser?.enabled ?? false) enabled.add('deesser');
-    if (dialoguenhance?.enabled ?? false) enabled.add('dialoguenhance');
-    if (drmeter?.enabled ?? false) enabled.add('drmeter');
-    if (dynaudnorm?.enabled ?? false) enabled.add('dynaudnorm');
-    if (earwax?.enabled ?? false) enabled.add('earwax');
-    if (ebur128?.enabled ?? false) enabled.add('ebur128');
-    if (equalizer?.enabled ?? false) enabled.add('equalizer');
-    if (extrastereo?.enabled ?? false) enabled.add('extrastereo');
-    if (firequalizer?.enabled ?? false) enabled.add('firequalizer');
-    if (flanger?.enabled ?? false) enabled.add('flanger');
-    if (haas?.enabled ?? false) enabled.add('haas');
-    if (hdcd?.enabled ?? false) enabled.add('hdcd');
-    if (highpass?.enabled ?? false) enabled.add('highpass');
-    if (highshelf?.enabled ?? false) enabled.add('highshelf');
-    if (loudnorm?.enabled ?? false) enabled.add('loudnorm');
-    if (lowpass?.enabled ?? false) enabled.add('lowpass');
-    if (lowshelf?.enabled ?? false) enabled.add('lowshelf');
-    if (mcompand?.enabled ?? false) enabled.add('mcompand');
-    if (pan?.enabled ?? false) enabled.add('pan');
-    if (rubberband?.enabled ?? false) enabled.add('rubberband');
-    if (silenceremove?.enabled ?? false) enabled.add('silenceremove');
-    if (speechnorm?.enabled ?? false) enabled.add('speechnorm');
-    if (stereotools?.enabled ?? false) enabled.add('stereotools');
-    if (stereowiden?.enabled ?? false) enabled.add('stereowiden');
-    if (superequalizer?.enabled ?? false) enabled.add('superequalizer');
-    if (surround?.enabled ?? false) enabled.add('surround');
-    if (tiltshelf?.enabled ?? false) enabled.add('tiltshelf');
-    if (treble?.enabled ?? false) enabled.add('treble');
-    if (tremolo?.enabled ?? false) enabled.add('tremolo');
-    if (vibrato?.enabled ?? false) enabled.add('vibrato');
-    if (virtualbass?.enabled ?? false) enabled.add('virtualbass');
-    return 'AudioEffects(custom: $custom, enabled: $enabled)';
-  }
-
-  /// Builds the audio chain string from this bundle.
-  ///
-  /// Returns the empty string when nothing is enabled. Raw entries
-  /// from [custom] are emitted first (in declaration order), then
-  /// every enabled typed stage. All entries are joined with `,`.
-  String toAfChain() {
-    final parts = <String>[];
-    for (final raw in custom) {
-      final t = raw.trim();
-      if (t.isNotEmpty) parts.add(t);
-    }
-    if (acompressor?.enabled ?? false)
-      parts.add('@aek_acompressor:' + acompressor!.toFilterString());
-    if (acontrast?.enabled ?? false)
-      parts.add('@aek_acontrast:' + acontrast!.toFilterString());
-    if (acrusher?.enabled ?? false)
-      parts.add('@aek_acrusher:' + acrusher!.toFilterString());
-    if (adeclick?.enabled ?? false)
-      parts.add('@aek_adeclick:' + adeclick!.toFilterString());
-    if (adeclip?.enabled ?? false)
-      parts.add('@aek_adeclip:' + adeclip!.toFilterString());
-    if (adecorrelate?.enabled ?? false)
-      parts.add('@aek_adecorrelate:' + adecorrelate!.toFilterString());
-    if (adelay?.enabled ?? false)
-      parts.add('@aek_adelay:' + adelay!.toFilterString());
-    if (adenorm?.enabled ?? false)
-      parts.add('@aek_adenorm:' + adenorm!.toFilterString());
-    if (aderivative?.enabled ?? false)
-      parts.add('@aek_aderivative:' + aderivative!.toFilterString());
-    if (adrc?.enabled ?? false)
-      parts.add('@aek_adrc:' + adrc!.toFilterString());
-    if (adynamicequalizer?.enabled ?? false)
-      parts.add(
-        '@aek_adynamicequalizer:' + adynamicequalizer!.toFilterString(),
-      );
-    if (adynamicsmooth?.enabled ?? false)
-      parts.add('@aek_adynamicsmooth:' + adynamicsmooth!.toFilterString());
-    if (aecho?.enabled ?? false)
-      parts.add('@aek_aecho:' + aecho!.toFilterString());
-    if (aemphasis?.enabled ?? false)
-      parts.add('@aek_aemphasis:' + aemphasis!.toFilterString());
-    if (aeval?.enabled ?? false)
-      parts.add('@aek_aeval:' + aeval!.toFilterString());
-    if (aexciter?.enabled ?? false)
-      parts.add('@aek_aexciter:' + aexciter!.toFilterString());
-    if (afade?.enabled ?? false)
-      parts.add('@aek_afade:' + afade!.toFilterString());
-    if (afftdn?.enabled ?? false)
-      parts.add('@aek_afftdn:' + afftdn!.toFilterString());
-    if (afftfilt?.enabled ?? false)
-      parts.add('@aek_afftfilt:' + afftfilt!.toFilterString());
-    if (aformat?.enabled ?? false)
-      parts.add('@aek_aformat:' + aformat!.toFilterString());
-    if (afreqshift?.enabled ?? false)
-      parts.add('@aek_afreqshift:' + afreqshift!.toFilterString());
-    if (afwtdn?.enabled ?? false)
-      parts.add('@aek_afwtdn:' + afwtdn!.toFilterString());
-    if (agate?.enabled ?? false)
-      parts.add('@aek_agate:' + agate!.toFilterString());
-    if (aiir?.enabled ?? false)
-      parts.add('@aek_aiir:' + aiir!.toFilterString());
-    if (aintegral?.enabled ?? false)
-      parts.add('@aek_aintegral:' + aintegral!.toFilterString());
-    if (alimiter?.enabled ?? false)
-      parts.add('@aek_alimiter:' + alimiter!.toFilterString());
-    if (allpass?.enabled ?? false)
-      parts.add('@aek_allpass:' + allpass!.toFilterString());
-    if (anequalizer?.enabled ?? false)
-      parts.add('@aek_anequalizer:' + anequalizer!.toFilterString());
-    if (anlmdn?.enabled ?? false)
-      parts.add('@aek_anlmdn:' + anlmdn!.toFilterString());
-    if (apad?.enabled ?? false)
-      parts.add('@aek_apad:' + apad!.toFilterString());
-    if (aphaser?.enabled ?? false)
-      parts.add('@aek_aphaser:' + aphaser!.toFilterString());
-    if (aphaseshift?.enabled ?? false)
-      parts.add('@aek_aphaseshift:' + aphaseshift!.toFilterString());
-    if (apsyclip?.enabled ?? false)
-      parts.add('@aek_apsyclip:' + apsyclip!.toFilterString());
-    if (apulsator?.enabled ?? false)
-      parts.add('@aek_apulsator:' + apulsator!.toFilterString());
-    if (aresample?.enabled ?? false)
-      parts.add('@aek_aresample:' + aresample!.toFilterString());
-    if (arnndn?.enabled ?? false)
-      parts.add('@aek_arnndn:' + arnndn!.toFilterString());
-    if (asetrate?.enabled ?? false)
-      parts.add('@aek_asetrate:' + asetrate!.toFilterString());
-    if (asoftclip?.enabled ?? false)
-      parts.add('@aek_asoftclip:' + asoftclip!.toFilterString());
-    if (asubboost?.enabled ?? false)
-      parts.add('@aek_asubboost:' + asubboost!.toFilterString());
-    if (asubcut?.enabled ?? false)
-      parts.add('@aek_asubcut:' + asubcut!.toFilterString());
-    if (asupercut?.enabled ?? false)
-      parts.add('@aek_asupercut:' + asupercut!.toFilterString());
-    if (asuperpass?.enabled ?? false)
-      parts.add('@aek_asuperpass:' + asuperpass!.toFilterString());
-    if (asuperstop?.enabled ?? false)
-      parts.add('@aek_asuperstop:' + asuperstop!.toFilterString());
-    if (atempo?.enabled ?? false)
-      parts.add('@aek_atempo:' + atempo!.toFilterString());
-    if (atilt?.enabled ?? false)
-      parts.add('@aek_atilt:' + atilt!.toFilterString());
-    if (bandpass?.enabled ?? false)
-      parts.add('@aek_bandpass:' + bandpass!.toFilterString());
-    if (bandreject?.enabled ?? false)
-      parts.add('@aek_bandreject:' + bandreject!.toFilterString());
-    if (bass?.enabled ?? false)
-      parts.add('@aek_bass:' + bass!.toFilterString());
-    if (biquad?.enabled ?? false)
-      parts.add('@aek_biquad:' + biquad!.toFilterString());
-    if (channelmap?.enabled ?? false)
-      parts.add('@aek_channelmap:' + channelmap!.toFilterString());
-    if (chorus?.enabled ?? false)
-      parts.add('@aek_chorus:' + chorus!.toFilterString());
-    if (compand?.enabled ?? false)
-      parts.add('@aek_compand:' + compand!.toFilterString());
-    if (compensationdelay?.enabled ?? false)
-      parts.add(
-        '@aek_compensationdelay:' + compensationdelay!.toFilterString(),
-      );
-    if (crossfeed?.enabled ?? false)
-      parts.add('@aek_crossfeed:' + crossfeed!.toFilterString());
-    if (crystalizer?.enabled ?? false)
-      parts.add('@aek_crystalizer:' + crystalizer!.toFilterString());
-    if (dcshift?.enabled ?? false)
-      parts.add('@aek_dcshift:' + dcshift!.toFilterString());
-    if (deesser?.enabled ?? false)
-      parts.add('@aek_deesser:' + deesser!.toFilterString());
-    if (dialoguenhance?.enabled ?? false)
-      parts.add('@aek_dialoguenhance:' + dialoguenhance!.toFilterString());
-    if (drmeter?.enabled ?? false)
-      parts.add('@aek_drmeter:' + drmeter!.toFilterString());
-    if (dynaudnorm?.enabled ?? false)
-      parts.add('@aek_dynaudnorm:' + dynaudnorm!.toFilterString());
-    if (earwax?.enabled ?? false)
-      parts.add('@aek_earwax:' + earwax!.toFilterString());
-    if (ebur128?.enabled ?? false)
-      parts.add('@aek_ebur128:' + ebur128!.toFilterString());
-    if (equalizer?.enabled ?? false)
-      parts.add('@aek_equalizer:' + equalizer!.toFilterString());
-    if (extrastereo?.enabled ?? false)
-      parts.add('@aek_extrastereo:' + extrastereo!.toFilterString());
-    if (firequalizer?.enabled ?? false)
-      parts.add('@aek_firequalizer:' + firequalizer!.toFilterString());
-    if (flanger?.enabled ?? false)
-      parts.add('@aek_flanger:' + flanger!.toFilterString());
-    if (haas?.enabled ?? false)
-      parts.add('@aek_haas:' + haas!.toFilterString());
-    if (hdcd?.enabled ?? false)
-      parts.add('@aek_hdcd:' + hdcd!.toFilterString());
-    if (highpass?.enabled ?? false)
-      parts.add('@aek_highpass:' + highpass!.toFilterString());
-    if (highshelf?.enabled ?? false)
-      parts.add('@aek_highshelf:' + highshelf!.toFilterString());
-    if (loudnorm?.enabled ?? false)
-      parts.add('@aek_loudnorm:' + loudnorm!.toFilterString());
-    if (lowpass?.enabled ?? false)
-      parts.add('@aek_lowpass:' + lowpass!.toFilterString());
-    if (lowshelf?.enabled ?? false)
-      parts.add('@aek_lowshelf:' + lowshelf!.toFilterString());
-    if (mcompand?.enabled ?? false)
-      parts.add('@aek_mcompand:' + mcompand!.toFilterString());
-    if (pan?.enabled ?? false) parts.add('@aek_pan:' + pan!.toFilterString());
-    if (rubberband?.enabled ?? false)
-      parts.add('@aek_rubberband:' + rubberband!.toFilterString());
-    if (silenceremove?.enabled ?? false)
-      parts.add('@aek_silenceremove:' + silenceremove!.toFilterString());
-    if (speechnorm?.enabled ?? false)
-      parts.add('@aek_speechnorm:' + speechnorm!.toFilterString());
-    if (stereotools?.enabled ?? false)
-      parts.add('@aek_stereotools:' + stereotools!.toFilterString());
-    if (stereowiden?.enabled ?? false)
-      parts.add('@aek_stereowiden:' + stereowiden!.toFilterString());
-    if (superequalizer?.enabled ?? false)
-      parts.add('@aek_superequalizer:' + superequalizer!.toFilterString());
-    if (surround?.enabled ?? false)
-      parts.add('@aek_surround:' + surround!.toFilterString());
-    if (tiltshelf?.enabled ?? false)
-      parts.add('@aek_tiltshelf:' + tiltshelf!.toFilterString());
-    if (treble?.enabled ?? false)
-      parts.add('@aek_treble:' + treble!.toFilterString());
-    if (tremolo?.enabled ?? false)
-      parts.add('@aek_tremolo:' + tremolo!.toFilterString());
-    if (vibrato?.enabled ?? false)
-      parts.add('@aek_vibrato:' + vibrato!.toFilterString());
-    if (virtualbass?.enabled ?? false)
-      parts.add('@aek_virtualbass:' + virtualbass!.toFilterString());
-    return parts.join(',');
-  }
-
-  /// Computes the incremental `af-command` updates that turn the
-  /// live chain built from [prev] into this bundle.
-  ///
-  /// Returns `null` when the change needs a full chain rebuild
-  /// (an effect entered/left the chain, a non-runtime-tunable
-  /// option changed, or the filter doesn't accept live commands);
-  /// an empty list when the two bundles are wire-identical.
-  List<AfCommand>? diffCommands(AudioEffects prev) {
-    if (!_listEq(custom, prev.custom)) return null;
-    final out = <AfCommand>[];
-    {
-      final a = prev.acompressor;
-      final b = acompressor;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_acompressor',
-            option: opt,
-            value: val,
-            filterName: 'acompressor',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.acontrast;
-      final b = acontrast;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.acrusher;
-      final b = acrusher;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_acrusher',
-            option: opt,
-            value: val,
-            filterName: 'acrusher',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.adeclick;
-      final b = adeclick;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.adeclip;
-      final b = adeclip;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.adecorrelate;
-      final b = adecorrelate;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.adelay;
-      final b = adelay;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_adelay',
-            option: opt,
-            value: val,
-            filterName: 'adelay',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.adenorm;
-      final b = adenorm;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_adenorm',
-            option: opt,
-            value: val,
-            filterName: 'adenorm',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.aderivative;
-      final b = aderivative;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.adrc;
-      final b = adrc;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_adrc',
-            option: opt,
-            value: val,
-            filterName: 'adrc',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.adynamicequalizer;
-      final b = adynamicequalizer;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_adynamicequalizer',
-            option: opt,
-            value: val,
-            filterName: 'adynamicequalizer',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.adynamicsmooth;
-      final b = adynamicsmooth;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_adynamicsmooth',
-            option: opt,
-            value: val,
-            filterName: 'adynamicsmooth',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.aecho;
-      final b = aecho;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.aemphasis;
-      final b = aemphasis;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_aemphasis',
-            option: opt,
-            value: val,
-            filterName: 'aemphasis',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.aeval;
-      final b = aeval;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.aexciter;
-      final b = aexciter;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_aexciter',
-            option: opt,
-            value: val,
-            filterName: 'aexciter',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.afade;
-      final b = afade;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_afade',
-            option: opt,
-            value: val,
-            filterName: 'afade',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.afftdn;
-      final b = afftdn;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_afftdn',
-            option: opt,
-            value: val,
-            filterName: 'afftdn',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.afftfilt;
-      final b = afftfilt;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.aformat;
-      final b = aformat;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.afreqshift;
-      final b = afreqshift;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_afreqshift',
-            option: opt,
-            value: val,
-            filterName: 'afreqshift',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.afwtdn;
-      final b = afwtdn;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_afwtdn',
-            option: opt,
-            value: val,
-            filterName: 'afwtdn',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.agate;
-      final b = agate;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_agate',
-            option: opt,
-            value: val,
-            filterName: 'agate',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.aiir;
-      final b = aiir;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.aintegral;
-      final b = aintegral;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.alimiter;
-      final b = alimiter;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_alimiter',
-            option: opt,
-            value: val,
-            filterName: 'alimiter',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.allpass;
-      final b = allpass;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_allpass',
-            option: opt,
-            value: val,
-            filterName: 'allpass',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.anequalizer;
-      final b = anequalizer;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_anequalizer',
-            option: opt,
-            value: val,
-            filterName: 'anequalizer',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.anlmdn;
-      final b = anlmdn;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_anlmdn',
-            option: opt,
-            value: val,
-            filterName: 'anlmdn',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.apad;
-      final b = apad;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.aphaser;
-      final b = aphaser;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.aphaseshift;
-      final b = aphaseshift;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_aphaseshift',
-            option: opt,
-            value: val,
-            filterName: 'aphaseshift',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.apsyclip;
-      final b = apsyclip;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_apsyclip',
-            option: opt,
-            value: val,
-            filterName: 'apsyclip',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.apulsator;
-      final b = apulsator;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.aresample;
-      final b = aresample;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.arnndn;
-      final b = arnndn;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_arnndn',
-            option: opt,
-            value: val,
-            filterName: 'arnndn',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.asetrate;
-      final b = asetrate;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.asoftclip;
-      final b = asoftclip;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_asoftclip',
-            option: opt,
-            value: val,
-            filterName: 'asoftclip',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.asubboost;
-      final b = asubboost;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_asubboost',
-            option: opt,
-            value: val,
-            filterName: 'asubboost',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.asubcut;
-      final b = asubcut;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_asubcut',
-            option: opt,
-            value: val,
-            filterName: 'asubcut',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.asupercut;
-      final b = asupercut;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_asupercut',
-            option: opt,
-            value: val,
-            filterName: 'asupercut',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.asuperpass;
-      final b = asuperpass;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_asuperpass',
-            option: opt,
-            value: val,
-            filterName: 'asuperpass',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.asuperstop;
-      final b = asuperstop;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_asuperstop',
-            option: opt,
-            value: val,
-            filterName: 'asuperstop',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.atempo;
-      final b = atempo;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_atempo',
-            option: opt,
-            value: val,
-            filterName: 'atempo',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.atilt;
-      final b = atilt;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_atilt',
-            option: opt,
-            value: val,
-            filterName: 'atilt',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.bandpass;
-      final b = bandpass;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_bandpass',
-            option: opt,
-            value: val,
-            filterName: 'bandpass',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.bandreject;
-      final b = bandreject;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_bandreject',
-            option: opt,
-            value: val,
-            filterName: 'bandreject',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.bass;
-      final b = bass;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_bass',
-            option: opt,
-            value: val,
-            filterName: 'bass',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.biquad;
-      final b = biquad;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_biquad',
-            option: opt,
-            value: val,
-            filterName: 'biquad',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.channelmap;
-      final b = channelmap;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.chorus;
-      final b = chorus;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.compand;
-      final b = compand;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.compensationdelay;
-      final b = compensationdelay;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_compensationdelay',
-            option: opt,
-            value: val,
-            filterName: 'compensationdelay',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.crossfeed;
-      final b = crossfeed;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_crossfeed',
-            option: opt,
-            value: val,
-            filterName: 'crossfeed',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.crystalizer;
-      final b = crystalizer;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_crystalizer',
-            option: opt,
-            value: val,
-            filterName: 'crystalizer',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.dcshift;
-      final b = dcshift;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.deesser;
-      final b = deesser;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.dialoguenhance;
-      final b = dialoguenhance;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_dialoguenhance',
-            option: opt,
-            value: val,
-            filterName: 'dialoguenhance',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.drmeter;
-      final b = drmeter;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.dynaudnorm;
-      final b = dynaudnorm;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_dynaudnorm',
-            option: opt,
-            value: val,
-            filterName: 'dynaudnorm',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.earwax;
-      final b = earwax;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.ebur128;
-      final b = ebur128;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.equalizer;
-      final b = equalizer;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_equalizer',
-            option: opt,
-            value: val,
-            filterName: 'equalizer',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.extrastereo;
-      final b = extrastereo;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_extrastereo',
-            option: opt,
-            value: val,
-            filterName: 'extrastereo',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.firequalizer;
-      final b = firequalizer;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_firequalizer',
-            option: opt,
-            value: val,
-            filterName: 'firequalizer',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.flanger;
-      final b = flanger;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.haas;
-      final b = haas;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.hdcd;
-      final b = hdcd;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.highpass;
-      final b = highpass;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_highpass',
-            option: opt,
-            value: val,
-            filterName: 'highpass',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.highshelf;
-      final b = highshelf;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_highshelf',
-            option: opt,
-            value: val,
-            filterName: 'highshelf',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.loudnorm;
-      final b = loudnorm;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.lowpass;
-      final b = lowpass;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_lowpass',
-            option: opt,
-            value: val,
-            filterName: 'lowpass',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.lowshelf;
-      final b = lowshelf;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_lowshelf',
-            option: opt,
-            value: val,
-            filterName: 'lowshelf',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.mcompand;
-      final b = mcompand;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.pan;
-      final b = pan;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.rubberband;
-      final b = rubberband;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_rubberband',
-            option: opt,
-            value: val,
-            filterName: 'rubberband',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.silenceremove;
-      final b = silenceremove;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_silenceremove',
-            option: opt,
-            value: val,
-            filterName: 'silenceremove',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.speechnorm;
-      final b = speechnorm;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_speechnorm',
-            option: opt,
-            value: val,
-            filterName: 'speechnorm',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.stereotools;
-      final b = stereotools;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_stereotools',
-            option: opt,
-            value: val,
-            filterName: 'stereotools',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.stereowiden;
-      final b = stereowiden;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_stereowiden',
-            option: opt,
-            value: val,
-            filterName: 'stereowiden',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.superequalizer;
-      final b = superequalizer;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.surround;
-      final b = surround;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_surround',
-            option: opt,
-            value: val,
-            filterName: 'surround',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.tiltshelf;
-      final b = tiltshelf;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_tiltshelf',
-            option: opt,
-            value: val,
-            filterName: 'tiltshelf',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.treble;
-      final b = treble;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_treble',
-            option: opt,
-            value: val,
-            filterName: 'treble',
-          ));
-        }
-      }
-    }
-    {
-      final a = prev.tremolo;
-      final b = tremolo;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.vibrato;
-      final b = vibrato;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && a != b) return null;
-    }
-    {
-      final a = prev.virtualbass;
-      final b = virtualbass;
-      if ((a?.enabled ?? false) != (b?.enabled ?? false)) return null;
-      if ((b?.enabled ?? false) && !identical(a, b)) {
-        final d = b!._runtimeDiff(a!);
-        if (d == null) return null;
-        for (final (opt, val) in d) {
-          out.add((
-            label: 'aek_virtualbass',
-            option: opt,
-            value: val,
-            filterName: 'virtualbass',
-          ));
-        }
-      }
-    }
-    return out;
-  }
-}
-
-/// Cross-link between the singular [AudioEffect] enum and the
-/// plural [AudioEffects] bundle: yields the [AudioEffect] for
-/// every slot whose `*Settings.enabled` is `true`, in the same
-/// declaration order as the bundle's fields.
-///
-/// Useful when iterating the active rack — e.g. attaching a
-/// per-filter visualizer to every enabled stage:
-///
-/// ```dart
-/// for (final f in player.state.audioEffects.active) {
-///   player.stream.tap(f, side: TapSide.post).listen(_paint);
-/// }
-/// ```
-extension AudioEffectsX on AudioEffects {
-  /// The [AudioEffect] for every slot whose `*Settings.enabled` is
-  /// `true`, in the bundle's field declaration order.
-  Iterable<AudioEffect> get active sync* {
-    if (acompressor?.enabled ?? false) yield AudioEffect.acompressor;
-    if (acontrast?.enabled ?? false) yield AudioEffect.acontrast;
-    if (acrusher?.enabled ?? false) yield AudioEffect.acrusher;
-    if (adeclick?.enabled ?? false) yield AudioEffect.adeclick;
-    if (adeclip?.enabled ?? false) yield AudioEffect.adeclip;
-    if (adecorrelate?.enabled ?? false) yield AudioEffect.adecorrelate;
-    if (adelay?.enabled ?? false) yield AudioEffect.adelay;
-    if (adenorm?.enabled ?? false) yield AudioEffect.adenorm;
-    if (aderivative?.enabled ?? false) yield AudioEffect.aderivative;
-    if (adrc?.enabled ?? false) yield AudioEffect.adrc;
-    if (adynamicequalizer?.enabled ?? false)
-      yield AudioEffect.adynamicequalizer;
-    if (adynamicsmooth?.enabled ?? false) yield AudioEffect.adynamicsmooth;
-    if (aecho?.enabled ?? false) yield AudioEffect.aecho;
-    if (aemphasis?.enabled ?? false) yield AudioEffect.aemphasis;
-    if (aeval?.enabled ?? false) yield AudioEffect.aeval;
-    if (aexciter?.enabled ?? false) yield AudioEffect.aexciter;
-    if (afade?.enabled ?? false) yield AudioEffect.afade;
-    if (afftdn?.enabled ?? false) yield AudioEffect.afftdn;
-    if (afftfilt?.enabled ?? false) yield AudioEffect.afftfilt;
-    if (aformat?.enabled ?? false) yield AudioEffect.aformat;
-    if (afreqshift?.enabled ?? false) yield AudioEffect.afreqshift;
-    if (afwtdn?.enabled ?? false) yield AudioEffect.afwtdn;
-    if (agate?.enabled ?? false) yield AudioEffect.agate;
-    if (aiir?.enabled ?? false) yield AudioEffect.aiir;
-    if (aintegral?.enabled ?? false) yield AudioEffect.aintegral;
-    if (alimiter?.enabled ?? false) yield AudioEffect.alimiter;
-    if (allpass?.enabled ?? false) yield AudioEffect.allpass;
-    if (anequalizer?.enabled ?? false) yield AudioEffect.anequalizer;
-    if (anlmdn?.enabled ?? false) yield AudioEffect.anlmdn;
-    if (apad?.enabled ?? false) yield AudioEffect.apad;
-    if (aphaser?.enabled ?? false) yield AudioEffect.aphaser;
-    if (aphaseshift?.enabled ?? false) yield AudioEffect.aphaseshift;
-    if (apsyclip?.enabled ?? false) yield AudioEffect.apsyclip;
-    if (apulsator?.enabled ?? false) yield AudioEffect.apulsator;
-    if (aresample?.enabled ?? false) yield AudioEffect.aresample;
-    if (arnndn?.enabled ?? false) yield AudioEffect.arnndn;
-    if (asetrate?.enabled ?? false) yield AudioEffect.asetrate;
-    if (asoftclip?.enabled ?? false) yield AudioEffect.asoftclip;
-    if (asubboost?.enabled ?? false) yield AudioEffect.asubboost;
-    if (asubcut?.enabled ?? false) yield AudioEffect.asubcut;
-    if (asupercut?.enabled ?? false) yield AudioEffect.asupercut;
-    if (asuperpass?.enabled ?? false) yield AudioEffect.asuperpass;
-    if (asuperstop?.enabled ?? false) yield AudioEffect.asuperstop;
-    if (atempo?.enabled ?? false) yield AudioEffect.atempo;
-    if (atilt?.enabled ?? false) yield AudioEffect.atilt;
-    if (bandpass?.enabled ?? false) yield AudioEffect.bandpass;
-    if (bandreject?.enabled ?? false) yield AudioEffect.bandreject;
-    if (bass?.enabled ?? false) yield AudioEffect.bass;
-    if (biquad?.enabled ?? false) yield AudioEffect.biquad;
-    if (channelmap?.enabled ?? false) yield AudioEffect.channelmap;
-    if (chorus?.enabled ?? false) yield AudioEffect.chorus;
-    if (compand?.enabled ?? false) yield AudioEffect.compand;
-    if (compensationdelay?.enabled ?? false)
-      yield AudioEffect.compensationdelay;
-    if (crossfeed?.enabled ?? false) yield AudioEffect.crossfeed;
-    if (crystalizer?.enabled ?? false) yield AudioEffect.crystalizer;
-    if (dcshift?.enabled ?? false) yield AudioEffect.dcshift;
-    if (deesser?.enabled ?? false) yield AudioEffect.deesser;
-    if (dialoguenhance?.enabled ?? false) yield AudioEffect.dialoguenhance;
-    if (drmeter?.enabled ?? false) yield AudioEffect.drmeter;
-    if (dynaudnorm?.enabled ?? false) yield AudioEffect.dynaudnorm;
-    if (earwax?.enabled ?? false) yield AudioEffect.earwax;
-    if (ebur128?.enabled ?? false) yield AudioEffect.ebur128;
-    if (equalizer?.enabled ?? false) yield AudioEffect.equalizer;
-    if (extrastereo?.enabled ?? false) yield AudioEffect.extrastereo;
-    if (firequalizer?.enabled ?? false) yield AudioEffect.firequalizer;
-    if (flanger?.enabled ?? false) yield AudioEffect.flanger;
-    if (haas?.enabled ?? false) yield AudioEffect.haas;
-    if (hdcd?.enabled ?? false) yield AudioEffect.hdcd;
-    if (highpass?.enabled ?? false) yield AudioEffect.highpass;
-    if (highshelf?.enabled ?? false) yield AudioEffect.highshelf;
-    if (loudnorm?.enabled ?? false) yield AudioEffect.loudnorm;
-    if (lowpass?.enabled ?? false) yield AudioEffect.lowpass;
-    if (lowshelf?.enabled ?? false) yield AudioEffect.lowshelf;
-    if (mcompand?.enabled ?? false) yield AudioEffect.mcompand;
-    if (pan?.enabled ?? false) yield AudioEffect.pan;
-    if (rubberband?.enabled ?? false) yield AudioEffect.rubberband;
-    if (silenceremove?.enabled ?? false) yield AudioEffect.silenceremove;
-    if (speechnorm?.enabled ?? false) yield AudioEffect.speechnorm;
-    if (stereotools?.enabled ?? false) yield AudioEffect.stereotools;
-    if (stereowiden?.enabled ?? false) yield AudioEffect.stereowiden;
-    if (superequalizer?.enabled ?? false) yield AudioEffect.superequalizer;
-    if (surround?.enabled ?? false) yield AudioEffect.surround;
-    if (tiltshelf?.enabled ?? false) yield AudioEffect.tiltshelf;
-    if (treble?.enabled ?? false) yield AudioEffect.treble;
-    if (tremolo?.enabled ?? false) yield AudioEffect.tremolo;
-    if (vibrato?.enabled ?? false) yield AudioEffect.vibrato;
-    if (virtualbass?.enabled ?? false) yield AudioEffect.virtualbass;
   }
 }

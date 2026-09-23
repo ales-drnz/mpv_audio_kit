@@ -86,7 +86,7 @@ mixin _DispatchModule on _PlayerBase {
             _afStringStale = false;
             // Fire-and-forget: the rewrite is best-effort resync; the rc
             // has no consumer here and the event handler must not suspend.
-            unawaited(_propRc('af', _state.audioEffects.toAfChain()));
+            unawaited(_propRc('af', audioEffectsChain(_state.audioEffects)));
           }
           _applyPolledPosition(timePos);
           // mpv exposes -1 / -2 etc. as "no chapter active"; surface as

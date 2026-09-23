@@ -378,34 +378,39 @@ mixin _AudioModule on _PlayerBase {
   }
 
   // ── DSP pipeline ────────────────────────────────────────────────────
-  // The DSP pipeline lives in a single [AudioEffects] bundle. Apply it
+  // The DSP pipeline is an ordered list of [AudioEffect] stages, applied
   // atomically with [setAudioEffects] (replace) or [updateAudioEffects]
-  // (Freezed-style copyWith mapper). Each per-effect Settings owns an
-  // `enabled` flag — disabling a stage drops it from the pipeline while
-  // preserving its parameters on the bundle for the next toggle.
+  // (mapper). Each stage owns an `enabled` flag: disabling one drops it
+  // from the chain while keeping it, and its settings, in the list.
 
-  /// Replaces the entire DSP pipeline in one atomic write.
+  /// Replaces the effects chain in one atomic write: [effects] run in
+  /// list order, and the same filter may appear more than once.
   ///
-  /// Use for full-bundle config (initial setup, preset application,
-  /// preset restore from JSON). To mutate a single field — typical of
-  /// UI sliders — prefer [updateAudioEffects].
+  /// Use for a whole chain (initial setup, presets). To change one stage,
+  /// typical of UI sliders, prefer [updateAudioEffects].
   ///
-  /// `effects.custom` carries raw mpv `--af` effect strings consumed
-  /// verbatim — useful for expression-based effects (`pan`, `aeval`)
-  /// or any effect without a typed equivalent on the bundle.
-  /// The bundle is the only writer of mpv's `af` property: raw writes
-  /// via `setRawProperty('af', ...)` are rejected, and any pre-existing
-  /// `af` value (e.g. from `mpv.conf`) is overridden by the first call
-  /// here.
-  Future<void> setAudioEffects(AudioEffects effects) async {
+  /// A [RawAudioEffect] carries a lavfi entry written by hand, for
+  /// expression-based filters or anything without a typed effect. The
+  /// chain is the only writer of mpv's `af` property: raw writes via
+  /// `setRawProperty('af', ...)` are rejected, and any pre-existing `af`
+  /// value (e.g. from `mpv.conf`) is overridden by the first call here.
+  ///
+  /// ```dart
+  /// await player.setAudioEffects([
+  ///   EqualizerEffect(frequency: 100, width: 50, gain: 3),
+  ///   EqualizerEffect(frequency: 8000, width: 1000, gain: -2),
+  ///   AcompressorEffect(ratio: 4),
+  ///   AlimiterEffect(limit: 0.9),
+  /// ]);
+  /// ```
+  Future<void> setAudioEffects(List<AudioEffect> effects) async {
     await _gate();
     await _applyAudioEffects(effects);
   }
 
-  /// Whether the bundle has written `af` at least once. The first write
+  /// Whether the chain has written `af` at least once. The first write
   /// must always go through — it overrides any pre-existing `af` value
-  /// (e.g. from `mpv.conf`) even when the requested bundle equals the
-  /// default state.
+  /// (e.g. from `mpv.conf`) even when the requested chain is empty.
   bool _afChainWritten = false;
 
   /// Write + commit shared by [setAudioEffects] and [updateAudioEffects].
@@ -418,19 +423,17 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Parameter-only changes on command-capable filters go through
   /// `af-command` — the live graph updates in place instead of being
-  /// torn down and rebuilt (glitch-free slider drags). Topology changes,
-  /// non-runtime options, and command failures fall back to the full
-  /// `af` rewrite, which is always correct.
-  Future<void> _applyAudioEffects(AudioEffects effects) {
+  /// torn down and rebuilt (glitch-free slider drags). Any change to the
+  /// list's shape, non-runtime options and command failures fall back to
+  /// the full `af` rewrite, which is always correct.
+  Future<void> _applyAudioEffects(List<AudioEffect> requested) {
+    final effects = List<AudioEffect>.unmodifiable(requested);
+    final previous = _state.audioEffects;
     // No-op writes skip the serialization + FFI round-trip entirely.
-    // Cheap check: copyWith shares unchanged sub-settings by reference,
-    // so `==` short-circuits on identical().
-    if (_afChainWritten && effects == _state.audioEffects) {
+    if (_afChainWritten && listEquals(effects, previous)) {
       return Future.value();
     }
-    final cmds = _afChainWritten
-        ? effects.diffCommands(_state.audioEffects)
-        : null;
+    final cmds = _afChainWritten ? audioEffectsDiff(previous, effects) : null;
     final Future<void> settled;
     if (cmds != null) {
       // Enqueue the whole diff now (in order); validate the outcomes when
@@ -448,7 +451,6 @@ mixin _AudioModule on _PlayerBase {
       // re-armed if the write is rejected (clearing it eagerly here would,
       // on a failed rewrite that followed a diff, skip the FILE_LOADED resync
       // and silently lose the diff'd runtime value).
-      final previous = _state.audioEffects;
       settled = _rewriteAfChain(effects, previous);
     }
     _afChainWritten = true;
@@ -461,13 +463,16 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Awaits the diff's replies; on any rejected command rewrites the chain
-  /// from the LATEST committed bundle, healing a partial apply (and any
+  /// from the LATEST committed list, healing a partial apply (and any
   /// later updates already committed — mpv dedups identical `af` strings,
   /// so a redundant rewrite is cheap).
   Future<void> _settleAfCommands(List<Future<int>> rcs) async {
     final results = await Future.wait(rcs);
     if (results.any((rc) => rc < 0)) {
-      final healRc = await _propRc('af', _state.audioEffects.toAfChain());
+      final healRc = await _propRc(
+        'af',
+        audioEffectsChain(_state.audioEffects),
+      );
       // Only mark the string clean if the heal write actually landed; a
       // rejected heal leaves it stale for the next FILE_LOADED resync.
       if (healRc >= 0) _afStringStale = false;
@@ -476,18 +481,18 @@ mixin _AudioModule on _PlayerBase {
 
   /// Awaits the full-rewrite reply and owns the `_afStringStale` flag. On
   /// success the `af` string matches the live graph (flag cleared). On
-  /// rejection (e.g. a malformed [AudioEffects.custom] entry) the string is
-  /// in an unknown state vs the committed bundle — a preceding diff may have
-  /// moved the live graph ahead of it — so the flag is RE-ARMED for the next
-  /// FILE_LOADED resync, the optimistic commit is rolled back to [previous]
-  /// (unless a later update already replaced it), and the [MpvException]
-  /// propagates to the caller.
+  /// rejection (e.g. a malformed [RawAudioEffect]) the string is in an
+  /// unknown state vs the committed list — a preceding diff may have
+  /// moved the live graph ahead of it — so the flag is RE-ARMED for the
+  /// next FILE_LOADED resync, the optimistic commit is rolled back to
+  /// [previous] (unless a later update already replaced it), and the
+  /// [MpvException] propagates to the caller.
   Future<void> _rewriteAfChain(
-    AudioEffects effects,
-    AudioEffects previous,
+    List<AudioEffect> effects,
+    List<AudioEffect> previous,
   ) async {
     try {
-      await _prop('af', effects.toAfChain());
+      await _prop('af', audioEffectsChain(effects));
       _afStringStale = false;
     } catch (_) {
       _afStringStale = true;
@@ -502,34 +507,29 @@ mixin _AudioModule on _PlayerBase {
     }
   }
 
-  /// Mutates the audio-effects bundle with a Freezed-style copyWith
-  /// mapper.
+  /// Changes the effects chain through [mapper], which receives the
+  /// current list and returns the new one.
   ///
-  /// Convenience over `setAudioEffects(state.audioEffects.copyWith(...))`.
-  /// The mapper receives the current bundle and must return the new
-  /// one — same semantics as Riverpod's `update`.
-  ///
-  /// Example:
   /// ```dart
-  /// // Toggle the compressor (a never-configured slot is seeded with
-  /// // its defaults by the per-effect updater):
-  /// await player.updateAudioEffects(
-  ///   (e) => e.updateAcompressor((c) => c.copyWith(enabled: !c.enabled)),
-  /// );
+  /// // A slider on the second stage (an EqualizerEffect):
+  /// await player.updateAudioEffects((fx) => [
+  ///   for (final (i, e) in fx.indexed)
+  ///     i == 1 ? (e as EqualizerEffect).copyWith(gain: gain) : e,
+  /// ]);
   ///
-  /// // Replace one effect entirely:
-  /// await player.updateAudioEffects((e) => e.copyWith(
-  ///   acompressor: const AcompressorSettings(
-  ///     enabled: true, threshold: 0.1, ratio: 4),
-  /// ));
+  /// // Bypass every compressor without losing its settings:
+  /// await player.updateAudioEffects((fx) => [
+  ///   for (final e in fx)
+  ///     e is AcompressorEffect ? e.copyWith(enabled: false) : e,
+  /// ]);
   /// ```
   Future<void> updateAudioEffects(
-    AudioEffects Function(AudioEffects) mapper,
+    List<AudioEffect> Function(List<AudioEffect>) mapper,
   ) async {
     _checkNotDisposed();
     // Run the mapper only AFTER the ready gate, and commit in the same
     // microtask: two un-awaited calls in one synchronous turn would
-    // otherwise both run their mapper on the same pre-commit bundle, and
+    // otherwise both run their mapper on the same pre-commit list, and
     // the second commit would silently drop the first mutation. The
     // single suspension point serializes each read-modify-write in call
     // order on the microtask queue.

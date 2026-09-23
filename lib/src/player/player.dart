@@ -8,6 +8,7 @@ import 'dart:ffi';
 import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:meta/meta.dart';
 
 import '../dsp/filter_tap_pipeline.dart';
@@ -76,7 +77,12 @@ import 'playlist_nav_gate.dart';
 export '../events/mpv_hook_event.dart';
 export '../events/mpv_log_entry.dart';
 export '../generated/audio_effects.dart';
-export '../generated/audio_effects_settings.dart';
+export '../generated/audio_effects_settings.dart'
+    hide
+        audioEffectLabel,
+        audioEffectLabels,
+        audioEffectsChain,
+        audioEffectsDiff;
 export '../models/audio_params.dart';
 export '../models/cover_art.dart';
 export '../models/device.dart';
@@ -945,9 +951,13 @@ abstract class _PlayerBase {
       waveform: _waveformCtrl.stream,
       loudnessMeter: _loudnessMeterCtrl.stream,
       loudness: _loudnessScanCtrl.stream,
-      tap: (filter, {required side}) => switch (side) {
-        TapSide.pre => _filterTapPipeline.tapPre(filter.filterName),
-        TapSide.post => _filterTapPipeline.tapPost(filter.filterName),
+      tap: (filter, {instance = 0, required side}) => switch (side) {
+        TapSide.pre => _filterTapPipeline.tapPre(
+          audioEffectLabel(filter.filterName, instance),
+        ),
+        TapSide.post => _filterTapPipeline.tapPost(
+          audioEffectLabel(filter.filterName, instance),
+        ),
       },
       mediaSessionCommands: _mediaSessionCommandsCtrl.stream,
     );

@@ -25,17 +25,15 @@ void main() {
 
     test('runtime param change goes through af-command: live graph updates, '
         'af string stays stale, state stays correct', () async {
-      await player.setAudioEffects(
-        const AudioEffects(
-          bass: BassSettings(enabled: true, f: 1000),
-          ebur128: Ebur128Settings(enabled: true, metadata: true),
-        ),
-      );
+      await player.setAudioEffects(const [
+        BassEffect(f: 1000),
+        Ebur128Effect(metadata: true),
+      ]);
 
       final initialAf = await player.getRawProperty('af');
       expect(
         initialAf,
-        contains('@aek_bass:'),
+        contains('@aek_bass_0:'),
         reason: 'typed stages carry their stable chain label',
       );
 
@@ -45,12 +43,10 @@ void main() {
           .timeout(const Duration(seconds: 10));
 
       // Parameter-only change on a command-capable filter → diff path.
-      await player.updateAudioEffects(
-        (e) => e.updateBass((b) => b.copyWith(g: 18)),
-      );
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 18));
 
       // State committed the new bundle…
-      expect(player.state.audioEffects.bass!.g, 18);
+      expect(effectOf<BassEffect>(player).g, 18);
       // …but the af STRING was not rewritten — the live graph was updated
       // in place via af-command (a rewrite would have produced g=18 here).
       final afterAf = await player.getRawProperty('af');
@@ -75,13 +71,11 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 40)));
 
     test('topology change falls back to a full af rewrite', () async {
-      await player.updateAudioEffects(
-        (e) => e.updateTreble((t) => t.copyWith(enabled: true, g: -2)),
-      );
+      await putEffect(player, const TrebleEffect(g: -2));
       final af = await player.getRawProperty('af');
       expect(
         af,
-        contains('@aek_treble:'),
+        contains('@aek_treble_0:'),
         reason: 'enabling a stage rebuilds the chain string',
       );
       // mpv normalizes option values with a length prefix (`g=%6%18.000`),
@@ -97,9 +91,7 @@ void main() {
 
     test('FILE_LOADED resyncs a stale af string from state', () async {
       // Make the string stale again with a runtime-only change…
-      await player.updateAudioEffects(
-        (e) => e.updateBass((b) => b.copyWith(g: 6)),
-      );
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 6));
       expect(
         await player.getRawProperty('af'),
         contains('18.000'),
@@ -130,33 +122,34 @@ void main() {
     test('afcmd-1: a rewrite that FAILS after a diff re-arms the stale flag so '
         'the next load still resyncs the diff value', () async {
       // Clean baseline with a command-capable bass stage at a known gain.
-      await player.setAudioEffects(
-        const AudioEffects(bass: BassSettings(enabled: true, f: 1000, g: 1)),
-      );
+      await player.setAudioEffects(const [
+        BassEffect(f: 1000, g: 1),
+      ]);
       // Runtime-only change → diff (af-command); the af STRING stays stale at
       // g=1 while the live graph and committed state move to g=9.
-      await player.updateAudioEffects(
-        (e) => e.updateBass((b) => b.copyWith(g: 9)),
-      );
-      expect(player.state.audioEffects.bass!.g, 9);
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 9));
+      expect(effectOf<BassEffect>(player).g, 9);
       expect(
         await player.getRawProperty('af'),
         isNot(contains('9.000')),
         reason: 'precondition: the diff did not rewrite the af string',
       );
 
-      // Topology change whose rewrite mpv REJECTS (unknown custom filter) →
+      // Topology change whose rewrite mpv REJECTS (unknown raw filter) →
       // `_rewriteAfChain` throws. The eager clear of `_afStringStale` would
       // wrongly mark the string clean here; the fix re-arms it on failure.
       await expectLater(
         player.updateAudioEffects(
-          (e) => e.copyWith(custom: const ['definitely_not_a_real_filter_zzz']),
+          (e) => [
+            ...e,
+            const RawAudioEffect('definitely_not_a_real_filter_zzz'),
+          ],
         ),
         throwsA(isA<MpvException>()),
       );
       // The optimistic commit rolled back to the diff'd bundle.
-      expect(player.state.audioEffects.bass!.g, 9);
-      expect(player.state.audioEffects.custom, isEmpty);
+      expect(effectOf<BassEffect>(player).g, 9);
+      expect(player.state.audioEffects.whereType<RawAudioEffect>(), isEmpty);
 
       // Load a file: the resync must fire (flag re-armed), rebuilding the chain
       // from committed state so the new af string carries the diff value.

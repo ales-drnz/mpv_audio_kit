@@ -9,6 +9,11 @@ name = "mpv_audio_kit"
 # with hook/build.dart by scripts/update_libmpv.sh.
 manifest = "libmpv_manifest.json"
 
+[naming]
+# The sealed chain-stage base is the bundle name minus its "s": AudioEffect.
+bundle_name = "AudioEffects"
+enum_name = "AudioFilter"
+
 [wire]
 label_prefix = "lavfi-"
 accessor = "mpv"

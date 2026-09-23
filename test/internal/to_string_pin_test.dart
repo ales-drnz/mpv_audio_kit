@@ -14,13 +14,16 @@ void main() {
       expect(out, isNot(contains(r'$volume')));
     });
 
-    test('AudioEffects toString renders values, not literal \$', () {
-      const e = AudioEffects();
-      final out = e.toString();
-      expect(out, contains('custom: ['));
-      expect(out, contains('enabled: ['));
-      expect(out, isNot(contains(r'$custom')));
+    test('effect toString renders values, not literal \$', () {
+      final out = const BassEffect(gain: 3).toString();
+      expect(out, contains('gain: 3.0'));
+      expect(out, contains('enabled: true'));
+      expect(out, isNot(contains(r'$gain')));
       expect(out, isNot(contains(r'$enabled')));
+      expect(
+        const RawAudioEffect('lavfi-aecho').toString(),
+        'RawAudioEffect(lavfi-aecho, enabled: true)',
+      );
     });
   });
 }

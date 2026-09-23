@@ -20,9 +20,7 @@ void main() {
     test('diag: trace post-side tap frames', () async {
       final player = await buildPlayer();
       try {
-        await player.setAudioEffects(
-          const AudioEffects(equalizer: EqualizerSettings(enabled: true)),
-        );
+        await player.setAudioEffects(const [EqualizerEffect()]);
         await openAndWaitForLoad(player, fixture);
 
         // Wait for the global pcm-tap to start flowing — proves audio
@@ -42,7 +40,7 @@ void main() {
         var count = 0;
         var prevFirst = 0.0;
         final sub = player.stream
-            .tap(AudioEffect.equalizer, side: TapSide.post)
+            .tap(AudioFilter.equalizer, side: TapSide.post)
             .listen((frame) {
               final tWall = DateTime.now().millisecondsSinceEpoch - t0;
               final ts = frame.timestamp.inMilliseconds;

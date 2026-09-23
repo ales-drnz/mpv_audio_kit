@@ -2817,24 +2817,24 @@ enum Ebur128Scaletype {
   absolute,
 
   /// display absolute values (LUFS)
-  LUFS,
+  lufs,
 
   /// display values relative to target (LU)
   relative,
 
   /// display values relative to target (LU)
-  LU;
+  lu;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
     switch (this) {
       case Ebur128Scaletype.absolute:
         return 'absolute';
-      case Ebur128Scaletype.LUFS:
+      case Ebur128Scaletype.lufs:
         return 'LUFS';
       case Ebur128Scaletype.relative:
         return 'relative';
-      case Ebur128Scaletype.LU:
+      case Ebur128Scaletype.lu:
         return 'LU';
     }
   }
@@ -2846,11 +2846,11 @@ enum Ebur128Scaletype {
       case 'absolute':
         return Ebur128Scaletype.absolute;
       case 'LUFS':
-        return Ebur128Scaletype.LUFS;
+        return Ebur128Scaletype.lufs;
       case 'relative':
         return Ebur128Scaletype.relative;
       case 'LU':
-        return Ebur128Scaletype.LU;
+        return Ebur128Scaletype.lu;
       default:
         return Ebur128Scaletype.absolute;
     }
@@ -4561,62 +4561,62 @@ enum StereotoolsBmode {
 /// Values for the `mode` option of the `stereotools` audio filter.
 enum StereotoolsMode {
   /// The `lr>lr` option value.
-  lr_to_lr,
+  lrToLr,
 
   /// The `lr>ms` option value.
-  lr_to_ms,
+  lrToMs,
 
   /// The `ms>lr` option value.
-  ms_to_lr,
+  msToLr,
 
   /// The `lr>ll` option value.
-  lr_to_ll,
+  lrToLl,
 
   /// The `lr>rr` option value.
-  lr_to_rr,
+  lrToRr,
 
   /// The `lr>l+r` option value.
-  lr_to_l_plus_r,
+  lrToLPlusR,
 
   /// The `lr>rl` option value.
-  lr_to_rl,
+  lrToRl,
 
   /// The `ms>ll` option value.
-  ms_to_ll,
+  msToLl,
 
   /// The `ms>rr` option value.
-  ms_to_rr,
+  msToRr,
 
   /// The `ms>rl` option value.
-  ms_to_rl,
+  msToRl,
 
   /// The `lr>l-r` option value.
-  lr_to_l_minus_r;
+  lrToLMinusR;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
     switch (this) {
-      case StereotoolsMode.lr_to_lr:
+      case StereotoolsMode.lrToLr:
         return 'lr>lr';
-      case StereotoolsMode.lr_to_ms:
+      case StereotoolsMode.lrToMs:
         return 'lr>ms';
-      case StereotoolsMode.ms_to_lr:
+      case StereotoolsMode.msToLr:
         return 'ms>lr';
-      case StereotoolsMode.lr_to_ll:
+      case StereotoolsMode.lrToLl:
         return 'lr>ll';
-      case StereotoolsMode.lr_to_rr:
+      case StereotoolsMode.lrToRr:
         return 'lr>rr';
-      case StereotoolsMode.lr_to_l_plus_r:
+      case StereotoolsMode.lrToLPlusR:
         return 'lr>l+r';
-      case StereotoolsMode.lr_to_rl:
+      case StereotoolsMode.lrToRl:
         return 'lr>rl';
-      case StereotoolsMode.ms_to_ll:
+      case StereotoolsMode.msToLl:
         return 'ms>ll';
-      case StereotoolsMode.ms_to_rr:
+      case StereotoolsMode.msToRr:
         return 'ms>rr';
-      case StereotoolsMode.ms_to_rl:
+      case StereotoolsMode.msToRl:
         return 'ms>rl';
-      case StereotoolsMode.lr_to_l_minus_r:
+      case StereotoolsMode.lrToLMinusR:
         return 'lr>l-r';
     }
   }
@@ -4626,29 +4626,29 @@ enum StereotoolsMode {
   static StereotoolsMode fromMpv(String? raw) {
     switch (raw) {
       case 'lr>lr':
-        return StereotoolsMode.lr_to_lr;
+        return StereotoolsMode.lrToLr;
       case 'lr>ms':
-        return StereotoolsMode.lr_to_ms;
+        return StereotoolsMode.lrToMs;
       case 'ms>lr':
-        return StereotoolsMode.ms_to_lr;
+        return StereotoolsMode.msToLr;
       case 'lr>ll':
-        return StereotoolsMode.lr_to_ll;
+        return StereotoolsMode.lrToLl;
       case 'lr>rr':
-        return StereotoolsMode.lr_to_rr;
+        return StereotoolsMode.lrToRr;
       case 'lr>l+r':
-        return StereotoolsMode.lr_to_l_plus_r;
+        return StereotoolsMode.lrToLPlusR;
       case 'lr>rl':
-        return StereotoolsMode.lr_to_rl;
+        return StereotoolsMode.lrToRl;
       case 'ms>ll':
-        return StereotoolsMode.ms_to_ll;
+        return StereotoolsMode.msToLl;
       case 'ms>rr':
-        return StereotoolsMode.ms_to_rr;
+        return StereotoolsMode.msToRr;
       case 'ms>rl':
-        return StereotoolsMode.ms_to_rl;
+        return StereotoolsMode.msToRl;
       case 'lr>l-r':
-        return StereotoolsMode.lr_to_l_minus_r;
+        return StereotoolsMode.lrToLMinusR;
       default:
-        return StereotoolsMode.lr_to_lr;
+        return StereotoolsMode.lrToLr;
     }
   }
 }
@@ -5203,15 +5203,11 @@ enum TrebleWidthType {
   }
 }
 
-/// Identifies a single typed audio filter from the
-/// [AudioEffects] bundle.
-///
-/// One value per filter on the AUDIO_FILTERS whitelist —
-/// the same set surfaced as `*Settings` fields on
-/// [AudioEffects]. Use it as a typed identifier in APIs
-/// that pick a single filter slot, e.g.
-/// `player.stream.tap(AudioEffect.equalizer, side: TapSide.post)`.
-enum AudioEffect {
+/// Identifies one of the typed audio filters: one value per
+/// `XxxEffect` class, i.e. per filter compiled into the bundled
+/// libmpv. Use it as a typed identifier in APIs that pick a filter,
+/// e.g. `player.stream.tap(AudioFilter.equalizer, side: TapSide.post)`.
+enum AudioFilter {
   /// The `acompressor` audio filter.
   acompressor,
 

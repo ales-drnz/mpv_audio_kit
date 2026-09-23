@@ -14,9 +14,10 @@ import 'dsp_async_io.dart';
 ///
 /// Reads the per-frame measurements the `ebur128` lavfi filter injects
 /// into its frame metadata (`lavfi.r128.M/S/I/LRA`) back through mpv's
-/// `af-metadata/<label>` property — the filter must be enabled on the
-/// [AudioEffects] bundle with its `metadata` option on, which gives it
-/// the stable `aek_ebur128` chain label this pipeline polls.
+/// `af-metadata/<label>` property. The meter follows the first
+/// `Ebur128Effect` in `PlayerState.audioEffects`, which needs its
+/// `metadata` option on; that stage carries the `aek_ebur128_0` chain
+/// label this pipeline polls.
 ///
 /// Listener-gated by [setEnabled] (driven by the player's `loudness`
 /// controller): polling runs only while `PlayerStream.loudness` has a
@@ -31,8 +32,9 @@ class LoudnessMeterPipeline {
   }) : _asyncGet = asyncGet,
        _pollInterval = pollInterval;
 
-  /// The chain label the typed `ebur128` slot is emitted under.
-  static const String chainLabel = 'aek_ebur128';
+  /// The chain label of the first `ebur128` stage (see
+  /// `audioEffectLabel`).
+  static const String chainLabel = 'aek_ebur128_0';
 
   final AsyncPropertyGet _asyncGet;
   final Duration _pollInterval;

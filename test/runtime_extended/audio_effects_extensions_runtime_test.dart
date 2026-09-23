@@ -62,26 +62,20 @@ void main() {
     /// previous one bleeding through the drain window.
     Future<List<String>> tryEffects(Future<void> Function() setEffects) async {
       final errors = await captureMpvErrors(player, setEffects);
-      await player.setAudioEffects(const AudioEffects());
+      await player.setAudioEffects(const []);
       return errors.map((e) => e.text.trim()).toList();
     }
 
     group('Extension wire acceptance', () {
       test('AnequalizerBandsX — multi-band chain accepted by mpv', () async {
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              anequalizer: const AnequalizerSettings(enabled: true).withBands([
-                const AnequalizerBand(frequency: 100, bandwidth: 50, gain: -3),
-                const AnequalizerBand(frequency: 1000, bandwidth: 500, gain: 2),
-                const AnequalizerBand(
-                  frequency: 5000,
-                  bandwidth: 1000,
-                  gain: -2,
-                ),
-              ]),
-            ),
-          );
+          await player.setAudioEffects([
+            const AnequalizerEffect().withBands([
+              const AnequalizerBand(frequency: 100, bandwidth: 50, gain: -3),
+              const AnequalizerBand(frequency: 1000, bandwidth: 500, gain: 2),
+              const AnequalizerBand(frequency: 5000, bandwidth: 1000, gain: -2),
+            ]),
+          ]);
         });
         expect(
           errors,
@@ -97,39 +91,37 @@ void main() {
         // 44.1/48 kHz content can use the full 20 kHz range — the test
         // fixture is the constraint here, not the typed extension.
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              mcompand: const McompandSettings(enabled: true).withBands([
-                const McompandBand(
-                  thresholdDb: -30,
-                  ratio: 4,
-                  attackSeconds: 0.01,
-                  releaseSeconds: 0.2,
-                  kneeDb: 6,
-                  makeupDb: 0,
-                  crossoverHz: 200,
-                ),
-                const McompandBand(
-                  thresholdDb: -24,
-                  ratio: 3,
-                  attackSeconds: 0.005,
-                  releaseSeconds: 0.1,
-                  kneeDb: 6,
-                  makeupDb: 2,
-                  crossoverHz: 2000,
-                ),
-                const McompandBand(
-                  thresholdDb: -18,
-                  ratio: 2,
-                  attackSeconds: 0.003,
-                  releaseSeconds: 0.05,
-                  kneeDb: 6,
-                  makeupDb: 0,
-                  crossoverHz: 8000,
-                ),
-              ]),
-            ),
-          );
+          await player.setAudioEffects([
+            const McompandEffect().withBands([
+              const McompandBand(
+                thresholdDb: -30,
+                ratio: 4,
+                attackSeconds: 0.01,
+                releaseSeconds: 0.2,
+                kneeDb: 6,
+                makeupDb: 0,
+                crossoverHz: 200,
+              ),
+              const McompandBand(
+                thresholdDb: -24,
+                ratio: 3,
+                attackSeconds: 0.005,
+                releaseSeconds: 0.1,
+                kneeDb: 6,
+                makeupDb: 2,
+                crossoverHz: 2000,
+              ),
+              const McompandBand(
+                thresholdDb: -18,
+                ratio: 2,
+                attackSeconds: 0.003,
+                releaseSeconds: 0.05,
+                kneeDb: 6,
+                makeupDb: 0,
+                crossoverHz: 8000,
+              ),
+            ]),
+          ]);
         });
         expect(
           errors,
@@ -146,13 +138,9 @@ void main() {
               1.0 + (i % 4) * 0.2,
           ];
           final errors = await tryEffects(() async {
-            await player.setAudioEffects(
-              AudioEffects(
-                superequalizer: const SuperequalizerSettings(
-                  enabled: true,
-                ).withBands(gains),
-              ),
-            );
+            await player.setAudioEffects([
+              const SuperequalizerEffect().withBands(gains),
+            ]);
           });
           expect(
             errors,
@@ -164,15 +152,13 @@ void main() {
 
       test('AechoTapsX — multi-tap echo accepted by mpv', () async {
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              aecho: const AechoSettings(enabled: true).withTaps([
-                const AechoTap(delayMs: 60, decay: 0.6),
-                const AechoTap(delayMs: 120, decay: 0.4),
-                const AechoTap(delayMs: 240, decay: 0.2),
-              ]),
-            ),
-          );
+          await player.setAudioEffects([
+            const AechoEffect().withTaps([
+              const AechoTap(delayMs: 60, decay: 0.6),
+              const AechoTap(delayMs: 120, decay: 0.4),
+              const AechoTap(delayMs: 240, decay: 0.2),
+            ]),
+          ]);
         });
         expect(
           errors,
@@ -183,31 +169,27 @@ void main() {
 
       test('ChorusVoicesX — two-voice chorus accepted by mpv', () async {
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              chorus:
-                  const ChorusSettings(
-                    enabled: true,
-                    delays: '',
-                    decays: '',
-                    speeds: '',
-                    depths: '',
-                  ).withVoices([
-                    const ChorusVoice(
-                      delayMs: 30,
-                      decay: 0.4,
-                      depthMs: 1.5,
-                      speedHz: 0.3,
-                    ),
-                    const ChorusVoice(
-                      delayMs: 50,
-                      decay: 0.5,
-                      depthMs: 2.0,
-                      speedHz: 0.4,
-                    ),
-                  ]),
-            ),
-          );
+          await player.setAudioEffects([
+            const ChorusEffect(
+              delays: '',
+              decays: '',
+              speeds: '',
+              depths: '',
+            ).withVoices([
+              const ChorusVoice(
+                delayMs: 30,
+                decay: 0.4,
+                depthMs: 1.5,
+                speedHz: 0.3,
+              ),
+              const ChorusVoice(
+                delayMs: 50,
+                decay: 0.5,
+                depthMs: 2.0,
+                speedHz: 0.4,
+              ),
+            ]),
+          ]);
         });
         expect(
           errors,
@@ -218,13 +200,9 @@ void main() {
 
       test('AdelayChannelsX — per-channel delays accepted by mpv', () async {
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              adelay: const AdelaySettings(
-                enabled: true,
-              ).withChannelDelaysMs([100, 250]),
-            ),
-          );
+          await player.setAudioEffects([
+            const AdelayEffect().withChannelDelaysMs([100, 250]),
+          ]);
         });
         expect(
           errors,
@@ -237,17 +215,12 @@ void main() {
         'CompandEnvelopesX — multi-channel envelopes accepted by mpv',
         () async {
           final errors = await tryEffects(() async {
-            await player.setAudioEffects(
-              AudioEffects(
-                compand: const CompandSettings(enabled: true).withEnvelopes([
-                  const CompandEnvelope(
-                    attackSeconds: 0.005,
-                    decaySeconds: 0.1,
-                  ),
-                  const CompandEnvelope(attackSeconds: 0.01, decaySeconds: 0.2),
-                ]),
-              ),
-            );
+            await player.setAudioEffects([
+              const CompandEffect().withEnvelopes([
+                const CompandEnvelope(attackSeconds: 0.005, decaySeconds: 0.1),
+                const CompandEnvelope(attackSeconds: 0.01, decaySeconds: 0.2),
+              ]),
+            ]);
           });
           expect(
             errors,
@@ -264,13 +237,9 @@ void main() {
             for (var i = 0; i < kAfftdnBandCount; i++) -8.0 + i.toDouble(),
           ];
           final errors = await tryEffects(() async {
-            await player.setAudioEffects(
-              AudioEffects(
-                afftdn: const AfftdnSettings(
-                  enabled: true,
-                ).withBandNoiseLevels(levels),
-              ),
-            );
+            await player.setAudioEffects([
+              const AfftdnEffect().withBandNoiseLevels(levels),
+            ]);
           });
           expect(
             errors,
@@ -283,11 +252,9 @@ void main() {
 
       test('CompandSoftKneeX — soft-knee value accepted by mpv', () async {
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              compand: const CompandSettings(enabled: true).withSoftKnee(0.5),
-            ),
-          );
+          await player.setAudioEffects([
+            const CompandEffect().withSoftKnee(0.5),
+          ]);
         });
         expect(
           errors,
@@ -302,13 +269,11 @@ void main() {
         // would mask format errors with engine-side filter rejections;
         // we only need to verify the wire format.
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              aiir: const AiirSettings(enabled: true).withChannels([
-                const AiirChannel(gain: 1.0, zeros: [1.0], poles: [1.0]),
-              ]),
-            ),
-          );
+          await player.setAudioEffects([
+            const AiirEffect().withChannels([
+              const AiirChannel(gain: 1.0, zeros: [1.0], poles: [1.0]),
+            ]),
+          ]);
         });
         expect(
           errors,
@@ -321,16 +286,13 @@ void main() {
         'CompandPointsX — transfer-function curve accepted by mpv',
         () async {
           final errors = await tryEffects(() async {
-            await player.setAudioEffects(
-              AudioEffects(
-                compand: const CompandSettings(enabled: true)
-                    .withTransferPoints([
-                      const CompandPoint(inDb: -60, outDb: -60),
-                      const CompandPoint(inDb: -24, outDb: -24),
-                      const CompandPoint(inDb: 0, outDb: -12),
-                    ]),
-              ),
-            );
+            await player.setAudioEffects([
+              const CompandEffect().withTransferPoints([
+                const CompandPoint(inDb: -60, outDb: -60),
+                const CompandPoint(inDb: -24, outDb: -24),
+                const CompandPoint(inDb: 0, outDb: -12),
+              ]),
+            ]);
           });
           expect(
             errors,
@@ -342,17 +304,14 @@ void main() {
 
       test('FirequalizerEntriesX — FIR curve accepted by mpv', () async {
         final errors = await tryEffects(() async {
-          await player.setAudioEffects(
-            AudioEffects(
-              firequalizer: const FirequalizerSettings(enabled: true)
-                  .withGainEntries([
-                    const FirequalizerEntry(frequencyHz: 100, gainDb: 0),
-                    const FirequalizerEntry(frequencyHz: 1000, gainDb: -3),
-                    const FirequalizerEntry(frequencyHz: 5000, gainDb: 3),
-                    const FirequalizerEntry(frequencyHz: 15000, gainDb: 0),
-                  ]),
-            ),
-          );
+          await player.setAudioEffects([
+            const FirequalizerEffect().withGainEntries([
+              const FirequalizerEntry(frequencyHz: 100, gainDb: 0),
+              const FirequalizerEntry(frequencyHz: 1000, gainDb: -3),
+              const FirequalizerEntry(frequencyHz: 5000, gainDb: 3),
+              const FirequalizerEntry(frequencyHz: 15000, gainDb: 0),
+            ]),
+          ]);
         });
         expect(
           errors,

@@ -7,7 +7,7 @@
 //
 // Runtime af-command coverage. For every filter whose ffmpeg source
 // declares `.process_command` (the schema's `supports_commands` flag
-// — the gate for `AudioEffects.diffCommands`), enable the filter on a
+// — the gate for live updates in `audioEffectsDiff`), enable the filter on a
 // live playing mpv, then change each runtime-tunable option through
 // `Player.updateAudioEffects` and assert the `af` property string did
 // NOT change: the update was applied to the live graph in place via
@@ -41,13 +41,13 @@ import '../_helpers/setter_test_helpers.dart';
 
 typedef AfCommandUpdate = ({
   String label,
-  AudioEffects Function(AudioEffects) apply,
+  List<AudioEffect> Function(List<AudioEffect>) apply,
 });
 
 typedef AfCommandCase = ({
   String filter,
   String field,
-  AudioEffects bundle,
+  List<AudioEffect> bundle,
   List<AfCommandUpdate> updates,
 });
 
@@ -86,2316 +86,2389 @@ void main() {
         final cases = <AfCommandCase>[
           (
             filter: 'acompressor',
-            field: 'acompressor',
-            bundle: const AudioEffects(
-              acompressor: AcompressorSettings(enabled: true),
-            ),
+            field: 'acompressor_0',
+            bundle: const [AcompressorEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'attack=21.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(attack: 21.0)),
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(attack: 21.0),
+                ],
               ),
               (
                 label: 'knee=3.82843',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(knee: 3.82843)),
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(knee: 3.82843),
+                ],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_sc=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(level_sc: 2.0)),
+                label: 'levelSc=2.0',
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(levelSc: 2.0),
+                ],
               ),
               (
                 label: 'makeup=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(makeup: 2.0)),
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(makeup: 2.0),
+                ],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(mix: 0.5),
+                ],
               ),
               (
                 label: 'ratio=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(ratio: 3.0)),
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(ratio: 3.0),
+                ],
               ),
               (
                 label: 'release=251.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(release: 251.0)),
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(release: 251.0),
+                ],
               ),
               (
                 label: 'threshold=0.5625',
-                apply: (AudioEffects e) =>
-                    e.updateAcompressor((s) => s.copyWith(threshold: 0.5625)),
+                apply: (e) => [
+                  (e.single as AcompressorEffect).copyWith(threshold: 0.5625),
+                ],
               ),
             ],
           ),
           (
             filter: 'acrusher',
-            field: 'acrusher',
-            bundle: const AudioEffects(
-              acrusher: AcrusherSettings(enabled: true),
-            ),
+            field: 'acrusher_0',
+            bundle: const [AcrusherEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'aa=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(aa: 0.75)),
+                apply: (e) => [(e.single as AcrusherEffect).copyWith(aa: 0.75)],
               ),
               (
                 label: 'bits=9.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(bits: 9.0)),
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(bits: 9.0),
+                ],
               ),
               (
                 label: 'dc=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(dc: 2.0)),
+                apply: (e) => [(e.single as AcrusherEffect).copyWith(dc: 2.0)],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(level_out: 2.0)),
+                label: 'levelOut=2.0',
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(levelOut: 2.0),
+                ],
               ),
               (
                 label: 'lfo=true',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(lfo: true)),
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(lfo: true),
+                ],
               ),
               (
                 label: 'lforange=21.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(lforange: 21.0)),
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(lforange: 21.0),
+                ],
               ),
               (
                 label: 'lforate=1.3',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(lforate: 1.3)),
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(lforate: 1.3),
+                ],
               ),
               (
                 label: 'mix=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(mix: 0.75)),
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(mix: 0.75),
+                ],
               ),
               (
                 label: 'samples=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAcrusher((s) => s.copyWith(samples: 2.0)),
+                apply: (e) => [
+                  (e.single as AcrusherEffect).copyWith(samples: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'adelay',
-            field: 'adelay',
-            bundle: const AudioEffects(
-              adelay: AdelaySettings(enabled: true, delays: '100'),
-            ),
+            field: 'adelay_0',
+            bundle: const [AdelayEffect(delays: '100')],
             updates: <AfCommandUpdate>[
               (
                 label: 'delays=400',
-                apply: (AudioEffects e) =>
-                    e.updateAdelay((s) => s.copyWith(delays: '400')),
+                apply: (e) => [
+                  (e.single as AdelayEffect).copyWith(delays: '400'),
+                ],
               ),
             ],
           ),
           (
             filter: 'adenorm',
-            field: 'adenorm',
-            bundle: const AudioEffects(adenorm: AdenormSettings(enabled: true)),
+            field: 'adenorm_0',
+            bundle: const [AdenormEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'level=-350.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdenorm((s) => s.copyWith(level: -350.0)),
+                apply: (e) => [
+                  (e.single as AdenormEffect).copyWith(level: -350.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'adrc',
-            field: 'adrc',
-            bundle: const AudioEffects(adrc: AdrcSettings(enabled: true)),
+            field: 'adrc_0',
+            bundle: const [AdrcEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'attack=51.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdrc((s) => s.copyWith(attack: 51.0)),
+                apply: (e) => [(e.single as AdrcEffect).copyWith(attack: 51.0)],
               ),
               (
                 label: 'release=101.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdrc((s) => s.copyWith(release: 101.0)),
+                apply: (e) => [
+                  (e.single as AdrcEffect).copyWith(release: 101.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'adynamicequalizer',
-            field: 'adynamicequalizer',
-            bundle: const AudioEffects(
-              adynamicequalizer: AdynamicequalizerSettings(enabled: true),
-            ),
+            field: 'adynamicequalizer_0',
+            bundle: const [AdynamicequalizerEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'attack=21.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdynamicequalizer((s) => s.copyWith(attack: 21.0)),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(attack: 21.0),
+                ],
               ),
               (
                 label: 'dfrequency=1001.0',
-                apply: (AudioEffects e) => e.updateAdynamicequalizer(
-                  (s) => s.copyWith(dfrequency: 1001.0),
-                ),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(
+                    dfrequency: 1001.0,
+                  ),
+                ],
               ),
               (
                 label: 'dqfactor=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdynamicequalizer((s) => s.copyWith(dqfactor: 2.0)),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(dqfactor: 2.0),
+                ],
               ),
               (
                 label: 'makeup=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdynamicequalizer((s) => s.copyWith(makeup: 1.0)),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(makeup: 1.0),
+                ],
               ),
               (
                 label: 'range=51.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdynamicequalizer((s) => s.copyWith(range: 51.0)),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(range: 51.0),
+                ],
               ),
               (
                 label: 'ratio=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdynamicequalizer((s) => s.copyWith(ratio: 2.0)),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(ratio: 2.0),
+                ],
               ),
               (
                 label: 'release=201.0',
-                apply: (AudioEffects e) => e.updateAdynamicequalizer(
-                  (s) => s.copyWith(release: 201.0),
-                ),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(
+                    release: 201.0,
+                  ),
+                ],
               ),
               (
                 label: 'tfrequency=1001.0',
-                apply: (AudioEffects e) => e.updateAdynamicequalizer(
-                  (s) => s.copyWith(tfrequency: 1001.0),
-                ),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(
+                    tfrequency: 1001.0,
+                  ),
+                ],
               ),
               (
                 label: 'threshold=1.0',
-                apply: (AudioEffects e) => e.updateAdynamicequalizer(
-                  (s) => s.copyWith(threshold: 1.0),
-                ),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(
+                    threshold: 1.0,
+                  ),
+                ],
               ),
               (
                 label: 'tqfactor=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdynamicequalizer((s) => s.copyWith(tqfactor: 2.0)),
+                apply: (e) => [
+                  (e.single as AdynamicequalizerEffect).copyWith(tqfactor: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'adynamicsmooth',
-            field: 'adynamicsmooth',
-            bundle: const AudioEffects(
-              adynamicsmooth: AdynamicsmoothSettings(enabled: true),
-            ),
+            field: 'adynamicsmooth_0',
+            bundle: const [AdynamicsmoothEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'basefreq=22051.0',
-                apply: (AudioEffects e) => e.updateAdynamicsmooth(
-                  (s) => s.copyWith(basefreq: 22051.0),
-                ),
+                apply: (e) => [
+                  (e.single as AdynamicsmoothEffect).copyWith(
+                    basefreq: 22051.0,
+                  ),
+                ],
               ),
               (
                 label: 'sensitivity=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateAdynamicsmooth((s) => s.copyWith(sensitivity: 3.0)),
+                apply: (e) => [
+                  (e.single as AdynamicsmoothEffect).copyWith(sensitivity: 3.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'aemphasis',
-            field: 'aemphasis',
-            bundle: const AudioEffects(
-              aemphasis: AemphasisSettings(enabled: true),
-            ),
+            field: 'aemphasis_0',
+            bundle: const [AemphasisEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAemphasis((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as AemphasisEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAemphasis((s) => s.copyWith(level_out: 2.0)),
+                label: 'levelOut=2.0',
+                apply: (e) => [
+                  (e.single as AemphasisEffect).copyWith(levelOut: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'aexciter',
-            field: 'aexciter',
-            bundle: const AudioEffects(
-              aexciter: AexciterSettings(enabled: true),
-            ),
+            field: 'aexciter_0',
+            bundle: const [AexciterEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'amount=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(amount: 2.0)),
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(amount: 2.0),
+                ],
               ),
               (
                 label: 'blend=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(blend: 1.0)),
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(blend: 1.0),
+                ],
               ),
               (
                 label: 'ceil=10000.0',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(ceil: 10000.0)),
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(ceil: 10000.0),
+                ],
               ),
               (
                 label: 'drive=9.25',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(drive: 9.25)),
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(drive: 9.25),
+                ],
               ),
               (
                 label: 'freq=7501.0',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(freq: 7501.0)),
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(freq: 7501.0),
+                ],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(level_out: 2.0)),
+                label: 'levelOut=2.0',
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(levelOut: 2.0),
+                ],
               ),
               (
                 label: 'listen=true',
-                apply: (AudioEffects e) =>
-                    e.updateAexciter((s) => s.copyWith(listen: true)),
+                apply: (e) => [
+                  (e.single as AexciterEffect).copyWith(listen: true),
+                ],
               ),
             ],
           ),
           (
             filter: 'afade',
-            field: 'afade',
-            bundle: const AudioEffects(afade: AfadeSettings(enabled: true)),
+            field: 'afade_0',
+            bundle: const [AfadeEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'nb_samples=44101',
-                apply: (AudioEffects e) =>
-                    e.updateAfade((s) => s.copyWith(nb_samples: 44101)),
+                label: 'nbSamples=44101',
+                apply: (e) => [
+                  (e.single as AfadeEffect).copyWith(nbSamples: 44101),
+                ],
               ),
               (
                 label: 'ns=44101',
-                apply: (AudioEffects e) =>
-                    e.updateAfade((s) => s.copyWith(ns: 44101)),
+                apply: (e) => [(e.single as AfadeEffect).copyWith(ns: 44101)],
               ),
               (
                 label: 'silence=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAfade((s) => s.copyWith(silence: 0.5)),
+                apply: (e) => [
+                  (e.single as AfadeEffect).copyWith(silence: 0.5),
+                ],
               ),
               (
                 label: 'ss=1',
-                apply: (AudioEffects e) =>
-                    e.updateAfade((s) => s.copyWith(ss: 1)),
+                apply: (e) => [(e.single as AfadeEffect).copyWith(ss: 1)],
               ),
               (
-                label: 'start_sample=1',
-                apply: (AudioEffects e) =>
-                    e.updateAfade((s) => s.copyWith(start_sample: 1)),
+                label: 'startSample=1',
+                apply: (e) => [
+                  (e.single as AfadeEffect).copyWith(startSample: 1),
+                ],
               ),
               (
                 label: 'unity=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAfade((s) => s.copyWith(unity: 0.5)),
+                apply: (e) => [(e.single as AfadeEffect).copyWith(unity: 0.5)],
               ),
             ],
           ),
           (
             filter: 'afftdn',
-            field: 'afftdn',
-            bundle: const AudioEffects(afftdn: AfftdnSettings(enabled: true)),
+            field: 'afftdn_0',
+            bundle: const [AfftdnEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'ad=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(ad: 0.75)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(ad: 0.75)],
               ),
               (
                 label: 'adaptivity=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(adaptivity: 0.75)),
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(adaptivity: 0.75),
+                ],
               ),
               (
-                label: 'floor_offset=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(floor_offset: 1.5)),
+                label: 'floorOffset=1.5',
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(floorOffset: 1.5),
+                ],
               ),
               (
                 label: 'fo=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(fo: 1.5)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(fo: 1.5)],
               ),
               (
-                label: 'gain_smooth=1',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(gain_smooth: 1)),
+                label: 'gainSmooth=1',
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(gainSmooth: 1),
+                ],
               ),
               (
                 label: 'gs=1',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(gs: 1)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(gs: 1)],
               ),
               (
                 label: 'nf=-49.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(nf: -49.0)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(nf: -49.0)],
               ),
               (
-                label: 'noise_floor=-49.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(noise_floor: -49.0)),
+                label: 'noiseFloor=-49.0',
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(noiseFloor: -49.0),
+                ],
               ),
               (
-                label: 'noise_reduction=13.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(noise_reduction: 13.0)),
+                label: 'noiseReduction=13.0',
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(noiseReduction: 13.0),
+                ],
               ),
               (
                 label: 'nr=13.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(nr: 13.0)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(nr: 13.0)],
               ),
               (
-                label: 'residual_floor=-37.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(residual_floor: -37.0)),
+                label: 'residualFloor=-37.0',
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(residualFloor: -37.0),
+                ],
               ),
               (
                 label: 'rf=-37.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(rf: -37.0)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(rf: -37.0)],
               ),
               (
                 label: 'tn=true',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(tn: true)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(tn: true)],
               ),
               (
                 label: 'tr=true',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(tr: true)),
+                apply: (e) => [(e.single as AfftdnEffect).copyWith(tr: true)],
               ),
               (
-                label: 'track_noise=true',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(track_noise: true)),
+                label: 'trackNoise=true',
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(trackNoise: true),
+                ],
               ),
               (
-                label: 'track_residual=true',
-                apply: (AudioEffects e) =>
-                    e.updateAfftdn((s) => s.copyWith(track_residual: true)),
+                label: 'trackResidual=true',
+                apply: (e) => [
+                  (e.single as AfftdnEffect).copyWith(trackResidual: true),
+                ],
               ),
             ],
           ),
           (
             filter: 'afreqshift',
-            field: 'afreqshift',
-            bundle: const AudioEffects(
-              afreqshift: AfreqshiftSettings(enabled: true),
-            ),
+            field: 'afreqshift_0',
+            bundle: const [AfreqshiftEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'level=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAfreqshift((s) => s.copyWith(level: 0.5)),
+                apply: (e) => [
+                  (e.single as AfreqshiftEffect).copyWith(level: 0.5),
+                ],
               ),
               (
                 label: 'order=9',
-                apply: (AudioEffects e) =>
-                    e.updateAfreqshift((s) => s.copyWith(order: 9)),
+                apply: (e) => [
+                  (e.single as AfreqshiftEffect).copyWith(order: 9),
+                ],
               ),
               (
                 label: 'shift=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfreqshift((s) => s.copyWith(shift: 1.0)),
+                apply: (e) => [
+                  (e.single as AfreqshiftEffect).copyWith(shift: 1.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'afwtdn',
-            field: 'afwtdn',
-            bundle: const AudioEffects(afwtdn: AfwtdnSettings(enabled: true)),
+            field: 'afwtdn_0',
+            bundle: const [AfwtdnEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'adaptive=true',
-                apply: (AudioEffects e) =>
-                    e.updateAfwtdn((s) => s.copyWith(adaptive: true)),
+                apply: (e) => [
+                  (e.single as AfwtdnEffect).copyWith(adaptive: true),
+                ],
               ),
               (
                 label: 'percent=86.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfwtdn((s) => s.copyWith(percent: 86.0)),
+                apply: (e) => [
+                  (e.single as AfwtdnEffect).copyWith(percent: 86.0),
+                ],
               ),
               (
                 label: 'profile=true',
-                apply: (AudioEffects e) =>
-                    e.updateAfwtdn((s) => s.copyWith(profile: true)),
+                apply: (e) => [
+                  (e.single as AfwtdnEffect).copyWith(profile: true),
+                ],
               ),
               (
                 label: 'sigma=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAfwtdn((s) => s.copyWith(sigma: 0.5)),
+                apply: (e) => [(e.single as AfwtdnEffect).copyWith(sigma: 0.5)],
               ),
               (
                 label: 'softness=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAfwtdn((s) => s.copyWith(softness: 2.0)),
+                apply: (e) => [
+                  (e.single as AfwtdnEffect).copyWith(softness: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'agate',
-            field: 'agate',
-            bundle: const AudioEffects(agate: AgateSettings(enabled: true)),
+            field: 'agate_0',
+            bundle: const [AgateEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'attack=21.0',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(attack: 21.0)),
+                apply: (e) => [
+                  (e.single as AgateEffect).copyWith(attack: 21.0),
+                ],
               ),
               (
                 label: 'knee=3.82843',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(knee: 3.82843)),
+                apply: (e) => [
+                  (e.single as AgateEffect).copyWith(knee: 3.82843),
+                ],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as AgateEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_sc=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(level_sc: 2.0)),
+                label: 'levelSc=2.0',
+                apply: (e) => [
+                  (e.single as AgateEffect).copyWith(levelSc: 2.0),
+                ],
               ),
               (
                 label: 'makeup=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(makeup: 2.0)),
+                apply: (e) => [(e.single as AgateEffect).copyWith(makeup: 2.0)],
               ),
               (
                 label: 'range=0.530625',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(range: 0.530625)),
+                apply: (e) => [
+                  (e.single as AgateEffect).copyWith(range: 0.530625),
+                ],
               ),
               (
                 label: 'ratio=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(ratio: 3.0)),
+                apply: (e) => [(e.single as AgateEffect).copyWith(ratio: 3.0)],
               ),
               (
                 label: 'release=251.0',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(release: 251.0)),
+                apply: (e) => [
+                  (e.single as AgateEffect).copyWith(release: 251.0),
+                ],
               ),
               (
                 label: 'threshold=0.5625',
-                apply: (AudioEffects e) =>
-                    e.updateAgate((s) => s.copyWith(threshold: 0.5625)),
+                apply: (e) => [
+                  (e.single as AgateEffect).copyWith(threshold: 0.5625),
+                ],
               ),
             ],
           ),
           (
             filter: 'alimiter',
-            field: 'alimiter',
-            bundle: const AudioEffects(
-              alimiter: AlimiterSettings(enabled: true),
-            ),
+            field: 'alimiter_0',
+            bundle: const [AlimiterEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'asc=true',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(asc: true)),
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(asc: true),
+                ],
               ),
               (
-                label: 'asc_level=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(asc_level: 0.75)),
+                label: 'ascLevel=0.75',
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(ascLevel: 0.75),
+                ],
               ),
               (
                 label: 'attack=6.0',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(attack: 6.0)),
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(attack: 6.0),
+                ],
               ),
               (
                 label: 'latency=true',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(latency: true)),
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(latency: true),
+                ],
               ),
               (
                 label: 'level=false',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(level: false)),
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(level: false),
+                ],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(level_out: 2.0)),
+                label: 'levelOut=2.0',
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(levelOut: 2.0),
+                ],
               ),
               (
                 label: 'limit=0.53125',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(limit: 0.53125)),
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(limit: 0.53125),
+                ],
               ),
               (
                 label: 'release=51.0',
-                apply: (AudioEffects e) =>
-                    e.updateAlimiter((s) => s.copyWith(release: 51.0)),
+                apply: (e) => [
+                  (e.single as AlimiterEffect).copyWith(release: 51.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'allpass',
-            field: 'allpass',
-            bundle: const AudioEffects(allpass: AllpassSettings(enabled: true)),
+            field: 'allpass_0',
+            bundle: const [AllpassEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(f: 3001.0)),
+                apply: (e) => [(e.single as AllpassEffect).copyWith(f: 3001.0)],
               ),
               (
                 label: 'frequency=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(frequency: 3001.0)),
+                apply: (e) => [
+                  (e.single as AllpassEffect).copyWith(frequency: 3001.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as AllpassEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as AllpassEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as AllpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as AllpassEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'o=1',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(o: 1)),
+                apply: (e) => [(e.single as AllpassEffect).copyWith(o: 1)],
               ),
               (
                 label: 'order=1',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(order: 1)),
+                apply: (e) => [(e.single as AllpassEffect).copyWith(order: 1)],
               ),
               (
                 label: 'w=1.707',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(w: 1.707)),
+                apply: (e) => [(e.single as AllpassEffect).copyWith(w: 1.707)],
               ),
               (
                 label: 'width=1.707',
-                apply: (AudioEffects e) =>
-                    e.updateAllpass((s) => s.copyWith(width: 1.707)),
+                apply: (e) => [
+                  (e.single as AllpassEffect).copyWith(width: 1.707),
+                ],
               ),
             ],
           ),
           (
             filter: 'anlmdn',
-            field: 'anlmdn',
-            bundle: const AudioEffects(anlmdn: AnlmdnSettings(enabled: true)),
+            field: 'anlmdn_0',
+            bundle: const [AnlmdnEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'm=12.0',
-                apply: (AudioEffects e) =>
-                    e.updateAnlmdn((s) => s.copyWith(m: 12.0)),
+                apply: (e) => [(e.single as AnlmdnEffect).copyWith(m: 12.0)],
               ),
               (
                 label: 's=1.00001',
-                apply: (AudioEffects e) =>
-                    e.updateAnlmdn((s) => s.copyWith(s: 1.00001)),
+                apply: (e) => [(e.single as AnlmdnEffect).copyWith(s: 1.00001)],
               ),
               (
                 label: 'smooth=12.0',
-                apply: (AudioEffects e) =>
-                    e.updateAnlmdn((s) => s.copyWith(smooth: 12.0)),
+                apply: (e) => [
+                  (e.single as AnlmdnEffect).copyWith(smooth: 12.0),
+                ],
               ),
               (
                 label: 'strength=1.00001',
-                apply: (AudioEffects e) =>
-                    e.updateAnlmdn((s) => s.copyWith(strength: 1.00001)),
+                apply: (e) => [
+                  (e.single as AnlmdnEffect).copyWith(strength: 1.00001),
+                ],
               ),
             ],
           ),
           (
             filter: 'aphaseshift',
-            field: 'aphaseshift',
-            bundle: const AudioEffects(
-              aphaseshift: AphaseshiftSettings(enabled: true),
-            ),
+            field: 'aphaseshift_0',
+            bundle: const [AphaseshiftEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'level=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAphaseshift((s) => s.copyWith(level: 0.5)),
+                apply: (e) => [
+                  (e.single as AphaseshiftEffect).copyWith(level: 0.5),
+                ],
               ),
               (
                 label: 'order=9',
-                apply: (AudioEffects e) =>
-                    e.updateAphaseshift((s) => s.copyWith(order: 9)),
+                apply: (e) => [
+                  (e.single as AphaseshiftEffect).copyWith(order: 9),
+                ],
               ),
               (
                 label: 'shift=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAphaseshift((s) => s.copyWith(shift: 0.5)),
+                apply: (e) => [
+                  (e.single as AphaseshiftEffect).copyWith(shift: 0.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'apsyclip',
-            field: 'apsyclip',
-            bundle: const AudioEffects(
-              apsyclip: ApsyclipSettings(enabled: true),
-            ),
+            field: 'apsyclip_0',
+            bundle: const [ApsyclipEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'adaptive=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateApsyclip((s) => s.copyWith(adaptive: 0.75)),
+                apply: (e) => [
+                  (e.single as ApsyclipEffect).copyWith(adaptive: 0.75),
+                ],
               ),
               (
                 label: 'clip=0.507812',
-                apply: (AudioEffects e) =>
-                    e.updateApsyclip((s) => s.copyWith(clip: 0.507812)),
+                apply: (e) => [
+                  (e.single as ApsyclipEffect).copyWith(clip: 0.507812),
+                ],
               ),
               (
                 label: 'diff=true',
-                apply: (AudioEffects e) =>
-                    e.updateApsyclip((s) => s.copyWith(diff: true)),
+                apply: (e) => [
+                  (e.single as ApsyclipEffect).copyWith(diff: true),
+                ],
               ),
               (
                 label: 'iterations=11',
-                apply: (AudioEffects e) =>
-                    e.updateApsyclip((s) => s.copyWith(iterations: 11)),
+                apply: (e) => [
+                  (e.single as ApsyclipEffect).copyWith(iterations: 11),
+                ],
               ),
               (
                 label: 'level=true',
-                apply: (AudioEffects e) =>
-                    e.updateApsyclip((s) => s.copyWith(level: true)),
+                apply: (e) => [
+                  (e.single as ApsyclipEffect).copyWith(level: true),
+                ],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateApsyclip((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as ApsyclipEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateApsyclip((s) => s.copyWith(level_out: 2.0)),
+                label: 'levelOut=2.0',
+                apply: (e) => [
+                  (e.single as ApsyclipEffect).copyWith(levelOut: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'arnndn',
-            field: 'arnndn',
-            bundle: AudioEffects(
-              arnndn: ArnndnSettings(enabled: true, model: arnndnModelPath),
-            ),
+            field: 'arnndn_0',
+            bundle: [ArnndnEffect(model: arnndnModelPath)],
             updates: <AfCommandUpdate>[
               (
                 label: 'mix=0.0',
-                apply: (AudioEffects e) =>
-                    e.updateArnndn((s) => s.copyWith(mix: 0.0)),
+                apply: (e) => [(e.single as ArnndnEffect).copyWith(mix: 0.0)],
               ),
             ],
           ),
           (
             filter: 'asoftclip',
-            field: 'asoftclip',
-            bundle: const AudioEffects(
-              asoftclip: AsoftclipSettings(enabled: true),
-            ),
+            field: 'asoftclip_0',
+            bundle: const [AsoftclipEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'output=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsoftclip((s) => s.copyWith(output: 2.0)),
+                apply: (e) => [
+                  (e.single as AsoftclipEffect).copyWith(output: 2.0),
+                ],
               ),
               (
                 label: 'oversample=2',
-                apply: (AudioEffects e) =>
-                    e.updateAsoftclip((s) => s.copyWith(oversample: 2)),
+                apply: (e) => [
+                  (e.single as AsoftclipEffect).copyWith(oversample: 2),
+                ],
               ),
               (
                 label: 'param=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsoftclip((s) => s.copyWith(param: 2.0)),
+                apply: (e) => [
+                  (e.single as AsoftclipEffect).copyWith(param: 2.0),
+                ],
               ),
               (
                 label: 'threshold=0.500001',
-                apply: (AudioEffects e) =>
-                    e.updateAsoftclip((s) => s.copyWith(threshold: 0.500001)),
+                apply: (e) => [
+                  (e.single as AsoftclipEffect).copyWith(threshold: 0.500001),
+                ],
               ),
             ],
           ),
           (
             filter: 'asubboost',
-            field: 'asubboost',
-            bundle: const AudioEffects(
-              asubboost: AsubboostSettings(enabled: true),
-            ),
+            field: 'asubboost_0',
+            bundle: const [AsubboostEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'boost=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(boost: 3.0)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(boost: 3.0),
+                ],
               ),
               (
                 label: 'cutoff=101.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(cutoff: 101.0)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(cutoff: 101.0),
+                ],
               ),
               (
                 label: 'decay=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(decay: 0.5)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(decay: 0.5),
+                ],
               ),
               (
                 label: 'delay=21.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(delay: 21.0)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(delay: 21.0),
+                ],
               ),
               (
                 label: 'dry=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(dry: 0.5)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(dry: 0.5),
+                ],
               ),
               (
                 label: 'feedback=0.95',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(feedback: 0.95)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(feedback: 0.95),
+                ],
               ),
               (
                 label: 'slope=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(slope: 0.75)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(slope: 0.75),
+                ],
               ),
               (
                 label: 'wet=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAsubboost((s) => s.copyWith(wet: 0.5)),
+                apply: (e) => [
+                  (e.single as AsubboostEffect).copyWith(wet: 0.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'asubcut',
-            field: 'asubcut',
-            bundle: const AudioEffects(asubcut: AsubcutSettings(enabled: true)),
+            field: 'asubcut_0',
+            bundle: const [AsubcutEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'cutoff=21.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsubcut((s) => s.copyWith(cutoff: 21.0)),
+                apply: (e) => [
+                  (e.single as AsubcutEffect).copyWith(cutoff: 21.0),
+                ],
               ),
               (
                 label: 'level=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAsubcut((s) => s.copyWith(level: 0.5)),
+                apply: (e) => [
+                  (e.single as AsubcutEffect).copyWith(level: 0.5),
+                ],
               ),
               (
                 label: 'order=11',
-                apply: (AudioEffects e) =>
-                    e.updateAsubcut((s) => s.copyWith(order: 11)),
+                apply: (e) => [(e.single as AsubcutEffect).copyWith(order: 11)],
               ),
             ],
           ),
           (
             filter: 'asupercut',
-            field: 'asupercut',
-            bundle: const AudioEffects(
-              asupercut: AsupercutSettings(enabled: true),
-            ),
+            field: 'asupercut_0',
+            bundle: const [AsupercutEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'cutoff=20001.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsupercut((s) => s.copyWith(cutoff: 20001.0)),
+                apply: (e) => [
+                  (e.single as AsupercutEffect).copyWith(cutoff: 20001.0),
+                ],
               ),
               (
                 label: 'level=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAsupercut((s) => s.copyWith(level: 0.5)),
+                apply: (e) => [
+                  (e.single as AsupercutEffect).copyWith(level: 0.5),
+                ],
               ),
               (
                 label: 'order=11',
-                apply: (AudioEffects e) =>
-                    e.updateAsupercut((s) => s.copyWith(order: 11)),
+                apply: (e) => [
+                  (e.single as AsupercutEffect).copyWith(order: 11),
+                ],
               ),
             ],
           ),
           (
             filter: 'asuperpass',
-            field: 'asuperpass',
-            bundle: const AudioEffects(
-              asuperpass: AsuperpassSettings(enabled: true),
-            ),
+            field: 'asuperpass_0',
+            bundle: const [AsuperpassEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'centerf=1001.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperpass((s) => s.copyWith(centerf: 1001.0)),
+                apply: (e) => [
+                  (e.single as AsuperpassEffect).copyWith(centerf: 1001.0),
+                ],
               ),
               (
                 label: 'level=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperpass((s) => s.copyWith(level: 1.5)),
+                apply: (e) => [
+                  (e.single as AsuperpassEffect).copyWith(level: 1.5),
+                ],
               ),
               (
                 label: 'order=5',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperpass((s) => s.copyWith(order: 5)),
+                apply: (e) => [
+                  (e.single as AsuperpassEffect).copyWith(order: 5),
+                ],
               ),
               (
                 label: 'qfactor=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperpass((s) => s.copyWith(qfactor: 2.0)),
+                apply: (e) => [
+                  (e.single as AsuperpassEffect).copyWith(qfactor: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'asuperstop',
-            field: 'asuperstop',
-            bundle: const AudioEffects(
-              asuperstop: AsuperstopSettings(enabled: true),
-            ),
+            field: 'asuperstop_0',
+            bundle: const [AsuperstopEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'centerf=1001.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperstop((s) => s.copyWith(centerf: 1001.0)),
+                apply: (e) => [
+                  (e.single as AsuperstopEffect).copyWith(centerf: 1001.0),
+                ],
               ),
               (
                 label: 'level=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperstop((s) => s.copyWith(level: 1.5)),
+                apply: (e) => [
+                  (e.single as AsuperstopEffect).copyWith(level: 1.5),
+                ],
               ),
               (
                 label: 'order=5',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperstop((s) => s.copyWith(order: 5)),
+                apply: (e) => [
+                  (e.single as AsuperstopEffect).copyWith(order: 5),
+                ],
               ),
               (
                 label: 'qfactor=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAsuperstop((s) => s.copyWith(qfactor: 2.0)),
+                apply: (e) => [
+                  (e.single as AsuperstopEffect).copyWith(qfactor: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'atempo',
-            field: 'atempo',
-            bundle: const AudioEffects(atempo: AtempoSettings(enabled: true)),
+            field: 'atempo_0',
+            bundle: const [AtempoEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'tempo=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAtempo((s) => s.copyWith(tempo: 2.0)),
+                apply: (e) => [(e.single as AtempoEffect).copyWith(tempo: 2.0)],
               ),
             ],
           ),
           (
             filter: 'atilt',
-            field: 'atilt',
-            bundle: const AudioEffects(atilt: AtiltSettings(enabled: true)),
+            field: 'atilt_0',
+            bundle: const [AtiltEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'freq=10001.0',
-                apply: (AudioEffects e) =>
-                    e.updateAtilt((s) => s.copyWith(freq: 10001.0)),
+                apply: (e) => [
+                  (e.single as AtiltEffect).copyWith(freq: 10001.0),
+                ],
               ),
               (
                 label: 'level=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateAtilt((s) => s.copyWith(level: 2.0)),
+                apply: (e) => [(e.single as AtiltEffect).copyWith(level: 2.0)],
               ),
               (
                 label: 'order=6',
-                apply: (AudioEffects e) =>
-                    e.updateAtilt((s) => s.copyWith(order: 6)),
+                apply: (e) => [(e.single as AtiltEffect).copyWith(order: 6)],
               ),
               (
                 label: 'slope=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateAtilt((s) => s.copyWith(slope: 0.5)),
+                apply: (e) => [(e.single as AtiltEffect).copyWith(slope: 0.5)],
               ),
               (
                 label: 'width=1001.0',
-                apply: (AudioEffects e) =>
-                    e.updateAtilt((s) => s.copyWith(width: 1001.0)),
+                apply: (e) => [
+                  (e.single as AtiltEffect).copyWith(width: 1001.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'bandpass',
-            field: 'bandpass',
-            bundle: const AudioEffects(
-              bandpass: BandpassSettings(enabled: true),
-            ),
+            field: 'bandpass_0',
+            bundle: const [BandpassEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'csg=true',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(csg: true)),
+                apply: (e) => [
+                  (e.single as BandpassEffect).copyWith(csg: true),
+                ],
               ),
               (
                 label: 'f=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(f: 3001.0)),
+                apply: (e) => [
+                  (e.single as BandpassEffect).copyWith(f: 3001.0),
+                ],
               ),
               (
                 label: 'frequency=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(frequency: 3001.0)),
+                apply: (e) => [
+                  (e.single as BandpassEffect).copyWith(frequency: 3001.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as BandpassEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as BandpassEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as BandpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as BandpassEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(w: 1.5)),
+                apply: (e) => [(e.single as BandpassEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandpass((s) => s.copyWith(width: 1.5)),
+                apply: (e) => [
+                  (e.single as BandpassEffect).copyWith(width: 1.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'bandreject',
-            field: 'bandreject',
-            bundle: const AudioEffects(
-              bandreject: BandrejectSettings(enabled: true),
-            ),
+            field: 'bandreject_0',
+            bundle: const [BandrejectEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(f: 3001.0)),
+                apply: (e) => [
+                  (e.single as BandrejectEffect).copyWith(f: 3001.0),
+                ],
               ),
               (
                 label: 'frequency=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(frequency: 3001.0)),
+                apply: (e) => [
+                  (e.single as BandrejectEffect).copyWith(frequency: 3001.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as BandrejectEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [
+                  (e.single as BandrejectEffect).copyWith(mix: 0.5),
+                ],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(n: true)),
+                apply: (e) => [
+                  (e.single as BandrejectEffect).copyWith(n: true),
+                ],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as BandrejectEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(w: 1.5)),
+                apply: (e) => [(e.single as BandrejectEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateBandreject((s) => s.copyWith(width: 1.5)),
+                apply: (e) => [
+                  (e.single as BandrejectEffect).copyWith(width: 1.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'bass',
-            field: 'bass',
-            bundle: const AudioEffects(bass: BassSettings(enabled: true)),
+            field: 'bass_0',
+            bundle: const [BassEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=101.0',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(f: 101.0)),
+                apply: (e) => [(e.single as BassEffect).copyWith(f: 101.0)],
               ),
               (
                 label: 'frequency=101.0',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(frequency: 101.0)),
+                apply: (e) => [
+                  (e.single as BassEffect).copyWith(frequency: 101.0),
+                ],
               ),
               (
                 label: 'g=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(g: 1.0)),
+                apply: (e) => [(e.single as BassEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(gain: 1.0)),
+                apply: (e) => [(e.single as BassEffect).copyWith(gain: 1.0)],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as BassEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as BassEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as BassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as BassEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(w: 1.5)),
+                apply: (e) => [(e.single as BassEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateBass((s) => s.copyWith(width: 1.5)),
+                apply: (e) => [(e.single as BassEffect).copyWith(width: 1.5)],
               ),
             ],
           ),
           (
             filter: 'biquad',
-            field: 'biquad',
-            bundle: const AudioEffects(biquad: BiquadSettings(enabled: true)),
+            field: 'biquad_0',
+            bundle: const [BiquadEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'a0=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(a0: 2.0)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(a0: 2.0)],
               ),
               (
                 label: 'a1=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(a1: 1.0)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(a1: 1.0)],
               ),
               (
                 label: 'a2=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(a2: 1.0)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(a2: 1.0)],
               ),
               (
                 label: 'b0=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(b0: 1.0)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(b0: 1.0)],
               ),
               (
                 label: 'b1=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(b1: 1.0)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(b1: 1.0)],
               ),
               (
                 label: 'b2=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(b2: 1.0)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(b2: 1.0)],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as BiquadEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateBiquad((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as BiquadEffect).copyWith(normalize: true),
+                ],
               ),
             ],
           ),
           (
             filter: 'crossfeed',
-            field: 'crossfeed',
-            bundle: const AudioEffects(
-              crossfeed: CrossfeedSettings(enabled: true),
-            ),
+            field: 'crossfeed_0',
+            bundle: const [CrossfeedEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'level_in=0.95',
-                apply: (AudioEffects e) =>
-                    e.updateCrossfeed((s) => s.copyWith(level_in: 0.95)),
+                label: 'levelIn=0.95',
+                apply: (e) => [
+                  (e.single as CrossfeedEffect).copyWith(levelIn: 0.95),
+                ],
               ),
               (
-                label: 'level_out=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateCrossfeed((s) => s.copyWith(level_out: 0.5)),
+                label: 'levelOut=0.5',
+                apply: (e) => [
+                  (e.single as CrossfeedEffect).copyWith(levelOut: 0.5),
+                ],
               ),
               (
                 label: 'range=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateCrossfeed((s) => s.copyWith(range: 0.75)),
+                apply: (e) => [
+                  (e.single as CrossfeedEffect).copyWith(range: 0.75),
+                ],
               ),
               (
                 label: 'slope=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateCrossfeed((s) => s.copyWith(slope: 0.75)),
+                apply: (e) => [
+                  (e.single as CrossfeedEffect).copyWith(slope: 0.75),
+                ],
               ),
               (
                 label: 'strength=0.6',
-                apply: (AudioEffects e) =>
-                    e.updateCrossfeed((s) => s.copyWith(strength: 0.6)),
+                apply: (e) => [
+                  (e.single as CrossfeedEffect).copyWith(strength: 0.6),
+                ],
               ),
             ],
           ),
           (
             filter: 'crystalizer',
-            field: 'crystalizer',
-            bundle: const AudioEffects(
-              crystalizer: CrystalizerSettings(enabled: true),
-            ),
+            field: 'crystalizer_0',
+            bundle: const [CrystalizerEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'c=false',
-                apply: (AudioEffects e) =>
-                    e.updateCrystalizer((s) => s.copyWith(c: false)),
+                apply: (e) => [
+                  (e.single as CrystalizerEffect).copyWith(c: false),
+                ],
               ),
               (
                 label: 'i=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateCrystalizer((s) => s.copyWith(i: 3.0)),
+                apply: (e) => [
+                  (e.single as CrystalizerEffect).copyWith(i: 3.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'dialoguenhance',
-            field: 'dialoguenhance',
-            bundle: const AudioEffects(
-              dialoguenhance: DialoguenhanceSettings(enabled: true),
-            ),
+            field: 'dialoguenhance_0',
+            bundle: const [DialoguenhanceEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'enhance=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateDialoguenhance((s) => s.copyWith(enhance: 2.0)),
+                apply: (e) => [
+                  (e.single as DialoguenhanceEffect).copyWith(enhance: 2.0),
+                ],
               ),
               (
                 label: 'original=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateDialoguenhance((s) => s.copyWith(original: 0.5)),
+                apply: (e) => [
+                  (e.single as DialoguenhanceEffect).copyWith(original: 0.5),
+                ],
               ),
               (
                 label: 'voice=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateDialoguenhance((s) => s.copyWith(voice: 3.0)),
+                apply: (e) => [
+                  (e.single as DialoguenhanceEffect).copyWith(voice: 3.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'dynaudnorm',
-            field: 'dynaudnorm',
-            bundle: const AudioEffects(
-              dynaudnorm: DynaudnormSettings(enabled: true),
-            ),
+            field: 'dynaudnorm_0',
+            bundle: const [DynaudnormEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'altboundary=true',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(altboundary: true)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(altboundary: true),
+                ],
               ),
               (
                 label: 'b=true',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(b: true)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(b: true),
+                ],
               ),
               (
                 label: 'c=true',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(c: true)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(c: true),
+                ],
               ),
               (
                 label: 'compress=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(compress: 1.0)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(compress: 1.0),
+                ],
               ),
               (
                 label: 'correctdc=true',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(correctdc: true)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(correctdc: true),
+                ],
               ),
               (
                 label: 'coupling=false',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(coupling: false)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(coupling: false),
+                ],
               ),
               (
                 label: 'f=501',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(f: 501)),
+                apply: (e) => [(e.single as DynaudnormEffect).copyWith(f: 501)],
               ),
               (
                 label: 'framelen=501',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(framelen: 501)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(framelen: 501),
+                ],
               ),
               (
                 label: 'g=32',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(g: 32)),
+                apply: (e) => [(e.single as DynaudnormEffect).copyWith(g: 32)],
               ),
               (
                 label: 'gausssize=32',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(gausssize: 32)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(gausssize: 32),
+                ],
               ),
               (
                 label: 'm=11.0',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(m: 11.0)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(m: 11.0),
+                ],
               ),
               (
                 label: 'maxgain=11.0',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(maxgain: 11.0)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(maxgain: 11.0),
+                ],
               ),
               (
                 label: 'n=false',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(n: false)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(n: false),
+                ],
               ),
               (
                 label: 'o=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(o: 0.5)),
+                apply: (e) => [(e.single as DynaudnormEffect).copyWith(o: 0.5)],
               ),
               (
                 label: 'overlap=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(overlap: 0.5)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(overlap: 0.5),
+                ],
               ),
               (
                 label: 'p=0.975',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(p: 0.975)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(p: 0.975),
+                ],
               ),
               (
                 label: 'peak=0.975',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(peak: 0.975)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(peak: 0.975),
+                ],
               ),
               (
                 label: 'r=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(r: 0.5)),
+                apply: (e) => [(e.single as DynaudnormEffect).copyWith(r: 0.5)],
               ),
               (
                 label: 's=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(s: 1.0)),
+                apply: (e) => [(e.single as DynaudnormEffect).copyWith(s: 1.0)],
               ),
               (
                 label: 't=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(t: 0.5)),
+                apply: (e) => [(e.single as DynaudnormEffect).copyWith(t: 0.5)],
               ),
               (
                 label: 'targetrms=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(targetrms: 0.5)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(targetrms: 0.5),
+                ],
               ),
               (
                 label: 'threshold=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateDynaudnorm((s) => s.copyWith(threshold: 0.5)),
+                apply: (e) => [
+                  (e.single as DynaudnormEffect).copyWith(threshold: 0.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'equalizer',
-            field: 'equalizer',
-            bundle: const AudioEffects(
-              equalizer: EqualizerSettings(enabled: true),
-            ),
+            field: 'equalizer_0',
+            bundle: const [EqualizerEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(f: 1.0)),
+                apply: (e) => [(e.single as EqualizerEffect).copyWith(f: 1.0)],
               ),
               (
                 label: 'frequency=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(frequency: 1.0)),
+                apply: (e) => [
+                  (e.single as EqualizerEffect).copyWith(frequency: 1.0),
+                ],
               ),
               (
                 label: 'g=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(g: 1.0)),
+                apply: (e) => [(e.single as EqualizerEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(gain: 1.0)),
+                apply: (e) => [
+                  (e.single as EqualizerEffect).copyWith(gain: 1.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as EqualizerEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [
+                  (e.single as EqualizerEffect).copyWith(mix: 0.5),
+                ],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as EqualizerEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as EqualizerEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(w: 2.0)),
+                apply: (e) => [(e.single as EqualizerEffect).copyWith(w: 2.0)],
               ),
               (
                 label: 'width=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateEqualizer((s) => s.copyWith(width: 2.0)),
+                apply: (e) => [
+                  (e.single as EqualizerEffect).copyWith(width: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'extrastereo',
-            field: 'extrastereo',
-            bundle: const AudioEffects(
-              extrastereo: ExtrastereoSettings(enabled: true),
-            ),
+            field: 'extrastereo_0',
+            bundle: const [ExtrastereoEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'c=false',
-                apply: (AudioEffects e) =>
-                    e.updateExtrastereo((s) => s.copyWith(c: false)),
+                apply: (e) => [
+                  (e.single as ExtrastereoEffect).copyWith(c: false),
+                ],
               ),
               (
                 label: 'm=3.5',
-                apply: (AudioEffects e) =>
-                    e.updateExtrastereo((s) => s.copyWith(m: 3.5)),
+                apply: (e) => [
+                  (e.single as ExtrastereoEffect).copyWith(m: 3.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'firequalizer',
-            field: 'firequalizer',
-            bundle: const AudioEffects(
-              firequalizer: FirequalizerSettings(enabled: true),
-            ),
+            field: 'firequalizer_0',
+            bundle: const [FirequalizerEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'gain=0',
-                apply: (AudioEffects e) =>
-                    e.updateFirequalizer((s) => s.copyWith(gain: '0')),
+                apply: (e) => [
+                  (e.single as FirequalizerEffect).copyWith(gain: '0'),
+                ],
               ),
             ],
           ),
           (
             filter: 'highpass',
-            field: 'highpass',
-            bundle: const AudioEffects(
-              highpass: HighpassSettings(enabled: true),
-            ),
+            field: 'highpass_0',
+            bundle: const [HighpassEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(f: 3001.0)),
+                apply: (e) => [
+                  (e.single as HighpassEffect).copyWith(f: 3001.0),
+                ],
               ),
               (
                 label: 'frequency=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(frequency: 3001.0)),
+                apply: (e) => [
+                  (e.single as HighpassEffect).copyWith(frequency: 3001.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as HighpassEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as HighpassEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as HighpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as HighpassEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.707',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(w: 1.707)),
+                apply: (e) => [(e.single as HighpassEffect).copyWith(w: 1.707)],
               ),
               (
                 label: 'width=1.707',
-                apply: (AudioEffects e) =>
-                    e.updateHighpass((s) => s.copyWith(width: 1.707)),
+                apply: (e) => [
+                  (e.single as HighpassEffect).copyWith(width: 1.707),
+                ],
               ),
             ],
           ),
           (
             filter: 'highshelf',
-            field: 'highshelf',
-            bundle: const AudioEffects(
-              highshelf: HighshelfSettings(enabled: true),
-            ),
+            field: 'highshelf_0',
+            bundle: const [HighshelfEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(f: 3001.0)),
+                apply: (e) => [
+                  (e.single as HighshelfEffect).copyWith(f: 3001.0),
+                ],
               ),
               (
                 label: 'frequency=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(frequency: 3001.0)),
+                apply: (e) => [
+                  (e.single as HighshelfEffect).copyWith(frequency: 3001.0),
+                ],
               ),
               (
                 label: 'g=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(g: 1.0)),
+                apply: (e) => [(e.single as HighshelfEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(gain: 1.0)),
+                apply: (e) => [
+                  (e.single as HighshelfEffect).copyWith(gain: 1.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as HighshelfEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [
+                  (e.single as HighshelfEffect).copyWith(mix: 0.5),
+                ],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as HighshelfEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as HighshelfEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(w: 1.5)),
+                apply: (e) => [(e.single as HighshelfEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateHighshelf((s) => s.copyWith(width: 1.5)),
+                apply: (e) => [
+                  (e.single as HighshelfEffect).copyWith(width: 1.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'lowpass',
-            field: 'lowpass',
-            bundle: const AudioEffects(lowpass: LowpassSettings(enabled: true)),
+            field: 'lowpass_0',
+            bundle: const [LowpassEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=501.0',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(f: 501.0)),
+                apply: (e) => [(e.single as LowpassEffect).copyWith(f: 501.0)],
               ),
               (
                 label: 'frequency=501.0',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(frequency: 501.0)),
+                apply: (e) => [
+                  (e.single as LowpassEffect).copyWith(frequency: 501.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as LowpassEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as LowpassEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as LowpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as LowpassEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.707',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(w: 1.707)),
+                apply: (e) => [(e.single as LowpassEffect).copyWith(w: 1.707)],
               ),
               (
                 label: 'width=1.707',
-                apply: (AudioEffects e) =>
-                    e.updateLowpass((s) => s.copyWith(width: 1.707)),
+                apply: (e) => [
+                  (e.single as LowpassEffect).copyWith(width: 1.707),
+                ],
               ),
             ],
           ),
           (
             filter: 'lowshelf',
-            field: 'lowshelf',
-            bundle: const AudioEffects(
-              lowshelf: LowshelfSettings(enabled: true),
-            ),
+            field: 'lowshelf_0',
+            bundle: const [LowshelfEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=101.0',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(f: 101.0)),
+                apply: (e) => [(e.single as LowshelfEffect).copyWith(f: 101.0)],
               ),
               (
                 label: 'frequency=101.0',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(frequency: 101.0)),
+                apply: (e) => [
+                  (e.single as LowshelfEffect).copyWith(frequency: 101.0),
+                ],
               ),
               (
                 label: 'g=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(g: 1.0)),
+                apply: (e) => [(e.single as LowshelfEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(gain: 1.0)),
+                apply: (e) => [
+                  (e.single as LowshelfEffect).copyWith(gain: 1.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as LowshelfEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as LowshelfEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as LowshelfEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as LowshelfEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(w: 1.5)),
+                apply: (e) => [(e.single as LowshelfEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateLowshelf((s) => s.copyWith(width: 1.5)),
+                apply: (e) => [
+                  (e.single as LowshelfEffect).copyWith(width: 1.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'rubberband',
-            field: 'rubberband',
-            bundle: const AudioEffects(
-              rubberband: RubberbandSettings(enabled: true),
-            ),
+            field: 'rubberband_0',
+            bundle: const [RubberbandEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'pitch=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateRubberband((s) => s.copyWith(pitch: 2.0)),
+                apply: (e) => [
+                  (e.single as RubberbandEffect).copyWith(pitch: 2.0),
+                ],
               ),
               (
                 label: 'tempo=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateRubberband((s) => s.copyWith(tempo: 2.0)),
+                apply: (e) => [
+                  (e.single as RubberbandEffect).copyWith(tempo: 2.0),
+                ],
               ),
             ],
           ),
           (
             filter: 'silenceremove',
-            field: 'silenceremove',
-            bundle: const AudioEffects(
-              silenceremove: SilenceremoveSettings(enabled: true),
-            ),
+            field: 'silenceremove_0',
+            bundle: const [SilenceremoveEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'start_threshold=1.0',
-                apply: (AudioEffects e) => e.updateSilenceremove(
-                  (s) => s.copyWith(start_threshold: 1.0),
-                ),
+                label: 'startThreshold=1.0',
+                apply: (e) => [
+                  (e.single as SilenceremoveEffect).copyWith(
+                    startThreshold: 1.0,
+                  ),
+                ],
               ),
               (
-                label: 'stop_threshold=1.0',
-                apply: (AudioEffects e) => e.updateSilenceremove(
-                  (s) => s.copyWith(stop_threshold: 1.0),
-                ),
+                label: 'stopThreshold=1.0',
+                apply: (e) => [
+                  (e.single as SilenceremoveEffect).copyWith(
+                    stopThreshold: 1.0,
+                  ),
+                ],
               ),
             ],
           ),
           (
             filter: 'speechnorm',
-            field: 'speechnorm',
-            bundle: const AudioEffects(
-              speechnorm: SpeechnormSettings(enabled: true),
-            ),
+            field: 'speechnorm_0',
+            bundle: const [SpeechnormEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'c=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(c: 3.0)),
+                apply: (e) => [(e.single as SpeechnormEffect).copyWith(c: 3.0)],
               ),
               (
                 label: 'compression=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(compression: 3.0)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(compression: 3.0),
+                ],
               ),
               (
                 label: 'e=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(e: 3.0)),
+                apply: (e) => [(e.single as SpeechnormEffect).copyWith(e: 3.0)],
               ),
               (
                 label: 'expansion=3.0',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(expansion: 3.0)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(expansion: 3.0),
+                ],
               ),
               (
                 label: 'f=0.5005',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(f: 0.5005)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(f: 0.5005),
+                ],
               ),
               (
                 label: 'fall=0.5005',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(fall: 0.5005)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(fall: 0.5005),
+                ],
               ),
               (
                 label: 'i=true',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(i: true)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(i: true),
+                ],
               ),
               (
                 label: 'invert=true',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(invert: true)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(invert: true),
+                ],
               ),
               (
                 label: 'l=true',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(l: true)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(l: true),
+                ],
               ),
               (
                 label: 'link=true',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(link: true)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(link: true),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as SpeechnormEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'p=0.975',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(p: 0.975)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(p: 0.975),
+                ],
               ),
               (
                 label: 'peak=0.975',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(peak: 0.975)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(peak: 0.975),
+                ],
               ),
               (
                 label: 'r=0.5005',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(r: 0.5005)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(r: 0.5005),
+                ],
               ),
               (
                 label: 'raise=0.5005',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(raise: 0.5005)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(raise: 0.5005),
+                ],
               ),
               (
                 label: 'rms=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(rms: 0.5)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(rms: 0.5),
+                ],
               ),
               (
                 label: 't=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(t: 0.5)),
+                apply: (e) => [(e.single as SpeechnormEffect).copyWith(t: 0.5)],
               ),
               (
                 label: 'threshold=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateSpeechnorm((s) => s.copyWith(threshold: 0.5)),
+                apply: (e) => [
+                  (e.single as SpeechnormEffect).copyWith(threshold: 0.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'stereotools',
-            field: 'stereotools',
-            bundle: const AudioEffects(
-              stereotools: StereotoolsSettings(enabled: true),
-            ),
+            field: 'stereotools_0',
+            bundle: const [StereotoolsEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'balance_in=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(balance_in: 0.5)),
+                label: 'balanceIn=0.5',
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(balanceIn: 0.5),
+                ],
               ),
               (
-                label: 'balance_out=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(balance_out: 0.5)),
+                label: 'balanceOut=0.5',
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(balanceOut: 0.5),
+                ],
               ),
               (
                 label: 'base=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(base: 0.5)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(base: 0.5),
+                ],
               ),
               (
                 label: 'delay=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(delay: 1.0)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(delay: 1.0),
+                ],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(level_out: 2.0)),
+                label: 'levelOut=2.0',
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(levelOut: 2.0),
+                ],
               ),
               (
                 label: 'mlev=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(mlev: 2.0)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(mlev: 2.0),
+                ],
               ),
               (
                 label: 'mpan=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(mpan: 0.5)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(mpan: 0.5),
+                ],
               ),
               (
                 label: 'mutel=true',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(mutel: true)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(mutel: true),
+                ],
               ),
               (
                 label: 'muter=true',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(muter: true)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(muter: true),
+                ],
               ),
               (
                 label: 'phase=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(phase: 1.0)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(phase: 1.0),
+                ],
               ),
               (
                 label: 'phasel=true',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(phasel: true)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(phasel: true),
+                ],
               ),
               (
                 label: 'phaser=true',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(phaser: true)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(phaser: true),
+                ],
               ),
               (
                 label: 'sbal=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(sbal: 0.5)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(sbal: 0.5),
+                ],
               ),
               (
                 label: 'sclevel=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(sclevel: 2.0)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(sclevel: 2.0),
+                ],
               ),
               (
                 label: 'slev=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(slev: 2.0)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(slev: 2.0),
+                ],
               ),
               (
                 label: 'softclip=true',
-                apply: (AudioEffects e) =>
-                    e.updateStereotools((s) => s.copyWith(softclip: true)),
+                apply: (e) => [
+                  (e.single as StereotoolsEffect).copyWith(softclip: true),
+                ],
               ),
             ],
           ),
           (
             filter: 'stereowiden',
-            field: 'stereowiden',
-            bundle: const AudioEffects(
-              stereowiden: StereowidenSettings(enabled: true),
-            ),
+            field: 'stereowiden_0',
+            bundle: const [StereowidenEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'crossfeed=0.55',
-                apply: (AudioEffects e) =>
-                    e.updateStereowiden((s) => s.copyWith(crossfeed: 0.55)),
+                apply: (e) => [
+                  (e.single as StereowidenEffect).copyWith(crossfeed: 0.55),
+                ],
               ),
               (
                 label: 'drymix=0.9',
-                apply: (AudioEffects e) =>
-                    e.updateStereowiden((s) => s.copyWith(drymix: 0.9)),
+                apply: (e) => [
+                  (e.single as StereowidenEffect).copyWith(drymix: 0.9),
+                ],
               ),
               (
                 label: 'feedback=0.6',
-                apply: (AudioEffects e) =>
-                    e.updateStereowiden((s) => s.copyWith(feedback: 0.6)),
+                apply: (e) => [
+                  (e.single as StereowidenEffect).copyWith(feedback: 0.6),
+                ],
               ),
             ],
           ),
           (
             filter: 'surround',
-            field: 'surround',
-            bundle: const AudioEffects(
-              surround: SurroundSettings(enabled: true),
-            ),
+            field: 'surround_0',
+            bundle: const [SurroundEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'allx=0.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(allx: 0.0)),
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(allx: 0.0),
+                ],
               ),
               (
                 label: 'ally=0.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(ally: 0.0)),
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(ally: 0.0),
+                ],
               ),
               (
                 label: 'angle=91.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(angle: 91.0)),
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(angle: 91.0),
+                ],
               ),
               (
-                label: 'bc_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bc_in: 2.0)),
+                label: 'bcIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(bcIn: 2.0),
+                ],
               ),
               (
-                label: 'bc_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bc_out: 2.0)),
+                label: 'bcOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(bcOut: 2.0),
+                ],
               ),
               (
                 label: 'bcx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bcx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(bcx: 1.5)],
               ),
               (
                 label: 'bcy=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bcy: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(bcy: 1.5)],
               ),
               (
-                label: 'bl_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bl_in: 2.0)),
+                label: 'blIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(blIn: 2.0),
+                ],
               ),
               (
-                label: 'bl_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bl_out: 2.0)),
+                label: 'blOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(blOut: 2.0),
+                ],
               ),
               (
                 label: 'blx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(blx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(blx: 1.5)],
               ),
               (
                 label: 'bly=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bly: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(bly: 1.5)],
               ),
               (
-                label: 'br_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(br_in: 2.0)),
+                label: 'brIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(brIn: 2.0),
+                ],
               ),
               (
-                label: 'br_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(br_out: 2.0)),
+                label: 'brOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(brOut: 2.0),
+                ],
               ),
               (
                 label: 'brx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(brx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(brx: 1.5)],
               ),
               (
                 label: 'bry=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(bry: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(bry: 1.5)],
               ),
               (
-                label: 'fc_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fc_in: 2.0)),
+                label: 'fcIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(fcIn: 2.0),
+                ],
               ),
               (
-                label: 'fc_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fc_out: 2.0)),
+                label: 'fcOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(fcOut: 2.0),
+                ],
               ),
               (
                 label: 'fcx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fcx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(fcx: 1.5)],
               ),
               (
                 label: 'fcy=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fcy: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(fcy: 1.5)],
               ),
               (
-                label: 'fl_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fl_in: 2.0)),
+                label: 'flIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(flIn: 2.0),
+                ],
               ),
               (
-                label: 'fl_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fl_out: 2.0)),
+                label: 'flOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(flOut: 2.0),
+                ],
               ),
               (
                 label: 'flx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(flx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(flx: 1.5)],
               ),
               (
                 label: 'fly=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fly: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(fly: 1.5)],
               ),
               (
                 label: 'focus=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(focus: 0.5)),
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(focus: 0.5),
+                ],
               ),
               (
-                label: 'fr_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fr_in: 2.0)),
+                label: 'frIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(frIn: 2.0),
+                ],
               ),
               (
-                label: 'fr_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fr_out: 2.0)),
+                label: 'frOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(frOut: 2.0),
+                ],
               ),
               (
                 label: 'frx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(frx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(frx: 1.5)],
               ),
               (
                 label: 'fry=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(fry: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(fry: 1.5)],
               ),
               (
-                label: 'level_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(level_in: 2.0)),
+                label: 'levelIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(levelIn: 2.0),
+                ],
               ),
               (
-                label: 'level_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(level_out: 2.0)),
+                label: 'levelOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(levelOut: 2.0),
+                ],
               ),
               (
                 label: 'lfe=false',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(lfe: false)),
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(lfe: false),
+                ],
               ),
               (
-                label: 'lfe_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(lfe_in: 2.0)),
+                label: 'lfeIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(lfeIn: 2.0),
+                ],
               ),
               (
-                label: 'lfe_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(lfe_out: 2.0)),
+                label: 'lfeOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(lfeOut: 2.0),
+                ],
               ),
               (
                 label: 'overlap=0.75',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(overlap: 0.75)),
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(overlap: 0.75),
+                ],
               ),
               (
-                label: 'sl_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(sl_in: 2.0)),
+                label: 'slIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(slIn: 2.0),
+                ],
               ),
               (
-                label: 'sl_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(sl_out: 2.0)),
+                label: 'slOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(slOut: 2.0),
+                ],
               ),
               (
                 label: 'slx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(slx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(slx: 1.5)],
               ),
               (
                 label: 'sly=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(sly: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(sly: 1.5)],
               ),
               (
                 label: 'smooth=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(smooth: 0.5)),
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(smooth: 0.5),
+                ],
               ),
               (
-                label: 'sr_in=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(sr_in: 2.0)),
+                label: 'srIn=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(srIn: 2.0),
+                ],
               ),
               (
-                label: 'sr_out=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(sr_out: 2.0)),
+                label: 'srOut=2.0',
+                apply: (e) => [
+                  (e.single as SurroundEffect).copyWith(srOut: 2.0),
+                ],
               ),
               (
                 label: 'srx=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(srx: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(srx: 1.5)],
               ),
               (
                 label: 'sry=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateSurround((s) => s.copyWith(sry: 1.5)),
+                apply: (e) => [(e.single as SurroundEffect).copyWith(sry: 1.5)],
               ),
             ],
           ),
           (
             filter: 'tiltshelf',
-            field: 'tiltshelf',
-            bundle: const AudioEffects(
-              tiltshelf: TiltshelfSettings(enabled: true),
-            ),
+            field: 'tiltshelf_0',
+            bundle: const [TiltshelfEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(f: 3001.0)),
+                apply: (e) => [
+                  (e.single as TiltshelfEffect).copyWith(f: 3001.0),
+                ],
               ),
               (
                 label: 'frequency=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(frequency: 3001.0)),
+                apply: (e) => [
+                  (e.single as TiltshelfEffect).copyWith(frequency: 3001.0),
+                ],
               ),
               (
                 label: 'g=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(g: 1.0)),
+                apply: (e) => [(e.single as TiltshelfEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(gain: 1.0)),
+                apply: (e) => [
+                  (e.single as TiltshelfEffect).copyWith(gain: 1.0),
+                ],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as TiltshelfEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [
+                  (e.single as TiltshelfEffect).copyWith(mix: 0.5),
+                ],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as TiltshelfEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as TiltshelfEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(w: 1.5)),
+                apply: (e) => [(e.single as TiltshelfEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateTiltshelf((s) => s.copyWith(width: 1.5)),
+                apply: (e) => [
+                  (e.single as TiltshelfEffect).copyWith(width: 1.5),
+                ],
               ),
             ],
           ),
           (
             filter: 'treble',
-            field: 'treble',
-            bundle: const AudioEffects(treble: TrebleSettings(enabled: true)),
+            field: 'treble_0',
+            bundle: const [TrebleEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'f=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(f: 3001.0)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(f: 3001.0)],
               ),
               (
                 label: 'frequency=3001.0',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(frequency: 3001.0)),
+                apply: (e) => [
+                  (e.single as TrebleEffect).copyWith(frequency: 3001.0),
+                ],
               ),
               (
                 label: 'g=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(g: 1.0)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(gain: 1.0)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(gain: 1.0)],
               ),
               (
                 label: 'm=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(m: 0.5)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(mix: 0.5)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(mix: 0.5)],
               ),
               (
                 label: 'n=true',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(n: true)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(normalize: true)),
+                apply: (e) => [
+                  (e.single as TrebleEffect).copyWith(normalize: true),
+                ],
               ),
               (
                 label: 'w=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(w: 1.5)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
-                apply: (AudioEffects e) =>
-                    e.updateTreble((s) => s.copyWith(width: 1.5)),
+                apply: (e) => [(e.single as TrebleEffect).copyWith(width: 1.5)],
               ),
             ],
           ),
           (
             filter: 'virtualbass',
-            field: 'virtualbass',
-            bundle: const AudioEffects(
-              virtualbass: VirtualbassSettings(enabled: true),
-            ),
+            field: 'virtualbass_0',
+            bundle: const [VirtualbassEffect()],
             updates: <AfCommandUpdate>[
               (
                 label: 'strength=2.0',
-                apply: (AudioEffects e) =>
-                    e.updateVirtualbass((s) => s.copyWith(strength: 2.0)),
+                apply: (e) => [
+                  (e.single as VirtualbassEffect).copyWith(strength: 2.0),
+                ],
               ),
             ],
           ),
@@ -2437,7 +2510,7 @@ void main() {
         }
 
         // Leave a clean chain behind for whatever runs next.
-        await player.setAudioEffects(const AudioEffects());
+        await player.setAudioEffects(const []);
       },
       timeout: const Timeout(Duration(minutes: 4)),
     );

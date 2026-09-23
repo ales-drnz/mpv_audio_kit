@@ -253,8 +253,8 @@ class DefaultPropertyReactives {
   /// effect owns a reserved label inside the `af` pipeline and is upserted
   /// atomically when the bundle is replaced via `Player.setAudioEffects` /
   /// `updateAudioEffects`.
-  final ReactiveProperty<AudioEffects> audioEffects =
-      ReactiveProperty<AudioEffects>(const AudioEffects());
+  final ReactiveProperty<List<AudioEffect>> audioEffects =
+      ReactiveProperty<List<AudioEffect>>(const []);
 
   /// Audio output lifecycle state (`audio-output-state`).
   final ReactiveProperty<AudioOutputState> audioOutputState =

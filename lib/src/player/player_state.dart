@@ -2,6 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:mpv_audio_kit/src/generated/audio_effects_settings.dart';
 import 'package:mpv_audio_kit/src/internals/unset_sentinel.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
@@ -304,11 +305,11 @@ final class PlayerState {
   /// `failed`). See [AudioOutputState].
   final AudioOutputState audioOutputState;
 
-  /// All DSP effects in mpv's `--af` pipeline, bundled into a single
-  /// atomic configuration object. Set via [Player.setAudioEffects]
-  /// (replace) or [Player.updateAudioEffects] (mutate one or more
-  /// fields). Read live via [PlayerStream.audioEffects].
-  final AudioEffects audioEffects;
+  /// The DSP effects in mpv's `--af` chain, as an ordered list applied
+  /// in order. Set via [Player.setAudioEffects]
+  /// (replace) or [Player.updateAudioEffects] (mapper). Read live via
+  /// [PlayerStream.audioEffects].
+  final List<AudioEffect> audioEffects;
 
   /// Embedded cover art of the currently loaded track, or `null`
   /// when the file has no embedded picture. Refreshes on every
@@ -545,7 +546,7 @@ final class PlayerState {
     this.audioClientName = 'mpv_audio_kit',
     this.audioDriver = 'auto',
     this.audioOutputState = AudioOutputState.closed,
-    this.audioEffects = const AudioEffects(),
+    this.audioEffects = const [],
     this.coverArt,
     this.coverArtAuto = Cover.no,
     this.prefetchPlaylist = false,
@@ -643,7 +644,7 @@ final class PlayerState {
     String? audioClientName,
     String? audioDriver,
     AudioOutputState? audioOutputState,
-    AudioEffects? audioEffects,
+    List<AudioEffect>? audioEffects,
     Object? coverArt = unset,
     Cover? coverArtAuto,
     bool? prefetchPlaylist,
@@ -854,7 +855,7 @@ final class PlayerState {
           other.audioClientName == audioClientName &&
           other.audioDriver == audioDriver &&
           other.audioOutputState == audioOutputState &&
-          other.audioEffects == audioEffects &&
+          listEquals(other.audioEffects, audioEffects) &&
           other.coverArt == coverArt &&
           other.coverArtAuto == coverArtAuto &&
           other.prefetchPlaylist == prefetchPlaylist &&
@@ -952,7 +953,7 @@ final class PlayerState {
     audioClientName,
     audioDriver,
     audioOutputState,
-    audioEffects,
+    Object.hashAll(audioEffects),
     coverArt,
     coverArtAuto,
     prefetchPlaylist,

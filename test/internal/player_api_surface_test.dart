@@ -210,12 +210,13 @@ class _ApiProbe implements PlayerApi {
       _record('rescanExternalFiles');
 
   @override
-  Future<void> setAudioEffects(AudioEffects effects) =>
+  Future<void> setAudioEffects(List<AudioEffect> effects) =>
       _record('setAudioEffects');
 
   @override
-  Future<void> updateAudioEffects(AudioEffects Function(AudioEffects) mapper) =>
-      _record('updateAudioEffects');
+  Future<void> updateAudioEffects(
+    List<AudioEffect> Function(List<AudioEffect>) mapper,
+  ) => _record('updateAudioEffects');
 
   @override
   Future<void> setCoverArtAuto(Cover cover) => _record('setCoverArtAuto');

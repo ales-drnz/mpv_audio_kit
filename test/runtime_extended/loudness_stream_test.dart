@@ -27,12 +27,9 @@ void main() {
     test(
       'stream.loudnessMeter emits live EBU R128 measurements from the chain',
       () async {
-        // The pipeline polls `af-metadata/aek_ebur128/...`; inject the meter
-        // under that label via the raw `custom` slot (the typed `ebur128`
-        // route emits the same label through `toAfChain`).
-        await player.setAudioEffects(
-          const AudioEffects(custom: ['@aek_ebur128:lavfi-ebur128=metadata=1']),
-        );
+        // The pipeline polls `af-metadata/aek_ebur128_0/...`, the label of
+        // the first ebur128 stage in the list.
+        await player.setAudioEffects(const [Ebur128Effect(metadata: true)]);
         await player.play();
 
         // The meter starts at its silence floor (≈ -120.7) until 400 ms of
@@ -54,7 +51,7 @@ void main() {
     test(
       'loudness stream stays silent when the meter is not in the chain',
       () async {
-        await player.setAudioEffects(const AudioEffects());
+        await player.setAudioEffects(const []);
         // Drain any tick already in flight from the previous test, then
         // assert silence over an observation window.
         await Future<void>.delayed(const Duration(milliseconds: 300));

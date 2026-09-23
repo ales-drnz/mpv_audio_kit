@@ -65,7 +65,7 @@ void main() {
       } finally {
         await sub.cancel();
         try {
-          await p.setAudioEffects(const AudioEffects());
+          await p.setAudioEffects(const []);
         } catch (_) {}
       }
     }, timeout: const Timeout(Duration(seconds: 10)));
@@ -74,7 +74,7 @@ void main() {
 
 Future<void> _trySetBogusFilter(Player player, String name) async {
   try {
-    await player.setAudioEffects(AudioEffects(custom: [name]));
+    await player.setAudioEffects([RawAudioEffect(name)]);
   } on MpvException {
     // mpv may reject the live `af` assignment synchronously while also
     // emitting the diagnostic on the log stream; this test only cares about

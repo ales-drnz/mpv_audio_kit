@@ -8,13432 +8,7333 @@
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-typedef ParamCorner = ({String filter, String label, AudioEffects bundle});
+typedef ParamCorner = ({String filter, String label, List<AudioEffect> bundle});
 
 const List<ParamCorner> kFilterParamCorners = [
   (
     filter: 'acompressor',
     label: 'attack=attackMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        attack: AcompressorSettings.attackMin,
-      ),
-    ),
+    bundle: const [AcompressorEffect(attack: AcompressorEffect.attackMin)],
   ),
   (
     filter: 'acompressor',
     label: 'attack=attackDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        attack: AcompressorSettings.attackDefault,
-      ),
-    ),
+    bundle: const [AcompressorEffect(attack: AcompressorEffect.attackDefault)],
   ),
   (
     filter: 'acompressor',
     label: 'attack=attackMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        attack: AcompressorSettings.attackMax,
-      ),
-    ),
+    bundle: const [AcompressorEffect(attack: AcompressorEffect.attackMax)],
   ),
   (
     filter: 'acompressor',
     label: 'knee=kneeMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        knee: AcompressorSettings.kneeMin,
-      ),
-    ),
+    bundle: const [AcompressorEffect(knee: AcompressorEffect.kneeMin)],
   ),
   (
     filter: 'acompressor',
     label: 'knee=kneeDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        knee: AcompressorSettings.kneeDefault,
-      ),
-    ),
+    bundle: const [AcompressorEffect(knee: AcompressorEffect.kneeDefault)],
   ),
   (
     filter: 'acompressor',
     label: 'knee=kneeMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        knee: AcompressorSettings.kneeMax,
-      ),
-    ),
+    bundle: const [AcompressorEffect(knee: AcompressorEffect.kneeMax)],
   ),
   (
     filter: 'acompressor',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        level_in: AcompressorSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [AcompressorEffect(levelIn: AcompressorEffect.levelInMin)],
   ),
   (
     filter: 'acompressor',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        level_in: AcompressorSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [
+      AcompressorEffect(levelIn: AcompressorEffect.levelInDefault),
+    ],
   ),
   (
     filter: 'acompressor',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        level_in: AcompressorSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [AcompressorEffect(levelIn: AcompressorEffect.levelInMax)],
   ),
   (
     filter: 'acompressor',
-    label: 'level_sc=level_scMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        level_sc: AcompressorSettings.level_scMin,
-      ),
-    ),
+    label: 'level_sc=levelScMin',
+    bundle: const [AcompressorEffect(levelSc: AcompressorEffect.levelScMin)],
   ),
   (
     filter: 'acompressor',
-    label: 'level_sc=level_scDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        level_sc: AcompressorSettings.level_scDefault,
-      ),
-    ),
+    label: 'level_sc=levelScDefault',
+    bundle: const [
+      AcompressorEffect(levelSc: AcompressorEffect.levelScDefault),
+    ],
   ),
   (
     filter: 'acompressor',
-    label: 'level_sc=level_scMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        level_sc: AcompressorSettings.level_scMax,
-      ),
-    ),
+    label: 'level_sc=levelScMax',
+    bundle: const [AcompressorEffect(levelSc: AcompressorEffect.levelScMax)],
   ),
   (
     filter: 'acompressor',
     label: 'makeup=makeupMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        makeup: AcompressorSettings.makeupMin,
-      ),
-    ),
+    bundle: const [AcompressorEffect(makeup: AcompressorEffect.makeupMin)],
   ),
   (
     filter: 'acompressor',
     label: 'makeup=makeupDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        makeup: AcompressorSettings.makeupDefault,
-      ),
-    ),
+    bundle: const [AcompressorEffect(makeup: AcompressorEffect.makeupDefault)],
   ),
   (
     filter: 'acompressor',
     label: 'makeup=makeupMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        makeup: AcompressorSettings.makeupMax,
-      ),
-    ),
+    bundle: const [AcompressorEffect(makeup: AcompressorEffect.makeupMax)],
   ),
   (
     filter: 'acompressor',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        mix: AcompressorSettings.mixMin,
-      ),
-    ),
+    bundle: const [AcompressorEffect(mix: AcompressorEffect.mixMin)],
   ),
   (
     filter: 'acompressor',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        mix: AcompressorSettings.mixDefault,
-      ),
-    ),
+    bundle: const [AcompressorEffect(mix: AcompressorEffect.mixDefault)],
   ),
   (
     filter: 'acompressor',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        mix: AcompressorSettings.mixMax,
-      ),
-    ),
+    bundle: const [AcompressorEffect(mix: AcompressorEffect.mixMax)],
   ),
   (
     filter: 'acompressor',
     label: 'ratio=ratioMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        ratio: AcompressorSettings.ratioMin,
-      ),
-    ),
+    bundle: const [AcompressorEffect(ratio: AcompressorEffect.ratioMin)],
   ),
   (
     filter: 'acompressor',
     label: 'ratio=ratioDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        ratio: AcompressorSettings.ratioDefault,
-      ),
-    ),
+    bundle: const [AcompressorEffect(ratio: AcompressorEffect.ratioDefault)],
   ),
   (
     filter: 'acompressor',
     label: 'ratio=ratioMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        ratio: AcompressorSettings.ratioMax,
-      ),
-    ),
+    bundle: const [AcompressorEffect(ratio: AcompressorEffect.ratioMax)],
   ),
   (
     filter: 'acompressor',
     label: 'release=releaseMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        release: AcompressorSettings.releaseMin,
-      ),
-    ),
+    bundle: const [AcompressorEffect(release: AcompressorEffect.releaseMin)],
   ),
   (
     filter: 'acompressor',
     label: 'release=releaseDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        release: AcompressorSettings.releaseDefault,
-      ),
-    ),
+    bundle: const [
+      AcompressorEffect(release: AcompressorEffect.releaseDefault),
+    ],
   ),
   (
     filter: 'acompressor',
     label: 'release=releaseMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        release: AcompressorSettings.releaseMax,
-      ),
-    ),
+    bundle: const [AcompressorEffect(release: AcompressorEffect.releaseMax)],
   ),
   (
     filter: 'acompressor',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        threshold: AcompressorSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [
+      AcompressorEffect(threshold: AcompressorEffect.thresholdMin),
+    ],
   ),
   (
     filter: 'acompressor',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        threshold: AcompressorSettings.thresholdDefault,
-      ),
-    ),
+    bundle: const [
+      AcompressorEffect(threshold: AcompressorEffect.thresholdDefault),
+    ],
   ),
   (
     filter: 'acompressor',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      acompressor: const AcompressorSettings(
-        enabled: true,
-        threshold: AcompressorSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [
+      AcompressorEffect(threshold: AcompressorEffect.thresholdMax),
+    ],
   ),
   (
     filter: 'acontrast',
     label: 'contrast=contrastMin',
-    bundle: const AudioEffects(
-      acontrast: const AcontrastSettings(
-        enabled: true,
-        contrast: AcontrastSettings.contrastMin,
-      ),
-    ),
+    bundle: const [AcontrastEffect(contrast: AcontrastEffect.contrastMin)],
   ),
   (
     filter: 'acontrast',
     label: 'contrast=contrastDefault',
-    bundle: const AudioEffects(
-      acontrast: const AcontrastSettings(
-        enabled: true,
-        contrast: AcontrastSettings.contrastDefault,
-      ),
-    ),
+    bundle: const [AcontrastEffect(contrast: AcontrastEffect.contrastDefault)],
   ),
   (
     filter: 'acontrast',
     label: 'contrast=contrastMax',
-    bundle: const AudioEffects(
-      acontrast: const AcontrastSettings(
-        enabled: true,
-        contrast: AcontrastSettings.contrastMax,
-      ),
-    ),
+    bundle: const [AcontrastEffect(contrast: AcontrastEffect.contrastMax)],
   ),
   (
     filter: 'acrusher',
     label: 'aa=aaMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        aa: AcrusherSettings.aaMin,
-      ),
-    ),
+    bundle: const [AcrusherEffect(aa: AcrusherEffect.aaMin)],
   ),
   (
     filter: 'acrusher',
     label: 'aa=aaDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        aa: AcrusherSettings.aaDefault,
-      ),
-    ),
+    bundle: const [AcrusherEffect(aa: AcrusherEffect.aaDefault)],
   ),
   (
     filter: 'acrusher',
     label: 'aa=aaMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        aa: AcrusherSettings.aaMax,
-      ),
-    ),
+    bundle: const [AcrusherEffect(aa: AcrusherEffect.aaMax)],
   ),
   (
     filter: 'acrusher',
     label: 'bits=bitsMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        bits: AcrusherSettings.bitsMin,
-      ),
-    ),
+    bundle: const [AcrusherEffect(bits: AcrusherEffect.bitsMin)],
   ),
   (
     filter: 'acrusher',
     label: 'bits=bitsDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        bits: AcrusherSettings.bitsDefault,
-      ),
-    ),
+    bundle: const [AcrusherEffect(bits: AcrusherEffect.bitsDefault)],
   ),
   (
     filter: 'acrusher',
     label: 'bits=bitsMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        bits: AcrusherSettings.bitsMax,
-      ),
-    ),
+    bundle: const [AcrusherEffect(bits: AcrusherEffect.bitsMax)],
   ),
   (
     filter: 'acrusher',
     label: 'dc=dcMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        dc: AcrusherSettings.dcMin,
-      ),
-    ),
+    bundle: const [AcrusherEffect(dc: AcrusherEffect.dcMin)],
   ),
   (
     filter: 'acrusher',
     label: 'dc=dcDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        dc: AcrusherSettings.dcDefault,
-      ),
-    ),
+    bundle: const [AcrusherEffect(dc: AcrusherEffect.dcDefault)],
   ),
   (
     filter: 'acrusher',
     label: 'dc=dcMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        dc: AcrusherSettings.dcMax,
-      ),
-    ),
+    bundle: const [AcrusherEffect(dc: AcrusherEffect.dcMax)],
   ),
   (
     filter: 'acrusher',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        level_in: AcrusherSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [AcrusherEffect(levelIn: AcrusherEffect.levelInMin)],
   ),
   (
     filter: 'acrusher',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        level_in: AcrusherSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [AcrusherEffect(levelIn: AcrusherEffect.levelInDefault)],
   ),
   (
     filter: 'acrusher',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        level_in: AcrusherSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [AcrusherEffect(levelIn: AcrusherEffect.levelInMax)],
   ),
   (
     filter: 'acrusher',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        level_out: AcrusherSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [AcrusherEffect(levelOut: AcrusherEffect.levelOutMin)],
   ),
   (
     filter: 'acrusher',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        level_out: AcrusherSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [AcrusherEffect(levelOut: AcrusherEffect.levelOutDefault)],
   ),
   (
     filter: 'acrusher',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        level_out: AcrusherSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [AcrusherEffect(levelOut: AcrusherEffect.levelOutMax)],
   ),
   (
     filter: 'acrusher',
     label: 'lforange=lforangeMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        lforange: AcrusherSettings.lforangeMin,
-      ),
-    ),
+    bundle: const [AcrusherEffect(lforange: AcrusherEffect.lforangeMin)],
   ),
   (
     filter: 'acrusher',
     label: 'lforange=lforangeDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        lforange: AcrusherSettings.lforangeDefault,
-      ),
-    ),
+    bundle: const [AcrusherEffect(lforange: AcrusherEffect.lforangeDefault)],
   ),
   (
     filter: 'acrusher',
     label: 'lforange=lforangeMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        lforange: AcrusherSettings.lforangeMax,
-      ),
-    ),
+    bundle: const [AcrusherEffect(lforange: AcrusherEffect.lforangeMax)],
   ),
   (
     filter: 'acrusher',
     label: 'lforate=lforateMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        lforate: AcrusherSettings.lforateMin,
-      ),
-    ),
+    bundle: const [AcrusherEffect(lforate: AcrusherEffect.lforateMin)],
   ),
   (
     filter: 'acrusher',
     label: 'lforate=lforateDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        lforate: AcrusherSettings.lforateDefault,
-      ),
-    ),
+    bundle: const [AcrusherEffect(lforate: AcrusherEffect.lforateDefault)],
   ),
   (
     filter: 'acrusher',
     label: 'lforate=lforateMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        lforate: AcrusherSettings.lforateMax,
-      ),
-    ),
+    bundle: const [AcrusherEffect(lforate: AcrusherEffect.lforateMax)],
   ),
   (
     filter: 'acrusher',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        mix: AcrusherSettings.mixMin,
-      ),
-    ),
+    bundle: const [AcrusherEffect(mix: AcrusherEffect.mixMin)],
   ),
   (
     filter: 'acrusher',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        mix: AcrusherSettings.mixDefault,
-      ),
-    ),
+    bundle: const [AcrusherEffect(mix: AcrusherEffect.mixDefault)],
   ),
   (
     filter: 'acrusher',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        mix: AcrusherSettings.mixMax,
-      ),
-    ),
+    bundle: const [AcrusherEffect(mix: AcrusherEffect.mixMax)],
   ),
   (
     filter: 'acrusher',
     label: 'samples=samplesMin',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        samples: AcrusherSettings.samplesMin,
-      ),
-    ),
+    bundle: const [AcrusherEffect(samples: AcrusherEffect.samplesMin)],
   ),
   (
     filter: 'acrusher',
     label: 'samples=samplesDefault',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        samples: AcrusherSettings.samplesDefault,
-      ),
-    ),
+    bundle: const [AcrusherEffect(samples: AcrusherEffect.samplesDefault)],
   ),
   (
     filter: 'acrusher',
     label: 'samples=samplesMax',
-    bundle: const AudioEffects(
-      acrusher: const AcrusherSettings(
-        enabled: true,
-        samples: AcrusherSettings.samplesMax,
-      ),
-    ),
+    bundle: const [AcrusherEffect(samples: AcrusherEffect.samplesMax)],
   ),
   (
     filter: 'adeclick',
     label: 'a=aMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, a: AdeclickSettings.aMin),
-    ),
+    bundle: const [AdeclickEffect(a: AdeclickEffect.aMin)],
   ),
   (
     filter: 'adeclick',
     label: 'a=aDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        a: AdeclickSettings.aDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(a: AdeclickEffect.aDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'a=aMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, a: AdeclickSettings.aMax),
-    ),
+    bundle: const [AdeclickEffect(a: AdeclickEffect.aMax)],
   ),
   (
     filter: 'adeclick',
     label: 'arorder=arorderMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        arorder: AdeclickSettings.arorderMin,
-      ),
-    ),
+    bundle: const [AdeclickEffect(arorder: AdeclickEffect.arorderMin)],
   ),
   (
     filter: 'adeclick',
     label: 'arorder=arorderDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        arorder: AdeclickSettings.arorderDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(arorder: AdeclickEffect.arorderDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'arorder=arorderMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        arorder: AdeclickSettings.arorderMax,
-      ),
-    ),
+    bundle: const [AdeclickEffect(arorder: AdeclickEffect.arorderMax)],
   ),
   (
     filter: 'adeclick',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, b: AdeclickSettings.bMin),
-    ),
+    bundle: const [AdeclickEffect(b: AdeclickEffect.bMin)],
   ),
   (
     filter: 'adeclick',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        b: AdeclickSettings.bDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(b: AdeclickEffect.bDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, b: AdeclickSettings.bMax),
-    ),
+    bundle: const [AdeclickEffect(b: AdeclickEffect.bMax)],
   ),
   (
     filter: 'adeclick',
     label: 'burst=burstMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        burst: AdeclickSettings.burstMin,
-      ),
-    ),
+    bundle: const [AdeclickEffect(burst: AdeclickEffect.burstMin)],
   ),
   (
     filter: 'adeclick',
     label: 'burst=burstDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        burst: AdeclickSettings.burstDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(burst: AdeclickEffect.burstDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'burst=burstMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        burst: AdeclickSettings.burstMax,
-      ),
-    ),
+    bundle: const [AdeclickEffect(burst: AdeclickEffect.burstMax)],
   ),
   (
     filter: 'adeclick',
     label: 'o=oMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, o: AdeclickSettings.oMin),
-    ),
+    bundle: const [AdeclickEffect(o: AdeclickEffect.oMin)],
   ),
   (
     filter: 'adeclick',
     label: 'o=oDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        o: AdeclickSettings.oDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(o: AdeclickEffect.oDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'o=oMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, o: AdeclickSettings.oMax),
-    ),
+    bundle: const [AdeclickEffect(o: AdeclickEffect.oMax)],
   ),
   (
     filter: 'adeclick',
     label: 'overlap=overlapMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        overlap: AdeclickSettings.overlapMin,
-      ),
-    ),
+    bundle: const [AdeclickEffect(overlap: AdeclickEffect.overlapMin)],
   ),
   (
     filter: 'adeclick',
     label: 'overlap=overlapDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        overlap: AdeclickSettings.overlapDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(overlap: AdeclickEffect.overlapDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'overlap=overlapMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        overlap: AdeclickSettings.overlapMax,
-      ),
-    ),
+    bundle: const [AdeclickEffect(overlap: AdeclickEffect.overlapMax)],
   ),
   (
     filter: 'adeclick',
     label: 't=tMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, t: AdeclickSettings.tMin),
-    ),
+    bundle: const [AdeclickEffect(t: AdeclickEffect.tMin)],
   ),
   (
     filter: 'adeclick',
     label: 't=tDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        t: AdeclickSettings.tDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(t: AdeclickEffect.tDefault)],
   ),
   (
     filter: 'adeclick',
     label: 't=tMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, t: AdeclickSettings.tMax),
-    ),
+    bundle: const [AdeclickEffect(t: AdeclickEffect.tMax)],
   ),
   (
     filter: 'adeclick',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        threshold: AdeclickSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [AdeclickEffect(threshold: AdeclickEffect.thresholdMin)],
   ),
   (
     filter: 'adeclick',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        threshold: AdeclickSettings.thresholdDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(threshold: AdeclickEffect.thresholdDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        threshold: AdeclickSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [AdeclickEffect(threshold: AdeclickEffect.thresholdMax)],
   ),
   (
     filter: 'adeclick',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, w: AdeclickSettings.wMin),
-    ),
+    bundle: const [AdeclickEffect(w: AdeclickEffect.wMin)],
   ),
   (
     filter: 'adeclick',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        w: AdeclickSettings.wDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(w: AdeclickEffect.wDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(enabled: true, w: AdeclickSettings.wMax),
-    ),
+    bundle: const [AdeclickEffect(w: AdeclickEffect.wMax)],
   ),
   (
     filter: 'adeclick',
     label: 'window=windowMin',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        window: AdeclickSettings.windowMin,
-      ),
-    ),
+    bundle: const [AdeclickEffect(window: AdeclickEffect.windowMin)],
   ),
   (
     filter: 'adeclick',
     label: 'window=windowDefault',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        window: AdeclickSettings.windowDefault,
-      ),
-    ),
+    bundle: const [AdeclickEffect(window: AdeclickEffect.windowDefault)],
   ),
   (
     filter: 'adeclick',
     label: 'window=windowMax',
-    bundle: const AudioEffects(
-      adeclick: const AdeclickSettings(
-        enabled: true,
-        window: AdeclickSettings.windowMax,
-      ),
-    ),
+    bundle: const [AdeclickEffect(window: AdeclickEffect.windowMax)],
   ),
   (
     filter: 'adeclip',
     label: 'a=aMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, a: AdeclipSettings.aMin),
-    ),
+    bundle: const [AdeclipEffect(a: AdeclipEffect.aMin)],
   ),
   (
     filter: 'adeclip',
     label: 'a=aDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        a: AdeclipSettings.aDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(a: AdeclipEffect.aDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'a=aMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, a: AdeclipSettings.aMax),
-    ),
+    bundle: const [AdeclipEffect(a: AdeclipEffect.aMax)],
   ),
   (
     filter: 'adeclip',
     label: 'arorder=arorderMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        arorder: AdeclipSettings.arorderMin,
-      ),
-    ),
+    bundle: const [AdeclipEffect(arorder: AdeclipEffect.arorderMin)],
   ),
   (
     filter: 'adeclip',
     label: 'arorder=arorderDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        arorder: AdeclipSettings.arorderDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(arorder: AdeclipEffect.arorderDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'arorder=arorderMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        arorder: AdeclipSettings.arorderMax,
-      ),
-    ),
+    bundle: const [AdeclipEffect(arorder: AdeclipEffect.arorderMax)],
   ),
   (
     filter: 'adeclip',
     label: 'hsize=hsizeMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        hsize: AdeclipSettings.hsizeMin,
-      ),
-    ),
+    bundle: const [AdeclipEffect(hsize: AdeclipEffect.hsizeMin)],
   ),
   (
     filter: 'adeclip',
     label: 'hsize=hsizeDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        hsize: AdeclipSettings.hsizeDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(hsize: AdeclipEffect.hsizeDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'hsize=hsizeMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        hsize: AdeclipSettings.hsizeMax,
-      ),
-    ),
+    bundle: const [AdeclipEffect(hsize: AdeclipEffect.hsizeMax)],
   ),
   (
     filter: 'adeclip',
     label: 'n=nMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, n: AdeclipSettings.nMin),
-    ),
+    bundle: const [AdeclipEffect(n: AdeclipEffect.nMin)],
   ),
   (
     filter: 'adeclip',
     label: 'n=nDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        n: AdeclipSettings.nDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(n: AdeclipEffect.nDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'n=nMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, n: AdeclipSettings.nMax),
-    ),
+    bundle: const [AdeclipEffect(n: AdeclipEffect.nMax)],
   ),
   (
     filter: 'adeclip',
     label: 'o=oMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, o: AdeclipSettings.oMin),
-    ),
+    bundle: const [AdeclipEffect(o: AdeclipEffect.oMin)],
   ),
   (
     filter: 'adeclip',
     label: 'o=oDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        o: AdeclipSettings.oDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(o: AdeclipEffect.oDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'o=oMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, o: AdeclipSettings.oMax),
-    ),
+    bundle: const [AdeclipEffect(o: AdeclipEffect.oMax)],
   ),
   (
     filter: 'adeclip',
     label: 'overlap=overlapMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        overlap: AdeclipSettings.overlapMin,
-      ),
-    ),
+    bundle: const [AdeclipEffect(overlap: AdeclipEffect.overlapMin)],
   ),
   (
     filter: 'adeclip',
     label: 'overlap=overlapDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        overlap: AdeclipSettings.overlapDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(overlap: AdeclipEffect.overlapDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'overlap=overlapMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        overlap: AdeclipSettings.overlapMax,
-      ),
-    ),
+    bundle: const [AdeclipEffect(overlap: AdeclipEffect.overlapMax)],
   ),
   (
     filter: 'adeclip',
     label: 't=tMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, t: AdeclipSettings.tMin),
-    ),
+    bundle: const [AdeclipEffect(t: AdeclipEffect.tMin)],
   ),
   (
     filter: 'adeclip',
     label: 't=tDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        t: AdeclipSettings.tDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(t: AdeclipEffect.tDefault)],
   ),
   (
     filter: 'adeclip',
     label: 't=tMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, t: AdeclipSettings.tMax),
-    ),
+    bundle: const [AdeclipEffect(t: AdeclipEffect.tMax)],
   ),
   (
     filter: 'adeclip',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        threshold: AdeclipSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [AdeclipEffect(threshold: AdeclipEffect.thresholdMin)],
   ),
   (
     filter: 'adeclip',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        threshold: AdeclipSettings.thresholdDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(threshold: AdeclipEffect.thresholdDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        threshold: AdeclipSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [AdeclipEffect(threshold: AdeclipEffect.thresholdMax)],
   ),
   (
     filter: 'adeclip',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, w: AdeclipSettings.wMin),
-    ),
+    bundle: const [AdeclipEffect(w: AdeclipEffect.wMin)],
   ),
   (
     filter: 'adeclip',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        w: AdeclipSettings.wDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(w: AdeclipEffect.wDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(enabled: true, w: AdeclipSettings.wMax),
-    ),
+    bundle: const [AdeclipEffect(w: AdeclipEffect.wMax)],
   ),
   (
     filter: 'adeclip',
     label: 'window=windowMin',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        window: AdeclipSettings.windowMin,
-      ),
-    ),
+    bundle: const [AdeclipEffect(window: AdeclipEffect.windowMin)],
   ),
   (
     filter: 'adeclip',
     label: 'window=windowDefault',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        window: AdeclipSettings.windowDefault,
-      ),
-    ),
+    bundle: const [AdeclipEffect(window: AdeclipEffect.windowDefault)],
   ),
   (
     filter: 'adeclip',
     label: 'window=windowMax',
-    bundle: const AudioEffects(
-      adeclip: const AdeclipSettings(
-        enabled: true,
-        window: AdeclipSettings.windowMax,
-      ),
-    ),
+    bundle: const [AdeclipEffect(window: AdeclipEffect.windowMax)],
   ),
   (
     filter: 'adecorrelate',
     label: 'seed=seedMin',
-    bundle: const AudioEffects(
-      adecorrelate: const AdecorrelateSettings(
-        enabled: true,
-        seed: AdecorrelateSettings.seedMin,
-      ),
-    ),
+    bundle: const [AdecorrelateEffect(seed: AdecorrelateEffect.seedMin)],
   ),
   (
     filter: 'adecorrelate',
     label: 'seed=seedDefault',
-    bundle: const AudioEffects(
-      adecorrelate: const AdecorrelateSettings(
-        enabled: true,
-        seed: AdecorrelateSettings.seedDefault,
-      ),
-    ),
+    bundle: const [AdecorrelateEffect(seed: AdecorrelateEffect.seedDefault)],
   ),
   (
     filter: 'adecorrelate',
     label: 'seed=seedMax',
-    bundle: const AudioEffects(
-      adecorrelate: const AdecorrelateSettings(
-        enabled: true,
-        seed: AdecorrelateSettings.seedMax,
-      ),
-    ),
+    bundle: const [AdecorrelateEffect(seed: AdecorrelateEffect.seedMax)],
   ),
   (
     filter: 'adecorrelate',
     label: 'stages=stagesMin',
-    bundle: const AudioEffects(
-      adecorrelate: const AdecorrelateSettings(
-        enabled: true,
-        stages: AdecorrelateSettings.stagesMin,
-      ),
-    ),
+    bundle: const [AdecorrelateEffect(stages: AdecorrelateEffect.stagesMin)],
   ),
   (
     filter: 'adecorrelate',
     label: 'stages=stagesDefault',
-    bundle: const AudioEffects(
-      adecorrelate: const AdecorrelateSettings(
-        enabled: true,
-        stages: AdecorrelateSettings.stagesDefault,
-      ),
-    ),
+    bundle: const [
+      AdecorrelateEffect(stages: AdecorrelateEffect.stagesDefault),
+    ],
   ),
   (
     filter: 'adecorrelate',
     label: 'stages=stagesMax',
-    bundle: const AudioEffects(
-      adecorrelate: const AdecorrelateSettings(
-        enabled: true,
-        stages: AdecorrelateSettings.stagesMax,
-      ),
-    ),
+    bundle: const [AdecorrelateEffect(stages: AdecorrelateEffect.stagesMax)],
   ),
   (
     filter: 'adenorm',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      adenorm: const AdenormSettings(
-        enabled: true,
-        level: AdenormSettings.levelMin,
-      ),
-    ),
+    bundle: const [AdenormEffect(level: AdenormEffect.levelMin)],
   ),
   (
     filter: 'adenorm',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      adenorm: const AdenormSettings(
-        enabled: true,
-        level: AdenormSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AdenormEffect(level: AdenormEffect.levelDefault)],
   ),
   (
     filter: 'adenorm',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      adenorm: const AdenormSettings(
-        enabled: true,
-        level: AdenormSettings.levelMax,
-      ),
-    ),
+    bundle: const [AdenormEffect(level: AdenormEffect.levelMax)],
   ),
   (
     filter: 'adrc',
     label: 'attack=attackMin',
-    bundle: const AudioEffects(
-      adrc: const AdrcSettings(enabled: true, attack: AdrcSettings.attackMin),
-    ),
+    bundle: const [AdrcEffect(attack: AdrcEffect.attackMin)],
   ),
   (
     filter: 'adrc',
     label: 'attack=attackDefault',
-    bundle: const AudioEffects(
-      adrc: const AdrcSettings(
-        enabled: true,
-        attack: AdrcSettings.attackDefault,
-      ),
-    ),
+    bundle: const [AdrcEffect(attack: AdrcEffect.attackDefault)],
   ),
   (
     filter: 'adrc',
     label: 'attack=attackMax',
-    bundle: const AudioEffects(
-      adrc: const AdrcSettings(enabled: true, attack: AdrcSettings.attackMax),
-    ),
+    bundle: const [AdrcEffect(attack: AdrcEffect.attackMax)],
   ),
   (
     filter: 'adrc',
     label: 'release=releaseMin',
-    bundle: const AudioEffects(
-      adrc: const AdrcSettings(enabled: true, release: AdrcSettings.releaseMin),
-    ),
+    bundle: const [AdrcEffect(release: AdrcEffect.releaseMin)],
   ),
   (
     filter: 'adrc',
     label: 'release=releaseDefault',
-    bundle: const AudioEffects(
-      adrc: const AdrcSettings(
-        enabled: true,
-        release: AdrcSettings.releaseDefault,
-      ),
-    ),
+    bundle: const [AdrcEffect(release: AdrcEffect.releaseDefault)],
   ),
   (
     filter: 'adrc',
     label: 'release=releaseMax',
-    bundle: const AudioEffects(
-      adrc: const AdrcSettings(enabled: true, release: AdrcSettings.releaseMax),
-    ),
+    bundle: const [AdrcEffect(release: AdrcEffect.releaseMax)],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'attack=attackMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        attack: AdynamicequalizerSettings.attackMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(attack: AdynamicequalizerEffect.attackMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'attack=attackDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        attack: AdynamicequalizerSettings.attackDefault,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(attack: AdynamicequalizerEffect.attackDefault),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'attack=attackMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        attack: AdynamicequalizerSettings.attackMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(attack: AdynamicequalizerEffect.attackMax),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'dfrequency=dfrequencyMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        dfrequency: AdynamicequalizerSettings.dfrequencyMin,
+    bundle: const [
+      AdynamicequalizerEffect(
+        dfrequency: AdynamicequalizerEffect.dfrequencyMin,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'dfrequency=dfrequencyDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        dfrequency: AdynamicequalizerSettings.dfrequencyDefault,
+    bundle: const [
+      AdynamicequalizerEffect(
+        dfrequency: AdynamicequalizerEffect.dfrequencyDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'dfrequency=dfrequencyMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        dfrequency: AdynamicequalizerSettings.dfrequencyMax,
+    bundle: const [
+      AdynamicequalizerEffect(
+        dfrequency: AdynamicequalizerEffect.dfrequencyMax,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'dqfactor=dqfactorMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        dqfactor: AdynamicequalizerSettings.dqfactorMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(dqfactor: AdynamicequalizerEffect.dqfactorMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'dqfactor=dqfactorDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        dqfactor: AdynamicequalizerSettings.dqfactorDefault,
+    bundle: const [
+      AdynamicequalizerEffect(
+        dqfactor: AdynamicequalizerEffect.dqfactorDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'dqfactor=dqfactorMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        dqfactor: AdynamicequalizerSettings.dqfactorMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(dqfactor: AdynamicequalizerEffect.dqfactorMax),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'makeup=makeupMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        makeup: AdynamicequalizerSettings.makeupMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(makeup: AdynamicequalizerEffect.makeupMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'makeup=makeupDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        makeup: AdynamicequalizerSettings.makeupDefault,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(makeup: AdynamicequalizerEffect.makeupDefault),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'makeup=makeupMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        makeup: AdynamicequalizerSettings.makeupMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(makeup: AdynamicequalizerEffect.makeupMax),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'range=rangeMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        range: AdynamicequalizerSettings.rangeMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(range: AdynamicequalizerEffect.rangeMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'range=rangeDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        range: AdynamicequalizerSettings.rangeDefault,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(range: AdynamicequalizerEffect.rangeDefault),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'range=rangeMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        range: AdynamicequalizerSettings.rangeMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(range: AdynamicequalizerEffect.rangeMax),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'ratio=ratioMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        ratio: AdynamicequalizerSettings.ratioMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(ratio: AdynamicequalizerEffect.ratioMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'ratio=ratioDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        ratio: AdynamicequalizerSettings.ratioDefault,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(ratio: AdynamicequalizerEffect.ratioDefault),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'ratio=ratioMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        ratio: AdynamicequalizerSettings.ratioMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(ratio: AdynamicequalizerEffect.ratioMax),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'release=releaseMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        release: AdynamicequalizerSettings.releaseMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(release: AdynamicequalizerEffect.releaseMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'release=releaseDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        release: AdynamicequalizerSettings.releaseDefault,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(release: AdynamicequalizerEffect.releaseDefault),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'release=releaseMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        release: AdynamicequalizerSettings.releaseMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(release: AdynamicequalizerEffect.releaseMax),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'tfrequency=tfrequencyMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        tfrequency: AdynamicequalizerSettings.tfrequencyMin,
+    bundle: const [
+      AdynamicequalizerEffect(
+        tfrequency: AdynamicequalizerEffect.tfrequencyMin,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'tfrequency=tfrequencyDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        tfrequency: AdynamicequalizerSettings.tfrequencyDefault,
+    bundle: const [
+      AdynamicequalizerEffect(
+        tfrequency: AdynamicequalizerEffect.tfrequencyDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'tfrequency=tfrequencyMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        tfrequency: AdynamicequalizerSettings.tfrequencyMax,
+    bundle: const [
+      AdynamicequalizerEffect(
+        tfrequency: AdynamicequalizerEffect.tfrequencyMax,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        threshold: AdynamicequalizerSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(threshold: AdynamicequalizerEffect.thresholdMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        threshold: AdynamicequalizerSettings.thresholdDefault,
+    bundle: const [
+      AdynamicequalizerEffect(
+        threshold: AdynamicequalizerEffect.thresholdDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        threshold: AdynamicequalizerSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(threshold: AdynamicequalizerEffect.thresholdMax),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'tqfactor=tqfactorMin',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        tqfactor: AdynamicequalizerSettings.tqfactorMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(tqfactor: AdynamicequalizerEffect.tqfactorMin),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'tqfactor=tqfactorDefault',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        tqfactor: AdynamicequalizerSettings.tqfactorDefault,
+    bundle: const [
+      AdynamicequalizerEffect(
+        tqfactor: AdynamicequalizerEffect.tqfactorDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicequalizer',
     label: 'tqfactor=tqfactorMax',
-    bundle: const AudioEffects(
-      adynamicequalizer: const AdynamicequalizerSettings(
-        enabled: true,
-        tqfactor: AdynamicequalizerSettings.tqfactorMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicequalizerEffect(tqfactor: AdynamicequalizerEffect.tqfactorMax),
+    ],
   ),
   (
     filter: 'adynamicsmooth',
     label: 'basefreq=basefreqMin',
-    bundle: const AudioEffects(
-      adynamicsmooth: const AdynamicsmoothSettings(
-        enabled: true,
-        basefreq: AdynamicsmoothSettings.basefreqMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicsmoothEffect(basefreq: AdynamicsmoothEffect.basefreqMin),
+    ],
   ),
   (
     filter: 'adynamicsmooth',
     label: 'basefreq=basefreqDefault',
-    bundle: const AudioEffects(
-      adynamicsmooth: const AdynamicsmoothSettings(
-        enabled: true,
-        basefreq: AdynamicsmoothSettings.basefreqDefault,
-      ),
-    ),
+    bundle: const [
+      AdynamicsmoothEffect(basefreq: AdynamicsmoothEffect.basefreqDefault),
+    ],
   ),
   (
     filter: 'adynamicsmooth',
     label: 'basefreq=basefreqMax',
-    bundle: const AudioEffects(
-      adynamicsmooth: const AdynamicsmoothSettings(
-        enabled: true,
-        basefreq: AdynamicsmoothSettings.basefreqMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicsmoothEffect(basefreq: AdynamicsmoothEffect.basefreqMax),
+    ],
   ),
   (
     filter: 'adynamicsmooth',
     label: 'sensitivity=sensitivityMin',
-    bundle: const AudioEffects(
-      adynamicsmooth: const AdynamicsmoothSettings(
-        enabled: true,
-        sensitivity: AdynamicsmoothSettings.sensitivityMin,
-      ),
-    ),
+    bundle: const [
+      AdynamicsmoothEffect(sensitivity: AdynamicsmoothEffect.sensitivityMin),
+    ],
   ),
   (
     filter: 'adynamicsmooth',
     label: 'sensitivity=sensitivityDefault',
-    bundle: const AudioEffects(
-      adynamicsmooth: const AdynamicsmoothSettings(
-        enabled: true,
-        sensitivity: AdynamicsmoothSettings.sensitivityDefault,
+    bundle: const [
+      AdynamicsmoothEffect(
+        sensitivity: AdynamicsmoothEffect.sensitivityDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'adynamicsmooth',
     label: 'sensitivity=sensitivityMax',
-    bundle: const AudioEffects(
-      adynamicsmooth: const AdynamicsmoothSettings(
-        enabled: true,
-        sensitivity: AdynamicsmoothSettings.sensitivityMax,
-      ),
-    ),
+    bundle: const [
+      AdynamicsmoothEffect(sensitivity: AdynamicsmoothEffect.sensitivityMax),
+    ],
   ),
   (
     filter: 'aecho',
-    label: 'in_gain=in_gainMin',
-    bundle: const AudioEffects(
-      aecho: const AechoSettings(
-        enabled: true,
-        in_gain: AechoSettings.in_gainMin,
-      ),
-    ),
+    label: 'in_gain=inGainMin',
+    bundle: const [AechoEffect(inGain: AechoEffect.inGainMin)],
   ),
   (
     filter: 'aecho',
-    label: 'in_gain=in_gainDefault',
-    bundle: const AudioEffects(
-      aecho: const AechoSettings(
-        enabled: true,
-        in_gain: AechoSettings.in_gainDefault,
-      ),
-    ),
+    label: 'in_gain=inGainDefault',
+    bundle: const [AechoEffect(inGain: AechoEffect.inGainDefault)],
   ),
   (
     filter: 'aecho',
-    label: 'in_gain=in_gainMax',
-    bundle: const AudioEffects(
-      aecho: const AechoSettings(
-        enabled: true,
-        in_gain: AechoSettings.in_gainMax,
-      ),
-    ),
+    label: 'in_gain=inGainMax',
+    bundle: const [AechoEffect(inGain: AechoEffect.inGainMax)],
   ),
   (
     filter: 'aecho',
-    label: 'out_gain=out_gainMin',
-    bundle: const AudioEffects(
-      aecho: const AechoSettings(
-        enabled: true,
-        out_gain: AechoSettings.out_gainMin,
-      ),
-    ),
+    label: 'out_gain=outGainMin',
+    bundle: const [AechoEffect(outGain: AechoEffect.outGainMin)],
   ),
   (
     filter: 'aecho',
-    label: 'out_gain=out_gainDefault',
-    bundle: const AudioEffects(
-      aecho: const AechoSettings(
-        enabled: true,
-        out_gain: AechoSettings.out_gainDefault,
-      ),
-    ),
+    label: 'out_gain=outGainDefault',
+    bundle: const [AechoEffect(outGain: AechoEffect.outGainDefault)],
   ),
   (
     filter: 'aecho',
-    label: 'out_gain=out_gainMax',
-    bundle: const AudioEffects(
-      aecho: const AechoSettings(
-        enabled: true,
-        out_gain: AechoSettings.out_gainMax,
-      ),
-    ),
+    label: 'out_gain=outGainMax',
+    bundle: const [AechoEffect(outGain: AechoEffect.outGainMax)],
   ),
   (
     filter: 'aemphasis',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      aemphasis: const AemphasisSettings(
-        enabled: true,
-        level_in: AemphasisSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [AemphasisEffect(levelIn: AemphasisEffect.levelInMin)],
   ),
   (
     filter: 'aemphasis',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      aemphasis: const AemphasisSettings(
-        enabled: true,
-        level_in: AemphasisSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [AemphasisEffect(levelIn: AemphasisEffect.levelInDefault)],
   ),
   (
     filter: 'aemphasis',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      aemphasis: const AemphasisSettings(
-        enabled: true,
-        level_in: AemphasisSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [AemphasisEffect(levelIn: AemphasisEffect.levelInMax)],
   ),
   (
     filter: 'aemphasis',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      aemphasis: const AemphasisSettings(
-        enabled: true,
-        level_out: AemphasisSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [AemphasisEffect(levelOut: AemphasisEffect.levelOutMin)],
   ),
   (
     filter: 'aemphasis',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      aemphasis: const AemphasisSettings(
-        enabled: true,
-        level_out: AemphasisSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [AemphasisEffect(levelOut: AemphasisEffect.levelOutDefault)],
   ),
   (
     filter: 'aemphasis',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      aemphasis: const AemphasisSettings(
-        enabled: true,
-        level_out: AemphasisSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [AemphasisEffect(levelOut: AemphasisEffect.levelOutMax)],
   ),
   (
     filter: 'aexciter',
     label: 'amount=amountMin',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        amount: AexciterSettings.amountMin,
-      ),
-    ),
+    bundle: const [AexciterEffect(amount: AexciterEffect.amountMin)],
   ),
   (
     filter: 'aexciter',
     label: 'amount=amountDefault',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        amount: AexciterSettings.amountDefault,
-      ),
-    ),
+    bundle: const [AexciterEffect(amount: AexciterEffect.amountDefault)],
   ),
   (
     filter: 'aexciter',
     label: 'amount=amountMax',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        amount: AexciterSettings.amountMax,
-      ),
-    ),
+    bundle: const [AexciterEffect(amount: AexciterEffect.amountMax)],
   ),
   (
     filter: 'aexciter',
     label: 'blend=blendMin',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        blend: AexciterSettings.blendMin,
-      ),
-    ),
+    bundle: const [AexciterEffect(blend: AexciterEffect.blendMin)],
   ),
   (
     filter: 'aexciter',
     label: 'blend=blendDefault',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        blend: AexciterSettings.blendDefault,
-      ),
-    ),
+    bundle: const [AexciterEffect(blend: AexciterEffect.blendDefault)],
   ),
   (
     filter: 'aexciter',
     label: 'blend=blendMax',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        blend: AexciterSettings.blendMax,
-      ),
-    ),
+    bundle: const [AexciterEffect(blend: AexciterEffect.blendMax)],
   ),
   (
     filter: 'aexciter',
     label: 'ceil=ceilMin',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        ceil: AexciterSettings.ceilMin,
-      ),
-    ),
+    bundle: const [AexciterEffect(ceil: AexciterEffect.ceilMin)],
   ),
   (
     filter: 'aexciter',
     label: 'ceil=ceilDefault',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        ceil: AexciterSettings.ceilDefault,
-      ),
-    ),
+    bundle: const [AexciterEffect(ceil: AexciterEffect.ceilDefault)],
   ),
   (
     filter: 'aexciter',
     label: 'ceil=ceilMax',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        ceil: AexciterSettings.ceilMax,
-      ),
-    ),
+    bundle: const [AexciterEffect(ceil: AexciterEffect.ceilMax)],
   ),
   (
     filter: 'aexciter',
     label: 'drive=driveMin',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        drive: AexciterSettings.driveMin,
-      ),
-    ),
+    bundle: const [AexciterEffect(drive: AexciterEffect.driveMin)],
   ),
   (
     filter: 'aexciter',
     label: 'drive=driveDefault',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        drive: AexciterSettings.driveDefault,
-      ),
-    ),
+    bundle: const [AexciterEffect(drive: AexciterEffect.driveDefault)],
   ),
   (
     filter: 'aexciter',
     label: 'drive=driveMax',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        drive: AexciterSettings.driveMax,
-      ),
-    ),
+    bundle: const [AexciterEffect(drive: AexciterEffect.driveMax)],
   ),
   (
     filter: 'aexciter',
     label: 'freq=freqMin',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        freq: AexciterSettings.freqMin,
-      ),
-    ),
+    bundle: const [AexciterEffect(freq: AexciterEffect.freqMin)],
   ),
   (
     filter: 'aexciter',
     label: 'freq=freqDefault',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        freq: AexciterSettings.freqDefault,
-      ),
-    ),
+    bundle: const [AexciterEffect(freq: AexciterEffect.freqDefault)],
   ),
   (
     filter: 'aexciter',
     label: 'freq=freqMax',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        freq: AexciterSettings.freqMax,
-      ),
-    ),
+    bundle: const [AexciterEffect(freq: AexciterEffect.freqMax)],
   ),
   (
     filter: 'aexciter',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        level_in: AexciterSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [AexciterEffect(levelIn: AexciterEffect.levelInMin)],
   ),
   (
     filter: 'aexciter',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        level_in: AexciterSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [AexciterEffect(levelIn: AexciterEffect.levelInDefault)],
   ),
   (
     filter: 'aexciter',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        level_in: AexciterSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [AexciterEffect(levelIn: AexciterEffect.levelInMax)],
   ),
   (
     filter: 'aexciter',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        level_out: AexciterSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [AexciterEffect(levelOut: AexciterEffect.levelOutMin)],
   ),
   (
     filter: 'aexciter',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        level_out: AexciterSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [AexciterEffect(levelOut: AexciterEffect.levelOutDefault)],
   ),
   (
     filter: 'aexciter',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      aexciter: const AexciterSettings(
-        enabled: true,
-        level_out: AexciterSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [AexciterEffect(levelOut: AexciterEffect.levelOutMax)],
   ),
   (
     filter: 'afade',
-    label: 'nb_samples=nb_samplesMin',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        nb_samples: AfadeSettings.nb_samplesMin,
-      ),
-    ),
+    label: 'nb_samples=nbSamplesMin',
+    bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesMin)],
   ),
   (
     filter: 'afade',
-    label: 'nb_samples=nb_samplesDefault',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        nb_samples: AfadeSettings.nb_samplesDefault,
-      ),
-    ),
+    label: 'nb_samples=nbSamplesDefault',
+    bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesDefault)],
   ),
   (
     filter: 'afade',
-    label: 'nb_samples=nb_samplesMax',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        nb_samples: AfadeSettings.nb_samplesMax,
-      ),
-    ),
+    label: 'nb_samples=nbSamplesMax',
+    bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesMax)],
   ),
   (
     filter: 'afade',
     label: 'ns=nsMin',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, ns: AfadeSettings.nsMin),
-    ),
+    bundle: const [AfadeEffect(ns: AfadeEffect.nsMin)],
   ),
   (
     filter: 'afade',
     label: 'ns=nsDefault',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, ns: AfadeSettings.nsDefault),
-    ),
+    bundle: const [AfadeEffect(ns: AfadeEffect.nsDefault)],
   ),
   (
     filter: 'afade',
     label: 'ns=nsMax',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, ns: AfadeSettings.nsMax),
-    ),
+    bundle: const [AfadeEffect(ns: AfadeEffect.nsMax)],
   ),
   (
     filter: 'afade',
     label: 'silence=silenceMin',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        silence: AfadeSettings.silenceMin,
-      ),
-    ),
+    bundle: const [AfadeEffect(silence: AfadeEffect.silenceMin)],
   ),
   (
     filter: 'afade',
     label: 'silence=silenceDefault',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        silence: AfadeSettings.silenceDefault,
-      ),
-    ),
+    bundle: const [AfadeEffect(silence: AfadeEffect.silenceDefault)],
   ),
   (
     filter: 'afade',
     label: 'silence=silenceMax',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        silence: AfadeSettings.silenceMax,
-      ),
-    ),
+    bundle: const [AfadeEffect(silence: AfadeEffect.silenceMax)],
   ),
   (
     filter: 'afade',
     label: 'ss=ssMin',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, ss: AfadeSettings.ssMin),
-    ),
+    bundle: const [AfadeEffect(ss: AfadeEffect.ssMin)],
   ),
   (
     filter: 'afade',
     label: 'ss=ssDefault',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, ss: AfadeSettings.ssDefault),
-    ),
+    bundle: const [AfadeEffect(ss: AfadeEffect.ssDefault)],
   ),
   (
     filter: 'afade',
     label: 'ss=ssMax',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, ss: AfadeSettings.ssMax),
-    ),
+    bundle: const [AfadeEffect(ss: AfadeEffect.ssMax)],
   ),
   (
     filter: 'afade',
-    label: 'start_sample=start_sampleMin',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        start_sample: AfadeSettings.start_sampleMin,
-      ),
-    ),
+    label: 'start_sample=startSampleMin',
+    bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleMin)],
   ),
   (
     filter: 'afade',
-    label: 'start_sample=start_sampleDefault',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        start_sample: AfadeSettings.start_sampleDefault,
-      ),
-    ),
+    label: 'start_sample=startSampleDefault',
+    bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleDefault)],
   ),
   (
     filter: 'afade',
-    label: 'start_sample=start_sampleMax',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        start_sample: AfadeSettings.start_sampleMax,
-      ),
-    ),
+    label: 'start_sample=startSampleMax',
+    bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleMax)],
   ),
   (
     filter: 'afade',
     label: 'unity=unityMin',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, unity: AfadeSettings.unityMin),
-    ),
+    bundle: const [AfadeEffect(unity: AfadeEffect.unityMin)],
   ),
   (
     filter: 'afade',
     label: 'unity=unityDefault',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(
-        enabled: true,
-        unity: AfadeSettings.unityDefault,
-      ),
-    ),
+    bundle: const [AfadeEffect(unity: AfadeEffect.unityDefault)],
   ),
   (
     filter: 'afade',
     label: 'unity=unityMax',
-    bundle: const AudioEffects(
-      afade: const AfadeSettings(enabled: true, unity: AfadeSettings.unityMax),
-    ),
+    bundle: const [AfadeEffect(unity: AfadeEffect.unityMax)],
   ),
   (
     filter: 'afftdn',
     label: 'ad=adMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, ad: AfftdnSettings.adMin),
-    ),
+    bundle: const [AfftdnEffect(ad: AfftdnEffect.adMin)],
   ),
   (
     filter: 'afftdn',
     label: 'ad=adDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, ad: AfftdnSettings.adDefault),
-    ),
+    bundle: const [AfftdnEffect(ad: AfftdnEffect.adDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'ad=adMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, ad: AfftdnSettings.adMax),
-    ),
+    bundle: const [AfftdnEffect(ad: AfftdnEffect.adMax)],
   ),
   (
     filter: 'afftdn',
     label: 'adaptivity=adaptivityMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        adaptivity: AfftdnSettings.adaptivityMin,
-      ),
-    ),
+    bundle: const [AfftdnEffect(adaptivity: AfftdnEffect.adaptivityMin)],
   ),
   (
     filter: 'afftdn',
     label: 'adaptivity=adaptivityDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        adaptivity: AfftdnSettings.adaptivityDefault,
-      ),
-    ),
+    bundle: const [AfftdnEffect(adaptivity: AfftdnEffect.adaptivityDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'adaptivity=adaptivityMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        adaptivity: AfftdnSettings.adaptivityMax,
-      ),
-    ),
+    bundle: const [AfftdnEffect(adaptivity: AfftdnEffect.adaptivityMax)],
   ),
   (
     filter: 'afftdn',
-    label: 'band_multiplier=band_multiplierMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        band_multiplier: AfftdnSettings.band_multiplierMin,
-      ),
-    ),
+    label: 'band_multiplier=bandMultiplierMin',
+    bundle: const [
+      AfftdnEffect(bandMultiplier: AfftdnEffect.bandMultiplierMin),
+    ],
   ),
   (
     filter: 'afftdn',
-    label: 'band_multiplier=band_multiplierDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        band_multiplier: AfftdnSettings.band_multiplierDefault,
-      ),
-    ),
+    label: 'band_multiplier=bandMultiplierDefault',
+    bundle: const [
+      AfftdnEffect(bandMultiplier: AfftdnEffect.bandMultiplierDefault),
+    ],
   ),
   (
     filter: 'afftdn',
-    label: 'band_multiplier=band_multiplierMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        band_multiplier: AfftdnSettings.band_multiplierMax,
-      ),
-    ),
+    label: 'band_multiplier=bandMultiplierMax',
+    bundle: const [
+      AfftdnEffect(bandMultiplier: AfftdnEffect.bandMultiplierMax),
+    ],
   ),
   (
     filter: 'afftdn',
     label: 'bm=bmMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, bm: AfftdnSettings.bmMin),
-    ),
+    bundle: const [AfftdnEffect(bm: AfftdnEffect.bmMin)],
   ),
   (
     filter: 'afftdn',
     label: 'bm=bmDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, bm: AfftdnSettings.bmDefault),
-    ),
+    bundle: const [AfftdnEffect(bm: AfftdnEffect.bmDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'bm=bmMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, bm: AfftdnSettings.bmMax),
-    ),
+    bundle: const [AfftdnEffect(bm: AfftdnEffect.bmMax)],
   ),
   (
     filter: 'afftdn',
-    label: 'floor_offset=floor_offsetMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        floor_offset: AfftdnSettings.floor_offsetMin,
-      ),
-    ),
+    label: 'floor_offset=floorOffsetMin',
+    bundle: const [AfftdnEffect(floorOffset: AfftdnEffect.floorOffsetMin)],
   ),
   (
     filter: 'afftdn',
-    label: 'floor_offset=floor_offsetDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        floor_offset: AfftdnSettings.floor_offsetDefault,
-      ),
-    ),
+    label: 'floor_offset=floorOffsetDefault',
+    bundle: const [AfftdnEffect(floorOffset: AfftdnEffect.floorOffsetDefault)],
   ),
   (
     filter: 'afftdn',
-    label: 'floor_offset=floor_offsetMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        floor_offset: AfftdnSettings.floor_offsetMax,
-      ),
-    ),
+    label: 'floor_offset=floorOffsetMax',
+    bundle: const [AfftdnEffect(floorOffset: AfftdnEffect.floorOffsetMax)],
   ),
   (
     filter: 'afftdn',
     label: 'fo=foMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, fo: AfftdnSettings.foMin),
-    ),
+    bundle: const [AfftdnEffect(fo: AfftdnEffect.foMin)],
   ),
   (
     filter: 'afftdn',
     label: 'fo=foDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, fo: AfftdnSettings.foDefault),
-    ),
+    bundle: const [AfftdnEffect(fo: AfftdnEffect.foDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'fo=foMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, fo: AfftdnSettings.foMax),
-    ),
+    bundle: const [AfftdnEffect(fo: AfftdnEffect.foMax)],
   ),
   (
     filter: 'afftdn',
-    label: 'gain_smooth=gain_smoothMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        gain_smooth: AfftdnSettings.gain_smoothMin,
-      ),
-    ),
+    label: 'gain_smooth=gainSmoothMin',
+    bundle: const [AfftdnEffect(gainSmooth: AfftdnEffect.gainSmoothMin)],
   ),
   (
     filter: 'afftdn',
-    label: 'gain_smooth=gain_smoothDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        gain_smooth: AfftdnSettings.gain_smoothDefault,
-      ),
-    ),
+    label: 'gain_smooth=gainSmoothDefault',
+    bundle: const [AfftdnEffect(gainSmooth: AfftdnEffect.gainSmoothDefault)],
   ),
   (
     filter: 'afftdn',
-    label: 'gain_smooth=gain_smoothMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        gain_smooth: AfftdnSettings.gain_smoothMax,
-      ),
-    ),
+    label: 'gain_smooth=gainSmoothMax',
+    bundle: const [AfftdnEffect(gainSmooth: AfftdnEffect.gainSmoothMax)],
   ),
   (
     filter: 'afftdn',
     label: 'gs=gsMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, gs: AfftdnSettings.gsMin),
-    ),
+    bundle: const [AfftdnEffect(gs: AfftdnEffect.gsMin)],
   ),
   (
     filter: 'afftdn',
     label: 'gs=gsDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, gs: AfftdnSettings.gsDefault),
-    ),
+    bundle: const [AfftdnEffect(gs: AfftdnEffect.gsDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'gs=gsMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, gs: AfftdnSettings.gsMax),
-    ),
+    bundle: const [AfftdnEffect(gs: AfftdnEffect.gsMax)],
   ),
   (
     filter: 'afftdn',
     label: 'nf=nfMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, nf: AfftdnSettings.nfMin),
-    ),
+    bundle: const [AfftdnEffect(nf: AfftdnEffect.nfMin)],
   ),
   (
     filter: 'afftdn',
     label: 'nf=nfDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, nf: AfftdnSettings.nfDefault),
-    ),
+    bundle: const [AfftdnEffect(nf: AfftdnEffect.nfDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'nf=nfMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, nf: AfftdnSettings.nfMax),
-    ),
+    bundle: const [AfftdnEffect(nf: AfftdnEffect.nfMax)],
   ),
   (
     filter: 'afftdn',
-    label: 'noise_floor=noise_floorMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        noise_floor: AfftdnSettings.noise_floorMin,
-      ),
-    ),
+    label: 'noise_floor=noiseFloorMin',
+    bundle: const [AfftdnEffect(noiseFloor: AfftdnEffect.noiseFloorMin)],
   ),
   (
     filter: 'afftdn',
-    label: 'noise_floor=noise_floorDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        noise_floor: AfftdnSettings.noise_floorDefault,
-      ),
-    ),
+    label: 'noise_floor=noiseFloorDefault',
+    bundle: const [AfftdnEffect(noiseFloor: AfftdnEffect.noiseFloorDefault)],
   ),
   (
     filter: 'afftdn',
-    label: 'noise_floor=noise_floorMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        noise_floor: AfftdnSettings.noise_floorMax,
-      ),
-    ),
+    label: 'noise_floor=noiseFloorMax',
+    bundle: const [AfftdnEffect(noiseFloor: AfftdnEffect.noiseFloorMax)],
   ),
   (
     filter: 'afftdn',
-    label: 'noise_reduction=noise_reductionMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        noise_reduction: AfftdnSettings.noise_reductionMin,
-      ),
-    ),
+    label: 'noise_reduction=noiseReductionMin',
+    bundle: const [
+      AfftdnEffect(noiseReduction: AfftdnEffect.noiseReductionMin),
+    ],
   ),
   (
     filter: 'afftdn',
-    label: 'noise_reduction=noise_reductionDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        noise_reduction: AfftdnSettings.noise_reductionDefault,
-      ),
-    ),
+    label: 'noise_reduction=noiseReductionDefault',
+    bundle: const [
+      AfftdnEffect(noiseReduction: AfftdnEffect.noiseReductionDefault),
+    ],
   ),
   (
     filter: 'afftdn',
-    label: 'noise_reduction=noise_reductionMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        noise_reduction: AfftdnSettings.noise_reductionMax,
-      ),
-    ),
+    label: 'noise_reduction=noiseReductionMax',
+    bundle: const [
+      AfftdnEffect(noiseReduction: AfftdnEffect.noiseReductionMax),
+    ],
   ),
   (
     filter: 'afftdn',
     label: 'nr=nrMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, nr: AfftdnSettings.nrMin),
-    ),
+    bundle: const [AfftdnEffect(nr: AfftdnEffect.nrMin)],
   ),
   (
     filter: 'afftdn',
     label: 'nr=nrDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, nr: AfftdnSettings.nrDefault),
-    ),
+    bundle: const [AfftdnEffect(nr: AfftdnEffect.nrDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'nr=nrMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, nr: AfftdnSettings.nrMax),
-    ),
+    bundle: const [AfftdnEffect(nr: AfftdnEffect.nrMax)],
   ),
   (
     filter: 'afftdn',
-    label: 'residual_floor=residual_floorMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        residual_floor: AfftdnSettings.residual_floorMin,
-      ),
-    ),
+    label: 'residual_floor=residualFloorMin',
+    bundle: const [AfftdnEffect(residualFloor: AfftdnEffect.residualFloorMin)],
   ),
   (
     filter: 'afftdn',
-    label: 'residual_floor=residual_floorDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        residual_floor: AfftdnSettings.residual_floorDefault,
-      ),
-    ),
+    label: 'residual_floor=residualFloorDefault',
+    bundle: const [
+      AfftdnEffect(residualFloor: AfftdnEffect.residualFloorDefault),
+    ],
   ),
   (
     filter: 'afftdn',
-    label: 'residual_floor=residual_floorMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(
-        enabled: true,
-        residual_floor: AfftdnSettings.residual_floorMax,
-      ),
-    ),
+    label: 'residual_floor=residualFloorMax',
+    bundle: const [AfftdnEffect(residualFloor: AfftdnEffect.residualFloorMax)],
   ),
   (
     filter: 'afftdn',
     label: 'rf=rfMin',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, rf: AfftdnSettings.rfMin),
-    ),
+    bundle: const [AfftdnEffect(rf: AfftdnEffect.rfMin)],
   ),
   (
     filter: 'afftdn',
     label: 'rf=rfDefault',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, rf: AfftdnSettings.rfDefault),
-    ),
+    bundle: const [AfftdnEffect(rf: AfftdnEffect.rfDefault)],
   ),
   (
     filter: 'afftdn',
     label: 'rf=rfMax',
-    bundle: const AudioEffects(
-      afftdn: const AfftdnSettings(enabled: true, rf: AfftdnSettings.rfMax),
-    ),
+    bundle: const [AfftdnEffect(rf: AfftdnEffect.rfMax)],
   ),
   (
     filter: 'afftfilt',
     label: 'overlap=overlapMin',
-    bundle: const AudioEffects(
-      afftfilt: const AfftfiltSettings(
-        enabled: true,
-        overlap: AfftfiltSettings.overlapMin,
-      ),
-    ),
+    bundle: const [AfftfiltEffect(overlap: AfftfiltEffect.overlapMin)],
   ),
   (
     filter: 'afftfilt',
     label: 'overlap=overlapDefault',
-    bundle: const AudioEffects(
-      afftfilt: const AfftfiltSettings(
-        enabled: true,
-        overlap: AfftfiltSettings.overlapDefault,
-      ),
-    ),
+    bundle: const [AfftfiltEffect(overlap: AfftfiltEffect.overlapDefault)],
   ),
   (
     filter: 'afftfilt',
     label: 'overlap=overlapMax',
-    bundle: const AudioEffects(
-      afftfilt: const AfftfiltSettings(
-        enabled: true,
-        overlap: AfftfiltSettings.overlapMax,
-      ),
-    ),
+    bundle: const [AfftfiltEffect(overlap: AfftfiltEffect.overlapMax)],
   ),
   (
     filter: 'afftfilt',
-    label: 'win_size=win_sizeMin',
-    bundle: const AudioEffects(
-      afftfilt: const AfftfiltSettings(
-        enabled: true,
-        win_size: AfftfiltSettings.win_sizeMin,
-      ),
-    ),
+    label: 'win_size=winSizeMin',
+    bundle: const [AfftfiltEffect(winSize: AfftfiltEffect.winSizeMin)],
   ),
   (
     filter: 'afftfilt',
-    label: 'win_size=win_sizeDefault',
-    bundle: const AudioEffects(
-      afftfilt: const AfftfiltSettings(
-        enabled: true,
-        win_size: AfftfiltSettings.win_sizeDefault,
-      ),
-    ),
+    label: 'win_size=winSizeDefault',
+    bundle: const [AfftfiltEffect(winSize: AfftfiltEffect.winSizeDefault)],
   ),
   (
     filter: 'afftfilt',
-    label: 'win_size=win_sizeMax',
-    bundle: const AudioEffects(
-      afftfilt: const AfftfiltSettings(
-        enabled: true,
-        win_size: AfftfiltSettings.win_sizeMax,
-      ),
-    ),
+    label: 'win_size=winSizeMax',
+    bundle: const [AfftfiltEffect(winSize: AfftfiltEffect.winSizeMax)],
   ),
   (
     filter: 'afreqshift',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        level: AfreqshiftSettings.levelMin,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(level: AfreqshiftEffect.levelMin)],
   ),
   (
     filter: 'afreqshift',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        level: AfreqshiftSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(level: AfreqshiftEffect.levelDefault)],
   ),
   (
     filter: 'afreqshift',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        level: AfreqshiftSettings.levelMax,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(level: AfreqshiftEffect.levelMax)],
   ),
   (
     filter: 'afreqshift',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        order: AfreqshiftSettings.orderMin,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(order: AfreqshiftEffect.orderMin)],
   ),
   (
     filter: 'afreqshift',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        order: AfreqshiftSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(order: AfreqshiftEffect.orderDefault)],
   ),
   (
     filter: 'afreqshift',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        order: AfreqshiftSettings.orderMax,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(order: AfreqshiftEffect.orderMax)],
   ),
   (
     filter: 'afreqshift',
     label: 'shift=shiftMin',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        shift: AfreqshiftSettings.shiftMin,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(shift: AfreqshiftEffect.shiftMin)],
   ),
   (
     filter: 'afreqshift',
     label: 'shift=shiftDefault',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        shift: AfreqshiftSettings.shiftDefault,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(shift: AfreqshiftEffect.shiftDefault)],
   ),
   (
     filter: 'afreqshift',
     label: 'shift=shiftMax',
-    bundle: const AudioEffects(
-      afreqshift: const AfreqshiftSettings(
-        enabled: true,
-        shift: AfreqshiftSettings.shiftMax,
-      ),
-    ),
+    bundle: const [AfreqshiftEffect(shift: AfreqshiftEffect.shiftMax)],
   ),
   (
     filter: 'afwtdn',
     label: 'levels=levelsMin',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        levels: AfwtdnSettings.levelsMin,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(levels: AfwtdnEffect.levelsMin)],
   ),
   (
     filter: 'afwtdn',
     label: 'levels=levelsDefault',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        levels: AfwtdnSettings.levelsDefault,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(levels: AfwtdnEffect.levelsDefault)],
   ),
   (
     filter: 'afwtdn',
     label: 'levels=levelsMax',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        levels: AfwtdnSettings.levelsMax,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(levels: AfwtdnEffect.levelsMax)],
   ),
   (
     filter: 'afwtdn',
     label: 'percent=percentMin',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        percent: AfwtdnSettings.percentMin,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(percent: AfwtdnEffect.percentMin)],
   ),
   (
     filter: 'afwtdn',
     label: 'percent=percentDefault',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        percent: AfwtdnSettings.percentDefault,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(percent: AfwtdnEffect.percentDefault)],
   ),
   (
     filter: 'afwtdn',
     label: 'percent=percentMax',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        percent: AfwtdnSettings.percentMax,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(percent: AfwtdnEffect.percentMax)],
   ),
   (
     filter: 'afwtdn',
     label: 'samples=samplesMin',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        samples: AfwtdnSettings.samplesMin,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(samples: AfwtdnEffect.samplesMin)],
   ),
   (
     filter: 'afwtdn',
     label: 'samples=samplesDefault',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        samples: AfwtdnSettings.samplesDefault,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(samples: AfwtdnEffect.samplesDefault)],
   ),
   (
     filter: 'afwtdn',
     label: 'samples=samplesMax',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        samples: AfwtdnSettings.samplesMax,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(samples: AfwtdnEffect.samplesMax)],
   ),
   (
     filter: 'afwtdn',
     label: 'sigma=sigmaMin',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        sigma: AfwtdnSettings.sigmaMin,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(sigma: AfwtdnEffect.sigmaMin)],
   ),
   (
     filter: 'afwtdn',
     label: 'sigma=sigmaDefault',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        sigma: AfwtdnSettings.sigmaDefault,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(sigma: AfwtdnEffect.sigmaDefault)],
   ),
   (
     filter: 'afwtdn',
     label: 'sigma=sigmaMax',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        sigma: AfwtdnSettings.sigmaMax,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(sigma: AfwtdnEffect.sigmaMax)],
   ),
   (
     filter: 'afwtdn',
     label: 'softness=softnessMin',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        softness: AfwtdnSettings.softnessMin,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(softness: AfwtdnEffect.softnessMin)],
   ),
   (
     filter: 'afwtdn',
     label: 'softness=softnessDefault',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        softness: AfwtdnSettings.softnessDefault,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(softness: AfwtdnEffect.softnessDefault)],
   ),
   (
     filter: 'afwtdn',
     label: 'softness=softnessMax',
-    bundle: const AudioEffects(
-      afwtdn: const AfwtdnSettings(
-        enabled: true,
-        softness: AfwtdnSettings.softnessMax,
-      ),
-    ),
+    bundle: const [AfwtdnEffect(softness: AfwtdnEffect.softnessMax)],
   ),
   (
     filter: 'agate',
     label: 'attack=attackMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        attack: AgateSettings.attackMin,
-      ),
-    ),
+    bundle: const [AgateEffect(attack: AgateEffect.attackMin)],
   ),
   (
     filter: 'agate',
     label: 'attack=attackDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        attack: AgateSettings.attackDefault,
-      ),
-    ),
+    bundle: const [AgateEffect(attack: AgateEffect.attackDefault)],
   ),
   (
     filter: 'agate',
     label: 'attack=attackMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        attack: AgateSettings.attackMax,
-      ),
-    ),
+    bundle: const [AgateEffect(attack: AgateEffect.attackMax)],
   ),
   (
     filter: 'agate',
     label: 'knee=kneeMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(enabled: true, knee: AgateSettings.kneeMin),
-    ),
+    bundle: const [AgateEffect(knee: AgateEffect.kneeMin)],
   ),
   (
     filter: 'agate',
     label: 'knee=kneeDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        knee: AgateSettings.kneeDefault,
-      ),
-    ),
+    bundle: const [AgateEffect(knee: AgateEffect.kneeDefault)],
   ),
   (
     filter: 'agate',
     label: 'knee=kneeMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(enabled: true, knee: AgateSettings.kneeMax),
-    ),
+    bundle: const [AgateEffect(knee: AgateEffect.kneeMax)],
   ),
   (
     filter: 'agate',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        level_in: AgateSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [AgateEffect(levelIn: AgateEffect.levelInMin)],
   ),
   (
     filter: 'agate',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        level_in: AgateSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [AgateEffect(levelIn: AgateEffect.levelInDefault)],
   ),
   (
     filter: 'agate',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        level_in: AgateSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [AgateEffect(levelIn: AgateEffect.levelInMax)],
   ),
   (
     filter: 'agate',
-    label: 'level_sc=level_scMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        level_sc: AgateSettings.level_scMin,
-      ),
-    ),
+    label: 'level_sc=levelScMin',
+    bundle: const [AgateEffect(levelSc: AgateEffect.levelScMin)],
   ),
   (
     filter: 'agate',
-    label: 'level_sc=level_scDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        level_sc: AgateSettings.level_scDefault,
-      ),
-    ),
+    label: 'level_sc=levelScDefault',
+    bundle: const [AgateEffect(levelSc: AgateEffect.levelScDefault)],
   ),
   (
     filter: 'agate',
-    label: 'level_sc=level_scMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        level_sc: AgateSettings.level_scMax,
-      ),
-    ),
+    label: 'level_sc=levelScMax',
+    bundle: const [AgateEffect(levelSc: AgateEffect.levelScMax)],
   ),
   (
     filter: 'agate',
     label: 'makeup=makeupMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        makeup: AgateSettings.makeupMin,
-      ),
-    ),
+    bundle: const [AgateEffect(makeup: AgateEffect.makeupMin)],
   ),
   (
     filter: 'agate',
     label: 'makeup=makeupDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        makeup: AgateSettings.makeupDefault,
-      ),
-    ),
+    bundle: const [AgateEffect(makeup: AgateEffect.makeupDefault)],
   ),
   (
     filter: 'agate',
     label: 'makeup=makeupMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        makeup: AgateSettings.makeupMax,
-      ),
-    ),
+    bundle: const [AgateEffect(makeup: AgateEffect.makeupMax)],
   ),
   (
     filter: 'agate',
     label: 'range=rangeMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(enabled: true, range: AgateSettings.rangeMin),
-    ),
+    bundle: const [AgateEffect(range: AgateEffect.rangeMin)],
   ),
   (
     filter: 'agate',
     label: 'range=rangeDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        range: AgateSettings.rangeDefault,
-      ),
-    ),
+    bundle: const [AgateEffect(range: AgateEffect.rangeDefault)],
   ),
   (
     filter: 'agate',
     label: 'range=rangeMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(enabled: true, range: AgateSettings.rangeMax),
-    ),
+    bundle: const [AgateEffect(range: AgateEffect.rangeMax)],
   ),
   (
     filter: 'agate',
     label: 'ratio=ratioMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(enabled: true, ratio: AgateSettings.ratioMin),
-    ),
+    bundle: const [AgateEffect(ratio: AgateEffect.ratioMin)],
   ),
   (
     filter: 'agate',
     label: 'ratio=ratioDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        ratio: AgateSettings.ratioDefault,
-      ),
-    ),
+    bundle: const [AgateEffect(ratio: AgateEffect.ratioDefault)],
   ),
   (
     filter: 'agate',
     label: 'ratio=ratioMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(enabled: true, ratio: AgateSettings.ratioMax),
-    ),
+    bundle: const [AgateEffect(ratio: AgateEffect.ratioMax)],
   ),
   (
     filter: 'agate',
     label: 'release=releaseMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        release: AgateSettings.releaseMin,
-      ),
-    ),
+    bundle: const [AgateEffect(release: AgateEffect.releaseMin)],
   ),
   (
     filter: 'agate',
     label: 'release=releaseDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        release: AgateSettings.releaseDefault,
-      ),
-    ),
+    bundle: const [AgateEffect(release: AgateEffect.releaseDefault)],
   ),
   (
     filter: 'agate',
     label: 'release=releaseMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        release: AgateSettings.releaseMax,
-      ),
-    ),
+    bundle: const [AgateEffect(release: AgateEffect.releaseMax)],
   ),
   (
     filter: 'agate',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        threshold: AgateSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [AgateEffect(threshold: AgateEffect.thresholdMin)],
   ),
   (
     filter: 'agate',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        threshold: AgateSettings.thresholdDefault,
-      ),
-    ),
+    bundle: const [AgateEffect(threshold: AgateEffect.thresholdDefault)],
   ),
   (
     filter: 'agate',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      agate: const AgateSettings(
-        enabled: true,
-        threshold: AgateSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [AgateEffect(threshold: AgateEffect.thresholdMax)],
   ),
   (
     filter: 'aiir',
     label: 'channel=channelMin',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, channel: AiirSettings.channelMin),
-    ),
+    bundle: const [AiirEffect(channel: AiirEffect.channelMin)],
   ),
   (
     filter: 'aiir',
     label: 'channel=channelDefault',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(
-        enabled: true,
-        channel: AiirSettings.channelDefault,
-      ),
-    ),
+    bundle: const [AiirEffect(channel: AiirEffect.channelDefault)],
   ),
   (
     filter: 'aiir',
     label: 'channel=channelMax',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, channel: AiirSettings.channelMax),
-    ),
+    bundle: const [AiirEffect(channel: AiirEffect.channelMax)],
   ),
   (
     filter: 'aiir',
     label: 'dry=dryMin',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, dry: AiirSettings.dryMin),
-    ),
+    bundle: const [AiirEffect(dry: AiirEffect.dryMin)],
   ),
   (
     filter: 'aiir',
     label: 'dry=dryDefault',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, dry: AiirSettings.dryDefault),
-    ),
+    bundle: const [AiirEffect(dry: AiirEffect.dryDefault)],
   ),
   (
     filter: 'aiir',
     label: 'dry=dryMax',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, dry: AiirSettings.dryMax),
-    ),
+    bundle: const [AiirEffect(dry: AiirEffect.dryMax)],
   ),
   (
     filter: 'aiir',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, mix: AiirSettings.mixMin),
-    ),
+    bundle: const [AiirEffect(mix: AiirEffect.mixMin)],
   ),
   (
     filter: 'aiir',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, mix: AiirSettings.mixDefault),
-    ),
+    bundle: const [AiirEffect(mix: AiirEffect.mixDefault)],
   ),
   (
     filter: 'aiir',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, mix: AiirSettings.mixMax),
-    ),
+    bundle: const [AiirEffect(mix: AiirEffect.mixMax)],
   ),
   (
     filter: 'aiir',
     label: 'wet=wetMin',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, wet: AiirSettings.wetMin),
-    ),
+    bundle: const [AiirEffect(wet: AiirEffect.wetMin)],
   ),
   (
     filter: 'aiir',
     label: 'wet=wetDefault',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, wet: AiirSettings.wetDefault),
-    ),
+    bundle: const [AiirEffect(wet: AiirEffect.wetDefault)],
   ),
   (
     filter: 'aiir',
     label: 'wet=wetMax',
-    bundle: const AudioEffects(
-      aiir: const AiirSettings(enabled: true, wet: AiirSettings.wetMax),
-    ),
+    bundle: const [AiirEffect(wet: AiirEffect.wetMax)],
   ),
   (
     filter: 'alimiter',
-    label: 'asc_level=asc_levelMin',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        asc_level: AlimiterSettings.asc_levelMin,
-      ),
-    ),
+    label: 'asc_level=ascLevelMin',
+    bundle: const [AlimiterEffect(ascLevel: AlimiterEffect.ascLevelMin)],
   ),
   (
     filter: 'alimiter',
-    label: 'asc_level=asc_levelDefault',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        asc_level: AlimiterSettings.asc_levelDefault,
-      ),
-    ),
+    label: 'asc_level=ascLevelDefault',
+    bundle: const [AlimiterEffect(ascLevel: AlimiterEffect.ascLevelDefault)],
   ),
   (
     filter: 'alimiter',
-    label: 'asc_level=asc_levelMax',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        asc_level: AlimiterSettings.asc_levelMax,
-      ),
-    ),
+    label: 'asc_level=ascLevelMax',
+    bundle: const [AlimiterEffect(ascLevel: AlimiterEffect.ascLevelMax)],
   ),
   (
     filter: 'alimiter',
     label: 'attack=attackMin',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        attack: AlimiterSettings.attackMin,
-      ),
-    ),
+    bundle: const [AlimiterEffect(attack: AlimiterEffect.attackMin)],
   ),
   (
     filter: 'alimiter',
     label: 'attack=attackDefault',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        attack: AlimiterSettings.attackDefault,
-      ),
-    ),
+    bundle: const [AlimiterEffect(attack: AlimiterEffect.attackDefault)],
   ),
   (
     filter: 'alimiter',
     label: 'attack=attackMax',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        attack: AlimiterSettings.attackMax,
-      ),
-    ),
+    bundle: const [AlimiterEffect(attack: AlimiterEffect.attackMax)],
   ),
   (
     filter: 'alimiter',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        level_in: AlimiterSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [AlimiterEffect(levelIn: AlimiterEffect.levelInMin)],
   ),
   (
     filter: 'alimiter',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        level_in: AlimiterSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [AlimiterEffect(levelIn: AlimiterEffect.levelInDefault)],
   ),
   (
     filter: 'alimiter',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        level_in: AlimiterSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [AlimiterEffect(levelIn: AlimiterEffect.levelInMax)],
   ),
   (
     filter: 'alimiter',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        level_out: AlimiterSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [AlimiterEffect(levelOut: AlimiterEffect.levelOutMin)],
   ),
   (
     filter: 'alimiter',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        level_out: AlimiterSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [AlimiterEffect(levelOut: AlimiterEffect.levelOutDefault)],
   ),
   (
     filter: 'alimiter',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        level_out: AlimiterSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [AlimiterEffect(levelOut: AlimiterEffect.levelOutMax)],
   ),
   (
     filter: 'alimiter',
     label: 'limit=limitMin',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        limit: AlimiterSettings.limitMin,
-      ),
-    ),
+    bundle: const [AlimiterEffect(limit: AlimiterEffect.limitMin)],
   ),
   (
     filter: 'alimiter',
     label: 'limit=limitDefault',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        limit: AlimiterSettings.limitDefault,
-      ),
-    ),
+    bundle: const [AlimiterEffect(limit: AlimiterEffect.limitDefault)],
   ),
   (
     filter: 'alimiter',
     label: 'limit=limitMax',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        limit: AlimiterSettings.limitMax,
-      ),
-    ),
+    bundle: const [AlimiterEffect(limit: AlimiterEffect.limitMax)],
   ),
   (
     filter: 'alimiter',
     label: 'release=releaseMin',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        release: AlimiterSettings.releaseMin,
-      ),
-    ),
+    bundle: const [AlimiterEffect(release: AlimiterEffect.releaseMin)],
   ),
   (
     filter: 'alimiter',
     label: 'release=releaseDefault',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        release: AlimiterSettings.releaseDefault,
-      ),
-    ),
+    bundle: const [AlimiterEffect(release: AlimiterEffect.releaseDefault)],
   ),
   (
     filter: 'alimiter',
     label: 'release=releaseMax',
-    bundle: const AudioEffects(
-      alimiter: const AlimiterSettings(
-        enabled: true,
-        release: AlimiterSettings.releaseMax,
-      ),
-    ),
+    bundle: const [AlimiterEffect(release: AlimiterEffect.releaseMax)],
   ),
   (
     filter: 'allpass',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, f: AllpassSettings.fMin),
-    ),
+    bundle: const [AllpassEffect(f: AllpassEffect.fMin)],
   ),
   (
     filter: 'allpass',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        f: AllpassSettings.fDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(f: AllpassEffect.fDefault)],
   ),
   (
     filter: 'allpass',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, f: AllpassSettings.fMax),
-    ),
+    bundle: const [AllpassEffect(f: AllpassEffect.fMax)],
   ),
   (
     filter: 'allpass',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        frequency: AllpassSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [AllpassEffect(frequency: AllpassEffect.frequencyMin)],
   ),
   (
     filter: 'allpass',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        frequency: AllpassSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(frequency: AllpassEffect.frequencyDefault)],
   ),
   (
     filter: 'allpass',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        frequency: AllpassSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [AllpassEffect(frequency: AllpassEffect.frequencyMax)],
   ),
   (
     filter: 'allpass',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, m: AllpassSettings.mMin),
-    ),
+    bundle: const [AllpassEffect(m: AllpassEffect.mMin)],
   ),
   (
     filter: 'allpass',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        m: AllpassSettings.mDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(m: AllpassEffect.mDefault)],
   ),
   (
     filter: 'allpass',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, m: AllpassSettings.mMax),
-    ),
+    bundle: const [AllpassEffect(m: AllpassEffect.mMax)],
   ),
   (
     filter: 'allpass',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        mix: AllpassSettings.mixMin,
-      ),
-    ),
+    bundle: const [AllpassEffect(mix: AllpassEffect.mixMin)],
   ),
   (
     filter: 'allpass',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        mix: AllpassSettings.mixDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(mix: AllpassEffect.mixDefault)],
   ),
   (
     filter: 'allpass',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        mix: AllpassSettings.mixMax,
-      ),
-    ),
+    bundle: const [AllpassEffect(mix: AllpassEffect.mixMax)],
   ),
   (
     filter: 'allpass',
     label: 'o=oMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, o: AllpassSettings.oMin),
-    ),
+    bundle: const [AllpassEffect(o: AllpassEffect.oMin)],
   ),
   (
     filter: 'allpass',
     label: 'o=oDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        o: AllpassSettings.oDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(o: AllpassEffect.oDefault)],
   ),
   (
     filter: 'allpass',
     label: 'o=oMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, o: AllpassSettings.oMax),
-    ),
+    bundle: const [AllpassEffect(o: AllpassEffect.oMax)],
   ),
   (
     filter: 'allpass',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        order: AllpassSettings.orderMin,
-      ),
-    ),
+    bundle: const [AllpassEffect(order: AllpassEffect.orderMin)],
   ),
   (
     filter: 'allpass',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        order: AllpassSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(order: AllpassEffect.orderDefault)],
   ),
   (
     filter: 'allpass',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        order: AllpassSettings.orderMax,
-      ),
-    ),
+    bundle: const [AllpassEffect(order: AllpassEffect.orderMax)],
   ),
   (
     filter: 'allpass',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, w: AllpassSettings.wMin),
-    ),
+    bundle: const [AllpassEffect(w: AllpassEffect.wMin)],
   ),
   (
     filter: 'allpass',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        w: AllpassSettings.wDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(w: AllpassEffect.wDefault)],
   ),
   (
     filter: 'allpass',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(enabled: true, w: AllpassSettings.wMax),
-    ),
+    bundle: const [AllpassEffect(w: AllpassEffect.wMax)],
   ),
   (
     filter: 'allpass',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        width: AllpassSettings.widthMin,
-      ),
-    ),
+    bundle: const [AllpassEffect(width: AllpassEffect.widthMin)],
   ),
   (
     filter: 'allpass',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        width: AllpassSettings.widthDefault,
-      ),
-    ),
+    bundle: const [AllpassEffect(width: AllpassEffect.widthDefault)],
   ),
   (
     filter: 'allpass',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      allpass: const AllpassSettings(
-        enabled: true,
-        width: AllpassSettings.widthMax,
-      ),
-    ),
+    bundle: const [AllpassEffect(width: AllpassEffect.widthMax)],
   ),
   (
     filter: 'anequalizer',
     label: 'mgain=mgainMin',
-    bundle: const AudioEffects(
-      anequalizer: const AnequalizerSettings(
-        enabled: true,
-        mgain: AnequalizerSettings.mgainMin,
-      ),
-    ),
+    bundle: const [AnequalizerEffect(mgain: AnequalizerEffect.mgainMin)],
   ),
   (
     filter: 'anequalizer',
     label: 'mgain=mgainDefault',
-    bundle: const AudioEffects(
-      anequalizer: const AnequalizerSettings(
-        enabled: true,
-        mgain: AnequalizerSettings.mgainDefault,
-      ),
-    ),
+    bundle: const [AnequalizerEffect(mgain: AnequalizerEffect.mgainDefault)],
   ),
   (
     filter: 'anequalizer',
     label: 'mgain=mgainMax',
-    bundle: const AudioEffects(
-      anequalizer: const AnequalizerSettings(
-        enabled: true,
-        mgain: AnequalizerSettings.mgainMax,
-      ),
-    ),
+    bundle: const [AnequalizerEffect(mgain: AnequalizerEffect.mgainMax)],
   ),
   (
     filter: 'anlmdn',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(enabled: true, m: AnlmdnSettings.mMin),
-    ),
+    bundle: const [AnlmdnEffect(m: AnlmdnEffect.mMin)],
   ),
   (
     filter: 'anlmdn',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(enabled: true, m: AnlmdnSettings.mDefault),
-    ),
+    bundle: const [AnlmdnEffect(m: AnlmdnEffect.mDefault)],
   ),
   (
     filter: 'anlmdn',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(enabled: true, m: AnlmdnSettings.mMax),
-    ),
+    bundle: const [AnlmdnEffect(m: AnlmdnEffect.mMax)],
   ),
   (
     filter: 'anlmdn',
     label: 's=sMin',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(enabled: true, s: AnlmdnSettings.sMin),
-    ),
+    bundle: const [AnlmdnEffect(s: AnlmdnEffect.sMin)],
   ),
   (
     filter: 'anlmdn',
     label: 's=sDefault',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(enabled: true, s: AnlmdnSettings.sDefault),
-    ),
+    bundle: const [AnlmdnEffect(s: AnlmdnEffect.sDefault)],
   ),
   (
     filter: 'anlmdn',
     label: 's=sMax',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(enabled: true, s: AnlmdnSettings.sMax),
-    ),
+    bundle: const [AnlmdnEffect(s: AnlmdnEffect.sMax)],
   ),
   (
     filter: 'anlmdn',
     label: 'smooth=smoothMin',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(
-        enabled: true,
-        smooth: AnlmdnSettings.smoothMin,
-      ),
-    ),
+    bundle: const [AnlmdnEffect(smooth: AnlmdnEffect.smoothMin)],
   ),
   (
     filter: 'anlmdn',
     label: 'smooth=smoothDefault',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(
-        enabled: true,
-        smooth: AnlmdnSettings.smoothDefault,
-      ),
-    ),
+    bundle: const [AnlmdnEffect(smooth: AnlmdnEffect.smoothDefault)],
   ),
   (
     filter: 'anlmdn',
     label: 'smooth=smoothMax',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(
-        enabled: true,
-        smooth: AnlmdnSettings.smoothMax,
-      ),
-    ),
+    bundle: const [AnlmdnEffect(smooth: AnlmdnEffect.smoothMax)],
   ),
   (
     filter: 'anlmdn',
     label: 'strength=strengthMin',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(
-        enabled: true,
-        strength: AnlmdnSettings.strengthMin,
-      ),
-    ),
+    bundle: const [AnlmdnEffect(strength: AnlmdnEffect.strengthMin)],
   ),
   (
     filter: 'anlmdn',
     label: 'strength=strengthDefault',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(
-        enabled: true,
-        strength: AnlmdnSettings.strengthDefault,
-      ),
-    ),
+    bundle: const [AnlmdnEffect(strength: AnlmdnEffect.strengthDefault)],
   ),
   (
     filter: 'anlmdn',
     label: 'strength=strengthMax',
-    bundle: const AudioEffects(
-      anlmdn: const AnlmdnSettings(
-        enabled: true,
-        strength: AnlmdnSettings.strengthMax,
-      ),
-    ),
+    bundle: const [AnlmdnEffect(strength: AnlmdnEffect.strengthMax)],
   ),
   (
     filter: 'apad',
-    label: 'packet_size=packet_sizeMin',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(
-        enabled: true,
-        packet_size: ApadSettings.packet_sizeMin,
-      ),
-    ),
+    label: 'packet_size=packetSizeMin',
+    bundle: const [ApadEffect(packetSize: ApadEffect.packetSizeMin)],
   ),
   (
     filter: 'apad',
-    label: 'packet_size=packet_sizeDefault',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(
-        enabled: true,
-        packet_size: ApadSettings.packet_sizeDefault,
-      ),
-    ),
+    label: 'packet_size=packetSizeDefault',
+    bundle: const [ApadEffect(packetSize: ApadEffect.packetSizeDefault)],
   ),
   (
     filter: 'apad',
-    label: 'packet_size=packet_sizeMax',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(
-        enabled: true,
-        packet_size: ApadSettings.packet_sizeMax,
-      ),
-    ),
+    label: 'packet_size=packetSizeMax',
+    bundle: const [ApadEffect(packetSize: ApadEffect.packetSizeMax)],
   ),
   (
     filter: 'apad',
-    label: 'pad_len=pad_lenMin',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(enabled: true, pad_len: ApadSettings.pad_lenMin),
-    ),
+    label: 'pad_len=padLenMin',
+    bundle: const [ApadEffect(padLen: ApadEffect.padLenMin)],
   ),
   (
     filter: 'apad',
-    label: 'pad_len=pad_lenDefault',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(
-        enabled: true,
-        pad_len: ApadSettings.pad_lenDefault,
-      ),
-    ),
+    label: 'pad_len=padLenDefault',
+    bundle: const [ApadEffect(padLen: ApadEffect.padLenDefault)],
   ),
   (
     filter: 'apad',
-    label: 'pad_len=pad_lenMax',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(enabled: true, pad_len: ApadSettings.pad_lenMax),
-    ),
+    label: 'pad_len=padLenMax',
+    bundle: const [ApadEffect(padLen: ApadEffect.padLenMax)],
   ),
   (
     filter: 'apad',
-    label: 'whole_len=whole_lenMin',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(
-        enabled: true,
-        whole_len: ApadSettings.whole_lenMin,
-      ),
-    ),
+    label: 'whole_len=wholeLenMin',
+    bundle: const [ApadEffect(wholeLen: ApadEffect.wholeLenMin)],
   ),
   (
     filter: 'apad',
-    label: 'whole_len=whole_lenDefault',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(
-        enabled: true,
-        whole_len: ApadSettings.whole_lenDefault,
-      ),
-    ),
+    label: 'whole_len=wholeLenDefault',
+    bundle: const [ApadEffect(wholeLen: ApadEffect.wholeLenDefault)],
   ),
   (
     filter: 'apad',
-    label: 'whole_len=whole_lenMax',
-    bundle: const AudioEffects(
-      apad: const ApadSettings(
-        enabled: true,
-        whole_len: ApadSettings.whole_lenMax,
-      ),
-    ),
+    label: 'whole_len=wholeLenMax',
+    bundle: const [ApadEffect(wholeLen: ApadEffect.wholeLenMax)],
   ),
   (
     filter: 'aphaser',
     label: 'decay=decayMin',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        decay: AphaserSettings.decayMin,
-      ),
-    ),
+    bundle: const [AphaserEffect(decay: AphaserEffect.decayMin)],
   ),
   (
     filter: 'aphaser',
     label: 'decay=decayDefault',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        decay: AphaserSettings.decayDefault,
-      ),
-    ),
+    bundle: const [AphaserEffect(decay: AphaserEffect.decayDefault)],
   ),
   (
     filter: 'aphaser',
     label: 'decay=decayMax',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        decay: AphaserSettings.decayMax,
-      ),
-    ),
+    bundle: const [AphaserEffect(decay: AphaserEffect.decayMax)],
   ),
   (
     filter: 'aphaser',
     label: 'delay=delayMin',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        delay: AphaserSettings.delayMin,
-      ),
-    ),
+    bundle: const [AphaserEffect(delay: AphaserEffect.delayMin)],
   ),
   (
     filter: 'aphaser',
     label: 'delay=delayDefault',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        delay: AphaserSettings.delayDefault,
-      ),
-    ),
+    bundle: const [AphaserEffect(delay: AphaserEffect.delayDefault)],
   ),
   (
     filter: 'aphaser',
     label: 'delay=delayMax',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        delay: AphaserSettings.delayMax,
-      ),
-    ),
+    bundle: const [AphaserEffect(delay: AphaserEffect.delayMax)],
   ),
   (
     filter: 'aphaser',
-    label: 'in_gain=in_gainMin',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        in_gain: AphaserSettings.in_gainMin,
-      ),
-    ),
+    label: 'in_gain=inGainMin',
+    bundle: const [AphaserEffect(inGain: AphaserEffect.inGainMin)],
   ),
   (
     filter: 'aphaser',
-    label: 'in_gain=in_gainDefault',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        in_gain: AphaserSettings.in_gainDefault,
-      ),
-    ),
+    label: 'in_gain=inGainDefault',
+    bundle: const [AphaserEffect(inGain: AphaserEffect.inGainDefault)],
   ),
   (
     filter: 'aphaser',
-    label: 'in_gain=in_gainMax',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        in_gain: AphaserSettings.in_gainMax,
-      ),
-    ),
+    label: 'in_gain=inGainMax',
+    bundle: const [AphaserEffect(inGain: AphaserEffect.inGainMax)],
   ),
   (
     filter: 'aphaser',
-    label: 'out_gain=out_gainMin',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        out_gain: AphaserSettings.out_gainMin,
-      ),
-    ),
+    label: 'out_gain=outGainMin',
+    bundle: const [AphaserEffect(outGain: AphaserEffect.outGainMin)],
   ),
   (
     filter: 'aphaser',
-    label: 'out_gain=out_gainDefault',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        out_gain: AphaserSettings.out_gainDefault,
-      ),
-    ),
+    label: 'out_gain=outGainDefault',
+    bundle: const [AphaserEffect(outGain: AphaserEffect.outGainDefault)],
   ),
   (
     filter: 'aphaser',
-    label: 'out_gain=out_gainMax',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        out_gain: AphaserSettings.out_gainMax,
-      ),
-    ),
+    label: 'out_gain=outGainMax',
+    bundle: const [AphaserEffect(outGain: AphaserEffect.outGainMax)],
   ),
   (
     filter: 'aphaser',
     label: 'speed=speedMin',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        speed: AphaserSettings.speedMin,
-      ),
-    ),
+    bundle: const [AphaserEffect(speed: AphaserEffect.speedMin)],
   ),
   (
     filter: 'aphaser',
     label: 'speed=speedDefault',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        speed: AphaserSettings.speedDefault,
-      ),
-    ),
+    bundle: const [AphaserEffect(speed: AphaserEffect.speedDefault)],
   ),
   (
     filter: 'aphaser',
     label: 'speed=speedMax',
-    bundle: const AudioEffects(
-      aphaser: const AphaserSettings(
-        enabled: true,
-        speed: AphaserSettings.speedMax,
-      ),
-    ),
+    bundle: const [AphaserEffect(speed: AphaserEffect.speedMax)],
   ),
   (
     filter: 'aphaseshift',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        level: AphaseshiftSettings.levelMin,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(level: AphaseshiftEffect.levelMin)],
   ),
   (
     filter: 'aphaseshift',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        level: AphaseshiftSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(level: AphaseshiftEffect.levelDefault)],
   ),
   (
     filter: 'aphaseshift',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        level: AphaseshiftSettings.levelMax,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(level: AphaseshiftEffect.levelMax)],
   ),
   (
     filter: 'aphaseshift',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        order: AphaseshiftSettings.orderMin,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(order: AphaseshiftEffect.orderMin)],
   ),
   (
     filter: 'aphaseshift',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        order: AphaseshiftSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(order: AphaseshiftEffect.orderDefault)],
   ),
   (
     filter: 'aphaseshift',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        order: AphaseshiftSettings.orderMax,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(order: AphaseshiftEffect.orderMax)],
   ),
   (
     filter: 'aphaseshift',
     label: 'shift=shiftMin',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        shift: AphaseshiftSettings.shiftMin,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(shift: AphaseshiftEffect.shiftMin)],
   ),
   (
     filter: 'aphaseshift',
     label: 'shift=shiftDefault',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        shift: AphaseshiftSettings.shiftDefault,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(shift: AphaseshiftEffect.shiftDefault)],
   ),
   (
     filter: 'aphaseshift',
     label: 'shift=shiftMax',
-    bundle: const AudioEffects(
-      aphaseshift: const AphaseshiftSettings(
-        enabled: true,
-        shift: AphaseshiftSettings.shiftMax,
-      ),
-    ),
+    bundle: const [AphaseshiftEffect(shift: AphaseshiftEffect.shiftMax)],
   ),
   (
     filter: 'apsyclip',
     label: 'adaptive=adaptiveMin',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        adaptive: ApsyclipSettings.adaptiveMin,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(adaptive: ApsyclipEffect.adaptiveMin)],
   ),
   (
     filter: 'apsyclip',
     label: 'adaptive=adaptiveDefault',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        adaptive: ApsyclipSettings.adaptiveDefault,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(adaptive: ApsyclipEffect.adaptiveDefault)],
   ),
   (
     filter: 'apsyclip',
     label: 'adaptive=adaptiveMax',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        adaptive: ApsyclipSettings.adaptiveMax,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(adaptive: ApsyclipEffect.adaptiveMax)],
   ),
   (
     filter: 'apsyclip',
     label: 'clip=clipMin',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        clip: ApsyclipSettings.clipMin,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(clip: ApsyclipEffect.clipMin)],
   ),
   (
     filter: 'apsyclip',
     label: 'clip=clipDefault',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        clip: ApsyclipSettings.clipDefault,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(clip: ApsyclipEffect.clipDefault)],
   ),
   (
     filter: 'apsyclip',
     label: 'clip=clipMax',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        clip: ApsyclipSettings.clipMax,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(clip: ApsyclipEffect.clipMax)],
   ),
   (
     filter: 'apsyclip',
     label: 'iterations=iterationsMin',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        iterations: ApsyclipSettings.iterationsMin,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(iterations: ApsyclipEffect.iterationsMin)],
   ),
   (
     filter: 'apsyclip',
     label: 'iterations=iterationsDefault',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        iterations: ApsyclipSettings.iterationsDefault,
-      ),
-    ),
+    bundle: const [
+      ApsyclipEffect(iterations: ApsyclipEffect.iterationsDefault),
+    ],
   ),
   (
     filter: 'apsyclip',
     label: 'iterations=iterationsMax',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        iterations: ApsyclipSettings.iterationsMax,
-      ),
-    ),
+    bundle: const [ApsyclipEffect(iterations: ApsyclipEffect.iterationsMax)],
   ),
   (
     filter: 'apsyclip',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        level_in: ApsyclipSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [ApsyclipEffect(levelIn: ApsyclipEffect.levelInMin)],
   ),
   (
     filter: 'apsyclip',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        level_in: ApsyclipSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [ApsyclipEffect(levelIn: ApsyclipEffect.levelInDefault)],
   ),
   (
     filter: 'apsyclip',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        level_in: ApsyclipSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [ApsyclipEffect(levelIn: ApsyclipEffect.levelInMax)],
   ),
   (
     filter: 'apsyclip',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        level_out: ApsyclipSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [ApsyclipEffect(levelOut: ApsyclipEffect.levelOutMin)],
   ),
   (
     filter: 'apsyclip',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        level_out: ApsyclipSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [ApsyclipEffect(levelOut: ApsyclipEffect.levelOutDefault)],
   ),
   (
     filter: 'apsyclip',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      apsyclip: const ApsyclipSettings(
-        enabled: true,
-        level_out: ApsyclipSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [ApsyclipEffect(levelOut: ApsyclipEffect.levelOutMax)],
   ),
   (
     filter: 'apulsator',
     label: 'amount=amountMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        amount: ApulsatorSettings.amountMin,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(amount: ApulsatorEffect.amountMin)],
   ),
   (
     filter: 'apulsator',
     label: 'amount=amountDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        amount: ApulsatorSettings.amountDefault,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(amount: ApulsatorEffect.amountDefault)],
   ),
   (
     filter: 'apulsator',
     label: 'amount=amountMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        amount: ApulsatorSettings.amountMax,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(amount: ApulsatorEffect.amountMax)],
   ),
   (
     filter: 'apulsator',
     label: 'bpm=bpmMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        bpm: ApulsatorSettings.bpmMin,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(bpm: ApulsatorEffect.bpmMin)],
   ),
   (
     filter: 'apulsator',
     label: 'bpm=bpmDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        bpm: ApulsatorSettings.bpmDefault,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(bpm: ApulsatorEffect.bpmDefault)],
   ),
   (
     filter: 'apulsator',
     label: 'bpm=bpmMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        bpm: ApulsatorSettings.bpmMax,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(bpm: ApulsatorEffect.bpmMax)],
   ),
   (
     filter: 'apulsator',
     label: 'hz=hzMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        hz: ApulsatorSettings.hzMin,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(hz: ApulsatorEffect.hzMin)],
   ),
   (
     filter: 'apulsator',
     label: 'hz=hzDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        hz: ApulsatorSettings.hzDefault,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(hz: ApulsatorEffect.hzDefault)],
   ),
   (
     filter: 'apulsator',
     label: 'hz=hzMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        hz: ApulsatorSettings.hzMax,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(hz: ApulsatorEffect.hzMax)],
   ),
   (
     filter: 'apulsator',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        level_in: ApulsatorSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [ApulsatorEffect(levelIn: ApulsatorEffect.levelInMin)],
   ),
   (
     filter: 'apulsator',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        level_in: ApulsatorSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [ApulsatorEffect(levelIn: ApulsatorEffect.levelInDefault)],
   ),
   (
     filter: 'apulsator',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        level_in: ApulsatorSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [ApulsatorEffect(levelIn: ApulsatorEffect.levelInMax)],
   ),
   (
     filter: 'apulsator',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        level_out: ApulsatorSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [ApulsatorEffect(levelOut: ApulsatorEffect.levelOutMin)],
   ),
   (
     filter: 'apulsator',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        level_out: ApulsatorSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [ApulsatorEffect(levelOut: ApulsatorEffect.levelOutDefault)],
   ),
   (
     filter: 'apulsator',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        level_out: ApulsatorSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [ApulsatorEffect(levelOut: ApulsatorEffect.levelOutMax)],
   ),
   (
     filter: 'apulsator',
     label: 'ms=msMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        ms: ApulsatorSettings.msMin,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(ms: ApulsatorEffect.msMin)],
   ),
   (
     filter: 'apulsator',
     label: 'ms=msDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        ms: ApulsatorSettings.msDefault,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(ms: ApulsatorEffect.msDefault)],
   ),
   (
     filter: 'apulsator',
     label: 'ms=msMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        ms: ApulsatorSettings.msMax,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(ms: ApulsatorEffect.msMax)],
   ),
   (
     filter: 'apulsator',
-    label: 'offset_l=offset_lMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        offset_l: ApulsatorSettings.offset_lMin,
-      ),
-    ),
+    label: 'offset_l=offsetLMin',
+    bundle: const [ApulsatorEffect(offsetL: ApulsatorEffect.offsetLMin)],
   ),
   (
     filter: 'apulsator',
-    label: 'offset_l=offset_lDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        offset_l: ApulsatorSettings.offset_lDefault,
-      ),
-    ),
+    label: 'offset_l=offsetLDefault',
+    bundle: const [ApulsatorEffect(offsetL: ApulsatorEffect.offsetLDefault)],
   ),
   (
     filter: 'apulsator',
-    label: 'offset_l=offset_lMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        offset_l: ApulsatorSettings.offset_lMax,
-      ),
-    ),
+    label: 'offset_l=offsetLMax',
+    bundle: const [ApulsatorEffect(offsetL: ApulsatorEffect.offsetLMax)],
   ),
   (
     filter: 'apulsator',
-    label: 'offset_r=offset_rMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        offset_r: ApulsatorSettings.offset_rMin,
-      ),
-    ),
+    label: 'offset_r=offsetRMin',
+    bundle: const [ApulsatorEffect(offsetR: ApulsatorEffect.offsetRMin)],
   ),
   (
     filter: 'apulsator',
-    label: 'offset_r=offset_rDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        offset_r: ApulsatorSettings.offset_rDefault,
-      ),
-    ),
+    label: 'offset_r=offsetRDefault',
+    bundle: const [ApulsatorEffect(offsetR: ApulsatorEffect.offsetRDefault)],
   ),
   (
     filter: 'apulsator',
-    label: 'offset_r=offset_rMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        offset_r: ApulsatorSettings.offset_rMax,
-      ),
-    ),
+    label: 'offset_r=offsetRMax',
+    bundle: const [ApulsatorEffect(offsetR: ApulsatorEffect.offsetRMax)],
   ),
   (
     filter: 'apulsator',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        width: ApulsatorSettings.widthMin,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(width: ApulsatorEffect.widthMin)],
   ),
   (
     filter: 'apulsator',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        width: ApulsatorSettings.widthDefault,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(width: ApulsatorEffect.widthDefault)],
   ),
   (
     filter: 'apulsator',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      apulsator: const ApulsatorSettings(
-        enabled: true,
-        width: ApulsatorSettings.widthMax,
-      ),
-    ),
+    bundle: const [ApulsatorEffect(width: ApulsatorEffect.widthMax)],
   ),
   (
     filter: 'aresample',
-    label: 'sample_rate=sample_rateMin',
-    bundle: const AudioEffects(
-      aresample: const AresampleSettings(
-        enabled: true,
-        sample_rate: AresampleSettings.sample_rateMin,
-      ),
-    ),
+    label: 'sample_rate=sampleRateMin',
+    bundle: const [AresampleEffect(sampleRate: AresampleEffect.sampleRateMin)],
   ),
   (
     filter: 'aresample',
-    label: 'sample_rate=sample_rateDefault',
-    bundle: const AudioEffects(
-      aresample: const AresampleSettings(
-        enabled: true,
-        sample_rate: AresampleSettings.sample_rateDefault,
-      ),
-    ),
+    label: 'sample_rate=sampleRateDefault',
+    bundle: const [
+      AresampleEffect(sampleRate: AresampleEffect.sampleRateDefault),
+    ],
   ),
   (
     filter: 'aresample',
-    label: 'sample_rate=sample_rateMax',
-    bundle: const AudioEffects(
-      aresample: const AresampleSettings(
-        enabled: true,
-        sample_rate: AresampleSettings.sample_rateMax,
-      ),
-    ),
+    label: 'sample_rate=sampleRateMax',
+    bundle: const [AresampleEffect(sampleRate: AresampleEffect.sampleRateMax)],
   ),
   (
     filter: 'arnndn',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      arnndn: const ArnndnSettings(
-        enabled: true,
-        mix: ArnndnSettings.mixMin,
-        model: '',
-      ),
-    ),
+    bundle: const [ArnndnEffect(mix: ArnndnEffect.mixMin, model: '')],
   ),
   (
     filter: 'arnndn',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      arnndn: const ArnndnSettings(
-        enabled: true,
-        mix: ArnndnSettings.mixDefault,
-        model: '',
-      ),
-    ),
+    bundle: const [ArnndnEffect(mix: ArnndnEffect.mixDefault, model: '')],
   ),
   (
     filter: 'arnndn',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      arnndn: const ArnndnSettings(
-        enabled: true,
-        mix: ArnndnSettings.mixMax,
-        model: '',
-      ),
-    ),
+    bundle: const [ArnndnEffect(mix: ArnndnEffect.mixMax, model: '')],
   ),
   (
     filter: 'asoftclip',
     label: 'output=outputMin',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        output: AsoftclipSettings.outputMin,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(output: AsoftclipEffect.outputMin)],
   ),
   (
     filter: 'asoftclip',
     label: 'output=outputDefault',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        output: AsoftclipSettings.outputDefault,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(output: AsoftclipEffect.outputDefault)],
   ),
   (
     filter: 'asoftclip',
     label: 'output=outputMax',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        output: AsoftclipSettings.outputMax,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(output: AsoftclipEffect.outputMax)],
   ),
   (
     filter: 'asoftclip',
     label: 'oversample=oversampleMin',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        oversample: AsoftclipSettings.oversampleMin,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(oversample: AsoftclipEffect.oversampleMin)],
   ),
   (
     filter: 'asoftclip',
     label: 'oversample=oversampleDefault',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        oversample: AsoftclipSettings.oversampleDefault,
-      ),
-    ),
+    bundle: const [
+      AsoftclipEffect(oversample: AsoftclipEffect.oversampleDefault),
+    ],
   ),
   (
     filter: 'asoftclip',
     label: 'oversample=oversampleMax',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        oversample: AsoftclipSettings.oversampleMax,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(oversample: AsoftclipEffect.oversampleMax)],
   ),
   (
     filter: 'asoftclip',
     label: 'param=paramMin',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        param: AsoftclipSettings.paramMin,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(param: AsoftclipEffect.paramMin)],
   ),
   (
     filter: 'asoftclip',
     label: 'param=paramDefault',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        param: AsoftclipSettings.paramDefault,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(param: AsoftclipEffect.paramDefault)],
   ),
   (
     filter: 'asoftclip',
     label: 'param=paramMax',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        param: AsoftclipSettings.paramMax,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(param: AsoftclipEffect.paramMax)],
   ),
   (
     filter: 'asoftclip',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        threshold: AsoftclipSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(threshold: AsoftclipEffect.thresholdMin)],
   ),
   (
     filter: 'asoftclip',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        threshold: AsoftclipSettings.thresholdDefault,
-      ),
-    ),
+    bundle: const [
+      AsoftclipEffect(threshold: AsoftclipEffect.thresholdDefault),
+    ],
   ),
   (
     filter: 'asoftclip',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      asoftclip: const AsoftclipSettings(
-        enabled: true,
-        threshold: AsoftclipSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [AsoftclipEffect(threshold: AsoftclipEffect.thresholdMax)],
   ),
   (
     filter: 'asubboost',
     label: 'boost=boostMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        boost: AsubboostSettings.boostMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(boost: AsubboostEffect.boostMin)],
   ),
   (
     filter: 'asubboost',
     label: 'boost=boostDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        boost: AsubboostSettings.boostDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(boost: AsubboostEffect.boostDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'boost=boostMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        boost: AsubboostSettings.boostMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(boost: AsubboostEffect.boostMax)],
   ),
   (
     filter: 'asubboost',
     label: 'cutoff=cutoffMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        cutoff: AsubboostSettings.cutoffMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(cutoff: AsubboostEffect.cutoffMin)],
   ),
   (
     filter: 'asubboost',
     label: 'cutoff=cutoffDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        cutoff: AsubboostSettings.cutoffDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(cutoff: AsubboostEffect.cutoffDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'cutoff=cutoffMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        cutoff: AsubboostSettings.cutoffMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(cutoff: AsubboostEffect.cutoffMax)],
   ),
   (
     filter: 'asubboost',
     label: 'decay=decayMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        decay: AsubboostSettings.decayMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(decay: AsubboostEffect.decayMin)],
   ),
   (
     filter: 'asubboost',
     label: 'decay=decayDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        decay: AsubboostSettings.decayDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(decay: AsubboostEffect.decayDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'decay=decayMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        decay: AsubboostSettings.decayMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(decay: AsubboostEffect.decayMax)],
   ),
   (
     filter: 'asubboost',
     label: 'delay=delayMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        delay: AsubboostSettings.delayMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(delay: AsubboostEffect.delayMin)],
   ),
   (
     filter: 'asubboost',
     label: 'delay=delayDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        delay: AsubboostSettings.delayDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(delay: AsubboostEffect.delayDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'delay=delayMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        delay: AsubboostSettings.delayMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(delay: AsubboostEffect.delayMax)],
   ),
   (
     filter: 'asubboost',
     label: 'dry=dryMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        dry: AsubboostSettings.dryMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(dry: AsubboostEffect.dryMin)],
   ),
   (
     filter: 'asubboost',
     label: 'dry=dryDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        dry: AsubboostSettings.dryDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(dry: AsubboostEffect.dryDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'dry=dryMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        dry: AsubboostSettings.dryMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(dry: AsubboostEffect.dryMax)],
   ),
   (
     filter: 'asubboost',
     label: 'feedback=feedbackMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        feedback: AsubboostSettings.feedbackMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(feedback: AsubboostEffect.feedbackMin)],
   ),
   (
     filter: 'asubboost',
     label: 'feedback=feedbackDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        feedback: AsubboostSettings.feedbackDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(feedback: AsubboostEffect.feedbackDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'feedback=feedbackMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        feedback: AsubboostSettings.feedbackMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(feedback: AsubboostEffect.feedbackMax)],
   ),
   (
     filter: 'asubboost',
     label: 'slope=slopeMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        slope: AsubboostSettings.slopeMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(slope: AsubboostEffect.slopeMin)],
   ),
   (
     filter: 'asubboost',
     label: 'slope=slopeDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        slope: AsubboostSettings.slopeDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(slope: AsubboostEffect.slopeDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'slope=slopeMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        slope: AsubboostSettings.slopeMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(slope: AsubboostEffect.slopeMax)],
   ),
   (
     filter: 'asubboost',
     label: 'wet=wetMin',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        wet: AsubboostSettings.wetMin,
-      ),
-    ),
+    bundle: const [AsubboostEffect(wet: AsubboostEffect.wetMin)],
   ),
   (
     filter: 'asubboost',
     label: 'wet=wetDefault',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        wet: AsubboostSettings.wetDefault,
-      ),
-    ),
+    bundle: const [AsubboostEffect(wet: AsubboostEffect.wetDefault)],
   ),
   (
     filter: 'asubboost',
     label: 'wet=wetMax',
-    bundle: const AudioEffects(
-      asubboost: const AsubboostSettings(
-        enabled: true,
-        wet: AsubboostSettings.wetMax,
-      ),
-    ),
+    bundle: const [AsubboostEffect(wet: AsubboostEffect.wetMax)],
   ),
   (
     filter: 'asubcut',
     label: 'cutoff=cutoffMin',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        cutoff: AsubcutSettings.cutoffMin,
-      ),
-    ),
+    bundle: const [AsubcutEffect(cutoff: AsubcutEffect.cutoffMin)],
   ),
   (
     filter: 'asubcut',
     label: 'cutoff=cutoffDefault',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        cutoff: AsubcutSettings.cutoffDefault,
-      ),
-    ),
+    bundle: const [AsubcutEffect(cutoff: AsubcutEffect.cutoffDefault)],
   ),
   (
     filter: 'asubcut',
     label: 'cutoff=cutoffMax',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        cutoff: AsubcutSettings.cutoffMax,
-      ),
-    ),
+    bundle: const [AsubcutEffect(cutoff: AsubcutEffect.cutoffMax)],
   ),
   (
     filter: 'asubcut',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        level: AsubcutSettings.levelMin,
-      ),
-    ),
+    bundle: const [AsubcutEffect(level: AsubcutEffect.levelMin)],
   ),
   (
     filter: 'asubcut',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        level: AsubcutSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AsubcutEffect(level: AsubcutEffect.levelDefault)],
   ),
   (
     filter: 'asubcut',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        level: AsubcutSettings.levelMax,
-      ),
-    ),
+    bundle: const [AsubcutEffect(level: AsubcutEffect.levelMax)],
   ),
   (
     filter: 'asubcut',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        order: AsubcutSettings.orderMin,
-      ),
-    ),
+    bundle: const [AsubcutEffect(order: AsubcutEffect.orderMin)],
   ),
   (
     filter: 'asubcut',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        order: AsubcutSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AsubcutEffect(order: AsubcutEffect.orderDefault)],
   ),
   (
     filter: 'asubcut',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      asubcut: const AsubcutSettings(
-        enabled: true,
-        order: AsubcutSettings.orderMax,
-      ),
-    ),
+    bundle: const [AsubcutEffect(order: AsubcutEffect.orderMax)],
   ),
   (
     filter: 'asupercut',
     label: 'cutoff=cutoffMin',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        cutoff: AsupercutSettings.cutoffMin,
-      ),
-    ),
+    bundle: const [AsupercutEffect(cutoff: AsupercutEffect.cutoffMin)],
   ),
   (
     filter: 'asupercut',
     label: 'cutoff=cutoffDefault',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        cutoff: AsupercutSettings.cutoffDefault,
-      ),
-    ),
+    bundle: const [AsupercutEffect(cutoff: AsupercutEffect.cutoffDefault)],
   ),
   (
     filter: 'asupercut',
     label: 'cutoff=cutoffMax',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        cutoff: AsupercutSettings.cutoffMax,
-      ),
-    ),
+    bundle: const [AsupercutEffect(cutoff: AsupercutEffect.cutoffMax)],
   ),
   (
     filter: 'asupercut',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        level: AsupercutSettings.levelMin,
-      ),
-    ),
+    bundle: const [AsupercutEffect(level: AsupercutEffect.levelMin)],
   ),
   (
     filter: 'asupercut',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        level: AsupercutSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AsupercutEffect(level: AsupercutEffect.levelDefault)],
   ),
   (
     filter: 'asupercut',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        level: AsupercutSettings.levelMax,
-      ),
-    ),
+    bundle: const [AsupercutEffect(level: AsupercutEffect.levelMax)],
   ),
   (
     filter: 'asupercut',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        order: AsupercutSettings.orderMin,
-      ),
-    ),
+    bundle: const [AsupercutEffect(order: AsupercutEffect.orderMin)],
   ),
   (
     filter: 'asupercut',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        order: AsupercutSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AsupercutEffect(order: AsupercutEffect.orderDefault)],
   ),
   (
     filter: 'asupercut',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      asupercut: const AsupercutSettings(
-        enabled: true,
-        order: AsupercutSettings.orderMax,
-      ),
-    ),
+    bundle: const [AsupercutEffect(order: AsupercutEffect.orderMax)],
   ),
   (
     filter: 'asuperpass',
     label: 'centerf=centerfMin',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        centerf: AsuperpassSettings.centerfMin,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(centerf: AsuperpassEffect.centerfMin)],
   ),
   (
     filter: 'asuperpass',
     label: 'centerf=centerfDefault',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        centerf: AsuperpassSettings.centerfDefault,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(centerf: AsuperpassEffect.centerfDefault)],
   ),
   (
     filter: 'asuperpass',
     label: 'centerf=centerfMax',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        centerf: AsuperpassSettings.centerfMax,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(centerf: AsuperpassEffect.centerfMax)],
   ),
   (
     filter: 'asuperpass',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        level: AsuperpassSettings.levelMin,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(level: AsuperpassEffect.levelMin)],
   ),
   (
     filter: 'asuperpass',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        level: AsuperpassSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(level: AsuperpassEffect.levelDefault)],
   ),
   (
     filter: 'asuperpass',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        level: AsuperpassSettings.levelMax,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(level: AsuperpassEffect.levelMax)],
   ),
   (
     filter: 'asuperpass',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        order: AsuperpassSettings.orderMin,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(order: AsuperpassEffect.orderMin)],
   ),
   (
     filter: 'asuperpass',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        order: AsuperpassSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(order: AsuperpassEffect.orderDefault)],
   ),
   (
     filter: 'asuperpass',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        order: AsuperpassSettings.orderMax,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(order: AsuperpassEffect.orderMax)],
   ),
   (
     filter: 'asuperpass',
     label: 'qfactor=qfactorMin',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        qfactor: AsuperpassSettings.qfactorMin,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(qfactor: AsuperpassEffect.qfactorMin)],
   ),
   (
     filter: 'asuperpass',
     label: 'qfactor=qfactorDefault',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        qfactor: AsuperpassSettings.qfactorDefault,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(qfactor: AsuperpassEffect.qfactorDefault)],
   ),
   (
     filter: 'asuperpass',
     label: 'qfactor=qfactorMax',
-    bundle: const AudioEffects(
-      asuperpass: const AsuperpassSettings(
-        enabled: true,
-        qfactor: AsuperpassSettings.qfactorMax,
-      ),
-    ),
+    bundle: const [AsuperpassEffect(qfactor: AsuperpassEffect.qfactorMax)],
   ),
   (
     filter: 'asuperstop',
     label: 'centerf=centerfMin',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        centerf: AsuperstopSettings.centerfMin,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(centerf: AsuperstopEffect.centerfMin)],
   ),
   (
     filter: 'asuperstop',
     label: 'centerf=centerfDefault',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        centerf: AsuperstopSettings.centerfDefault,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(centerf: AsuperstopEffect.centerfDefault)],
   ),
   (
     filter: 'asuperstop',
     label: 'centerf=centerfMax',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        centerf: AsuperstopSettings.centerfMax,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(centerf: AsuperstopEffect.centerfMax)],
   ),
   (
     filter: 'asuperstop',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        level: AsuperstopSettings.levelMin,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(level: AsuperstopEffect.levelMin)],
   ),
   (
     filter: 'asuperstop',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        level: AsuperstopSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(level: AsuperstopEffect.levelDefault)],
   ),
   (
     filter: 'asuperstop',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        level: AsuperstopSettings.levelMax,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(level: AsuperstopEffect.levelMax)],
   ),
   (
     filter: 'asuperstop',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        order: AsuperstopSettings.orderMin,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(order: AsuperstopEffect.orderMin)],
   ),
   (
     filter: 'asuperstop',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        order: AsuperstopSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(order: AsuperstopEffect.orderDefault)],
   ),
   (
     filter: 'asuperstop',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        order: AsuperstopSettings.orderMax,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(order: AsuperstopEffect.orderMax)],
   ),
   (
     filter: 'asuperstop',
     label: 'qfactor=qfactorMin',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        qfactor: AsuperstopSettings.qfactorMin,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(qfactor: AsuperstopEffect.qfactorMin)],
   ),
   (
     filter: 'asuperstop',
     label: 'qfactor=qfactorDefault',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        qfactor: AsuperstopSettings.qfactorDefault,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(qfactor: AsuperstopEffect.qfactorDefault)],
   ),
   (
     filter: 'asuperstop',
     label: 'qfactor=qfactorMax',
-    bundle: const AudioEffects(
-      asuperstop: const AsuperstopSettings(
-        enabled: true,
-        qfactor: AsuperstopSettings.qfactorMax,
-      ),
-    ),
+    bundle: const [AsuperstopEffect(qfactor: AsuperstopEffect.qfactorMax)],
   ),
   (
     filter: 'atempo',
     label: 'tempo=tempoMin',
-    bundle: const AudioEffects(
-      atempo: const AtempoSettings(
-        enabled: true,
-        tempo: AtempoSettings.tempoMin,
-      ),
-    ),
+    bundle: const [AtempoEffect(tempo: AtempoEffect.tempoMin)],
   ),
   (
     filter: 'atempo',
     label: 'tempo=tempoDefault',
-    bundle: const AudioEffects(
-      atempo: const AtempoSettings(
-        enabled: true,
-        tempo: AtempoSettings.tempoDefault,
-      ),
-    ),
+    bundle: const [AtempoEffect(tempo: AtempoEffect.tempoDefault)],
   ),
   (
     filter: 'atempo',
     label: 'tempo=tempoMax',
-    bundle: const AudioEffects(
-      atempo: const AtempoSettings(
-        enabled: true,
-        tempo: AtempoSettings.tempoMax,
-      ),
-    ),
+    bundle: const [AtempoEffect(tempo: AtempoEffect.tempoMax)],
   ),
   (
     filter: 'atilt',
     label: 'freq=freqMin',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, freq: AtiltSettings.freqMin),
-    ),
+    bundle: const [AtiltEffect(freq: AtiltEffect.freqMin)],
   ),
   (
     filter: 'atilt',
     label: 'freq=freqDefault',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(
-        enabled: true,
-        freq: AtiltSettings.freqDefault,
-      ),
-    ),
+    bundle: const [AtiltEffect(freq: AtiltEffect.freqDefault)],
   ),
   (
     filter: 'atilt',
     label: 'freq=freqMax',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, freq: AtiltSettings.freqMax),
-    ),
+    bundle: const [AtiltEffect(freq: AtiltEffect.freqMax)],
   ),
   (
     filter: 'atilt',
     label: 'level=levelMin',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, level: AtiltSettings.levelMin),
-    ),
+    bundle: const [AtiltEffect(level: AtiltEffect.levelMin)],
   ),
   (
     filter: 'atilt',
     label: 'level=levelDefault',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(
-        enabled: true,
-        level: AtiltSettings.levelDefault,
-      ),
-    ),
+    bundle: const [AtiltEffect(level: AtiltEffect.levelDefault)],
   ),
   (
     filter: 'atilt',
     label: 'level=levelMax',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, level: AtiltSettings.levelMax),
-    ),
+    bundle: const [AtiltEffect(level: AtiltEffect.levelMax)],
   ),
   (
     filter: 'atilt',
     label: 'order=orderMin',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, order: AtiltSettings.orderMin),
-    ),
+    bundle: const [AtiltEffect(order: AtiltEffect.orderMin)],
   ),
   (
     filter: 'atilt',
     label: 'order=orderDefault',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(
-        enabled: true,
-        order: AtiltSettings.orderDefault,
-      ),
-    ),
+    bundle: const [AtiltEffect(order: AtiltEffect.orderDefault)],
   ),
   (
     filter: 'atilt',
     label: 'order=orderMax',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, order: AtiltSettings.orderMax),
-    ),
+    bundle: const [AtiltEffect(order: AtiltEffect.orderMax)],
   ),
   (
     filter: 'atilt',
     label: 'slope=slopeMin',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, slope: AtiltSettings.slopeMin),
-    ),
+    bundle: const [AtiltEffect(slope: AtiltEffect.slopeMin)],
   ),
   (
     filter: 'atilt',
     label: 'slope=slopeDefault',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(
-        enabled: true,
-        slope: AtiltSettings.slopeDefault,
-      ),
-    ),
+    bundle: const [AtiltEffect(slope: AtiltEffect.slopeDefault)],
   ),
   (
     filter: 'atilt',
     label: 'slope=slopeMax',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, slope: AtiltSettings.slopeMax),
-    ),
+    bundle: const [AtiltEffect(slope: AtiltEffect.slopeMax)],
   ),
   (
     filter: 'atilt',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, width: AtiltSettings.widthMin),
-    ),
+    bundle: const [AtiltEffect(width: AtiltEffect.widthMin)],
   ),
   (
     filter: 'atilt',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(
-        enabled: true,
-        width: AtiltSettings.widthDefault,
-      ),
-    ),
+    bundle: const [AtiltEffect(width: AtiltEffect.widthDefault)],
   ),
   (
     filter: 'atilt',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      atilt: const AtiltSettings(enabled: true, width: AtiltSettings.widthMax),
-    ),
+    bundle: const [AtiltEffect(width: AtiltEffect.widthMax)],
   ),
   (
     filter: 'bandpass',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, b: BandpassSettings.bMin),
-    ),
+    bundle: const [BandpassEffect(b: BandpassEffect.bMin)],
   ),
   (
     filter: 'bandpass',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        b: BandpassSettings.bDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(b: BandpassEffect.bDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, b: BandpassSettings.bMax),
-    ),
+    bundle: const [BandpassEffect(b: BandpassEffect.bMax)],
   ),
   (
     filter: 'bandpass',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        blocksize: BandpassSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [BandpassEffect(blocksize: BandpassEffect.blocksizeMin)],
   ),
   (
     filter: 'bandpass',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        blocksize: BandpassSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(blocksize: BandpassEffect.blocksizeDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        blocksize: BandpassSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [BandpassEffect(blocksize: BandpassEffect.blocksizeMax)],
   ),
   (
     filter: 'bandpass',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, f: BandpassSettings.fMin),
-    ),
+    bundle: const [BandpassEffect(f: BandpassEffect.fMin)],
   ),
   (
     filter: 'bandpass',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        f: BandpassSettings.fDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(f: BandpassEffect.fDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, f: BandpassSettings.fMax),
-    ),
+    bundle: const [BandpassEffect(f: BandpassEffect.fMax)],
   ),
   (
     filter: 'bandpass',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        frequency: BandpassSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [BandpassEffect(frequency: BandpassEffect.frequencyMin)],
   ),
   (
     filter: 'bandpass',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        frequency: BandpassSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(frequency: BandpassEffect.frequencyDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        frequency: BandpassSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [BandpassEffect(frequency: BandpassEffect.frequencyMax)],
   ),
   (
     filter: 'bandpass',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, m: BandpassSettings.mMin),
-    ),
+    bundle: const [BandpassEffect(m: BandpassEffect.mMin)],
   ),
   (
     filter: 'bandpass',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        m: BandpassSettings.mDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(m: BandpassEffect.mDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, m: BandpassSettings.mMax),
-    ),
+    bundle: const [BandpassEffect(m: BandpassEffect.mMax)],
   ),
   (
     filter: 'bandpass',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        mix: BandpassSettings.mixMin,
-      ),
-    ),
+    bundle: const [BandpassEffect(mix: BandpassEffect.mixMin)],
   ),
   (
     filter: 'bandpass',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        mix: BandpassSettings.mixDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(mix: BandpassEffect.mixDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        mix: BandpassSettings.mixMax,
-      ),
-    ),
+    bundle: const [BandpassEffect(mix: BandpassEffect.mixMax)],
   ),
   (
     filter: 'bandpass',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, w: BandpassSettings.wMin),
-    ),
+    bundle: const [BandpassEffect(w: BandpassEffect.wMin)],
   ),
   (
     filter: 'bandpass',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        w: BandpassSettings.wDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(w: BandpassEffect.wDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(enabled: true, w: BandpassSettings.wMax),
-    ),
+    bundle: const [BandpassEffect(w: BandpassEffect.wMax)],
   ),
   (
     filter: 'bandpass',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        width: BandpassSettings.widthMin,
-      ),
-    ),
+    bundle: const [BandpassEffect(width: BandpassEffect.widthMin)],
   ),
   (
     filter: 'bandpass',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        width: BandpassSettings.widthDefault,
-      ),
-    ),
+    bundle: const [BandpassEffect(width: BandpassEffect.widthDefault)],
   ),
   (
     filter: 'bandpass',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      bandpass: const BandpassSettings(
-        enabled: true,
-        width: BandpassSettings.widthMax,
-      ),
-    ),
+    bundle: const [BandpassEffect(width: BandpassEffect.widthMax)],
   ),
   (
     filter: 'bandreject',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        b: BandrejectSettings.bMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(b: BandrejectEffect.bMin)],
   ),
   (
     filter: 'bandreject',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        b: BandrejectSettings.bDefault,
-      ),
-    ),
+    bundle: const [BandrejectEffect(b: BandrejectEffect.bDefault)],
   ),
   (
     filter: 'bandreject',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        b: BandrejectSettings.bMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(b: BandrejectEffect.bMax)],
   ),
   (
     filter: 'bandreject',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        blocksize: BandrejectSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(blocksize: BandrejectEffect.blocksizeMin)],
   ),
   (
     filter: 'bandreject',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        blocksize: BandrejectSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [
+      BandrejectEffect(blocksize: BandrejectEffect.blocksizeDefault),
+    ],
   ),
   (
     filter: 'bandreject',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        blocksize: BandrejectSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(blocksize: BandrejectEffect.blocksizeMax)],
   ),
   (
     filter: 'bandreject',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        f: BandrejectSettings.fMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(f: BandrejectEffect.fMin)],
   ),
   (
     filter: 'bandreject',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        f: BandrejectSettings.fDefault,
-      ),
-    ),
+    bundle: const [BandrejectEffect(f: BandrejectEffect.fDefault)],
   ),
   (
     filter: 'bandreject',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        f: BandrejectSettings.fMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(f: BandrejectEffect.fMax)],
   ),
   (
     filter: 'bandreject',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        frequency: BandrejectSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(frequency: BandrejectEffect.frequencyMin)],
   ),
   (
     filter: 'bandreject',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        frequency: BandrejectSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [
+      BandrejectEffect(frequency: BandrejectEffect.frequencyDefault),
+    ],
   ),
   (
     filter: 'bandreject',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        frequency: BandrejectSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(frequency: BandrejectEffect.frequencyMax)],
   ),
   (
     filter: 'bandreject',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        m: BandrejectSettings.mMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(m: BandrejectEffect.mMin)],
   ),
   (
     filter: 'bandreject',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        m: BandrejectSettings.mDefault,
-      ),
-    ),
+    bundle: const [BandrejectEffect(m: BandrejectEffect.mDefault)],
   ),
   (
     filter: 'bandreject',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        m: BandrejectSettings.mMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(m: BandrejectEffect.mMax)],
   ),
   (
     filter: 'bandreject',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        mix: BandrejectSettings.mixMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(mix: BandrejectEffect.mixMin)],
   ),
   (
     filter: 'bandreject',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        mix: BandrejectSettings.mixDefault,
-      ),
-    ),
+    bundle: const [BandrejectEffect(mix: BandrejectEffect.mixDefault)],
   ),
   (
     filter: 'bandreject',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        mix: BandrejectSettings.mixMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(mix: BandrejectEffect.mixMax)],
   ),
   (
     filter: 'bandreject',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        w: BandrejectSettings.wMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(w: BandrejectEffect.wMin)],
   ),
   (
     filter: 'bandreject',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        w: BandrejectSettings.wDefault,
-      ),
-    ),
+    bundle: const [BandrejectEffect(w: BandrejectEffect.wDefault)],
   ),
   (
     filter: 'bandreject',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        w: BandrejectSettings.wMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(w: BandrejectEffect.wMax)],
   ),
   (
     filter: 'bandreject',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        width: BandrejectSettings.widthMin,
-      ),
-    ),
+    bundle: const [BandrejectEffect(width: BandrejectEffect.widthMin)],
   ),
   (
     filter: 'bandreject',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        width: BandrejectSettings.widthDefault,
-      ),
-    ),
+    bundle: const [BandrejectEffect(width: BandrejectEffect.widthDefault)],
   ),
   (
     filter: 'bandreject',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      bandreject: const BandrejectSettings(
-        enabled: true,
-        width: BandrejectSettings.widthMax,
-      ),
-    ),
+    bundle: const [BandrejectEffect(width: BandrejectEffect.widthMax)],
   ),
   (
     filter: 'bass',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, b: BassSettings.bMin),
-    ),
+    bundle: const [BassEffect(b: BassEffect.bMin)],
   ),
   (
     filter: 'bass',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, b: BassSettings.bDefault),
-    ),
+    bundle: const [BassEffect(b: BassEffect.bDefault)],
   ),
   (
     filter: 'bass',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, b: BassSettings.bMax),
-    ),
+    bundle: const [BassEffect(b: BassEffect.bMax)],
   ),
   (
     filter: 'bass',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(
-        enabled: true,
-        blocksize: BassSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [BassEffect(blocksize: BassEffect.blocksizeMin)],
   ),
   (
     filter: 'bass',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(
-        enabled: true,
-        blocksize: BassSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [BassEffect(blocksize: BassEffect.blocksizeDefault)],
   ),
   (
     filter: 'bass',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(
-        enabled: true,
-        blocksize: BassSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [BassEffect(blocksize: BassEffect.blocksizeMax)],
   ),
   (
     filter: 'bass',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, f: BassSettings.fMin),
-    ),
+    bundle: const [BassEffect(f: BassEffect.fMin)],
   ),
   (
     filter: 'bass',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, f: BassSettings.fDefault),
-    ),
+    bundle: const [BassEffect(f: BassEffect.fDefault)],
   ),
   (
     filter: 'bass',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, f: BassSettings.fMax),
-    ),
+    bundle: const [BassEffect(f: BassEffect.fMax)],
   ),
   (
     filter: 'bass',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(
-        enabled: true,
-        frequency: BassSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [BassEffect(frequency: BassEffect.frequencyMin)],
   ),
   (
     filter: 'bass',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(
-        enabled: true,
-        frequency: BassSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [BassEffect(frequency: BassEffect.frequencyDefault)],
   ),
   (
     filter: 'bass',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(
-        enabled: true,
-        frequency: BassSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [BassEffect(frequency: BassEffect.frequencyMax)],
   ),
   (
     filter: 'bass',
     label: 'g=gMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, g: BassSettings.gMin),
-    ),
+    bundle: const [BassEffect(g: BassEffect.gMin)],
   ),
   (
     filter: 'bass',
     label: 'g=gDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, g: BassSettings.gDefault),
-    ),
+    bundle: const [BassEffect(g: BassEffect.gDefault)],
   ),
   (
     filter: 'bass',
     label: 'g=gMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, g: BassSettings.gMax),
-    ),
+    bundle: const [BassEffect(g: BassEffect.gMax)],
   ),
   (
     filter: 'bass',
     label: 'gain=gainMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, gain: BassSettings.gainMin),
-    ),
+    bundle: const [BassEffect(gain: BassEffect.gainMin)],
   ),
   (
     filter: 'bass',
     label: 'gain=gainDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, gain: BassSettings.gainDefault),
-    ),
+    bundle: const [BassEffect(gain: BassEffect.gainDefault)],
   ),
   (
     filter: 'bass',
     label: 'gain=gainMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, gain: BassSettings.gainMax),
-    ),
+    bundle: const [BassEffect(gain: BassEffect.gainMax)],
   ),
   (
     filter: 'bass',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, m: BassSettings.mMin),
-    ),
+    bundle: const [BassEffect(m: BassEffect.mMin)],
   ),
   (
     filter: 'bass',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, m: BassSettings.mDefault),
-    ),
+    bundle: const [BassEffect(m: BassEffect.mDefault)],
   ),
   (
     filter: 'bass',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, m: BassSettings.mMax),
-    ),
+    bundle: const [BassEffect(m: BassEffect.mMax)],
   ),
   (
     filter: 'bass',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, mix: BassSettings.mixMin),
-    ),
+    bundle: const [BassEffect(mix: BassEffect.mixMin)],
   ),
   (
     filter: 'bass',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, mix: BassSettings.mixDefault),
-    ),
+    bundle: const [BassEffect(mix: BassEffect.mixDefault)],
   ),
   (
     filter: 'bass',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, mix: BassSettings.mixMax),
-    ),
+    bundle: const [BassEffect(mix: BassEffect.mixMax)],
   ),
   (
     filter: 'bass',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, p: BassSettings.pMin),
-    ),
+    bundle: const [BassEffect(p: BassEffect.pMin)],
   ),
   (
     filter: 'bass',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, p: BassSettings.pDefault),
-    ),
+    bundle: const [BassEffect(p: BassEffect.pDefault)],
   ),
   (
     filter: 'bass',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, p: BassSettings.pMax),
-    ),
+    bundle: const [BassEffect(p: BassEffect.pMax)],
   ),
   (
     filter: 'bass',
     label: 'poles=polesMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, poles: BassSettings.polesMin),
-    ),
+    bundle: const [BassEffect(poles: BassEffect.polesMin)],
   ),
   (
     filter: 'bass',
     label: 'poles=polesDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, poles: BassSettings.polesDefault),
-    ),
+    bundle: const [BassEffect(poles: BassEffect.polesDefault)],
   ),
   (
     filter: 'bass',
     label: 'poles=polesMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, poles: BassSettings.polesMax),
-    ),
+    bundle: const [BassEffect(poles: BassEffect.polesMax)],
   ),
   (
     filter: 'bass',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, w: BassSettings.wMin),
-    ),
+    bundle: const [BassEffect(w: BassEffect.wMin)],
   ),
   (
     filter: 'bass',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, w: BassSettings.wDefault),
-    ),
+    bundle: const [BassEffect(w: BassEffect.wDefault)],
   ),
   (
     filter: 'bass',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, w: BassSettings.wMax),
-    ),
+    bundle: const [BassEffect(w: BassEffect.wMax)],
   ),
   (
     filter: 'bass',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, width: BassSettings.widthMin),
-    ),
+    bundle: const [BassEffect(width: BassEffect.widthMin)],
   ),
   (
     filter: 'bass',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, width: BassSettings.widthDefault),
-    ),
+    bundle: const [BassEffect(width: BassEffect.widthDefault)],
   ),
   (
     filter: 'bass',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      bass: const BassSettings(enabled: true, width: BassSettings.widthMax),
-    ),
+    bundle: const [BassEffect(width: BassEffect.widthMax)],
   ),
   (
     filter: 'biquad',
     label: 'a0=a0Min',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a0: BiquadSettings.a0Min),
-    ),
+    bundle: const [BiquadEffect(a0: BiquadEffect.a0Min)],
   ),
   (
     filter: 'biquad',
     label: 'a0=a0Default',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a0: BiquadSettings.a0Default),
-    ),
+    bundle: const [BiquadEffect(a0: BiquadEffect.a0Default)],
   ),
   (
     filter: 'biquad',
     label: 'a0=a0Max',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a0: BiquadSettings.a0Max),
-    ),
+    bundle: const [BiquadEffect(a0: BiquadEffect.a0Max)],
   ),
   (
     filter: 'biquad',
     label: 'a1=a1Min',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a1: BiquadSettings.a1Min),
-    ),
+    bundle: const [BiquadEffect(a1: BiquadEffect.a1Min)],
   ),
   (
     filter: 'biquad',
     label: 'a1=a1Default',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a1: BiquadSettings.a1Default),
-    ),
+    bundle: const [BiquadEffect(a1: BiquadEffect.a1Default)],
   ),
   (
     filter: 'biquad',
     label: 'a1=a1Max',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a1: BiquadSettings.a1Max),
-    ),
+    bundle: const [BiquadEffect(a1: BiquadEffect.a1Max)],
   ),
   (
     filter: 'biquad',
     label: 'a2=a2Min',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a2: BiquadSettings.a2Min),
-    ),
+    bundle: const [BiquadEffect(a2: BiquadEffect.a2Min)],
   ),
   (
     filter: 'biquad',
     label: 'a2=a2Default',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a2: BiquadSettings.a2Default),
-    ),
+    bundle: const [BiquadEffect(a2: BiquadEffect.a2Default)],
   ),
   (
     filter: 'biquad',
     label: 'a2=a2Max',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, a2: BiquadSettings.a2Max),
-    ),
+    bundle: const [BiquadEffect(a2: BiquadEffect.a2Max)],
   ),
   (
     filter: 'biquad',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b: BiquadSettings.bMin),
-    ),
+    bundle: const [BiquadEffect(b: BiquadEffect.bMin)],
   ),
   (
     filter: 'biquad',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b: BiquadSettings.bDefault),
-    ),
+    bundle: const [BiquadEffect(b: BiquadEffect.bDefault)],
   ),
   (
     filter: 'biquad',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b: BiquadSettings.bMax),
-    ),
+    bundle: const [BiquadEffect(b: BiquadEffect.bMax)],
   ),
   (
     filter: 'biquad',
     label: 'b0=b0Min',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b0: BiquadSettings.b0Min),
-    ),
+    bundle: const [BiquadEffect(b0: BiquadEffect.b0Min)],
   ),
   (
     filter: 'biquad',
     label: 'b0=b0Default',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b0: BiquadSettings.b0Default),
-    ),
+    bundle: const [BiquadEffect(b0: BiquadEffect.b0Default)],
   ),
   (
     filter: 'biquad',
     label: 'b0=b0Max',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b0: BiquadSettings.b0Max),
-    ),
+    bundle: const [BiquadEffect(b0: BiquadEffect.b0Max)],
   ),
   (
     filter: 'biquad',
     label: 'b1=b1Min',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b1: BiquadSettings.b1Min),
-    ),
+    bundle: const [BiquadEffect(b1: BiquadEffect.b1Min)],
   ),
   (
     filter: 'biquad',
     label: 'b1=b1Default',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b1: BiquadSettings.b1Default),
-    ),
+    bundle: const [BiquadEffect(b1: BiquadEffect.b1Default)],
   ),
   (
     filter: 'biquad',
     label: 'b1=b1Max',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b1: BiquadSettings.b1Max),
-    ),
+    bundle: const [BiquadEffect(b1: BiquadEffect.b1Max)],
   ),
   (
     filter: 'biquad',
     label: 'b2=b2Min',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b2: BiquadSettings.b2Min),
-    ),
+    bundle: const [BiquadEffect(b2: BiquadEffect.b2Min)],
   ),
   (
     filter: 'biquad',
     label: 'b2=b2Default',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b2: BiquadSettings.b2Default),
-    ),
+    bundle: const [BiquadEffect(b2: BiquadEffect.b2Default)],
   ),
   (
     filter: 'biquad',
     label: 'b2=b2Max',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, b2: BiquadSettings.b2Max),
-    ),
+    bundle: const [BiquadEffect(b2: BiquadEffect.b2Max)],
   ),
   (
     filter: 'biquad',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(
-        enabled: true,
-        blocksize: BiquadSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [BiquadEffect(blocksize: BiquadEffect.blocksizeMin)],
   ),
   (
     filter: 'biquad',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(
-        enabled: true,
-        blocksize: BiquadSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [BiquadEffect(blocksize: BiquadEffect.blocksizeDefault)],
   ),
   (
     filter: 'biquad',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(
-        enabled: true,
-        blocksize: BiquadSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [BiquadEffect(blocksize: BiquadEffect.blocksizeMax)],
   ),
   (
     filter: 'biquad',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, m: BiquadSettings.mMin),
-    ),
+    bundle: const [BiquadEffect(m: BiquadEffect.mMin)],
   ),
   (
     filter: 'biquad',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, m: BiquadSettings.mDefault),
-    ),
+    bundle: const [BiquadEffect(m: BiquadEffect.mDefault)],
   ),
   (
     filter: 'biquad',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, m: BiquadSettings.mMax),
-    ),
+    bundle: const [BiquadEffect(m: BiquadEffect.mMax)],
   ),
   (
     filter: 'biquad',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, mix: BiquadSettings.mixMin),
-    ),
+    bundle: const [BiquadEffect(mix: BiquadEffect.mixMin)],
   ),
   (
     filter: 'biquad',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(
-        enabled: true,
-        mix: BiquadSettings.mixDefault,
-      ),
-    ),
+    bundle: const [BiquadEffect(mix: BiquadEffect.mixDefault)],
   ),
   (
     filter: 'biquad',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      biquad: const BiquadSettings(enabled: true, mix: BiquadSettings.mixMax),
-    ),
+    bundle: const [BiquadEffect(mix: BiquadEffect.mixMax)],
   ),
   (
     filter: 'chorus',
-    label: 'in_gain=in_gainMin',
-    bundle: const AudioEffects(
-      chorus: const ChorusSettings(
-        enabled: true,
-        in_gain: ChorusSettings.in_gainMin,
+    label: 'in_gain=inGainMin',
+    bundle: const [
+      ChorusEffect(
+        inGain: ChorusEffect.inGainMin,
         delays: '55|60',
         decays: '0.4|0.32',
         speeds: '0.25|0.4',
         depths: '2|1.3',
       ),
-    ),
+    ],
   ),
   (
     filter: 'chorus',
-    label: 'in_gain=in_gainDefault',
-    bundle: const AudioEffects(
-      chorus: const ChorusSettings(
-        enabled: true,
-        in_gain: ChorusSettings.in_gainDefault,
+    label: 'in_gain=inGainDefault',
+    bundle: const [
+      ChorusEffect(
+        inGain: ChorusEffect.inGainDefault,
         delays: '55|60',
         decays: '0.4|0.32',
         speeds: '0.25|0.4',
         depths: '2|1.3',
       ),
-    ),
+    ],
   ),
   (
     filter: 'chorus',
-    label: 'in_gain=in_gainMax',
-    bundle: const AudioEffects(
-      chorus: const ChorusSettings(
-        enabled: true,
-        in_gain: ChorusSettings.in_gainMax,
+    label: 'in_gain=inGainMax',
+    bundle: const [
+      ChorusEffect(
+        inGain: ChorusEffect.inGainMax,
         delays: '55|60',
         decays: '0.4|0.32',
         speeds: '0.25|0.4',
         depths: '2|1.3',
       ),
-    ),
+    ],
   ),
   (
     filter: 'chorus',
-    label: 'out_gain=out_gainMin',
-    bundle: const AudioEffects(
-      chorus: const ChorusSettings(
-        enabled: true,
-        out_gain: ChorusSettings.out_gainMin,
+    label: 'out_gain=outGainMin',
+    bundle: const [
+      ChorusEffect(
+        outGain: ChorusEffect.outGainMin,
         delays: '55|60',
         decays: '0.4|0.32',
         speeds: '0.25|0.4',
         depths: '2|1.3',
       ),
-    ),
+    ],
   ),
   (
     filter: 'chorus',
-    label: 'out_gain=out_gainDefault',
-    bundle: const AudioEffects(
-      chorus: const ChorusSettings(
-        enabled: true,
-        out_gain: ChorusSettings.out_gainDefault,
+    label: 'out_gain=outGainDefault',
+    bundle: const [
+      ChorusEffect(
+        outGain: ChorusEffect.outGainDefault,
         delays: '55|60',
         decays: '0.4|0.32',
         speeds: '0.25|0.4',
         depths: '2|1.3',
       ),
-    ),
+    ],
   ),
   (
     filter: 'chorus',
-    label: 'out_gain=out_gainMax',
-    bundle: const AudioEffects(
-      chorus: const ChorusSettings(
-        enabled: true,
-        out_gain: ChorusSettings.out_gainMax,
+    label: 'out_gain=outGainMax',
+    bundle: const [
+      ChorusEffect(
+        outGain: ChorusEffect.outGainMax,
         delays: '55|60',
         decays: '0.4|0.32',
         speeds: '0.25|0.4',
         depths: '2|1.3',
       ),
-    ),
+    ],
   ),
   (
     filter: 'compand',
     label: 'delay=delayMin',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        delay: CompandSettings.delayMin,
-      ),
-    ),
+    bundle: const [CompandEffect(delay: CompandEffect.delayMin)],
   ),
   (
     filter: 'compand',
     label: 'delay=delayDefault',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        delay: CompandSettings.delayDefault,
-      ),
-    ),
+    bundle: const [CompandEffect(delay: CompandEffect.delayDefault)],
   ),
   (
     filter: 'compand',
     label: 'delay=delayMax',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        delay: CompandSettings.delayMax,
-      ),
-    ),
+    bundle: const [CompandEffect(delay: CompandEffect.delayMax)],
   ),
   (
     filter: 'compand',
     label: 'gain=gainMin',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        gain: CompandSettings.gainMin,
-      ),
-    ),
+    bundle: const [CompandEffect(gain: CompandEffect.gainMin)],
   ),
   (
     filter: 'compand',
     label: 'gain=gainDefault',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        gain: CompandSettings.gainDefault,
-      ),
-    ),
+    bundle: const [CompandEffect(gain: CompandEffect.gainDefault)],
   ),
   (
     filter: 'compand',
     label: 'gain=gainMax',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        gain: CompandSettings.gainMax,
-      ),
-    ),
+    bundle: const [CompandEffect(gain: CompandEffect.gainMax)],
   ),
   (
     filter: 'compand',
     label: 'volume=volumeMin',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        volume: CompandSettings.volumeMin,
-      ),
-    ),
+    bundle: const [CompandEffect(volume: CompandEffect.volumeMin)],
   ),
   (
     filter: 'compand',
     label: 'volume=volumeDefault',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        volume: CompandSettings.volumeDefault,
-      ),
-    ),
+    bundle: const [CompandEffect(volume: CompandEffect.volumeDefault)],
   ),
   (
     filter: 'compand',
     label: 'volume=volumeMax',
-    bundle: const AudioEffects(
-      compand: const CompandSettings(
-        enabled: true,
-        volume: CompandSettings.volumeMax,
-      ),
-    ),
+    bundle: const [CompandEffect(volume: CompandEffect.volumeMax)],
   ),
   (
     filter: 'compensationdelay',
     label: 'cm=cmMin',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        cm: CompensationdelaySettings.cmMin,
-      ),
-    ),
+    bundle: const [CompensationdelayEffect(cm: CompensationdelayEffect.cmMin)],
   ),
   (
     filter: 'compensationdelay',
     label: 'cm=cmDefault',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        cm: CompensationdelaySettings.cmDefault,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(cm: CompensationdelayEffect.cmDefault),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'cm=cmMax',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        cm: CompensationdelaySettings.cmMax,
-      ),
-    ),
+    bundle: const [CompensationdelayEffect(cm: CompensationdelayEffect.cmMax)],
   ),
   (
     filter: 'compensationdelay',
     label: 'dry=dryMin',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        dry: CompensationdelaySettings.dryMin,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(dry: CompensationdelayEffect.dryMin),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'dry=dryDefault',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        dry: CompensationdelaySettings.dryDefault,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(dry: CompensationdelayEffect.dryDefault),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'dry=dryMax',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        dry: CompensationdelaySettings.dryMax,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(dry: CompensationdelayEffect.dryMax),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        m: CompensationdelaySettings.mMin,
-      ),
-    ),
+    bundle: const [CompensationdelayEffect(m: CompensationdelayEffect.mMin)],
   ),
   (
     filter: 'compensationdelay',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        m: CompensationdelaySettings.mDefault,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(m: CompensationdelayEffect.mDefault),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        m: CompensationdelaySettings.mMax,
-      ),
-    ),
+    bundle: const [CompensationdelayEffect(m: CompensationdelayEffect.mMax)],
   ),
   (
     filter: 'compensationdelay',
     label: 'mm=mmMin',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        mm: CompensationdelaySettings.mmMin,
-      ),
-    ),
+    bundle: const [CompensationdelayEffect(mm: CompensationdelayEffect.mmMin)],
   ),
   (
     filter: 'compensationdelay',
     label: 'mm=mmDefault',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        mm: CompensationdelaySettings.mmDefault,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(mm: CompensationdelayEffect.mmDefault),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'mm=mmMax',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        mm: CompensationdelaySettings.mmMax,
-      ),
-    ),
+    bundle: const [CompensationdelayEffect(mm: CompensationdelayEffect.mmMax)],
   ),
   (
     filter: 'compensationdelay',
     label: 'temp=tempMin',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        temp: CompensationdelaySettings.tempMin,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(temp: CompensationdelayEffect.tempMin),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'temp=tempDefault',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        temp: CompensationdelaySettings.tempDefault,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(temp: CompensationdelayEffect.tempDefault),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'temp=tempMax',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        temp: CompensationdelaySettings.tempMax,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(temp: CompensationdelayEffect.tempMax),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'wet=wetMin',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        wet: CompensationdelaySettings.wetMin,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(wet: CompensationdelayEffect.wetMin),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'wet=wetDefault',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        wet: CompensationdelaySettings.wetDefault,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(wet: CompensationdelayEffect.wetDefault),
+    ],
   ),
   (
     filter: 'compensationdelay',
     label: 'wet=wetMax',
-    bundle: const AudioEffects(
-      compensationdelay: const CompensationdelaySettings(
-        enabled: true,
-        wet: CompensationdelaySettings.wetMax,
-      ),
-    ),
+    bundle: const [
+      CompensationdelayEffect(wet: CompensationdelayEffect.wetMax),
+    ],
   ),
   (
     filter: 'crossfeed',
-    label: 'block_size=block_sizeMin',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        block_size: CrossfeedSettings.block_sizeMin,
-      ),
-    ),
+    label: 'block_size=blockSizeMin',
+    bundle: const [CrossfeedEffect(blockSize: CrossfeedEffect.blockSizeMin)],
   ),
   (
     filter: 'crossfeed',
-    label: 'block_size=block_sizeDefault',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        block_size: CrossfeedSettings.block_sizeDefault,
-      ),
-    ),
+    label: 'block_size=blockSizeDefault',
+    bundle: const [
+      CrossfeedEffect(blockSize: CrossfeedEffect.blockSizeDefault),
+    ],
   ),
   (
     filter: 'crossfeed',
-    label: 'block_size=block_sizeMax',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        block_size: CrossfeedSettings.block_sizeMax,
-      ),
-    ),
+    label: 'block_size=blockSizeMax',
+    bundle: const [CrossfeedEffect(blockSize: CrossfeedEffect.blockSizeMax)],
   ),
   (
     filter: 'crossfeed',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        level_in: CrossfeedSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [CrossfeedEffect(levelIn: CrossfeedEffect.levelInMin)],
   ),
   (
     filter: 'crossfeed',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        level_in: CrossfeedSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [CrossfeedEffect(levelIn: CrossfeedEffect.levelInDefault)],
   ),
   (
     filter: 'crossfeed',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        level_in: CrossfeedSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [CrossfeedEffect(levelIn: CrossfeedEffect.levelInMax)],
   ),
   (
     filter: 'crossfeed',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        level_out: CrossfeedSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [CrossfeedEffect(levelOut: CrossfeedEffect.levelOutMin)],
   ),
   (
     filter: 'crossfeed',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        level_out: CrossfeedSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [CrossfeedEffect(levelOut: CrossfeedEffect.levelOutDefault)],
   ),
   (
     filter: 'crossfeed',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        level_out: CrossfeedSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [CrossfeedEffect(levelOut: CrossfeedEffect.levelOutMax)],
   ),
   (
     filter: 'crossfeed',
     label: 'range=rangeMin',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        range: CrossfeedSettings.rangeMin,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(range: CrossfeedEffect.rangeMin)],
   ),
   (
     filter: 'crossfeed',
     label: 'range=rangeDefault',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        range: CrossfeedSettings.rangeDefault,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(range: CrossfeedEffect.rangeDefault)],
   ),
   (
     filter: 'crossfeed',
     label: 'range=rangeMax',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        range: CrossfeedSettings.rangeMax,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(range: CrossfeedEffect.rangeMax)],
   ),
   (
     filter: 'crossfeed',
     label: 'slope=slopeMin',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        slope: CrossfeedSettings.slopeMin,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(slope: CrossfeedEffect.slopeMin)],
   ),
   (
     filter: 'crossfeed',
     label: 'slope=slopeDefault',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        slope: CrossfeedSettings.slopeDefault,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(slope: CrossfeedEffect.slopeDefault)],
   ),
   (
     filter: 'crossfeed',
     label: 'slope=slopeMax',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        slope: CrossfeedSettings.slopeMax,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(slope: CrossfeedEffect.slopeMax)],
   ),
   (
     filter: 'crossfeed',
     label: 'strength=strengthMin',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        strength: CrossfeedSettings.strengthMin,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(strength: CrossfeedEffect.strengthMin)],
   ),
   (
     filter: 'crossfeed',
     label: 'strength=strengthDefault',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        strength: CrossfeedSettings.strengthDefault,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(strength: CrossfeedEffect.strengthDefault)],
   ),
   (
     filter: 'crossfeed',
     label: 'strength=strengthMax',
-    bundle: const AudioEffects(
-      crossfeed: const CrossfeedSettings(
-        enabled: true,
-        strength: CrossfeedSettings.strengthMax,
-      ),
-    ),
+    bundle: const [CrossfeedEffect(strength: CrossfeedEffect.strengthMax)],
   ),
   (
     filter: 'crystalizer',
     label: 'i=iMin',
-    bundle: const AudioEffects(
-      crystalizer: const CrystalizerSettings(
-        enabled: true,
-        i: CrystalizerSettings.iMin,
-      ),
-    ),
+    bundle: const [CrystalizerEffect(i: CrystalizerEffect.iMin)],
   ),
   (
     filter: 'crystalizer',
     label: 'i=iDefault',
-    bundle: const AudioEffects(
-      crystalizer: const CrystalizerSettings(
-        enabled: true,
-        i: CrystalizerSettings.iDefault,
-      ),
-    ),
+    bundle: const [CrystalizerEffect(i: CrystalizerEffect.iDefault)],
   ),
   (
     filter: 'crystalizer',
     label: 'i=iMax',
-    bundle: const AudioEffects(
-      crystalizer: const CrystalizerSettings(
-        enabled: true,
-        i: CrystalizerSettings.iMax,
-      ),
-    ),
+    bundle: const [CrystalizerEffect(i: CrystalizerEffect.iMax)],
   ),
   (
     filter: 'dcshift',
     label: 'limitergain=limitergainMin',
-    bundle: const AudioEffects(
-      dcshift: const DcshiftSettings(
-        enabled: true,
-        limitergain: DcshiftSettings.limitergainMin,
-      ),
-    ),
+    bundle: const [DcshiftEffect(limitergain: DcshiftEffect.limitergainMin)],
   ),
   (
     filter: 'dcshift',
     label: 'limitergain=limitergainDefault',
-    bundle: const AudioEffects(
-      dcshift: const DcshiftSettings(
-        enabled: true,
-        limitergain: DcshiftSettings.limitergainDefault,
-      ),
-    ),
+    bundle: const [
+      DcshiftEffect(limitergain: DcshiftEffect.limitergainDefault),
+    ],
   ),
   (
     filter: 'dcshift',
     label: 'limitergain=limitergainMax',
-    bundle: const AudioEffects(
-      dcshift: const DcshiftSettings(
-        enabled: true,
-        limitergain: DcshiftSettings.limitergainMax,
-      ),
-    ),
+    bundle: const [DcshiftEffect(limitergain: DcshiftEffect.limitergainMax)],
   ),
   (
     filter: 'dcshift',
     label: 'shift=shiftMin',
-    bundle: const AudioEffects(
-      dcshift: const DcshiftSettings(
-        enabled: true,
-        shift: DcshiftSettings.shiftMin,
-      ),
-    ),
+    bundle: const [DcshiftEffect(shift: DcshiftEffect.shiftMin)],
   ),
   (
     filter: 'dcshift',
     label: 'shift=shiftDefault',
-    bundle: const AudioEffects(
-      dcshift: const DcshiftSettings(
-        enabled: true,
-        shift: DcshiftSettings.shiftDefault,
-      ),
-    ),
+    bundle: const [DcshiftEffect(shift: DcshiftEffect.shiftDefault)],
   ),
   (
     filter: 'dcshift',
     label: 'shift=shiftMax',
-    bundle: const AudioEffects(
-      dcshift: const DcshiftSettings(
-        enabled: true,
-        shift: DcshiftSettings.shiftMax,
-      ),
-    ),
+    bundle: const [DcshiftEffect(shift: DcshiftEffect.shiftMax)],
   ),
   (
     filter: 'deesser',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(enabled: true, f: DeesserSettings.fMin),
-    ),
+    bundle: const [DeesserEffect(f: DeesserEffect.fMin)],
   ),
   (
     filter: 'deesser',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(
-        enabled: true,
-        f: DeesserSettings.fDefault,
-      ),
-    ),
+    bundle: const [DeesserEffect(f: DeesserEffect.fDefault)],
   ),
   (
     filter: 'deesser',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(enabled: true, f: DeesserSettings.fMax),
-    ),
+    bundle: const [DeesserEffect(f: DeesserEffect.fMax)],
   ),
   (
     filter: 'deesser',
     label: 'i=iMin',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(enabled: true, i: DeesserSettings.iMin),
-    ),
+    bundle: const [DeesserEffect(i: DeesserEffect.iMin)],
   ),
   (
     filter: 'deesser',
     label: 'i=iDefault',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(
-        enabled: true,
-        i: DeesserSettings.iDefault,
-      ),
-    ),
+    bundle: const [DeesserEffect(i: DeesserEffect.iDefault)],
   ),
   (
     filter: 'deesser',
     label: 'i=iMax',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(enabled: true, i: DeesserSettings.iMax),
-    ),
+    bundle: const [DeesserEffect(i: DeesserEffect.iMax)],
   ),
   (
     filter: 'deesser',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(enabled: true, m: DeesserSettings.mMin),
-    ),
+    bundle: const [DeesserEffect(m: DeesserEffect.mMin)],
   ),
   (
     filter: 'deesser',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(
-        enabled: true,
-        m: DeesserSettings.mDefault,
-      ),
-    ),
+    bundle: const [DeesserEffect(m: DeesserEffect.mDefault)],
   ),
   (
     filter: 'deesser',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      deesser: const DeesserSettings(enabled: true, m: DeesserSettings.mMax),
-    ),
+    bundle: const [DeesserEffect(m: DeesserEffect.mMax)],
   ),
   (
     filter: 'dialoguenhance',
     label: 'enhance=enhanceMin',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        enhance: DialoguenhanceSettings.enhanceMin,
-      ),
-    ),
+    bundle: const [
+      DialoguenhanceEffect(enhance: DialoguenhanceEffect.enhanceMin),
+    ],
   ),
   (
     filter: 'dialoguenhance',
     label: 'enhance=enhanceDefault',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        enhance: DialoguenhanceSettings.enhanceDefault,
-      ),
-    ),
+    bundle: const [
+      DialoguenhanceEffect(enhance: DialoguenhanceEffect.enhanceDefault),
+    ],
   ),
   (
     filter: 'dialoguenhance',
     label: 'enhance=enhanceMax',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        enhance: DialoguenhanceSettings.enhanceMax,
-      ),
-    ),
+    bundle: const [
+      DialoguenhanceEffect(enhance: DialoguenhanceEffect.enhanceMax),
+    ],
   ),
   (
     filter: 'dialoguenhance',
     label: 'original=originalMin',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        original: DialoguenhanceSettings.originalMin,
-      ),
-    ),
+    bundle: const [
+      DialoguenhanceEffect(original: DialoguenhanceEffect.originalMin),
+    ],
   ),
   (
     filter: 'dialoguenhance',
     label: 'original=originalDefault',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        original: DialoguenhanceSettings.originalDefault,
-      ),
-    ),
+    bundle: const [
+      DialoguenhanceEffect(original: DialoguenhanceEffect.originalDefault),
+    ],
   ),
   (
     filter: 'dialoguenhance',
     label: 'original=originalMax',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        original: DialoguenhanceSettings.originalMax,
-      ),
-    ),
+    bundle: const [
+      DialoguenhanceEffect(original: DialoguenhanceEffect.originalMax),
+    ],
   ),
   (
     filter: 'dialoguenhance',
     label: 'voice=voiceMin',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        voice: DialoguenhanceSettings.voiceMin,
-      ),
-    ),
+    bundle: const [DialoguenhanceEffect(voice: DialoguenhanceEffect.voiceMin)],
   ),
   (
     filter: 'dialoguenhance',
     label: 'voice=voiceDefault',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        voice: DialoguenhanceSettings.voiceDefault,
-      ),
-    ),
+    bundle: const [
+      DialoguenhanceEffect(voice: DialoguenhanceEffect.voiceDefault),
+    ],
   ),
   (
     filter: 'dialoguenhance',
     label: 'voice=voiceMax',
-    bundle: const AudioEffects(
-      dialoguenhance: const DialoguenhanceSettings(
-        enabled: true,
-        voice: DialoguenhanceSettings.voiceMax,
-      ),
-    ),
+    bundle: const [DialoguenhanceEffect(voice: DialoguenhanceEffect.voiceMax)],
   ),
   (
     filter: 'drmeter',
     label: 'length=lengthMin',
-    bundle: const AudioEffects(
-      drmeter: const DrmeterSettings(
-        enabled: true,
-        length: DrmeterSettings.lengthMin,
-      ),
-    ),
+    bundle: const [DrmeterEffect(length: DrmeterEffect.lengthMin)],
   ),
   (
     filter: 'drmeter',
     label: 'length=lengthDefault',
-    bundle: const AudioEffects(
-      drmeter: const DrmeterSettings(
-        enabled: true,
-        length: DrmeterSettings.lengthDefault,
-      ),
-    ),
+    bundle: const [DrmeterEffect(length: DrmeterEffect.lengthDefault)],
   ),
   (
     filter: 'drmeter',
     label: 'length=lengthMax',
-    bundle: const AudioEffects(
-      drmeter: const DrmeterSettings(
-        enabled: true,
-        length: DrmeterSettings.lengthMax,
-      ),
-    ),
+    bundle: const [DrmeterEffect(length: DrmeterEffect.lengthMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'compress=compressMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        compress: DynaudnormSettings.compressMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(compress: DynaudnormEffect.compressMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'compress=compressDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        compress: DynaudnormSettings.compressDefault,
-      ),
-    ),
+    bundle: const [
+      DynaudnormEffect(compress: DynaudnormEffect.compressDefault),
+    ],
   ),
   (
     filter: 'dynaudnorm',
     label: 'compress=compressMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        compress: DynaudnormSettings.compressMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(compress: DynaudnormEffect.compressMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        f: DynaudnormSettings.fMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(f: DynaudnormEffect.fMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        f: DynaudnormSettings.fDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(f: DynaudnormEffect.fDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        f: DynaudnormSettings.fMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(f: DynaudnormEffect.fMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'framelen=framelenMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        framelen: DynaudnormSettings.framelenMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(framelen: DynaudnormEffect.framelenMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'framelen=framelenDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        framelen: DynaudnormSettings.framelenDefault,
-      ),
-    ),
+    bundle: const [
+      DynaudnormEffect(framelen: DynaudnormEffect.framelenDefault),
+    ],
   ),
   (
     filter: 'dynaudnorm',
     label: 'framelen=framelenMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        framelen: DynaudnormSettings.framelenMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(framelen: DynaudnormEffect.framelenMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'g=gMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        g: DynaudnormSettings.gMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(g: DynaudnormEffect.gMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'g=gDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        g: DynaudnormSettings.gDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(g: DynaudnormEffect.gDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'g=gMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        g: DynaudnormSettings.gMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(g: DynaudnormEffect.gMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'gausssize=gausssizeMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        gausssize: DynaudnormSettings.gausssizeMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(gausssize: DynaudnormEffect.gausssizeMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'gausssize=gausssizeDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        gausssize: DynaudnormSettings.gausssizeDefault,
-      ),
-    ),
+    bundle: const [
+      DynaudnormEffect(gausssize: DynaudnormEffect.gausssizeDefault),
+    ],
   ),
   (
     filter: 'dynaudnorm',
     label: 'gausssize=gausssizeMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        gausssize: DynaudnormSettings.gausssizeMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(gausssize: DynaudnormEffect.gausssizeMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        m: DynaudnormSettings.mMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(m: DynaudnormEffect.mMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        m: DynaudnormSettings.mDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(m: DynaudnormEffect.mDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        m: DynaudnormSettings.mMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(m: DynaudnormEffect.mMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'maxgain=maxgainMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        maxgain: DynaudnormSettings.maxgainMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(maxgain: DynaudnormEffect.maxgainMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'maxgain=maxgainDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        maxgain: DynaudnormSettings.maxgainDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(maxgain: DynaudnormEffect.maxgainDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'maxgain=maxgainMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        maxgain: DynaudnormSettings.maxgainMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(maxgain: DynaudnormEffect.maxgainMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'o=oMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        o: DynaudnormSettings.oMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(o: DynaudnormEffect.oMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'o=oDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        o: DynaudnormSettings.oDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(o: DynaudnormEffect.oDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'o=oMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        o: DynaudnormSettings.oMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(o: DynaudnormEffect.oMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'overlap=overlapMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        overlap: DynaudnormSettings.overlapMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(overlap: DynaudnormEffect.overlapMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'overlap=overlapDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        overlap: DynaudnormSettings.overlapDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(overlap: DynaudnormEffect.overlapDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'overlap=overlapMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        overlap: DynaudnormSettings.overlapMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(overlap: DynaudnormEffect.overlapMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        p: DynaudnormSettings.pMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(p: DynaudnormEffect.pMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        p: DynaudnormSettings.pDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(p: DynaudnormEffect.pDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        p: DynaudnormSettings.pMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(p: DynaudnormEffect.pMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'peak=peakMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        peak: DynaudnormSettings.peakMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(peak: DynaudnormEffect.peakMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'peak=peakDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        peak: DynaudnormSettings.peakDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(peak: DynaudnormEffect.peakDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'peak=peakMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        peak: DynaudnormSettings.peakMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(peak: DynaudnormEffect.peakMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'r=rMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        r: DynaudnormSettings.rMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(r: DynaudnormEffect.rMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'r=rDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        r: DynaudnormSettings.rDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(r: DynaudnormEffect.rDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'r=rMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        r: DynaudnormSettings.rMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(r: DynaudnormEffect.rMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 's=sMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        s: DynaudnormSettings.sMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(s: DynaudnormEffect.sMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 's=sDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        s: DynaudnormSettings.sDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(s: DynaudnormEffect.sDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 's=sMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        s: DynaudnormSettings.sMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(s: DynaudnormEffect.sMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 't=tMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        t: DynaudnormSettings.tMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(t: DynaudnormEffect.tMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 't=tDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        t: DynaudnormSettings.tDefault,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(t: DynaudnormEffect.tDefault)],
   ),
   (
     filter: 'dynaudnorm',
     label: 't=tMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        t: DynaudnormSettings.tMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(t: DynaudnormEffect.tMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'targetrms=targetrmsMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        targetrms: DynaudnormSettings.targetrmsMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(targetrms: DynaudnormEffect.targetrmsMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'targetrms=targetrmsDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        targetrms: DynaudnormSettings.targetrmsDefault,
-      ),
-    ),
+    bundle: const [
+      DynaudnormEffect(targetrms: DynaudnormEffect.targetrmsDefault),
+    ],
   ),
   (
     filter: 'dynaudnorm',
     label: 'targetrms=targetrmsMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        targetrms: DynaudnormSettings.targetrmsMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(targetrms: DynaudnormEffect.targetrmsMax)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        threshold: DynaudnormSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(threshold: DynaudnormEffect.thresholdMin)],
   ),
   (
     filter: 'dynaudnorm',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        threshold: DynaudnormSettings.thresholdDefault,
-      ),
-    ),
+    bundle: const [
+      DynaudnormEffect(threshold: DynaudnormEffect.thresholdDefault),
+    ],
   ),
   (
     filter: 'dynaudnorm',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      dynaudnorm: const DynaudnormSettings(
-        enabled: true,
-        threshold: DynaudnormSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [DynaudnormEffect(threshold: DynaudnormEffect.thresholdMax)],
   ),
   (
     filter: 'ebur128',
     label: 'meter=meterMin',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        meter: Ebur128Settings.meterMin,
-      ),
-    ),
+    bundle: const [Ebur128Effect(meter: Ebur128Effect.meterMin)],
   ),
   (
     filter: 'ebur128',
     label: 'meter=meterDefault',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        meter: Ebur128Settings.meterDefault,
-      ),
-    ),
+    bundle: const [Ebur128Effect(meter: Ebur128Effect.meterDefault)],
   ),
   (
     filter: 'ebur128',
     label: 'meter=meterMax',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        meter: Ebur128Settings.meterMax,
-      ),
-    ),
+    bundle: const [Ebur128Effect(meter: Ebur128Effect.meterMax)],
   ),
   (
     filter: 'ebur128',
     label: 'panlaw=panlawMin',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        panlaw: Ebur128Settings.panlawMin,
-      ),
-    ),
+    bundle: const [Ebur128Effect(panlaw: Ebur128Effect.panlawMin)],
   ),
   (
     filter: 'ebur128',
     label: 'panlaw=panlawDefault',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        panlaw: Ebur128Settings.panlawDefault,
-      ),
-    ),
+    bundle: const [Ebur128Effect(panlaw: Ebur128Effect.panlawDefault)],
   ),
   (
     filter: 'ebur128',
     label: 'panlaw=panlawMax',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        panlaw: Ebur128Settings.panlawMax,
-      ),
-    ),
+    bundle: const [Ebur128Effect(panlaw: Ebur128Effect.panlawMax)],
   ),
   (
     filter: 'ebur128',
     label: 'target=targetMin',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        target: Ebur128Settings.targetMin,
-      ),
-    ),
+    bundle: const [Ebur128Effect(target: Ebur128Effect.targetMin)],
   ),
   (
     filter: 'ebur128',
     label: 'target=targetDefault',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        target: Ebur128Settings.targetDefault,
-      ),
-    ),
+    bundle: const [Ebur128Effect(target: Ebur128Effect.targetDefault)],
   ),
   (
     filter: 'ebur128',
     label: 'target=targetMax',
-    bundle: const AudioEffects(
-      ebur128: const Ebur128Settings(
-        enabled: true,
-        target: Ebur128Settings.targetMax,
-      ),
-    ),
+    bundle: const [Ebur128Effect(target: Ebur128Effect.targetMax)],
   ),
   (
     filter: 'equalizer',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        b: EqualizerSettings.bMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(b: EqualizerEffect.bMin)],
   ),
   (
     filter: 'equalizer',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        b: EqualizerSettings.bDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(b: EqualizerEffect.bDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        b: EqualizerSettings.bMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(b: EqualizerEffect.bMax)],
   ),
   (
     filter: 'equalizer',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        blocksize: EqualizerSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(blocksize: EqualizerEffect.blocksizeMin)],
   ),
   (
     filter: 'equalizer',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        blocksize: EqualizerSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [
+      EqualizerEffect(blocksize: EqualizerEffect.blocksizeDefault),
+    ],
   ),
   (
     filter: 'equalizer',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        blocksize: EqualizerSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(blocksize: EqualizerEffect.blocksizeMax)],
   ),
   (
     filter: 'equalizer',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        f: EqualizerSettings.fMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(f: EqualizerEffect.fMin)],
   ),
   (
     filter: 'equalizer',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        f: EqualizerSettings.fDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(f: EqualizerEffect.fDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        f: EqualizerSettings.fMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(f: EqualizerEffect.fMax)],
   ),
   (
     filter: 'equalizer',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        frequency: EqualizerSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(frequency: EqualizerEffect.frequencyMin)],
   ),
   (
     filter: 'equalizer',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        frequency: EqualizerSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [
+      EqualizerEffect(frequency: EqualizerEffect.frequencyDefault),
+    ],
   ),
   (
     filter: 'equalizer',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        frequency: EqualizerSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(frequency: EqualizerEffect.frequencyMax)],
   ),
   (
     filter: 'equalizer',
     label: 'g=gMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        g: EqualizerSettings.gMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(g: EqualizerEffect.gMin)],
   ),
   (
     filter: 'equalizer',
     label: 'g=gDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        g: EqualizerSettings.gDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(g: EqualizerEffect.gDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'g=gMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        g: EqualizerSettings.gMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(g: EqualizerEffect.gMax)],
   ),
   (
     filter: 'equalizer',
     label: 'gain=gainMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        gain: EqualizerSettings.gainMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(gain: EqualizerEffect.gainMin)],
   ),
   (
     filter: 'equalizer',
     label: 'gain=gainDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        gain: EqualizerSettings.gainDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(gain: EqualizerEffect.gainDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'gain=gainMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        gain: EqualizerSettings.gainMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(gain: EqualizerEffect.gainMax)],
   ),
   (
     filter: 'equalizer',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        m: EqualizerSettings.mMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(m: EqualizerEffect.mMin)],
   ),
   (
     filter: 'equalizer',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        m: EqualizerSettings.mDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(m: EqualizerEffect.mDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        m: EqualizerSettings.mMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(m: EqualizerEffect.mMax)],
   ),
   (
     filter: 'equalizer',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        mix: EqualizerSettings.mixMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(mix: EqualizerEffect.mixMin)],
   ),
   (
     filter: 'equalizer',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        mix: EqualizerSettings.mixDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(mix: EqualizerEffect.mixDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        mix: EqualizerSettings.mixMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(mix: EqualizerEffect.mixMax)],
   ),
   (
     filter: 'equalizer',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        w: EqualizerSettings.wMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(w: EqualizerEffect.wMin)],
   ),
   (
     filter: 'equalizer',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        w: EqualizerSettings.wDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(w: EqualizerEffect.wDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        w: EqualizerSettings.wMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(w: EqualizerEffect.wMax)],
   ),
   (
     filter: 'equalizer',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        width: EqualizerSettings.widthMin,
-      ),
-    ),
+    bundle: const [EqualizerEffect(width: EqualizerEffect.widthMin)],
   ),
   (
     filter: 'equalizer',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        width: EqualizerSettings.widthDefault,
-      ),
-    ),
+    bundle: const [EqualizerEffect(width: EqualizerEffect.widthDefault)],
   ),
   (
     filter: 'equalizer',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      equalizer: const EqualizerSettings(
-        enabled: true,
-        width: EqualizerSettings.widthMax,
-      ),
-    ),
+    bundle: const [EqualizerEffect(width: EqualizerEffect.widthMax)],
   ),
   (
     filter: 'extrastereo',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      extrastereo: const ExtrastereoSettings(
-        enabled: true,
-        m: ExtrastereoSettings.mMin,
-      ),
-    ),
+    bundle: const [ExtrastereoEffect(m: ExtrastereoEffect.mMin)],
   ),
   (
     filter: 'extrastereo',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      extrastereo: const ExtrastereoSettings(
-        enabled: true,
-        m: ExtrastereoSettings.mDefault,
-      ),
-    ),
+    bundle: const [ExtrastereoEffect(m: ExtrastereoEffect.mDefault)],
   ),
   (
     filter: 'extrastereo',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      extrastereo: const ExtrastereoSettings(
-        enabled: true,
-        m: ExtrastereoSettings.mMax,
-      ),
-    ),
+    bundle: const [ExtrastereoEffect(m: ExtrastereoEffect.mMax)],
   ),
   (
     filter: 'firequalizer',
     label: 'accuracy=accuracyMin',
-    bundle: const AudioEffects(
-      firequalizer: const FirequalizerSettings(
-        enabled: true,
-        accuracy: FirequalizerSettings.accuracyMin,
-      ),
-    ),
+    bundle: const [
+      FirequalizerEffect(accuracy: FirequalizerEffect.accuracyMin),
+    ],
   ),
   (
     filter: 'firequalizer',
     label: 'accuracy=accuracyDefault',
-    bundle: const AudioEffects(
-      firequalizer: const FirequalizerSettings(
-        enabled: true,
-        accuracy: FirequalizerSettings.accuracyDefault,
-      ),
-    ),
+    bundle: const [
+      FirequalizerEffect(accuracy: FirequalizerEffect.accuracyDefault),
+    ],
   ),
   (
     filter: 'firequalizer',
     label: 'accuracy=accuracyMax',
-    bundle: const AudioEffects(
-      firequalizer: const FirequalizerSettings(
-        enabled: true,
-        accuracy: FirequalizerSettings.accuracyMax,
-      ),
-    ),
+    bundle: const [
+      FirequalizerEffect(accuracy: FirequalizerEffect.accuracyMax),
+    ],
   ),
   (
     filter: 'firequalizer',
     label: 'delay=delayMin',
-    bundle: const AudioEffects(
-      firequalizer: const FirequalizerSettings(
-        enabled: true,
-        delay: FirequalizerSettings.delayMin,
-      ),
-    ),
+    bundle: const [FirequalizerEffect(delay: FirequalizerEffect.delayMin)],
   ),
   (
     filter: 'firequalizer',
     label: 'delay=delayDefault',
-    bundle: const AudioEffects(
-      firequalizer: const FirequalizerSettings(
-        enabled: true,
-        delay: FirequalizerSettings.delayDefault,
-      ),
-    ),
+    bundle: const [FirequalizerEffect(delay: FirequalizerEffect.delayDefault)],
   ),
   (
     filter: 'firequalizer',
     label: 'delay=delayMax',
-    bundle: const AudioEffects(
-      firequalizer: const FirequalizerSettings(
-        enabled: true,
-        delay: FirequalizerSettings.delayMax,
-      ),
-    ),
+    bundle: const [FirequalizerEffect(delay: FirequalizerEffect.delayMax)],
   ),
   (
     filter: 'flanger',
     label: 'delay=delayMin',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        delay: FlangerSettings.delayMin,
-      ),
-    ),
+    bundle: const [FlangerEffect(delay: FlangerEffect.delayMin)],
   ),
   (
     filter: 'flanger',
     label: 'delay=delayDefault',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        delay: FlangerSettings.delayDefault,
-      ),
-    ),
+    bundle: const [FlangerEffect(delay: FlangerEffect.delayDefault)],
   ),
   (
     filter: 'flanger',
     label: 'delay=delayMax',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        delay: FlangerSettings.delayMax,
-      ),
-    ),
+    bundle: const [FlangerEffect(delay: FlangerEffect.delayMax)],
   ),
   (
     filter: 'flanger',
     label: 'depth=depthMin',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        depth: FlangerSettings.depthMin,
-      ),
-    ),
+    bundle: const [FlangerEffect(depth: FlangerEffect.depthMin)],
   ),
   (
     filter: 'flanger',
     label: 'depth=depthDefault',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        depth: FlangerSettings.depthDefault,
-      ),
-    ),
+    bundle: const [FlangerEffect(depth: FlangerEffect.depthDefault)],
   ),
   (
     filter: 'flanger',
     label: 'depth=depthMax',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        depth: FlangerSettings.depthMax,
-      ),
-    ),
+    bundle: const [FlangerEffect(depth: FlangerEffect.depthMax)],
   ),
   (
     filter: 'flanger',
     label: 'phase=phaseMin',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        phase: FlangerSettings.phaseMin,
-      ),
-    ),
+    bundle: const [FlangerEffect(phase: FlangerEffect.phaseMin)],
   ),
   (
     filter: 'flanger',
     label: 'phase=phaseDefault',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        phase: FlangerSettings.phaseDefault,
-      ),
-    ),
+    bundle: const [FlangerEffect(phase: FlangerEffect.phaseDefault)],
   ),
   (
     filter: 'flanger',
     label: 'phase=phaseMax',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        phase: FlangerSettings.phaseMax,
-      ),
-    ),
+    bundle: const [FlangerEffect(phase: FlangerEffect.phaseMax)],
   ),
   (
     filter: 'flanger',
     label: 'regen=regenMin',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        regen: FlangerSettings.regenMin,
-      ),
-    ),
+    bundle: const [FlangerEffect(regen: FlangerEffect.regenMin)],
   ),
   (
     filter: 'flanger',
     label: 'regen=regenDefault',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        regen: FlangerSettings.regenDefault,
-      ),
-    ),
+    bundle: const [FlangerEffect(regen: FlangerEffect.regenDefault)],
   ),
   (
     filter: 'flanger',
     label: 'regen=regenMax',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        regen: FlangerSettings.regenMax,
-      ),
-    ),
+    bundle: const [FlangerEffect(regen: FlangerEffect.regenMax)],
   ),
   (
     filter: 'flanger',
     label: 'speed=speedMin',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        speed: FlangerSettings.speedMin,
-      ),
-    ),
+    bundle: const [FlangerEffect(speed: FlangerEffect.speedMin)],
   ),
   (
     filter: 'flanger',
     label: 'speed=speedDefault',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        speed: FlangerSettings.speedDefault,
-      ),
-    ),
+    bundle: const [FlangerEffect(speed: FlangerEffect.speedDefault)],
   ),
   (
     filter: 'flanger',
     label: 'speed=speedMax',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        speed: FlangerSettings.speedMax,
-      ),
-    ),
+    bundle: const [FlangerEffect(speed: FlangerEffect.speedMax)],
   ),
   (
     filter: 'flanger',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        width: FlangerSettings.widthMin,
-      ),
-    ),
+    bundle: const [FlangerEffect(width: FlangerEffect.widthMin)],
   ),
   (
     filter: 'flanger',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        width: FlangerSettings.widthDefault,
-      ),
-    ),
+    bundle: const [FlangerEffect(width: FlangerEffect.widthDefault)],
   ),
   (
     filter: 'flanger',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      flanger: const FlangerSettings(
-        enabled: true,
-        width: FlangerSettings.widthMax,
-      ),
-    ),
+    bundle: const [FlangerEffect(width: FlangerEffect.widthMax)],
   ),
   (
     filter: 'haas',
-    label: 'left_balance=left_balanceMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_balance: HaasSettings.left_balanceMin,
-      ),
-    ),
+    label: 'left_balance=leftBalanceMin',
+    bundle: const [HaasEffect(leftBalance: HaasEffect.leftBalanceMin)],
   ),
   (
     filter: 'haas',
-    label: 'left_balance=left_balanceDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_balance: HaasSettings.left_balanceDefault,
-      ),
-    ),
+    label: 'left_balance=leftBalanceDefault',
+    bundle: const [HaasEffect(leftBalance: HaasEffect.leftBalanceDefault)],
   ),
   (
     filter: 'haas',
-    label: 'left_balance=left_balanceMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_balance: HaasSettings.left_balanceMax,
-      ),
-    ),
+    label: 'left_balance=leftBalanceMax',
+    bundle: const [HaasEffect(leftBalance: HaasEffect.leftBalanceMax)],
   ),
   (
     filter: 'haas',
-    label: 'left_delay=left_delayMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_delay: HaasSettings.left_delayMin,
-      ),
-    ),
+    label: 'left_delay=leftDelayMin',
+    bundle: const [HaasEffect(leftDelay: HaasEffect.leftDelayMin)],
   ),
   (
     filter: 'haas',
-    label: 'left_delay=left_delayDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_delay: HaasSettings.left_delayDefault,
-      ),
-    ),
+    label: 'left_delay=leftDelayDefault',
+    bundle: const [HaasEffect(leftDelay: HaasEffect.leftDelayDefault)],
   ),
   (
     filter: 'haas',
-    label: 'left_delay=left_delayMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_delay: HaasSettings.left_delayMax,
-      ),
-    ),
+    label: 'left_delay=leftDelayMax',
+    bundle: const [HaasEffect(leftDelay: HaasEffect.leftDelayMax)],
   ),
   (
     filter: 'haas',
-    label: 'left_gain=left_gainMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_gain: HaasSettings.left_gainMin,
-      ),
-    ),
+    label: 'left_gain=leftGainMin',
+    bundle: const [HaasEffect(leftGain: HaasEffect.leftGainMin)],
   ),
   (
     filter: 'haas',
-    label: 'left_gain=left_gainDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_gain: HaasSettings.left_gainDefault,
-      ),
-    ),
+    label: 'left_gain=leftGainDefault',
+    bundle: const [HaasEffect(leftGain: HaasEffect.leftGainDefault)],
   ),
   (
     filter: 'haas',
-    label: 'left_gain=left_gainMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        left_gain: HaasSettings.left_gainMax,
-      ),
-    ),
+    label: 'left_gain=leftGainMax',
+    bundle: const [HaasEffect(leftGain: HaasEffect.leftGainMax)],
   ),
   (
     filter: 'haas',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        level_in: HaasSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [HaasEffect(levelIn: HaasEffect.levelInMin)],
   ),
   (
     filter: 'haas',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        level_in: HaasSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [HaasEffect(levelIn: HaasEffect.levelInDefault)],
   ),
   (
     filter: 'haas',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        level_in: HaasSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [HaasEffect(levelIn: HaasEffect.levelInMax)],
   ),
   (
     filter: 'haas',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        level_out: HaasSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [HaasEffect(levelOut: HaasEffect.levelOutMin)],
   ),
   (
     filter: 'haas',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        level_out: HaasSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [HaasEffect(levelOut: HaasEffect.levelOutDefault)],
   ),
   (
     filter: 'haas',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        level_out: HaasSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [HaasEffect(levelOut: HaasEffect.levelOutMax)],
   ),
   (
     filter: 'haas',
-    label: 'right_balance=right_balanceMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_balance: HaasSettings.right_balanceMin,
-      ),
-    ),
+    label: 'right_balance=rightBalanceMin',
+    bundle: const [HaasEffect(rightBalance: HaasEffect.rightBalanceMin)],
   ),
   (
     filter: 'haas',
-    label: 'right_balance=right_balanceDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_balance: HaasSettings.right_balanceDefault,
-      ),
-    ),
+    label: 'right_balance=rightBalanceDefault',
+    bundle: const [HaasEffect(rightBalance: HaasEffect.rightBalanceDefault)],
   ),
   (
     filter: 'haas',
-    label: 'right_balance=right_balanceMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_balance: HaasSettings.right_balanceMax,
-      ),
-    ),
+    label: 'right_balance=rightBalanceMax',
+    bundle: const [HaasEffect(rightBalance: HaasEffect.rightBalanceMax)],
   ),
   (
     filter: 'haas',
-    label: 'right_delay=right_delayMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_delay: HaasSettings.right_delayMin,
-      ),
-    ),
+    label: 'right_delay=rightDelayMin',
+    bundle: const [HaasEffect(rightDelay: HaasEffect.rightDelayMin)],
   ),
   (
     filter: 'haas',
-    label: 'right_delay=right_delayDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_delay: HaasSettings.right_delayDefault,
-      ),
-    ),
+    label: 'right_delay=rightDelayDefault',
+    bundle: const [HaasEffect(rightDelay: HaasEffect.rightDelayDefault)],
   ),
   (
     filter: 'haas',
-    label: 'right_delay=right_delayMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_delay: HaasSettings.right_delayMax,
-      ),
-    ),
+    label: 'right_delay=rightDelayMax',
+    bundle: const [HaasEffect(rightDelay: HaasEffect.rightDelayMax)],
   ),
   (
     filter: 'haas',
-    label: 'right_gain=right_gainMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_gain: HaasSettings.right_gainMin,
-      ),
-    ),
+    label: 'right_gain=rightGainMin',
+    bundle: const [HaasEffect(rightGain: HaasEffect.rightGainMin)],
   ),
   (
     filter: 'haas',
-    label: 'right_gain=right_gainDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_gain: HaasSettings.right_gainDefault,
-      ),
-    ),
+    label: 'right_gain=rightGainDefault',
+    bundle: const [HaasEffect(rightGain: HaasEffect.rightGainDefault)],
   ),
   (
     filter: 'haas',
-    label: 'right_gain=right_gainMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        right_gain: HaasSettings.right_gainMax,
-      ),
-    ),
+    label: 'right_gain=rightGainMax',
+    bundle: const [HaasEffect(rightGain: HaasEffect.rightGainMax)],
   ),
   (
     filter: 'haas',
-    label: 'side_gain=side_gainMin',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        side_gain: HaasSettings.side_gainMin,
-      ),
-    ),
+    label: 'side_gain=sideGainMin',
+    bundle: const [HaasEffect(sideGain: HaasEffect.sideGainMin)],
   ),
   (
     filter: 'haas',
-    label: 'side_gain=side_gainDefault',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        side_gain: HaasSettings.side_gainDefault,
-      ),
-    ),
+    label: 'side_gain=sideGainDefault',
+    bundle: const [HaasEffect(sideGain: HaasEffect.sideGainDefault)],
   ),
   (
     filter: 'haas',
-    label: 'side_gain=side_gainMax',
-    bundle: const AudioEffects(
-      haas: const HaasSettings(
-        enabled: true,
-        side_gain: HaasSettings.side_gainMax,
-      ),
-    ),
+    label: 'side_gain=sideGainMax',
+    bundle: const [HaasEffect(sideGain: HaasEffect.sideGainMax)],
   ),
   (
     filter: 'hdcd',
-    label: 'cdt_ms=cdt_msMin',
-    bundle: const AudioEffects(
-      hdcd: const HdcdSettings(enabled: true, cdt_ms: HdcdSettings.cdt_msMin),
-    ),
+    label: 'cdt_ms=cdtMsMin',
+    bundle: const [HdcdEffect(cdtMs: HdcdEffect.cdtMsMin)],
   ),
   (
     filter: 'hdcd',
-    label: 'cdt_ms=cdt_msDefault',
-    bundle: const AudioEffects(
-      hdcd: const HdcdSettings(
-        enabled: true,
-        cdt_ms: HdcdSettings.cdt_msDefault,
-      ),
-    ),
+    label: 'cdt_ms=cdtMsDefault',
+    bundle: const [HdcdEffect(cdtMs: HdcdEffect.cdtMsDefault)],
   ),
   (
     filter: 'hdcd',
-    label: 'cdt_ms=cdt_msMax',
-    bundle: const AudioEffects(
-      hdcd: const HdcdSettings(enabled: true, cdt_ms: HdcdSettings.cdt_msMax),
-    ),
+    label: 'cdt_ms=cdtMsMax',
+    bundle: const [HdcdEffect(cdtMs: HdcdEffect.cdtMsMax)],
   ),
   (
     filter: 'highpass',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, b: HighpassSettings.bMin),
-    ),
+    bundle: const [HighpassEffect(b: HighpassEffect.bMin)],
   ),
   (
     filter: 'highpass',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        b: HighpassSettings.bDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(b: HighpassEffect.bDefault)],
   ),
   (
     filter: 'highpass',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, b: HighpassSettings.bMax),
-    ),
+    bundle: const [HighpassEffect(b: HighpassEffect.bMax)],
   ),
   (
     filter: 'highpass',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        blocksize: HighpassSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [HighpassEffect(blocksize: HighpassEffect.blocksizeMin)],
   ),
   (
     filter: 'highpass',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        blocksize: HighpassSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(blocksize: HighpassEffect.blocksizeDefault)],
   ),
   (
     filter: 'highpass',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        blocksize: HighpassSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [HighpassEffect(blocksize: HighpassEffect.blocksizeMax)],
   ),
   (
     filter: 'highpass',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, f: HighpassSettings.fMin),
-    ),
+    bundle: const [HighpassEffect(f: HighpassEffect.fMin)],
   ),
   (
     filter: 'highpass',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        f: HighpassSettings.fDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(f: HighpassEffect.fDefault)],
   ),
   (
     filter: 'highpass',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, f: HighpassSettings.fMax),
-    ),
+    bundle: const [HighpassEffect(f: HighpassEffect.fMax)],
   ),
   (
     filter: 'highpass',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        frequency: HighpassSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [HighpassEffect(frequency: HighpassEffect.frequencyMin)],
   ),
   (
     filter: 'highpass',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        frequency: HighpassSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(frequency: HighpassEffect.frequencyDefault)],
   ),
   (
     filter: 'highpass',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        frequency: HighpassSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [HighpassEffect(frequency: HighpassEffect.frequencyMax)],
   ),
   (
     filter: 'highpass',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, m: HighpassSettings.mMin),
-    ),
+    bundle: const [HighpassEffect(m: HighpassEffect.mMin)],
   ),
   (
     filter: 'highpass',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        m: HighpassSettings.mDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(m: HighpassEffect.mDefault)],
   ),
   (
     filter: 'highpass',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, m: HighpassSettings.mMax),
-    ),
+    bundle: const [HighpassEffect(m: HighpassEffect.mMax)],
   ),
   (
     filter: 'highpass',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        mix: HighpassSettings.mixMin,
-      ),
-    ),
+    bundle: const [HighpassEffect(mix: HighpassEffect.mixMin)],
   ),
   (
     filter: 'highpass',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        mix: HighpassSettings.mixDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(mix: HighpassEffect.mixDefault)],
   ),
   (
     filter: 'highpass',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        mix: HighpassSettings.mixMax,
-      ),
-    ),
+    bundle: const [HighpassEffect(mix: HighpassEffect.mixMax)],
   ),
   (
     filter: 'highpass',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, p: HighpassSettings.pMin),
-    ),
+    bundle: const [HighpassEffect(p: HighpassEffect.pMin)],
   ),
   (
     filter: 'highpass',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        p: HighpassSettings.pDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(p: HighpassEffect.pDefault)],
   ),
   (
     filter: 'highpass',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, p: HighpassSettings.pMax),
-    ),
+    bundle: const [HighpassEffect(p: HighpassEffect.pMax)],
   ),
   (
     filter: 'highpass',
     label: 'poles=polesMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        poles: HighpassSettings.polesMin,
-      ),
-    ),
+    bundle: const [HighpassEffect(poles: HighpassEffect.polesMin)],
   ),
   (
     filter: 'highpass',
     label: 'poles=polesDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        poles: HighpassSettings.polesDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(poles: HighpassEffect.polesDefault)],
   ),
   (
     filter: 'highpass',
     label: 'poles=polesMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        poles: HighpassSettings.polesMax,
-      ),
-    ),
+    bundle: const [HighpassEffect(poles: HighpassEffect.polesMax)],
   ),
   (
     filter: 'highpass',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, w: HighpassSettings.wMin),
-    ),
+    bundle: const [HighpassEffect(w: HighpassEffect.wMin)],
   ),
   (
     filter: 'highpass',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        w: HighpassSettings.wDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(w: HighpassEffect.wDefault)],
   ),
   (
     filter: 'highpass',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(enabled: true, w: HighpassSettings.wMax),
-    ),
+    bundle: const [HighpassEffect(w: HighpassEffect.wMax)],
   ),
   (
     filter: 'highpass',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        width: HighpassSettings.widthMin,
-      ),
-    ),
+    bundle: const [HighpassEffect(width: HighpassEffect.widthMin)],
   ),
   (
     filter: 'highpass',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        width: HighpassSettings.widthDefault,
-      ),
-    ),
+    bundle: const [HighpassEffect(width: HighpassEffect.widthDefault)],
   ),
   (
     filter: 'highpass',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      highpass: const HighpassSettings(
-        enabled: true,
-        width: HighpassSettings.widthMax,
-      ),
-    ),
+    bundle: const [HighpassEffect(width: HighpassEffect.widthMax)],
   ),
   (
     filter: 'highshelf',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        b: HighshelfSettings.bMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(b: HighshelfEffect.bMin)],
   ),
   (
     filter: 'highshelf',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        b: HighshelfSettings.bDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(b: HighshelfEffect.bDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        b: HighshelfSettings.bMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(b: HighshelfEffect.bMax)],
   ),
   (
     filter: 'highshelf',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        blocksize: HighshelfSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(blocksize: HighshelfEffect.blocksizeMin)],
   ),
   (
     filter: 'highshelf',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        blocksize: HighshelfSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [
+      HighshelfEffect(blocksize: HighshelfEffect.blocksizeDefault),
+    ],
   ),
   (
     filter: 'highshelf',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        blocksize: HighshelfSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(blocksize: HighshelfEffect.blocksizeMax)],
   ),
   (
     filter: 'highshelf',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        f: HighshelfSettings.fMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(f: HighshelfEffect.fMin)],
   ),
   (
     filter: 'highshelf',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        f: HighshelfSettings.fDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(f: HighshelfEffect.fDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        f: HighshelfSettings.fMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(f: HighshelfEffect.fMax)],
   ),
   (
     filter: 'highshelf',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        frequency: HighshelfSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(frequency: HighshelfEffect.frequencyMin)],
   ),
   (
     filter: 'highshelf',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        frequency: HighshelfSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [
+      HighshelfEffect(frequency: HighshelfEffect.frequencyDefault),
+    ],
   ),
   (
     filter: 'highshelf',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        frequency: HighshelfSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(frequency: HighshelfEffect.frequencyMax)],
   ),
   (
     filter: 'highshelf',
     label: 'g=gMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        g: HighshelfSettings.gMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(g: HighshelfEffect.gMin)],
   ),
   (
     filter: 'highshelf',
     label: 'g=gDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        g: HighshelfSettings.gDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(g: HighshelfEffect.gDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'g=gMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        g: HighshelfSettings.gMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(g: HighshelfEffect.gMax)],
   ),
   (
     filter: 'highshelf',
     label: 'gain=gainMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        gain: HighshelfSettings.gainMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(gain: HighshelfEffect.gainMin)],
   ),
   (
     filter: 'highshelf',
     label: 'gain=gainDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        gain: HighshelfSettings.gainDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(gain: HighshelfEffect.gainDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'gain=gainMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        gain: HighshelfSettings.gainMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(gain: HighshelfEffect.gainMax)],
   ),
   (
     filter: 'highshelf',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        m: HighshelfSettings.mMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(m: HighshelfEffect.mMin)],
   ),
   (
     filter: 'highshelf',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        m: HighshelfSettings.mDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(m: HighshelfEffect.mDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        m: HighshelfSettings.mMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(m: HighshelfEffect.mMax)],
   ),
   (
     filter: 'highshelf',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        mix: HighshelfSettings.mixMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(mix: HighshelfEffect.mixMin)],
   ),
   (
     filter: 'highshelf',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        mix: HighshelfSettings.mixDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(mix: HighshelfEffect.mixDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        mix: HighshelfSettings.mixMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(mix: HighshelfEffect.mixMax)],
   ),
   (
     filter: 'highshelf',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        p: HighshelfSettings.pMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(p: HighshelfEffect.pMin)],
   ),
   (
     filter: 'highshelf',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        p: HighshelfSettings.pDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(p: HighshelfEffect.pDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        p: HighshelfSettings.pMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(p: HighshelfEffect.pMax)],
   ),
   (
     filter: 'highshelf',
     label: 'poles=polesMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        poles: HighshelfSettings.polesMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(poles: HighshelfEffect.polesMin)],
   ),
   (
     filter: 'highshelf',
     label: 'poles=polesDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        poles: HighshelfSettings.polesDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(poles: HighshelfEffect.polesDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'poles=polesMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        poles: HighshelfSettings.polesMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(poles: HighshelfEffect.polesMax)],
   ),
   (
     filter: 'highshelf',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        w: HighshelfSettings.wMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(w: HighshelfEffect.wMin)],
   ),
   (
     filter: 'highshelf',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        w: HighshelfSettings.wDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(w: HighshelfEffect.wDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        w: HighshelfSettings.wMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(w: HighshelfEffect.wMax)],
   ),
   (
     filter: 'highshelf',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        width: HighshelfSettings.widthMin,
-      ),
-    ),
+    bundle: const [HighshelfEffect(width: HighshelfEffect.widthMin)],
   ),
   (
     filter: 'highshelf',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        width: HighshelfSettings.widthDefault,
-      ),
-    ),
+    bundle: const [HighshelfEffect(width: HighshelfEffect.widthDefault)],
   ),
   (
     filter: 'highshelf',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      highshelf: const HighshelfSettings(
-        enabled: true,
-        width: HighshelfSettings.widthMax,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'I=IMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(enabled: true, I: LoudnormSettings.IMin),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'I=IDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        I: LoudnormSettings.IDefault,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'I=IMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(enabled: true, I: LoudnormSettings.IMax),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'LRA=LRAMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        LRA: LoudnormSettings.LRAMin,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'LRA=LRADefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        LRA: LoudnormSettings.LRADefault,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'LRA=LRAMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        LRA: LoudnormSettings.LRAMax,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'TP=TPMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        TP: LoudnormSettings.TPMin,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'TP=TPDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        TP: LoudnormSettings.TPDefault,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'TP=TPMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        TP: LoudnormSettings.TPMax,
-      ),
-    ),
+    bundle: const [HighshelfEffect(width: HighshelfEffect.widthMax)],
   ),
   (
     filter: 'loudnorm',
     label: 'i=iMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(enabled: true, i: LoudnormSettings.iMin),
-    ),
+    bundle: const [LoudnormEffect(i: LoudnormEffect.iMin)],
   ),
   (
     filter: 'loudnorm',
     label: 'i=iDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        i: LoudnormSettings.iDefault,
-      ),
-    ),
+    bundle: const [LoudnormEffect(i: LoudnormEffect.iDefault)],
   ),
   (
     filter: 'loudnorm',
     label: 'i=iMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(enabled: true, i: LoudnormSettings.iMax),
-    ),
+    bundle: const [LoudnormEffect(i: LoudnormEffect.iMax)],
   ),
   (
     filter: 'loudnorm',
     label: 'lra=lraMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        lra: LoudnormSettings.lraMin,
-      ),
-    ),
+    bundle: const [LoudnormEffect(lra: LoudnormEffect.lraMin)],
   ),
   (
     filter: 'loudnorm',
     label: 'lra=lraDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        lra: LoudnormSettings.lraDefault,
-      ),
-    ),
+    bundle: const [LoudnormEffect(lra: LoudnormEffect.lraDefault)],
   ),
   (
     filter: 'loudnorm',
     label: 'lra=lraMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        lra: LoudnormSettings.lraMax,
-      ),
-    ),
+    bundle: const [LoudnormEffect(lra: LoudnormEffect.lraMax)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_I=measured_IMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_I: LoudnormSettings.measured_IMin,
-      ),
-    ),
+    label: 'measured_LRA=measuredLRAMin',
+    bundle: const [LoudnormEffect(measuredLRA: LoudnormEffect.measuredLRAMin)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_I=measured_IDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_I: LoudnormSettings.measured_IDefault,
-      ),
-    ),
+    label: 'measured_LRA=measuredLRADefault',
+    bundle: const [
+      LoudnormEffect(measuredLRA: LoudnormEffect.measuredLRADefault),
+    ],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_I=measured_IMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_I: LoudnormSettings.measured_IMax,
-      ),
-    ),
+    label: 'measured_LRA=measuredLRAMax',
+    bundle: const [LoudnormEffect(measuredLRA: LoudnormEffect.measuredLRAMax)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_LRA=measured_LRAMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_LRA: LoudnormSettings.measured_LRAMin,
-      ),
-    ),
+    label: 'measured_TP=measuredTPMin',
+    bundle: const [LoudnormEffect(measuredTP: LoudnormEffect.measuredTPMin)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_LRA=measured_LRADefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_LRA: LoudnormSettings.measured_LRADefault,
-      ),
-    ),
+    label: 'measured_TP=measuredTPDefault',
+    bundle: const [
+      LoudnormEffect(measuredTP: LoudnormEffect.measuredTPDefault),
+    ],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_LRA=measured_LRAMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_LRA: LoudnormSettings.measured_LRAMax,
-      ),
-    ),
+    label: 'measured_TP=measuredTPMax',
+    bundle: const [LoudnormEffect(measuredTP: LoudnormEffect.measuredTPMax)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_TP=measured_TPMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_TP: LoudnormSettings.measured_TPMin,
-      ),
-    ),
+    label: 'measured_i=measuredIMin',
+    bundle: const [LoudnormEffect(measuredI: LoudnormEffect.measuredIMin)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_TP=measured_TPDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_TP: LoudnormSettings.measured_TPDefault,
-      ),
-    ),
+    label: 'measured_i=measuredIDefault',
+    bundle: const [LoudnormEffect(measuredI: LoudnormEffect.measuredIDefault)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_TP=measured_TPMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_TP: LoudnormSettings.measured_TPMax,
-      ),
-    ),
+    label: 'measured_i=measuredIMax',
+    bundle: const [LoudnormEffect(measuredI: LoudnormEffect.measuredIMax)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_i=measured_iMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_i: LoudnormSettings.measured_iMin,
-      ),
-    ),
+    label: 'measured_lra=measuredLraMin',
+    bundle: const [LoudnormEffect(measuredLra: LoudnormEffect.measuredLraMin)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_i=measured_iDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_i: LoudnormSettings.measured_iDefault,
-      ),
-    ),
+    label: 'measured_lra=measuredLraDefault',
+    bundle: const [
+      LoudnormEffect(measuredLra: LoudnormEffect.measuredLraDefault),
+    ],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_i=measured_iMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_i: LoudnormSettings.measured_iMax,
-      ),
-    ),
+    label: 'measured_lra=measuredLraMax',
+    bundle: const [LoudnormEffect(measuredLra: LoudnormEffect.measuredLraMax)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_lra=measured_lraMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_lra: LoudnormSettings.measured_lraMin,
-      ),
-    ),
+    label: 'measured_thresh=measuredThreshMin',
+    bundle: const [
+      LoudnormEffect(measuredThresh: LoudnormEffect.measuredThreshMin),
+    ],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_lra=measured_lraDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_lra: LoudnormSettings.measured_lraDefault,
-      ),
-    ),
+    label: 'measured_thresh=measuredThreshDefault',
+    bundle: const [
+      LoudnormEffect(measuredThresh: LoudnormEffect.measuredThreshDefault),
+    ],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_lra=measured_lraMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_lra: LoudnormSettings.measured_lraMax,
-      ),
-    ),
+    label: 'measured_thresh=measuredThreshMax',
+    bundle: const [
+      LoudnormEffect(measuredThresh: LoudnormEffect.measuredThreshMax),
+    ],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_thresh=measured_threshMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_thresh: LoudnormSettings.measured_threshMin,
-      ),
-    ),
+    label: 'measured_tp=measuredTpMin',
+    bundle: const [LoudnormEffect(measuredTp: LoudnormEffect.measuredTpMin)],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_thresh=measured_threshDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_thresh: LoudnormSettings.measured_threshDefault,
-      ),
-    ),
+    label: 'measured_tp=measuredTpDefault',
+    bundle: const [
+      LoudnormEffect(measuredTp: LoudnormEffect.measuredTpDefault),
+    ],
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_thresh=measured_threshMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_thresh: LoudnormSettings.measured_threshMax,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'measured_tp=measured_tpMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_tp: LoudnormSettings.measured_tpMin,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'measured_tp=measured_tpDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_tp: LoudnormSettings.measured_tpDefault,
-      ),
-    ),
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'measured_tp=measured_tpMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        measured_tp: LoudnormSettings.measured_tpMax,
-      ),
-    ),
+    label: 'measured_tp=measuredTpMax',
+    bundle: const [LoudnormEffect(measuredTp: LoudnormEffect.measuredTpMax)],
   ),
   (
     filter: 'loudnorm',
     label: 'offset=offsetMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        offset: LoudnormSettings.offsetMin,
-      ),
-    ),
+    bundle: const [LoudnormEffect(offset: LoudnormEffect.offsetMin)],
   ),
   (
     filter: 'loudnorm',
     label: 'offset=offsetDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        offset: LoudnormSettings.offsetDefault,
-      ),
-    ),
+    bundle: const [LoudnormEffect(offset: LoudnormEffect.offsetDefault)],
   ),
   (
     filter: 'loudnorm',
     label: 'offset=offsetMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        offset: LoudnormSettings.offsetMax,
-      ),
-    ),
+    bundle: const [LoudnormEffect(offset: LoudnormEffect.offsetMax)],
   ),
   (
     filter: 'loudnorm',
     label: 'tp=tpMin',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        tp: LoudnormSettings.tpMin,
-      ),
-    ),
+    bundle: const [LoudnormEffect(tp: LoudnormEffect.tpMin)],
   ),
   (
     filter: 'loudnorm',
     label: 'tp=tpDefault',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        tp: LoudnormSettings.tpDefault,
-      ),
-    ),
+    bundle: const [LoudnormEffect(tp: LoudnormEffect.tpDefault)],
   ),
   (
     filter: 'loudnorm',
     label: 'tp=tpMax',
-    bundle: const AudioEffects(
-      loudnorm: const LoudnormSettings(
-        enabled: true,
-        tp: LoudnormSettings.tpMax,
-      ),
-    ),
+    bundle: const [LoudnormEffect(tp: LoudnormEffect.tpMax)],
   ),
   (
     filter: 'lowpass',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, b: LowpassSettings.bMin),
-    ),
+    bundle: const [LowpassEffect(b: LowpassEffect.bMin)],
   ),
   (
     filter: 'lowpass',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        b: LowpassSettings.bDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(b: LowpassEffect.bDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, b: LowpassSettings.bMax),
-    ),
+    bundle: const [LowpassEffect(b: LowpassEffect.bMax)],
   ),
   (
     filter: 'lowpass',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        blocksize: LowpassSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [LowpassEffect(blocksize: LowpassEffect.blocksizeMin)],
   ),
   (
     filter: 'lowpass',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        blocksize: LowpassSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(blocksize: LowpassEffect.blocksizeDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        blocksize: LowpassSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [LowpassEffect(blocksize: LowpassEffect.blocksizeMax)],
   ),
   (
     filter: 'lowpass',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, f: LowpassSettings.fMin),
-    ),
+    bundle: const [LowpassEffect(f: LowpassEffect.fMin)],
   ),
   (
     filter: 'lowpass',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        f: LowpassSettings.fDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(f: LowpassEffect.fDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, f: LowpassSettings.fMax),
-    ),
+    bundle: const [LowpassEffect(f: LowpassEffect.fMax)],
   ),
   (
     filter: 'lowpass',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        frequency: LowpassSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [LowpassEffect(frequency: LowpassEffect.frequencyMin)],
   ),
   (
     filter: 'lowpass',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        frequency: LowpassSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(frequency: LowpassEffect.frequencyDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        frequency: LowpassSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [LowpassEffect(frequency: LowpassEffect.frequencyMax)],
   ),
   (
     filter: 'lowpass',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, m: LowpassSettings.mMin),
-    ),
+    bundle: const [LowpassEffect(m: LowpassEffect.mMin)],
   ),
   (
     filter: 'lowpass',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        m: LowpassSettings.mDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(m: LowpassEffect.mDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, m: LowpassSettings.mMax),
-    ),
+    bundle: const [LowpassEffect(m: LowpassEffect.mMax)],
   ),
   (
     filter: 'lowpass',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        mix: LowpassSettings.mixMin,
-      ),
-    ),
+    bundle: const [LowpassEffect(mix: LowpassEffect.mixMin)],
   ),
   (
     filter: 'lowpass',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        mix: LowpassSettings.mixDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(mix: LowpassEffect.mixDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        mix: LowpassSettings.mixMax,
-      ),
-    ),
+    bundle: const [LowpassEffect(mix: LowpassEffect.mixMax)],
   ),
   (
     filter: 'lowpass',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, p: LowpassSettings.pMin),
-    ),
+    bundle: const [LowpassEffect(p: LowpassEffect.pMin)],
   ),
   (
     filter: 'lowpass',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        p: LowpassSettings.pDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(p: LowpassEffect.pDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, p: LowpassSettings.pMax),
-    ),
+    bundle: const [LowpassEffect(p: LowpassEffect.pMax)],
   ),
   (
     filter: 'lowpass',
     label: 'poles=polesMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        poles: LowpassSettings.polesMin,
-      ),
-    ),
+    bundle: const [LowpassEffect(poles: LowpassEffect.polesMin)],
   ),
   (
     filter: 'lowpass',
     label: 'poles=polesDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        poles: LowpassSettings.polesDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(poles: LowpassEffect.polesDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'poles=polesMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        poles: LowpassSettings.polesMax,
-      ),
-    ),
+    bundle: const [LowpassEffect(poles: LowpassEffect.polesMax)],
   ),
   (
     filter: 'lowpass',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, w: LowpassSettings.wMin),
-    ),
+    bundle: const [LowpassEffect(w: LowpassEffect.wMin)],
   ),
   (
     filter: 'lowpass',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        w: LowpassSettings.wDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(w: LowpassEffect.wDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(enabled: true, w: LowpassSettings.wMax),
-    ),
+    bundle: const [LowpassEffect(w: LowpassEffect.wMax)],
   ),
   (
     filter: 'lowpass',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        width: LowpassSettings.widthMin,
-      ),
-    ),
+    bundle: const [LowpassEffect(width: LowpassEffect.widthMin)],
   ),
   (
     filter: 'lowpass',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        width: LowpassSettings.widthDefault,
-      ),
-    ),
+    bundle: const [LowpassEffect(width: LowpassEffect.widthDefault)],
   ),
   (
     filter: 'lowpass',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      lowpass: const LowpassSettings(
-        enabled: true,
-        width: LowpassSettings.widthMax,
-      ),
-    ),
+    bundle: const [LowpassEffect(width: LowpassEffect.widthMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, b: LowshelfSettings.bMin),
-    ),
+    bundle: const [LowshelfEffect(b: LowshelfEffect.bMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        b: LowshelfSettings.bDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(b: LowshelfEffect.bDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, b: LowshelfSettings.bMax),
-    ),
+    bundle: const [LowshelfEffect(b: LowshelfEffect.bMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        blocksize: LowshelfSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [LowshelfEffect(blocksize: LowshelfEffect.blocksizeMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        blocksize: LowshelfSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(blocksize: LowshelfEffect.blocksizeDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        blocksize: LowshelfSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [LowshelfEffect(blocksize: LowshelfEffect.blocksizeMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, f: LowshelfSettings.fMin),
-    ),
+    bundle: const [LowshelfEffect(f: LowshelfEffect.fMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        f: LowshelfSettings.fDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(f: LowshelfEffect.fDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, f: LowshelfSettings.fMax),
-    ),
+    bundle: const [LowshelfEffect(f: LowshelfEffect.fMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        frequency: LowshelfSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [LowshelfEffect(frequency: LowshelfEffect.frequencyMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        frequency: LowshelfSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(frequency: LowshelfEffect.frequencyDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        frequency: LowshelfSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [LowshelfEffect(frequency: LowshelfEffect.frequencyMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'g=gMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, g: LowshelfSettings.gMin),
-    ),
+    bundle: const [LowshelfEffect(g: LowshelfEffect.gMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'g=gDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        g: LowshelfSettings.gDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(g: LowshelfEffect.gDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'g=gMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, g: LowshelfSettings.gMax),
-    ),
+    bundle: const [LowshelfEffect(g: LowshelfEffect.gMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'gain=gainMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        gain: LowshelfSettings.gainMin,
-      ),
-    ),
+    bundle: const [LowshelfEffect(gain: LowshelfEffect.gainMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'gain=gainDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        gain: LowshelfSettings.gainDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(gain: LowshelfEffect.gainDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'gain=gainMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        gain: LowshelfSettings.gainMax,
-      ),
-    ),
+    bundle: const [LowshelfEffect(gain: LowshelfEffect.gainMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, m: LowshelfSettings.mMin),
-    ),
+    bundle: const [LowshelfEffect(m: LowshelfEffect.mMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        m: LowshelfSettings.mDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(m: LowshelfEffect.mDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, m: LowshelfSettings.mMax),
-    ),
+    bundle: const [LowshelfEffect(m: LowshelfEffect.mMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        mix: LowshelfSettings.mixMin,
-      ),
-    ),
+    bundle: const [LowshelfEffect(mix: LowshelfEffect.mixMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        mix: LowshelfSettings.mixDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(mix: LowshelfEffect.mixDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        mix: LowshelfSettings.mixMax,
-      ),
-    ),
+    bundle: const [LowshelfEffect(mix: LowshelfEffect.mixMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, p: LowshelfSettings.pMin),
-    ),
+    bundle: const [LowshelfEffect(p: LowshelfEffect.pMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        p: LowshelfSettings.pDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(p: LowshelfEffect.pDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, p: LowshelfSettings.pMax),
-    ),
+    bundle: const [LowshelfEffect(p: LowshelfEffect.pMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'poles=polesMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        poles: LowshelfSettings.polesMin,
-      ),
-    ),
+    bundle: const [LowshelfEffect(poles: LowshelfEffect.polesMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'poles=polesDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        poles: LowshelfSettings.polesDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(poles: LowshelfEffect.polesDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'poles=polesMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        poles: LowshelfSettings.polesMax,
-      ),
-    ),
+    bundle: const [LowshelfEffect(poles: LowshelfEffect.polesMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, w: LowshelfSettings.wMin),
-    ),
+    bundle: const [LowshelfEffect(w: LowshelfEffect.wMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        w: LowshelfSettings.wDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(w: LowshelfEffect.wDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(enabled: true, w: LowshelfSettings.wMax),
-    ),
+    bundle: const [LowshelfEffect(w: LowshelfEffect.wMax)],
   ),
   (
     filter: 'lowshelf',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        width: LowshelfSettings.widthMin,
-      ),
-    ),
+    bundle: const [LowshelfEffect(width: LowshelfEffect.widthMin)],
   ),
   (
     filter: 'lowshelf',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        width: LowshelfSettings.widthDefault,
-      ),
-    ),
+    bundle: const [LowshelfEffect(width: LowshelfEffect.widthDefault)],
   ),
   (
     filter: 'lowshelf',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      lowshelf: const LowshelfSettings(
-        enabled: true,
-        width: LowshelfSettings.widthMax,
-      ),
-    ),
+    bundle: const [LowshelfEffect(width: LowshelfEffect.widthMax)],
   ),
   (
     filter: 'rubberband',
     label: 'pitch=pitchMin',
-    bundle: const AudioEffects(
-      rubberband: const RubberbandSettings(
-        enabled: true,
-        pitch: RubberbandSettings.pitchMin,
-      ),
-    ),
+    bundle: const [RubberbandEffect(pitch: RubberbandEffect.pitchMin)],
   ),
   (
     filter: 'rubberband',
     label: 'pitch=pitchDefault',
-    bundle: const AudioEffects(
-      rubberband: const RubberbandSettings(
-        enabled: true,
-        pitch: RubberbandSettings.pitchDefault,
-      ),
-    ),
+    bundle: const [RubberbandEffect(pitch: RubberbandEffect.pitchDefault)],
   ),
   (
     filter: 'rubberband',
     label: 'pitch=pitchMax',
-    bundle: const AudioEffects(
-      rubberband: const RubberbandSettings(
-        enabled: true,
-        pitch: RubberbandSettings.pitchMax,
-      ),
-    ),
+    bundle: const [RubberbandEffect(pitch: RubberbandEffect.pitchMax)],
   ),
   (
     filter: 'rubberband',
     label: 'tempo=tempoMin',
-    bundle: const AudioEffects(
-      rubberband: const RubberbandSettings(
-        enabled: true,
-        tempo: RubberbandSettings.tempoMin,
-      ),
-    ),
+    bundle: const [RubberbandEffect(tempo: RubberbandEffect.tempoMin)],
   ),
   (
     filter: 'rubberband',
     label: 'tempo=tempoDefault',
-    bundle: const AudioEffects(
-      rubberband: const RubberbandSettings(
-        enabled: true,
-        tempo: RubberbandSettings.tempoDefault,
-      ),
-    ),
+    bundle: const [RubberbandEffect(tempo: RubberbandEffect.tempoDefault)],
   ),
   (
     filter: 'rubberband',
     label: 'tempo=tempoMax',
-    bundle: const AudioEffects(
-      rubberband: const RubberbandSettings(
-        enabled: true,
-        tempo: RubberbandSettings.tempoMax,
-      ),
-    ),
+    bundle: const [RubberbandEffect(tempo: RubberbandEffect.tempoMax)],
   ),
   (
     filter: 'silenceremove',
-    label: 'start_periods=start_periodsMin',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        start_periods: SilenceremoveSettings.start_periodsMin,
-      ),
-    ),
+    label: 'start_periods=startPeriodsMin',
+    bundle: const [
+      SilenceremoveEffect(startPeriods: SilenceremoveEffect.startPeriodsMin),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'start_periods=start_periodsDefault',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        start_periods: SilenceremoveSettings.start_periodsDefault,
+    label: 'start_periods=startPeriodsDefault',
+    bundle: const [
+      SilenceremoveEffect(
+        startPeriods: SilenceremoveEffect.startPeriodsDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'start_periods=start_periodsMax',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        start_periods: SilenceremoveSettings.start_periodsMax,
-      ),
-    ),
+    label: 'start_periods=startPeriodsMax',
+    bundle: const [
+      SilenceremoveEffect(startPeriods: SilenceremoveEffect.startPeriodsMax),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'start_threshold=start_thresholdMin',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        start_threshold: SilenceremoveSettings.start_thresholdMin,
+    label: 'start_threshold=startThresholdMin',
+    bundle: const [
+      SilenceremoveEffect(
+        startThreshold: SilenceremoveEffect.startThresholdMin,
       ),
-    ),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'start_threshold=start_thresholdDefault',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        start_threshold: SilenceremoveSettings.start_thresholdDefault,
+    label: 'start_threshold=startThresholdDefault',
+    bundle: const [
+      SilenceremoveEffect(
+        startThreshold: SilenceremoveEffect.startThresholdDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'start_threshold=start_thresholdMax',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        start_threshold: SilenceremoveSettings.start_thresholdMax,
+    label: 'start_threshold=startThresholdMax',
+    bundle: const [
+      SilenceremoveEffect(
+        startThreshold: SilenceremoveEffect.startThresholdMax,
       ),
-    ),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'stop_periods=stop_periodsMin',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        stop_periods: SilenceremoveSettings.stop_periodsMin,
-      ),
-    ),
+    label: 'stop_periods=stopPeriodsMin',
+    bundle: const [
+      SilenceremoveEffect(stopPeriods: SilenceremoveEffect.stopPeriodsMin),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'stop_periods=stop_periodsDefault',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        stop_periods: SilenceremoveSettings.stop_periodsDefault,
-      ),
-    ),
+    label: 'stop_periods=stopPeriodsDefault',
+    bundle: const [
+      SilenceremoveEffect(stopPeriods: SilenceremoveEffect.stopPeriodsDefault),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'stop_periods=stop_periodsMax',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        stop_periods: SilenceremoveSettings.stop_periodsMax,
-      ),
-    ),
+    label: 'stop_periods=stopPeriodsMax',
+    bundle: const [
+      SilenceremoveEffect(stopPeriods: SilenceremoveEffect.stopPeriodsMax),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'stop_threshold=stop_thresholdMin',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        stop_threshold: SilenceremoveSettings.stop_thresholdMin,
-      ),
-    ),
+    label: 'stop_threshold=stopThresholdMin',
+    bundle: const [
+      SilenceremoveEffect(stopThreshold: SilenceremoveEffect.stopThresholdMin),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'stop_threshold=stop_thresholdDefault',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        stop_threshold: SilenceremoveSettings.stop_thresholdDefault,
+    label: 'stop_threshold=stopThresholdDefault',
+    bundle: const [
+      SilenceremoveEffect(
+        stopThreshold: SilenceremoveEffect.stopThresholdDefault,
       ),
-    ),
+    ],
   ),
   (
     filter: 'silenceremove',
-    label: 'stop_threshold=stop_thresholdMax',
-    bundle: const AudioEffects(
-      silenceremove: const SilenceremoveSettings(
-        enabled: true,
-        stop_threshold: SilenceremoveSettings.stop_thresholdMax,
-      ),
-    ),
+    label: 'stop_threshold=stopThresholdMax',
+    bundle: const [
+      SilenceremoveEffect(stopThreshold: SilenceremoveEffect.stopThresholdMax),
+    ],
   ),
   (
     filter: 'speechnorm',
     label: 'c=cMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        c: SpeechnormSettings.cMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(c: SpeechnormEffect.cMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'c=cDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        c: SpeechnormSettings.cDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(c: SpeechnormEffect.cDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'c=cMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        c: SpeechnormSettings.cMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(c: SpeechnormEffect.cMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'compression=compressionMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        compression: SpeechnormSettings.compressionMin,
-      ),
-    ),
+    bundle: const [
+      SpeechnormEffect(compression: SpeechnormEffect.compressionMin),
+    ],
   ),
   (
     filter: 'speechnorm',
     label: 'compression=compressionDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        compression: SpeechnormSettings.compressionDefault,
-      ),
-    ),
+    bundle: const [
+      SpeechnormEffect(compression: SpeechnormEffect.compressionDefault),
+    ],
   ),
   (
     filter: 'speechnorm',
     label: 'compression=compressionMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        compression: SpeechnormSettings.compressionMax,
-      ),
-    ),
+    bundle: const [
+      SpeechnormEffect(compression: SpeechnormEffect.compressionMax),
+    ],
   ),
   (
     filter: 'speechnorm',
     label: 'e=eMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        e: SpeechnormSettings.eMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(e: SpeechnormEffect.eMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'e=eDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        e: SpeechnormSettings.eDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(e: SpeechnormEffect.eDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'e=eMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        e: SpeechnormSettings.eMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(e: SpeechnormEffect.eMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'expansion=expansionMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        expansion: SpeechnormSettings.expansionMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(expansion: SpeechnormEffect.expansionMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'expansion=expansionDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        expansion: SpeechnormSettings.expansionDefault,
-      ),
-    ),
+    bundle: const [
+      SpeechnormEffect(expansion: SpeechnormEffect.expansionDefault),
+    ],
   ),
   (
     filter: 'speechnorm',
     label: 'expansion=expansionMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        expansion: SpeechnormSettings.expansionMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(expansion: SpeechnormEffect.expansionMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        f: SpeechnormSettings.fMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(f: SpeechnormEffect.fMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        f: SpeechnormSettings.fDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(f: SpeechnormEffect.fDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        f: SpeechnormSettings.fMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(f: SpeechnormEffect.fMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'fall=fallMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        fall: SpeechnormSettings.fallMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(fall: SpeechnormEffect.fallMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'fall=fallDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        fall: SpeechnormSettings.fallDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(fall: SpeechnormEffect.fallDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'fall=fallMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        fall: SpeechnormSettings.fallMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(fall: SpeechnormEffect.fallMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        m: SpeechnormSettings.mMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(m: SpeechnormEffect.mMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        m: SpeechnormSettings.mDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(m: SpeechnormEffect.mDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        m: SpeechnormSettings.mMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(m: SpeechnormEffect.mMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        p: SpeechnormSettings.pMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(p: SpeechnormEffect.pMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        p: SpeechnormSettings.pDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(p: SpeechnormEffect.pDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        p: SpeechnormSettings.pMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(p: SpeechnormEffect.pMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'peak=peakMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        peak: SpeechnormSettings.peakMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(peak: SpeechnormEffect.peakMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'peak=peakDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        peak: SpeechnormSettings.peakDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(peak: SpeechnormEffect.peakDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'peak=peakMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        peak: SpeechnormSettings.peakMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(peak: SpeechnormEffect.peakMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'r=rMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        r: SpeechnormSettings.rMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(r: SpeechnormEffect.rMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'r=rDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        r: SpeechnormSettings.rDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(r: SpeechnormEffect.rDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'r=rMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        r: SpeechnormSettings.rMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(r: SpeechnormEffect.rMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'raise=raiseMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        raise: SpeechnormSettings.raiseMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(raise: SpeechnormEffect.raiseMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'raise=raiseDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        raise: SpeechnormSettings.raiseDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(raise: SpeechnormEffect.raiseDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'raise=raiseMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        raise: SpeechnormSettings.raiseMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(raise: SpeechnormEffect.raiseMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'rms=rmsMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        rms: SpeechnormSettings.rmsMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(rms: SpeechnormEffect.rmsMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'rms=rmsDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        rms: SpeechnormSettings.rmsDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(rms: SpeechnormEffect.rmsDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 'rms=rmsMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        rms: SpeechnormSettings.rmsMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(rms: SpeechnormEffect.rmsMax)],
   ),
   (
     filter: 'speechnorm',
     label: 't=tMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        t: SpeechnormSettings.tMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(t: SpeechnormEffect.tMin)],
   ),
   (
     filter: 'speechnorm',
     label: 't=tDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        t: SpeechnormSettings.tDefault,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(t: SpeechnormEffect.tDefault)],
   ),
   (
     filter: 'speechnorm',
     label: 't=tMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        t: SpeechnormSettings.tMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(t: SpeechnormEffect.tMax)],
   ),
   (
     filter: 'speechnorm',
     label: 'threshold=thresholdMin',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        threshold: SpeechnormSettings.thresholdMin,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(threshold: SpeechnormEffect.thresholdMin)],
   ),
   (
     filter: 'speechnorm',
     label: 'threshold=thresholdDefault',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        threshold: SpeechnormSettings.thresholdDefault,
-      ),
-    ),
+    bundle: const [
+      SpeechnormEffect(threshold: SpeechnormEffect.thresholdDefault),
+    ],
   ),
   (
     filter: 'speechnorm',
     label: 'threshold=thresholdMax',
-    bundle: const AudioEffects(
-      speechnorm: const SpeechnormSettings(
-        enabled: true,
-        threshold: SpeechnormSettings.thresholdMax,
-      ),
-    ),
+    bundle: const [SpeechnormEffect(threshold: SpeechnormEffect.thresholdMax)],
   ),
   (
     filter: 'stereotools',
-    label: 'balance_in=balance_inMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        balance_in: StereotoolsSettings.balance_inMin,
-      ),
-    ),
+    label: 'balance_in=balanceInMin',
+    bundle: const [
+      StereotoolsEffect(balanceIn: StereotoolsEffect.balanceInMin),
+    ],
   ),
   (
     filter: 'stereotools',
-    label: 'balance_in=balance_inDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        balance_in: StereotoolsSettings.balance_inDefault,
-      ),
-    ),
+    label: 'balance_in=balanceInDefault',
+    bundle: const [
+      StereotoolsEffect(balanceIn: StereotoolsEffect.balanceInDefault),
+    ],
   ),
   (
     filter: 'stereotools',
-    label: 'balance_in=balance_inMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        balance_in: StereotoolsSettings.balance_inMax,
-      ),
-    ),
+    label: 'balance_in=balanceInMax',
+    bundle: const [
+      StereotoolsEffect(balanceIn: StereotoolsEffect.balanceInMax),
+    ],
   ),
   (
     filter: 'stereotools',
-    label: 'balance_out=balance_outMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        balance_out: StereotoolsSettings.balance_outMin,
-      ),
-    ),
+    label: 'balance_out=balanceOutMin',
+    bundle: const [
+      StereotoolsEffect(balanceOut: StereotoolsEffect.balanceOutMin),
+    ],
   ),
   (
     filter: 'stereotools',
-    label: 'balance_out=balance_outDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        balance_out: StereotoolsSettings.balance_outDefault,
-      ),
-    ),
+    label: 'balance_out=balanceOutDefault',
+    bundle: const [
+      StereotoolsEffect(balanceOut: StereotoolsEffect.balanceOutDefault),
+    ],
   ),
   (
     filter: 'stereotools',
-    label: 'balance_out=balance_outMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        balance_out: StereotoolsSettings.balance_outMax,
-      ),
-    ),
+    label: 'balance_out=balanceOutMax',
+    bundle: const [
+      StereotoolsEffect(balanceOut: StereotoolsEffect.balanceOutMax),
+    ],
   ),
   (
     filter: 'stereotools',
     label: 'base=baseMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        base: StereotoolsSettings.baseMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(base: StereotoolsEffect.baseMin)],
   ),
   (
     filter: 'stereotools',
     label: 'base=baseDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        base: StereotoolsSettings.baseDefault,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(base: StereotoolsEffect.baseDefault)],
   ),
   (
     filter: 'stereotools',
     label: 'base=baseMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        base: StereotoolsSettings.baseMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(base: StereotoolsEffect.baseMax)],
   ),
   (
     filter: 'stereotools',
     label: 'delay=delayMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        delay: StereotoolsSettings.delayMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(delay: StereotoolsEffect.delayMin)],
   ),
   (
     filter: 'stereotools',
     label: 'delay=delayDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        delay: StereotoolsSettings.delayDefault,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(delay: StereotoolsEffect.delayDefault)],
   ),
   (
     filter: 'stereotools',
     label: 'delay=delayMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        delay: StereotoolsSettings.delayMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(delay: StereotoolsEffect.delayMax)],
   ),
   (
     filter: 'stereotools',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        level_in: StereotoolsSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [StereotoolsEffect(levelIn: StereotoolsEffect.levelInMin)],
   ),
   (
     filter: 'stereotools',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        level_in: StereotoolsSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [
+      StereotoolsEffect(levelIn: StereotoolsEffect.levelInDefault),
+    ],
   ),
   (
     filter: 'stereotools',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        level_in: StereotoolsSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [StereotoolsEffect(levelIn: StereotoolsEffect.levelInMax)],
   ),
   (
     filter: 'stereotools',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        level_out: StereotoolsSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [StereotoolsEffect(levelOut: StereotoolsEffect.levelOutMin)],
   ),
   (
     filter: 'stereotools',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        level_out: StereotoolsSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [
+      StereotoolsEffect(levelOut: StereotoolsEffect.levelOutDefault),
+    ],
   ),
   (
     filter: 'stereotools',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        level_out: StereotoolsSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [StereotoolsEffect(levelOut: StereotoolsEffect.levelOutMax)],
   ),
   (
     filter: 'stereotools',
     label: 'mlev=mlevMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        mlev: StereotoolsSettings.mlevMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(mlev: StereotoolsEffect.mlevMin)],
   ),
   (
     filter: 'stereotools',
     label: 'mlev=mlevDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        mlev: StereotoolsSettings.mlevDefault,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(mlev: StereotoolsEffect.mlevDefault)],
   ),
   (
     filter: 'stereotools',
     label: 'mlev=mlevMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        mlev: StereotoolsSettings.mlevMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(mlev: StereotoolsEffect.mlevMax)],
   ),
   (
     filter: 'stereotools',
     label: 'mpan=mpanMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        mpan: StereotoolsSettings.mpanMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(mpan: StereotoolsEffect.mpanMin)],
   ),
   (
     filter: 'stereotools',
     label: 'mpan=mpanDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        mpan: StereotoolsSettings.mpanDefault,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(mpan: StereotoolsEffect.mpanDefault)],
   ),
   (
     filter: 'stereotools',
     label: 'mpan=mpanMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        mpan: StereotoolsSettings.mpanMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(mpan: StereotoolsEffect.mpanMax)],
   ),
   (
     filter: 'stereotools',
     label: 'phase=phaseMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        phase: StereotoolsSettings.phaseMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(phase: StereotoolsEffect.phaseMin)],
   ),
   (
     filter: 'stereotools',
     label: 'phase=phaseDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        phase: StereotoolsSettings.phaseDefault,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(phase: StereotoolsEffect.phaseDefault)],
   ),
   (
     filter: 'stereotools',
     label: 'phase=phaseMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        phase: StereotoolsSettings.phaseMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(phase: StereotoolsEffect.phaseMax)],
   ),
   (
     filter: 'stereotools',
     label: 'sbal=sbalMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        sbal: StereotoolsSettings.sbalMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(sbal: StereotoolsEffect.sbalMin)],
   ),
   (
     filter: 'stereotools',
     label: 'sbal=sbalDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        sbal: StereotoolsSettings.sbalDefault,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(sbal: StereotoolsEffect.sbalDefault)],
   ),
   (
     filter: 'stereotools',
     label: 'sbal=sbalMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        sbal: StereotoolsSettings.sbalMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(sbal: StereotoolsEffect.sbalMax)],
   ),
   (
     filter: 'stereotools',
     label: 'sclevel=sclevelMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        sclevel: StereotoolsSettings.sclevelMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(sclevel: StereotoolsEffect.sclevelMin)],
   ),
   (
     filter: 'stereotools',
     label: 'sclevel=sclevelDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        sclevel: StereotoolsSettings.sclevelDefault,
-      ),
-    ),
+    bundle: const [
+      StereotoolsEffect(sclevel: StereotoolsEffect.sclevelDefault),
+    ],
   ),
   (
     filter: 'stereotools',
     label: 'sclevel=sclevelMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        sclevel: StereotoolsSettings.sclevelMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(sclevel: StereotoolsEffect.sclevelMax)],
   ),
   (
     filter: 'stereotools',
     label: 'slev=slevMin',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        slev: StereotoolsSettings.slevMin,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(slev: StereotoolsEffect.slevMin)],
   ),
   (
     filter: 'stereotools',
     label: 'slev=slevDefault',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        slev: StereotoolsSettings.slevDefault,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(slev: StereotoolsEffect.slevDefault)],
   ),
   (
     filter: 'stereotools',
     label: 'slev=slevMax',
-    bundle: const AudioEffects(
-      stereotools: const StereotoolsSettings(
-        enabled: true,
-        slev: StereotoolsSettings.slevMax,
-      ),
-    ),
+    bundle: const [StereotoolsEffect(slev: StereotoolsEffect.slevMax)],
   ),
   (
     filter: 'stereowiden',
     label: 'crossfeed=crossfeedMin',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        crossfeed: StereowidenSettings.crossfeedMin,
-      ),
-    ),
+    bundle: const [
+      StereowidenEffect(crossfeed: StereowidenEffect.crossfeedMin),
+    ],
   ),
   (
     filter: 'stereowiden',
     label: 'crossfeed=crossfeedDefault',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        crossfeed: StereowidenSettings.crossfeedDefault,
-      ),
-    ),
+    bundle: const [
+      StereowidenEffect(crossfeed: StereowidenEffect.crossfeedDefault),
+    ],
   ),
   (
     filter: 'stereowiden',
     label: 'crossfeed=crossfeedMax',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        crossfeed: StereowidenSettings.crossfeedMax,
-      ),
-    ),
+    bundle: const [
+      StereowidenEffect(crossfeed: StereowidenEffect.crossfeedMax),
+    ],
   ),
   (
     filter: 'stereowiden',
     label: 'delay=delayMin',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        delay: StereowidenSettings.delayMin,
-      ),
-    ),
+    bundle: const [StereowidenEffect(delay: StereowidenEffect.delayMin)],
   ),
   (
     filter: 'stereowiden',
     label: 'delay=delayDefault',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        delay: StereowidenSettings.delayDefault,
-      ),
-    ),
+    bundle: const [StereowidenEffect(delay: StereowidenEffect.delayDefault)],
   ),
   (
     filter: 'stereowiden',
     label: 'delay=delayMax',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        delay: StereowidenSettings.delayMax,
-      ),
-    ),
+    bundle: const [StereowidenEffect(delay: StereowidenEffect.delayMax)],
   ),
   (
     filter: 'stereowiden',
     label: 'drymix=drymixMin',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        drymix: StereowidenSettings.drymixMin,
-      ),
-    ),
+    bundle: const [StereowidenEffect(drymix: StereowidenEffect.drymixMin)],
   ),
   (
     filter: 'stereowiden',
     label: 'drymix=drymixDefault',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        drymix: StereowidenSettings.drymixDefault,
-      ),
-    ),
+    bundle: const [StereowidenEffect(drymix: StereowidenEffect.drymixDefault)],
   ),
   (
     filter: 'stereowiden',
     label: 'drymix=drymixMax',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        drymix: StereowidenSettings.drymixMax,
-      ),
-    ),
+    bundle: const [StereowidenEffect(drymix: StereowidenEffect.drymixMax)],
   ),
   (
     filter: 'stereowiden',
     label: 'feedback=feedbackMin',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        feedback: StereowidenSettings.feedbackMin,
-      ),
-    ),
+    bundle: const [StereowidenEffect(feedback: StereowidenEffect.feedbackMin)],
   ),
   (
     filter: 'stereowiden',
     label: 'feedback=feedbackDefault',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        feedback: StereowidenSettings.feedbackDefault,
-      ),
-    ),
+    bundle: const [
+      StereowidenEffect(feedback: StereowidenEffect.feedbackDefault),
+    ],
   ),
   (
     filter: 'stereowiden',
     label: 'feedback=feedbackMax',
-    bundle: const AudioEffects(
-      stereowiden: const StereowidenSettings(
-        enabled: true,
-        feedback: StereowidenSettings.feedbackMax,
-      ),
-    ),
+    bundle: const [StereowidenEffect(feedback: StereowidenEffect.feedbackMax)],
   ),
   (
     filter: 'surround',
     label: 'allx=allxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        allx: SurroundSettings.allxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(allx: SurroundEffect.allxMin)],
   ),
   (
     filter: 'surround',
     label: 'allx=allxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        allx: SurroundSettings.allxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(allx: SurroundEffect.allxDefault)],
   ),
   (
     filter: 'surround',
     label: 'allx=allxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        allx: SurroundSettings.allxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(allx: SurroundEffect.allxMax)],
   ),
   (
     filter: 'surround',
     label: 'ally=allyMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        ally: SurroundSettings.allyMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(ally: SurroundEffect.allyMin)],
   ),
   (
     filter: 'surround',
     label: 'ally=allyDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        ally: SurroundSettings.allyDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(ally: SurroundEffect.allyDefault)],
   ),
   (
     filter: 'surround',
     label: 'ally=allyMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        ally: SurroundSettings.allyMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(ally: SurroundEffect.allyMax)],
   ),
   (
     filter: 'surround',
     label: 'angle=angleMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        angle: SurroundSettings.angleMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(angle: SurroundEffect.angleMin)],
   ),
   (
     filter: 'surround',
     label: 'angle=angleDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        angle: SurroundSettings.angleDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(angle: SurroundEffect.angleDefault)],
   ),
   (
     filter: 'surround',
     label: 'angle=angleMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        angle: SurroundSettings.angleMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(angle: SurroundEffect.angleMax)],
   ),
   (
     filter: 'surround',
-    label: 'bc_in=bc_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bc_in: SurroundSettings.bc_inMin,
-      ),
-    ),
+    label: 'bc_in=bcInMin',
+    bundle: const [SurroundEffect(bcIn: SurroundEffect.bcInMin)],
   ),
   (
     filter: 'surround',
-    label: 'bc_in=bc_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bc_in: SurroundSettings.bc_inDefault,
-      ),
-    ),
+    label: 'bc_in=bcInDefault',
+    bundle: const [SurroundEffect(bcIn: SurroundEffect.bcInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'bc_in=bc_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bc_in: SurroundSettings.bc_inMax,
-      ),
-    ),
+    label: 'bc_in=bcInMax',
+    bundle: const [SurroundEffect(bcIn: SurroundEffect.bcInMax)],
   ),
   (
     filter: 'surround',
-    label: 'bc_out=bc_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bc_out: SurroundSettings.bc_outMin,
-      ),
-    ),
+    label: 'bc_out=bcOutMin',
+    bundle: const [SurroundEffect(bcOut: SurroundEffect.bcOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'bc_out=bc_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bc_out: SurroundSettings.bc_outDefault,
-      ),
-    ),
+    label: 'bc_out=bcOutDefault',
+    bundle: const [SurroundEffect(bcOut: SurroundEffect.bcOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'bc_out=bc_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bc_out: SurroundSettings.bc_outMax,
-      ),
-    ),
+    label: 'bc_out=bcOutMax',
+    bundle: const [SurroundEffect(bcOut: SurroundEffect.bcOutMax)],
   ),
   (
     filter: 'surround',
     label: 'bcx=bcxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bcx: SurroundSettings.bcxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(bcx: SurroundEffect.bcxMin)],
   ),
   (
     filter: 'surround',
     label: 'bcx=bcxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bcx: SurroundSettings.bcxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(bcx: SurroundEffect.bcxDefault)],
   ),
   (
     filter: 'surround',
     label: 'bcx=bcxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bcx: SurroundSettings.bcxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(bcx: SurroundEffect.bcxMax)],
   ),
   (
     filter: 'surround',
     label: 'bcy=bcyMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bcy: SurroundSettings.bcyMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(bcy: SurroundEffect.bcyMin)],
   ),
   (
     filter: 'surround',
     label: 'bcy=bcyDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bcy: SurroundSettings.bcyDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(bcy: SurroundEffect.bcyDefault)],
   ),
   (
     filter: 'surround',
     label: 'bcy=bcyMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bcy: SurroundSettings.bcyMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(bcy: SurroundEffect.bcyMax)],
   ),
   (
     filter: 'surround',
-    label: 'bl_in=bl_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bl_in: SurroundSettings.bl_inMin,
-      ),
-    ),
+    label: 'bl_in=blInMin',
+    bundle: const [SurroundEffect(blIn: SurroundEffect.blInMin)],
   ),
   (
     filter: 'surround',
-    label: 'bl_in=bl_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bl_in: SurroundSettings.bl_inDefault,
-      ),
-    ),
+    label: 'bl_in=blInDefault',
+    bundle: const [SurroundEffect(blIn: SurroundEffect.blInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'bl_in=bl_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bl_in: SurroundSettings.bl_inMax,
-      ),
-    ),
+    label: 'bl_in=blInMax',
+    bundle: const [SurroundEffect(blIn: SurroundEffect.blInMax)],
   ),
   (
     filter: 'surround',
-    label: 'bl_out=bl_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bl_out: SurroundSettings.bl_outMin,
-      ),
-    ),
+    label: 'bl_out=blOutMin',
+    bundle: const [SurroundEffect(blOut: SurroundEffect.blOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'bl_out=bl_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bl_out: SurroundSettings.bl_outDefault,
-      ),
-    ),
+    label: 'bl_out=blOutDefault',
+    bundle: const [SurroundEffect(blOut: SurroundEffect.blOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'bl_out=bl_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bl_out: SurroundSettings.bl_outMax,
-      ),
-    ),
+    label: 'bl_out=blOutMax',
+    bundle: const [SurroundEffect(blOut: SurroundEffect.blOutMax)],
   ),
   (
     filter: 'surround',
     label: 'blx=blxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        blx: SurroundSettings.blxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(blx: SurroundEffect.blxMin)],
   ),
   (
     filter: 'surround',
     label: 'blx=blxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        blx: SurroundSettings.blxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(blx: SurroundEffect.blxDefault)],
   ),
   (
     filter: 'surround',
     label: 'blx=blxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        blx: SurroundSettings.blxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(blx: SurroundEffect.blxMax)],
   ),
   (
     filter: 'surround',
     label: 'bly=blyMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bly: SurroundSettings.blyMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(bly: SurroundEffect.blyMin)],
   ),
   (
     filter: 'surround',
     label: 'bly=blyDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bly: SurroundSettings.blyDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(bly: SurroundEffect.blyDefault)],
   ),
   (
     filter: 'surround',
     label: 'bly=blyMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bly: SurroundSettings.blyMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(bly: SurroundEffect.blyMax)],
   ),
   (
     filter: 'surround',
-    label: 'br_in=br_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        br_in: SurroundSettings.br_inMin,
-      ),
-    ),
+    label: 'br_in=brInMin',
+    bundle: const [SurroundEffect(brIn: SurroundEffect.brInMin)],
   ),
   (
     filter: 'surround',
-    label: 'br_in=br_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        br_in: SurroundSettings.br_inDefault,
-      ),
-    ),
+    label: 'br_in=brInDefault',
+    bundle: const [SurroundEffect(brIn: SurroundEffect.brInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'br_in=br_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        br_in: SurroundSettings.br_inMax,
-      ),
-    ),
+    label: 'br_in=brInMax',
+    bundle: const [SurroundEffect(brIn: SurroundEffect.brInMax)],
   ),
   (
     filter: 'surround',
-    label: 'br_out=br_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        br_out: SurroundSettings.br_outMin,
-      ),
-    ),
+    label: 'br_out=brOutMin',
+    bundle: const [SurroundEffect(brOut: SurroundEffect.brOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'br_out=br_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        br_out: SurroundSettings.br_outDefault,
-      ),
-    ),
+    label: 'br_out=brOutDefault',
+    bundle: const [SurroundEffect(brOut: SurroundEffect.brOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'br_out=br_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        br_out: SurroundSettings.br_outMax,
-      ),
-    ),
+    label: 'br_out=brOutMax',
+    bundle: const [SurroundEffect(brOut: SurroundEffect.brOutMax)],
   ),
   (
     filter: 'surround',
     label: 'brx=brxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        brx: SurroundSettings.brxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(brx: SurroundEffect.brxMin)],
   ),
   (
     filter: 'surround',
     label: 'brx=brxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        brx: SurroundSettings.brxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(brx: SurroundEffect.brxDefault)],
   ),
   (
     filter: 'surround',
     label: 'brx=brxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        brx: SurroundSettings.brxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(brx: SurroundEffect.brxMax)],
   ),
   (
     filter: 'surround',
     label: 'bry=bryMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bry: SurroundSettings.bryMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(bry: SurroundEffect.bryMin)],
   ),
   (
     filter: 'surround',
     label: 'bry=bryDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bry: SurroundSettings.bryDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(bry: SurroundEffect.bryDefault)],
   ),
   (
     filter: 'surround',
     label: 'bry=bryMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        bry: SurroundSettings.bryMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(bry: SurroundEffect.bryMax)],
   ),
   (
     filter: 'surround',
-    label: 'fc_in=fc_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fc_in: SurroundSettings.fc_inMin,
-      ),
-    ),
+    label: 'fc_in=fcInMin',
+    bundle: const [SurroundEffect(fcIn: SurroundEffect.fcInMin)],
   ),
   (
     filter: 'surround',
-    label: 'fc_in=fc_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fc_in: SurroundSettings.fc_inDefault,
-      ),
-    ),
+    label: 'fc_in=fcInDefault',
+    bundle: const [SurroundEffect(fcIn: SurroundEffect.fcInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'fc_in=fc_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fc_in: SurroundSettings.fc_inMax,
-      ),
-    ),
+    label: 'fc_in=fcInMax',
+    bundle: const [SurroundEffect(fcIn: SurroundEffect.fcInMax)],
   ),
   (
     filter: 'surround',
-    label: 'fc_out=fc_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fc_out: SurroundSettings.fc_outMin,
-      ),
-    ),
+    label: 'fc_out=fcOutMin',
+    bundle: const [SurroundEffect(fcOut: SurroundEffect.fcOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'fc_out=fc_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fc_out: SurroundSettings.fc_outDefault,
-      ),
-    ),
+    label: 'fc_out=fcOutDefault',
+    bundle: const [SurroundEffect(fcOut: SurroundEffect.fcOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'fc_out=fc_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fc_out: SurroundSettings.fc_outMax,
-      ),
-    ),
+    label: 'fc_out=fcOutMax',
+    bundle: const [SurroundEffect(fcOut: SurroundEffect.fcOutMax)],
   ),
   (
     filter: 'surround',
     label: 'fcx=fcxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fcx: SurroundSettings.fcxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(fcx: SurroundEffect.fcxMin)],
   ),
   (
     filter: 'surround',
     label: 'fcx=fcxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fcx: SurroundSettings.fcxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(fcx: SurroundEffect.fcxDefault)],
   ),
   (
     filter: 'surround',
     label: 'fcx=fcxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fcx: SurroundSettings.fcxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(fcx: SurroundEffect.fcxMax)],
   ),
   (
     filter: 'surround',
     label: 'fcy=fcyMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fcy: SurroundSettings.fcyMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(fcy: SurroundEffect.fcyMin)],
   ),
   (
     filter: 'surround',
     label: 'fcy=fcyDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fcy: SurroundSettings.fcyDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(fcy: SurroundEffect.fcyDefault)],
   ),
   (
     filter: 'surround',
     label: 'fcy=fcyMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fcy: SurroundSettings.fcyMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(fcy: SurroundEffect.fcyMax)],
   ),
   (
     filter: 'surround',
-    label: 'fl_in=fl_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fl_in: SurroundSettings.fl_inMin,
-      ),
-    ),
+    label: 'fl_in=flInMin',
+    bundle: const [SurroundEffect(flIn: SurroundEffect.flInMin)],
   ),
   (
     filter: 'surround',
-    label: 'fl_in=fl_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fl_in: SurroundSettings.fl_inDefault,
-      ),
-    ),
+    label: 'fl_in=flInDefault',
+    bundle: const [SurroundEffect(flIn: SurroundEffect.flInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'fl_in=fl_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fl_in: SurroundSettings.fl_inMax,
-      ),
-    ),
+    label: 'fl_in=flInMax',
+    bundle: const [SurroundEffect(flIn: SurroundEffect.flInMax)],
   ),
   (
     filter: 'surround',
-    label: 'fl_out=fl_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fl_out: SurroundSettings.fl_outMin,
-      ),
-    ),
+    label: 'fl_out=flOutMin',
+    bundle: const [SurroundEffect(flOut: SurroundEffect.flOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'fl_out=fl_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fl_out: SurroundSettings.fl_outDefault,
-      ),
-    ),
+    label: 'fl_out=flOutDefault',
+    bundle: const [SurroundEffect(flOut: SurroundEffect.flOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'fl_out=fl_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fl_out: SurroundSettings.fl_outMax,
-      ),
-    ),
+    label: 'fl_out=flOutMax',
+    bundle: const [SurroundEffect(flOut: SurroundEffect.flOutMax)],
   ),
   (
     filter: 'surround',
     label: 'flx=flxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        flx: SurroundSettings.flxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(flx: SurroundEffect.flxMin)],
   ),
   (
     filter: 'surround',
     label: 'flx=flxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        flx: SurroundSettings.flxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(flx: SurroundEffect.flxDefault)],
   ),
   (
     filter: 'surround',
     label: 'flx=flxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        flx: SurroundSettings.flxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(flx: SurroundEffect.flxMax)],
   ),
   (
     filter: 'surround',
     label: 'fly=flyMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fly: SurroundSettings.flyMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(fly: SurroundEffect.flyMin)],
   ),
   (
     filter: 'surround',
     label: 'fly=flyDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fly: SurroundSettings.flyDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(fly: SurroundEffect.flyDefault)],
   ),
   (
     filter: 'surround',
     label: 'fly=flyMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fly: SurroundSettings.flyMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(fly: SurroundEffect.flyMax)],
   ),
   (
     filter: 'surround',
     label: 'focus=focusMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        focus: SurroundSettings.focusMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(focus: SurroundEffect.focusMin)],
   ),
   (
     filter: 'surround',
     label: 'focus=focusDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        focus: SurroundSettings.focusDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(focus: SurroundEffect.focusDefault)],
   ),
   (
     filter: 'surround',
     label: 'focus=focusMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        focus: SurroundSettings.focusMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(focus: SurroundEffect.focusMax)],
   ),
   (
     filter: 'surround',
-    label: 'fr_in=fr_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fr_in: SurroundSettings.fr_inMin,
-      ),
-    ),
+    label: 'fr_in=frInMin',
+    bundle: const [SurroundEffect(frIn: SurroundEffect.frInMin)],
   ),
   (
     filter: 'surround',
-    label: 'fr_in=fr_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fr_in: SurroundSettings.fr_inDefault,
-      ),
-    ),
+    label: 'fr_in=frInDefault',
+    bundle: const [SurroundEffect(frIn: SurroundEffect.frInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'fr_in=fr_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fr_in: SurroundSettings.fr_inMax,
-      ),
-    ),
+    label: 'fr_in=frInMax',
+    bundle: const [SurroundEffect(frIn: SurroundEffect.frInMax)],
   ),
   (
     filter: 'surround',
-    label: 'fr_out=fr_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fr_out: SurroundSettings.fr_outMin,
-      ),
-    ),
+    label: 'fr_out=frOutMin',
+    bundle: const [SurroundEffect(frOut: SurroundEffect.frOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'fr_out=fr_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fr_out: SurroundSettings.fr_outDefault,
-      ),
-    ),
+    label: 'fr_out=frOutDefault',
+    bundle: const [SurroundEffect(frOut: SurroundEffect.frOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'fr_out=fr_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fr_out: SurroundSettings.fr_outMax,
-      ),
-    ),
+    label: 'fr_out=frOutMax',
+    bundle: const [SurroundEffect(frOut: SurroundEffect.frOutMax)],
   ),
   (
     filter: 'surround',
     label: 'frx=frxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        frx: SurroundSettings.frxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(frx: SurroundEffect.frxMin)],
   ),
   (
     filter: 'surround',
     label: 'frx=frxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        frx: SurroundSettings.frxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(frx: SurroundEffect.frxDefault)],
   ),
   (
     filter: 'surround',
     label: 'frx=frxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        frx: SurroundSettings.frxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(frx: SurroundEffect.frxMax)],
   ),
   (
     filter: 'surround',
     label: 'fry=fryMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fry: SurroundSettings.fryMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(fry: SurroundEffect.fryMin)],
   ),
   (
     filter: 'surround',
     label: 'fry=fryDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fry: SurroundSettings.fryDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(fry: SurroundEffect.fryDefault)],
   ),
   (
     filter: 'surround',
     label: 'fry=fryMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        fry: SurroundSettings.fryMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(fry: SurroundEffect.fryMax)],
   ),
   (
     filter: 'surround',
-    label: 'level_in=level_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        level_in: SurroundSettings.level_inMin,
-      ),
-    ),
+    label: 'level_in=levelInMin',
+    bundle: const [SurroundEffect(levelIn: SurroundEffect.levelInMin)],
   ),
   (
     filter: 'surround',
-    label: 'level_in=level_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        level_in: SurroundSettings.level_inDefault,
-      ),
-    ),
+    label: 'level_in=levelInDefault',
+    bundle: const [SurroundEffect(levelIn: SurroundEffect.levelInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'level_in=level_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        level_in: SurroundSettings.level_inMax,
-      ),
-    ),
+    label: 'level_in=levelInMax',
+    bundle: const [SurroundEffect(levelIn: SurroundEffect.levelInMax)],
   ),
   (
     filter: 'surround',
-    label: 'level_out=level_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        level_out: SurroundSettings.level_outMin,
-      ),
-    ),
+    label: 'level_out=levelOutMin',
+    bundle: const [SurroundEffect(levelOut: SurroundEffect.levelOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'level_out=level_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        level_out: SurroundSettings.level_outDefault,
-      ),
-    ),
+    label: 'level_out=levelOutDefault',
+    bundle: const [SurroundEffect(levelOut: SurroundEffect.levelOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'level_out=level_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        level_out: SurroundSettings.level_outMax,
-      ),
-    ),
+    label: 'level_out=levelOutMax',
+    bundle: const [SurroundEffect(levelOut: SurroundEffect.levelOutMax)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_high=lfe_highMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_high: SurroundSettings.lfe_highMin,
-      ),
-    ),
+    label: 'lfe_high=lfeHighMin',
+    bundle: const [SurroundEffect(lfeHigh: SurroundEffect.lfeHighMin)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_high=lfe_highDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_high: SurroundSettings.lfe_highDefault,
-      ),
-    ),
+    label: 'lfe_high=lfeHighDefault',
+    bundle: const [SurroundEffect(lfeHigh: SurroundEffect.lfeHighDefault)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_high=lfe_highMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_high: SurroundSettings.lfe_highMax,
-      ),
-    ),
+    label: 'lfe_high=lfeHighMax',
+    bundle: const [SurroundEffect(lfeHigh: SurroundEffect.lfeHighMax)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_in=lfe_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_in: SurroundSettings.lfe_inMin,
-      ),
-    ),
+    label: 'lfe_in=lfeInMin',
+    bundle: const [SurroundEffect(lfeIn: SurroundEffect.lfeInMin)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_in=lfe_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_in: SurroundSettings.lfe_inDefault,
-      ),
-    ),
+    label: 'lfe_in=lfeInDefault',
+    bundle: const [SurroundEffect(lfeIn: SurroundEffect.lfeInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_in=lfe_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_in: SurroundSettings.lfe_inMax,
-      ),
-    ),
+    label: 'lfe_in=lfeInMax',
+    bundle: const [SurroundEffect(lfeIn: SurroundEffect.lfeInMax)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_low=lfe_lowMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_low: SurroundSettings.lfe_lowMin,
-      ),
-    ),
+    label: 'lfe_low=lfeLowMin',
+    bundle: const [SurroundEffect(lfeLow: SurroundEffect.lfeLowMin)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_low=lfe_lowDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_low: SurroundSettings.lfe_lowDefault,
-      ),
-    ),
+    label: 'lfe_low=lfeLowDefault',
+    bundle: const [SurroundEffect(lfeLow: SurroundEffect.lfeLowDefault)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_low=lfe_lowMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_low: SurroundSettings.lfe_lowMax,
-      ),
-    ),
+    label: 'lfe_low=lfeLowMax',
+    bundle: const [SurroundEffect(lfeLow: SurroundEffect.lfeLowMax)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_out=lfe_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_out: SurroundSettings.lfe_outMin,
-      ),
-    ),
+    label: 'lfe_out=lfeOutMin',
+    bundle: const [SurroundEffect(lfeOut: SurroundEffect.lfeOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_out=lfe_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_out: SurroundSettings.lfe_outDefault,
-      ),
-    ),
+    label: 'lfe_out=lfeOutDefault',
+    bundle: const [SurroundEffect(lfeOut: SurroundEffect.lfeOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'lfe_out=lfe_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        lfe_out: SurroundSettings.lfe_outMax,
-      ),
-    ),
+    label: 'lfe_out=lfeOutMax',
+    bundle: const [SurroundEffect(lfeOut: SurroundEffect.lfeOutMax)],
   ),
   (
     filter: 'surround',
     label: 'overlap=overlapMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        overlap: SurroundSettings.overlapMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(overlap: SurroundEffect.overlapMin)],
   ),
   (
     filter: 'surround',
     label: 'overlap=overlapDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        overlap: SurroundSettings.overlapDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(overlap: SurroundEffect.overlapDefault)],
   ),
   (
     filter: 'surround',
     label: 'overlap=overlapMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        overlap: SurroundSettings.overlapMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(overlap: SurroundEffect.overlapMax)],
   ),
   (
     filter: 'surround',
-    label: 'sl_in=sl_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sl_in: SurroundSettings.sl_inMin,
-      ),
-    ),
+    label: 'sl_in=slInMin',
+    bundle: const [SurroundEffect(slIn: SurroundEffect.slInMin)],
   ),
   (
     filter: 'surround',
-    label: 'sl_in=sl_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sl_in: SurroundSettings.sl_inDefault,
-      ),
-    ),
+    label: 'sl_in=slInDefault',
+    bundle: const [SurroundEffect(slIn: SurroundEffect.slInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'sl_in=sl_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sl_in: SurroundSettings.sl_inMax,
-      ),
-    ),
+    label: 'sl_in=slInMax',
+    bundle: const [SurroundEffect(slIn: SurroundEffect.slInMax)],
   ),
   (
     filter: 'surround',
-    label: 'sl_out=sl_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sl_out: SurroundSettings.sl_outMin,
-      ),
-    ),
+    label: 'sl_out=slOutMin',
+    bundle: const [SurroundEffect(slOut: SurroundEffect.slOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'sl_out=sl_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sl_out: SurroundSettings.sl_outDefault,
-      ),
-    ),
+    label: 'sl_out=slOutDefault',
+    bundle: const [SurroundEffect(slOut: SurroundEffect.slOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'sl_out=sl_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sl_out: SurroundSettings.sl_outMax,
-      ),
-    ),
+    label: 'sl_out=slOutMax',
+    bundle: const [SurroundEffect(slOut: SurroundEffect.slOutMax)],
   ),
   (
     filter: 'surround',
     label: 'slx=slxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        slx: SurroundSettings.slxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(slx: SurroundEffect.slxMin)],
   ),
   (
     filter: 'surround',
     label: 'slx=slxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        slx: SurroundSettings.slxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(slx: SurroundEffect.slxDefault)],
   ),
   (
     filter: 'surround',
     label: 'slx=slxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        slx: SurroundSettings.slxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(slx: SurroundEffect.slxMax)],
   ),
   (
     filter: 'surround',
     label: 'sly=slyMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sly: SurroundSettings.slyMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(sly: SurroundEffect.slyMin)],
   ),
   (
     filter: 'surround',
     label: 'sly=slyDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sly: SurroundSettings.slyDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(sly: SurroundEffect.slyDefault)],
   ),
   (
     filter: 'surround',
     label: 'sly=slyMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sly: SurroundSettings.slyMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(sly: SurroundEffect.slyMax)],
   ),
   (
     filter: 'surround',
     label: 'smooth=smoothMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        smooth: SurroundSettings.smoothMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(smooth: SurroundEffect.smoothMin)],
   ),
   (
     filter: 'surround',
     label: 'smooth=smoothDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        smooth: SurroundSettings.smoothDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(smooth: SurroundEffect.smoothDefault)],
   ),
   (
     filter: 'surround',
     label: 'smooth=smoothMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        smooth: SurroundSettings.smoothMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(smooth: SurroundEffect.smoothMax)],
   ),
   (
     filter: 'surround',
-    label: 'sr_in=sr_inMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sr_in: SurroundSettings.sr_inMin,
-      ),
-    ),
+    label: 'sr_in=srInMin',
+    bundle: const [SurroundEffect(srIn: SurroundEffect.srInMin)],
   ),
   (
     filter: 'surround',
-    label: 'sr_in=sr_inDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sr_in: SurroundSettings.sr_inDefault,
-      ),
-    ),
+    label: 'sr_in=srInDefault',
+    bundle: const [SurroundEffect(srIn: SurroundEffect.srInDefault)],
   ),
   (
     filter: 'surround',
-    label: 'sr_in=sr_inMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sr_in: SurroundSettings.sr_inMax,
-      ),
-    ),
+    label: 'sr_in=srInMax',
+    bundle: const [SurroundEffect(srIn: SurroundEffect.srInMax)],
   ),
   (
     filter: 'surround',
-    label: 'sr_out=sr_outMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sr_out: SurroundSettings.sr_outMin,
-      ),
-    ),
+    label: 'sr_out=srOutMin',
+    bundle: const [SurroundEffect(srOut: SurroundEffect.srOutMin)],
   ),
   (
     filter: 'surround',
-    label: 'sr_out=sr_outDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sr_out: SurroundSettings.sr_outDefault,
-      ),
-    ),
+    label: 'sr_out=srOutDefault',
+    bundle: const [SurroundEffect(srOut: SurroundEffect.srOutDefault)],
   ),
   (
     filter: 'surround',
-    label: 'sr_out=sr_outMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sr_out: SurroundSettings.sr_outMax,
-      ),
-    ),
+    label: 'sr_out=srOutMax',
+    bundle: const [SurroundEffect(srOut: SurroundEffect.srOutMax)],
   ),
   (
     filter: 'surround',
     label: 'srx=srxMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        srx: SurroundSettings.srxMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(srx: SurroundEffect.srxMin)],
   ),
   (
     filter: 'surround',
     label: 'srx=srxDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        srx: SurroundSettings.srxDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(srx: SurroundEffect.srxDefault)],
   ),
   (
     filter: 'surround',
     label: 'srx=srxMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        srx: SurroundSettings.srxMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(srx: SurroundEffect.srxMax)],
   ),
   (
     filter: 'surround',
     label: 'sry=sryMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sry: SurroundSettings.sryMin,
-      ),
-    ),
+    bundle: const [SurroundEffect(sry: SurroundEffect.sryMin)],
   ),
   (
     filter: 'surround',
     label: 'sry=sryDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sry: SurroundSettings.sryDefault,
-      ),
-    ),
+    bundle: const [SurroundEffect(sry: SurroundEffect.sryDefault)],
   ),
   (
     filter: 'surround',
     label: 'sry=sryMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        sry: SurroundSettings.sryMax,
-      ),
-    ),
+    bundle: const [SurroundEffect(sry: SurroundEffect.sryMax)],
   ),
   (
     filter: 'surround',
-    label: 'win_size=win_sizeMin',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        win_size: SurroundSettings.win_sizeMin,
-      ),
-    ),
+    label: 'win_size=winSizeMin',
+    bundle: const [SurroundEffect(winSize: SurroundEffect.winSizeMin)],
   ),
   (
     filter: 'surround',
-    label: 'win_size=win_sizeDefault',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        win_size: SurroundSettings.win_sizeDefault,
-      ),
-    ),
+    label: 'win_size=winSizeDefault',
+    bundle: const [SurroundEffect(winSize: SurroundEffect.winSizeDefault)],
   ),
   (
     filter: 'surround',
-    label: 'win_size=win_sizeMax',
-    bundle: const AudioEffects(
-      surround: const SurroundSettings(
-        enabled: true,
-        win_size: SurroundSettings.win_sizeMax,
-      ),
-    ),
+    label: 'win_size=winSizeMax',
+    bundle: const [SurroundEffect(winSize: SurroundEffect.winSizeMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        b: TiltshelfSettings.bMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(b: TiltshelfEffect.bMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        b: TiltshelfSettings.bDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(b: TiltshelfEffect.bDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        b: TiltshelfSettings.bMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(b: TiltshelfEffect.bMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        blocksize: TiltshelfSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(blocksize: TiltshelfEffect.blocksizeMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        blocksize: TiltshelfSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [
+      TiltshelfEffect(blocksize: TiltshelfEffect.blocksizeDefault),
+    ],
   ),
   (
     filter: 'tiltshelf',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        blocksize: TiltshelfSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(blocksize: TiltshelfEffect.blocksizeMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        f: TiltshelfSettings.fMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(f: TiltshelfEffect.fMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        f: TiltshelfSettings.fDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(f: TiltshelfEffect.fDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        f: TiltshelfSettings.fMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(f: TiltshelfEffect.fMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        frequency: TiltshelfSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(frequency: TiltshelfEffect.frequencyMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        frequency: TiltshelfSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [
+      TiltshelfEffect(frequency: TiltshelfEffect.frequencyDefault),
+    ],
   ),
   (
     filter: 'tiltshelf',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        frequency: TiltshelfSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(frequency: TiltshelfEffect.frequencyMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'g=gMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        g: TiltshelfSettings.gMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(g: TiltshelfEffect.gMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'g=gDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        g: TiltshelfSettings.gDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(g: TiltshelfEffect.gDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'g=gMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        g: TiltshelfSettings.gMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(g: TiltshelfEffect.gMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'gain=gainMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        gain: TiltshelfSettings.gainMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(gain: TiltshelfEffect.gainMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'gain=gainDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        gain: TiltshelfSettings.gainDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(gain: TiltshelfEffect.gainDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'gain=gainMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        gain: TiltshelfSettings.gainMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(gain: TiltshelfEffect.gainMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        m: TiltshelfSettings.mMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(m: TiltshelfEffect.mMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        m: TiltshelfSettings.mDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(m: TiltshelfEffect.mDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        m: TiltshelfSettings.mMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(m: TiltshelfEffect.mMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        mix: TiltshelfSettings.mixMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(mix: TiltshelfEffect.mixMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        mix: TiltshelfSettings.mixDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(mix: TiltshelfEffect.mixDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        mix: TiltshelfSettings.mixMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(mix: TiltshelfEffect.mixMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        p: TiltshelfSettings.pMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(p: TiltshelfEffect.pMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        p: TiltshelfSettings.pDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(p: TiltshelfEffect.pDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        p: TiltshelfSettings.pMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(p: TiltshelfEffect.pMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'poles=polesMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        poles: TiltshelfSettings.polesMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(poles: TiltshelfEffect.polesMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'poles=polesDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        poles: TiltshelfSettings.polesDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(poles: TiltshelfEffect.polesDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'poles=polesMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        poles: TiltshelfSettings.polesMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(poles: TiltshelfEffect.polesMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        w: TiltshelfSettings.wMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(w: TiltshelfEffect.wMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        w: TiltshelfSettings.wDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(w: TiltshelfEffect.wDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        w: TiltshelfSettings.wMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(w: TiltshelfEffect.wMax)],
   ),
   (
     filter: 'tiltshelf',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        width: TiltshelfSettings.widthMin,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(width: TiltshelfEffect.widthMin)],
   ),
   (
     filter: 'tiltshelf',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        width: TiltshelfSettings.widthDefault,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(width: TiltshelfEffect.widthDefault)],
   ),
   (
     filter: 'tiltshelf',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      tiltshelf: const TiltshelfSettings(
-        enabled: true,
-        width: TiltshelfSettings.widthMax,
-      ),
-    ),
+    bundle: const [TiltshelfEffect(width: TiltshelfEffect.widthMax)],
   ),
   (
     filter: 'treble',
     label: 'b=bMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, b: TrebleSettings.bMin),
-    ),
+    bundle: const [TrebleEffect(b: TrebleEffect.bMin)],
   ),
   (
     filter: 'treble',
     label: 'b=bDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, b: TrebleSettings.bDefault),
-    ),
+    bundle: const [TrebleEffect(b: TrebleEffect.bDefault)],
   ),
   (
     filter: 'treble',
     label: 'b=bMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, b: TrebleSettings.bMax),
-    ),
+    bundle: const [TrebleEffect(b: TrebleEffect.bMax)],
   ),
   (
     filter: 'treble',
     label: 'blocksize=blocksizeMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        blocksize: TrebleSettings.blocksizeMin,
-      ),
-    ),
+    bundle: const [TrebleEffect(blocksize: TrebleEffect.blocksizeMin)],
   ),
   (
     filter: 'treble',
     label: 'blocksize=blocksizeDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        blocksize: TrebleSettings.blocksizeDefault,
-      ),
-    ),
+    bundle: const [TrebleEffect(blocksize: TrebleEffect.blocksizeDefault)],
   ),
   (
     filter: 'treble',
     label: 'blocksize=blocksizeMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        blocksize: TrebleSettings.blocksizeMax,
-      ),
-    ),
+    bundle: const [TrebleEffect(blocksize: TrebleEffect.blocksizeMax)],
   ),
   (
     filter: 'treble',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, f: TrebleSettings.fMin),
-    ),
+    bundle: const [TrebleEffect(f: TrebleEffect.fMin)],
   ),
   (
     filter: 'treble',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, f: TrebleSettings.fDefault),
-    ),
+    bundle: const [TrebleEffect(f: TrebleEffect.fDefault)],
   ),
   (
     filter: 'treble',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, f: TrebleSettings.fMax),
-    ),
+    bundle: const [TrebleEffect(f: TrebleEffect.fMax)],
   ),
   (
     filter: 'treble',
     label: 'frequency=frequencyMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        frequency: TrebleSettings.frequencyMin,
-      ),
-    ),
+    bundle: const [TrebleEffect(frequency: TrebleEffect.frequencyMin)],
   ),
   (
     filter: 'treble',
     label: 'frequency=frequencyDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        frequency: TrebleSettings.frequencyDefault,
-      ),
-    ),
+    bundle: const [TrebleEffect(frequency: TrebleEffect.frequencyDefault)],
   ),
   (
     filter: 'treble',
     label: 'frequency=frequencyMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        frequency: TrebleSettings.frequencyMax,
-      ),
-    ),
+    bundle: const [TrebleEffect(frequency: TrebleEffect.frequencyMax)],
   ),
   (
     filter: 'treble',
     label: 'g=gMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, g: TrebleSettings.gMin),
-    ),
+    bundle: const [TrebleEffect(g: TrebleEffect.gMin)],
   ),
   (
     filter: 'treble',
     label: 'g=gDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, g: TrebleSettings.gDefault),
-    ),
+    bundle: const [TrebleEffect(g: TrebleEffect.gDefault)],
   ),
   (
     filter: 'treble',
     label: 'g=gMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, g: TrebleSettings.gMax),
-    ),
+    bundle: const [TrebleEffect(g: TrebleEffect.gMax)],
   ),
   (
     filter: 'treble',
     label: 'gain=gainMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, gain: TrebleSettings.gainMin),
-    ),
+    bundle: const [TrebleEffect(gain: TrebleEffect.gainMin)],
   ),
   (
     filter: 'treble',
     label: 'gain=gainDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        gain: TrebleSettings.gainDefault,
-      ),
-    ),
+    bundle: const [TrebleEffect(gain: TrebleEffect.gainDefault)],
   ),
   (
     filter: 'treble',
     label: 'gain=gainMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, gain: TrebleSettings.gainMax),
-    ),
+    bundle: const [TrebleEffect(gain: TrebleEffect.gainMax)],
   ),
   (
     filter: 'treble',
     label: 'm=mMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, m: TrebleSettings.mMin),
-    ),
+    bundle: const [TrebleEffect(m: TrebleEffect.mMin)],
   ),
   (
     filter: 'treble',
     label: 'm=mDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, m: TrebleSettings.mDefault),
-    ),
+    bundle: const [TrebleEffect(m: TrebleEffect.mDefault)],
   ),
   (
     filter: 'treble',
     label: 'm=mMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, m: TrebleSettings.mMax),
-    ),
+    bundle: const [TrebleEffect(m: TrebleEffect.mMax)],
   ),
   (
     filter: 'treble',
     label: 'mix=mixMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, mix: TrebleSettings.mixMin),
-    ),
+    bundle: const [TrebleEffect(mix: TrebleEffect.mixMin)],
   ),
   (
     filter: 'treble',
     label: 'mix=mixDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        mix: TrebleSettings.mixDefault,
-      ),
-    ),
+    bundle: const [TrebleEffect(mix: TrebleEffect.mixDefault)],
   ),
   (
     filter: 'treble',
     label: 'mix=mixMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, mix: TrebleSettings.mixMax),
-    ),
+    bundle: const [TrebleEffect(mix: TrebleEffect.mixMax)],
   ),
   (
     filter: 'treble',
     label: 'p=pMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, p: TrebleSettings.pMin),
-    ),
+    bundle: const [TrebleEffect(p: TrebleEffect.pMin)],
   ),
   (
     filter: 'treble',
     label: 'p=pDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, p: TrebleSettings.pDefault),
-    ),
+    bundle: const [TrebleEffect(p: TrebleEffect.pDefault)],
   ),
   (
     filter: 'treble',
     label: 'p=pMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, p: TrebleSettings.pMax),
-    ),
+    bundle: const [TrebleEffect(p: TrebleEffect.pMax)],
   ),
   (
     filter: 'treble',
     label: 'poles=polesMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        poles: TrebleSettings.polesMin,
-      ),
-    ),
+    bundle: const [TrebleEffect(poles: TrebleEffect.polesMin)],
   ),
   (
     filter: 'treble',
     label: 'poles=polesDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        poles: TrebleSettings.polesDefault,
-      ),
-    ),
+    bundle: const [TrebleEffect(poles: TrebleEffect.polesDefault)],
   ),
   (
     filter: 'treble',
     label: 'poles=polesMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        poles: TrebleSettings.polesMax,
-      ),
-    ),
+    bundle: const [TrebleEffect(poles: TrebleEffect.polesMax)],
   ),
   (
     filter: 'treble',
     label: 'w=wMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, w: TrebleSettings.wMin),
-    ),
+    bundle: const [TrebleEffect(w: TrebleEffect.wMin)],
   ),
   (
     filter: 'treble',
     label: 'w=wDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, w: TrebleSettings.wDefault),
-    ),
+    bundle: const [TrebleEffect(w: TrebleEffect.wDefault)],
   ),
   (
     filter: 'treble',
     label: 'w=wMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(enabled: true, w: TrebleSettings.wMax),
-    ),
+    bundle: const [TrebleEffect(w: TrebleEffect.wMax)],
   ),
   (
     filter: 'treble',
     label: 'width=widthMin',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        width: TrebleSettings.widthMin,
-      ),
-    ),
+    bundle: const [TrebleEffect(width: TrebleEffect.widthMin)],
   ),
   (
     filter: 'treble',
     label: 'width=widthDefault',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        width: TrebleSettings.widthDefault,
-      ),
-    ),
+    bundle: const [TrebleEffect(width: TrebleEffect.widthDefault)],
   ),
   (
     filter: 'treble',
     label: 'width=widthMax',
-    bundle: const AudioEffects(
-      treble: const TrebleSettings(
-        enabled: true,
-        width: TrebleSettings.widthMax,
-      ),
-    ),
+    bundle: const [TrebleEffect(width: TrebleEffect.widthMax)],
   ),
   (
     filter: 'tremolo',
     label: 'd=dMin',
-    bundle: const AudioEffects(
-      tremolo: const TremoloSettings(enabled: true, d: TremoloSettings.dMin),
-    ),
+    bundle: const [TremoloEffect(d: TremoloEffect.dMin)],
   ),
   (
     filter: 'tremolo',
     label: 'd=dDefault',
-    bundle: const AudioEffects(
-      tremolo: const TremoloSettings(
-        enabled: true,
-        d: TremoloSettings.dDefault,
-      ),
-    ),
+    bundle: const [TremoloEffect(d: TremoloEffect.dDefault)],
   ),
   (
     filter: 'tremolo',
     label: 'd=dMax',
-    bundle: const AudioEffects(
-      tremolo: const TremoloSettings(enabled: true, d: TremoloSettings.dMax),
-    ),
+    bundle: const [TremoloEffect(d: TremoloEffect.dMax)],
   ),
   (
     filter: 'tremolo',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      tremolo: const TremoloSettings(enabled: true, f: TremoloSettings.fMin),
-    ),
+    bundle: const [TremoloEffect(f: TremoloEffect.fMin)],
   ),
   (
     filter: 'tremolo',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      tremolo: const TremoloSettings(
-        enabled: true,
-        f: TremoloSettings.fDefault,
-      ),
-    ),
+    bundle: const [TremoloEffect(f: TremoloEffect.fDefault)],
   ),
   (
     filter: 'tremolo',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      tremolo: const TremoloSettings(enabled: true, f: TremoloSettings.fMax),
-    ),
+    bundle: const [TremoloEffect(f: TremoloEffect.fMax)],
   ),
   (
     filter: 'vibrato',
     label: 'd=dMin',
-    bundle: const AudioEffects(
-      vibrato: const VibratoSettings(enabled: true, d: VibratoSettings.dMin),
-    ),
+    bundle: const [VibratoEffect(d: VibratoEffect.dMin)],
   ),
   (
     filter: 'vibrato',
     label: 'd=dDefault',
-    bundle: const AudioEffects(
-      vibrato: const VibratoSettings(
-        enabled: true,
-        d: VibratoSettings.dDefault,
-      ),
-    ),
+    bundle: const [VibratoEffect(d: VibratoEffect.dDefault)],
   ),
   (
     filter: 'vibrato',
     label: 'd=dMax',
-    bundle: const AudioEffects(
-      vibrato: const VibratoSettings(enabled: true, d: VibratoSettings.dMax),
-    ),
+    bundle: const [VibratoEffect(d: VibratoEffect.dMax)],
   ),
   (
     filter: 'vibrato',
     label: 'f=fMin',
-    bundle: const AudioEffects(
-      vibrato: const VibratoSettings(enabled: true, f: VibratoSettings.fMin),
-    ),
+    bundle: const [VibratoEffect(f: VibratoEffect.fMin)],
   ),
   (
     filter: 'vibrato',
     label: 'f=fDefault',
-    bundle: const AudioEffects(
-      vibrato: const VibratoSettings(
-        enabled: true,
-        f: VibratoSettings.fDefault,
-      ),
-    ),
+    bundle: const [VibratoEffect(f: VibratoEffect.fDefault)],
   ),
   (
     filter: 'vibrato',
     label: 'f=fMax',
-    bundle: const AudioEffects(
-      vibrato: const VibratoSettings(enabled: true, f: VibratoSettings.fMax),
-    ),
+    bundle: const [VibratoEffect(f: VibratoEffect.fMax)],
   ),
   (
     filter: 'virtualbass',
     label: 'cutoff=cutoffMin',
-    bundle: const AudioEffects(
-      virtualbass: const VirtualbassSettings(
-        enabled: true,
-        cutoff: VirtualbassSettings.cutoffMin,
-      ),
-    ),
+    bundle: const [VirtualbassEffect(cutoff: VirtualbassEffect.cutoffMin)],
   ),
   (
     filter: 'virtualbass',
     label: 'cutoff=cutoffDefault',
-    bundle: const AudioEffects(
-      virtualbass: const VirtualbassSettings(
-        enabled: true,
-        cutoff: VirtualbassSettings.cutoffDefault,
-      ),
-    ),
+    bundle: const [VirtualbassEffect(cutoff: VirtualbassEffect.cutoffDefault)],
   ),
   (
     filter: 'virtualbass',
     label: 'cutoff=cutoffMax',
-    bundle: const AudioEffects(
-      virtualbass: const VirtualbassSettings(
-        enabled: true,
-        cutoff: VirtualbassSettings.cutoffMax,
-      ),
-    ),
+    bundle: const [VirtualbassEffect(cutoff: VirtualbassEffect.cutoffMax)],
   ),
   (
     filter: 'virtualbass',
     label: 'strength=strengthMin',
-    bundle: const AudioEffects(
-      virtualbass: const VirtualbassSettings(
-        enabled: true,
-        strength: VirtualbassSettings.strengthMin,
-      ),
-    ),
+    bundle: const [VirtualbassEffect(strength: VirtualbassEffect.strengthMin)],
   ),
   (
     filter: 'virtualbass',
     label: 'strength=strengthDefault',
-    bundle: const AudioEffects(
-      virtualbass: const VirtualbassSettings(
-        enabled: true,
-        strength: VirtualbassSettings.strengthDefault,
-      ),
-    ),
+    bundle: const [
+      VirtualbassEffect(strength: VirtualbassEffect.strengthDefault),
+    ],
   ),
   (
     filter: 'virtualbass',
     label: 'strength=strengthMax',
-    bundle: const AudioEffects(
-      virtualbass: const VirtualbassSettings(
-        enabled: true,
-        strength: VirtualbassSettings.strengthMax,
-      ),
-    ),
+    bundle: const [VirtualbassEffect(strength: VirtualbassEffect.strengthMax)],
   ),
 ];

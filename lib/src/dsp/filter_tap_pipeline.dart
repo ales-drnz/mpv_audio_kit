@@ -69,24 +69,18 @@ class FilterTapPipeline {
   bool _polling = false;
   bool _disposed = false;
 
-  /// Returns a broadcast stream of PCM frames captured **before**
-  /// [filterName] is applied. The first listener arms the tap; the
-  /// last cancel disarms it. Live streams: the stream may emit no
-  /// frames until audio actually flows through the chain.
-  Stream<PcmFrame> tapPre(String filterName) =>
-      _streamFor(_mpvName(filterName), false);
+  /// Returns a broadcast stream of PCM frames captured **before** the
+  /// chain stage labelled [label] (e.g. `aek_equalizer_1`, see
+  /// `audioEffectLabel`). The native tap matches stages by chain label,
+  /// so each instance of a repeated filter has its own. The first
+  /// listener arms the tap; the last cancel disarms it. Live streams:
+  /// the stream may emit no frames until audio actually flows through
+  /// the chain.
+  Stream<PcmFrame> tapPre(String label) => _streamFor(label, false);
 
-  /// Same as [tapPre] but captures the frame **after** [filterName]
-  /// has processed it.
-  Stream<PcmFrame> tapPost(String filterName) =>
-      _streamFor(_mpvName(filterName), true);
-
-  /// mpv exposes every libavfilter filter under the `lavfi-` prefix
-  /// inside the user-filter chain — `u->name` for `equalizer` reads
-  /// as `"lavfi-equalizer"`. The pipeline keeps the prefix in every
-  /// internal map / CSV write so `find_slot()` on the C side matches.
-  /// The public API hides it.
-  static String _mpvName(String publicName) => 'lavfi-$publicName';
+  /// Same as [tapPre] but captures the frame **after** the stage
+  /// labelled [label] has processed it.
+  Stream<PcmFrame> tapPost(String label) => _streamFor(label, true);
 
   Stream<PcmFrame> _streamFor(String name, bool isPost) {
     if (_disposed) {

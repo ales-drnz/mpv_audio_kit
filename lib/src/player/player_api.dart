@@ -270,11 +270,13 @@ abstract interface class PlayerApi {
   Future<void> rescanExternalFiles({bool keepSelection});
 
   /// Replaces the whole DSP rack atomically with [effects].
-  Future<void> setAudioEffects(AudioEffects effects);
+  Future<void> setAudioEffects(List<AudioEffect> effects);
 
   /// Mutates the current DSP rack incrementally by applying [mapper] to it
   /// and reapplying the result.
-  Future<void> updateAudioEffects(AudioEffects Function(AudioEffects) mapper);
+  Future<void> updateAudioEffects(
+    List<AudioEffect> Function(List<AudioEffect>) mapper,
+  );
 
   /// Sets the policy for scanning sidecar cover-art files.
   Future<void> setCoverArtAuto(Cover cover);

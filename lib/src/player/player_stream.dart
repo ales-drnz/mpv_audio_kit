@@ -70,7 +70,7 @@ class PlayerStream {
     required ReactiveProperty<Map<String, String>> metadata,
     required ReactiveProperty<double> bufferingPercentage,
     required ReactiveProperty<DemuxerCacheState> demuxerCacheState,
-    required ReactiveProperty<AudioEffects> audioEffects,
+    required ReactiveProperty<List<AudioEffect>> audioEffects,
     required ReactiveProperty<MediaSession?> mediaSession,
     required this.endFile,
     required this.error,
@@ -462,7 +462,7 @@ class PlayerStream {
   /// atomic snapshot. Set with [Player.setAudioEffects] /
   /// [Player.updateAudioEffects]. Sub-stream a single effect via
   /// `audioEffects.map((e) => e.acompressor).distinct()`.
-  final Stream<AudioEffects> audioEffects;
+  final Stream<List<AudioEffect>> audioEffects;
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
@@ -692,13 +692,18 @@ class PlayerStream {
   /// and tears down on the last cancel. Multiple subscribers to the
   /// same `(filter, side)` share a single underlying tap.
   ///
-  /// [filter] is one of the typed [AudioEffect] values — the same
-  /// 86 filters surfaced as `*Settings` fields on [AudioEffects], so
-  /// every reachable filter is named at compile time. Live streams
-  /// without an active af chain emit no frames; the stream is silent
-  /// (no error) when the loaded libmpv does not expose the
-  /// filter-tap property.
-  final Stream<PcmFrame> Function(AudioEffect filter, {required TapSide side})
+  /// [filter] names the stage's filter and [instance] which of its
+  /// occurrences in [PlayerState.audioEffects] (0, the default, for the
+  /// first): with two [EqualizerEffect]s in the list, `instance: 1` taps
+  /// the second. The tap follows that stage when the others are toggled
+  /// or reordered. Live streams without an active af chain emit no
+  /// frames; the stream is silent (no error) when the loaded libmpv does
+  /// not expose the filter-tap property.
+  final Stream<PcmFrame> Function(
+    AudioFilter filter, {
+    int instance,
+    required TapSide side,
+  })
   tap;
 
   /// Reactive view of the current [SpectrumSettings] — the configuration

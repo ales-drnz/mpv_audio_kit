@@ -76,6 +76,18 @@ void runtimeSuite(
   body();
 }
 
+/// The single stage of type [T] in [player]'s effects chain.
+T effectOf<T extends AudioEffect>(Player player) =>
+    player.state.audioEffects.whereType<T>().single;
+
+/// Replaces the stage of [effect]'s type in [player]'s effects chain, or
+/// appends it when the chain has none.
+Future<void> putEffect<T extends AudioEffect>(Player player, T effect) =>
+    player.updateAudioEffects((fx) {
+      final i = fx.indexWhere((e) => e is T);
+      return i < 0 ? [...fx, effect] : ([...fx]..[i] = effect);
+    });
+
 /// Builds a [Player] wired for tests: no audio device, no auto-play,
 /// no logs. Use when the test wants to drive `open()` itself (e.g.
 /// dispose-during-load races, multi-fixture suites). Pass a custom

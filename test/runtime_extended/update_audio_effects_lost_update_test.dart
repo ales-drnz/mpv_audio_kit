@@ -31,26 +31,25 @@ void main() {
       // (`updateAudioEffects` exists precisely for rapid incremental
       // mutation) so concurrent in-flight calls are a supported shape.
       final f1 = player.updateAudioEffects(
-        (e) => e.copyWith(bass: const BassSettings(enabled: true, gain: 6.0)),
+        (e) => [...e, const BassEffect(gain: 6.0)],
       );
       final f2 = player.updateAudioEffects(
-        (e) =>
-            e.copyWith(treble: const TrebleSettings(enabled: true, gain: 6.0)),
+        (e) => [...e, const TrebleEffect(gain: 6.0)],
       );
       await Future.wait([f1, f2]);
 
       final effects = player.state.audioEffects;
       expect(
-        effects.bass!.enabled,
-        isTrue,
+        effects.whereType<BassEffect>(),
+        hasLength(1),
         reason:
             'First update (bass) was silently dropped: the second '
             "call's mapper ran on the pre-mutation bundle before the "
             'first commit landed (lost-update race in updateAudioEffects).',
       );
       expect(
-        effects.treble!.enabled,
-        isTrue,
+        effects.whereType<TrebleEffect>(),
+        hasLength(1),
         reason: 'Second update (treble) must land as well.',
       );
     }, timeout: const Timeout(Duration(seconds: 30)));

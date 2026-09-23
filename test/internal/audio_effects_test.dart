@@ -3,125 +3,110 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// Unit tests for `AudioEffects.toAfChain()` — the wire-output side of
-// the auto-generated DSP bundle. Pin the EXACT chain string for a few
-// representative filters so a renamed AVOption (e.g. ffmpeg upstream
-// drops `slev` from stereotools) or an enum mpvValue regression is
-// caught at unit-test speed without a real libmpv round-trip.
+// Unit tests for the effects chain model: `audioEffectsChain` (the `af`
+// string an ordered effect list builds) and `audioEffectsDiff` (the live
+// `af-command` updates between two lists). Pin the EXACT chain string for
+// a few representative filters so a renamed AVOption or an enum mpvValue
+// regression is caught at unit-test speed without a real libmpv.
 //
-// Per-filter wire correctness (every parameter, every default) is
-// covered by ffmpeg upstream's own AVOption tests; this file checks
-// the codegen contract: typed enums round-trip via `mpvValue`,
-// digit-prefix params route through `Map<String, T> params`,
-// disabled stages drop out, the chain joins with `,`, and defaults
-// are NOT emitted.
+// Per-filter wire correctness (every parameter, every default) is covered
+// by the generated coverage test; this file checks the model's contract:
+// list order is chain order, a filter may repeat and each instance gets
+// its own label, disabled stages drop out but keep their label slot, raw
+// stages go in verbatim, defaults are NOT emitted, and only same-shape
+// parameter changes on command-capable filters update live.
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/generated/audio_effects_settings.dart'
+    show audioEffectLabels, audioEffectsChain, audioEffectsDiff;
 import 'package:test/test.dart';
 
 void main() {
-  group('AudioEffects.toAfChain — empty / disabled', () {
-    test('empty bundle → empty string', () {
-      expect(const AudioEffects().toAfChain(), '');
+  group('audioEffectsChain — empty / disabled', () {
+    test('empty list → empty string', () {
+      expect(audioEffectsChain(const []), '');
     });
 
-    test('every Settings disabled → empty string', () {
-      const fx = AudioEffects();
-      expect(fx.toAfChain(), '');
+    test('every stage disabled → empty string', () {
+      expect(audioEffectsChain(const [AcompressorEffect(enabled: false)]), '');
     });
 
-    test('default-valued enabled stage emits bare filter name', () {
-      const fx = AudioEffects(acompressor: AcompressorSettings(enabled: true));
+    test('default-valued stage emits the bare filter name', () {
       // No params differ from ffmpeg defaults → `lavfi-acompressor` only.
-      expect(fx.toAfChain(), '@aek_acompressor:lavfi-acompressor');
+      expect(
+        audioEffectsChain(const [AcompressorEffect()]),
+        '@aek_acompressor_0:lavfi-acompressor',
+      );
     });
   });
 
-  group('AudioEffects.toAfChain — per-filter wire output', () {
+  group('audioEffectsChain — per-filter wire output', () {
     test('acompressor non-default params land in the chain', () {
-      const fx = AudioEffects(
-        acompressor: AcompressorSettings(
-          enabled: true,
-          threshold: 0.1,
-          ratio: 6.0,
-        ),
-      );
-      // Defaults (level_in=1, attack=20, release=250, ...) MUST NOT show
-      // up — only the modified fields. Order = alphabetical (the
-      // codegen iterates the schema's params dict in sorted order).
-      final af = fx.toAfChain();
-      expect(af, startsWith('@aek_acompressor:lavfi-acompressor='));
+      final af = audioEffectsChain(const [
+        AcompressorEffect(threshold: 0.1, ratio: 6.0),
+      ]);
+      // Defaults (level_in=1, attack=20, release=250, ...) MUST NOT show up.
+      expect(af, startsWith('@aek_acompressor_0:lavfi-acompressor='));
       expect(af, contains('threshold=0.100'));
       expect(af, contains('ratio=6.000'));
       expect(af, isNot(contains('level_in')));
       expect(af, isNot(contains('attack')));
     });
 
-    test('loudnorm enabled with EBU R128 targets', () {
-      // ffmpeg defaults: I=-24, TP=-2, LRA=7. We pick non-default values
-      // so they all surface in the wire output.
-      const fx = AudioEffects(
-        loudnorm: LoudnormSettings(
-          enabled: true,
-          I: -16.0,
-          TP: -1.0,
-          LRA: 11.0,
-        ),
-      );
-      final af = fx.toAfChain();
-      expect(af, contains('I=-16.000'));
-      expect(af, contains('TP=-1.000'));
-      expect(af, contains('LRA=11.000'));
+    test('camelCase fields write their ffmpeg option names', () {
+      final af = audioEffectsChain(const [
+        AcompressorEffect(levelIn: 2.0, levelSc: 0.5),
+      ]);
+      expect(af, contains('level_in=2.000'));
+      expect(af, contains('level_sc=0.500'));
     });
 
-    test('rubberband enabled with typed enum + numeric params', () {
-      // The C source uses `{.i64=0}` for pitchq's default — but the
-      // CONST entries reference symbols (`RubberBandOptionPitchHigh*`)
-      // we cannot resolve at gen time, so the codegen falls back to
-      // the first member as the @Default. `quality` happens to be
-      // first; we pick `speed` for a guaranteed non-default value.
-      // Same trick for `transients` (first member is `crisp`).
-      const fx = AudioEffects(
-        rubberband: RubberbandSettings(
-          enabled: true,
+    test('loudnorm targets, through the lowercase option aliases', () {
+      // ffmpeg declares I/i, TP/tp, LRA/lra as aliases of one field; the
+      // effect exposes the lowercase ones.
+      final af = audioEffectsChain(const [
+        LoudnormEffect(i: -16.0, tp: -1.0, lra: 11.0),
+      ]);
+      expect(af, contains('i=-16.000'));
+      expect(af, contains('tp=-1.000'));
+      expect(af, contains('lra=11.000'));
+    });
+
+    test('rubberband with typed enum + numeric params', () {
+      final af = audioEffectsChain(const [
+        RubberbandEffect(
           tempo: 0.95,
           pitchq: RubberbandPitch.speed,
           transients: RubberbandTransients.smooth,
         ),
-      );
-      // Enums emit via `mpvValue` (the exact ffmpeg CONST name), NOT
-      // their integer index.
-      final af = fx.toAfChain();
-      expect(af, startsWith('@aek_rubberband:lavfi-rubberband='));
+      ]);
+      // Enums emit via `mpvValue` (the exact ffmpeg CONST name).
+      expect(af, startsWith('@aek_rubberband_0:lavfi-rubberband='));
       expect(af, contains('tempo=0.950'));
       expect(af, contains('pitchq=speed'));
       expect(af, contains('transients=smooth'));
     });
 
-    test('aemphasis with typed enum default → omitted from chain', () {
-      const fx = AudioEffects(aemphasis: AemphasisSettings(enabled: true));
-      // `type=cd` is the ffmpeg default, so it must NOT be emitted.
-      expect(fx.toAfChain(), '@aek_aemphasis:lavfi-aemphasis');
-    });
-
-    test('aemphasis with non-default enum → mpvValue in chain', () {
-      const fx = AudioEffects(
-        aemphasis: AemphasisSettings(enabled: true, type: AemphasisType.n50fm),
+    test('aemphasis: default enum omitted, other values by mpvValue', () {
+      expect(
+        audioEffectsChain(const [AemphasisEffect()]),
+        '@aek_aemphasis_0:lavfi-aemphasis',
       );
-      // The Dart member is `n50fm` (digit-prefix escaped); the wire
-      // value is the raw ffmpeg name `50fm`.
-      expect(fx.toAfChain(), '@aek_aemphasis:lavfi-aemphasis=type=50fm');
+      // The Dart member is `n50fm` (digit-prefix escaped); the wire value
+      // is the raw ffmpeg name `50fm`.
+      expect(
+        audioEffectsChain(const [AemphasisEffect(type: AemphasisType.n50fm)]),
+        '@aek_aemphasis_0:lavfi-aemphasis=type=50fm',
+      );
     });
 
-    test('superequalizer routes digit-prefix bands through `params` map', () {
-      const fx = AudioEffects(
-        superequalizer: SuperequalizerSettings(
-          enabled: true,
+    test('superequalizer routes digit-prefix bands through `params`', () {
+      final af = audioEffectsChain(const [
+        SuperequalizerEffect(
           params: {'1b': 1.5, '5b': 0.8, '10b': 1.2, '18b': 0.5},
         ),
-      );
-      final af = fx.toAfChain();
-      expect(af, startsWith('@aek_superequalizer:lavfi-superequalizer='));
+      ]);
+      expect(af, startsWith('@aek_superequalizer_0:lavfi-superequalizer='));
       expect(af, contains('1b=1.500'));
       expect(af, contains('5b=0.800'));
       expect(af, contains('10b=1.200'));
@@ -129,62 +114,138 @@ void main() {
     });
   });
 
-  group('AudioEffects.toAfChain — custom raw passthroughs', () {
-    test('custom entries emit verbatim at the head of the chain', () {
-      const fx = AudioEffects(
-        custom: ['lavfi-aeval=val(0)|val(1)', 'lavfi-pan=mono|c0=c0+c1'],
-      );
-      // Custom only — no typed stage enabled.
-      expect(
-        fx.toAfChain(),
-        'lavfi-aeval=val(0)|val(1),lavfi-pan=mono|c0=c0+c1',
-      );
+  group('audioEffectsChain — order and repeated filters', () {
+    test('list order is chain order', () {
+      final entries = audioEffectsChain(const [
+        RubberbandEffect(tempo: 0.9),
+        AcompressorEffect(),
+        LoudnormEffect(),
+      ]).split(',');
+      expect(entries, [
+        '@aek_rubberband_0:lavfi-rubberband=tempo=0.900',
+        '@aek_acompressor_0:lavfi-acompressor',
+        '@aek_loudnorm_0:lavfi-loudnorm',
+      ]);
     });
 
-    test('custom precedes the typed rack', () {
-      const fx = AudioEffects(
-        custom: ['lavfi-aresample=48000'],
-        acompressor: AcompressorSettings(enabled: true, threshold: 0.1),
-      );
-      final entries = fx.toAfChain().split(',');
-      expect(entries.first, 'lavfi-aresample=48000');
-      expect(
-        entries.last,
-        '@aek_acompressor:lavfi-acompressor=threshold=0.100',
-      );
+    test('a repeated filter gets one label per instance', () {
+      final entries = audioEffectsChain(const [
+        EqualizerEffect(frequency: 100, gain: 3),
+        AcompressorEffect(),
+        EqualizerEffect(frequency: 8000, gain: -2),
+      ]).split(',');
+      expect(entries[0], startsWith('@aek_equalizer_0:lavfi-equalizer='));
+      expect(entries[1], '@aek_acompressor_0:lavfi-acompressor');
+      expect(entries[2], startsWith('@aek_equalizer_1:lavfi-equalizer='));
     });
 
-    test('empty / whitespace custom entries are dropped', () {
-      const fx = AudioEffects(custom: ['', '   ', 'lavfi-volume=2']);
-      expect(fx.toAfChain(), 'lavfi-volume=2');
+    test('a disabled stage drops out but keeps its instance number', () {
+      // Toggling the first equalizer must not relabel the second: its
+      // af-metadata, taps and live updates all key on the label.
+      expect(
+        audioEffectsChain(const [
+          EqualizerEffect(frequency: 100, gain: 3, enabled: false),
+          EqualizerEffect(frequency: 8000, gain: -2),
+        ]),
+        startsWith('@aek_equalizer_1:'),
+      );
+      expect(
+        audioEffectLabels(const [
+          EqualizerEffect(enabled: false),
+          EqualizerEffect(),
+        ]),
+        ['aek_equalizer_0', 'aek_equalizer_1'],
+      );
     });
   });
 
-  group('AudioEffects.toAfChain — chaining order', () {
-    test('multiple enabled filters joined with `,` in declaration order', () {
-      const fx = AudioEffects(
-        acompressor: AcompressorSettings(enabled: true),
-        loudnorm: LoudnormSettings(enabled: true),
-        rubberband: RubberbandSettings(enabled: true, tempo: 0.9),
+  group('RawAudioEffect', () {
+    test('goes in verbatim, unlabelled, where it sits in the list', () {
+      expect(
+        audioEffectsChain(const [
+          RawAudioEffect('lavfi-aresample=48000'),
+          AcompressorEffect(threshold: 0.1),
+          RawAudioEffect('lavfi-pan=mono|c0=c0+c1'),
+        ]),
+        'lavfi-aresample=48000,'
+        '@aek_acompressor_0:lavfi-acompressor=threshold=0.100,'
+        'lavfi-pan=mono|c0=c0+c1',
       );
-      final entries = fx.toAfChain().split(',');
-      expect(entries, hasLength(3));
-      // AVOption-array order: acompressor < loudnorm < rubberband
-      // (alphabetical by filter name in the bundle's declaration).
-      expect(entries[0], '@aek_acompressor:lavfi-acompressor');
-      expect(entries[1], '@aek_loudnorm:lavfi-loudnorm');
-      expect(entries[2], '@aek_rubberband:lavfi-rubberband=tempo=0.900');
     });
 
-    test('disabled stages do NOT show up between enabled ones', () {
-      const fx = AudioEffects(
-        acompressor: AcompressorSettings(enabled: true),
-        // aemphasis disabled (default) — must not appear.
-        loudnorm: LoudnormSettings(enabled: true),
+    test('blank or disabled raw stages are dropped', () {
+      expect(
+        audioEffectsChain(const [
+          RawAudioEffect(''),
+          RawAudioEffect('   '),
+          RawAudioEffect('lavfi-aecho', enabled: false),
+          RawAudioEffect('lavfi-volume=2'),
+        ]),
+        'lavfi-volume=2',
+      );
+    });
+
+    test('filterName reads the lavfi filter out of the entry', () {
+      expect(const RawAudioEffect('lavfi-aeval=val(0)').filterName, 'aeval');
+      expect(const RawAudioEffect('aecho').filterName, 'aecho');
+      expect(const RawAudioEffect('lavfi-aecho').filter, isNull);
+    });
+  });
+
+  group('audioEffectsDiff', () {
+    test('identical lists → no commands', () {
+      const fx = [EqualizerEffect(gain: 3)];
+      expect(audioEffectsDiff(fx, fx), isEmpty);
+      expect(audioEffectsDiff(fx, const [EqualizerEffect(gain: 3)]), isEmpty);
+    });
+
+    test('a runtime-tunable change updates the right instance live', () {
+      final cmds = audioEffectsDiff(
+        const [EqualizerEffect(gain: 3), EqualizerEffect(gain: -2)],
+        const [EqualizerEffect(gain: 3), EqualizerEffect(gain: -4)],
+      );
+      expect(cmds, isNotNull);
+      expect(cmds, hasLength(1));
+      expect(cmds!.single.label, 'aek_equalizer_1');
+      expect(cmds.single.option, 'gain');
+      expect(cmds.single.filterName, 'equalizer');
+    });
+
+    test('shape changes need a rebuild', () {
+      const a = [EqualizerEffect(), AcompressorEffect()];
+      // Added, removed, reordered, toggled.
+      expect(audioEffectsDiff(a, const [...a, AlimiterEffect()]), isNull);
+      expect(audioEffectsDiff(a, const [EqualizerEffect()]), isNull);
+      expect(
+        audioEffectsDiff(a, const [AcompressorEffect(), EqualizerEffect()]),
+        isNull,
       );
       expect(
-        fx.toAfChain(),
-        '@aek_acompressor:lavfi-acompressor,@aek_loudnorm:lavfi-loudnorm',
+        audioEffectsDiff(a, const [
+          EqualizerEffect(enabled: false),
+          AcompressorEffect(),
+        ]),
+        isNull,
+      );
+    });
+
+    test('a changed raw stage needs a rebuild', () {
+      expect(
+        audioEffectsDiff(
+          const [RawAudioEffect('lavfi-volume=2')],
+          const [RawAudioEffect('lavfi-volume=3')],
+        ),
+        isNull,
+      );
+    });
+
+    test('a disabled stage can change freely without touching the chain', () {
+      expect(
+        audioEffectsDiff(
+          const [EqualizerEffect(enabled: false, gain: 1)],
+          const [EqualizerEffect(enabled: false, gain: 5)],
+        ),
+        isEmpty,
       );
     });
   });

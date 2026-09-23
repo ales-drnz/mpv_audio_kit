@@ -122,27 +122,18 @@ void main() {
       expect(s.audioBitrate, isNull);
     });
 
-    test('superequalizer absent by default (null slot = not in chain)', () {
-      // Bundle slots default to null so unused *Settings classes
-      // tree-shake out of consumer binaries; a null slot and a disabled
-      // instance are identical on the wire.
+    test('the effects chain starts empty', () {
       const s = PlayerState();
-      expect(s.audioEffects.superequalizer, isNull);
+      expect(s.audioEffects, isEmpty);
     });
 
-    test('acompressor / loudnorm / rubberband all start absent', () {
-      const s = PlayerState();
-      expect(s.audioEffects.acompressor, isNull);
-      expect(s.audioEffects.loudnorm, isNull);
-      expect(s.audioEffects.rubberband, isNull);
-    });
-
-    test('default-constructed AudioEffects emits an empty af chain', () {
-      // Every libavfilter audio filter is a typed Settings on the bundle;
-      // the bundle is the source of truth for mpv's `af` property and
-      // `toAfChain()` returns '' when nothing is enabled.
-      const s = PlayerState();
-      expect(s.audioEffects.toAfChain(), '');
+    test('states with equal effect lists are equal', () {
+      // Lists compare by identity in Dart; PlayerState compares the
+      // effects element by element.
+      const a = PlayerState(audioEffects: [BassEffect(gain: 3)]);
+      const b = PlayerState(audioEffects: [BassEffect(gain: 3)]);
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
     });
 
     test('audioParams + audioOutParams default to all-null AudioParams', () {

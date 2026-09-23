@@ -38,7 +38,12 @@ export 'src/events/mpv_player_error.dart'
         MpvFileEndedEventX;
 export 'src/generated/audio_effects.dart';
 export 'src/generated/audio_effects_extensions.dart';
-export 'src/generated/audio_effects_settings.dart';
+export 'src/generated/audio_effects_settings.dart'
+    hide
+        audioEffectLabel,
+        audioEffectLabels,
+        audioEffectsChain,
+        audioEffectsDiff;
 export 'src/internals/library_loader.dart' show MpvAudioKit;
 export 'src/models/audio_params.dart' show AudioParams;
 export 'src/models/chapter.dart' show Chapter;

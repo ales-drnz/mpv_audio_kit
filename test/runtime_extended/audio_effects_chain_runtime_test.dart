@@ -83,14 +83,14 @@ void main() {
           continue;
         }
         final errors = await captureMpvErrors(player, () async {
-          await player.setAudioEffects(AudioEffects(custom: ['lavfi-$name']));
+          await player.setAudioEffects([RawAudioEffect('lavfi-$name')]);
         });
         if (errors.isNotEmpty) {
           failures[name] = errors.map((e) => e.text.trim()).toList();
         }
         // Reset so the next iteration starts from a clean chain — and
         // any error from THIS filter doesn't bleed into the next drain.
-        await player.setAudioEffects(const AudioEffects());
+        await player.setAudioEffects(const []);
       }
 
       if (failures.isNotEmpty) {

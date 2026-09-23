@@ -25,12 +25,12 @@ import 'package:test/test.dart';
 void main() {
   group('AnequalizerBandsX', () {
     test('empty settings → no bands', () {
-      const s = AnequalizerSettings();
+      const s = AnequalizerEffect();
       expect(s.bands, isEmpty);
     });
 
     test('single band round-trips', () {
-      const s = AnequalizerSettings();
+      const s = AnequalizerEffect();
       const mid = AnequalizerBand(frequency: 1000, bandwidth: 500, gain: 6);
       final next = s.withBands([mid]);
       expect(next.bands.length, 1);
@@ -42,7 +42,7 @@ void main() {
     });
 
     test('multiple bands round-trip in declaration order', () {
-      const s = AnequalizerSettings();
+      const s = AnequalizerEffect();
       final src = [
         const AnequalizerBand(frequency: 100, bandwidth: 50, gain: -3),
         const AnequalizerBand(frequency: 1000, bandwidth: 500, gain: 0),
@@ -59,7 +59,7 @@ void main() {
     });
 
     test('two bands with identical parameters stay distinct', () {
-      const s = AnequalizerSettings();
+      const s = AnequalizerEffect();
       const band = AnequalizerBand(frequency: 1000, bandwidth: 200, gain: 0);
       final round = s.withBands([band, band]).bands;
       expect(
@@ -73,7 +73,7 @@ void main() {
 
     test('every band-type round-trips', () {
       for (final t in AnequalizerBandType.values) {
-        final s = const AnequalizerSettings().withBands([
+        final s = const AnequalizerEffect().withBands([
           AnequalizerBand(frequency: 500, bandwidth: 200, gain: 2, type: t),
         ]);
         expect(
@@ -91,12 +91,12 @@ void main() {
       // five-band split, parsed here into typed bands. Decoding what
       // ffmpeg actually runs (rather than reporting an empty list)
       // makes UI builders show the real starting state.
-      const s = McompandSettings();
+      const s = McompandEffect();
       expect(s.bands.length, 5);
     });
 
     test('single band round-trips losslessly', () {
-      const s = McompandSettings();
+      const s = McompandEffect();
       const band = McompandBand(
         thresholdDb: -24,
         ratio: 4,
@@ -119,7 +119,7 @@ void main() {
     });
 
     test('multiple bands serialize sorted by ascending crossover', () {
-      const s = McompandSettings();
+      const s = McompandEffect();
       final src = [
         const McompandBand(
           thresholdDb: -30,
@@ -162,7 +162,7 @@ void main() {
       // Bands with no makeup gain shouldn't drag along the trailing
       // `delay init_vol gain` triple in the args string — keeps the
       // serialised filter chain readable.
-      const s = McompandSettings();
+      const s = McompandEffect();
       final next = s.withBands([
         const McompandBand(
           thresholdDb: -24,
@@ -185,7 +185,7 @@ void main() {
 
   group('SuperequalizerBandsX', () {
     test('empty settings → 18 unity bands', () {
-      const s = SuperequalizerSettings();
+      const s = SuperequalizerEffect();
       expect(s.bands.length, kSuperequalizerBandCount);
       for (final g in s.bands) {
         expect(g, kSuperequalizerUnityGain);
@@ -193,7 +193,7 @@ void main() {
     });
 
     test('non-unity bands round-trip', () {
-      const s = SuperequalizerSettings();
+      const s = SuperequalizerEffect();
       final gains = [
         for (var i = 0; i < kSuperequalizerBandCount; i++)
           1.0 + i * 0.1, // 1.0, 1.1, 1.2, …
@@ -206,7 +206,7 @@ void main() {
     });
 
     test('unity bands are dropped from the underlying map', () {
-      const s = SuperequalizerSettings();
+      const s = SuperequalizerEffect();
       final gains = [
         for (var i = 0; i < kSuperequalizerBandCount; i++)
           kSuperequalizerUnityGain,
@@ -219,7 +219,7 @@ void main() {
     });
 
     test('shorter input list leaves trailing bands at unity', () {
-      const s = SuperequalizerSettings();
+      const s = SuperequalizerEffect();
       final round = s.withBands([0.5, 1.5]).bands;
       expect(round.length, kSuperequalizerBandCount);
       expect(round[0], 0.5);
@@ -240,15 +240,15 @@ void main() {
 
   group('AechoTapsX', () {
     test('default settings → one tap (lavfi default `1000` / `0.5`)', () {
-      // AechoSettings defaults to delays='1000', decays='0.5'.
-      const s = AechoSettings();
+      // AechoEffect defaults to delays='1000', decays='0.5'.
+      const s = AechoEffect();
       expect(s.taps.length, 1);
       expect(s.taps.first.delayMs, 1000);
       expect(s.taps.first.decay, 0.5);
     });
 
     test('multiple taps round-trip', () {
-      const s = AechoSettings();
+      const s = AechoEffect();
       final taps = [
         const AechoTap(delayMs: 60, decay: 0.7),
         const AechoTap(delayMs: 120, decay: 0.5),
@@ -263,19 +263,19 @@ void main() {
     });
 
     test('mismatched delays / decays clamp to the shorter list', () {
-      const s = AechoSettings(delays: '100|200|300', decays: '0.5|0.3');
+      const s = AechoEffect(delays: '100|200|300', decays: '0.5|0.3');
       expect(s.taps.length, 2);
     });
   });
 
   group('ChorusVoicesX', () {
     test('empty settings → no voices', () {
-      const s = ChorusSettings(delays: '', decays: '', speeds: '', depths: '');
+      const s = ChorusEffect(delays: '', decays: '', speeds: '', depths: '');
       expect(s.voices, isEmpty);
     });
 
     test('multiple voices round-trip', () {
-      const s = ChorusSettings(delays: '', decays: '', speeds: '', depths: '');
+      const s = ChorusEffect(delays: '', decays: '', speeds: '', depths: '');
       final voices = [
         const ChorusVoice(delayMs: 30, decay: 0.4, depthMs: 1.5, speedHz: 0.3),
         const ChorusVoice(delayMs: 50, decay: 0.5, depthMs: 2.0, speedHz: 0.5),
@@ -291,7 +291,7 @@ void main() {
     });
 
     test('mismatched parallel CSVs clamp to the shortest', () {
-      const s = ChorusSettings(
+      const s = ChorusEffect(
         delays: '30|40|50',
         decays: '0.5|0.4',
         depths: '1.5',
@@ -307,24 +307,24 @@ void main() {
 
   group('AdelayChannelsX', () {
     test('empty settings → no delays', () {
-      const s = AdelaySettings();
+      const s = AdelayEffect();
       expect(s.channelDelaysMs, isEmpty);
     });
 
     test('single channel round-trips', () {
-      const s = AdelaySettings();
+      const s = AdelayEffect();
       final round = s.withChannelDelaysMs([250]).channelDelaysMs;
       expect(round, [250]);
     });
 
     test('multi-channel round-trips in declaration order', () {
-      const s = AdelaySettings();
+      const s = AdelayEffect();
       final round = s.withChannelDelaysMs([100, 200, 300, 400]).channelDelaysMs;
       expect(round, [100, 200, 300, 400]);
     });
 
     test('unit suffixes (`ms`, `s`, `S`) on input are stripped on parse', () {
-      const s = AdelaySettings(delays: '100ms|0.2s|44100S|400');
+      const s = AdelayEffect(delays: '100ms|0.2s|44100S|400');
       // All four entries should parse — engine-side `s`/`S` units are
       // stripped (the typed view normalises to milliseconds, and we
       // treat the bare numbers as ms).
@@ -334,15 +334,15 @@ void main() {
 
   group('CompandEnvelopesX', () {
     test('default settings → one envelope (lavfi defaults)', () {
-      // CompandSettings defaults to attacks='0', decays='0.8'.
-      const s = CompandSettings();
+      // CompandEffect defaults to attacks='0', decays='0.8'.
+      const s = CompandEffect();
       expect(s.envelopes.length, 1);
       expect(s.envelopes.first.attackSeconds, 0);
       expect(s.envelopes.first.decaySeconds, 0.8);
     });
 
     test('multiple per-channel envelopes round-trip', () {
-      const s = CompandSettings();
+      const s = CompandEffect();
       final envs = [
         const CompandEnvelope(attackSeconds: 0.005, decaySeconds: 0.1),
         const CompandEnvelope(attackSeconds: 0.01, decaySeconds: 0.2),
@@ -356,14 +356,14 @@ void main() {
     });
 
     test('mismatched attacks / decays clamp to the shorter list', () {
-      const s = CompandSettings(attacks: '0.005|0.01|0.02', decays: '0.1|0.2');
+      const s = CompandEffect(attacks: '0.005|0.01|0.02', decays: '0.1|0.2');
       expect(s.envelopes.length, 2);
     });
   });
 
   group('AfftdnBandNoiseX', () {
     test('empty band_noise → 15 default-floor entries', () {
-      const s = AfftdnSettings();
+      const s = AfftdnEffect();
       expect(s.bandNoiseLevels.length, kAfftdnBandCount);
       // Default `band_noise = '0'` parses as a single 0.0 → padded.
       for (final v in s.bandNoiseLevels) {
@@ -372,7 +372,7 @@ void main() {
     });
 
     test('custom band noise round-trips with exactly 15 entries', () {
-      const s = AfftdnSettings();
+      const s = AfftdnEffect();
       final levels = [
         for (var i = 0; i < kAfftdnBandCount; i++) -10.0 + i * 0.5,
       ];
@@ -384,7 +384,7 @@ void main() {
     });
 
     test('shorter input pads with default; longer truncates', () {
-      const s = AfftdnSettings();
+      const s = AfftdnEffect();
       final round = s.withBandNoiseLevels([1.0, 2.0, 3.0]).bandNoiseLevels;
       expect(round.length, kAfftdnBandCount);
       expect(round.take(3).toList(), [1.0, 2.0, 3.0]);
@@ -394,8 +394,8 @@ void main() {
     });
 
     test('legacy space-separated input is accepted', () {
-      const s = AfftdnSettings(
-        band_noise: '-10 -8 -6 -4 -2 0 2 4 6 8 10 12 14 16 18',
+      const s = AfftdnEffect(
+        bandNoise: '-10 -8 -6 -4 -2 0 2 4 6 8 10 12 14 16 18',
       );
       expect(s.bandNoiseLevels.length, kAfftdnBandCount);
       expect(s.bandNoiseLevels.first, -10);
@@ -405,19 +405,19 @@ void main() {
 
   group('CompandSoftKneeX', () {
     test('default settings → kCompandSoftKneeDefault', () {
-      const s = CompandSettings();
+      const s = CompandEffect();
       expect(s.softKnee, kCompandSoftKneeDefault);
     });
 
     test('non-default round-trips through the params map', () {
-      const s = CompandSettings();
+      const s = CompandEffect();
       final next = s.withSoftKnee(0.5);
       expect(next.softKnee, 0.5);
       expect(next.params['soft-knee'], 0.5);
     });
 
     test('writing the default value drops the key from the params map', () {
-      const s = CompandSettings(params: {'soft-knee': 0.5});
+      const s = CompandEffect(params: {'soft-knee': 0.5});
       final next = s.withSoftKnee(kCompandSoftKneeDefault);
       expect(next.params.containsKey('soft-knee'), isFalse);
       expect(next.softKnee, kCompandSoftKneeDefault);
@@ -430,13 +430,13 @@ void main() {
       // gain=1, zeros="1+0i 1-0i", poles="1+0i 1-0i" channel — a
       // unity pass-through. Decoding what ffmpeg actually runs
       // (rather than reporting an empty list) mirrors the runtime.
-      const s = AiirSettings();
+      const s = AiirEffect();
       expect(s.channels.length, 1);
       expect(s.channels.first.gain, 1.0);
     });
 
     test('multiple channels round-trip', () {
-      const s = AiirSettings();
+      const s = AiirEffect();
       final ch = [
         const AiirChannel(
           gain: 1.0,
@@ -465,7 +465,7 @@ void main() {
     });
 
     test('mismatched channel count clamps to the shortest list', () {
-      const s = AiirSettings(
+      const s = AiirEffect(
         gains: '1|0.5|0.25',
         zeros: '1 -0.5|1 -0.3',
         poles: '1 0|1 -0.1',
@@ -476,12 +476,12 @@ void main() {
 
   group('CompandPointsX', () {
     test('null points → empty list', () {
-      const s = CompandSettings();
+      const s = CompandEffect();
       expect(s.transferPoints, isEmpty);
     });
 
     test('multiple points round-trip sorted by input', () {
-      const s = CompandSettings();
+      const s = CompandEffect();
       final round = s.withTransferPoints([
         const CompandPoint(inDb: -20, outDb: -10),
         const CompandPoint(inDb: -60, outDb: -60),
@@ -495,12 +495,12 @@ void main() {
 
   group('FirequalizerEntriesX', () {
     test('empty gain_entry → no entries', () {
-      const s = FirequalizerSettings();
+      const s = FirequalizerEffect();
       expect(s.gainEntries, isEmpty);
     });
 
     test('multiple entries round-trip sorted by frequency', () {
-      const s = FirequalizerSettings();
+      const s = FirequalizerEffect();
       final round = s.withGainEntries([
         const FirequalizerEntry(frequencyHz: 5000, gainDb: 3),
         const FirequalizerEntry(frequencyHz: 100, gainDb: -3),
@@ -512,8 +512,8 @@ void main() {
     test('whitespace tolerance in the legacy raw format', () {
       // Hand-written `gain_entry` strings with extra whitespace must
       // still parse — the regex doesn't care about gaps.
-      const s = FirequalizerSettings(
-        gain_entry: 'entry( 100 , 0 ) ; entry(1000, -3) ;entry(5000,3)',
+      const s = FirequalizerEffect(
+        gainEntry: 'entry( 100 , 0 ) ; entry(1000, -3) ;entry(5000,3)',
       );
       expect(s.gainEntries.length, 3);
     });

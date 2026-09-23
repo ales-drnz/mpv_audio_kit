@@ -105,8 +105,46 @@ def _to_pascal(snake: str) -> str:
 
 
 def _settings_class_name(filter_name: str) -> str:
+    """`equalizer` → `EqualizerEffect`: the filter's lavfi name, suffixed so
+    short names (Bass, Pan, Surround) never collide with app classes."""
     sanitised = re.sub(r"[^A-Za-z0-9_]", "_", filter_name)
-    return sanitised[:1].upper() + sanitised[1:] + "Settings"
+    return sanitised[:1].upper() + sanitised[1:] + "Effect"
+
+
+def _camel(snake: str) -> str:
+    """ffmpeg's snake_case → Dart lowerCamelCase: `level_in` → `levelIn`,
+    `lr_to_l_plus_r` → `lrToLPlusR`, an all-caps word lowered (`LUFS` →
+    `lufs`)."""
+    parts = [p for p in snake.split("_") if p]
+    if not parts:
+        return snake
+    head = parts[0]
+    head = head.lower() if head.isupper() else head[:1].lower() + head[1:]
+    return head + "".join(p[:1].upper() + p[1:] for p in parts[1:])
+
+
+def effect_params(fdata: dict) -> dict:
+    """The params an effect class exposes: every settable (non-readonly)
+    option, minus case-only aliases. ffmpeg declares some options twice
+    for the same field (loudnorm's `I` and `i`, `LRA` and `lra`), which
+    would collapse onto one camelCase name; the lowercase spelling wins."""
+    params = {n: p for n, p in fdata["params"].items() if not p.get("readonly")}
+    by_dart: dict[str, str] = {}
+    for name in params:
+        dart = _param_dart_name(name)
+        kept = by_dart.get(dart)
+        if kept is None or (kept != kept.lower() and name == name.lower()):
+            by_dart[dart] = name
+    keep = set(by_dart.values())
+    return {n: p for n, p in params.items() if n in keep}
+
+
+# Members every effect class already has; a param whose Dart name lands on
+# one gets a `Value` suffix instead.
+_EFFECT_MEMBERS = {
+    "enabled", "filter", "filterName", "copyWith", "toFilterString",
+    "hashCode", "runtimeType", "toString", "noSuchMethod",
+}
 
 
 def _bundle_field_name(filter_name: str) -> str:
@@ -116,9 +154,12 @@ def _bundle_field_name(filter_name: str) -> str:
 
 
 def _param_dart_name(name: str) -> str:
-    if name in DART_RESERVED_WORDS:
-        return name + "_"
-    return name
+    dart = _camel(name)
+    if dart in DART_RESERVED_WORDS:
+        return dart + "_"
+    if dart in _EFFECT_MEMBERS:
+        return dart + "Value"
+    return dart
 
 
 _SPECIAL_CHAR_MAP = {
@@ -137,7 +178,7 @@ def _enum_member_dart_name(name: str) -> str:
         stereotools) don't collapse to the same identifier.
     The wire-side enum accessor always returns the original ffmpeg name."""
     if not name:
-        return "value_unknown"
+        return "valueUnknown"
     sanitised = "".join(_SPECIAL_CHAR_MAP.get(ch, ch) for ch in name)
     sanitised = re.sub(r"[^A-Za-z0-9_]", "_", sanitised)
     sanitised = re.sub(r"_+", "_", sanitised).strip("_")
@@ -145,6 +186,7 @@ def _enum_member_dart_name(name: str) -> str:
         sanitised = "value_unknown"
     if not re.match(r"^[A-Za-z_]", sanitised):
         sanitised = "n" + sanitised
+    sanitised = _camel(sanitised)
     if sanitised in DART_RESERVED_WORDS:
         sanitised += "_"
     return sanitised
@@ -299,15 +341,11 @@ def _emit_audio_effect_enum(sorted_names: list[str]) -> str:
     """
     body: list[str] = []
     body.append("")
-    body.append(f"/// Identifies a single typed {_NAMING.noun} filter from the")
-    body.append(f"/// [{_NAMING.bundle_name}] bundle.")
-    body.append("///")
-    body.append(f"/// One value per filter on the {_NAMING.whitelist_const} whitelist —")
-    body.append("/// the same set surfaced as `*Settings` fields on")
-    body.append(f"/// [{_NAMING.bundle_name}]. Use it as a typed identifier in APIs")
-    body.append("/// that pick a single filter slot, e.g.")
+    body.append(f"/// Identifies one of the typed {_NAMING.noun} filters: one value per")
+    body.append("/// `XxxEffect` class, i.e. per filter compiled into the bundled")
+    body.append("/// libmpv. Use it as a typed identifier in APIs that pick a filter,")
     body.append(
-        f"/// `player.stream.tap({_NAMING.enum_name}.equalizer, "
+        f"/// e.g. `player.stream.tap({_NAMING.enum_name}.equalizer, "
         "side: TapSide.post)`."
     )
     body.append(f"enum {_NAMING.enum_name} {{")
@@ -330,49 +368,6 @@ def _emit_audio_effect_enum(sorted_names: list[str]) -> str:
     return "\n".join(body)
 
 
-def _emit_audio_effects_active_extension(sorted_names: list[str]) -> str:
-    """`AudioEffectsX.active` — yields the [AudioEffect] for every slot
-    currently flagged `enabled: true`. Pairs the singular enum with the
-    bundle so a consumer can iterate the active rack without enumerating
-    every typed field by hand.
-    """
-    lines: list[str] = []
-    lines.append("")
-    lines.append(
-        f"/// Cross-link between the singular [{_NAMING.enum_name}] enum and the"
-    )
-    lines.append(
-        f"/// plural [{_NAMING.bundle_name}] bundle: yields the "
-        f"[{_NAMING.enum_name}] for"
-    )
-    lines.append("/// every slot whose `*Settings.enabled` is `true`, in the same")
-    lines.append("/// declaration order as the bundle's fields.")
-    lines.append("///")
-    lines.append("/// Useful when iterating the active rack — e.g. attaching a")
-    lines.append("/// per-filter visualizer to every enabled stage:")
-    lines.append("///")
-    lines.append("/// ```dart")
-    lines.append(f"/// for (final f in player.state.{_NAMING.noun}Effects.active) {{")
-    lines.append("///   player.stream.tap(f, side: TapSide.post).listen(_paint);")
-    lines.append("/// }")
-    lines.append("/// ```")
-    lines.append(
-        f"extension {_NAMING.bundle_ext} on {_NAMING.bundle_name} {{"
-    )
-    lines.append(
-        f"  /// The [{_NAMING.enum_name}] for every slot whose "
-        "`*Settings.enabled` is"
-    )
-    lines.append("  /// `true`, in the bundle's field declaration order.")
-    lines.append(f"  Iterable<{_NAMING.enum_name}> get active sync* {{")
-    for fname in sorted_names:
-        field = _bundle_field_name(fname)
-        lines.append(
-            f"    if ({field}?.enabled ?? false) yield {_NAMING.enum_name}.{field};"
-        )
-    lines.append("  }")
-    lines.append("}")
-    return "\n".join(lines)
 
 
 def _emit_enums_header() -> str:
@@ -394,6 +389,8 @@ def _emit_settings_header(*, needs_set: bool = True, needs_map: bool = True) -> 
         " curly_braces_in_flow_control_structures,"
         " prefer_adjacent_string_concatenation,"
         " prefer_interpolation_to_compose_strings\n"
+        "\n"
+        "import 'package:meta/meta.dart';\n"
         "\n"
         f"import '{_NAMING.sentinel_import}';\n"
         f"import '{_ENUMS_IMPORT}';\n"
@@ -428,15 +425,6 @@ def _emit_settings_header(*, needs_set: bool = True, needs_map: bool = True) -> 
             "\n"
         )
     parts.append(
-        "bool _listEq<T>(List<T> a, List<T> b) {\n"
-        "  if (identical(a, b)) return true;\n"
-        "  if (a.length != b.length) return false;\n"
-        "  for (var i = 0; i < a.length; i++) {\n"
-        "    if (a[i] != b[i]) return false;\n"
-        "  }\n"
-        "  return true;\n"
-        "}\n"
-        "\n"
         f"/// Wire-format a double for the lavfi {_NAMING.wire_word}-chain. "
         "Uses 3-decimal\n"
         "/// fixed-point for normal values; falls back to a 1-significant-\n"
@@ -655,9 +643,7 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     # exclude them from the Settings surface entirely. Consumers
     # read these via `af-metadata/<label>` at runtime, not as
     # constructor args.
-    params: dict = {
-        n: p for n, p in fdata["params"].items() if not p.get("readonly")
-    }
+    params: dict = effect_params(fdata)
     # Flag the mandatory params (ffmpeg init/config fails if unset) so the
     # field loop below emits them as `required` ctor args and toFilterString
     # always writes them. Must run before `_ctor_field_spec` is consulted.
@@ -689,11 +675,14 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     # rest of the emission is a fold over this list — keeps the bookkeeping
     # for ctor / copyWith / == / hashCode / toString in lockstep.
     fields: list[tuple[str, str, str, bool]] = []
-    fields.append(("enabled", "bool", "false", False))
+    fields.append(("enabled", "bool", "true", False))
     for pname, p in params.items():
         dart_name = _param_dart_name(pname)
         ftype, default_lit, nullable = _ctor_field_spec(pname, p)
         fields.append((dart_name, ftype, default_lit, nullable))
+    _names = [f[0] for f in fields]
+    if len(_names) != len(set(_names)):
+        sys.exit(f"{filter_name}: Dart field names collide: {sorted(_names)}")
     has_params_map = bool(invalid)
     if has_params_map:
         map_type = f"Map<String, {map_value_type}>"
@@ -751,7 +740,7 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
             desc = (p.get("desc_long") or p.get("desc") or "").replace("\n", " ").strip()
             lines.append(f"/// - `{pname}`: {desc}{extra_str}")
 
-    lines.append(f"final class {cls} {{")
+    lines.append(f"final class {cls} extends {_NAMING.bundle_name[:-1]} {{")
     # Public bound + default constants — let UI builders read engine
     # constraints (`Settings.fooMin`, `Settings.fooMax`,
     # `Settings.fooDefault`) without parsing source. See
@@ -779,8 +768,12 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
         # `params` escape hatch, or the per-AVOption ffmpeg description.
         if name == "enabled":
             lines.append(
-                "  /// Whether this effect is inserted into the audio chain."
+                "  /// Whether this effect is applied. `false` keeps it in the"
             )
+            lines.append(
+                "  /// list, with its settings, without inserting it in the chain."
+            )
+            lines.append("  @override")
         elif name == "params":
             lines.append(
                 "  /// Raw values for parameters whose names start with a digit,"
@@ -804,10 +797,7 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     # be const-prefixed to be valid in a parameter default position.
     lines.append(f"  /// Creates an [{cls}] with the given parameter values.")
     lines.append("  ///")
-    lines.append(
-        "  /// Each parameter defaults to its ffmpeg default; the effect stays"
-    )
-    lines.append("  /// inactive until [enabled] is set to `true`.")
+    lines.append("  /// Each parameter defaults to its ffmpeg default.")
     lines.append(f"  const {cls}({{")
     for name, ftype, default_lit, nullable in fields:
         if default_lit is _REQUIRED:
@@ -825,6 +815,15 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
                 lit = "const " + lit
             lines.append(f"    this.{name} = {lit},")
     lines.append("  });")
+    lines.append("")
+    lines.append("  @override")
+    lines.append(f"  String get filterName => '{filter_name}';")
+    lines.append("")
+    lines.append("  @override")
+    lines.append(
+        f"  {_NAMING.enum_name} get filter => "
+        f"{_NAMING.enum_name}.{_bundle_field_name(filter_name)};"
+    )
     lines.append("")
     # copyWith — sentinel for nullable fields, `??` for non-nullable.
     lines.append(
@@ -901,6 +900,7 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     # toFilterString
     lines.append(f"  /// Returns the {_NAMING.noun} chain entry for this effect.")
     lines.append("  /// Only non-default parameters are emitted.")
+    lines.append("  @override")
     lines.append("  String toFilterString() {")
     if not params and not invalid:
         lines.append(f"    return '{_WIRE.label_prefix}{filter_name}';")
@@ -1048,7 +1048,8 @@ def _emit_runtime_diff(filter_name, cls, params, invalid):
         f"`{_NAMING.wire_word}-command`,"
     )
     out.append("  /// or `null` when a changed option requires a chain rebuild.")
-    out.append(f"  List<(String, String)>? _runtimeDiff({cls} prev) {{")
+    out.append("  @override")
+    out.append(f"  List<(String, String)>? _runtimeDiff(covariant {cls} prev) {{")
     out.append("    final out = <(String, String)>[];")
     for pname, p in params.items():
         ptype = p["type"]
@@ -1112,293 +1113,179 @@ def _bundle_default_ctor(filter_name: str) -> str:
     return f"{cls}({', '.join(args)})"
 
 
-def _emit_audio_effects(filter_names: list[str], filters: dict) -> str:
-    """The bundle holds every typed Settings as a NULLABLE field
-    defaulting to null ("never configured") plus a free-form `custom`
-    list of raw lavfi entries for filters not covered by the typed
-    surface (experimental filters, expression-based filters like
-    `pan` / `aeval`, custom mpv builds). `toAfChain()` emits `custom`
-    first (so raw entries act before the typed rack) followed by every
-    enabled typed stage.
-
-    Nullable-with-null-default is load-bearing for tree-shaking: a
-    non-null field with a `const XxxSettings()` default makes the
-    bundle's const constructor reference every Settings class, so an
-    AOT consumer retains all of them (~270 KiB measured) even when it
-    uses zero effects. With null defaults the const constructor
-    references nothing and the compiler keeps only the classes the app
-    actually names. A null slot and a disabled instance are identical
-    on the wire.
-
-    Hand-rolled `final class` (not `@freezed`): the bundle has 115
-    fields and freezed would generate ~3500 lines of glue we don't
-    need. The codegen emits constructor + copyWith + ==/hashCode/
-    toString directly so there is zero `*.freezed.dart` produced for
-    this file."""
-    lines: list[str] = []
-    if _EMIT_DIFF:
-        lines.append("")
-        lines.append(
-            f"/// One incremental `{_NAMING.wire_word}-command` update produced by"
-        )
-        lines.append(
-            f"/// [{_NAMING.bundle_name}.diffCommands]: applies [option] = [value] "
-            "to the"
-        )
-        lines.append("/// live chain stage labelled [label] (an instance of the ffmpeg")
-        lines.append("/// filter [filterName]).")
-        lines.append(
-            f"typedef {_NAMING.command_type} = ({{String label, String option, "
-            "String value, String filterName});"
-        )
-    fields = [("custom", "List<String>", "<String>[]")] + [
-        (
-            _bundle_field_name(f),
-            _settings_class_name(f),
-            _bundle_default_ctor(f),
-        )
-        for f in filter_names
-    ]
-
-    lines.append("")
-    lines.append(
-        f"/// All {_NAMING.noun} effects bundled into a single atomic configuration"
-    )
-    lines.append(
-        f"/// applied via `Player.{_NAMING.setter}` / `Player.{_NAMING.updater}`."
-    )
-    lines.append("///")
-    lines.append("/// Each effect has its own nullable `XxxSettings` field defaulting to")
-    lines.append("/// `null` (not configured). Assign a settings instance with")
-    lines.append(
-        f"/// `enabled: true` to insert that stage in the {_NAMING.noun} chain; a `null`"
-    )
-    lines.append("/// slot and a disabled instance are identical on the wire.")
-    lines.append("///")
-    lines.append("/// Fields you never assign cost nothing in your app binary: the")
-    lines.append("/// compiler tree-shakes every `*Settings` class your code doesn't")
-    lines.append("/// name.")
-    lines.append("///")
-    example_chain = f"{_WIRE.label_prefix}aeval=val(0)|val(1)"
-    lines.append("/// `custom` carries raw lavfi-style filter strings (e.g.")
-    lines.append(f"/// `'{example_chain}'`) emitted at the head of the chain,")
-    lines.append("/// before any typed stage. Use it for expression-based filters or")
-    lines.append("/// experimental ffmpeg filters that don't have a typed equivalent.")
-    # ffmpeg filter name per bundle field, reused in the field doc.
-    _bundle_doc = {"custom": None}
-    for f in filter_names:
-        _bundle_doc[_bundle_field_name(f)] = f
-
-    lines.append(f"final class {_NAMING.bundle_name} {{")
-    # Final fields.
-    for name, ftype, _ in fields:
-        if name == "custom":
-            lines.append(
-                "  /// Raw lavfi filter strings emitted at the head of the chain,"
-            )
-            lines.append(
-                "  /// before any typed stage. Use for expression-based or"
-            )
-            lines.append(
-                "  /// experimental filters without a typed equivalent."
-            )
-        else:
-            lines.append(
-                f"  /// Configuration for the `{_bundle_doc[name]}` "
-                f"{_NAMING.noun} effect."
-            )
-            lines.append("  ///")
-            lines.append("  /// `null` = not configured (same wire output as a")
-            lines.append("  /// disabled instance).")
-        if name == "custom":
-            lines.append(f"  final {ftype} {name};")
-        else:
-            # Nullable with null default — load-bearing for consumer-side
-            # tree-shaking (see the function docstring).
-            lines.append(f"  final {ftype}? {name};")
-    lines.append("")
-    lines.append(f"  /// Creates an [{_NAMING.bundle_name}] bundle.")
-    lines.append("  ///")
-    lines.append(
-        "  /// Every effect defaults to `null` (not configured); assign the"
-    )
-    lines.append("  /// ones you need and apply the whole bundle atomically.")
-    lines.append(f"  const {_NAMING.bundle_name}({{")
-    for name, ftype, default in fields:
-        if name == "custom":
-            lit = default
-            if not lit.startswith("const "):
-                lit = "const " + lit
-            lines.append(f"    this.{name} = {lit},")
-        else:
-            lines.append(f"    this.{name},")
-    lines.append("  });")
-    lines.append("")
-    # copyWith — `??` pattern: a null argument keeps the current value.
-    lines.append(
-        "  /// Returns a copy of this bundle with the given effects replaced."
-    )
-    lines.append("  ///")
-    lines.append("  /// A `null` argument keeps the current value. To take a stage")
-    lines.append("  /// out of the chain, disable it via its `enabled` flag — on the")
-    lines.append("  /// wire that is identical to an unset slot.")
-    lines.append(f"  {_NAMING.bundle_name} copyWith({{")
-    for name, ftype, _ in fields:
-        lines.append(f"    {ftype}? {name},")
-    lines.append("  }) =>")
-    lines.append(f"      {_NAMING.bundle_name}(")
-    for name, _, _ in fields:
-        lines.append(f"        {name}: {name} ?? this.{name},")
-    lines.append("      );")
-    lines.append("")
-    # Per-slot updaters — the ergonomic path for incremental edits on a
-    # nullable slot: a never-configured slot is seeded with its defaults
-    # before the mapper runs, so `e.updateBass((b) => b.copyWith(g: 3))`
-    # works whether or not bass was ever set. Tree-shake-safe: an
-    # updater that is never called is dropped by AOT together with the
-    # Settings class its body references (verified empirically — 87
-    # uncalled updaters add 0 bytes).
-    for fname in filter_names:
-        field = _bundle_field_name(fname)
-        cls = _settings_class_name(fname)
-        dflt = _bundle_default_ctor(fname)
-        suffix = field.rstrip("_")
-        suffix = suffix[:1].upper() + suffix[1:]
-        lines.append(
-            f"  /// Returns a copy with the `{fname}` slot transformed by [f];"
-        )
-        lines.append(
-            "  /// a never-configured (`null`) slot is seeded with its"
-        )
-        lines.append("  /// defaults first.")
-        lines.append(
-            f"  {_NAMING.bundle_name} update{suffix}({cls} Function({cls}) f) =>"
-        )
-        lines.append(f"      copyWith({field}: f({field} ?? const {dflt}));")
-        lines.append("")
-    # operator==
-    lines.append("  @override")
-    lines.append("  bool operator ==(Object other) =>")
-    cmp = [
-        "      identical(this, other) ||",
-        f"      (other is {_NAMING.bundle_name}",
-    ]
-    for name, ftype, _ in fields:
-        if ftype.startswith("List<"):
-            cmp.append(f"          && _listEq({name}, other.{name})")
-        else:
-            cmp.append(f"          && other.{name} == {name}")
-    cmp[-1] = cmp[-1] + ");"
-    lines.extend(cmp)
-    lines.append("")
-    # hashCode — Object.hashAll over all fields (115+ args, well over the
-    # 20-arg cap of Object.hash).
-    lines.append("  @override")
-    lines.append("  int get hashCode => Object.hashAll([")
-    for name, ftype, _ in fields:
-        if ftype.startswith("List<"):
-            lines.append(f"        Object.hashAll({name}),")
-        else:
-            lines.append(f"        {name},")
-    lines.append("      ]);")
-    lines.append("")
-    # toString — short form, just the enabled-stage count to keep the
-    # output readable. Full per-field dump would be 100+ lines.
-    lines.append("  @override")
-    lines.append("  String toString() {")
-    lines.append("    final enabled = <String>[];")
-    for fname in filter_names:
-        field = _bundle_field_name(fname)
-        lines.append(f"    if ({field}?.enabled ?? false) enabled.add('{fname}');")
-    lines.append(
-        f"    return '{_NAMING.bundle_name}"
-        "(custom: $custom, enabled: $enabled)';"
-    )
-    lines.append("  }")
-    lines.append("")
-    # toAfChain — unchanged from the freezed version.
-    lines.append(f"  /// Builds the {_NAMING.noun} chain string from this bundle.")
-    lines.append("  ///")
-    lines.append("  /// Returns the empty string when nothing is enabled. Raw entries")
-    lines.append("  /// from [custom] are emitted first (in declaration order), then")
-    lines.append("  /// every enabled typed stage. All entries are joined with `,`.")
-    lines.append(f"  String to{_NAMING.wire_word.capitalize()}Chain() {{")
-    lines.append("    final parts = <String>[];")
-    lines.append("    for (final raw in custom) {")
-    lines.append("      final t = raw.trim();")
-    lines.append("      if (t.isNotEmpty) parts.add(t);")
-    lines.append("    }")
-    for fname in filter_names:
-        field = _bundle_field_name(fname)
-        if _EMIT_LABELS:
-            # Stable per-slot chain labels: `@<prefix>_<field>:` — the anchor
-            # for the runtime command diffs and metadata reads.
-            lp = _NAMING.chain_label_prefix
-            lines.append(
-                f"    if ({field}?.enabled ?? false) "
-                f"parts.add('@{lp}_{field}:' + {field}!.toFilterString());"
-            )
-        else:
-            lines.append(
-                f"    if ({field}?.enabled ?? false) "
-                f"parts.add({field}!.toFilterString());"
-            )
-    lines.append("    return parts.join(',');")
-    lines.append("  }")
-    if _EMIT_DIFF:
-        lines.extend(_emit_diff_commands(filter_names, filters))
-    lines.append("}")
-    return "\n".join(lines)
 
 
-def _emit_diff_commands(filter_names, filters):
-    """`diffCommands(prev)` on the bundle: the af-command triples that
-    turn prev's LIVE graph into this bundle, or null when only a full
-    `af` rewrite can (topology change, non-runtime option change, or a
-    filter without process_command support)."""
-    out = [""]
-    out.append(
-        f"  /// Computes the incremental `{_NAMING.wire_word}-command` updates "
-        "that turn the"
-    )
-    out.append("  /// live chain built from [prev] into this bundle.")
-    out.append("  ///")
-    out.append("  /// Returns `null` when the change needs a full chain rebuild")
-    out.append("  /// (an effect entered/left the chain, a non-runtime-tunable")
-    out.append("  /// option changed, or the filter doesn't accept live commands);")
-    out.append("  /// an empty list when the two bundles are wire-identical.")
-    out.append(
-        f"  List<{_NAMING.command_type}>? diffCommands({_NAMING.bundle_name} prev) {{"
-    )
-    out.append("    if (!_listEq(custom, prev.custom)) return null;")
-    out.append(f"    final out = <{_NAMING.command_type}>[];")
-    for fname in filter_names:
-        field = _bundle_field_name(fname)
-        supports = bool(filters[fname].get("supports_commands"))
-        out.append("    {")
-        out.append(f"      final a = prev.{field};")
-        out.append(f"      final b = {field};")
-        out.append(
-            "      if ((a?.enabled ?? false) != (b?.enabled ?? false)) "
-            "return null;"
-        )
-        if supports:
-            out.append("      if ((b?.enabled ?? false) && !identical(a, b)) {")
-            out.append("        final d = b!._runtimeDiff(a!);")
-            out.append("        if (d == null) return null;")
-            out.append("        for (final (opt, val) in d) {")
-            out.append(
-                f"          out.add((label: '{_NAMING.chain_label_prefix}_{field}', "
-                f"option: opt, value: val, filterName: '{fname}'));"
-            )
-            out.append("        }")
-            out.append("      }")
-        else:
-            out.append("      if ((b?.enabled ?? false) && a != b) return null;")
-        out.append("    }")
-    out.append("    return out;")
-    out.append("  }")
-    return out
+
+
+def _emit_chain() -> str:
+    """The chain model: the sealed [AudioEffect] base every generated
+    `XxxEffect` extends, [RawAudioEffect] for hand-written lavfi entries,
+    and the internal functions that turn an ordered effect list into the
+    `af` chain and diff two lists into live `af-command` updates.
+
+    Labels are per instance, `aek_<filter>_<n>` with n the occurrence of
+    that filter in the list (disabled entries count too), so a filter keeps
+    its label, its af-metadata and its tap when the user toggles or
+    reorders the others."""
+    base = _NAMING.bundle_name[:-1]  # AudioEffect
+    cmd = _NAMING.command_type
+    pfx = _NAMING.chain_label_prefix
+    w = _NAMING.wire_word
+    n = _NAMING.noun
+    return f"""
+/// One stage of the {n} effects chain: an entry of the ordered list given
+/// to `Player.{_NAMING.setter}`. Stages run in list order, and the same
+/// filter may appear more than once.
+///
+/// Every typed `XxxEffect` extends it; [Raw{base}] carries a lavfi
+/// entry written by hand.
+sealed class {base} {{
+  const {base}();
+
+  /// Whether this stage is applied. `false` keeps it in the list, with
+  /// its settings, without inserting it in the chain.
+  bool get enabled;
+
+  /// The lavfi filter this stage runs, e.g. `equalizer`.
+  String get filterName;
+
+  /// The filter this stage runs, as a typed identifier (`null` for a
+  /// [Raw{base}]).
+  {_NAMING.enum_name}? get filter;
+
+  /// The chain entry for this stage.
+  String toFilterString();
+
+  /// Runtime-tunable option diff against [prev], the same filter one
+  /// step earlier: the `(option, wire value)` pairs the live graph can
+  /// apply via `{w}-command`, or `null` when the change needs a rebuild.
+  List<(String, String)>? _runtimeDiff(covariant {base} prev) =>
+      this == prev ? const [] : null;
+}}
+
+/// A chain stage written as a raw lavfi entry, for filters or option
+/// forms the typed effects do not cover, e.g.
+/// `Raw{base}('lavfi-aeval=val(0)*0.5|val(1)*0.5')`.
+///
+/// It is inserted as is, without a chain label, so it is never updated
+/// live: any change rebuilds the chain.
+final class Raw{base} extends {base} {{
+  /// Creates a raw chain stage from [entry].
+  const Raw{base}(this.entry, {{this.enabled = true}});
+
+  /// The lavfi entry, inserted verbatim.
+  final String entry;
+
+  @override
+  final bool enabled;
+
+  @override
+  String get filterName {{
+    final start = entry.startsWith('lavfi-') ? 'lavfi-'.length : 0;
+    final end = entry.indexOf('=', start);
+    return entry.substring(start, end < 0 ? entry.length : end);
+  }}
+
+  @override
+  {_NAMING.enum_name}? get filter => null;
+
+  @override
+  String toFilterString() => entry;
+
+  /// Returns a copy with the given fields replaced.
+  Raw{base} copyWith({{String? entry, bool? enabled}}) =>
+      Raw{base}(entry ?? this.entry, enabled: enabled ?? this.enabled);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Raw{base} && other.entry == entry && other.enabled == enabled);
+
+  @override
+  int get hashCode => Object.hash(entry, enabled);
+
+  @override
+  String toString() => 'Raw{base}($entry, enabled: $enabled)';
+}}
+
+/// One incremental `{w}-command` update produced by [{n}EffectsDiff]:
+/// applies [option] = [value] to the live chain stage labelled [label]
+/// (an instance of the ffmpeg filter [filterName]).
+typedef {cmd} = ({{String label, String option, String value, String filterName}});
+
+/// The chain label of the [instance]th [filterName] stage in a list
+/// (0 for the first), e.g. `{pfx}_equalizer_1`.
+@internal
+String {n}EffectLabel(String filterName, int instance) =>
+    '{pfx}_${{filterName}}_$instance';
+
+/// The chain labels of [effects], in order; `null` for raw stages,
+/// which carry none.
+@internal
+List<String?> {n}EffectLabels(List<{base}> effects) {{
+  final seen = <String, int>{{}};
+  return [
+    for (final e in effects)
+      if (e is Raw{base})
+        null
+      else
+        {n}EffectLabel(
+          e.filterName,
+          seen.update(e.filterName, (i) => i + 1, ifAbsent: () => 0),
+        ),
+  ];
+}}
+
+/// The `{w}` chain for [effects]: every enabled stage in list order,
+/// typed stages under their [{n}EffectLabels]. A blank raw stage is
+/// skipped, since an empty chain entry is a syntax error for mpv.
+@internal
+String {n}EffectsChain(List<{base}> effects) {{
+  final labels = {n}EffectLabels(effects);
+  return [
+    for (var i = 0; i < effects.length; i++)
+      if (effects[i].enabled &&
+          effects[i].toFilterString().trim().isNotEmpty)
+        labels[i] == null
+            ? effects[i].toFilterString()
+            : '@${{labels[i]}}:${{effects[i].toFilterString()}}',
+  ].join(',');
+}}
+
+/// The incremental `{w}-command` updates that turn the live chain built
+/// from [prev] into the one for [next], or `null` when only a rebuild
+/// can: a stage was added, removed, reordered, enabled or disabled, a
+/// non-runtime-tunable option changed, or the filter takes no live
+/// commands. Empty when the two lists build the same chain.
+@internal
+List<{cmd}>? {n}EffectsDiff(List<{base}> prev, List<{base}> next) {{
+  if (prev.length != next.length) return null;
+  final labels = {n}EffectLabels(next);
+  final out = <{cmd}>[];
+  for (var i = 0; i < next.length; i++) {{
+    final a = prev[i];
+    final b = next[i];
+    if (identical(a, b)) continue;
+    if (a.runtimeType != b.runtimeType || a.enabled != b.enabled) return null;
+    if (b is Raw{base}) {{
+      if (a != b) return null;
+      continue;
+    }}
+    if (!b.enabled) continue;
+    final d = b._runtimeDiff(a);
+    if (d == null) return null;
+    for (final (option, value) in d) {{
+      out.add((
+        label: labels[i]!,
+        option: option,
+        value: value,
+        filterName: b.filterName,
+      ));
+    }}
+  }}
+  return out;
+}}
+"""
 
 
 # Populated by main(); read by _emit_settings_class for enum default
@@ -1479,8 +1366,7 @@ def run(config: Config) -> int:
     settings_bodies: list[str] = []
     for fname in sorted_names:
         settings_bodies.append(_emit_settings_class(fname, filters[fname]))
-    settings_bodies.append(_emit_audio_effects(sorted_names, filters))
-    settings_bodies.append(_emit_audio_effects_active_extension(sorted_names))
+    settings_bodies.insert(0, _emit_chain())
     # The Set/Map equality helpers are emitted only when a field uses them, so a
     # flavor with neither (video) doesn't trip `unused_element`.
     _body = "\n".join(settings_bodies)
@@ -1549,7 +1435,7 @@ def run(config: Config) -> int:
     for path, label in [
         (config.output.enums, f"{len(seen_enums)} enums"),
         (config.output.settings,
-         f"{len(sorted_names)} filters + {_NAMING.bundle_name} bundle"),
+         f"{len(sorted_names)} effects + the chain model"),
         *(
             [(config.output.extensions, "typed string-/map-DSL helpers")]
             if config.features.emit_extensions else []

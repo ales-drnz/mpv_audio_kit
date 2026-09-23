@@ -64,15 +64,15 @@ void main() {
   const skipCorners = <String>{
     // surround: ffmpeg requires `lfe_low < lfe_high`. Default
     // lfe_low=128, lfe_high=256.
-    //   * `lfe_high=lfe_highMin (0)` < default lfe_low (128) → reject
-    //   * `lfe_low=lfe_lowMax (256)` >= default lfe_high (256) → reject
-    'surround.lfe_high=lfe_highMin',
-    'surround.lfe_low=lfe_lowMax',
+    //   * `lfe_high=lfeHighMin (0)` < default lfe_low (128) → reject
+    //   * `lfe_low=lfeLowMax (256)` >= default lfe_high (256) → reject
+    'surround.lfe_high=lfeHighMin',
+    'surround.lfe_low=lfeLowMax',
     // afade: AVOption declares `start_sample` / `ss` max as I64_MAX,
     // but the filter rejects it at init time — `start_sample +
     // nb_samples` would overflow internally. Min / Default are
     // accepted; only the I64_MAX extreme blows up.
-    'afade.start_sample=start_sampleMax',
+    'afade.start_sample=startSampleMax',
     'afade.ss=ssMax',
   };
 
@@ -112,7 +112,7 @@ void main() {
           }
           // Reset between iterations so a previous failure doesn't bleed
           // into the next drain.
-          await player.setAudioEffects(const AudioEffects());
+          await player.setAudioEffects(const []);
         }
 
         if (failures.isNotEmpty) {

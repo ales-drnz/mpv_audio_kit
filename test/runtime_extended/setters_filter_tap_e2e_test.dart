@@ -41,9 +41,9 @@ void main() {
             // Enable a real filter. `equalizer` is in the audio-only build
             // and forwards every frame untouched at gain 0 — perfect for
             // a "is the tap actually wired" probe.
-            await player.setAudioEffects(
-              const AudioEffects(equalizer: EqualizerSettings(enabled: true)),
-            );
+            await player.setAudioEffects(const [
+              EqualizerEffect(),
+            ]);
 
             await openAndWaitForLoad(player, fixturePath);
 
@@ -56,7 +56,7 @@ void main() {
 
             final completer = Completer<PcmFrame>();
             final sub = player.stream
-                .tap(AudioEffect.equalizer, side: TapSide.post)
+                .tap(AudioFilter.equalizer, side: TapSide.post)
                 .listen((f) {
                   if (!completer.isCompleted) completer.complete(f);
                 });
@@ -103,30 +103,29 @@ void main() {
 
             // First subscriber arms the tap.
             final s1 = player.stream
-                .tap(AudioEffect.equalizer, side: TapSide.pre)
+                .tap(AudioFilter.equalizer, side: TapSide.pre)
                 .listen((_) {});
             // Give the pipeline a microtask tick to write the property.
             await Future<void>.delayed(const Duration(milliseconds: 50));
             active = await player.getRawProperty('analyzer-taps');
-            // Pipeline prepends the `lavfi-` prefix so the C-side hook —
-            // which sees `u->name = "lavfi-equalizer"` for any libavfilter
-            // user filter — finds the slot.
-            expect(active, contains('lavfi-equalizer'));
+            // The native hook matches the stage's chain label, which the
+            // first equalizer in the list carries as `aek_equalizer_0`.
+            expect(active, contains('aek_equalizer_0'));
 
             // Second subscriber on the same filter: refcount, not a
             // duplicate write.
             final s2 = player.stream
-                .tap(AudioEffect.equalizer, side: TapSide.post)
+                .tap(AudioFilter.equalizer, side: TapSide.post)
                 .listen((_) {});
             await Future<void>.delayed(const Duration(milliseconds: 50));
             active = await player.getRawProperty('analyzer-taps');
-            expect(active, 'lavfi-equalizer');
+            expect(active, 'aek_equalizer_0');
 
             // Cancel one — analyzer-taps stays the same (other still up).
             await s1.cancel();
             await Future<void>.delayed(const Duration(milliseconds: 50));
             active = await player.getRawProperty('analyzer-taps');
-            expect(active, 'lavfi-equalizer');
+            expect(active, 'aek_equalizer_0');
 
             // Cancel the last — analyzer-taps must be cleared.
             await s2.cancel();
