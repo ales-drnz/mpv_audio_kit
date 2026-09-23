@@ -37,7 +37,6 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
-import '../_helpers/libmpv_resolver.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 typedef AfCommandUpdate = ({

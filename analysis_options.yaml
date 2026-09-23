@@ -14,10 +14,12 @@ analyzer:
   exclude:
     - docs/**
     - graphify-out/**
-    # Codegen-emitted (../lavfi-codegen-scripts); their ignore_for_file
+    # Emitted by tool/codegen; their ignore_for_file
     # headers don't cover this file's stricter ruleset, and the resulting
     # ~5k infos would bury every real finding in `flutter analyze`.
     - test/generated/**
+    # The codegen's static overlay only compiles once copied into lib/.
+    - tool/**
     - build/**
     - android/**
     - ios/**

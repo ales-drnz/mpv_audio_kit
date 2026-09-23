@@ -10,7 +10,8 @@
 # (written by libmpv-scripts' write_manifest.sh) and rewrites `_release` and
 # the `_sha256` table in hook/build.dart, the only place the package pins
 # its binaries, plus the release the player expects to find in mpv's
-# version string (lib/src/internals/libmpv_release.dart).
+# version string (lib/src/internals/libmpv_release.dart), and copies the
+# manifest to tool/codegen, whose filter list the effects API follows.
 #
 # Usage (from the package root):
 #   scripts/update_libmpv.sh r14                       # published release
@@ -68,3 +69,7 @@ print(f"hook/build.dart -> {tag} (mpv {manifest['mpv']}, FFmpeg {manifest['ffmpe
 PY
 
 dart format "$ROOT/hook/build.dart" >/dev/null
+
+# The codegen reads the filters and the FFmpeg version from its own copy;
+# rerun tool/codegen/regen.sh afterwards if they changed.
+cp "$MANIFEST" "$ROOT/tool/codegen/libmpv_manifest.json"

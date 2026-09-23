@@ -25,3 +25,8 @@ coverage/
 .claude/
 CLAUDE.md
 graphify-out/
+
+# Codegen inputs and build products (tool/codegen)
+/tool/codegen/.ffmpeg-src/
+/tool/codegen/.build/
+__pycache__/

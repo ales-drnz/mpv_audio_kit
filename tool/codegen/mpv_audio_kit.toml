@@ -1,0 +1,35 @@
+# The typed audio effects API of mpv_audio_kit and its tests.
+# Regenerate with tool/codegen/regen.sh.
+
+[consumer]
+name = "mpv_audio_kit"
+
+[inputs]
+# The manifest of the libmpv release the build hook pins; kept in step
+# with hook/build.dart by scripts/update_libmpv.sh.
+manifest = "libmpv_manifest.json"
+
+[wire]
+label_prefix = "lavfi-"
+accessor = "mpv"
+
+[output]
+enums = "lib/src/generated/audio_effects.dart"
+settings = "lib/src/generated/audio_effects_settings.dart"
+extensions = "lib/src/generated/audio_effects_extensions.dart"
+test_filter_names = "test/generated/audio_filter_names.dart"
+test_coverage = "test/generated/audio_effects_coverage_test.dart"
+test_param_corners = "test/generated/_audio_effects_param_corners.dart"
+test_runtime = "test/generated/audio_effects_runtime_coverage_test.dart"
+test_af_command = "test/generated/audio_effects_af_command_test.dart"
+schema = ".build/mpv_audio_kit/schema.json"
+schema_runtime = ".build/mpv_audio_kit/schema_runtime.json"
+
+[features]
+emit_extensions = true
+emit_tests = true
+emit_af_labels = true
+emit_diff_commands = true
+
+[extensions]
+source = "audio_effects_extensions.dart"

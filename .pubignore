@@ -41,9 +41,9 @@ graphify-out/
 # those real copies, not the shared tree.
 /darwin/
 
-# Codegen config
-analysis_options.yaml
-
 # Assets — whitelist only the screenshots referenced by pubspec.yaml
 /imgs/*
 !/imgs/mpv_audio_kit.png
+
+# The codegen that produces lib/src/generated (tool/codegen/regen.sh)
+/tool/

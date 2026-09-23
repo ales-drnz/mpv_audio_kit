@@ -26,9 +26,8 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
-import '../_helpers/libmpv_resolver.dart';
-import '../_helpers/setter_test_helpers.dart';
 import '../_helpers/mpv_error_capture.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 typedef RuntimeCase = ({String filter, AudioEffects bundle});
 

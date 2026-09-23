@@ -36,6 +36,10 @@ jobs:
       - name: Publish dry run
         if: matrix.flutter == 'any'
         run: flutter pub publish --dry-run
+      # The generated effects API must be exactly what tool/codegen emits.
+      - name: Codegen drift
+        if: matrix.flutter == 'any'
+        run: tool/codegen/regen.sh && git diff --exit-code -- lib/src/generated test/generated
 
   test-linux:
     name: Test (Linux)
