@@ -5,7 +5,11 @@
 
 #include <glib/gstdio.h>
 
+#include <signal.h>
+#include <unistd.h>
+
 #include <cctype>
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -111,7 +115,11 @@ void MprisServer::EnsureOwned() {
   if (owner_id_ != 0) return;
   std::string suffix =
       app_name_.empty() ? "mpv_audio_kit" : SanitizeBusSuffix(app_name_);
-  std::string bus = "org.mpris.MediaPlayer2." + suffix;
+  // The spec's form for a player that can run more than once: without the
+  // instance part a second copy of the app loses the name and, with it,
+  // its media controls. Clients match on the part before ".instance".
+  std::string bus = "org.mpris.MediaPlayer2." + suffix + ".instance" +
+                    std::to_string(getpid());
   owner_id_ = g_bus_own_name(G_BUS_TYPE_SESSION, bus.c_str(),
                              G_BUS_NAME_OWNER_FLAGS_NONE, OnBusAcquired, nullptr,
                              OnNameLost, this, nullptr);
@@ -541,8 +549,12 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
   if (bytes == art_cache_key_) return;  // unchanged
 
   if (art_dir_.empty()) {
-    const char* runtime = g_get_user_runtime_dir();
-    art_dir_ = std::string(runtime ? runtime : "/tmp") + "/mpv_audio_kit";
+    // One directory per process: two apps on the kit would otherwise
+    // overwrite and delete each other's art-N files. g_get_user_runtime_dir
+    // never returns NULL (it falls back to the user cache dir).
+    std::string root = std::string(g_get_user_runtime_dir()) + "/mpv_audio_kit";
+    RemoveStaleArtDirs(root);
+    art_dir_ = root + "/" + std::to_string(getpid());
   }
   g_mkdir_with_parents(art_dir_.c_str(), 0700);
 
@@ -577,6 +589,31 @@ void MprisServer::WriteArtwork(const std::vector<uint8_t>& bytes,
   }
 }
 
+// Deletes the artwork directories under [root] left by processes that are
+// gone (a crash skips SweepArtwork). Directory names are PIDs.
+void MprisServer::RemoveStaleArtDirs(const std::string& root) {
+  GDir* dir = g_dir_open(root.c_str(), 0, nullptr);
+  if (!dir) return;
+  while (const gchar* name = g_dir_read_name(dir)) {
+    char* end = nullptr;
+    const long pid = strtol(name, &end, 10);
+    if (*name == '\0' || *end != '\0' || pid <= 0) continue;
+    if (pid == getpid() || kill(static_cast<pid_t>(pid), 0) == 0 ||
+        errno == EPERM) {
+      continue;  // this process, or one still alive
+    }
+    std::string path = root + "/" + name;
+    if (GDir* stale = g_dir_open(path.c_str(), 0, nullptr)) {
+      while (const gchar* file = g_dir_read_name(stale)) {
+        g_remove((path + "/" + file).c_str());
+      }
+      g_dir_close(stale);
+    }
+    g_rmdir(path.c_str());
+  }
+  g_dir_close(dir);
+}
+
 void MprisServer::SetExternalArtwork(const std::string& url) {
   // The consumer (or the extras['art'] fallback) handed us a ready-to-use
   // URL — MPRIS's `mpris:artUrl` is itself a URL, so pass it through directly
@@ -596,6 +633,8 @@ void MprisServer::SweepArtwork() {
     g_remove(prev_art_path_.c_str());
     prev_art_path_.clear();
   }
+  // The per-process directory goes too once empty; WriteArtwork recreates it.
+  if (!art_dir_.empty()) g_rmdir(art_dir_.c_str());
   art_url_.clear();
   has_artwork_ = false;
   art_cache_key_.clear();
