@@ -2623,11 +2623,11 @@ MediaSessionArtwork.none                // no artwork
 
 Network URLs never reach the OS media session as text, since they often
 carry credentials in the query (Subsonic, Jellyfin, Plex). MPRIS on Linux
-gets `xesam:url` only for local files, and a remote cover is downloaded by
-the package and published as a private temp file. A tag-less stream with no
-title falls back to mpv's `media-title`, which is derived from the URL: the
-query is stripped from it, but passing a title through `Media.extras` or
-`MediaSession.title` is still the better choice.
+gets `xesam:url` only for local files, and a remote cover is downloaded
+first and handed to the OS as an image on every platform. A tag-less stream
+with no title falls back to mpv's `media-title`, which is derived from the
+URL: the query is stripped from it, but passing a title through
+`Media.extras` or `MediaSession.title` is still the better choice.
 
 #### 14.3 Reacting to OS commands
 
