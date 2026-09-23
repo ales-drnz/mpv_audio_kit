@@ -18,6 +18,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -777,6 +778,10 @@ void main() {
     test(
       'uri override and extras[art] fallback resolve to artworkUri',
       () async {
+        // Apple passes artwork URLs through; the platforms that would
+        // publish them download in Dart instead (see the privacy group).
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
         final rig = _Rig();
         final ch = _RecordingChannel();
         addTearDown(rig.dispose);
@@ -1061,5 +1066,12 @@ void main() {
       await _settle();
       expect(resets, 1, reason: 'no callback after dispose');
     });
+  });
+  test('artwork is downloaded in Dart wherever the OS would publish URLs', () {
+    expect(downloadsArtworkOn(TargetPlatform.android), isTrue);
+    expect(downloadsArtworkOn(TargetPlatform.linux), isTrue);
+    expect(downloadsArtworkOn(TargetPlatform.windows), isTrue);
+    expect(downloadsArtworkOn(TargetPlatform.iOS), isFalse);
+    expect(downloadsArtworkOn(TargetPlatform.macOS), isFalse);
   });
 }
