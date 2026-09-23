@@ -49,7 +49,25 @@ jobs:
       - name: Install libmpv runtime dependencies
         run: sudo apt-get update && sudo apt-get install -y libasound2t64 libpulse0 libpipewire-0.3-0t64
       - run: scripts/ci/fetch_test_libmpv.sh linux
-      - run: flutter test -x network
+      - name: Keep core dumps
+        run: |
+          mkdir -p /tmp/cores
+          sudo sysctl -w kernel.core_pattern=/tmp/cores/core.%p
+      - name: flutter test -x network
+        run: |
+          ulimit -c unlimited
+          flutter test -x network
+      - name: Native backtraces of crashed test processes
+        if: failure()
+        run: |
+          ls /tmp/cores/core.* >/dev/null 2>&1 || { echo "no core dumps"; exit 0; }
+          sudo apt-get install -y gdb
+          tester="$FLUTTER_ROOT/bin/cache/artifacts/engine/linux-x64/flutter_tester"
+          for core in /tmp/cores/core.*; do
+            echo "::group::$core"
+            gdb -batch -ex 'info sharedlibrary' -ex 'thread apply all bt 25' "$tester" "$core" 2>&1 | grep -v '^\[New LWP'
+            echo "::endgroup::"
+          done
 
   test-macos:
     name: Test (macOS)
