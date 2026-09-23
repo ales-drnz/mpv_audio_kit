@@ -38,6 +38,11 @@ class _RecordingChannel extends MediaSessionChannel {
   @override
   Stream<MediaSessionCommand> get commandStream => _commands.stream;
 
+  final StreamController<void> resets = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get audioOutputResets => resets.stream;
+
   @override
   Future<void> enable({
     required MediaSession session,
@@ -75,6 +80,7 @@ class _RecordingChannel extends MediaSessionChannel {
 
   Future<void> close() async {
     await _commands.close();
+    await resets.close();
   }
 
   List<_Call> callsOfType(String method) =>
@@ -148,12 +154,14 @@ Future<MediaSessionController> _buildController({
   required _Rig rig,
   required _RecordingChannel channel,
   void Function(MediaSessionCommand)? onCommand,
+  void Function()? onAudioOutputReset,
   ArtworkFetcher? artworkFetcher,
 }) =>
     MediaSessionController.create(
       stateSnapshot: () => rig.state,
       inputs: rig.inputs,
       onCommand: onCommand ?? (_) {},
+      onAudioOutputReset: onAudioOutputReset,
       channel: channel,
       artworkFetcher: artworkFetcher,
     );
@@ -924,6 +932,29 @@ void main() {
       rig.metadata.add(const {'title': 'Song'});
       await _settle();
       expect(fetched, hasLength(1));
+    });
+  });
+  group('MediaSessionController — audio output resets', () {
+    test('a reset from the OS reaches the player until dispose', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      var resets = 0;
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        onAudioOutputReset: () => resets++,
+      );
+
+      ch.resets.add(null);
+      await _settle();
+      expect(resets, 1);
+
+      await controller.dispose();
+      ch.resets.add(null);
+      await _settle();
+      expect(resets, 1, reason: 'no callback after dispose');
     });
   });
 }

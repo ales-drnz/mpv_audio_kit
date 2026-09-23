@@ -67,6 +67,7 @@ mixin _MediaSessionModule on _PlayerBase {
           stateSnapshot: () => _state,
           inputs: MediaSessionInputs.fromPlayer(stream: stream),
           onCommand: _handleSessionCommand,
+          onAudioOutputReset: _reloadAudioOutput,
         );
         // Re-check EVERYTHING that gated the create, not just ownership:
         // a concurrent `setMediaSession(non-null)` also passed the
@@ -166,6 +167,14 @@ mixin _MediaSessionModule on _PlayerBase {
     // on a single-media playlist (where auto-apply is a no-op) the
     // consumer needs to see the command to drive its own queue.
     _mediaSessionCommandsCtrl.add(command);
+  }
+
+  /// Reopens mpv's audio output after the OS restored the audio session
+  /// without it (see [MediaSessionChannel.audioOutputResets]): the
+  /// AudioUnit the system stopped for an interruption or a media services
+  /// reset stays silent, while mpv keeps reporting playback.
+  void _reloadAudioOutput() {
+    _applySessionCommand(_commandChecked(const ['ao-reload']));
   }
 
   /// Fires an inbound-command action without awaiting it (the command-stream

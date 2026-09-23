@@ -168,19 +168,29 @@ class MediaSessionChannel {
   static const MethodChannel _method = MethodChannel(_methodName);
   static const EventChannel _events = EventChannel(_eventName);
 
-  Stream<MediaSessionCommand>? _commandStream;
+  // One subscription to the event channel, shared by every derived stream:
+  // the native side has a single sink, and a second receiveBroadcastStream
+  // would take it over.
+  late final Stream<dynamic> _raw = _events.receiveBroadcastStream();
 
   /// Broadcast stream of remote commands issued by the OS media
   /// session. Lazily wires the underlying [EventChannel] on the first
   /// listener.
-  Stream<MediaSessionCommand> get commandStream {
-    _commandStream ??= _events
-        .receiveBroadcastStream()
-        .map<MediaSessionCommand?>(_decodeCommand)
-        .where((c) => c != null)
-        .cast<MediaSessionCommand>();
-    return _commandStream!;
-  }
+  late final Stream<MediaSessionCommand> commandStream = _raw
+      .map<MediaSessionCommand?>(_decodeCommand)
+      .where((c) => c != null)
+      .cast<MediaSessionCommand>();
+
+  /// Fires when the OS brought the audio session back but the player's
+  /// audio output did not come with it (iOS: after an interruption under
+  /// the `keepPlaying` interruption policy, and after a media services
+  /// reset).
+  /// The player reopens its output in response.
+  late final Stream<void> audioOutputResets = _raw
+      .where((raw) => raw is Map && raw['type'] == _reloadAudioOutput)
+      .map<void>((_) {});
+
+  static const String _reloadAudioOutput = 'reloadAudioOutput';
 
   /// Enable the OS media session with the full state up front. Called
   /// once on `setMediaSession(non-null)` to bootstrap the native side.

@@ -49,6 +49,7 @@ class MediaSessionController {
   final PlayerState Function() _stateSnapshot;
   final MediaSessionInputs _inputs;
   final void Function(MediaSessionCommand) _onCommand;
+  final void Function()? _onAudioOutputReset;
   final MediaSessionChannel _channel;
 
   /// Downloads remote artwork so only a local file reaches the OS (Linux,
@@ -57,6 +58,7 @@ class MediaSessionController {
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   StreamSubscription<MediaSessionCommand>? _commandSub;
+  StreamSubscription<void>? _audioOutputResetSub;
   bool _disposed = false;
 
   // ── Coalescing ──────────────────────────────────────────────────────
@@ -82,11 +84,13 @@ class MediaSessionController {
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
     required void Function(MediaSessionCommand) onCommand,
+    void Function()? onAudioOutputReset,
     MediaSessionChannel? channel,
     ArtworkFetcher? artworkFetcher,
   })  : _stateSnapshot = stateSnapshot,
         _inputs = inputs,
         _onCommand = onCommand,
+        _onAudioOutputReset = onAudioOutputReset,
         _channel = channel ?? MediaSessionChannel(),
         _artworkFetcher = artworkFetcher;
 
@@ -107,6 +111,7 @@ class MediaSessionController {
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
     required void Function(MediaSessionCommand) onCommand,
+    void Function()? onAudioOutputReset,
     @visibleForTesting MediaSessionChannel? channel,
     @visibleForTesting ArtworkFetcher? artworkFetcher,
   }) async {
@@ -114,6 +119,7 @@ class MediaSessionController {
       stateSnapshot: stateSnapshot,
       inputs: inputs,
       onCommand: onCommand,
+      onAudioOutputReset: onAudioOutputReset,
       channel: channel,
       artworkFetcher: artworkFetcher ??
           (defaultTargetPlatform == TargetPlatform.linux
@@ -170,6 +176,10 @@ class MediaSessionController {
 
     // Inbound commands from the OS event channel.
     _commandSub = _channel.commandStream.listen(_onCommand);
+    final onReset = _onAudioOutputReset;
+    if (onReset != null) {
+      _audioOutputResetSub = _channel.audioOutputResets.listen((_) => onReset());
+    }
 
     // Push the initial full state.
     final state = _stateSnapshot();
@@ -194,6 +204,8 @@ class MediaSessionController {
     _subscriptions.clear();
     await _commandSub?.cancel();
     _commandSub = null;
+    await _audioOutputResetSub?.cancel();
+    _audioOutputResetSub = null;
     await _channel.disable();
   }
 

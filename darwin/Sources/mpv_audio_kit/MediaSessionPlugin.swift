@@ -413,9 +413,13 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       case .ended:
         switch policy {
         case "keepPlaying":
-          // We never paused; reactivate so the engine's output resumes.
+          // We never paused; reactivate the session, then have the player
+          // reopen its output: the AudioUnit the system stopped for the
+          // interruption does not restart with the session, so the engine
+          // would keep "playing" into silence.
           if (try? AVAudioSession.sharedInstance().setActive(true, options: []))
             != nil { self.sessionActive = true }
+          self.eventSink?(["type": "reloadAudioOutput"])
         case "pauseOnly":
           break  // paused on `.began`, no auto-resume
         default:  // pauseAndResume
@@ -465,6 +469,8 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       self.configureCommands()
       let playing = (self.currentPlayback["playing"] as? Bool) ?? false
       self.activateSessionIfPlaying(playing)
+      // The reset also killed the player's AudioUnit; reopen the output.
+      self.eventSink?(["type": "reloadAudioOutput"])
       // Defeat the publish dedup so the rebuilt dict actually re-lands.
       self.lastPublishedInfo = nil
       self.lastPublishedPlaybackState = .unknown
