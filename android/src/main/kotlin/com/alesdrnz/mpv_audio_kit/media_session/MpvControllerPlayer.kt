@@ -62,8 +62,13 @@ internal class MpvControllerPlayer(looper: Looper) : SimpleBasePlayer(looper) {
         val title = meta.title?.takeIf { it.isNotEmpty() }
         // No content yet → stay idle so the foreground service / notification
         // doesn't surface a blank entry (parity with the Apple "no
-        // content-less publish" guard).
-        if (title == null) return idleState(playWhenReady = pb.playing)
+        // content-less publish" guard). Audio that is playing or loading is
+        // content even without a title: going idle then would drop the
+        // notification and with it the foreground service keeping playback
+        // alive in the background.
+        if (title == null && !pb.playing && !pb.buffering) {
+            return idleState(playWhenReady = false)
+        }
 
         val mediaMetadata = if (meta === cachedMetaKey && cachedMediaMetadata != null) {
             cachedMediaMetadata!!
