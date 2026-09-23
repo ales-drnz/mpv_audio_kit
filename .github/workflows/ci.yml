@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'release/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (Flutter ${{ matrix.flutter }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # The declared floor and the current stable.
+        flutter: ['3.38.x', 'any']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ matrix.flutter }}
+          cache: true
+      - run: flutter pub get
+      - name: Format
+        if: matrix.flutter == 'any'
+        run: dart format --output=none --set-exit-if-changed lib test example test_app/lib test_app/integration_test
+      - run: flutter analyze
+      - name: Publish dry run
+        if: matrix.flutter == 'any'
+        run: flutter pub publish --dry-run
+
+  test-linux:
+    name: Test (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install libmpv runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64 libpulse0 libpipewire-0.3-0t64
+      - run: scripts/ci/fetch_test_libmpv.sh linux
+      - run: flutter test -x network
+
+  test-macos:
+    name: Test (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: scripts/ci/fetch_test_libmpv.sh macos
+      - run: flutter test -x network
+
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Android
+            os: ubuntu-24.04
+            # The Gradle download reports failures without failing the build,
+            # so check the libraries actually landed in the APK.
+            command: >-
+              flutter build apk --debug &&
+              unzip -l build/app/outputs/flutter-apk/app-debug.apk | grep -c 'lib/.*/libmpv.so' | grep -qx 3
+          - name: Linux
+            os: ubuntu-24.04
+            command: flutter build linux --debug
+          - name: Windows
+            os: windows-latest
+            command: flutter build windows --debug
+          - name: macOS
+            os: macos-latest
+            command: flutter build macos --debug
+          - name: iOS (SwiftPM)
+            os: macos-latest
+            command: flutter build ios --simulator --debug
+          - name: iOS (CocoaPods)
+            os: macos-latest
+            swiftpm: 'off'
+            command: flutter build ios --simulator --debug
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        if: matrix.name == 'Android'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install Linux build dependencies
+        if: matrix.name == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev
+      - name: Disable Swift Package Manager
+        if: matrix.swiftpm == 'off'
+        run: flutter config --no-enable-swift-package-manager
+      - name: Build test app
+        working-directory: test_app
+        run: ${{ matrix.command }}
