@@ -6,7 +6,7 @@ part of '../player.dart';
 
 /// Cold-start bring-up: hands the init recipe to the event isolate, then
 /// re-opens libmpv on the main isolate and wires the FFI handle, DSP
-/// pipelines, finalizer and TLS bundle. Also owns the pre-/post-init option
+/// pipelines, orphan tracking and TLS bundle. Also owns the pre-/post-init option
 /// recipes and the `mpv_observe_property` spec list. `_bringUpInIsolate` is
 /// the abstract member `_PlayerBase`'s constructor calls; the rest are
 /// internal to this mixin.
@@ -83,8 +83,6 @@ mixin _InitModule on _PlayerBase {
     _loudnessScanPipeline.stream.listen(_loudnessScanCtrl.add);
 
     OrphanHandleTracker.instance.add(_handle);
-    _nativeResources = PlayerNativeResources(_lib, _handle);
-    playerFinalizer.attach(this, _nativeResources, detach: this);
 
     _bringUpCompleted = true;
 

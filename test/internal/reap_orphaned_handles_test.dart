@@ -14,9 +14,8 @@ import 'package:mpv_audio_kit/src/internals/library_loader.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 
 void main() {
-  // reapOrphanedHandles is the shared teardown for libmpv handles leaked
-  // across a Hot-Restart (library_loader) and for a Player GC'd without
-  // dispose() (player_finalizer). The leak the user reported was caused by
+  // reapOrphanedHandles is the teardown for libmpv handles leaked across
+  // a Hot-Restart (library_loader). The leak the user reported was caused by
   // a bare `quit`: it only requests shutdown — the core's worker threads
   // and audio output are freed ONLY when the handle is destroyed. The fix
   // is the two-phase reap pinned here: `quit` every handle first (so any

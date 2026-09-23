@@ -27,7 +27,6 @@ import '../internals/event_isolate.dart';
 import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
 import '../internals/orphan_handle_tracker.dart';
-import '../internals/player_finalizer.dart';
 import '../internals/uri_resolver.dart';
 import '../media_session/media_session_controller.dart';
 import '../media_session/media_session_inputs.dart';
@@ -523,10 +522,6 @@ abstract class _PlayerBase {
 
   late final MpvLibrary _lib;
   late final Pointer<MpvHandle> _handle;
-  // Bundled with [_lib] + [_handle] inside a single object so a
-  // [Finalizer] can keep a reference and reach the lib even after the
-  // player itself is GC'd.
-  late final PlayerNativeResources _nativeResources;
   // Eagerly instantiated so `dispose()` is safe even when invoked
   // synchronously after construction. The actual mpv init runs
   // inside the isolate, driven by `_ready`.
@@ -1216,8 +1211,6 @@ abstract class _PlayerBase {
     } catch (_) {}
 
     if (_bringUpCompleted) {
-      _nativeResources.disposed = true;
-      playerFinalizer.detach(this);
       OrphanHandleTracker.instance.remove(_handle);
       await _filterTapPipeline.dispose();
       await _waveformPipeline.dispose();
