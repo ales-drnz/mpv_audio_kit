@@ -4,8 +4,12 @@
 
 // ignore_for_file: camel_case_types
 
+// The libmpv the build hook bundles (hook/build.dart), which every @Native
+// declaration below binds to.
+@DefaultAsset('package:mpv_audio_kit/libmpv')
+library;
+
 import 'dart:ffi';
-import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
@@ -652,8 +656,6 @@ typedef MpvHookContinue = int Function(Pointer<MpvHandle> ctx, int id);
 /// Holds an opened libmpv [DynamicLibrary] and the resolved client-API
 /// function pointers, looked up once at construction.
 class MpvLibrary {
-  final DynamicLibrary _lib;
-
   /// Bound `mpv_create`.
   late final MpvCreate mpvCreate;
 
@@ -729,14 +731,14 @@ class MpvLibrary {
   /// [LateInitializationError], so misuse surfaces as a test failure
   /// instead of a silent FFI crash.
   @visibleForTesting
-  MpvLibrary.uninitializedForTest() : _lib = DynamicLibrary.process();
+  MpvLibrary.uninitializedForTest();
 
-  MpvLibrary._(this._lib) {
-    mpvCreate = _lib.lookupFunction<_MpvCreateNative, MpvCreate>('mpv_create');
-    mpvInitialize = _lib.lookupFunction<_MpvInitializeNative, MpvInitialize>(
+  MpvLibrary._(DynamicLibrary lib) {
+    mpvCreate = lib.lookupFunction<_MpvCreateNative, MpvCreate>('mpv_create');
+    mpvInitialize = lib.lookupFunction<_MpvInitializeNative, MpvInitialize>(
       'mpv_initialize',
     );
-    mpvTerminateDestroy = _lib
+    mpvTerminateDestroy = lib
         .lookupFunction<_MpvTerminateDestroyNative, MpvTerminateDestroy>(
           'mpv_terminate_destroy',
         );
@@ -744,26 +746,26 @@ class MpvLibrary {
     // so the call skips the generated trampoline's thread-state transition.
     // NEVER mark a call that can block on the core (wait_event, command,
     // set/get property) or re-enter Dart as leaf.
-    mpvWakeup = _lib.lookupFunction<_MpvWakeupNative, MpvWakeup>(
+    mpvWakeup = lib.lookupFunction<_MpvWakeupNative, MpvWakeup>(
       'mpv_wakeup',
       isLeaf: true,
     );
-    mpvSetOptionString = _lib
+    mpvSetOptionString = lib
         .lookupFunction<_MpvSetOptionStringNative, MpvSetOptionString>(
           'mpv_set_option_string',
         );
-    mpvSetPropertyString = _lib
+    mpvSetPropertyString = lib
         .lookupFunction<_MpvSetPropertyStringNative, MpvSetPropertyString>(
           'mpv_set_property_string',
         );
-    mpvGetPropertyString = _lib
+    mpvGetPropertyString = lib
         .lookupFunction<_MpvGetPropertyStringNative, MpvGetPropertyString>(
           'mpv_get_property_string',
         );
-    mpvGetProperty = _lib.lookupFunction<_MpvGetPropertyNative, MpvGetProperty>(
+    mpvGetProperty = lib.lookupFunction<_MpvGetPropertyNative, MpvGetProperty>(
       'mpv_get_property',
     );
-    mpvSetProperty = _lib.lookupFunction<_MpvSetPropertyNative, MpvSetProperty>(
+    mpvSetProperty = lib.lookupFunction<_MpvSetPropertyNative, MpvSetProperty>(
       'mpv_set_property',
     );
     // The async variants enqueue on the core's dispatch and return without
@@ -771,110 +773,113 @@ class MpvLibrary {
     // `run_async` = reserve_reply + mp_dispatch_enqueue; name/value are
     // deep-copied first). They still take short-lived internal locks, so
     // they are NOT leaf-safe.
-    mpvSetPropertyAsync = _lib
+    mpvSetPropertyAsync = lib
         .lookupFunction<_MpvSetPropertyAsyncNative, MpvSetPropertyAsync>(
           'mpv_set_property_async',
         );
-    mpvGetPropertyAsync = _lib
+    mpvGetPropertyAsync = lib
         .lookupFunction<_MpvGetPropertyAsyncNative, MpvGetPropertyAsync>(
           'mpv_get_property_async',
         );
-    mpvCommandAsync = _lib
+    mpvCommandAsync = lib
         .lookupFunction<_MpvCommandAsyncNative, MpvCommandAsync>(
           'mpv_command_async',
         );
-    mpvCommand = _lib.lookupFunction<_MpvCommandNative, MpvCommand>(
+    mpvCommand = lib.lookupFunction<_MpvCommandNative, MpvCommand>(
       'mpv_command',
     );
-    mpvCommandString = _lib
+    mpvCommandString = lib
         .lookupFunction<_MpvCommandStringNative, MpvCommandString>(
           'mpv_command_string',
         );
-    mpvWaitEvent = _lib.lookupFunction<_MpvWaitEventNative, MpvWaitEvent>(
+    mpvWaitEvent = lib.lookupFunction<_MpvWaitEventNative, MpvWaitEvent>(
       'mpv_wait_event',
     );
-    mpvObserveProperty = _lib
+    mpvObserveProperty = lib
         .lookupFunction<_MpvObservePropertyNative, MpvObserveProperty>(
           'mpv_observe_property',
         );
-    mpvFree = _lib.lookupFunction<_MpvFreeNative, MpvFree>(
+    mpvFree = lib.lookupFunction<_MpvFreeNative, MpvFree>(
       'mpv_free',
       isLeaf: true,
     );
-    mpvFreeNodeContents = _lib
+    mpvFreeNodeContents = lib
         .lookupFunction<_MpvFreeNodeContentsNative, MpvFreeNodeContents>(
           'mpv_free_node_contents',
           isLeaf: true,
         );
-    mpvErrorString = _lib.lookupFunction<_MpvErrorStringNative, MpvErrorString>(
+    mpvErrorString = lib.lookupFunction<_MpvErrorStringNative, MpvErrorString>(
       'mpv_error_string',
       isLeaf: true,
     );
-    mpvRequestLogMessages = _lib
+    mpvRequestLogMessages = lib
         .lookupFunction<_MpvRequestLogMessagesNative, MpvRequestLogMessages>(
           'mpv_request_log_messages',
         );
-    mpvHookAdd = _lib.lookupFunction<_MpvHookAddNative, MpvHookAdd>(
+    mpvHookAdd = lib.lookupFunction<_MpvHookAddNative, MpvHookAdd>(
       'mpv_hook_add',
     );
-    mpvHookContinue = _lib
+    mpvHookContinue = lib
         .lookupFunction<_MpvHookContinueNative, MpvHookContinue>(
           'mpv_hook_continue',
         );
   }
 
-  /// Opens libmpv from the platform-specific path or a custom [path].
+  /// Binds the libmpv the build hook bundles with the app, through the
+  /// @Native declarations at the end of this file.
+  MpvLibrary._bundled() {
+    mpvCreate = _mpvCreate;
+    mpvInitialize = _mpvInitialize;
+    mpvTerminateDestroy = _mpvTerminateDestroy;
+    mpvWakeup = _mpvWakeup;
+    mpvSetOptionString = _mpvSetOptionString;
+    mpvSetPropertyString = _mpvSetPropertyString;
+    mpvGetPropertyString = _mpvGetPropertyString;
+    mpvGetProperty = _mpvGetProperty;
+    mpvSetProperty = _mpvSetProperty;
+    mpvSetPropertyAsync = _mpvSetPropertyAsync;
+    mpvGetPropertyAsync = _mpvGetPropertyAsync;
+    mpvCommandAsync = _mpvCommandAsync;
+    mpvCommand = _mpvCommand;
+    mpvCommandString = _mpvCommandString;
+    mpvWaitEvent = _mpvWaitEvent;
+    mpvObserveProperty = _mpvObserveProperty;
+    mpvFree = _mpvFree;
+    mpvFreeNodeContents = _mpvFreeNodeContents;
+    mpvErrorString = _mpvErrorString;
+    mpvRequestLogMessages = _mpvRequestLogMessages;
+    mpvHookAdd = _mpvHookAdd;
+    mpvHookContinue = _mpvHookContinue;
+  }
+
+  /// Opens libmpv: the one the build hook bundles with the app, or the
+  /// library at [path] when given (a custom libmpv build).
   /// Throws [MpvLibraryException] if the library cannot be found.
   factory MpvLibrary.open([String? path]) {
-    final resolvedPath = path ?? _resolvePath();
+    if (path == null) {
+      try {
+        // @Native symbols resolve on first use; resolve one now so a
+        // missing asset fails here, with a useful message.
+        Native.addressOf<NativeFunction<_MpvCreateNative>>(_mpvCreate);
+      } catch (e) {
+        throw MpvLibraryException(
+          'Failed to load the libmpv bundled with mpv_audio_kit.\n'
+          'Error: $e\n'
+          'The build hook (hook/build.dart) provides it; check the build '
+          'output for a hook failure.',
+        );
+      }
+      return MpvLibrary._bundled();
+    }
     try {
-      return MpvLibrary._(DynamicLibrary.open(resolvedPath));
+      return MpvLibrary._(DynamicLibrary.open(path));
     } catch (e) {
       throw MpvLibraryException(
-        'Failed to load libmpv from "$resolvedPath".\n'
+        'Failed to load libmpv from "$path".\n'
         'Error: $e\n'
         'Ensure the library is present and all its dependencies are installed.',
       );
     }
-  }
-
-  static String _resolvePath() {
-    if (Platform.isMacOS || Platform.isIOS) {
-      // Embedded as <App>/Frameworks/libmpv.framework/libmpv via the
-      // plugin's xcframework. dyld resolves the leaf path through the
-      // host app's LC_RPATH (@executable_path/Frameworks).
-      return 'libmpv.framework/libmpv';
-    } else if (Platform.isLinux) {
-      // Check local folder first (common for portable builds/AppImage)
-      final exeDir = File(Platform.resolvedExecutable).parent.path;
-      final localSo = '$exeDir/lib/libmpv.so';
-      final bundleSo = '$exeDir/libmpv.so';
-
-      if (File(localSo).existsSync()) {
-        return localSo;
-      }
-      if (File(bundleSo).existsSync()) {
-        return bundleSo;
-      }
-
-      // Fallback to system search path
-      return 'libmpv.so';
-    } else if (Platform.isWindows) {
-      // On Windows, use an absolute path relative to the executable.
-      final exeDir = File(Platform.resolvedExecutable).parent.path;
-      final localDll = '$exeDir\\libmpv.dll';
-      if (File(localDll).existsSync()) {
-        return localDll;
-      }
-      // Fallback to searching in PATH.
-      return 'libmpv.dll';
-    } else if (Platform.isAndroid) {
-      // Precompiled in android/src/main/jniLibs/<abi>/libmpv.so
-      return 'libmpv.so';
-    }
-    throw MpvLibraryException(
-      'Platform not supported: ${Platform.operatingSystem}',
-    );
   }
 }
 
@@ -889,3 +894,129 @@ class MpvLibraryException implements Exception {
   @override
   String toString() => 'MpvLibraryException: $message';
 }
+
+// ---------------------------------------------------------------------------
+// The bundled libmpv (see MpvLibrary._bundled). Leaf calls follow the same
+// rule as MpvLibrary._: only the documented non-blocking, callback-free ones.
+// ---------------------------------------------------------------------------
+
+@Native<_MpvCreateNative>(symbol: 'mpv_create')
+external Pointer<MpvHandle> _mpvCreate();
+
+@Native<_MpvInitializeNative>(symbol: 'mpv_initialize')
+external int _mpvInitialize(Pointer<MpvHandle> ctx);
+
+@Native<_MpvTerminateDestroyNative>(symbol: 'mpv_terminate_destroy')
+external void _mpvTerminateDestroy(Pointer<MpvHandle> ctx);
+
+@Native<_MpvWakeupNative>(symbol: 'mpv_wakeup', isLeaf: true)
+external void _mpvWakeup(Pointer<MpvHandle> ctx);
+
+@Native<_MpvSetOptionStringNative>(symbol: 'mpv_set_option_string')
+external int _mpvSetOptionString(
+  Pointer<MpvHandle> ctx,
+  Pointer<Utf8> name,
+  Pointer<Utf8> data,
+);
+
+@Native<_MpvSetPropertyStringNative>(symbol: 'mpv_set_property_string')
+external int _mpvSetPropertyString(
+  Pointer<MpvHandle> ctx,
+  Pointer<Utf8> name,
+  Pointer<Utf8> data,
+);
+
+@Native<_MpvGetPropertyStringNative>(symbol: 'mpv_get_property_string')
+external Pointer<Utf8> _mpvGetPropertyString(
+  Pointer<MpvHandle> ctx,
+  Pointer<Utf8> name,
+);
+
+@Native<_MpvGetPropertyNative>(symbol: 'mpv_get_property')
+external int _mpvGetProperty(
+  Pointer<MpvHandle> ctx,
+  Pointer<Utf8> name,
+  int format,
+  Pointer<Void> data,
+);
+
+@Native<_MpvSetPropertyNative>(symbol: 'mpv_set_property')
+external int _mpvSetProperty(
+  Pointer<MpvHandle> ctx,
+  Pointer<Utf8> name,
+  int format,
+  Pointer<Void> data,
+);
+
+@Native<_MpvSetPropertyAsyncNative>(symbol: 'mpv_set_property_async')
+external int _mpvSetPropertyAsync(
+  Pointer<MpvHandle> ctx,
+  int replyUserdata,
+  Pointer<Utf8> name,
+  int format,
+  Pointer<Void> data,
+);
+
+@Native<_MpvGetPropertyAsyncNative>(symbol: 'mpv_get_property_async')
+external int _mpvGetPropertyAsync(
+  Pointer<MpvHandle> ctx,
+  int replyUserdata,
+  Pointer<Utf8> name,
+  int format,
+);
+
+@Native<_MpvCommandAsyncNative>(symbol: 'mpv_command_async')
+external int _mpvCommandAsync(
+  Pointer<MpvHandle> ctx,
+  int replyUserdata,
+  Pointer<Pointer<Utf8>> args,
+);
+
+@Native<_MpvCommandNative>(symbol: 'mpv_command')
+external int _mpvCommand(Pointer<MpvHandle> ctx, Pointer<Pointer<Utf8>> args);
+
+@Native<_MpvCommandStringNative>(symbol: 'mpv_command_string')
+external int _mpvCommandString(Pointer<MpvHandle> ctx, Pointer<Utf8> args);
+
+@Native<_MpvWaitEventNative>(symbol: 'mpv_wait_event')
+external Pointer<MpvEvent> _mpvWaitEvent(
+  Pointer<MpvHandle> ctx,
+  double timeout,
+);
+
+@Native<_MpvObservePropertyNative>(symbol: 'mpv_observe_property')
+external int _mpvObserveProperty(
+  Pointer<MpvHandle> ctx,
+  int replyUserdata,
+  Pointer<Utf8> name,
+  int format,
+);
+
+@Native<_MpvFreeNative>(symbol: 'mpv_free', isLeaf: true)
+external void _mpvFree(Pointer<Void> data);
+
+@Native<_MpvFreeNodeContentsNative>(
+  symbol: 'mpv_free_node_contents',
+  isLeaf: true,
+)
+external void _mpvFreeNodeContents(Pointer<MpvNode> node);
+
+@Native<_MpvErrorStringNative>(symbol: 'mpv_error_string', isLeaf: true)
+external Pointer<Utf8> _mpvErrorString(int error);
+
+@Native<_MpvRequestLogMessagesNative>(symbol: 'mpv_request_log_messages')
+external int _mpvRequestLogMessages(
+  Pointer<MpvHandle> ctx,
+  Pointer<Utf8> minLevel,
+);
+
+@Native<_MpvHookAddNative>(symbol: 'mpv_hook_add')
+external int _mpvHookAdd(
+  Pointer<MpvHandle> ctx,
+  int replyUserdata,
+  Pointer<Utf8> name,
+  int priority,
+);
+
+@Native<_MpvHookContinueNative>(symbol: 'mpv_hook_continue')
+external int _mpvHookContinue(Pointer<MpvHandle> ctx, int id);

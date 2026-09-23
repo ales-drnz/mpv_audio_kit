@@ -27,7 +27,8 @@ String? libmpvSkipReason({
   String? fixturePath,
   List<String> extraFixtures = const [],
 }) {
-  if (resolveLibmpv() == null) return 'libmpv not found';
+  if (resolveLibmpv() == null)
+    return 'no bundled libmpv (did the build hook run?)';
   for (final path in [?fixturePath, ...extraFixtures]) {
     if (!File(path).existsSync()) return 'Fixture missing: $path';
   }
@@ -43,10 +44,7 @@ void initLibmpv() {
   // `asset://` URIs are materialised through `rootBundle` by the URI
   // resolver, which needs the binding initialised first.
   TestWidgetsFlutterBinding.ensureInitialized();
-  MpvAudioKit.ensureInitialized(
-    libmpv: resolveLibmpv()!,
-    hotRestartCleanup: false,
-  );
+  MpvAudioKit.ensureInitialized(hotRestartCleanup: false);
 }
 
 /// Declares a suite that needs the bundled libmpv. When libmpv or

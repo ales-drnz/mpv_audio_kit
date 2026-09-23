@@ -20,15 +20,6 @@ pubspec.lock
 /android/.gradle/
 /android/build/
 
-# Native binaries (downloaded by build)
-/android/src/main/jniLibs/
-/ios/mpv_audio_kit/Frameworks/libmpv.xcframework/
-/ios/mpv_audio_kit/Frameworks/libmpv_xcframework.zip
-/macos/mpv_audio_kit/Frameworks/libmpv.xcframework/
-/macos/mpv_audio_kit/Frameworks/libmpv_xcframework.zip
-/linux/libs/
-/windows/libs/
-
 # Docs
 /docs/
 /scripts/

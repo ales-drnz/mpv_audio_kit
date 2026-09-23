@@ -27,12 +27,14 @@ class MpvAudioKitPlugin :
 
     companion object {
         init {
-            // Loading libmpv.so via System.loadLibrary() ensures that the JVM
+            // Loading libmpv via System.loadLibrary() ensures that the JVM
             // invokes libmpv's JNI_OnLoad, registering the JavaVM pointer internally.
             // Without this, dart:ffi loads it via dlopen() which skips JNI_OnLoad,
             // causing the AudioTrack audio output driver to fail with
-            // "No Java virtual machine has been registered".
-            System.loadLibrary("mpv")
+            // "No Java virtual machine has been registered". The build hook
+            // bundles it as libmpv_audio_kit.so, the SONAME inside too, so the
+            // later dlopen from Dart gets this same loaded copy.
+            System.loadLibrary("mpv_audio_kit")
         }
     }
 

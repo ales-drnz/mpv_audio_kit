@@ -27,7 +27,9 @@
 # Exit codes: 0 all checked binaries are loadable, 1 at least one is not,
 # 2 nothing could be checked (missing tools, missing or empty directory).
 #
-# Usage: scripts/check_android_relocs.sh [jniLibs_dir]
+# Usage: scripts/check_android_relocs.sh <dir>
+#   <dir> holds the Android libmpv binaries, at any depth: the release assets
+#   (libmpv_android-<abi>.so) or an APK's extracted lib/ directory.
 
 set -euo pipefail
 
@@ -37,7 +39,7 @@ export LC_ALL=C
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-JNILIBS="${1:-$ROOT/android/src/main/jniLibs}"
+JNILIBS="${1:?usage: scripts/check_android_relocs.sh <dir with the Android .so files>}"
 GRADLE="$ROOT/android/build.gradle.kts"
 
 # llvm-readelf understands every tag GNU binutils does, and more; accept either.

@@ -60,8 +60,6 @@ target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_20)
 # dependencies here.
 target_include_directories(${PLUGIN_NAME}
   INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  # libmpv headers (optional; populate windows/libs/include/ if needed).
-  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/include"
 )
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
@@ -76,75 +74,5 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE windowsapp)
 # a consistent source identity on unpackaged .exe builds.
 target_link_libraries(${PLUGIN_NAME} PRIVATE shell32)
 
-# ── libmpv Bundling ──────────────────────────────────────────────────────────
-# libmpv.dll is auto-downloaded from GitHub Releases per target arch. Two
-# arches are supported (x86_64, arm64) and the binaries live in arch-scoped
-# subdirectories: windows/libs/<arch>/libmpv.dll. The CMake config detects
-# the build's target arch and picks the matching subdir.
-set(MPV_RELEASE_VERSION "libmpv-r13")
-set(EXPECTED_SHA256_X86_64  "5397ffe5472f056b21452c3c6a22059f8bd5d435ade6e29fd8d86915de4d4b90")
-set(EXPECTED_SHA256_ARM64  "bfd7c61d72afd823088f855ae1c1e53a6c16de944cd07d25947eec6cdac6604e")
-
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
-  set(_MPV_ARCH "arm64")
-  set(_MPV_RELEASE_NAME "libmpv_windows-arm64.dll")
-  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_ARM64}")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|x86_64|amd64)$")
-  set(_MPV_ARCH "x86_64")
-  set(_MPV_RELEASE_NAME "libmpv_windows-x86_64.dll")
-  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_X86_64}")
-else()
-  message(FATAL_ERROR "[mpv_audio_kit] Unsupported Windows arch: ${CMAKE_SYSTEM_PROCESSOR}. Supported: x86_64 (AMD64), arm64 (ARM64).")
-endif()
-
-set(_MPV_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/${_MPV_ARCH}")
-set(_MPV_DLL "${_MPV_LIB_DIR}/libmpv.dll")
-
-# Optional import library (only used when statically linking against the DLL).
-if(EXISTS "${_MPV_LIB_DIR}/libmpv.lib")
-  target_link_libraries(${PLUGIN_NAME} PRIVATE "${_MPV_LIB_DIR}/libmpv.lib")
-endif()
-
-set(DOWNLOAD_NEEDED TRUE)
-if(EXISTS "${_MPV_DLL}")
-  file(SHA256 "${_MPV_DLL}" ACTUAL_SHA256)
-  if(ACTUAL_SHA256 STREQUAL _MPV_EXPECTED_SHA)
-    set(DOWNLOAD_NEEDED FALSE)
-  else()
-    message(STATUS "[mpv_audio_kit] SHA-256 mismatch for ${_MPV_ARCH}: expected ${_MPV_EXPECTED_SHA} but got ${ACTUAL_SHA256}. Redownloading...")
-    file(REMOVE "${_MPV_DLL}")
-  endif()
-endif()
-
-# The remote download is toggled by the build kit's "Libs" actions: active in
-# REMOTE mode (download from GitHub when the local libmpv is absent / stale),
-# commented out in LOCAL mode (use the bundled binary only, never download). The
-# kit comments/uncomments this block — do not hand-edit the mpvkit: markers.
-# mpvkit:remote:begin
-if(DOWNLOAD_NEEDED)
-  message(STATUS "[mpv_audio_kit] Downloading ${_MPV_RELEASE_NAME} from GitHub Releases...")
-  file(MAKE_DIRECTORY "${_MPV_LIB_DIR}")
-  file(DOWNLOAD
-    "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/${_MPV_RELEASE_NAME}"
-    "${_MPV_DLL}"
-    SHOW_PROGRESS
-    EXPECTED_HASH SHA256=${_MPV_EXPECTED_SHA}
-    STATUS DOWNLOAD_STATUS
-  )
-  list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-  if(NOT STATUS_CODE EQUAL 0)
-    list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-    message(FATAL_ERROR "[mpv_audio_kit] Failed to download ${_MPV_RELEASE_NAME}: ${ERROR_MSG}. Place it manually at ${_MPV_DLL}")
-  endif()
-endif()
-# mpvkit:remote:end
-
-# Bundle the DLL with the application output.
-if(EXISTS "${_MPV_DLL}")
-  set(mpv_audio_kit_bundled_libraries
-    "${_MPV_DLL}"
-    PARENT_SCOPE
-  )
-else()
-  message(FATAL_ERROR "[mpv_audio_kit] libmpv.dll not found. It must be present at ${_MPV_DLL}")
-endif()
+# libmpv is not built or bundled here: the package's build hook
+# (hook/build.dart) downloads it and Flutter bundles it as a code asset.

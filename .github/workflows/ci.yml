@@ -46,9 +46,11 @@ jobs:
         with:
           channel: stable
           cache: true
+      # The build hook bundles libmpv for flutter test. ALSA is its one
+      # audio library linked at load time; PipeWire and PulseAudio are
+      # opened only if present.
       - name: Install libmpv runtime dependencies
-        run: sudo apt-get update && sudo apt-get install -y libasound2t64 libpulse0 libpipewire-0.3-0t64
-      - run: scripts/ci/fetch_test_libmpv.sh linux
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64
       - name: Keep core dumps
         run: |
           mkdir -p /tmp/cores
@@ -78,7 +80,6 @@ jobs:
         with:
           channel: stable
           cache: true
-      - run: scripts/ci/fetch_test_libmpv.sh macos
       - run: flutter test -x network
 
   build:
@@ -90,11 +91,10 @@ jobs:
         include:
           - name: Android
             os: ubuntu-24.04
-            # The Gradle download reports failures without failing the build,
-            # so check the libraries actually landed in the APK.
+            # The build hook must have put libmpv in the APK for every ABI.
             command: >-
               flutter build apk --debug &&
-              unzip -l build/app/outputs/flutter-apk/app-debug.apk | grep -c 'lib/.*/libmpv.so' | grep -qx 3
+              unzip -l build/app/outputs/flutter-apk/app-debug.apk | grep -c 'lib/.*/libmpv_audio_kit.so' | grep -qx 3
           - name: Linux
             os: ubuntu-24.04
             command: flutter build linux --debug

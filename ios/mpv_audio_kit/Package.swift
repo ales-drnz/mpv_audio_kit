@@ -3,14 +3,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 //
-// libmpv ships as a dynamic .xcframework, consumed via a SwiftPM
-// .binaryTarget. Two interchangeable forms — keep exactly ONE active:
-//
-//   • url + checksum — downloads the xcframework from this package's
-//     GitHub Releases. The standard practice for a distributed binary;
-//     use this once the release zip is published.
-//   • path — uses a libmpv.xcframework already in Frameworks/. Use
-//     this to test a local libmpv build before publishing a release.
+// libmpv is not part of this package: the build hook (hook/build.dart)
+// downloads it and Flutter bundles it with the app as a code asset.
 
 import PackageDescription
 
@@ -29,7 +23,6 @@ let package = Package(
         .target(
             name: "mpv_audio_kit",
             dependencies: [
-                "libmpv",
                 .product(name: "FlutterFramework", package: "FlutterFramework"),
             ],
             // The Swift here is real-file copies, intentionally NOT
@@ -55,20 +48,5 @@ let package = Package(
                 .linkedFramework("AVFoundation"),
             ]
         ),
-        // The libmpv binary source is toggled by the build kit's "Libs"
-        // actions (local / remote / clean). Exactly ONE region below is active
-        // at a time — the kit comments/uncomments these blocks; do not hand-edit
-        // the mpvkit: markers.
-        // mpvkit:local:begin
-        // .binaryTarget(
-            // name: "libmpv",
-            // path: "Frameworks/libmpv.xcframework"),
-        // mpvkit:local:end
-        // mpvkit:remote:begin
-        .binaryTarget(
-            name: "libmpv",
-            url: "https://github.com/ales-drnz/mpv_audio_kit/releases/download/libmpv-r13/libmpv_ios.xcframework.zip",
-            checksum: "b460f99d7e52fe0263f22239984e45127b7703ec3207d7bf385928c54c2d3e61"),
-        // mpvkit:remote:end
     ]
 )

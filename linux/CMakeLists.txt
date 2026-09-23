@@ -15,72 +15,8 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 # not be changed.
 set(PLUGIN_NAME "mpv_audio_kit_plugin")
 
-# ── libmpv Bundling ──────────────────────────────────────────────────────────
-# The official libmpv.so is auto-downloaded from GitHub Releases per target
-# arch. Two arches are supported (x86_64, aarch64) and the binaries live in
-# arch-scoped subdirectories: linux/libs/<arch>/libmpv.so. The CMake config
-# detects the build's target arch and picks the matching subdir.
-set(MPV_RELEASE_VERSION "libmpv-r13")
-set(EXPECTED_SHA256_X86_64  "509462749f10c9fd8753d60e7c2e4b55308f981a85a1afae5411d0c1939fe39a")
-set(EXPECTED_SHA256_AARCH64  "fa02f6c6e7bbf1a8832ae39f032a2e15391cc7a75d5667af35b3ccf27ce0bb05")
-
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
-  set(_MPV_ARCH "aarch64")
-  set(_MPV_RELEASE_NAME "libmpv_linux-aarch64.so")
-  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_AARCH64}")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
-  set(_MPV_ARCH "x86_64")
-  set(_MPV_RELEASE_NAME "libmpv_linux-x86_64.so")
-  set(_MPV_EXPECTED_SHA "${EXPECTED_SHA256_X86_64}")
-else()
-  message(FATAL_ERROR "[mpv_audio_kit] Unsupported Linux arch: ${CMAKE_SYSTEM_PROCESSOR}. Supported: x86_64, aarch64.")
-endif()
-
-set(_MPV_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/${_MPV_ARCH}")
-set(_BUNDLED_MPV "${_MPV_LIB_DIR}/libmpv.so")
-
-set(DOWNLOAD_NEEDED TRUE)
-if(EXISTS "${_BUNDLED_MPV}")
-  file(SHA256 "${_BUNDLED_MPV}" ACTUAL_SHA256)
-  if(ACTUAL_SHA256 STREQUAL _MPV_EXPECTED_SHA)
-    set(DOWNLOAD_NEEDED FALSE)
-  else()
-    message(STATUS "[mpv_audio_kit] SHA-256 mismatch for ${_MPV_ARCH}: expected ${_MPV_EXPECTED_SHA} but got ${ACTUAL_SHA256}. Redownloading...")
-    file(REMOVE "${_BUNDLED_MPV}")
-  endif()
-endif()
-
-# The remote download is toggled by the build kit's "Libs" actions: active in
-# REMOTE mode (download from GitHub when the local libmpv is absent / stale),
-# commented out in LOCAL mode (use the bundled binary only, never download). The
-# kit comments/uncomments this block — do not hand-edit the mpvkit: markers.
-# mpvkit:remote:begin
-if(DOWNLOAD_NEEDED)
-  message(STATUS "[mpv_audio_kit] Downloading ${_MPV_RELEASE_NAME} from GitHub Releases...")
-  file(MAKE_DIRECTORY "${_MPV_LIB_DIR}")
-  file(DOWNLOAD
-    "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/${_MPV_RELEASE_NAME}"
-    "${_BUNDLED_MPV}"
-    SHOW_PROGRESS
-    EXPECTED_HASH SHA256=${_MPV_EXPECTED_SHA}
-    STATUS DOWNLOAD_STATUS
-  )
-  list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-  if(NOT STATUS_CODE EQUAL 0)
-    list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
-    message(FATAL_ERROR "[mpv_audio_kit] Failed to download ${_MPV_RELEASE_NAME}: ${ERROR_MSG}. Place it manually at ${_BUNDLED_MPV}")
-  endif()
-endif()
-# mpvkit:remote:end
-
-if(EXISTS "${_BUNDLED_MPV}")
-  message(STATUS "[mpv_audio_kit] Using bundled libmpv: ${_BUNDLED_MPV}")
-  add_library(mpv_bundled SHARED IMPORTED GLOBAL)
-  set_target_properties(mpv_bundled PROPERTIES IMPORTED_LOCATION "${_BUNDLED_MPV}")
-  set(mpv_audio_kit_bundled_libraries "${_BUNDLED_MPV}" PARENT_SCOPE)
-else()
-  message(FATAL_ERROR "[mpv_audio_kit] libmpv not found. It must be present at ${_BUNDLED_MPV}")
-endif()
+# libmpv is not built or bundled here: the package's build hook
+# (hook/build.dart) downloads it and Flutter bundles it as a code asset.
 
 # Any new source files that you add to the plugin should be added here.
 list(APPEND PLUGIN_SOURCES

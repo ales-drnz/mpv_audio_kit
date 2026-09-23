@@ -80,12 +80,11 @@ abstract final class MpvAudioKit {
   ///
   /// [libmpv] (optional) — explicit path or filename for the native
   /// `libmpv` library to load via `DynamicLibrary.open`. When `null`
-  /// (the default), the platform's standard lookup is used:
-  /// `libmpv.so` on Linux/Android, `libmpv.dll` on Windows, and
-  /// `libmpv.framework/libmpv` on macOS/iOS (resolved via the consumer
-  /// app's @rpath).
-  /// Pass an explicit path only when shipping a custom libmpv build
-  /// alongside your app.
+  /// (the default), the libmpv the package's build hook bundles with the
+  /// app is used. Pass an explicit path only when shipping a custom
+  /// libmpv build alongside your app; to bundle one in place of the
+  /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
+  /// app's pubspec instead.
   ///
   /// [hotRestartCleanup] (default: `true`) — recovers libmpv handles
   /// leaked across a Flutter Hot-Restart so they don't keep

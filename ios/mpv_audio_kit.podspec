@@ -1,17 +1,13 @@
 #
 # mpv_audio_kit iOS podspec
 #
-# libmpv on iOS is distributed as a dynamic xcframework downloaded from
-# GitHub Releases. Each slice wraps a Mach-O dylib (install_name
-# `@rpath/libmpv.framework/libmpv`); the Dart side loads it via
-# `DynamicLibrary.open('libmpv.framework/libmpv')`. The xcframework includes:
-#   ios-arm64                    – device (arm64)
-#   ios-arm64_x86_64-simulator   – simulator (arm64 + x86_64 lipo'd)
+# libmpv is not part of this pod: the package's build hook
+# (hook/build.dart) downloads it and Flutter bundles it with the app as
+# mpv_audio_kit.framework, a code asset the Dart side binds with @Native.
 #
 # A Flutter plugin ships both dependency-manager manifests — this podspec
 # (CocoaPods) and Package.swift (Swift Package Manager) — and the consuming
-# app's setup decides which one Flutter uses. Both describe the same
-# libmpv.xcframework and share its SHA-256.
+# app's setup decides which one Flutter uses.
 #
 Pod::Spec.new do |s|
   s.name             = 'mpv_audio_kit'
@@ -45,56 +41,6 @@ Pod::Spec.new do |s|
   # Now Playing entry. AVFoundation is needed for AVAudioSession (audio
   # interruption handling).
   s.frameworks = 'MediaPlayer', 'AVFoundation', 'AudioToolbox', 'Security', 'CoreFoundation'
-
-  # ── Dynamic libmpv XCFramework ────────────────────────────────────────────
-  # Automatically downloaded from GitHub Releases if missing or invalid.
-  # Run `make checksums` to refresh the SHA-256 after a libmpv rebuild —
-  # the helper script updates both this file and Package.swift.
-  s.prepare_command = <<-CMD
-    MPV_RELEASE_VERSION="libmpv-r13"
-    EXPECTED_SHA256="b460f99d7e52fe0263f22239984e45127b7703ec3207d7bf385928c54c2d3e61"
-    URL="https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}/libmpv_ios.xcframework.zip"
-
-    mkdir -p mpv_audio_kit/Frameworks
-    ZIP_FILE="mpv_audio_kit/Frameworks/libmpv_xcframework.zip"
-    DOWNLOAD_NEEDED=1
-
-    if [ -f "mpv_audio_kit/Frameworks/libmpv.xcframework/Info.plist" ] && [ -f "$ZIP_FILE" ]; then
-      ACTUAL_SHA256=$(shasum -a 256 "$ZIP_FILE" | awk '{ print $1 }')
-      if [ "$ACTUAL_SHA256" = "$EXPECTED_SHA256" ]; then
-        DOWNLOAD_NEEDED=0
-      else
-        echo "SHA-256 mismatch! Expected $EXPECTED_SHA256 but got $ACTUAL_SHA256. Redownloading..."
-        rm -rf "mpv_audio_kit/Frameworks/libmpv.xcframework"
-        rm -f "$ZIP_FILE"
-      fi
-    elif [ -d "mpv_audio_kit/Frameworks/libmpv.xcframework" ] && [ ! -f "$ZIP_FILE" ]; then
-      DOWNLOAD_NEEDED=0
-    fi
-
-    # Remote download — toggled by the build kit's "Libs" actions: active in
-    # REMOTE mode (fetch from GitHub when the vendored xcframework is absent /
-    # stale), commented out in LOCAL mode (use the vendored copy only). The kit
-    # comments/uncomments this block — do not hand-edit the mpvkit: markers.
-    # mpvkit:remote:begin
-    if [ $DOWNLOAD_NEEDED -eq 1 ]; then
-      echo "Downloading libmpv_ios.xcframework.zip from $URL..."
-      curl -L -o "$ZIP_FILE" "$URL"
-
-      ACTUAL_SHA256=$(shasum -a 256 "$ZIP_FILE" | awk '{ print $1 }')
-      if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
-        echo "ERROR: SHA-256 verification failed for downloaded file!"
-        rm -f "$ZIP_FILE"
-        exit 1
-      fi
-
-      unzip -o "$ZIP_FILE" -d mpv_audio_kit/Frameworks/
-      rm -f "$ZIP_FILE"
-    fi
-    # mpvkit:remote:end
-  CMD
-
-  s.vendored_frameworks = 'mpv_audio_kit/Frameworks/libmpv.xcframework'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE'  => 'YES',
