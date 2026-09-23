@@ -25,86 +25,86 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   final fixturePath = defaultFixturePath();
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    group('Spectrum / PCM end-to-end', () {
+      late Player player;
 
-  group('Spectrum / PCM end-to-end', () {
-    late Player player;
-
-    setUpAll(() async {
-      player = await buildPlayerWithFixture(fixturePath: fixturePath);
-    });
-
-    tearDownAll(() async {
-      await player.dispose();
-    });
-
-    test('PcmFrame arrives within 1s of play() — non-zero samples', () async {
-      // Speed up the emit cadence so the test doesn't wait a full
-      // 33 ms per tick.
-      await player.setSpectrum(
-        const SpectrumSettings(emitInterval: Duration(milliseconds: 16)),
-      );
-      final completer = Completer<PcmFrame>();
-      final sub = player.stream.pcm.listen((f) {
-        if (!completer.isCompleted) completer.complete(f);
+      setUpAll(() async {
+        player = await buildPlayerWithFixture(fixturePath: fixturePath);
       });
-      try {
-        await player.play();
-        final frame = await completer.future.timeout(
-          const Duration(seconds: 2),
-        );
-        expect(frame.samples.length, greaterThan(0));
-        expect(frame.sampleRate, greaterThan(0));
-        expect(frame.channels, greaterThanOrEqualTo(1));
-        expect(frame.timestamp, isA<Duration>());
-        // Sine-440 fixture: at least some samples must be non-zero
-        // (the wrapper / mpv silence-pad anything before play() lands,
-        // so non-zero proves the post-DSP signal made it through).
-        final hasSignal = frame.samples.any((s) => s.abs() > 1e-4);
-        expect(
-          hasSignal,
-          isTrue,
-          reason: 'PCM frame should contain non-silent audio',
-        );
-      } finally {
-        await sub.cancel();
-        await player.pause();
-      }
-    }, timeout: const Timeout(Duration(seconds: 5)));
 
-    test(
-      'FftFrame bands respond to the sine — at least one band > 0',
-      () async {
+      tearDownAll(() async {
+        await player.dispose();
+      });
+
+      test('PcmFrame arrives within 1s of play() — non-zero samples', () async {
+        // Speed up the emit cadence so the test doesn't wait a full
+        // 33 ms per tick.
         await player.setSpectrum(
-          const SpectrumSettings(
-            fftSize: 1024,
-            emitInterval: Duration(milliseconds: 16),
-          ),
+          const SpectrumSettings(emitInterval: Duration(milliseconds: 16)),
         );
-        final completer = Completer<FftFrame>();
-        final sub = player.stream.fft.listen((f) {
-          // Wait for a frame that has signal (the very first frame can
-          // arrive before audio has flowed through the AO).
-          final hasEnergy = f.bands.any((b) => b > 0.01);
-          if (hasEnergy && !completer.isCompleted) completer.complete(f);
+        final completer = Completer<PcmFrame>();
+        final sub = player.stream.pcm.listen((f) {
+          if (!completer.isCompleted) completer.complete(f);
         });
         try {
           await player.play();
           final frame = await completer.future.timeout(
-            const Duration(seconds: 3),
+            const Duration(seconds: 2),
           );
-          expect(frame.bands.length, 64);
-          expect(frame.bins.length, 512); // fftSize / 2
+          expect(frame.samples.length, greaterThan(0));
           expect(frame.sampleRate, greaterThan(0));
-          // The 440 Hz sine fixture should peak in a low band.
-          final maxBand = frame.bands.reduce((a, b) => a > b ? a : b);
-          expect(maxBand, greaterThan(0.01));
+          expect(frame.channels, greaterThanOrEqualTo(1));
+          expect(frame.timestamp, isA<Duration>());
+          // Sine-440 fixture: at least some samples must be non-zero
+          // (the wrapper / mpv silence-pad anything before play() lands,
+          // so non-zero proves the post-DSP signal made it through).
+          final hasSignal = frame.samples.any((s) => s.abs() > 1e-4);
+          expect(
+            hasSignal,
+            isTrue,
+            reason: 'PCM frame should contain non-silent audio',
+          );
         } finally {
           await sub.cancel();
           await player.pause();
         }
-      },
-      timeout: const Timeout(Duration(seconds: 5)),
-    );
+      }, timeout: const Timeout(Duration(seconds: 5)));
+
+      test(
+        'FftFrame bands respond to the sine — at least one band > 0',
+        () async {
+          await player.setSpectrum(
+            const SpectrumSettings(
+              fftSize: 1024,
+              emitInterval: Duration(milliseconds: 16),
+            ),
+          );
+          final completer = Completer<FftFrame>();
+          final sub = player.stream.fft.listen((f) {
+            // Wait for a frame that has signal (the very first frame can
+            // arrive before audio has flowed through the AO).
+            final hasEnergy = f.bands.any((b) => b > 0.01);
+            if (hasEnergy && !completer.isCompleted) completer.complete(f);
+          });
+          try {
+            await player.play();
+            final frame = await completer.future.timeout(
+              const Duration(seconds: 3),
+            );
+            expect(frame.bands.length, 64);
+            expect(frame.bins.length, 512); // fftSize / 2
+            expect(frame.sampleRate, greaterThan(0));
+            // The 440 Hz sine fixture should peak in a low band.
+            final maxBand = frame.bands.reduce((a, b) => a > b ? a : b);
+            expect(maxBand, greaterThan(0.01));
+          } finally {
+            await sub.cancel();
+            await player.pause();
+          }
+        },
+        timeout: const Timeout(Duration(seconds: 5)),
+      );
+    });
   });
 }

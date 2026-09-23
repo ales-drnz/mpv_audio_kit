@@ -13,36 +13,36 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   final fixturePath = defaultFixturePath();
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    group('setCache end-to-end', () {
+      late Player player;
 
-  group('setCache end-to-end', () {
-    late Player player;
+      setUpAll(() async {
+        player = await buildPlayerWithFixture(fixturePath: fixturePath);
+      });
 
-    setUpAll(() async {
-      player = await buildPlayerWithFixture(fixturePath: fixturePath);
+      tearDownAll(() async {
+        await player.dispose();
+      });
+
+      test('writes 6 backing properties atomically', () async {
+        const cfg = CacheSettings(
+          mode: Cache.yes,
+          secs: Duration(seconds: 5),
+          onDisk: true,
+          pause: false,
+          pauseWait: Duration(seconds: 2),
+          pauseInitial: true,
+        );
+        await player.setCache(cfg);
+        expect(player.state.cache.mode, Cache.yes);
+        expect(player.state.cache.secs, const Duration(seconds: 5));
+        expect(player.state.cache.onDisk, isTrue);
+        expect(player.state.cache.pause, isFalse);
+        expect(player.state.cache.pauseWait, const Duration(seconds: 2));
+        // #6: buffer-before-start knob round-trips through real libmpv.
+        expect(player.state.cache.pauseInitial, isTrue);
+      }, timeout: const Timeout(Duration(seconds: 30)));
     });
-
-    tearDownAll(() async {
-      await player.dispose();
-    });
-
-    test('writes 6 backing properties atomically', () async {
-      const cfg = CacheSettings(
-        mode: Cache.yes,
-        secs: Duration(seconds: 5),
-        onDisk: true,
-        pause: false,
-        pauseWait: Duration(seconds: 2),
-        pauseInitial: true,
-      );
-      await player.setCache(cfg);
-      expect(player.state.cache.mode, Cache.yes);
-      expect(player.state.cache.secs, const Duration(seconds: 5));
-      expect(player.state.cache.onDisk, isTrue);
-      expect(player.state.cache.pause, isFalse);
-      expect(player.state.cache.pauseWait, const Duration(seconds: 2));
-      // #6: buffer-before-start knob round-trips through real libmpv.
-      expect(player.state.cache.pauseInitial, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

@@ -17,53 +17,57 @@ void main() {
   // `'NaN'` / `'Infinity'` to mpv, which produced an opaque rejection.
   // The new contract is: ArgumentError with the offending parameter
   // name, no FFI write, no state mutation.
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    late Player player;
+    setUp(() async {
+      player = await buildPlayer();
+    });
+    tearDown(() async {
+      await player.dispose();
+    });
 
-  late Player player;
-  setUp(() async {
-    player = await buildPlayer();
-  });
-  tearDown(() async {
-    await player.dispose();
-  });
-
-  test('setVolume rejects NaN / Infinity / -Infinity', () {
-    final priorVolume = player.state.volume;
-    for (final bad in [double.nan, double.infinity, double.negativeInfinity]) {
+    test('setVolume rejects NaN / Infinity / -Infinity', () {
+      final priorVolume = player.state.volume;
+      for (final bad in [
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+      ]) {
+        expect(
+          () => player.setVolume(bad),
+          throwsArgumentError,
+          reason: 'volume=$bad must be rejected at the wrapper boundary',
+        );
+      }
       expect(
-        () => player.setVolume(bad),
-        throwsArgumentError,
-        reason: 'volume=$bad must be rejected at the wrapper boundary',
+        player.state.volume,
+        priorVolume,
+        reason: 'state must not advance past a rejected non-finite write',
       );
-    }
-    expect(
-      player.state.volume,
-      priorVolume,
-      reason: 'state must not advance past a rejected non-finite write',
-    );
-  });
+    });
 
-  test('setRate rejects NaN / Infinity', () {
-    expect(() => player.setRate(double.nan), throwsArgumentError);
-    expect(() => player.setRate(double.infinity), throwsArgumentError);
-  });
+    test('setRate rejects NaN / Infinity', () {
+      expect(() => player.setRate(double.nan), throwsArgumentError);
+      expect(() => player.setRate(double.infinity), throwsArgumentError);
+    });
 
-  test('setPitch rejects NaN', () {
-    expect(() => player.setPitch(double.nan), throwsArgumentError);
-  });
+    test('setPitch rejects NaN', () {
+      expect(() => player.setPitch(double.nan), throwsArgumentError);
+    });
 
-  test('setVolumeGain rejects NaN', () {
-    expect(() => player.setVolumeGain(double.nan), throwsArgumentError);
-  });
+    test('setVolumeGain rejects NaN', () {
+      expect(() => player.setVolumeGain(double.nan), throwsArgumentError);
+    });
 
-  test('setVolumeMax rejects Infinity', () {
-    expect(() => player.setVolumeMax(double.infinity), throwsArgumentError);
-  });
+    test('setVolumeMax rejects Infinity', () {
+      expect(() => player.setVolumeMax(double.infinity), throwsArgumentError);
+    });
 
-  test('finite values still pass (regression sanity)', () async {
-    await player.setVolume(50);
-    expect(player.state.volume, 50);
-    await player.setRate(1.5);
-    expect(player.state.rate, 1.5);
+    test('finite values still pass (regression sanity)', () async {
+      await player.setVolume(50);
+      expect(player.state.volume, 50);
+      await player.setRate(1.5);
+      expect(player.state.rate, 1.5);
+    });
   });
 }

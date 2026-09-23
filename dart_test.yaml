@@ -1,0 +1,7 @@
+# Tags used across the suite. Suites that need the bundled libmpv skip
+# themselves when it is missing (see test/_helpers/setter_test_helpers.dart),
+# so they need no tag.
+tags:
+  # Reaches hosts on the public internet. Exclude with `-x network` when
+  # the network is unavailable or flaky.
+  network:

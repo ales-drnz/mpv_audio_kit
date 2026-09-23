@@ -29,8 +29,8 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
-import '../_helpers/libmpv_resolver.dart';
 import '../_helpers/mpv_error_capture.dart';
+import '../_helpers/setter_test_helpers.dart';
 import '../generated/_audio_effects_param_corners.dart';
 
 void main() {
@@ -78,69 +78,61 @@ void main() {
 
   late Player player;
 
-  setUpAll(() async {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing: $fixturePath');
-      return;
-    }
+  runtimeSuite(fixturePath: fixturePath, () {
+    setUpAll(() async {
+      player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.error),
+      );
+      await player.setRawProperty('ao', 'null');
+      await player.open(Media(fixturePath), play: false);
+      await player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
+    });
 
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
+    tearDownAll(() async {
+      await player.dispose();
+    });
 
-    player = Player(
-      configuration: const PlayerConfiguration(logLevel: LogLevel.error),
-    );
-    await player.setRawProperty('ao', 'null');
-    await player.open(Media(fixturePath), play: false);
-    await player.stream.seekCompleted.first.timeout(
-      const Duration(seconds: 10),
-    );
-  });
-
-  tearDownAll(() async {
-    await player.dispose();
-  });
-
-  test(
-    'every typed numeric param accepts its codegen Min/Default/Max in mpv',
-    () async {
-      final failures = <String, List<String>>{};
-      for (final corner in kFilterParamCorners) {
-        if (requireParams.contains(corner.filter)) continue;
-        if (skipCorners.contains('${corner.filter}.${corner.label}')) continue;
-        final errors = await captureMpvErrors(player, () async {
-          await player.setAudioEffects(corner.bundle);
-        });
-        if (errors.isNotEmpty) {
-          final key = '${corner.filter}.${corner.label}';
-          failures[key] = errors.map((e) => e.text.trim()).toList();
-        }
-        // Reset between iterations so a previous failure doesn't bleed
-        // into the next drain.
-        await player.setAudioEffects(const AudioEffects());
-      }
-
-      if (failures.isNotEmpty) {
-        final buf = StringBuffer()
-          ..writeln(
-            '${failures.length} of ${kFilterParamCorners.length} typed '
-            'param-corner cases produced mpv errors:',
-          )
-          ..writeln();
-        final sortedKeys = failures.keys.toList()..sort();
-        for (final key in sortedKeys) {
-          buf.writeln('  - $key:');
-          for (final msg in failures[key]!) {
-            buf.writeln('      $msg');
+    test(
+      'every typed numeric param accepts its codegen Min/Default/Max in mpv',
+      () async {
+        final failures = <String, List<String>>{};
+        for (final corner in kFilterParamCorners) {
+          if (requireParams.contains(corner.filter)) continue;
+          if (skipCorners.contains('${corner.filter}.${corner.label}')) {
+            continue;
           }
+          final errors = await captureMpvErrors(player, () async {
+            await player.setAudioEffects(corner.bundle);
+          });
+          if (errors.isNotEmpty) {
+            final key = '${corner.filter}.${corner.label}';
+            failures[key] = errors.map((e) => e.text.trim()).toList();
+          }
+          // Reset between iterations so a previous failure doesn't bleed
+          // into the next drain.
+          await player.setAudioEffects(const AudioEffects());
         }
-        fail(buf.toString());
-      }
-    },
-    timeout: const Timeout(Duration(minutes: 8)),
-  );
+
+        if (failures.isNotEmpty) {
+          final buf = StringBuffer()
+            ..writeln(
+              '${failures.length} of ${kFilterParamCorners.length} typed '
+              'param-corner cases produced mpv errors:',
+            )
+            ..writeln();
+          final sortedKeys = failures.keys.toList()..sort();
+          for (final key in sortedKeys) {
+            buf.writeln('  - $key:');
+            for (final msg in failures[key]!) {
+              buf.writeln('      $msg');
+            }
+          }
+          fail(buf.toString());
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 8)),
+    );
+  });
 }

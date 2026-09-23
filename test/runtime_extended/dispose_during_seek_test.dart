@@ -22,30 +22,30 @@ void main() {
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    test(
+      'dispose() called while a seek is in flight teardowns cleanly',
+      () async {
+        final player = await buildPlayerWithFixture(fixturePath: fixturePath);
 
-  test(
-    'dispose() called while a seek is in flight teardowns cleanly',
-    () async {
-      final player = await buildPlayerWithFixture(fixturePath: fixturePath);
+        // Kick off a seek WITHOUT awaiting — dispose() races the seek's
+        // PLAYBACK_RESTART. The wrapper's dispose protocol issues `quit` to
+        // mpv before calling terminate_destroy; mpv should abort the in-
+        // flight seek as part of its quit response.
+        // ignore: unawaited_futures
+        player.seek(const Duration(seconds: 2));
 
-      // Kick off a seek WITHOUT awaiting — dispose() races the seek's
-      // PLAYBACK_RESTART. The wrapper's dispose protocol issues `quit` to
-      // mpv before calling terminate_destroy; mpv should abort the in-
-      // flight seek as part of its quit response.
-      // ignore: unawaited_futures
-      player.seek(const Duration(seconds: 2));
+        // No await delay — fire dispose immediately to maximize the race
+        // window. If the cooperative shutdown is correct, this returns
+        // without throwing or hanging.
+        await player.dispose();
 
-      // No await delay — fire dispose immediately to maximize the race
-      // window. If the cooperative shutdown is correct, this returns
-      // without throwing or hanging.
-      await player.dispose();
-
-      // Let libmpv's worker threads unwind before the test process exits
-      // — the cosmetic flutter_test "did not complete" flake is sensitive
-      // to threads still alive at subprocess kill time.
-      await Future<void>.delayed(const Duration(seconds: 1));
-    },
-    timeout: const Timeout(Duration(seconds: 30)),
-  );
+        // Let libmpv's worker threads unwind before the test process exits
+        // — the cosmetic flutter_test "did not complete" flake is sensitive
+        // to threads still alive at subprocess kill time.
+        await Future<void>.delayed(const Duration(seconds: 1));
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
+  });
 }

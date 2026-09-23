@@ -19,57 +19,57 @@ import 'package:test/test.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    test('dispose() closes the DSP streams (fft/pcm/spectrum/waveform) — '
+        'subscribers must receive done', () async {
+      final player = await buildPlayer();
+      await player.ready;
 
-  test('dispose() closes the DSP streams (fft/pcm/spectrum/waveform) — '
-      'subscribers must receive done', () async {
-    final player = await buildPlayer();
-    await player.ready;
-
-    Completer<void> watchDone<T>(Stream<T> stream) {
-      final done = Completer<void>();
-      stream.listen((_) {}, onDone: done.complete);
-      return done;
-    }
-
-    // Control: `seekCompleted` IS in the dispose close list today.
-    // It proves the harness detects `done` correctly — if this one
-    // fails, the failure is in the test setup, not the audited bug.
-    final controlDone = watchDone(player.stream.seekCompleted);
-
-    final dspDone = <String, Completer<void>>{
-      'fft': watchDone(player.stream.fft),
-      'pcm': watchDone(player.stream.pcm),
-      'spectrum': watchDone(player.stream.spectrum),
-      'waveform': watchDone(player.stream.waveform),
-    };
-
-    await player.dispose();
-
-    await expectLater(
-      controlDone.future.timeout(const Duration(seconds: 2)),
-      completes,
-      reason:
-          'Control stream seekCompleted did not emit done after '
-          'dispose() — harness problem, not the audited bug.',
-    );
-
-    final neverClosed = <String>[];
-    for (final entry in dspDone.entries) {
-      try {
-        await entry.value.future.timeout(const Duration(seconds: 2));
-      } on TimeoutException {
-        neverClosed.add(entry.key);
+      Completer<void> watchDone<T>(Stream<T> stream) {
+        final done = Completer<void>();
+        stream.listen((_) {}, onDone: done.complete);
+        return done;
       }
-    }
 
-    expect(
-      neverClosed,
-      isEmpty,
-      reason:
-          'These DSP streams never emitted done after dispose() — '
-          'their Player-side StreamControllers are not closed, so a '
-          'subscriber awaiting `.first` across a dispose hangs forever.',
-    );
-  }, timeout: const Timeout(Duration(seconds: 30)));
+      // Control: `seekCompleted` IS in the dispose close list today.
+      // It proves the harness detects `done` correctly — if this one
+      // fails, the failure is in the test setup, not the audited bug.
+      final controlDone = watchDone(player.stream.seekCompleted);
+
+      final dspDone = <String, Completer<void>>{
+        'fft': watchDone(player.stream.fft),
+        'pcm': watchDone(player.stream.pcm),
+        'spectrum': watchDone(player.stream.spectrum),
+        'waveform': watchDone(player.stream.waveform),
+      };
+
+      await player.dispose();
+
+      await expectLater(
+        controlDone.future.timeout(const Duration(seconds: 2)),
+        completes,
+        reason:
+            'Control stream seekCompleted did not emit done after '
+            'dispose() — harness problem, not the audited bug.',
+      );
+
+      final neverClosed = <String>[];
+      for (final entry in dspDone.entries) {
+        try {
+          await entry.value.future.timeout(const Duration(seconds: 2));
+        } on TimeoutException {
+          neverClosed.add(entry.key);
+        }
+      }
+
+      expect(
+        neverClosed,
+        isEmpty,
+        reason:
+            'These DSP streams never emitted done after dispose() — '
+            'their Player-side StreamControllers are not closed, so a '
+            'subscriber awaiting `.first` across a dispose hangs forever.',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
 }

@@ -83,7 +83,12 @@ void main() {
         reason: 'precondition: must enter the test in a non-C locale',
       );
 
-      initLibmpvOrSkip();
+      final skip = libmpvSkipReason();
+      if (skip != null) {
+        markTestSkipped(skip);
+        return;
+      }
+      initLibmpv();
 
       final post = setlocale(lcNumeric, nullptr).cast<Utf8>().toDartString();
       expect(

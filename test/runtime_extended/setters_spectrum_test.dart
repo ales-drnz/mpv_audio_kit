@@ -28,95 +28,95 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   final fixturePath = defaultFixturePath();
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    group('Spectrum / PCM setters', () {
+      late Player player;
 
-  group('Spectrum / PCM setters', () {
-    late Player player;
+      setUpAll(() async {
+        player = await buildPlayerWithFixture(fixturePath: fixturePath);
+      });
 
-    setUpAll(() async {
-      player = await buildPlayerWithFixture(fixturePath: fixturePath);
-    });
+      tearDownAll(() async {
+        await player.dispose();
+      });
 
-    tearDownAll(() async {
-      await player.dispose();
-    });
+      test('default SpectrumSettings exposed via spectrumSettings getter', () {
+        // Before any setSpectrum, the pipeline reports defaults.
+        final s = player.spectrumSettings;
+        expect(s.fftSize, 2048);
+        expect(s.bandCount, 64);
+        expect(s.window, WindowFunction.hann);
+        expect(s.emitInterval, const Duration(milliseconds: 33));
+      });
 
-    test('default SpectrumSettings exposed via spectrumSettings getter', () {
-      // Before any setSpectrum, the pipeline reports defaults.
-      final s = player.spectrumSettings;
-      expect(s.fftSize, 2048);
-      expect(s.bandCount, 64);
-      expect(s.window, WindowFunction.hann);
-      expect(s.emitInterval, const Duration(milliseconds: 33));
-    });
-
-    test('setSpectrum / updateSpectrum round-trip', () async {
-      await player.setSpectrum(
-        const SpectrumSettings(
-          fftSize: 1024,
-          bandCount: 32,
-          window: WindowFunction.blackmanHarris,
-          emitInterval: Duration(milliseconds: 16),
-          attackSmoothing: 0.7,
-          releaseSmoothing: 0.05,
-          minDb: -80,
-          maxDb: -5,
-        ),
-      );
-      var s = player.spectrumSettings;
-      expect(s.fftSize, 1024);
-      expect(s.bandCount, 32);
-      expect(s.window, WindowFunction.blackmanHarris);
-      expect(s.emitInterval, const Duration(milliseconds: 16));
-      expect(s.attackSmoothing, 0.7);
-      expect(s.releaseSmoothing, 0.05);
-      expect(s.minDb, -80);
-      expect(s.maxDb, -5);
-
-      // updateSpectrum mapper sees the current settings.
-      await player.updateSpectrum((c) => c.copyWith(bandCount: 128));
-      s = player.spectrumSettings;
-      expect(s.bandCount, 128);
-      expect(s.fftSize, 1024); // other fields preserved
-    });
-
-    test(
-      'subscribe to spectrum + pcm without crash; cancel back to zero',
-      () async {
-        // The host libmpv binaries may be unpatched; the property may
-        // return M_PROPERTY_UNAVAILABLE on every poll. We're only
-        // asserting the wrapper-side plumbing doesn't blow up.
-        final spectrumSub = player.stream.fft.listen((_) {});
-        final pcmSub = player.stream.pcm.listen((_) {});
-        // Give the timer a few ticks.
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-        await spectrumSub.cancel();
-        await pcmSub.cancel();
-        // Re-subscribe — pipeline should re-arm.
-        final reSub = player.stream.fft.listen((_) {});
-        await Future<void>.delayed(const Duration(milliseconds: 60));
-        await reSub.cancel();
-      },
-      timeout: const Timeout(Duration(seconds: 5)),
-    );
-
-    test('setSpectrum mid-stream (mutability) does not throw', () async {
-      final sub = player.stream.fft.listen((_) {});
-      try {
-        await player.updateSpectrum(
-          (c) => c.copyWith(
-            fftSize: 4096,
-            emitInterval: const Duration(milliseconds: 20),
+      test('setSpectrum / updateSpectrum round-trip', () async {
+        await player.setSpectrum(
+          const SpectrumSettings(
+            fftSize: 1024,
+            bandCount: 32,
+            window: WindowFunction.blackmanHarris,
+            emitInterval: Duration(milliseconds: 16),
+            attackSmoothing: 0.7,
+            releaseSmoothing: 0.05,
+            minDb: -80,
+            maxDb: -5,
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 80));
-        await player.updateSpectrum(
-          (c) => c.copyWith(fftSize: 512, window: WindowFunction.hann),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 80));
-      } finally {
-        await sub.cancel();
-      }
-    }, timeout: const Timeout(Duration(seconds: 5)));
+        var s = player.spectrumSettings;
+        expect(s.fftSize, 1024);
+        expect(s.bandCount, 32);
+        expect(s.window, WindowFunction.blackmanHarris);
+        expect(s.emitInterval, const Duration(milliseconds: 16));
+        expect(s.attackSmoothing, 0.7);
+        expect(s.releaseSmoothing, 0.05);
+        expect(s.minDb, -80);
+        expect(s.maxDb, -5);
+
+        // updateSpectrum mapper sees the current settings.
+        await player.updateSpectrum((c) => c.copyWith(bandCount: 128));
+        s = player.spectrumSettings;
+        expect(s.bandCount, 128);
+        expect(s.fftSize, 1024); // other fields preserved
+      });
+
+      test(
+        'subscribe to spectrum + pcm without crash; cancel back to zero',
+        () async {
+          // The host libmpv binaries may be unpatched; the property may
+          // return M_PROPERTY_UNAVAILABLE on every poll. We're only
+          // asserting the wrapper-side plumbing doesn't blow up.
+          final spectrumSub = player.stream.fft.listen((_) {});
+          final pcmSub = player.stream.pcm.listen((_) {});
+          // Give the timer a few ticks.
+          await Future<void>.delayed(const Duration(milliseconds: 120));
+          await spectrumSub.cancel();
+          await pcmSub.cancel();
+          // Re-subscribe — pipeline should re-arm.
+          final reSub = player.stream.fft.listen((_) {});
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+          await reSub.cancel();
+        },
+        timeout: const Timeout(Duration(seconds: 5)),
+      );
+
+      test('setSpectrum mid-stream (mutability) does not throw', () async {
+        final sub = player.stream.fft.listen((_) {});
+        try {
+          await player.updateSpectrum(
+            (c) => c.copyWith(
+              fftSize: 4096,
+              emitInterval: const Duration(milliseconds: 20),
+            ),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+          await player.updateSpectrum(
+            (c) => c.copyWith(fftSize: 512, window: WindowFunction.hann),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+        } finally {
+          await sub.cancel();
+        }
+      }, timeout: const Timeout(Duration(seconds: 5)));
+    });
   });
 }

@@ -11,39 +11,39 @@ import 'package:test/test.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    // ONE Player per file (see dispose_safety_test.dart for the rationale).
 
-  // ONE Player per file (see dispose_safety_test.dart for the rationale).
+    group('Dispose safety — typed setters throw StateError post-dispose', () {
+      test('representative setter sample across the 5 mixin modules throws '
+          'StateError after dispose', () async {
+        final player = await buildPlayer();
+        // Allow the event isolate to spawn fully before disposing.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        await player.dispose();
 
-  group('Dispose safety — typed setters throw StateError post-dispose', () {
-    test('representative setter sample across the 5 mixin modules throws '
-        'StateError after dispose', () async {
-      final player = await buildPlayer();
-      // Allow the event isolate to spawn fully before disposing.
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      await player.dispose();
+        // Pick a representative subset across the 5 mixin modules; they
+        // all share the `_checkNotDisposed()` guard.
+        expect(() => player.setVolume(50), throwsStateError);
+        expect(() => player.setMute(true), throwsStateError);
+        expect(() => player.setShuffle(true), throwsStateError);
+        expect(() => player.setRate(1.5), throwsStateError);
+        expect(
+          () => player.setReplayGain(const ReplayGainSettings()),
+          throwsStateError,
+        );
+        expect(() => player.setCache(const CacheSettings()), throwsStateError);
+        expect(() => player.play(), throwsStateError);
+        expect(() => player.pause(), throwsStateError);
+        expect(() => player.stop(), throwsStateError);
+        expect(() => player.add(const Media('/tmp/x.wav')), throwsStateError);
+        expect(() => player.next(), throwsStateError);
+        expect(() => player.clearPlaylist(), throwsStateError);
 
-      // Pick a representative subset across the 5 mixin modules; they
-      // all share the `_checkNotDisposed()` guard.
-      expect(() => player.setVolume(50), throwsStateError);
-      expect(() => player.setMute(true), throwsStateError);
-      expect(() => player.setShuffle(true), throwsStateError);
-      expect(() => player.setRate(1.5), throwsStateError);
-      expect(
-        () => player.setReplayGain(const ReplayGainSettings()),
-        throwsStateError,
-      );
-      expect(() => player.setCache(const CacheSettings()), throwsStateError);
-      expect(() => player.play(), throwsStateError);
-      expect(() => player.pause(), throwsStateError);
-      expect(() => player.stop(), throwsStateError);
-      expect(() => player.add(const Media('/tmp/x.wav')), throwsStateError);
-      expect(() => player.next(), throwsStateError);
-      expect(() => player.clearPlaylist(), throwsStateError);
-
-      // Let libmpv's background threads wind down (see
-      // dispose_safety_test.dart for the rationale).
-      await Future<void>.delayed(const Duration(seconds: 1));
-    }, timeout: const Timeout(Duration(seconds: 15)));
+        // Let libmpv's background threads wind down (see
+        // dispose_safety_test.dart for the rationale).
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }, timeout: const Timeout(Duration(seconds: 15)));
+    });
   });
 }

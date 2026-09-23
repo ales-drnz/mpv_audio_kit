@@ -45,34 +45,32 @@ void main() {
   HttpServer? server;
   late String url;
 
-  setUpAll(() async {
-    if (!initLibmpvOrSkip(fixturePath: fixture)) return;
-    final bytes = await File(fixture).readAsBytes();
-    // Range-refusing server: always 200 with the full body and
-    // `Accept-Ranges: none`, so ffmpeg's HTTP protocol reports the stream
-    // non-seekable → mpv grows the waveform progressively.
-    server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    unawaited(
-      server!.forEach((HttpRequest req) async {
-        final res = req.response;
-        res.headers
-          ..set(HttpHeaders.acceptRangesHeader, 'none')
-          ..contentType = ContentType('audio', 'flac')
-          ..contentLength = bytes.length;
-        if (req.method != 'HEAD') res.add(bytes);
-        await res.close();
-      }),
-    );
-    url = 'http://${server!.address.address}:${server!.port}/sine_5s.flac';
-  });
+  runtimeSuite(fixturePath: fixture, () {
+    setUpAll(() async {
+      final bytes = await File(fixture).readAsBytes();
+      // Range-refusing server: always 200 with the full body and
+      // `Accept-Ranges: none`, so ffmpeg's HTTP protocol reports the stream
+      // non-seekable → mpv grows the waveform progressively.
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      unawaited(
+        server!.forEach((HttpRequest req) async {
+          final res = req.response;
+          res.headers
+            ..set(HttpHeaders.acceptRangesHeader, 'none')
+            ..contentType = ContentType('audio', 'flac')
+            ..contentLength = bytes.length;
+          if (req.method != 'HEAD') res.add(bytes);
+          await res.close();
+        }),
+      );
+      url = 'http://${server!.address.address}:${server!.port}/sine_5s.flac';
+    });
 
-  tearDownAll(() async {
-    await server?.close(force: true);
-  });
+    tearDownAll(() async {
+      await server?.close(force: true);
+    });
 
-  test(
-    'enabling loudness-scan mid-progressive does not wipe the waveform',
-    () async {
+    test('enabling loudness-scan mid-progressive does not wipe the waveform', () async {
       final player = await buildPlayer();
       final probe = await player.getRawProperty('waveform-data');
       if (probe == null) {
@@ -199,9 +197,8 @@ void main() {
         await player.stop();
         await player.dispose();
       }
-    },
-    timeout: const Timeout(Duration(seconds: 40)),
-  );
+    }, timeout: const Timeout(Duration(seconds: 40)));
+  });
 }
 
 int _filledCount(WaveformData w) {

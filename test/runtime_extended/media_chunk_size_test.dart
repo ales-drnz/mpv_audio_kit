@@ -14,7 +14,6 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../_helpers/libmpv_resolver.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 // End-to-end coverage for the opt-in [Media.httpChunkSize]: a throttling CDN
@@ -194,105 +193,100 @@ void main() {
 
   late _ThrottlingServer server;
 
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-    server = _ThrottlingServer(wav);
-    await server.start();
-  });
+  runtimeSuite(() {
+    setUpAll(() async {
+      server = _ThrottlingServer(wav);
+      await server.start();
+    });
 
-  tearDownAll(() async {
-    await server.stop();
-  });
+    tearDownAll(() async {
+      await server.stop();
+    });
 
-  /// Opens [media], seeks, plays, returns whether playback advanced past
-  /// [mustReach] within [budget]. `false` means it froze on the throttle.
-  Future<bool> seekAdvances(
-    Player player,
-    Media media, {
-    Duration budget = const Duration(seconds: 30),
-  }) async {
-    final reached = player.stream.position
-        .firstWhere((p) => p >= mustReach)
-        .then((_) => true);
+    /// Opens [media], seeks, plays, returns whether playback advanced past
+    /// [mustReach] within [budget]. `false` means it froze on the throttle.
+    Future<bool> seekAdvances(
+      Player player,
+      Media media, {
+      Duration budget = const Duration(seconds: 30),
+    }) async {
+      final reached = player.stream.position
+          .firstWhere((p) => p >= mustReach)
+          .then((_) => true);
 
-    final loaded = player.stream.seekCompleted.first.timeout(
-      const Duration(seconds: 10),
-    );
-    await player.open(media, play: false);
-    await loaded;
-
-    await player.seek(seekTo);
-    await player.play();
-
-    return reached.timeout(budget, onTimeout: () => false);
-  }
-
-  test(
-    'without httpChunkSize a throttled stream freezes after a seek',
-    () async {
-      final player = await buildPlayer();
-      try {
-        final advanced = await seekAdvances(
-          player,
-          Media(server.url('plain.wav')),
-          budget: const Duration(seconds: 15),
-        );
-        expect(
-          advanced,
-          isFalse,
-          reason:
-              'An open-ended request is throttled, so playback starves '
-              'and never reaches $mustReach.',
-        );
-      } finally {
-        await player.stop();
-        await player.dispose();
-      }
-    },
-    timeout: const Timeout(Duration(seconds: 90)),
-  );
-
-  test(
-    'Media.httpChunkSize keeps a throttled stream flowing after a seek',
-    () async {
-      final player = await buildPlayer();
-      try {
-        // Small chunk forces several bounded requests on the test file.
-        final advanced = await seekAdvances(
-          player,
-          Media(server.url('chunked.wav'), httpChunkSize: 256 * 1024),
-        );
-        expect(
-          advanced,
-          isTrue,
-          reason:
-              'Bounded chunk requests are served at full speed, so '
-              'playback flows past $mustReach without throttling.',
-        );
-      } finally {
-        await player.stop();
-        await player.dispose();
-      }
-    },
-    timeout: const Timeout(Duration(seconds: 60)),
-  );
-
-  test('a non-positive httpChunkSize is rejected', () async {
-    final player = await buildPlayer();
-    try {
-      await expectLater(
-        player.open(Media(server.url('bad.wav'), httpChunkSize: 0)),
-        throwsArgumentError,
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
       );
-    } finally {
-      await player.stop();
-      await player.dispose();
+      await player.open(media, play: false);
+      await loaded;
+
+      await player.seek(seekTo);
+      await player.play();
+
+      return reached.timeout(budget, onTimeout: () => false);
     }
+
+    test(
+      'without httpChunkSize a throttled stream freezes after a seek',
+      () async {
+        final player = await buildPlayer();
+        try {
+          final advanced = await seekAdvances(
+            player,
+            Media(server.url('plain.wav')),
+            budget: const Duration(seconds: 15),
+          );
+          expect(
+            advanced,
+            isFalse,
+            reason:
+                'An open-ended request is throttled, so playback starves '
+                'and never reaches $mustReach.',
+          );
+        } finally {
+          await player.stop();
+          await player.dispose();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 90)),
+    );
+
+    test(
+      'Media.httpChunkSize keeps a throttled stream flowing after a seek',
+      () async {
+        final player = await buildPlayer();
+        try {
+          // Small chunk forces several bounded requests on the test file.
+          final advanced = await seekAdvances(
+            player,
+            Media(server.url('chunked.wav'), httpChunkSize: 256 * 1024),
+          );
+          expect(
+            advanced,
+            isTrue,
+            reason:
+                'Bounded chunk requests are served at full speed, so '
+                'playback flows past $mustReach without throttling.',
+          );
+        } finally {
+          await player.stop();
+          await player.dispose();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
+
+    test('a non-positive httpChunkSize is rejected', () async {
+      final player = await buildPlayer();
+      try {
+        await expectLater(
+          player.open(Media(server.url('bad.wav'), httpChunkSize: 0)),
+          throwsArgumentError,
+        );
+      } finally {
+        await player.stop();
+        await player.dispose();
+      }
+    });
   });
 }

@@ -134,71 +134,50 @@ const List<String> _kCoreAudioDecoders = [
 const List<String> _kAppleOnlyAudioDecoders = ['aac_at', 'alac_at', 'mp3_at'];
 
 void main() {
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    group('Decoder registry — every core audio decoder is compiled in', () {
+      late Player player;
+      late Set<String> registeredNames;
 
-  group('Decoder registry — every core audio decoder is compiled in', () {
-    late Player player;
-    late Set<String> registeredNames;
-
-    setUpAll(() async {
-      player = await buildPlayer();
-      // mpv's decoder-list returns a JSON array of objects, one per
-      // decoder, with three fields:
-      //   codec       — the AV_CODEC_ID short name
-      //   driver      — the libavcodec decoder symbol
-      //   description — human-readable label (ignored)
-      // We accept a match against either `codec` or `driver`.
-      final raw = await player.getRawProperty('decoder-list');
-      expect(
-        raw,
-        isNotNull,
-        reason:
-            'mpv must expose decoder-list — if null the binary is '
-            'missing libavcodec',
-      );
-      final parsed = jsonDecode(raw!) as List<dynamic>;
-      registeredNames = <String>{};
-      for (final e in parsed) {
-        final m = e as Map<String, dynamic>;
-        final codec = m['codec'] as String?;
-        final driver = m['driver'] as String?;
-        if (codec != null) registeredNames.add(codec);
-        if (driver != null) registeredNames.add(driver);
-      }
-      expect(
-        registeredNames,
-        isNotEmpty,
-        reason: 'decoder-list must not be empty',
-      );
-    });
-
-    tearDownAll(() async {
-      await player.dispose();
-    });
-
-    test('every core audio decoder is registered in libavcodec', () {
-      final missing = <String>[];
-      for (final name in _kCoreAudioDecoders) {
-        if (!registeredNames.contains(name)) {
-          missing.add(name);
+      setUpAll(() async {
+        player = await buildPlayer();
+        // mpv's decoder-list returns a JSON array of objects, one per
+        // decoder, with three fields:
+        //   codec       — the AV_CODEC_ID short name
+        //   driver      — the libavcodec decoder symbol
+        //   description — human-readable label (ignored)
+        // We accept a match against either `codec` or `driver`.
+        final raw = await player.getRawProperty('decoder-list');
+        expect(
+          raw,
+          isNotNull,
+          reason:
+              'mpv must expose decoder-list — if null the binary is '
+              'missing libavcodec',
+        );
+        final parsed = jsonDecode(raw!) as List<dynamic>;
+        registeredNames = <String>{};
+        for (final e in parsed) {
+          final m = e as Map<String, dynamic>;
+          final codec = m['codec'] as String?;
+          final driver = m['driver'] as String?;
+          if (codec != null) registeredNames.add(codec);
+          if (driver != null) registeredNames.add(driver);
         }
-      }
+        expect(
+          registeredNames,
+          isNotEmpty,
+          reason: 'decoder-list must not be empty',
+        );
+      });
 
-      expect(
-        missing,
-        isEmpty,
-        reason:
-            'These core audio decoders are part of the public '
-            'contract but NOT registered in the bundled libmpv '
-            'binary:\n  ${missing.join("\n  ")}',
-      );
-    });
+      tearDownAll(() async {
+        await player.dispose();
+      });
 
-    test(
-      'every Apple-only audio decoder is registered on macOS / iOS',
-      () {
+      test('every core audio decoder is registered in libavcodec', () {
         final missing = <String>[];
-        for (final name in _kAppleOnlyAudioDecoders) {
+        for (final name in _kCoreAudioDecoders) {
           if (!registeredNames.contains(name)) {
             missing.add(name);
           }
@@ -208,123 +187,72 @@ void main() {
           missing,
           isEmpty,
           reason:
-              'These AudioToolbox-backed decoders should be present '
-              'on the macOS / iOS bundled libmpv but were not '
-              'registered:\n  ${missing.join("\n  ")}',
+              'These core audio decoders are part of the public '
+              'contract but NOT registered in the bundled libmpv '
+              'binary:\n  ${missing.join("\n  ")}',
         );
-      },
-      // Apple-only — not meaningful on Linux / Windows.
-      skip: Platform.isMacOS
-          ? false
-          : 'AudioToolbox decoders are Apple-only — '
-                'host platform is ${Platform.operatingSystem}',
-    );
-  });
+      });
 
-  group('Filter registry — every typed audio filter is compiled in', () {
-    late Player player;
+      test(
+        'every Apple-only audio decoder is registered on macOS / iOS',
+        () {
+          final missing = <String>[];
+          for (final name in _kAppleOnlyAudioDecoders) {
+            if (!registeredNames.contains(name)) {
+              missing.add(name);
+            }
+          }
 
-    setUpAll(() async {
-      // Default test player uses LogLevel.off; the filter-not-found
-      // surface needs at least 'warn' to observe.
-      player = Player();
-      await player.setRawProperty('ao', 'null');
-      // Filters are only instantiated by libavfilter when a file is
-      // active — without one, `setAudioEffects` only stores the chain
-      // string and the "filter not found" log line never fires.
-      final fix = '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
-      if (File(fix).existsSync()) {
-        await openAndWaitForLoad(player, fix);
-      }
-    });
-
-    tearDownAll(() async {
-      await player.stop();
-      await player.dispose();
-    });
-
-    test('every name in kAudioFilterNames is in libavfilter', () async {
-      // Sanity: codegen must have emitted at least one filter name.
-      expect(
-        kAudioFilterNames,
-        isNotEmpty,
-        reason:
-            'kAudioFilterNames is empty — the codegen output is '
-            'broken',
+          expect(
+            missing,
+            isEmpty,
+            reason:
+                'These AudioToolbox-backed decoders should be present '
+                'on the macOS / iOS bundled libmpv but were not '
+                'registered:\n  ${missing.join("\n  ")}',
+          );
+        },
+        // Apple-only — not meaningful on Linux / Windows.
+        skip: Platform.isMacOS
+            ? false
+            : 'AudioToolbox decoders are Apple-only — '
+                  'host platform is ${Platform.operatingSystem}',
       );
+    });
 
-      // Capture log entries that signal a filter wasn't registered.
-      final cannotFind = <String>[];
-      final logSub = player.stream.log.listen((entry) {
-        final m = entry.text.toLowerCase();
-        if (m.contains('no such filter') ||
-            m.contains('cannot find filter') ||
-            m.contains('unknown filter') ||
-            m.contains("isn't supported")) {
-          cannotFind.add(entry.text.trim());
+    group('Filter registry — every typed audio filter is compiled in', () {
+      late Player player;
+
+      setUpAll(() async {
+        // Default test player uses LogLevel.off; the filter-not-found
+        // surface needs at least 'warn' to observe.
+        player = Player();
+        await player.setRawProperty('ao', 'null');
+        // Filters are only instantiated by libavfilter when a file is
+        // active — without one, `setAudioEffects` only stores the chain
+        // string and the "filter not found" log line never fires.
+        final fix = '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+        if (File(fix).existsSync()) {
+          await openAndWaitForLoad(player, fix);
         }
       });
 
-      // Filters that don't accept a no-arg lavfi instantiation. Each
-      // entry is the minimum arg that satisfies libavfilter's
-      // required-options check.
-      const argDefaults = <String, String>{
-        'channelmap': 'map=0|1',
-        'pan': 'stereo|c0=c0|c1=c1',
-        'aresample': '44100',
-        'aformat': 'sample_fmts=s16',
-        'aiir': 'zeros=0:poles=1',
-        'arnndn': 'model=test.rnnn',
-      };
+      tearDownAll(() async {
+        await player.stop();
+        await player.dispose();
+      });
 
-      // Filters that need an external resource (model files, etc.) we
-      // don't ship — we only verify they're registered.
-      const registrationOnly = <String>{
-        'arnndn', // requires a .rnnn model file
-      };
+      test('every name in kAudioFilterNames is in libavfilter', () async {
+        // Sanity: codegen must have emitted at least one filter name.
+        expect(
+          kAudioFilterNames,
+          isNotEmpty,
+          reason:
+              'kAudioFilterNames is empty — the codegen output is '
+              'broken',
+        );
 
-      final missing = <String>[];
-
-      for (final name in kAudioFilterNames) {
-        if (registrationOnly.contains(name)) continue;
-        cannotFind.clear();
-        final arg = argDefaults[name];
-        final filterStr = arg == null || arg.isEmpty
-            ? 'lavfi-$name'
-            : 'lavfi-$name=$arg';
-        try {
-          await player.setAudioEffects(AudioEffects(custom: [filterStr]));
-        } catch (_) {
-          // Rejection at the typed-setter boundary is fine — what we
-          // care about is whether a "filter not found" log entry fires.
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-        if (cannotFind.isNotEmpty) {
-          missing.add('$name → ${cannotFind.first}');
-        }
-        try {
-          await player.setAudioEffects(const AudioEffects());
-        } catch (_) {}
-      }
-
-      await logSub.cancel();
-
-      expect(
-        missing,
-        isEmpty,
-        reason:
-            'These filters are exposed by the typed AudioEffects '
-            'bundle but NOT registered in the bundled libmpv '
-            'binary:\n  ${missing.join("\n  ")}',
-      );
-    }, timeout: const Timeout(Duration(seconds: 60)));
-
-    // Meta-test: verifies the detection mechanism. If this stops failing,
-    // the filter coverage test above could silently pass when a real
-    // filter goes missing.
-    test(
-      'detection mechanism actually catches a known-missing filter',
-      () async {
+        // Capture log entries that signal a filter wasn't registered.
         final cannotFind = <String>[];
         final logSub = player.stream.log.listen((entry) {
           final m = entry.text.toLowerCase();
@@ -335,25 +263,97 @@ void main() {
             cannotFind.add(entry.text.trim());
           }
         });
-        try {
-          await player.setAudioEffects(
-            const AudioEffects(custom: ['lavfi-this-filter-does-not-exist']),
-          );
-        } catch (_) {}
-        await Future<void>.delayed(const Duration(milliseconds: 25));
+
+        // Filters that don't accept a no-arg lavfi instantiation. Each
+        // entry is the minimum arg that satisfies libavfilter's
+        // required-options check.
+        const argDefaults = <String, String>{
+          'channelmap': 'map=0|1',
+          'pan': 'stereo|c0=c0|c1=c1',
+          'aresample': '44100',
+          'aformat': 'sample_fmts=s16',
+          'aiir': 'zeros=0:poles=1',
+          'arnndn': 'model=test.rnnn',
+        };
+
+        // Filters that need an external resource (model files, etc.) we
+        // don't ship — we only verify they're registered.
+        const registrationOnly = <String>{
+          'arnndn', // requires a .rnnn model file
+        };
+
+        final missing = <String>[];
+
+        for (final name in kAudioFilterNames) {
+          if (registrationOnly.contains(name)) continue;
+          cannotFind.clear();
+          final arg = argDefaults[name];
+          final filterStr = arg == null || arg.isEmpty
+              ? 'lavfi-$name'
+              : 'lavfi-$name=$arg';
+          try {
+            await player.setAudioEffects(AudioEffects(custom: [filterStr]));
+          } catch (_) {
+            // Rejection at the typed-setter boundary is fine — what we
+            // care about is whether a "filter not found" log entry fires.
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+          if (cannotFind.isNotEmpty) {
+            missing.add('$name → ${cannotFind.first}');
+          }
+          try {
+            await player.setAudioEffects(const AudioEffects());
+          } catch (_) {}
+        }
+
         await logSub.cancel();
+
         expect(
-          cannotFind,
-          isNotEmpty,
+          missing,
+          isEmpty,
           reason:
-              'A bogus lavfi-* filter must produce a recognizable log '
-              'entry. If this fires, libmpv changed its phrasing — update '
-              'the substrings above.',
+              'These filters are exposed by the typed AudioEffects '
+              'bundle but NOT registered in the bundled libmpv '
+              'binary:\n  ${missing.join("\n  ")}',
         );
-        try {
-          await player.setAudioEffects(const AudioEffects());
-        } catch (_) {}
-      },
-    );
+      }, timeout: const Timeout(Duration(seconds: 60)));
+
+      // Meta-test: verifies the detection mechanism. If this stops failing,
+      // the filter coverage test above could silently pass when a real
+      // filter goes missing.
+      test(
+        'detection mechanism actually catches a known-missing filter',
+        () async {
+          final cannotFind = <String>[];
+          final logSub = player.stream.log.listen((entry) {
+            final m = entry.text.toLowerCase();
+            if (m.contains('no such filter') ||
+                m.contains('cannot find filter') ||
+                m.contains('unknown filter') ||
+                m.contains("isn't supported")) {
+              cannotFind.add(entry.text.trim());
+            }
+          });
+          try {
+            await player.setAudioEffects(
+              const AudioEffects(custom: ['lavfi-this-filter-does-not-exist']),
+            );
+          } catch (_) {}
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await logSub.cancel();
+          expect(
+            cannotFind,
+            isNotEmpty,
+            reason:
+                'A bogus lavfi-* filter must produce a recognizable log '
+                'entry. If this fires, libmpv changed its phrasing — update '
+                'the substrings above.',
+          );
+          try {
+            await player.setAudioEffects(const AudioEffects());
+          } catch (_) {}
+        },
+      );
+    });
   });
 }

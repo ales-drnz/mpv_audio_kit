@@ -26,37 +26,37 @@ void main() {
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    test('playbackState stream emits MpvPlaybackState.playing during '
+        'normal playback', () async {
+      final player = await buildPlayer();
 
-  test('playbackState stream emits MpvPlaybackState.playing during '
-      'normal playback', () async {
-    final player = await buildPlayer();
+      try {
+        // Pre-subscribe BEFORE play() — the lazy-bind only attaches the
+        // composing reactives when the first listener arrives, and any
+        // emission before subscription is lost on a broadcast stream.
+        final playingEmit = player.stream.playbackState
+            .firstWhere((s) => s == MpvPlaybackState.playing)
+            .timeout(const Duration(seconds: 10));
 
-    try {
-      // Pre-subscribe BEFORE play() — the lazy-bind only attaches the
-      // composing reactives when the first listener arrives, and any
-      // emission before subscription is lost on a broadcast stream.
-      final playingEmit = player.stream.playbackState
-          .firstWhere((s) => s == MpvPlaybackState.playing)
-          .timeout(const Duration(seconds: 10));
+        await player.open(Media(fixturePath), play: false);
+        await player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.play();
 
-      await player.open(Media(fixturePath), play: false);
-      await player.stream.seekCompleted.first.timeout(
-        const Duration(seconds: 10),
-      );
-      await player.play();
-
-      final state = await playingEmit;
-      expect(
-        state,
-        MpvPlaybackState.playing,
-        reason:
-            'aggregate stream must emit `playing` once core-idle '
-            'flips to false on the first play() call',
-      );
-    } finally {
-      await player.stop();
-      await player.dispose();
-    }
-  }, timeout: const Timeout(Duration(seconds: 30)));
+        final state = await playingEmit;
+        expect(
+          state,
+          MpvPlaybackState.playing,
+          reason:
+              'aggregate stream must emit `playing` once core-idle '
+              'flips to false on the first play() call',
+        );
+      } finally {
+        await player.stop();
+        await player.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
 }

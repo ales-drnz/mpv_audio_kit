@@ -27,69 +27,69 @@ void main() {
   // Single Player per file (CLAUDE.md convention).
   final fixturePath = '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    group('open()/stop() reentrancy — the later call wins', () {
+      late Player player;
 
-  group('open()/stop() reentrancy — the later call wins', () {
-    late Player player;
-
-    setUpAll(() async {
-      player = await buildPlayer();
-    });
-
-    tearDownAll(() async {
-      await player.stop();
-      await player.dispose();
-    });
-
-    test('stop() issued while open() is in flight is final — '
-        'playback must not restart', () async {
-      // Pre-subscribe BEFORE acting (CLAUDE.md). The player is fresh —
-      // no file has ever been loaded — so ANY PLAYBACK_RESTART from here
-      // on means a `loadfile` reached mpv after this test started.
-      final restarted = Completer<void>();
-      final sub = player.stream.seekCompleted.listen((_) {
-        if (!restarted.isCompleted) restarted.complete();
+      setUpAll(() async {
+        player = await buildPlayer();
       });
 
-      try {
-        // Same synchronous turn: kick off open() WITHOUT awaiting it,
-        // then stop(). Program order says stop() is the caller's final
-        // word — nothing may be playing once both futures settle.
-        final opening = player.open(Media(fixturePath), play: true);
+      tearDownAll(() async {
         await player.stop();
-        await opening;
+        await player.dispose();
+      });
 
-        // Settling window: give mpv time to act on any `loadfile` that
-        // (incorrectly) landed after the `stop`.
-        final loadedAfterStop = await restarted.future
-            .then((_) => true)
-            .timeout(const Duration(seconds: 3), onTimeout: () => false);
+      test('stop() issued while open() is in flight is final — '
+          'playback must not restart', () async {
+        // Pre-subscribe BEFORE acting (CLAUDE.md). The player is fresh —
+        // no file has ever been loaded — so ANY PLAYBACK_RESTART from here
+        // on means a `loadfile` reached mpv after this test started.
+        final restarted = Completer<void>();
+        final sub = player.stream.seekCompleted.listen((_) {
+          if (!restarted.isCompleted) restarted.complete();
+        });
 
-        expect(
-          loadedAfterStop,
-          isFalse,
-          reason:
-              'the in-flight open() resumed after stop() and issued '
-              'its loadfile anyway — playback restarted even though '
-              'stop() was the last transport call in program order',
-        );
-        expect(
-          player.state.playing,
-          isFalse,
-          reason:
-              'stop() was the final call — nothing may be producing '
-              'audio once both futures settle',
-        );
-        expect(
-          player.state.playWhenReady,
-          isFalse,
-          reason:
-              'stop() releases the play intent; the superseded open() '
-              'must not re-arm it',
-        );
-      } finally {
-        await sub.cancel();
-      }
-    }, timeout: const Timeout(Duration(seconds: 30)));
+        try {
+          // Same synchronous turn: kick off open() WITHOUT awaiting it,
+          // then stop(). Program order says stop() is the caller's final
+          // word — nothing may be playing once both futures settle.
+          final opening = player.open(Media(fixturePath), play: true);
+          await player.stop();
+          await opening;
+
+          // Settling window: give mpv time to act on any `loadfile` that
+          // (incorrectly) landed after the `stop`.
+          final loadedAfterStop = await restarted.future
+              .then((_) => true)
+              .timeout(const Duration(seconds: 3), onTimeout: () => false);
+
+          expect(
+            loadedAfterStop,
+            isFalse,
+            reason:
+                'the in-flight open() resumed after stop() and issued '
+                'its loadfile anyway — playback restarted even though '
+                'stop() was the last transport call in program order',
+          );
+          expect(
+            player.state.playing,
+            isFalse,
+            reason:
+                'stop() was the final call — nothing may be producing '
+                'audio once both futures settle',
+          );
+          expect(
+            player.state.playWhenReady,
+            isFalse,
+            reason:
+                'stop() releases the play intent; the superseded open() '
+                'must not re-arm it',
+          );
+        } finally {
+          await sub.cancel();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
   });
 }

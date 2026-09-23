@@ -18,26 +18,26 @@ void main() {
   // `LateInitializationError: Field '_eventIsolate' has not been
   // initialized`. The fix made the field eager and stored the start
   // future as `_eventIsolateReady`, which dispose awaits before stop.
-  setUpAll(() => initLibmpvOrSkip());
-
-  test('Player() then dispose() synchronously must not throw', () async {
-    final player = Player(
-      configuration: const PlayerConfiguration(logLevel: LogLevel.off),
-    );
-    // Deliberately NO awaitable work between construction and dispose.
-    // This is the hostile path that triggered the LateInitError.
-    await player.dispose();
-  }, timeout: const Timeout(Duration(seconds: 5)));
-
-  test(
-    'Player() then dispose() in the same microtask must not throw',
-    () async {
+  runtimeSuite(() {
+    test('Player() then dispose() synchronously must not throw', () async {
       final player = Player(
         configuration: const PlayerConfiguration(logLevel: LogLevel.off),
       );
-      final disposed = player.dispose();
-      await disposed;
-    },
-    timeout: const Timeout(Duration(seconds: 5)),
-  );
+      // Deliberately NO awaitable work between construction and dispose.
+      // This is the hostile path that triggered the LateInitError.
+      await player.dispose();
+    }, timeout: const Timeout(Duration(seconds: 5)));
+
+    test(
+      'Player() then dispose() in the same microtask must not throw',
+      () async {
+        final player = Player(
+          configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+        );
+        final disposed = player.dispose();
+        await disposed;
+      },
+      timeout: const Timeout(Duration(seconds: 5)),
+    );
+  });
 }

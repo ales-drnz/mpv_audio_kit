@@ -18,57 +18,58 @@ void main() {
 
   Player? player;
 
-  setUpAll(() async {
-    if (!initLibmpvOrSkip(fixturePath: fixturePath)) return;
-    player = await buildPlayerWithFixture(fixturePath: fixturePath);
-  });
+  runtimeSuite(fixturePath: fixturePath, () {
+    setUpAll(() async {
+      player = await buildPlayerWithFixture(fixturePath: fixturePath);
+    });
 
-  tearDownAll(() async {
-    await player?.dispose();
-  });
+    tearDownAll(() async {
+      await player?.dispose();
+    });
 
-  test('setLogLevel changes the mpv log threshold at runtime', () async {
-    final p = player;
-    if (p == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
+    test('setLogLevel changes the mpv log threshold at runtime', () async {
+      final p = player;
+      if (p == null) {
+        markTestSkipped('libmpv not found');
+        return;
+      }
 
-    final errors = <MpvLogEntry>[];
-    final sub = p.stream.log
-        .where((e) => e.level == LogLevel.error || e.level == LogLevel.fatal)
-        .listen(errors.add);
+      final errors = <MpvLogEntry>[];
+      final sub = p.stream.log
+          .where((e) => e.level == LogLevel.error || e.level == LogLevel.fatal)
+          .listen(errors.add);
 
-    try {
-      await _trySetBogusFilter(p, 'lavfi-log-level-off-probe');
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-
-      expect(
-        errors,
-        isEmpty,
-        reason:
-            'The player starts with LogLevel.off in the test helper, '
-            'so mpv error logs should be suppressed before the setter.',
-      );
-
-      await p.setLogLevel(LogLevel.error);
-      await _trySetBogusFilter(p, 'lavfi-log-level-error-probe');
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-
-      expect(
-        errors,
-        isNotEmpty,
-        reason:
-            'After setLogLevel(LogLevel.error), mpv error diagnostics '
-            'must reach Player.stream.log without recreating the Player.',
-      );
-    } finally {
-      await sub.cancel();
       try {
-        await p.setAudioEffects(const AudioEffects());
-      } catch (_) {}
-    }
-  }, timeout: const Timeout(Duration(seconds: 10)));
+        await _trySetBogusFilter(p, 'lavfi-log-level-off-probe');
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(
+          errors,
+          isEmpty,
+          reason:
+              'The player starts with LogLevel.off in the test helper, '
+              'so mpv error logs should be suppressed before the setter.',
+        );
+
+        await p.setLogLevel(LogLevel.error);
+        await _trySetBogusFilter(p, 'lavfi-log-level-error-probe');
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(
+          errors,
+          isNotEmpty,
+          reason:
+              'After setLogLevel(LogLevel.error), mpv error diagnostics '
+              'must reach Player.stream.log without recreating the Player.',
+        );
+      } finally {
+        await sub.cancel();
+        try {
+          await p.setAudioEffects(const AudioEffects());
+        } catch (_) {}
+      }
+    }, timeout: const Timeout(Duration(seconds: 10)));
+  });
 }
 
 Future<void> _trySetBogusFilter(Player player, String name) async {

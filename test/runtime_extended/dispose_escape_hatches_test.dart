@@ -11,33 +11,33 @@ import 'package:test/test.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    // Companion of `dispose_safety_test.dart` — split into a separate
+    // file so the SIGSEGV-on-3rd-Player ceiling (CLAUDE.md) doesn't bite
+    // when running the full dispose-contract suite. This file uses
+    // exactly ONE Player.
 
-  // Companion of `dispose_safety_test.dart` — split into a separate
-  // file so the SIGSEGV-on-3rd-Player ceiling (CLAUDE.md) doesn't bite
-  // when running the full dispose-contract suite. This file uses
-  // exactly ONE Player.
+    group('Dispose safety — escape hatches throw StateError after dispose', () {
+      test('getRawProperty / setRawProperty / sendRawCommand / registerHook / '
+          'continueHook all throw StateError post-dispose', () async {
+        final player = await buildPlayer();
+        // Allow the event isolate to spawn fully before disposing.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        await player.dispose();
 
-  group('Dispose safety — escape hatches throw StateError after dispose', () {
-    test('getRawProperty / setRawProperty / sendRawCommand / registerHook / '
-        'continueHook all throw StateError post-dispose', () async {
-      final player = await buildPlayer();
-      // Allow the event isolate to spawn fully before disposing.
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      await player.dispose();
+        expect(() => player.getRawProperty('volume'), throwsStateError);
+        expect(() => player.setRawProperty('volume', '50'), throwsStateError);
+        expect(
+          () => player.sendRawCommand(['set', 'volume', '50']),
+          throwsStateError,
+        );
+        expect(() => player.registerHook(Hook.load), throwsStateError);
+        expect(() => player.continueHook(1), throwsStateError);
 
-      expect(() => player.getRawProperty('volume'), throwsStateError);
-      expect(() => player.setRawProperty('volume', '50'), throwsStateError);
-      expect(
-        () => player.sendRawCommand(['set', 'volume', '50']),
-        throwsStateError,
-      );
-      expect(() => player.registerHook(Hook.load), throwsStateError);
-      expect(() => player.continueHook(1), throwsStateError);
-
-      // Let libmpv's background threads wind down (see
-      // dispose_safety_test.dart for the rationale).
-      await Future<void>.delayed(const Duration(seconds: 1));
-    }, timeout: const Timeout(Duration(seconds: 15)));
+        // Let libmpv's background threads wind down (see
+        // dispose_safety_test.dart for the rationale).
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }, timeout: const Timeout(Duration(seconds: 15)));
+    });
   });
 }

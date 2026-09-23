@@ -16,27 +16,27 @@ import 'package:test/test.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    group('pre-init recipe applied to real libmpv', () {
+      late Player player;
+      setUpAll(() async => player = await buildPlayer());
+      tearDownAll(() => player.dispose());
 
-  group('pre-init recipe applied to real libmpv', () {
-    late Player player;
-    setUpAll(() async => player = await buildPlayer());
-    tearDownAll(() => player.dispose());
+      test('audio-only hardening options took effect', () async {
+        // The headline of fix #5: a failed audio-device open falls back to the
+        // null AO instead of hard-failing. The whole point is that this is set
+        // BEFORE the first (lazy) AO open, which only the pre-init recipe can do.
+        expect(
+          await player.getRawProperty('audio-fallback-to-null'),
+          'yes',
+          reason: 'audio-fallback-to-null must be enabled at init (#5)',
+        );
 
-    test('audio-only hardening options took effect', () async {
-      // The headline of fix #5: a failed audio-device open falls back to the
-      // null AO instead of hard-failing. The whole point is that this is set
-      // BEFORE the first (lazy) AO open, which only the pre-init recipe can do.
-      expect(
-        await player.getRawProperty('audio-fallback-to-null'),
-        'yes',
-        reason: 'audio-fallback-to-null must be enabled at init (#5)',
-      );
-
-      // A few other load-bearing recipe entries, as a recipe-wide guard.
-      expect(await player.getRawProperty('vid'), 'no');
-      expect(await player.getRawProperty('keep-open'), 'yes');
-      expect(await player.getRawProperty('idle'), 'yes');
-    }, timeout: const Timeout(Duration(seconds: 15)));
+        // A few other load-bearing recipe entries, as a recipe-wide guard.
+        expect(await player.getRawProperty('vid'), 'no');
+        expect(await player.getRawProperty('keep-open'), 'yes');
+        expect(await player.getRawProperty('idle'), 'yes');
+      }, timeout: const Timeout(Duration(seconds: 15)));
+    });
   });
 }

@@ -24,21 +24,21 @@ void main() {
   // The architectural invariant lives in the source: `dispose()` flips
   // `_nativeResources.disposed = true` before detaching the finalizer,
   // so even a late-firing finalizer skips its body.
-  setUpAll(() => initLibmpvOrSkip());
-
-  test(
-    'explicit dispose() detaches the finalizer (no double cleanup)',
-    () async {
-      // Spin up + dispose 5 players in sequence. If the finalizer ever
-      // double-dispatches, the second mpv_terminate_destroy on the same
-      // handle would deadlock or SIGSEGV.
-      for (var i = 0; i < 5; i++) {
-        final player = await buildPlayer();
-        await player.dispose();
-      }
-      // Reaching here without crashing is the assertion.
-      expect(true, isTrue);
-    },
-    timeout: const Timeout(Duration(seconds: 10)),
-  );
+  runtimeSuite(() {
+    test(
+      'explicit dispose() detaches the finalizer (no double cleanup)',
+      () async {
+        // Spin up + dispose 5 players in sequence. If the finalizer ever
+        // double-dispatches, the second mpv_terminate_destroy on the same
+        // handle would deadlock or SIGSEGV.
+        for (var i = 0; i < 5; i++) {
+          final player = await buildPlayer();
+          await player.dispose();
+        }
+        // Reaching here without crashing is the assertion.
+        expect(true, isTrue);
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
+    );
+  });
 }

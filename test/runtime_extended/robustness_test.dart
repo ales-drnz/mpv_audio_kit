@@ -28,88 +28,89 @@ void main() {
   // user pick arbitrary files.
   final fixturesDir = '${Directory.current.path}/test/fixtures/extra';
 
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    group('Robustness — broken / corrupted files', () {
+      late Player player;
 
-  group('Robustness — broken / corrupted files', () {
-    late Player player;
-
-    setUpAll(() async {
-      player = await buildPlayer();
-    });
-
-    tearDownAll(() async {
-      await player.stop();
-      await player.clearPlaylist();
-      await player.dispose();
-    });
-
-    test('truncated MP3 reaches endFile via the public stream', () async {
-      final path = '$fixturesDir/truncated.mp3';
-      if (!File(path).existsSync()) {
-        markTestSkipped(
-          'Fixture missing: run scripts/generate_extra_fixtures.sh',
-        );
-        return;
-      }
-      // mpv is tolerant of truncated MPEG audio: a file with valid frames
-      // followed by a clean cut typically replays the available frames and
-      // emits endFile with reason `eof` rather than `error` (vs the
-      // corrupted-header case below, where reject is immediate).
-      // What we actually test here is the **robustness invariant**: the
-      // library surfaces an endFile event through the public stream
-      // rather than hanging or crashing — the reason itself is mpv's call,
-      // either eof or error is acceptable.
-      final completer = Completer<MpvFileEndedEvent>();
-      final sub = player.stream.endFile.listen((event) {
-        if (!completer.isCompleted) completer.complete(event);
+      setUpAll(() async {
+        player = await buildPlayer();
       });
 
-      try {
-        await player.open(Media(path), play: true);
-        final event = await completer.future.timeout(
-          const Duration(seconds: 10),
-        );
-        expect(
-          event.reason,
-          anyOf(MpvEndFileReason.eof, MpvEndFileReason.error),
-          reason:
-              'truncated file must surface an endFile event with a '
-              'natural-end-or-error reason; the wrapper must not hang',
-        );
-      } finally {
-        await sub.cancel();
-      }
-    }, timeout: const Timeout(Duration(seconds: 30)));
+      tearDownAll(() async {
+        await player.stop();
+        await player.clearPlaylist();
+        await player.dispose();
+      });
 
-    test('corrupted file (text masquerading as .mp3) is rejected', () async {
-      final path = '$fixturesDir/corrupted.mp3';
-      if (!File(path).existsSync()) {
-        markTestSkipped(
-          'Fixture missing: run scripts/generate_extra_fixtures.sh',
-        );
-        return;
-      }
-      final completer = Completer<MpvFileEndedEvent>();
-      final sub = player.stream.endFile.listen((event) {
-        if (event.reason == MpvEndFileReason.error && !completer.isCompleted) {
-          completer.complete(event);
+      test('truncated MP3 reaches endFile via the public stream', () async {
+        final path = '$fixturesDir/truncated.mp3';
+        if (!File(path).existsSync()) {
+          markTestSkipped(
+            'Fixture missing: run scripts/generate_extra_fixtures.sh',
+          );
+          return;
         }
-      });
+        // mpv is tolerant of truncated MPEG audio: a file with valid frames
+        // followed by a clean cut typically replays the available frames and
+        // emits endFile with reason `eof` rather than `error` (vs the
+        // corrupted-header case below, where reject is immediate).
+        // What we actually test here is the **robustness invariant**: the
+        // library surfaces an endFile event through the public stream
+        // rather than hanging or crashing — the reason itself is mpv's call,
+        // either eof or error is acceptable.
+        final completer = Completer<MpvFileEndedEvent>();
+        final sub = player.stream.endFile.listen((event) {
+          if (!completer.isCompleted) completer.complete(event);
+        });
 
-      try {
-        await player.open(Media(path), play: false);
-        final event = await completer.future.timeout(
-          const Duration(seconds: 5),
-        );
-        expect(event.reason, MpvEndFileReason.error);
-        expect(
-          event.error,
-          lessThan(0),
-          reason: 'demuxer-rejection carries a negative mpv error code',
-        );
-      } finally {
-        await sub.cancel();
-      }
-    }, timeout: const Timeout(Duration(seconds: 15)));
+        try {
+          await player.open(Media(path), play: true);
+          final event = await completer.future.timeout(
+            const Duration(seconds: 10),
+          );
+          expect(
+            event.reason,
+            anyOf(MpvEndFileReason.eof, MpvEndFileReason.error),
+            reason:
+                'truncated file must surface an endFile event with a '
+                'natural-end-or-error reason; the wrapper must not hang',
+          );
+        } finally {
+          await sub.cancel();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('corrupted file (text masquerading as .mp3) is rejected', () async {
+        final path = '$fixturesDir/corrupted.mp3';
+        if (!File(path).existsSync()) {
+          markTestSkipped(
+            'Fixture missing: run scripts/generate_extra_fixtures.sh',
+          );
+          return;
+        }
+        final completer = Completer<MpvFileEndedEvent>();
+        final sub = player.stream.endFile.listen((event) {
+          if (event.reason == MpvEndFileReason.error &&
+              !completer.isCompleted) {
+            completer.complete(event);
+          }
+        });
+
+        try {
+          await player.open(Media(path), play: false);
+          final event = await completer.future.timeout(
+            const Duration(seconds: 5),
+          );
+          expect(event.reason, MpvEndFileReason.error);
+          expect(
+            event.error,
+            lessThan(0),
+            reason: 'demuxer-rejection carries a negative mpv error code',
+          );
+        } finally {
+          await sub.cancel();
+        }
+      }, timeout: const Timeout(Duration(seconds: 15)));
+    });
   });
 }

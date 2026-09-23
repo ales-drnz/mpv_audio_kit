@@ -33,45 +33,49 @@ void main() {
   //   reads from `stream.volume` is the seed mpv reports, not the
   //   PlayerState default" — proven below by configuring a non-default
   //   `initialVolume` and asserting it propagates.
-  setUpAll(() => initLibmpvOrSkip());
+  runtimeSuite(() {
+    test(
+      'initial property burst from libmpv reaches the main isolate',
+      () async {
+        final player = Player(
+          configuration: const PlayerConfiguration(
+            logLevel: LogLevel.off,
+            initialVolume: 42.5,
+          ),
+        );
+        // Pre-subscribe BEFORE any awaited call: `stream.volume` is a
+        // ReactiveProperty broadcast that does NOT replay its current value on
+        // listen, and the seed burst is delivered as soon as bring-up settles.
+        // Subscribing first guarantees the listener is registered before the
+        // 42.5 PROPERTY_CHANGE is processed — otherwise the (correctly
+        // delivered) emit is simply observed too late.
+        final firstVolume = player.stream.volume
+            .firstWhere((v) => v == 42.5)
+            .timeout(const Duration(seconds: 5), onTimeout: () => double.nan);
+        await player.setRawProperty('ao', 'null');
 
-  test('initial property burst from libmpv reaches the main isolate', () async {
-    final player = Player(
-      configuration: const PlayerConfiguration(
-        logLevel: LogLevel.off,
-        initialVolume: 42.5,
-      ),
+        try {
+          expect(
+            await firstVolume,
+            42.5,
+            reason:
+                'The initial PROPERTY_CHANGE burst from libmpv must '
+                'reach the main isolate. If this times out, the event '
+                'isolate dropped the seed events between `start()` and '
+                'the main-side listen.',
+          );
+          expect(
+            player.state.volume,
+            42.5,
+            reason:
+                'state.volume must mirror the observed volume '
+                'synchronously after the first emit propagates.',
+          );
+        } finally {
+          await player.dispose();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 10)),
     );
-    // Pre-subscribe BEFORE any awaited call: `stream.volume` is a
-    // ReactiveProperty broadcast that does NOT replay its current value on
-    // listen, and the seed burst is delivered as soon as bring-up settles.
-    // Subscribing first guarantees the listener is registered before the
-    // 42.5 PROPERTY_CHANGE is processed — otherwise the (correctly
-    // delivered) emit is simply observed too late.
-    final firstVolume = player.stream.volume
-        .firstWhere((v) => v == 42.5)
-        .timeout(const Duration(seconds: 5), onTimeout: () => double.nan);
-    await player.setRawProperty('ao', 'null');
-
-    try {
-      expect(
-        await firstVolume,
-        42.5,
-        reason:
-            'The initial PROPERTY_CHANGE burst from libmpv must '
-            'reach the main isolate. If this times out, the event '
-            'isolate dropped the seed events between `start()` and '
-            'the main-side listen.',
-      );
-      expect(
-        player.state.volume,
-        42.5,
-        reason:
-            'state.volume must mirror the observed volume '
-            'synchronously after the first emit propagates.',
-      );
-    } finally {
-      await player.dispose();
-    }
-  }, timeout: const Timeout(Duration(seconds: 10)));
+  });
 }

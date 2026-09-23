@@ -17,144 +17,148 @@ void main() {
   // bufferDuration, audioPts, position) emit several values before EOF.
   final fixturePath = '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    group('Runtime state — sustained-playback observers populate', () {
+      late Player player;
 
-  group('Runtime state — sustained-playback observers populate', () {
-    late Player player;
+      setUpAll(() async {
+        player = await buildPlayerWithFixture(fixturePath: fixturePath);
+      });
 
-    setUpAll(() async {
-      player = await buildPlayerWithFixture(fixturePath: fixturePath);
-    });
+      tearDownAll(() async {
+        await player.stop();
+        await player.clearPlaylist();
+        await player.dispose();
+      });
 
-    tearDownAll(() async {
-      await player.stop();
-      await player.clearPlaylist();
-      await player.dispose();
-    });
+      test('mediaTitle / fileFormat / fileSize / seekable / partiallySeekable '
+          'populate from a real file', () async {
+        // Some properties land at file-load time; some at first
+        // play / first audio frame. Wait briefly to give them a chance.
+        await Future<void>.delayed(const Duration(milliseconds: 500));
 
-    test('mediaTitle / fileFormat / fileSize / seekable / partiallySeekable '
-        'populate from a real file', () async {
-      // Some properties land at file-load time; some at first
-      // play / first audio frame. Wait briefly to give them a chance.
-      await Future<void>.delayed(const Duration(milliseconds: 500));
+        // mediaTitle falls back to the filename (no `title` tag in the
+        // fixture).
+        expect(player.state.mediaTitle, isNotEmpty);
 
-      // mediaTitle falls back to the filename (no `title` tag in the
-      // fixture).
-      expect(player.state.mediaTitle, isNotEmpty);
-
-      // fileFormat populated by the demuxer.
-      expect(
-        player.state.fileFormat,
-        isNotEmpty,
-        reason: 'demuxer must report the container format',
-      );
-
-      // fileSize is non-zero for a finite file.
-      expect(
-        player.state.fileSize,
-        greaterThan(0),
-        reason: 'sine_5s.flac is a finite local file',
-      );
-
-      // Local files are fully seekable.
-      expect(player.state.seekable, isTrue);
-      expect(
-        player.state.partiallySeekable,
-        isFalse,
-        reason: 'partial seek is for HLS / DASH only',
-      );
-    }, timeout: const Timeout(Duration(seconds: 15)));
-
-    test('audioBitrate emits a non-null value during playback', () async {
-      // Subscribe BEFORE play so the first observer event isn't missed.
-      final bitrateCompleter = player.stream.audioBitrate
-          .firstWhere((b) => b != null && b > 0)
-          .timeout(const Duration(seconds: 5));
-      await player.play();
-      try {
-        final br = await bitrateCompleter;
-        expect(br, isNotNull);
+        // fileFormat populated by the demuxer.
         expect(
-          br!,
-          greaterThan(0),
-          reason:
-              'mpv emits audio-bitrate ~once per second during '
-              'playback; FLAC at 44.1 kHz mono yields >50 kbps',
+          player.state.fileFormat,
+          isNotEmpty,
+          reason: 'demuxer must report the container format',
         );
-      } finally {
-        await player.pause();
-      }
-    }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test(
-      'bufferDuration populates during playback (demuxer-cache-duration)',
-      () async {
-        await player.seek(Duration.zero);
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        // fileSize is non-zero for a finite file.
+        expect(
+          player.state.fileSize,
+          greaterThan(0),
+          reason: 'sine_5s.flac is a finite local file',
+        );
 
-        final bufferCompleter = player.stream.bufferDuration
-            .firstWhere((d) => d > Duration.zero)
+        // Local files are fully seekable.
+        expect(player.state.seekable, isTrue);
+        expect(
+          player.state.partiallySeekable,
+          isFalse,
+          reason: 'partial seek is for HLS / DASH only',
+        );
+      }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test('audioBitrate emits a non-null value during playback', () async {
+        // Subscribe BEFORE play so the first observer event isn't missed.
+        final bitrateCompleter = player.stream.audioBitrate
+            .firstWhere((b) => b != null && b > 0)
             .timeout(const Duration(seconds: 5));
         await player.play();
         try {
-          final buf = await bufferCompleter;
+          final br = await bitrateCompleter;
+          expect(br, isNotNull);
           expect(
-            buf.inMilliseconds,
+            br!,
             greaterThan(0),
             reason:
-                'demuxer-cache-duration must show some lookahead '
-                'while audio is producing samples',
+                'mpv emits audio-bitrate ~once per second during '
+                'playback; FLAC at 44.1 kHz mono yields >50 kbps',
           );
         } finally {
           await player.pause();
         }
-      },
-      timeout: const Timeout(Duration(seconds: 15)),
-    );
+      }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('audioPts emits a Duration distinct from time-pos baseline', () async {
-      // audio-pts may or may not differ from time-pos depending on
-      // driver latency; assert only that it emits a non-zero value
-      // during playback.
-      await player.seek(const Duration(seconds: 1));
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      test(
+        'bufferDuration populates during playback (demuxer-cache-duration)',
+        () async {
+          await player.seek(Duration.zero);
+          await Future<void>.delayed(const Duration(milliseconds: 200));
 
-      final ptsCompleter = player.stream.audioPts
-          .firstWhere((d) => d > Duration.zero)
-          .timeout(const Duration(seconds: 5));
-      await player.play();
-      try {
-        final pts = await ptsCompleter;
-        expect(pts.inMilliseconds, greaterThan(0));
-      } finally {
-        await player.pause();
-      }
-    }, timeout: const Timeout(Duration(seconds: 15)));
-
-    test('eofReached flips to true when the file ends naturally', () async {
-      // Switch to the 1-second fixture so the wait is bounded and we
-      // don't need to seek-then-play the 5s file (seek-near-EOF with
-      // keep-open=yes can race the observer).
-      final shortPath =
-          '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
-      if (!File(shortPath).existsSync()) {
-        markTestSkipped('1s fixture missing');
-        return;
-      }
-      await openAndWaitForLoad(player, shortPath);
-
-      await player.play();
-      // 1s file + a comfortable margin for AO + observer roundtrip.
-      await Future<void>.delayed(const Duration(milliseconds: 1800));
-      expect(
-        player.state.eofReached,
-        isTrue,
-        reason:
-            'with keep-open=yes mpv pauses at EOF and emits '
-            'eof-reached=true; assert via state to dodge the broadcast '
-            'firstWhere subscribe-after-emit window',
+          final bufferCompleter = player.stream.bufferDuration
+              .firstWhere((d) => d > Duration.zero)
+              .timeout(const Duration(seconds: 5));
+          await player.play();
+          try {
+            final buf = await bufferCompleter;
+            expect(
+              buf.inMilliseconds,
+              greaterThan(0),
+              reason:
+                  'demuxer-cache-duration must show some lookahead '
+                  'while audio is producing samples',
+            );
+          } finally {
+            await player.pause();
+          }
+        },
+        timeout: const Timeout(Duration(seconds: 15)),
       );
-      await player.pause();
-    }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test(
+        'audioPts emits a Duration distinct from time-pos baseline',
+        () async {
+          // audio-pts may or may not differ from time-pos depending on
+          // driver latency; assert only that it emits a non-zero value
+          // during playback.
+          await player.seek(const Duration(seconds: 1));
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+
+          final ptsCompleter = player.stream.audioPts
+              .firstWhere((d) => d > Duration.zero)
+              .timeout(const Duration(seconds: 5));
+          await player.play();
+          try {
+            final pts = await ptsCompleter;
+            expect(pts.inMilliseconds, greaterThan(0));
+          } finally {
+            await player.pause();
+          }
+        },
+        timeout: const Timeout(Duration(seconds: 15)),
+      );
+
+      test('eofReached flips to true when the file ends naturally', () async {
+        // Switch to the 1-second fixture so the wait is bounded and we
+        // don't need to seek-then-play the 5s file (seek-near-EOF with
+        // keep-open=yes can race the observer).
+        final shortPath =
+            '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+        if (!File(shortPath).existsSync()) {
+          markTestSkipped('1s fixture missing');
+          return;
+        }
+        await openAndWaitForLoad(player, shortPath);
+
+        await player.play();
+        // 1s file + a comfortable margin for AO + observer roundtrip.
+        await Future<void>.delayed(const Duration(milliseconds: 1800));
+        expect(
+          player.state.eofReached,
+          isTrue,
+          reason:
+              'with keep-open=yes mpv pauses at EOF and emits '
+              'eof-reached=true; assert via state to dodge the broadcast '
+              'firstWhere subscribe-after-emit window',
+        );
+        await player.pause();
+      }, timeout: const Timeout(Duration(seconds: 15)));
+    });
   });
 }

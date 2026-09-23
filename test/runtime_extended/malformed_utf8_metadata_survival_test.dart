@@ -89,63 +89,63 @@ void main() {
   late String streamUrl;
   late Player player;
 
-  setUpAll(() async {
-    if (!initLibmpvOrSkip(
-      fixturePath:
-          '${Directory.current.path}/test/fixtures/codec/mp3_44100_stereo.mp3',
-    )) {
-      return;
-    }
-    server = await startIcyServer(buildStreamBody());
-    streamUrl = 'http://${server.address.address}:${server.port}/stream';
-    player = await buildPlayer();
-  });
+  runtimeSuite(
+    fixturePath:
+        '${Directory.current.path}/test/fixtures/codec/mp3_44100_stereo.mp3',
+    () {
+      setUpAll(() async {
+        server = await startIcyServer(buildStreamBody());
+        streamUrl = 'http://${server.address.address}:${server.port}/stream';
+        player = await buildPlayer();
+      });
 
-  tearDownAll(() async {
-    await player.dispose();
-    await server.close();
-  });
+      tearDownAll(() async {
+        await player.dispose();
+        await server.close();
+      });
 
-  test('player survives an ICY station name with invalid UTF-8 '
-      '(tag surfaces, pipeline stays alive)', () async {
-    // Pre-subscribe BEFORE open — emits can land synchronously relative
-    // to a late firstWhere (see CLAUDE.md, Common patterns).
-    final icyArrived = player.stream.metadata
-        .firstWhere((m) => m.keys.any((k) => k.toLowerCase() == 'icy-name'))
-        .timeout(
-          const Duration(seconds: 20),
-          onTimeout: () => fail(
-            'icy-name never surfaced — the metadata stream froze after mpv '
-            'delivered a tag value with invalid UTF-8 (the event isolate '
-            'presumably died decoding it)',
-          ),
+      test('player survives an ICY station name with invalid UTF-8 '
+          '(tag surfaces, pipeline stays alive)', () async {
+        // Pre-subscribe BEFORE open — emits can land synchronously relative
+        // to a late firstWhere (see CLAUDE.md, Common patterns).
+        final icyArrived = player.stream.metadata
+            .firstWhere((m) => m.keys.any((k) => k.toLowerCase() == 'icy-name'))
+            .timeout(
+              const Duration(seconds: 20),
+              onTimeout: () => fail(
+                'icy-name never surfaced — the metadata stream froze after mpv '
+                'delivered a tag value with invalid UTF-8 (the event isolate '
+                'presumably died decoding it)',
+              ),
+            );
+
+        await player.open(Media(streamUrl), play: true);
+
+        // (a) The malformed tag still surfaces — replacement characters are
+        // acceptable, a frozen stream is not.
+        final md = await icyArrived;
+        final icyName = md.entries
+            .firstWhere((e) => e.key.toLowerCase() == 'icy-name')
+            .value;
+        expect(
+          icyName,
+          startsWith('Caf'),
+          reason: 'tag value must survive the bridge (lenient decode is fine)',
         );
 
-    await player.open(Media(streamUrl), play: true);
-
-    // (a) The malformed tag still surfaces — replacement characters are
-    // acceptable, a frozen stream is not.
-    final md = await icyArrived;
-    final icyName = md.entries
-        .firstWhere((e) => e.key.toLowerCase() == 'icy-name')
-        .value;
-    expect(
-      icyName,
-      startsWith('Caf'),
-      reason: 'tag value must survive the bridge (lenient decode is fine)',
-    );
-
-    // (b) The pipeline is still alive AFTER the malformed string was
-    // processed: position updates must keep flowing.
-    final mark = player.state.position;
-    await player.stream.position
-        .firstWhere((p) => p > mark + const Duration(milliseconds: 300))
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => fail(
-            'position stopped advancing — property/event pipeline frozen '
-            'after the malformed UTF-8 metadata was dispatched',
-          ),
-        );
-  }, timeout: const Timeout(Duration(seconds: 50)));
+        // (b) The pipeline is still alive AFTER the malformed string was
+        // processed: position updates must keep flowing.
+        final mark = player.state.position;
+        await player.stream.position
+            .firstWhere((p) => p > mark + const Duration(milliseconds: 300))
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => fail(
+                'position stopped advancing — property/event pipeline frozen '
+                'after the malformed UTF-8 metadata was dispatched',
+              ),
+            );
+      }, timeout: const Timeout(Duration(seconds: 50)));
+    },
+  );
 }

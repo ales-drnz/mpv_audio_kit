@@ -118,7 +118,12 @@ void main() {
 
     // The exact code path consumers hit on init
     // (MpvAudioKit.ensureInitialized → _applyPlatformQuirks).
-    initLibmpvOrSkip();
+    final skip = libmpvSkipReason();
+    if (skip != null) {
+      markTestSkipped(skip);
+      return;
+    }
+    initLibmpv();
 
     expect(
       currentNumericLocale(),

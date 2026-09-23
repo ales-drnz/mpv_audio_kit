@@ -13,60 +13,60 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   final fixturePath = defaultFixturePath();
 
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
+  runtimeSuite(fixturePath: fixturePath, () {
+    group('Audio basic setters end-to-end', () {
+      late Player player;
 
-  group('Audio basic setters end-to-end', () {
-    late Player player;
+      setUpAll(() async {
+        player = await buildPlayerWithFixture(fixturePath: fixturePath);
+      });
 
-    setUpAll(() async {
-      player = await buildPlayerWithFixture(fixturePath: fixturePath);
+      tearDownAll(() async {
+        await player.dispose();
+      });
+
+      test('volume / rate / pitch / mute round-trip into state', () async {
+        await player.setVolume(75.0);
+        expect(player.state.volume, 75.0);
+
+        await player.setRate(1.25);
+        expect(player.state.rate, 1.25);
+
+        await player.setPitch(0.8);
+        expect(player.state.pitch, 0.8);
+
+        await player.setMute(true);
+        expect(player.state.mute, isTrue);
+        await player.setMute(false);
+        expect(player.state.mute, isFalse);
+      }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test('volumeGain / volumeMax / pitchCorrection round-trip', () async {
+        await player.setVolumeGain(-3.5);
+        expect(player.state.volumeGain, -3.5);
+
+        // Gain bounds (volume-gain-min / volume-gain-max) round-trip.
+        await player.setVolumeGainMin(-60.0);
+        expect(player.state.volumeGainMin, -60.0);
+        await player.setVolumeGainMax(24.0);
+        expect(player.state.volumeGainMax, 24.0);
+
+        await player.setVolumeMax(200.0);
+        expect(player.state.volumeMax, 200.0);
+
+        await player.setPitchCorrection(false);
+        expect(player.state.pitchCorrection, isFalse);
+        await player.setPitchCorrection(true);
+        expect(player.state.pitchCorrection, isTrue);
+      }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test('audioDelay (Duration) round-trips', () async {
+        await player.setAudioDelay(const Duration(milliseconds: 50));
+        expect(player.state.audioDelay, const Duration(milliseconds: 50));
+
+        await player.setAudioDelay(Duration.zero);
+        expect(player.state.audioDelay, Duration.zero);
+      }, timeout: const Timeout(Duration(seconds: 15)));
     });
-
-    tearDownAll(() async {
-      await player.dispose();
-    });
-
-    test('volume / rate / pitch / mute round-trip into state', () async {
-      await player.setVolume(75.0);
-      expect(player.state.volume, 75.0);
-
-      await player.setRate(1.25);
-      expect(player.state.rate, 1.25);
-
-      await player.setPitch(0.8);
-      expect(player.state.pitch, 0.8);
-
-      await player.setMute(true);
-      expect(player.state.mute, isTrue);
-      await player.setMute(false);
-      expect(player.state.mute, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 15)));
-
-    test('volumeGain / volumeMax / pitchCorrection round-trip', () async {
-      await player.setVolumeGain(-3.5);
-      expect(player.state.volumeGain, -3.5);
-
-      // Gain bounds (volume-gain-min / volume-gain-max) round-trip.
-      await player.setVolumeGainMin(-60.0);
-      expect(player.state.volumeGainMin, -60.0);
-      await player.setVolumeGainMax(24.0);
-      expect(player.state.volumeGainMax, 24.0);
-
-      await player.setVolumeMax(200.0);
-      expect(player.state.volumeMax, 200.0);
-
-      await player.setPitchCorrection(false);
-      expect(player.state.pitchCorrection, isFalse);
-      await player.setPitchCorrection(true);
-      expect(player.state.pitchCorrection, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 15)));
-
-    test('audioDelay (Duration) round-trips', () async {
-      await player.setAudioDelay(const Duration(milliseconds: 50));
-      expect(player.state.audioDelay, const Duration(milliseconds: 50));
-
-      await player.setAudioDelay(Duration.zero);
-      expect(player.state.audioDelay, Duration.zero);
-    }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

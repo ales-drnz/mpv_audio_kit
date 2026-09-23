@@ -27,6 +27,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
 import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 import '../_helpers/mpv_error_capture.dart';
 
 typedef RuntimeCase = ({String filter, AudioEffects bundle});
@@ -420,165 +421,149 @@ void main() {
 
   late Player player;
 
-  setUpAll(() async {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing: $fixturePath');
-      return;
-    }
-    if (!File(arnndnModelPath).existsSync()) {
-      markTestSkipped(
-        'Fixture missing: $arnndnModelPath (run scripts/generate_filter_fixtures.sh)',
+  runtimeSuite(fixturePath: fixturePath, extraFixtures: [arnndnModelPath], () {
+    setUpAll(() async {
+      player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.error),
       );
-      return;
-    }
-
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
-
-    player = Player(
-      configuration: const PlayerConfiguration(logLevel: LogLevel.error),
-    );
-    await player.setRawProperty('ao', 'null');
-    await player.open(Media(fixturePath), play: false);
-    await player.stream.seekCompleted.first.timeout(
-      const Duration(seconds: 10),
-    );
-  });
-
-  tearDownAll(() async {
-    await player.dispose();
-  });
-
-  test(
-    'every whitelisted filter initialises in mpv with required params filled',
-    () async {
-      // arnndn is appended here (not in the const list) because its
-      // model arg is a runtime-resolved fixture path.
-      final cases = <RuntimeCase>[
-        ..._kRuntimeCases,
-        (
-          filter: 'arnndn',
-          bundle: AudioEffects(
-            arnndn: ArnndnSettings(enabled: true, model: arnndnModelPath),
-          ),
-        ),
-      ];
-      final failures = <String, List<String>>{};
-      for (final c in cases) {
-        final errors = await captureMpvErrors(player, () async {
-          await player.setAudioEffects(c.bundle);
-        });
-        if (errors.isNotEmpty) {
-          failures[c.filter] = errors.map((e) => e.text.trim()).toList();
-        }
-        // Reset between iterations so a failure doesn't bleed forward.
-        await player.setAudioEffects(const AudioEffects());
-      }
-
-      if (failures.isNotEmpty) {
-        final buf = StringBuffer()
-          ..writeln(
-            '${failures.length} of ${cases.length} filters produced mpv init errors:',
-          )
-          ..writeln();
-        final keys = failures.keys.toList()..sort();
-        for (final key in keys) {
-          buf.writeln('  - $key:');
-          for (final msg in failures[key]!) {
-            buf.writeln('      $msg');
-          }
-        }
-        fail(buf.toString());
-      }
-    },
-    timeout: const Timeout(Duration(minutes: 8)),
-  );
-
-  group('required-param filters always emit their mandatory options', () {
-    test('aeval wire string contains every required option', () {
-      const s = AevalSettings(enabled: true, exprs: 'val(0)|val(1)');
-      final wire = s.toFilterString();
-      expect(
-        wire,
-        contains('exprs='),
-        reason:
-            'aeval.exprs is mandatory and must always be in the wire string',
+      await player.setRawProperty('ao', 'null');
+      await player.open(Media(fixturePath), play: false);
+      await player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
       );
-      expect(wire, startsWith('lavfi-aeval'));
     });
+
+    tearDownAll(() async {
+      await player.dispose();
+    });
+
     test(
-      'arnndn wire string contains every required option (also init-tested at runtime)',
-      () {
-        const s = ArnndnSettings(enabled: true, model: '');
+      'every whitelisted filter initialises in mpv with required params filled',
+      () async {
+        // arnndn is appended here (not in the const list) because its
+        // model arg is a runtime-resolved fixture path.
+        final cases = <RuntimeCase>[
+          ..._kRuntimeCases,
+          (
+            filter: 'arnndn',
+            bundle: AudioEffects(
+              arnndn: ArnndnSettings(enabled: true, model: arnndnModelPath),
+            ),
+          ),
+        ];
+        final failures = <String, List<String>>{};
+        for (final c in cases) {
+          final errors = await captureMpvErrors(player, () async {
+            await player.setAudioEffects(c.bundle);
+          });
+          if (errors.isNotEmpty) {
+            failures[c.filter] = errors.map((e) => e.text.trim()).toList();
+          }
+          // Reset between iterations so a failure doesn't bleed forward.
+          await player.setAudioEffects(const AudioEffects());
+        }
+
+        if (failures.isNotEmpty) {
+          final buf = StringBuffer()
+            ..writeln(
+              '${failures.length} of ${cases.length} filters produced mpv init errors:',
+            )
+            ..writeln();
+          final keys = failures.keys.toList()..sort();
+          for (final key in keys) {
+            buf.writeln('  - $key:');
+            for (final msg in failures[key]!) {
+              buf.writeln('      $msg');
+            }
+          }
+          fail(buf.toString());
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 8)),
+    );
+
+    group('required-param filters always emit their mandatory options', () {
+      test('aeval wire string contains every required option', () {
+        const s = AevalSettings(enabled: true, exprs: 'val(0)|val(1)');
         final wire = s.toFilterString();
         expect(
           wire,
-          contains('model='),
+          contains('exprs='),
           reason:
-              'arnndn.model is mandatory and must always be in the wire string',
+              'aeval.exprs is mandatory and must always be in the wire string',
         );
-        expect(wire, startsWith('lavfi-arnndn'));
-      },
-    );
-    test('channelmap wire string contains every required option', () {
-      const s = ChannelmapSettings(enabled: true, map: '0|1');
-      final wire = s.toFilterString();
-      expect(
-        wire,
-        contains('map='),
-        reason:
-            'channelmap.map is mandatory and must always be in the wire string',
+        expect(wire, startsWith('lavfi-aeval'));
+      });
+      test(
+        'arnndn wire string contains every required option (also init-tested at runtime)',
+        () {
+          const s = ArnndnSettings(enabled: true, model: '');
+          final wire = s.toFilterString();
+          expect(
+            wire,
+            contains('model='),
+            reason:
+                'arnndn.model is mandatory and must always be in the wire string',
+          );
+          expect(wire, startsWith('lavfi-arnndn'));
+        },
       );
-      expect(wire, startsWith('lavfi-channelmap'));
-    });
-    test('chorus wire string contains every required option', () {
-      const s = ChorusSettings(
-        enabled: true,
-        delays: '55|60',
-        decays: '0.4|0.32',
-        speeds: '0.25|0.4',
-        depths: '2|1.3',
-      );
-      final wire = s.toFilterString();
-      expect(
-        wire,
-        contains('delays='),
-        reason:
-            'chorus.delays is mandatory and must always be in the wire string',
-      );
-      expect(
-        wire,
-        contains('decays='),
-        reason:
-            'chorus.decays is mandatory and must always be in the wire string',
-      );
-      expect(
-        wire,
-        contains('speeds='),
-        reason:
-            'chorus.speeds is mandatory and must always be in the wire string',
-      );
-      expect(
-        wire,
-        contains('depths='),
-        reason:
-            'chorus.depths is mandatory and must always be in the wire string',
-      );
-      expect(wire, startsWith('lavfi-chorus'));
-    });
-    test('pan wire string contains every required option', () {
-      const s = PanSettings(enabled: true, args: 'stereo|c0=c0|c1=c1');
-      final wire = s.toFilterString();
-      expect(
-        wire,
-        contains('args='),
-        reason: 'pan.args is mandatory and must always be in the wire string',
-      );
-      expect(wire, startsWith('lavfi-pan'));
+      test('channelmap wire string contains every required option', () {
+        const s = ChannelmapSettings(enabled: true, map: '0|1');
+        final wire = s.toFilterString();
+        expect(
+          wire,
+          contains('map='),
+          reason:
+              'channelmap.map is mandatory and must always be in the wire string',
+        );
+        expect(wire, startsWith('lavfi-channelmap'));
+      });
+      test('chorus wire string contains every required option', () {
+        const s = ChorusSettings(
+          enabled: true,
+          delays: '55|60',
+          decays: '0.4|0.32',
+          speeds: '0.25|0.4',
+          depths: '2|1.3',
+        );
+        final wire = s.toFilterString();
+        expect(
+          wire,
+          contains('delays='),
+          reason:
+              'chorus.delays is mandatory and must always be in the wire string',
+        );
+        expect(
+          wire,
+          contains('decays='),
+          reason:
+              'chorus.decays is mandatory and must always be in the wire string',
+        );
+        expect(
+          wire,
+          contains('speeds='),
+          reason:
+              'chorus.speeds is mandatory and must always be in the wire string',
+        );
+        expect(
+          wire,
+          contains('depths='),
+          reason:
+              'chorus.depths is mandatory and must always be in the wire string',
+        );
+        expect(wire, startsWith('lavfi-chorus'));
+      });
+      test('pan wire string contains every required option', () {
+        const s = PanSettings(enabled: true, args: 'stereo|c0=c0|c1=c1');
+        final wire = s.toFilterString();
+        expect(
+          wire,
+          contains('args='),
+          reason: 'pan.args is mandatory and must always be in the wire string',
+        );
+        expect(wire, startsWith('lavfi-pan'));
+      });
     });
   });
 }

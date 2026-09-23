@@ -16,60 +16,60 @@ import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   final fixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
-  setUpAll(() => initLibmpvOrSkip(fixturePath: fixture));
+  runtimeSuite(fixturePath: fixture, () {
+    test('diag: trace post-side tap frames', () async {
+      final player = await buildPlayer();
+      try {
+        await player.setAudioEffects(
+          const AudioEffects(equalizer: EqualizerSettings(enabled: true)),
+        );
+        await openAndWaitForLoad(player, fixture);
 
-  test('diag: trace post-side tap frames', () async {
-    final player = await buildPlayer();
-    try {
-      await player.setAudioEffects(
-        const AudioEffects(equalizer: EqualizerSettings(enabled: true)),
-      );
-      await openAndWaitForLoad(player, fixture);
+        // Wait for the global pcm-tap to start flowing — proves audio
+        // is actually streaming.
+        final pcmReady = Completer<void>();
+        final pcmSub = player.stream.pcm.listen((_) {
+          if (!pcmReady.isCompleted) pcmReady.complete();
+        });
+        await player.play();
+        await pcmReady.future.timeout(const Duration(seconds: 3));
+        await pcmSub.cancel();
+        print('[diag] global pcm tap flowing');
 
-      // Wait for the global pcm-tap to start flowing — proves audio
-      // is actually streaming.
-      final pcmReady = Completer<void>();
-      final pcmSub = player.stream.pcm.listen((_) {
-        if (!pcmReady.isCompleted) pcmReady.complete();
-      });
-      await player.play();
-      await pcmReady.future.timeout(const Duration(seconds: 3));
-      await pcmSub.cancel();
-      print('[diag] global pcm tap flowing');
+        // Now subscribe to the post-side tap and log every frame.
+        final t0 = DateTime.now().millisecondsSinceEpoch;
+        var prevTs = 0;
+        var count = 0;
+        var prevFirst = 0.0;
+        final sub = player.stream
+            .tap(AudioEffect.equalizer, side: TapSide.post)
+            .listen((frame) {
+              final tWall = DateTime.now().millisecondsSinceEpoch - t0;
+              final ts = frame.timestamp.inMilliseconds;
+              final dTs = ts - prevTs;
+              final first = frame.samples.first;
+              final last = frame.samples.last;
+              final dFirst = (first - prevFirst).abs();
+              print(
+                '[diag] #${count.toString().padLeft(3)} '
+                'tWall=${tWall.toString().padLeft(5)}ms  '
+                'ts=${ts.toString().padLeft(7)}ms (Δ${dTs.toString().padLeft(5)}ms)  '
+                'first=${first.toStringAsFixed(6).padLeft(10)} '
+                '(Δ${dFirst.toStringAsFixed(6).padLeft(10)})  '
+                'last=${last.toStringAsFixed(6).padLeft(10)}',
+              );
+              prevTs = ts;
+              prevFirst = first;
+              count++;
+            });
 
-      // Now subscribe to the post-side tap and log every frame.
-      final t0 = DateTime.now().millisecondsSinceEpoch;
-      var prevTs = 0;
-      var count = 0;
-      var prevFirst = 0.0;
-      final sub = player.stream
-          .tap(AudioEffect.equalizer, side: TapSide.post)
-          .listen((frame) {
-            final tWall = DateTime.now().millisecondsSinceEpoch - t0;
-            final ts = frame.timestamp.inMilliseconds;
-            final dTs = ts - prevTs;
-            final first = frame.samples.first;
-            final last = frame.samples.last;
-            final dFirst = (first - prevFirst).abs();
-            print(
-              '[diag] #${count.toString().padLeft(3)} '
-              'tWall=${tWall.toString().padLeft(5)}ms  '
-              'ts=${ts.toString().padLeft(7)}ms (Δ${dTs.toString().padLeft(5)}ms)  '
-              'first=${first.toStringAsFixed(6).padLeft(10)} '
-              '(Δ${dFirst.toStringAsFixed(6).padLeft(10)})  '
-              'last=${last.toStringAsFixed(6).padLeft(10)}',
-            );
-            prevTs = ts;
-            prevFirst = first;
-            count++;
-          });
-
-      await Future<void>.delayed(const Duration(milliseconds: 1500));
-      await sub.cancel();
-      print('[diag] received $count frames in ~1.5s');
-    } finally {
-      await player.pause();
-      await player.dispose();
-    }
-  }, timeout: const Timeout(Duration(seconds: 15)));
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+        await sub.cancel();
+        print('[diag] received $count frames in ~1.5s');
+      } finally {
+        await player.pause();
+        await player.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 15)));
+  });
 }

@@ -20,8 +20,8 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
-import '../_helpers/libmpv_resolver.dart';
 import '../_helpers/mpv_error_capture.dart';
+import '../_helpers/setter_test_helpers.dart';
 import '../generated/audio_filter_names.dart';
 
 void main() {
@@ -55,70 +55,60 @@ void main() {
   final filterNames = [...kAudioFilterNames]..sort();
   late Player player;
 
-  setUpAll(() async {
-    final lib = resolveLibmpv();
-    if (lib == null) {
-      markTestSkipped('libmpv not found');
-      return;
-    }
-    if (!File(fixturePath).existsSync()) {
-      markTestSkipped('Fixture missing: $fixturePath');
-      return;
-    }
+  runtimeSuite(fixturePath: fixturePath, () {
+    setUpAll(() async {
+      // logLevel must be at least 'error' to receive the diagnostics we
+      // grep for. Default helper builds with 'no'.
+      player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.error),
+      );
+      await player.setRawProperty('ao', 'null');
+      await player.open(Media(fixturePath), play: false);
+      // Wait for file-loaded so the audio chain is live; otherwise
+      // setting `af` may be deferred and not surface load errors.
+      await player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
+    });
 
-    MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
+    tearDownAll(() async {
+      await player.dispose();
+    });
 
-    // logLevel must be at least 'error' to receive the diagnostics we
-    // grep for. Default helper builds with 'no'.
-    player = Player(
-      configuration: const PlayerConfiguration(logLevel: LogLevel.error),
-    );
-    await player.setRawProperty('ao', 'null');
-    await player.open(Media(fixturePath), play: false);
-    // Wait for file-loaded so the audio chain is live; otherwise
-    // setting `af` may be deferred and not surface load errors.
-    await player.stream.seekCompleted.first.timeout(
-      const Duration(seconds: 10),
-    );
-  });
+    test('every typed audio filter loads in mpv\'s `af` chain', () async {
+      final failures = <String, List<String>>{};
 
-  tearDownAll(() async {
-    await player.dispose();
-  });
-
-  test('every typed audio filter loads in mpv\'s `af` chain', () async {
-    final failures = <String, List<String>>{};
-
-    for (final name in filterNames) {
-      if (requireParams.contains(name)) {
-        continue;
-      }
-      final errors = await captureMpvErrors(player, () async {
-        await player.setAudioEffects(AudioEffects(custom: ['lavfi-$name']));
-      });
-      if (errors.isNotEmpty) {
-        failures[name] = errors.map((e) => e.text.trim()).toList();
-      }
-      // Reset so the next iteration starts from a clean chain — and
-      // any error from THIS filter doesn't bleed into the next drain.
-      await player.setAudioEffects(const AudioEffects());
-    }
-
-    if (failures.isNotEmpty) {
-      final buf = StringBuffer()
-        ..writeln(
-          '${failures.length} of ${filterNames.length} '
-          'filters produced mpv errors:',
-        )
-        ..writeln();
-      final sortedKeys = failures.keys.toList()..sort();
-      for (final name in sortedKeys) {
-        buf.writeln('  - $name:');
-        for (final msg in failures[name]!) {
-          buf.writeln('      $msg');
+      for (final name in filterNames) {
+        if (requireParams.contains(name)) {
+          continue;
         }
+        final errors = await captureMpvErrors(player, () async {
+          await player.setAudioEffects(AudioEffects(custom: ['lavfi-$name']));
+        });
+        if (errors.isNotEmpty) {
+          failures[name] = errors.map((e) => e.text.trim()).toList();
+        }
+        // Reset so the next iteration starts from a clean chain — and
+        // any error from THIS filter doesn't bleed into the next drain.
+        await player.setAudioEffects(const AudioEffects());
       }
-      fail(buf.toString());
-    }
-  }, timeout: const Timeout(Duration(minutes: 3)));
+
+      if (failures.isNotEmpty) {
+        final buf = StringBuffer()
+          ..writeln(
+            '${failures.length} of ${filterNames.length} '
+            'filters produced mpv errors:',
+          )
+          ..writeln();
+        final sortedKeys = failures.keys.toList()..sort();
+        for (final name in sortedKeys) {
+          buf.writeln('  - $name:');
+          for (final msg in failures[name]!) {
+            buf.writeln('      $msg');
+          }
+        }
+        fail(buf.toString());
+      }
+    }, timeout: const Timeout(Duration(minutes: 3)));
+  });
 }
