@@ -27,6 +27,8 @@ jobs:
           flutter-version: ${{ matrix.flutter }}
           cache: true
       - run: flutter pub get
+      - run: flutter pub get
+        working-directory: test_app
       - name: Format
         if: matrix.flutter == 'any'
         run: dart format --output=none --set-exit-if-changed lib test example test_app/lib test_app/integration_test
