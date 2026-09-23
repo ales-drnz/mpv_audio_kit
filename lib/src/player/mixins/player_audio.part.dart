@@ -4,7 +4,7 @@
 part of '../player.dart';
 
 /// Audio setters: volume, mute, output device, format / channel layout,
-/// the [AudioEffects] DSP pipeline, and the cover-art display options.
+/// the effects chain, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
   /// Sets volume (0–100; values above 100 amplify the signal).
   Future<void> setVolume(double volume) async {

@@ -675,7 +675,7 @@ abstract class _PlayerBase {
 
   // Live EBU R128 meter. Listener-gated: polls `af-metadata` only while
   // `stream.loudness` has a listener (the `ebur128` effect itself is
-  // enabled by the consumer on the AudioEffects bundle).
+  // is a stage the consumer puts in the effects chain).
   late final LoudnessMeterPipeline _loudnessMeterPipeline;
 
   // Offline loudness scan. Listener-gated: arms the native whole-file

@@ -210,9 +210,7 @@ void main() {
       // ── Load-bearing regression guard: the FINAL integrated still matches the
       // independent live ebur128 meter on a full pass (the streaming change must
       // not perturb the merge math). ──
-      await player.setAudioEffects(const [
-        Ebur128Effect(metadata: true),
-      ]);
+      await player.setAudioEffects(const [Ebur128Effect(metadata: true)]);
       Loudness? live;
       final meter = player.stream.loudnessMeter.listen((l) => live = l);
       final eof = player.stream.eofReached

@@ -24,7 +24,7 @@ mixin _FfiModule on _PlayerBase {
   /// All typed setters (setVolume, setRate, setAudioEffects, …) flow
   /// through this method. Errors are surfaced rather than swallowed so
   /// the caller can react (out-of-range value, unknown name, malformed
-  /// `af` chain after `AudioEffects.custom`, etc.). `_propRc` is the
+  /// `af` chain from a [RawAudioEffect], etc.). `_propRc` is the
   /// rc-returning variant for the few call sites that need to tolerate
   /// failures explicitly.
   @override
@@ -257,10 +257,9 @@ mixin _FfiModule on _PlayerBase {
   /// they exist, both for type-safety and for synchronous state update.
   ///
   /// Two properties are reserved and rejected:
-  /// - `af` — owned by the typed [AudioEffects] bundle (including raw
-  ///   passthroughs via [AudioEffects.custom]); a raw write would silently
-  ///   desync `state.audioEffects`. Use [setAudioEffects] /
-  ///   [updateAudioEffects].
+  /// - `af` — owned by the effects chain (raw lavfi entries included, as
+  ///   [RawAudioEffect] stages); a raw write would silently desync
+  ///   `state.audioEffects`. Use [setAudioEffects] / [updateAudioEffects].
   /// - `pause` — owned by the transport intent axis. It is deliberately not
   ///   observed (see [PlayerState.playWhenReady]), so a raw write would
   ///   change actual playback while leaving `state.playWhenReady` (and the
@@ -277,10 +276,9 @@ mixin _FfiModule on _PlayerBase {
       throw ArgumentError.value(
         name,
         'name',
-        'Property `af` is owned by the typed AudioEffects bundle. '
+        'Property `af` is owned by the effects chain. '
             'Use Player.setAudioEffects / updateAudioEffects, and pass '
-            'experimental or expression-based filters via '
-            'AudioEffects.custom.',
+            'experimental or expression-based filters as a RawAudioEffect.',
       );
     }
     if (name == 'pause') {
@@ -311,17 +309,16 @@ mixin _FfiModule on _PlayerBase {
     await _gate();
     // Symmetric guard with `setRawProperty('af', ...)`: mpv exposes
     // `af` and `af-command` as commands that mutate the audio chain
-    // incrementally — bypassing the typed `AudioEffects` bundle and
-    // desynchronizing `state.audioEffects`. The bundle is the single
-    // writer of mpv's `af` property; raw incremental mutation goes
-    // through `AudioEffects.custom` instead.
+    // incrementally — bypassing the effects chain and desynchronizing
+    // `state.audioEffects`. The chain is the single writer of mpv's `af`
+    // property; raw entries go in it as `RawAudioEffect` stages instead.
     if (args.isNotEmpty && (args.first == 'af' || args.first == 'af-command')) {
       throw ArgumentError.value(
         args.first,
         'args[0]',
-        'Command `${args.first}` is owned by the typed AudioEffects bundle. '
+        'Command `${args.first}` is owned by the effects chain. '
             'Use Player.setAudioEffects / updateAudioEffects, and pass '
-            'experimental or expression-based filters via AudioEffects.custom.',
+            'experimental or expression-based filters as a RawAudioEffect.',
       );
     }
     final rc = await _command(args);

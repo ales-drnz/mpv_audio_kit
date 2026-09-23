@@ -118,7 +118,7 @@ dependencies:
     <details>
     <summary><a href="#5-audio-quality-and-dsp"><b>5. Audio quality and DSP</b></a></summary>
 
-    * [5.1 The AudioEffects bundle](#51-the-audioeffects-bundle)
+    * [5.1 The effects chain](#51-the-effects-chain)
     * [5.2 Common effects: quick examples](#52-common-effects-quick-examples)
     * [5.3 Available effects](#53-available-effects)
     * [5.4 ReplayGain](#54-replaygain)
@@ -311,7 +311,7 @@ dependencies:
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/sliders-horizontal.png" width="32"></td>
-<td valign="middle"><b>DSP pipeline</b><br>one <a href="#5-audio-quality-and-dsp"><code>AudioEffects</code></a> bundle covering 18-band graphic EQ, compressor, loudness, pitch and tempo, bass and treble, stereo width, headphone crossfeed, silence trim, plus any custom <code>--af</code> filter.</td>
+<td valign="middle"><b>DSP pipeline</b><br>an ordered <a href="#5-audio-quality-and-dsp">chain of typed effects</a> covering 18-band graphic EQ, compressor, loudness, pitch and tempo, bass and treble, stereo width, headphone crossfeed, silence trim, plus any custom <code>--af</code> filter.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/audio-lines.png" width="32"></td>
 <td valign="middle"><b>Visualizer</b><br>real-time <a href="#13-visualizer-waveform-and-spectrum">FFT spectrum + raw PCM streams</a> with log-spaced bands and asymmetric smoothing.</td>
 </tr>
@@ -831,146 +831,128 @@ works on every platform.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/dsp_chain.png" width="100%">
 
-#### 5.1 The AudioEffects bundle
+#### 5.1 The effects chain
 
-The DSP rack lives on a single immutable [`AudioEffects`] value. Every
-audio effect has its own typed `*Settings` field on the bundle, and
-the whole rack is applied in one call via two setters on `Player`:
-
-```dart
-// Replace the whole bundle (presets, factory defaults, JSON restore):
-Future<void> setAudioEffects(AudioEffects effects);
-
-// Mutate one or more fields with a copyWith mapper:
-Future<void> updateAudioEffects(AudioEffects Function(AudioEffects) f);
-```
-
-Each effect carries an `enabled` flag (default off). When on, it joins
-the audio chain; when off, it leaves the chain but keeps its parameters
-intact for the next toggle.
+The DSP rack is an ordered list of typed effects: every audio filter is
+an `XxxEffect` class (`EqualizerEffect`, `AcompressorEffect`, …), all
+subclasses of `AudioEffect`. The stages run in list order, the same
+filter can appear more than once, and the whole chain is applied in one
+call:
 
 ```dart
-// Read the live bundle synchronously
-final fx = player.state.audioEffects;
-print('compressor on: ${fx.acompressor.enabled} '
-      'threshold=${fx.acompressor.threshold}');
+// Replace the whole chain (presets, factory defaults, JSON restore):
+Future<void> setAudioEffects(List<AudioEffect> effects);
 
-// Or via stream: sub-stream a single effect with .map().distinct()
-player.stream.audioEffects
-  .map((e) => e.acompressor)
-  .distinct()
-  .listen((c) => print('compressor: $c'));
-```
-
-Apply a multi-effect preset in one shot:
-
-```dart
-await player.setAudioEffects(const AudioEffects(
-  acompressor: AcompressorSettings(
-    enabled: true, threshold: 0.1, ratio: 4,        // linear ratio threshold
-  ),
-  loudnorm: LoudnormSettings(enabled: true, I: -16),
-  bass: BassSettings(enabled: true, g: 3),          // bass shelf, +3 dB
-  treble: TrebleSettings(enabled: true, g: -2),     // treble shelf, -2 dB
-  rubberband: RubberbandSettings(
-    enabled: true, pitch: 1.0, tempo: 0.95,         // -5% tempo, no pitch shift
-  ),
-));
-```
-
-Toggle a single stage with the per-effect updater — a never-configured
-slot is seeded with its defaults first. Every effect slot is nullable
-(`null` = never configured, identical on the wire to a disabled
-instance), so effects your app never touches are tree-shaken out of
-the binary:
-
-```dart
-await player.updateAudioEffects(
-  (e) => e.updateAcompressor((c) => c.copyWith(enabled: !c.enabled)),
+// Change it through a mapper from the current list to the new one:
+Future<void> updateAudioEffects(
+  List<AudioEffect> Function(List<AudioEffect>) f,
 );
 ```
 
-Reset everything:
+```dart
+await player.setAudioEffects([
+  EqualizerEffect(frequency: 100, width: 50, gain: 3),     // low shelf-ish boost
+  EqualizerEffect(frequency: 8000, width: 1000, gain: -2), // tame the highs
+  AcompressorEffect(threshold: 0.1, ratio: 4),             // then compress
+  AlimiterEffect(limit: 0.9),                              // and limit last
+]);
+```
+
+Each effect carries an `enabled` flag, `true` by default. Setting it to
+`false` keeps the stage in the list, with its settings, but leaves it
+out of the chain until you turn it back on:
 
 ```dart
-await player.setAudioEffects(const AudioEffects());
+// Bypass every compressor without losing its settings
+await player.updateAudioEffects((fx) => [
+  for (final e in fx)
+    e is AcompressorEffect ? e.copyWith(enabled: false) : e,
+]);
+```
+
+Read the live chain synchronously, or follow it as a stream:
+
+```dart
+final fx = player.state.audioEffects;
+final comp = fx.whereType<AcompressorEffect>().firstOrNull;
+print('compressor: ${comp?.threshold}');
+
+player.stream.audioEffects.listen((fx) => print('${fx.length} stages'));
+```
+
+A slider drag that only changes the parameters of a stage, keeping the
+list's shape, is applied to the running filter graph in place, with no
+audible rebuild. Adding, removing, reordering or toggling a stage
+rebuilds the chain. Reset everything with:
+
+```dart
+await player.setAudioEffects(const []);
 ```
 
 > Mixing `setAudioEffects` with raw `setRawProperty('af', ...)` writes
-> is not supported. The typed bundle owns the chain, and raw writes
-> are rejected. Filters without a typed equivalent go through
-> `effects.custom` (a `List<String>` of raw entries emitted at the head
-> of the chain, before any typed stage).
+> is not supported: the chain owns mpv's `af` property, and raw writes
+> are rejected. For a filter or option form the typed effects do not
+> cover, put a `RawAudioEffect` in the list, where it runs in order like
+> any other stage:
 >
 > ```dart
-> // mix typed effects with a raw filter you want to inject
-> await player.updateAudioEffects((e) => e.copyWith(
->   custom: ['lavfi-aeval=val(0)|val(1)'],
->   acompressor: const AcompressorSettings(enabled: true, threshold: 0.1),
-> ));
+> await player.setAudioEffects(const [
+>   RawAudioEffect('lavfi-aeval=val(0)|val(1)'),
+>   AcompressorEffect(threshold: 0.1),
+> ]);
 > ```
 
 #### 5.2 Common effects: quick examples
 
-Below are some audio effects with representative settings. Every
-other effect works the same way: a typed
-field on the bundle, configured via `copyWith`.
+Below are some audio effects with representative settings. Every other
+effect works the same way: a typed class with a const constructor and
+`copyWith`, whose parameters are ffmpeg's options in camelCase
+(`level_in` is `levelIn`).
 
 ```dart
-// Dynamic-range compressor
-await player.updateAudioEffects((e) => e.copyWith(
-  acompressor: const AcompressorSettings(
-    enabled: true,
+await player.setAudioEffects(const [
+  // Dynamic-range compressor
+  AcompressorEffect(
     threshold: 0.1,    // 0..1 linear scale
     ratio: 4.0,
     attack: 20.0,      // ms
     release: 250.0,    // ms
   ),
-));
 
-// EBU R128 loudness normalisation
-await player.updateAudioEffects((e) => e.copyWith(
-  loudnorm: const LoudnormSettings(
-    enabled: true, I: -16, TP: -1.5, LRA: 11,
-  ),
-));
+  // EBU R128 loudness normalisation
+  LoudnormEffect(i: -16, tp: -1.5, lra: 11),
 
-// Pitch and tempo shifting (librubberband). Enums for quality presets.
-await player.updateAudioEffects((e) => e.copyWith(
-  rubberband: const RubberbandSettings(
-    enabled: true, pitch: 1.0594, tempo: 1.0,
+  // Pitch and tempo shifting (librubberband). Enums for quality presets.
+  RubberbandEffect(
+    pitch: 1.0594, tempo: 1.0,
     pitchq: RubberbandPitch.quality,
   ),
-));
 
-// 18-band ISO graphic EQ. Bands keyed by their original `1b`..`18b` names.
-await player.updateAudioEffects((e) => e.copyWith(
-  superequalizer: const SuperequalizerSettings(
-    enabled: true,
+  // 18-band ISO graphic EQ. Bands keyed by their original `1b`..`18b` names.
+  SuperequalizerEffect(
     params: {'4b': 1.5, '5b': 2.0, '8b': 0.5, '13b': 1.0},
   ),
-));
 
-// Bass + treble shelves (two independent shelving effects).
-await player.updateAudioEffects((e) => e.copyWith(
-  bass: const BassSettings(enabled: true, g: 4, f: 100),
-  treble: const TrebleSettings(enabled: true, g: -2, f: 3000),
-));
+  // Bass + treble shelves (two independent shelving effects).
+  BassEffect(g: 4, f: 100),
+  TrebleEffect(g: -2, f: 3000),
+]);
 ```
 
 Effects with multiple-choice parameters, rubberband's pitch quality,
 aemphasis curve, equalizer filter type, expose them as Dart enums for
-IDE autocomplete and compile-time safety.
+IDE autocomplete and compile-time safety. Every numeric parameter also
+has `static const` bounds and default on its class
+(`AcompressorEffect.thresholdMin`, `…Max`, `…Default`) for building
+sliders.
 
 #### 5.3 Available effects
 
-The bundle ships with 87 audio effects covering compression, EQ,
-denoising, spatialisation, modulation, and more. Each row below maps to a
-`<Name>Settings` field on `AudioEffects` (e.g. `acompressor` →
-`AudioEffects.acompressor` of type `AcompressorSettings`). For raw
-`lavfi-*` filters outside this typed set, or for quick experimentation,
-use `AudioEffects.custom: List<String>` to push entries through the head
-of the chain.
+The library ships 87 audio effects covering compression, EQ, denoising,
+spatialisation, modulation, and more. Each row below is one class,
+named after the filter with an `Effect` suffix (`acompressor` →
+`AcompressorEffect`). For raw `lavfi-*` filters outside this typed set,
+or for quick experimentation, use `RawAudioEffect`.
 
 <details>
 <summary><b>Browse the full catalogue</b> (click to expand)</summary>
@@ -1741,7 +1723,7 @@ local-file player that wants disk-side artwork.
 
 | Stream | Type | Setter |
 | :--- | :--- | :--- |
-| `audioEffects` | `AudioEffects` | `setAudioEffects`, `updateAudioEffects` |
+| `audioEffects` | `List<AudioEffect>` | `setAudioEffects`, `updateAudioEffects` |
 | `replayGain` | `ReplayGainSettings` | `setReplayGain` |
 | `gapless` | `Gapless` | `setGapless` |
 
@@ -2448,19 +2430,21 @@ count.
 #### 13.4 Per-filter PCM taps
 
 `player.stream.tap(filter, side: ...)` captures raw audio samples at
-either side of a single filter in the `af` chain. The slot is named
-through the typed `AudioEffect` enum, the same 86 values surfaced as
-`*Settings` fields on `AudioEffects`, so every reachable filter is
-chosen at compile time. The side is one of `TapSide.pre` (before the
-filter's DSP runs) or `TapSide.post` (after).
+either side of one stage of the effects chain. The stage is named by its
+filter, through the typed `AudioFilter` enum, and by `instance` when the
+filter appears more than once (0, the default, is the first): with two
+`EqualizerEffect`s in the list, `instance: 1` taps the second. The tap
+follows its stage when the others are toggled or reordered. The side is
+one of `TapSide.pre` (before the filter's DSP runs) or `TapSide.post`
+(after).
 
 ```dart
 // Two-curve display: input vs output of a single filter.
 player.stream
-    .tap(AudioEffect.equalizer, side: TapSide.pre)
+    .tap(AudioFilter.equalizer, side: TapSide.pre)
     .listen((pcm) => paintInputWaveform(pcm.samples));
 player.stream
-    .tap(AudioEffect.equalizer, side: TapSide.post)
+    .tap(AudioFilter.equalizer, side: TapSide.post)
     .listen((pcm) => paintOutputWaveform(pcm.samples));
 ```
 
@@ -2474,20 +2458,23 @@ final processor = BandProcessor(player.spectrumSettings);
 // Track the global config so the local FFT stays in lock-step.
 final cfgSub = player.stream.spectrum.listen(processor.setSettings);
 final tapSub = player.stream
-    .tap(AudioEffect.equalizer, side: TapSide.post)
+    .tap(AudioFilter.equalizer, side: TapSide.post)
     .listen((pcm) {
       final fft = processor.process(pcm);
       if (fft != null) painter.bands = fft.bands;
     });
 ```
 
-`AudioEffectsX.active` cross-links the singular `AudioEffect` enum
-with the `AudioEffects` bundle, yielding the enum value for every slot
-flagged `enabled: true`, so you can iterate the live rack:
+Every typed stage exposes its `filter`, so you can tap the live rack
+stage by stage:
 
 ```dart
-for (final f in player.state.audioEffects.active) {
-  player.stream.tap(f, side: TapSide.post).listen(_paint);
+final seen = <AudioFilter, int>{};
+for (final e in player.state.audioEffects) {
+  final f = e.filter;
+  if (f == null || !e.enabled) continue;  // raw or bypassed stage
+  final instance = seen.update(f, (n) => n + 1, ifAbsent: () => 0);
+  player.stream.tap(f, instance: instance, side: TapSide.post).listen(_paint);
 }
 ```
 
@@ -2558,13 +2545,13 @@ they play (adaptive or live network streams) report
 
 `player.stream.loudnessMeter` emits momentary, short-term, integrated
 and loudness-range readings of the audio *as it plays* — the data for a
-VU-style meter or a broadcast loudness display. The meter is the
-`ebur128` stage of the audio chain, so enable it on the bundle with its
-`metadata` option on:
+VU-style meter or a broadcast loudness display. The meter reads the
+first `Ebur128Effect` of the chain, so add one with its `metadata` option
+on, at the point of the chain you want to measure:
 
 ```dart
 await player.updateAudioEffects(
-  (e) => e.updateEbur128((m) => m.copyWith(enabled: true, metadata: true)),
+  (fx) => [...fx, const Ebur128Effect(metadata: true)],
 );
 player.stream.loudnessMeter.listen((l) => meter.paint(l.momentary));
 ```

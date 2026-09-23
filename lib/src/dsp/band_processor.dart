@@ -38,7 +38,7 @@ import '../types/settings/spectrum_settings.dart';
 /// // the global visualizer.
 /// final cfgSub = player.stream.spectrum.listen(processor.setSettings);
 /// final tapSub =
-///     player.stream.tap(AudioEffect.equalizer, side: TapSide.post)
+///     player.stream.tap(AudioFilter.equalizer, side: TapSide.post)
 ///         .listen((pcm) {
 ///       final fft = processor.process(pcm);
 ///       if (fft != null) painter.bands = fft.bands;

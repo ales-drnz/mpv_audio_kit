@@ -457,8 +457,8 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(audioClientName: v),
     ),
     // mpv's `af` property is owned exclusively by `setAudioEffects` /
-    // `updateAudioEffects` — the typed [AudioEffects] bundle (including
-    // its `custom` raw passthrough slot) is the only writer. Raw writes
+    // `updateAudioEffects` — the effects chain (raw entries included, as
+    // `RawAudioEffect` stages) is the only writer. Raw writes
     // to `af` are rejected by `setRawProperty`, so the property is not
     // observed here.
     MpvPropertySpec<String>.string(

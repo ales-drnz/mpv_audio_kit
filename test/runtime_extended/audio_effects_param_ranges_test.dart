@@ -6,7 +6,7 @@
 // Schema-vs-reality runtime gate. The companion to the bare-name
 // `audio_effects_chain_runtime_test.dart`: instead of loading each
 // filter as `lavfi-<name>` (no params), this test feeds each typed
-// `*Settings` corner-case (min / default / max for every numeric
+// typed effect corner-case (min / default / max for every numeric
 // param) to a live mpv instance via `setAudioEffects` and captures
 // any AVOption-rejection errors.
 //

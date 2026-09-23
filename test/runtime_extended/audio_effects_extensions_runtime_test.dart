@@ -19,7 +19,7 @@
 //
 // Each scenario:
 //   1. Builds typed models the consumer would use.
-//   2. Wraps them in `*Settings.withXxx()`.
+//   2. Wraps them in `XxxEffect.withXxx()`.
 //   3. Applies via `setAudioEffects` and waits for mpv to react.
 //   4. Asserts no error / fatal log entry was emitted.
 

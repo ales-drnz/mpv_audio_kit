@@ -13,8 +13,8 @@
 //      decoders).
 //
 //   2. Filters — iterate the auto-generated `kAudioFilterNames`
-//      manifest (mirror of every typed `*Settings` field on the
-//      `AudioEffects` bundle) and push each through the public API.
+//      manifest (one entry per typed effect class) and push each
+//      through the public API.
 //      A missing filter surfaces as a "Cannot find filter" / "no such
 //      filter" / "unknown filter" entry on `Player.stream.log`.
 
@@ -312,8 +312,8 @@ void main() {
           missing,
           isEmpty,
           reason:
-              'These filters are exposed by the typed AudioEffects '
-              'bundle but NOT registered in the bundled libmpv '
+              'These filters have a typed effect class '
+              'but are NOT registered in the bundled libmpv '
               'binary:\n  ${missing.join("\n  ")}',
         );
       }, timeout: const Timeout(Duration(seconds: 60)));

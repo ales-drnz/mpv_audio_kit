@@ -6,7 +6,7 @@
 // Per-filter runtime gate. Iterates the auto-generated
 // `kAudioFilterNames` manifest (mirror of every typed filter on the
 // public `AudioEffects` bundle), applies each one in isolation as a
-// raw `lavfi-<name>` chain via `AudioEffects.custom`, and collects
+// raw `lavfi-<name>` chain via a `RawAudioEffect`, and collects
 // every mpv `error`/`fatal` log entry. The test fails with the full
 // per-filter report so a single run surfaces ALL unusable filters
 // (whether for missing ffmpeg deps or 1-in/1-out gating in mpv's
@@ -31,7 +31,7 @@ void main() {
   // Filters that compile + register correctly in libavfilter and pass
   // mpv's 1-in/1-out gate, but require at least one option to be set
   // before they can initialise. Bare `lavfi-<name>` invocation fails
-  // with "filter failed to initialize". The typed `*Settings` API
+  // with "filter failed to initialize". The typed effects API
   // exposes them — the consumer is expected to provide the required
   // params via copyWith/setAudioEffects. This test skips the bare-name
   // invocation since it has no way to fabricate sensible required

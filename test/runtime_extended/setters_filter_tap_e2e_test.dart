@@ -41,9 +41,7 @@ void main() {
             // Enable a real filter. `equalizer` is in the audio-only build
             // and forwards every frame untouched at gain 0 — perfect for
             // a "is the tap actually wired" probe.
-            await player.setAudioEffects(const [
-              EqualizerEffect(),
-            ]);
+            await player.setAudioEffects(const [EqualizerEffect()]);
 
             await openAndWaitForLoad(player, fixturePath);
 

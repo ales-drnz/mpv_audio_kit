@@ -458,10 +458,9 @@ class PlayerStream {
   /// moment this stream emits [AudioOutputState.failed].
   final Stream<AudioOutputState> audioOutputState;
 
-  /// All DSP effects in mpv's `--af` pipeline, bundled into a single
-  /// atomic snapshot. Set with [Player.setAudioEffects] /
-  /// [Player.updateAudioEffects]. Sub-stream a single effect via
-  /// `audioEffects.map((e) => e.acompressor).distinct()`.
+  /// The effects chain: the ordered list of stages in mpv's `af`
+  /// pipeline. Set with [Player.setAudioEffects] /
+  /// [Player.updateAudioEffects].
   final Stream<List<AudioEffect>> audioEffects;
 
   // ── Cover Art ──────────────────────────────────────────────────────────────
@@ -714,7 +713,7 @@ class PlayerStream {
   /// accessor for callers that don't want a subscription).
   ///
   /// Mirrors the bundle-stream pattern of [replayGain] / [cache] /
-  /// [audioEffects] — `setX` ↔ `stream.x` of the matching `*Settings`
+  /// [audioEffects] — `setX` ↔ `stream.x` of the matching settings
   /// type. Unlike those, this one lives entirely Dart-side: the stream
   /// is fed from the FFT pipeline's local cache, not from an mpv
   /// property observer (the underlying `pcm-tap-frame` property only
@@ -745,13 +744,12 @@ class PlayerStream {
   /// short-term, integrated, range) from the `ebur128` stage of the
   /// audio chain.
   ///
-  /// Requires the meter in the chain: enable it on the bundle with its
-  /// `metadata` option on —
+  /// Requires the meter in the chain: it reads the first [Ebur128Effect]
+  /// of the list, which needs its `metadata` option on —
   ///
   /// ```dart
   /// await player.updateAudioEffects(
-  ///   (e) => e.updateEbur128(
-  ///       (m) => m.copyWith(enabled: true, metadata: true)),
+  ///   (fx) => [...fx, const Ebur128Effect(metadata: true)],
   /// );
   /// player.stream.loudnessMeter.listen((l) => meter.paint(l.momentary));
   /// ```

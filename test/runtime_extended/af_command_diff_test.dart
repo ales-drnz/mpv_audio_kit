@@ -122,9 +122,7 @@ void main() {
     test('afcmd-1: a rewrite that FAILS after a diff re-arms the stale flag so '
         'the next load still resyncs the diff value', () async {
       // Clean baseline with a command-capable bass stage at a known gain.
-      await player.setAudioEffects(const [
-        BassEffect(f: 1000, g: 1),
-      ]);
+      await player.setAudioEffects(const [BassEffect(f: 1000, g: 1)]);
       // Runtime-only change → diff (af-command); the af STRING stays stale at
       // g=1 while the live graph and committed state move to g=9.
       await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 9));

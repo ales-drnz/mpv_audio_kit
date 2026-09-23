@@ -12,7 +12,7 @@ import 'package:test/test.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  // The `af` mpv property is owned by the typed AudioEffects bundle.
+  // The `af` mpv property is owned by the effects chain.
   // Both write paths must reject — `setRawProperty('af', ...)` AND
   // `sendRawCommand(['af', ...])` (incremental mutator) AND
   // `sendRawCommand(['af-command', ...])` (per-filter command).

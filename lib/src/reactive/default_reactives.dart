@@ -249,9 +249,7 @@ class DefaultPropertyReactives {
   /// Active audio output driver (`ao`).
   final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
 
-  /// DSP pipeline — the single bundle reactive backing every effect. Each
-  /// effect owns a reserved label inside the `af` pipeline and is upserted
-  /// atomically when the bundle is replaced via `Player.setAudioEffects` /
+  /// The effects chain, replaced atomically via `Player.setAudioEffects` /
   /// `updateAudioEffects`.
   final ReactiveProperty<List<AudioEffect>> audioEffects =
       ReactiveProperty<List<AudioEffect>>(const []);
