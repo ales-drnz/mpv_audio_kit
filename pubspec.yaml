@@ -24,8 +24,8 @@ screenshots:
     path: imgs/mpv_audio_kit.png
 
 environment:
-  sdk: ^3.6.0
-  flutter: '>=3.27.0'
+  sdk: ^3.10.0
+  flutter: '>=3.38.0'
 
 dependencies:
   ffi: ^2.1.3

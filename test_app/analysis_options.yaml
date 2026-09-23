@@ -12,6 +12,12 @@ analyzer:
   exclude:
     - docs/**
     - graphify-out/**
+    - build/**
+    - android/**
+    - ios/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   rules:

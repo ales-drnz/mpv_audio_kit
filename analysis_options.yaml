@@ -18,6 +18,12 @@ analyzer:
     # headers don't cover this file's stricter ruleset, and the resulting
     # ~5k infos would bury every real finding in `flutter analyze`.
     - test/generated/**
+    - build/**
+    - android/**
+    - ios/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   rules:
@@ -29,7 +35,6 @@ linter:
     - prefer_final_locals
     - prefer_final_in_for_each
     - unawaited_futures
-    - require_trailing_commas
     - directives_ordering
     - sort_pub_dependencies
     - prefer_single_quotes
