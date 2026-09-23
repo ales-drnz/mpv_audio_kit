@@ -50,6 +50,12 @@ set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 
+# C++/WinRT needs C++20 coroutines. Under the app template's C++17 it falls
+# back to <experimental/coroutine>, which MSVC 14.51 (Visual Studio 2026)
+# rejects with STL1011. The highest requested standard wins, so this lifts
+# only the plugin target.
+target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_20)
+
 # Source include directories and library dependencies. Add any plugin-specific
 # dependencies here.
 target_include_directories(${PLUGIN_NAME}

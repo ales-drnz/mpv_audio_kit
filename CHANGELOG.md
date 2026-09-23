@@ -5,6 +5,7 @@
 
 ### Fixed
 - On an auto-advance, `state.playlist` and `state.path` name the new track before its cover, waveform reset and first envelope arrive. With prefetch on they often still named the previous one.
+- Windows: the plugin builds with Visual Studio 2026.
 
 ## [0.4.8] - 24-09-2026
 
