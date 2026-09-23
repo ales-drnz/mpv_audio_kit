@@ -67,6 +67,7 @@ mixin _MediaSessionModule on _PlayerBase {
           stateSnapshot: () => _state,
           inputs: MediaSessionInputs.fromPlayer(stream: stream),
           onCommand: _handleSessionCommand,
+          onAudioOutputReset: _reloadAudioOutput,
         );
         // Re-check EVERYTHING that gated the create, not just ownership:
         // a concurrent `setMediaSession(non-null)` also passed the
@@ -174,7 +175,15 @@ mixin _MediaSessionModule on _PlayerBase {
   /// command mpv rejects — e.g. a lockscreen seek arriving with nothing loaded
   /// ([Player.seek] throws via `_commandChecked`) — would otherwise escape as
   /// an unhandled async error (which can crash a guarded zone) seconds later.
-  void _applySessionCommand(Future<void> action) {
+  /// Reopens mpv's audio output after the OS restored the audio session
+  /// without it (see [MediaSessionChannel.audioOutputResets]): the
+  /// AudioUnit the system stopped for an interruption or a media services
+  /// reset stays silent, while mpv keeps reporting playback.
+  void _reloadAudioOutput() {
+    _applySessionCommand(_commandChecked(const ['ao-reload']));
+  }
+
+    void _applySessionCommand(Future<void> action) {
     unawaited(
       action.catchError((Object e, StackTrace st) {
         _internalLog('Media-session command failed: $e', level: LogLevel.warn);

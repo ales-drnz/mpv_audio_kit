@@ -27,8 +27,9 @@ String? libmpvSkipReason({
   String? fixturePath,
   List<String> extraFixtures = const [],
 }) {
-  if (resolveLibmpv() == null)
+  if (resolveLibmpv() == null) {
     return 'no bundled libmpv (did the build hook run?)';
+  }
   for (final path in [?fixturePath, ...extraFixtures]) {
     if (!File(path).existsSync()) return 'Fixture missing: $path';
   }
