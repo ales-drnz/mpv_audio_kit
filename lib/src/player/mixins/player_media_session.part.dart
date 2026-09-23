@@ -183,7 +183,7 @@ mixin _MediaSessionModule on _PlayerBase {
     _applySessionCommand(_commandChecked(const ['ao-reload']));
   }
 
-    void _applySessionCommand(Future<void> action) {
+  void _applySessionCommand(Future<void> action) {
     unawaited(
       action.catchError((Object e, StackTrace st) {
         _internalLog('Media-session command failed: $e', level: LogLevel.warn);

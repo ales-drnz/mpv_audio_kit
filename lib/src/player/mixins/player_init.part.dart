@@ -99,6 +99,27 @@ mixin _InitModule on _PlayerBase {
     if (_waveformCtrl.hasListener) _waveformPipeline.setEnabled(true);
     if (_loudnessMeterCtrl.hasListener) _loudnessMeterPipeline.setEnabled(true);
     if (_loudnessScanCtrl.hasListener) _loudnessScanPipeline.setEnabled(true);
+
+    if (MpvAudioKit.libraryPath == null) unawaited(_checkBundledRelease());
+  }
+
+  /// Warns when the bundled libmpv is not the release this package
+  /// version expects, which leaves features missing in ways that are hard
+  /// to trace back (a stale build cache, or an app bundling its own binary
+  /// through the hook's `libmpv` user define).
+  Future<void> _checkBundledRelease() async {
+    try {
+      final version = await (this as Player).getRawProperty('mpv-version');
+      if (version != null && !version.endsWith('+$libmpvRelease')) {
+        _internalLog(
+          'libmpv reports "$version"; mpv_audio_kit expects its '
+          '$libmpvRelease build. Features may be missing.',
+          level: LogLevel.warn,
+        );
+      }
+    } catch (_) {
+      // Disposed before the reply: nothing to check.
+    }
   }
 
   /// Recipe of pre-init `mpv_set_option_string` calls executed by the

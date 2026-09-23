@@ -8,8 +8,9 @@
 #
 # Points the build hook at a libmpv release: reads the release's manifest.json
 # (written by libmpv-scripts' write_manifest.sh) and rewrites `_release` and
-# the `_sha256` table in hook/build.dart. That table is the only place the
-# package pins its binaries.
+# the `_sha256` table in hook/build.dart, the only place the package pins
+# its binaries, plus the release the player expects to find in mpv's
+# version string (lib/src/internals/libmpv_release.dart).
 #
 # Usage (from the package root):
 #   scripts/update_libmpv.sh r14                       # published release
@@ -54,6 +55,14 @@ if missing:
 rows = "\n".join(f"  '{name}': '{manifest['assets'][name]}'," for name in pinned)
 hook = hook[:table.start(1)] + rows + hook[table.end(1):]
 open(hook_path, "w").write(hook)
+
+release_path = hook_path.replace("hook/build.dart", "lib/src/internals/libmpv_release.dart")
+release = open(release_path).read()
+release, n = re.subn(r"const String libmpvRelease = '[^']*';",
+                     f"const String libmpvRelease = '{manifest['release']}';", release)
+if n != 1:
+    sys.exit("libmpv_release.dart: libmpvRelease not found")
+open(release_path, "w").write(release)
 print(f"hook/build.dart -> {tag} (mpv {manifest['mpv']}, FFmpeg {manifest['ffmpeg']}, "
       f"{len(pinned)} assets)")
 PY

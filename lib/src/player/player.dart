@@ -23,6 +23,7 @@ import '../generated/audio_effects_settings.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';
+import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
 import '../internals/orphan_handle_tracker.dart';
 import '../internals/player_finalizer.dart';
