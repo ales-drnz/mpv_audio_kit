@@ -20,27 +20,27 @@ mixin _NetworkModule on _PlayerBase {
       (
         'cache-secs',
         durationToSeconds(settings.secs).toStringAsFixed(3),
-        durationToSeconds(previous.secs).toStringAsFixed(3)
+        durationToSeconds(previous.secs).toStringAsFixed(3),
       ),
       (
         'cache-on-disk',
         settings.onDisk ? 'yes' : 'no',
-        previous.onDisk ? 'yes' : 'no'
+        previous.onDisk ? 'yes' : 'no',
       ),
       (
         'cache-pause',
         settings.pause ? 'yes' : 'no',
-        previous.pause ? 'yes' : 'no'
+        previous.pause ? 'yes' : 'no',
       ),
       (
         'cache-pause-wait',
         durationToSeconds(settings.pauseWait).toStringAsFixed(3),
-        durationToSeconds(previous.pauseWait).toStringAsFixed(3)
+        durationToSeconds(previous.pauseWait).toStringAsFixed(3),
       ),
       (
         'cache-pause-initial',
         settings.pauseInitial ? 'yes' : 'no',
-        previous.pauseInitial ? 'yes' : 'no'
+        previous.pauseInitial ? 'yes' : 'no',
       ),
     ];
     final committed = <(String, String)>[];
@@ -56,7 +56,10 @@ mixin _NetworkModule on _PlayerBase {
       rethrow;
     }
     _updateField(
-        (s) => s.copyWith(cache: settings), _reactives.cache, settings,);
+      (s) => s.copyWith(cache: settings),
+      _reactives.cache,
+      settings,
+    );
   }
 
   /// Sets the audio output buffer depth.
@@ -69,15 +72,21 @@ mixin _NetworkModule on _PlayerBase {
     await _gate();
     await _prop('audio-buffer', durationToSeconds(size).toStringAsFixed(3));
     _updateField(
-        (s) => s.copyWith(audioBuffer: size), _reactives.audioBuffer, size,);
+      (s) => s.copyWith(audioBuffer: size),
+      _reactives.audioBuffer,
+      size,
+    );
   }
 
   /// Enables or disables streaming silence when no audio is playing.
   Future<void> setAudioStreamSilence(bool enable) async {
     await _gate();
     await _prop('audio-stream-silence', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(audioStreamSilence: enable),
-        _reactives.audioStreamSilence, enable,);
+    _updateField(
+      (s) => s.copyWith(audioStreamSilence: enable),
+      _reactives.audioStreamSilence,
+      enable,
+    );
   }
 
   /// Sets the network connection timeout.
@@ -91,9 +100,15 @@ mixin _NetworkModule on _PlayerBase {
     // mpv's `network-timeout` accepts a fractional second value (e.g.
     // "0.5"). Truncating with `inSeconds` would collapse any sub-second
     // duration to 0, which mpv interprets as "no timeout".
-    await _prop('network-timeout', durationToSeconds(timeout).toStringAsFixed(6));
-    _updateField((s) => s.copyWith(networkTimeout: timeout),
-        _reactives.networkTimeout, timeout,);
+    await _prop(
+      'network-timeout',
+      durationToSeconds(timeout).toStringAsFixed(6),
+    );
+    _updateField(
+      (s) => s.copyWith(networkTimeout: timeout),
+      _reactives.networkTimeout,
+      timeout,
+    );
   }
 
   /// Whether to verify TLS/SSL certificates for network streams.
@@ -101,7 +116,10 @@ mixin _NetworkModule on _PlayerBase {
     await _gate();
     await _prop('tls-verify', enable ? 'yes' : 'no');
     _updateField(
-        (s) => s.copyWith(tlsVerify: enable), _reactives.tlsVerify, enable,);
+      (s) => s.copyWith(tlsVerify: enable),
+      _reactives.tlsVerify,
+      enable,
+    );
   }
 
   /// Sets the absolute filesystem path to a PEM bundle of trusted CA
@@ -115,8 +133,11 @@ mixin _NetworkModule on _PlayerBase {
   Future<void> setTlsCaFile(String path) async {
     await _gate();
     await _prop('tls-ca-file', path);
-    _updateField((s) => s.copyWith(tlsCaFile: path), _reactives.tlsCaFile,
-        path,);
+    _updateField(
+      (s) => s.copyWith(tlsCaFile: path),
+      _reactives.tlsCaFile,
+      path,
+    );
   }
 
   /// Sets the HLS variant-selection policy for adaptive streams.
@@ -128,8 +149,11 @@ mixin _NetworkModule on _PlayerBase {
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate) async {
     await _gate();
     await _prop('hls-bitrate', hlsBitrate.mpvValue);
-    _updateField((s) => s.copyWith(hlsBitrate: hlsBitrate),
-        _reactives.hlsBitrate, hlsBitrate,);
+    _updateField(
+      (s) => s.copyWith(hlsBitrate: hlsBitrate),
+      _reactives.hlsBitrate,
+      hlsBitrate,
+    );
   }
 
   /// Enables mpv's HTTP cookie jar for network streams (mpv's `cookies`).
@@ -139,7 +163,10 @@ mixin _NetworkModule on _PlayerBase {
     await _gate();
     await _prop('cookies', enable ? 'yes' : 'no');
     _updateField(
-        (s) => s.copyWith(cookies: enable), _reactives.cookies, enable,);
+      (s) => s.copyWith(cookies: enable),
+      _reactives.cookies,
+      enable,
+    );
   }
 
   /// Sets the HTTP proxy URL for network streams (mpv's `http-proxy`).
@@ -149,8 +176,7 @@ mixin _NetworkModule on _PlayerBase {
   Future<void> setHttpProxy(String url) async {
     await _gate();
     await _prop('http-proxy', url);
-    _updateField(
-        (s) => s.copyWith(httpProxy: url), _reactives.httpProxy, url,);
+    _updateField((s) => s.copyWith(httpProxy: url), _reactives.httpProxy, url);
   }
 
   /// Sets the demuxer buffering configuration atomically.
@@ -168,17 +194,17 @@ mixin _NetworkModule on _PlayerBase {
       (
         'demuxer-max-bytes',
         settings.maxBytes.toString(),
-        previous.maxBytes.toString()
+        previous.maxBytes.toString(),
       ),
       (
         'demuxer-max-back-bytes',
         settings.maxBackBytes.toString(),
-        previous.maxBackBytes.toString()
+        previous.maxBackBytes.toString(),
       ),
       (
         'demuxer-readahead-secs',
         durationToSeconds(settings.readahead).toStringAsFixed(6),
-        durationToSeconds(previous.readahead).toStringAsFixed(6)
+        durationToSeconds(previous.readahead).toStringAsFixed(6),
       ),
     ];
     final committed = <(String, String)>[];
@@ -194,14 +220,20 @@ mixin _NetworkModule on _PlayerBase {
       rethrow;
     }
     _updateField(
-        (s) => s.copyWith(demuxer: settings), _reactives.demuxer, settings,);
+      (s) => s.copyWith(demuxer: settings),
+      _reactives.demuxer,
+      settings,
+    );
   }
 
   /// Whether to fallback to untimed null output if audio output fails.
   Future<void> setAudioNullUntimed(bool enable) async {
     await _gate();
     await _prop('ao-null-untimed', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(audioNullUntimed: enable),
-        _reactives.audioNullUntimed, enable,);
+    _updateField(
+      (s) => s.copyWith(audioNullUntimed: enable),
+      _reactives.audioNullUntimed,
+      enable,
+    );
   }
 }

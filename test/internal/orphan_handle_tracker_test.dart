@@ -30,9 +30,13 @@ void main() {
 
     // The tmp file should exist after the first init — keyed by pid.
     final expected = File(
-        '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_audio_kit_refs_$pid.txt',);
-    expect(expected.existsSync(), isTrue,
-        reason: 'tracker writes a per-pid sentinel into systemTemp on init',);
+      '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_audio_kit_refs_$pid.txt',
+    );
+    expect(
+      expected.existsSync(),
+      isTrue,
+      reason: 'tracker writes a per-pid sentinel into systemTemp on init',
+    );
 
     // add() and remove() of a fake handle pointer must not throw. The
     // tracker is a Future-chained queue internally, so the assertions

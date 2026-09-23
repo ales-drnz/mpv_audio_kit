@@ -40,8 +40,7 @@ void main() {
       await player.dispose();
     });
 
-    test(
-        'Player constructs, opens fixture, sets volume, disposes — without '
+    test('Player constructs, opens fixture, sets volume, disposes — without '
         'crashing on the 3rd-Player SIGSEGV quirk because flutter_test '
         'puts each file in its own isolate group', () async {
       // Open the file to confirm the AO + demuxer init path completes
@@ -62,6 +61,6 @@ void main() {
       // happens during the setter and would have already passed.)
       await player.setVolume(72.0);
       expect(player.state.volume, 72.0);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

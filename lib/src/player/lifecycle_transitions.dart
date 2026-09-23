@@ -59,11 +59,7 @@ LifecycleResult computeLifecycle({
 /// active mode is [Loop.playlist], where the file-side toggle must
 /// not reset the playlist loop.
 @internal
-Loop? deriveLoop(
-  String mpvName,
-  String value,
-  Loop prevMode,
-) {
+Loop? deriveLoop(String mpvName, String value, Loop prevMode) {
   // `loop-file` / `loop-playlist` accept `'inf'`, `'no'`, or a non-negative
   // integer (finite repeat count). Any value other than `'no'` / `'0'` is
   // an active loop; both `'inf'` and `'N>0'` collapse into the

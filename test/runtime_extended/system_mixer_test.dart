@@ -26,8 +26,9 @@ void main() {
       );
       addTearDown(player.dispose);
       await player.setAudioStreamSilence(true);
-      final loaded =
-          player.stream.seekCompleted.first.timeout(const Duration(seconds: 8));
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 8),
+      );
       await player.open(Media(fx), play: false);
       try {
         await loaded;
@@ -41,21 +42,27 @@ void main() {
 
       await player.setSystemVolume(50.0);
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(player.state.systemVolume, closeTo(50.0, 0.5),
-          reason: 'ao-volume round-trips through the real audio output',);
+      expect(
+        player.state.systemVolume,
+        closeTo(50.0, 0.5),
+        reason: 'ao-volume round-trips through the real audio output',
+      );
       await player.setSystemVolume(100.0);
-    }, timeout: const Timeout(Duration(seconds: 20)),);
+    }, timeout: const Timeout(Duration(seconds: 20)));
 
-    test('setSystemVolume / setSystemMute are best-effort (no throw on null AO)',
-        () async {
-      // With the null AO, system volume/mute are unavailable. The setters must
-      // NOT throw, and state stays null (the contract for an unsupported AO).
-      final player = await buildPlayer(); // ao=null
-      addTearDown(player.dispose);
-      await player.setSystemVolume(42.0);
-      await player.setSystemMute(true);
-      expect(player.state.systemVolume, isNull);
-      expect(player.state.systemMute, isNull);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    test(
+      'setSystemVolume / setSystemMute are best-effort (no throw on null AO)',
+      () async {
+        // With the null AO, system volume/mute are unavailable. The setters must
+        // NOT throw, and state stays null (the contract for an unsupported AO).
+        final player = await buildPlayer(); // ao=null
+        addTearDown(player.dispose);
+        await player.setSystemVolume(42.0);
+        await player.setSystemMute(true);
+        expect(player.state.systemVolume, isNull);
+        expect(player.state.systemMute, isNull);
+      },
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
   });
 }

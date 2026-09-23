@@ -45,16 +45,19 @@ class DefaultPropertyReactives {
   // Playback / timing.
 
   /// Current playhead position (`time-pos`).
-  final ReactiveProperty<Duration> position =
-      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> position = ReactiveProperty<Duration>(
+    Duration.zero,
+  );
 
   /// Total duration of the current file (`duration`).
-  final ReactiveProperty<Duration> duration =
-      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> duration = ReactiveProperty<Duration>(
+    Duration.zero,
+  );
 
   /// Buffered-ahead time as a wall-clock instant (`demuxer-cache-time`).
-  final ReactiveProperty<Duration> buffer =
-      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> buffer = ReactiveProperty<Duration>(
+    Duration.zero,
+  );
 
   /// Output volume in percent (`volume`); `100` is unattenuated.
   final ReactiveProperty<double> volume = ReactiveProperty<double>(100.0);
@@ -76,16 +79,19 @@ class DefaultPropertyReactives {
   final ReactiveProperty<bool> pitchCorrection = ReactiveProperty<bool>(true);
 
   /// Audio-versus-video sync offset (`audio-delay`).
-  final ReactiveProperty<Duration> audioDelay =
-      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> audioDelay = ReactiveProperty<Duration>(
+    Duration.zero,
+  );
 
   /// Measured audio bitrate (`audio-bitrate`); `null` until known.
-  final ReactiveProperty<double?> audioBitrate =
-      ReactiveProperty<double?>(null);
+  final ReactiveProperty<double?> audioBitrate = ReactiveProperty<double?>(
+    null,
+  );
 
   /// Currently selected output device (`audio-device`).
-  final ReactiveProperty<Device> audioDevice =
-      ReactiveProperty<Device>(const Device(name: 'auto', description: 'Auto'));
+  final ReactiveProperty<Device> audioDevice = ReactiveProperty<Device>(
+    const Device(name: 'auto', description: 'Auto'),
+  );
 
   /// Decoder-side audio parameters — aggregate of `audio-params` (NODE),
   /// `audio-codec`, and `audio-codec-name`. The three specs all dedup and
@@ -109,8 +115,9 @@ class DefaultPropertyReactives {
   final ReactiveProperty<double> volumeGain = ReactiveProperty<double>(0.0);
 
   /// Lower clamp mpv applies to [volumeGain] (`volume-gain-min`), in dB.
-  final ReactiveProperty<double> volumeGainMin =
-      ReactiveProperty<double>(-96.0);
+  final ReactiveProperty<double> volumeGainMin = ReactiveProperty<double>(
+    -96.0,
+  );
 
   /// Upper clamp mpv applies to [volumeGain] (`volume-gain-max`), in dB.
   final ReactiveProperty<double> volumeGainMax = ReactiveProperty<double>(12.0);
@@ -119,21 +126,25 @@ class DefaultPropertyReactives {
   /// audio output doesn't expose system volume (e.g. the null AO, or a
   /// backend without per-app volume). Best-effort — distinct from soft
   /// [volume].
-  final ReactiveProperty<double?> systemVolume = ReactiveProperty<double?>(null);
+  final ReactiveProperty<double?> systemVolume = ReactiveProperty<double?>(
+    null,
+  );
 
   /// OS per-app mute (`ao-mute`); `null` when the active audio output doesn't
   /// expose system mute. Best-effort — distinct from soft [mute].
   final ReactiveProperty<bool?> systemMute = ReactiveProperty<bool?>(null);
 
   /// Gapless-playback policy across playlist boundaries (`gapless-audio`).
-  final ReactiveProperty<Gapless> gapless =
-      ReactiveProperty<Gapless>(Gapless.weak);
+  final ReactiveProperty<Gapless> gapless = ReactiveProperty<Gapless>(
+    Gapless.weak,
+  );
 
   /// Demuxer cache configuration — aggregate of `cache`, `cache-secs`,
   /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`, and
   /// `cache-pause-initial`. All six specs dedup and emit on this single cell.
-  final ReactiveProperty<CacheSettings> cache =
-      ReactiveProperty<CacheSettings>(const CacheSettings());
+  final ReactiveProperty<CacheSettings> cache = ReactiveProperty<CacheSettings>(
+    const CacheSettings(),
+  );
 
   /// Demuxer buffering configuration — aggregate of `demuxer-max-bytes`,
   /// `demuxer-max-back-bytes`, and `demuxer-readahead-secs`. All three specs
@@ -143,8 +154,9 @@ class DefaultPropertyReactives {
       ReactiveProperty<DemuxerSettings>(const DemuxerSettings());
 
   /// Network I/O timeout (`network-timeout`).
-  final ReactiveProperty<Duration> networkTimeout =
-      ReactiveProperty<Duration>(const Duration(seconds: 60));
+  final ReactiveProperty<Duration> networkTimeout = ReactiveProperty<Duration>(
+    const Duration(seconds: 60),
+  );
 
   /// Whether the server certificate is verified for TLS streams
   /// (`tls-verify`).
@@ -154,8 +166,9 @@ class DefaultPropertyReactives {
   final ReactiveProperty<String> tlsCaFile = ReactiveProperty<String>('');
 
   /// HLS variant-selection policy (`hls-bitrate`).
-  final ReactiveProperty<HlsBitrate> hlsBitrate =
-      ReactiveProperty<HlsBitrate>(HlsBitrate.max);
+  final ReactiveProperty<HlsBitrate> hlsBitrate = ReactiveProperty<HlsBitrate>(
+    HlsBitrate.max,
+  );
 
   /// Whether the HTTP cookie jar is enabled for network streams (`cookies`).
   final ReactiveProperty<bool> cookies = ReactiveProperty<bool>(false);
@@ -170,8 +183,9 @@ class DefaultPropertyReactives {
 
   /// Whether the current source is being read over the network
   /// (`demuxer-via-network`).
-  final ReactiveProperty<bool> demuxerViaNetwork =
-      ReactiveProperty<bool>(false);
+  final ReactiveProperty<bool> demuxerViaNetwork = ReactiveProperty<bool>(
+    false,
+  );
 
   /// Whether the audio device is opened in exclusive mode (`audio-exclusive`).
   final ReactiveProperty<bool> audioExclusive = ReactiveProperty<bool>(false);
@@ -181,13 +195,15 @@ class DefaultPropertyReactives {
   final ReactiveProperty<bool> audioMediaRole = ReactiveProperty<bool>(false);
 
   /// Output device buffer size (`audio-buffer`).
-  final ReactiveProperty<Duration> audioBuffer =
-      ReactiveProperty<Duration>(const Duration(milliseconds: 200));
+  final ReactiveProperty<Duration> audioBuffer = ReactiveProperty<Duration>(
+    const Duration(milliseconds: 200),
+  );
 
   /// Whether silence is streamed to keep the device open while idle
   /// (`audio-stream-silence`).
-  final ReactiveProperty<bool> audioStreamSilence =
-      ReactiveProperty<bool>(false);
+  final ReactiveProperty<bool> audioStreamSilence = ReactiveProperty<bool>(
+    false,
+  );
 
   /// Whether the null audio output runs untimed (`ao-null-untimed`).
   final ReactiveProperty<bool> audioNullUntimed = ReactiveProperty<bool>(false);
@@ -202,8 +218,9 @@ class DefaultPropertyReactives {
       ReactiveProperty<MpvTrack?>(null);
 
   /// Set of codecs currently passed through as bitstream (`audio-spdif`).
-  final ReactiveProperty<Set<Spdif>> audioSpdif =
-      ReactiveProperty<Set<Spdif>>(const <Spdif>{});
+  final ReactiveProperty<Set<Spdif>> audioSpdif = ReactiveProperty<Set<Spdif>>(
+    const <Spdif>{},
+  );
 
   /// Upper bound the [volume] setter accepts (`volume-max`), in percent.
   final ReactiveProperty<double> volumeMax = ReactiveProperty<double>(130.0);
@@ -214,17 +231,20 @@ class DefaultPropertyReactives {
 
   /// Forced output sample format (`audio-format`); [Format.auto] lets mpv
   /// pick.
-  final ReactiveProperty<Format> audioFormat =
-      ReactiveProperty<Format>(Format.auto);
+  final ReactiveProperty<Format> audioFormat = ReactiveProperty<Format>(
+    Format.auto,
+  );
 
   /// Forced output channel layout (`audio-channels`); [Channels.auto] lets
   /// mpv pick.
-  final ReactiveProperty<Channels> audioChannels =
-      ReactiveProperty<Channels>(Channels.auto);
+  final ReactiveProperty<Channels> audioChannels = ReactiveProperty<Channels>(
+    Channels.auto,
+  );
 
   /// Client name reported to the audio server (`audio-client-name`).
-  final ReactiveProperty<String> audioClientName =
-      ReactiveProperty<String>('mpv_audio_kit');
+  final ReactiveProperty<String> audioClientName = ReactiveProperty<String>(
+    'mpv_audio_kit',
+  );
 
   /// Active audio output driver (`ao`).
   final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
@@ -241,8 +261,9 @@ class DefaultPropertyReactives {
       ReactiveProperty<AudioOutputState>(AudioOutputState.closed);
 
   /// Policy for scanning sidecar cover-art files (`cover-art-auto`).
-  final ReactiveProperty<Cover> coverArtAuto =
-      ReactiveProperty<Cover>(Cover.no);
+  final ReactiveProperty<Cover> coverArtAuto = ReactiveProperty<Cover>(
+    Cover.no,
+  );
 
   /// Background prefetch progress (`prefetch-state`). An event-shaped
   /// signal, not a snapshot value: the cell exists for dedup and dispose
@@ -265,12 +286,14 @@ class DefaultPropertyReactives {
 
   /// Presentation timestamp of the audio currently being output
   /// (`audio-pts`).
-  final ReactiveProperty<Duration> audioPts =
-      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> audioPts = ReactiveProperty<Duration>(
+    Duration.zero,
+  );
 
   /// Time left until the end of the current file (`time-remaining`).
-  final ReactiveProperty<Duration> timeRemaining =
-      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> timeRemaining = ReactiveProperty<Duration>(
+    Duration.zero,
+  );
 
   /// Wall-clock time left at the current [rate] (`playtime-remaining`).
   final ReactiveProperty<Duration> playtimeRemaining =
@@ -284,8 +307,9 @@ class DefaultPropertyReactives {
 
   /// Whether the current stream is seekable only within the cached range
   /// (`partially-seekable`).
-  final ReactiveProperty<bool> partiallySeekable =
-      ReactiveProperty<bool>(false);
+  final ReactiveProperty<bool> partiallySeekable = ReactiveProperty<bool>(
+    false,
+  );
 
   /// Human-readable title of the current media (`media-title`).
   final ReactiveProperty<String> mediaTitle = ReactiveProperty<String>('');
@@ -297,8 +321,9 @@ class DefaultPropertyReactives {
   final ReactiveProperty<int> fileSize = ReactiveProperty<int>(0);
 
   /// Buffered look-ahead beyond the playhead (`demuxer-cache-duration`).
-  final ReactiveProperty<Duration> bufferDuration =
-      ReactiveProperty<Duration>(Duration.zero);
+  final ReactiveProperty<Duration> bufferDuration = ReactiveProperty<Duration>(
+    Duration.zero,
+  );
 
   /// Whether the demuxer has stopped reading because its cache is full
   /// (`demuxer-cache-idle`).
@@ -326,8 +351,9 @@ class DefaultPropertyReactives {
   final ReactiveProperty<String> playlistPath = ReactiveProperty<String>('');
 
   /// Filename mpv opened the stream with (`stream-open-filename`).
-  final ReactiveProperty<String> streamOpenFilename =
-      ReactiveProperty<String>('');
+  final ReactiveProperty<String> streamOpenFilename = ReactiveProperty<String>(
+    '',
+  );
 
   /// A-loop point (`ab-loop-a`); `null` when the A-B loop start is unset.
   final ReactiveProperty<Duration?> abLoopA = ReactiveProperty<Duration?>(null);

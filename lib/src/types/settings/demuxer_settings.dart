@@ -40,12 +40,11 @@ final class DemuxerSettings {
     int? maxBytes,
     int? maxBackBytes,
     Duration? readahead,
-  }) =>
-      DemuxerSettings(
-        maxBytes: maxBytes ?? this.maxBytes,
-        maxBackBytes: maxBackBytes ?? this.maxBackBytes,
-        readahead: readahead ?? this.readahead,
-      );
+  }) => DemuxerSettings(
+    maxBytes: maxBytes ?? this.maxBytes,
+    maxBackBytes: maxBackBytes ?? this.maxBackBytes,
+    readahead: readahead ?? this.readahead,
+  );
 
   @override
   bool operator ==(Object other) =>

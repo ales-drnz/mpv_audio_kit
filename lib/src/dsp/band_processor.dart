@@ -86,9 +86,9 @@ class BandProcessor {
   void setSettings(SpectrumSettings next) {
     final fftSizeChanged = next.fftSize != _settings.fftSize;
     final overlapChanged = next.overlapFactor != _settings.overlapFactor;
-    final windowChanged =
-        next.window != _settings.window || fftSizeChanged;
-    final bandConfigChanged = next.bandCount != _settings.bandCount ||
+    final windowChanged = next.window != _settings.window || fftSizeChanged;
+    final bandConfigChanged =
+        next.bandCount != _settings.bandCount ||
         next.bandLowHz != _settings.bandLowHz ||
         next.bandHighHz != _settings.bandHighHz;
 

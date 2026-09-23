@@ -35,8 +35,11 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     await p1.writeResumeConfig();
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(tmp.listSync(), isNotEmpty,
-        reason: 'a watch-later config file is written into watchLaterDir',);
+    expect(
+      tmp.listSync(),
+      isNotEmpty,
+      reason: 'a watch-later config file is written into watchLaterDir',
+    );
     await p1.dispose();
 
     // Session 2: reopen the SAME file → mpv restores ~0.6s during load.
@@ -47,9 +50,12 @@ void main() {
         .timeout(const Duration(seconds: 8));
     await p2.open(Media(fx), play: false);
     final pos = await resumed;
-    expect(pos.inMilliseconds, greaterThan(400),
-        reason: 'resume-playback restored the position from the saved config',);
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+    expect(
+      pos.inMilliseconds,
+      greaterThan(400),
+      reason: 'resume-playback restored the position from the saved config',
+    );
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   test('deleteResumeConfig clears the saved resume point', () async {
     final tmp = Directory.systemTemp.createTempSync('mak_delresume_');
@@ -72,15 +78,21 @@ void main() {
     // Write a resume point, confirm it lands...
     await p.writeResumeConfig();
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(tmp.listSync(), isNotEmpty,
-        reason: 'precondition: a watch-later config exists to delete',);
+    expect(
+      tmp.listSync(),
+      isNotEmpty,
+      reason: 'precondition: a watch-later config exists to delete',
+    );
 
     // ...then delete it for the current file and confirm it is gone.
     await p.deleteResumeConfig();
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(tmp.listSync(), isEmpty,
-        reason: 'deleteResumeConfig removed the current file\'s resume config',);
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+    expect(
+      tmp.listSync(),
+      isEmpty,
+      reason: 'deleteResumeConfig removed the current file\'s resume config',
+    );
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   test('resumePlayback=false does NOT restore position', () async {
     final tmp = Directory.systemTemp.createTempSync('mak_noresume_');
@@ -115,7 +127,10 @@ void main() {
     addTearDown(p2.dispose);
     await openAndWaitForLoad(p2, fx);
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(p2.state.position.inMilliseconds, lessThan(300),
-        reason: 'with resumePlayback:false playback starts from the beginning',);
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+    expect(
+      p2.state.position.inMilliseconds,
+      lessThan(300),
+      reason: 'with resumePlayback:false playback starts from the beginning',
+    );
+  }, timeout: const Timeout(Duration(seconds: 30)));
 }

@@ -250,8 +250,12 @@ abstract interface class PlayerApi {
 
   /// Loads an external audio file as an extra selectable track on the current
   /// file (mpv's `audio-add`). See [Player.addAudioTrack].
-  Future<void> addAudioTrack(Media file,
-      {bool select, String? title, String? lang,});
+  Future<void> addAudioTrack(
+    Media file, {
+    bool select,
+    String? title,
+    String? lang,
+  });
 
   /// Removes an audio track (mpv's `audio-remove`); [Track.id] removes a
   /// specific one, [Track.auto] the current. See [Player.removeAudioTrack].
@@ -299,7 +303,8 @@ abstract interface class PlayerApi {
   /// Mutates the spectrum configuration incrementally by applying [mapper]
   /// to it and reapplying the result.
   Future<void> updateSpectrum(
-      SpectrumSettings Function(SpectrumSettings) mapper,);
+    SpectrumSettings Function(SpectrumSettings) mapper,
+  );
 
   // ── Cache / network ────────────────────────────────────────────────
 
@@ -378,8 +383,10 @@ abstract interface class PlayerApi {
   /// driven internally by the `on_load` / `on_load_fail` hooks. Return
   /// `null` to keep the current URL; pass `null` to uninstall. [timeout]
   /// caps a hung resolver (default 15s, `null` disables).
-  Future<void> setSourceResolver(SourceResolver? resolver,
-      {Duration? timeout = const Duration(seconds: 15),});
+  Future<void> setSourceResolver(
+    SourceResolver? resolver, {
+    Duration? timeout = const Duration(seconds: 15),
+  });
 
   // ── Raw escape hatch ───────────────────────────────────────────────
 

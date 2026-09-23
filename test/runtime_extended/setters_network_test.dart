@@ -34,7 +34,7 @@ void main() {
       expect(player.state.tlsVerify, isFalse);
       await player.setTlsVerify(true);
       expect(player.state.tlsVerify, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('hlsBitrate / cookies / httpProxy round-trip', () async {
       // Pre-subscribe BEFORE the setter: the optimistic emit lands
@@ -69,22 +69,25 @@ void main() {
       expect(await player.getRawProperty('http-proxy'), proxy);
       await player.setHttpProxy('');
       expect(player.state.httpProxy, '');
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('audioBuffer / audioStreamSilence / audioNullUntimed round-trip',
-        () async {
-      await player.setAudioBuffer(const Duration(milliseconds: 500));
-      expect(player.state.audioBuffer, const Duration(milliseconds: 500));
+    test(
+      'audioBuffer / audioStreamSilence / audioNullUntimed round-trip',
+      () async {
+        await player.setAudioBuffer(const Duration(milliseconds: 500));
+        expect(player.state.audioBuffer, const Duration(milliseconds: 500));
 
-      await player.setAudioStreamSilence(true);
-      expect(player.state.audioStreamSilence, isTrue);
-      await player.setAudioStreamSilence(false);
-      expect(player.state.audioStreamSilence, isFalse);
+        await player.setAudioStreamSilence(true);
+        expect(player.state.audioStreamSilence, isTrue);
+        await player.setAudioStreamSilence(false);
+        expect(player.state.audioStreamSilence, isFalse);
 
-      await player.setAudioNullUntimed(true);
-      expect(player.state.audioNullUntimed, isTrue);
-      await player.setAudioNullUntimed(false);
-      expect(player.state.audioNullUntimed, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+        await player.setAudioNullUntimed(true);
+        expect(player.state.audioNullUntimed, isTrue);
+        await player.setAudioNullUntimed(false);
+        expect(player.state.audioNullUntimed, isFalse);
+      },
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
   });
 }

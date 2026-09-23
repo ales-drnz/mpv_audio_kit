@@ -52,15 +52,17 @@ void main() {
     // `Accept-Ranges: none`, so ffmpeg's HTTP protocol reports the stream
     // non-seekable → mpv grows the waveform progressively.
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    unawaited(server!.forEach((HttpRequest req) async {
-      final res = req.response;
-      res.headers
-        ..set(HttpHeaders.acceptRangesHeader, 'none')
-        ..contentType = ContentType('audio', 'flac')
-        ..contentLength = bytes.length;
-      if (req.method != 'HEAD') res.add(bytes);
-      await res.close();
-    },),);
+    unawaited(
+      server!.forEach((HttpRequest req) async {
+        final res = req.response;
+        res.headers
+          ..set(HttpHeaders.acceptRangesHeader, 'none')
+          ..contentType = ContentType('audio', 'flac')
+          ..contentLength = bytes.length;
+        if (req.method != 'HEAD') res.add(bytes);
+        await res.close();
+      }),
+    );
     url = 'http://${server!.address.address}:${server!.port}/sine_5s.flac';
   });
 
@@ -68,116 +70,138 @@ void main() {
     await server?.close(force: true);
   });
 
-  test('enabling loudness-scan mid-progressive does not wipe the waveform',
-      () async {
-    final player = await buildPlayer();
-    final probe = await player.getRawProperty('waveform-data');
-    if (probe == null) {
-      markTestSkipped('libmpv has no waveform-data property.');
-      await player.dispose();
-      return;
-    }
-
-    final waves = <WaveformData>[];
-    final waveSub =
-        player.stream.waveform.listen((w) => w == null ? null : waves.add(w));
-
-    try {
-      // Arm the waveform FIRST (the bug only bites when an envelope is already
-      // growing), then play so the af-tap folds pre-DSP frames into it.
-      await player.open(Media(url), play: true);
-
-      // Wait for a PROGRESSIVE envelope that is partially filled and growing —
-      // the signature of "grown from playback" (a bulk decode lands fully
-      // filled at once; a live/rolling one reports live==true).
-      WaveformData? grown;
-      var prevFilled = -1;
-      final deadline = DateTime.now().add(const Duration(seconds: 20));
-      while (DateTime.now().isBefore(deadline)) {
-        await Future<void>.delayed(const Duration(milliseconds: 200));
-        if (waves.isEmpty) continue;
-        final w = waves.last;
-        if (w.live) continue; // rolling axis slides — handled by its own test
-        final filledCount = _filledCount(w);
-        final partial = filledCount > 0 && filledCount < w.bins;
-        if (partial && prevFilled >= 0 && filledCount > prevFilled) {
-          grown = w;
-          break;
-        }
-        prevFilled = filledCount;
-      }
-
-      if (grown == null) {
-        markTestSkipped(
-          'host mpv did not grow a PROGRESSIVE envelope for the non-range '
-          'HTTP source (it may have decoded it as seekable) — the mid-'
-          'progressive reset path is not exercised on this host.',
-        );
+  test(
+    'enabling loudness-scan mid-progressive does not wipe the waveform',
+    () async {
+      final player = await buildPlayer();
+      final probe = await player.getRawProperty('waveform-data');
+      if (probe == null) {
+        markTestSkipped('libmpv has no waveform-data property.');
+        await player.dispose();
         return;
       }
 
-      // Snapshot the bins accumulated so far. A bin behind the playhead is
-      // stable (folding only ever widens a bin, and playback never revisits
-      // it), so these values must persist verbatim across the loudness enable.
-      final snapMin = Float32List.fromList(grown.min);
-      final snapMax = Float32List.fromList(grown.max);
-      final snapIdx = <int>[
-        for (var i = 0; i < grown.bins; i++)
-          if (grown.filled[i] != 0) i,
-      ];
-      expect(snapIdx.length, greaterThan(5),
-          reason: 'precondition: a run of bins must already be accumulated',);
+      final waves = <WaveformData>[];
+      final waveSub = player.stream.waveform.listen(
+        (w) => w == null ? null : waves.add(w),
+      );
 
-      // THE TRIGGER: subscribe to the loudness scan → writes
-      // `loudness-scan-enabled = yes`. Pre-fix this restarted the analyzer and
-      // wiped the envelope above.
-      final loudTerminal = player.stream.loudness
-          .firstWhere((s) =>
-              s != null &&
-              s.state != LoudnessScanState.scanning &&
-              s.state != LoudnessScanState.idle,)
-          .timeout(const Duration(seconds: 12));
+      try {
+        // Arm the waveform FIRST (the bug only bites when an envelope is already
+        // growing), then play so the af-tap folds pre-DSP frames into it.
+        await player.open(Media(url), play: true);
 
-      // Give a (hypothetical) reset time to wipe + only-partially-refill.
-      await Future<void>.delayed(const Duration(milliseconds: 700));
-
-      final after = waves.last;
-      var wiped = 0;
-      var regressedValue = 0;
-      for (final i in snapIdx) {
-        final stillFilled = i < after.bins && after.filled[i] != 0;
-        if (!stillFilled) {
-          wiped++;
-          continue;
+        // Wait for a PROGRESSIVE envelope that is partially filled and growing —
+        // the signature of "grown from playback" (a bulk decode lands fully
+        // filled at once; a live/rolling one reports live==true).
+        WaveformData? grown;
+        var prevFilled = -1;
+        final deadline = DateTime.now().add(const Duration(seconds: 20));
+        while (DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          if (waves.isEmpty) continue;
+          final w = waves.last;
+          if (w.live) continue; // rolling axis slides — handled by its own test
+          final filledCount = _filledCount(w);
+          final partial = filledCount > 0 && filledCount < w.bins;
+          if (partial && prevFilled >= 0 && filledCount > prevFilled) {
+            grown = w;
+            break;
+          }
+          prevFilled = filledCount;
         }
-        // Folding may only widen a bin; it must never shrink or zero it.
-        final preserved = after.min[i] <= snapMin[i] + 1e-6 &&
-            after.max[i] >= snapMax[i] - 1e-6;
-        if (!preserved) regressedValue++;
-      }
 
-      expect(wiped, 0,
-          reason: 'enabling loudness-scan zeroed $wiped/${snapIdx.length} '
+        if (grown == null) {
+          markTestSkipped(
+            'host mpv did not grow a PROGRESSIVE envelope for the non-range '
+            'HTTP source (it may have decoded it as seekable) — the mid-'
+            'progressive reset path is not exercised on this host.',
+          );
+          return;
+        }
+
+        // Snapshot the bins accumulated so far. A bin behind the playhead is
+        // stable (folding only ever widens a bin, and playback never revisits
+        // it), so these values must persist verbatim across the loudness enable.
+        final snapMin = Float32List.fromList(grown.min);
+        final snapMax = Float32List.fromList(grown.max);
+        final snapIdx = <int>[
+          for (var i = 0; i < grown.bins; i++)
+            if (grown.filled[i] != 0) i,
+        ];
+        expect(
+          snapIdx.length,
+          greaterThan(5),
+          reason: 'precondition: a run of bins must already be accumulated',
+        );
+
+        // THE TRIGGER: subscribe to the loudness scan → writes
+        // `loudness-scan-enabled = yes`. Pre-fix this restarted the analyzer and
+        // wiped the envelope above.
+        final loudTerminal = player.stream.loudness
+            .firstWhere(
+              (s) =>
+                  s != null &&
+                  s.state != LoudnessScanState.scanning &&
+                  s.state != LoudnessScanState.idle,
+            )
+            .timeout(const Duration(seconds: 12));
+
+        // Give a (hypothetical) reset time to wipe + only-partially-refill.
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+
+        final after = waves.last;
+        var wiped = 0;
+        var regressedValue = 0;
+        for (final i in snapIdx) {
+          final stillFilled = i < after.bins && after.filled[i] != 0;
+          if (!stillFilled) {
+            wiped++;
+            continue;
+          }
+          // Folding may only widen a bin; it must never shrink or zero it.
+          final preserved =
+              after.min[i] <= snapMin[i] + 1e-6 &&
+              after.max[i] >= snapMax[i] - 1e-6;
+          if (!preserved) regressedValue++;
+        }
+
+        expect(
+          wiped,
+          0,
+          reason:
+              'enabling loudness-scan zeroed $wiped/${snapIdx.length} '
               'already-accumulated waveform bins — the destructive reset '
               'regressed (the envelope was wiped and only refilled ahead of '
-              'the playhead)',);
-      expect(regressedValue, 0,
-          reason: 'enabling loudness-scan changed $regressedValue '
-              'already-accumulated bins to non-widened values',);
+              'the playhead)',
+        );
+        expect(
+          regressedValue,
+          0,
+          reason:
+              'enabling loudness-scan changed $regressedValue '
+              'already-accumulated bins to non-widened values',
+        );
 
-      // Loudness must be reported honestly: a playback-grown source cannot be
-      // scanned offline, so the terminal state is "unavailable" — NOT a stale
-      // "scanning", and certainly not at the cost of the waveform.
-      final loud = await loudTerminal;
-      expect(loud!.state, LoudnessScanState.unavailable,
-          reason: 'an integrated scan is impossible for a non-rewindable '
-              'progressive source; it must report unavailable',);
-    } finally {
-      await waveSub.cancel();
-      await player.stop();
-      await player.dispose();
-    }
-  }, timeout: const Timeout(Duration(seconds: 40)),);
+        // Loudness must be reported honestly: a playback-grown source cannot be
+        // scanned offline, so the terminal state is "unavailable" — NOT a stale
+        // "scanning", and certainly not at the cost of the waveform.
+        final loud = await loudTerminal;
+        expect(
+          loud!.state,
+          LoudnessScanState.unavailable,
+          reason:
+              'an integrated scan is impossible for a non-rewindable '
+              'progressive source; it must report unavailable',
+        );
+      } finally {
+        await waveSub.cancel();
+        await player.stop();
+        await player.dispose();
+      }
+    },
+    timeout: const Timeout(Duration(seconds: 40)),
+  );
 }
 
 int _filledCount(WaveformData w) {

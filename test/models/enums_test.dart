@@ -15,30 +15,10 @@ import 'package:test/test.dart';
 /// because mpv may ship new option values in any release and we don't
 /// want a property change to crash the app.
 final _typed = <(List<dynamic>, dynamic Function(String), dynamic, String)>[
-  (
-    Gapless.values,
-    Gapless.fromMpv,
-    Gapless.weak,
-    'Gapless',
-  ),
-  (
-    ReplayGain.values,
-    ReplayGain.fromMpv,
-    ReplayGain.no,
-    'ReplayGain',
-  ),
-  (
-    Cover.values,
-    Cover.fromMpv,
-    Cover.no,
-    'Cover',
-  ),
-  (
-    Cache.values,
-    Cache.fromMpv,
-    Cache.auto,
-    'Cache',
-  ),
+  (Gapless.values, Gapless.fromMpv, Gapless.weak, 'Gapless'),
+  (ReplayGain.values, ReplayGain.fromMpv, ReplayGain.no, 'ReplayGain'),
+  (Cover.values, Cover.fromMpv, Cover.no, 'Cover'),
+  (Cache.values, Cache.fromMpv, Cache.auto, 'Cache'),
   (
     AudioOutputState.values,
     AudioOutputState.fromMpv,
@@ -61,8 +41,11 @@ void main() {
 
     test('unknown values fall back to the documented default variant', () {
       for (final (_, fromMpv, fallback, name) in _typed) {
-        expect(fromMpv('totally-bogus-${name.toLowerCase()}'), fallback,
-            reason: '$name fallback',);
+        expect(
+          fromMpv('totally-bogus-${name.toLowerCase()}'),
+          fallback,
+          reason: '$name fallback',
+        );
         expect(fromMpv(''), fallback, reason: '$name empty fallback');
       }
     });

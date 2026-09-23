@@ -57,21 +57,22 @@ void main() {
       final loadSub = player.stream.seekCompleted.listen((_) {
         if (!loaded.isCompleted) loaded.complete();
       });
-      await player.openAll(
-        [Media(longFixture), Media(longFixture)],
-        play: false,
-      );
+      await player.openAll([
+        Media(longFixture),
+        Media(longFixture),
+      ], play: false);
       await loaded.future.timeout(const Duration(seconds: 10));
       await loadSub.cancel();
-      expect(player.state.playWhenReady, isFalse,
-          reason: 'opened with play: false — intent starts released',);
+      expect(
+        player.state.playWhenReady,
+        isFalse,
+        reason: 'opened with play: false — intent starts released',
+      );
 
       // Pre-subscribe BEFORE jump(): the optimistic intent write (if
       // present) lands synchronously at the call site.
       final intentEmissions = <bool>[];
-      final intentSub = player.stream.playWhenReady.listen(
-        intentEmissions.add,
-      );
+      final intentSub = player.stream.playWhenReady.listen(intentEmissions.add);
 
       // Anchor "the jumped-to entry is actually producing audio" on the
       // actual-output axis, pre-subscribed before jump() as well.
@@ -97,7 +98,8 @@ void main() {
       expect(
         player.state.playWhenReady,
         isTrue,
-        reason: 'jump() unpauses and starts the target entry, so the '
+        reason:
+            'jump() unpauses and starts the target entry, so the '
             'play/pause intent must rise like play()/open(play: true). '
             'Desync evidence: state.playing=${player.state.playing}, '
             'playlist index=${player.state.playlist.index}, '
@@ -105,10 +107,14 @@ void main() {
             'playWhenReady emissions since jump(): $intentEmissions '
             '(mpv "pause" is unobserved — nothing ever corrects this).',
       );
-      expect(intentEmissions, contains(true),
-          reason: 'stream.playWhenReady must emit the rising intent edge '
-              'after jump()',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+      expect(
+        intentEmissions,
+        contains(true),
+        reason:
+            'stream.playWhenReady must emit the rising intent edge '
+            'after jump()',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 
   group('completed at gapless playlist boundary', () {
@@ -146,18 +152,21 @@ void main() {
           .firstWhere((p) => !p)
           .timeout(const Duration(seconds: 15));
 
-      await player.openAll(
-        [Media(shortFixture), Media(shortFixture)],
-        play: true,
-      );
+      await player.openAll([
+        Media(shortFixture),
+        Media(shortFixture),
+      ], play: true);
       await drained;
       // Let trailing transitions land.
       await Future<void>.delayed(const Duration(milliseconds: 600));
       await completedSub.cancel();
       await stateSub.cancel();
 
-      expect(player.state.completed, isTrue,
-          reason: 'sanity: the playlist did reach its true end',);
+      expect(
+        player.state.completed,
+        isTrue,
+        reason: 'sanity: the playlist did reach its true end',
+      );
 
       // A correct run shows exactly ONE rising edge of `completed`, at
       // the end of the LAST entry, never followed by false. The
@@ -165,7 +174,8 @@ void main() {
       expect(
         completedValues,
         equals([true]),
-        reason: 'completed must rise exactly once, at the true end of '
+        reason:
+            'completed must rise exactly once, at the true end of '
             'content — a true->false->true sequence means the gapless '
             'track-0 -> track-1 boundary pulsed it. Full emission log:\n'
             '${completedLog.join('\n')}',
@@ -174,18 +184,19 @@ void main() {
       // Redundant probe on the derived stream, in case the boolean cell
       // coalesces: MpvPlaybackState.completed must only appear as the
       // final resting state, never mid-run.
-      final firstCompleted =
-          playbackStates.indexOf(MpvPlaybackState.completed);
-      final lastNonCompleted = playbackStates
-          .lastIndexWhere((s) => s != MpvPlaybackState.completed);
+      final firstCompleted = playbackStates.indexOf(MpvPlaybackState.completed);
+      final lastNonCompleted = playbackStates.lastIndexWhere(
+        (s) => s != MpvPlaybackState.completed,
+      );
       expect(
         firstCompleted == -1 || lastNonCompleted < firstCompleted,
         isTrue,
-        reason: 'MpvPlaybackState.completed appeared mid-run (index '
+        reason:
+            'MpvPlaybackState.completed appeared mid-run (index '
             '$firstCompleted of $playbackStates) — transient completed '
             'pulse at the playlist boundary. Full emission log:\n'
             '${completedLog.join('\n')}',
       );
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

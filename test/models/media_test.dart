@@ -32,10 +32,9 @@ void main() {
         'https://example.com/a.mp3',
         demuxerLavfOptions: {'seg_format_options': 'advanced_editlist=0'},
       );
-      expect(
-        media.demuxerLavfOptions,
-        {'seg_format_options': 'advanced_editlist=0'},
-      );
+      expect(media.demuxerLavfOptions, {
+        'seg_format_options': 'advanced_editlist=0',
+      });
     });
   });
 
@@ -47,10 +46,9 @@ void main() {
 
     test('set overrides', () {
       const a = Media('a');
-      expect(
-        a.copyWith(demuxerLavfOptions: {'k': 'v2'}).demuxerLavfOptions,
-        {'k': 'v2'},
-      );
+      expect(a.copyWith(demuxerLavfOptions: {'k': 'v2'}).demuxerLavfOptions, {
+        'k': 'v2',
+      });
     });
 
     test('explicit null clears', () {

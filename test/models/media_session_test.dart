@@ -9,18 +9,10 @@ void main() {
   group('MediaSession equality', () {
     test('actions order participates in equality', () {
       const a = MediaSession(
-        actions: {
-          MediaAction.play,
-          MediaAction.previous,
-          MediaAction.next,
-        },
+        actions: {MediaAction.play, MediaAction.previous, MediaAction.next},
       );
       const b = MediaSession(
-        actions: {
-          MediaAction.play,
-          MediaAction.next,
-          MediaAction.previous,
-        },
+        actions: {MediaAction.play, MediaAction.next, MediaAction.previous},
       );
 
       expect(a, isNot(b));
@@ -29,36 +21,31 @@ void main() {
 
     test('matching actions order remains equal', () {
       const a = MediaSession(
-        actions: {
-          MediaAction.play,
-          MediaAction.previous,
-          MediaAction.next,
-        },
+        actions: {MediaAction.play, MediaAction.previous, MediaAction.next},
       );
       const b = MediaSession(
-        actions: {
-          MediaAction.play,
-          MediaAction.previous,
-          MediaAction.next,
-        },
+        actions: {MediaAction.play, MediaAction.previous, MediaAction.next},
       );
 
       expect(a, b);
       expect(a.hashCode, b.hashCode);
     });
 
-    test('autoApplyPlaylistNavigation participates in equality and copyWith', () {
-      const a = MediaSession(); // default: true
-      const b = MediaSession(autoApplyPlaylistNavigation: false);
+    test(
+      'autoApplyPlaylistNavigation participates in equality and copyWith',
+      () {
+        const a = MediaSession(); // default: true
+        const b = MediaSession(autoApplyPlaylistNavigation: false);
 
-      expect(a.autoApplyPlaylistNavigation, isTrue);
-      expect(b.autoApplyPlaylistNavigation, isFalse);
-      expect(a, isNot(b));
-      expect(a.hashCode, isNot(b.hashCode));
+        expect(a.autoApplyPlaylistNavigation, isTrue);
+        expect(b.autoApplyPlaylistNavigation, isFalse);
+        expect(a, isNot(b));
+        expect(a.hashCode, isNot(b.hashCode));
 
-      final copied = a.copyWith(autoApplyPlaylistNavigation: false);
-      expect(copied.autoApplyPlaylistNavigation, isFalse);
-      expect(copied, b);
-    });
+        final copied = a.copyWith(autoApplyPlaylistNavigation: false);
+        expect(copied.autoApplyPlaylistNavigation, isFalse);
+        expect(copied, b);
+      },
+    );
   });
 }

@@ -27,10 +27,10 @@ enum LoudnessScanState {
 
   /// Parses an mpv wire value; unknown values fall back to [idle].
   static LoudnessScanState fromMpv(String value) => switch (value) {
-        'scanning' => LoudnessScanState.scanning,
-        'ready' => LoudnessScanState.ready,
-        'failed' => LoudnessScanState.failed,
-        'unavailable' => LoudnessScanState.unavailable,
-        _ => LoudnessScanState.idle,
-      };
+    'scanning' => LoudnessScanState.scanning,
+    'ready' => LoudnessScanState.ready,
+    'failed' => LoudnessScanState.failed,
+    'unavailable' => LoudnessScanState.unavailable,
+    _ => LoudnessScanState.idle,
+  };
 }

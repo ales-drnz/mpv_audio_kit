@@ -36,9 +36,7 @@ void main() {
 
     setUp(() async {
       player = Player(
-        configuration: const PlayerConfiguration(
-          logLevel: LogLevel.off,
-        ),
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
       );
       await player.setRawProperty('ao', 'null');
     });
@@ -48,8 +46,7 @@ void main() {
       await player.dispose();
     });
 
-    testWidgets(
-        'open(asset://A) immediately followed by open(plain B) — '
+    testWidgets('open(asset://A) immediately followed by open(plain B) — '
         'B (the last request) must be the loaded file', (_) async {
       // A: asset:// scheme — resolveUri does rootBundle.load + temp-file
       // write before the loadfile can be issued.
@@ -82,7 +79,8 @@ void main() {
         expect(
           player.state.path,
           plainPathB,
-          reason: 'open(B) was issued last, so B must be the loaded file. '
+          reason:
+              'open(B) was issued last, so B must be the loaded file. '
               'A different path here means the earlier open(asset://A) '
               'resumed after its asset I/O and its loadfile clobbered B — '
               'the superseded request won.',
@@ -90,6 +88,6 @@ void main() {
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+    }, timeout: const Timeout(Duration(seconds: 60)));
   });
 }

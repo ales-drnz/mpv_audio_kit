@@ -255,22 +255,21 @@ final class AcompressorSettings {
     double? ratio,
     double? release,
     double? threshold,
-  }) =>
-      AcompressorSettings(
-        enabled: enabled ?? this.enabled,
-        attack: attack ?? this.attack,
-        detection: detection ?? this.detection,
-        knee: knee ?? this.knee,
-        level_in: level_in ?? this.level_in,
-        level_sc: level_sc ?? this.level_sc,
-        link: link ?? this.link,
-        makeup: makeup ?? this.makeup,
-        mix: mix ?? this.mix,
-        mode: mode ?? this.mode,
-        ratio: ratio ?? this.ratio,
-        release: release ?? this.release,
-        threshold: threshold ?? this.threshold,
-      );
+  }) => AcompressorSettings(
+    enabled: enabled ?? this.enabled,
+    attack: attack ?? this.attack,
+    detection: detection ?? this.detection,
+    knee: knee ?? this.knee,
+    level_in: level_in ?? this.level_in,
+    level_sc: level_sc ?? this.level_sc,
+    link: link ?? this.link,
+    makeup: makeup ?? this.makeup,
+    mix: mix ?? this.mix,
+    mode: mode ?? this.mode,
+    ratio: ratio ?? this.ratio,
+    release: release ?? this.release,
+    threshold: threshold ?? this.threshold,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -291,8 +290,21 @@ final class AcompressorSettings {
           other.threshold == threshold);
 
   @override
-  int get hashCode => Object.hash(enabled, attack, detection, knee, level_in,
-      level_sc, link, makeup, mix, mode, ratio, release, threshold,);
+  int get hashCode => Object.hash(
+    enabled,
+    attack,
+    detection,
+    knee,
+    level_in,
+    level_sc,
+    link,
+    makeup,
+    mix,
+    mode,
+    ratio,
+    release,
+    threshold,
+  );
 
   @override
   String toString() =>
@@ -317,8 +329,10 @@ final class AcompressorSettings {
     assert(ratio <= ratioMax, 'acompressor.ratio must be <= 20');
     assert(release >= releaseMin, 'acompressor.release must be >= 0.01');
     assert(release <= releaseMax, 'acompressor.release must be <= 9000');
-    assert(threshold >= thresholdMin,
-        'acompressor.threshold must be >= 0.000976563',);
+    assert(
+      threshold >= thresholdMin,
+      'acompressor.threshold must be >= 0.000976563',
+    );
     assert(threshold <= thresholdMax, 'acompressor.threshold must be <= 1');
     final parts = <String>[];
     if (attack != 20.0) parts.add('attack=' + _wireDouble(attack));
@@ -412,16 +426,10 @@ final class AcontrastSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const AcontrastSettings({
-    this.enabled = false,
-    this.contrast = 33.0,
-  });
+  const AcontrastSettings({this.enabled = false, this.contrast = 33.0});
 
   /// Returns a copy of this [AcontrastSettings] with the given fields replaced.
-  AcontrastSettings copyWith({
-    bool? enabled,
-    double? contrast,
-  }) =>
+  AcontrastSettings copyWith({bool? enabled, double? contrast}) =>
       AcontrastSettings(
         enabled: enabled ?? this.enabled,
         contrast: contrast ?? this.contrast,
@@ -640,21 +648,20 @@ final class AcrusherSettings {
     double? mix,
     AcrusherMode? mode,
     double? samples,
-  }) =>
-      AcrusherSettings(
-        enabled: enabled ?? this.enabled,
-        aa: aa ?? this.aa,
-        bits: bits ?? this.bits,
-        dc: dc ?? this.dc,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        lfo: lfo ?? this.lfo,
-        lforange: lforange ?? this.lforange,
-        lforate: lforate ?? this.lforate,
-        mix: mix ?? this.mix,
-        mode: mode ?? this.mode,
-        samples: samples ?? this.samples,
-      );
+  }) => AcrusherSettings(
+    enabled: enabled ?? this.enabled,
+    aa: aa ?? this.aa,
+    bits: bits ?? this.bits,
+    dc: dc ?? this.dc,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    lfo: lfo ?? this.lfo,
+    lforange: lforange ?? this.lforange,
+    lforate: lforate ?? this.lforate,
+    mix: mix ?? this.mix,
+    mode: mode ?? this.mode,
+    samples: samples ?? this.samples,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -674,8 +681,20 @@ final class AcrusherSettings {
           other.samples == samples);
 
   @override
-  int get hashCode => Object.hash(enabled, aa, bits, dc, level_in, level_out,
-      lfo, lforange, lforate, mix, mode, samples,);
+  int get hashCode => Object.hash(
+    enabled,
+    aa,
+    bits,
+    dc,
+    level_in,
+    level_out,
+    lfo,
+    lforange,
+    lforate,
+    mix,
+    mode,
+    samples,
+  );
 
   @override
   String toString() =>
@@ -944,22 +963,21 @@ final class AdeclickSettings {
     double? threshold,
     double? w,
     double? window,
-  }) =>
-      AdeclickSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        arorder: arorder ?? this.arorder,
-        b: b ?? this.b,
-        burst: burst ?? this.burst,
-        m: m ?? this.m,
-        method: method ?? this.method,
-        o: o ?? this.o,
-        overlap: overlap ?? this.overlap,
-        t: t ?? this.t,
-        threshold: threshold ?? this.threshold,
-        w: w ?? this.w,
-        window: window ?? this.window,
-      );
+  }) => AdeclickSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    arorder: arorder ?? this.arorder,
+    b: b ?? this.b,
+    burst: burst ?? this.burst,
+    m: m ?? this.m,
+    method: method ?? this.method,
+    o: o ?? this.o,
+    overlap: overlap ?? this.overlap,
+    t: t ?? this.t,
+    threshold: threshold ?? this.threshold,
+    w: w ?? this.w,
+    window: window ?? this.window,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -980,8 +998,21 @@ final class AdeclickSettings {
           other.window == window);
 
   @override
-  int get hashCode => Object.hash(enabled, a, arorder, b, burst, m, method, o,
-      overlap, t, threshold, w, window,);
+  int get hashCode => Object.hash(
+    enabled,
+    a,
+    arorder,
+    b,
+    burst,
+    m,
+    method,
+    o,
+    overlap,
+    t,
+    threshold,
+    w,
+    window,
+  );
 
   @override
   String toString() =>
@@ -1214,22 +1245,21 @@ final class AdeclipSettings {
     double? threshold,
     double? w,
     double? window,
-  }) =>
-      AdeclipSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        arorder: arorder ?? this.arorder,
-        hsize: hsize ?? this.hsize,
-        m: m ?? this.m,
-        method: method ?? this.method,
-        n: n ?? this.n,
-        o: o ?? this.o,
-        overlap: overlap ?? this.overlap,
-        t: t ?? this.t,
-        threshold: threshold ?? this.threshold,
-        w: w ?? this.w,
-        window: window ?? this.window,
-      );
+  }) => AdeclipSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    arorder: arorder ?? this.arorder,
+    hsize: hsize ?? this.hsize,
+    m: m ?? this.m,
+    method: method ?? this.method,
+    n: n ?? this.n,
+    o: o ?? this.o,
+    overlap: overlap ?? this.overlap,
+    t: t ?? this.t,
+    threshold: threshold ?? this.threshold,
+    w: w ?? this.w,
+    window: window ?? this.window,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -1250,8 +1280,21 @@ final class AdeclipSettings {
           other.window == window);
 
   @override
-  int get hashCode => Object.hash(enabled, a, arorder, hsize, m, method, n, o,
-      overlap, t, threshold, w, window,);
+  int get hashCode => Object.hash(
+    enabled,
+    a,
+    arorder,
+    hsize,
+    m,
+    method,
+    n,
+    o,
+    overlap,
+    t,
+    threshold,
+    w,
+    window,
+  );
 
   @override
   String toString() =>
@@ -1345,11 +1388,7 @@ final class AdecorrelateSettings {
   });
 
   /// Returns a copy of this [AdecorrelateSettings] with the given fields replaced.
-  AdecorrelateSettings copyWith({
-    bool? enabled,
-    int? seed,
-    int? stages,
-  }) =>
+  AdecorrelateSettings copyWith({bool? enabled, int? seed, int? stages}) =>
       AdecorrelateSettings(
         enabled: enabled ?? this.enabled,
         seed: seed ?? this.seed,
@@ -1419,11 +1458,7 @@ final class AdelaySettings {
   });
 
   /// Returns a copy of this [AdelaySettings] with the given fields replaced.
-  AdelaySettings copyWith({
-    bool? enabled,
-    bool? all,
-    String? delays,
-  }) =>
+  AdelaySettings copyWith({bool? enabled, bool? all, String? delays}) =>
       AdelaySettings(
         enabled: enabled ?? this.enabled,
         all: all ?? this.all,
@@ -1508,11 +1543,7 @@ final class AdenormSettings {
   });
 
   /// Returns a copy of this [AdenormSettings] with the given fields replaced.
-  AdenormSettings copyWith({
-    bool? enabled,
-    double? level,
-    AdenormType? type,
-  }) =>
+  AdenormSettings copyWith({bool? enabled, double? level, AdenormType? type}) =>
       AdenormSettings(
         enabled: enabled ?? this.enabled,
         level: level ?? this.level,
@@ -1573,17 +1604,11 @@ final class AderivativeSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const AderivativeSettings({
-    this.enabled = false,
-  });
+  const AderivativeSettings({this.enabled = false});
 
   /// Returns a copy of this [AderivativeSettings] with the given fields replaced.
-  AderivativeSettings copyWith({
-    bool? enabled,
-  }) =>
-      AderivativeSettings(
-        enabled: enabled ?? this.enabled,
-      );
+  AderivativeSettings copyWith({bool? enabled}) =>
+      AderivativeSettings(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
@@ -1667,14 +1692,13 @@ final class AdrcSettings {
     String? channels,
     double? release,
     String? transfer,
-  }) =>
-      AdrcSettings(
-        enabled: enabled ?? this.enabled,
-        attack: attack ?? this.attack,
-        channels: channels ?? this.channels,
-        release: release ?? this.release,
-        transfer: transfer ?? this.transfer,
-      );
+  }) => AdrcSettings(
+    enabled: enabled ?? this.enabled,
+    attack: attack ?? this.attack,
+    channels: channels ?? this.channels,
+    release: release ?? this.release,
+    transfer: transfer ?? this.transfer,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -1931,25 +1955,24 @@ final class AdynamicequalizerSettings {
     AdynamicequalizerTftype? tftype,
     double? threshold,
     double? tqfactor,
-  }) =>
-      AdynamicequalizerSettings(
-        enabled: enabled ?? this.enabled,
-        attack: attack ?? this.attack,
-        auto: auto ?? this.auto,
-        dfrequency: dfrequency ?? this.dfrequency,
-        dftype: dftype ?? this.dftype,
-        dqfactor: dqfactor ?? this.dqfactor,
-        makeup: makeup ?? this.makeup,
-        mode: mode ?? this.mode,
-        precision: precision ?? this.precision,
-        range: range ?? this.range,
-        ratio: ratio ?? this.ratio,
-        release: release ?? this.release,
-        tfrequency: tfrequency ?? this.tfrequency,
-        tftype: tftype ?? this.tftype,
-        threshold: threshold ?? this.threshold,
-        tqfactor: tqfactor ?? this.tqfactor,
-      );
+  }) => AdynamicequalizerSettings(
+    enabled: enabled ?? this.enabled,
+    attack: attack ?? this.attack,
+    auto: auto ?? this.auto,
+    dfrequency: dfrequency ?? this.dfrequency,
+    dftype: dftype ?? this.dftype,
+    dqfactor: dqfactor ?? this.dqfactor,
+    makeup: makeup ?? this.makeup,
+    mode: mode ?? this.mode,
+    precision: precision ?? this.precision,
+    range: range ?? this.range,
+    ratio: ratio ?? this.ratio,
+    release: release ?? this.release,
+    tfrequency: tfrequency ?? this.tfrequency,
+    tftype: tftype ?? this.tftype,
+    threshold: threshold ?? this.threshold,
+    tqfactor: tqfactor ?? this.tqfactor,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -1974,22 +1997,23 @@ final class AdynamicequalizerSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      attack,
-      auto,
-      dfrequency,
-      dftype,
-      dqfactor,
-      makeup,
-      mode,
-      precision,
-      range,
-      ratio,
-      release,
-      tfrequency,
-      tftype,
-      threshold,
-      tqfactor,);
+    enabled,
+    attack,
+    auto,
+    dfrequency,
+    dftype,
+    dqfactor,
+    makeup,
+    mode,
+    precision,
+    range,
+    ratio,
+    release,
+    tfrequency,
+    tftype,
+    threshold,
+    tqfactor,
+  );
 
   @override
   String toString() =>
@@ -2000,14 +2024,22 @@ final class AdynamicequalizerSettings {
   String toFilterString() {
     assert(attack >= attackMin, 'adynamicequalizer.attack must be >= 0.01');
     assert(attack <= attackMax, 'adynamicequalizer.attack must be <= 2000');
-    assert(dfrequency >= dfrequencyMin,
-        'adynamicequalizer.dfrequency must be >= 2',);
-    assert(dfrequency <= dfrequencyMax,
-        'adynamicequalizer.dfrequency must be <= 1000000',);
     assert(
-        dqfactor >= dqfactorMin, 'adynamicequalizer.dqfactor must be >= 0.001',);
+      dfrequency >= dfrequencyMin,
+      'adynamicequalizer.dfrequency must be >= 2',
+    );
     assert(
-        dqfactor <= dqfactorMax, 'adynamicequalizer.dqfactor must be <= 1000',);
+      dfrequency <= dfrequencyMax,
+      'adynamicequalizer.dfrequency must be <= 1000000',
+    );
+    assert(
+      dqfactor >= dqfactorMin,
+      'adynamicequalizer.dqfactor must be >= 0.001',
+    );
+    assert(
+      dqfactor <= dqfactorMax,
+      'adynamicequalizer.dqfactor must be <= 1000',
+    );
     assert(makeup >= makeupMin, 'adynamicequalizer.makeup must be >= 0');
     assert(makeup <= makeupMax, 'adynamicequalizer.makeup must be <= 1000');
     assert(range >= rangeMin, 'adynamicequalizer.range must be >= 1');
@@ -2016,18 +2048,30 @@ final class AdynamicequalizerSettings {
     assert(ratio <= ratioMax, 'adynamicequalizer.ratio must be <= 30');
     assert(release >= releaseMin, 'adynamicequalizer.release must be >= 0.01');
     assert(release <= releaseMax, 'adynamicequalizer.release must be <= 2000');
-    assert(tfrequency >= tfrequencyMin,
-        'adynamicequalizer.tfrequency must be >= 2',);
-    assert(tfrequency <= tfrequencyMax,
-        'adynamicequalizer.tfrequency must be <= 1000000',);
     assert(
-        threshold >= thresholdMin, 'adynamicequalizer.threshold must be >= 0',);
-    assert(threshold <= thresholdMax,
-        'adynamicequalizer.threshold must be <= 100',);
+      tfrequency >= tfrequencyMin,
+      'adynamicequalizer.tfrequency must be >= 2',
+    );
     assert(
-        tqfactor >= tqfactorMin, 'adynamicequalizer.tqfactor must be >= 0.001',);
+      tfrequency <= tfrequencyMax,
+      'adynamicequalizer.tfrequency must be <= 1000000',
+    );
     assert(
-        tqfactor <= tqfactorMax, 'adynamicequalizer.tqfactor must be <= 1000',);
+      threshold >= thresholdMin,
+      'adynamicequalizer.threshold must be >= 0',
+    );
+    assert(
+      threshold <= thresholdMax,
+      'adynamicequalizer.threshold must be <= 100',
+    );
+    assert(
+      tqfactor >= tqfactorMin,
+      'adynamicequalizer.tqfactor must be >= 0.001',
+    );
+    assert(
+      tqfactor <= tqfactorMax,
+      'adynamicequalizer.tqfactor must be <= 1000',
+    );
     final parts = <String>[];
     if (attack != 20.0) parts.add('attack=' + _wireDouble(attack));
     if (auto != AdynamicequalizerAuto.off) parts.add('auto=' + auto.mpvValue);
@@ -2159,12 +2203,11 @@ final class AdynamicsmoothSettings {
     bool? enabled,
     double? basefreq,
     double? sensitivity,
-  }) =>
-      AdynamicsmoothSettings(
-        enabled: enabled ?? this.enabled,
-        basefreq: basefreq ?? this.basefreq,
-        sensitivity: sensitivity ?? this.sensitivity,
-      );
+  }) => AdynamicsmoothSettings(
+    enabled: enabled ?? this.enabled,
+    basefreq: basefreq ?? this.basefreq,
+    sensitivity: sensitivity ?? this.sensitivity,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -2186,11 +2229,17 @@ final class AdynamicsmoothSettings {
   String toFilterString() {
     assert(basefreq >= basefreqMin, 'adynamicsmooth.basefreq must be >= 2');
     assert(
-        basefreq <= basefreqMax, 'adynamicsmooth.basefreq must be <= 1000000',);
-    assert(sensitivity >= sensitivityMin,
-        'adynamicsmooth.sensitivity must be >= 0',);
-    assert(sensitivity <= sensitivityMax,
-        'adynamicsmooth.sensitivity must be <= 1000000',);
+      basefreq <= basefreqMax,
+      'adynamicsmooth.basefreq must be <= 1000000',
+    );
+    assert(
+      sensitivity >= sensitivityMin,
+      'adynamicsmooth.sensitivity must be >= 0',
+    );
+    assert(
+      sensitivity <= sensitivityMax,
+      'adynamicsmooth.sensitivity must be <= 1000000',
+    );
     final parts = <String>[];
     if (basefreq != 22050.0) parts.add('basefreq=' + _wireDouble(basefreq));
     if (sensitivity != 2.0)
@@ -2287,14 +2336,13 @@ final class AechoSettings {
     String? delays,
     double? in_gain,
     double? out_gain,
-  }) =>
-      AechoSettings(
-        enabled: enabled ?? this.enabled,
-        decays: decays ?? this.decays,
-        delays: delays ?? this.delays,
-        in_gain: in_gain ?? this.in_gain,
-        out_gain: out_gain ?? this.out_gain,
-      );
+  }) => AechoSettings(
+    enabled: enabled ?? this.enabled,
+    decays: decays ?? this.decays,
+    delays: delays ?? this.delays,
+    in_gain: in_gain ?? this.in_gain,
+    out_gain: out_gain ?? this.out_gain,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -2398,14 +2446,13 @@ final class AemphasisSettings {
     double? level_out,
     AemphasisMode? mode,
     AemphasisType? type,
-  }) =>
-      AemphasisSettings(
-        enabled: enabled ?? this.enabled,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        mode: mode ?? this.mode,
-        type: type ?? this.type,
-      );
+  }) => AemphasisSettings(
+    enabled: enabled ?? this.enabled,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    mode: mode ?? this.mode,
+    type: type ?? this.type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -2505,13 +2552,12 @@ final class AevalSettings {
     String? c,
     String? channel_layout,
     String? exprs,
-  }) =>
-      AevalSettings(
-        enabled: enabled ?? this.enabled,
-        c: c ?? this.c,
-        channel_layout: channel_layout ?? this.channel_layout,
-        exprs: exprs ?? this.exprs,
-      );
+  }) => AevalSettings(
+    enabled: enabled ?? this.enabled,
+    c: c ?? this.c,
+    channel_layout: channel_layout ?? this.channel_layout,
+    exprs: exprs ?? this.exprs,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -2679,18 +2725,17 @@ final class AexciterSettings {
     double? level_in,
     double? level_out,
     bool? listen,
-  }) =>
-      AexciterSettings(
-        enabled: enabled ?? this.enabled,
-        amount: amount ?? this.amount,
-        blend: blend ?? this.blend,
-        ceil: ceil ?? this.ceil,
-        drive: drive ?? this.drive,
-        freq: freq ?? this.freq,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        listen: listen ?? this.listen,
-      );
+  }) => AexciterSettings(
+    enabled: enabled ?? this.enabled,
+    amount: amount ?? this.amount,
+    blend: blend ?? this.blend,
+    ceil: ceil ?? this.ceil,
+    drive: drive ?? this.drive,
+    freq: freq ?? this.freq,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    listen: listen ?? this.listen,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -2708,7 +2753,16 @@ final class AexciterSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled, amount, blend, ceil, drive, freq, level_in, level_out, listen,);
+    enabled,
+    amount,
+    blend,
+    ceil,
+    drive,
+    freq,
+    level_in,
+    level_out,
+    listen,
+  );
 
   @override
   String toString() =>
@@ -2938,24 +2992,23 @@ final class AfadeSettings {
     AfadeType? t,
     AfadeType? type,
     double? unity,
-  }) =>
-      AfadeSettings(
-        enabled: enabled ?? this.enabled,
-        c: c ?? this.c,
-        curve: curve ?? this.curve,
-        d: d ?? this.d,
-        duration: duration ?? this.duration,
-        nb_samples: nb_samples ?? this.nb_samples,
-        ns: ns ?? this.ns,
-        silence: silence ?? this.silence,
-        ss: ss ?? this.ss,
-        st: st ?? this.st,
-        start_sample: start_sample ?? this.start_sample,
-        start_time: start_time ?? this.start_time,
-        t: t ?? this.t,
-        type: type ?? this.type,
-        unity: unity ?? this.unity,
-      );
+  }) => AfadeSettings(
+    enabled: enabled ?? this.enabled,
+    c: c ?? this.c,
+    curve: curve ?? this.curve,
+    d: d ?? this.d,
+    duration: duration ?? this.duration,
+    nb_samples: nb_samples ?? this.nb_samples,
+    ns: ns ?? this.ns,
+    silence: silence ?? this.silence,
+    ss: ss ?? this.ss,
+    st: st ?? this.st,
+    start_sample: start_sample ?? this.start_sample,
+    start_time: start_time ?? this.start_time,
+    t: t ?? this.t,
+    type: type ?? this.type,
+    unity: unity ?? this.unity,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -2978,8 +3031,23 @@ final class AfadeSettings {
           other.unity == unity);
 
   @override
-  int get hashCode => Object.hash(enabled, c, curve, d, duration, nb_samples,
-      ns, silence, ss, st, start_sample, start_time, t, type, unity,);
+  int get hashCode => Object.hash(
+    enabled,
+    c,
+    curve,
+    d,
+    duration,
+    nb_samples,
+    ns,
+    silence,
+    ss,
+    st,
+    start_sample,
+    start_time,
+    t,
+    type,
+    unity,
+  );
 
   @override
   String toString() =>
@@ -2989,8 +3057,10 @@ final class AfadeSettings {
   /// Only non-default parameters are emitted.
   String toFilterString() {
     assert(nb_samples >= nb_samplesMin, 'afade.nb_samples must be >= 1');
-    assert(nb_samples <= nb_samplesMax,
-        'afade.nb_samples must be <= 9223372036854775807',);
+    assert(
+      nb_samples <= nb_samplesMax,
+      'afade.nb_samples must be <= 9223372036854775807',
+    );
     assert(ns >= nsMin, 'afade.ns must be >= 1');
     assert(ns <= nsMax, 'afade.ns must be <= 9223372036854775807');
     assert(silence >= silenceMin, 'afade.silence must be >= 0');
@@ -2998,8 +3068,10 @@ final class AfadeSettings {
     assert(ss >= ssMin, 'afade.ss must be >= 0');
     assert(ss <= ssMax, 'afade.ss must be <= 9223372036854775807');
     assert(start_sample >= start_sampleMin, 'afade.start_sample must be >= 0');
-    assert(start_sample <= start_sampleMax,
-        'afade.start_sample must be <= 9223372036854775807',);
+    assert(
+      start_sample <= start_sampleMax,
+      'afade.start_sample must be <= 9223372036854775807',
+    );
     assert(unity >= unityMin, 'afade.unity must be >= 0');
     assert(unity <= unityMax, 'afade.unity must be <= 1');
     final parts = <String>[];
@@ -3391,38 +3463,37 @@ final class AfftdnSettings {
     bool? tr,
     bool? track_noise,
     bool? track_residual,
-  }) =>
-      AfftdnSettings(
-        enabled: enabled ?? this.enabled,
-        ad: ad ?? this.ad,
-        adaptivity: adaptivity ?? this.adaptivity,
-        band_multiplier: band_multiplier ?? this.band_multiplier,
-        band_noise: band_noise ?? this.band_noise,
-        bm: bm ?? this.bm,
-        bn: bn ?? this.bn,
-        floor_offset: floor_offset ?? this.floor_offset,
-        fo: fo ?? this.fo,
-        gain_smooth: gain_smooth ?? this.gain_smooth,
-        gs: gs ?? this.gs,
-        nf: nf ?? this.nf,
-        nl: nl ?? this.nl,
-        noise_floor: noise_floor ?? this.noise_floor,
-        noise_link: noise_link ?? this.noise_link,
-        noise_reduction: noise_reduction ?? this.noise_reduction,
-        noise_type: noise_type ?? this.noise_type,
-        nr: nr ?? this.nr,
-        nt: nt ?? this.nt,
-        om: om ?? this.om,
-        output_mode: output_mode ?? this.output_mode,
-        residual_floor: residual_floor ?? this.residual_floor,
-        rf: rf ?? this.rf,
-        sample_noise: sample_noise ?? this.sample_noise,
-        sn: sn ?? this.sn,
-        tn: tn ?? this.tn,
-        tr: tr ?? this.tr,
-        track_noise: track_noise ?? this.track_noise,
-        track_residual: track_residual ?? this.track_residual,
-      );
+  }) => AfftdnSettings(
+    enabled: enabled ?? this.enabled,
+    ad: ad ?? this.ad,
+    adaptivity: adaptivity ?? this.adaptivity,
+    band_multiplier: band_multiplier ?? this.band_multiplier,
+    band_noise: band_noise ?? this.band_noise,
+    bm: bm ?? this.bm,
+    bn: bn ?? this.bn,
+    floor_offset: floor_offset ?? this.floor_offset,
+    fo: fo ?? this.fo,
+    gain_smooth: gain_smooth ?? this.gain_smooth,
+    gs: gs ?? this.gs,
+    nf: nf ?? this.nf,
+    nl: nl ?? this.nl,
+    noise_floor: noise_floor ?? this.noise_floor,
+    noise_link: noise_link ?? this.noise_link,
+    noise_reduction: noise_reduction ?? this.noise_reduction,
+    noise_type: noise_type ?? this.noise_type,
+    nr: nr ?? this.nr,
+    nt: nt ?? this.nt,
+    om: om ?? this.om,
+    output_mode: output_mode ?? this.output_mode,
+    residual_floor: residual_floor ?? this.residual_floor,
+    rf: rf ?? this.rf,
+    sample_noise: sample_noise ?? this.sample_noise,
+    sn: sn ?? this.sn,
+    tn: tn ?? this.tn,
+    tr: tr ?? this.tr,
+    track_noise: track_noise ?? this.track_noise,
+    track_residual: track_residual ?? this.track_residual,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -3460,36 +3531,36 @@ final class AfftdnSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        ad,
-        adaptivity,
-        band_multiplier,
-        band_noise,
-        bm,
-        bn,
-        floor_offset,
-        fo,
-        gain_smooth,
-        gs,
-        nf,
-        nl,
-        noise_floor,
-        noise_link,
-        noise_reduction,
-        noise_type,
-        nr,
-        nt,
-        om,
-        output_mode,
-        residual_floor,
-        rf,
-        sample_noise,
-        sn,
-        tn,
-        tr,
-        track_noise,
-        track_residual,
-      ]);
+    enabled,
+    ad,
+    adaptivity,
+    band_multiplier,
+    band_noise,
+    bm,
+    bn,
+    floor_offset,
+    fo,
+    gain_smooth,
+    gs,
+    nf,
+    nl,
+    noise_floor,
+    noise_link,
+    noise_reduction,
+    noise_type,
+    nr,
+    nt,
+    om,
+    output_mode,
+    residual_floor,
+    rf,
+    sample_noise,
+    sn,
+    tn,
+    tr,
+    track_noise,
+    track_residual,
+  ]);
 
   @override
   String toString() =>
@@ -3502,14 +3573,20 @@ final class AfftdnSettings {
     assert(ad <= adMax, 'afftdn.ad must be <= 1');
     assert(adaptivity >= adaptivityMin, 'afftdn.adaptivity must be >= 0');
     assert(adaptivity <= adaptivityMax, 'afftdn.adaptivity must be <= 1');
-    assert(band_multiplier >= band_multiplierMin,
-        'afftdn.band_multiplier must be >= 0.2',);
-    assert(band_multiplier <= band_multiplierMax,
-        'afftdn.band_multiplier must be <= 5',);
+    assert(
+      band_multiplier >= band_multiplierMin,
+      'afftdn.band_multiplier must be >= 0.2',
+    );
+    assert(
+      band_multiplier <= band_multiplierMax,
+      'afftdn.band_multiplier must be <= 5',
+    );
     assert(bm >= bmMin, 'afftdn.bm must be >= 0.2');
     assert(bm <= bmMax, 'afftdn.bm must be <= 5');
     assert(
-        floor_offset >= floor_offsetMin, 'afftdn.floor_offset must be >= -2',);
+      floor_offset >= floor_offsetMin,
+      'afftdn.floor_offset must be >= -2',
+    );
     assert(floor_offset <= floor_offsetMax, 'afftdn.floor_offset must be <= 2');
     assert(fo >= foMin, 'afftdn.fo must be >= -2');
     assert(fo <= foMax, 'afftdn.fo must be <= 2');
@@ -3521,16 +3598,24 @@ final class AfftdnSettings {
     assert(nf <= nfMax, 'afftdn.nf must be <= -20');
     assert(noise_floor >= noise_floorMin, 'afftdn.noise_floor must be >= -80');
     assert(noise_floor <= noise_floorMax, 'afftdn.noise_floor must be <= -20');
-    assert(noise_reduction >= noise_reductionMin,
-        'afftdn.noise_reduction must be >= .01',);
-    assert(noise_reduction <= noise_reductionMax,
-        'afftdn.noise_reduction must be <= 97',);
+    assert(
+      noise_reduction >= noise_reductionMin,
+      'afftdn.noise_reduction must be >= .01',
+    );
+    assert(
+      noise_reduction <= noise_reductionMax,
+      'afftdn.noise_reduction must be <= 97',
+    );
     assert(nr >= nrMin, 'afftdn.nr must be >= .01');
     assert(nr <= nrMax, 'afftdn.nr must be <= 97');
-    assert(residual_floor >= residual_floorMin,
-        'afftdn.residual_floor must be >= -80',);
-    assert(residual_floor <= residual_floorMax,
-        'afftdn.residual_floor must be <= -20',);
+    assert(
+      residual_floor >= residual_floorMin,
+      'afftdn.residual_floor must be >= -80',
+    );
+    assert(
+      residual_floor <= residual_floorMax,
+      'afftdn.residual_floor must be <= -20',
+    );
     assert(rf >= rfMin, 'afftdn.rf must be >= -80');
     assert(rf <= rfMax, 'afftdn.rf must be <= -20');
     final parts = <String>[];
@@ -3725,15 +3810,14 @@ final class AfftfiltSettings {
     String? real,
     AfftfiltWinFunc? win_func,
     int? win_size,
-  }) =>
-      AfftfiltSettings(
-        enabled: enabled ?? this.enabled,
-        imag: imag ?? this.imag,
-        overlap: overlap ?? this.overlap,
-        real: real ?? this.real,
-        win_func: win_func ?? this.win_func,
-        win_size: win_size ?? this.win_size,
-      );
+  }) => AfftfiltSettings(
+    enabled: enabled ?? this.enabled,
+    imag: imag ?? this.imag,
+    overlap: overlap ?? this.overlap,
+    real: real ?? this.real,
+    win_func: win_func ?? this.win_func,
+    win_size: win_size ?? this.win_size,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -3833,22 +3917,21 @@ final class AformatSettings {
     Object? r = unset,
     Object? sample_fmts = unset,
     Object? sample_rates = unset,
-  }) =>
-      AformatSettings(
-        enabled: enabled ?? this.enabled,
-        channel_layouts: identical(channel_layouts, unset)
-            ? this.channel_layouts
-            : channel_layouts as String?,
-        cl: identical(cl, unset) ? this.cl : cl as String?,
-        f: identical(f, unset) ? this.f : f as String?,
-        r: identical(r, unset) ? this.r : r as String?,
-        sample_fmts: identical(sample_fmts, unset)
-            ? this.sample_fmts
-            : sample_fmts as String?,
-        sample_rates: identical(sample_rates, unset)
-            ? this.sample_rates
-            : sample_rates as String?,
-      );
+  }) => AformatSettings(
+    enabled: enabled ?? this.enabled,
+    channel_layouts: identical(channel_layouts, unset)
+        ? this.channel_layouts
+        : channel_layouts as String?,
+    cl: identical(cl, unset) ? this.cl : cl as String?,
+    f: identical(f, unset) ? this.f : f as String?,
+    r: identical(r, unset) ? this.r : r as String?,
+    sample_fmts: identical(sample_fmts, unset)
+        ? this.sample_fmts
+        : sample_fmts as String?,
+    sample_rates: identical(sample_rates, unset)
+        ? this.sample_rates
+        : sample_rates as String?,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -3864,7 +3947,14 @@ final class AformatSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled, channel_layouts, cl, f, r, sample_fmts, sample_rates,);
+    enabled,
+    channel_layouts,
+    cl,
+    f,
+    r,
+    sample_fmts,
+    sample_rates,
+  );
 
   @override
   String toString() =>
@@ -3954,13 +4044,12 @@ final class AfreqshiftSettings {
     double? level,
     int? order,
     double? shift,
-  }) =>
-      AfreqshiftSettings(
-        enabled: enabled ?? this.enabled,
-        level: level ?? this.level,
-        order: order ?? this.order,
-        shift: shift ?? this.shift,
-      );
+  }) => AfreqshiftSettings(
+    enabled: enabled ?? this.enabled,
+    level: level ?? this.level,
+    order: order ?? this.order,
+    shift: shift ?? this.shift,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -4129,18 +4218,17 @@ final class AfwtdnSettings {
     double? sigma,
     double? softness,
     AfwtdnWavet? wavet,
-  }) =>
-      AfwtdnSettings(
-        enabled: enabled ?? this.enabled,
-        adaptive: adaptive ?? this.adaptive,
-        levels: levels ?? this.levels,
-        percent: percent ?? this.percent,
-        profile: profile ?? this.profile,
-        samples: samples ?? this.samples,
-        sigma: sigma ?? this.sigma,
-        softness: softness ?? this.softness,
-        wavet: wavet ?? this.wavet,
-      );
+  }) => AfwtdnSettings(
+    enabled: enabled ?? this.enabled,
+    adaptive: adaptive ?? this.adaptive,
+    levels: levels ?? this.levels,
+    percent: percent ?? this.percent,
+    profile: profile ?? this.profile,
+    samples: samples ?? this.samples,
+    sigma: sigma ?? this.sigma,
+    softness: softness ?? this.softness,
+    wavet: wavet ?? this.wavet,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -4157,8 +4245,17 @@ final class AfwtdnSettings {
           other.wavet == wavet);
 
   @override
-  int get hashCode => Object.hash(enabled, adaptive, levels, percent, profile,
-      samples, sigma, softness, wavet,);
+  int get hashCode => Object.hash(
+    enabled,
+    adaptive,
+    levels,
+    percent,
+    profile,
+    samples,
+    sigma,
+    softness,
+    wavet,
+  );
 
   @override
   String toString() =>
@@ -4401,22 +4498,21 @@ final class AgateSettings {
     double? ratio,
     double? release,
     double? threshold,
-  }) =>
-      AgateSettings(
-        enabled: enabled ?? this.enabled,
-        attack: attack ?? this.attack,
-        detection: detection ?? this.detection,
-        knee: knee ?? this.knee,
-        level_in: level_in ?? this.level_in,
-        level_sc: level_sc ?? this.level_sc,
-        link: link ?? this.link,
-        makeup: makeup ?? this.makeup,
-        mode: mode ?? this.mode,
-        range: range ?? this.range,
-        ratio: ratio ?? this.ratio,
-        release: release ?? this.release,
-        threshold: threshold ?? this.threshold,
-      );
+  }) => AgateSettings(
+    enabled: enabled ?? this.enabled,
+    attack: attack ?? this.attack,
+    detection: detection ?? this.detection,
+    knee: knee ?? this.knee,
+    level_in: level_in ?? this.level_in,
+    level_sc: level_sc ?? this.level_sc,
+    link: link ?? this.link,
+    makeup: makeup ?? this.makeup,
+    mode: mode ?? this.mode,
+    range: range ?? this.range,
+    ratio: ratio ?? this.ratio,
+    release: release ?? this.release,
+    threshold: threshold ?? this.threshold,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -4437,8 +4533,21 @@ final class AgateSettings {
           other.threshold == threshold);
 
   @override
-  int get hashCode => Object.hash(enabled, attack, detection, knee, level_in,
-      level_sc, link, makeup, mode, range, ratio, release, threshold,);
+  int get hashCode => Object.hash(
+    enabled,
+    attack,
+    detection,
+    knee,
+    level_in,
+    level_sc,
+    link,
+    makeup,
+    mode,
+    range,
+    ratio,
+    release,
+    threshold,
+  );
 
   @override
   String toString() =>
@@ -4711,31 +4820,30 @@ final class AiirSettings {
     double? wet,
     String? z,
     String? zeros,
-  }) =>
-      AiirSettings(
-        enabled: enabled ?? this.enabled,
-        channel: channel ?? this.channel,
-        dry: dry ?? this.dry,
-        e: e ?? this.e,
-        f: f ?? this.f,
-        format: format ?? this.format,
-        gains: gains ?? this.gains,
-        k: k ?? this.k,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        process: process ?? this.process,
-        r: r ?? this.r,
-        rate: rate ?? this.rate,
-        response: response ?? this.response,
-        size: size ?? this.size,
-        wet: wet ?? this.wet,
-        z: z ?? this.z,
-        zeros: zeros ?? this.zeros,
-      );
+  }) => AiirSettings(
+    enabled: enabled ?? this.enabled,
+    channel: channel ?? this.channel,
+    dry: dry ?? this.dry,
+    e: e ?? this.e,
+    f: f ?? this.f,
+    format: format ?? this.format,
+    gains: gains ?? this.gains,
+    k: k ?? this.k,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    process: process ?? this.process,
+    r: r ?? this.r,
+    rate: rate ?? this.rate,
+    response: response ?? this.response,
+    size: size ?? this.size,
+    wet: wet ?? this.wet,
+    z: z ?? this.z,
+    zeros: zeros ?? this.zeros,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -4766,29 +4874,29 @@ final class AiirSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        channel,
-        dry,
-        e,
-        f,
-        format,
-        gains,
-        k,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        process,
-        r,
-        rate,
-        response,
-        size,
-        wet,
-        z,
-        zeros,
-      ]);
+    enabled,
+    channel,
+    dry,
+    e,
+    f,
+    format,
+    gains,
+    k,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    process,
+    r,
+    rate,
+    response,
+    size,
+    wet,
+    z,
+    zeros,
+  ]);
 
   @override
   String toString() =>
@@ -4845,17 +4953,11 @@ final class AintegralSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const AintegralSettings({
-    this.enabled = false,
-  });
+  const AintegralSettings({this.enabled = false});
 
   /// Returns a copy of this [AintegralSettings] with the given fields replaced.
-  AintegralSettings copyWith({
-    bool? enabled,
-  }) =>
-      AintegralSettings(
-        enabled: enabled ?? this.enabled,
-      );
+  AintegralSettings copyWith({bool? enabled}) =>
+      AintegralSettings(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
@@ -5008,19 +5110,18 @@ final class AlimiterSettings {
     double? level_out,
     double? limit,
     double? release,
-  }) =>
-      AlimiterSettings(
-        enabled: enabled ?? this.enabled,
-        asc: asc ?? this.asc,
-        asc_level: asc_level ?? this.asc_level,
-        attack: attack ?? this.attack,
-        latency: latency ?? this.latency,
-        level: level ?? this.level,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        limit: limit ?? this.limit,
-        release: release ?? this.release,
-      );
+  }) => AlimiterSettings(
+    enabled: enabled ?? this.enabled,
+    asc: asc ?? this.asc,
+    asc_level: asc_level ?? this.asc_level,
+    attack: attack ?? this.attack,
+    latency: latency ?? this.latency,
+    level: level ?? this.level,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    limit: limit ?? this.limit,
+    release: release ?? this.release,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -5038,8 +5139,18 @@ final class AlimiterSettings {
           other.release == release);
 
   @override
-  int get hashCode => Object.hash(enabled, asc, asc_level, attack, latency,
-      level, level_in, level_out, limit, release,);
+  int get hashCode => Object.hash(
+    enabled,
+    asc,
+    asc_level,
+    attack,
+    latency,
+    level,
+    level_in,
+    level_out,
+    limit,
+    release,
+  );
 
   @override
   String toString() =>
@@ -5316,28 +5427,27 @@ final class AllpassSettings {
     double? w,
     double? width,
     AllpassWidthType? width_type,
-  }) =>
-      AllpassSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        o: o ?? this.o,
-        order: order ?? this.order,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => AllpassSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    o: o ?? this.o,
+    order: order ?? this.order,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -5364,8 +5474,27 @@ final class AllpassSettings {
           other.width_type == width_type);
 
   @override
-  int get hashCode => Object.hash(enabled, a, c, channels, f, frequency, m, mix,
-      n, normalize, o, order, precision, r, t, transform, w, width, width_type,);
+  int get hashCode => Object.hash(
+    enabled,
+    a,
+    c,
+    channels,
+    f,
+    frequency,
+    m,
+    mix,
+    n,
+    normalize,
+    o,
+    order,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  );
 
   @override
   String toString() =>
@@ -5538,16 +5667,15 @@ final class AnequalizerSettings {
     double? mgain,
     String? params,
     String? size,
-  }) =>
-      AnequalizerSettings(
-        enabled: enabled ?? this.enabled,
-        colors: colors ?? this.colors,
-        curves: curves ?? this.curves,
-        fscale: fscale ?? this.fscale,
-        mgain: mgain ?? this.mgain,
-        params: params ?? this.params,
-        size: size ?? this.size,
-      );
+  }) => AnequalizerSettings(
+    enabled: enabled ?? this.enabled,
+    colors: colors ?? this.colors,
+    curves: curves ?? this.curves,
+    fscale: fscale ?? this.fscale,
+    mgain: mgain ?? this.mgain,
+    params: params ?? this.params,
+    size: size ?? this.size,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -5724,20 +5852,19 @@ final class AnlmdnSettings {
     double? s,
     double? smooth,
     double? strength,
-  }) =>
-      AnlmdnSettings(
-        enabled: enabled ?? this.enabled,
-        m: m ?? this.m,
-        o: o ?? this.o,
-        output: output ?? this.output,
-        p: p ?? this.p,
-        patch: patch ?? this.patch,
-        r: r ?? this.r,
-        research: research ?? this.research,
-        s: s ?? this.s,
-        smooth: smooth ?? this.smooth,
-        strength: strength ?? this.strength,
-      );
+  }) => AnlmdnSettings(
+    enabled: enabled ?? this.enabled,
+    m: m ?? this.m,
+    o: o ?? this.o,
+    output: output ?? this.output,
+    p: p ?? this.p,
+    patch: patch ?? this.patch,
+    r: r ?? this.r,
+    research: research ?? this.research,
+    s: s ?? this.s,
+    smooth: smooth ?? this.smooth,
+    strength: strength ?? this.strength,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -5757,7 +5884,18 @@ final class AnlmdnSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled, m, o, output, p, patch, r, research, s, smooth, strength,);
+    enabled,
+    m,
+    o,
+    output,
+    p,
+    patch,
+    r,
+    research,
+    s,
+    smooth,
+    strength,
+  );
 
   @override
   String toString() =>
@@ -5913,15 +6051,14 @@ final class ApadSettings {
     int? pad_len,
     Duration? whole_dur,
     int? whole_len,
-  }) =>
-      ApadSettings(
-        enabled: enabled ?? this.enabled,
-        packet_size: packet_size ?? this.packet_size,
-        pad_dur: pad_dur ?? this.pad_dur,
-        pad_len: pad_len ?? this.pad_len,
-        whole_dur: whole_dur ?? this.whole_dur,
-        whole_len: whole_len ?? this.whole_len,
-      );
+  }) => ApadSettings(
+    enabled: enabled ?? this.enabled,
+    packet_size: packet_size ?? this.packet_size,
+    pad_dur: pad_dur ?? this.pad_dur,
+    pad_len: pad_len ?? this.pad_len,
+    whole_dur: whole_dur ?? this.whole_dur,
+    whole_len: whole_len ?? this.whole_len,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -5946,14 +6083,20 @@ final class ApadSettings {
   /// Only non-default parameters are emitted.
   String toFilterString() {
     assert(packet_size >= packet_sizeMin, 'apad.packet_size must be >= 0');
-    assert(packet_size <= packet_sizeMax,
-        'apad.packet_size must be <= 2147483647',);
+    assert(
+      packet_size <= packet_sizeMax,
+      'apad.packet_size must be <= 2147483647',
+    );
     assert(pad_len >= pad_lenMin, 'apad.pad_len must be >= -1');
     assert(
-        pad_len <= pad_lenMax, 'apad.pad_len must be <= 9223372036854775807',);
+      pad_len <= pad_lenMax,
+      'apad.pad_len must be <= 9223372036854775807',
+    );
     assert(whole_len >= whole_lenMin, 'apad.whole_len must be >= -1');
-    assert(whole_len <= whole_lenMax,
-        'apad.whole_len must be <= 9223372036854775807',);
+    assert(
+      whole_len <= whole_lenMax,
+      'apad.whole_len must be <= 9223372036854775807',
+    );
     final parts = <String>[];
     if (packet_size != 4096) parts.add('packet_size=' + packet_size.toString());
     if (pad_dur != const Duration(microseconds: -1))
@@ -6072,16 +6215,15 @@ final class AphaserSettings {
     double? out_gain,
     double? speed,
     AphaserType? type,
-  }) =>
-      AphaserSettings(
-        enabled: enabled ?? this.enabled,
-        decay: decay ?? this.decay,
-        delay: delay ?? this.delay,
-        in_gain: in_gain ?? this.in_gain,
-        out_gain: out_gain ?? this.out_gain,
-        speed: speed ?? this.speed,
-        type: type ?? this.type,
-      );
+  }) => AphaserSettings(
+    enabled: enabled ?? this.enabled,
+    decay: decay ?? this.decay,
+    delay: delay ?? this.delay,
+    in_gain: in_gain ?? this.in_gain,
+    out_gain: out_gain ?? this.out_gain,
+    speed: speed ?? this.speed,
+    type: type ?? this.type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -6194,13 +6336,12 @@ final class AphaseshiftSettings {
     double? level,
     int? order,
     double? shift,
-  }) =>
-      AphaseshiftSettings(
-        enabled: enabled ?? this.enabled,
-        level: level ?? this.level,
-        order: order ?? this.order,
-        shift: shift ?? this.shift,
-      );
+  }) => AphaseshiftSettings(
+    enabled: enabled ?? this.enabled,
+    level: level ?? this.level,
+    order: order ?? this.order,
+    shift: shift ?? this.shift,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -6363,17 +6504,16 @@ final class ApsyclipSettings {
     bool? level,
     double? level_in,
     double? level_out,
-  }) =>
-      ApsyclipSettings(
-        enabled: enabled ?? this.enabled,
-        adaptive: adaptive ?? this.adaptive,
-        clip: clip ?? this.clip,
-        diff: diff ?? this.diff,
-        iterations: iterations ?? this.iterations,
-        level: level ?? this.level,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-      );
+  }) => ApsyclipSettings(
+    enabled: enabled ?? this.enabled,
+    adaptive: adaptive ?? this.adaptive,
+    clip: clip ?? this.clip,
+    diff: diff ?? this.diff,
+    iterations: iterations ?? this.iterations,
+    level: level ?? this.level,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -6390,7 +6530,15 @@ final class ApsyclipSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled, adaptive, clip, diff, iterations, level, level_in, level_out,);
+    enabled,
+    adaptive,
+    clip,
+    diff,
+    iterations,
+    level,
+    level_in,
+    level_out,
+  );
 
   @override
   String toString() =>
@@ -6633,21 +6781,20 @@ final class ApulsatorSettings {
     double? offset_r,
     ApulsatorTiming? timing,
     double? width,
-  }) =>
-      ApulsatorSettings(
-        enabled: enabled ?? this.enabled,
-        amount: amount ?? this.amount,
-        bpm: bpm ?? this.bpm,
-        hz: hz ?? this.hz,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        mode: mode ?? this.mode,
-        ms: ms ?? this.ms,
-        offset_l: offset_l ?? this.offset_l,
-        offset_r: offset_r ?? this.offset_r,
-        timing: timing ?? this.timing,
-        width: width ?? this.width,
-      );
+  }) => ApulsatorSettings(
+    enabled: enabled ?? this.enabled,
+    amount: amount ?? this.amount,
+    bpm: bpm ?? this.bpm,
+    hz: hz ?? this.hz,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    mode: mode ?? this.mode,
+    ms: ms ?? this.ms,
+    offset_l: offset_l ?? this.offset_l,
+    offset_r: offset_r ?? this.offset_r,
+    timing: timing ?? this.timing,
+    width: width ?? this.width,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -6667,8 +6814,20 @@ final class ApulsatorSettings {
           other.width == width);
 
   @override
-  int get hashCode => Object.hash(enabled, amount, bpm, hz, level_in, level_out,
-      mode, ms, offset_l, offset_r, timing, width,);
+  int get hashCode => Object.hash(
+    enabled,
+    amount,
+    bpm,
+    hz,
+    level_in,
+    level_out,
+    mode,
+    ms,
+    offset_l,
+    offset_r,
+    timing,
+    width,
+  );
 
   @override
   String toString() =>
@@ -6686,7 +6845,9 @@ final class ApulsatorSettings {
     assert(level_in >= level_inMin, 'apulsator.level_in must be >= 0.015625');
     assert(level_in <= level_inMax, 'apulsator.level_in must be <= 64');
     assert(
-        level_out >= level_outMin, 'apulsator.level_out must be >= 0.015625',);
+      level_out >= level_outMin,
+      'apulsator.level_out must be >= 0.015625',
+    );
     assert(level_out <= level_outMax, 'apulsator.level_out must be <= 64');
     assert(ms >= msMin, 'apulsator.ms must be >= 10');
     assert(ms <= msMax, 'apulsator.ms must be <= 2000');
@@ -6758,16 +6919,10 @@ final class AresampleSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const AresampleSettings({
-    this.enabled = false,
-    this.sample_rate = 0,
-  });
+  const AresampleSettings({this.enabled = false, this.sample_rate = 0});
 
   /// Returns a copy of this [AresampleSettings] with the given fields replaced.
-  AresampleSettings copyWith({
-    bool? enabled,
-    int? sample_rate,
-  }) =>
+  AresampleSettings copyWith({bool? enabled, int? sample_rate}) =>
       AresampleSettings(
         enabled: enabled ?? this.enabled,
         sample_rate: sample_rate ?? this.sample_rate,
@@ -6791,8 +6946,10 @@ final class AresampleSettings {
   /// Only non-default parameters are emitted.
   String toFilterString() {
     assert(sample_rate >= sample_rateMin, 'aresample.sample_rate must be >= 0');
-    assert(sample_rate <= sample_rateMax,
-        'aresample.sample_rate must be <= 2147483647',);
+    assert(
+      sample_rate <= sample_rateMax,
+      'aresample.sample_rate must be <= 2147483647',
+    );
     final parts = <String>[];
     if (sample_rate != 0) parts.add('sample_rate=' + sample_rate.toString());
     return parts.isEmpty
@@ -6850,13 +7007,12 @@ final class ArnndnSettings {
     String? m,
     double? mix,
     String? model,
-  }) =>
-      ArnndnSettings(
-        enabled: enabled ?? this.enabled,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        model: model ?? this.model,
-      );
+  }) => ArnndnSettings(
+    enabled: enabled ?? this.enabled,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    model: model ?? this.model,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -6918,17 +7074,11 @@ final class AsetrateSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const AsetrateSettings({
-    this.enabled = false,
-  });
+  const AsetrateSettings({this.enabled = false});
 
   /// Returns a copy of this [AsetrateSettings] with the given fields replaced.
-  AsetrateSettings copyWith({
-    bool? enabled,
-  }) =>
-      AsetrateSettings(
-        enabled: enabled ?? this.enabled,
-      );
+  AsetrateSettings copyWith({bool? enabled}) =>
+      AsetrateSettings(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
@@ -7039,15 +7189,14 @@ final class AsoftclipSettings {
     double? param,
     double? threshold,
     AsoftclipTypes? type,
-  }) =>
-      AsoftclipSettings(
-        enabled: enabled ?? this.enabled,
-        output: output ?? this.output,
-        oversample: oversample ?? this.oversample,
-        param: param ?? this.param,
-        threshold: threshold ?? this.threshold,
-        type: type ?? this.type,
-      );
+  }) => AsoftclipSettings(
+    enabled: enabled ?? this.enabled,
+    output: output ?? this.output,
+    oversample: oversample ?? this.oversample,
+    param: param ?? this.param,
+    threshold: threshold ?? this.threshold,
+    type: type ?? this.type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -7078,7 +7227,9 @@ final class AsoftclipSettings {
     assert(param >= paramMin, 'asoftclip.param must be >= 0.01');
     assert(param <= paramMax, 'asoftclip.param must be <= 3');
     assert(
-        threshold >= thresholdMin, 'asoftclip.threshold must be >= 0.000001',);
+      threshold >= thresholdMin,
+      'asoftclip.threshold must be >= 0.000001',
+    );
     assert(threshold <= thresholdMax, 'asoftclip.threshold must be <= 1');
     final parts = <String>[];
     if (output != 1.0) parts.add('output=' + _wireDouble(output));
@@ -7263,19 +7414,18 @@ final class AsubboostSettings {
     double? feedback,
     double? slope,
     double? wet,
-  }) =>
-      AsubboostSettings(
-        enabled: enabled ?? this.enabled,
-        boost: boost ?? this.boost,
-        channels: channels ?? this.channels,
-        cutoff: cutoff ?? this.cutoff,
-        decay: decay ?? this.decay,
-        delay: delay ?? this.delay,
-        dry: dry ?? this.dry,
-        feedback: feedback ?? this.feedback,
-        slope: slope ?? this.slope,
-        wet: wet ?? this.wet,
-      );
+  }) => AsubboostSettings(
+    enabled: enabled ?? this.enabled,
+    boost: boost ?? this.boost,
+    channels: channels ?? this.channels,
+    cutoff: cutoff ?? this.cutoff,
+    decay: decay ?? this.decay,
+    delay: delay ?? this.delay,
+    dry: dry ?? this.dry,
+    feedback: feedback ?? this.feedback,
+    slope: slope ?? this.slope,
+    wet: wet ?? this.wet,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -7293,8 +7443,18 @@ final class AsubboostSettings {
           other.wet == wet);
 
   @override
-  int get hashCode => Object.hash(enabled, boost, channels, cutoff, decay,
-      delay, dry, feedback, slope, wet,);
+  int get hashCode => Object.hash(
+    enabled,
+    boost,
+    channels,
+    cutoff,
+    decay,
+    delay,
+    dry,
+    feedback,
+    slope,
+    wet,
+  );
 
   @override
   String toString() =>
@@ -7441,13 +7601,12 @@ final class AsubcutSettings {
     double? cutoff,
     double? level,
     int? order,
-  }) =>
-      AsubcutSettings(
-        enabled: enabled ?? this.enabled,
-        cutoff: cutoff ?? this.cutoff,
-        level: level ?? this.level,
-        order: order ?? this.order,
-      );
+  }) => AsubcutSettings(
+    enabled: enabled ?? this.enabled,
+    cutoff: cutoff ?? this.cutoff,
+    level: level ?? this.level,
+    order: order ?? this.order,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -7566,13 +7725,12 @@ final class AsupercutSettings {
     double? cutoff,
     double? level,
     int? order,
-  }) =>
-      AsupercutSettings(
-        enabled: enabled ?? this.enabled,
-        cutoff: cutoff ?? this.cutoff,
-        level: level ?? this.level,
-        order: order ?? this.order,
-      );
+  }) => AsupercutSettings(
+    enabled: enabled ?? this.enabled,
+    cutoff: cutoff ?? this.cutoff,
+    level: level ?? this.level,
+    order: order ?? this.order,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -7708,14 +7866,13 @@ final class AsuperpassSettings {
     double? level,
     int? order,
     double? qfactor,
-  }) =>
-      AsuperpassSettings(
-        enabled: enabled ?? this.enabled,
-        centerf: centerf ?? this.centerf,
-        level: level ?? this.level,
-        order: order ?? this.order,
-        qfactor: qfactor ?? this.qfactor,
-      );
+  }) => AsuperpassSettings(
+    enabled: enabled ?? this.enabled,
+    centerf: centerf ?? this.centerf,
+    level: level ?? this.level,
+    order: order ?? this.order,
+    qfactor: qfactor ?? this.qfactor,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -7858,14 +8015,13 @@ final class AsuperstopSettings {
     double? level,
     int? order,
     double? qfactor,
-  }) =>
-      AsuperstopSettings(
-        enabled: enabled ?? this.enabled,
-        centerf: centerf ?? this.centerf,
-        level: level ?? this.level,
-        order: order ?? this.order,
-        qfactor: qfactor ?? this.qfactor,
-      );
+  }) => AsuperstopSettings(
+    enabled: enabled ?? this.enabled,
+    centerf: centerf ?? this.centerf,
+    level: level ?? this.level,
+    order: order ?? this.order,
+    qfactor: qfactor ?? this.qfactor,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -7969,20 +8125,13 @@ final class AtempoSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const AtempoSettings({
-    this.enabled = false,
-    this.tempo = 1.0,
-  });
+  const AtempoSettings({this.enabled = false, this.tempo = 1.0});
 
   /// Returns a copy of this [AtempoSettings] with the given fields replaced.
-  AtempoSettings copyWith({
-    bool? enabled,
-    double? tempo,
-  }) =>
-      AtempoSettings(
-        enabled: enabled ?? this.enabled,
-        tempo: tempo ?? this.tempo,
-      );
+  AtempoSettings copyWith({bool? enabled, double? tempo}) => AtempoSettings(
+    enabled: enabled ?? this.enabled,
+    tempo: tempo ?? this.tempo,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -8118,15 +8267,14 @@ final class AtiltSettings {
     int? order,
     double? slope,
     double? width,
-  }) =>
-      AtiltSettings(
-        enabled: enabled ?? this.enabled,
-        freq: freq ?? this.freq,
-        level: level ?? this.level,
-        order: order ?? this.order,
-        slope: slope ?? this.slope,
-        width: width ?? this.width,
-      );
+  }) => AtiltSettings(
+    enabled: enabled ?? this.enabled,
+    freq: freq ?? this.freq,
+    level: level ?? this.level,
+    order: order ?? this.order,
+    slope: slope ?? this.slope,
+    width: width ?? this.width,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -8404,29 +8552,28 @@ final class BandpassSettings {
     double? w,
     double? width,
     BandpassWidthType? width_type,
-  }) =>
-      BandpassSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        csg: csg ?? this.csg,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => BandpassSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    csg: csg ?? this.csg,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -8455,26 +8602,27 @@ final class BandpassSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      a,
-      b,
-      blocksize,
-      c,
-      channels,
-      csg,
-      f,
-      frequency,
-      m,
-      mix,
-      n,
-      normalize,
-      precision,
-      r,
-      t,
-      transform,
-      w,
-      width,
-      width_type,);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    csg,
+    f,
+    frequency,
+    m,
+    mix,
+    n,
+    normalize,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  );
 
   @override
   String toString() =>
@@ -8785,28 +8933,27 @@ final class BandrejectSettings {
     double? w,
     double? width,
     BandrejectWidthType? width_type,
-  }) =>
-      BandrejectSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => BandrejectSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -8834,25 +8981,26 @@ final class BandrejectSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      a,
-      b,
-      blocksize,
-      c,
-      channels,
-      f,
-      frequency,
-      m,
-      mix,
-      n,
-      normalize,
-      precision,
-      r,
-      t,
-      transform,
-      w,
-      width,
-      width_type,);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    m,
+    mix,
+    n,
+    normalize,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  );
 
   @override
   String toString() =>
@@ -9219,32 +9367,31 @@ final class BassSettings {
     double? w,
     double? width,
     BassWidthType? width_type,
-  }) =>
-      BassSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        g: g ?? this.g,
-        gain: gain ?? this.gain,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => BassSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    g: g ?? this.g,
+    gain: gain ?? this.gain,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -9276,30 +9423,30 @@ final class BassSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        g,
-        gain,
-        m,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    g,
+    gain,
+    m,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -9644,28 +9791,27 @@ final class BiquadSettings {
     BiquadPrecision? precision,
     BiquadPrecision? r,
     BiquadTransformType? transform,
-  }) =>
-      BiquadSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        a0: a0 ?? this.a0,
-        a1: a1 ?? this.a1,
-        a2: a2 ?? this.a2,
-        b: b ?? this.b,
-        b0: b0 ?? this.b0,
-        b1: b1 ?? this.b1,
-        b2: b2 ?? this.b2,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        transform: transform ?? this.transform,
-      );
+  }) => BiquadSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    a0: a0 ?? this.a0,
+    a1: a1 ?? this.a1,
+    a2: a2 ?? this.a2,
+    b: b ?? this.b,
+    b0: b0 ?? this.b0,
+    b1: b1 ?? this.b1,
+    b2: b2 ?? this.b2,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    transform: transform ?? this.transform,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -9692,8 +9838,27 @@ final class BiquadSettings {
           other.transform == transform);
 
   @override
-  int get hashCode => Object.hash(enabled, a, a0, a1, a2, b, b0, b1, b2,
-      blocksize, c, channels, m, mix, n, normalize, precision, r, transform,);
+  int get hashCode => Object.hash(
+    enabled,
+    a,
+    a0,
+    a1,
+    a2,
+    b,
+    b0,
+    b1,
+    b2,
+    blocksize,
+    c,
+    channels,
+    m,
+    mix,
+    n,
+    normalize,
+    precision,
+    r,
+    transform,
+  );
 
   @override
   String toString() =>
@@ -9831,14 +9996,13 @@ final class ChannelmapSettings {
     bool? enabled,
     Object? channel_layout = unset,
     String? map,
-  }) =>
-      ChannelmapSettings(
-        enabled: enabled ?? this.enabled,
-        channel_layout: identical(channel_layout, unset)
-            ? this.channel_layout
-            : channel_layout as String?,
-        map: map ?? this.map,
-      );
+  }) => ChannelmapSettings(
+    enabled: enabled ?? this.enabled,
+    channel_layout: identical(channel_layout, unset)
+        ? this.channel_layout
+        : channel_layout as String?,
+    map: map ?? this.map,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -9953,16 +10117,15 @@ final class ChorusSettings {
     double? in_gain,
     double? out_gain,
     String? speeds,
-  }) =>
-      ChorusSettings(
-        enabled: enabled ?? this.enabled,
-        decays: decays ?? this.decays,
-        delays: delays ?? this.delays,
-        depths: depths ?? this.depths,
-        in_gain: in_gain ?? this.in_gain,
-        out_gain: out_gain ?? this.out_gain,
-        speeds: speeds ?? this.speeds,
-      );
+  }) => ChorusSettings(
+    enabled: enabled ?? this.enabled,
+    decays: decays ?? this.decays,
+    delays: delays ?? this.delays,
+    depths: depths ?? this.depths,
+    in_gain: in_gain ?? this.in_gain,
+    out_gain: out_gain ?? this.out_gain,
+    speeds: speeds ?? this.speeds,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -10097,17 +10260,16 @@ final class CompandSettings {
     String? points,
     double? volume,
     Map<String, double>? params,
-  }) =>
-      CompandSettings(
-        enabled: enabled ?? this.enabled,
-        attacks: attacks ?? this.attacks,
-        decays: decays ?? this.decays,
-        delay: delay ?? this.delay,
-        gain: gain ?? this.gain,
-        points: points ?? this.points,
-        volume: volume ?? this.volume,
-        params: params ?? this.params,
-      );
+  }) => CompandSettings(
+    enabled: enabled ?? this.enabled,
+    attacks: attacks ?? this.attacks,
+    decays: decays ?? this.decays,
+    delay: delay ?? this.delay,
+    gain: gain ?? this.gain,
+    points: points ?? this.points,
+    volume: volume ?? this.volume,
+    params: params ?? this.params,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -10124,15 +10286,17 @@ final class CompandSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      attacks,
-      decays,
-      delay,
-      gain,
-      points,
-      volume,
-      Object.hashAllUnordered(
-          params.entries.map((e) => Object.hash(e.key, e.value)),),);
+    enabled,
+    attacks,
+    decays,
+    delay,
+    gain,
+    points,
+    volume,
+    Object.hashAllUnordered(
+      params.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
+  );
 
   @override
   String toString() =>
@@ -10288,16 +10452,15 @@ final class CompensationdelaySettings {
     int? mm,
     int? temp,
     double? wet,
-  }) =>
-      CompensationdelaySettings(
-        enabled: enabled ?? this.enabled,
-        cm: cm ?? this.cm,
-        dry: dry ?? this.dry,
-        m: m ?? this.m,
-        mm: mm ?? this.mm,
-        temp: temp ?? this.temp,
-        wet: wet ?? this.wet,
-      );
+  }) => CompensationdelaySettings(
+    enabled: enabled ?? this.enabled,
+    cm: cm ?? this.cm,
+    dry: dry ?? this.dry,
+    m: m ?? this.m,
+    mm: mm ?? this.mm,
+    temp: temp ?? this.temp,
+    wet: wet ?? this.wet,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -10478,16 +10641,15 @@ final class CrossfeedSettings {
     double? range,
     double? slope,
     double? strength,
-  }) =>
-      CrossfeedSettings(
-        enabled: enabled ?? this.enabled,
-        block_size: block_size ?? this.block_size,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        range: range ?? this.range,
-        slope: slope ?? this.slope,
-        strength: strength ?? this.strength,
-      );
+  }) => CrossfeedSettings(
+    enabled: enabled ?? this.enabled,
+    block_size: block_size ?? this.block_size,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    range: range ?? this.range,
+    slope: slope ?? this.slope,
+    strength: strength ?? this.strength,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -10503,7 +10665,14 @@ final class CrossfeedSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled, block_size, level_in, level_out, range, slope, strength,);
+    enabled,
+    block_size,
+    level_in,
+    level_out,
+    range,
+    slope,
+    strength,
+  );
 
   @override
   String toString() =>
@@ -10514,7 +10683,9 @@ final class CrossfeedSettings {
   String toFilterString() {
     assert(block_size >= block_sizeMin, 'crossfeed.block_size must be >= 0');
     assert(
-        block_size <= block_sizeMax, 'crossfeed.block_size must be <= 32768',);
+      block_size <= block_sizeMax,
+      'crossfeed.block_size must be <= 32768',
+    );
     assert(level_in >= level_inMin, 'crossfeed.level_in must be >= 0');
     assert(level_in <= level_inMax, 'crossfeed.level_in must be <= 1');
     assert(level_out >= level_outMin, 'crossfeed.level_out must be >= 0');
@@ -10603,11 +10774,7 @@ final class CrystalizerSettings {
   });
 
   /// Returns a copy of this [CrystalizerSettings] with the given fields replaced.
-  CrystalizerSettings copyWith({
-    bool? enabled,
-    bool? c,
-    double? i,
-  }) =>
+  CrystalizerSettings copyWith({bool? enabled, bool? c, double? i}) =>
       CrystalizerSettings(
         enabled: enabled ?? this.enabled,
         c: c ?? this.c,
@@ -10711,12 +10878,11 @@ final class DcshiftSettings {
     bool? enabled,
     double? limitergain,
     double? shift,
-  }) =>
-      DcshiftSettings(
-        enabled: enabled ?? this.enabled,
-        limitergain: limitergain ?? this.limitergain,
-        shift: shift ?? this.shift,
-      );
+  }) => DcshiftSettings(
+    enabled: enabled ?? this.enabled,
+    limitergain: limitergain ?? this.limitergain,
+    shift: shift ?? this.shift,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -10819,14 +10985,13 @@ final class DeesserSettings {
     double? i,
     double? m,
     DeesserMode? s,
-  }) =>
-      DeesserSettings(
-        enabled: enabled ?? this.enabled,
-        f: f ?? this.f,
-        i: i ?? this.i,
-        m: m ?? this.m,
-        s: s ?? this.s,
-      );
+  }) => DeesserSettings(
+    enabled: enabled ?? this.enabled,
+    f: f ?? this.f,
+    i: i ?? this.i,
+    m: m ?? this.m,
+    s: s ?? this.s,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -10935,13 +11100,12 @@ final class DialoguenhanceSettings {
     double? enhance,
     double? original,
     double? voice,
-  }) =>
-      DialoguenhanceSettings(
-        enabled: enabled ?? this.enabled,
-        enhance: enhance ?? this.enhance,
-        original: original ?? this.original,
-        voice: voice ?? this.voice,
-      );
+  }) => DialoguenhanceSettings(
+    enabled: enabled ?? this.enabled,
+    enhance: enhance ?? this.enhance,
+    original: original ?? this.original,
+    voice: voice ?? this.voice,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -11027,20 +11191,13 @@ final class DrmeterSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const DrmeterSettings({
-    this.enabled = false,
-    this.length = 3.0,
-  });
+  const DrmeterSettings({this.enabled = false, this.length = 3.0});
 
   /// Returns a copy of this [DrmeterSettings] with the given fields replaced.
-  DrmeterSettings copyWith({
-    bool? enabled,
-    double? length,
-  }) =>
-      DrmeterSettings(
-        enabled: enabled ?? this.enabled,
-        length: length ?? this.length,
-      );
+  DrmeterSettings copyWith({bool? enabled, double? length}) => DrmeterSettings(
+    enabled: enabled ?? this.enabled,
+    length: length ?? this.length,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -11398,36 +11555,35 @@ final class DynaudnormSettings {
     double? targetrms,
     double? threshold,
     String? v,
-  }) =>
-      DynaudnormSettings(
-        enabled: enabled ?? this.enabled,
-        altboundary: altboundary ?? this.altboundary,
-        b: b ?? this.b,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        compress: compress ?? this.compress,
-        correctdc: correctdc ?? this.correctdc,
-        coupling: coupling ?? this.coupling,
-        curve: curve ?? this.curve,
-        f: f ?? this.f,
-        framelen: framelen ?? this.framelen,
-        g: g ?? this.g,
-        gausssize: gausssize ?? this.gausssize,
-        h: h ?? this.h,
-        m: m ?? this.m,
-        maxgain: maxgain ?? this.maxgain,
-        n: n ?? this.n,
-        o: o ?? this.o,
-        overlap: overlap ?? this.overlap,
-        p: p ?? this.p,
-        peak: peak ?? this.peak,
-        r: r ?? this.r,
-        s: s ?? this.s,
-        t: t ?? this.t,
-        targetrms: targetrms ?? this.targetrms,
-        threshold: threshold ?? this.threshold,
-        v: v ?? this.v,
-      );
+  }) => DynaudnormSettings(
+    enabled: enabled ?? this.enabled,
+    altboundary: altboundary ?? this.altboundary,
+    b: b ?? this.b,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    compress: compress ?? this.compress,
+    correctdc: correctdc ?? this.correctdc,
+    coupling: coupling ?? this.coupling,
+    curve: curve ?? this.curve,
+    f: f ?? this.f,
+    framelen: framelen ?? this.framelen,
+    g: g ?? this.g,
+    gausssize: gausssize ?? this.gausssize,
+    h: h ?? this.h,
+    m: m ?? this.m,
+    maxgain: maxgain ?? this.maxgain,
+    n: n ?? this.n,
+    o: o ?? this.o,
+    overlap: overlap ?? this.overlap,
+    p: p ?? this.p,
+    peak: peak ?? this.peak,
+    r: r ?? this.r,
+    s: s ?? this.s,
+    t: t ?? this.t,
+    targetrms: targetrms ?? this.targetrms,
+    threshold: threshold ?? this.threshold,
+    v: v ?? this.v,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -11463,34 +11619,34 @@ final class DynaudnormSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        altboundary,
-        b,
-        c,
-        channels,
-        compress,
-        correctdc,
-        coupling,
-        curve,
-        f,
-        framelen,
-        g,
-        gausssize,
-        h,
-        m,
-        maxgain,
-        n,
-        o,
-        overlap,
-        p,
-        peak,
-        r,
-        s,
-        t,
-        targetrms,
-        threshold,
-        v,
-      ]);
+    enabled,
+    altboundary,
+    b,
+    c,
+    channels,
+    compress,
+    correctdc,
+    coupling,
+    curve,
+    f,
+    framelen,
+    g,
+    gausssize,
+    h,
+    m,
+    maxgain,
+    n,
+    o,
+    overlap,
+    p,
+    peak,
+    r,
+    s,
+    t,
+    targetrms,
+    threshold,
+    v,
+  ]);
 
   @override
   String toString() =>
@@ -11669,17 +11825,11 @@ final class EarwaxSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const EarwaxSettings({
-    this.enabled = false,
-  });
+  const EarwaxSettings({this.enabled = false});
 
   /// Returns a copy of this [EarwaxSettings] with the given fields replaced.
-  EarwaxSettings copyWith({
-    bool? enabled,
-  }) =>
-      EarwaxSettings(
-        enabled: enabled ?? this.enabled,
-      );
+  EarwaxSettings copyWith({bool? enabled}) =>
+      EarwaxSettings(enabled: enabled ?? this.enabled);
 
   @override
   bool operator ==(Object other) =>
@@ -11836,23 +11986,22 @@ final class Ebur128Settings {
     String? size,
     int? target,
     bool? video,
-  }) =>
-      Ebur128Settings(
-        enabled: enabled ?? this.enabled,
-        dualmono: dualmono ?? this.dualmono,
-        framelog: identical(framelog, unset)
-            ? this.framelog
-            : framelog as Ebur128Level?,
-        gauge: gauge ?? this.gauge,
-        metadata: metadata ?? this.metadata,
-        meter: meter ?? this.meter,
-        panlaw: panlaw ?? this.panlaw,
-        peak: peak ?? this.peak,
-        scale: scale ?? this.scale,
-        size: size ?? this.size,
-        target: target ?? this.target,
-        video: video ?? this.video,
-      );
+  }) => Ebur128Settings(
+    enabled: enabled ?? this.enabled,
+    dualmono: dualmono ?? this.dualmono,
+    framelog: identical(framelog, unset)
+        ? this.framelog
+        : framelog as Ebur128Level?,
+    gauge: gauge ?? this.gauge,
+    metadata: metadata ?? this.metadata,
+    meter: meter ?? this.meter,
+    panlaw: panlaw ?? this.panlaw,
+    peak: peak ?? this.peak,
+    scale: scale ?? this.scale,
+    size: size ?? this.size,
+    target: target ?? this.target,
+    video: video ?? this.video,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -11872,8 +12021,20 @@ final class Ebur128Settings {
           other.video == video);
 
   @override
-  int get hashCode => Object.hash(enabled, dualmono, framelog, gauge, metadata,
-      meter, panlaw, Object.hashAllUnordered(peak), scale, size, target, video,);
+  int get hashCode => Object.hash(
+    enabled,
+    dualmono,
+    framelog,
+    gauge,
+    metadata,
+    meter,
+    panlaw,
+    Object.hashAllUnordered(peak),
+    scale,
+    size,
+    target,
+    video,
+  );
 
   @override
   String toString() =>
@@ -12145,30 +12306,29 @@ final class EqualizerSettings {
     double? w,
     double? width,
     EqualizerWidthType? width_type,
-  }) =>
-      EqualizerSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        g: g ?? this.g,
-        gain: gain ?? this.gain,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => EqualizerSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    g: g ?? this.g,
+    gain: gain ?? this.gain,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -12198,28 +12358,28 @@ final class EqualizerSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        g,
-        gain,
-        m,
-        mix,
-        n,
-        normalize,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    g,
+    gain,
+    m,
+    mix,
+    n,
+    normalize,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -12374,11 +12534,7 @@ final class ExtrastereoSettings {
   });
 
   /// Returns a copy of this [ExtrastereoSettings] with the given fields replaced.
-  ExtrastereoSettings copyWith({
-    bool? enabled,
-    bool? c,
-    double? m,
-  }) =>
+  ExtrastereoSettings copyWith({bool? enabled, bool? c, double? m}) =>
       ExtrastereoSettings(
         enabled: enabled ?? this.enabled,
         c: c ?? this.c,
@@ -12545,23 +12701,22 @@ final class FirequalizerSettings {
     FirequalizerScale? scale,
     FirequalizerWfunc? wfunc,
     bool? zero_phase,
-  }) =>
-      FirequalizerSettings(
-        enabled: enabled ?? this.enabled,
-        accuracy: accuracy ?? this.accuracy,
-        delay: delay ?? this.delay,
-        dumpfile: dumpfile ?? this.dumpfile,
-        dumpscale: dumpscale ?? this.dumpscale,
-        fft2: fft2 ?? this.fft2,
-        fixed: fixed ?? this.fixed,
-        gain: gain ?? this.gain,
-        gain_entry: gain_entry ?? this.gain_entry,
-        min_phase: min_phase ?? this.min_phase,
-        multi: multi ?? this.multi,
-        scale: scale ?? this.scale,
-        wfunc: wfunc ?? this.wfunc,
-        zero_phase: zero_phase ?? this.zero_phase,
-      );
+  }) => FirequalizerSettings(
+    enabled: enabled ?? this.enabled,
+    accuracy: accuracy ?? this.accuracy,
+    delay: delay ?? this.delay,
+    dumpfile: dumpfile ?? this.dumpfile,
+    dumpscale: dumpscale ?? this.dumpscale,
+    fft2: fft2 ?? this.fft2,
+    fixed: fixed ?? this.fixed,
+    gain: gain ?? this.gain,
+    gain_entry: gain_entry ?? this.gain_entry,
+    min_phase: min_phase ?? this.min_phase,
+    multi: multi ?? this.multi,
+    scale: scale ?? this.scale,
+    wfunc: wfunc ?? this.wfunc,
+    zero_phase: zero_phase ?? this.zero_phase,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -12584,20 +12739,21 @@ final class FirequalizerSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      accuracy,
-      delay,
-      dumpfile,
-      dumpscale,
-      fft2,
-      fixed,
-      gain,
-      gain_entry,
-      min_phase,
-      multi,
-      scale,
-      wfunc,
-      zero_phase,);
+    enabled,
+    accuracy,
+    delay,
+    dumpfile,
+    dumpscale,
+    fft2,
+    fixed,
+    gain,
+    gain_entry,
+    min_phase,
+    multi,
+    scale,
+    wfunc,
+    zero_phase,
+  );
 
   @override
   String toString() =>
@@ -12781,18 +12937,17 @@ final class FlangerSettings {
     FlangerType? shape,
     double? speed,
     double? width,
-  }) =>
-      FlangerSettings(
-        enabled: enabled ?? this.enabled,
-        delay: delay ?? this.delay,
-        depth: depth ?? this.depth,
-        interp: interp ?? this.interp,
-        phase: phase ?? this.phase,
-        regen: regen ?? this.regen,
-        shape: shape ?? this.shape,
-        speed: speed ?? this.speed,
-        width: width ?? this.width,
-      );
+  }) => FlangerSettings(
+    enabled: enabled ?? this.enabled,
+    delay: delay ?? this.delay,
+    depth: depth ?? this.depth,
+    interp: interp ?? this.interp,
+    phase: phase ?? this.phase,
+    regen: regen ?? this.regen,
+    shape: shape ?? this.shape,
+    speed: speed ?? this.speed,
+    width: width ?? this.width,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -12810,7 +12965,16 @@ final class FlangerSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled, delay, depth, interp, phase, regen, shape, speed, width,);
+    enabled,
+    delay,
+    depth,
+    interp,
+    phase,
+    regen,
+    shape,
+    speed,
+    width,
+  );
 
   @override
   String toString() =>
@@ -13029,23 +13193,22 @@ final class HaasSettings {
     double? right_gain,
     bool? right_phase,
     double? side_gain,
-  }) =>
-      HaasSettings(
-        enabled: enabled ?? this.enabled,
-        left_balance: left_balance ?? this.left_balance,
-        left_delay: left_delay ?? this.left_delay,
-        left_gain: left_gain ?? this.left_gain,
-        left_phase: left_phase ?? this.left_phase,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        middle_phase: middle_phase ?? this.middle_phase,
-        middle_source: middle_source ?? this.middle_source,
-        right_balance: right_balance ?? this.right_balance,
-        right_delay: right_delay ?? this.right_delay,
-        right_gain: right_gain ?? this.right_gain,
-        right_phase: right_phase ?? this.right_phase,
-        side_gain: side_gain ?? this.side_gain,
-      );
+  }) => HaasSettings(
+    enabled: enabled ?? this.enabled,
+    left_balance: left_balance ?? this.left_balance,
+    left_delay: left_delay ?? this.left_delay,
+    left_gain: left_gain ?? this.left_gain,
+    left_phase: left_phase ?? this.left_phase,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    middle_phase: middle_phase ?? this.middle_phase,
+    middle_source: middle_source ?? this.middle_source,
+    right_balance: right_balance ?? this.right_balance,
+    right_delay: right_delay ?? this.right_delay,
+    right_gain: right_gain ?? this.right_gain,
+    right_phase: right_phase ?? this.right_phase,
+    side_gain: side_gain ?? this.side_gain,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -13068,20 +13231,21 @@ final class HaasSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      left_balance,
-      left_delay,
-      left_gain,
-      left_phase,
-      level_in,
-      level_out,
-      middle_phase,
-      middle_source,
-      right_balance,
-      right_delay,
-      right_gain,
-      right_phase,
-      side_gain,);
+    enabled,
+    left_balance,
+    left_delay,
+    left_gain,
+    left_phase,
+    level_in,
+    level_out,
+    middle_phase,
+    middle_source,
+    right_balance,
+    right_delay,
+    right_gain,
+    right_phase,
+    side_gain,
+  );
 
   @override
   String toString() =>
@@ -13101,9 +13265,13 @@ final class HaasSettings {
     assert(level_out >= level_outMin, 'haas.level_out must be >= 0.015625');
     assert(level_out <= level_outMax, 'haas.level_out must be <= 64');
     assert(
-        right_balance >= right_balanceMin, 'haas.right_balance must be >= -1',);
+      right_balance >= right_balanceMin,
+      'haas.right_balance must be >= -1',
+    );
     assert(
-        right_balance <= right_balanceMax, 'haas.right_balance must be <= 1',);
+      right_balance <= right_balanceMax,
+      'haas.right_balance must be <= 1',
+    );
     assert(right_delay >= right_delayMin, 'haas.right_delay must be >= 0');
     assert(right_delay <= right_delayMax, 'haas.right_delay must be <= 40');
     assert(right_gain >= right_gainMin, 'haas.right_gain must be >= 0.015625');
@@ -13212,16 +13380,15 @@ final class HdcdSettings {
     bool? disable_autoconvert,
     bool? force_pe,
     bool? process_stereo,
-  }) =>
-      HdcdSettings(
-        enabled: enabled ?? this.enabled,
-        analyze_mode: analyze_mode ?? this.analyze_mode,
-        bits_per_sample: bits_per_sample ?? this.bits_per_sample,
-        cdt_ms: cdt_ms ?? this.cdt_ms,
-        disable_autoconvert: disable_autoconvert ?? this.disable_autoconvert,
-        force_pe: force_pe ?? this.force_pe,
-        process_stereo: process_stereo ?? this.process_stereo,
-      );
+  }) => HdcdSettings(
+    enabled: enabled ?? this.enabled,
+    analyze_mode: analyze_mode ?? this.analyze_mode,
+    bits_per_sample: bits_per_sample ?? this.bits_per_sample,
+    cdt_ms: cdt_ms ?? this.cdt_ms,
+    disable_autoconvert: disable_autoconvert ?? this.disable_autoconvert,
+    force_pe: force_pe ?? this.force_pe,
+    process_stereo: process_stereo ?? this.process_stereo,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -13236,8 +13403,15 @@ final class HdcdSettings {
           other.process_stereo == process_stereo);
 
   @override
-  int get hashCode => Object.hash(enabled, analyze_mode, bits_per_sample,
-      cdt_ms, disable_autoconvert, force_pe, process_stereo,);
+  int get hashCode => Object.hash(
+    enabled,
+    analyze_mode,
+    bits_per_sample,
+    cdt_ms,
+    disable_autoconvert,
+    force_pe,
+    process_stereo,
+  );
 
   @override
   String toString() =>
@@ -13497,30 +13671,29 @@ final class HighpassSettings {
     double? w,
     double? width,
     HighpassWidthType? width_type,
-  }) =>
-      HighpassSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => HighpassSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -13550,28 +13723,28 @@ final class HighpassSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        m,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    m,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -13946,32 +14119,31 @@ final class HighshelfSettings {
     double? w,
     double? width,
     HighshelfWidthType? width_type,
-  }) =>
-      HighshelfSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        g: g ?? this.g,
-        gain: gain ?? this.gain,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => HighshelfSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    g: g ?? this.g,
+    gain: gain ?? this.gain,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -14003,30 +14175,30 @@ final class HighshelfSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        g,
-        gain,
-        m,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    g,
+    gain,
+    m,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -14409,28 +14581,27 @@ final class LoudnormSettings {
     LoudnormPrintFormat? print_format,
     String? stats_file,
     double? tp,
-  }) =>
-      LoudnormSettings(
-        enabled: enabled ?? this.enabled,
-        I: I ?? this.I,
-        LRA: LRA ?? this.LRA,
-        TP: TP ?? this.TP,
-        dual_mono: dual_mono ?? this.dual_mono,
-        i: i ?? this.i,
-        linear: linear ?? this.linear,
-        lra: lra ?? this.lra,
-        measured_I: measured_I ?? this.measured_I,
-        measured_LRA: measured_LRA ?? this.measured_LRA,
-        measured_TP: measured_TP ?? this.measured_TP,
-        measured_i: measured_i ?? this.measured_i,
-        measured_lra: measured_lra ?? this.measured_lra,
-        measured_thresh: measured_thresh ?? this.measured_thresh,
-        measured_tp: measured_tp ?? this.measured_tp,
-        offset: offset ?? this.offset,
-        print_format: print_format ?? this.print_format,
-        stats_file: stats_file ?? this.stats_file,
-        tp: tp ?? this.tp,
-      );
+  }) => LoudnormSettings(
+    enabled: enabled ?? this.enabled,
+    I: I ?? this.I,
+    LRA: LRA ?? this.LRA,
+    TP: TP ?? this.TP,
+    dual_mono: dual_mono ?? this.dual_mono,
+    i: i ?? this.i,
+    linear: linear ?? this.linear,
+    lra: lra ?? this.lra,
+    measured_I: measured_I ?? this.measured_I,
+    measured_LRA: measured_LRA ?? this.measured_LRA,
+    measured_TP: measured_TP ?? this.measured_TP,
+    measured_i: measured_i ?? this.measured_i,
+    measured_lra: measured_lra ?? this.measured_lra,
+    measured_thresh: measured_thresh ?? this.measured_thresh,
+    measured_tp: measured_tp ?? this.measured_tp,
+    offset: offset ?? this.offset,
+    print_format: print_format ?? this.print_format,
+    stats_file: stats_file ?? this.stats_file,
+    tp: tp ?? this.tp,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -14458,25 +14629,26 @@ final class LoudnormSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      I,
-      LRA,
-      TP,
-      dual_mono,
-      i,
-      linear,
-      lra,
-      measured_I,
-      measured_LRA,
-      measured_TP,
-      measured_i,
-      measured_lra,
-      measured_thresh,
-      measured_tp,
-      offset,
-      print_format,
-      stats_file,
-      tp,);
+    enabled,
+    I,
+    LRA,
+    TP,
+    dual_mono,
+    i,
+    linear,
+    lra,
+    measured_I,
+    measured_LRA,
+    measured_TP,
+    measured_i,
+    measured_lra,
+    measured_thresh,
+    measured_tp,
+    offset,
+    print_format,
+    stats_file,
+    tp,
+  );
 
   @override
   String toString() =>
@@ -14497,28 +14669,48 @@ final class LoudnormSettings {
     assert(lra <= lraMax, 'loudnorm.lra must be <= 50.0');
     assert(measured_I >= measured_IMin, 'loudnorm.measured_I must be >= -99.0');
     assert(measured_I <= measured_IMax, 'loudnorm.measured_I must be <= 0.0');
-    assert(measured_LRA >= measured_LRAMin,
-        'loudnorm.measured_LRA must be >= 0.0',);
-    assert(measured_LRA <= measured_LRAMax,
-        'loudnorm.measured_LRA must be <= 99.0',);
     assert(
-        measured_TP >= measured_TPMin, 'loudnorm.measured_TP must be >= -99.0',);
+      measured_LRA >= measured_LRAMin,
+      'loudnorm.measured_LRA must be >= 0.0',
+    );
     assert(
-        measured_TP <= measured_TPMax, 'loudnorm.measured_TP must be <= 99.0',);
+      measured_LRA <= measured_LRAMax,
+      'loudnorm.measured_LRA must be <= 99.0',
+    );
+    assert(
+      measured_TP >= measured_TPMin,
+      'loudnorm.measured_TP must be >= -99.0',
+    );
+    assert(
+      measured_TP <= measured_TPMax,
+      'loudnorm.measured_TP must be <= 99.0',
+    );
     assert(measured_i >= measured_iMin, 'loudnorm.measured_i must be >= -99.0');
     assert(measured_i <= measured_iMax, 'loudnorm.measured_i must be <= 0.0');
-    assert(measured_lra >= measured_lraMin,
-        'loudnorm.measured_lra must be >= 0.0',);
-    assert(measured_lra <= measured_lraMax,
-        'loudnorm.measured_lra must be <= 99.0',);
-    assert(measured_thresh >= measured_threshMin,
-        'loudnorm.measured_thresh must be >= -99.0',);
-    assert(measured_thresh <= measured_threshMax,
-        'loudnorm.measured_thresh must be <= 0.0',);
     assert(
-        measured_tp >= measured_tpMin, 'loudnorm.measured_tp must be >= -99.0',);
+      measured_lra >= measured_lraMin,
+      'loudnorm.measured_lra must be >= 0.0',
+    );
     assert(
-        measured_tp <= measured_tpMax, 'loudnorm.measured_tp must be <= 99.0',);
+      measured_lra <= measured_lraMax,
+      'loudnorm.measured_lra must be <= 99.0',
+    );
+    assert(
+      measured_thresh >= measured_threshMin,
+      'loudnorm.measured_thresh must be >= -99.0',
+    );
+    assert(
+      measured_thresh <= measured_threshMax,
+      'loudnorm.measured_thresh must be <= 0.0',
+    );
+    assert(
+      measured_tp >= measured_tpMin,
+      'loudnorm.measured_tp must be >= -99.0',
+    );
+    assert(
+      measured_tp <= measured_tpMax,
+      'loudnorm.measured_tp must be <= 99.0',
+    );
     assert(offset >= offsetMin, 'loudnorm.offset must be >= -99.0');
     assert(offset <= offsetMax, 'loudnorm.offset must be <= 99.0');
     assert(tp >= tpMin, 'loudnorm.tp must be >= -9.0');
@@ -14788,30 +14980,29 @@ final class LowpassSettings {
     double? w,
     double? width,
     LowpassWidthType? width_type,
-  }) =>
-      LowpassSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => LowpassSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -14841,28 +15032,28 @@ final class LowpassSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        m,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    m,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -15235,32 +15426,31 @@ final class LowshelfSettings {
     double? w,
     double? width,
     LowshelfWidthType? width_type,
-  }) =>
-      LowshelfSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        g: g ?? this.g,
-        gain: gain ?? this.gain,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => LowshelfSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    g: g ?? this.g,
+    gain: gain ?? this.gain,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -15292,30 +15482,30 @@ final class LowshelfSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        g,
-        gain,
-        m,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    g,
+    gain,
+    m,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -15468,14 +15658,10 @@ final class McompandSettings {
   });
 
   /// Returns a copy of this [McompandSettings] with the given fields replaced.
-  McompandSettings copyWith({
-    bool? enabled,
-    String? args,
-  }) =>
-      McompandSettings(
-        enabled: enabled ?? this.enabled,
-        args: args ?? this.args,
-      );
+  McompandSettings copyWith({bool? enabled, String? args}) => McompandSettings(
+    enabled: enabled ?? this.enabled,
+    args: args ?? this.args,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -15527,20 +15713,11 @@ final class PanSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const PanSettings({
-    this.enabled = false,
-    required this.args,
-  });
+  const PanSettings({this.enabled = false, required this.args});
 
   /// Returns a copy of this [PanSettings] with the given fields replaced.
-  PanSettings copyWith({
-    bool? enabled,
-    String? args,
-  }) =>
-      PanSettings(
-        enabled: enabled ?? this.enabled,
-        args: args ?? this.args,
-      );
+  PanSettings copyWith({bool? enabled, String? args}) =>
+      PanSettings(enabled: enabled ?? this.enabled, args: args ?? this.args);
 
   @override
   bool operator ==(Object other) =>
@@ -15665,20 +15842,19 @@ final class RubberbandSettings {
     double? tempo,
     RubberbandTransients? transients,
     RubberbandWindow? window,
-  }) =>
-      RubberbandSettings(
-        enabled: enabled ?? this.enabled,
-        channels: channels ?? this.channels,
-        detector: detector ?? this.detector,
-        formant: formant ?? this.formant,
-        phase: phase ?? this.phase,
-        pitch: pitch ?? this.pitch,
-        pitchq: pitchq ?? this.pitchq,
-        smoothing: smoothing ?? this.smoothing,
-        tempo: tempo ?? this.tempo,
-        transients: transients ?? this.transients,
-        window: window ?? this.window,
-      );
+  }) => RubberbandSettings(
+    enabled: enabled ?? this.enabled,
+    channels: channels ?? this.channels,
+    detector: detector ?? this.detector,
+    formant: formant ?? this.formant,
+    phase: phase ?? this.phase,
+    pitch: pitch ?? this.pitch,
+    pitchq: pitchq ?? this.pitchq,
+    smoothing: smoothing ?? this.smoothing,
+    tempo: tempo ?? this.tempo,
+    transients: transients ?? this.transients,
+    window: window ?? this.window,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -15697,8 +15873,19 @@ final class RubberbandSettings {
           other.window == window);
 
   @override
-  int get hashCode => Object.hash(enabled, channels, detector, formant, phase,
-      pitch, pitchq, smoothing, tempo, transients, window,);
+  int get hashCode => Object.hash(
+    enabled,
+    channels,
+    detector,
+    formant,
+    phase,
+    pitch,
+    pitchq,
+    smoothing,
+    tempo,
+    transients,
+    window,
+  );
 
   @override
   String toString() =>
@@ -15893,23 +16080,22 @@ final class SilenceremoveSettings {
     double? stop_threshold,
     SilenceremoveTimestamp? timestamp,
     Duration? window,
-  }) =>
-      SilenceremoveSettings(
-        enabled: enabled ?? this.enabled,
-        detection: detection ?? this.detection,
-        start_duration: start_duration ?? this.start_duration,
-        start_mode: start_mode ?? this.start_mode,
-        start_periods: start_periods ?? this.start_periods,
-        start_silence: start_silence ?? this.start_silence,
-        start_threshold: start_threshold ?? this.start_threshold,
-        stop_duration: stop_duration ?? this.stop_duration,
-        stop_mode: stop_mode ?? this.stop_mode,
-        stop_periods: stop_periods ?? this.stop_periods,
-        stop_silence: stop_silence ?? this.stop_silence,
-        stop_threshold: stop_threshold ?? this.stop_threshold,
-        timestamp: timestamp ?? this.timestamp,
-        window: window ?? this.window,
-      );
+  }) => SilenceremoveSettings(
+    enabled: enabled ?? this.enabled,
+    detection: detection ?? this.detection,
+    start_duration: start_duration ?? this.start_duration,
+    start_mode: start_mode ?? this.start_mode,
+    start_periods: start_periods ?? this.start_periods,
+    start_silence: start_silence ?? this.start_silence,
+    start_threshold: start_threshold ?? this.start_threshold,
+    stop_duration: stop_duration ?? this.stop_duration,
+    stop_mode: stop_mode ?? this.stop_mode,
+    stop_periods: stop_periods ?? this.stop_periods,
+    stop_silence: stop_silence ?? this.stop_silence,
+    stop_threshold: stop_threshold ?? this.stop_threshold,
+    timestamp: timestamp ?? this.timestamp,
+    window: window ?? this.window,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -15932,20 +16118,21 @@ final class SilenceremoveSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      detection,
-      start_duration,
-      start_mode,
-      start_periods,
-      start_silence,
-      start_threshold,
-      stop_duration,
-      stop_mode,
-      stop_periods,
-      stop_silence,
-      stop_threshold,
-      timestamp,
-      window,);
+    enabled,
+    detection,
+    start_duration,
+    start_mode,
+    start_periods,
+    start_silence,
+    start_threshold,
+    stop_duration,
+    stop_mode,
+    stop_periods,
+    stop_silence,
+    stop_threshold,
+    timestamp,
+    window,
+  );
 
   @override
   String toString() =>
@@ -15954,46 +16141,66 @@ final class SilenceremoveSettings {
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
   String toFilterString() {
-    assert(start_periods >= start_periodsMin,
-        'silenceremove.start_periods must be >= 0',);
-    assert(start_periods <= start_periodsMax,
-        'silenceremove.start_periods must be <= 9000',);
-    assert(start_threshold >= start_thresholdMin,
-        'silenceremove.start_threshold must be >= 0',);
-    assert(start_threshold <= start_thresholdMax,
-        'silenceremove.start_threshold must be <= 1.7976931348623157e+308',);
-    assert(stop_periods >= stop_periodsMin,
-        'silenceremove.stop_periods must be >= -9000',);
-    assert(stop_periods <= stop_periodsMax,
-        'silenceremove.stop_periods must be <= 9000',);
-    assert(stop_threshold >= stop_thresholdMin,
-        'silenceremove.stop_threshold must be >= 0',);
-    assert(stop_threshold <= stop_thresholdMax,
-        'silenceremove.stop_threshold must be <= 1.7976931348623157e+308',);
+    assert(
+      start_periods >= start_periodsMin,
+      'silenceremove.start_periods must be >= 0',
+    );
+    assert(
+      start_periods <= start_periodsMax,
+      'silenceremove.start_periods must be <= 9000',
+    );
+    assert(
+      start_threshold >= start_thresholdMin,
+      'silenceremove.start_threshold must be >= 0',
+    );
+    assert(
+      start_threshold <= start_thresholdMax,
+      'silenceremove.start_threshold must be <= 1.7976931348623157e+308',
+    );
+    assert(
+      stop_periods >= stop_periodsMin,
+      'silenceremove.stop_periods must be >= -9000',
+    );
+    assert(
+      stop_periods <= stop_periodsMax,
+      'silenceremove.stop_periods must be <= 9000',
+    );
+    assert(
+      stop_threshold >= stop_thresholdMin,
+      'silenceremove.stop_threshold must be >= 0',
+    );
+    assert(
+      stop_threshold <= stop_thresholdMax,
+      'silenceremove.stop_threshold must be <= 1.7976931348623157e+308',
+    );
     final parts = <String>[];
     if (detection != SilenceremoveDetection.rms)
       parts.add('detection=' + detection.mpvValue);
     if (start_duration != Duration.zero)
       parts.add(
-          'start_duration=' + _wireDouble(start_duration.inMicroseconds / 1e6),);
+        'start_duration=' + _wireDouble(start_duration.inMicroseconds / 1e6),
+      );
     if (start_mode != SilenceremoveMode.any)
       parts.add('start_mode=' + start_mode.mpvValue);
     if (start_periods != 0)
       parts.add('start_periods=' + start_periods.toString());
     if (start_silence != Duration.zero)
       parts.add(
-          'start_silence=' + _wireDouble(start_silence.inMicroseconds / 1e6),);
+        'start_silence=' + _wireDouble(start_silence.inMicroseconds / 1e6),
+      );
     if (start_threshold != 0.0)
       parts.add('start_threshold=' + _wireDouble(start_threshold));
     if (stop_duration != Duration.zero)
       parts.add(
-          'stop_duration=' + _wireDouble(stop_duration.inMicroseconds / 1e6),);
+        'stop_duration=' + _wireDouble(stop_duration.inMicroseconds / 1e6),
+      );
     if (stop_mode != SilenceremoveMode.all)
       parts.add('stop_mode=' + stop_mode.mpvValue);
     if (stop_periods != 0) parts.add('stop_periods=' + stop_periods.toString());
     if (stop_silence != Duration.zero)
       parts.add(
-          'stop_silence=' + _wireDouble(stop_silence.inMicroseconds / 1e6),);
+        'stop_silence=' + _wireDouble(stop_silence.inMicroseconds / 1e6),
+      );
     if (stop_threshold != 0.0)
       parts.add('stop_threshold=' + _wireDouble(stop_threshold));
     if (timestamp != SilenceremoveTimestamp.write)
@@ -16307,30 +16514,29 @@ final class SpeechnormSettings {
     double? rms,
     double? t,
     double? threshold,
-  }) =>
-      SpeechnormSettings(
-        enabled: enabled ?? this.enabled,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        compression: compression ?? this.compression,
-        e: e ?? this.e,
-        expansion: expansion ?? this.expansion,
-        f: f ?? this.f,
-        fall: fall ?? this.fall,
-        h: h ?? this.h,
-        i: i ?? this.i,
-        invert: invert ?? this.invert,
-        l: l ?? this.l,
-        link: link ?? this.link,
-        m: m ?? this.m,
-        p: p ?? this.p,
-        peak: peak ?? this.peak,
-        r: r ?? this.r,
-        raise: raise ?? this.raise,
-        rms: rms ?? this.rms,
-        t: t ?? this.t,
-        threshold: threshold ?? this.threshold,
-      );
+  }) => SpeechnormSettings(
+    enabled: enabled ?? this.enabled,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    compression: compression ?? this.compression,
+    e: e ?? this.e,
+    expansion: expansion ?? this.expansion,
+    f: f ?? this.f,
+    fall: fall ?? this.fall,
+    h: h ?? this.h,
+    i: i ?? this.i,
+    invert: invert ?? this.invert,
+    l: l ?? this.l,
+    link: link ?? this.link,
+    m: m ?? this.m,
+    p: p ?? this.p,
+    peak: peak ?? this.peak,
+    r: r ?? this.r,
+    raise: raise ?? this.raise,
+    rms: rms ?? this.rms,
+    t: t ?? this.t,
+    threshold: threshold ?? this.threshold,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -16360,28 +16566,28 @@ final class SpeechnormSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        c,
-        channels,
-        compression,
-        e,
-        expansion,
-        f,
-        fall,
-        h,
-        i,
-        invert,
-        l,
-        link,
-        m,
-        p,
-        peak,
-        r,
-        raise,
-        rms,
-        t,
-        threshold,
-      ]);
+    enabled,
+    c,
+    channels,
+    compression,
+    e,
+    expansion,
+    f,
+    fall,
+    h,
+    i,
+    invert,
+    l,
+    link,
+    m,
+    p,
+    peak,
+    r,
+    raise,
+    rms,
+    t,
+    threshold,
+  ]);
 
   @override
   String toString() =>
@@ -16393,9 +16599,13 @@ final class SpeechnormSettings {
     assert(c >= cMin, 'speechnorm.c must be >= 1.0');
     assert(c <= cMax, 'speechnorm.c must be <= 50.0');
     assert(
-        compression >= compressionMin, 'speechnorm.compression must be >= 1.0',);
-    assert(compression <= compressionMax,
-        'speechnorm.compression must be <= 50.0',);
+      compression >= compressionMin,
+      'speechnorm.compression must be >= 1.0',
+    );
+    assert(
+      compression <= compressionMax,
+      'speechnorm.compression must be <= 50.0',
+    );
     assert(e >= eMin, 'speechnorm.e must be >= 1.0');
     assert(e <= eMax, 'speechnorm.e must be <= 50.0');
     assert(expansion >= expansionMin, 'speechnorm.expansion must be >= 1.0');
@@ -16768,30 +16978,29 @@ final class StereotoolsSettings {
     double? sclevel,
     double? slev,
     bool? softclip,
-  }) =>
-      StereotoolsSettings(
-        enabled: enabled ?? this.enabled,
-        balance_in: balance_in ?? this.balance_in,
-        balance_out: balance_out ?? this.balance_out,
-        base: base ?? this.base,
-        bmode_in: bmode_in ?? this.bmode_in,
-        bmode_out: bmode_out ?? this.bmode_out,
-        delay: delay ?? this.delay,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        mlev: mlev ?? this.mlev,
-        mode: mode ?? this.mode,
-        mpan: mpan ?? this.mpan,
-        mutel: mutel ?? this.mutel,
-        muter: muter ?? this.muter,
-        phase: phase ?? this.phase,
-        phasel: phasel ?? this.phasel,
-        phaser: phaser ?? this.phaser,
-        sbal: sbal ?? this.sbal,
-        sclevel: sclevel ?? this.sclevel,
-        slev: slev ?? this.slev,
-        softclip: softclip ?? this.softclip,
-      );
+  }) => StereotoolsSettings(
+    enabled: enabled ?? this.enabled,
+    balance_in: balance_in ?? this.balance_in,
+    balance_out: balance_out ?? this.balance_out,
+    base: base ?? this.base,
+    bmode_in: bmode_in ?? this.bmode_in,
+    bmode_out: bmode_out ?? this.bmode_out,
+    delay: delay ?? this.delay,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    mlev: mlev ?? this.mlev,
+    mode: mode ?? this.mode,
+    mpan: mpan ?? this.mpan,
+    mutel: mutel ?? this.mutel,
+    muter: muter ?? this.muter,
+    phase: phase ?? this.phase,
+    phasel: phasel ?? this.phasel,
+    phaser: phaser ?? this.phaser,
+    sbal: sbal ?? this.sbal,
+    sclevel: sclevel ?? this.sclevel,
+    slev: slev ?? this.slev,
+    softclip: softclip ?? this.softclip,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -16821,28 +17030,28 @@ final class StereotoolsSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        balance_in,
-        balance_out,
-        base,
-        bmode_in,
-        bmode_out,
-        delay,
-        level_in,
-        level_out,
-        mlev,
-        mode,
-        mpan,
-        mutel,
-        muter,
-        phase,
-        phasel,
-        phaser,
-        sbal,
-        sclevel,
-        slev,
-        softclip,
-      ]);
+    enabled,
+    balance_in,
+    balance_out,
+    base,
+    bmode_in,
+    bmode_out,
+    delay,
+    level_in,
+    level_out,
+    mlev,
+    mode,
+    mpan,
+    mutel,
+    muter,
+    phase,
+    phasel,
+    phaser,
+    sbal,
+    sclevel,
+    slev,
+    softclip,
+  ]);
 
   @override
   String toString() =>
@@ -16854,9 +17063,13 @@ final class StereotoolsSettings {
     assert(balance_in >= balance_inMin, 'stereotools.balance_in must be >= -1');
     assert(balance_in <= balance_inMax, 'stereotools.balance_in must be <= 1');
     assert(
-        balance_out >= balance_outMin, 'stereotools.balance_out must be >= -1',);
+      balance_out >= balance_outMin,
+      'stereotools.balance_out must be >= -1',
+    );
     assert(
-        balance_out <= balance_outMax, 'stereotools.balance_out must be <= 1',);
+      balance_out <= balance_outMax,
+      'stereotools.balance_out must be <= 1',
+    );
     assert(base >= baseMin, 'stereotools.base must be >= -1');
     assert(base <= baseMax, 'stereotools.base must be <= 1');
     assert(delay >= delayMin, 'stereotools.delay must be >= -20');
@@ -16864,7 +17077,9 @@ final class StereotoolsSettings {
     assert(level_in >= level_inMin, 'stereotools.level_in must be >= 0.015625');
     assert(level_in <= level_inMax, 'stereotools.level_in must be <= 64');
     assert(
-        level_out >= level_outMin, 'stereotools.level_out must be >= 0.015625',);
+      level_out >= level_outMin,
+      'stereotools.level_out must be >= 0.015625',
+    );
     assert(level_out <= level_outMax, 'stereotools.level_out must be <= 64');
     assert(mlev >= mlevMin, 'stereotools.mlev must be >= 0.015625');
     assert(mlev <= mlevMax, 'stereotools.mlev must be <= 64');
@@ -17060,14 +17275,13 @@ final class StereowidenSettings {
     double? delay,
     double? drymix,
     double? feedback,
-  }) =>
-      StereowidenSettings(
-        enabled: enabled ?? this.enabled,
-        crossfeed: crossfeed ?? this.crossfeed,
-        delay: delay ?? this.delay,
-        drymix: drymix ?? this.drymix,
-        feedback: feedback ?? this.feedback,
-      );
+  }) => StereowidenSettings(
+    enabled: enabled ?? this.enabled,
+    crossfeed: crossfeed ?? this.crossfeed,
+    delay: delay ?? this.delay,
+    drymix: drymix ?? this.drymix,
+    feedback: feedback ?? this.feedback,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -17173,11 +17387,10 @@ final class SuperequalizerSettings {
   SuperequalizerSettings copyWith({
     bool? enabled,
     Map<String, double>? params,
-  }) =>
-      SuperequalizerSettings(
-        enabled: enabled ?? this.enabled,
-        params: params ?? this.params,
-      );
+  }) => SuperequalizerSettings(
+    enabled: enabled ?? this.enabled,
+    params: params ?? this.params,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -17188,9 +17401,11 @@ final class SuperequalizerSettings {
 
   @override
   int get hashCode => Object.hash(
-      enabled,
-      Object.hashAllUnordered(
-          params.entries.map((e) => Object.hash(e.key, e.value)),),);
+    enabled,
+    Object.hashAllUnordered(
+      params.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
+  );
 
   @override
   String toString() =>
@@ -17936,60 +18151,59 @@ final class SurroundSettings {
     double? sry,
     SurroundWinFunc? win_func,
     int? win_size,
-  }) =>
-      SurroundSettings(
-        enabled: enabled ?? this.enabled,
-        allx: allx ?? this.allx,
-        ally: ally ?? this.ally,
-        angle: angle ?? this.angle,
-        bc_in: bc_in ?? this.bc_in,
-        bc_out: bc_out ?? this.bc_out,
-        bcx: bcx ?? this.bcx,
-        bcy: bcy ?? this.bcy,
-        bl_in: bl_in ?? this.bl_in,
-        bl_out: bl_out ?? this.bl_out,
-        blx: blx ?? this.blx,
-        bly: bly ?? this.bly,
-        br_in: br_in ?? this.br_in,
-        br_out: br_out ?? this.br_out,
-        brx: brx ?? this.brx,
-        bry: bry ?? this.bry,
-        chl_in: chl_in ?? this.chl_in,
-        chl_out: chl_out ?? this.chl_out,
-        fc_in: fc_in ?? this.fc_in,
-        fc_out: fc_out ?? this.fc_out,
-        fcx: fcx ?? this.fcx,
-        fcy: fcy ?? this.fcy,
-        fl_in: fl_in ?? this.fl_in,
-        fl_out: fl_out ?? this.fl_out,
-        flx: flx ?? this.flx,
-        fly: fly ?? this.fly,
-        focus: focus ?? this.focus,
-        fr_in: fr_in ?? this.fr_in,
-        fr_out: fr_out ?? this.fr_out,
-        frx: frx ?? this.frx,
-        fry: fry ?? this.fry,
-        level_in: level_in ?? this.level_in,
-        level_out: level_out ?? this.level_out,
-        lfe: lfe ?? this.lfe,
-        lfe_high: lfe_high ?? this.lfe_high,
-        lfe_in: lfe_in ?? this.lfe_in,
-        lfe_low: lfe_low ?? this.lfe_low,
-        lfe_mode: lfe_mode ?? this.lfe_mode,
-        lfe_out: lfe_out ?? this.lfe_out,
-        overlap: overlap ?? this.overlap,
-        sl_in: sl_in ?? this.sl_in,
-        sl_out: sl_out ?? this.sl_out,
-        slx: slx ?? this.slx,
-        sly: sly ?? this.sly,
-        smooth: smooth ?? this.smooth,
-        sr_in: sr_in ?? this.sr_in,
-        sr_out: sr_out ?? this.sr_out,
-        srx: srx ?? this.srx,
-        sry: sry ?? this.sry,
-        win_func: win_func ?? this.win_func,
-        win_size: win_size ?? this.win_size,
-      );
+  }) => SurroundSettings(
+    enabled: enabled ?? this.enabled,
+    allx: allx ?? this.allx,
+    ally: ally ?? this.ally,
+    angle: angle ?? this.angle,
+    bc_in: bc_in ?? this.bc_in,
+    bc_out: bc_out ?? this.bc_out,
+    bcx: bcx ?? this.bcx,
+    bcy: bcy ?? this.bcy,
+    bl_in: bl_in ?? this.bl_in,
+    bl_out: bl_out ?? this.bl_out,
+    blx: blx ?? this.blx,
+    bly: bly ?? this.bly,
+    br_in: br_in ?? this.br_in,
+    br_out: br_out ?? this.br_out,
+    brx: brx ?? this.brx,
+    bry: bry ?? this.bry,
+    chl_in: chl_in ?? this.chl_in,
+    chl_out: chl_out ?? this.chl_out,
+    fc_in: fc_in ?? this.fc_in,
+    fc_out: fc_out ?? this.fc_out,
+    fcx: fcx ?? this.fcx,
+    fcy: fcy ?? this.fcy,
+    fl_in: fl_in ?? this.fl_in,
+    fl_out: fl_out ?? this.fl_out,
+    flx: flx ?? this.flx,
+    fly: fly ?? this.fly,
+    focus: focus ?? this.focus,
+    fr_in: fr_in ?? this.fr_in,
+    fr_out: fr_out ?? this.fr_out,
+    frx: frx ?? this.frx,
+    fry: fry ?? this.fry,
+    level_in: level_in ?? this.level_in,
+    level_out: level_out ?? this.level_out,
+    lfe: lfe ?? this.lfe,
+    lfe_high: lfe_high ?? this.lfe_high,
+    lfe_in: lfe_in ?? this.lfe_in,
+    lfe_low: lfe_low ?? this.lfe_low,
+    lfe_mode: lfe_mode ?? this.lfe_mode,
+    lfe_out: lfe_out ?? this.lfe_out,
+    overlap: overlap ?? this.overlap,
+    sl_in: sl_in ?? this.sl_in,
+    sl_out: sl_out ?? this.sl_out,
+    slx: slx ?? this.slx,
+    sly: sly ?? this.sly,
+    smooth: smooth ?? this.smooth,
+    sr_in: sr_in ?? this.sr_in,
+    sr_out: sr_out ?? this.sr_out,
+    srx: srx ?? this.srx,
+    sry: sry ?? this.sry,
+    win_func: win_func ?? this.win_func,
+    win_size: win_size ?? this.win_size,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -18049,58 +18263,58 @@ final class SurroundSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        allx,
-        ally,
-        angle,
-        bc_in,
-        bc_out,
-        bcx,
-        bcy,
-        bl_in,
-        bl_out,
-        blx,
-        bly,
-        br_in,
-        br_out,
-        brx,
-        bry,
-        chl_in,
-        chl_out,
-        fc_in,
-        fc_out,
-        fcx,
-        fcy,
-        fl_in,
-        fl_out,
-        flx,
-        fly,
-        focus,
-        fr_in,
-        fr_out,
-        frx,
-        fry,
-        level_in,
-        level_out,
-        lfe,
-        lfe_high,
-        lfe_in,
-        lfe_low,
-        lfe_mode,
-        lfe_out,
-        overlap,
-        sl_in,
-        sl_out,
-        slx,
-        sly,
-        smooth,
-        sr_in,
-        sr_out,
-        srx,
-        sry,
-        win_func,
-        win_size,
-      ]);
+    enabled,
+    allx,
+    ally,
+    angle,
+    bc_in,
+    bc_out,
+    bcx,
+    bcy,
+    bl_in,
+    bl_out,
+    blx,
+    bly,
+    br_in,
+    br_out,
+    brx,
+    bry,
+    chl_in,
+    chl_out,
+    fc_in,
+    fc_out,
+    fcx,
+    fcy,
+    fl_in,
+    fl_out,
+    flx,
+    fly,
+    focus,
+    fr_in,
+    fr_out,
+    frx,
+    fry,
+    level_in,
+    level_out,
+    lfe,
+    lfe_high,
+    lfe_in,
+    lfe_low,
+    lfe_mode,
+    lfe_out,
+    overlap,
+    sl_in,
+    sl_out,
+    slx,
+    sly,
+    smooth,
+    sr_in,
+    sr_out,
+    srx,
+    sry,
+    win_func,
+    win_size,
+  ]);
 
   @override
   String toString() =>
@@ -18669,32 +18883,31 @@ final class TiltshelfSettings {
     double? w,
     double? width,
     TiltshelfWidthType? width_type,
-  }) =>
-      TiltshelfSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        g: g ?? this.g,
-        gain: gain ?? this.gain,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => TiltshelfSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    g: g ?? this.g,
+    gain: gain ?? this.gain,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -18726,30 +18939,30 @@ final class TiltshelfSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        g,
-        gain,
-        m,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    g,
+    gain,
+    m,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -19136,32 +19349,31 @@ final class TrebleSettings {
     double? w,
     double? width,
     TrebleWidthType? width_type,
-  }) =>
-      TrebleSettings(
-        enabled: enabled ?? this.enabled,
-        a: a ?? this.a,
-        b: b ?? this.b,
-        blocksize: blocksize ?? this.blocksize,
-        c: c ?? this.c,
-        channels: channels ?? this.channels,
-        f: f ?? this.f,
-        frequency: frequency ?? this.frequency,
-        g: g ?? this.g,
-        gain: gain ?? this.gain,
-        m: m ?? this.m,
-        mix: mix ?? this.mix,
-        n: n ?? this.n,
-        normalize: normalize ?? this.normalize,
-        p: p ?? this.p,
-        poles: poles ?? this.poles,
-        precision: precision ?? this.precision,
-        r: r ?? this.r,
-        t: t ?? this.t,
-        transform: transform ?? this.transform,
-        w: w ?? this.w,
-        width: width ?? this.width,
-        width_type: width_type ?? this.width_type,
-      );
+  }) => TrebleSettings(
+    enabled: enabled ?? this.enabled,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    blocksize: blocksize ?? this.blocksize,
+    c: c ?? this.c,
+    channels: channels ?? this.channels,
+    f: f ?? this.f,
+    frequency: frequency ?? this.frequency,
+    g: g ?? this.g,
+    gain: gain ?? this.gain,
+    m: m ?? this.m,
+    mix: mix ?? this.mix,
+    n: n ?? this.n,
+    normalize: normalize ?? this.normalize,
+    p: p ?? this.p,
+    poles: poles ?? this.poles,
+    precision: precision ?? this.precision,
+    r: r ?? this.r,
+    t: t ?? this.t,
+    transform: transform ?? this.transform,
+    w: w ?? this.w,
+    width: width ?? this.width,
+    width_type: width_type ?? this.width_type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -19193,30 +19405,30 @@ final class TrebleSettings {
 
   @override
   int get hashCode => Object.hashAll([
-        enabled,
-        a,
-        b,
-        blocksize,
-        c,
-        channels,
-        f,
-        frequency,
-        g,
-        gain,
-        m,
-        mix,
-        n,
-        normalize,
-        p,
-        poles,
-        precision,
-        r,
-        t,
-        transform,
-        w,
-        width,
-        width_type,
-      ]);
+    enabled,
+    a,
+    b,
+    blocksize,
+    c,
+    channels,
+    f,
+    frequency,
+    g,
+    gain,
+    m,
+    mix,
+    n,
+    normalize,
+    p,
+    poles,
+    precision,
+    r,
+    t,
+    transform,
+    w,
+    width,
+    width_type,
+  ]);
 
   @override
   String toString() =>
@@ -19378,18 +19590,10 @@ final class TremoloSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const TremoloSettings({
-    this.enabled = false,
-    this.d = 0.5,
-    this.f = 5.0,
-  });
+  const TremoloSettings({this.enabled = false, this.d = 0.5, this.f = 5.0});
 
   /// Returns a copy of this [TremoloSettings] with the given fields replaced.
-  TremoloSettings copyWith({
-    bool? enabled,
-    double? d,
-    double? f,
-  }) =>
+  TremoloSettings copyWith({bool? enabled, double? d, double? f}) =>
       TremoloSettings(
         enabled: enabled ?? this.enabled,
         d: d ?? this.d,
@@ -19465,18 +19669,10 @@ final class VibratoSettings {
   ///
   /// Each parameter defaults to its ffmpeg default; the effect stays
   /// inactive until [enabled] is set to `true`.
-  const VibratoSettings({
-    this.enabled = false,
-    this.d = 0.5,
-    this.f = 5.0,
-  });
+  const VibratoSettings({this.enabled = false, this.d = 0.5, this.f = 5.0});
 
   /// Returns a copy of this [VibratoSettings] with the given fields replaced.
-  VibratoSettings copyWith({
-    bool? enabled,
-    double? d,
-    double? f,
-  }) =>
+  VibratoSettings copyWith({bool? enabled, double? d, double? f}) =>
       VibratoSettings(
         enabled: enabled ?? this.enabled,
         d: d ?? this.d,
@@ -19567,12 +19763,11 @@ final class VirtualbassSettings {
     bool? enabled,
     double? cutoff,
     double? strength,
-  }) =>
-      VirtualbassSettings(
-        enabled: enabled ?? this.enabled,
-        cutoff: cutoff ?? this.cutoff,
-        strength: strength ?? this.strength,
-      );
+  }) => VirtualbassSettings(
+    enabled: enabled ?? this.enabled,
+    cutoff: cutoff ?? this.cutoff,
+    strength: strength ?? this.strength,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -19625,7 +19820,7 @@ typedef AfCommand = ({
   String label,
   String option,
   String value,
-  String filterName
+  String filterName,
 });
 
 /// All audio effects bundled into a single atomic configuration
@@ -20361,111 +20556,110 @@ final class AudioEffects {
     TremoloSettings? tremolo,
     VibratoSettings? vibrato,
     VirtualbassSettings? virtualbass,
-  }) =>
-      AudioEffects(
-        custom: custom ?? this.custom,
-        acompressor: acompressor ?? this.acompressor,
-        acontrast: acontrast ?? this.acontrast,
-        acrusher: acrusher ?? this.acrusher,
-        adeclick: adeclick ?? this.adeclick,
-        adeclip: adeclip ?? this.adeclip,
-        adecorrelate: adecorrelate ?? this.adecorrelate,
-        adelay: adelay ?? this.adelay,
-        adenorm: adenorm ?? this.adenorm,
-        aderivative: aderivative ?? this.aderivative,
-        adrc: adrc ?? this.adrc,
-        adynamicequalizer: adynamicequalizer ?? this.adynamicequalizer,
-        adynamicsmooth: adynamicsmooth ?? this.adynamicsmooth,
-        aecho: aecho ?? this.aecho,
-        aemphasis: aemphasis ?? this.aemphasis,
-        aeval: aeval ?? this.aeval,
-        aexciter: aexciter ?? this.aexciter,
-        afade: afade ?? this.afade,
-        afftdn: afftdn ?? this.afftdn,
-        afftfilt: afftfilt ?? this.afftfilt,
-        aformat: aformat ?? this.aformat,
-        afreqshift: afreqshift ?? this.afreqshift,
-        afwtdn: afwtdn ?? this.afwtdn,
-        agate: agate ?? this.agate,
-        aiir: aiir ?? this.aiir,
-        aintegral: aintegral ?? this.aintegral,
-        alimiter: alimiter ?? this.alimiter,
-        allpass: allpass ?? this.allpass,
-        anequalizer: anequalizer ?? this.anequalizer,
-        anlmdn: anlmdn ?? this.anlmdn,
-        apad: apad ?? this.apad,
-        aphaser: aphaser ?? this.aphaser,
-        aphaseshift: aphaseshift ?? this.aphaseshift,
-        apsyclip: apsyclip ?? this.apsyclip,
-        apulsator: apulsator ?? this.apulsator,
-        aresample: aresample ?? this.aresample,
-        arnndn: arnndn ?? this.arnndn,
-        asetrate: asetrate ?? this.asetrate,
-        asoftclip: asoftclip ?? this.asoftclip,
-        asubboost: asubboost ?? this.asubboost,
-        asubcut: asubcut ?? this.asubcut,
-        asupercut: asupercut ?? this.asupercut,
-        asuperpass: asuperpass ?? this.asuperpass,
-        asuperstop: asuperstop ?? this.asuperstop,
-        atempo: atempo ?? this.atempo,
-        atilt: atilt ?? this.atilt,
-        bandpass: bandpass ?? this.bandpass,
-        bandreject: bandreject ?? this.bandreject,
-        bass: bass ?? this.bass,
-        biquad: biquad ?? this.biquad,
-        channelmap: channelmap ?? this.channelmap,
-        chorus: chorus ?? this.chorus,
-        compand: compand ?? this.compand,
-        compensationdelay: compensationdelay ?? this.compensationdelay,
-        crossfeed: crossfeed ?? this.crossfeed,
-        crystalizer: crystalizer ?? this.crystalizer,
-        dcshift: dcshift ?? this.dcshift,
-        deesser: deesser ?? this.deesser,
-        dialoguenhance: dialoguenhance ?? this.dialoguenhance,
-        drmeter: drmeter ?? this.drmeter,
-        dynaudnorm: dynaudnorm ?? this.dynaudnorm,
-        earwax: earwax ?? this.earwax,
-        ebur128: ebur128 ?? this.ebur128,
-        equalizer: equalizer ?? this.equalizer,
-        extrastereo: extrastereo ?? this.extrastereo,
-        firequalizer: firequalizer ?? this.firequalizer,
-        flanger: flanger ?? this.flanger,
-        haas: haas ?? this.haas,
-        hdcd: hdcd ?? this.hdcd,
-        highpass: highpass ?? this.highpass,
-        highshelf: highshelf ?? this.highshelf,
-        loudnorm: loudnorm ?? this.loudnorm,
-        lowpass: lowpass ?? this.lowpass,
-        lowshelf: lowshelf ?? this.lowshelf,
-        mcompand: mcompand ?? this.mcompand,
-        pan: pan ?? this.pan,
-        rubberband: rubberband ?? this.rubberband,
-        silenceremove: silenceremove ?? this.silenceremove,
-        speechnorm: speechnorm ?? this.speechnorm,
-        stereotools: stereotools ?? this.stereotools,
-        stereowiden: stereowiden ?? this.stereowiden,
-        superequalizer: superequalizer ?? this.superequalizer,
-        surround: surround ?? this.surround,
-        tiltshelf: tiltshelf ?? this.tiltshelf,
-        treble: treble ?? this.treble,
-        tremolo: tremolo ?? this.tremolo,
-        vibrato: vibrato ?? this.vibrato,
-        virtualbass: virtualbass ?? this.virtualbass,
-      );
+  }) => AudioEffects(
+    custom: custom ?? this.custom,
+    acompressor: acompressor ?? this.acompressor,
+    acontrast: acontrast ?? this.acontrast,
+    acrusher: acrusher ?? this.acrusher,
+    adeclick: adeclick ?? this.adeclick,
+    adeclip: adeclip ?? this.adeclip,
+    adecorrelate: adecorrelate ?? this.adecorrelate,
+    adelay: adelay ?? this.adelay,
+    adenorm: adenorm ?? this.adenorm,
+    aderivative: aderivative ?? this.aderivative,
+    adrc: adrc ?? this.adrc,
+    adynamicequalizer: adynamicequalizer ?? this.adynamicequalizer,
+    adynamicsmooth: adynamicsmooth ?? this.adynamicsmooth,
+    aecho: aecho ?? this.aecho,
+    aemphasis: aemphasis ?? this.aemphasis,
+    aeval: aeval ?? this.aeval,
+    aexciter: aexciter ?? this.aexciter,
+    afade: afade ?? this.afade,
+    afftdn: afftdn ?? this.afftdn,
+    afftfilt: afftfilt ?? this.afftfilt,
+    aformat: aformat ?? this.aformat,
+    afreqshift: afreqshift ?? this.afreqshift,
+    afwtdn: afwtdn ?? this.afwtdn,
+    agate: agate ?? this.agate,
+    aiir: aiir ?? this.aiir,
+    aintegral: aintegral ?? this.aintegral,
+    alimiter: alimiter ?? this.alimiter,
+    allpass: allpass ?? this.allpass,
+    anequalizer: anequalizer ?? this.anequalizer,
+    anlmdn: anlmdn ?? this.anlmdn,
+    apad: apad ?? this.apad,
+    aphaser: aphaser ?? this.aphaser,
+    aphaseshift: aphaseshift ?? this.aphaseshift,
+    apsyclip: apsyclip ?? this.apsyclip,
+    apulsator: apulsator ?? this.apulsator,
+    aresample: aresample ?? this.aresample,
+    arnndn: arnndn ?? this.arnndn,
+    asetrate: asetrate ?? this.asetrate,
+    asoftclip: asoftclip ?? this.asoftclip,
+    asubboost: asubboost ?? this.asubboost,
+    asubcut: asubcut ?? this.asubcut,
+    asupercut: asupercut ?? this.asupercut,
+    asuperpass: asuperpass ?? this.asuperpass,
+    asuperstop: asuperstop ?? this.asuperstop,
+    atempo: atempo ?? this.atempo,
+    atilt: atilt ?? this.atilt,
+    bandpass: bandpass ?? this.bandpass,
+    bandreject: bandreject ?? this.bandreject,
+    bass: bass ?? this.bass,
+    biquad: biquad ?? this.biquad,
+    channelmap: channelmap ?? this.channelmap,
+    chorus: chorus ?? this.chorus,
+    compand: compand ?? this.compand,
+    compensationdelay: compensationdelay ?? this.compensationdelay,
+    crossfeed: crossfeed ?? this.crossfeed,
+    crystalizer: crystalizer ?? this.crystalizer,
+    dcshift: dcshift ?? this.dcshift,
+    deesser: deesser ?? this.deesser,
+    dialoguenhance: dialoguenhance ?? this.dialoguenhance,
+    drmeter: drmeter ?? this.drmeter,
+    dynaudnorm: dynaudnorm ?? this.dynaudnorm,
+    earwax: earwax ?? this.earwax,
+    ebur128: ebur128 ?? this.ebur128,
+    equalizer: equalizer ?? this.equalizer,
+    extrastereo: extrastereo ?? this.extrastereo,
+    firequalizer: firequalizer ?? this.firequalizer,
+    flanger: flanger ?? this.flanger,
+    haas: haas ?? this.haas,
+    hdcd: hdcd ?? this.hdcd,
+    highpass: highpass ?? this.highpass,
+    highshelf: highshelf ?? this.highshelf,
+    loudnorm: loudnorm ?? this.loudnorm,
+    lowpass: lowpass ?? this.lowpass,
+    lowshelf: lowshelf ?? this.lowshelf,
+    mcompand: mcompand ?? this.mcompand,
+    pan: pan ?? this.pan,
+    rubberband: rubberband ?? this.rubberband,
+    silenceremove: silenceremove ?? this.silenceremove,
+    speechnorm: speechnorm ?? this.speechnorm,
+    stereotools: stereotools ?? this.stereotools,
+    stereowiden: stereowiden ?? this.stereowiden,
+    superequalizer: superequalizer ?? this.superequalizer,
+    surround: surround ?? this.surround,
+    tiltshelf: tiltshelf ?? this.tiltshelf,
+    treble: treble ?? this.treble,
+    tremolo: tremolo ?? this.tremolo,
+    vibrato: vibrato ?? this.vibrato,
+    virtualbass: virtualbass ?? this.virtualbass,
+  );
 
   /// Returns a copy with the `acompressor` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAcompressor(
-          AcompressorSettings Function(AcompressorSettings) f,) =>
-      copyWith(acompressor: f(acompressor ?? const AcompressorSettings()));
+    AcompressorSettings Function(AcompressorSettings) f,
+  ) => copyWith(acompressor: f(acompressor ?? const AcompressorSettings()));
 
   /// Returns a copy with the `acontrast` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAcontrast(
-          AcontrastSettings Function(AcontrastSettings) f,) =>
-      copyWith(acontrast: f(acontrast ?? const AcontrastSettings()));
+    AcontrastSettings Function(AcontrastSettings) f,
+  ) => copyWith(acontrast: f(acontrast ?? const AcontrastSettings()));
 
   /// Returns a copy with the `acrusher` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20489,8 +20683,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAdecorrelate(
-          AdecorrelateSettings Function(AdecorrelateSettings) f,) =>
-      copyWith(adecorrelate: f(adecorrelate ?? const AdecorrelateSettings()));
+    AdecorrelateSettings Function(AdecorrelateSettings) f,
+  ) => copyWith(adecorrelate: f(adecorrelate ?? const AdecorrelateSettings()));
 
   /// Returns a copy with the `adelay` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20508,8 +20702,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAderivative(
-          AderivativeSettings Function(AderivativeSettings) f,) =>
-      copyWith(aderivative: f(aderivative ?? const AderivativeSettings()));
+    AderivativeSettings Function(AderivativeSettings) f,
+  ) => copyWith(aderivative: f(aderivative ?? const AderivativeSettings()));
 
   /// Returns a copy with the `adrc` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20521,18 +20715,21 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAdynamicequalizer(
-          AdynamicequalizerSettings Function(AdynamicequalizerSettings) f,) =>
-      copyWith(
-          adynamicequalizer:
-              f(adynamicequalizer ?? const AdynamicequalizerSettings()),);
+    AdynamicequalizerSettings Function(AdynamicequalizerSettings) f,
+  ) => copyWith(
+    adynamicequalizer: f(
+      adynamicequalizer ?? const AdynamicequalizerSettings(),
+    ),
+  );
 
   /// Returns a copy with the `adynamicsmooth` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAdynamicsmooth(
-          AdynamicsmoothSettings Function(AdynamicsmoothSettings) f,) =>
-      copyWith(
-          adynamicsmooth: f(adynamicsmooth ?? const AdynamicsmoothSettings()),);
+    AdynamicsmoothSettings Function(AdynamicsmoothSettings) f,
+  ) => copyWith(
+    adynamicsmooth: f(adynamicsmooth ?? const AdynamicsmoothSettings()),
+  );
 
   /// Returns a copy with the `aecho` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20544,8 +20741,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAemphasis(
-          AemphasisSettings Function(AemphasisSettings) f,) =>
-      copyWith(aemphasis: f(aemphasis ?? const AemphasisSettings()));
+    AemphasisSettings Function(AemphasisSettings) f,
+  ) => copyWith(aemphasis: f(aemphasis ?? const AemphasisSettings()));
 
   /// Returns a copy with the `aeval` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20587,8 +20784,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAfreqshift(
-          AfreqshiftSettings Function(AfreqshiftSettings) f,) =>
-      copyWith(afreqshift: f(afreqshift ?? const AfreqshiftSettings()));
+    AfreqshiftSettings Function(AfreqshiftSettings) f,
+  ) => copyWith(afreqshift: f(afreqshift ?? const AfreqshiftSettings()));
 
   /// Returns a copy with the `afwtdn` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20612,8 +20809,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAintegral(
-          AintegralSettings Function(AintegralSettings) f,) =>
-      copyWith(aintegral: f(aintegral ?? const AintegralSettings()));
+    AintegralSettings Function(AintegralSettings) f,
+  ) => copyWith(aintegral: f(aintegral ?? const AintegralSettings()));
 
   /// Returns a copy with the `alimiter` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20631,8 +20828,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAnequalizer(
-          AnequalizerSettings Function(AnequalizerSettings) f,) =>
-      copyWith(anequalizer: f(anequalizer ?? const AnequalizerSettings()));
+    AnequalizerSettings Function(AnequalizerSettings) f,
+  ) => copyWith(anequalizer: f(anequalizer ?? const AnequalizerSettings()));
 
   /// Returns a copy with the `anlmdn` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20656,8 +20853,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAphaseshift(
-          AphaseshiftSettings Function(AphaseshiftSettings) f,) =>
-      copyWith(aphaseshift: f(aphaseshift ?? const AphaseshiftSettings()));
+    AphaseshiftSettings Function(AphaseshiftSettings) f,
+  ) => copyWith(aphaseshift: f(aphaseshift ?? const AphaseshiftSettings()));
 
   /// Returns a copy with the `apsyclip` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20669,15 +20866,15 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateApulsator(
-          ApulsatorSettings Function(ApulsatorSettings) f,) =>
-      copyWith(apulsator: f(apulsator ?? const ApulsatorSettings()));
+    ApulsatorSettings Function(ApulsatorSettings) f,
+  ) => copyWith(apulsator: f(apulsator ?? const ApulsatorSettings()));
 
   /// Returns a copy with the `aresample` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAresample(
-          AresampleSettings Function(AresampleSettings) f,) =>
-      copyWith(aresample: f(aresample ?? const AresampleSettings()));
+    AresampleSettings Function(AresampleSettings) f,
+  ) => copyWith(aresample: f(aresample ?? const AresampleSettings()));
 
   /// Returns a copy with the `arnndn` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20695,15 +20892,15 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAsoftclip(
-          AsoftclipSettings Function(AsoftclipSettings) f,) =>
-      copyWith(asoftclip: f(asoftclip ?? const AsoftclipSettings()));
+    AsoftclipSettings Function(AsoftclipSettings) f,
+  ) => copyWith(asoftclip: f(asoftclip ?? const AsoftclipSettings()));
 
   /// Returns a copy with the `asubboost` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAsubboost(
-          AsubboostSettings Function(AsubboostSettings) f,) =>
-      copyWith(asubboost: f(asubboost ?? const AsubboostSettings()));
+    AsubboostSettings Function(AsubboostSettings) f,
+  ) => copyWith(asubboost: f(asubboost ?? const AsubboostSettings()));
 
   /// Returns a copy with the `asubcut` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20715,22 +20912,22 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAsupercut(
-          AsupercutSettings Function(AsupercutSettings) f,) =>
-      copyWith(asupercut: f(asupercut ?? const AsupercutSettings()));
+    AsupercutSettings Function(AsupercutSettings) f,
+  ) => copyWith(asupercut: f(asupercut ?? const AsupercutSettings()));
 
   /// Returns a copy with the `asuperpass` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAsuperpass(
-          AsuperpassSettings Function(AsuperpassSettings) f,) =>
-      copyWith(asuperpass: f(asuperpass ?? const AsuperpassSettings()));
+    AsuperpassSettings Function(AsuperpassSettings) f,
+  ) => copyWith(asuperpass: f(asuperpass ?? const AsuperpassSettings()));
 
   /// Returns a copy with the `asuperstop` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateAsuperstop(
-          AsuperstopSettings Function(AsuperstopSettings) f,) =>
-      copyWith(asuperstop: f(asuperstop ?? const AsuperstopSettings()));
+    AsuperstopSettings Function(AsuperstopSettings) f,
+  ) => copyWith(asuperstop: f(asuperstop ?? const AsuperstopSettings()));
 
   /// Returns a copy with the `atempo` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20754,8 +20951,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateBandreject(
-          BandrejectSettings Function(BandrejectSettings) f,) =>
-      copyWith(bandreject: f(bandreject ?? const BandrejectSettings()));
+    BandrejectSettings Function(BandrejectSettings) f,
+  ) => copyWith(bandreject: f(bandreject ?? const BandrejectSettings()));
 
   /// Returns a copy with the `bass` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20773,21 +20970,26 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateChannelmap(
-          ChannelmapSettings Function(ChannelmapSettings) f,) =>
-      copyWith(
-          channelmap: f(channelmap ?? const ChannelmapSettings(map: '0|1')),);
+    ChannelmapSettings Function(ChannelmapSettings) f,
+  ) => copyWith(
+    channelmap: f(channelmap ?? const ChannelmapSettings(map: '0|1')),
+  );
 
   /// Returns a copy with the `chorus` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateChorus(ChorusSettings Function(ChorusSettings) f) =>
       copyWith(
-          chorus: f(chorus ??
+        chorus: f(
+          chorus ??
               const ChorusSettings(
-                  delays: '55|60',
-                  decays: '0.4|0.32',
-                  speeds: '0.25|0.4',
-                  depths: '2|1.3',),),);
+                delays: '55|60',
+                decays: '0.4|0.32',
+                speeds: '0.25|0.4',
+                depths: '2|1.3',
+              ),
+        ),
+      );
 
   /// Returns a copy with the `compand` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20799,24 +21001,26 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateCompensationdelay(
-          CompensationdelaySettings Function(CompensationdelaySettings) f,) =>
-      copyWith(
-          compensationdelay:
-              f(compensationdelay ?? const CompensationdelaySettings()),);
+    CompensationdelaySettings Function(CompensationdelaySettings) f,
+  ) => copyWith(
+    compensationdelay: f(
+      compensationdelay ?? const CompensationdelaySettings(),
+    ),
+  );
 
   /// Returns a copy with the `crossfeed` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateCrossfeed(
-          CrossfeedSettings Function(CrossfeedSettings) f,) =>
-      copyWith(crossfeed: f(crossfeed ?? const CrossfeedSettings()));
+    CrossfeedSettings Function(CrossfeedSettings) f,
+  ) => copyWith(crossfeed: f(crossfeed ?? const CrossfeedSettings()));
 
   /// Returns a copy with the `crystalizer` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateCrystalizer(
-          CrystalizerSettings Function(CrystalizerSettings) f,) =>
-      copyWith(crystalizer: f(crystalizer ?? const CrystalizerSettings()));
+    CrystalizerSettings Function(CrystalizerSettings) f,
+  ) => copyWith(crystalizer: f(crystalizer ?? const CrystalizerSettings()));
 
   /// Returns a copy with the `dcshift` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20834,9 +21038,10 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateDialoguenhance(
-          DialoguenhanceSettings Function(DialoguenhanceSettings) f,) =>
-      copyWith(
-          dialoguenhance: f(dialoguenhance ?? const DialoguenhanceSettings()),);
+    DialoguenhanceSettings Function(DialoguenhanceSettings) f,
+  ) => copyWith(
+    dialoguenhance: f(dialoguenhance ?? const DialoguenhanceSettings()),
+  );
 
   /// Returns a copy with the `drmeter` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20848,8 +21053,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateDynaudnorm(
-          DynaudnormSettings Function(DynaudnormSettings) f,) =>
-      copyWith(dynaudnorm: f(dynaudnorm ?? const DynaudnormSettings()));
+    DynaudnormSettings Function(DynaudnormSettings) f,
+  ) => copyWith(dynaudnorm: f(dynaudnorm ?? const DynaudnormSettings()));
 
   /// Returns a copy with the `earwax` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20867,22 +21072,22 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateEqualizer(
-          EqualizerSettings Function(EqualizerSettings) f,) =>
-      copyWith(equalizer: f(equalizer ?? const EqualizerSettings()));
+    EqualizerSettings Function(EqualizerSettings) f,
+  ) => copyWith(equalizer: f(equalizer ?? const EqualizerSettings()));
 
   /// Returns a copy with the `extrastereo` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateExtrastereo(
-          ExtrastereoSettings Function(ExtrastereoSettings) f,) =>
-      copyWith(extrastereo: f(extrastereo ?? const ExtrastereoSettings()));
+    ExtrastereoSettings Function(ExtrastereoSettings) f,
+  ) => copyWith(extrastereo: f(extrastereo ?? const ExtrastereoSettings()));
 
   /// Returns a copy with the `firequalizer` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateFirequalizer(
-          FirequalizerSettings Function(FirequalizerSettings) f,) =>
-      copyWith(firequalizer: f(firequalizer ?? const FirequalizerSettings()));
+    FirequalizerSettings Function(FirequalizerSettings) f,
+  ) => copyWith(firequalizer: f(firequalizer ?? const FirequalizerSettings()));
 
   /// Returns a copy with the `flanger` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20912,8 +21117,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateHighshelf(
-          HighshelfSettings Function(HighshelfSettings) f,) =>
-      copyWith(highshelf: f(highshelf ?? const HighshelfSettings()));
+    HighshelfSettings Function(HighshelfSettings) f,
+  ) => copyWith(highshelf: f(highshelf ?? const HighshelfSettings()));
 
   /// Returns a copy with the `loudnorm` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20949,45 +21154,47 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateRubberband(
-          RubberbandSettings Function(RubberbandSettings) f,) =>
-      copyWith(rubberband: f(rubberband ?? const RubberbandSettings()));
+    RubberbandSettings Function(RubberbandSettings) f,
+  ) => copyWith(rubberband: f(rubberband ?? const RubberbandSettings()));
 
   /// Returns a copy with the `silenceremove` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateSilenceremove(
-          SilenceremoveSettings Function(SilenceremoveSettings) f,) =>
-      copyWith(
-          silenceremove: f(silenceremove ?? const SilenceremoveSettings()),);
+    SilenceremoveSettings Function(SilenceremoveSettings) f,
+  ) => copyWith(
+    silenceremove: f(silenceremove ?? const SilenceremoveSettings()),
+  );
 
   /// Returns a copy with the `speechnorm` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateSpeechnorm(
-          SpeechnormSettings Function(SpeechnormSettings) f,) =>
-      copyWith(speechnorm: f(speechnorm ?? const SpeechnormSettings()));
+    SpeechnormSettings Function(SpeechnormSettings) f,
+  ) => copyWith(speechnorm: f(speechnorm ?? const SpeechnormSettings()));
 
   /// Returns a copy with the `stereotools` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateStereotools(
-          StereotoolsSettings Function(StereotoolsSettings) f,) =>
-      copyWith(stereotools: f(stereotools ?? const StereotoolsSettings()));
+    StereotoolsSettings Function(StereotoolsSettings) f,
+  ) => copyWith(stereotools: f(stereotools ?? const StereotoolsSettings()));
 
   /// Returns a copy with the `stereowiden` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateStereowiden(
-          StereowidenSettings Function(StereowidenSettings) f,) =>
-      copyWith(stereowiden: f(stereowiden ?? const StereowidenSettings()));
+    StereowidenSettings Function(StereowidenSettings) f,
+  ) => copyWith(stereowiden: f(stereowiden ?? const StereowidenSettings()));
 
   /// Returns a copy with the `superequalizer` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateSuperequalizer(
-          SuperequalizerSettings Function(SuperequalizerSettings) f,) =>
-      copyWith(
-          superequalizer: f(superequalizer ?? const SuperequalizerSettings()),);
+    SuperequalizerSettings Function(SuperequalizerSettings) f,
+  ) => copyWith(
+    superequalizer: f(superequalizer ?? const SuperequalizerSettings()),
+  );
 
   /// Returns a copy with the `surround` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -20999,8 +21206,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateTiltshelf(
-          TiltshelfSettings Function(TiltshelfSettings) f,) =>
-      copyWith(tiltshelf: f(tiltshelf ?? const TiltshelfSettings()));
+    TiltshelfSettings Function(TiltshelfSettings) f,
+  ) => copyWith(tiltshelf: f(tiltshelf ?? const TiltshelfSettings()));
 
   /// Returns a copy with the `treble` slot transformed by [f];
   /// a never-configured (`null`) slot is seeded with its
@@ -21024,8 +21231,8 @@ final class AudioEffects {
   /// a never-configured (`null`) slot is seeded with its
   /// defaults first.
   AudioEffects updateVirtualbass(
-          VirtualbassSettings Function(VirtualbassSettings) f,) =>
-      copyWith(virtualbass: f(virtualbass ?? const VirtualbassSettings()));
+    VirtualbassSettings Function(VirtualbassSettings) f,
+  ) => copyWith(virtualbass: f(virtualbass ?? const VirtualbassSettings()));
 
   @override
   bool operator ==(Object other) =>
@@ -21122,95 +21329,95 @@ final class AudioEffects {
 
   @override
   int get hashCode => Object.hashAll([
-        Object.hashAll(custom),
-        acompressor,
-        acontrast,
-        acrusher,
-        adeclick,
-        adeclip,
-        adecorrelate,
-        adelay,
-        adenorm,
-        aderivative,
-        adrc,
-        adynamicequalizer,
-        adynamicsmooth,
-        aecho,
-        aemphasis,
-        aeval,
-        aexciter,
-        afade,
-        afftdn,
-        afftfilt,
-        aformat,
-        afreqshift,
-        afwtdn,
-        agate,
-        aiir,
-        aintegral,
-        alimiter,
-        allpass,
-        anequalizer,
-        anlmdn,
-        apad,
-        aphaser,
-        aphaseshift,
-        apsyclip,
-        apulsator,
-        aresample,
-        arnndn,
-        asetrate,
-        asoftclip,
-        asubboost,
-        asubcut,
-        asupercut,
-        asuperpass,
-        asuperstop,
-        atempo,
-        atilt,
-        bandpass,
-        bandreject,
-        bass,
-        biquad,
-        channelmap,
-        chorus,
-        compand,
-        compensationdelay,
-        crossfeed,
-        crystalizer,
-        dcshift,
-        deesser,
-        dialoguenhance,
-        drmeter,
-        dynaudnorm,
-        earwax,
-        ebur128,
-        equalizer,
-        extrastereo,
-        firequalizer,
-        flanger,
-        haas,
-        hdcd,
-        highpass,
-        highshelf,
-        loudnorm,
-        lowpass,
-        lowshelf,
-        mcompand,
-        pan,
-        rubberband,
-        silenceremove,
-        speechnorm,
-        stereotools,
-        stereowiden,
-        superequalizer,
-        surround,
-        tiltshelf,
-        treble,
-        tremolo,
-        vibrato,
-        virtualbass,
-      ]);
+    Object.hashAll(custom),
+    acompressor,
+    acontrast,
+    acrusher,
+    adeclick,
+    adeclip,
+    adecorrelate,
+    adelay,
+    adenorm,
+    aderivative,
+    adrc,
+    adynamicequalizer,
+    adynamicsmooth,
+    aecho,
+    aemphasis,
+    aeval,
+    aexciter,
+    afade,
+    afftdn,
+    afftfilt,
+    aformat,
+    afreqshift,
+    afwtdn,
+    agate,
+    aiir,
+    aintegral,
+    alimiter,
+    allpass,
+    anequalizer,
+    anlmdn,
+    apad,
+    aphaser,
+    aphaseshift,
+    apsyclip,
+    apulsator,
+    aresample,
+    arnndn,
+    asetrate,
+    asoftclip,
+    asubboost,
+    asubcut,
+    asupercut,
+    asuperpass,
+    asuperstop,
+    atempo,
+    atilt,
+    bandpass,
+    bandreject,
+    bass,
+    biquad,
+    channelmap,
+    chorus,
+    compand,
+    compensationdelay,
+    crossfeed,
+    crystalizer,
+    dcshift,
+    deesser,
+    dialoguenhance,
+    drmeter,
+    dynaudnorm,
+    earwax,
+    ebur128,
+    equalizer,
+    extrastereo,
+    firequalizer,
+    flanger,
+    haas,
+    hdcd,
+    highpass,
+    highshelf,
+    loudnorm,
+    lowpass,
+    lowshelf,
+    mcompand,
+    pan,
+    rubberband,
+    silenceremove,
+    speechnorm,
+    stereotools,
+    stereowiden,
+    superequalizer,
+    surround,
+    tiltshelf,
+    treble,
+    tremolo,
+    vibrato,
+    virtualbass,
+  ]);
 
   @override
   String toString() {
@@ -21337,8 +21544,9 @@ final class AudioEffects {
     if (adrc?.enabled ?? false)
       parts.add('@aek_adrc:' + adrc!.toFilterString());
     if (adynamicequalizer?.enabled ?? false)
-      parts
-          .add('@aek_adynamicequalizer:' + adynamicequalizer!.toFilterString());
+      parts.add(
+        '@aek_adynamicequalizer:' + adynamicequalizer!.toFilterString(),
+      );
     if (adynamicsmooth?.enabled ?? false)
       parts.add('@aek_adynamicsmooth:' + adynamicsmooth!.toFilterString());
     if (aecho?.enabled ?? false)
@@ -21422,8 +21630,9 @@ final class AudioEffects {
     if (compand?.enabled ?? false)
       parts.add('@aek_compand:' + compand!.toFilterString());
     if (compensationdelay?.enabled ?? false)
-      parts
-          .add('@aek_compensationdelay:' + compensationdelay!.toFilterString());
+      parts.add(
+        '@aek_compensationdelay:' + compensationdelay!.toFilterString(),
+      );
     if (crossfeed?.enabled ?? false)
       parts.add('@aek_crossfeed:' + crossfeed!.toFilterString());
     if (crystalizer?.enabled ?? false)
@@ -21516,8 +21725,8 @@ final class AudioEffects {
             label: 'aek_acompressor',
             option: opt,
             value: val,
-            filterName: 'acompressor'
-          ),);
+            filterName: 'acompressor',
+          ));
         }
       }
     }
@@ -21539,8 +21748,8 @@ final class AudioEffects {
             label: 'aek_acrusher',
             option: opt,
             value: val,
-            filterName: 'acrusher'
-          ),);
+            filterName: 'acrusher',
+          ));
         }
       }
     }
@@ -21574,8 +21783,8 @@ final class AudioEffects {
             label: 'aek_adelay',
             option: opt,
             value: val,
-            filterName: 'adelay'
-          ),);
+            filterName: 'adelay',
+          ));
         }
       }
     }
@@ -21591,8 +21800,8 @@ final class AudioEffects {
             label: 'aek_adenorm',
             option: opt,
             value: val,
-            filterName: 'adenorm'
-          ),);
+            filterName: 'adenorm',
+          ));
         }
       }
     }
@@ -21610,8 +21819,12 @@ final class AudioEffects {
         final d = b!._runtimeDiff(a!);
         if (d == null) return null;
         for (final (opt, val) in d) {
-          out.add(
-              (label: 'aek_adrc', option: opt, value: val, filterName: 'adrc'),);
+          out.add((
+            label: 'aek_adrc',
+            option: opt,
+            value: val,
+            filterName: 'adrc',
+          ));
         }
       }
     }
@@ -21627,8 +21840,8 @@ final class AudioEffects {
             label: 'aek_adynamicequalizer',
             option: opt,
             value: val,
-            filterName: 'adynamicequalizer'
-          ),);
+            filterName: 'adynamicequalizer',
+          ));
         }
       }
     }
@@ -21644,8 +21857,8 @@ final class AudioEffects {
             label: 'aek_adynamicsmooth',
             option: opt,
             value: val,
-            filterName: 'adynamicsmooth'
-          ),);
+            filterName: 'adynamicsmooth',
+          ));
         }
       }
     }
@@ -21667,8 +21880,8 @@ final class AudioEffects {
             label: 'aek_aemphasis',
             option: opt,
             value: val,
-            filterName: 'aemphasis'
-          ),);
+            filterName: 'aemphasis',
+          ));
         }
       }
     }
@@ -21690,8 +21903,8 @@ final class AudioEffects {
             label: 'aek_aexciter',
             option: opt,
             value: val,
-            filterName: 'aexciter'
-          ),);
+            filterName: 'aexciter',
+          ));
         }
       }
     }
@@ -21707,8 +21920,8 @@ final class AudioEffects {
             label: 'aek_afade',
             option: opt,
             value: val,
-            filterName: 'afade'
-          ),);
+            filterName: 'afade',
+          ));
         }
       }
     }
@@ -21724,8 +21937,8 @@ final class AudioEffects {
             label: 'aek_afftdn',
             option: opt,
             value: val,
-            filterName: 'afftdn'
-          ),);
+            filterName: 'afftdn',
+          ));
         }
       }
     }
@@ -21753,8 +21966,8 @@ final class AudioEffects {
             label: 'aek_afreqshift',
             option: opt,
             value: val,
-            filterName: 'afreqshift'
-          ),);
+            filterName: 'afreqshift',
+          ));
         }
       }
     }
@@ -21770,8 +21983,8 @@ final class AudioEffects {
             label: 'aek_afwtdn',
             option: opt,
             value: val,
-            filterName: 'afwtdn'
-          ),);
+            filterName: 'afwtdn',
+          ));
         }
       }
     }
@@ -21787,8 +22000,8 @@ final class AudioEffects {
             label: 'aek_agate',
             option: opt,
             value: val,
-            filterName: 'agate'
-          ),);
+            filterName: 'agate',
+          ));
         }
       }
     }
@@ -21816,8 +22029,8 @@ final class AudioEffects {
             label: 'aek_alimiter',
             option: opt,
             value: val,
-            filterName: 'alimiter'
-          ),);
+            filterName: 'alimiter',
+          ));
         }
       }
     }
@@ -21833,8 +22046,8 @@ final class AudioEffects {
             label: 'aek_allpass',
             option: opt,
             value: val,
-            filterName: 'allpass'
-          ),);
+            filterName: 'allpass',
+          ));
         }
       }
     }
@@ -21850,8 +22063,8 @@ final class AudioEffects {
             label: 'aek_anequalizer',
             option: opt,
             value: val,
-            filterName: 'anequalizer'
-          ),);
+            filterName: 'anequalizer',
+          ));
         }
       }
     }
@@ -21867,8 +22080,8 @@ final class AudioEffects {
             label: 'aek_anlmdn',
             option: opt,
             value: val,
-            filterName: 'anlmdn'
-          ),);
+            filterName: 'anlmdn',
+          ));
         }
       }
     }
@@ -21896,8 +22109,8 @@ final class AudioEffects {
             label: 'aek_aphaseshift',
             option: opt,
             value: val,
-            filterName: 'aphaseshift'
-          ),);
+            filterName: 'aphaseshift',
+          ));
         }
       }
     }
@@ -21913,8 +22126,8 @@ final class AudioEffects {
             label: 'aek_apsyclip',
             option: opt,
             value: val,
-            filterName: 'apsyclip'
-          ),);
+            filterName: 'apsyclip',
+          ));
         }
       }
     }
@@ -21942,8 +22155,8 @@ final class AudioEffects {
             label: 'aek_arnndn',
             option: opt,
             value: val,
-            filterName: 'arnndn'
-          ),);
+            filterName: 'arnndn',
+          ));
         }
       }
     }
@@ -21965,8 +22178,8 @@ final class AudioEffects {
             label: 'aek_asoftclip',
             option: opt,
             value: val,
-            filterName: 'asoftclip'
-          ),);
+            filterName: 'asoftclip',
+          ));
         }
       }
     }
@@ -21982,8 +22195,8 @@ final class AudioEffects {
             label: 'aek_asubboost',
             option: opt,
             value: val,
-            filterName: 'asubboost'
-          ),);
+            filterName: 'asubboost',
+          ));
         }
       }
     }
@@ -21999,8 +22212,8 @@ final class AudioEffects {
             label: 'aek_asubcut',
             option: opt,
             value: val,
-            filterName: 'asubcut'
-          ),);
+            filterName: 'asubcut',
+          ));
         }
       }
     }
@@ -22016,8 +22229,8 @@ final class AudioEffects {
             label: 'aek_asupercut',
             option: opt,
             value: val,
-            filterName: 'asupercut'
-          ),);
+            filterName: 'asupercut',
+          ));
         }
       }
     }
@@ -22033,8 +22246,8 @@ final class AudioEffects {
             label: 'aek_asuperpass',
             option: opt,
             value: val,
-            filterName: 'asuperpass'
-          ),);
+            filterName: 'asuperpass',
+          ));
         }
       }
     }
@@ -22050,8 +22263,8 @@ final class AudioEffects {
             label: 'aek_asuperstop',
             option: opt,
             value: val,
-            filterName: 'asuperstop'
-          ),);
+            filterName: 'asuperstop',
+          ));
         }
       }
     }
@@ -22067,8 +22280,8 @@ final class AudioEffects {
             label: 'aek_atempo',
             option: opt,
             value: val,
-            filterName: 'atempo'
-          ),);
+            filterName: 'atempo',
+          ));
         }
       }
     }
@@ -22084,8 +22297,8 @@ final class AudioEffects {
             label: 'aek_atilt',
             option: opt,
             value: val,
-            filterName: 'atilt'
-          ),);
+            filterName: 'atilt',
+          ));
         }
       }
     }
@@ -22101,8 +22314,8 @@ final class AudioEffects {
             label: 'aek_bandpass',
             option: opt,
             value: val,
-            filterName: 'bandpass'
-          ),);
+            filterName: 'bandpass',
+          ));
         }
       }
     }
@@ -22118,8 +22331,8 @@ final class AudioEffects {
             label: 'aek_bandreject',
             option: opt,
             value: val,
-            filterName: 'bandreject'
-          ),);
+            filterName: 'bandreject',
+          ));
         }
       }
     }
@@ -22131,8 +22344,12 @@ final class AudioEffects {
         final d = b!._runtimeDiff(a!);
         if (d == null) return null;
         for (final (opt, val) in d) {
-          out.add(
-              (label: 'aek_bass', option: opt, value: val, filterName: 'bass'),);
+          out.add((
+            label: 'aek_bass',
+            option: opt,
+            value: val,
+            filterName: 'bass',
+          ));
         }
       }
     }
@@ -22148,8 +22365,8 @@ final class AudioEffects {
             label: 'aek_biquad',
             option: opt,
             value: val,
-            filterName: 'biquad'
-          ),);
+            filterName: 'biquad',
+          ));
         }
       }
     }
@@ -22183,8 +22400,8 @@ final class AudioEffects {
             label: 'aek_compensationdelay',
             option: opt,
             value: val,
-            filterName: 'compensationdelay'
-          ),);
+            filterName: 'compensationdelay',
+          ));
         }
       }
     }
@@ -22200,8 +22417,8 @@ final class AudioEffects {
             label: 'aek_crossfeed',
             option: opt,
             value: val,
-            filterName: 'crossfeed'
-          ),);
+            filterName: 'crossfeed',
+          ));
         }
       }
     }
@@ -22217,8 +22434,8 @@ final class AudioEffects {
             label: 'aek_crystalizer',
             option: opt,
             value: val,
-            filterName: 'crystalizer'
-          ),);
+            filterName: 'crystalizer',
+          ));
         }
       }
     }
@@ -22246,8 +22463,8 @@ final class AudioEffects {
             label: 'aek_dialoguenhance',
             option: opt,
             value: val,
-            filterName: 'dialoguenhance'
-          ),);
+            filterName: 'dialoguenhance',
+          ));
         }
       }
     }
@@ -22269,8 +22486,8 @@ final class AudioEffects {
             label: 'aek_dynaudnorm',
             option: opt,
             value: val,
-            filterName: 'dynaudnorm'
-          ),);
+            filterName: 'dynaudnorm',
+          ));
         }
       }
     }
@@ -22298,8 +22515,8 @@ final class AudioEffects {
             label: 'aek_equalizer',
             option: opt,
             value: val,
-            filterName: 'equalizer'
-          ),);
+            filterName: 'equalizer',
+          ));
         }
       }
     }
@@ -22315,8 +22532,8 @@ final class AudioEffects {
             label: 'aek_extrastereo',
             option: opt,
             value: val,
-            filterName: 'extrastereo'
-          ),);
+            filterName: 'extrastereo',
+          ));
         }
       }
     }
@@ -22332,8 +22549,8 @@ final class AudioEffects {
             label: 'aek_firequalizer',
             option: opt,
             value: val,
-            filterName: 'firequalizer'
-          ),);
+            filterName: 'firequalizer',
+          ));
         }
       }
     }
@@ -22367,8 +22584,8 @@ final class AudioEffects {
             label: 'aek_highpass',
             option: opt,
             value: val,
-            filterName: 'highpass'
-          ),);
+            filterName: 'highpass',
+          ));
         }
       }
     }
@@ -22384,8 +22601,8 @@ final class AudioEffects {
             label: 'aek_highshelf',
             option: opt,
             value: val,
-            filterName: 'highshelf'
-          ),);
+            filterName: 'highshelf',
+          ));
         }
       }
     }
@@ -22407,8 +22624,8 @@ final class AudioEffects {
             label: 'aek_lowpass',
             option: opt,
             value: val,
-            filterName: 'lowpass'
-          ),);
+            filterName: 'lowpass',
+          ));
         }
       }
     }
@@ -22424,8 +22641,8 @@ final class AudioEffects {
             label: 'aek_lowshelf',
             option: opt,
             value: val,
-            filterName: 'lowshelf'
-          ),);
+            filterName: 'lowshelf',
+          ));
         }
       }
     }
@@ -22453,8 +22670,8 @@ final class AudioEffects {
             label: 'aek_rubberband',
             option: opt,
             value: val,
-            filterName: 'rubberband'
-          ),);
+            filterName: 'rubberband',
+          ));
         }
       }
     }
@@ -22470,8 +22687,8 @@ final class AudioEffects {
             label: 'aek_silenceremove',
             option: opt,
             value: val,
-            filterName: 'silenceremove'
-          ),);
+            filterName: 'silenceremove',
+          ));
         }
       }
     }
@@ -22487,8 +22704,8 @@ final class AudioEffects {
             label: 'aek_speechnorm',
             option: opt,
             value: val,
-            filterName: 'speechnorm'
-          ),);
+            filterName: 'speechnorm',
+          ));
         }
       }
     }
@@ -22504,8 +22721,8 @@ final class AudioEffects {
             label: 'aek_stereotools',
             option: opt,
             value: val,
-            filterName: 'stereotools'
-          ),);
+            filterName: 'stereotools',
+          ));
         }
       }
     }
@@ -22521,8 +22738,8 @@ final class AudioEffects {
             label: 'aek_stereowiden',
             option: opt,
             value: val,
-            filterName: 'stereowiden'
-          ),);
+            filterName: 'stereowiden',
+          ));
         }
       }
     }
@@ -22544,8 +22761,8 @@ final class AudioEffects {
             label: 'aek_surround',
             option: opt,
             value: val,
-            filterName: 'surround'
-          ),);
+            filterName: 'surround',
+          ));
         }
       }
     }
@@ -22561,8 +22778,8 @@ final class AudioEffects {
             label: 'aek_tiltshelf',
             option: opt,
             value: val,
-            filterName: 'tiltshelf'
-          ),);
+            filterName: 'tiltshelf',
+          ));
         }
       }
     }
@@ -22578,8 +22795,8 @@ final class AudioEffects {
             label: 'aek_treble',
             option: opt,
             value: val,
-            filterName: 'treble'
-          ),);
+            filterName: 'treble',
+          ));
         }
       }
     }
@@ -22607,8 +22824,8 @@ final class AudioEffects {
             label: 'aek_virtualbass',
             option: opt,
             value: val,
-            filterName: 'virtualbass'
-          ),);
+            filterName: 'virtualbass',
+          ));
         }
       }
     }

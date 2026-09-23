@@ -66,13 +66,13 @@ mixin _DispatchModule on _PlayerBase {
           _resolverRetried = false;
           _updateLifecycle(buffering: true, completed: false);
         case MpvEventFileLoaded(
-            :final path,
-            :final timePos,
-            :final chapterIndex,
-            :final chapterList,
-            :final coverData,
-            :final coverMime,
-          ):
+          :final path,
+          :final timePos,
+          :final chapterIndex,
+          :final chapterList,
+          :final coverData,
+          :final coverMime,
+        ):
           // `state.playing` is driven by the `core-idle` observer; here we
           // only clear buffering/completed and apply the load payload.
           _updateLifecycle(buffering: false, completed: false);
@@ -141,10 +141,7 @@ mixin _DispatchModule on _PlayerBase {
         case MpvEndFileEvent(:final reason, :final error):
           final typedReason = MpvEndFileReason.fromValue(reason);
           _endFileCtrl.add(
-            MpvFileEndedEvent(
-              reason: typedReason,
-              error: error,
-            ),
+            MpvFileEndedEvent(reason: typedReason, error: error),
           );
           if (error < 0) {
             _errorCtrl.add(
@@ -197,16 +194,15 @@ mixin _DispatchModule on _PlayerBase {
           _dispatchProperty(name, value);
         case MpvEventLog(:final prefix, :final level, :final text):
           final typedLevel = LogLevel.fromMpv(level);
-          final entry =
-              MpvLogEntry(prefix: prefix, level: typedLevel, text: text);
+          final entry = MpvLogEntry(
+            prefix: prefix,
+            level: typedLevel,
+            text: text,
+          );
           _logCtrl.add(entry);
           if (typedLevel == LogLevel.error || typedLevel == LogLevel.fatal) {
             _errorCtrl.add(
-              MpvLogError(
-                prefix: prefix,
-                level: typedLevel,
-                text: text,
-              ),
+              MpvLogError(prefix: prefix, level: typedLevel, text: text),
             );
           }
         case MpvEventHookFired(:final id, :final name):
@@ -259,8 +255,7 @@ mixin _DispatchModule on _PlayerBase {
     // onChange fires, so a hook that reads + mutates `_state` (the
     // idle-active / eof-reached hooks settling the transport) builds on the
     // reduced state and isn't clobbered by a late assignment here.
-    final next =
-        _registry.dispatch(name, raw, _state, commit: _commitState);
+    final next = _registry.dispatch(name, raw, _state, commit: _commitState);
     if (next != null) {
       return;
     }
@@ -294,11 +289,7 @@ mixin _DispatchModule on _PlayerBase {
   void _updateLoopFromMpv(String name, String value) {
     final next = deriveLoop(name, value, _state.loop);
     if (next == null) return;
-    _updateField(
-      (s) => s.copyWith(loop: next),
-      _loop,
-      next,
-    );
+    _updateField((s) => s.copyWith(loop: next), _loop, next);
   }
 
   void _updatePlaylistFromNode(dynamic raw) {
@@ -386,10 +377,6 @@ mixin _DispatchModule on _PlayerBase {
   void _applyPolledPosition(double? seconds) {
     if (seconds == null) return;
     final pos = Duration(microseconds: (seconds * 1e6).round());
-    _updateField(
-      (s) => s.copyWith(position: pos),
-      _reactives.position,
-      pos,
-    );
+    _updateField((s) => s.copyWith(position: pos), _reactives.position, pos);
   }
 }

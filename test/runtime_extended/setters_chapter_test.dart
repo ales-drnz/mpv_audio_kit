@@ -35,8 +35,7 @@ void main() {
       await player.dispose();
     });
 
-    test(
-        'jumps to chapter index 1 (Verse) — optimistic update + observer '
+    test('jumps to chapter index 1 (Verse) — optimistic update + observer '
         'confirmation', () async {
       expect(player.state.chapters.length, 3);
 
@@ -49,8 +48,11 @@ void main() {
       // same int, so we cannot wait on a stream emission — but we can
       // verify the value remains stable after the roundtrip window.
       await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(player.state.currentChapter, 1,
-          reason: 'observer roundtrip must not destabilise the value',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+      expect(
+        player.state.currentChapter,
+        1,
+        reason: 'observer roundtrip must not destabilise the value',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

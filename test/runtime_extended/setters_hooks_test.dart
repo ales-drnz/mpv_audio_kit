@@ -32,8 +32,7 @@ void main() {
       await player.dispose();
     });
 
-    test(
-        'registerHook(on_load) fires on file load; continueHook unblocks '
+    test('registerHook(on_load) fires on file load; continueHook unblocks '
         'mpv', () async {
       final hookEvents = <MpvHookEvent>[];
       final hookFiredCompleter = Completer<MpvHookEvent>();
@@ -51,17 +50,21 @@ void main() {
         // event id; we must call continueHook to unblock mpv.
         unawaited(player.open(Media(fixturePath), play: false));
 
-        final event =
-            await hookFiredCompleter.future.timeout(const Duration(seconds: 5));
+        final event = await hookFiredCompleter.future.timeout(
+          const Duration(seconds: 5),
+        );
         expect(event.hook, Hook.load);
-        expect(event.id, greaterThan(0),
-            reason: 'mpv assigns positive ids to hook events',);
+        expect(
+          event.id,
+          greaterThan(0),
+          reason: 'mpv assigns positive ids to hook events',
+        );
 
         unawaited(player.continueHook(event.id));
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('continueHook with an invalid id is a guarded no-op', () {
       // Negative / zero id is documented as ignored (the wrapper logs
@@ -69,10 +72,9 @@ void main() {
       // mpv). Smoke: must not throw.
       unawaited(player.continueHook(0));
       unawaited(player.continueHook(-1));
-    }, timeout: const Timeout(Duration(seconds: 5)),);
+    }, timeout: const Timeout(Duration(seconds: 5)));
 
-    test(
-        'a hook with a timeout auto-continues when the consumer never '
+    test('a hook with a timeout auto-continues when the consumer never '
         'calls continueHook', () async {
       // Edge case: the consumer registers a hook but never calls
       // continueHook (a buggy or deliberately silent listener). With
@@ -100,15 +102,20 @@ void main() {
         // no new value to firstWhere on. seekCompleted fires
         // unconditionally per file load and is independent of property
         // dedup.
-        final loaded = player.stream.seekCompleted.first
-            .timeout(const Duration(seconds: 5));
-        unawaited(player.registerHook(Hook.load,
-            timeout: const Duration(milliseconds: 200),),);
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 5),
+        );
+        unawaited(
+          player.registerHook(
+            Hook.load,
+            timeout: const Duration(milliseconds: 200),
+          ),
+        );
         unawaited(player.open(Media(fixturePath), play: false));
         await loaded;
       } finally {
         await hookSub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

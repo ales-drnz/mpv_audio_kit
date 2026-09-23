@@ -51,9 +51,7 @@ void main() {
       // Default AO (audiotrack on Android via mpv's auto-selection).
       // Surface mpv's warn-level log so the test can fail loudly if
       // audiotrack reports a missing JavaVM.
-      player = Player(
-        
-      );
+      player = Player();
       logSub = player.stream.log.listen((entry) {
         final lower = entry.text.toLowerCase();
         if (lower.contains('no java virtual machine') ||
@@ -83,8 +81,11 @@ void main() {
             .firstWhere((d) => d.inMilliseconds > 0)
             .timeout(const Duration(seconds: 10));
         expect(d.inMilliseconds, greaterThan(0));
-        expect(aoErrors, isEmpty,
-            reason: 'mpv reported an AO init error: $aoErrors',);
+        expect(
+          aoErrors,
+          isEmpty,
+          reason: 'mpv reported an AO init error: $aoErrors',
+        );
       },
       timeout: const Timeout(Duration(seconds: 20)),
     );

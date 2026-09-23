@@ -24,8 +24,11 @@ void main() {
       for (var i = 0; i < 100 && !near(ms); i++) {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       }
-      expect(near(ms), isTrue,
-          reason: 'expected ~${ms}ms, was ${player.state.position}',);
+      expect(
+        near(ms),
+        isTrue,
+        reason: 'expected ~${ms}ms, was ${player.state.position}',
+      );
     }
 
     await player.seek(const Duration(milliseconds: 600), exact: true);
@@ -37,5 +40,5 @@ void main() {
 
     await player.seekToPercent(25, exact: true);
     await waitNear(250); // 25% of the ~1s fixture
-  }, timeout: const Timeout(Duration(seconds: 25)),);
+  }, timeout: const Timeout(Duration(seconds: 25)));
 }

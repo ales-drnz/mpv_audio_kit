@@ -21,9 +21,9 @@ enum ReplayGain {
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [no].
   static ReplayGain fromMpv(String raw) => switch (raw) {
-        'no' => no,
-        'track' => track,
-        'album' => album,
-        _ => no,
-      };
+    'no' => no,
+    'track' => track,
+    'album' => album,
+    _ => no,
+  };
 }

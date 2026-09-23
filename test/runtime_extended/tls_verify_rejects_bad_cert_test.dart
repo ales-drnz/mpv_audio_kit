@@ -66,9 +66,7 @@ void main() {
       if (!ready) return;
       // warn surfaces mpv's certificate-verification error on stream.log
       // (the default buildPlayer config silences logs).
-      player = await buildPlayer(
-        configuration: const PlayerConfiguration(),
-      );
+      player = await buildPlayer(configuration: const PlayerConfiguration());
     });
 
     tearDownAll(() async {
@@ -93,7 +91,10 @@ void main() {
       });
       try {
         await player.open(Media(badCertUrl), play: false);
-        await ended.future.timeout(const Duration(seconds: 15), onTimeout: () {});
+        await ended.future.timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {},
+        );
         // Grace window so a trailing error log line is still captured.
         await Future<void>.delayed(const Duration(milliseconds: 300));
       } finally {
@@ -110,22 +111,33 @@ void main() {
       }
       await player.setTlsVerify(true);
       final certErrors = await openAndCollectCertErrors();
-      expect(certErrors, isNotEmpty,
-          reason: 'with tls-verify on, mpv must reject the self-signed '
-              'certificate and log a verification failure',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+      expect(
+        certErrors,
+        isNotEmpty,
+        reason:
+            'with tls-verify on, mpv must reject the self-signed '
+            'certificate and log a verification failure',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
-    test('tls-verify off → the handshake is not rejected at the TLS layer',
-        () async {
-      if (!ready) {
-        markTestSkipped('libmpv not found');
-        return;
-      }
-      await player.setTlsVerify(false);
-      final certErrors = await openAndCollectCertErrors();
-      expect(certErrors, isEmpty,
-          reason: 'with tls-verify off, the handshake completes — any failure '
-              'is at the demuxer, not a certificate rejection: $certErrors',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    test(
+      'tls-verify off → the handshake is not rejected at the TLS layer',
+      () async {
+        if (!ready) {
+          markTestSkipped('libmpv not found');
+          return;
+        }
+        await player.setTlsVerify(false);
+        final certErrors = await openAndCollectCertErrors();
+        expect(
+          certErrors,
+          isEmpty,
+          reason:
+              'with tls-verify off, the handshake completes — any failure '
+              'is at the demuxer, not a certificate rejection: $certErrors',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
   });
 }

@@ -12,8 +12,7 @@ enum AcompressorDetection {
   peak,
 
   /// The `rms` option value.
-  rms,
-  ;
+  rms;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -45,8 +44,7 @@ enum AcompressorLink {
   average,
 
   /// The `maximum` option value.
-  maximum,
-  ;
+  maximum;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -78,8 +76,7 @@ enum AcompressorMode {
   downward,
 
   /// The `upward` option value.
-  upward,
-  ;
+  upward;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -111,8 +108,7 @@ enum AcrusherMode {
   lin,
 
   /// logarithmic
-  log,
-  ;
+  log;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -150,8 +146,7 @@ enum AdeclickM {
   save,
 
   /// overlap-save
-  s,
-  ;
+  s;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -197,8 +192,7 @@ enum AdeclipM {
   save,
 
   /// overlap-save
-  s,
-  ;
+  s;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -244,8 +238,7 @@ enum AdenormType {
   square,
 
   /// The `pulse` option value.
-  pulse,
-  ;
+  pulse;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -291,8 +284,7 @@ enum AdynamicequalizerAuto {
   on_,
 
   /// The `adaptive` option value.
-  adaptive,
-  ;
+  adaptive;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -338,8 +330,7 @@ enum AdynamicequalizerDftype {
   highpass,
 
   /// The `peak` option value.
-  peak,
-  ;
+  peak;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -388,8 +379,7 @@ enum AdynamicequalizerMode {
   boostbelow,
 
   /// The `boostabove` option value.
-  boostabove,
-  ;
+  boostabove;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -436,8 +426,7 @@ enum AdynamicequalizerPrecision {
   float,
 
   /// set double-floating point processing precision
-  double_,
-  ;
+  double_;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -476,8 +465,7 @@ enum AdynamicequalizerTftype {
   lowshelf,
 
   /// The `highshelf` option value.
-  highshelf,
-  ;
+  highshelf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -513,8 +501,7 @@ enum AemphasisMode {
   reproduction,
 
   /// The `production` option value.
-  production,
-  ;
+  production;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -567,8 +554,7 @@ enum AemphasisType {
   n50kf,
 
   /// 75µs (FM-KF)
-  n75kf,
-  ;
+  n75kf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -694,8 +680,7 @@ enum AfadeCurve {
   qsin2,
 
   /// squared half of sine wave
-  hsin2,
-  ;
+  hsin2;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -815,8 +800,7 @@ enum AfadeType {
   in_,
 
   /// fade-out
-  out,
-  ;
+  out;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -854,8 +838,7 @@ enum AfftdnLink {
   max,
 
   /// average
-  average,
-  ;
+  average;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -907,8 +890,7 @@ enum AfftdnMode {
   noise,
 
   /// noise
-  n,
-  ;
+  n;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -965,8 +947,7 @@ enum AfftdnSample {
   stop,
 
   /// stop
-  end,
-  ;
+  end;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1028,8 +1009,7 @@ enum AfftdnType {
   custom,
 
   /// custom noise
-  c,
-  ;
+  c;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1145,8 +1125,7 @@ enum AfftfiltWinFunc {
   bohman,
 
   /// Kaiser
-  kaiser,
-  ;
+  kaiser;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1273,8 +1252,7 @@ enum AfwtdnWavet {
   coif5,
 
   /// bl3
-  bl3,
-  ;
+  bl3;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1326,8 +1304,7 @@ enum AgateDetection {
   peak,
 
   /// The `rms` option value.
-  rms,
-  ;
+  rms;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1359,8 +1336,7 @@ enum AgateLink {
   average,
 
   /// The `maximum` option value.
-  maximum,
-  ;
+  maximum;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1392,8 +1368,7 @@ enum AgateMode {
   downward,
 
   /// The `upward` option value.
-  upward,
-  ;
+  upward;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1440,8 +1415,7 @@ enum AiirFormat {
   pd,
 
   /// S-plane zeros/poles
-  sp,
-  ;
+  sp;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1499,8 +1473,7 @@ enum AiirPrecision {
   i32,
 
   /// 16-bit integers
-  i16,
-  ;
+  i16;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1543,8 +1516,7 @@ enum AiirProcess {
   s,
 
   /// parallel
-  p,
-  ;
+  p;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1589,8 +1561,7 @@ enum AllpassPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1649,8 +1620,7 @@ enum AllpassTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1711,8 +1681,7 @@ enum AllpassWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1756,8 +1725,7 @@ enum AnequalizerFscale {
   lin,
 
   /// logarithmic
-  log,
-  ;
+  log;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1792,8 +1760,7 @@ enum AnlmdnMode {
   o,
 
   /// noise
-  n,
-  ;
+  n;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1835,8 +1802,7 @@ enum AphaserType {
   sinusoidal,
 
   /// The `s` option value.
-  s,
-  ;
+  s;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1885,8 +1851,7 @@ enum ApulsatorMode {
   sawup,
 
   /// The `sawdown` option value.
-  sawdown,
-  ;
+  sawdown;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1933,8 +1898,7 @@ enum ApulsatorTiming {
   ms,
 
   /// The `hz` option value.
-  hz,
-  ;
+  hz;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -1991,8 +1955,7 @@ enum AsoftclipTypes {
   sin,
 
   /// The `erf` option value.
-  erf,
-  ;
+  erf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2061,8 +2024,7 @@ enum BandpassPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2121,8 +2083,7 @@ enum BandpassTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2183,8 +2144,7 @@ enum BandpassWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2237,8 +2197,7 @@ enum BandrejectPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2297,8 +2256,7 @@ enum BandrejectTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2359,8 +2317,7 @@ enum BandrejectWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2413,8 +2370,7 @@ enum BassPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2473,8 +2429,7 @@ enum BassTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2535,8 +2490,7 @@ enum BassWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2589,8 +2543,7 @@ enum BiquadPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2649,8 +2602,7 @@ enum BiquadTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2705,8 +2657,7 @@ enum DeesserMode {
   o,
 
   /// ess
-  e,
-  ;
+  e;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2748,8 +2699,7 @@ enum Ebur128Gaugetype {
   shortterm,
 
   /// display short-term value
-  s,
-  ;
+  s;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2792,8 +2742,7 @@ enum Ebur128Level {
   info,
 
   /// verbose logging level
-  verbose,
-  ;
+  verbose;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2832,8 +2781,7 @@ enum Ebur128Mode {
   sample,
 
   /// enable true-peak mode
-  true_,
-  ;
+  true_;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2875,8 +2823,7 @@ enum Ebur128Scaletype {
   relative,
 
   /// display values relative to target (LU)
-  LU,
-  ;
+  LU;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2925,8 +2872,7 @@ enum EqualizerPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -2985,8 +2931,7 @@ enum EqualizerTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3047,8 +2992,7 @@ enum EqualizerWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3098,8 +3042,7 @@ enum FirequalizerScale {
   loglin,
 
   /// logarithmic-freq logarithmic-gain
-  loglog,
-  ;
+  loglog;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3163,8 +3106,7 @@ enum FirequalizerWfunc {
   bharris,
 
   /// tukey window
-  tukey,
-  ;
+  tukey;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3228,8 +3170,7 @@ enum FlangerItype {
   linear,
 
   /// The `quadratic` option value.
-  quadratic,
-  ;
+  quadratic;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3267,8 +3208,7 @@ enum FlangerType {
   sinusoidal,
 
   /// The `s` option value.
-  s,
-  ;
+  s;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3314,8 +3254,7 @@ enum HaasSource {
   mid,
 
   /// L-R
-  side,
-  ;
+  side;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3364,8 +3303,7 @@ enum HdcdAnalyzeMode {
   cdt,
 
   /// The `tgm` option value.
-  tgm,
-  ;
+  tgm;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3412,8 +3350,7 @@ enum HdcdBitsPerSample {
   n20,
 
   /// 24-bit (in s32)
-  n24,
-  ;
+  n24;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3458,8 +3395,7 @@ enum HighpassPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3518,8 +3454,7 @@ enum HighpassTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3580,8 +3515,7 @@ enum HighpassWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3634,8 +3568,7 @@ enum HighshelfPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3694,8 +3627,7 @@ enum HighshelfTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3756,8 +3688,7 @@ enum HighshelfWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3804,8 +3735,7 @@ enum LoudnormPrintFormat {
   json,
 
   /// The `summary` option value.
-  summary,
-  ;
+  summary;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3850,8 +3780,7 @@ enum LowpassPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3910,8 +3839,7 @@ enum LowpassTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -3972,8 +3900,7 @@ enum LowpassWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4026,8 +3953,7 @@ enum LowshelfPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4086,8 +4012,7 @@ enum LowshelfTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4148,8 +4073,7 @@ enum LowshelfWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4193,8 +4117,7 @@ enum RubberbandChannels {
   apart,
 
   /// The `together` option value.
-  together,
-  ;
+  together;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4229,8 +4152,7 @@ enum RubberbandDetector {
   percussive,
 
   /// The `soft` option value.
-  soft,
-  ;
+  soft;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4266,8 +4188,7 @@ enum RubberbandFormant {
   shifted,
 
   /// The `preserved` option value.
-  preserved,
-  ;
+  preserved;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4299,8 +4220,7 @@ enum RubberbandPhase {
   laminar,
 
   /// The `independent` option value.
-  independent,
-  ;
+  independent;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4335,8 +4255,7 @@ enum RubberbandPitch {
   speed,
 
   /// The `consistency` option value.
-  consistency,
-  ;
+  consistency;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4372,8 +4291,7 @@ enum RubberbandSmoothing {
   off,
 
   /// The `on` option value.
-  on_,
-  ;
+  on_;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4408,8 +4326,7 @@ enum RubberbandTransients {
   mixed,
 
   /// The `smooth` option value.
-  smooth,
-  ;
+  smooth;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4448,8 +4365,7 @@ enum RubberbandWindow {
   short,
 
   /// The `long` option value.
-  long,
-  ;
+  long;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4497,8 +4413,7 @@ enum SilenceremoveDetection {
   ptp,
 
   /// use standard deviation from values of samples
-  dev,
-  ;
+  dev;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4546,8 +4461,7 @@ enum SilenceremoveMode {
   any,
 
   /// The `all` option value.
-  all,
-  ;
+  all;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4579,8 +4493,7 @@ enum SilenceremoveTimestamp {
   write,
 
   /// non-dropped frames are left with same timestamp
-  copy,
-  ;
+  copy;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4615,8 +4528,7 @@ enum StereotoolsBmode {
   amplitude,
 
   /// The `power` option value.
-  power,
-  ;
+  power;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4679,8 +4591,7 @@ enum StereotoolsMode {
   ms_to_rl,
 
   /// The `lr>l-r` option value.
-  lr_to_l_minus_r,
-  ;
+  lr_to_l_minus_r;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4748,8 +4659,7 @@ enum SurroundLfeMode {
   add,
 
   /// subtract LFE channel with others
-  sub,
-  ;
+  sub;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4841,8 +4751,7 @@ enum SurroundWinFunc {
   bohman,
 
   /// Kaiser
-  kaiser,
-  ;
+  kaiser;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -4963,8 +4872,7 @@ enum TiltshelfPrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -5023,8 +4931,7 @@ enum TiltshelfTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -5085,8 +4992,7 @@ enum TiltshelfWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -5139,8 +5045,7 @@ enum TreblePrecision {
   f32,
 
   /// floating-point double
-  f64,
-  ;
+  f64;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -5199,8 +5104,7 @@ enum TrebleTransformType {
   svf,
 
   /// zero-delay filter form
-  zdf,
-  ;
+  zdf;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -5261,8 +5165,7 @@ enum TrebleWidthType {
   s,
 
   /// kHz
-  k,
-  ;
+  k;
 
   /// Wire-side string consumed by mpv.
   String get mpvValue {
@@ -5568,8 +5471,7 @@ enum AudioEffect {
   vibrato,
 
   /// The `virtualbass` audio filter.
-  virtualbass,
-  ;
+  virtualbass;
 
   /// mpv filter-type name. Coincides with the enum value
   /// [name] for every entry on the current whitelist; the

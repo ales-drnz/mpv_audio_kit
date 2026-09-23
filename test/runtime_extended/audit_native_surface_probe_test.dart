@@ -26,7 +26,8 @@ void main() {
 
   // Plan item -> mpv OPTION name. We assert each exists and print its real type.
   const options = <String, String>{
-    'demuxer-readahead-secs (#2 must be Double, not int)': 'demuxer-readahead-secs',
+    'demuxer-readahead-secs (#2 must be Double, not int)':
+        'demuxer-readahead-secs',
     'audio-fallback-to-null (#5)': 'audio-fallback-to-null',
     'cache-pause-initial (#6)': 'cache-pause-initial',
     'force-seekable (#13)': 'force-seekable',
@@ -58,7 +59,8 @@ void main() {
   group('native surface ground-truth (real libmpv)', () {
     late Player player;
     setUpAll(() async {
-      player = await buildPlayer(); // ao=null, no fixture needed for introspection
+      player =
+          await buildPlayer(); // ao=null, no fixture needed for introspection
     });
     tearDownAll(() => player.dispose());
 
@@ -72,12 +74,20 @@ void main() {
       print('\n── OPTIONS (real mpv option-info/<name>/type) ──');
       results.forEach((label, type) {
         // ignore: avoid_print
-        print('  ${type == null ? '❌ MISSING' : '✅ ${type.padRight(9)}'}  $label');
+        print(
+          '  ${type == null ? '❌ MISSING' : '✅ ${type.padRight(9)}'}  $label',
+        );
       });
 
-      final missing = results.entries.where((e) => e.value == null).map((e) => e.key);
-      expect(missing, isEmpty, reason: 'these planned options do NOT exist in libmpv: $missing');
-    }, timeout: const Timeout(Duration(seconds: 20)),);
+      final missing = results.entries
+          .where((e) => e.value == null)
+          .map((e) => e.key);
+      expect(
+        missing,
+        isEmpty,
+        reason: 'these planned options do NOT exist in libmpv: $missing',
+      );
+    }, timeout: const Timeout(Duration(seconds: 20)));
 
     test('every planned PROPERTY exists in the shipped libmpv', () async {
       final list = await player.getRawProperty('property-list') ?? '';
@@ -92,7 +102,11 @@ void main() {
         print('  ${present ? '✅ present  ' : '❌ MISSING  '}  ${e.key}');
       }
       expect(list, isNotEmpty, reason: 'property-list itself must be readable');
-      expect(missing, isEmpty, reason: 'these planned properties are not in property-list: $missing');
-    }, timeout: const Timeout(Duration(seconds: 20)),);
+      expect(
+        missing,
+        isEmpty,
+        reason: 'these planned properties are not in property-list: $missing',
+      );
+    }, timeout: const Timeout(Duration(seconds: 20)));
   });
 }

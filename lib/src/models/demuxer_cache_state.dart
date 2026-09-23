@@ -86,15 +86,16 @@ final class DemuxerCacheState {
 
   @override
   int get hashCode => Object.hash(
-        Object.hashAll(seekableRanges),
-        rawInputRate,
-        eofCached,
-        bofCached,
-        underrun,
-      );
+    Object.hashAll(seekableRanges),
+    rawInputRate,
+    eofCached,
+    bofCached,
+    underrun,
+  );
 
   @override
-  String toString() => 'DemuxerCacheState(ranges: ${seekableRanges.length}, '
+  String toString() =>
+      'DemuxerCacheState(ranges: ${seekableRanges.length}, '
       'rawInputRate: $rawInputRate, eofCached: $eofCached, '
       'bofCached: $bofCached, underrun: $underrun)';
 }

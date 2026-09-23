@@ -55,8 +55,11 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setPitchCorrection(bool enable) async {
     await _gate();
     await _prop('audio-pitch-correction', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(pitchCorrection: enable),
-        _reactives.pitchCorrection, enable,);
+    _updateField(
+      (s) => s.copyWith(pitchCorrection: enable),
+      _reactives.pitchCorrection,
+      enable,
+    );
   }
 
   /// Sets the audio delay relative to video (mpv's `audio-delay`).
@@ -73,7 +76,10 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     await _prop('audio-delay', durationToSeconds(delay).toStringAsFixed(3));
     _updateField(
-        (s) => s.copyWith(audioDelay: delay), _reactives.audioDelay, delay,);
+      (s) => s.copyWith(audioDelay: delay),
+      _reactives.audioDelay,
+      delay,
+    );
   }
 
   /// Enables or disables gapless playback. See [Gapless] for the
@@ -82,7 +88,10 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     await _prop('gapless-audio', gapless.mpvValue);
     _updateField(
-        (s) => s.copyWith(gapless: gapless), _reactives.gapless, gapless,);
+      (s) => s.copyWith(gapless: gapless),
+      _reactives.gapless,
+      gapless,
+    );
   }
 
   /// Sets the ReplayGain normalization configuration atomically.
@@ -101,17 +110,17 @@ mixin _AudioModule on _PlayerBase {
       (
         'replaygain-preamp',
         settings.preamp.toStringAsFixed(2),
-        previous.preamp.toStringAsFixed(2)
+        previous.preamp.toStringAsFixed(2),
       ),
       (
         'replaygain-clip',
         settings.clip ? 'yes' : 'no',
-        previous.clip ? 'yes' : 'no'
+        previous.clip ? 'yes' : 'no',
       ),
       (
         'replaygain-fallback',
         settings.fallback.toStringAsFixed(2),
-        previous.fallback.toStringAsFixed(2)
+        previous.fallback.toStringAsFixed(2),
       ),
     ];
     final committed = <(String, String)>[];
@@ -126,8 +135,11 @@ mixin _AudioModule on _PlayerBase {
       }
       rethrow;
     }
-    _updateField((s) => s.copyWith(replayGain: settings), _reactives.replayGain,
-        settings,);
+    _updateField(
+      (s) => s.copyWith(replayGain: settings),
+      _reactives.replayGain,
+      settings,
+    );
   }
 
   /// Sets volume gain in dB (pre-amplification on top of [setVolume]).
@@ -141,7 +153,10 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(gainDb, 'gainDb');
     await _prop('volume-gain', gainDb.toStringAsFixed(2));
     _updateField(
-        (s) => s.copyWith(volumeGain: gainDb), _reactives.volumeGain, gainDb,);
+      (s) => s.copyWith(volumeGain: gainDb),
+      _reactives.volumeGain,
+      gainDb,
+    );
   }
 
   /// Sets the lower clamp applied to [setVolumeGain], in dB
@@ -150,8 +165,11 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     _checkFinite(gainDb, 'gainDb');
     await _prop('volume-gain-min', gainDb.toStringAsFixed(2));
-    _updateField((s) => s.copyWith(volumeGainMin: gainDb),
-        _reactives.volumeGainMin, gainDb,);
+    _updateField(
+      (s) => s.copyWith(volumeGainMin: gainDb),
+      _reactives.volumeGainMin,
+      gainDb,
+    );
   }
 
   /// Sets the upper clamp applied to [setVolumeGain], in dB
@@ -160,8 +178,11 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     _checkFinite(gainDb, 'gainDb');
     await _prop('volume-gain-max', gainDb.toStringAsFixed(2));
-    _updateField((s) => s.copyWith(volumeGainMax: gainDb),
-        _reactives.volumeGainMax, gainDb,);
+    _updateField(
+      (s) => s.copyWith(volumeGainMax: gainDb),
+      _reactives.volumeGainMax,
+      gainDb,
+    );
   }
 
   /// Sets the OS per-app mixer volume in percent (`ao-volume`) — the system
@@ -175,8 +196,11 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(volume, 'volume');
     final rc = await _propRc('ao-volume', volume.toStringAsFixed(1));
     if (rc >= 0) {
-      _updateField((s) => s.copyWith(systemVolume: volume),
-          _reactives.systemVolume, volume,);
+      _updateField(
+        (s) => s.copyWith(systemVolume: volume),
+        _reactives.systemVolume,
+        volume,
+      );
     }
   }
 
@@ -189,7 +213,10 @@ mixin _AudioModule on _PlayerBase {
     final rc = await _propRc('ao-mute', mute ? 'yes' : 'no');
     if (rc >= 0) {
       _updateField(
-          (s) => s.copyWith(systemMute: mute), _reactives.systemMute, mute,);
+        (s) => s.copyWith(systemMute: mute),
+        _reactives.systemMute,
+        mute,
+      );
     }
   }
 
@@ -204,15 +231,21 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(limit, 'limit');
     await _prop('volume-max', limit.toStringAsFixed(1));
     _updateField(
-        (s) => s.copyWith(volumeMax: limit), _reactives.volumeMax, limit,);
+      (s) => s.copyWith(volumeMax: limit),
+      _reactives.volumeMax,
+      limit,
+    );
   }
 
   /// Enables exclusive audio mode (WASAPI / ALSA / CoreAudio).
   Future<void> setAudioExclusive(bool exclusive) async {
     await _gate();
     await _prop('audio-exclusive', exclusive ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(audioExclusive: exclusive),
-        _reactives.audioExclusive, exclusive,);
+    _updateField(
+      (s) => s.copyWith(audioExclusive: exclusive),
+      _reactives.audioExclusive,
+      exclusive,
+    );
   }
 
   /// Whether mpv reports a "music" media role to the OS audio server
@@ -222,8 +255,11 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setAudioMediaRole(bool enable) async {
     await _gate();
     await _prop('audio-set-media-role', enable ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(audioMediaRole: enable),
-        _reactives.audioMediaRole, enable,);
+    _updateField(
+      (s) => s.copyWith(audioMediaRole: enable),
+      _reactives.audioMediaRole,
+      enable,
+    );
   }
 
   /// Sets HDMI/S/PDIF audio passthrough codecs.
@@ -235,7 +271,10 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     await _prop('audio-spdif', Spdif.formatMpvList(codecs));
     _updateField(
-        (s) => s.copyWith(audioSpdif: codecs), _reactives.audioSpdif, codecs,);
+      (s) => s.copyWith(audioSpdif: codecs),
+      _reactives.audioSpdif,
+      codecs,
+    );
   }
 
   /// Selects the audio track via a typed [Track] —
@@ -280,7 +319,11 @@ mixin _AudioModule on _PlayerBase {
       await resolved.dispose?.call();
       return;
     }
-    final args = <String>['audio-add', resolved.uri, select ? 'select' : 'auto'];
+    final args = <String>[
+      'audio-add',
+      resolved.uri,
+      select ? 'select' : 'auto',
+    ];
     // mpv's args are positional: to pass `lang` you must also pass `title`.
     if (title != null || lang != null) args.add(title ?? '');
     if (lang != null) args.add(lang);
@@ -307,9 +350,11 @@ mixin _AudioModule on _PlayerBase {
       );
     }
     await _gate();
-    await _command(track is TrackId
-        ? ['audio-remove', '${track.trackId}']
-        : ['audio-remove'],);
+    await _command(
+      track is TrackId
+          ? ['audio-remove', '${track.trackId}']
+          : ['audio-remove'],
+    );
   }
 
   /// Forcibly reloads the audio output.
@@ -326,8 +371,10 @@ mixin _AudioModule on _PlayerBase {
   /// tracks / cover art fold into [PlayerState.tracks] / the cover-art stream.
   Future<void> rescanExternalFiles({bool keepSelection = false}) async {
     await _gate();
-    await _command(
-        ['rescan-external-files', keepSelection ? 'keep-selection' : 'reselect'],);
+    await _command([
+      'rescan-external-files',
+      keepSelection ? 'keep-selection' : 'reselect',
+    ]);
   }
 
   // ── DSP pipeline ────────────────────────────────────────────────────
@@ -381,8 +428,9 @@ mixin _AudioModule on _PlayerBase {
     if (_afChainWritten && effects == _state.audioEffects) {
       return Future.value();
     }
-    final cmds =
-        _afChainWritten ? effects.diffCommands(_state.audioEffects) : null;
+    final cmds = _afChainWritten
+        ? effects.diffCommands(_state.audioEffects)
+        : null;
     final Future<void> settled;
     if (cmds != null) {
       // Enqueue the whole diff now (in order); validate the outcomes when
@@ -434,7 +482,10 @@ mixin _AudioModule on _PlayerBase {
   /// FILE_LOADED resync, the optimistic commit is rolled back to [previous]
   /// (unless a later update already replaced it), and the [MpvException]
   /// propagates to the caller.
-  Future<void> _rewriteAfChain(AudioEffects effects, AudioEffects previous) async {
+  Future<void> _rewriteAfChain(
+    AudioEffects effects,
+    AudioEffects previous,
+  ) async {
     try {
       await _prop('af', effects.toAfChain());
       _afStringStale = false;
@@ -496,15 +547,21 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     await _prop('cover-art-auto', cover.mpvValue);
     _updateField(
-        (s) => s.copyWith(coverArtAuto: cover), _reactives.coverArtAuto, cover,);
+      (s) => s.copyWith(coverArtAuto: cover),
+      _reactives.coverArtAuto,
+      cover,
+    );
   }
 
   /// Sets the target audio sample rate.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
     await _prop('audio-samplerate', rate.toString());
-    _updateField((s) => s.copyWith(audioSampleRate: rate),
-        _reactives.audioSampleRate, rate,);
+    _updateField(
+      (s) => s.copyWith(audioSampleRate: rate),
+      _reactives.audioSampleRate,
+      rate,
+    );
   }
 
   /// Sets the target audio sample format. Use [Format.auto] to
@@ -513,7 +570,10 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     await _prop('audio-format', format.mpvValue);
     _updateField(
-        (s) => s.copyWith(audioFormat: format), _reactives.audioFormat, format,);
+      (s) => s.copyWith(audioFormat: format),
+      _reactives.audioFormat,
+      format,
+    );
   }
 
   /// Sets the target audio channel layout. Use the named static
@@ -523,16 +583,22 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setAudioChannels(Channels channels) async {
     await _gate();
     await _prop('audio-channels', channels.mpvValue);
-    _updateField((s) => s.copyWith(audioChannels: channels),
-        _reactives.audioChannels, channels,);
+    _updateField(
+      (s) => s.copyWith(audioChannels: channels),
+      _reactives.audioChannels,
+      channels,
+    );
   }
 
   /// Sets the audio client name.
   Future<void> setAudioClientName(String name) async {
     await _gate();
     await _prop('audio-client-name', name);
-    _updateField((s) => s.copyWith(audioClientName: name),
-        _reactives.audioClientName, name,);
+    _updateField(
+      (s) => s.copyWith(audioClientName: name),
+      _reactives.audioClientName,
+      name,
+    );
   }
 
   /// Sets the audio output driver — e.g. `'coreaudio'` (macOS),
@@ -549,7 +615,10 @@ mixin _AudioModule on _PlayerBase {
     final ao = driver == 'auto' ? '' : driver;
     await _prop('ao', ao);
     _updateField(
-        (s) => s.copyWith(audioDriver: ao), _reactives.audioDriver, ao,);
+      (s) => s.copyWith(audioDriver: ao),
+      _reactives.audioDriver,
+      ao,
+    );
   }
 
   // ── Spectrum / PCM streams ───────────────────────────────────────────

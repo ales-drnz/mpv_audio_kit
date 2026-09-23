@@ -17,5 +17,4 @@
 bool shouldAutoApplyPlaylistNav({
   required bool? autoApplyPlaylistNavigation,
   required int playlistLength,
-}) =>
-    (autoApplyPlaylistNavigation ?? true) && playlistLength > 1;
+}) => (autoApplyPlaylistNavigation ?? true) && playlistLength > 1;

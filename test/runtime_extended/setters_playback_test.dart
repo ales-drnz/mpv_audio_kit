@@ -51,7 +51,7 @@ void main() {
       await player.seek(const Duration(seconds: 1));
       await waitFor800;
       expect(player.state.position.inMilliseconds, greaterThan(800));
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('seek relative offsets from the current position', () async {
       // Reset to 0 first: the previous seek-absolute test left position
@@ -79,22 +79,25 @@ void main() {
       await player.seek(const Duration(seconds: 1), relative: true);
       await waitFor1700;
       expect(player.state.position.inMilliseconds, greaterThan(1700));
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
-    test('play / pause flip state.playing via the core-idle observer',
-        () async {
-      await player.play();
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 3));
-      expect(player.state.playing, isTrue);
+    test(
+      'play / pause flip state.playing via the core-idle observer',
+      () async {
+        await player.play();
+        await player.stream.playing
+            .firstWhere((p) => p)
+            .timeout(const Duration(seconds: 3));
+        expect(player.state.playing, isTrue);
 
-      await player.pause();
-      await player.stream.playing
-          .firstWhere((p) => !p)
-          .timeout(const Duration(seconds: 3));
-      expect(player.state.playing, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+        await player.pause();
+        await player.stream.playing
+            .firstWhere((p) => !p)
+            .timeout(const Duration(seconds: 3));
+        expect(player.state.playing, isFalse);
+      },
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
 
     test('stop returns the player to an idle lifecycle', () async {
       // The previous test left state.playing == false (after pause), so
@@ -105,29 +108,32 @@ void main() {
       await player.stop();
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(player.state.playing, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('setAbLoopA / setAbLoopB round-trip Duration ↔ state', () async {
       // Re-open the fixture: stop() above unloaded the demuxer, and
       // ab-loop properties only stick once mpv has a live file. Anchor
       // on seekCompleted (PLAYBACK_RESTART) — duration may dedup at the
       // 3-second value cached from earlier tests in this group.
-      final loaded = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
       await player.open(Media(fixturePath), play: false);
       await loaded;
 
       // Pre-subscribe BEFORE the setter — the optimistic emit from
       // `_updateField` is synchronous, so a late firstWhere would miss
       // it and time out.
-      Future<Duration?> nextA(bool Function(Duration?) pred) =>
-          player.stream.abLoopA
-              .firstWhere(pred)
-              .timeout(const Duration(seconds: 3));
-      Future<Duration?> nextB(bool Function(Duration?) pred) =>
-          player.stream.abLoopB
-              .firstWhere(pred)
-              .timeout(const Duration(seconds: 3));
+      Future<Duration?> nextA(bool Function(Duration?) pred) => player
+          .stream
+          .abLoopA
+          .firstWhere(pred)
+          .timeout(const Duration(seconds: 3));
+      Future<Duration?> nextB(bool Function(Duration?) pred) => player
+          .stream
+          .abLoopB
+          .firstWhere(pred)
+          .timeout(const Duration(seconds: 3));
 
       final waitASet = nextA((d) => d?.inMilliseconds == 500);
       await player.setAbLoopA(const Duration(milliseconds: 500));
@@ -150,6 +156,6 @@ void main() {
       await player.setAbLoopB(null);
       await waitBClear;
       expect(player.state.abLoopB, isNull);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

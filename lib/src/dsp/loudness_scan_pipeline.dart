@@ -33,9 +33,9 @@ class LoudnessScanPipeline {
     required AsyncPropertyGet asyncGet,
     required AsyncPropertySet asyncSet,
     Duration pollInterval = const Duration(milliseconds: 120),
-  })  : _asyncGet = asyncGet,
-        _asyncSet = asyncSet,
-        _pollInterval = pollInterval;
+  }) : _asyncGet = asyncGet,
+       _asyncSet = asyncSet,
+       _pollInterval = pollInterval;
 
   final AsyncPropertyGet _asyncGet;
   final AsyncPropertySet _asyncSet;
@@ -116,8 +116,10 @@ class LoudnessScanPipeline {
   }
 
   Future<void> _doPoll() async {
-    final (rc, value) =
-        await _asyncGet('loudness-scan-data', MpvFormat.mpvFormatNode);
+    final (rc, value) = await _asyncGet(
+      'loudness-scan-data',
+      MpvFormat.mpvFormatNode,
+    );
     if (_disposed || _result != null) return;
     if (rc < 0 || value is! Map) return;
 

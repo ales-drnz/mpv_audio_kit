@@ -26,8 +26,9 @@ mixin _LoadValidationModule on _PlayerBase {
         _validateHeaderKey(e.key);
         _validateHeaderValue(e.value);
       }
-      final joined =
-          headers.entries.map((e) => '${e.key}: ${e.value}').join(',');
+      final joined = headers.entries
+          .map((e) => '${e.key}: ${e.value}')
+          .join(',');
       parts.add('http-header-fields=%${utf8.encode(joined).length}%$joined');
     }
 
@@ -57,7 +58,8 @@ mixin _LoadValidationModule on _PlayerBase {
       // Setting both keeps the probe AND every steady-state read bounded.
       // (`request_size` alone would also suffice here; `initial_request_size`
       // alone would NOT — chunk 2+ would go unbounded.)
-      final value = 'initial_request_size=$chunk,request_size=$chunk,'
+      final value =
+          'initial_request_size=$chunk,request_size=$chunk,'
           'reconnect_streamed=1,reconnect_on_network_error=1';
       parts.add('stream-lavf-o=%${utf8.encode(value).length}%$value');
     }

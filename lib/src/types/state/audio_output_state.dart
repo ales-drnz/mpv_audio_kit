@@ -27,10 +27,10 @@ enum AudioOutputState {
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [closed].
   static AudioOutputState fromMpv(String raw) => switch (raw) {
-        'closed' => closed,
-        'initializing' => initializing,
-        'active' => active,
-        'failed' => failed,
-        _ => closed,
-      };
+    'closed' => closed,
+    'initializing' => initializing,
+    'active' => active,
+    'failed' => failed,
+    _ => closed,
+  };
 }

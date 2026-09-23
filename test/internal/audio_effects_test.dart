@@ -26,9 +26,7 @@ void main() {
     });
 
     test('every Settings disabled → empty string', () {
-      const fx = AudioEffects(
-        
-      );
+      const fx = AudioEffects();
       expect(fx.toAfChain(), '');
     });
 
@@ -101,19 +99,14 @@ void main() {
     });
 
     test('aemphasis with typed enum default → omitted from chain', () {
-      const fx = AudioEffects(
-        aemphasis: AemphasisSettings(enabled: true),
-      );
+      const fx = AudioEffects(aemphasis: AemphasisSettings(enabled: true));
       // `type=cd` is the ffmpeg default, so it must NOT be emitted.
       expect(fx.toAfChain(), '@aek_aemphasis:lavfi-aemphasis');
     });
 
     test('aemphasis with non-default enum → mpvValue in chain', () {
       const fx = AudioEffects(
-        aemphasis: AemphasisSettings(
-          enabled: true,
-          type: AemphasisType.n50fm,
-        ),
+        aemphasis: AemphasisSettings(enabled: true, type: AemphasisType.n50fm),
       );
       // The Dart member is `n50fm` (digit-prefix escaped); the wire
       // value is the raw ffmpeg name `50fm`.
@@ -155,7 +148,10 @@ void main() {
       );
       final entries = fx.toAfChain().split(',');
       expect(entries.first, 'lavfi-aresample=48000');
-      expect(entries.last, '@aek_acompressor:lavfi-acompressor=threshold=0.100');
+      expect(
+        entries.last,
+        '@aek_acompressor:lavfi-acompressor=threshold=0.100',
+      );
     });
 
     test('empty / whitespace custom entries are dropped', () {
@@ -186,7 +182,10 @@ void main() {
         // aemphasis disabled (default) — must not appear.
         loudnorm: LoudnormSettings(enabled: true),
       );
-      expect(fx.toAfChain(), '@aek_acompressor:lavfi-acompressor,@aek_loudnorm:lavfi-loudnorm');
+      expect(
+        fx.toAfChain(),
+        '@aek_acompressor:lavfi-acompressor,@aek_loudnorm:lavfi-loudnorm',
+      );
     });
   });
 

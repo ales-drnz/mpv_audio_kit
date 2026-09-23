@@ -36,35 +36,42 @@ void main() {
       await player.dispose();
     });
 
-    test('FLAC fixture: at least one codec field carries the family hint',
-        () async {
-      // The `audio-codec` / `audio-codec-name` split varies across
-      // mpv builds — short-vs-descriptive is NOT stable, and either
-      // field may be empty on a given file. The wrapper exposes
-      // both raw and asks consumers to substring-match against both
-      // (see [AudioParams.codec] dartdoc). This test pins the contract.
-      final flacPath = '$fixturesDir/flac_44100_16bit.flac';
-      if (!File(flacPath).existsSync()) {
-        markTestSkipped('FLAC fixture missing: $flacPath');
-        return;
-      }
-      final result = await verifyCodec(
-        player,
-        flacPath,
-        const CodecExpectation(
-          label: 'FLAC contract',
-          sampleRate: 44100,
-          channels: 2,
-          codecHint: 'flac',
-        ),
-      );
-      final c = (result.params.codec ?? '').toLowerCase();
-      final cn = (result.params.codecName ?? '').toLowerCase();
-      expect(c.contains('flac') || cn.contains('flac'), isTrue,
-          reason: 'at least one of (codec, codecName) must carry the '
+    test(
+      'FLAC fixture: at least one codec field carries the family hint',
+      () async {
+        // The `audio-codec` / `audio-codec-name` split varies across
+        // mpv builds — short-vs-descriptive is NOT stable, and either
+        // field may be empty on a given file. The wrapper exposes
+        // both raw and asks consumers to substring-match against both
+        // (see [AudioParams.codec] dartdoc). This test pins the contract.
+        final flacPath = '$fixturesDir/flac_44100_16bit.flac';
+        if (!File(flacPath).existsSync()) {
+          markTestSkipped('FLAC fixture missing: $flacPath');
+          return;
+        }
+        final result = await verifyCodec(
+          player,
+          flacPath,
+          const CodecExpectation(
+            label: 'FLAC contract',
+            sampleRate: 44100,
+            channels: 2,
+            codecHint: 'flac',
+          ),
+        );
+        final c = (result.params.codec ?? '').toLowerCase();
+        final cn = (result.params.codecName ?? '').toLowerCase();
+        expect(
+          c.contains('flac') || cn.contains('flac'),
+          isTrue,
+          reason:
+              'at least one of (codec, codecName) must carry the '
               'flac family hint; got codec="${result.params.codec}", '
-              'codecName="${result.params.codecName}"',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+              'codecName="${result.params.codecName}"',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
 
     for (final entry in codecMatrix) {
       final filename = entry.$1;
@@ -73,18 +80,27 @@ void main() {
         final path = '$fixturesDir/$filename';
         if (!File(path).existsSync()) {
           markTestSkipped(
-              'Fixture missing: run scripts/generate_codec_fixtures.sh',);
+            'Fixture missing: run scripts/generate_codec_fixtures.sh',
+          );
           return;
         }
         final result = await verifyCodec(player, path, expected);
 
-        expect(result.params.sampleRate, expected.sampleRate,
-            reason: 'sample rate must match the fixture for ${expected.label}',);
-        expect(result.params.channelCount, expected.channels,
-            reason:
-                'channel count must match the fixture for ${expected.label}',);
-        expect(result.duration.inMilliseconds, greaterThan(0),
-            reason: 'duration must be reported by the demuxer',);
+        expect(
+          result.params.sampleRate,
+          expected.sampleRate,
+          reason: 'sample rate must match the fixture for ${expected.label}',
+        );
+        expect(
+          result.params.channelCount,
+          expected.channels,
+          reason: 'channel count must match the fixture for ${expected.label}',
+        );
+        expect(
+          result.duration.inMilliseconds,
+          greaterThan(0),
+          reason: 'duration must be reported by the demuxer',
+        );
 
         // Codec id varies between mpv builds (mp3 vs mp3float, aac vs aac_lc,
         // pcm_s16le vs pcm_s32le, etc.) and the short form lives in either
@@ -98,12 +114,13 @@ void main() {
           expect(
             c.contains(h) || cn.contains(h),
             isTrue,
-            reason: 'codec id should contain "${expected.codecHint}" for '
+            reason:
+                'codec id should contain "${expected.codecHint}" for '
                 '${expected.label}; got codec="${result.params.codec}", '
                 'codecName="${result.params.codecName}"',
           );
         }
-      }, timeout: const Timeout(Duration(seconds: 30)),);
+      }, timeout: const Timeout(Duration(seconds: 30)));
     }
   });
 }

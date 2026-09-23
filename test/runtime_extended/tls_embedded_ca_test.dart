@@ -59,75 +59,92 @@ void main() {
     MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
   });
 
-  test('tls-verify ON + public HTTPS verifies via the embedded CA roots',
-      () async {
-    if (!embedded) {
-      markTestSkipped(
-          'libmpv predates the embed_cacert patch — rebuild to activate this pin',);
-      return;
-    }
-    if (!networkAvailable) {
-      markTestSkipped('network unreachable');
-      return;
-    }
-    final player = await buildPlayer();
-    addTearDown(() async {
-      await player.stop();
-      await player.dispose();
-    });
+  test(
+    'tls-verify ON + public HTTPS verifies via the embedded CA roots',
+    () async {
+      if (!embedded) {
+        markTestSkipped(
+          'libmpv predates the embed_cacert patch — rebuild to activate this pin',
+        );
+        return;
+      }
+      if (!networkAvailable) {
+        markTestSkipped('network unreachable');
+        return;
+      }
+      final player = await buildPlayer();
+      addTearDown(() async {
+        await player.stop();
+        await player.dispose();
+      });
 
-    // Verification ON, NO tls-ca-file set: trust must come solely from the
-    // roots compiled into libmpv.
-    await player.setTlsVerify(true);
-    expect(player.state.tlsCaFile, isEmpty,
-        reason: 'no custom CA file — the embedded roots are the only trust',);
+      // Verification ON, NO tls-ca-file set: trust must come solely from the
+      // roots compiled into libmpv.
+      await player.setTlsVerify(true);
+      expect(
+        player.state.tlsCaFile,
+        isEmpty,
+        reason: 'no custom CA file — the embedded roots are the only trust',
+      );
 
-    final params = player.stream.audioParams
-        .firstWhere((p) => p.sampleRate != null)
-        .timeout(const Duration(seconds: 20));
-    await player.open(const Media(publicHttps), play: false);
+      final params = player.stream.audioParams
+          .firstWhere((p) => p.sampleRate != null)
+          .timeout(const Duration(seconds: 20));
+      await player.open(const Media(publicHttps), play: false);
 
-    expect((await params).sampleRate, isNotNull,
-        reason: 'with tls-verify ON and no tls-ca-file, the embedded Mozilla '
+      expect(
+        (await params).sampleRate,
+        isNotNull,
+        reason:
+            'with tls-verify ON and no tls-ca-file, the embedded Mozilla '
             'roots must verify the server and the demuxer must report a '
-            'sample rate — a verify failure would time out here',);
-  });
+            'sample rate — a verify failure would time out here',
+      );
+    },
+  );
 
-  test('setTlsCaFile("") clears a custom override back to the embedded roots',
-      () async {
-    if (!embedded) {
-      markTestSkipped(
-          'libmpv predates the embed_cacert patch — rebuild to activate this pin',);
-      return;
-    }
-    if (!networkAvailable) {
-      markTestSkipped('network unreachable');
-      return;
-    }
-    final player = await buildPlayer();
-    addTearDown(() async {
-      await player.stop();
-      await player.dispose();
-    });
+  test(
+    'setTlsCaFile("") clears a custom override back to the embedded roots',
+    () async {
+      if (!embedded) {
+        markTestSkipped(
+          'libmpv predates the embed_cacert patch — rebuild to activate this pin',
+        );
+        return;
+      }
+      if (!networkAvailable) {
+        markTestSkipped('network unreachable');
+        return;
+      }
+      final player = await buildPlayer();
+      addTearDown(() async {
+        await player.stop();
+        await player.dispose();
+      });
 
-    await player.setTlsVerify(true);
-    // Pin to a non-existent CA file: trust can no longer be satisfied.
-    await player.setTlsCaFile('/nonexistent/does-not-exist.pem');
-    expect(player.state.tlsCaFile, '/nonexistent/does-not-exist.pem');
+      await player.setTlsVerify(true);
+      // Pin to a non-existent CA file: trust can no longer be satisfied.
+      await player.setTlsCaFile('/nonexistent/does-not-exist.pem');
+      expect(player.state.tlsCaFile, '/nonexistent/does-not-exist.pem');
 
-    // Clearing with '' must fall back to the embedded roots via the native
-    // empty-ca_file guard — NOT load a file literally named '' (which would
-    // empty the trust store and break every HTTPS handshake).
-    await player.setTlsCaFile('');
-    expect(player.state.tlsCaFile, isEmpty);
+      // Clearing with '' must fall back to the embedded roots via the native
+      // empty-ca_file guard — NOT load a file literally named '' (which would
+      // empty the trust store and break every HTTPS handshake).
+      await player.setTlsCaFile('');
+      expect(player.state.tlsCaFile, isEmpty);
 
-    final params = player.stream.audioParams
-        .firstWhere((p) => p.sampleRate != null)
-        .timeout(const Duration(seconds: 20));
-    await player.open(const Media(publicHttps), play: false);
+      final params = player.stream.audioParams
+          .firstWhere((p) => p.sampleRate != null)
+          .timeout(const Duration(seconds: 20));
+      await player.open(const Media(publicHttps), play: false);
 
-    expect((await params).sampleRate, isNotNull,
-        reason: 'setTlsCaFile("") must restore embedded-root trust, not empty '
-            'the store',);
-  });
+      expect(
+        (await params).sampleRate,
+        isNotNull,
+        reason:
+            'setTlsCaFile("") must restore embedded-root trust, not empty '
+            'the store',
+      );
+    },
+  );
 }

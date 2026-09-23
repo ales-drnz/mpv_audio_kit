@@ -31,9 +31,9 @@ class WaveformPipeline {
     required AsyncPropertyGet asyncGet,
     required AsyncPropertySet asyncSet,
     Duration pollInterval = const Duration(milliseconds: 120),
-  })  : _asyncGet = asyncGet,
-        _asyncSet = asyncSet,
-        _pollInterval = pollInterval;
+  }) : _asyncGet = asyncGet,
+       _asyncSet = asyncSet,
+       _pollInterval = pollInterval;
 
   final AsyncPropertyGet _asyncGet;
   final AsyncPropertySet _asyncSet;
@@ -114,8 +114,10 @@ class WaveformPipeline {
   }
 
   Future<void> _doPoll() async {
-    final (rc, value) =
-        await _asyncGet('waveform-data', MpvFormat.mpvFormatNode);
+    final (rc, value) = await _asyncGet(
+      'waveform-data',
+      MpvFormat.mpvFormatNode,
+    );
     if (_disposed || _data != null) return;
     try {
       if (rc < 0 || value is! Map) return;
@@ -128,23 +130,28 @@ class WaveformPipeline {
       final rangeStartUs = value['range_start_us'] is int
           ? value['range_start_us'] as int
           : 0;
-      final rangeEndUs =
-          value['range_end_us'] is int ? value['range_end_us'] as int : 0;
+      final rangeEndUs = value['range_end_us'] is int
+          ? value['range_end_us'] as int
+          : 0;
       final min = float32FromByteValue(value['min']);
       final max = float32FromByteValue(value['max']);
-      final filled =
-          value['filled'] is Uint8List ? value['filled'] as Uint8List : null;
+      final filled = value['filled'] is Uint8List
+          ? value['filled'] as Uint8List
+          : null;
 
       final ready = state == 'ready';
       final progressive = state == 'progressive';
       final rolling = state == 'rolling';
       final decoding = state == 'decoding';
-      final coverageBins =
-          value['coverage_bins'] is int ? value['coverage_bins'] as int : null;
-      final totalBins =
-          value['total_bins'] is int ? value['total_bins'] as int : null;
+      final coverageBins = value['coverage_bins'] is int
+          ? value['coverage_bins'] as int
+          : null;
+      final totalBins = value['total_bins'] is int
+          ? value['total_bins'] as int
+          : null;
 
-      final haveBins = min != null &&
+      final haveBins =
+          min != null &&
           max != null &&
           min.isNotEmpty &&
           min.length == max.length;
@@ -153,8 +160,8 @@ class WaveformPipeline {
       // flags, so the renderer never misreads it.
       Uint8List safeFilled(Float32List m) =>
           (filled != null && filled.length == m.length)
-              ? filled
-              : (Uint8List(m.length)..fillRange(0, m.length, 1));
+          ? filled
+          : (Uint8List(m.length)..fillRange(0, m.length, 1));
 
       // ROLLING (true live, unknown total): a sliding window keyed to the
       // demuxer cache. The native side reports the absolute range it holds;

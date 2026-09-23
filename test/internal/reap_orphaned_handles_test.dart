@@ -26,46 +26,52 @@ void main() {
   // half; the real cross-VM thread-join needs a live hot restart.
 
   group('reapOrphanedHandles two-phase teardown', () {
-    test('quits ALL handles before destroying ANY (terminate, not bare quit)',
-        () async {
-      final spy = _SpyMpvLibrary();
-      final h1 = Pointer<MpvHandle>.fromAddress(0xAAAA);
-      final h2 = Pointer<MpvHandle>.fromAddress(0xBBBB);
+    test(
+      'quits ALL handles before destroying ANY (terminate, not bare quit)',
+      () async {
+        final spy = _SpyMpvLibrary();
+        final h1 = Pointer<MpvHandle>.fromAddress(0xAAAA);
+        final h2 = Pointer<MpvHandle>.fromAddress(0xBBBB);
 
-      await reapOrphanedHandles(spy, [h1, h2], delay: Duration.zero);
+        await reapOrphanedHandles(spy, [h1, h2], delay: Duration.zero);
 
-      // Phase 1 quits both, THEN phase 2 destroys both — proves the fix
-      // both sends quit AND actually destroys (the old code only quit).
-      expect(spy.events, [
-        'quit:${h1.address}',
-        'quit:${h2.address}',
-        'terminate:${h1.address}',
-        'terminate:${h2.address}',
-      ]);
-    });
+        // Phase 1 quits both, THEN phase 2 destroys both — proves the fix
+        // both sends quit AND actually destroys (the old code only quit).
+        expect(spy.events, [
+          'quit:${h1.address}',
+          'quit:${h2.address}',
+          'terminate:${h1.address}',
+          'terminate:${h2.address}',
+        ]);
+      },
+    );
 
-    test('destroy is deferred — not called before the delay elapses',
-        () async {
+    test('destroy is deferred — not called before the delay elapses', () async {
       final spy = _SpyMpvLibrary();
       final h = Pointer<MpvHandle>.fromAddress(0xCAFE);
 
       // Start the reap but don't await it yet.
-      final reaping = reapOrphanedHandles(
-        spy,
-        [h],
-        delay: const Duration(milliseconds: 50),
-      );
+      final reaping = reapOrphanedHandles(spy, [
+        h,
+      ], delay: const Duration(milliseconds: 50));
 
       // The quit ran synchronously up to the first await; the destroy is
       // still pending behind the delay.
       expect(spy.commandStringCalls, 1);
-      expect(spy.terminateDestroyCalls, 0,
-          reason: 'terminate_destroy must wait out the reap delay so it '
-              'cannot race an isolate still inside mpv_wait_event',);
+      expect(
+        spy.terminateDestroyCalls,
+        0,
+        reason:
+            'terminate_destroy must wait out the reap delay so it '
+            'cannot race an isolate still inside mpv_wait_event',
+      );
 
       await reaping;
-      expect(spy.terminateDestroyCalls, 1,
-          reason: 'the handle must be destroyed once the delay elapses',);
+      expect(
+        spy.terminateDestroyCalls,
+        1,
+        reason: 'the handle must be destroyed once the delay elapses',
+      );
     });
 
     test('a quit failure on one handle does not abort the others or the '

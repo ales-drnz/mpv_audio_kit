@@ -22,9 +22,9 @@ enum Gapless {
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [weak] (mpv default).
   static Gapless fromMpv(String raw) => switch (raw) {
-        'no' => no,
-        'yes' => yes,
-        'weak' => weak,
-        _ => weak,
-      };
+    'no' => no,
+    'yes' => yes,
+    'weak' => weak,
+    _ => weak,
+  };
 }

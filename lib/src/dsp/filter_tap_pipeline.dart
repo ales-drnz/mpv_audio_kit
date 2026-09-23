@@ -46,9 +46,9 @@ class FilterTapPipeline {
     // write cadence. 30 Hz reads are enough; the slice content
     // changes every poll because `playing_audio_pts` is monotonic.
     Duration pollInterval = const Duration(milliseconds: 33),
-  })  : _asyncGet = asyncGet,
-        _asyncSet = asyncSet,
-        _pollInterval = pollInterval;
+  }) : _asyncGet = asyncGet,
+       _asyncSet = asyncSet,
+       _pollInterval = pollInterval;
 
   final AsyncPropertyGet _asyncGet;
   final AsyncPropertySet _asyncSet;
@@ -93,18 +93,16 @@ class FilterTapPipeline {
       return const Stream<PcmFrame>.empty();
     }
     final key = (name: name, isPost: isPost);
-    return _controllers
-        .putIfAbsent(key, () {
-          late StreamController<PcmFrame> ctrl;
-          ctrl = StreamController<PcmFrame>.broadcast(
-            onListen: () => _onListen(key),
-            onCancel: () {
-              if (!ctrl.hasListener) _onCancelLast(key);
-            },
-          );
-          return ctrl;
-        })
-        .stream;
+    return _controllers.putIfAbsent(key, () {
+      late StreamController<PcmFrame> ctrl;
+      ctrl = StreamController<PcmFrame>.broadcast(
+        onListen: () => _onListen(key),
+        onCancel: () {
+          if (!ctrl.hasListener) _onCancelLast(key);
+        },
+      );
+      return ctrl;
+    }).stream;
   }
 
   void _onListen(_TapKey key) {
@@ -160,8 +158,10 @@ class FilterTapPipeline {
   }
 
   Future<void> _doPoll() async {
-    final (rc, value) =
-        await _asyncGet('audio-tap-frames', MpvFormat.mpvFormatNode);
+    final (rc, value) = await _asyncGet(
+      'audio-tap-frames',
+      MpvFormat.mpvFormatNode,
+    );
     if (_disposed) return;
     if (rc < 0 || value is! Map) return;
     _parseRoot(value);
@@ -196,8 +196,9 @@ class FilterTapPipeline {
   }
 
   PcmFrame? _decodeRing(Map<dynamic, dynamic> ring) {
-    final sampleRate =
-        ring['sample_rate'] is int ? ring['sample_rate'] as int : 0;
+    final sampleRate = ring['sample_rate'] is int
+        ? ring['sample_rate'] as int
+        : 0;
     final channels = ring['channels'] is int ? ring['channels'] as int : 0;
     final ptsNs = ring['pts_ns'] is int ? ring['pts_ns'] as int : 0;
     final samples = float32FromByteValue(ring['samples']);

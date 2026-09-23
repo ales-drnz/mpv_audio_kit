@@ -48,50 +48,53 @@ void main() {
   setUpAll(() => initLibmpvOrSkip(fixturePath: defaultFixturePath()));
 
   test(
-      'A1: dispose() immediately after Player() completes well below the '
-      '2 s isolate-exit timeout and does not degrade the next Player',
-      () async {
-    final player = Player(
-      configuration: const PlayerConfiguration(logLevel: LogLevel.off),
-    );
+    'A1: dispose() immediately after Player() completes well below the '
+    '2 s isolate-exit timeout and does not degrade the next Player',
+    () async {
+      final player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+      );
 
-    // Deliberately NO await between construction and dispose: `_disposed`
-    // flips while `_bringUpInIsolate` is still awaiting
-    // `_eventIsolate.start(...)`, so bring-up early-returns with the
-    // worker isolate alive and `_bringUpCompleted == false`.
-    final sw = Stopwatch()..start();
-    await player.dispose();
-    sw.stop();
+      // Deliberately NO await between construction and dispose: `_disposed`
+      // flips while `_bringUpInIsolate` is still awaiting
+      // `_eventIsolate.start(...)`, so bring-up early-returns with the
+      // worker isolate alive and `_bringUpCompleted == false`.
+      final sw = Stopwatch()..start();
+      await player.dispose();
+      sw.stop();
 
-    expect(
-      sw.elapsedMilliseconds,
-      lessThan(1500),
-      reason: 'dispose() during bring-up ran for ${sw.elapsedMilliseconds} '
-          'ms — at/above the 2 s MpvEventIsolate.stop() safety timeout. '
-          'The !_bringUpCompleted dispose branch is stopping the event '
-          'isolate without `quit` + requestStop, so the worker never '
-          'leaves mpv_wait_event (isolate + mpv core leak) and stop() '
-          'only returns via its timeout.',
-    );
+      expect(
+        sw.elapsedMilliseconds,
+        lessThan(1500),
+        reason:
+            'dispose() during bring-up ran for ${sw.elapsedMilliseconds} '
+            'ms — at/above the 2 s MpvEventIsolate.stop() safety timeout. '
+            'The !_bringUpCompleted dispose branch is stopping the event '
+            'isolate without `quit` + requestStop, so the worker never '
+            'leaves mpv_wait_event (isolate + mpv core leak) and stop() '
+            'only returns via its timeout.',
+      );
 
-    // Process-wide libmpv state must not be degraded by the early
-    // dispose: a subsequent Player initializes and opens a fixture.
-    final next = await buildPlayer();
-    try {
-      await openAndWaitForLoad(next, defaultFixturePath());
-      // The duration property event can land a tick after PLAYBACK_RESTART
-      // (the load anchor) under full-suite load — poll instead of reading
-      // the state once.
-      final deadline = DateTime.now().add(const Duration(seconds: 10));
-      while (next.state.duration == Duration.zero &&
-          DateTime.now().isBefore(deadline)) {
-        await Future<void>.delayed(const Duration(milliseconds: 25));
+      // Process-wide libmpv state must not be degraded by the early
+      // dispose: a subsequent Player initializes and opens a fixture.
+      final next = await buildPlayer();
+      try {
+        await openAndWaitForLoad(next, defaultFixturePath());
+        // The duration property event can land a tick after PLAYBACK_RESTART
+        // (the load anchor) under full-suite load — poll instead of reading
+        // the state once.
+        final deadline = DateTime.now().add(const Duration(seconds: 10));
+        while (next.state.duration == Duration.zero &&
+            DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+        }
+        expect(next.state.duration, greaterThan(Duration.zero));
+      } finally {
+        await next.dispose();
       }
-      expect(next.state.duration, greaterThan(Duration.zero));
-    } finally {
-      await next.dispose();
-    }
-  }, timeout: const Timeout(Duration(seconds: 60)),);
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
 
   // A2 (leaked-isolate observation): there is no public-API surface that
   // exposes whether the event isolate is still alive — `MpvEventIsolate`
@@ -102,8 +105,7 @@ void main() {
   // direct "no isolate left running" sub-assertion is intentionally
   // omitted rather than faked.
 
-  test(
-      'B: a second concurrent dispose() completes only after the first '
+  test('B: a second concurrent dispose() completes only after the first '
       'teardown has actually finished', () async {
     // A fully initialized player with an open file so teardown takes
     // measurable (asynchronous) time: quit command, pipelines,
@@ -119,7 +121,8 @@ void main() {
     expect(
       order,
       contains('f1'),
-      reason: 'the second dispose() future completed while the first '
+      reason:
+          'the second dispose() future completed while the first '
           'dispose() was still mid-teardown (completion order so far: '
           '$order). A concurrent dispose() caller must not observe the '
           'player as torn down before it actually is — the early '
@@ -127,10 +130,9 @@ void main() {
           'awaiting the in-flight teardown.',
     );
     await f1;
-  }, timeout: const Timeout(Duration(seconds: 60)),);
+  }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test(
-      'C: a setter suspended on _ready when dispose lands during init '
+  test('C: a setter suspended on _ready when dispose lands during init '
       'must not fail with LateInitializationError', () async {
     // Timing-sensitive: the setter must pass `_checkNotDisposed()` and
     // suspend on the pending `_ready` BEFORE dispose flips `_disposed`
@@ -147,8 +149,9 @@ void main() {
       // Fire the setter WITHOUT awaiting: it passes _checkNotDisposed()
       // (not disposed yet) and parks on `await _ready`.
       Object? setterError;
-      final setterFuture =
-          player.setVolume(50).catchError((Object e) => setterError = e);
+      final setterFuture = player
+          .setVolume(50)
+          .catchError((Object e) => setterError = e);
 
       if (i > 0) {
         // Scan the bring-up window on later attempts.
@@ -161,12 +164,14 @@ void main() {
 
       if (setterError != null) {
         final typeName = setterError.runtimeType.toString();
-        final isLateInitError = typeName.contains('LateError') ||
+        final isLateInitError =
+            typeName.contains('LateError') ||
             setterError.toString().contains('LateInitializationError');
         expect(
           isLateInitError,
           isFalse,
-          reason: 'attempt $i: setVolume() resumed after the dispose-'
+          reason:
+              'attempt $i: setVolume() resumed after the dispose-'
               'aborted bring-up and read the unassigned `late final _lib` '
               '— it failed with $typeName ("$setterError") instead of a '
               'proper StateError or clean completion.',
@@ -175,12 +180,13 @@ void main() {
         expect(
           setterError,
           isA<StateError>(),
-          reason: 'attempt $i: setter failed with unexpected error type '
+          reason:
+              'attempt $i: setter failed with unexpected error type '
               '$typeName ("$setterError"); the contract is clean '
               'completion or StateError.',
         );
       }
       // Clean completion is acceptable too — no assertion needed.
     }
-  }, timeout: const Timeout(Duration(minutes: 5)),);
+  }, timeout: const Timeout(Duration(minutes: 5)));
 }

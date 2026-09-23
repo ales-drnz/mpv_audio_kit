@@ -32,10 +32,10 @@ sealed class Track {
 
   /// The wire-level string mpv expects for the `aid` property.
   String get mpvValue => switch (this) {
-        TrackAuto() => 'auto',
-        TrackOff() => 'no',
-        TrackId(:final trackId) => trackId.toString(),
-      };
+    TrackAuto() => 'auto',
+    TrackOff() => 'no',
+    TrackId(:final trackId) => trackId.toString(),
+  };
 }
 
 /// The [Track.auto] variant — defer to mpv's automatic track choice.

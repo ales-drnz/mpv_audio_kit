@@ -47,9 +47,12 @@ void main() {
       await player.setAudioTrack(const Track.id(2));
       final current = await waitForTrack2;
       expect(current!.id, 2);
-      expect(current.lang, 'fra',
-          reason: 'fixture metadata: track 2 is French',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+      expect(
+        current.lang,
+        'fra',
+        reason: 'fixture metadata: track 2 is French',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('setAudioTrack(Track.off) disables audio output (`aid=no`)', () async {
       // mpv 0.41 does NOT emit a `current-tracks/audio` property-change
@@ -59,23 +62,29 @@ void main() {
       await player.setAudioTrack(Track.off);
       await Future<void>.delayed(const Duration(milliseconds: 200));
       expect(await player.getRawProperty('aid'), 'no');
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test(
-        'setAudioTrack(Track.auto) writes aid=auto (mpv resolves '
-        'it to a numeric track id immediately for default-flagged tracks)',
-        () async {
-      // mpv accepts `aid=auto` and resolves it on the spot to the
-      // default-flagged track id (or the first audio track if no
-      // default is set). The observable contract is therefore "the
-      // setter completes and aid is in {auto, <numeric id>}", not the
-      // literal `auto` string.
-      await player.setAudioTrack(Track.auto);
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      final aid = await player.getRawProperty('aid');
-      expect(['auto', '1', '2'], contains(aid),
-          reason: 'mpv 0.41 may resolve auto → default track id at write '
-              'time; both shapes are valid post-conditions',);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+      'setAudioTrack(Track.auto) writes aid=auto (mpv resolves '
+      'it to a numeric track id immediately for default-flagged tracks)',
+      () async {
+        // mpv accepts `aid=auto` and resolves it on the spot to the
+        // default-flagged track id (or the first audio track if no
+        // default is set). The observable contract is therefore "the
+        // setter completes and aid is in {auto, <numeric id>}", not the
+        // literal `auto` string.
+        await player.setAudioTrack(Track.auto);
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        final aid = await player.getRawProperty('aid');
+        expect(
+          ['auto', '1', '2'],
+          contains(aid),
+          reason:
+              'mpv 0.41 may resolve auto → default track id at write '
+              'time; both shapes are valid post-conditions',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
   });
 }

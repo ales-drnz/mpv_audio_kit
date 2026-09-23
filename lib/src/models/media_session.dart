@@ -189,28 +189,28 @@ class MediaSession {
     bool? autoApplyPlaylistNavigation,
     Object? appName = unset,
     Object? desktopEntry = unset,
-  }) =>
-      MediaSession(
-        title: identical(title, unset) ? this.title : title as String?,
-        artist: identical(artist, unset) ? this.artist : artist as String?,
-        album: identical(album, unset) ? this.album : album as String?,
-        artwork: artwork ?? this.artwork,
-        duration:
-            identical(duration, unset) ? this.duration : duration as Duration?,
-        actions: actions ?? this.actions,
-        isFavorite: isFavorite ?? this.isFavorite,
-        interruptionPolicy: interruptionPolicy ?? this.interruptionPolicy,
-        fastForwardInterval: fastForwardInterval ?? this.fastForwardInterval,
-        rewindInterval: rewindInterval ?? this.rewindInterval,
-        supportedPlaybackRates:
-            supportedPlaybackRates ?? this.supportedPlaybackRates,
-        autoApplyPlaylistNavigation:
-            autoApplyPlaylistNavigation ?? this.autoApplyPlaylistNavigation,
-        appName: identical(appName, unset) ? this.appName : appName as String?,
-        desktopEntry: identical(desktopEntry, unset)
-            ? this.desktopEntry
-            : desktopEntry as String?,
-      );
+  }) => MediaSession(
+    title: identical(title, unset) ? this.title : title as String?,
+    artist: identical(artist, unset) ? this.artist : artist as String?,
+    album: identical(album, unset) ? this.album : album as String?,
+    artwork: artwork ?? this.artwork,
+    duration: identical(duration, unset)
+        ? this.duration
+        : duration as Duration?,
+    actions: actions ?? this.actions,
+    isFavorite: isFavorite ?? this.isFavorite,
+    interruptionPolicy: interruptionPolicy ?? this.interruptionPolicy,
+    fastForwardInterval: fastForwardInterval ?? this.fastForwardInterval,
+    rewindInterval: rewindInterval ?? this.rewindInterval,
+    supportedPlaybackRates:
+        supportedPlaybackRates ?? this.supportedPlaybackRates,
+    autoApplyPlaylistNavigation:
+        autoApplyPlaylistNavigation ?? this.autoApplyPlaylistNavigation,
+    appName: identical(appName, unset) ? this.appName : appName as String?,
+    desktopEntry: identical(desktopEntry, unset)
+        ? this.desktopEntry
+        : desktopEntry as String?,
+  );
 
   @override
   bool operator ==(Object other) {
@@ -244,24 +244,25 @@ class MediaSession {
 
   @override
   int get hashCode => Object.hash(
-        title,
-        artist,
-        album,
-        artwork,
-        duration,
-        Object.hashAll(actions),
-        isFavorite,
-        interruptionPolicy,
-        fastForwardInterval,
-        rewindInterval,
-        Object.hashAll(supportedPlaybackRates),
-        autoApplyPlaylistNavigation,
-        appName,
-        desktopEntry,
-      );
+    title,
+    artist,
+    album,
+    artwork,
+    duration,
+    Object.hashAll(actions),
+    isFavorite,
+    interruptionPolicy,
+    fastForwardInterval,
+    rewindInterval,
+    Object.hashAll(supportedPlaybackRates),
+    autoApplyPlaylistNavigation,
+    appName,
+    desktopEntry,
+  );
 
   @override
-  String toString() => 'MediaSession(title: $title, artist: $artist, '
+  String toString() =>
+      'MediaSession(title: $title, artist: $artist, '
       'album: $album, artwork: $artwork, duration: $duration, '
       'actions: $actions, isFavorite: $isFavorite, '
       'interruptionPolicy: $interruptionPolicy, '
@@ -272,10 +273,7 @@ class MediaSession {
       'appName: $appName, desktopEntry: $desktopEntry)';
 }
 
-bool _sameActionsInOrder(
-  Set<MediaAction> a,
-  Set<MediaAction> b,
-) {
+bool _sameActionsInOrder(Set<MediaAction> a, Set<MediaAction> b) {
   if (a.length != b.length) return false;
   final ait = a.iterator;
   final bit = b.iterator;

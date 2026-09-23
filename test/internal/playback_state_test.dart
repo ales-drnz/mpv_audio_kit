@@ -12,14 +12,13 @@ MpvPlaybackState _derive({
   bool completed = false,
   bool pausedForCache = false,
   Duration duration = Duration.zero,
-}) =>
-    deriveMpvPlaybackState(
-      playing: playing,
-      buffering: buffering,
-      completed: completed,
-      pausedForCache: pausedForCache,
-      duration: duration,
-    );
+}) => deriveMpvPlaybackState(
+  playing: playing,
+  buffering: buffering,
+  completed: completed,
+  pausedForCache: pausedForCache,
+  duration: duration,
+);
 
 void main() {
   group('deriveMpvPlaybackState', () {
@@ -44,10 +43,7 @@ void main() {
 
     test('pausedForCache=true → buffering (mid-playback network stall)', () {
       expect(
-        _derive(
-          pausedForCache: true,
-          duration: const Duration(seconds: 30),
-        ),
+        _derive(pausedForCache: true, duration: const Duration(seconds: 30)),
         MpvPlaybackState.buffering,
       );
       // Even if the underlying `buffering` flag also flipped, network
@@ -58,18 +54,17 @@ void main() {
       );
     });
 
-    test('buffering=true (without pausedForCache) → loading (initial open)',
-        () {
-      expect(_derive(buffering: true), MpvPlaybackState.loading);
-      expect(
-        _derive(
-          buffering: true,
-          duration: const Duration(seconds: 30),
-        ),
-        MpvPlaybackState.loading,
-        reason: 'mid-load buffering stays "loading" until cache stalls fire',
-      );
-    });
+    test(
+      'buffering=true (without pausedForCache) → loading (initial open)',
+      () {
+        expect(_derive(buffering: true), MpvPlaybackState.loading);
+        expect(
+          _derive(buffering: true, duration: const Duration(seconds: 30)),
+          MpvPlaybackState.loading,
+          reason: 'mid-load buffering stays "loading" until cache stalls fire',
+        );
+      },
+    );
 
     test('playing=true (no other flags) → playing', () {
       expect(
@@ -85,8 +80,7 @@ void main() {
       );
     });
 
-    test(
-        'not playing + duration == 0 + no flags → idle '
+    test('not playing + duration == 0 + no flags → idle '
         '(distinguishes "no file" from "user pause")', () {
       expect(_derive(), MpvPlaybackState.idle);
     });

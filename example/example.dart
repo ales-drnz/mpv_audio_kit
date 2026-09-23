@@ -9,14 +9,10 @@ Future<void> main() async {
   final player = Player();
 
   // Publish to the OS media session.
-  await player.setMediaSession(
-    const MediaSession(),
-  );
+  await player.setMediaSession(const MediaSession());
 
   // Open and play.
-  await player.open(
-    const Media('https://example.com/song.mp3'),
-  );
+  await player.open(const Media('https://example.com/song.mp3'));
   await player.play();
 
   // Call dispose() when you're done with the player for good.

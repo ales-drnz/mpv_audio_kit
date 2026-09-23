@@ -33,9 +33,8 @@ import 'dsp_async_io.dart';
 ///   9. Emit [FftFrame] (raw bins + smoothed bands) and [PcmFrame].
 @internal
 class SpectrumPipeline {
-  SpectrumPipeline({
-    required AsyncPropertyGet asyncGet,
-  }) : _asyncGet = asyncGet {
+  SpectrumPipeline({required AsyncPropertyGet asyncGet})
+    : _asyncGet = asyncGet {
     _fftCtrl = StreamController<FftFrame>.broadcast(
       onListen: () {
         _fftActive = true;
@@ -124,8 +123,10 @@ class SpectrumPipeline {
   }
 
   Future<void> _doPoll() async {
-    final (rc, value) =
-        await _asyncGet('pcm-tap-frame', MpvFormat.mpvFormatNode);
+    final (rc, value) = await _asyncGet(
+      'pcm-tap-frame',
+      MpvFormat.mpvFormatNode,
+    );
     if (_disposed) return;
     if (rc < 0 || value is! Map) return;
 
@@ -134,8 +135,7 @@ class SpectrumPipeline {
     final sampleRate = value['sample_rate'] is int
         ? value['sample_rate'] as int
         : 0;
-    final channels =
-        value['channels'] is int ? value['channels'] as int : 0;
+    final channels = value['channels'] is int ? value['channels'] as int : 0;
     final ptsNs = value['pts_ns'] is int ? value['pts_ns'] as int : 0;
 
     if (sampleRate <= 0 || channels <= 0 || ptsNs == 0) return;

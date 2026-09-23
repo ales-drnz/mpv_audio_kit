@@ -41,8 +41,7 @@ void main() {
       await player.dispose();
     });
 
-    test(
-        'stop() issued while open() is in flight is final — '
+    test('stop() issued while open() is in flight is final — '
         'playback must not restart', () async {
       // Pre-subscribe BEFORE acting (CLAUDE.md). The player is fresh —
       // no file has ever been loaded — so ANY PLAYBACK_RESTART from here
@@ -69,25 +68,28 @@ void main() {
         expect(
           loadedAfterStop,
           isFalse,
-          reason: 'the in-flight open() resumed after stop() and issued '
+          reason:
+              'the in-flight open() resumed after stop() and issued '
               'its loadfile anyway — playback restarted even though '
               'stop() was the last transport call in program order',
         );
         expect(
           player.state.playing,
           isFalse,
-          reason: 'stop() was the final call — nothing may be producing '
+          reason:
+              'stop() was the final call — nothing may be producing '
               'audio once both futures settle',
         );
         expect(
           player.state.playWhenReady,
           isFalse,
-          reason: 'stop() releases the play intent; the superseded open() '
+          reason:
+              'stop() releases the play intent; the superseded open() '
               'must not re-arm it',
         );
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

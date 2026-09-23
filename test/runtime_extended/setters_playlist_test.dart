@@ -45,7 +45,7 @@ void main() {
           .firstWhere((p) => p.items.length == 2)
           .timeout(const Duration(seconds: 5));
       expect(player.state.playlist.items.length, 2);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('jump moves to the requested index', () async {
       // Playlist now has 2 entries from the previous test.
@@ -54,7 +54,7 @@ void main() {
           .firstWhere((p) => p.index == 1)
           .timeout(const Duration(seconds: 5));
       expect(player.state.playlist.index, 1);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('move reorders entries (1 → 0)', () async {
       // 2-item playlist; move the second entry to position 0.
@@ -64,7 +64,7 @@ void main() {
       // entry's position, which may shift.
       await Future<void>.delayed(const Duration(milliseconds: 200));
       expect(player.state.playlist.items.length, 2);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('remove drops an entry', () async {
       // Drop position 1.
@@ -73,7 +73,7 @@ void main() {
           .firstWhere((p) => p.items.length == 1)
           .timeout(const Duration(seconds: 5));
       expect(player.state.playlist.items.length, 1);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('clearPlaylist empties the queue', () async {
       await player.clearPlaylist();
@@ -83,13 +83,13 @@ void main() {
           .firstWhere((p) => p.items.isEmpty)
           .timeout(const Duration(seconds: 5));
       expect(player.state.playlist.items, isEmpty);
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('setShuffle / setLoop round-trip', () async {
-      await player.openAll(
-        [Media(fixturePath), Media(fixturePath)],
-        play: false,
-      );
+      await player.openAll([
+        Media(fixturePath),
+        Media(fixturePath),
+      ], play: false);
       await player.stream.playlist
           .firstWhere((p) => p.items.length == 2)
           .timeout(const Duration(seconds: 5));
@@ -105,16 +105,17 @@ void main() {
       expect(player.state.loop, Loop.playlist);
       await player.setLoop(Loop.off);
       expect(player.state.loop, Loop.off);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('next() / previous() advance the playlist index', () async {
       // 3-item playlist so next/previous have a clear before/after to
       // anchor on. jump(0) is the documented entry point; next/prev
       // are the convenience wrappers tested here.
-      await player.openAll(
-        [Media(fixturePath), Media(fixturePath), Media(fixturePath)],
-        play: false,
-      );
+      await player.openAll([
+        Media(fixturePath),
+        Media(fixturePath),
+        Media(fixturePath),
+      ], play: false);
       await player.stream.playlist
           .firstWhere((p) => p.items.length == 3)
           .timeout(const Duration(seconds: 5));
@@ -139,46 +140,55 @@ void main() {
       await player.previous();
       await backTo1;
       expect(player.state.playlist.index, 1);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
-    test('replace(index, media) swaps the entry without changing the length',
-        () async {
-      // Use two distinct fixture URIs so the replaced entry is
-      // observably different. The primary fixture above is
-      // sine_440hz_1s.wav; with_chapters.mka serves as the alt.
-      final altPath =
-          '${Directory.current.path}/test/fixtures/with_chapters.mka';
-      if (!File(altPath).existsSync()) {
-        markTestSkipped('Alt fixture missing for replace()');
-        return;
-      }
+    test(
+      'replace(index, media) swaps the entry without changing the length',
+      () async {
+        // Use two distinct fixture URIs so the replaced entry is
+        // observably different. The primary fixture above is
+        // sine_440hz_1s.wav; with_chapters.mka serves as the alt.
+        final altPath =
+            '${Directory.current.path}/test/fixtures/with_chapters.mka';
+        if (!File(altPath).existsSync()) {
+          markTestSkipped('Alt fixture missing for replace()');
+          return;
+        }
 
-      // Reset to a known 2-item playlist of the primary fixture.
-      await player.openAll(
-        [Media(fixturePath), Media(fixturePath)],
-        play: false,
-      );
-      await player.stream.playlist
-          .firstWhere((p) => p.items.length == 2)
-          .timeout(const Duration(seconds: 5));
+        // Reset to a known 2-item playlist of the primary fixture.
+        await player.openAll([
+          Media(fixturePath),
+          Media(fixturePath),
+        ], play: false);
+        await player.stream.playlist
+            .firstWhere((p) => p.items.length == 2)
+            .timeout(const Duration(seconds: 5));
 
-      // After replace(1, alt), the playlist must still have length 2
-      // and entry 1 must point at the alt URI. The wrapper implements
-      // this as `playlist-remove 1` + `loadfile insert-at 1`, so we
-      // wait for the entry's URI to flip while length stays 2.
-      final swapped = player.stream.playlist
-          .firstWhere((p) =>
-              p.items.length == 2 &&
-              p.items[1].uri.endsWith('with_chapters.mka'),)
-          .timeout(const Duration(seconds: 10));
-      await player.replace(1, Media(altPath));
-      await swapped;
-      expect(player.state.playlist.items.length, 2);
-      expect(player.state.playlist.items[1].uri.endsWith('with_chapters.mka'),
-          isTrue,);
-      expect(player.state.playlist.items[0].uri.endsWith('sine_440hz_1s.wav'),
+        // After replace(1, alt), the playlist must still have length 2
+        // and entry 1 must point at the alt URI. The wrapper implements
+        // this as `playlist-remove 1` + `loadfile insert-at 1`, so we
+        // wait for the entry's URI to flip while length stays 2.
+        final swapped = player.stream.playlist
+            .firstWhere(
+              (p) =>
+                  p.items.length == 2 &&
+                  p.items[1].uri.endsWith('with_chapters.mka'),
+            )
+            .timeout(const Duration(seconds: 10));
+        await player.replace(1, Media(altPath));
+        await swapped;
+        expect(player.state.playlist.items.length, 2);
+        expect(
+          player.state.playlist.items[1].uri.endsWith('with_chapters.mka'),
           isTrue,
-          reason: 'replace(1) must not touch entry 0',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+        );
+        expect(
+          player.state.playlist.items[0].uri.endsWith('sine_440hz_1s.wav'),
+          isTrue,
+          reason: 'replace(1) must not touch entry 0',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
   });
 }

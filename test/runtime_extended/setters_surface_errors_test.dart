@@ -35,14 +35,17 @@ void main() {
     // mpv hard-rejects volume-max below 100 with a negative rc.
     await expectLater(
       player.setVolumeMax(50),
-      throwsA(isA<MpvException>()
-          .having((e) => e.name, 'name', 'volume-max')
-          .having((e) => e.code, 'code', lessThan(0)),),
-      reason: 'A typed setter that hands an out-of-range value to mpv must '
+      throwsA(
+        isA<MpvException>()
+            .having((e) => e.name, 'name', 'volume-max')
+            .having((e) => e.code, 'code', lessThan(0)),
+      ),
+      reason:
+          'A typed setter that hands an out-of-range value to mpv must '
           'throw MpvException, not silently swallow the rc and leave '
           'state.volumeMax desynced from the engine.',
     );
-  }, timeout: const Timeout(Duration(seconds: 10)),);
+  }, timeout: const Timeout(Duration(seconds: 10)));
 
   test('setAudioFormat with mpv-known value succeeds', () async {
     // Sanity: the fix must not turn legitimate setters into errors.

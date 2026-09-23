@@ -94,50 +94,55 @@ void main() {
       Future<void>.delayed(const Duration(milliseconds: 300));
 
   test(
-      'two overlapping setMediaSession calls leave exactly ONE live '
-      'controller (no duplicate native pushes, balanced enable/disable)',
-      () async {
-    // ── Phase 1: the race. Two un-awaited non-null enables in the same
-    // synchronous turn (init-time enable + first-track config push).
-    final first = player.setMediaSession(const MediaSession());
-    final second =
-        player.setMediaSession(const MediaSession(title: 'First Track'));
-    await first;
-    await second;
-    await settle();
+    'two overlapping setMediaSession calls leave exactly ONE live '
+    'controller (no duplicate native pushes, balanced enable/disable)',
+    () async {
+      // ── Phase 1: the race. Two un-awaited non-null enables in the same
+      // synchronous turn (init-time enable + first-track config push).
+      final first = player.setMediaSession(const MediaSession());
+      final second = player.setMediaSession(
+        const MediaSession(title: 'First Track'),
+      );
+      await first;
+      await second;
+      await settle();
 
-    // ── Phase 2: drive ONE playback-state change and count pushes.
-    // Every live controller subscribes to `stream.rate` and flushes one
-    // coalesced `updatePlayback`. Exactly one controller must be alive,
-    // so exactly one push may arrive. A stranded duplicate controller
-    // doubles this.
-    final mark = nativeCalls.length;
-    await player.setRate(1.25);
-    await settle();
+      // ── Phase 2: drive ONE playback-state change and count pushes.
+      // Every live controller subscribes to `stream.rate` and flushes one
+      // coalesced `updatePlayback`. Exactly one controller must be alive,
+      // so exactly one push may arrive. A stranded duplicate controller
+      // doubles this.
+      final mark = nativeCalls.length;
+      await player.setRate(1.25);
+      await settle();
 
-    expect(
-      countOf('updatePlayback', from: mark),
-      1,
-      reason: 'one player state change must produce exactly one native '
-          'updatePlayback push; more means a stranded duplicate '
-          'MediaSessionController is still subscribed and double-pushing '
-          '(calls since state change: ${nativeCalls.sublist(mark)})',
-    );
+      expect(
+        countOf('updatePlayback', from: mark),
+        1,
+        reason:
+            'one player state change must produce exactly one native '
+            'updatePlayback push; more means a stranded duplicate '
+            'MediaSessionController is still subscribed and double-pushing '
+            '(calls since state change: ${nativeCalls.sublist(mark)})',
+      );
 
-    // ── Phase 3: full lifecycle balance. Disabling must tear down every
-    // controller that was ever enabled — each native `enable` needs a
-    // matching `disable` by the time the session is off. A stranded
-    // controller is never disposed, so its enable stays unpaired.
-    await player.setMediaSession(null);
-    await settle();
+      // ── Phase 3: full lifecycle balance. Disabling must tear down every
+      // controller that was ever enabled — each native `enable` needs a
+      // matching `disable` by the time the session is off. A stranded
+      // controller is never disposed, so its enable stays unpaired.
+      await player.setMediaSession(null);
+      await settle();
 
-    expect(
-      countOf('disable'),
-      countOf('enable'),
-      reason: 'after setMediaSession(null) every controller ever enabled '
-          'must have been disposed (enable/disable balanced); an unpaired '
-          'enable is a stranded controller leaking ~13 subscriptions '
-          '(full call ledger: $nativeCalls)',
-    );
-  }, timeout: const Timeout(Duration(seconds: 45)),);
+      expect(
+        countOf('disable'),
+        countOf('enable'),
+        reason:
+            'after setMediaSession(null) every controller ever enabled '
+            'must have been disposed (enable/disable balanced); an unpaired '
+            'enable is a stranded controller leaking ~13 subscriptions '
+            '(full call ledger: $nativeCalls)',
+      );
+    },
+    timeout: const Timeout(Duration(seconds: 45)),
+  );
 }

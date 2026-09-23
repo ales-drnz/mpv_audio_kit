@@ -14,12 +14,14 @@ void main() {
   // `content://` paths require a Flutter rootBundle / platform channel
   // context and are exercised via the integration suite in `test_app/`.
   group('resolveUri pass-through', () {
-    test('plain filesystem path is returned unchanged with no dispose',
-        () async {
-      final r = await resolveUri('/tmp/example.mp3');
-      expect(r.uri, '/tmp/example.mp3');
-      expect(r.dispose, isNull);
-    });
+    test(
+      'plain filesystem path is returned unchanged with no dispose',
+      () async {
+        final r = await resolveUri('/tmp/example.mp3');
+        expect(r.uri, '/tmp/example.mp3');
+        expect(r.dispose, isNull);
+      },
+    );
 
     test('file:// URI is returned unchanged with no dispose', () async {
       final r = await resolveUri('file:///tmp/example.mp3');

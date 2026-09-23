@@ -96,9 +96,7 @@ void main() {
       // ~3s, seekable — long enough for a real seek that doesn't race EOF.
       fixture = await materializeFixture('with_chapters.mka');
       player = Player(
-        configuration: const PlayerConfiguration(
-          logLevel: LogLevel.off,
-        ),
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
       );
       // Null audio output — simulators expose no real device.
       await player.setRawProperty('ao', 'null');
@@ -116,23 +114,29 @@ void main() {
           .firstWhere((d) => d.inMilliseconds > 2500)
           .timeout(const Duration(seconds: 10));
 
-      await player.setMediaSession(const MediaSession(
-        title: 'E2E Title',
-        artist: 'E2E Artist',
-        album: 'E2E Album',
-      ),);
+      await player.setMediaSession(
+        const MediaSession(
+          title: 'E2E Title',
+          artist: 'E2E Artist',
+          album: 'E2E Album',
+        ),
+      );
 
       final np = await pumpUntil((s) => s['title'] == 'E2E Title');
       expect(np['artist'], 'E2E Artist');
       expect(np['album'], 'E2E Album');
-      expect((np['duration'] as num?)?.toDouble(), greaterThan(2.5),
-          reason: 'duration must reach the OS, got ${np['duration']}',);
+      expect(
+        (np['duration'] as num?)?.toDouble(),
+        greaterThan(2.5),
+        reason: 'duration must reach the OS, got ${np['duration']}',
+      );
       // autoPlay:false + opened paused → core-idle true → paused.
       expect(np['playbackState'], 'paused');
-    }, skip: !isApple,);
+    }, skip: !isApple);
 
-    testWidgets('example flow: setMediaSession BEFORE play, derive from file',
-        (_) async {
+    testWidgets('example flow: setMediaSession BEFORE play, derive from file', (
+      _,
+    ) async {
       // Mirrors the example app EXACTLY: enable the session at startup
       // (no media yet), THEN open + autoplay a real tagged m4a
       // (title/artist/album tags + embedded cover + 2s).
@@ -148,18 +152,22 @@ void main() {
 
       final np = await readNowPlaying();
       expect(np['title'], 'Tagged Title', reason: 'snapshot=$np');
-      expect((np['duration'] as num?)?.toDouble() ?? 0, greaterThan(1.5),
-          reason: 'snapshot=$np',);
+      expect(
+        (np['duration'] as num?)?.toDouble() ?? 0,
+        greaterThan(1.5),
+        reason: 'snapshot=$np',
+      );
       expect(np['playbackState'], 'playing', reason: 'snapshot=$np');
       // Embedded cover art reaches the OS now-playing info on every
       // shipped platform; this suite asserts it on macOS only.
       if (Platform.isMacOS) {
         expect(np['hasArtwork'], true, reason: 'snapshot=$np');
       }
-    }, skip: !isApple,);
+    }, skip: !isApple);
 
-    testWidgets('play / pause round-trips to the OS playbackState + rate',
-        (_) async {
+    testWidgets('play / pause round-trips to the OS playbackState + rate', (
+      _,
+    ) async {
       await player.open(Media(fixture), play: false);
       await player.stream.duration
           .firstWhere((d) => d.inMilliseconds > 2500)
@@ -172,20 +180,27 @@ void main() {
           .firstWhere((p) => p)
           .timeout(const Duration(seconds: 5));
       var np = await pumpUntil((s) => s['playbackState'] == 'playing');
-      expect((np['rate'] as num?)?.toDouble(), 1.0,
-          reason: 'playing must publish rate 1, got ${np['rate']}',);
+      expect(
+        (np['rate'] as num?)?.toDouble(),
+        1.0,
+        reason: 'playing must publish rate 1, got ${np['rate']}',
+      );
 
       await player.pause();
       await player.stream.playing
           .firstWhere((p) => !p)
           .timeout(const Duration(seconds: 5));
       np = await pumpUntil((s) => s['playbackState'] == 'paused');
-      expect((np['rate'] as num?)?.toDouble(), 0.0,
-          reason: 'paused must publish rate 0, got ${np['rate']}',);
-    }, skip: !isApple,);
+      expect(
+        (np['rate'] as num?)?.toDouble(),
+        0.0,
+        reason: 'paused must publish rate 0, got ${np['rate']}',
+      );
+    }, skip: !isApple);
 
-    testWidgets('seek moves the OS elapsed and keeps the play state',
-        (_) async {
+    testWidgets('seek moves the OS elapsed and keeps the play state', (
+      _,
+    ) async {
       await player.open(Media(fixture), play: false);
       await player.stream.duration
           .firstWhere((d) => d.inMilliseconds > 2500)
@@ -213,9 +228,12 @@ void main() {
       final np = await pumpUntil(
         (s) => ((s['elapsed'] as num?)?.toDouble() ?? 0) >= 1.4,
       );
-      expect(np['playbackState'], 'playing',
-          reason: 'seek must not leave the OS paused, got ${np['playbackState']}',);
-    }, skip: !isApple,);
+      expect(
+        np['playbackState'],
+        'playing',
+        reason: 'seek must not leave the OS paused, got ${np['playbackState']}',
+      );
+    }, skip: !isApple);
 
     testWidgets('disable clears the OS Now Playing entry', (_) async {
       await player.open(Media(fixture), play: false);
@@ -227,9 +245,12 @@ void main() {
 
       await player.setMediaSession(null);
       final np = await pumpUntil((s) => s['playbackState'] == 'stopped');
-      expect(np['title'], isNull,
-          reason: 'disable must clear the title, got ${np['title']}',);
-    }, skip: !isApple,);
+      expect(
+        np['title'],
+        isNull,
+        reason: 'disable must clear the title, got ${np['title']}',
+      );
+    }, skip: !isApple);
   });
 
   // Android (Media3 SimpleBasePlayer) + Windows (SMTC) + Linux (MPRIS2) share
@@ -244,9 +265,7 @@ void main() {
     setUp(() async {
       fixture = await materializeFixture('with_chapters.mka');
       player = Player(
-        configuration: const PlayerConfiguration(
-          logLevel: LogLevel.off,
-        ),
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
       );
       await player.setRawProperty('ao', 'null');
     });
@@ -257,18 +276,21 @@ void main() {
       await player.dispose();
     });
 
-    testWidgets('enable publishes overridden metadata to the session',
-        (_) async {
+    testWidgets('enable publishes overridden metadata to the session', (
+      _,
+    ) async {
       await player.open(Media(fixture), play: false);
       await player.stream.duration
           .firstWhere((d) => d.inMilliseconds > 2500)
           .timeout(const Duration(seconds: 10));
 
-      await player.setMediaSession(const MediaSession(
-        title: 'E2E Title',
-        artist: 'E2E Artist',
-        album: 'E2E Album',
-      ),);
+      await player.setMediaSession(
+        const MediaSession(
+          title: 'E2E Title',
+          artist: 'E2E Artist',
+          album: 'E2E Album',
+        ),
+      );
 
       final np = await pumpUntil(
         (s) => s['title'] == 'E2E Title',
@@ -276,14 +298,18 @@ void main() {
       );
       expect(np['artist'], 'E2E Artist');
       expect(np['album'], 'E2E Album');
-      expect((np['durationMs'] as num?)?.toDouble(), greaterThan(2500),
-          reason: 'duration must reach the session, got ${np['durationMs']}',);
+      expect(
+        (np['durationMs'] as num?)?.toDouble(),
+        greaterThan(2500),
+        reason: 'duration must reach the session, got ${np['durationMs']}',
+      );
       // open(play:false) → playWhenReady false → paused.
       expect(np['playbackState'], 'paused');
-    }, skip: !isProbePlatform,);
+    }, skip: !isProbePlatform);
 
-    testWidgets('example flow: setMediaSession BEFORE play, derive from file',
-        (_) async {
+    testWidgets('example flow: setMediaSession BEFORE play, derive from file', (
+      _,
+    ) async {
       final tagged = await materializeFixture('tagged.m4a');
       await player.setMediaSession(const MediaSession()); // enable FIRST
       await player.open(Media(tagged), play: true); // then autoplay
@@ -295,13 +321,17 @@ void main() {
         (s) => s['title'] == 'Tagged Title',
         reader: readMediaSession,
       );
-      expect((np['durationMs'] as num?)?.toDouble() ?? 0, greaterThan(1500),
-          reason: 'snapshot=$np',);
+      expect(
+        (np['durationMs'] as num?)?.toDouble() ?? 0,
+        greaterThan(1500),
+        reason: 'snapshot=$np',
+      );
       expect(np['playbackState'], 'playing', reason: 'snapshot=$np');
-    }, skip: !isProbePlatform,);
+    }, skip: !isProbePlatform);
 
-    testWidgets('play / pause round-trips to the session playbackState',
-        (_) async {
+    testWidgets('play / pause round-trips to the session playbackState', (
+      _,
+    ) async {
       await player.open(Media(fixture), play: false);
       await player.stream.duration
           .firstWhere((d) => d.inMilliseconds > 2500)
@@ -317,8 +347,11 @@ void main() {
         (s) => s['playbackState'] == 'playing',
         reader: readMediaSession,
       );
-      expect((np['rate'] as num?)?.toDouble(), 1.0,
-          reason: 'playing must publish rate 1, got ${np['rate']}',);
+      expect(
+        (np['rate'] as num?)?.toDouble(),
+        1.0,
+        reason: 'playing must publish rate 1, got ${np['rate']}',
+      );
 
       await player.pause();
       await player.stream.playing
@@ -326,12 +359,15 @@ void main() {
           .timeout(const Duration(seconds: 5));
       // Android binds the OS button to the INTENT axis (playWhenReady);
       // playbackState flips to paused while the configured speed stays 1.
-      await pumpUntil((s) => s['playbackState'] == 'paused',
-          reader: readMediaSession,);
-    }, skip: !isProbePlatform,);
+      await pumpUntil(
+        (s) => s['playbackState'] == 'paused',
+        reader: readMediaSession,
+      );
+    }, skip: !isProbePlatform);
 
-    testWidgets('seek moves the session position and keeps the play state',
-        (_) async {
+    testWidgets('seek moves the session position and keeps the play state', (
+      _,
+    ) async {
       await player.open(Media(fixture), play: false);
       await player.stream.duration
           .firstWhere((d) => d.inMilliseconds > 2500)
@@ -343,8 +379,10 @@ void main() {
       await player.stream.playing
           .firstWhere((p) => p)
           .timeout(const Duration(seconds: 5));
-      await pumpUntil((s) => s['playbackState'] == 'playing',
-          reader: readMediaSession,);
+      await pumpUntil(
+        (s) => s['playbackState'] == 'playing',
+        reader: readMediaSession,
+      );
 
       await player.seek(const Duration(milliseconds: 1500));
       await player.stream.position
@@ -357,10 +395,14 @@ void main() {
         (s) => ((s['positionMs'] as num?)?.toDouble() ?? 0) >= 1400,
         reader: readMediaSession,
       );
-      expect(np['playbackState'], 'playing',
-          reason: 'seek must not leave the session paused, '
-              'got ${np['playbackState']}',);
-    }, skip: !isProbePlatform,);
+      expect(
+        np['playbackState'],
+        'playing',
+        reason:
+            'seek must not leave the session paused, '
+            'got ${np['playbackState']}',
+      );
+    }, skip: !isProbePlatform);
 
     testWidgets('disable clears the session entry', (_) async {
       await player.open(Media(fixture), play: false);
@@ -375,8 +417,11 @@ void main() {
         (s) => s['playbackState'] == 'stopped',
         reader: readMediaSession,
       );
-      expect(np['title'], isNull,
-          reason: 'disable must clear the title, got ${np['title']}',);
-    }, skip: !isProbePlatform,);
+      expect(
+        np['title'],
+        isNull,
+        reason: 'disable must clear the title, got ${np['title']}',
+      );
+    }, skip: !isProbePlatform);
   });
 }

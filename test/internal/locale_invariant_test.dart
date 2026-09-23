@@ -38,9 +38,11 @@ void main() {
       ? DynamicLibrary.open('libc.so.6')
       : DynamicLibrary.open('libSystem.B.dylib');
 
-  final setlocale = libc.lookupFunction<
-      Pointer<Utf8> Function(Int32, Pointer<Utf8>),
-      Pointer<Utf8> Function(int, Pointer<Utf8>)>('setlocale');
+  final setlocale = libc
+      .lookupFunction<
+        Pointer<Utf8> Function(Int32, Pointer<Utf8>),
+        Pointer<Utf8> Function(int, Pointer<Utf8>)
+      >('setlocale');
 
   // libc-specific constant: 1 on Linux glibc, 4 on macOS/iOS (BSD
   // layout, where 1 is LC_COLLATE). Using the wrong one here would make
@@ -48,44 +50,52 @@ void main() {
   // `_applyPlatformQuirks` enforces, passing regardless of the fix.
   final lcNumeric = Platform.isLinux ? 1 : 4;
 
-  test('ensureInitialized resets LC_NUMERIC to "C" even from a non-C locale',
-      () {
-    // Try a few likely-installed locales. macOS test runners usually
-    // ship `en_US.UTF-8`; CI Linux images often have it too. If none
-    // succeed, skip — we'd be testing nothing.
-    final candidates = ['en_US.UTF-8', 'C.UTF-8', 'de_DE.UTF-8'];
-    String? installed;
-    for (final c in candidates) {
-      final r = using(
-          (arena) => setlocale(lcNumeric, c.toNativeUtf8(allocator: arena)),);
-      if (r != nullptr) {
-        installed = r.cast<Utf8>().toDartString();
-        if (installed != 'C') break;
+  test(
+    'ensureInitialized resets LC_NUMERIC to "C" even from a non-C locale',
+    () {
+      // Try a few likely-installed locales. macOS test runners usually
+      // ship `en_US.UTF-8`; CI Linux images often have it too. If none
+      // succeed, skip — we'd be testing nothing.
+      final candidates = ['en_US.UTF-8', 'C.UTF-8', 'de_DE.UTF-8'];
+      String? installed;
+      for (final c in candidates) {
+        final r = using(
+          (arena) => setlocale(lcNumeric, c.toNativeUtf8(allocator: arena)),
+        );
+        if (r != nullptr) {
+          installed = r.cast<Utf8>().toDartString();
+          if (installed != 'C') break;
+        }
       }
-    }
-    if (installed == null || installed == 'C') {
-      markTestSkipped(
+      if (installed == null || installed == 'C') {
+        markTestSkipped(
           'No non-C locale available on this host — cannot test the '
-          'reset path. Install one of $candidates and re-run.');
-      return;
-    }
+          'reset path. Install one of $candidates and re-run.',
+        );
+        return;
+      }
 
-    // Sanity: precondition met.
-    final pre = setlocale(lcNumeric, nullptr).cast<Utf8>().toDartString();
-    expect(pre, isNot('C'),
-        reason: 'precondition: must enter the test in a non-C locale',);
+      // Sanity: precondition met.
+      final pre = setlocale(lcNumeric, nullptr).cast<Utf8>().toDartString();
+      expect(
+        pre,
+        isNot('C'),
+        reason: 'precondition: must enter the test in a non-C locale',
+      );
 
-    initLibmpvOrSkip();
+      initLibmpvOrSkip();
 
-    final post = setlocale(lcNumeric, nullptr).cast<Utf8>().toDartString();
-    expect(
-      post,
-      equals('C'),
-      reason: 'ensureInitialized() must reset LC_NUMERIC to "C" '
-          'process-wide. libmpv requires this; if you switched to '
-          'thread-local uselocale, libmpv\'s own threads will fail '
-          'to parse floats correctly. See client.h:147-149 and '
-          'player/main.c::check_locale in mpv 0.41.0.',
-    );
-  });
+      final post = setlocale(lcNumeric, nullptr).cast<Utf8>().toDartString();
+      expect(
+        post,
+        equals('C'),
+        reason:
+            'ensureInitialized() must reset LC_NUMERIC to "C" '
+            'process-wide. libmpv requires this; if you switched to '
+            'thread-local uselocale, libmpv\'s own threads will fail '
+            'to parse floats correctly. See client.h:147-149 and '
+            'player/main.c::check_locale in mpv 0.41.0.',
+      );
+    },
+  );
 }

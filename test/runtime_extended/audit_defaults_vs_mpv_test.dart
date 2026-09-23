@@ -84,11 +84,21 @@ void main() {
       final ok = mpv != null && (mpv == seed || sameNum(mpv, seed));
       if (!ok && mpv != null) mismatches.add('$name: dart=$seed  mpv=$mpv');
       // ignore: avoid_print
-      print('  ${mpv == null ? '·· n/a   ' : ok ? '✅ match  ' : '❌ DIFF   '}'
-          '${name.padRight(24)} dart=${seed.padRight(14)} mpv=$mpv');
+      print(
+        '  ${mpv == null
+            ? '·· n/a   '
+            : ok
+            ? '✅ match  '
+            : '❌ DIFF   '}'
+        '${name.padRight(24)} dart=${seed.padRight(14)} mpv=$mpv',
+      );
     }
 
-    expect(mismatches, isEmpty,
-        reason: 'Dart seeds diverge from real mpv defaults:\n${mismatches.join('\n')}',);
-  }, timeout: const Timeout(Duration(seconds: 25)),);
+    expect(
+      mismatches,
+      isEmpty,
+      reason:
+          'Dart seeds diverge from real mpv defaults:\n${mismatches.join('\n')}',
+    );
+  }, timeout: const Timeout(Duration(seconds: 25)));
 }

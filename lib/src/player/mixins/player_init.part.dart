@@ -65,13 +65,19 @@ mixin _InitModule on _PlayerBase {
     // that landed before bring-up). Settings is config-change traffic and
     // stays always-bridged.
     _spectrumPipeline.settingsStream.listen(_spectrumCtrl.add);
-    _waveformPipeline =
-        WaveformPipeline(asyncGet: _getAsync, asyncSet: _propRc);
-    _filterTapPipeline =
-        FilterTapPipeline(asyncGet: _getAsync, asyncSet: _propRc);
+    _waveformPipeline = WaveformPipeline(
+      asyncGet: _getAsync,
+      asyncSet: _propRc,
+    );
+    _filterTapPipeline = FilterTapPipeline(
+      asyncGet: _getAsync,
+      asyncSet: _propRc,
+    );
     _loudnessMeterPipeline = LoudnessMeterPipeline(asyncGet: _getAsync);
-    _loudnessScanPipeline =
-        LoudnessScanPipeline(asyncGet: _getAsync, asyncSet: _propRc);
+    _loudnessScanPipeline = LoudnessScanPipeline(
+      asyncGet: _getAsync,
+      asyncSet: _propRc,
+    );
     _waveformPipeline.stream.listen(_waveformCtrl.add);
     _loudnessMeterPipeline.stream.listen(_loudnessMeterCtrl.add);
     _loudnessScanPipeline.stream.listen(_loudnessScanCtrl.add);
@@ -98,47 +104,47 @@ mixin _InitModule on _PlayerBase {
   /// Recipe of pre-init `mpv_set_option_string` calls executed by the
   /// event isolate before `mpv_initialize`.
   Map<String, String> _buildPreInitOptions() => {
-        'vid': 'no',
-        'sid': 'no',
-        'vo': 'null',
-        // Watch-later / resume. Persist only the audio-relevant props (mpv's
-        // default list includes video/sub keys this build can't restore).
-        'resume-playback': configuration.resumePlayback ? 'yes' : 'no',
-        'watch-later-options': 'start,speed,pitch,volume,mute,audio-delay,af,aid',
-        if (configuration.watchLaterDir != null)
-          'watch-later-dir': configuration.watchLaterDir!,
-        if (configuration.forceSeekable) 'force-seekable': 'yes',
-        'hls-bitrate': configuration.hlsBitrate.mpvValue,
-        if (configuration.normalizeDownmix) 'audio-normalize-downmix': 'yes',
-        if (configuration.demuxerCacheDir != null)
-          'demuxer-cache-dir': configuration.demuxerCacheDir!,
-        // If the audio device can't be opened (Bluetooth/AirPlay sink gone,
-        // a stale device id), fall back to the null AO and keep the position
-        // clock running instead of hard-failing playback. The failure is
-        // still surfaced through `audio-output-state`.
-        'audio-fallback-to-null': 'yes',
-        'audio-display': 'embedded-first',
-        'cover-art-auto': 'no',
-        'image-display-duration': 'inf',
-        'keep-open': 'yes',
-        'idle': 'yes',
-        'osc': 'no',
-        'ytdl': 'no',
-        'load-stats-overlay': 'no',
-        'load-console': 'no',
-        'load-commands': 'no',
-        'load-auto-profiles': 'no',
-        'load-select': 'no',
-        'load-context-menu': 'no',
-        'load-positioning': 'no',
-        'load-scripts': 'no',
-        'input-builtin-bindings': 'no',
-        'audio-client-name': 'mpv_audio_kit',
-      };
+    'vid': 'no',
+    'sid': 'no',
+    'vo': 'null',
+    // Watch-later / resume. Persist only the audio-relevant props (mpv's
+    // default list includes video/sub keys this build can't restore).
+    'resume-playback': configuration.resumePlayback ? 'yes' : 'no',
+    'watch-later-options': 'start,speed,pitch,volume,mute,audio-delay,af,aid',
+    if (configuration.watchLaterDir != null)
+      'watch-later-dir': configuration.watchLaterDir!,
+    if (configuration.forceSeekable) 'force-seekable': 'yes',
+    'hls-bitrate': configuration.hlsBitrate.mpvValue,
+    if (configuration.normalizeDownmix) 'audio-normalize-downmix': 'yes',
+    if (configuration.demuxerCacheDir != null)
+      'demuxer-cache-dir': configuration.demuxerCacheDir!,
+    // If the audio device can't be opened (Bluetooth/AirPlay sink gone,
+    // a stale device id), fall back to the null AO and keep the position
+    // clock running instead of hard-failing playback. The failure is
+    // still surfaced through `audio-output-state`.
+    'audio-fallback-to-null': 'yes',
+    'audio-display': 'embedded-first',
+    'cover-art-auto': 'no',
+    'image-display-duration': 'inf',
+    'keep-open': 'yes',
+    'idle': 'yes',
+    'osc': 'no',
+    'ytdl': 'no',
+    'load-stats-overlay': 'no',
+    'load-console': 'no',
+    'load-commands': 'no',
+    'load-auto-profiles': 'no',
+    'load-select': 'no',
+    'load-context-menu': 'no',
+    'load-positioning': 'no',
+    'load-scripts': 'no',
+    'input-builtin-bindings': 'no',
+    'audio-client-name': 'mpv_audio_kit',
+  };
 
   Map<String, String> _buildPostInitOptions() => {
-        'volume': configuration.initialVolume.toStringAsFixed(1),
-      };
+    'volume': configuration.initialVolume.toStringAsFixed(1),
+  };
 
   /// Specs for `mpv_observe_property` — registry props plus the small
   /// out-of-registry set kept here for cross-reference clarity.

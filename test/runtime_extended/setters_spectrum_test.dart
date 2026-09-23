@@ -41,8 +41,7 @@ void main() {
       await player.dispose();
     });
 
-    test('default SpectrumSettings exposed via spectrumSettings getter',
-        () {
+    test('default SpectrumSettings exposed via spectrumSettings getter', () {
       // Before any setSpectrum, the pipeline reports defaults.
       final s = player.spectrumSettings;
       expect(s.fftSize, 2048);
@@ -52,16 +51,18 @@ void main() {
     });
 
     test('setSpectrum / updateSpectrum round-trip', () async {
-      await player.setSpectrum(const SpectrumSettings(
-        fftSize: 1024,
-        bandCount: 32,
-        window: WindowFunction.blackmanHarris,
-        emitInterval: Duration(milliseconds: 16),
-        attackSmoothing: 0.7,
-        releaseSmoothing: 0.05,
-        minDb: -80,
-        maxDb: -5,
-      ),);
+      await player.setSpectrum(
+        const SpectrumSettings(
+          fftSize: 1024,
+          bandCount: 32,
+          window: WindowFunction.blackmanHarris,
+          emitInterval: Duration(milliseconds: 16),
+          attackSmoothing: 0.7,
+          releaseSmoothing: 0.05,
+          minDb: -80,
+          maxDb: -5,
+        ),
+      );
       var s = player.spectrumSettings;
       expect(s.fftSize, 1024);
       expect(s.bandCount, 32);
@@ -79,29 +80,34 @@ void main() {
       expect(s.fftSize, 1024); // other fields preserved
     });
 
-    test('subscribe to spectrum + pcm without crash; cancel back to zero',
-        () async {
-      // The host libmpv binaries may be unpatched; the property may
-      // return M_PROPERTY_UNAVAILABLE on every poll. We're only
-      // asserting the wrapper-side plumbing doesn't blow up.
-      final spectrumSub = player.stream.fft.listen((_) {});
-      final pcmSub = player.stream.pcm.listen((_) {});
-      // Give the timer a few ticks.
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      await spectrumSub.cancel();
-      await pcmSub.cancel();
-      // Re-subscribe — pipeline should re-arm.
-      final reSub = player.stream.fft.listen((_) {});
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      await reSub.cancel();
-    }, timeout: const Timeout(Duration(seconds: 5)),);
+    test(
+      'subscribe to spectrum + pcm without crash; cancel back to zero',
+      () async {
+        // The host libmpv binaries may be unpatched; the property may
+        // return M_PROPERTY_UNAVAILABLE on every poll. We're only
+        // asserting the wrapper-side plumbing doesn't blow up.
+        final spectrumSub = player.stream.fft.listen((_) {});
+        final pcmSub = player.stream.pcm.listen((_) {});
+        // Give the timer a few ticks.
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        await spectrumSub.cancel();
+        await pcmSub.cancel();
+        // Re-subscribe — pipeline should re-arm.
+        final reSub = player.stream.fft.listen((_) {});
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        await reSub.cancel();
+      },
+      timeout: const Timeout(Duration(seconds: 5)),
+    );
 
     test('setSpectrum mid-stream (mutability) does not throw', () async {
       final sub = player.stream.fft.listen((_) {});
       try {
         await player.updateSpectrum(
           (c) => c.copyWith(
-              fftSize: 4096, emitInterval: const Duration(milliseconds: 20),),
+            fftSize: 4096,
+            emitInterval: const Duration(milliseconds: 20),
+          ),
         );
         await Future<void>.delayed(const Duration(milliseconds: 80));
         await player.updateSpectrum(
@@ -111,6 +117,6 @@ void main() {
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 5)),);
+    }, timeout: const Timeout(Duration(seconds: 5)));
   });
 }

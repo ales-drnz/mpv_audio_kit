@@ -41,8 +41,7 @@ void main() {
 
   tearDownAll(() => player.dispose());
 
-  test('waveform streams a partial envelope, then a correct final one',
-      () async {
+  test('waveform streams a partial envelope, then a correct final one', () async {
     final probe = await player.getRawPropertyNode('waveform-data');
     if (probe == null) {
       markTestSkipped('libmpv has no waveform-data property.');
@@ -58,7 +57,8 @@ void main() {
     // The final bulk envelope: settled (not decoding) and fully covered.
     final finalF = player.stream.waveform
         .firstWhere(
-            (w) => w != null && !w.decoding && w.filled.every((b) => b != 0),)
+          (w) => w != null && !w.decoding && w.filled.every((b) => b != 0),
+        )
         .timeout(const Duration(seconds: 15));
 
     // Tight-poll the raw node in parallel — the 120 ms stream poll can miss a
@@ -92,8 +92,11 @@ void main() {
     expect(fin.bins, greaterThan(100));
     expect(fin.min.length, fin.max.length);
     expect(fin.filled.length, fin.min.length);
-    expect(fin.filled.every((b) => b != 0), isTrue,
-        reason: 'a local bulk envelope is fully covered when settled',);
+    expect(
+      fin.filled.every((b) => b != 0),
+      isTrue,
+      reason: 'a local bulk envelope is fully covered when settled',
+    );
     expect(fin.decoding, isFalse);
     // The sine must span more than half the axis (final correctness, as in the
     // bulk test) — proves the live publish did not corrupt the final result.
@@ -133,23 +136,31 @@ void main() {
     // safety/correctness guarantee of the incremental publish. ──
     final partials = seen.where((w) => w.decoding).toList();
     if (partials.isEmpty) {
-      markTestSkipped('no streamed partial observed on this host (fast decode)');
+      markTestSkipped(
+        'no streamed partial observed on this host (fast decode)',
+      );
     } else {
       for (final p in partials) {
         final n = p.min.length < fin.min.length ? p.min.length : fin.min.length;
         for (var i = 0; i < n; i++) {
           if (p.filled[i] != 0) {
-            expect(p.min[i], fin.min[i],
-                reason: 'sealed bin $i min must equal the final value',);
-            expect(p.max[i], fin.max[i],
-                reason: 'sealed bin $i max must equal the final value',);
+            expect(
+              p.min[i],
+              fin.min[i],
+              reason: 'sealed bin $i min must equal the final value',
+            );
+            expect(
+              p.max[i],
+              fin.max[i],
+              reason: 'sealed bin $i max must equal the final value',
+            );
           }
         }
         final f = p.decodeFraction;
         if (f != null) expect(f, inInclusiveRange(0.0, 1.0));
       }
     }
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   test('loudness emits scanning progress, then an exact integrated', () async {
     final probe = await player.getRawPropertyNode('loudness-scan-data');
@@ -186,17 +197,22 @@ void main() {
         expect(f, inInclusiveRange(0.0, 1.0));
       }
       for (var i = 1; i < fracs.length; i++) {
-        expect(fracs[i], greaterThanOrEqualTo(fracs[i - 1]),
-            reason: 'scan progress must be monotone non-decreasing',);
+        expect(
+          fracs[i],
+          greaterThanOrEqualTo(fracs[i - 1]),
+          reason: 'scan progress must be monotone non-decreasing',
+        );
       }
     }
 
     // ── Load-bearing regression guard: the FINAL integrated still matches the
     // independent live ebur128 meter on a full pass (the streaming change must
     // not perturb the merge math). ──
-    await player.setAudioEffects(const AudioEffects(
-      ebur128: Ebur128Settings(enabled: true, metadata: true),
-    ),);
+    await player.setAudioEffects(
+      const AudioEffects(
+        ebur128: Ebur128Settings(enabled: true, metadata: true),
+      ),
+    );
     Loudness? live;
     final meter = player.stream.loudnessMeter.listen((l) => live = l);
     final eof = player.stream.eofReached
@@ -209,9 +225,13 @@ void main() {
     await player.setAudioEffects(const AudioEffects());
 
     expect(live?.integrated, isNotNull);
-    expect(offline.integrated!, closeTo(live!.integrated!, 0.5),
-        reason: 'offline scan and live ebur128 implement the same BS.1770 '
-            'definition — drift beyond tolerance means the live-streaming '
-            'change perturbed the final merge',);
-  }, timeout: const Timeout(Duration(seconds: 60)),);
+    expect(
+      offline.integrated!,
+      closeTo(live!.integrated!, 0.5),
+      reason:
+          'offline scan and live ebur128 implement the same BS.1770 '
+          'definition — drift beyond tolerance means the live-streaming '
+          'change perturbed the final merge',
+    );
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }

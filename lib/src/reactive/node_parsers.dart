@@ -61,8 +61,9 @@ Playlist parsePlaylistNode({
     filenames.add(entry['filename'] as String? ?? '');
     if (entry['current'] == true) currentIndex = i;
   }
-  final medias =
-      filenames.map((f) => mediaCache[f] ?? Media(f)).toList(growable: false);
+  final medias = filenames
+      .map((f) => mediaCache[f] ?? Media(f))
+      .toList(growable: false);
   final int idx;
   if (currentIndex >= 0) {
     idx = currentIndex;
@@ -102,13 +103,15 @@ Playlist parsePlaylistNode({
 /// stream.
 List<Device> parseDeviceListNode(dynamic raw) {
   if (raw is! List) return const [];
-  return raw.map((entry) {
-    final m = entry is Map ? entry : const <String, dynamic>{};
-    return Device(
-      name: m['name'] as String? ?? 'unknown',
-      description: m['description'] as String? ?? '',
-    );
-  }).toList(growable: false);
+  return raw
+      .map((entry) {
+        final m = entry is Map ? entry : const <String, dynamic>{};
+        return Device(
+          name: m['name'] as String? ?? 'unknown',
+          description: m['description'] as String? ?? '',
+        );
+      })
+      .toList(growable: false);
 }
 
 /// Decodes mpv's `metadata` property (`MPV_FORMAT_NODE_MAP`) into a flat
@@ -134,10 +137,7 @@ Map<String, String>? parseMetadataNode(dynamic raw) {
 /// (which can happen during boot before `cache-secs` is observed). The
 /// result is clamped to `[0, 100]` because mpv may overshoot the target
 /// briefly when rebuffering.
-double parseDemuxerCacheStateNode(
-  dynamic raw,
-  Duration cacheSecsTarget,
-) {
+double parseDemuxerCacheStateNode(dynamic raw, Duration cacheSecsTarget) {
   if (raw is! Map) return 0.0;
   final cacheDuration = (raw['cache-duration'] as num?)?.toDouble() ?? 0.0;
   final targetSecs = cacheSecsTarget > Duration.zero
@@ -258,12 +258,14 @@ MpvTrack _parseTrackEntry(dynamic entry) {
 /// chapter shouldn't tear down the whole list.
 List<Chapter> parseChapterListNode(dynamic raw) {
   if (raw is! List) return const [];
-  return raw.map((entry) {
-    final m = entry is Map ? entry : const <String, dynamic>{};
-    final t = m['time'];
-    final time = t is num ? secondsToDuration(t.toDouble()) : Duration.zero;
-    return Chapter(time: time, title: _stringOrNull(m['title']));
-  }).toList(growable: false);
+  return raw
+      .map((entry) {
+        final m = entry is Map ? entry : const <String, dynamic>{};
+        final t = m['time'];
+        final time = t is num ? secondsToDuration(t.toDouble()) : Duration.zero;
+        return Chapter(time: time, title: _stringOrNull(m['title']));
+      })
+      .toList(growable: false);
 }
 
 String? _stringOrNull(dynamic v) {

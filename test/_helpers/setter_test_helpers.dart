@@ -54,10 +54,8 @@ bool initLibmpvOrSkip({String? fixturePath}) {
 /// [configuration] to override the helper's defaults.
 Future<Player> buildPlayer({PlayerConfiguration? configuration}) async {
   final player = Player(
-    configuration: configuration ??
-        const PlayerConfiguration(
-          logLevel: LogLevel.off,
-        ),
+    configuration:
+        configuration ?? const PlayerConfiguration(logLevel: LogLevel.off),
   );
   await player.setRawProperty('ao', 'null');
   return player;

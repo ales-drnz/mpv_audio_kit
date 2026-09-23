@@ -107,23 +107,34 @@ final class SpectrumSettings {
     this.minDb = -100.0,
     this.maxDb = -30.0,
     this.overlapFactor = 4,
-  })  : assert(fftSize >= 256 && fftSize <= 4096,
-            'fftSize must be in [256, 4096]',),
-        assert(
-            (fftSize & (fftSize - 1)) == 0, 'fftSize must be a power of two',),
-        assert(bandCount > 0, 'bandCount must be positive'),
-        assert(bandLowHz > 0, 'bandLowHz must be positive'),
-        assert(bandHighHz > bandLowHz,
-            'bandHighHz must be strictly greater than bandLowHz',),
-        assert(attackSmoothing >= 0 && attackSmoothing <= 1,
-            'attackSmoothing must be in [0, 1]',),
-        assert(releaseSmoothing >= 0 && releaseSmoothing <= 1,
-            'releaseSmoothing must be in [0, 1]',),
-        assert(maxDb > minDb, 'maxDb must be strictly greater than minDb'),
-        assert(overlapFactor >= 1 && overlapFactor <= 16,
-            'overlapFactor must be in [1, 16]',),
-        assert((overlapFactor & (overlapFactor - 1)) == 0,
-            'overlapFactor must be a power of two',);
+  }) : assert(
+         fftSize >= 256 && fftSize <= 4096,
+         'fftSize must be in [256, 4096]',
+       ),
+       assert((fftSize & (fftSize - 1)) == 0, 'fftSize must be a power of two'),
+       assert(bandCount > 0, 'bandCount must be positive'),
+       assert(bandLowHz > 0, 'bandLowHz must be positive'),
+       assert(
+         bandHighHz > bandLowHz,
+         'bandHighHz must be strictly greater than bandLowHz',
+       ),
+       assert(
+         attackSmoothing >= 0 && attackSmoothing <= 1,
+         'attackSmoothing must be in [0, 1]',
+       ),
+       assert(
+         releaseSmoothing >= 0 && releaseSmoothing <= 1,
+         'releaseSmoothing must be in [0, 1]',
+       ),
+       assert(maxDb > minDb, 'maxDb must be strictly greater than minDb'),
+       assert(
+         overlapFactor >= 1 && overlapFactor <= 16,
+         'overlapFactor must be in [1, 16]',
+       ),
+       assert(
+         (overlapFactor & (overlapFactor - 1)) == 0,
+         'overlapFactor must be a power of two',
+       );
 
   /// Default visualizer preset — 2048 Hann FFT at 30 fps with 64
   /// log-spaced bands. Convenience `setSpectrum(SpectrumSettings.defaults)`
@@ -144,20 +155,19 @@ final class SpectrumSettings {
     double? minDb,
     double? maxDb,
     int? overlapFactor,
-  }) =>
-      SpectrumSettings(
-        fftSize: fftSize ?? this.fftSize,
-        bandCount: bandCount ?? this.bandCount,
-        bandLowHz: bandLowHz ?? this.bandLowHz,
-        bandHighHz: bandHighHz ?? this.bandHighHz,
-        window: window ?? this.window,
-        emitInterval: emitInterval ?? this.emitInterval,
-        attackSmoothing: attackSmoothing ?? this.attackSmoothing,
-        releaseSmoothing: releaseSmoothing ?? this.releaseSmoothing,
-        minDb: minDb ?? this.minDb,
-        maxDb: maxDb ?? this.maxDb,
-        overlapFactor: overlapFactor ?? this.overlapFactor,
-      );
+  }) => SpectrumSettings(
+    fftSize: fftSize ?? this.fftSize,
+    bandCount: bandCount ?? this.bandCount,
+    bandLowHz: bandLowHz ?? this.bandLowHz,
+    bandHighHz: bandHighHz ?? this.bandHighHz,
+    window: window ?? this.window,
+    emitInterval: emitInterval ?? this.emitInterval,
+    attackSmoothing: attackSmoothing ?? this.attackSmoothing,
+    releaseSmoothing: releaseSmoothing ?? this.releaseSmoothing,
+    minDb: minDb ?? this.minDb,
+    maxDb: maxDb ?? this.maxDb,
+    overlapFactor: overlapFactor ?? this.overlapFactor,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -177,21 +187,22 @@ final class SpectrumSettings {
 
   @override
   int get hashCode => Object.hash(
-        fftSize,
-        bandCount,
-        bandLowHz,
-        bandHighHz,
-        window,
-        emitInterval,
-        attackSmoothing,
-        releaseSmoothing,
-        minDb,
-        maxDb,
-        overlapFactor,
-      );
+    fftSize,
+    bandCount,
+    bandLowHz,
+    bandHighHz,
+    window,
+    emitInterval,
+    attackSmoothing,
+    releaseSmoothing,
+    minDb,
+    maxDb,
+    overlapFactor,
+  );
 
   @override
-  String toString() => 'SpectrumSettings(fftSize: $fftSize, '
+  String toString() =>
+      'SpectrumSettings(fftSize: $fftSize, '
       'bandCount: $bandCount, bandLowHz: $bandLowHz, bandHighHz: $bandHighHz, '
       'window: $window, emitInterval: $emitInterval, '
       'attackSmoothing: $attackSmoothing, releaseSmoothing: $releaseSmoothing, '

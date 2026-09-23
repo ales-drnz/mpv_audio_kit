@@ -26,8 +26,7 @@ void main() {
   // no `mpv_wakeup` binding, no native flag) this path could not unblock and
   // `stop()` would burn the full 2 s timeout with the worker still parked —
   // i.e. exactly the hang. Post-fix it unwinds in single-digit ms.
-  test(
-      'event loop exits via stop-flag + mpv_wakeup alone '
+  test('event loop exits via stop-flag + mpv_wakeup alone '
       '(no quit / no MPV_EVENT_SHUTDOWN)', () async {
     final libPath = resolveLibmpv();
     if (libPath == null) {
@@ -56,12 +55,16 @@ void main() {
       final exited = await iso.stop();
       sw.stop();
 
-      expect(exited, isTrue,
-          reason: 'worker must confirm exit via flag + mpv_wakeup alone',);
+      expect(
+        exited,
+        isTrue,
+        reason: 'worker must confirm exit via flag + mpv_wakeup alone',
+      );
       expect(
         sw.elapsedMilliseconds,
         lessThan(1000),
-        reason: 'wakeup-driven exit must be far under the 2s stop bound; a '
+        reason:
+            'wakeup-driven exit must be far under the 2s stop bound; a '
             'value near/over 2000ms means the worker stayed parked in '
             'mpv_wait_event — the pre-fix hang.',
       );
@@ -70,13 +73,16 @@ void main() {
       // the wakeup counter must be flat across a post-exit window.
       final after = counter.value;
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(counter.value, after,
-          reason: 'event loop kept running after stop() returned',);
+      expect(
+        counter.value,
+        after,
+        reason: 'event loop kept running after stop() returned',
+      );
 
       // No quit was sent, so tear the mpv core down explicitly.
       lib.mpvTerminateDestroy(handle);
     } finally {
       calloc.free(counter);
     }
-  }, timeout: const Timeout(Duration(seconds: 20)),);
+  }, timeout: const Timeout(Duration(seconds: 20)));
 }

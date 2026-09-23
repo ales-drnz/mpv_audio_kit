@@ -36,6 +36,7 @@ class OrphanHandleTracker {
   static const int _kCookie = 0x4D414B5F4D5056AB; // "MAK_MPV\xab"
   // 2 IntPtrs per slot (cookie + address).
   static const int _kSlotStride = 2;
+
   /// The process-wide singleton. One tracker shares the per-pid leak
   /// buffer across every [Player] created in this Dart VM.
   static final OrphanHandleTracker instance = OrphanHandleTracker._();
@@ -49,7 +50,8 @@ class OrphanHandleTracker {
 
   OrphanHandleTracker._() {
     _file = File(
-        '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_audio_kit_refs_$pid.txt',);
+      '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_audio_kit_refs_$pid.txt',
+    );
   }
 
   /// Initializes the tracker once per Dart VM.
@@ -59,7 +61,8 @@ class OrphanHandleTracker {
   /// is reattached. Any non-zero entries in the buffer are surfaced
   /// to [onOrphanFound] for the caller to clean up.
   void ensureInitialized(
-      void Function(List<Pointer<MpvHandle>>) onOrphanFound,) {
+    void Function(List<Pointer<MpvHandle>>) onOrphanFound,
+  ) {
     if (!_isDebug) {
       return;
     }
@@ -151,7 +154,9 @@ class OrphanHandleTracker {
           continue;
         }
         final pidStr = name.substring(
-            'mpv_audio_kit_refs_'.length, name.length - '.txt'.length,);
+          'mpv_audio_kit_refs_'.length,
+          name.length - '.txt'.length,
+        );
         final otherPid = int.tryParse(pidStr);
         if (otherPid == null || otherPid == pid) continue;
         if (_isPidAlive(otherPid)) continue;

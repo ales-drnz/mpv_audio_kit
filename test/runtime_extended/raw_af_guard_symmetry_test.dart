@@ -43,13 +43,15 @@ void main() {
     );
   });
 
-  test('sendRawCommand([af-command, ...]) is rejected (per-filter command)',
-      () {
-    expect(
-      () => player.sendRawCommand(['af-command', 'loudnorm', 'enable']),
-      throwsA(isA<ArgumentError>()),
-    );
-  });
+  test(
+    'sendRawCommand([af-command, ...]) is rejected (per-filter command)',
+    () {
+      expect(
+        () => player.sendRawCommand(['af-command', 'loudnorm', 'enable']),
+        throwsA(isA<ArgumentError>()),
+      );
+    },
+  );
 
   test('sendRawCommand([screenshot, ...]) is allowed (sanity)', () async {
     // Confirm the guard is targeted, not a blanket sendRawCommand block.

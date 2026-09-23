@@ -43,6 +43,6 @@ void main() {
       expect(player.state.cache.pauseWait, const Duration(seconds: 2));
       // #6: buffer-before-start knob round-trips through real libmpv.
       expect(player.state.cache.pauseInitial, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

@@ -31,11 +31,7 @@ void main() {
 
     test('single band round-trips', () {
       const s = AnequalizerSettings();
-      const mid = AnequalizerBand(
-        frequency: 1000,
-        bandwidth: 500,
-        gain: 6,
-      );
+      const mid = AnequalizerBand(frequency: 1000, bandwidth: 500, gain: 6);
       final next = s.withBands([mid]);
       expect(next.bands.length, 1);
       expect(next.bands.first.frequency, 1000);
@@ -66,9 +62,13 @@ void main() {
       const s = AnequalizerSettings();
       const band = AnequalizerBand(frequency: 1000, bandwidth: 200, gain: 0);
       final round = s.withBands([band, band]).bands;
-      expect(round.length, 2,
-          reason: 'identical bands must not collapse — a value-based '
-              'dedup would drop the second',);
+      expect(
+        round.length,
+        2,
+        reason:
+            'identical bands must not collapse — a value-based '
+            'dedup would drop the second',
+      );
     });
 
     test('every band-type round-trips', () {
@@ -76,8 +76,11 @@ void main() {
         final s = const AnequalizerSettings().withBands([
           AnequalizerBand(frequency: 500, bandwidth: 200, gain: 2, type: t),
         ]);
-        expect(s.bands.first.type, t,
-            reason: 'AnequalizerBandType.$t did not round-trip',);
+        expect(
+          s.bands.first.type,
+          t,
+          reason: 'AnequalizerBandType.$t did not round-trip',
+        );
       }
     });
   });
@@ -119,25 +122,40 @@ void main() {
       const s = McompandSettings();
       final src = [
         const McompandBand(
-          thresholdDb: -30, ratio: 2, attackSeconds: 0.01,
-          releaseSeconds: 0.2, kneeDb: 6, makeupDb: 0, crossoverHz: 5000,
+          thresholdDb: -30,
+          ratio: 2,
+          attackSeconds: 0.01,
+          releaseSeconds: 0.2,
+          kneeDb: 6,
+          makeupDb: 0,
+          crossoverHz: 5000,
         ),
         const McompandBand(
-          thresholdDb: -24, ratio: 4, attackSeconds: 0.005,
-          releaseSeconds: 0.1, kneeDb: 6, makeupDb: 0, crossoverHz: 200,
+          thresholdDb: -24,
+          ratio: 4,
+          attackSeconds: 0.005,
+          releaseSeconds: 0.1,
+          kneeDb: 6,
+          makeupDb: 0,
+          crossoverHz: 200,
         ),
         const McompandBand(
-          thresholdDb: -18, ratio: 3, attackSeconds: 0.003,
-          releaseSeconds: 0.05, kneeDb: 6, makeupDb: 0, crossoverHz: 1000,
+          thresholdDb: -18,
+          ratio: 3,
+          attackSeconds: 0.003,
+          releaseSeconds: 0.05,
+          kneeDb: 6,
+          makeupDb: 0,
+          crossoverHz: 1000,
         ),
       ];
       final round = s.withBands(src).bands;
       expect(round.length, src.length);
-      expect(
-        round.map((b) => b.crossoverHz).toList(),
-        [200, 1000, 5000],
-        reason: 'bands should round-trip sorted by ascending crossover',
-      );
+      expect(round.map((b) => b.crossoverHz).toList(), [
+        200,
+        1000,
+        5000,
+      ], reason: 'bands should round-trip sorted by ascending crossover');
     });
 
     test('makeup at 0 dB is omitted from the wire (compact form)', () {
@@ -147,13 +165,21 @@ void main() {
       const s = McompandSettings();
       final next = s.withBands([
         const McompandBand(
-          thresholdDb: -24, ratio: 2, attackSeconds: 0.005,
-          releaseSeconds: 0.1, kneeDb: 6, makeupDb: 0, crossoverHz: 1000,
+          thresholdDb: -24,
+          ratio: 2,
+          attackSeconds: 0.005,
+          releaseSeconds: 0.1,
+          kneeDb: 6,
+          makeupDb: 0,
+          crossoverHz: 1000,
         ),
       ]);
       expect(next.args, isNotEmpty);
-      expect(next.args.split(' ').length, 4,
-          reason: 'compact form: attack,decay knee points crossover',);
+      expect(
+        next.args.split(' ').length,
+        4,
+        reason: 'compact form: attack,decay knee points crossover',
+      );
     });
   });
 
@@ -271,8 +297,11 @@ void main() {
         depths: '1.5',
         speeds: '0.5|0.4|0.3|0.2',
       );
-      expect(s.voices.length, 1,
-          reason: 'shortest CSV (depths, length 1) wins',);
+      expect(
+        s.voices.length,
+        1,
+        reason: 'shortest CSV (depths, length 1) wins',
+      );
     });
   });
 
@@ -290,8 +319,7 @@ void main() {
 
     test('multi-channel round-trips in declaration order', () {
       const s = AdelaySettings();
-      final round =
-          s.withChannelDelaysMs([100, 200, 300, 400]).channelDelaysMs;
+      final round = s.withChannelDelaysMs([100, 200, 300, 400]).channelDelaysMs;
       expect(round, [100, 200, 300, 400]);
     });
 
@@ -366,8 +394,9 @@ void main() {
     });
 
     test('legacy space-separated input is accepted', () {
-      const s =
-          AfftdnSettings(band_noise: '-10 -8 -6 -4 -2 0 2 4 6 8 10 12 14 16 18');
+      const s = AfftdnSettings(
+        band_noise: '-10 -8 -6 -4 -2 0 2 4 6 8 10 12 14 16 18',
+      );
       expect(s.bandNoiseLevels.length, kAfftdnBandCount);
       expect(s.bandNoiseLevels.first, -10);
       expect(s.bandNoiseLevels.last, 18);
@@ -387,8 +416,7 @@ void main() {
       expect(next.params['soft-knee'], 0.5);
     });
 
-    test('writing the default value drops the key from the params map',
-        () {
+    test('writing the default value drops the key from the params map', () {
       const s = CompandSettings(params: {'soft-knee': 0.5});
       final next = s.withSoftKnee(kCompandSoftKneeDefault);
       expect(next.params.containsKey('soft-knee'), isFalse);

@@ -54,17 +54,21 @@ class _ApiProbe implements PlayerApi {
   Future<void> stop() => _record('stop');
 
   @override
-  Future<void> seekToPercent(double percent,
-          {bool relative = false, bool exact = false,}) =>
-      _record('seekToPercent');
+  Future<void> seekToPercent(
+    double percent, {
+    bool relative = false,
+    bool exact = false,
+  }) => _record('seekToPercent');
 
   @override
   Future<void> revertSeek() => _record('revertSeek');
 
   @override
-  Future<void> seek(Duration position,
-          {bool relative = false, bool exact = false,}) =>
-      _record('seek');
+  Future<void> seek(
+    Duration position, {
+    bool relative = false,
+    bool exact = false,
+  }) => _record('seek');
 
   @override
   Future<void> setChapter(int index) => _record('setChapter');
@@ -188,9 +192,12 @@ class _ApiProbe implements PlayerApi {
   Future<void> setAudioTrack(Track track) => _record('setAudioTrack');
 
   @override
-  Future<void> addAudioTrack(Media file,
-          {bool select = true, String? title, String? lang,}) =>
-      _record('addAudioTrack');
+  Future<void> addAudioTrack(
+    Media file, {
+    bool select = true,
+    String? title,
+    String? lang,
+  }) => _record('addAudioTrack');
 
   @override
   Future<void> removeAudioTrack(Track track) => _record('removeAudioTrack');
@@ -234,8 +241,8 @@ class _ApiProbe implements PlayerApi {
 
   @override
   Future<void> updateSpectrum(
-          SpectrumSettings Function(SpectrumSettings) mapper,) =>
-      _record('updateSpectrum');
+    SpectrumSettings Function(SpectrumSettings) mapper,
+  ) => _record('updateSpectrum');
 
   @override
   Future<void> setCache(CacheSettings settings) => _record('setCache');
@@ -258,8 +265,7 @@ class _ApiProbe implements PlayerApi {
   Future<void> setTlsCaFile(String path) => _record('setTlsCaFile');
 
   @override
-  Future<void> setHlsBitrate(HlsBitrate hlsBitrate) =>
-      _record('setHlsBitrate');
+  Future<void> setHlsBitrate(HlsBitrate hlsBitrate) => _record('setHlsBitrate');
 
   @override
   Future<void> setCookies(bool enable) => _record('setCookies');
@@ -286,9 +292,10 @@ class _ApiProbe implements PlayerApi {
   Future<void> continueHook(int id) => _record('continueHook');
 
   @override
-  Future<void> setSourceResolver(SourceResolver? resolver,
-          {Duration? timeout = const Duration(seconds: 15),}) =>
-      _record('setSourceResolver');
+  Future<void> setSourceResolver(
+    SourceResolver? resolver, {
+    Duration? timeout = const Duration(seconds: 15),
+  }) => _record('setSourceResolver');
 
   @override
   Future<String?> getRawProperty(String name) async {

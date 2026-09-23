@@ -28,7 +28,7 @@ _NodeAlloc _scalarString(String value) {
     () {
       calloc.free(str);
       calloc.free(node);
-    }
+    },
   );
 }
 
@@ -76,7 +76,7 @@ _NodeAlloc _byteArray(List<int> bytes) {
       calloc.free(data);
       calloc.free(ba);
       calloc.free(node);
-    }
+    },
   );
 }
 
@@ -311,15 +311,17 @@ void main() {
   });
 
   group('decodeMpvNode — defensive', () {
-    test('unknown format → null (forward-compat with new mpv format codes)',
-        () {
-      final node = calloc<MpvNode>();
-      try {
-        node.ref.format = 9999; // Hypothetical future format mpv may add.
-        expect(decodeMpvNode(node.ref), isNull);
-      } finally {
-        calloc.free(node);
-      }
-    });
+    test(
+      'unknown format → null (forward-compat with new mpv format codes)',
+      () {
+        final node = calloc<MpvNode>();
+        try {
+          node.ref.format = 9999; // Hypothetical future format mpv may add.
+          expect(decodeMpvNode(node.ref), isNull);
+        } finally {
+          calloc.free(node);
+        }
+      },
+    );
   });
 }

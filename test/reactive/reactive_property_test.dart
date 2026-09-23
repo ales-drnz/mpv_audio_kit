@@ -16,8 +16,11 @@ void main() {
       // Microtask flush to surface anything that might have synchronously
       // landed in the broadcast controller; nothing should have.
       await Future<void>.delayed(Duration.zero);
-      expect(received, isEmpty,
-          reason: 'broadcast streams must not replay the seed value',);
+      expect(
+        received,
+        isEmpty,
+        reason: 'broadcast streams must not replay the seed value',
+      );
     });
 
     test('update emits and mutates value when value changes', () async {
@@ -39,8 +42,11 @@ void main() {
       prop.stream.listen(received.add);
 
       expect(prop.update(1), isTrue);
-      expect(prop.update(1), isFalse,
-          reason: 'second write of equal value must dedup',);
+      expect(
+        prop.update(1),
+        isFalse,
+        reason: 'second write of equal value must dedup',
+      );
       expect(prop.update(1), isFalse);
       expect(prop.update(2), isTrue);
 
@@ -75,8 +81,11 @@ void main() {
       final prop = ReactiveProperty<int>(0);
       await prop.close();
       expect(prop.update(99), isFalse);
-      expect(prop.value, 0,
-          reason: 'closed property must not mutate its cached value',);
+      expect(
+        prop.value,
+        0,
+        reason: 'closed property must not mutate its cached value',
+      );
     });
 
     test('multi-listener: each listener sees every change', () async {
@@ -122,7 +131,9 @@ void main() {
       prop.stream.listen(received.add);
 
       prop.update(const Duration(seconds: 1));
-      prop.update(const Duration(milliseconds: 1000)); // == const Duration(seconds:1)
+      prop.update(
+        const Duration(milliseconds: 1000),
+      ); // == const Duration(seconds:1)
 
       await Future<void>.delayed(Duration.zero);
       expect(received, [const Duration(seconds: 1)]);

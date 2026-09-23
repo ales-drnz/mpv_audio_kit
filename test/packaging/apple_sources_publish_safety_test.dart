@@ -38,7 +38,8 @@ void main() {
           expect(
             FileSystemEntity.isLinkSync(path),
             isFalse,
-            reason: '$path must be a real file — pub publish flattens '
+            reason:
+                '$path must be a real file — pub publish flattens '
                 'symlinks to broken regular files. '
                 'Run scripts/sync_apple_sources.sh.',
           );
@@ -51,7 +52,8 @@ void main() {
           expect(
             copy.readAsBytesSync(),
             equals(shared.readAsBytesSync()),
-            reason: '$path has drifted from the shared source. '
+            reason:
+                '$path has drifted from the shared source. '
                 'Run scripts/sync_apple_sources.sh.',
           );
         });
@@ -69,7 +71,8 @@ void main() {
       expect(
         ios.readAsBytesSync(),
         equals(macos.readAsBytesSync()),
-        reason: 'iOS and macOS privacy manifests must match — '
+        reason:
+            'iOS and macOS privacy manifests must match — '
             'they are maintained as per-platform copies.',
       );
     });

@@ -26,8 +26,11 @@ void main() {
         'truehd': Spdif.trueHd,
       };
       for (final e in cases.entries) {
-        expect(Spdif.fromMpv(e.key), e.value,
-            reason: 'fromMpv("${e.key}") should be ${e.value}',);
+        expect(
+          Spdif.fromMpv(e.key),
+          e.value,
+          reason: 'fromMpv("${e.key}") should be ${e.value}',
+        );
       }
     });
 
@@ -35,13 +38,20 @@ void main() {
       // aac and mp3 are af_fmt passthrough labels, NOT audio-spdif codecs —
       // mpv rejects them on the option, so the enum must not surface them.
       for (final bogus in ['aac', 'mp3', 'opus', 'flac', '', 'AC3']) {
-        expect(Spdif.fromMpv(bogus), isNull, reason: 'fromMpv("$bogus") → null');
+        expect(
+          Spdif.fromMpv(bogus),
+          isNull,
+          reason: 'fromMpv("$bogus") → null',
+        );
       }
     });
 
     test('parseMpvList parses CSV and silently drops unknown tokens', () {
-      expect(Spdif.parseMpvList('ac3,dts,truehd'),
-          {Spdif.ac3, Spdif.dts, Spdif.trueHd},);
+      expect(Spdif.parseMpvList('ac3,dts,truehd'), {
+        Spdif.ac3,
+        Spdif.dts,
+        Spdif.trueHd,
+      });
       // Mixed valid + rejected: only the valid ones survive.
       expect(Spdif.parseMpvList('aac,ac3,mp3,eac3'), {Spdif.ac3, Spdif.eac3});
       expect(Spdif.parseMpvList('  '), isEmpty);

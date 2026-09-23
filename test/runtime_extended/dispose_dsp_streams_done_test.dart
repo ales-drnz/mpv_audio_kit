@@ -21,8 +21,7 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   setUpAll(() => initLibmpvOrSkip());
 
-  test(
-      'dispose() closes the DSP streams (fft/pcm/spectrum/waveform) — '
+  test('dispose() closes the DSP streams (fft/pcm/spectrum/waveform) — '
       'subscribers must receive done', () async {
     final player = await buildPlayer();
     await player.ready;
@@ -50,7 +49,8 @@ void main() {
     await expectLater(
       controlDone.future.timeout(const Duration(seconds: 2)),
       completes,
-      reason: 'Control stream seekCompleted did not emit done after '
+      reason:
+          'Control stream seekCompleted did not emit done after '
           'dispose() — harness problem, not the audited bug.',
     );
 
@@ -66,9 +66,10 @@ void main() {
     expect(
       neverClosed,
       isEmpty,
-      reason: 'These DSP streams never emitted done after dispose() — '
+      reason:
+          'These DSP streams never emitted done after dispose() — '
           'their Player-side StreamControllers are not closed, so a '
           'subscriber awaiting `.first` across a dispose hangs forever.',
     );
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+  }, timeout: const Timeout(Duration(seconds: 30)));
 }

@@ -278,8 +278,9 @@ sealed class Channels {
 
   /// `7.1(wide-side)` — 7.1 with both wide-fronts AND side surrounds
   /// (no back surrounds).
-  static const Channels sevenOneWideSide =
-      _StdChannels(_Named.sevenOneWideSide);
+  static const Channels sevenOneWideSide = _StdChannels(
+    _Named.sevenOneWideSide,
+  );
 
   /// `7.1(top)` — 7.1 with top-front-left/right (height channels).
   static const Channels sevenOneTop = _StdChannels(_Named.sevenOneTop);

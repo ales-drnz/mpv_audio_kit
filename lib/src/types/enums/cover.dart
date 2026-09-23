@@ -26,10 +26,10 @@ enum Cover {
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [no].
   static Cover fromMpv(String raw) => switch (raw) {
-        'no' => no,
-        'exact' => exact,
-        'fuzzy' => fuzzy,
-        'all' => all,
-        _ => no,
-      };
+    'no' => no,
+    'exact' => exact,
+    'fuzzy' => fuzzy,
+    'all' => all,
+    _ => no,
+  };
 }

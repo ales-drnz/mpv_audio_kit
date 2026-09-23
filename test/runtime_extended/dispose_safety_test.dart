@@ -34,6 +34,6 @@ void main() {
       await player.dispose();
       // Wait for libmpv's background threads to fully wind down.
       await Future<void>.delayed(const Duration(seconds: 1));
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

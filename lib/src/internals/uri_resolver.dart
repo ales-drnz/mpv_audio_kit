@@ -76,8 +76,9 @@ Future<ResolvedUri> resolveUri(String uri) async {
   }
   if (Platform.isAndroid && uri.startsWith('content://')) {
     try {
-      final fd =
-          await _channel.invokeMethod<int>('openFileDescriptor', {'uri': uri});
+      final fd = await _channel.invokeMethod<int>('openFileDescriptor', {
+        'uri': uri,
+      });
       if (fd != null && fd > 0) {
         return ResolvedUri('fd://$fd', () => _closeAndroidFd(fd));
       }
@@ -134,8 +135,9 @@ Future<String> _doCopyAsset(String uri) async {
     // Both POSIX (`/`) and Windows (`\`) separators are flattened so the
     // temp filename never contains directory parts. On POSIX
     // `Platform.pathSeparator` is `/` and the second pass is a no-op.
-    final safeName =
-        assetPath.replaceAll(Platform.pathSeparator, '_').replaceAll('/', '_');
+    final safeName = assetPath
+        .replaceAll(Platform.pathSeparator, '_')
+        .replaceAll('/', '_');
     // Flattening alone is ambiguous — `a/b.mp3` and `a_b.mp3` collapse to
     // the same name, and the second extraction would overwrite a file mpv
     // may still be streaming. A stable FNV-1a hash of the ORIGINAL path
@@ -145,8 +147,9 @@ Future<String> _doCopyAsset(String uri) async {
       pathHash = ((pathHash ^ unit) * 0x01000193) & 0xFFFFFFFF;
     }
     final file = File(
-        '${Directory.systemTemp.path}${Platform.pathSeparator}'
-        'mpv_asset_${pathHash.toRadixString(16).padLeft(8, '0')}_$safeName',);
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      'mpv_asset_${pathHash.toRadixString(16).padLeft(8, '0')}_$safeName',
+    );
 
     // Slice the asset's view explicitly: rootBundle bundles can pack
     // multiple assets into one backing buffer, and the no-arg

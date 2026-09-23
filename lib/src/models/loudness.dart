@@ -24,12 +24,7 @@ class Loudness {
   final double? range;
 
   /// Creates a loudness snapshot.
-  const Loudness({
-    this.momentary,
-    this.shortTerm,
-    this.integrated,
-    this.range,
-  });
+  const Loudness({this.momentary, this.shortTerm, this.integrated, this.range});
 
   /// Returns a copy with the given fields replaced.
   Loudness copyWith({
@@ -37,17 +32,18 @@ class Loudness {
     Object? shortTerm = unset,
     Object? integrated = unset,
     Object? range = unset,
-  }) =>
-      Loudness(
-        momentary:
-            identical(momentary, unset) ? this.momentary : momentary as double?,
-        shortTerm:
-            identical(shortTerm, unset) ? this.shortTerm : shortTerm as double?,
-        integrated: identical(integrated, unset)
-            ? this.integrated
-            : integrated as double?,
-        range: identical(range, unset) ? this.range : range as double?,
-      );
+  }) => Loudness(
+    momentary: identical(momentary, unset)
+        ? this.momentary
+        : momentary as double?,
+    shortTerm: identical(shortTerm, unset)
+        ? this.shortTerm
+        : shortTerm as double?,
+    integrated: identical(integrated, unset)
+        ? this.integrated
+        : integrated as double?,
+    range: identical(range, unset) ? this.range : range as double?,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -62,6 +58,7 @@ class Loudness {
   int get hashCode => Object.hash(momentary, shortTerm, integrated, range);
 
   @override
-  String toString() => 'Loudness(momentary: $momentary, shortTerm: $shortTerm, '
+  String toString() =>
+      'Loudness(momentary: $momentary, shortTerm: $shortTerm, '
       'integrated: $integrated, range: $range)';
 }

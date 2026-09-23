@@ -84,11 +84,11 @@ class MediaSessionController {
     required void Function(MediaSessionCommand) onCommand,
     MediaSessionChannel? channel,
     ArtworkFetcher? artworkFetcher,
-  })  : _stateSnapshot = stateSnapshot,
-        _inputs = inputs,
-        _onCommand = onCommand,
-        _channel = channel ?? MediaSessionChannel(),
-        _artworkFetcher = artworkFetcher;
+  }) : _stateSnapshot = stateSnapshot,
+       _inputs = inputs,
+       _onCommand = onCommand,
+       _channel = channel ?? MediaSessionChannel(),
+       _artworkFetcher = artworkFetcher;
 
   /// Wires the controller up and pushes the initial full state to the
   /// native side. Returns once the initial `enable` call has been
@@ -115,7 +115,8 @@ class MediaSessionController {
       inputs: inputs,
       onCommand: onCommand,
       channel: channel,
-      artworkFetcher: artworkFetcher ??
+      artworkFetcher:
+          artworkFetcher ??
           (defaultTargetPlatform == TargetPlatform.linux
               ? downloadArtwork
               : null),
@@ -139,8 +140,9 @@ class MediaSessionController {
     _subscriptions.add(_inputs.rate.listen((_) => _markPlayback()));
     // A seek landing (PLAYBACK_RESTART) carries seek=true so the native side
     // (Linux MPRIS) can emit `Seeked` deterministically.
-    _subscriptions
-        .add(_inputs.seekCompleted.listen((_) => _markPlayback(seek: true)));
+    _subscriptions.add(
+      _inputs.seekCompleted.listen((_) => _markPlayback(seek: true)),
+    );
     // Seekable governs both the OS scrubber (enabled/disabled) and
     // the "live stream" UI mode — re-push when it flips.
     _subscriptions.add(_inputs.seekable.listen((_) => _markPlayback()));
@@ -162,11 +164,13 @@ class MediaSessionController {
     // `setMediaSession(copyWith(title: ...))` must also re-push metadata
     // or the override would never reach the OS until an unrelated mpv
     // metadata tick happened to fire (often never on a static track).
-    _subscriptions.add(_inputs.mediaSession.listen((session) {
-      if (session == null) return;
-      _channel.updateConfig(session);
-      _markMetadata();
-    }),);
+    _subscriptions.add(
+      _inputs.mediaSession.listen((session) {
+        if (session == null) return;
+        _channel.updateConfig(session);
+        _markMetadata();
+      }),
+    );
 
     // Inbound commands from the OS event channel.
     _commandSub = _channel.commandStream.listen(_onCommand);
@@ -263,10 +267,9 @@ class MediaSessionController {
     // reports the stream URL as `media-title`. extras sit below mpv's real
     // tags but above the filename-derived `media-title`.
     final playlist = state.playlist;
-    final item =
-        (playlist.index >= 0 && playlist.index < playlist.items.length)
-            ? playlist.items[playlist.index]
-            : null;
+    final item = (playlist.index >= 0 && playlist.index < playlist.items.length)
+        ? playlist.items[playlist.index]
+        : null;
     final extras = item?.extras;
 
     // Title falls through: explicit override → mpv's `metadata.title` tag
@@ -275,34 +278,43 @@ class MediaSessionController {
     // For a network item that last fallback is derived from the URL, so its
     // query string (often credentials) is stripped first.
     final remote = item != null && !_isLocalUri(item.uri);
-    final title = override?.title ??
+    final title =
+        override?.title ??
         _firstTagValue(mpvMeta, const ['title']) ??
         _extra(extras, 'title') ??
         (state.mediaTitle.isEmpty
             ? null
             : remote
-                ? _redactUrlTitle(state.mediaTitle)
-                : state.mediaTitle);
+            ? _redactUrlTitle(state.mediaTitle)
+            : state.mediaTitle);
 
-    final artist = override?.artist ??
+    final artist =
+        override?.artist ??
         _firstTagValue(mpvMeta, const ['artist', 'album_artist']) ??
         _extra(extras, 'artist');
 
-    final album = override?.album ??
+    final album =
+        override?.album ??
         _firstTagValue(mpvMeta, const ['album']) ??
         _extra(extras, 'album');
 
-    final duration = override?.duration ??
+    final duration =
+        override?.duration ??
         (state.duration == Duration.zero ? null : state.duration);
 
     // Rich tags (mpv-derived, with the extras-attached artist as a final
     // fallback for the album-artist line on tag-less streams).
     final albumArtist =
-        _firstTagValue(mpvMeta, const ['album_artist']) ?? _extra(extras, 'artist');
+        _firstTagValue(mpvMeta, const ['album_artist']) ??
+        _extra(extras, 'artist');
     final genre = _firstTagValue(mpvMeta, const ['genre']);
     // mpv `track` / `disc` tags are often "3" or "3/12" — take the leading int.
-    final trackNumber = _parseLeadingInt(_firstTagValue(mpvMeta, const ['track']));
-    final discNumber = _parseLeadingInt(_firstTagValue(mpvMeta, const ['disc']));
+    final trackNumber = _parseLeadingInt(
+      _firstTagValue(mpvMeta, const ['track']),
+    );
+    final discNumber = _parseLeadingInt(
+      _firstTagValue(mpvMeta, const ['disc']),
+    );
 
     // Source URI of the current item, for MPRIS xesam:url. Only local files:
     // the bus is readable by every process in the session, and a network
@@ -376,9 +388,9 @@ class MediaSessionController {
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
       unawaited(
-        _artworkFetcher!(Uri.parse(uri))
-            .catchError((Object _) => null)
-            .then((cover) {
+        _artworkFetcher!(Uri.parse(uri)).catchError((Object _) => null).then((
+          cover,
+        ) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;
           _fetchedArtUri = uri;
@@ -417,9 +429,10 @@ class MediaSessionController {
       MediaSessionArtworkNone() => (bytes: null, uri: null),
       MediaSessionArtworkCustom(:final cover) => (bytes: cover, uri: null),
       MediaSessionArtworkUri(:final uri) => (bytes: null, uri: uri.toString()),
-      MediaSessionArtworkEmbedded() => embedded != null
-          ? (bytes: embedded, uri: null)
-          : (bytes: null, uri: _extra(extras, 'art')),
+      MediaSessionArtworkEmbedded() =>
+        embedded != null
+            ? (bytes: embedded, uri: null)
+            : (bytes: null, uri: _extra(extras, 'art')),
     };
   }
 

@@ -54,19 +54,19 @@ enum Format {
 
   /// Maps a raw mpv-side value back to the enum. Unknown / empty → [auto].
   static Format fromMpv(String raw) => switch (raw) {
-        '' || 'no' => auto,
-        'u8' => u8,
-        'u8p' => u8Planar,
-        's16' => s16,
-        's16p' => s16Planar,
-        's32' => s32,
-        's32p' => s32Planar,
-        's64' => s64,
-        's64p' => s64Planar,
-        'float' => float32,
-        'floatp' => float32Planar,
-        'double' => float64,
-        'doublep' => float64Planar,
-        _ => auto,
-      };
+    '' || 'no' => auto,
+    'u8' => u8,
+    'u8p' => u8Planar,
+    's16' => s16,
+    's16p' => s16Planar,
+    's32' => s32,
+    's32p' => s32Planar,
+    's64' => s64,
+    's64p' => s64Planar,
+    'float' => float32,
+    'floatp' => float32Planar,
+    'double' => float64,
+    'doublep' => float64Planar,
+    _ => auto,
+  };
 }

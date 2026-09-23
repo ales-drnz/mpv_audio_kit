@@ -109,9 +109,9 @@ final class WaveformData {
     this.coverageBins,
     this.totalBins,
   }) : assert(
-          max.length == min.length && filled.length == min.length,
-          'WaveformData min/max/filled must share one length',
-        );
+         max.length == min.length && filled.length == min.length,
+         'WaveformData min/max/filled must share one length',
+       );
 
   /// Number of bins. Convenience accessor — equal to `min.length`.
   int get bins => min.length;

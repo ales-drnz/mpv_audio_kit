@@ -14,12 +14,14 @@ void main() {
     test('routes a double event to the matching spec and reduces state', () {
       final volume = ReactiveProperty<double>(100.0);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<double>.double(
-          name: 'volume',
-          reactive: volume,
-          parse: (raw, _) => raw,
-          reduce: (v, s) => s.copyWith(volume: v),
-        ),);
+        ..register(
+          MpvPropertySpec<double>.double(
+            name: 'volume',
+            reactive: volume,
+            parse: (raw, _) => raw,
+            reduce: (v, s) => s.copyWith(volume: v),
+          ),
+        );
 
       const initial = PlayerState();
       final next = registry.dispatch('volume', 75.5, initial);
@@ -38,12 +40,14 @@ void main() {
     test('returns null when the value is deduplicated', () {
       final volume = ReactiveProperty<double>(100.0);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<double>.double(
-          name: 'volume',
-          reactive: volume,
-          parse: (raw, _) => raw,
-          reduce: (v, s) => s.copyWith(volume: v),
-        ),);
+        ..register(
+          MpvPropertySpec<double>.double(
+            name: 'volume',
+            reactive: volume,
+            parse: (raw, _) => raw,
+            reduce: (v, s) => s.copyWith(volume: v),
+          ),
+        );
 
       const initial = PlayerState(volume: 75.5);
       // First call seeds the reactive at 75.5.
@@ -55,12 +59,14 @@ void main() {
     test('flag spec inverts pause→playing via the parser', () {
       final playing = ReactiveProperty<bool>(false);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<bool>.flag(
-          name: 'pause',
-          reactive: playing,
-          parse: (raw, _) => !raw,
-          reduce: (v, s) => s.copyWith(playing: v),
-        ),);
+        ..register(
+          MpvPropertySpec<bool>.flag(
+            name: 'pause',
+            reactive: playing,
+            parse: (raw, _) => !raw,
+            reduce: (v, s) => s.copyWith(playing: v),
+          ),
+        );
 
       const initial = PlayerState();
 
@@ -78,12 +84,14 @@ void main() {
     test('flag spec accepts integer 0/1 in addition to bool', () {
       final mute = ReactiveProperty<bool>(false);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<bool>.flag(
-          name: 'mute',
-          reactive: mute,
-          parse: (raw, _) => raw,
-          reduce: (v, s) => s.copyWith(mute: v),
-        ),);
+        ..register(
+          MpvPropertySpec<bool>.flag(
+            name: 'mute',
+            reactive: mute,
+            parse: (raw, _) => raw,
+            reduce: (v, s) => s.copyWith(mute: v),
+          ),
+        );
 
       const initial = PlayerState();
       // Event isolate currently forwards flags as Int32; this test ensures
@@ -96,12 +104,14 @@ void main() {
     test('parse can transform raw values (empty string → Format.auto)', () {
       final audioFormat = ReactiveProperty<Format>(Format.s16);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<Format>.string(
-          name: 'audio-format',
-          reactive: audioFormat,
-          parse: (raw, _) => Format.fromMpv(raw),
-          reduce: (v, s) => s.copyWith(audioFormat: v),
-        ),);
+        ..register(
+          MpvPropertySpec<Format>.string(
+            name: 'audio-format',
+            reactive: audioFormat,
+            parse: (raw, _) => Format.fromMpv(raw),
+            reduce: (v, s) => s.copyWith(audioFormat: v),
+          ),
+        );
 
       const initial = PlayerState();
       final next = registry.dispatch('audio-format', '', initial);
@@ -113,13 +123,15 @@ void main() {
       final calls = <double>[];
       final volume = ReactiveProperty<double>(0.0);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<double>.double(
-          name: 'volume',
-          reactive: volume,
-          parse: (raw, _) => raw,
-          reduce: (v, s) => s.copyWith(volume: v),
-          onChange: calls.add,
-        ),);
+        ..register(
+          MpvPropertySpec<double>.double(
+            name: 'volume',
+            reactive: volume,
+            parse: (raw, _) => raw,
+            reduce: (v, s) => s.copyWith(volume: v),
+            onChange: calls.add,
+          ),
+        );
 
       const initial = PlayerState();
       registry.dispatch('volume', 50.0, initial);
@@ -139,20 +151,25 @@ void main() {
       // update.
       final maxBytes = ReactiveProperty<int>(0);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<int>.int64(
-          name: 'demuxer-max-bytes',
-          reactive: maxBytes,
-          parse: (raw, _) => raw,
-          reduce: (v, s) =>
-              s.copyWith(demuxer: s.demuxer.copyWith(maxBytes: v)),
-        ),);
+        ..register(
+          MpvPropertySpec<int>.int64(
+            name: 'demuxer-max-bytes',
+            reactive: maxBytes,
+            parse: (raw, _) => raw,
+            reduce: (v, s) =>
+                s.copyWith(demuxer: s.demuxer.copyWith(maxBytes: v)),
+          ),
+        );
 
       const initial = PlayerState();
       final next = registry.dispatch('demuxer-max-bytes', 5, initial);
       expect(next, isNotNull);
       expect(next!.demuxer.maxBytes, 5);
-      expect(maxBytes.value, 5,
-          reason: 'reactive must update in lockstep with the state reducer',);
+      expect(
+        maxBytes.value,
+        5,
+        reason: 'reactive must update in lockstep with the state reducer',
+      );
 
       // Same value → dedup → no state allocation.
       expect(registry.dispatch('demuxer-max-bytes', 5, next), isNull);
@@ -168,12 +185,14 @@ void main() {
     test('Duration-typed double spec wraps microseconds correctly', () {
       final position = ReactiveProperty<Duration>(Duration.zero);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<Duration>.double(
-          name: 'time-pos',
-          reactive: position,
-          parse: (raw, _) => Duration(microseconds: (raw * 1e6).round()),
-          reduce: (v, s) => s.copyWith(position: v),
-        ),);
+        ..register(
+          MpvPropertySpec<Duration>.double(
+            name: 'time-pos',
+            reactive: position,
+            parse: (raw, _) => Duration(microseconds: (raw * 1e6).round()),
+            reduce: (v, s) => s.copyWith(position: v),
+          ),
+        );
 
       const initial = PlayerState();
       final next = registry.dispatch('time-pos', 1.5, initial);
@@ -188,18 +207,22 @@ void main() {
       final a = ReactiveProperty<double>(0.0);
       final b = ReactiveProperty<bool>(false);
       final registry = PropertyRegistry()
-        ..register(MpvPropertySpec<double>.double(
-          name: 'volume',
-          reactive: a,
-          parse: (raw, _) => raw,
-          reduce: (v, s) => s.copyWith(volume: v),
-        ),)
-        ..register(MpvPropertySpec<bool>.flag(
-          name: 'mute',
-          reactive: b,
-          parse: (raw, _) => raw,
-          reduce: (v, s) => s.copyWith(mute: v),
-        ),);
+        ..register(
+          MpvPropertySpec<double>.double(
+            name: 'volume',
+            reactive: a,
+            parse: (raw, _) => raw,
+            reduce: (v, s) => s.copyWith(volume: v),
+          ),
+        )
+        ..register(
+          MpvPropertySpec<bool>.flag(
+            name: 'mute',
+            reactive: b,
+            parse: (raw, _) => raw,
+            reduce: (v, s) => s.copyWith(mute: v),
+          ),
+        );
 
       await registry.closeAll();
       expect(a.isClosed, isTrue);

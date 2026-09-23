@@ -34,12 +34,14 @@ void main() {
     reactives = DefaultPropertyReactives();
     state = const PlayerState();
     registry = PropertyRegistry()
-      ..registerAll(buildDefaultSpecs(
-        reactives,
-        onIdleActive: (_) {},
-        onAudioOutputState: (_) {},
-        onEofReached: (_) {},
-      ),);
+      ..registerAll(
+        buildDefaultSpecs(
+          reactives,
+          onIdleActive: (_) {},
+          onAudioOutputState: (_) {},
+          onEofReached: (_) {},
+        ),
+      );
   });
 
   PlayerState dispatch(String name, dynamic raw) {
@@ -90,8 +92,7 @@ void main() {
   });
 
   group('Default registry — audio params (decoder + hardware node maps)', () {
-    test(
-        '`audio-params` node + `audio-codec` + `audio-codec-name` populate '
+    test('`audio-params` node + `audio-codec` + `audio-codec-name` populate '
         'state.audioParams', () {
       // Single MPV_FORMAT_NODE_MAP for the 5 wire fields, replacing the
       // 5 individual sub-property observers from 0.0.x. Codec fields stay
@@ -115,8 +116,7 @@ void main() {
       expect(state.audioParams.codecName, 'FLAC');
     });
 
-    test(
-        '`audio-params` node merges into existing audioParams without '
+    test('`audio-params` node merges into existing audioParams without '
         'clobbering codec / codecName populated by sibling specs', () {
       // Codec arrives first (mpv emits siblings independently).
       dispatch('audio-codec', 'flac');
@@ -133,9 +133,13 @@ void main() {
       // Both node-side and sibling-side fields must coexist on state.
       expect(state.audioParams.format, Format.float32Planar);
       expect(state.audioParams.sampleRate, 48000);
-      expect(state.audioParams.codec, 'flac',
-          reason: 'audio-params node reduce must not reset the codec fields '
-              'populated by audio-codec / audio-codec-name siblings',);
+      expect(
+        state.audioParams.codec,
+        'flac',
+        reason:
+            'audio-params node reduce must not reset the codec fields '
+            'populated by audio-codec / audio-codec-name siblings',
+      );
       expect(state.audioParams.codecName, 'FLAC');
     });
 
@@ -211,19 +215,24 @@ void main() {
   });
 
   group('Default registry — stream-only properties', () {
-    test('prefetch-state updates the reactive without touching PlayerState',
-        () {
-      // PlayerState has no field for prefetch state by design.
-      final initialFingerprint = state;
+    test(
+      'prefetch-state updates the reactive without touching PlayerState',
+      () {
+        // PlayerState has no field for prefetch state by design.
+        final initialFingerprint = state;
 
-      dispatch('prefetch-state', 'loading');
-      expect(reactives.prefetchState.value, MpvPrefetchState.loading);
-      expect(state, equals(initialFingerprint),
-          reason: 'state must not mutate for stream-only properties',);
+        dispatch('prefetch-state', 'loading');
+        expect(reactives.prefetchState.value, MpvPrefetchState.loading);
+        expect(
+          state,
+          equals(initialFingerprint),
+          reason: 'state must not mutate for stream-only properties',
+        );
 
-      dispatch('prefetch-state', 'ready');
-      expect(reactives.prefetchState.value, MpvPrefetchState.ready);
-    });
+        dispatch('prefetch-state', 'ready');
+        expect(reactives.prefetchState.value, MpvPrefetchState.ready);
+      },
+    );
 
     test('unknown prefetch values fall back to idle', () {
       dispatch('prefetch-state', 'totally-bogus');
@@ -305,9 +314,13 @@ void main() {
       expect(state.currentChapter, 2);
 
       dispatch('chapter', -1);
-      expect(state.currentChapter, isNull,
-          reason: 'mpv emits chapter=-1 when no chapter is active; the '
-              'parser must surface that as `null`',);
+      expect(
+        state.currentChapter,
+        isNull,
+        reason:
+            'mpv emits chapter=-1 when no chapter is active; the '
+            'parser must surface that as `null`',
+      );
     });
 
     test('ab-loop-a / ab-loop-b ("no" → null, numeric → Duration)', () {
@@ -346,10 +359,7 @@ void main() {
         'title': 'Chapter One',
         'lang': 'eng',
       });
-      expect(state.chapterMetadata, {
-        'title': 'Chapter One',
-        'lang': 'eng',
-      });
+      expect(state.chapterMetadata, {'title': 'Chapter One', 'lang': 'eng'});
 
       dispatch('chapter-metadata', <String, dynamic>{});
       expect(state.chapterMetadata, isEmpty);
@@ -382,19 +392,23 @@ void main() {
       dispatch('replaygain-clip', true);
       dispatch('replaygain-fallback', 1.5);
       expect(
-          state.replayGain,
-          const ReplayGainSettings(
-            mode: ReplayGain.album,
-            preamp: -3.0,
-            clip: true,
-            fallback: 1.5,
-          ),);
+        state.replayGain,
+        const ReplayGainSettings(
+          mode: ReplayGain.album,
+          preamp: -3.0,
+          clip: true,
+          fallback: 1.5,
+        ),
+      );
 
       // Change just preamp; assert the other 3 fields are untouched.
       dispatch('replaygain-preamp', -10.0);
       expect(state.replayGain.preamp, -10.0);
-      expect(state.replayGain.mode, ReplayGain.album,
-          reason: 'mode must survive a preamp-only dispatch',);
+      expect(
+        state.replayGain.mode,
+        ReplayGain.album,
+        reason: 'mode must survive a preamp-only dispatch',
+      );
       expect(state.replayGain.clip, isTrue);
       expect(state.replayGain.fallback, 1.5);
 
@@ -402,8 +416,11 @@ void main() {
       dispatch('replaygain-clip', false);
       expect(state.replayGain.clip, isFalse);
       expect(state.replayGain.mode, ReplayGain.album);
-      expect(state.replayGain.preamp, -10.0,
-          reason: 'preamp from the previous dispatch must survive',);
+      expect(
+        state.replayGain.preamp,
+        -10.0,
+        reason: 'preamp from the previous dispatch must survive',
+      );
     });
 
     test('cache: dispatching one property preserves the other 5', () {
@@ -415,15 +432,16 @@ void main() {
       dispatch('cache-pause-wait', 5.0);
       dispatch('cache-pause-initial', true);
       expect(
-          state.cache,
-          const CacheSettings(
-            mode: Cache.yes,
-            secs: Duration(seconds: 30),
-            onDisk: true,
-            pause: false,
-            pauseWait: Duration(seconds: 5),
-            pauseInitial: true,
-          ),);
+        state.cache,
+        const CacheSettings(
+          mode: Cache.yes,
+          secs: Duration(seconds: 30),
+          onDisk: true,
+          pause: false,
+          pauseWait: Duration(seconds: 5),
+          pauseInitial: true,
+        ),
+      );
 
       dispatch('cache-secs', 60.0);
       expect(state.cache.secs, const Duration(seconds: 60));
@@ -449,12 +467,13 @@ void main() {
       dispatch('demuxer-max-back-bytes', 10 * 1024 * 1024);
       dispatch('demuxer-readahead-secs', 5.0);
       expect(
-          state.demuxer,
-          const DemuxerSettings(
-            maxBytes: 200 * 1024 * 1024,
-            maxBackBytes: 10 * 1024 * 1024,
-            readahead: Duration(seconds: 5),
-          ),);
+        state.demuxer,
+        const DemuxerSettings(
+          maxBytes: 200 * 1024 * 1024,
+          maxBackBytes: 10 * 1024 * 1024,
+          readahead: Duration(seconds: 5),
+        ),
+      );
 
       dispatch('demuxer-readahead-secs', 2.5);
       expect(state.demuxer.readahead, const Duration(milliseconds: 2500));
@@ -473,8 +492,11 @@ void main() {
       expect(state.replayGain, const ReplayGainSettings());
       dispatch('replaygain-preamp', 1.0);
       expect(state.replayGain.preamp, 1.0);
-      expect(state.replayGain.mode, ReplayGain.no,
-          reason: 'default ReplayGainSettings.mode must survive',);
+      expect(
+        state.replayGain.mode,
+        ReplayGain.no,
+        reason: 'default ReplayGainSettings.mode must survive',
+      );
     });
   });
 
@@ -483,12 +505,14 @@ void main() {
       final calls = <AudioOutputState>[];
       reactives = DefaultPropertyReactives();
       registry = PropertyRegistry()
-        ..registerAll(buildDefaultSpecs(
-          reactives,
-          onIdleActive: (_) {},
-          onAudioOutputState: calls.add,
-          onEofReached: (_) {},
-        ),);
+        ..registerAll(
+          buildDefaultSpecs(
+            reactives,
+            onIdleActive: (_) {},
+            onAudioOutputState: calls.add,
+            onEofReached: (_) {},
+          ),
+        );
       state = const PlayerState();
 
       registry.dispatch('audio-output-state', 'initializing', state);
@@ -507,12 +531,14 @@ void main() {
       final calls = <bool>[];
       reactives = DefaultPropertyReactives();
       registry = PropertyRegistry()
-        ..registerAll(buildDefaultSpecs(
-          reactives,
-          onIdleActive: calls.add,
-          onAudioOutputState: (_) {},
-          onEofReached: (_) {},
-        ),);
+        ..registerAll(
+          buildDefaultSpecs(
+            reactives,
+            onIdleActive: calls.add,
+            onAudioOutputState: (_) {},
+            onEofReached: (_) {},
+          ),
+        );
       state = const PlayerState();
 
       registry.dispatch('idle-active', true, state);
@@ -526,12 +552,14 @@ void main() {
       final calls = <bool>[];
       reactives = DefaultPropertyReactives();
       registry = PropertyRegistry()
-        ..registerAll(buildDefaultSpecs(
-          reactives,
-          onIdleActive: (_) {},
-          onAudioOutputState: (_) {},
-          onEofReached: calls.add,
-        ),);
+        ..registerAll(
+          buildDefaultSpecs(
+            reactives,
+            onIdleActive: (_) {},
+            onAudioOutputState: (_) {},
+            onEofReached: calls.add,
+          ),
+        );
       state = const PlayerState();
 
       registry.dispatch('eof-reached', true, state);
@@ -610,12 +638,16 @@ void main() {
         'chapter-metadata', 'mpv-version', 'ffmpeg-version',
       };
 
-      expect(actual, equals(documented),
-          reason: 'Default registry drifted from the documented contract. '
-              'Missing: ${documented.difference(actual)}. '
-              'Extra: ${actual.difference(documented)}. '
-              'Update the `documented` set in this test if the change is '
-              'deliberate.',);
+      expect(
+        actual,
+        equals(documented),
+        reason:
+            'Default registry drifted from the documented contract. '
+            'Missing: ${documented.difference(actual)}. '
+            'Extra: ${actual.difference(documented)}. '
+            'Update the `documented` set in this test if the change is '
+            'deliberate.',
+      );
     });
   });
 }

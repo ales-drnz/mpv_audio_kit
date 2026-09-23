@@ -36,53 +36,83 @@ void main() {
       expect(s.duration, Duration.zero);
       expect(s.buffer, Duration.zero);
       expect(s.audioDelay, Duration.zero);
-      expect(s.cache.secs, const Duration(hours: 1000),
-          reason: 'matches mpv `--cache-secs` default (~1000h)',);
-      expect(s.cache.pauseWait, const Duration(seconds: 1),
-          reason: 'matches mpv `--cache-pause-wait=1.0`',);
-      expect(s.networkTimeout, const Duration(seconds: 60),
-          reason: 'matches mpv `--network-timeout=60`',);
-      expect(s.audioBuffer, const Duration(milliseconds: 200),
-          reason: 'matches mpv `--audio-buffer=0.2`',);
+      expect(
+        s.cache.secs,
+        const Duration(hours: 1000),
+        reason: 'matches mpv `--cache-secs` default (~1000h)',
+      );
+      expect(
+        s.cache.pauseWait,
+        const Duration(seconds: 1),
+        reason: 'matches mpv `--cache-pause-wait=1.0`',
+      );
+      expect(
+        s.networkTimeout,
+        const Duration(seconds: 60),
+        reason: 'matches mpv `--network-timeout=60`',
+      );
+      expect(
+        s.audioBuffer,
+        const Duration(milliseconds: 200),
+        reason: 'matches mpv `--audio-buffer=0.2`',
+      );
     });
 
     test('typed enums start at the documented default variant', () {
       // Regression test for 0.1.0: the enum migration must preserve
       // the previous string defaults' semantics.
       const s = PlayerState();
-      expect(s.gapless, Gapless.weak,
-          reason: 'matches mpv default `gapless-audio=weak`',);
+      expect(
+        s.gapless,
+        Gapless.weak,
+        reason: 'matches mpv default `gapless-audio=weak`',
+      );
       expect(s.replayGain.mode, ReplayGain.no);
       expect(s.cache.mode, Cache.auto);
-      expect(s.coverArtAuto, Cover.no,
-          reason: 'library default is `no` (mpv default would be `exact`); '
-              'we disable to avoid implicit file scanning',);
+      expect(
+        s.coverArtAuto,
+        Cover.no,
+        reason:
+            'library default is `no` (mpv default would be `exact`); '
+            'we disable to avoid implicit file scanning',
+      );
     });
 
-    test('replayGain + cache config defaults aggregate the granular fields',
-        () {
-      const s = PlayerState();
-      expect(s.replayGain, const ReplayGainSettings());
-      expect(s.replayGain.mode, ReplayGain.no);
-      expect(s.replayGain.preamp, 0.0);
-      expect(s.replayGain.clip, isFalse);
-      expect(s.replayGain.fallback, 0.0);
+    test(
+      'replayGain + cache config defaults aggregate the granular fields',
+      () {
+        const s = PlayerState();
+        expect(s.replayGain, const ReplayGainSettings());
+        expect(s.replayGain.mode, ReplayGain.no);
+        expect(s.replayGain.preamp, 0.0);
+        expect(s.replayGain.clip, isFalse);
+        expect(s.replayGain.fallback, 0.0);
 
-      expect(s.cache, const CacheSettings());
-      expect(s.cache.mode, Cache.auto);
-      expect(s.cache.secs, const Duration(hours: 1000));
-      expect(s.cache.onDisk, isFalse);
-      expect(s.cache.pause, isTrue);
-      expect(s.cache.pauseWait, const Duration(seconds: 1));
+        expect(s.cache, const CacheSettings());
+        expect(s.cache.mode, Cache.auto);
+        expect(s.cache.secs, const Duration(hours: 1000));
+        expect(s.cache.onDisk, isFalse);
+        expect(s.cache.pause, isTrue);
+        expect(s.cache.pauseWait, const Duration(seconds: 1));
 
-      expect(s.demuxer, const DemuxerSettings());
-      expect(s.demuxer.maxBytes, 150 * 1024 * 1024,
-          reason: 'matches mpv `--demuxer-max-bytes=150MiB`',);
-      expect(s.demuxer.maxBackBytes, 50 * 1024 * 1024,
-          reason: 'matches mpv `--demuxer-max-back-bytes=50MiB`',);
-      expect(s.demuxer.readahead, const Duration(seconds: 1),
-          reason: 'matches mpv `--demuxer-readahead-secs=1`',);
-    });
+        expect(s.demuxer, const DemuxerSettings());
+        expect(
+          s.demuxer.maxBytes,
+          150 * 1024 * 1024,
+          reason: 'matches mpv `--demuxer-max-bytes=150MiB`',
+        );
+        expect(
+          s.demuxer.maxBackBytes,
+          50 * 1024 * 1024,
+          reason: 'matches mpv `--demuxer-max-back-bytes=50MiB`',
+        );
+        expect(
+          s.demuxer.readahead,
+          const Duration(seconds: 1),
+          reason: 'matches mpv `--demuxer-readahead-secs=1`',
+        );
+      },
+    );
 
     test('audioBitrate is null by default (unavailable, NOT zero)', () {
       // Regression test: 0.1.0 keeps `audioBitrate` as `double?` with
@@ -161,8 +191,11 @@ void main() {
       const a = PlayerState(volume: 50.0, mute: true);
       final b = a.copyWith(volume: 75.0);
       expect(b.volume, 75.0);
-      expect(b.mute, isTrue,
-          reason: 'unrelated fields must survive a partial copyWith',);
+      expect(
+        b.mute,
+        isTrue,
+        reason: 'unrelated fields must survive a partial copyWith',
+      );
     });
 
     test('Duration fields participate in equality', () {

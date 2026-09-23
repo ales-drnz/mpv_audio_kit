@@ -36,22 +36,25 @@ void main() {
   setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('playWhenReady intent axis (end-to-end)', () {
-    test('open(play: true) emits playWhenReady=true on the FIRST load',
-        () async {
-      // Binding intent to mpv's `pause` stream would leave the play/pause
-      // button stuck — `pause` is silent on the first autoplay. Intent is
-      // set optimistically at the open() call-site, so it must surface
-      // even on a cold player.
-      final player = await buildPlayer();
-      addTearDown(player.dispose);
+    test(
+      'open(play: true) emits playWhenReady=true on the FIRST load',
+      () async {
+        // Binding intent to mpv's `pause` stream would leave the play/pause
+        // button stuck — `pause` is silent on the first autoplay. Intent is
+        // set optimistically at the open() call-site, so it must surface
+        // even on a cold player.
+        final player = await buildPlayer();
+        addTearDown(player.dispose);
 
-      final firstTrue = player.stream.playWhenReady
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 10));
-      await player.open(Media(fixturePath), play: true);
-      await firstTrue;
-      expect(player.state.playWhenReady, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 20)),);
+        final firstTrue = player.stream.playWhenReady
+            .firstWhere((p) => p)
+            .timeout(const Duration(seconds: 10));
+        await player.open(Media(fixturePath), play: true);
+        await firstTrue;
+        expect(player.state.playWhenReady, isTrue);
+      },
+      timeout: const Timeout(Duration(seconds: 20)),
+    );
 
     test('open(play: false) leaves playWhenReady=false', () async {
       final player = await buildPlayer();
@@ -59,10 +62,9 @@ void main() {
 
       await openAndWaitForLoad(player, fixturePath); // opens with play: false
       expect(player.state.playWhenReady, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 20)),);
+    }, timeout: const Timeout(Duration(seconds: 20)));
 
-    test('seek of a PLAYING file never flips playWhenReady to false',
-        () async {
+    test('seek of a PLAYING file never flips playWhenReady to false', () async {
       // The core anti-flicker guarantee. While core-idle (→ state.playing)
       // may toggle during each seek, the intent axis must stay true
       // across a burst of seeks — that is what keeps the OS button stable.
@@ -92,18 +94,22 @@ void main() {
       // each waiting for the position to land so mpv actually runs the
       // reset → restart cycle (which flips core-idle) every time.
       for (final ms in const [200, 1200, 400, 1800, 600, 2200]) {
-        final landed = player.stream.seekCompleted.first
-            .timeout(const Duration(seconds: 5));
+        final landed = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 5),
+        );
         await player.seek(Duration(milliseconds: ms));
         await landed;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
       await sub.cancel();
 
-      expect(emissions, isNot(contains(false)),
-          reason: 'intent must not flip false during seeks (button flicker)',);
+      expect(
+        emissions,
+        isNot(contains(false)),
+        reason: 'intent must not flip false during seeks (button flicker)',
+      );
       expect(player.state.playWhenReady, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('pause() / play() toggle playWhenReady', () async {
       final player = await buildPlayer();
@@ -131,7 +137,7 @@ void main() {
       await player.play();
       await up2;
       expect(player.state.playWhenReady, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 25)),);
+    }, timeout: const Timeout(Duration(seconds: 25)));
 
     test('stop() clears playWhenReady', () async {
       final player = await buildPlayer();
@@ -149,6 +155,6 @@ void main() {
       await player.stop();
       await down;
       expect(player.state.playWhenReady, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 25)),);
+    }, timeout: const Timeout(Duration(seconds: 25)));
   });
 }

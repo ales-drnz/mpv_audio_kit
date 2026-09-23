@@ -57,15 +57,14 @@ final class CacheSettings {
     bool? pause,
     Duration? pauseWait,
     bool? pauseInitial,
-  }) =>
-      CacheSettings(
-        mode: mode ?? this.mode,
-        secs: secs ?? this.secs,
-        onDisk: onDisk ?? this.onDisk,
-        pause: pause ?? this.pause,
-        pauseWait: pauseWait ?? this.pauseWait,
-        pauseInitial: pauseInitial ?? this.pauseInitial,
-      );
+  }) => CacheSettings(
+    mode: mode ?? this.mode,
+    secs: secs ?? this.secs,
+    onDisk: onDisk ?? this.onDisk,
+    pause: pause ?? this.pause,
+    pauseWait: pauseWait ?? this.pauseWait,
+    pauseInitial: pauseInitial ?? this.pauseInitial,
+  );
 
   @override
   bool operator ==(Object other) =>

@@ -38,8 +38,9 @@ void main() {
           .firstWhere((c) => c)
           .timeout(const Duration(seconds: 15));
       await player.openAll(
-          uris.map(Media.new).toList(growable: false),
-          play: true,);
+        uris.map(Media.new).toList(growable: false),
+        play: true,
+      );
       await completed;
       // `completed` flips on the eof-reached edge; the keep-open pause is
       // written by mpv's playloop right after. Poll until it lands.
@@ -58,40 +59,53 @@ void main() {
       // The "user clicks a new album" moment: without the corrective
       // unpause, mpv's keep-open logic re-pauses between the pause
       // write and the loadfile, and the new file loads stuck paused.
-      final loaded = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
       await player.open(Media(fixturePath), play: true);
       await loaded;
 
-      expect(await player.getRawProperty('pause'), 'no',
-          reason: 'a play: true load must not inherit the keep-open pause',);
+      expect(
+        await player.getRawProperty('pause'),
+        'no',
+        reason: 'a play: true load must not inherit the keep-open pause',
+      );
       expect(player.state.playWhenReady, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('openAll(play: true) from the parked state starts unpaused',
-        () async {
+    test('openAll(play: true) from the parked state starts unpaused', () async {
       await playToEofPark([shortFixture]);
 
-      final loaded = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
-      await player.openAll([Media(fixturePath), Media(shortFixture)],
-          play: true,);
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
+      await player.openAll([
+        Media(fixturePath),
+        Media(shortFixture),
+      ], play: true);
       await loaded;
 
-      expect(await player.getRawProperty('pause'), 'no',
-          reason: 'a play: true load must not inherit the keep-open pause',);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+      expect(
+        await player.getRawProperty('pause'),
+        'no',
+        reason: 'a play: true load must not inherit the keep-open pause',
+      );
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('jump() from the parked state starts unpaused', () async {
       await playToEofPark([shortFixture, shortFixture]);
 
-      final loaded = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
       await player.jump(0);
       await loaded;
 
-      expect(await player.getRawProperty('pause'), 'no',
-          reason: 'jump() must not inherit the keep-open pause',);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+      expect(
+        await player.getRawProperty('pause'),
+        'no',
+        reason: 'jump() must not inherit the keep-open pause',
+      );
+    }, timeout: const Timeout(Duration(seconds: 60)));
   });
 }

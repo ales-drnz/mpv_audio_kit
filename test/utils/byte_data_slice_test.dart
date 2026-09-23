@@ -42,8 +42,10 @@ void main() {
       }
       final view = ByteData.sublistView(backing, 16, 32);
 
-      final slice =
-          view.buffer.asUint8List(view.offsetInBytes, view.lengthInBytes);
+      final slice = view.buffer.asUint8List(
+        view.offsetInBytes,
+        view.lengthInBytes,
+      );
       expect(slice.length, 16);
       expect(slice.first, 16);
       expect(slice.last, 31);
@@ -64,12 +66,17 @@ void main() {
       // Buggy: would silently include asset A's bytes.
       final naive = viewB.buffer.asUint8List();
       expect(naive.length, 80);
-      expect(naive.any((b) => b == 0xAA), isTrue,
-          reason: 'no-arg asUint8List leaks sibling bytes',);
+      expect(
+        naive.any((b) => b == 0xAA),
+        isTrue,
+        reason: 'no-arg asUint8List leaks sibling bytes',
+      );
 
       // Fixed: respects the slice boundaries.
-      final correct =
-          viewB.buffer.asUint8List(viewB.offsetInBytes, viewB.lengthInBytes);
+      final correct = viewB.buffer.asUint8List(
+        viewB.offsetInBytes,
+        viewB.lengthInBytes,
+      );
       expect(correct.length, 40);
       expect(correct.every((b) => b == 0xBB), isTrue);
     });

@@ -11,10 +11,8 @@ import 'dart:typed_data';
 /// beachball while an audio output initializes). `value` is the same decoded
 /// shape the property-change pipeline produces (`Map` / `List` / scalar /
 /// [Uint8List]), already copied out of mpv-owned memory in the event isolate.
-typedef AsyncPropertyGet = Future<(int, dynamic)> Function(
-  String name,
-  int format,
-);
+typedef AsyncPropertyGet =
+    Future<(int, dynamic)> Function(String name, int format);
 
 /// Issues an async mpv property write and resolves with the mpv rc. Used by
 /// the listener-gated pipelines to flip their native `*-enabled` flags

@@ -28,8 +28,7 @@ void main() {
 
   setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
-  test(
-      'playbackState stream emits MpvPlaybackState.playing during '
+  test('playbackState stream emits MpvPlaybackState.playing during '
       'normal playback', () async {
     final player = await buildPlayer();
 
@@ -42,17 +41,22 @@ void main() {
           .timeout(const Duration(seconds: 10));
 
       await player.open(Media(fixturePath), play: false);
-      await player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
+      await player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
       await player.play();
 
       final state = await playingEmit;
-      expect(state, MpvPlaybackState.playing,
-          reason: 'aggregate stream must emit `playing` once core-idle '
-              'flips to false on the first play() call',);
+      expect(
+        state,
+        MpvPlaybackState.playing,
+        reason:
+            'aggregate stream must emit `playing` once core-idle '
+            'flips to false on the first play() call',
+      );
     } finally {
       await player.stop();
       await player.dispose();
     }
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+  }, timeout: const Timeout(Duration(seconds: 30)));
 }

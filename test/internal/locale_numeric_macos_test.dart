@@ -42,15 +42,20 @@ void main() {
 
   final libc = DynamicLibrary.open('libSystem.B.dylib');
 
-  final setlocale = libc.lookupFunction<
-      Pointer<Utf8> Function(Int32, Pointer<Utf8>),
-      Pointer<Utf8> Function(int, Pointer<Utf8>)>('setlocale');
+  final setlocale = libc
+      .lookupFunction<
+        Pointer<Utf8> Function(Int32, Pointer<Utf8>),
+        Pointer<Utf8> Function(int, Pointer<Utf8>)
+      >('setlocale');
 
   // struct lconv's first member is `char *decimal_point` (POSIX). Used
   // as a semantic sanity check that category 4 really is LC_NUMERIC on
   // this host — the exact class of mistake this file is guarding against.
-  final localeconv = libc.lookupFunction<Pointer<Pointer<Utf8>> Function(),
-      Pointer<Pointer<Utf8>> Function()>('localeconv');
+  final localeconv = libc
+      .lookupFunction<
+        Pointer<Pointer<Utf8>> Function(),
+        Pointer<Pointer<Utf8>> Function()
+      >('localeconv');
 
   String currentNumericLocale() =>
       setlocale(lcNumeric, nullptr).cast<Utf8>().toDartString();
@@ -66,8 +71,7 @@ void main() {
     original = null;
   });
 
-  test(
-      'ensureInitialized resets LC_NUMERIC (macOS category 4) to "C" '
+  test('ensureInitialized resets LC_NUMERIC (macOS category 4) to "C" '
       'from a non-C locale', () {
     original = currentNumericLocale();
 
@@ -86,8 +90,9 @@ void main() {
     }
     if (perturbed == null) {
       markTestSkipped(
-          'Neither of $candidates is installed on this host (`locale -a`) — '
-          'cannot perturb LC_NUMERIC to a non-C value.');
+        'Neither of $candidates is installed on this host (`locale -a`) — '
+        'cannot perturb LC_NUMERIC to a non-C value.',
+      );
       return;
     }
 
@@ -95,7 +100,8 @@ void main() {
     expect(
       currentNumericLocale(),
       equals(perturbed),
-      reason: 'precondition: LC_NUMERIC must read back as the perturbed '
+      reason:
+          'precondition: LC_NUMERIC must read back as the perturbed '
           'locale before exercising the package',
     );
 
@@ -104,7 +110,8 @@ void main() {
     expect(
       localeconv()[0].toDartString(),
       equals(','),
-      reason: 'precondition: setting category 4 to $perturbed must change '
+      reason:
+          'precondition: setting category 4 to $perturbed must change '
           'the numeric decimal point — otherwise 4 is not LC_NUMERIC here '
           'and this test is testing the wrong category',
     );
@@ -116,7 +123,8 @@ void main() {
     expect(
       currentNumericLocale(),
       equals('C'),
-      reason: 'ensureInitialized() must force LC_NUMERIC to "C" on macOS. '
+      reason:
+          'ensureInitialized() must force LC_NUMERIC to "C" on macOS. '
           'libmpv\'s API contract (client.h, player/main.c::check_locale) '
           'requires it — a comma-decimal LC_NUMERIC breaks float parsing '
           'inside mpv/ffmpeg. setlocale(1, "C") only does this on glibc; '

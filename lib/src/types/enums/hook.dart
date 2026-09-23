@@ -62,12 +62,12 @@ enum Hook {
   /// add new hook phases (a warning is logged and the hook auto-
   /// continues so mpv never stalls).
   static Hook? fromMpv(String raw) => switch (raw) {
-        'on_before_start_file' => beforeStartFile,
-        'on_load' => load,
-        'on_load_fail' => loadFail,
-        'on_preloaded' => preloaded,
-        'on_unload' => unload,
-        'on_after_end_file' => afterEndFile,
-        _ => null,
-      };
+    'on_before_start_file' => beforeStartFile,
+    'on_load' => load,
+    'on_load_fail' => loadFail,
+    'on_preloaded' => preloaded,
+    'on_unload' => unload,
+    'on_after_end_file' => afterEndFile,
+    _ => null,
+  };
 }

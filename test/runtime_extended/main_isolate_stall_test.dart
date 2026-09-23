@@ -49,8 +49,7 @@ void main() {
     ready = true;
   });
 
-  test(
-      'a busy mpv core cannot stall the main isolate through the '
+  test('a busy mpv core cannot stall the main isolate through the '
       'file-load window', () async {
     if (!ready) return;
     final coverPath =
@@ -72,8 +71,9 @@ void main() {
       final coverFuture = player.stream.coverArt
           .firstWhere((c) => c != null && c.bytes.isNotEmpty)
           .timeout(const Duration(seconds: 30));
-      final restartFuture = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 30));
+      final restartFuture = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 30),
+      );
 
       // 1ms heartbeat: any synchronous FFI wait on the main isolate shows
       // up as an inter-tick gap roughly the length of the wait. Missed
@@ -102,14 +102,20 @@ void main() {
       }
 
       // ignore: avoid_print
-      print('[stall] max main-isolate heartbeat gap: ${maxGapMs}ms '
-          '(injected core stall per read: ${_getDelayUs ~/ 1000}ms)');
+      print(
+        '[stall] max main-isolate heartbeat gap: ${maxGapMs}ms '
+        '(injected core stall per read: ${_getDelayUs ~/ 1000}ms)',
+      );
 
-      expect(maxGapMs, lessThan(_maxGapMs),
-          reason: 'The main isolate froze for ${maxGapMs}ms while the core '
-              'was busy — a synchronous mpv read is still running on the '
-              'main isolate inside the file-load window. With a real '
-              'CoreAudio device waking up, this is the beachball.',);
+      expect(
+        maxGapMs,
+        lessThan(_maxGapMs),
+        reason:
+            'The main isolate froze for ${maxGapMs}ms while the core '
+            'was busy — a synchronous mpv read is still running on the '
+            'main isolate inside the file-load window. With a real '
+            'CoreAudio device waking up, this is the beachball.',
+      );
 
       // The slow path must still deliver correct data, just off-main.
       expect(cover!.bytes.isNotEmpty, isTrue);
@@ -119,12 +125,10 @@ void main() {
     }
   });
 
-  test(
-      'a busy mpv core cannot stall the main isolate while a DSP visualizer '
+  test('a busy mpv core cannot stall the main isolate while a DSP visualizer '
       'is polling', () async {
     if (!ready) return;
-    final fixture =
-        '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+    final fixture = '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
     if (!File(fixture).existsSync()) {
       markTestSkipped('Fixture missing: $fixture');
       return;
@@ -160,13 +164,19 @@ void main() {
       await fftSub.cancel();
 
       // ignore: avoid_print
-      print('[stall-dsp] max main-isolate heartbeat gap: ${maxGapMs}ms '
-          '(injected core stall per read: ${_getDelayUs ~/ 1000}ms)');
+      print(
+        '[stall-dsp] max main-isolate heartbeat gap: ${maxGapMs}ms '
+        '(injected core stall per read: ${_getDelayUs ~/ 1000}ms)',
+      );
 
-      expect(maxGapMs, lessThan(_maxGapMs),
-          reason: 'The main isolate froze for ${maxGapMs}ms while a DSP '
-              'visualizer was polling and the core was busy — a synchronous '
-              'mpv read still runs on the main isolate in the poll loop.',);
+      expect(
+        maxGapMs,
+        lessThan(_maxGapMs),
+        reason:
+            'The main isolate froze for ${maxGapMs}ms while a DSP '
+            'visualizer was polling and the core was busy — a synchronous '
+            'mpv read still runs on the main isolate in the poll loop.',
+      );
     } finally {
       await player.dispose();
     }

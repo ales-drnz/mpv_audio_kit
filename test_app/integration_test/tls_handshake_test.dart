@@ -58,8 +58,11 @@ void main() {
         // Verification ON, no custom CA file: the only possible trust source is
         // the CA bundle compiled into libmpv.
         await player.setTlsVerify(true);
-        expect(player.state.tlsCaFile, isEmpty,
-            reason: 'no custom CA file — the embedded roots are the only trust',);
+        expect(
+          player.state.tlsCaFile,
+          isEmpty,
+          reason: 'no custom CA file — the embedded roots are the only trust',
+        );
 
         // Race the handshake against a 15s timeout. On success we observe
         // `demuxer-via-network` flipping to true (the demuxer started reading
@@ -72,12 +75,20 @@ void main() {
         await player.open(const Media(httpsUrl), play: false);
 
         final ok = await demuxerOk;
-        expect(tlsErrors, isEmpty,
-            reason: 'mpv reported a TLS error (embedded CA roots missing?): '
-                '$tlsErrors',);
-        expect(ok, isTrue,
-            reason: 'Demuxer never came up — TLS handshake likely failed '
-                'silently or the stream is unreachable.',);
+        expect(
+          tlsErrors,
+          isEmpty,
+          reason:
+              'mpv reported a TLS error (embedded CA roots missing?): '
+              '$tlsErrors',
+        );
+        expect(
+          ok,
+          isTrue,
+          reason:
+              'Demuxer never came up — TLS handshake likely failed '
+              'silently or the stream is unreachable.',
+        );
       },
       // Extra slack on the test timeout itself: handshake + first audio packet
       // on a 128 kbps stream typically lands in 2-4 s, but emulators and

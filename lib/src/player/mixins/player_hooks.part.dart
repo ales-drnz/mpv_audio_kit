@@ -48,8 +48,11 @@ mixin _HooksModule on _PlayerBase {
   /// See [Hook] for the full set of available phases. Higher
   /// [priority] values run earlier; the default (0) is fine for most
   /// uses.
-  Future<void> registerHook(Hook hook,
-      {int priority = 0, Duration? timeout,}) async {
+  Future<void> registerHook(
+    Hook hook, {
+    int priority = 0,
+    Duration? timeout,
+  }) async {
     await _gate();
     // Mark the CONSUMER's interest even when the mpv-level registration
     // already happened (e.g. the source resolver registered `on_load`
@@ -62,8 +65,11 @@ mixin _HooksModule on _PlayerBase {
   /// mpv-level registration shared by [registerHook] and
   /// [setSourceResolver]. Idempotent per hook name; a repeat call only
   /// updates the optional [timeout].
-  Future<void> _ensureHookRegistered(Hook hook,
-      {int priority = 0, Duration? timeout,}) async {
+  Future<void> _ensureHookRegistered(
+    Hook hook, {
+    int priority = 0,
+    Duration? timeout,
+  }) async {
     final name = hook.mpvValue;
     if (timeout != null) _hookTimeouts[name] = timeout;
     if (_registeredHookNames.contains(name)) return;
@@ -175,8 +181,10 @@ mixin _HooksModule on _PlayerBase {
   /// Pass `null` to uninstall. mpv has no hook-removal API, so the
   /// underlying registrations stay; the library just auto-continues
   /// their events from then on.
-  Future<void> setSourceResolver(SourceResolver? resolver,
-      {Duration? timeout = const Duration(seconds: 15),}) async {
+  Future<void> setSourceResolver(
+    SourceResolver? resolver, {
+    Duration? timeout = const Duration(seconds: 15),
+  }) async {
     await _gate();
     _sourceResolver = resolver;
     if (resolver == null) return;

@@ -31,15 +31,12 @@ void main() {
 
   setUpAll(() => initLibmpvOrSkip());
 
-  test(
-      'idle event isolate does not busy-poll mpv_wait_event '
+  test('idle event isolate does not busy-poll mpv_wait_event '
       '(L3 wakeup-rate invariant)', () async {
     final counter = calloc<Int64>();
     try {
       final player = Player.testInstrumented(
-        configuration: const PlayerConfiguration(
-          logLevel: LogLevel.off,
-        ),
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
         wakeupCounterAddress: counter.address,
       );
       try {
@@ -75,7 +72,8 @@ void main() {
         expect(
           wakeupsDuringIdle,
           lessThan(30),
-          reason: 'event isolate must wake at most ~10 Hz in debug '
+          reason:
+              'event isolate must wake at most ~10 Hz in debug '
               '(kill-checkpoint for Hot Restart), or never in product. '
               'Got $wakeupsDuringIdle wakeups in ${idleWindow.inSeconds}s '
               'of idle, which is consistent with the pre-0.1.2 50 ms '
@@ -87,5 +85,5 @@ void main() {
     } finally {
       calloc.free(counter);
     }
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+  }, timeout: const Timeout(Duration(seconds: 30)));
 }

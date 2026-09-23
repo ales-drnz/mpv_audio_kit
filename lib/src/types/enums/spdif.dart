@@ -51,13 +51,13 @@ enum Spdif {
   /// unknown values (forward-compat with future mpv builds adding new
   /// passthrough codecs).
   static Spdif? fromMpv(String raw) => switch (raw) {
-        'ac3' => ac3,
-        'dts' => dts,
-        'dts-hd' => dtsHd,
-        'eac3' => eac3,
-        'truehd' => trueHd,
-        _ => null,
-      };
+    'ac3' => ac3,
+    'dts' => dts,
+    'dts-hd' => dtsHd,
+    'eac3' => eac3,
+    'truehd' => trueHd,
+    _ => null,
+  };
 
   /// Parses mpv's wire-level CSV (`'ac3,dts,truehd'`) into a typed set.
   /// Empty / whitespace-only input → empty set. Unknown tokens are

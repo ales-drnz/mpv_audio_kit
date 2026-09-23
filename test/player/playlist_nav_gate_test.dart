@@ -14,16 +14,18 @@ import 'package:test/test.dart';
 
 void main() {
   group('shouldAutoApplyPlaylistNav', () {
-    test('opted out (false) suppresses navigation even with a real playlist',
-        () {
-      expect(
-        shouldAutoApplyPlaylistNav(
-          autoApplyPlaylistNavigation: false,
-          playlistLength: 2,
-        ),
-        isFalse,
-      );
-    });
+    test(
+      'opted out (false) suppresses navigation even with a real playlist',
+      () {
+        expect(
+          shouldAutoApplyPlaylistNav(
+            autoApplyPlaylistNavigation: false,
+            playlistLength: 2,
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('opted in (true) navigates when the playlist has >1 entry', () {
       expect(

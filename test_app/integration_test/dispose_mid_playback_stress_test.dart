@@ -29,9 +29,7 @@ void main() {
 
         Future<void> oneCycle() async {
           final player = Player(
-            configuration: const PlayerConfiguration(
-              logLevel: LogLevel.off,
-            ),
+            configuration: const PlayerConfiguration(logLevel: LogLevel.off),
           );
           await player.open(Media(fixturePath), play: true);
           await player.stream.playing
@@ -57,15 +55,18 @@ void main() {
 
         final delta = rssAfter - rssBefore;
         // ignore: avoid_print
-        print('[stress] RSS ${rssBefore ~/ 1024} → ${rssAfter ~/ 1024} KB '
-            '(Δ ${delta ~/ 1024} KB across $cycles cycles)');
+        print(
+          '[stress] RSS ${rssBefore ~/ 1024} → ${rssAfter ~/ 1024} KB '
+          '(Δ ${delta ~/ 1024} KB across $cycles cycles)',
+        );
         // A real per-cycle leak (orphan thread, retained mpv handle) is
         // ~1+ MB per cycle; 15 MB across 30 cycles is generous noise
         // headroom while still catching real growth.
         expect(
           delta,
           lessThan(15 * 1024 * 1024),
-          reason: 'RSS grew by ${delta ~/ 1024} KB across $cycles cycles '
+          reason:
+              'RSS grew by ${delta ~/ 1024} KB across $cycles cycles '
               '(${rssBefore ~/ 1024} → ${rssAfter ~/ 1024} KB).',
         );
       },

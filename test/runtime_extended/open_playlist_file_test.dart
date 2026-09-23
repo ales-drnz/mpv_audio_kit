@@ -42,20 +42,30 @@ void main() {
       // Pre-subscribe before the load: the playlist + playlist-path each emit
       // once when the first entry loads, so a late firstWhere would miss them
       // (see CLAUDE.md). Gate on seekCompleted, then read the state snapshot.
-      final loaded =
-          player.stream.seekCompleted.first.timeout(const Duration(seconds: 10));
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
       await player.openPlaylistFile(Media(m3uPath), play: false);
       await loaded;
 
-      expect(player.state.playlist.items, hasLength(2),
-          reason: 'loadlist must parse the .m3u into its 2 entries',);
-      expect(player.state.playlist.items.first.uri, contains('sine_440hz'),
-          reason: 'entries resolve to the fixture referenced by the playlist',);
+      expect(
+        player.state.playlist.items,
+        hasLength(2),
+        reason: 'loadlist must parse the .m3u into its 2 entries',
+      );
+      expect(
+        player.state.playlist.items.first.uri,
+        contains('sine_440hz'),
+        reason: 'entries resolve to the fixture referenced by the playlist',
+      );
       // playlist-path (#D1 part C) reports the source .m3u for the entry.
-      expect(player.state.playlistPath, contains('list.m3u'),
-          reason: 'playlist-path reports the source .m3u',);
+      expect(
+        player.state.playlistPath,
+        contains('list.m3u'),
+        reason: 'playlist-path reports the source .m3u',
+      );
       // play:false must leave the intent axis down.
       expect(player.state.playWhenReady, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 20)),);
+    }, timeout: const Timeout(Duration(seconds: 20)));
   });
 }

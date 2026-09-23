@@ -220,11 +220,11 @@ enum MpvEndFileReason {
 
   /// Converts a raw mpv integer reason code to the corresponding enum value.
   static MpvEndFileReason fromValue(int value) => switch (value) {
-        _eof => eof,
-        _stop => stop,
-        _quit => quit,
-        _error => error,
-        _redirect => redirect,
-        _ => eof,
-      };
+    _eof => eof,
+    _stop => stop,
+    _quit => quit,
+    _error => error,
+    _redirect => redirect,
+    _ => eof,
+  };
 }

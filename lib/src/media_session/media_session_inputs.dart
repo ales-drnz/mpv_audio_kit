@@ -97,9 +97,7 @@ class MediaSessionInputs {
 
   /// Convenience builder for the production wiring: pulls the
   /// matching streams off a real [PlayerStream].
-  factory MediaSessionInputs.fromPlayer({
-    required PlayerStream stream,
-  }) =>
+  factory MediaSessionInputs.fromPlayer({required PlayerStream stream}) =>
       MediaSessionInputs(
         playWhenReady: stream.playWhenReady,
         playing: stream.playing,

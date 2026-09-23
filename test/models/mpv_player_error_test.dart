@@ -113,12 +113,15 @@ void main() {
       expect(quit.reachedNaturalEnd, isFalse);
 
       const error = MpvFileEndedEvent(
-          reason: MpvEndFileReason.error,
-          error: MpvError.mpvErrorLoadingFailed,);
+        reason: MpvEndFileReason.error,
+        error: MpvError.mpvErrorLoadingFailed,
+      );
       expect(error.reachedNaturalEnd, isFalse);
 
-      const redirect =
-          MpvFileEndedEvent(reason: MpvEndFileReason.redirect, error: 0);
+      const redirect = MpvFileEndedEvent(
+        reason: MpvEndFileReason.redirect,
+        error: 0,
+      );
       expect(redirect.reachedNaturalEnd, isFalse);
     });
   });

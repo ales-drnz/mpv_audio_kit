@@ -28,9 +28,9 @@ class MpvPropertySpec<T> {
     required T Function(dynamic raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
-  })  : _parse = parse,
-        _reduce = reduce,
-        _onChange = onChange;
+  }) : _parse = parse,
+       _reduce = reduce,
+       _onChange = onChange;
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_DOUBLE`.
   factory MpvPropertySpec.double({
@@ -39,19 +39,18 @@ class MpvPropertySpec<T> {
     required T Function(double raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
-  }) =>
-      MpvPropertySpec._(
-        name: name,
-        format: MpvFormat.mpvFormatDouble,
-        reactive: reactive,
-        // Permissive cast: accepts both double and int wire payloads
-        // so an isolate-side format demotion (mpv occasionally promotes
-        // an int64 property to a double when crossing 2^53) doesn't
-        // crash the dispatch pipeline.
-        parse: (raw, state) => parse((raw as num).toDouble(), state),
-        reduce: reduce,
-        onChange: onChange,
-      );
+  }) => MpvPropertySpec._(
+    name: name,
+    format: MpvFormat.mpvFormatDouble,
+    reactive: reactive,
+    // Permissive cast: accepts both double and int wire payloads
+    // so an isolate-side format demotion (mpv occasionally promotes
+    // an int64 property to a double when crossing 2^53) doesn't
+    // crash the dispatch pipeline.
+    parse: (raw, state) => parse((raw as num).toDouble(), state),
+    reduce: reduce,
+    onChange: onChange,
+  );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_FLAG`. The event
   /// isolate forwards flag values as `int` (0/1); the parser accepts
@@ -63,16 +62,14 @@ class MpvPropertySpec<T> {
     required T Function(bool raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
-  }) =>
-      MpvPropertySpec._(
-        name: name,
-        format: MpvFormat.mpvFormatFlag,
-        reactive: reactive,
-        parse: (raw, state) =>
-            parse(raw is int ? raw == 1 : raw as bool, state),
-        reduce: reduce,
-        onChange: onChange,
-      );
+  }) => MpvPropertySpec._(
+    name: name,
+    format: MpvFormat.mpvFormatFlag,
+    reactive: reactive,
+    parse: (raw, state) => parse(raw is int ? raw == 1 : raw as bool, state),
+    reduce: reduce,
+    onChange: onChange,
+  );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_INT64`.
   factory MpvPropertySpec.int64({
@@ -81,19 +78,18 @@ class MpvPropertySpec<T> {
     required T Function(int raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
-  }) =>
-      MpvPropertySpec._(
-        name: name,
-        format: MpvFormat.mpvFormatInt64,
-        reactive: reactive,
-        // Permissive cast: accepts both int and double wire payloads.
-        // Without this, a format-mismatch in the isolate (e.g. a
-        // float-typed event for an int64-observed property) would
-        // crash the dispatch pipeline instead of degrading gracefully.
-        parse: (raw, state) => parse((raw as num).toInt(), state),
-        reduce: reduce,
-        onChange: onChange,
-      );
+  }) => MpvPropertySpec._(
+    name: name,
+    format: MpvFormat.mpvFormatInt64,
+    reactive: reactive,
+    // Permissive cast: accepts both int and double wire payloads.
+    // Without this, a format-mismatch in the isolate (e.g. a
+    // float-typed event for an int64-observed property) would
+    // crash the dispatch pipeline instead of degrading gracefully.
+    parse: (raw, state) => parse((raw as num).toInt(), state),
+    reduce: reduce,
+    onChange: onChange,
+  );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_STRING`.
   factory MpvPropertySpec.string({
@@ -102,15 +98,14 @@ class MpvPropertySpec<T> {
     required T Function(String raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
-  }) =>
-      MpvPropertySpec._(
-        name: name,
-        format: MpvFormat.mpvFormatString,
-        reactive: reactive,
-        parse: (raw, state) => parse(raw as String, state),
-        reduce: reduce,
-        onChange: onChange,
-      );
+  }) => MpvPropertySpec._(
+    name: name,
+    format: MpvFormat.mpvFormatString,
+    reactive: reactive,
+    parse: (raw, state) => parse(raw as String, state),
+    reduce: reduce,
+    onChange: onChange,
+  );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_NODE`. The raw value
   /// passed to [parse] is a Dart-native tree (`Map<String, dynamic>`,
@@ -126,15 +121,14 @@ class MpvPropertySpec<T> {
     required T Function(dynamic raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
-  }) =>
-      MpvPropertySpec._(
-        name: name,
-        format: MpvFormat.mpvFormatNode,
-        reactive: reactive,
-        parse: parse,
-        reduce: reduce,
-        onChange: onChange,
-      );
+  }) => MpvPropertySpec._(
+    name: name,
+    format: MpvFormat.mpvFormatNode,
+    reactive: reactive,
+    parse: parse,
+    reduce: reduce,
+    onChange: onChange,
+  );
 
   /// The mpv property name passed to `mpv_observe_property` / `mpv_set_property`.
   final String name;

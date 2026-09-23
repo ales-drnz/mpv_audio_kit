@@ -21,9 +21,9 @@ void main() {
   test('diag: trace post-side tap frames', () async {
     final player = await buildPlayer();
     try {
-      await player.setAudioEffects(const AudioEffects(
-        equalizer: EqualizerSettings(enabled: true),
-      ),);
+      await player.setAudioEffects(
+        const AudioEffects(equalizer: EqualizerSettings(enabled: true)),
+      );
       await openAndWaitForLoad(player, fixture);
 
       // Wait for the global pcm-tap to start flowing — proves audio
@@ -45,22 +45,24 @@ void main() {
       final sub = player.stream
           .tap(AudioEffect.equalizer, side: TapSide.post)
           .listen((frame) {
-        final tWall = DateTime.now().millisecondsSinceEpoch - t0;
-        final ts = frame.timestamp.inMilliseconds;
-        final dTs = ts - prevTs;
-        final first = frame.samples.first;
-        final last = frame.samples.last;
-        final dFirst = (first - prevFirst).abs();
-        print('[diag] #${count.toString().padLeft(3)} '
-            'tWall=${tWall.toString().padLeft(5)}ms  '
-            'ts=${ts.toString().padLeft(7)}ms (Δ${dTs.toString().padLeft(5)}ms)  '
-            'first=${first.toStringAsFixed(6).padLeft(10)} '
-            '(Δ${dFirst.toStringAsFixed(6).padLeft(10)})  '
-            'last=${last.toStringAsFixed(6).padLeft(10)}');
-        prevTs = ts;
-        prevFirst = first;
-        count++;
-      });
+            final tWall = DateTime.now().millisecondsSinceEpoch - t0;
+            final ts = frame.timestamp.inMilliseconds;
+            final dTs = ts - prevTs;
+            final first = frame.samples.first;
+            final last = frame.samples.last;
+            final dFirst = (first - prevFirst).abs();
+            print(
+              '[diag] #${count.toString().padLeft(3)} '
+              'tWall=${tWall.toString().padLeft(5)}ms  '
+              'ts=${ts.toString().padLeft(7)}ms (Δ${dTs.toString().padLeft(5)}ms)  '
+              'first=${first.toStringAsFixed(6).padLeft(10)} '
+              '(Δ${dFirst.toStringAsFixed(6).padLeft(10)})  '
+              'last=${last.toStringAsFixed(6).padLeft(10)}',
+            );
+            prevTs = ts;
+            prevFirst = first;
+            count++;
+          });
 
       await Future<void>.delayed(const Duration(milliseconds: 1500));
       await sub.cancel();
@@ -69,5 +71,5 @@ void main() {
       await player.pause();
       await player.dispose();
     }
-  }, timeout: const Timeout(Duration(seconds: 15)),);
+  }, timeout: const Timeout(Duration(seconds: 15)));
 }

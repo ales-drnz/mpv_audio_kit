@@ -80,17 +80,18 @@ class LoudnessScan {
 
   @override
   int get hashCode => Object.hash(
-        state,
-        integrated,
-        range,
-        samplePeak,
-        truePeak,
-        gatedBlockCount,
-        progress,
-      );
+    state,
+    integrated,
+    range,
+    samplePeak,
+    truePeak,
+    gatedBlockCount,
+    progress,
+  );
 
   @override
-  String toString() => 'LoudnessScan(state: $state, integrated: $integrated, '
+  String toString() =>
+      'LoudnessScan(state: $state, integrated: $integrated, '
       'range: $range, samplePeak: $samplePeak, truePeak: $truePeak, '
       'gatedBlockCount: $gatedBlockCount, progress: $progress)';
 }

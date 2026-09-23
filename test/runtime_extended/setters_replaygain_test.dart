@@ -41,27 +41,33 @@ void main() {
       expect(player.state.replayGain.preamp, -3.0);
       expect(player.state.replayGain.clip, isTrue);
       expect(player.state.replayGain.fallback, 1.5);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('partial update via copyWith preserves untouched fields', () async {
       // Start from a known state.
-      await player.setReplayGain(const ReplayGainSettings(
-        mode: ReplayGain.album,
-        preamp: -6.0,
-        fallback: 0.5,
-      ),);
+      await player.setReplayGain(
+        const ReplayGainSettings(
+          mode: ReplayGain.album,
+          preamp: -6.0,
+          fallback: 0.5,
+        ),
+      );
       expect(player.state.replayGain.mode, ReplayGain.album);
 
       // Tweak only preamp; the aggregate setter rewrites all 4 props,
       // but since the consumer copyWith'd from the existing state, the
       // other 3 fields are unchanged.
-      await player
-          .setReplayGain(player.state.replayGain.copyWith(preamp: -10.0));
+      await player.setReplayGain(
+        player.state.replayGain.copyWith(preamp: -10.0),
+      );
       expect(player.state.replayGain.preamp, -10.0);
-      expect(player.state.replayGain.mode, ReplayGain.album,
-          reason: 'mode must survive a copyWith-only-preamp update',);
+      expect(
+        player.state.replayGain.mode,
+        ReplayGain.album,
+        reason: 'mode must survive a copyWith-only-preamp update',
+      );
       expect(player.state.replayGain.fallback, 0.5);
       expect(player.state.replayGain.clip, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

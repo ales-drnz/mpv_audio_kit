@@ -68,7 +68,9 @@ Future<ServerSocket> startIcyServer(List<int> mp3Body) async {
         socket.add([
           ...'HTTP/1.0 200 OK\r\n'.codeUnits,
           ...'Content-Type: audio/mpeg\r\n'.codeUnits,
-          ...'icy-name: Caf'.codeUnits, _latin1EAcute, ...' FM\r\n'.codeUnits,
+          ...'icy-name: Caf'.codeUnits,
+          _latin1EAcute,
+          ...' FM\r\n'.codeUnits,
           ...'\r\n'.codeUnits,
           ...mp3Body,
         ]);
@@ -104,8 +106,7 @@ void main() {
     await server.close();
   });
 
-  test(
-      'player survives an ICY station name with invalid UTF-8 '
+  test('player survives an ICY station name with invalid UTF-8 '
       '(tag surfaces, pipeline stays alive)', () async {
     // Pre-subscribe BEFORE open — emits can land synchronously relative
     // to a late firstWhere (see CLAUDE.md, Common patterns).
@@ -128,8 +129,11 @@ void main() {
     final icyName = md.entries
         .firstWhere((e) => e.key.toLowerCase() == 'icy-name')
         .value;
-    expect(icyName, startsWith('Caf'),
-        reason: 'tag value must survive the bridge (lenient decode is fine)',);
+    expect(
+      icyName,
+      startsWith('Caf'),
+      reason: 'tag value must survive the bridge (lenient decode is fine)',
+    );
 
     // (b) The pipeline is still alive AFTER the malformed string was
     // processed: position updates must keep flowing.
@@ -137,11 +141,11 @@ void main() {
     await player.stream.position
         .firstWhere((p) => p > mark + const Duration(milliseconds: 300))
         .timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => fail(
-        'position stopped advancing — property/event pipeline frozen '
-        'after the malformed UTF-8 metadata was dispatched',
-      ),
-    );
-  }, timeout: const Timeout(Duration(seconds: 50)),);
+          const Duration(seconds: 10),
+          onTimeout: () => fail(
+            'position stopped advancing — property/event pipeline frozen '
+            'after the malformed UTF-8 metadata was dispatched',
+          ),
+        );
+  }, timeout: const Timeout(Duration(seconds: 50)));
 }

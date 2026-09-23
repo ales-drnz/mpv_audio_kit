@@ -60,7 +60,10 @@ void main() {
     expect(float32FromByteValue(Uint8List(3)), isNull, reason: '< 4 bytes');
     expect(float32FromByteValue(null), isNull);
     expect(float32FromByteValue('not bytes'), isNull);
-    expect(float32FromByteValue(<int>[1, 2, 3, 4]), isNull,
-        reason: 'a plain List<int> is not a Uint8List',);
+    expect(
+      float32FromByteValue(<int>[1, 2, 3, 4]),
+      isNull,
+      reason: 'a plain List<int> is not a Uint8List',
+    );
   });
 }

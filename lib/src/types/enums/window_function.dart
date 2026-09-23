@@ -45,7 +45,8 @@ enum WindowFunction {
         const a0 = 0.35875, a1 = 0.48829, a2 = 0.14128, a3 = 0.01168;
         for (var i = 0; i < n; i++) {
           final t = 2 * math.pi * i / (n - 1);
-          w[i] = a0 -
+          w[i] =
+              a0 -
               a1 * math.cos(t) +
               a2 * math.cos(2 * t) -
               a3 * math.cos(3 * t);

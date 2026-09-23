@@ -50,8 +50,9 @@ void main() {
       });
       try {
         await player.play();
-        final frame =
-            await completer.future.timeout(const Duration(seconds: 2));
+        final frame = await completer.future.timeout(
+          const Duration(seconds: 2),
+        );
         expect(frame.samples.length, greaterThan(0));
         expect(frame.sampleRate, greaterThan(0));
         expect(frame.channels, greaterThanOrEqualTo(1));
@@ -60,43 +61,50 @@ void main() {
         // (the wrapper / mpv silence-pad anything before play() lands,
         // so non-zero proves the post-DSP signal made it through).
         final hasSignal = frame.samples.any((s) => s.abs() > 1e-4);
-        expect(hasSignal, isTrue,
-            reason: 'PCM frame should contain non-silent audio',);
+        expect(
+          hasSignal,
+          isTrue,
+          reason: 'PCM frame should contain non-silent audio',
+        );
       } finally {
         await sub.cancel();
         await player.pause();
       }
-    }, timeout: const Timeout(Duration(seconds: 5)),);
+    }, timeout: const Timeout(Duration(seconds: 5)));
 
-    test('FftFrame bands respond to the sine — at least one band > 0',
-        () async {
-      await player.setSpectrum(
-        const SpectrumSettings(
-          fftSize: 1024,
-          emitInterval: Duration(milliseconds: 16),
-        ),
-      );
-      final completer = Completer<FftFrame>();
-      final sub = player.stream.fft.listen((f) {
-        // Wait for a frame that has signal (the very first frame can
-        // arrive before audio has flowed through the AO).
-        final hasEnergy = f.bands.any((b) => b > 0.01);
-        if (hasEnergy && !completer.isCompleted) completer.complete(f);
-      });
-      try {
-        await player.play();
-        final frame =
-            await completer.future.timeout(const Duration(seconds: 3));
-        expect(frame.bands.length, 64);
-        expect(frame.bins.length, 512); // fftSize / 2
-        expect(frame.sampleRate, greaterThan(0));
-        // The 440 Hz sine fixture should peak in a low band.
-        final maxBand = frame.bands.reduce((a, b) => a > b ? a : b);
-        expect(maxBand, greaterThan(0.01));
-      } finally {
-        await sub.cancel();
-        await player.pause();
-      }
-    }, timeout: const Timeout(Duration(seconds: 5)),);
+    test(
+      'FftFrame bands respond to the sine — at least one band > 0',
+      () async {
+        await player.setSpectrum(
+          const SpectrumSettings(
+            fftSize: 1024,
+            emitInterval: Duration(milliseconds: 16),
+          ),
+        );
+        final completer = Completer<FftFrame>();
+        final sub = player.stream.fft.listen((f) {
+          // Wait for a frame that has signal (the very first frame can
+          // arrive before audio has flowed through the AO).
+          final hasEnergy = f.bands.any((b) => b > 0.01);
+          if (hasEnergy && !completer.isCompleted) completer.complete(f);
+        });
+        try {
+          await player.play();
+          final frame = await completer.future.timeout(
+            const Duration(seconds: 3),
+          );
+          expect(frame.bands.length, 64);
+          expect(frame.bins.length, 512); // fftSize / 2
+          expect(frame.sampleRate, greaterThan(0));
+          // The 440 Hz sine fixture should peak in a low band.
+          final maxBand = frame.bands.reduce((a, b) => a > b ? a : b);
+          expect(maxBand, greaterThan(0.01));
+        } finally {
+          await sub.cancel();
+          await player.pause();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 5)),
+    );
   });
 }

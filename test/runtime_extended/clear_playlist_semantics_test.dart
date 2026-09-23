@@ -29,18 +29,21 @@ void main() {
   setUpAll(() => initLibmpvOrSkip(fixturePath: fixturePath));
 
   group('clearPlaylist semantics (L2)', () {
-    test(
-        'clearPlaylist() during playback stops the active track and '
+    test('clearPlaylist() during playback stops the active track and '
         'empties the playlist', () async {
       final player = await buildPlayer();
       try {
         // Open + start playing — gets us a non-empty playlist with a
         // currently-playing entry.
         await player.open(Media(fixturePath), play: true);
-        await player.stream.seekCompleted.first
-            .timeout(const Duration(seconds: 5));
-        expect(player.state.playlist.items, isNotEmpty,
-            reason: 'precondition: playlist must be populated',);
+        await player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 5),
+        );
+        expect(
+          player.state.playlist.items,
+          isNotEmpty,
+          reason: 'precondition: playlist must be populated',
+        );
 
         await player.clearPlaylist();
 
@@ -51,13 +54,15 @@ void main() {
         expect(
           player.state.playlist.items,
           isEmpty,
-          reason: 'clearPlaylist() must empty the playlist completely '
+          reason:
+              'clearPlaylist() must empty the playlist completely '
               '(both queued and currently-playing entries)',
         );
         expect(
           player.state.playing,
           isFalse,
-          reason: 'clearPlaylist() also removes the currently-playing '
+          reason:
+              'clearPlaylist() also removes the currently-playing '
               'entry, which stops playback. This is documented; the '
               'test pins the contract so a future change must be '
               'intentional.',
@@ -65,6 +70,6 @@ void main() {
       } finally {
         await player.dispose();
       }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

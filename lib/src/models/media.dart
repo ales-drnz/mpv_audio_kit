@@ -133,22 +133,21 @@ final class Media {
     Object? httpHeaders = unset,
     Object? httpChunkSize = unset,
     Object? demuxerLavfOptions = unset,
-  }) =>
-      Media(
-        uri ?? this.uri,
-        extras: identical(extras, unset)
-            ? this.extras
-            : extras as Map<String, Object?>?,
-        httpHeaders: identical(httpHeaders, unset)
-            ? this.httpHeaders
-            : httpHeaders as Map<String, String>?,
-        httpChunkSize: identical(httpChunkSize, unset)
-            ? this.httpChunkSize
-            : httpChunkSize as int?,
-        demuxerLavfOptions: identical(demuxerLavfOptions, unset)
-            ? this.demuxerLavfOptions
-            : demuxerLavfOptions as Map<String, String>?,
-      );
+  }) => Media(
+    uri ?? this.uri,
+    extras: identical(extras, unset)
+        ? this.extras
+        : extras as Map<String, Object?>?,
+    httpHeaders: identical(httpHeaders, unset)
+        ? this.httpHeaders
+        : httpHeaders as Map<String, String>?,
+    httpChunkSize: identical(httpChunkSize, unset)
+        ? this.httpChunkSize
+        : httpChunkSize as int?,
+    demuxerLavfOptions: identical(demuxerLavfOptions, unset)
+        ? this.demuxerLavfOptions
+        : demuxerLavfOptions as Map<String, String>?,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -162,28 +161,28 @@ final class Media {
 
   @override
   int get hashCode => Object.hash(
-        uri,
-        httpChunkSize,
-        extras == null
-            ? null
-            : Object.hashAllUnordered(
-                extras!.entries.map((e) => Object.hash(e.key, e.value)),
-              ),
-        httpHeaders == null
-            ? null
-            : Object.hashAllUnordered(
-                httpHeaders!.entries.map((e) => Object.hash(e.key, e.value)),
-              ),
-        demuxerLavfOptions == null
-            ? null
-            : Object.hashAllUnordered(
-                demuxerLavfOptions!.entries
-                    .map((e) => Object.hash(e.key, e.value)),
-              ),
-      );
+    uri,
+    httpChunkSize,
+    extras == null
+        ? null
+        : Object.hashAllUnordered(
+            extras!.entries.map((e) => Object.hash(e.key, e.value)),
+          ),
+    httpHeaders == null
+        ? null
+        : Object.hashAllUnordered(
+            httpHeaders!.entries.map((e) => Object.hash(e.key, e.value)),
+          ),
+    demuxerLavfOptions == null
+        ? null
+        : Object.hashAllUnordered(
+            demuxerLavfOptions!.entries.map((e) => Object.hash(e.key, e.value)),
+          ),
+  );
 
   @override
-  String toString() => 'Media(uri: $uri, extras: $extras, '
+  String toString() =>
+      'Media(uri: $uri, extras: $extras, '
       'httpHeaders: $httpHeaders, httpChunkSize: $httpChunkSize, '
       'demuxerLavfOptions: $demuxerLavfOptions)';
 }

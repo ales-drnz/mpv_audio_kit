@@ -10,8 +10,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('Player() without MpvAudioKit.ensureInitialized', () {
-    test(
-        'player.ready surfaces a libmpv-related failure when the bundled '
+    test('player.ready surfaces a libmpv-related failure when the bundled '
         'library is missing', () async {
       // No ensureInitialized() call: MpvAudioKit.libraryPath is null,
       // and the resolver looks for libmpv inside the Flutter app

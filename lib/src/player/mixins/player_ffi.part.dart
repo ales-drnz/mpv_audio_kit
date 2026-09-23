@@ -164,8 +164,9 @@ mixin _FfiModule on _PlayerBase {
 
           entryKeys[0] = 'title'.toNativeUtf8(allocator: arena);
           entryValues[0].format = MpvFormat.mpvFormatString;
-          entryValues[0].u.string =
-              (ch.title ?? '').toNativeUtf8(allocator: arena);
+          entryValues[0].u.string = (ch.title ?? '').toNativeUtf8(
+            allocator: arena,
+          );
 
           entryKeys[1] = 'time'.toNativeUtf8(allocator: arena);
           entryValues[1].format = MpvFormat.mpvFormatDouble;

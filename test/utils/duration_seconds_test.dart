@@ -60,8 +60,10 @@ void main() {
     test('large durations don\'t lose precision in IEEE-754 double range', () {
       // Even at 24h (86400s), microsecond precision still fits in a
       // double (~15-17 sig figs).
-      expect(durationToSeconds(const Duration(hours: 24, microseconds: 1)),
-          closeTo(86400.000001, 1e-9),);
+      expect(
+        durationToSeconds(const Duration(hours: 24, microseconds: 1)),
+        closeTo(86400.000001, 1e-9),
+      );
     });
   });
 

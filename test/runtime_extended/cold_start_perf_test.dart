@@ -28,12 +28,14 @@ void main() {
       // ignore: avoid_print
       print('[T1] Player() ctor took ${ctorUs / 1000} ms');
       await player.dispose();
-      expect(ctorUs, lessThan(50000),
-          reason: 'Player() ctor blocked for ${ctorUs / 1000} ms',);
+      expect(
+        ctorUs,
+        lessThan(50000),
+        reason: 'Player() ctor blocked for ${ctorUs / 1000} ms',
+      );
     });
 
-    test(
-        'T2: main isolate processes timer ticks while a Player is being '
+    test('T2: main isolate processes timer ticks while a Player is being '
         'initialized', () async {
       int tickCount = 0;
       final timer = Timer.periodic(
@@ -45,9 +47,13 @@ void main() {
       timer.cancel();
       await player.dispose();
       // 800 / 16 = 50 expected; 50% tolerance → ≥25.
-      expect(tickCount, greaterThan(25),
-          reason: 'Main isolate fired only $tickCount ticks in 800ms — '
-              'init blocked the event loop',);
+      expect(
+        tickCount,
+        greaterThan(25),
+        reason:
+            'Main isolate fired only $tickCount ticks in 800ms — '
+            'init blocked the event loop',
+      );
     });
 
     test('T4: 5 cycles all stay under 50ms ctor', () async {
@@ -62,8 +68,11 @@ void main() {
       final maxMs = ctorTimes.reduce((a, b) => a > b ? a : b);
       // ignore: avoid_print
       print('[T4] ctor times across 5 cycles: $ctorTimes ms');
-      expect(maxMs, lessThan(50),
-          reason: 'max ctor over 5 cycles: $maxMs ms (all: $ctorTimes)',);
+      expect(
+        maxMs,
+        lessThan(50),
+        reason: 'max ctor over 5 cycles: $maxMs ms (all: $ctorTimes)',
+      );
     });
   });
 }

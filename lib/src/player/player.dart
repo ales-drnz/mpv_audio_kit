@@ -269,7 +269,8 @@ class Player extends _PlayerBase
     // metadata while still visible in playlist events during the
     // transition (retained until the post-jump remove below).
     final oldPlaylist = _state.playlist;
-    final oldCurrent = oldPlaylist.items.isNotEmpty &&
+    final oldCurrent =
+        oldPlaylist.items.isNotEmpty &&
             oldPlaylist.index >= 0 &&
             oldPlaylist.index < oldPlaylist.items.length
         ? oldPlaylist.items[oldPlaylist.index]
@@ -376,8 +377,13 @@ class Player extends _PlayerBase
       if (opts.isEmpty) {
         await _commandChecked(['loadfile', resolved[i].uri, 'append']);
       } else {
-        await _commandChecked(
-            ['loadfile', resolved[i].uri, 'append', '-1', opts],);
+        await _commandChecked([
+          'loadfile',
+          resolved[i].uri,
+          'append',
+          '-1',
+          opts,
+        ]);
       }
       if (_disposed || epoch != _loadEpoch) return bailDisposing();
     }
@@ -591,13 +597,14 @@ abstract class _PlayerBase {
   final ReactiveProperty<bool> _buffering = ReactiveProperty<bool>(false);
   final ReactiveProperty<bool> _completed = ReactiveProperty<bool>(false);
   // Derived from JSON properties that need access to player-side context.
-  final ReactiveProperty<Playlist> _playlist =
-      ReactiveProperty<Playlist>(Playlist.empty);
+  final ReactiveProperty<Playlist> _playlist = ReactiveProperty<Playlist>(
+    Playlist.empty,
+  );
   final ReactiveProperty<Loop> _loop = ReactiveProperty<Loop>(Loop.off);
   final ReactiveProperty<List<Device>> _audioDevices =
-      ReactiveProperty<List<Device>>(
-    const [Device(name: 'auto', description: 'Auto')],
-  );
+      ReactiveProperty<List<Device>>(const [
+        Device(name: 'auto', description: 'Auto'),
+      ]);
   final ReactiveProperty<Map<String, String>> _metadata =
       ReactiveProperty<Map<String, String>>(const <String, String>{});
   final ReactiveProperty<double> _bufferingPercentage =
@@ -868,8 +875,9 @@ abstract class _PlayerBase {
     _pcmStreamCtrl = StreamController<PcmFrame>.broadcast(
       onListen: () {
         if (_bringUpCompleted) {
-          _pcmPipeSub ??=
-              _spectrumPipeline.pcmStream.listen(_pcmStreamCtrl.add);
+          _pcmPipeSub ??= _spectrumPipeline.pcmStream.listen(
+            _pcmStreamCtrl.add,
+          );
         }
       },
       onCancel: () {
@@ -1044,9 +1052,9 @@ abstract class _PlayerBase {
   /// queue up, not the UI thread.
   Future<void> _settleWrites() {
     if (_pendingReplies.isEmpty) return Future.value();
-    return Future.wait(
-      [for (final completer in _pendingReplies.values) completer.future],
-    );
+    return Future.wait([
+      for (final completer in _pendingReplies.values) completer.future,
+    ]);
   }
 
   /// Rejects NaN / +Inf / -Inf before they reach `toStringAsFixed`,
@@ -1225,7 +1233,9 @@ abstract class _PlayerBase {
       var hooksSettled = true;
       if (_pendingHookAdds.isNotEmpty) {
         try {
-          await Future.wait(_pendingHookAdds).timeout(const Duration(seconds: 2));
+          await Future.wait(
+            _pendingHookAdds,
+          ).timeout(const Duration(seconds: 2));
         } on TimeoutException {
           hooksSettled = false;
         } catch (_) {}
@@ -1246,8 +1256,10 @@ abstract class _PlayerBase {
         // Skip mpv_terminate_destroy: freeing the handle while the isolate may
         // still be inside the syscall would SIGSEGV. The OS reclaims the handle
         // (and the leaked stop flag) at process exit.
-        debugLog('mpv_audio_kit: event isolate did not confirm exit; skipping '
-            'mpv_terminate_destroy to avoid a parked-handle crash.');
+        debugLog(
+          'mpv_audio_kit: event isolate did not confirm exit; skipping '
+          'mpv_terminate_destroy to avoid a parked-handle crash.',
+        );
       }
     } else {
       // Bring-up never completed: either init failed, or this dispose

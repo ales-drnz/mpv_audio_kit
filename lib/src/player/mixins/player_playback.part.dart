@@ -14,8 +14,11 @@ mixin _PlaybackModule on _PlayerBase {
     // Optimistic intent: `pause` is silent on the first load → playing
     // transition, so set the intent axis here rather than relying on the
     // observer. See [PlayerState.playWhenReady].
-    _updateField((s) => s.copyWith(playWhenReady: true),
-        _reactives.playWhenReady, true,);
+    _updateField(
+      (s) => s.copyWith(playWhenReady: true),
+      _reactives.playWhenReady,
+      true,
+    );
     await _prop('pause', 'no');
   }
 
@@ -23,8 +26,11 @@ mixin _PlaybackModule on _PlayerBase {
   /// is preserved — call [play] to resume from the same offset.
   Future<void> pause() async {
     await _gate();
-    _updateField((s) => s.copyWith(playWhenReady: false),
-        _reactives.playWhenReady, false,);
+    _updateField(
+      (s) => s.copyWith(playWhenReady: false),
+      _reactives.playWhenReady,
+      false,
+    );
     await _prop('pause', 'yes');
   }
 
@@ -44,9 +50,11 @@ mixin _PlaybackModule on _PlayerBase {
   /// [filename] when given — clearing any saved resume point.
   Future<void> deleteResumeConfig({String? filename}) async {
     await _gate();
-    await _command(filename == null
-        ? ['delete-watch-later-config']
-        : ['delete-watch-later-config', filename],);
+    await _command(
+      filename == null
+          ? ['delete-watch-later-config']
+          : ['delete-watch-later-config', filename],
+    );
   }
 
   /// Stops playback and unloads the current file. Distinct from [pause]:
@@ -61,8 +69,11 @@ mixin _PlaybackModule on _PlayerBase {
     await _gate();
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.
-    _updateField((s) => s.copyWith(playWhenReady: false),
-        _reactives.playWhenReady, false,);
+    _updateField(
+      (s) => s.copyWith(playWhenReady: false),
+      _reactives.playWhenReady,
+      false,
+    );
     // Execute in-flight transport writes first — see [_settleWrites].
     await _settleWrites();
     await _command(['stop']);
@@ -84,26 +95,38 @@ mixin _PlaybackModule on _PlayerBase {
   ///
   /// Throws [MpvException] if mpv rejects the seek — most commonly when
   /// nothing is loaded.
-  Future<void> seek(Duration position,
-      {bool relative = false, bool exact = false,}) async {
+  Future<void> seek(
+    Duration position, {
+    bool relative = false,
+    bool exact = false,
+  }) async {
     await _gate();
     final secs = durationToSeconds(position);
     final mode = relative ? 'relative' : 'absolute';
-    await _commandChecked(
-        ['seek', secs.toStringAsFixed(6), exact ? '$mode+exact' : mode],);
+    await _commandChecked([
+      'seek',
+      secs.toStringAsFixed(6),
+      exact ? '$mode+exact' : mode,
+    ]);
   }
 
   /// Seeks by percentage of the file duration (0–100). Absolute by default,
   /// or relative to the current percent position when [relative] is true.
   /// [exact] forces a sample-accurate (slower) seek instead of snapping to a
   /// keyframe. Counterpart of [seek] for progress-bar scrubbing.
-  Future<void> seekToPercent(double percent,
-      {bool relative = false, bool exact = false,}) async {
+  Future<void> seekToPercent(
+    double percent, {
+    bool relative = false,
+    bool exact = false,
+  }) async {
     await _gate();
     _checkFinite(percent, 'percent');
     final mode = relative ? 'relative-percent' : 'absolute-percent';
-    await _commandChecked(
-        ['seek', percent.toStringAsFixed(4), exact ? '$mode+exact' : mode],);
+    await _commandChecked([
+      'seek',
+      percent.toStringAsFixed(4),
+      exact ? '$mode+exact' : mode,
+    ]);
   }
 
   /// Undoes the last [seek] / [seekToPercent], jumping back to the position
@@ -123,8 +146,11 @@ mixin _PlaybackModule on _PlayerBase {
   Future<void> setChapter(int index) async {
     await _gate();
     await _prop('chapter', index.toString());
-    _updateField((s) => s.copyWith(currentChapter: index),
-        _reactives.currentChapter, index,);
+    _updateField(
+      (s) => s.copyWith(currentChapter: index),
+      _reactives.currentChapter,
+      index,
+    );
   }
 
   /// Replaces the current file's chapter markers with [chapters] — an
@@ -147,7 +173,10 @@ mixin _PlaybackModule on _PlayerBase {
     final rc = await _setChapterListNode(chapters);
     if (rc < 0) {
       throw MpvException(
-          name: 'chapter-list', code: rc, message: _errorString(rc),);
+        name: 'chapter-list',
+        code: rc,
+        message: _errorString(rc),
+      );
     }
     // Reflect optimistically; the `chapter-list` observer confirms with mpv's
     // normalized view (e.g. clamped/sorted times) on the next event.
@@ -165,24 +194,28 @@ mixin _PlaybackModule on _PlayerBase {
   Future<void> setAbLoopA(Duration? position) async {
     await _gate();
     await _prop(
-        'ab-loop-a',
-        position == null
-            ? 'no'
-            : durationToSeconds(position).toStringAsFixed(6),);
+      'ab-loop-a',
+      position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
+    );
     _updateField(
-        (s) => s.copyWith(abLoopA: position), _reactives.abLoopA, position,);
+      (s) => s.copyWith(abLoopA: position),
+      _reactives.abLoopA,
+      position,
+    );
   }
 
   /// Sets the A-B loop end point. Pass `null` to disable. See [setAbLoopA].
   Future<void> setAbLoopB(Duration? position) async {
     await _gate();
     await _prop(
-        'ab-loop-b',
-        position == null
-            ? 'no'
-            : durationToSeconds(position).toStringAsFixed(6),);
+      'ab-loop-b',
+      position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
+    );
     _updateField(
-        (s) => s.copyWith(abLoopB: position), _reactives.abLoopB, position,);
+      (s) => s.copyWith(abLoopB: position),
+      _reactives.abLoopB,
+      position,
+    );
   }
 
   /// Sets the total A-B loop repetitions. Pass `null` for infinite looping
@@ -195,6 +228,9 @@ mixin _PlaybackModule on _PlayerBase {
     }
     await _prop('ab-loop-count', count == null ? 'inf' : count.toString());
     _updateField(
-        (s) => s.copyWith(abLoopCount: count), _reactives.abLoopCount, count,);
+      (s) => s.copyWith(abLoopCount: count),
+      _reactives.abLoopCount,
+      count,
+    );
   }
 }

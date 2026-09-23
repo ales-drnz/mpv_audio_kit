@@ -42,13 +42,21 @@ void main() {
         final path = await materializeFixture('codec/$filename');
         final result = await verifyCodec(player, path, expected);
 
-        expect(result.params.sampleRate, expected.sampleRate,
-            reason: 'sample rate must match the fixture for ${expected.label}',);
-        expect(result.params.channelCount, expected.channels,
-            reason:
-                'channel count must match the fixture for ${expected.label}',);
-        expect(result.duration.inMilliseconds, greaterThan(0),
-            reason: 'duration must be reported by the demuxer',);
+        expect(
+          result.params.sampleRate,
+          expected.sampleRate,
+          reason: 'sample rate must match the fixture for ${expected.label}',
+        );
+        expect(
+          result.params.channelCount,
+          expected.channels,
+          reason: 'channel count must match the fixture for ${expected.label}',
+        );
+        expect(
+          result.duration.inMilliseconds,
+          greaterThan(0),
+          reason: 'duration must be reported by the demuxer',
+        );
 
         if (expected.codecHint != null) {
           final h = expected.codecHint!.toLowerCase();
@@ -57,12 +65,13 @@ void main() {
           expect(
             c.contains(h) || cn.contains(h),
             isTrue,
-            reason: 'codec id should contain "${expected.codecHint}" for '
+            reason:
+                'codec id should contain "${expected.codecHint}" for '
                 '${expected.label}; got codec="${result.params.codec}", '
                 'codecName="${result.params.codecName}"',
           );
         }
-      }, timeout: const Timeout(Duration(seconds: 30)),);
+      }, timeout: const Timeout(Duration(seconds: 30)));
     }
   });
 }

@@ -38,10 +38,8 @@ final class Playlist {
 
   /// Returns a copy with the given fields replaced. Omitted fields keep
   /// their current value.
-  Playlist copyWith({List<Media>? items, int? index}) => Playlist(
-        items ?? this.items,
-        index: index ?? this.index,
-      );
+  Playlist copyWith({List<Media>? items, int? index}) =>
+      Playlist(items ?? this.items, index: index ?? this.index);
 
   @override
   bool operator ==(Object other) =>

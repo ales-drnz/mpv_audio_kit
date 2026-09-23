@@ -209,64 +209,64 @@ final class MpvTrack {
     Object? replayGainAlbumGain = unset,
     Object? replayGainAlbumPeak = unset,
     Map<String, String>? metadata,
-  }) =>
-      MpvTrack(
-        id: id ?? this.id,
-        type: type ?? this.type,
-        selected: selected ?? this.selected,
-        title: identical(title, unset) ? this.title : title as String?,
-        lang: identical(lang, unset) ? this.lang : lang as String?,
-        defaultTrack: defaultTrack ?? this.defaultTrack,
-        forced: forced ?? this.forced,
-        dependent: dependent ?? this.dependent,
-        visualImpaired: visualImpaired ?? this.visualImpaired,
-        hearingImpaired: hearingImpaired ?? this.hearingImpaired,
-        image: image ?? this.image,
-        albumArt: albumArt ?? this.albumArt,
-        external: external ?? this.external,
-        externalFilename: identical(externalFilename, unset)
-            ? this.externalFilename
-            : externalFilename as String?,
-        codec: identical(codec, unset) ? this.codec : codec as String?,
-        codecDesc:
-            identical(codecDesc, unset) ? this.codecDesc : codecDesc as String?,
-        codecProfile: identical(codecProfile, unset)
-            ? this.codecProfile
-            : codecProfile as String?,
-        decoder: identical(decoder, unset) ? this.decoder : decoder as String?,
-        decoderDesc: identical(decoderDesc, unset)
-            ? this.decoderDesc
-            : decoderDesc as String?,
-        formatName: identical(formatName, unset)
-            ? this.formatName
-            : formatName as String?,
-        sampleRate:
-            identical(sampleRate, unset) ? this.sampleRate : sampleRate as int?,
-        channels:
-            identical(channels, unset) ? this.channels : channels as String?,
-        channelCount: identical(channelCount, unset)
-            ? this.channelCount
-            : channelCount as int?,
-        demuxBitrate: identical(demuxBitrate, unset)
-            ? this.demuxBitrate
-            : demuxBitrate as double?,
-        hlsBitrate: identical(hlsBitrate, unset)
-            ? this.hlsBitrate
-            : hlsBitrate as double?,
-        replayGainTrackGain: identical(replayGainTrackGain, unset)
-            ? this.replayGainTrackGain
-            : replayGainTrackGain as double?,
-        replayGainTrackPeak: identical(replayGainTrackPeak, unset)
-            ? this.replayGainTrackPeak
-            : replayGainTrackPeak as double?,
-        replayGainAlbumGain: identical(replayGainAlbumGain, unset)
-            ? this.replayGainAlbumGain
-            : replayGainAlbumGain as double?,
-        replayGainAlbumPeak: identical(replayGainAlbumPeak, unset)
-            ? this.replayGainAlbumPeak
-            : replayGainAlbumPeak as double?,
-        metadata: metadata ?? this.metadata,
-      );
+  }) => MpvTrack(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    selected: selected ?? this.selected,
+    title: identical(title, unset) ? this.title : title as String?,
+    lang: identical(lang, unset) ? this.lang : lang as String?,
+    defaultTrack: defaultTrack ?? this.defaultTrack,
+    forced: forced ?? this.forced,
+    dependent: dependent ?? this.dependent,
+    visualImpaired: visualImpaired ?? this.visualImpaired,
+    hearingImpaired: hearingImpaired ?? this.hearingImpaired,
+    image: image ?? this.image,
+    albumArt: albumArt ?? this.albumArt,
+    external: external ?? this.external,
+    externalFilename: identical(externalFilename, unset)
+        ? this.externalFilename
+        : externalFilename as String?,
+    codec: identical(codec, unset) ? this.codec : codec as String?,
+    codecDesc: identical(codecDesc, unset)
+        ? this.codecDesc
+        : codecDesc as String?,
+    codecProfile: identical(codecProfile, unset)
+        ? this.codecProfile
+        : codecProfile as String?,
+    decoder: identical(decoder, unset) ? this.decoder : decoder as String?,
+    decoderDesc: identical(decoderDesc, unset)
+        ? this.decoderDesc
+        : decoderDesc as String?,
+    formatName: identical(formatName, unset)
+        ? this.formatName
+        : formatName as String?,
+    sampleRate: identical(sampleRate, unset)
+        ? this.sampleRate
+        : sampleRate as int?,
+    channels: identical(channels, unset) ? this.channels : channels as String?,
+    channelCount: identical(channelCount, unset)
+        ? this.channelCount
+        : channelCount as int?,
+    demuxBitrate: identical(demuxBitrate, unset)
+        ? this.demuxBitrate
+        : demuxBitrate as double?,
+    hlsBitrate: identical(hlsBitrate, unset)
+        ? this.hlsBitrate
+        : hlsBitrate as double?,
+    replayGainTrackGain: identical(replayGainTrackGain, unset)
+        ? this.replayGainTrackGain
+        : replayGainTrackGain as double?,
+    replayGainTrackPeak: identical(replayGainTrackPeak, unset)
+        ? this.replayGainTrackPeak
+        : replayGainTrackPeak as double?,
+    replayGainAlbumGain: identical(replayGainAlbumGain, unset)
+        ? this.replayGainAlbumGain
+        : replayGainAlbumGain as double?,
+    replayGainAlbumPeak: identical(replayGainAlbumPeak, unset)
+        ? this.replayGainAlbumPeak
+        : replayGainAlbumPeak as double?,
+    metadata: metadata ?? this.metadata,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -305,41 +305,42 @@ final class MpvTrack {
 
   @override
   int get hashCode => Object.hashAll([
-        id,
-        type,
-        selected,
-        title,
-        lang,
-        defaultTrack,
-        forced,
-        dependent,
-        visualImpaired,
-        hearingImpaired,
-        image,
-        albumArt,
-        external,
-        externalFilename,
-        codec,
-        codecDesc,
-        codecProfile,
-        decoder,
-        decoderDesc,
-        formatName,
-        sampleRate,
-        channels,
-        channelCount,
-        demuxBitrate,
-        hlsBitrate,
-        replayGainTrackGain,
-        replayGainTrackPeak,
-        replayGainAlbumGain,
-        replayGainAlbumPeak,
-        Object.hashAllUnordered(
-          metadata.entries.map((e) => Object.hash(e.key, e.value)),
-        ),
-      ]);
+    id,
+    type,
+    selected,
+    title,
+    lang,
+    defaultTrack,
+    forced,
+    dependent,
+    visualImpaired,
+    hearingImpaired,
+    image,
+    albumArt,
+    external,
+    externalFilename,
+    codec,
+    codecDesc,
+    codecProfile,
+    decoder,
+    decoderDesc,
+    formatName,
+    sampleRate,
+    channels,
+    channelCount,
+    demuxBitrate,
+    hlsBitrate,
+    replayGainTrackGain,
+    replayGainTrackPeak,
+    replayGainAlbumGain,
+    replayGainAlbumPeak,
+    Object.hashAllUnordered(
+      metadata.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
+  ]);
 
   @override
-  String toString() => 'MpvTrack(id: $id, type: $type, selected: $selected, '
+  String toString() =>
+      'MpvTrack(id: $id, type: $type, selected: $selected, '
       'title: $title, lang: $lang)';
 }

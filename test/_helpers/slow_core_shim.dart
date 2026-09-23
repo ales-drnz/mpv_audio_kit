@@ -37,10 +37,15 @@ class SlowCoreShim {
     final outDir = Directory.systemTemp.createTempSync('mak_slow_core_shim');
     final ext = Platform.isMacOS ? 'dylib' : 'so';
     final out = '${outDir.path}/libmpv_slow_core_shim.$ext';
-    final result = await Process.run(
-      'cc',
-      ['-shared', '-fPIC', '-O1', '-o', out, src, '-ldl'],
-    );
+    final result = await Process.run('cc', [
+      '-shared',
+      '-fPIC',
+      '-O1',
+      '-o',
+      out,
+      src,
+      '-ldl',
+    ]);
     if (result.exitCode != 0) {
       throw StateError(
         'shim compile failed (rc=${result.exitCode}):\n'
@@ -60,9 +65,11 @@ class SlowCoreShim {
     int setDelayUs = 0,
   }) {
     final lib = DynamicLibrary.open(path);
-    final fn = lib.lookupFunction<
-        Void Function(Pointer<Utf8>, Int32, Int32),
-        void Function(Pointer<Utf8>, int, int)>('mak_shim_configure');
+    final fn = lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>, Int32, Int32),
+          void Function(Pointer<Utf8>, int, int)
+        >('mak_shim_configure');
     final p = realLibmpvPath.toNativeUtf8();
     try {
       fn(p, getDelayUs, setDelayUs);

@@ -78,18 +78,18 @@ class MediaSessionMetadataSnapshot {
 
   @override
   int get hashCode => Object.hash(
-        title,
-        artist,
-        album,
-        duration,
-        identityHashCode(artwork),
-        artworkUri,
-        trackNumber,
-        discNumber,
-        albumArtist,
-        genre,
-        url,
-      );
+    title,
+    artist,
+    album,
+    duration,
+    identityHashCode(artwork),
+    artworkUri,
+    trackNumber,
+    discNumber,
+    albumArtist,
+    genre,
+    url,
+  );
 }
 
 /// Effective playback snapshot pushed to native. The OS extrapolates
@@ -350,4 +350,3 @@ class MediaSessionChannel {
     return null;
   }
 }
-

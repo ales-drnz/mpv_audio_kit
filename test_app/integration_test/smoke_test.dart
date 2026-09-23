@@ -38,9 +38,7 @@ void main() {
     setUp(() async {
       shortFixture = await materializeFixture('sine_440hz_1s.wav');
       player = Player(
-        configuration: const PlayerConfiguration(
-          logLevel: LogLevel.off,
-        ),
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
       );
       // Force the null audio output so the test harness never holds a real
       // audio device — important on simulators that don't expose one and on
@@ -71,8 +69,9 @@ void main() {
       expect(d.inMilliseconds, greaterThan(0));
     });
 
-    testWidgets('play / pause flips state via the core-idle observer',
-        (_) async {
+    testWidgets('play / pause flips state via the core-idle observer', (
+      _,
+    ) async {
       await player.open(Media(shortFixture), play: false);
       await player.stream.duration
           .firstWhere((d) => d.inMilliseconds > 0)
@@ -108,8 +107,9 @@ void main() {
       expect(player.state.position.inMilliseconds, greaterThan(400));
     });
 
-    testWidgets('audio-params observer reports the fixture sample rate',
-        (_) async {
+    testWidgets('audio-params observer reports the fixture sample rate', (
+      _,
+    ) async {
       // 88.2 kHz is unusual enough that a buggy NODE_MAP int64 parser would
       // produce a different number — the assertion catches a regression in
       // the FFI bridge, not just "any value is fine".
@@ -121,8 +121,9 @@ void main() {
       expect(params.sampleRate, 88200);
     });
 
-    testWidgets('embedded cover art mime is exposed by the FFI bridge',
-        (_) async {
+    testWidgets('embedded cover art mime is exposed by the FFI bridge', (
+      _,
+    ) async {
       // Cover art relies on the `embedded-cover-art-mime` property, which
       // is exposed by the patched libmpv build. macOS / Linux / Windows
       // ship the patched binary today; iOS / Android currently load an
@@ -142,19 +143,24 @@ void main() {
       }
       final mime = await player.getRawProperty('embedded-cover-art-mime');
       if (mime == null) {
-        markTestSkipped('embedded-cover-art-mime is not exposed by the '
-            'libmpv build loaded on this platform — rebuild with the '
-            'cover-art patch applied to enable this assertion');
+        markTestSkipped(
+          'embedded-cover-art-mime is not exposed by the '
+          'libmpv build loaded on this platform — rebuild with the '
+          'cover-art patch applied to enable this assertion',
+        );
         return;
       }
-      expect(mime, 'image/png',
-          reason: 'fixture is muxed with a PNG cover; an empty/wrong mime '
-              'would mean the FFI bridge for cover art is broken on this '
-              'platform',);
+      expect(
+        mime,
+        'image/png',
+        reason:
+            'fixture is muxed with a PNG cover; an empty/wrong mime '
+            'would mean the FFI bridge for cover art is broken on this '
+            'platform',
+      );
     });
 
-    testWidgets(
-        'typed setter (setVolume) round-trips through the platform '
+    testWidgets('typed setter (setVolume) round-trips through the platform '
         'binary', (_) async {
       // The host suite already covers setVolume exhaustively against the
       // patched desktop build. On iOS / Android the libmpv binary is
@@ -171,9 +177,13 @@ void main() {
           .firstWhere((v) => v == 73.0)
           .timeout(const Duration(seconds: 5));
       await player.setVolume(73.0);
-      expect(player.state.volume, 73.0,
-          reason: 'optimistic state update should reflect the requested '
-              'value synchronously, regardless of platform binary',);
+      expect(
+        player.state.volume,
+        73.0,
+        reason:
+            'optimistic state update should reflect the requested '
+            'value synchronously, regardless of platform binary',
+      );
       await waitFor;
       expect(player.state.volume, 73.0);
     });

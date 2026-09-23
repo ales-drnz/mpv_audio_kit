@@ -10,8 +10,11 @@ void main() {
   group('deriveLoop — loop-file transitions', () {
     test('loop-file=inf → single regardless of previous mode', () {
       expect(deriveLoop('loop-file', 'inf', Loop.off), Loop.file);
-      expect(deriveLoop('loop-file', 'inf', Loop.playlist), Loop.file,
-          reason: 'switching from loop-playlist to loop-file is allowed',);
+      expect(
+        deriveLoop('loop-file', 'inf', Loop.playlist),
+        Loop.file,
+        reason: 'switching from loop-playlist to loop-file is allowed',
+      );
       expect(deriveLoop('loop-file', 'inf', Loop.file), Loop.file);
     });
 
@@ -23,9 +26,13 @@ void main() {
       // Critical: mpv emits both loop-file and loop-playlist independently.
       // If the user switched on loop-playlist, a stale loop-file=no observer
       // event must not silently downgrade the mode to none.
-      expect(deriveLoop('loop-file', 'no', Loop.playlist), isNull,
-          reason: 'loop-file=no with prev=loop must not modify the playlist '
-              'loop — the wrapper would lose user-visible state',);
+      expect(
+        deriveLoop('loop-file', 'no', Loop.playlist),
+        isNull,
+        reason:
+            'loop-file=no with prev=loop must not modify the playlist '
+            'loop — the wrapper would lose user-visible state',
+      );
     });
 
     test('loop-file=no with prev=none is a no-op', () {

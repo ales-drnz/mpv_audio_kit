@@ -20,9 +20,9 @@ enum Cache {
 
   /// Maps a raw mpv-side value back to the enum. Unknown → [auto].
   static Cache fromMpv(String raw) => switch (raw) {
-        'auto' => auto,
-        'yes' => yes,
-        'no' => no,
-        _ => auto,
-      };
+    'auto' => auto,
+    'yes' => yes,
+    'no' => no,
+    _ => auto,
+  };
 }

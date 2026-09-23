@@ -26,26 +26,30 @@ void main() {
 
   setUpAll(() => initLibmpvOrSkip());
 
-  test('Player.dispose() returns well below the 2 s isolate-stop timeout',
-      () async {
-    final player = await buildPlayerWithFixture();
-    // Let the event isolate finish spawning so the stop path exercises
-    // a real cooperative shutdown rather than a not-yet-init no-op.
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+  test(
+    'Player.dispose() returns well below the 2 s isolate-stop timeout',
+    () async {
+      final player = await buildPlayerWithFixture();
+      // Let the event isolate finish spawning so the stop path exercises
+      // a real cooperative shutdown rather than a not-yet-init no-op.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
-    final sw = Stopwatch()..start();
-    await player.dispose();
-    sw.stop();
+      final sw = Stopwatch()..start();
+      await player.dispose();
+      sw.stop();
 
-    expect(
-      sw.elapsedMilliseconds,
-      lessThan(1000),
-      reason: 'dispose() ran for ${sw.elapsedMilliseconds} ms — close to '
-          'or above the 2 s isolate-stop timeout. The cooperative '
-          'shutdown path in event_isolate._isolateEntry has likely '
-          'regressed (missing fromMain.close() after _runEventLoop).',
-    );
-  }, timeout: const Timeout(Duration(seconds: 30)),);
+      expect(
+        sw.elapsedMilliseconds,
+        lessThan(1000),
+        reason:
+            'dispose() ran for ${sw.elapsedMilliseconds} ms — close to '
+            'or above the 2 s isolate-stop timeout. The cooperative '
+            'shutdown path in event_isolate._isolateEntry has likely '
+            'regressed (missing fromMain.close() after _runEventLoop).',
+      );
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
 
   test('20 consecutive Player.dispose() calls all return quickly', () async {
     // Stress the path: build + dispose 20 times. If the cooperative
@@ -65,9 +69,10 @@ void main() {
     expect(
       max,
       lessThan(1000),
-      reason: 'max dispose time across 20 cycles was $max ms (avg '
+      reason:
+          'max dispose time across 20 cycles was $max ms (avg '
           '${avg.toStringAsFixed(1)} ms); a single cycle hitting the '
           '2 s timeout indicates the isolate is not exiting cleanly.',
     );
-  }, timeout: const Timeout(Duration(seconds: 60)),);
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }

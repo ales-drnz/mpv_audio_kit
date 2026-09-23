@@ -73,11 +73,12 @@ class PropertyRegistry {
   /// range — see [registryReplyIdMax].
   void observeAll(MpvLibrary lib, Pointer<MpvHandle> handle) {
     assert(
-        _byName.length <= registryReplyIdMax,
-        'PropertyRegistry has ${_byName.length} specs, exceeding the '
-        'reply-id boundary of $registryReplyIdMax. Bump the boundary or '
-        'split the registry — IDs at or above the boundary are reserved '
-        'for out-of-registry observers wired in Player._observe.');
+      _byName.length <= registryReplyIdMax,
+      'PropertyRegistry has ${_byName.length} specs, exceeding the '
+      'reply-id boundary of $registryReplyIdMax. Bump the boundary or '
+      'split the registry — IDs at or above the boundary are reserved '
+      'for out-of-registry observers wired in Player._observe.',
+    );
     var replyId = 1;
     for (final spec in _byName.values) {
       using((arena) {

@@ -21,16 +21,16 @@ const _eventChannel = EventChannel('mpv_audio_kit/media_session/commands');
 Future<List<MediaSessionCommand>> _decode(List<Object?> events) {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockStreamHandler(
-    _eventChannel,
-    MockStreamHandler.inline(
-      onListen: (arguments, sink) {
-        for (final e in events) {
-          sink.success(e);
-        }
-        sink.endOfStream();
-      },
-    ),
-  );
+        _eventChannel,
+        MockStreamHandler.inline(
+          onListen: (arguments, sink) {
+            for (final e in events) {
+              sink.success(e);
+            }
+            sink.endOfStream();
+          },
+        ),
+      );
   return MediaSessionChannel().commandStream.toList();
 }
 

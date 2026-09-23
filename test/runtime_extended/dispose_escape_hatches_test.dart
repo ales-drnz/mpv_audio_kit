@@ -19,8 +19,7 @@ void main() {
   // exactly ONE Player.
 
   group('Dispose safety — escape hatches throw StateError after dispose', () {
-    test(
-        'getRawProperty / setRawProperty / sendRawCommand / registerHook / '
+    test('getRawProperty / setRawProperty / sendRawCommand / registerHook / '
         'continueHook all throw StateError post-dispose', () async {
       final player = await buildPlayer();
       // Allow the event isolate to spawn fully before disposing.
@@ -29,14 +28,16 @@ void main() {
 
       expect(() => player.getRawProperty('volume'), throwsStateError);
       expect(() => player.setRawProperty('volume', '50'), throwsStateError);
-      expect(() => player.sendRawCommand(['set', 'volume', '50']),
-          throwsStateError,);
+      expect(
+        () => player.sendRawCommand(['set', 'volume', '50']),
+        throwsStateError,
+      );
       expect(() => player.registerHook(Hook.load), throwsStateError);
       expect(() => player.continueHook(1), throwsStateError);
 
       // Let libmpv's background threads wind down (see
       // dispose_safety_test.dart for the rationale).
       await Future<void>.delayed(const Duration(seconds: 1));
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

@@ -43,10 +43,14 @@ void main() {
     await player.dispose().timeout(const Duration(seconds: 1));
     stopwatch.stop();
 
-    expect(stopwatch.elapsed.inMilliseconds, lessThan(1000),
-        reason: 'dispose() must complete in well under 1s when racing an '
-            'in-flight open(). If this regresses, the cooperative SHUTDOWN '
-            'path is no longer reaching the event isolate.',);
+    expect(
+      stopwatch.elapsed.inMilliseconds,
+      lessThan(1000),
+      reason:
+          'dispose() must complete in well under 1s when racing an '
+          'in-flight open(). If this regresses, the cooperative SHUTDOWN '
+          'path is no longer reaching the event isolate.',
+    );
 
     // The pending open's future may complete normally or throw; both
     // are valid outcomes. The important property is that dispose
@@ -56,5 +60,5 @@ void main() {
     } catch (_) {
       // Either StateError (post-dispose) or no error — both acceptable.
     }
-  }, timeout: const Timeout(Duration(seconds: 5)),);
+  }, timeout: const Timeout(Duration(seconds: 5)));
 }

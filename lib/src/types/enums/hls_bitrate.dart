@@ -27,9 +27,9 @@ enum HlsBitrate {
   /// Maps an mpv-side token back to the enum. Unknown values fall back to
   /// [max] (mpv's default), never throwing.
   static HlsBitrate fromMpv(String raw) => switch (raw) {
-        'no' => no,
-        'min' => min,
-        'max' => max,
-        _ => max,
-      };
+    'no' => no,
+    'min' => min,
+    'max' => max,
+    _ => max,
+  };
 }

@@ -51,8 +51,9 @@ const Set<String> _kClockThrottledProps = {
 /// so this value is only the no-dispose floor, never the common-case latency.
 /// Debug: `0.1` s (unchanged) for snappy Hot Restart. It MUST stay finite in
 /// product — an infinite timeout reintroduces the quit hang.
-const double _kWaitEventTimeoutSeconds =
-    bool.fromEnvironment('dart.vm.product') ? 1.0 : 0.1;
+const double _kWaitEventTimeoutSeconds = bool.fromEnvironment('dart.vm.product')
+    ? 1.0
+    : 0.1;
 
 /// Maximum time [MpvEventIsolate.stop] waits for the background isolate
 /// to finish unwinding after `MPV_EVENT_SHUTDOWN`. The loop's natural
@@ -230,11 +231,9 @@ void _runEventLoop(
     try {
       _dispatchEvent(lib, handle, toMain, event, lastValues, lastTimestamps);
     } catch (e, st) {
-      toMain.send(MpvEventLog(
-        'event-isolate',
-        'error',
-        'event dispatch failed: $e\n$st',
-      ),);
+      toMain.send(
+        MpvEventLog('event-isolate', 'error', 'event dispatch failed: $e\n$st'),
+      );
     }
 
     if (id == mpv.MpvEventId.mpvEventShutdown) {
@@ -271,11 +270,13 @@ void _dispatchEvent(
       try {
         loaded = _readFileLoadedEvent(lib, handle);
       } catch (e, st) {
-        toMain.send(MpvEventLog(
-          'event-isolate',
-          'warn',
-          'file-loaded payload read failed: $e\n$st',
-        ),);
+        toMain.send(
+          MpvEventLog(
+            'event-isolate',
+            'warn',
+            'file-loaded payload read failed: $e\n$st',
+          ),
+        );
         loaded = MpvEventFileLoaded();
       }
       toMain.send(loaded);
@@ -304,8 +305,9 @@ void _dispatchEvent(
         // The payload (an mpv_event_property) is owned by the event and
         // valid only until the next mpv_wait_event — decode (and copy)
         // before forwarding.
-        value =
-            _decodePropertyValue(event.ref.data.cast<mpv.MpvEventProperty>().ref);
+        value = _decodePropertyValue(
+          event.ref.data.cast<mpv.MpvEventProperty>().ref,
+        );
       }
       toMain.send(MpvEventGetReply(event.ref.replyUserdata, error, value));
 
@@ -387,10 +389,11 @@ MpvEventFileLoaded _readFileLoadedEvent(
       if (ba.size <= 0) return null;
       // fromList copies out of mpv-owned memory before the node is freed;
       // materialize() on the main isolate is then zero-copy.
-      final data = TransferableTypedData.fromList(
-        [ba.data.cast<Uint8>().asTypedList(ba.size)],
-      );
-      final mime = _getPropString(lib, handle, 'embedded-cover-art-mime') ??
+      final data = TransferableTypedData.fromList([
+        ba.data.cast<Uint8>().asTypedList(ba.size),
+      ]);
+      final mime =
+          _getPropString(lib, handle, 'embedded-cover-art-mime') ??
           'application/octet-stream';
       return (data, mime);
     });
@@ -575,10 +578,12 @@ dynamic _decodePropertyValue(mpv.MpvEventProperty prop) {
     mpv.MpvFormat.mpvFormatDouble => prop.data.cast<Double>().value,
     mpv.MpvFormat.mpvFormatFlag => prop.data.cast<Int32>().value,
     mpv.MpvFormat.mpvFormatInt64 => prop.data.cast<Int64>().value,
-    mpv.MpvFormat.mpvFormatString =>
-      decodeMpvString(prop.data.cast<Pointer<Utf8>>().value),
-    mpv.MpvFormat.mpvFormatNode =>
-      decodeMpvNode(prop.data.cast<mpv.MpvNode>().ref),
+    mpv.MpvFormat.mpvFormatString => decodeMpvString(
+      prop.data.cast<Pointer<Utf8>>().value,
+    ),
+    mpv.MpvFormat.mpvFormatNode => decodeMpvNode(
+      prop.data.cast<mpv.MpvNode>().ref,
+    ),
     _ => null,
   };
 }
@@ -646,8 +651,9 @@ dynamic decodeMpvNode(mpv.MpvNode node) {
       final list = node.u.list.ref;
       return <String, dynamic>{
         for (var i = 0; i < list.num; i++)
-          decodeMpvString((list.keys + i).value.cast()):
-              decodeMpvNode((list.values + i).ref),
+          decodeMpvString((list.keys + i).value.cast()): decodeMpvNode(
+            (list.values + i).ref,
+          ),
       };
     case mpv.MpvFormat.mpvFormatByteArray:
       final ba = node.u.ba.ref;
@@ -784,16 +790,18 @@ class MpvEventIsolate {
       }
     });
 
-    _toIsolate!.send(_InitMessage(
-      fromIsolate.sendPort,
-      libraryPath: libraryPath,
-      preInitOptions: preInitOptions,
-      postInitOptions: postInitOptions,
-      observes: observes,
-      logLevel: logLevel,
-      wakeupCounterAddress: wakeupCounterAddress,
-      stopFlagAddress: _stopFlag!.address,
-    ),);
+    _toIsolate!.send(
+      _InitMessage(
+        fromIsolate.sendPort,
+        libraryPath: libraryPath,
+        preInitOptions: preInitOptions,
+        postInitOptions: postInitOptions,
+        observes: observes,
+        logLevel: logLevel,
+        wakeupCounterAddress: wakeupCounterAddress,
+        stopFlagAddress: _stopFlag!.address,
+      ),
+    );
 
     return initDone.future;
   }

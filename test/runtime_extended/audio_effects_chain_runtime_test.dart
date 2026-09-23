@@ -71,59 +71,54 @@ void main() {
     // logLevel must be at least 'error' to receive the diagnostics we
     // grep for. Default helper builds with 'no'.
     player = Player(
-      configuration: const PlayerConfiguration(
-        logLevel: LogLevel.error,
-      ),
+      configuration: const PlayerConfiguration(logLevel: LogLevel.error),
     );
     await player.setRawProperty('ao', 'null');
     await player.open(Media(fixturePath), play: false);
     // Wait for file-loaded so the audio chain is live; otherwise
     // setting `af` may be deferred and not surface load errors.
-    await player.stream.seekCompleted.first
-        .timeout(const Duration(seconds: 10));
+    await player.stream.seekCompleted.first.timeout(
+      const Duration(seconds: 10),
+    );
   });
 
   tearDownAll(() async {
     await player.dispose();
   });
 
-  test(
-    'every typed audio filter loads in mpv\'s `af` chain',
-    () async {
-      final failures = <String, List<String>>{};
+  test('every typed audio filter loads in mpv\'s `af` chain', () async {
+    final failures = <String, List<String>>{};
 
-      for (final name in filterNames) {
-        if (requireParams.contains(name)) {
-          continue;
-        }
-        final errors = await captureMpvErrors(player, () async {
-          await player.setAudioEffects(
-            AudioEffects(custom: ['lavfi-$name']),
-          );
-        });
-        if (errors.isNotEmpty) {
-          failures[name] = errors.map((e) => e.text.trim()).toList();
-        }
-        // Reset so the next iteration starts from a clean chain — and
-        // any error from THIS filter doesn't bleed into the next drain.
-        await player.setAudioEffects(const AudioEffects());
+    for (final name in filterNames) {
+      if (requireParams.contains(name)) {
+        continue;
       }
+      final errors = await captureMpvErrors(player, () async {
+        await player.setAudioEffects(AudioEffects(custom: ['lavfi-$name']));
+      });
+      if (errors.isNotEmpty) {
+        failures[name] = errors.map((e) => e.text.trim()).toList();
+      }
+      // Reset so the next iteration starts from a clean chain — and
+      // any error from THIS filter doesn't bleed into the next drain.
+      await player.setAudioEffects(const AudioEffects());
+    }
 
-      if (failures.isNotEmpty) {
-        final buf = StringBuffer()
-          ..writeln('${failures.length} of ${filterNames.length} '
-              'filters produced mpv errors:')
-          ..writeln();
-        final sortedKeys = failures.keys.toList()..sort();
-        for (final name in sortedKeys) {
-          buf.writeln('  - $name:');
-          for (final msg in failures[name]!) {
-            buf.writeln('      $msg');
-          }
+    if (failures.isNotEmpty) {
+      final buf = StringBuffer()
+        ..writeln(
+          '${failures.length} of ${filterNames.length} '
+          'filters produced mpv errors:',
+        )
+        ..writeln();
+      final sortedKeys = failures.keys.toList()..sort();
+      for (final name in sortedKeys) {
+        buf.writeln('  - $name:');
+        for (final msg in failures[name]!) {
+          buf.writeln('      $msg');
         }
-        fail(buf.toString());
       }
-    },
-    timeout: const Timeout(Duration(minutes: 3)),
-  );
+      fail(buf.toString());
+    }
+  }, timeout: const Timeout(Duration(minutes: 3)));
 }

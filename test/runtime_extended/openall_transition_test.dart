@@ -64,8 +64,9 @@ void main() {
     }
 
     Future<void> openAllAndSettle({bool? play}) async {
-      final loaded = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
       await player.openAll(
         List.generate(8, (_) => Media(fixturePath)),
         play: play,
@@ -75,17 +76,20 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 300));
     }
 
-    test('from IDLE: only the selected entry ever becomes current',
-        () async {
+    test('from IDLE: only the selected entry ever becomes current', () async {
       await openAllAndSettle(play: true);
 
-      expect(incomingOffTarget(fixturePath, {6}), isEmpty,
-          reason: 'no incoming entry before the selected one may ever '
-              'become current',);
+      expect(
+        incomingOffTarget(fixturePath, {6}),
+        isEmpty,
+        reason:
+            'no incoming entry before the selected one may ever '
+            'become current',
+      );
       expect(player.state.playlist.index, 6);
       expect(player.state.playlist.items.length, 8);
       expect(await player.getRawProperty('pause'), 'no');
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('from PLAYING: old track holds until the direct jump', () async {
       await openAndWaitForLoad(player, longFixture);
@@ -97,13 +101,17 @@ void main() {
 
       // The old entry occupies position 0 until the post-jump remove, so
       // the incoming target legitimately appears at 7 first, then 6.
-      expect(incomingOffTarget(fixturePath, {6, 7}), isEmpty,
-          reason: 'no incoming entry before the selected one may ever '
-              'become current',);
+      expect(
+        incomingOffTarget(fixturePath, {6, 7}),
+        isEmpty,
+        reason:
+            'no incoming entry before the selected one may ever '
+            'become current',
+      );
       expect(player.state.playlist.index, 6);
       expect(player.state.playlist.items.length, 8);
       expect(player.state.playing, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('from PARKED at EOF: starts unpaused with intent intact', () async {
       await parkAtEof();
@@ -113,22 +121,31 @@ void main() {
 
       // The parked entry is removed before the appends (no retained
       // offset), so the incoming target is only ever current at 6.
-      expect(incomingOffTarget(fixturePath, {6}), isEmpty,
-          reason: 'no incoming entry before the selected one may ever '
-              'become current',);
+      expect(
+        incomingOffTarget(fixturePath, {6}),
+        isEmpty,
+        reason:
+            'no incoming entry before the selected one may ever '
+            'become current',
+      );
       expect(player.state.playlist.index, 6);
       expect(await player.getRawProperty('pause'), 'no');
-      expect(player.state.playWhenReady, isTrue,
-          reason: 'the transient idle hop must not settle the OS play '
-              'button on paused',);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+      expect(
+        player.state.playWhenReady,
+        isTrue,
+        reason:
+            'the transient idle hop must not settle the OS play '
+            'button on paused',
+      );
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('from PARKED with play: false loads the target paused', () async {
       await parkAtEof();
       frames.clear();
 
-      final loaded = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
+      final loaded = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 10),
+      );
       await player.openAll(
         List.generate(8, (_) => Media(fixturePath)),
         play: false,
@@ -141,27 +158,34 @@ void main() {
       expect(player.state.playlist.index, 6);
       expect(await player.getRawProperty('pause'), 'yes');
       expect(player.state.playWhenReady, isFalse);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+    }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('default index 0 from PLAYING resolves the retained-entry offset',
-        () async {
-      await openAndWaitForLoad(player, longFixture);
-      await player.play();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+    test(
+      'default index 0 from PLAYING resolves the retained-entry offset',
+      () async {
+        await openAndWaitForLoad(player, longFixture);
+        await player.play();
+        await Future<void>.delayed(const Duration(milliseconds: 200));
 
-      final loaded = player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 10));
-      await player.openAll(
-        [Media(fixturePath), Media(shortFixture)],
-        play: true,
-      );
-      await loaded;
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.openAll([
+          Media(fixturePath),
+          Media(shortFixture),
+        ], play: true);
+        await loaded;
+        await Future<void>.delayed(const Duration(milliseconds: 300));
 
-      expect(player.state.playlist.index, 0,
-          reason: 'after the old entry is dropped the target settles at 0',);
-      expect(player.state.playlist.items.length, 2);
-      expect(player.state.playing, isTrue);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+        expect(
+          player.state.playlist.index,
+          0,
+          reason: 'after the old entry is dropped the target settles at 0',
+        );
+        expect(player.state.playlist.items.length, 2);
+        expect(player.state.playing, isTrue);
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
   });
 }

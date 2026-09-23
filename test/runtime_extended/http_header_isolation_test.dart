@@ -37,8 +37,7 @@ void main() {
       await player.dispose();
     });
 
-    test(
-        'open(media with headers) reaches mpv as file-local options for '
+    test('open(media with headers) reaches mpv as file-local options for '
         'the active entry', () async {
       await player.open(
         Media(
@@ -53,21 +52,27 @@ void main() {
 
       // Wait for the file to settle so the loadfile-time options are
       // applied to the active entry.
-      await player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 5));
+      await player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 5),
+      );
 
       // Headers must have reached mpv. The bare property name is
       // resolved against mpv's file-local override during playback,
       // so the merged value should contain both headers verbatim.
       final effective = await player.getRawProperty('http-header-fields') ?? '';
-      expect(effective, contains('X-Test-Token: leak-canary-12345'),
-          reason: 'first header must be applied for the active entry',);
-      expect(effective, contains('X-Other: nope'),
-          reason: 'second header must be applied for the active entry',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+      expect(
+        effective,
+        contains('X-Test-Token: leak-canary-12345'),
+        reason: 'first header must be applied for the active entry',
+      );
+      expect(
+        effective,
+        contains('X-Other: nope'),
+        reason: 'second header must be applied for the active entry',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
-    test(
-        'open(headers=A) followed by open(no headers) does not load the '
+    test('open(headers=A) followed by open(no headers) does not load the '
         'second file with leftover headers', () async {
       // Open A with headers.
       await player.open(
@@ -77,20 +82,26 @@ void main() {
         ),
         play: false,
       );
-      await player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 5));
+      await player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 5),
+      );
 
       // Open B without headers — the wrapper must NOT carry over A's
       // header set. Verify by reading the global option after the
       // second open: it must remain empty (no leak path).
       await player.open(Media(fixturePath), play: false);
-      await player.stream.seekCompleted.first
-          .timeout(const Duration(seconds: 5));
+      await player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 5),
+      );
 
       final global = await player.getRawProperty('http-header-fields');
-      expect(global == null || global.isEmpty, isTrue,
-          reason: 'consecutive open() calls must not pollute the global '
-              'http-header-fields option',);
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+      expect(
+        global == null || global.isEmpty,
+        isTrue,
+        reason:
+            'consecutive open() calls must not pollute the global '
+            'http-header-fields option',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

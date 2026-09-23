@@ -36,8 +36,11 @@ void main() {
     });
 
     test('attaches Media instances from mediaCache (preserves extras)', () {
-      const cached = Media('a.mp3',
-          extras: {'title': 'Track A'}, httpHeaders: {'X': 'Y'},);
+      const cached = Media(
+        'a.mp3',
+        extras: {'title': 'Track A'},
+        httpHeaders: {'X': 'Y'},
+      );
       final p = parsePlaylistNode(
         raw: [
           {'filename': 'a.mp3', 'current': true},
@@ -45,10 +48,14 @@ void main() {
         mediaCache: {'a.mp3': cached},
         previous: Playlist.empty,
       );
-      expect(p.items[0], same(cached),
-          reason: 'consumer-supplied Media must round-trip identically; mpv '
-              'only echoes the URI back so the wrapper has to re-attach '
-              'extras + headers from cache',);
+      expect(
+        p.items[0],
+        same(cached),
+        reason:
+            'consumer-supplied Media must round-trip identically; mpv '
+            'only echoes the URI back so the wrapper has to re-attach '
+            'extras + headers from cache',
+      );
     });
 
     test('falls back to Media(filename) when not in cache', () {
@@ -62,8 +69,7 @@ void main() {
       expect(p.items[0], const Media('unknown.mp3'));
     });
 
-    test(
-        'no current flag: falls back to PREVIOUS index, NOT 0 '
+    test('no current flag: falls back to PREVIOUS index, NOT 0 '
         '(regression test for the playlist-move transient)', () {
       // mpv emits the playlist mid-playlist-move without `current: true` on
       // any entry. Naively clamping `indexWhere == -1` to 0 incorrectly
@@ -76,8 +82,11 @@ void main() {
           {'filename': 'c'},
         ],
         mediaCache: const {},
-        previous:
-            const Playlist([Media('a'), Media('b'), Media('c')], index: 2),
+        previous: const Playlist([
+          Media('a'),
+          Media('b'),
+          Media('c'),
+        ], index: 2),
       );
       expect(p.index, 2);
     });
@@ -91,12 +100,19 @@ void main() {
           {'filename': 'a'},
         ],
         mediaCache: const {},
-        previous:
-            const Playlist([Media('a'), Media('b'), Media('c')], index: 2),
+        previous: const Playlist([
+          Media('a'),
+          Media('b'),
+          Media('c'),
+        ], index: 2),
       );
-      expect(p.index, -1,
-          reason: "the previously-current 'c' does not exist in the new "
-              'payload, so no entry is active',);
+      expect(
+        p.index,
+        -1,
+        reason:
+            "the previously-current 'c' does not exist in the new "
+            'payload, so no entry is active',
+      );
     });
 
     test('no current flag + current entry MOVED → followed by uri', () {
@@ -112,12 +128,10 @@ void main() {
         mediaCache: const {},
         previous: const Playlist([Media('a'), Media('b'), Media('c')]),
       );
-      expect(p.index, 1,
-          reason: "the current entry 'a' moved to position 1",);
+      expect(p.index, 1, reason: "the current entry 'a' moved to position 1");
     });
 
-    test(
-        'no current flag + nothing was EVER current → -1, NOT 0 '
+    test('no current flag + nothing was EVER current → -1, NOT 0 '
         '(openAll append build-up phase)', () {
       // Entries appended on an idle core (Player.openAll) before the
       // playlist-play-index: no entry has ever been current. Clamping to
@@ -131,9 +145,13 @@ void main() {
           mediaCache: const {},
           previous: previous,
         );
-        expect(p.index, -1,
-            reason: 'build-up emission with $n entries must report "no '
-                'active entry", not entry 0',);
+        expect(
+          p.index,
+          -1,
+          reason:
+              'build-up emission with $n entries must report "no '
+              'active entry", not entry 0',
+        );
         previous = p;
       }
     });
@@ -154,19 +172,17 @@ void main() {
       // previous playlist visible rather than collapsing to empty.
       const previous = Playlist([Media('a')]);
       expect(
-          parsePlaylistNode(
-            raw: null,
-            mediaCache: const {},
-            previous: previous,
-          ),
-          same(previous),);
+        parsePlaylistNode(raw: null, mediaCache: const {}, previous: previous),
+        same(previous),
+      );
       expect(
-          parsePlaylistNode(
-            raw: 'unexpected scalar',
-            mediaCache: const {},
-            previous: previous,
-          ),
-          same(previous),);
+        parsePlaylistNode(
+          raw: 'unexpected scalar',
+          mediaCache: const {},
+          previous: previous,
+        ),
+        same(previous),
+      );
     });
 
     test('malformed entry (non-map) is tolerated, fills empty slot', () {
@@ -264,20 +280,23 @@ void main() {
     test('cache-duration / target * 100, clamped to 0..100', () {
       // Full window: 30s out of 30s target → 100%
       expect(
-        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 30},
-            const Duration(seconds: 30),),
+        parseDemuxerCacheStateNode(<String, dynamic>{
+          'cache-duration': 30,
+        }, const Duration(seconds: 30)),
         100.0,
       );
       // Half full: 15s / 30s → 50%
       expect(
-        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 15},
-            const Duration(seconds: 30),),
+        parseDemuxerCacheStateNode(<String, dynamic>{
+          'cache-duration': 15,
+        }, const Duration(seconds: 30)),
         50.0,
       );
       // Empty: 0s / 30s → 0%
       expect(
-        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 0},
-            const Duration(seconds: 30),),
+        parseDemuxerCacheStateNode(<String, dynamic>{
+          'cache-duration': 0,
+        }, const Duration(seconds: 30)),
         0.0,
       );
     });
@@ -286,8 +305,9 @@ void main() {
       // mpv occasionally reports cache-duration slightly past the target
       // because of demuxer fluctuations.
       expect(
-        parseDemuxerCacheStateNode(<String, dynamic>{'cache-duration': 50},
-            const Duration(seconds: 30),),
+        parseDemuxerCacheStateNode(<String, dynamic>{
+          'cache-duration': 50,
+        }, const Duration(seconds: 30)),
         100.0,
       );
     });
@@ -297,13 +317,15 @@ void main() {
       // the target might still be zero. The percentage must not divide
       // by zero — the helper documents a 1s fallback.
       expect(
-        parseDemuxerCacheStateNode(
-            <String, dynamic>{'cache-duration': 0.5}, Duration.zero,),
+        parseDemuxerCacheStateNode(<String, dynamic>{
+          'cache-duration': 0.5,
+        }, Duration.zero),
         50.0,
       );
       expect(
-        parseDemuxerCacheStateNode(
-            <String, dynamic>{'cache-duration': 5}, Duration.zero,),
+        parseDemuxerCacheStateNode(<String, dynamic>{
+          'cache-duration': 5,
+        }, Duration.zero),
         100.0,
         reason: 'with the 1s fallback, anything ≥1 saturates at 100',
       );
@@ -312,15 +334,19 @@ void main() {
     test('missing cache-duration key → 0%', () {
       expect(
         parseDemuxerCacheStateNode(
-            <String, dynamic>{}, const Duration(seconds: 30),),
+          <String, dynamic>{},
+          const Duration(seconds: 30),
+        ),
         0.0,
       );
     });
 
     test('non-map raw → 0%', () {
       expect(parseDemuxerCacheStateNode(null, const Duration(seconds: 1)), 0.0);
-      expect(parseDemuxerCacheStateNode('garbage', const Duration(seconds: 1)),
-          0.0,);
+      expect(
+        parseDemuxerCacheStateNode('garbage', const Duration(seconds: 1)),
+        0.0,
+      );
     });
   });
 
@@ -413,17 +439,19 @@ void main() {
       expect(chapters[0].title, isNull);
     });
 
-    test('malformed entry falls back to Duration.zero rather than throwing',
-        () {
-      final chapters = parseChapterListNode([
-        {'title': 'Has title but no time'},
-        'totally-not-a-map',
-      ]);
-      expect(chapters, hasLength(2));
-      expect(chapters[0].time, Duration.zero);
-      expect(chapters[1].time, Duration.zero);
-      expect(chapters[1].title, isNull);
-    });
+    test(
+      'malformed entry falls back to Duration.zero rather than throwing',
+      () {
+        final chapters = parseChapterListNode([
+          {'title': 'Has title but no time'},
+          'totally-not-a-map',
+        ]);
+        expect(chapters, hasLength(2));
+        expect(chapters[0].time, Duration.zero);
+        expect(chapters[1].time, Duration.zero);
+        expect(chapters[1].title, isNull);
+      },
+    );
 
     test('non-list raw → empty list', () {
       expect(parseChapterListNode(null), const <Chapter>[]);
@@ -472,8 +500,11 @@ void main() {
       expect(tracks[0].id, 1);
       expect(tracks[0].type, 'audio');
       expect(tracks[0].selected, isTrue);
-      expect(tracks[0].defaultTrack, isTrue,
-          reason: 'mpv key is `default`; renamed to defaultTrack in Dart',);
+      expect(
+        tracks[0].defaultTrack,
+        isTrue,
+        reason: 'mpv key is `default`; renamed to defaultTrack in Dart',
+      );
       expect(tracks[0].lang, 'eng');
       expect(tracks[0].title, 'Stereo');
       expect(tracks[0].codec, 'flac');
@@ -482,8 +513,11 @@ void main() {
       expect(tracks[0].channels, 'stereo');
       expect(tracks[0].channelCount, 2);
       expect(tracks[0].codecProfile, 'lossless');
-      expect(tracks[0].external, isFalse,
-          reason: 'container track is not external',);
+      expect(
+        tracks[0].external,
+        isFalse,
+        reason: 'container track is not external',
+      );
 
       expect(tracks[1].selected, isFalse);
       expect(tracks[1].defaultTrack, isFalse);
@@ -630,8 +664,10 @@ void main() {
     test('non-map / empty input → empty state', () {
       expect(parseDemuxerCacheStateFull(null), DemuxerCacheState.empty);
       expect(parseDemuxerCacheStateFull('garbage'), DemuxerCacheState.empty);
-      expect(parseDemuxerCacheStateFull(<String, dynamic>{}).seekableRanges,
-          isEmpty,);
+      expect(
+        parseDemuxerCacheStateFull(<String, dynamic>{}).seekableRanges,
+        isEmpty,
+      );
     });
   });
 }

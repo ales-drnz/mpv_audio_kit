@@ -27,13 +27,16 @@ void main() {
       // The headline of fix #5: a failed audio-device open falls back to the
       // null AO instead of hard-failing. The whole point is that this is set
       // BEFORE the first (lazy) AO open, which only the pre-init recipe can do.
-      expect(await player.getRawProperty('audio-fallback-to-null'), 'yes',
-          reason: 'audio-fallback-to-null must be enabled at init (#5)',);
+      expect(
+        await player.getRawProperty('audio-fallback-to-null'),
+        'yes',
+        reason: 'audio-fallback-to-null must be enabled at init (#5)',
+      );
 
       // A few other load-bearing recipe entries, as a recipe-wide guard.
       expect(await player.getRawProperty('vid'), 'no');
       expect(await player.getRawProperty('keep-open'), 'yes');
       expect(await player.getRawProperty('idle'), 'yes');
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

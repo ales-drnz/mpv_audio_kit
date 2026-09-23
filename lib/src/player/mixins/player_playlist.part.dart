@@ -100,8 +100,11 @@ mixin _PlaylistModule on _PlayerBase {
     // is deliberately unobserved, so skipping the write here would leave
     // `state.playWhenReady` (and the OS play/pause button bound to it)
     // stuck on "paused" while audio is audibly playing.
-    _updateField((s) => s.copyWith(playWhenReady: true),
-        _reactives.playWhenReady, true,);
+    _updateField(
+      (s) => s.copyWith(playWhenReady: true),
+      _reactives.playWhenReady,
+      true,
+    );
     // See [Player.open] — parked at EOF (`keep-open`) the unpause above
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
@@ -148,19 +151,27 @@ mixin _PlaylistModule on _PlayerBase {
     // see [_settleWrites].
     await _settleWrites();
     if (_disposed || epoch != _loadEpoch) return;
-    final (posErr, posValue) =
-        await _getAsync('playlist-pos', MpvFormat.mpvFormatString);
+    final (posErr, posValue) = await _getAsync(
+      'playlist-pos',
+      MpvFormat.mpvFormatString,
+    );
     if (_disposed || epoch != _loadEpoch) return;
-    final currentPos =
-        posErr < 0 ? -1 : (int.tryParse(posValue as String? ?? '') ?? -1);
+    final currentPos = posErr < 0
+        ? -1
+        : (int.tryParse(posValue as String? ?? '') ?? -1);
     final opts = _buildLoadfileOptions(media);
     Future<int> insertAt(int at) {
       if (opts.isEmpty) {
         return _command(['loadfile', resolved.uri, 'insert-at', at.toString()]);
       }
       // 4th-arg options require an explicit index argument (mpv 0.38+).
-      return _command(
-          ['loadfile', resolved.uri, 'insert-at', at.toString(), opts],);
+      return _command([
+        'loadfile',
+        resolved.uri,
+        'insert-at',
+        at.toString(),
+        opts,
+      ]);
     }
 
     // Re-check the epoch between each of the multi-command surgeries below:
@@ -246,7 +257,10 @@ mixin _PlaylistModule on _PlayerBase {
       await _command(['playlist-unshuffle']);
     }
     _updateField(
-        (s) => s.copyWith(shuffle: shuffle), _reactives.shuffle, shuffle,);
+      (s) => s.copyWith(shuffle: shuffle),
+      _reactives.shuffle,
+      shuffle,
+    );
   }
 
   /// Enables or disables background prefetch of the next playlist item.
@@ -258,7 +272,10 @@ mixin _PlaylistModule on _PlayerBase {
   Future<void> setPrefetchPlaylist(bool enabled) async {
     await _gate();
     await _prop('prefetch-playlist', enabled ? 'yes' : 'no');
-    _updateField((s) => s.copyWith(prefetchPlaylist: enabled),
-        _reactives.prefetchPlaylist, enabled,);
+    _updateField(
+      (s) => s.copyWith(prefetchPlaylist: enabled),
+      _reactives.prefetchPlaylist,
+      enabled,
+    );
   }
 }

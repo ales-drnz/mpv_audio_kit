@@ -66,23 +66,25 @@ final class AudioParams {
     Object? hrChannels = unset,
     Object? codec = unset,
     Object? codecName = unset,
-  }) =>
-      AudioParams(
-        format: identical(format, unset) ? this.format : format as Format?,
-        sampleRate:
-            identical(sampleRate, unset) ? this.sampleRate : sampleRate as int?,
-        channels:
-            identical(channels, unset) ? this.channels : channels as Channels?,
-        channelCount: identical(channelCount, unset)
-            ? this.channelCount
-            : channelCount as int?,
-        hrChannels: identical(hrChannels, unset)
-            ? this.hrChannels
-            : hrChannels as String?,
-        codec: identical(codec, unset) ? this.codec : codec as String?,
-        codecName:
-            identical(codecName, unset) ? this.codecName : codecName as String?,
-      );
+  }) => AudioParams(
+    format: identical(format, unset) ? this.format : format as Format?,
+    sampleRate: identical(sampleRate, unset)
+        ? this.sampleRate
+        : sampleRate as int?,
+    channels: identical(channels, unset)
+        ? this.channels
+        : channels as Channels?,
+    channelCount: identical(channelCount, unset)
+        ? this.channelCount
+        : channelCount as int?,
+    hrChannels: identical(hrChannels, unset)
+        ? this.hrChannels
+        : hrChannels as String?,
+    codec: identical(codec, unset) ? this.codec : codec as String?,
+    codecName: identical(codecName, unset)
+        ? this.codecName
+        : codecName as String?,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -98,14 +100,14 @@ final class AudioParams {
 
   @override
   int get hashCode => Object.hash(
-        format,
-        sampleRate,
-        channels,
-        channelCount,
-        hrChannels,
-        codec,
-        codecName,
-      );
+    format,
+    sampleRate,
+    channels,
+    channelCount,
+    hrChannels,
+    codec,
+    codecName,
+  );
 
   @override
   String toString() =>

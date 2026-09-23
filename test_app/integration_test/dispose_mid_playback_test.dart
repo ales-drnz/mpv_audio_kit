@@ -27,9 +27,7 @@ void main() {
         // must teardown the AO render thread without hanging.
         final fixturePath = await materializeFixture('sine_440hz_1s.wav');
         final player = Player(
-          configuration: const PlayerConfiguration(
-            logLevel: LogLevel.off,
-          ),
+          configuration: const PlayerConfiguration(logLevel: LogLevel.off),
         );
 
         await player.open(Media(fixturePath), play: true);

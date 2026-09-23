@@ -41,17 +41,24 @@ void main() {
           const Media('/tmp/this-file-does-not-exist.flac'),
           play: false,
         );
-        final event =
-            await completer.future.timeout(const Duration(seconds: 5));
-        expect(event.reason, MpvEndFileReason.error,
-            reason: 'mpv reports loadfile failure as endFile.error',);
-        expect(event.error, lessThan(0),
-            reason: 'errored end-file carries a negative mpv error code',);
+        final event = await completer.future.timeout(
+          const Duration(seconds: 5),
+        );
+        expect(
+          event.reason,
+          MpvEndFileReason.error,
+          reason: 'mpv reports loadfile failure as endFile.error',
+        );
+        expect(
+          event.error,
+          lessThan(0),
+          reason: 'errored end-file carries a negative mpv error code',
+        );
         expect(event.reachedNaturalEnd, isFalse);
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('opening a malformed URL also reports endFile error', () async {
       final completer = Completer<MpvFileEndedEvent>();
@@ -66,38 +73,47 @@ void main() {
           const Media('totally-not-a-valid-url://??'),
           play: false,
         );
-        final event =
-            await completer.future.timeout(const Duration(seconds: 5));
+        final event = await completer.future.timeout(
+          const Duration(seconds: 5),
+        );
         expect(event.reason, MpvEndFileReason.error);
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
-    test('error event also surfaces on Player.stream.error as MpvEndFileError',
-        () async {
-      // Subscribe to the typed error stream so we can assert the
-      // sealed-union mapping (endFile.error → MpvEndFileError on the
-      // error stream).
-      final completer = Completer<MpvPlayerError>();
-      final sub = player.stream.error.listen((err) {
-        if (err is MpvEndFileError && !completer.isCompleted) {
-          completer.complete(err);
+    test(
+      'error event also surfaces on Player.stream.error as MpvEndFileError',
+      () async {
+        // Subscribe to the typed error stream so we can assert the
+        // sealed-union mapping (endFile.error → MpvEndFileError on the
+        // error stream).
+        final completer = Completer<MpvPlayerError>();
+        final sub = player.stream.error.listen((err) {
+          if (err is MpvEndFileError && !completer.isCompleted) {
+            completer.complete(err);
+          }
+        });
+
+        try {
+          await player.open(
+            const Media('/tmp/another-missing-file.flac'),
+            play: false,
+          );
+          final err = await completer.future.timeout(
+            const Duration(seconds: 5),
+          );
+          expect(err, isA<MpvEndFileError>());
+          final endErr = err as MpvEndFileError;
+          expect(endErr.reason, MpvEndFileReason.error);
+          expect(endErr.code, lessThan(0));
+          expect(endErr.message, isNotEmpty);
+        } finally {
+          await sub.cancel();
         }
-      });
-
-      try {
-        await player.open(const Media('/tmp/another-missing-file.flac'), play: false);
-        final err = await completer.future.timeout(const Duration(seconds: 5));
-        expect(err, isA<MpvEndFileError>());
-        final endErr = err as MpvEndFileError;
-        expect(endErr.reason, MpvEndFileReason.error);
-        expect(endErr.code, lessThan(0));
-        expect(endErr.message, isNotEmpty);
-      } finally {
-        await sub.cancel();
-      }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
 
     test('MpvEndFileReason.fromValue exhaustively maps all 5 raw codes', () {
       // Pure sanity test for the enum's value-mapping. The five mpv

@@ -13,9 +13,8 @@ import 'media.dart';
 /// Return the URL to play, or `null` (or the unchanged
 /// [SourceResolveRequest.uri]) to keep the current one. Install with
 /// [Player.setSourceResolver].
-typedef SourceResolver = FutureOr<String?> Function(
-  SourceResolveRequest request,
-);
+typedef SourceResolver =
+    FutureOr<String?> Function(SourceResolveRequest request);
 
 /// The context handed to a [SourceResolver] for one load attempt.
 ///

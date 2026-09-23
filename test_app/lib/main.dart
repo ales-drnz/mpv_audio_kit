@@ -21,11 +21,7 @@ class _TestAppShell extends StatelessWidget {
     return const MaterialApp(
       title: 'mpv_audio_kit test harness',
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: Center(
-          child: Text('mpv_audio_kit test harness'),
-        ),
-      ),
+      home: Scaffold(body: Center(child: Text('mpv_audio_kit test harness'))),
     );
   }
 }

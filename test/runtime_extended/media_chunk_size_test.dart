@@ -221,8 +221,9 @@ void main() {
         .firstWhere((p) => p >= mustReach)
         .then((_) => true);
 
-    final loaded = player.stream.seekCompleted.first
-        .timeout(const Duration(seconds: 10));
+    final loaded = player.stream.seekCompleted.first.timeout(
+      const Duration(seconds: 10),
+    );
     await player.open(media, play: false);
     await loaded;
 
@@ -245,7 +246,8 @@ void main() {
         expect(
           advanced,
           isFalse,
-          reason: 'An open-ended request is throttled, so playback starves '
+          reason:
+              'An open-ended request is throttled, so playback starves '
               'and never reaches $mustReach.',
         );
       } finally {
@@ -269,7 +271,8 @@ void main() {
         expect(
           advanced,
           isTrue,
-          reason: 'Bounded chunk requests are served at full speed, so '
+          reason:
+              'Bounded chunk requests are served at full speed, so '
               'playback flows past $mustReach without throttling.',
         );
       } finally {

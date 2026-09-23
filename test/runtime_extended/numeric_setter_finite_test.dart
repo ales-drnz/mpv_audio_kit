@@ -29,16 +29,18 @@ void main() {
 
   test('setVolume rejects NaN / Infinity / -Infinity', () {
     final priorVolume = player.state.volume;
-    for (final bad in [
-      double.nan,
-      double.infinity,
-      double.negativeInfinity,
-    ]) {
-      expect(() => player.setVolume(bad), throwsArgumentError,
-          reason: 'volume=$bad must be rejected at the wrapper boundary',);
+    for (final bad in [double.nan, double.infinity, double.negativeInfinity]) {
+      expect(
+        () => player.setVolume(bad),
+        throwsArgumentError,
+        reason: 'volume=$bad must be rejected at the wrapper boundary',
+      );
     }
-    expect(player.state.volume, priorVolume,
-        reason: 'state must not advance past a rejected non-finite write',);
+    expect(
+      player.state.volume,
+      priorVolume,
+      reason: 'state must not advance past a rejected non-finite write',
+    );
   });
 
   test('setRate rejects NaN / Infinity', () {

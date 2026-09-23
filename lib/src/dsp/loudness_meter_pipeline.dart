@@ -28,8 +28,8 @@ class LoudnessMeterPipeline {
   LoudnessMeterPipeline({
     required AsyncPropertyGet asyncGet,
     Duration pollInterval = const Duration(milliseconds: 100),
-  })  : _asyncGet = asyncGet,
-        _pollInterval = pollInterval;
+  }) : _asyncGet = asyncGet,
+       _pollInterval = pollInterval;
 
   /// The chain label the typed `ebur128` slot is emitted under.
   static const String chainLabel = 'aek_ebur128';
@@ -99,12 +99,14 @@ class LoudnessMeterPipeline {
     if (values.every((v) => v == null)) return;
 
     if (!_ctrl.isClosed) {
-      _ctrl.add(Loudness(
-        momentary: values[0],
-        shortTerm: values[1],
-        integrated: values[2],
-        range: values[3],
-      ),);
+      _ctrl.add(
+        Loudness(
+          momentary: values[0],
+          shortTerm: values[1],
+          integrated: values[2],
+          range: values[3],
+        ),
+      );
     }
   }
 }

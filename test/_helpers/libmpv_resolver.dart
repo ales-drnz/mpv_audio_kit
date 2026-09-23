@@ -30,7 +30,7 @@ String? resolveLibmpv() {
       Abi.macosX64 => 'macos-x86_64',
       _ => null,
     };
-    final slices = ['macos-arm64_x86_64', if (archSlice != null) archSlice];
+    final slices = ['macos-arm64_x86_64', ?archSlice];
     for (final base in [
       '$root/macos/mpv_audio_kit/Frameworks',
       '$root/macos/Frameworks',

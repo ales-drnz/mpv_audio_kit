@@ -93,8 +93,11 @@ void main() {
       // defeating the `identical(...) == false` precondition below.
       final a = Playlist(List<Media>.of(const [Media('x'), Media('y')]));
       final b = Playlist(List<Media>.of(const [Media('x'), Media('y')]));
-      expect(identical(a.items, b.items), isFalse,
-          reason: 'lists must be separate instances for this test to bite',);
+      expect(
+        identical(a.items, b.items),
+        isFalse,
+        reason: 'lists must be separate instances for this test to bite',
+      );
       expect(a, b);
       expect(a.hashCode, b.hashCode);
       // Set membership: equal-but-non-identical playlists must collapse.
@@ -105,13 +108,7 @@ void main() {
   group('Loop enum', () {
     test('three variants present', () {
       expect(Loop.values.length, 3);
-      expect(
-          Loop.values,
-          containsAll([
-            Loop.off,
-            Loop.file,
-            Loop.playlist,
-          ]),);
+      expect(Loop.values, containsAll([Loop.off, Loop.file, Loop.playlist]));
     });
   });
 }

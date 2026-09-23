@@ -147,9 +147,11 @@ abstract final class MpvAudioKit {
           ? DynamicLibrary.open('libc.so.6')
           : DynamicLibrary.open('libSystem.B.dylib');
 
-      final setlocale = libc.lookupFunction<
-          Pointer<Utf8> Function(Int32, Pointer<Utf8>),
-          Pointer<Utf8> Function(int, Pointer<Utf8>)>('setlocale');
+      final setlocale = libc
+          .lookupFunction<
+            Pointer<Utf8> Function(Int32, Pointer<Utf8>),
+            Pointer<Utf8> Function(int, Pointer<Utf8>)
+          >('setlocale');
 
       // The LC_NUMERIC constant is libc-specific: glibc (Linux) numbers
       // it 1, the BSD layout (macOS/iOS) numbers it 4 — there, 1 is
@@ -159,8 +161,10 @@ abstract final class MpvAudioKit {
         setlocale(lcNumeric, 'C'.toNativeUtf8(allocator: arena));
       });
     } catch (e) {
-      debugLog('mpv_audio_kit: setlocale failed: $e. '
-          'mpv might fail to initialize if system locale is not compatible.');
+      debugLog(
+        'mpv_audio_kit: setlocale failed: $e. '
+        'mpv might fail to initialize if system locale is not compatible.',
+      );
     }
   }
 }

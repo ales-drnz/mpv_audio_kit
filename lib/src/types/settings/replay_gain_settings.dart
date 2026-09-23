@@ -40,13 +40,12 @@ final class ReplayGainSettings {
     double? preamp,
     bool? clip,
     double? fallback,
-  }) =>
-      ReplayGainSettings(
-        mode: mode ?? this.mode,
-        preamp: preamp ?? this.preamp,
-        clip: clip ?? this.clip,
-        fallback: fallback ?? this.fallback,
-      );
+  }) => ReplayGainSettings(
+    mode: mode ?? this.mode,
+    preamp: preamp ?? this.preamp,
+    clip: clip ?? this.clip,
+    fallback: fallback ?? this.fallback,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -61,6 +60,7 @@ final class ReplayGainSettings {
   int get hashCode => Object.hash(mode, preamp, clip, fallback);
 
   @override
-  String toString() => 'ReplayGainSettings(mode: $mode, preamp: $preamp, '
+  String toString() =>
+      'ReplayGainSettings(mode: $mode, preamp: $preamp, '
       'clip: $clip, fallback: $fallback)';
 }

@@ -25,9 +25,9 @@ final class Chapter {
   /// Returns a copy with the given fields replaced. Pass `null` for [title]
   /// to clear it; omitted fields keep their current value.
   Chapter copyWith({Duration? time, Object? title = unset}) => Chapter(
-        time: time ?? this.time,
-        title: identical(title, unset) ? this.title : title as String?,
-      );
+    time: time ?? this.time,
+    title: identical(title, unset) ? this.title : title as String?,
+  );
 
   @override
   bool operator ==(Object other) =>

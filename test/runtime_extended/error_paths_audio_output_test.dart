@@ -30,15 +30,16 @@ void main() {
 
   test('audio-output-state == failed lands on stream.error', () async {
     final player = Player(
-      configuration: const PlayerConfiguration(
-        logLevel: LogLevel.off,
-      ),
+      configuration: const PlayerConfiguration(logLevel: LogLevel.off),
     );
     try {
       // Pre-subscribe so we don't race the (synchronous) error emit.
       final errorFuture = player.stream.error
-          .firstWhere((e) =>
-              e is MpvLogError && e.text.toLowerCase().contains('audio output'),)
+          .firstWhere(
+            (e) =>
+                e is MpvLogError &&
+                e.text.toLowerCase().contains('audio output'),
+          )
           .timeout(const Duration(seconds: 5));
 
       // Simulate the `audio-output-state` mpv property transitioning
@@ -47,41 +48,50 @@ void main() {
       player.debugDispatchProperty('audio-output-state', 'failed');
 
       final err = await errorFuture as MpvLogError;
-      expect(err.prefix, 'mpv_audio_kit',
-          reason:
-              'AO error path must carry the library prefix so consumers can '
-              'distinguish it from raw mpv log errors',);
+      expect(
+        err.prefix,
+        'mpv_audio_kit',
+        reason:
+            'AO error path must carry the library prefix so consumers can '
+            'distinguish it from raw mpv log errors',
+      );
       expect(err.level, LogLevel.error);
       expect(err.text.toLowerCase(), contains('audio output'));
-      expect(player.state.audioOutputState, AudioOutputState.failed,
-          reason: 'state.audioOutputState must mirror the dispatched value',);
+      expect(
+        player.state.audioOutputState,
+        AudioOutputState.failed,
+        reason: 'state.audioOutputState must mirror the dispatched value',
+      );
     } finally {
       await player.dispose();
     }
-  }, timeout: const Timeout(Duration(seconds: 10)),);
+  }, timeout: const Timeout(Duration(seconds: 10)));
 
-  test('audio-output-state transitions to non-failed do NOT emit errors',
-      () async {
-    final player = Player(
-      configuration: const PlayerConfiguration(
-        logLevel: LogLevel.off,
-      ),
-    );
-    try {
-      final errors = <MpvPlayerError>[];
-      final sub = player.stream.error.listen(errors.add);
+  test(
+    'audio-output-state transitions to non-failed do NOT emit errors',
+    () async {
+      final player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+      );
+      try {
+        final errors = <MpvPlayerError>[];
+        final sub = player.stream.error.listen(errors.add);
 
-      player.debugDispatchProperty('audio-output-state', 'initializing');
-      player.debugDispatchProperty('audio-output-state', 'active');
-      player.debugDispatchProperty('audio-output-state', 'closed');
-      // Allow the dispatch microtasks to drain.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      await sub.cancel();
+        player.debugDispatchProperty('audio-output-state', 'initializing');
+        player.debugDispatchProperty('audio-output-state', 'active');
+        player.debugDispatchProperty('audio-output-state', 'closed');
+        // Allow the dispatch microtasks to drain.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await sub.cancel();
 
-      expect(errors, isEmpty,
-          reason: 'Only audio-output-state==failed must produce an error',);
-    } finally {
-      await player.dispose();
-    }
-  });
+        expect(
+          errors,
+          isEmpty,
+          reason: 'Only audio-output-state==failed must produce an error',
+        );
+      } finally {
+        await player.dispose();
+      }
+    },
+  );
 }

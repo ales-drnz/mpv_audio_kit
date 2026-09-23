@@ -47,7 +47,8 @@ void main() {
       final path = '$fixturesDir/truncated.mp3';
       if (!File(path).existsSync()) {
         markTestSkipped(
-            'Fixture missing: run scripts/generate_extra_fixtures.sh',);
+          'Fixture missing: run scripts/generate_extra_fixtures.sh',
+        );
         return;
       }
       // mpv is tolerant of truncated MPEG audio: a file with valid frames
@@ -65,24 +66,27 @@ void main() {
 
       try {
         await player.open(Media(path), play: true);
-        final event =
-            await completer.future.timeout(const Duration(seconds: 10));
+        final event = await completer.future.timeout(
+          const Duration(seconds: 10),
+        );
         expect(
           event.reason,
           anyOf(MpvEndFileReason.eof, MpvEndFileReason.error),
-          reason: 'truncated file must surface an endFile event with a '
+          reason:
+              'truncated file must surface an endFile event with a '
               'natural-end-or-error reason; the wrapper must not hang',
         );
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 30)),);
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('corrupted file (text masquerading as .mp3) is rejected', () async {
       final path = '$fixturesDir/corrupted.mp3';
       if (!File(path).existsSync()) {
         markTestSkipped(
-            'Fixture missing: run scripts/generate_extra_fixtures.sh',);
+          'Fixture missing: run scripts/generate_extra_fixtures.sh',
+        );
         return;
       }
       final completer = Completer<MpvFileEndedEvent>();
@@ -94,14 +98,18 @@ void main() {
 
       try {
         await player.open(Media(path), play: false);
-        final event =
-            await completer.future.timeout(const Duration(seconds: 5));
+        final event = await completer.future.timeout(
+          const Duration(seconds: 5),
+        );
         expect(event.reason, MpvEndFileReason.error);
-        expect(event.error, lessThan(0),
-            reason: 'demuxer-rejection carries a negative mpv error code',);
+        expect(
+          event.error,
+          lessThan(0),
+          reason: 'demuxer-rejection carries a negative mpv error code',
+        );
       } finally {
         await sub.cancel();
       }
-    }, timeout: const Timeout(Duration(seconds: 15)),);
+    }, timeout: const Timeout(Duration(seconds: 15)));
   });
 }

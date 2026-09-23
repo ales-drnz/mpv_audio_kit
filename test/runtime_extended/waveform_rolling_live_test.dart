@@ -88,23 +88,41 @@ void main() {
 
   /// Shared assertions for the gap-trim contract.
   void expectGapTrimmed(WaveformData wave, {required String label}) {
-    expect(wave.live, isTrue, reason: '$label: must be a ROLLING (live) window');
+    expect(
+      wave.live,
+      isTrue,
+      reason: '$label: must be a ROLLING (live) window',
+    );
     expect(wave.bins, greaterThan(0), reason: '$label: window must hold bins');
-    expect(wave.min.length, wave.max.length,
-        reason: '$label: min/max length mismatch',);
-    expect(wave.filled.length, wave.bins,
-        reason: '$label: filled length must equal bin count',);
+    expect(
+      wave.min.length,
+      wave.max.length,
+      reason: '$label: min/max length mismatch',
+    );
+    expect(
+      wave.filled.length,
+      wave.bins,
+      reason: '$label: filled length must equal bin count',
+    );
 
     // The headline fix: the window starts at the first FILLED bin, so the
     // leading bin is real signal, never the old empty-gap placeholder.
-    expect(wave.filled.first, isNot(0),
-        reason: '$label: leading bin must be filled — the initial gap is '
-            'trimmed, not surfaced as an empty bin',);
+    expect(
+      wave.filled.first,
+      isNot(0),
+      reason:
+          '$label: leading bin must be filled — the initial gap is '
+          'trimmed, not surfaced as an empty bin',
+    );
 
     // Exact integer axis: duration == bins * 40 ms (binSecs == 0.04 s).
-    expect(wave.duration.inMicroseconds, wave.bins * rollBinUs,
-        reason: '$label: duration must equal bins * 40 ms exactly '
-            '(no float drift in the rolling axis)',);
+    expect(
+      wave.duration.inMicroseconds,
+      wave.bins * rollBinUs,
+      reason:
+          '$label: duration must equal bins * 40 ms exactly '
+          '(no float drift in the rolling axis)',
+    );
   }
 
   group('ROLLING live waveform — initial-gap trim', () {
@@ -115,7 +133,7 @@ void main() {
       }
       final wave = await firstRollingEnvelope(mp3Stream);
       expectGapTrimmed(wave, label: 'MP3');
-    }, timeout: const Timeout(Duration(seconds: 35)),);
+    }, timeout: const Timeout(Duration(seconds: 35)));
 
     test('AAC-LC stream: window anchored at first filled bin', () async {
       if (!networkAvailable) {
@@ -124,6 +142,6 @@ void main() {
       }
       final wave = await firstRollingEnvelope(aacStream);
       expectGapTrimmed(wave, label: 'AAC');
-    }, timeout: const Timeout(Duration(seconds: 35)),);
+    }, timeout: const Timeout(Duration(seconds: 35)));
   });
 }

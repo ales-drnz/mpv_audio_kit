@@ -54,16 +54,24 @@ void main() {
     await player.setRawProperty('ao', 'null');
 
     try {
-      expect(await firstVolume, 42.5,
-          reason: 'The initial PROPERTY_CHANGE burst from libmpv must '
-              'reach the main isolate. If this times out, the event '
-              'isolate dropped the seed events between `start()` and '
-              'the main-side listen.',);
-      expect(player.state.volume, 42.5,
-          reason: 'state.volume must mirror the observed volume '
-              'synchronously after the first emit propagates.',);
+      expect(
+        await firstVolume,
+        42.5,
+        reason:
+            'The initial PROPERTY_CHANGE burst from libmpv must '
+            'reach the main isolate. If this times out, the event '
+            'isolate dropped the seed events between `start()` and '
+            'the main-side listen.',
+      );
+      expect(
+        player.state.volume,
+        42.5,
+        reason:
+            'state.volume must mirror the observed volume '
+            'synchronously after the first emit propagates.',
+      );
     } finally {
       await player.dispose();
     }
-  }, timeout: const Timeout(Duration(seconds: 10)),);
+  }, timeout: const Timeout(Duration(seconds: 10)));
 }

@@ -92,14 +92,13 @@ void main() {
     MpvAudioKit.ensureInitialized(libmpv: lib, hotRestartCleanup: false);
 
     player = Player(
-      configuration: const PlayerConfiguration(
-        logLevel: LogLevel.error,
-      ),
+      configuration: const PlayerConfiguration(logLevel: LogLevel.error),
     );
     await player.setRawProperty('ao', 'null');
     await player.open(Media(fixturePath), play: false);
-    await player.stream.seekCompleted.first
-        .timeout(const Duration(seconds: 10));
+    await player.stream.seekCompleted.first.timeout(
+      const Duration(seconds: 10),
+    );
   });
 
   tearDownAll(() async {
@@ -128,8 +127,9 @@ void main() {
       if (failures.isNotEmpty) {
         final buf = StringBuffer()
           ..writeln(
-              '${failures.length} of ${kFilterParamCorners.length} typed '
-              'param-corner cases produced mpv errors:')
+            '${failures.length} of ${kFilterParamCorners.length} typed '
+            'param-corner cases produced mpv errors:',
+          )
           ..writeln();
         final sortedKeys = failures.keys.toList()..sort();
         for (final key in sortedKeys) {

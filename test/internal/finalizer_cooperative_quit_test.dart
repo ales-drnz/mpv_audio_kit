@@ -28,29 +28,44 @@ void main() {
 
   group('finalizer reaps the leaked core', () {
     test(
-        'sends cooperative quit synchronously and defers terminate_destroy',
-        () {
-      final spy = _SpyMpvLibrary();
-      final fakeHandle = Pointer<MpvHandle>.fromAddress(0xC0FFEE);
-      final res = PlayerNativeResources(spy, fakeHandle);
+      'sends cooperative quit synchronously and defers terminate_destroy',
+      () {
+        final spy = _SpyMpvLibrary();
+        final fakeHandle = Pointer<MpvHandle>.fromAddress(0xC0FFEE);
+        final res = PlayerNativeResources(spy, fakeHandle);
 
-      finalizePlayerForTesting(res);
+        finalizePlayerForTesting(res);
 
-      // The quit (phase 1) runs synchronously before the first await.
-      expect(spy.commandStringCalls, 1,
-          reason: 'finalizer should issue exactly one cooperative quit',);
-      expect(spy.lastCommand, equals('quit'),
-          reason: 'cooperative quit must be the literal "quit" command',);
-      expect(spy.lastHandle?.address, equals(fakeHandle.address));
-      // The destroy (phase 2) is deferred past the isolate's unwind, so
-      // it has NOT happened by the time the synchronous finalizer returns.
-      expect(spy.terminateDestroyCalls, 0,
-          reason: 'finalizer must not free the handle synchronously — that '
-              'would race the live event isolate still in mpv_wait_event',);
-      expect(res.disposed, isTrue,
-          reason: 'PlayerNativeResources.disposed must flip so a late '
-              'second finalize() (after the GC late-fires) is a no-op',);
-    });
+        // The quit (phase 1) runs synchronously before the first await.
+        expect(
+          spy.commandStringCalls,
+          1,
+          reason: 'finalizer should issue exactly one cooperative quit',
+        );
+        expect(
+          spy.lastCommand,
+          equals('quit'),
+          reason: 'cooperative quit must be the literal "quit" command',
+        );
+        expect(spy.lastHandle?.address, equals(fakeHandle.address));
+        // The destroy (phase 2) is deferred past the isolate's unwind, so
+        // it has NOT happened by the time the synchronous finalizer returns.
+        expect(
+          spy.terminateDestroyCalls,
+          0,
+          reason:
+              'finalizer must not free the handle synchronously — that '
+              'would race the live event isolate still in mpv_wait_event',
+        );
+        expect(
+          res.disposed,
+          isTrue,
+          reason:
+              'PlayerNativeResources.disposed must flip so a late '
+              'second finalize() (after the GC late-fires) is a no-op',
+        );
+      },
+    );
 
     test('idempotent — already-disposed resource is a no-op', () {
       final spy = _SpyMpvLibrary();
@@ -76,10 +91,14 @@ void main() {
       // (no caller can recover from it), so it swallows and logs.
       finalizePlayerForTesting(res);
 
-      expect(res.disposed, isTrue,
-          reason: 'finalizer must mark the resource disposed even on '
-              'cleanup failure, otherwise a retry on a stale handle '
-              'could fire later',);
+      expect(
+        res.disposed,
+        isTrue,
+        reason:
+            'finalizer must mark the resource disposed even on '
+            'cleanup failure, otherwise a retry on a stale handle '
+            'could fire later',
+      );
     });
   });
 }

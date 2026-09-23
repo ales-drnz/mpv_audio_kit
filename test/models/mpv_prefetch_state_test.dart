@@ -19,8 +19,11 @@ void main() {
         'failed': MpvPrefetchState.failed,
       };
       for (final entry in cases.entries) {
-        expect(MpvPrefetchState.fromMpv(entry.key), entry.value,
-            reason: 'parse("${entry.key}") should be ${entry.value}',);
+        expect(
+          MpvPrefetchState.fromMpv(entry.key),
+          entry.value,
+          reason: 'parse("${entry.key}") should be ${entry.value}',
+        );
       }
     });
 
@@ -31,8 +34,11 @@ void main() {
       // wrapper / mpv versions.
       expect(MpvPrefetchState.fromMpv('totally-bogus'), MpvPrefetchState.idle);
       expect(MpvPrefetchState.fromMpv(''), MpvPrefetchState.idle);
-      expect(MpvPrefetchState.fromMpv('IDLE'), MpvPrefetchState.idle,
-          reason: 'parse is case-sensitive (mpv emits lowercase)',);
+      expect(
+        MpvPrefetchState.fromMpv('IDLE'),
+        MpvPrefetchState.idle,
+        reason: 'parse is case-sensitive (mpv emits lowercase)',
+      );
     });
 
     test('every variant is reachable via parse', () {

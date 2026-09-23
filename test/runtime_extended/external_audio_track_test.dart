@@ -16,8 +16,7 @@ void main() {
   final fx = defaultFixturePath();
   setUpAll(() => initLibmpvOrSkip(fixturePath: fx));
 
-  int audioCount(List<MpvTrack> t) =>
-      t.where((x) => x.type == 'audio').length;
+  int audioCount(List<MpvTrack> t) => t.where((x) => x.type == 'audio').length;
 
   group('external audio tracks (audio-add / audio-remove)', () {
     late Player player;
@@ -39,49 +38,66 @@ void main() {
       } catch (_) {}
     });
 
-    test('addAudioTrack adds and removeAudioTrack removes a selectable track',
-        () async {
-      expect(audioCount(player.state.tracks), 1,
-          reason: 'the fixture has a single audio track to start',);
-      final beforeIds = player.state.tracks
-          .where((t) => t.type == 'audio')
-          .map((t) => t.id)
-          .toSet();
+    test(
+      'addAudioTrack adds and removeAudioTrack removes a selectable track',
+      () async {
+        expect(
+          audioCount(player.state.tracks),
+          1,
+          reason: 'the fixture has a single audio track to start',
+        );
+        final beforeIds = player.state.tracks
+            .where((t) => t.type == 'audio')
+            .map((t) => t.id)
+            .toSet();
 
-      // Pre-subscribe before the command (the track-list emits once on change).
-      final grown = player.stream.tracks
-          .firstWhere((t) => audioCount(t) >= 2)
-          .timeout(const Duration(seconds: 10));
-      await player.addAudioTrack(Media(extra), select: false);
-      final after = await grown;
-      expect(audioCount(after), 2);
+        // Pre-subscribe before the command (the track-list emits once on change).
+        final grown = player.stream.tracks
+            .firstWhere((t) => audioCount(t) >= 2)
+            .timeout(const Duration(seconds: 10));
+        await player.addAudioTrack(Media(extra), select: false);
+        final after = await grown;
+        expect(audioCount(after), 2);
 
-      final added = after
-          .where((t) => t.type == 'audio' && !beforeIds.contains(t.id))
-          .toList();
-      expect(added, hasLength(1), reason: 'one new external audio track');
-      // #23: the added track is flagged external with its source filename.
-      expect(added.first.external, isTrue,
-          reason: 'audio-add tracks are marked external',);
-      expect(added.first.externalFilename, contains('extra'),
-          reason: 'external-filename points to the added file',);
+        final added = after
+            .where((t) => t.type == 'audio' && !beforeIds.contains(t.id))
+            .toList();
+        expect(added, hasLength(1), reason: 'one new external audio track');
+        // #23: the added track is flagged external with its source filename.
+        expect(
+          added.first.external,
+          isTrue,
+          reason: 'audio-add tracks are marked external',
+        );
+        expect(
+          added.first.externalFilename,
+          contains('extra'),
+          reason: 'external-filename points to the added file',
+        );
 
-      final shrunk = player.stream.tracks
-          .firstWhere((t) => audioCount(t) <= 1)
-          .timeout(const Duration(seconds: 10));
-      await player.removeAudioTrack(Track.id(added.first.id));
-      expect(audioCount(await shrunk), 1,
-          reason: 'audio-remove drops the external track',);
-    }, timeout: const Timeout(Duration(seconds: 25)),);
+        final shrunk = player.stream.tracks
+            .firstWhere((t) => audioCount(t) <= 1)
+            .timeout(const Duration(seconds: 10));
+        await player.removeAudioTrack(Track.id(added.first.id));
+        expect(
+          audioCount(await shrunk),
+          1,
+          reason: 'audio-remove drops the external track',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 25)),
+    );
 
-    test('removeAudioTrack(Track.off) is rejected — off has no removal meaning',
-        () async {
-      // mpv's `audio-remove` takes an optional id and has no "off" notion, so
-      // removing "no track" is a programming error rather than a silent no-op.
-      await expectLater(
-        player.removeAudioTrack(Track.off),
-        throwsArgumentError,
-      );
-    });
+    test(
+      'removeAudioTrack(Track.off) is rejected — off has no removal meaning',
+      () async {
+        // mpv's `audio-remove` takes an optional id and has no "off" notion, so
+        // removing "no track" is a programming error rather than a silent no-op.
+        await expectLater(
+          player.removeAudioTrack(Track.off),
+          throwsArgumentError,
+        );
+      },
+    );
   });
 }

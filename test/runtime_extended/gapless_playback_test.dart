@@ -41,31 +41,38 @@ void main() {
       await player.dispose();
     });
 
-    test('playlist advances to next track when current ends with gapless=yes',
-        () async {
-      // Strict gapless requires identical format / sample-rate /
-      // channels between tracks. Loading the same fixture twice is the
-      // simplest way to satisfy that contract — the encoder boundary is
-      // identical by construction.
-      await player.setGapless(Gapless.yes);
+    test(
+      'playlist advances to next track when current ends with gapless=yes',
+      () async {
+        // Strict gapless requires identical format / sample-rate /
+        // channels between tracks. Loading the same fixture twice is the
+        // simplest way to satisfy that contract — the encoder boundary is
+        // identical by construction.
+        await player.setGapless(Gapless.yes);
 
-      // Pre-subscribe to the playlist index transition before issuing
-      // openAll — broadcast emits during the load phase shouldn't be
-      // missed by a late firstWhere.
-      final advanced = player.stream.playlist
-          .firstWhere((p) => p.items.length == 2 && p.index == 1)
-          .timeout(const Duration(seconds: 30));
+        // Pre-subscribe to the playlist index transition before issuing
+        // openAll — broadcast emits during the load phase shouldn't be
+        // missed by a late firstWhere.
+        final advanced = player.stream.playlist
+            .firstWhere((p) => p.items.length == 2 && p.index == 1)
+            .timeout(const Duration(seconds: 30));
 
-      await player.openAll([
-        Media(fixturePath),
-        Media(fixturePath),
-      ], play: true,);
+        await player.openAll([
+          Media(fixturePath),
+          Media(fixturePath),
+        ], play: true);
 
-      await advanced;
-      expect(player.state.playlist.index, 1,
-          reason: 'mpv must advance to the second track when the first '
-              'reaches EOF naturally',);
-      expect(player.state.playlist.items.length, 2);
-    }, timeout: const Timeout(Duration(seconds: 60)),);
+        await advanced;
+        expect(
+          player.state.playlist.index,
+          1,
+          reason:
+              'mpv must advance to the second track when the first '
+              'reaches EOF naturally',
+        );
+        expect(player.state.playlist.items.length, 2);
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
   });
 }

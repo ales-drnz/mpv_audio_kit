@@ -45,13 +45,13 @@ class CoverArt {
   /// File('cover.${art.extension}').writeAsBytes(art.bytes);
   /// ```
   String get extension => switch (mimeType) {
-        'image/png' => 'png',
-        'image/jpeg' => 'jpg',
-        'image/webp' => 'webp',
-        'image/bmp' => 'bmp',
-        'image/gif' => 'gif',
-        _ => '',
-      };
+    'image/png' => 'png',
+    'image/jpeg' => 'jpg',
+    'image/webp' => 'webp',
+    'image/bmp' => 'bmp',
+    'image/gif' => 'gif',
+    _ => '',
+  };
 
   /// Whether [mimeType] is `image/png`.
   bool get isPng => mimeType == 'image/png';
