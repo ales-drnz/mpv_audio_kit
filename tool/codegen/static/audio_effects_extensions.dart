@@ -34,9 +34,7 @@ final class AechoTap {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AechoTap &&
-          other.delayMs == delayMs &&
-          other.decay == decay);
+      (other is AechoTap && other.delayMs == delayMs && other.decay == decay);
 
   @override
   int get hashCode => Object.hash(delayMs, decay);
@@ -68,8 +66,7 @@ extension AechoTapsX on AechoEffect {
   AechoEffect withTaps(List<AechoTap> taps) {
     if (taps.isEmpty) return copyWith(delays: '0', decays: '0');
     return copyWith(
-      delays:
-          taps.map((t) => t.delayMs.toStringAsFixed(2)).join('|'),
+      delays: taps.map((t) => t.delayMs.toStringAsFixed(2)).join('|'),
       decays: taps.map((t) => t.decay.toStringAsFixed(3)).join('|'),
     );
   }
@@ -110,13 +107,12 @@ final class ChorusVoice {
     double? decay,
     double? depthMs,
     double? speedHz,
-  }) =>
-      ChorusVoice(
-        delayMs: delayMs ?? this.delayMs,
-        decay: decay ?? this.decay,
-        depthMs: depthMs ?? this.depthMs,
-        speedHz: speedHz ?? this.speedHz,
-      );
+  }) => ChorusVoice(
+    delayMs: delayMs ?? this.delayMs,
+    decay: decay ?? this.decay,
+    depthMs: depthMs ?? this.depthMs,
+    speedHz: speedHz ?? this.speedHz,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -131,7 +127,8 @@ final class ChorusVoice {
   int get hashCode => Object.hash(delayMs, decay, depthMs, speedHz);
 
   @override
-  String toString() => 'ChorusVoice(delay: $delayMs ms, decay: $decay, '
+  String toString() =>
+      'ChorusVoice(delay: $delayMs ms, decay: $decay, '
       'depth: $depthMs ms, speed: $speedHz Hz)';
 }
 
@@ -148,8 +145,12 @@ extension ChorusVoicesX on ChorusEffect {
     final cs = _splitCsv(decays);
     final dp = _splitCsv(depths);
     final sp = _splitCsv(speeds);
-    final n = [ds.length, cs.length, dp.length, sp.length]
-        .reduce((a, b) => a < b ? a : b);
+    final n = [
+      ds.length,
+      cs.length,
+      dp.length,
+      sp.length,
+    ].reduce((a, b) => a < b ? a : b);
     return List.generate(
       n,
       (i) => ChorusVoice(
@@ -203,9 +204,7 @@ final class CompandPoint {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CompandPoint &&
-          other.inDb == inDb &&
-          other.outDb == outDb);
+      (other is CompandPoint && other.inDb == inDb && other.outDb == outDb);
 
   @override
   int get hashCode => Object.hash(inDb, outDb);
@@ -242,8 +241,9 @@ extension CompandPointsX on CompandEffect {
     final sorted = [...points]..sort((a, b) => a.inDb.compareTo(b.inDb));
     return copyWith(
       points: sorted
-          .map((p) =>
-              '${p.inDb.toStringAsFixed(1)}/${p.outDb.toStringAsFixed(1)}')
+          .map(
+            (p) => '${p.inDb.toStringAsFixed(1)}/${p.outDb.toStringAsFixed(1)}',
+          )
           .join(' '),
     );
   }
@@ -305,10 +305,7 @@ extension CompandEnvelopesX on CompandEffect {
     final n = atks.length < decs.length ? atks.length : decs.length;
     return List.generate(
       n,
-      (i) => CompandEnvelope(
-        attackSeconds: atks[i],
-        decaySeconds: decs[i],
-      ),
+      (i) => CompandEnvelope(attackSeconds: atks[i], decaySeconds: decs[i]),
       growable: false,
     );
   }
@@ -320,9 +317,7 @@ extension CompandEnvelopesX on CompandEffect {
       attacks: envelopes
           .map((e) => e.attackSeconds.toStringAsFixed(4))
           .join('|'),
-      decays: envelopes
-          .map((e) => e.decaySeconds.toStringAsFixed(4))
-          .join('|'),
+      decays: envelopes.map((e) => e.decaySeconds.toStringAsFixed(4)).join('|'),
     );
   }
 }
@@ -375,10 +370,7 @@ final class FirequalizerEntry {
   final double gainDb;
 
   /// Creates a [FirequalizerEntry].
-  const FirequalizerEntry({
-    required this.frequencyHz,
-    required this.gainDb,
-  });
+  const FirequalizerEntry({required this.frequencyHz, required this.gainDb});
 
   /// Returns a copy of this entry with the given fields replaced.
   FirequalizerEntry copyWith({double? frequencyHz, double? gainDb}) =>
@@ -428,15 +420,18 @@ extension FirequalizerEntriesX on FirequalizerEffect {
       ..sort((a, b) => a.frequencyHz.compareTo(b.frequencyHz));
     return copyWith(
       gainEntry: sorted
-          .map((e) =>
-              'entry(${e.frequencyHz.toStringAsFixed(1)},${e.gainDb.toStringAsFixed(2)})')
+          .map(
+            (e) =>
+                'entry(${e.frequencyHz.toStringAsFixed(1)},${e.gainDb.toStringAsFixed(2)})',
+          )
           .join(';'),
     );
   }
 }
 
-final RegExp _firequalizerEntryRe =
-    RegExp(r'entry\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)');
+final RegExp _firequalizerEntryRe = RegExp(
+  r'entry\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)',
+);
 
 // ── afftdn ───────────────────────────────────────────────────────────────────
 
@@ -479,13 +474,15 @@ extension AfftdnBandNoiseX on AfftdnEffect {
   /// emitted CSV uses pipe separation (lavfi accepts both space and
   /// pipe; pipe is unambiguous in mpv's filter-args parser).
   AfftdnEffect withBandNoiseLevels(List<double> levels) {
-    final padded = List<double>.filled(kAfftdnBandCount, kAfftdnBandNoiseDefault);
+    final padded = List<double>.filled(
+      kAfftdnBandCount,
+      kAfftdnBandNoiseDefault,
+    );
     for (var i = 0; i < kAfftdnBandCount && i < levels.length; i++) {
       padded[i] = levels[i];
     }
     return copyWith(
-      bandNoise:
-          padded.map((v) => v.toStringAsFixed(2)).join('|'),
+      bandNoise: padded.map((v) => v.toStringAsFixed(2)).join('|'),
     );
   }
 }
@@ -533,13 +530,12 @@ final class AnequalizerBand {
     double? bandwidth,
     double? gain,
     AnequalizerBandType? type,
-  }) =>
-      AnequalizerBand(
-        frequency: frequency ?? this.frequency,
-        bandwidth: bandwidth ?? this.bandwidth,
-        gain: gain ?? this.gain,
-        type: type ?? this.type,
-      );
+  }) => AnequalizerBand(
+    frequency: frequency ?? this.frequency,
+    bandwidth: bandwidth ?? this.bandwidth,
+    gain: gain ?? this.gain,
+    type: type ?? this.type,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -579,10 +575,10 @@ enum AnequalizerBandType {
   /// Parses a lavfi `t=` integer back into a shape; unknown values
   /// fall back to [butterworth].
   static AnequalizerBandType fromWire(int v) => switch (v) {
-        1 => chebyshev1,
-        2 => chebyshev2,
-        _ => butterworth,
-      };
+    1 => chebyshev1,
+    2 => chebyshev2,
+    _ => butterworth,
+  };
 }
 
 /// Default channel count covered by [AnequalizerBandsX.withBands]. Two
@@ -603,8 +599,7 @@ extension AnequalizerBandsX on AnequalizerEffect {
   AnequalizerEffect withBands(
     List<AnequalizerBand> bands, {
     int channels = _anequalizerDefaultChannels,
-  }) =>
-      copyWith(params: _serializeAnequalizerBands(bands, channels: channels));
+  }) => copyWith(params: _serializeAnequalizerBands(bands, channels: channels));
 }
 
 // Parser tolerates the codegen's `[...]` wrap (added for mpv's filter-
@@ -637,12 +632,14 @@ List<AnequalizerBand> _parseAnequalizerBands(String params) {
     final g = double.tryParse(m.group(4)!);
     final t = int.tryParse(m.group(5) ?? '0') ?? 0;
     if (f == null || w == null || g == null) continue;
-    (byChannel[ch] ??= <AnequalizerBand>[]).add(AnequalizerBand(
-      frequency: f,
-      bandwidth: w,
-      gain: g,
-      type: AnequalizerBandType.fromWire(t),
-    ));
+    (byChannel[ch] ??= <AnequalizerBand>[]).add(
+      AnequalizerBand(
+        frequency: f,
+        bandwidth: w,
+        gain: g,
+        type: AnequalizerBandType.fromWire(t),
+      ),
+    );
   }
   if (byChannel.isEmpty) return const [];
   final lowest = byChannel.keys.reduce((a, b) => a < b ? a : b);
@@ -682,8 +679,10 @@ String _serializeAnequalizerBands(
 final class AiirChannel {
   /// Linear gain for this channel.
   final double gain;
+
   /// Numerator (B / "zeros" / reflection) polynomial coefficients.
   final List<double> zeros;
+
   /// Denominator (A / "poles" / ladder) polynomial coefficients.
   final List<double> poles;
 
@@ -699,12 +698,11 @@ final class AiirChannel {
     double? gain,
     List<double>? zeros,
     List<double>? poles,
-  }) =>
-      AiirChannel(
-        gain: gain ?? this.gain,
-        zeros: zeros ?? this.zeros,
-        poles: poles ?? this.poles,
-      );
+  }) => AiirChannel(
+    gain: gain ?? this.gain,
+    zeros: zeros ?? this.zeros,
+    poles: poles ?? this.poles,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -715,12 +713,11 @@ final class AiirChannel {
           _listEq(other.poles, poles));
 
   @override
-  int get hashCode => Object.hash(
-      gain, Object.hashAll(zeros), Object.hashAll(poles));
+  int get hashCode =>
+      Object.hash(gain, Object.hashAll(zeros), Object.hashAll(poles));
 
   @override
-  String toString() =>
-      'AiirChannel(gain: $gain, zeros: $zeros, poles: $poles)';
+  String toString() => 'AiirChannel(gain: $gain, zeros: $zeros, poles: $poles)';
 }
 
 /// Typed access over `aiir`'s three parallel string parameters
@@ -740,8 +737,7 @@ extension AiirChannelsX on AiirEffect {
     final g = _splitCsv(gains);
     final z = _splitChannelsListCsv(zeros);
     final p = _splitChannelsListCsv(poles);
-    final n = [g.length, z.length, p.length]
-        .reduce((a, b) => a < b ? a : b);
+    final n = [g.length, z.length, p.length].reduce((a, b) => a < b ? a : b);
     return List.generate(
       n,
       (i) => AiirChannel(gain: g[i], zeros: z[i], poles: p[i]),
@@ -759,8 +755,7 @@ extension AiirChannelsX on AiirEffect {
             .map((c) => get(c).map((v) => v.toStringAsFixed(4)).join(inner))
             .join('|');
     return copyWith(
-      gains:
-          channels.map((c) => c.gain.toStringAsFixed(4)).join('|'),
+      gains: channels.map((c) => c.gain.toStringAsFixed(4)).join('|'),
       zeros: join((c) => c.zeros, ' '),
       poles: join((c) => c.poles, ' '),
     );
@@ -812,8 +807,7 @@ extension AdelayChannelsX on AdelayEffect {
   AdelayEffect withChannelDelaysMs(List<double> delaysMs) {
     if (delaysMs.isEmpty) return copyWith(delays: '');
     return copyWith(
-      delays:
-          delaysMs.map((d) => '${d.toStringAsFixed(2)}ms').join('|'),
+      delays: delaysMs.map((d) => '${d.toStringAsFixed(2)}ms').join('|'),
     );
   }
 }
@@ -883,16 +877,15 @@ final class McompandBand {
     double? kneeDb,
     double? makeupDb,
     double? crossoverHz,
-  }) =>
-      McompandBand(
-        thresholdDb: thresholdDb ?? this.thresholdDb,
-        ratio: ratio ?? this.ratio,
-        attackSeconds: attackSeconds ?? this.attackSeconds,
-        releaseSeconds: releaseSeconds ?? this.releaseSeconds,
-        kneeDb: kneeDb ?? this.kneeDb,
-        makeupDb: makeupDb ?? this.makeupDb,
-        crossoverHz: crossoverHz ?? this.crossoverHz,
-      );
+  }) => McompandBand(
+    thresholdDb: thresholdDb ?? this.thresholdDb,
+    ratio: ratio ?? this.ratio,
+    attackSeconds: attackSeconds ?? this.attackSeconds,
+    releaseSeconds: releaseSeconds ?? this.releaseSeconds,
+    kneeDb: kneeDb ?? this.kneeDb,
+    makeupDb: makeupDb ?? this.makeupDb,
+    crossoverHz: crossoverHz ?? this.crossoverHz,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -907,11 +900,19 @@ final class McompandBand {
           other.crossoverHz == crossoverHz);
 
   @override
-  int get hashCode => Object.hash(thresholdDb, ratio, attackSeconds,
-      releaseSeconds, kneeDb, makeupDb, crossoverHz);
+  int get hashCode => Object.hash(
+    thresholdDb,
+    ratio,
+    attackSeconds,
+    releaseSeconds,
+    kneeDb,
+    makeupDb,
+    crossoverHz,
+  );
 
   @override
-  String toString() => 'McompandBand(threshold: $thresholdDb dB, '
+  String toString() =>
+      'McompandBand(threshold: $thresholdDb dB, '
       'ratio: $ratio, attack: $attackSeconds s, '
       'release: $releaseSeconds s, knee: $kneeDb dB, '
       'makeup: $makeupDb dB, crossover: $crossoverHz Hz)';
@@ -988,15 +989,17 @@ List<McompandBand> _parseMcompandBands(String? args) {
       ratio = 1;
     }
 
-    out.add(McompandBand(
-      thresholdDb: threshold,
-      ratio: ratio,
-      attackSeconds: attack,
-      releaseSeconds: decay,
-      kneeDb: knee,
-      makeupDb: gain,
-      crossoverHz: crossover,
-    ));
+    out.add(
+      McompandBand(
+        thresholdDb: threshold,
+        ratio: ratio,
+        attackSeconds: attack,
+        releaseSeconds: decay,
+        kneeDb: knee,
+        makeupDb: gain,
+        crossoverHz: crossover,
+      ),
+    );
   }
   out.sort((a, b) => a.crossoverHz.compareTo(b.crossoverHz));
   return out;
@@ -1009,7 +1012,8 @@ String _serializeMcompandBands(List<McompandBand> bands) {
     // 1/ratio above. lavfi mcompand band grammar:
     //   attack,decay  knee  points  crossover  [delay  [init_vol  [gain]]]
     final outAtZero = b.thresholdDb + (0 - b.thresholdDb) / b.ratio;
-    final pts = '-90/-90,'
+    final pts =
+        '-90/-90,'
         '${b.thresholdDb.toStringAsFixed(1)}/'
         '${b.thresholdDb.toStringAsFixed(1)},'
         '0/${outAtZero.toStringAsFixed(1)}';
@@ -1036,9 +1040,24 @@ String _serializeMcompandBands(List<McompandBand> bands) {
 /// hard-coded inside `af_superequalizer.c` and are not configurable —
 /// only the per-band gain is.
 const List<double> kSuperequalizerFrequencies = [
-  65, 92, 131, 185, 262, 370, 523, 740,
-  1047, 1480, 2093, 2960, 4186, 5920,
-  8372, 11840, 16744, 20000,
+  65,
+  92,
+  131,
+  185,
+  262,
+  370,
+  523,
+  740,
+  1047,
+  1480,
+  2093,
+  2960,
+  4186,
+  5920,
+  8372,
+  11840,
+  16744,
+  20000,
 ];
 
 /// Number of bands the `superequalizer` filter exposes — fixed by
