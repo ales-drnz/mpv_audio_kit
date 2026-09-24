@@ -14,14 +14,14 @@
 # manifest to tool/codegen, whose filter list the effects API follows.
 #
 # Usage (from the package root):
-#   scripts/update_libmpv.sh r14                       # published release
-#   scripts/update_libmpv.sh r14 path/to/manifest.json # before publishing
+#   scripts/update_libmpv.sh r15                       # published release
+#   scripts/update_libmpv.sh r15 path/to/manifest.json # before publishing
 # =============================================================================
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RELEASE="${1:?usage: scripts/update_libmpv.sh <release, e.g. r14> [manifest.json]}"
+RELEASE="${1:?usage: scripts/update_libmpv.sh <release, e.g. r15> [manifest.json]}"
 TAG="libmpv-$RELEASE"
 
 if [[ -n "${2:-}" ]]; then

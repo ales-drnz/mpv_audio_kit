@@ -34,5 +34,25 @@ void main() {
       expect(w.filled[0], 1); // covered bin
       expect(w.filled[1], 0); // not-yet-covered bin
     });
+
+    test('rms is optional and shares the bin axis', () {
+      final base = WaveformData(
+        duration: const Duration(seconds: 10),
+        min: Float32List.fromList(const [-0.2, 0.0]),
+        max: Float32List.fromList(const [0.3, 0.0]),
+        filled: Uint8List.fromList(const [1, 0]),
+      );
+      expect(base.rms, isNull);
+
+      final w = WaveformData(
+        duration: const Duration(seconds: 10),
+        min: Float32List.fromList(const [-0.2, 0.0]),
+        max: Float32List.fromList(const [0.3, 0.0]),
+        rms: Float32List.fromList(const [0.15, 0.0]),
+        filled: Uint8List.fromList(const [1, 0]),
+      );
+      expect(w.rms!.length, w.bins);
+      expect(w.rms![0], closeTo(0.15, 1e-6));
+    });
   });
 }

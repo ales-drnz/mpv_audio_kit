@@ -169,12 +169,6 @@ mixin _MediaSessionModule on _PlayerBase {
     _mediaSessionCommandsCtrl.add(command);
   }
 
-  /// Fires an inbound-command action without awaiting it (the command-stream
-  /// callback is synchronous and the typed setters are optimistic), but
-  /// catches a late rejection. The setters are genuinely async now, so a
-  /// command mpv rejects — e.g. a lockscreen seek arriving with nothing loaded
-  /// ([Player.seek] throws via `_commandChecked`) — would otherwise escape as
-  /// an unhandled async error (which can crash a guarded zone) seconds later.
   /// Reopens mpv's audio output after the OS restored the audio session
   /// without it (see [MediaSessionChannel.audioOutputResets]): the
   /// AudioUnit the system stopped for an interruption or a media services
@@ -183,6 +177,12 @@ mixin _MediaSessionModule on _PlayerBase {
     _applySessionCommand(_commandChecked(const ['ao-reload']));
   }
 
+  /// Fires an inbound-command action without awaiting it (the command-stream
+  /// callback is synchronous and the typed setters are optimistic), but
+  /// catches a late rejection. The setters are genuinely async now, so a
+  /// command mpv rejects — e.g. a lockscreen seek arriving with nothing loaded
+  /// ([Player.seek] throws via `_commandChecked`) — would otherwise escape as
+  /// an unhandled async error (which can crash a guarded zone) seconds later.
   void _applySessionCommand(Future<void> action) {
     unawaited(
       action.catchError((Object e, StackTrace st) {

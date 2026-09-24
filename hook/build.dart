@@ -23,7 +23,7 @@ import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
-const _release = 'libmpv-r14';
+const _release = 'libmpv-r15';
 const _baseUrl =
     'https://github.com/ales-drnz/mpv_audio_kit/releases/download/$_release';
 
