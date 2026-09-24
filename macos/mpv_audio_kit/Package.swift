@@ -65,8 +65,8 @@ let package = Package(
         // mpvkit:remote:begin
         .binaryTarget(
             name: "libmpv",
-            url: "https://github.com/ales-drnz/mpv_audio_kit/releases/download/libmpv-r13/libmpv_macos.xcframework.zip",
-            checksum: "e9a56d359b3b2a2bdaa3485e1303c62f9c82370e4e2f5a5c5059930a90147edd"),
+            url: "https://github.com/ales-drnz/mpv_audio_kit/releases/download/libmpv-r14/libmpv_macos.xcframework.zip",
+            checksum: "c9e0ec4c4d8e7d50efd1ae38104f15ef02deee6e8bd0120365cbe1b3cdc9c961"),
         // mpvkit:remote:end
     ]
 )

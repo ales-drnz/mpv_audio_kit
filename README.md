@@ -50,7 +50,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.4.7
+  mpv_audio_kit: ^0.4.8
 ```
 
 ## Platforms requirements
@@ -2497,18 +2497,30 @@ attached and tears down on the last cancel.
 
 #### 13.5 Waveform
 
-A mono min and max envelope of the loaded track is exposed via
+A mono envelope of the loaded track is exposed via
 [PlayerStream.waveform], computed in the background on a worker thread:
-~2000 min and max bins, enough to paint a waveform overview or a
-waveform-style seekbar.
+~2000 bins, each with its min, max and RMS, enough to paint a waveform
+overview or a waveform-style seekbar.
 
-For local files the whole envelope arrives in a single emit. For streams
-that can't be decoded ahead of time (network or transcode sources) it
-**grows progressively**, re-emitting as playback advances. The
+Complete seekable files, local or a direct-play HTTP file, are decoded
+ahead of time: partial envelopes arrive while the decode runs
+(`wave.decoding`), then the final one. Streams that can't be decoded
+ahead of time (adaptive, non-seekable or transcoded network sources)
+**grow progressively**, re-emitting as playback advances, and a live
+stream of unknown length keeps a rolling window (`wave.live`). The
 `wave.filled` flag (one byte per bin: `1` covered, `0` not yet) marks
 which bins hold real data, so a renderer can draw the un-analysed ones as
-a baseline instead of a misleading flat-zero spike. Local files arrive
-fully covered.
+a baseline instead of a misleading flat-zero spike.
+
+On loud, heavily limited masters the peaks sit near full scale for most
+of the track. Drawing `wave.rms` as the body of the waveform, with the
+min and max as a lighter outline, keeps verses, choruses and drops
+readable. `wave.rms` is `null` with a libmpv older than `libmpv-r14`.
+
+The ahead-of-time decode opens the source a second time, with the same
+network options as playback (`tls-verify`, `tls-ca-file`, headers, user
+agent, cookies), so a remote file is downloaded twice. The loudness scan
+below rides the same decode.
 
 The stream is **listener-gated**: the analyzer runs only while
 something is subscribed to `player.stream.waveform`, and costs
@@ -2519,10 +2531,12 @@ just listen.
 player.stream.waveform.listen((wave) {
   if (wave == null) return; // null on track change, until the first bins land
   // wave.min and wave.max: Float32List, range [-1, +1], wave.bins long.
+  // wave.rms: Float32List?, range [0, 1], same length.
   // Bin i spans [i / wave.bins * wave.duration, (i + 1) / … ).
   for (var i = 0; i < wave.bins; i++) {
     if (wave.filled[i] == 0) continue; // not yet analysed, draw a baseline
-    // draw a vertical bar from wave.min[i] to wave.max[i]
+    // draw a light bar from wave.min[i] to wave.max[i]
+    // and a solid one from -wave.rms![i] to wave.rms![i]
   }
 });
 ```

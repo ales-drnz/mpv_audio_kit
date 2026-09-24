@@ -4,7 +4,7 @@
 
 import 'dart:typed_data';
 
-/// Mono min/max amplitude envelope of the audio currently loaded.
+/// Mono min, max and RMS amplitude envelope of the audio currently loaded.
 ///
 /// Emitted once per track on [PlayerStream.waveform] after the engine
 /// finishes decoding the file in the background. The track is mixed
@@ -13,7 +13,10 @@ import 'dart:typed_data';
 /// Bin `i` spans the time slice
 /// `[start + i / bins * duration, start + (i + 1) / bins * duration)`.
 /// [min] and [max] hold the lowest and highest sample value seen in each
-/// bin, range `[-1.0, +1.0]`.
+/// bin, range `[-1.0, +1.0]`, and [rms] the root mean square of the bin.
+/// On loud, heavily limited masters the peaks sit near full scale for most
+/// of the track, so drawing [rms] as the body of the waveform, with the
+/// peaks as a lighter outline, keeps the sections readable.
 ///
 /// For a normal (known-length) track [start] is zero and [duration] is the
 /// whole track, so bins map onto `[0, duration]`. For a **live** stream
@@ -55,6 +58,11 @@ final class WaveformData {
   /// Per-bin maximum sample value, range `[-1.0, +1.0]`.
   final Float32List max;
 
+  /// Per-bin RMS of the mono signal, range `[0.0, 1.0]`, same length as
+  /// [min]. It follows the loudness of each bin even where the peaks stay
+  /// flat at full scale. `null` with a libmpv older than `libmpv-r14`.
+  final Float32List? rms;
+
   /// Per-bin coverage flag (one byte per bin, length matches [min]): `1`
   /// for a bin that has real data, `0` for one not yet covered.
   ///
@@ -94,7 +102,7 @@ final class WaveformData {
 
   /// Creates a waveform. Used internally by the waveform pipeline.
   ///
-  /// The three per-bin arrays must share one length — the painter indexes
+  /// The per-bin arrays must share one length — the painter indexes
   /// `max[i]` off `min.length` with no per-element guard, so a mismatched
   /// producer would read out of range. The assert makes that contract fail
   /// loudly in debug instead of silently misrendering.
@@ -103,14 +111,17 @@ final class WaveformData {
     required this.min,
     required this.max,
     required this.filled,
+    this.rms,
     this.start = Duration.zero,
     this.live = false,
     this.decoding = false,
     this.coverageBins,
     this.totalBins,
   }) : assert(
-          max.length == min.length && filled.length == min.length,
-          'WaveformData min/max/filled must share one length',
+          max.length == min.length &&
+              filled.length == min.length &&
+              (rms == null || rms.length == min.length),
+          'WaveformData min, max, rms and filled must share one length',
         );
 
   /// Number of bins. Convenience accessor — equal to `min.length`.

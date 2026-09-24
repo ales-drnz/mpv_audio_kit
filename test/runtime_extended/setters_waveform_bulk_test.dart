@@ -6,6 +6,8 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
@@ -147,5 +149,56 @@ void main() {
         await player.dispose();
       }
     }, timeout: const Timeout(Duration(seconds: 15)),);
+
+    test('stereo peaks stay within [-1, 1] and rms follows the level',
+        () async {
+      final player = await buildPlayer();
+      try {
+        final probe = await player.getRawProperty('waveform-data');
+        if (probe == null) {
+          markTestSkipped('libmpv has no waveform-data property.');
+          return;
+        }
+
+        final completer = Completer<WaveformData>();
+        final sub = player.stream.waveform.listen((w) {
+          if (w != null && !w.decoding && !completer.isCompleted) {
+            completer.complete(w);
+          }
+        });
+        try {
+          // L == R 2 kHz sine at 0.9, 48 kHz, 1 s: 2000 bins of 24 samples,
+          // one whole period each. The mono average peaks at 0.9 and every
+          // bin's RMS is 0.9 / sqrt(2). A 1/sqrt(2) per channel downmix
+          // would peak at about 1.27 instead.
+          await openAndWaitForLoad(
+            player,
+            '${Directory.current.path}/test/fixtures/sine_stereo_1s.flac',
+          );
+          final wave =
+              await completer.future.timeout(const Duration(seconds: 5));
+          final rms = wave.rms;
+          if (rms == null) {
+            markTestSkipped('libmpv predates the per-bin rms (r14).');
+            return;
+          }
+          expect(rms.length, wave.bins);
+
+          var peak = 0.0;
+          for (var i = 0; i < wave.bins; i++) {
+            peak = math.max(peak, math.max(wave.max[i], -wave.min[i]));
+          }
+          expect(peak, closeTo(0.9, 0.02));
+
+          for (var i = 1; i < wave.bins - 1; i++) {
+            expect(rms[i], closeTo(0.9 / math.sqrt2, 0.01), reason: 'bin $i');
+          }
+        } finally {
+          await sub.cancel();
+        }
+      } finally {
+        await player.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 10)),);
   });
 }

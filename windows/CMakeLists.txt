@@ -75,9 +75,9 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE shell32)
 # arches are supported (x86_64, arm64) and the binaries live in arch-scoped
 # subdirectories: windows/libs/<arch>/libmpv.dll. The CMake config detects
 # the build's target arch and picks the matching subdir.
-set(MPV_RELEASE_VERSION "libmpv-r13")
-set(EXPECTED_SHA256_X86_64  "5397ffe5472f056b21452c3c6a22059f8bd5d435ade6e29fd8d86915de4d4b90")
-set(EXPECTED_SHA256_ARM64  "bfd7c61d72afd823088f855ae1c1e53a6c16de944cd07d25947eec6cdac6604e")
+set(MPV_RELEASE_VERSION "libmpv-r14")
+set(EXPECTED_SHA256_X86_64  "89ccb580461020b5818bdbabb5bdae3dde8b6afa4418140fad63fcd75e961497")
+set(EXPECTED_SHA256_ARM64  "8d43657f9ebec137039a708fb3d6a643eec7ce6253f1cd0fa90230755724b1de")
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
   set(_MPV_ARCH "arm64")

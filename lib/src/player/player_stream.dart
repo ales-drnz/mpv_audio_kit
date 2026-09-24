@@ -720,14 +720,21 @@ class PlayerStream {
   /// supplies samples, not config).
   final Stream<SpectrumSettings> spectrum;
 
-  /// Mono min/max amplitude envelope of the current track, binned
+  /// Mono min, max and RMS amplitude envelope of the current track, binned
   /// across the full track duration. Use for a static full-track
   /// overview strip with click-to-seek.
   ///
   /// Emits `null` on every track-change boundary (so renderers can
-  /// clear stale data) and a single [WaveformData] once the engine
-  /// finishes decoding the file in the background. Live streams or
-  /// sources without a known duration emit `null` and never settle.
+  /// clear stale data), then the envelope. A complete seekable file,
+  /// local or a direct-play HTTP file, is decoded in the background:
+  /// partial envelopes with [WaveformData.decoding] set, then the final
+  /// one. Adaptive, non-seekable or transcoded network streams grow the
+  /// envelope from playback instead, and a live stream of unknown length
+  /// emits a rolling window ([WaveformData.live]).
+  ///
+  /// The background decode opens the source a second time, with the same
+  /// network options as playback (`tls-verify`, `tls-ca-file`, headers,
+  /// user agent, cookies). For a remote file that means a second download.
   ///
   /// **Listener-gated** — the native analyzer runs and the pipeline
   /// polls only while a listener is attached; the cost of a waveform
@@ -774,6 +781,9 @@ class PlayerStream {
   ///   }
   /// });
   /// ```
+  ///
+  /// Like [waveform], the scan opens the source a second time, with the
+  /// same network options as playback.
   ///
   /// Emits one terminal [LoudnessScan] per track (`ready`, `failed`, or
   /// `unavailable` for sources that can only be measured during

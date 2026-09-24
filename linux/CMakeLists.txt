@@ -20,9 +20,9 @@ set(PLUGIN_NAME "mpv_audio_kit_plugin")
 # arch. Two arches are supported (x86_64, aarch64) and the binaries live in
 # arch-scoped subdirectories: linux/libs/<arch>/libmpv.so. The CMake config
 # detects the build's target arch and picks the matching subdir.
-set(MPV_RELEASE_VERSION "libmpv-r13")
-set(EXPECTED_SHA256_X86_64  "509462749f10c9fd8753d60e7c2e4b55308f981a85a1afae5411d0c1939fe39a")
-set(EXPECTED_SHA256_AARCH64  "fa02f6c6e7bbf1a8832ae39f032a2e15391cc7a75d5667af35b3ccf27ce0bb05")
+set(MPV_RELEASE_VERSION "libmpv-r14")
+set(EXPECTED_SHA256_X86_64  "86dc417175565b2bffdd466127fbfc039f4a17047f705305b319a2a4533144a1")
+set(EXPECTED_SHA256_AARCH64  "445350333e4a20c7cb564716a807f0095050cb7289f90affbf0a9ededd540329")
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
   set(_MPV_ARCH "aarch64")

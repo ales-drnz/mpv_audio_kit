@@ -132,6 +132,8 @@ class WaveformPipeline {
           value['range_end_us'] is int ? value['range_end_us'] as int : 0;
       final min = float32FromByteValue(value['min']);
       final max = float32FromByteValue(value['max']);
+      // Absent before libmpv-r14; null then, like a length mismatch.
+      final rmsValue = float32FromByteValue(value['rms']);
       final filled =
           value['filled'] is Uint8List ? value['filled'] as Uint8List : null;
 
@@ -148,6 +150,10 @@ class WaveformPipeline {
           max != null &&
           min.isNotEmpty &&
           min.length == max.length;
+      final rms =
+          (rmsValue != null && min != null && rmsValue.length == min.length)
+              ? rmsValue
+              : null;
 
       // Fall back to all-covered if the native side omitted/mismatched the
       // flags, so the renderer never misreads it.
@@ -165,6 +171,7 @@ class WaveformPipeline {
           duration: Duration(microseconds: rangeEndUs - rangeStartUs),
           min: min,
           max: max,
+          rms: rms,
           filled: safeFilled(min),
           live: true,
         );
@@ -184,6 +191,7 @@ class WaveformPipeline {
             duration: Duration(microseconds: durationUs),
             min: min,
             max: max,
+            rms: rms,
             filled: safeFilled(min),
             decoding: true,
             coverageBins: coverageBins,
@@ -199,6 +207,7 @@ class WaveformPipeline {
           duration: Duration(microseconds: durationUs),
           min: min,
           max: max,
+          rms: rms,
           filled: safeFilled(min),
         );
         if (ready) {

@@ -1,3 +1,25 @@
+## [0.4.8] - 24-09-2026
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): reported that the waveform analyzer opened network sources without the player's TLS and header options ([#19](https://github.com/ales-drnz/mpv_audio_kit/issues/19)) and asked for a per-bin RMS ([#20](https://github.com/ales-drnz/mpv_audio_kit/issues/20)).
+
+### Added
+- `WaveformData.rms`: the RMS of each bin, to draw loud masters whose peaks sit at full scale. `null` with an older libmpv.
+
+### Fixed
+- Android and Windows no longer publish a remote cover's URL: the image is downloaded first and handed to the OS, as on Linux since 0.4.7.
+- Android: a Bluetooth or headset key with the app closed no longer gets the app killed, and audio without a title keeps its notification and background playback.
+- iOS: audio no longer stays silent after an interruption or a media services reset while the player reports playback.
+- Windows: the media session no longer overrides the app's own AppUserModelID, and a cover shows again after the session is disabled and re-enabled.
+- Linux: a second instance of an app keeps its media controls, and apps using the package no longer delete each other's covers.
+
+### Build
+- The waveform and loudness scan open a remote file with the same network options as playback: `tls-verify`, `tls-ca-file`, `Media.httpHeaders`, user agent and cookies. Before, they skipped certificate verification and dropped the headers.
+- Added a per-bin RMS to the native waveform analyzer, behind `WaveformData.rms`.
+- Waveform peaks of a stereo file stay within `[-1, 1]`. The ahead-of-time decode now downmixes like the progressive one, where it could reach about 1.41.
+- Changing track or closing the app while the waveform or loudness scan was decoding could crash the process.
+- Updated libmpv to `libmpv-r14` across all platforms.
+
 ## [0.4.7] - 23-09-2026
 
 ### Contributions
