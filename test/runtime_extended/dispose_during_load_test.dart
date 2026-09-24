@@ -57,7 +57,7 @@ void main() {
       try {
         await loadFuture;
       } catch (_) {
-        // Either StateError (post-dispose) or no error — both acceptable.
+        // Either PlayerDisposedException (post-dispose) or no error — both acceptable.
       }
     }, timeout: const Timeout(Duration(seconds: 5)));
   });

@@ -49,31 +49,43 @@ void main() {
           timeout: const Timeout(Duration(seconds: 15)),
         );
 
-        test('setRawProperty surfaces mpv errors as MpvException', () async {
-          // Typo in the property name — mpv returns
-          // MPV_ERROR_PROPERTY_NOT_FOUND (-8). Pre-fix, the rc was
-          // discarded and the call silently succeeded.
-          await expectLater(
-            () => player.setRawProperty('voluem', '50'),
-            throwsA(
-              isA<MpvException>()
-                  .having((e) => e.name, 'name', 'voluem')
-                  .having((e) => e.code, 'code', lessThan(0)),
-            ),
-          );
-        }, timeout: const Timeout(Duration(seconds: 5)));
+        test(
+          'setRawProperty surfaces mpv errors as MpvCommandException',
+          () async {
+            // Typo in the property name — mpv returns
+            // MPV_ERROR_PROPERTY_NOT_FOUND (-8). Pre-fix, the rc was
+            // discarded and the call silently succeeded.
+            await expectLater(
+              () => player.setRawProperty('voluem', '50'),
+              throwsA(
+                isA<MpvCommandException>()
+                    .having((e) => e.name, 'name', 'voluem')
+                    .having((e) => e.code, 'code', lessThan(0)),
+              ),
+            );
+          },
+          timeout: const Timeout(Duration(seconds: 5)),
+        );
 
-        test('sendRawCommand surfaces mpv errors as MpvException', () async {
-          // Unknown command — mpv returns MPV_ERROR_INVALID_PARAMETER.
-          await expectLater(
-            () => player.sendRawCommand(['this-command-does-not-exist']),
-            throwsA(
-              isA<MpvException>()
-                  .having((e) => e.name, 'name', 'this-command-does-not-exist')
-                  .having((e) => e.code, 'code', lessThan(0)),
-            ),
-          );
-        }, timeout: const Timeout(Duration(seconds: 5)));
+        test(
+          'sendRawCommand surfaces mpv errors as MpvCommandException',
+          () async {
+            // Unknown command — mpv returns MPV_ERROR_INVALID_PARAMETER.
+            await expectLater(
+              () => player.sendRawCommand(['this-command-does-not-exist']),
+              throwsA(
+                isA<MpvCommandException>()
+                    .having(
+                      (e) => e.name,
+                      'name',
+                      'this-command-does-not-exist',
+                    )
+                    .having((e) => e.code, 'code', lessThan(0)),
+              ),
+            );
+          },
+          timeout: const Timeout(Duration(seconds: 5)),
+        );
       },
     );
   });

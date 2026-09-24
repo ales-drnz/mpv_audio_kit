@@ -142,32 +142,39 @@ abstract interface class PlayerApi {
   /// Appends [media] to the end of the playlist.
   Future<void> add(Media media);
 
-  /// Removes the playlist entry at [index].
+  /// Removes the playlist entry at [index]. Throws [RangeError] if [index]
+  /// is out of range.
   Future<void> remove(int index);
 
-  /// Advances to the next playlist entry. With [force] true, advancing past
-  /// the last entry stops playback; the default does nothing at the end.
-  Future<void> next({bool force});
+  /// Advances to the next playlist entry and returns `true`, or `false`
+  /// when there is none. With [force] true, advancing past the last entry
+  /// stops playback; the default does nothing at the end.
+  Future<bool> next({bool force});
 
-  /// Returns to the previous playlist entry. With [force] true, going back
-  /// past the first entry stops playback; the default does nothing at the start.
-  Future<void> previous({bool force});
+  /// Returns to the previous playlist entry and returns `true`, or `false`
+  /// when there is none. With [force] true, going back past the first
+  /// entry stops playback; the default does nothing at the start.
+  Future<bool> previous({bool force});
 
   /// Jumps to the next entry from a different source playlist
-  /// (`playlist-path`) — navigation across concatenated playlists.
-  Future<void> nextPlaylist();
+  /// (`playlist-path`), navigation across concatenated playlists. Returns
+  /// `false` when there is none.
+  Future<bool> nextPlaylist();
 
   /// Jumps to the first of the previous entries from a different source
   /// playlist (`playlist-path`). The reverse of [nextPlaylist].
-  Future<void> previousPlaylist();
+  Future<bool> previousPlaylist();
 
-  /// Jumps to the playlist entry at [index] and plays it.
+  /// Jumps to the playlist entry at [index] and plays it. Throws
+  /// [RangeError] if [index] is out of range.
   Future<void> jump(int index);
 
-  /// Moves the playlist entry from index [from] to index [to].
+  /// Moves the playlist entry from index [from] to index [to]. Throws
+  /// [RangeError] if either is out of range.
   Future<void> move(int from, int to);
 
-  /// Replaces the playlist entry at [index] with [media].
+  /// Replaces the playlist entry at [index] with [media]. Throws
+  /// [RangeError] if [index] is out of range.
   Future<void> replace(int index, Media media);
 
   /// Removes every entry from the playlist.

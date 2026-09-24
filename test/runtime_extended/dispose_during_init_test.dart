@@ -35,7 +35,7 @@ library;
 //   pending `_ready`, when dispose lands during init (Bug A path), resumes
 //   after the early-returned bring-up and reads the unassigned
 //   `late final _lib` → `LateInitializationError` instead of a proper
-//   `StateError` (or clean completion).
+//   `PlayerDisposedException` (or clean completion).
 
 import 'dart:async';
 
@@ -171,16 +171,16 @@ void main() {
                 'attempt $i: setVolume() resumed after the dispose-'
                 'aborted bring-up and read the unassigned `late final _lib` '
                 '— it failed with $typeName ("$setterError") instead of a '
-                'proper StateError or clean completion.',
+                'proper PlayerDisposedException or clean completion.',
           );
           // Anything else surfaced must be the documented contract.
           expect(
             setterError,
-            isA<StateError>(),
+            isA<PlayerDisposedException>(),
             reason:
                 'attempt $i: setter failed with unexpected error type '
                 '$typeName ("$setterError"); the contract is clean '
-                'completion or StateError.',
+                'completion or PlayerDisposedException.',
           );
         }
         // Clean completion is acceptable too — no assertion needed.

@@ -8,6 +8,9 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - The filter-id enum is now `AudioFilter`, and `stream.tap` takes an `instance` for filters that appear more than once.
 - Minimum Dart 3.10 and Flutter 3.38.
 - libmpv is bundled as `libmpv_audio_kit.so`, `mpv_audio_kit.dll` or `mpv_audio_kit.framework`, and the Linux fallback to a system `libmpv.so` is gone.
+- Calls throw one sealed `MpvPlayerException`: `PlayerDisposedException`, `PlayerInitException`, `MpvCommandException` (was `MpvException`) and `SourceException`. A missing `asset://` throws instead of reaching mpv.
+- `next()` and `previous()` return `false` when there is no track to go to, and an index out of range throws `RangeError` in `jump()`, `remove()`, `move()` and `replace()`.
+- A negative volume, or a rate or pitch outside `[0.01, 100]`, throws `RangeError` before reaching mpv.
 
 ### Added
 - libmpv reaches the app through a Dart build hook, with one pinned checksum per binary. An app can bundle its own build with the `libmpv` user define.

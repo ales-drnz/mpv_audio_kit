@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 // Regression test (red phase): typed command methods discard mpv's
-// return code. `sendRawCommand` throws MpvException on rc < 0; the
+// return code. `sendRawCommand` throws MpvCommandException on rc < 0; the
 // typed `seek()` funnels through the same command path but ignores the
 // rc, so seeking with no file loaded "succeeds" silently instead of
 // surfacing the rejection. Contract under test: typed commands mirror
@@ -38,18 +38,18 @@ void main() {
       // the typed-seek expectation below needs a different repro.
       await expectLater(
         player.sendRawCommand(['seek', '5', 'absolute']),
-        throwsA(isA<MpvException>()),
+        throwsA(isA<MpvCommandException>()),
         reason:
             'mpv is expected to reject `seek` while idle with rc < 0; '
-            'sendRawCommand surfaces that as MpvException.',
+            'sendRawCommand surfaces that as MpvCommandException.',
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
 
-    test('typed seek() with no file loaded must throw MpvException like '
+    test('typed seek() with no file loaded must throw MpvCommandException like '
         'the raw command path does', () async {
       await expectLater(
         player.seek(const Duration(seconds: 5)),
-        throwsA(isA<MpvException>()),
+        throwsA(isA<MpvCommandException>()),
         reason:
             'seek() funnels through the same mpv command as '
             "sendRawCommand(['seek', ...]) — which throws here — but "

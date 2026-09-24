@@ -19,7 +19,7 @@ part of '../player.dart';
 /// wait is the macOS beachball. Never reintroduce a synchronous
 /// set/get/command on the main isolate.
 mixin _FfiModule on _PlayerBase {
-  /// Writes a property and throws [MpvException] on rejection.
+  /// Writes a property and throws [MpvCommandException] on rejection.
   ///
   /// All typed setters (setVolume, setRate, setAudioEffects, …) flow
   /// through this method. Errors are surfaced rather than swallowed so
@@ -31,7 +31,11 @@ mixin _FfiModule on _PlayerBase {
   Future<void> _prop(String name, String value) async {
     final rc = await _propRc(name, value);
     if (rc < 0) {
-      throw MpvException(name: name, code: rc, message: _errorString(rc));
+      throw MpvCommandException(
+        name: name,
+        code: rc,
+        message: _errorString(rc),
+      );
     }
   }
 
@@ -91,18 +95,47 @@ mixin _FfiModule on _PlayerBase {
     return completer.future;
   }
 
-  /// [_command] that throws [MpvException] on rejection — the command
+  /// Runs a playlist navigation command and returns whether it moved:
+  /// mpv answers [MpvError.mpvErrorCommand] when there is nowhere to go,
+  /// which is a normal outcome, not an error.
+  @override
+  Future<bool> _navigate(List<String> args) async {
+    final rc = await _command(args);
+    if (rc >= 0) return true;
+    if (rc == MpvError.mpvErrorCommand) return false;
+    throw MpvCommandException(
+      name: args.first,
+      code: rc,
+      message: _errorString(rc),
+    );
+  }
+
+  /// Throws [RangeError] unless [index] is a valid playlist position, per
+  /// mpv's own `playlist-count` (the Dart state can lag behind an `add`
+  /// still in flight). Returns the count.
+  @override
+  Future<int> _checkPlaylistIndex(int index, String name) async {
+    final (rc, value) = await _getAsync(
+      'playlist-count',
+      MpvFormat.mpvFormatInt64,
+    );
+    final count = rc < 0 ? 0 : value as int;
+    RangeError.checkValidIndex(index, null, name, count);
+    return count;
+  }
+
+  /// [_command] that throws [MpvCommandException] on rejection — the command
   /// counterpart of [_prop], used by the typed methods whose failure is
   /// a caller-visible error (seek with nothing loaded, loadfile with
-  /// malformed options, an out-of-range playlist index). Call sites
-  /// where a non-zero rc is an expected no-op (`playlist-remove current`
-  /// on an empty playlist, `playlist-next weak` at the last entry) keep
-  /// the raw rc-returning variant.
+  /// malformed options). Call sites where a non-zero rc is an expected
+  /// outcome use [_navigate] (`playlist-next weak` at the last entry) or
+  /// keep the raw rc-returning variant (`playlist-remove current` on an
+  /// empty playlist, the internal steps of `openAll`).
   @override
   Future<void> _commandChecked(List<String> args) async {
     final rc = await _command(args);
     if (rc < 0) {
-      throw MpvException(
+      throw MpvCommandException(
         name: args.isEmpty ? '<empty>' : args.first,
         code: rc,
         message: _errorString(rc),
@@ -220,7 +253,7 @@ mixin _FfiModule on _PlayerBase {
   /// property-change event from mpv and avoids an FFI round-trip.
   ///
   /// Returns `null` if the property doesn't exist or the read
-  /// fails. Throws [StateError] if the player has been disposed.
+  /// fails. Throws [PlayerDisposedException] if the player has been disposed.
   @override
   Future<String?> getRawProperty(String name) async {
     await _gate();
@@ -237,7 +270,7 @@ mixin _FfiModule on _PlayerBase {
   /// with no string re-parsing on the caller's side.
   ///
   /// Returns `null` if the property doesn't exist or is currently
-  /// unavailable. Throws [StateError] if the player has been disposed.
+  /// unavailable. Throws [PlayerDisposedException] if the player has been disposed.
   Future<Object?> getRawPropertyNode(String name) async {
     await _gate();
     final (error, value) = await _getAsync(name, MpvFormat.mpvFormatNode);
@@ -266,12 +299,11 @@ mixin _FfiModule on _PlayerBase {
   ///   OS play/pause button bound to it) reporting the old intent. Use
   ///   [play] / [pause].
   ///
-  /// Throws [StateError] if the player has been disposed,
-  /// [ArgumentError] if [name] is reserved, or [MpvException] if mpv
+  /// Throws [PlayerDisposedException] if the player has been disposed,
+  /// [ArgumentError] if [name] is reserved, or [MpvCommandException] if mpv
   /// rejects the property write (unknown name, out-of-range value, etc.).
   @override
   Future<void> setRawProperty(String name, String value) async {
-    await _gate();
     if (name == 'af') {
       throw ArgumentError.value(
         name,
@@ -291,6 +323,7 @@ mixin _FfiModule on _PlayerBase {
             'Use Player.play() / Player.pause() instead.',
       );
     }
+    await _gate();
     await _prop(name, value);
   }
 
@@ -300,13 +333,12 @@ mixin _FfiModule on _PlayerBase {
   /// typed playback / playlist methods (`play`, `pause`, `seek`,
   /// `add`, `jump`, …) when they cover your use case.
   ///
-  /// Throws [StateError] if the player has been disposed, or
-  /// [MpvException] if mpv rejects the command (unknown command,
+  /// Throws [PlayerDisposedException] if the player has been disposed, or
+  /// [MpvCommandException] if mpv rejects the command (unknown command,
   /// invalid argument, etc.). A successful return guarantees mpv
   /// accepted the command; the actual side-effect on playback state
   /// is observed asynchronously via [Player.stream].
   Future<void> sendRawCommand(List<String> args) async {
-    await _gate();
     // Symmetric guard with `setRawProperty('af', ...)`: mpv exposes
     // `af` and `af-command` as commands that mutate the audio chain
     // incrementally — bypassing the effects chain and desynchronizing
@@ -321,9 +353,10 @@ mixin _FfiModule on _PlayerBase {
             'experimental or expression-based filters as a RawAudioEffect.',
       );
     }
+    await _gate();
     final rc = await _command(args);
     if (rc < 0) {
-      throw MpvException(
+      throw MpvCommandException(
         name: args.isEmpty ? '<empty>' : args.first,
         code: rc,
         message: _errorString(rc),

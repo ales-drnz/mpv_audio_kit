@@ -15,13 +15,13 @@ mixin _PlaylistModule on _PlayerBase {
   /// only loads minutes later when playback advances.
   Future<void> add(Media media) async {
     _checkNotDisposed();
+    _validateLoadOptions(media);
     // Snapshot (not bump — appends don't supersede each other) the load
     // epoch: if a content-replacing call (open / stop / clearPlaylist)
     // lands while this append is still resolving its URI, the append is
     // stale and must not graft the old queue's entry onto the new one.
     final epoch = _loadEpoch;
     await _gate();
-    _validateLoadOptions(media);
     _mediaCache[media.uri] = media;
     final resolved = await resolveUri(media.uri);
     if (_disposed || epoch != _loadEpoch) {
@@ -39,52 +39,56 @@ mixin _PlaylistModule on _PlayerBase {
 
   /// Removes the track at [index] from the playlist.
   ///
-  /// Throws [MpvException] if [index] is out of range.
+  /// Throws [RangeError] if [index] is out of range.
   Future<void> remove(int index) async {
     await _gate();
+    await _checkPlaylistIndex(index, 'index');
     await _commandChecked(['playlist-remove', index.toString()]);
   }
 
-  /// Skips to the next track. With [force] `true`, advancing past the last
-  /// entry stops playback (mpv's `force` flag); the default (`weak`) does
-  /// nothing when the last entry is already playing.
-  Future<void> next({bool force = false}) async {
+  /// Skips to the next track and returns `true`, or `false` when there is
+  /// none. With [force] `true`, advancing past the last entry stops
+  /// playback (mpv's `force` flag); the default (`weak`) does nothing when
+  /// the last entry is already playing.
+  Future<bool> next({bool force = false}) async {
     await _gate();
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
     // the track change, so they apply to the OLD entry — see [_settleWrites].
     await _settleWrites();
-    await _command(['playlist-next', force ? 'force' : 'weak']);
+    return _navigate(['playlist-next', force ? 'force' : 'weak']);
   }
 
-  /// Skips to the previous track. With [force] `true`, going back past the
-  /// first entry stops playback; the default (`weak`) does nothing when the
-  /// first entry is already playing.
-  Future<void> previous({bool force = false}) async {
+  /// Skips to the previous track and returns `true`, or `false` when there
+  /// is none. With [force] `true`, going back past the first entry stops
+  /// playback; the default (`weak`) does nothing when the first entry is
+  /// already playing.
+  Future<bool> previous({bool force = false}) async {
     await _gate();
     // See [next] — in-flight transport writes apply to the old entry.
     await _settleWrites();
-    await _command(['playlist-prev', force ? 'force' : 'weak']);
+    return _navigate(['playlist-prev', force ? 'force' : 'weak']);
   }
 
   /// Jumps to the next entry whose source playlist (`playlist-path`) differs
   /// from the current one — for navigating across concatenated playlists
   /// (e.g. several internet-radio `.m3u` lists appended into one queue).
-  /// No-op when no later entry comes from a different playlist.
-  Future<void> nextPlaylist() async {
+  /// Returns `false`, doing nothing, when no later entry comes from a
+  /// different playlist.
+  Future<bool> nextPlaylist() async {
     await _gate();
     // See [next] — in-flight transport writes apply to the old entry.
     await _settleWrites();
-    await _command(['playlist-next-playlist']);
+    return _navigate(['playlist-next-playlist']);
   }
 
   /// Jumps to the first of the previous entries whose source playlist
   /// (`playlist-path`) differs from the current one. The reverse of
-  /// [nextPlaylist].
-  Future<void> previousPlaylist() async {
+  /// [nextPlaylist], with the same return value.
+  Future<bool> previousPlaylist() async {
     await _gate();
     // See [next] — in-flight transport writes apply to the old entry.
     await _settleWrites();
-    await _command(['playlist-prev-playlist']);
+    return _navigate(['playlist-prev-playlist']);
   }
 
   /// Jumps to the track at [index] in the playlist and starts playback.
@@ -92,8 +96,11 @@ mixin _PlaylistModule on _PlayerBase {
   /// Unpauses synchronously *before* issuing the playlist jump so the new
   /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives — no
   /// shared `_pendingPlay` field to race on with concurrent `open()` calls.
+  ///
+  /// Throws [RangeError] if [index] is out of range.
   Future<void> jump(int index) async {
     await _gate();
+    await _checkPlaylistIndex(index, 'index');
     // See [next] — in-flight transport writes apply to the old entry.
     await _settleWrites();
     // Optimistic intent, same as play(): this call unpauses, and `pause`
@@ -118,9 +125,12 @@ mixin _PlaylistModule on _PlayerBase {
 
   /// Moves the track at [from] to position [to].
   ///
-  /// Throws [MpvException] if either index is out of range.
+  /// Throws [RangeError] if [from] is out of range, or [to] is outside
+  /// `0..length` (`length` moves the track to the end).
   Future<void> move(int from, int to) async {
     await _gate();
+    final count = await _checkPlaylistIndex(from, 'from');
+    RangeError.checkValueInInterval(to, 0, count, 'to');
     await _commandChecked(['playlist-move', from.toString(), to.toString()]);
   }
 
@@ -136,10 +146,11 @@ mixin _PlaylistModule on _PlayerBase {
   /// this build.)
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
+    _validateLoadOptions(media);
     // Snapshot the load epoch — same staleness rule as [add].
     final epoch = _loadEpoch;
     await _gate();
-    _validateLoadOptions(media);
+    await _checkPlaylistIndex(index, 'index');
     _mediaCache[media.uri] = media;
     final resolved = await resolveUri(media.uri);
     if (_disposed || epoch != _loadEpoch) {
@@ -160,12 +171,17 @@ mixin _PlaylistModule on _PlayerBase {
         ? -1
         : (int.tryParse(posValue as String? ?? '') ?? -1);
     final opts = _buildLoadfileOptions(media);
-    Future<int> insertAt(int at) {
+    Future<void> insertAt(int at) {
       if (opts.isEmpty) {
-        return _command(['loadfile', resolved.uri, 'insert-at', at.toString()]);
+        return _commandChecked([
+          'loadfile',
+          resolved.uri,
+          'insert-at',
+          at.toString(),
+        ]);
       }
       // 4th-arg options require an explicit index argument (mpv 0.38+).
-      return _command([
+      return _commandChecked([
         'loadfile',
         resolved.uri,
         'insert-at',
@@ -189,11 +205,11 @@ mixin _PlaylistModule on _PlayerBase {
       // gapless for typical music files. Finally drop the original.
       await insertAt(index + 1);
       if (superseded()) return;
-      await _command(['playlist-next', 'force']);
+      await _commandChecked(['playlist-next', 'force']);
       if (superseded()) return;
-      await _command(['playlist-remove', index.toString()]);
+      await _commandChecked(['playlist-remove', index.toString()]);
     } else {
-      await _command(['playlist-remove', index.toString()]);
+      await _commandChecked(['playlist-remove', index.toString()]);
       if (superseded()) return;
       await insertAt(index);
     }
@@ -216,8 +232,9 @@ mixin _PlaylistModule on _PlayerBase {
     // mpv's `playlist-clear` alone keeps the active entry; the
     // explicit `playlist-remove current` makes the call match the
     // method name.
-    await _command(['playlist-clear']);
+    await _commandChecked(['playlist-clear']);
     if (_disposed || epoch != _loadEpoch) return;
+    // Fails when nothing is current (an idle player): nothing to clear then.
     await _command(['playlist-remove', 'current']);
   }
 
@@ -252,9 +269,9 @@ mixin _PlaylistModule on _PlayerBase {
     await _gate();
     await _prop('shuffle', shuffle ? 'yes' : 'no');
     if (shuffle) {
-      await _command(['playlist-shuffle']);
+      await _commandChecked(['playlist-shuffle']);
     } else {
-      await _command(['playlist-unshuffle']);
+      await _commandChecked(['playlist-unshuffle']);
     }
     _updateField(
       (s) => s.copyWith(shuffle: shuffle),

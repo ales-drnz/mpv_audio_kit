@@ -20,6 +20,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../events/mpv_player_exception.dart';
+
 const MethodChannel _channel = MethodChannel('mpv_audio_kit');
 final Map<String, String> _assetCache = {};
 
@@ -59,19 +61,16 @@ class ResolvedUri {
 /// [ResolvedUri.dispose] callback must be invoked if the result is
 /// never passed to `loadfile`.
 ///
-/// Throws a [StateError] when an Android `content://` URI cannot be
-/// resolved to an open file descriptor — letting the failure surface
-/// at the `Player.open()` call site rather than silently handing mpv
-/// a URI it cannot open. `asset://` failures keep the soft-fallback
-/// behaviour: the original URI is returned and mpv emits a typed
-/// end-file error if the path does not work either.
+/// Throws a [SourceException] when an `asset://` cannot be copied out of
+/// the bundle, or an Android `content://` URI cannot be resolved to an
+/// open file descriptor, so the failure surfaces at the `Player.open()`
+/// call site rather than as a URI mpv cannot open.
 Future<ResolvedUri> resolveUri(String uri) async {
   if (uri.startsWith('asset://')) {
     try {
       return ResolvedUri(await _copyAssetToCache(uri));
     } catch (e) {
-      debugPrint('mpv_audio_kit: asset resolution failed for $uri: $e');
-      return ResolvedUri(uri);
+      throw SourceException(uri, 'the asset could not be loaded: $e');
     }
   }
   if (Platform.isAndroid && uri.startsWith('content://')) {
@@ -82,16 +81,13 @@ Future<ResolvedUri> resolveUri(String uri) async {
       if (fd != null && fd > 0) {
         return ResolvedUri('fd://$fd', () => _closeAndroidFd(fd));
       }
-      throw StateError(
-        'mpv_audio_kit: content:// resolution returned no file descriptor '
-        'for $uri (the ContentResolver may have rejected the URI or the '
-        'caller lacks read permission)',
+      throw SourceException(
+        uri,
+        'the ContentResolver returned no file descriptor (it may have '
+        'rejected the URI, or the app lacks read permission)',
       );
     } on PlatformException catch (e) {
-      throw StateError(
-        'mpv_audio_kit: content:// resolution failed for $uri '
-        '(${e.code}: ${e.message})',
-      );
+      throw SourceException(uri, '${e.code}: ${e.message}');
     }
   }
   return ResolvedUri(uri);

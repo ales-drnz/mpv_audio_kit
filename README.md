@@ -203,6 +203,7 @@ dependencies:
     * [11.3 Network state](#113-network-state)
     * [11.4 Audio output lifecycle](#114-audio-output-lifecycle)
     * [11.5 Log streams](#115-log-streams)
+    * [11.6 Exceptions](#116-exceptions)
 
     </details>
 
@@ -343,7 +344,7 @@ dependencies:
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/triangle-alert.png" width="32"></td>
 <td valign="middle"><b>Typed errors</b><br>sealed <a href="#111-typed-error-stream"><code>MpvPlayerError</code></a> hierarchy plus dedicated sinks for engine errors, end-file events, AO failures, and logs.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/terminal.png" width="32"></td>
-<td valign="middle"><b>Raw access</b><br>read or write any mpv property or command; failures surface as typed <a href="#10-raw-api"><code>MpvException</code></a>.</td>
+<td valign="middle"><b>Raw access</b><br>read or write any mpv property or command; a rejection throws <a href="#116-exceptions"><code>MpvCommandException</code></a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/media-session.png" width="32"></td>
@@ -616,6 +617,8 @@ await player.remove(0);              // Remove track at index 0
 await player.move(5, 0);             // Move track from index 5 to index 0
 await player.replace(2, newTrack);   // Replace track at index 2
 
+// An index out of range throws RangeError.
+
 await player.clearPlaylist();        // Remove all tracks (stops playback)
 ```
 
@@ -624,6 +627,9 @@ await player.clearPlaylist();        // Remove all tracks (stops playback)
 ```dart
 await player.next();              // Skip to the next track
 await player.previous();          // Skip to the previous track
+
+// Both return false when there is nowhere to go.
+final moved = await player.next();
 await player.jump(2);             // Jump to track at index 2 (0-indexed)
 
 await player.next(force: true);   // Past the last entry: stop playback
@@ -1996,25 +2002,25 @@ final String? samplerate = await player.getRawProperty('audio-params/samplerate'
 
 #### 10.2 Write a property
 
-Throws `MpvException` if libmpv rejects the write (typo, out-of-range
-value, …). Carries `name`, mpv `code`, and the human-readable
-`message` from `mpv_error_string`.
+Throws `MpvCommandException` if libmpv rejects the write (typo,
+out-of-range value, …). Carries `name`, mpv `code`, and the
+human-readable `message` from `mpv_error_string`.
 
 ```dart
 try {
   await player.setRawProperty('audio-samplerate', '96000');
   await player.setRawProperty('audio-channels', 'stereo');
-} on MpvException catch (e) {
+} on MpvCommandException catch (e) {
   print('mpv rejected ${e.name}: ${e.message} (code=${e.code})');
 }
 ```
 
 #### 10.3 Send a command
 
-Same `MpvException` contract on rejection.
+Same `MpvCommandException` contract on rejection. `af` and `af-command`
+throw `ArgumentError`: the effects chain owns them.
 
 ```dart
-await player.sendRawCommand(['af', 'add', 'lavfi-aresample=48000']);
 await player.sendRawCommand(['playlist-shuffle']);
 await player.sendRawCommand(['ao-reload']);
 ```
@@ -2163,6 +2169,41 @@ silence the engine). Change it at runtime with `setLogLevel`:
 await player.setLogLevel(LogLevel.debug); // more detail on demand
 await player.setLogLevel(LogLevel.off);   // silence the engine
 ```
+
+#### 11.6 Exceptions
+
+The streams above report what happens during playback. A call that
+fails throws a `MpvPlayerException`, a sealed class:
+
+- `PlayerDisposedException`: the player was disposed.
+- `PlayerInitException`: libmpv could not load or start. Every call on
+  that player throws it, with the reason in `message`.
+- `MpvCommandException`: libmpv rejected the request, for example a seek
+  with no file loaded. Carries `name`, `code` and `message`.
+- `SourceException`: a source could not be prepared before reaching
+  libmpv, a missing `asset://` or an unreadable `content://`.
+
+```dart
+try {
+  await player.seek(position);
+} on MpvPlayerException catch (e) {
+  switch (e) {
+    case PlayerDisposedException():
+      break;
+    case PlayerInitException(:final message):
+      print('libmpv did not start: $message');
+    case MpvCommandException(:final name, :final message):
+      print('$name rejected: $message');
+    case SourceException(:final uri):
+      print('cannot open $uri');
+  }
+}
+```
+
+Invalid arguments are programming errors: they throw `ArgumentError` or
+`RangeError` before anything reaches libmpv (a negative volume, a
+playlist index out of range). `next()` and `previous()` return `false`
+when there is no track to go to, without throwing.
 
 ---
 

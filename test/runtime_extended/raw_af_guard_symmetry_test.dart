@@ -60,7 +60,7 @@ void main() {
       // rejecting it pre-emptively.
       try {
         await player.sendRawCommand(['screenshot']);
-      } on MpvException {
+      } on MpvCommandException {
         // Expected: mpv rejects on this build. Reaching the catch confirms
         // the guard didn't fire.
       } on ArgumentError {

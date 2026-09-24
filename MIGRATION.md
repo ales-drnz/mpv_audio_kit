@@ -97,6 +97,31 @@ await player.updateAudioEffects(
 `AudioEffectsX.active` is gone: every stage has a `filter` (its
 `AudioFilter`, `null` for a `RawAudioEffect`) and an `enabled` flag.
 
+## One family of exceptions
+
+Every exception a call throws is now a sealed `MpvPlayerException`:
+
+| 0.4.x | 0.5.0 |
+| --- | --- |
+| `MpvException` | `MpvCommandException`, same `name`, `code` and `message` |
+| `StateError` on a disposed player | `PlayerDisposedException` |
+| `StateError` or `MpvLibraryException` when libmpv fails to start | `PlayerInitException` |
+| `StateError` on an unreadable `content://` | `SourceException` |
+| a missing `asset://` passed on to mpv | `SourceException` |
+
+Other changes to handle:
+
+- `next()`, `previous()`, `nextPlaylist()` and `previousPlaylist()` return
+  `Future<bool>`: `false` when there is no track to go to.
+- `jump()`, `remove()`, `move()` and `replace()` throw `RangeError` for an
+  index out of range. `jump()` used to do nothing.
+- `setVolume()` throws `RangeError` for a negative volume, `setRate()` and
+  `setPitch()` outside `[0.01, 100]`. Invalid arguments are checked before
+  the player finishes starting.
+- `stop()`, `setShuffle()`, `reloadAudio()`, `rescanExternalFiles()` and
+  `writeResumeConfig()` throw `MpvCommandException` when mpv rejects them,
+  like the other methods.
+
 ## libmpv comes from a build hook
 
 The package now fetches libmpv through a Dart build hook instead of

@@ -6,26 +6,29 @@ part of '../player.dart';
 /// Audio setters: volume, mute, output device, format / channel layout,
 /// the effects chain, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
-  /// Sets volume (0–100; values above 100 amplify the signal).
+  /// Sets volume (0–100; values above 100 amplify the signal, up to
+  /// [PlayerState.volumeMax]). Throws [RangeError] when negative.
   Future<void> setVolume(double volume) async {
+    _checkRange(volume, 0, double.maxFinite, 'volume');
     await _gate();
-    _checkFinite(volume, 'volume');
     await _prop('volume', volume.toStringAsFixed(1));
     _updateField((s) => s.copyWith(volume: volume), _reactives.volume, volume);
   }
 
-  /// Sets playback rate (1.0 = normal speed).
+  /// Sets playback rate (1.0 = normal speed). Throws [RangeError] outside
+  /// mpv's `[0.01, 100]`.
   Future<void> setRate(double rate) async {
+    _checkRange(rate, 0.01, 100, 'rate');
     await _gate();
-    _checkFinite(rate, 'rate');
     await _prop('speed', rate.toStringAsFixed(4));
     _updateField((s) => s.copyWith(rate: rate), _reactives.rate, rate);
   }
 
-  /// Sets pitch (1.0 = original pitch).
+  /// Sets pitch (1.0 = original pitch). Throws [RangeError] outside
+  /// mpv's `[0.01, 100]`.
   Future<void> setPitch(double pitch) async {
+    _checkRange(pitch, 0.01, 100, 'pitch');
     await _gate();
-    _checkFinite(pitch, 'pitch');
     await _prop('pitch', pitch.toStringAsFixed(4));
     _updateField((s) => s.copyWith(pitch: pitch), _reactives.pitch, pitch);
   }
@@ -149,8 +152,8 @@ mixin _AudioModule on _PlayerBase {
   /// 0 dB = unity. Values above ~+6 dB risk clipping unless [setReplayGain]
   /// or a downstream limiter is in the chain.
   Future<void> setVolumeGain(double gainDb) async {
-    await _gate();
     _checkFinite(gainDb, 'gainDb');
+    await _gate();
     await _prop('volume-gain', gainDb.toStringAsFixed(2));
     _updateField(
       (s) => s.copyWith(volumeGain: gainDb),
@@ -162,8 +165,8 @@ mixin _AudioModule on _PlayerBase {
   /// Sets the lower clamp applied to [setVolumeGain], in dB
   /// (mpv's `volume-gain-min`). Range -150 to 0; default -96.
   Future<void> setVolumeGainMin(double gainDb) async {
-    await _gate();
     _checkFinite(gainDb, 'gainDb');
+    await _gate();
     await _prop('volume-gain-min', gainDb.toStringAsFixed(2));
     _updateField(
       (s) => s.copyWith(volumeGainMin: gainDb),
@@ -175,8 +178,8 @@ mixin _AudioModule on _PlayerBase {
   /// Sets the upper clamp applied to [setVolumeGain], in dB
   /// (mpv's `volume-gain-max`). Range 0 to 150; default +12.
   Future<void> setVolumeGainMax(double gainDb) async {
-    await _gate();
     _checkFinite(gainDb, 'gainDb');
+    await _gate();
     await _prop('volume-gain-max', gainDb.toStringAsFixed(2));
     _updateField(
       (s) => s.copyWith(volumeGainMax: gainDb),
@@ -192,8 +195,8 @@ mixin _AudioModule on _PlayerBase {
   /// (the null AO, or a backend without per-app volume) the call is silently
   /// ignored — it does NOT throw, and [PlayerState.systemVolume] stays `null`.
   Future<void> setSystemVolume(double volume) async {
-    await _gate();
     _checkFinite(volume, 'volume');
+    await _gate();
     final rc = await _propRc('ao-volume', volume.toStringAsFixed(1));
     if (rc >= 0) {
       _updateField(
@@ -227,8 +230,8 @@ mixin _AudioModule on _PlayerBase {
   /// past unity; values up to 1000 = +20 dB digital boost. mpv hard-rejects
   /// values below 100.
   Future<void> setVolumeMax(double limit) async {
-    await _gate();
     _checkFinite(limit, 'limit');
+    await _gate();
     await _prop('volume-max', limit.toStringAsFixed(1));
     _updateField(
       (s) => s.copyWith(volumeMax: limit),
@@ -308,12 +311,12 @@ mixin _AudioModule on _PlayerBase {
     String? lang,
   }) async {
     _checkNotDisposed();
+    _validateLoadOptions(file);
     // Snapshot the load epoch: a content-replacing call landing while the
     // URI resolves makes this add stale — the track belongs to the file
     // that is no longer playing (see [Player.open]).
     final epoch = _loadEpoch;
     await _gate();
-    _validateLoadOptions(file);
     final resolved = await resolveUri(file.uri);
     if (_disposed || epoch != _loadEpoch) {
       await resolved.dispose?.call();
@@ -360,7 +363,7 @@ mixin _AudioModule on _PlayerBase {
   /// Forcibly reloads the audio output.
   Future<void> reloadAudio() async {
     await _gate();
-    await _command(['ao-reload']);
+    await _commandChecked(['ao-reload']);
   }
 
   /// Re-scans sidecar external files (auto-loaded audio / cover art) for the
@@ -371,7 +374,7 @@ mixin _AudioModule on _PlayerBase {
   /// tracks / cover art fold into [PlayerState.tracks] / the cover-art stream.
   Future<void> rescanExternalFiles({bool keepSelection = false}) async {
     await _gate();
-    await _command([
+    await _commandChecked([
       'rescan-external-files',
       keepSelection ? 'keep-selection' : 'reselect',
     ]);
@@ -486,7 +489,7 @@ mixin _AudioModule on _PlayerBase {
   /// moved the live graph ahead of it — so the flag is RE-ARMED for the
   /// next FILE_LOADED resync, the optimistic commit is rolled back to
   /// [previous] (unless a later update already replaced it), and the
-  /// [MpvException] propagates to the caller.
+  /// [MpvCommandException] propagates to the caller.
   Future<void> _rewriteAfChain(
     List<AudioEffect> effects,
     List<AudioEffect> previous,

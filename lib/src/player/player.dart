@@ -16,10 +16,10 @@ import '../dsp/loudness_meter_pipeline.dart';
 import '../dsp/loudness_scan_pipeline.dart';
 import '../dsp/spectrum_pipeline.dart';
 import '../dsp/waveform_pipeline.dart';
-import '../events/mpv_exception.dart';
 import '../events/mpv_hook_event.dart';
 import '../events/mpv_log_entry.dart';
 import '../events/mpv_player_error.dart';
+import '../events/mpv_player_exception.dart';
 import '../generated/audio_effects_settings.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
@@ -167,10 +167,10 @@ class Player extends _PlayerBase
   @override
   Future<void> open(Media media, {bool? play}) async {
     _checkNotDisposed();
+    _validateLoadOptions(media);
     final epoch = ++_loadEpoch;
     await _gate();
     if (epoch != _loadEpoch) return;
-    _validateLoadOptions(media);
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent (the play/pause axis), written at the call point —
     // BEFORE the `resolveUri` / trust-bundle awaits below — so a play() /
@@ -253,15 +253,15 @@ class Player extends _PlayerBase
     if (medias.isEmpty) {
       return;
     }
-    // Claim the load epoch synchronously — see [open].
-    final epoch = ++_loadEpoch;
-    await _gate();
-    if (epoch != _loadEpoch) return;
     // Validate the full batch before any side-effect, so a bad header
     // on entry N can't leave entries 0..N-1 half-loaded.
     for (final m in medias) {
       _validateLoadOptions(m);
     }
+    // Claim the load epoch synchronously — see [open].
+    final epoch = ++_loadEpoch;
+    await _gate();
+    if (epoch != _loadEpoch) return;
     final clampedIndex = index.clamp(0, medias.length - 1);
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point, before the resolve / tls
@@ -450,11 +450,11 @@ class Player extends _PlayerBase
   @override
   Future<void> openPlaylistFile(Media playlist, {bool? play}) async {
     _checkNotDisposed();
+    _validateLoadOptions(playlist);
     // Claim the load epoch synchronously — see [open].
     final epoch = ++_loadEpoch;
     await _gate();
     if (epoch != _loadEpoch) return;
-    _validateLoadOptions(playlist);
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point — same rationale as [open].
     _updateField(
@@ -700,6 +700,8 @@ abstract class _PlayerBase {
   Future<int> _propRc(String name, String value);
   Future<int> _command(List<String> args);
   Future<void> _commandChecked(List<String> args);
+  Future<bool> _navigate(List<String> args);
+  Future<int> _checkPlaylistIndex(int index, String name);
   Future<int> _setChapterListNode(List<Chapter> chapters);
 
   /// Async property read (see `_FfiModule`): enqueues
@@ -1023,7 +1025,7 @@ abstract class _PlayerBase {
 
   void _checkNotDisposed() {
     if (_disposed) {
-      throw StateError('Player has been disposed');
+      throw const PlayerDisposedException();
     }
   }
 
@@ -1033,12 +1035,12 @@ abstract class _PlayerBase {
   /// caller is parked on [_ready] aborts bring-up early — [_ready] still
   /// completes normally, but `_lib` / `_handle` were never assigned, so
   /// resuming into an FFI call would throw [LateInitializationError]
-  /// instead of the [StateError] the API contract promises.
+  /// instead of the [PlayerDisposedException] the API contract promises.
   Future<void> _gate() async {
     _checkNotDisposed();
     await _ready;
     if (!_bringUpCompleted) {
-      throw StateError('Player has been disposed');
+      throw const PlayerDisposedException();
     }
   }
 
@@ -1067,7 +1069,20 @@ abstract class _PlayerBase {
   /// which would emit the literal `'NaN'` / `'Infinity'` and have mpv
   /// reject the property write at the FFI boundary. Catching it on the
   /// wrapper side gives the caller a precise [ArgumentError] naming the
-  /// parameter, instead of an opaque [MpvException] from libmpv.
+  /// parameter, instead of an opaque [MpvCommandException] from libmpv.
+  /// Throws [RangeError] unless [value] is finite and within
+  /// `[min, max]`, the range mpv accepts for the option behind it.
+  void _checkRange(double value, double min, double max, String paramName) {
+    _checkFinite(value, paramName);
+    if (value < min || value > max) {
+      throw RangeError.value(
+        value,
+        paramName,
+        max == double.maxFinite ? 'must be >= $min' : 'must be in [$min, $max]',
+      );
+    }
+  }
+
   void _checkFinite(double value, String paramName) {
     if (!value.isFinite) {
       throw ArgumentError.value(

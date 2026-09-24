@@ -143,7 +143,7 @@ void main() {
             const RawAudioEffect('definitely_not_a_real_filter_zzz'),
           ],
         ),
-        throwsA(isA<MpvException>()),
+        throwsA(isA<MpvCommandException>()),
       );
       // The optimistic commit rolled back to the diff'd bundle.
       expect(effectOf<BassEffect>(player).g, 9);

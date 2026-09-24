@@ -200,18 +200,13 @@ void main() {
         await player.setRate(1.0);
       }, timeout: const Timeout(Duration(seconds: 5)));
 
-      test('setRate above 100.0 throws MpvException (mpv hard-rejects the '
-          'out-of-range write; state stays at the prior value)', () async {
-        // 0.1.0 contract: typed setters surface mpv rejections via
-        // MpvException instead of swallowing the rc and leaving the
-        // optimistic state desynced. The wrapper writes nothing to state
-        // when mpv rejects, so the prior `1.0` from the previous test
+      test('setRate above 100.0 throws RangeError (outside the range mpv '
+          'accepts; state stays at the prior value)', () async {
+        // The range is checked before the write reaches mpv, and nothing
+        // is written to state, so the prior `1.0` from the previous test
         // survives.
         final priorRate = player.state.rate;
-        await expectLater(
-          player.setRate(150.0),
-          throwsA(isA<MpvException>().having((e) => e.name, 'name', 'speed')),
-        );
+        await expectLater(player.setRate(150.0), throwsRangeError);
         expect(
           player.state.rate,
           priorRate,
@@ -219,13 +214,10 @@ void main() {
         );
       }, timeout: const Timeout(Duration(seconds: 5)));
 
-      test('setRate below 0.01 throws MpvException (mpv hard-rejects sub-0.01 '
-          'speeds; state stays at the prior value)', () async {
+      test('setRate below 0.01 throws RangeError (outside the range mpv '
+          'accepts; state stays at the prior value)', () async {
         final priorRate = player.state.rate;
-        await expectLater(
-          player.setRate(-1.0),
-          throwsA(isA<MpvException>().having((e) => e.name, 'name', 'speed')),
-        );
+        await expectLater(player.setRate(-1.0), throwsRangeError);
         expect(
           player.state.rate,
           priorRate,

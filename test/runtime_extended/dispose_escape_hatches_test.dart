@@ -17,23 +17,42 @@ void main() {
     // when running the full dispose-contract suite. This file uses
     // exactly ONE Player.
 
-    group('Dispose safety — escape hatches throw StateError after dispose', () {
-      test('getRawProperty / setRawProperty / sendRawCommand / registerHook / '
-          'continueHook all throw StateError post-dispose', () async {
-        final player = await buildPlayer();
-        // Bring-up (event isolate included) is done before disposing.
-        await player.ready;
-        await player.dispose();
+    group(
+      'Dispose safety — escape hatches throw PlayerDisposedException after dispose',
+      () {
+        test(
+          'getRawProperty / setRawProperty / sendRawCommand / registerHook / '
+          'continueHook all throw PlayerDisposedException post-dispose',
+          () async {
+            final player = await buildPlayer();
+            // Bring-up (event isolate included) is done before disposing.
+            await player.ready;
+            await player.dispose();
 
-        expect(() => player.getRawProperty('volume'), throwsStateError);
-        expect(() => player.setRawProperty('volume', '50'), throwsStateError);
-        expect(
-          () => player.sendRawCommand(['set', 'volume', '50']),
-          throwsStateError,
+            expect(
+              () => player.getRawProperty('volume'),
+              throwsA(isA<PlayerDisposedException>()),
+            );
+            expect(
+              () => player.setRawProperty('volume', '50'),
+              throwsA(isA<PlayerDisposedException>()),
+            );
+            expect(
+              () => player.sendRawCommand(['set', 'volume', '50']),
+              throwsA(isA<PlayerDisposedException>()),
+            );
+            expect(
+              () => player.registerHook(Hook.load),
+              throwsA(isA<PlayerDisposedException>()),
+            );
+            expect(
+              () => player.continueHook(1),
+              throwsA(isA<PlayerDisposedException>()),
+            );
+          },
+          timeout: const Timeout(Duration(seconds: 15)),
         );
-        expect(() => player.registerHook(Hook.load), throwsStateError);
-        expect(() => player.continueHook(1), throwsStateError);
-      }, timeout: const Timeout(Duration(seconds: 15)));
-    });
+      },
+    );
   });
 }

@@ -43,7 +43,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// writable path or the write silently fails.
   Future<void> writeResumeConfig() async {
     await _gate();
-    await _command(['write-watch-later-config']);
+    await _commandChecked(['write-watch-later-config']);
   }
 
   /// Deletes the "watch later" resume config — for the current file, or for
@@ -76,7 +76,7 @@ mixin _PlaybackModule on _PlayerBase {
     );
     // Execute in-flight transport writes first — see [_settleWrites].
     await _settleWrites();
-    await _command(['stop']);
+    await _commandChecked(['stop']);
   }
 
   /// Seeks playback to a position in the current file.
@@ -93,7 +93,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// await player.seek(const Duration(seconds: 30), relative: true);    // skip forward 30s
   /// ```
   ///
-  /// Throws [MpvException] if mpv rejects the seek — most commonly when
+  /// Throws [MpvCommandException] if mpv rejects the seek — most commonly when
   /// nothing is loaded.
   Future<void> seek(
     Duration position, {
@@ -119,8 +119,8 @@ mixin _PlaybackModule on _PlayerBase {
     bool relative = false,
     bool exact = false,
   }) async {
-    await _gate();
     _checkFinite(percent, 'percent');
+    await _gate();
     final mode = relative ? 'relative-percent' : 'absolute-percent';
     await _commandChecked([
       'seek',
@@ -172,7 +172,7 @@ mixin _PlaybackModule on _PlayerBase {
     await _gate();
     final rc = await _setChapterListNode(chapters);
     if (rc < 0) {
-      throw MpvException(
+      throw MpvCommandException(
         name: 'chapter-list',
         code: rc,
         message: _errorString(rc),
@@ -222,10 +222,10 @@ mixin _PlaybackModule on _PlayerBase {
   /// (mpv's `inf`); non-negative int for explicit count. Mirrors mpv's
   /// `--ab-loop-count` option.
   Future<void> setAbLoopCount(int? count) async {
-    await _gate();
     if (count != null && count < 0) {
       throw ArgumentError.value(count, 'count', 'must be null (= inf) or >= 0');
     }
+    await _gate();
     await _prop('ab-loop-count', count == null ? 'inf' : count.toString());
     _updateField(
       (s) => s.copyWith(abLoopCount: count),

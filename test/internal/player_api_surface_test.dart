@@ -99,16 +99,18 @@ class _ApiProbe implements PlayerApi {
   Future<void> remove(int index) => _record('remove');
 
   @override
-  Future<void> next({bool force = false}) => _record('next');
+  Future<bool> next({bool force = false}) => _record('next').then((_) => true);
 
   @override
-  Future<void> previous({bool force = false}) => _record('previous');
+  Future<bool> previous({bool force = false}) =>
+      _record('previous').then((_) => true);
 
   @override
-  Future<void> nextPlaylist() => _record('nextPlaylist');
+  Future<bool> nextPlaylist() => _record('nextPlaylist').then((_) => true);
 
   @override
-  Future<void> previousPlaylist() => _record('previousPlaylist');
+  Future<bool> previousPlaylist() =>
+      _record('previousPlaylist').then((_) => true);
 
   @override
   Future<void> jump(int index) => _record('jump');

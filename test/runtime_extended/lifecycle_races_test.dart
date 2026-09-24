@@ -50,14 +50,14 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 5)));
 
       test(
-        'seek() before any open() throws MpvException and leaves state clean',
+        'seek() before any open() throws MpvCommandException and leaves state clean',
         () async {
           // mpv rejects seek when no file is loaded; the typed seek surfaces
-          // that as MpvException (same contract as sendRawCommand) instead of
+          // that as MpvCommandException (same contract as sendRawCommand) instead of
           // silently reporting success for a command that did nothing.
           await expectLater(
             player.seek(const Duration(seconds: 5)),
-            throwsA(isA<MpvException>()),
+            throwsA(isA<MpvCommandException>()),
           );
           expect(player.state.position, Duration.zero);
         },

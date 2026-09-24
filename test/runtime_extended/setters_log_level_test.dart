@@ -72,7 +72,7 @@ void main() {
 Future<void> _trySetBogusFilter(Player player, String name) async {
   try {
     await player.setAudioEffects([RawAudioEffect(name)]);
-  } on MpvException {
+  } on MpvCommandException {
     // mpv may reject the live `af` assignment synchronously while also
     // emitting the diagnostic on the log stream; this test only cares about
     // whether the log threshold lets that diagnostic through.
