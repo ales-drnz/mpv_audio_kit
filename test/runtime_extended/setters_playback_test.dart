@@ -101,12 +101,14 @@ void main() {
       test('stop returns the player to an idle lifecycle', () async {
         // The previous test left state.playing == false (after pause), so
         // ReactiveProperty.playing dedups the false→false echo and no new
-        // emission fires after stop(). We can't anchor on a stream value
-        // change; the wait gives mpv time to process the stop command,
-        // and we assert the post-stop state synchronously.
+        // emission fires after stop(). Stop unloads the file, so anchor on
+        // mpv going idle instead.
         await player.stop();
-        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await waitUntil(
+          () async => await player.getRawProperty('idle-active') == 'yes',
+        );
         expect(player.state.playing, isFalse);
+        expect(player.state.playWhenReady, isFalse);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('setAbLoopA / setAbLoopB round-trip Duration ↔ state', () async {

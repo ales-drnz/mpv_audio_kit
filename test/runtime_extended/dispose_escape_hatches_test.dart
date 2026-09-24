@@ -21,8 +21,8 @@ void main() {
       test('getRawProperty / setRawProperty / sendRawCommand / registerHook / '
           'continueHook all throw StateError post-dispose', () async {
         final player = await buildPlayer();
-        // Allow the event isolate to spawn fully before disposing.
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        // Bring-up (event isolate included) is done before disposing.
+        await player.ready;
         await player.dispose();
 
         expect(() => player.getRawProperty('volume'), throwsStateError);
@@ -33,10 +33,6 @@ void main() {
         );
         expect(() => player.registerHook(Hook.load), throwsStateError);
         expect(() => player.continueHook(1), throwsStateError);
-
-        // Let libmpv's background threads wind down (see
-        // dispose_safety_test.dart for the rationale).
-        await Future<void>.delayed(const Duration(seconds: 1));
       }, timeout: const Timeout(Duration(seconds: 15)));
     });
   });

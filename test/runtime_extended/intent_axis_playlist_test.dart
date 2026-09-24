@@ -81,14 +81,12 @@ void main() {
         await player.jump(1);
         await actuallyPlaying;
 
-        // Give the intent a generous settling window. A correct jump()
-        // sets it synchronously at the call, so this loop exits on the
-        // first iteration when the invariant holds.
-        final deadline = DateTime.now().add(const Duration(seconds: 2));
-        while (!player.state.playWhenReady &&
-            DateTime.now().isBefore(deadline)) {
-          await Future<void>.delayed(const Duration(milliseconds: 25));
-        }
+        // A correct jump() sets the intent synchronously at the call, so
+        // this returns at once when the invariant holds.
+        await waitUntil(
+          () => player.state.playWhenReady,
+          timeout: const Duration(seconds: 2),
+        );
         final positionA = player.state.position;
         await Future<void>.delayed(const Duration(milliseconds: 400));
         final positionB = player.state.position;

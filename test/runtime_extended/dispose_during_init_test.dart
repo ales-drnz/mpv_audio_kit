@@ -82,12 +82,10 @@ void main() {
           // The duration property event can land a tick after PLAYBACK_RESTART
           // (the load anchor) under full-suite load — poll instead of reading
           // the state once.
-          final deadline = DateTime.now().add(const Duration(seconds: 10));
-          while (next.state.duration == Duration.zero &&
-              DateTime.now().isBefore(deadline)) {
-            await Future<void>.delayed(const Duration(milliseconds: 25));
-          }
-          expect(next.state.duration, greaterThan(Duration.zero));
+          await waitUntil(
+            () => next.state.duration > Duration.zero,
+            timeout: const Duration(seconds: 10),
+          );
         } finally {
           await next.dispose();
         }

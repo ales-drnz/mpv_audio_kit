@@ -18,8 +18,8 @@ void main() {
       test('representative setter sample across the 5 mixin modules throws '
           'StateError after dispose', () async {
         final player = await buildPlayer();
-        // Allow the event isolate to spawn fully before disposing.
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        // Bring-up (event isolate included) is done before disposing.
+        await player.ready;
         await player.dispose();
 
         // Pick a representative subset across the 5 mixin modules; they
@@ -39,10 +39,6 @@ void main() {
         expect(() => player.add(const Media('/tmp/x.wav')), throwsStateError);
         expect(() => player.next(), throwsStateError);
         expect(() => player.clearPlaylist(), throwsStateError);
-
-        // Let libmpv's background threads wind down (see
-        // dispose_safety_test.dart for the rationale).
-        await Future<void>.delayed(const Duration(seconds: 1));
       }, timeout: const Timeout(Duration(seconds: 15)));
     });
   });

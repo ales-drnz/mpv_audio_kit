@@ -29,9 +29,9 @@ void main() {
       'Player.dispose() returns well below the 2 s isolate-stop timeout',
       () async {
         final player = await buildPlayerWithFixture();
-        // Let the event isolate finish spawning so the stop path exercises
-        // a real cooperative shutdown rather than a not-yet-init no-op.
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        // Bring-up is done, so the stop path exercises a real cooperative
+        // shutdown rather than a not-yet-init no-op.
+        await player.ready;
 
         final sw = Stopwatch()..start();
         await player.dispose();
@@ -57,7 +57,7 @@ void main() {
       final times = <int>[];
       for (var i = 0; i < 20; i++) {
         final p = await buildPlayerWithFixture();
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await p.ready;
         final sw = Stopwatch()..start();
         await p.dispose();
         sw.stop();

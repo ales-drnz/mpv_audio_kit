@@ -103,18 +103,19 @@ void main() {
             final s1 = player.stream
                 .tap(AudioFilter.equalizer, side: TapSide.pre)
                 .listen((_) {});
-            // Give the pipeline a microtask tick to write the property.
-            await Future<void>.delayed(const Duration(milliseconds: 50));
-            active = await player.getRawProperty('analyzer-taps');
             // The native hook matches the stage's chain label, which the
             // first equalizer in the list carries as `aek_equalizer_0`.
-            expect(active, contains('aek_equalizer_0'));
+            await waitUntil(
+              () async => (await player.getRawProperty('analyzer-taps') ?? '')
+                  .contains('aek_equalizer_0'),
+            );
 
             // Second subscriber on the same filter: refcount, not a
             // duplicate write.
             final s2 = player.stream
                 .tap(AudioFilter.equalizer, side: TapSide.post)
                 .listen((_) {});
+            // A window, not a wait: a duplicate write would land in it.
             await Future<void>.delayed(const Duration(milliseconds: 50));
             active = await player.getRawProperty('analyzer-taps');
             expect(active, 'aek_equalizer_0');
@@ -127,9 +128,10 @@ void main() {
 
             // Cancel the last — analyzer-taps must be cleared.
             await s2.cancel();
-            await Future<void>.delayed(const Duration(milliseconds: 50));
-            active = await player.getRawProperty('analyzer-taps');
-            expect(active ?? '', isEmpty);
+            await waitUntil(
+              () async =>
+                  (await player.getRawProperty('analyzer-taps') ?? '').isEmpty,
+            );
           } finally {
             await player.dispose();
           }

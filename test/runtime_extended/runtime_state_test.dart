@@ -34,8 +34,14 @@ void main() {
       test('mediaTitle / fileFormat / fileSize / seekable / partiallySeekable '
           'populate from a real file', () async {
         // Some properties land at file-load time; some at first
-        // play / first audio frame. Wait briefly to give them a chance.
-        await Future<void>.delayed(const Duration(milliseconds: 500));
+        // play / first audio frame.
+        await waitUntil(
+          () =>
+              player.state.mediaTitle.isNotEmpty &&
+              player.state.fileFormat.isNotEmpty &&
+              player.state.fileSize > 0 &&
+              player.state.seekable,
+        );
 
         // mediaTitle falls back to the filename (no `title` tag in the
         // fixture).
@@ -88,8 +94,11 @@ void main() {
       test(
         'bufferDuration populates during playback (demuxer-cache-duration)',
         () async {
+          final restarted = player.stream.seekCompleted.first.timeout(
+            const Duration(seconds: 5),
+          );
           await player.seek(Duration.zero);
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await restarted;
 
           final bufferCompleter = player.stream.bufferDuration
               .firstWhere((d) => d > Duration.zero)
@@ -117,8 +126,11 @@ void main() {
           // audio-pts may or may not differ from time-pos depending on
           // driver latency; assert only that it emits a non-zero value
           // during playback.
+          final restarted = player.stream.seekCompleted.first.timeout(
+            const Duration(seconds: 5),
+          );
           await player.seek(const Duration(seconds: 1));
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await restarted;
 
           final ptsCompleter = player.stream.audioPts
               .firstWhere((d) => d > Duration.zero)
@@ -147,8 +159,11 @@ void main() {
         await openAndWaitForLoad(player, shortPath);
 
         await player.play();
-        // 1s file + a comfortable margin for AO + observer roundtrip.
-        await Future<void>.delayed(const Duration(milliseconds: 1800));
+        // The 1s file plus AO and observer latency.
+        await waitUntil(
+          () => player.state.eofReached,
+          timeout: const Duration(seconds: 8),
+        );
         expect(
           player.state.eofReached,
           isTrue,

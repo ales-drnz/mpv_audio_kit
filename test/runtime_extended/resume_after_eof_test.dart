@@ -43,13 +43,10 @@ void main() {
         await completed;
         // `completed` flips on the eof-reached edge; the keep-open pause is
         // written by mpv's playloop right after. Poll until it lands.
-        final deadline = DateTime.now().add(const Duration(seconds: 5));
-        while (await player.getRawProperty('pause') != 'yes') {
-          if (DateTime.now().isAfter(deadline)) {
-            fail('mpv never parked paused at EOF');
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
+        await waitUntil(
+          () async => await player.getRawProperty('pause') == 'yes',
+          reason: 'mpv never parked paused at EOF',
+        );
       }
 
       test('open(play: true) from the parked state starts unpaused', () async {

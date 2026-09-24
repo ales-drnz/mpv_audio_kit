@@ -15,7 +15,7 @@ void main() {
       prop.stream.listen(received.add);
       // Microtask flush to surface anything that might have synchronously
       // landed in the broadcast controller; nothing should have.
-      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(
         received,
         isEmpty,
@@ -31,7 +31,7 @@ void main() {
       expect(prop.update(1), isTrue);
       expect(prop.update(2), isTrue);
 
-      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(received, [1, 2]);
       expect(prop.value, 2);
     });
@@ -50,7 +50,7 @@ void main() {
       expect(prop.update(1), isFalse);
       expect(prop.update(2), isTrue);
 
-      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(received, [1, 2]);
     });
 
@@ -62,7 +62,7 @@ void main() {
       prop.emitCurrent();
       prop.emitCurrent();
 
-      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(received, [7, 7]);
       expect(prop.value, 7);
     });
@@ -100,7 +100,7 @@ void main() {
       prop.update(2); // deduped
       prop.update(3);
 
-      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(a, [1, 2, 3]);
       expect(b, [1, 2, 3]);
     });
@@ -119,7 +119,7 @@ void main() {
       prop.update(true); // dedup
       prop.update(false);
 
-      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(received, [true, false]);
     });
   });
@@ -135,7 +135,7 @@ void main() {
         const Duration(milliseconds: 1000),
       ); // == const Duration(seconds:1)
 
-      await Future<void>.delayed(Duration.zero);
+      await pumpEventQueue();
       expect(received, [const Duration(seconds: 1)]);
     });
   });

@@ -23,8 +23,10 @@ import '../_helpers/setter_test_helpers.dart';
 /// issue, not a Dart-side regression.
 void main() {
   final fixturePath = defaultFixturePath();
+  final stereoPath =
+      '${Directory.current.path}/test/fixtures/sine_stereo_1s.flac';
 
-  runtimeSuite(fixturePath: fixturePath, () {
+  runtimeSuite(fixturePath: fixturePath, extraFixtures: [stereoPath], () {
     group('Waveform', () {
       test(
         'envelope materialises within 5s of loadfile (without playing)',
@@ -100,9 +102,18 @@ void main() {
           final sub = player.stream.waveform.listen(events.add);
           try {
             await openAndWaitForLoad(player, fixturePath);
-            await Future<void>.delayed(const Duration(milliseconds: 300));
-            await openAndWaitForLoad(player, fixturePath);
-            await Future<void>.delayed(const Duration(milliseconds: 300));
+            await waitUntil(
+              () => events.any((w) => w != null),
+              reason: 'Expected a settled envelope after the first load',
+            );
+            // A different file: the pipeline resets only when the source
+            // changes, not when the same file is loaded again.
+            final settled = events.length;
+            await openAndWaitForLoad(player, stereoPath);
+            await waitUntil(
+              () => events.skip(settled).contains(null),
+              reason: 'Expected a null reset when the track changes',
+            );
           } finally {
             await sub.cancel();
           }
@@ -190,10 +201,7 @@ void main() {
               // samples, one whole period each. The mono average peaks at
               // 0.9 and every bin's RMS is 0.9 / sqrt(2). A 1/sqrt(2) per
               // channel downmix would peak at about 1.27 instead.
-              await openAndWaitForLoad(
-                player,
-                '${Directory.current.path}/test/fixtures/sine_stereo_1s.flac',
-              );
+              await openAndWaitForLoad(player, stereoPath);
               final wave = await completer.future.timeout(
                 const Duration(seconds: 5),
               );

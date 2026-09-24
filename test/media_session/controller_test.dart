@@ -171,11 +171,7 @@ Future<MediaSessionController> _buildController({
 /// Pumps the Dart event loop until microtasks and any pending `await`
 /// resumes have settled. Required after firing a stream event before
 /// asserting on side effects.
-Future<void> _settle() async {
-  for (var i = 0; i < 8; i++) {
-    await Future<void>.delayed(Duration.zero);
-  }
-}
+Future<void> _settle() => pumpEventQueue();
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -52,16 +52,12 @@ void main() {
         await p.setCache(const CacheSettings(mode: Cache.yes));
         await openAndWaitForLoad(p, 'http://127.0.0.1:${server.port}/s.flac');
 
-        // Poll the snapshot until the small file is fully cached.
-        var st = p.state.demuxerCacheState;
-        for (
-          var i = 0;
-          i < 100 && !(st.seekableRanges.isNotEmpty && st.eofCached);
-          i++
-        ) {
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-          st = p.state.demuxerCacheState;
-        }
+        // Wait until the small file is fully cached.
+        await waitUntil(() {
+          final st = p.state.demuxerCacheState;
+          return st.seekableRanges.isNotEmpty && st.eofCached;
+        });
+        final st = p.state.demuxerCacheState;
 
         expect(
           st.seekableRanges,

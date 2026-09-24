@@ -79,8 +79,8 @@ void main() {
           player.debugDispatchProperty('audio-output-state', 'initializing');
           player.debugDispatchProperty('audio-output-state', 'active');
           player.debugDispatchProperty('audio-output-state', 'closed');
-          // Allow the dispatch microtasks to drain.
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          // Let the dispatch microtasks drain.
+          await pumpEventQueue();
           await sub.cancel();
 
           expect(

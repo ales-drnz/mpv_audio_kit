@@ -32,7 +32,13 @@ void main() {
         try {
           await loaded;
         } catch (_) {}
-        await Future<void>.delayed(const Duration(milliseconds: 600));
+        // The AO opens after the load; give it a bounded moment to
+        // expose its volume before deciding the host has none.
+        final aoReady = DateTime.now().add(const Duration(seconds: 3));
+        while (await player.getRawProperty('ao-volume') == null &&
+            DateTime.now().isBefore(aoReady)) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
 
         if (await player.getRawProperty('ao-volume') == null) {
           markTestSkipped('AO does not expose system volume on this host');
@@ -40,7 +46,9 @@ void main() {
         }
 
         await player.setSystemVolume(50.0);
-        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await waitUntil(
+          () => ((player.state.systemVolume ?? -1) - 50.0).abs() <= 0.5,
+        );
         expect(
           player.state.systemVolume,
           closeTo(50.0, 0.5),

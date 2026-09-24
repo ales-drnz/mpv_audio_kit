@@ -56,12 +56,10 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('move reorders entries (1 → 0)', () async {
-        // 2-item playlist; move the second entry to position 0.
+        // 2-item playlist; move the second entry to position 0. The
+        // current entry (index 1) moves with it, so the index follows.
         await player.move(1, 0);
-        // mpv's playlist observer fires; just verify the call doesn't
-        // throw. Index tracking after a move depends on the current
-        // entry's position, which may shift.
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        await waitUntil(() => player.state.playlist.index == 0);
         expect(player.state.playlist.items.length, 2);
       }, timeout: const Timeout(Duration(seconds: 15)));
 

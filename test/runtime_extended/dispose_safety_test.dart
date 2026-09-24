@@ -21,18 +21,15 @@ void main() {
     group('Dispose safety — idempotency', () {
       test('dispose() called twice is a no-op', () async {
         final player = await buildPlayer();
-        // Let the event isolate spawn fully before we tear it down — a
-        // dispose that races the isolate's first `mpv_wait_event` lands
-        // a non-graceful subprocess exit at flutter_test teardown.
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        // Tear down after bring-up: a dispose that races the isolate's
+        // first `mpv_wait_event` is covered by dispose_during_init_test.
+        await player.ready;
 
         await player.dispose();
         // Second dispose: the implementation guards with
         // `if (_disposed) return;` at the top of dispose(). Must not
         // throw, must not crash.
         await player.dispose();
-        // Wait for libmpv's background threads to fully wind down.
-        await Future<void>.delayed(const Duration(seconds: 1));
       }, timeout: const Timeout(Duration(seconds: 15)));
     });
   });

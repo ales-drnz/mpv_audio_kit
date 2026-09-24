@@ -109,10 +109,15 @@ void main() {
         final done = player.stream.completed
             .firstWhere((c) => c)
             .timeout(const Duration(seconds: 12));
-        // The first track's end also pulses completed=true; wait for the queue
-        // to drain fully, then assert the resting state.
+        // The first track's end also pulses completed=true, while the intent
+        // holds for the second one; the intent drops only when the queue is
+        // exhausted.
         await done;
-        await Future<void>.delayed(const Duration(milliseconds: 2600));
+        await waitUntil(
+          () => !player.state.playWhenReady,
+          timeout: const Duration(seconds: 8),
+          reason: 'button settles on play when the playlist is exhausted',
+        );
 
         expect(
           player.state.playWhenReady,
@@ -173,15 +178,9 @@ void main() {
         // intent reset. Poll the resting state until it flips instead of a fixed
         // delay: under full-suite load the event chain can take longer than a
         // couple of seconds, which is what made the fixed-delay version flake.
-        final deadline = DateTime.now().add(const Duration(seconds: 12));
-        while (player.state.playWhenReady &&
-            DateTime.now().isBefore(deadline)) {
-          await Future<void>.delayed(const Duration(milliseconds: 25));
-        }
-
-        expect(
-          player.state.playWhenReady,
-          isFalse,
+        await waitUntil(
+          () => !player.state.playWhenReady,
+          timeout: const Duration(seconds: 12),
           reason: 'a failed load loads nothing; the button must not stick',
         );
       }, timeout: const Timeout(Duration(seconds: 20)));

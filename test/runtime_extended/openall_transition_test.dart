@@ -55,11 +55,10 @@ void main() {
             .timeout(const Duration(seconds: 15));
         await player.openAll([Media(shortFixture)], play: true);
         await completed;
-        final deadline = DateTime.now().add(const Duration(seconds: 5));
-        while (await player.getRawProperty('pause') != 'yes') {
-          if (DateTime.now().isAfter(deadline)) fail('mpv never parked at EOF');
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
+        await waitUntil(
+          () async => await player.getRawProperty('pause') == 'yes',
+          reason: 'mpv never parked at EOF',
+        );
       }
 
       Future<void> openAllAndSettle({bool? play}) async {
@@ -93,7 +92,7 @@ void main() {
       test('from PLAYING: old track holds until the direct jump', () async {
         await openAndWaitForLoad(player, longFixture);
         await player.play();
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        await waitUntil(() => player.state.playing);
         frames.clear();
 
         await openAllAndSettle(play: true);
@@ -164,7 +163,7 @@ void main() {
         () async {
           await openAndWaitForLoad(player, longFixture);
           await player.play();
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await waitUntil(() => player.state.playing);
 
           final loaded = player.stream.seekCompleted.first.timeout(
             const Duration(seconds: 10),

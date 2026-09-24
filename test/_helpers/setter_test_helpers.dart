@@ -132,3 +132,23 @@ Future<Player> buildPlayerWithFixture({String? fixturePath}) async {
   }
   return player;
 }
+
+/// Polls [condition] every [interval] until it holds, and fails the test
+/// with [reason] when it still does not after [timeout]. Use it in place
+/// of a fixed delay before asserting a state that mpv reaches
+/// asynchronously: it returns as soon as the state lands, and waits
+/// longer under a loaded suite instead of flaking.
+Future<void> waitUntil(
+  FutureOr<bool> Function() condition, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration interval = const Duration(milliseconds: 20),
+  String? reason,
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!await condition()) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail(reason ?? 'condition not met within $timeout');
+    }
+    await Future<void>.delayed(interval);
+  }
+}

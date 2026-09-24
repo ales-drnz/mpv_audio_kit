@@ -134,7 +134,11 @@ void main() {
             Media(fixturePath),
             Media(fixturePath),
           ], play: true);
-          await Future<void>.delayed(const Duration(seconds: 3));
+          // The prefetch of the second entry runs while the first plays.
+          await waitUntil(
+            () => player.state.playlist.index == 1,
+            timeout: const Duration(seconds: 10),
+          );
 
           await sub.cancel();
           await player.setPrefetchPlaylist(false);

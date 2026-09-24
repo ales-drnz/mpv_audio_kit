@@ -59,10 +59,11 @@ void main() {
           // mpv 0.41 does NOT emit a `current-tracks/audio` property-change
           // event when aid transitions from a numeric id to `no` — the
           // event is emitted only on track-to-track switches. We assert via
-          // the raw `aid` property + small wait for mpv to settle.
+          // the raw `aid` property.
           await player.setAudioTrack(Track.off);
-          await Future<void>.delayed(const Duration(milliseconds: 200));
-          expect(await player.getRawProperty('aid'), 'no');
+          await waitUntil(
+            () async => await player.getRawProperty('aid') == 'no',
+          );
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );
@@ -77,7 +78,9 @@ void main() {
           // setter completes and aid is in {auto, <numeric id>}", not the
           // literal `auto` string.
           await player.setAudioTrack(Track.auto);
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await waitUntil(
+            () async => await player.getRawProperty('aid') != 'no',
+          );
           final aid = await player.getRawProperty('aid');
           expect(
             ['auto', '1', '2'],

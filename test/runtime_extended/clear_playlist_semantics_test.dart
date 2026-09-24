@@ -46,9 +46,9 @@ void main() {
 
           await player.clearPlaylist();
 
-          // Settle: the `playlist-remove current` command makes mpv
-          // emit a file-ended event; allow the observers to land.
-          await Future<void>.delayed(const Duration(milliseconds: 100));
+          // The `playlist-remove current` command makes mpv emit a
+          // file-ended event; wait for the observers to land.
+          await waitUntil(() => player.state.playlist.items.isEmpty);
 
           expect(
             player.state.playlist.items,

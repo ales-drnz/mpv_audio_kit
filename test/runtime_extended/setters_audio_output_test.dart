@@ -136,8 +136,11 @@ void main() {
         await player.setAudioDevice(
           const Device(name: 'auto', description: 'whatever'),
         );
-        // Allow the property observer round-trip to land.
-        await Future<void>.delayed(const Duration(milliseconds: 200));
+        await waitUntil(
+          () =>
+              player.state.audioDevice.name == 'auto' &&
+              player.state.audioDevices.isNotEmpty,
+        );
 
         final autoEntry = player.state.audioDevices.firstWhere(
           (d) => d.name == 'auto',

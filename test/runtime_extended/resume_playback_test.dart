@@ -31,9 +31,9 @@ void main() {
       final p1 = await buildPlayer(configuration: cfg);
       await openAndWaitForLoad(p1, fx);
       await p1.seek(const Duration(milliseconds: 600));
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await waitUntil(() => p1.state.position.inMilliseconds > 500);
       await p1.writeResumeConfig();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await waitUntil(() => tmp.listSync().isNotEmpty);
       expect(
         tmp.listSync(),
         isNotEmpty,
@@ -72,11 +72,11 @@ void main() {
       addTearDown(p.dispose);
       await openAndWaitForLoad(p, fx);
       await p.seek(const Duration(milliseconds: 600));
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await waitUntil(() => p.state.position.inMilliseconds > 500);
 
       // Write a resume point, confirm it lands...
       await p.writeResumeConfig();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await waitUntil(() => tmp.listSync().isNotEmpty);
       expect(
         tmp.listSync(),
         isNotEmpty,
@@ -85,7 +85,7 @@ void main() {
 
       // ...then delete it for the current file and confirm it is gone.
       await p.deleteResumeConfig();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await waitUntil(() => tmp.listSync().isEmpty);
       expect(
         tmp.listSync(),
         isEmpty,
@@ -110,9 +110,9 @@ void main() {
       );
       await openAndWaitForLoad(p1, fx);
       await p1.seek(const Duration(milliseconds: 600));
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await waitUntil(() => p1.state.position.inMilliseconds > 500);
       await p1.writeResumeConfig();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await waitUntil(() => tmp.listSync().isNotEmpty);
       await p1.dispose();
 
       // ...but reopen with resume OFF → starts at 0.

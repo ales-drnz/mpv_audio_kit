@@ -53,11 +53,8 @@ void main() {
 
         await p.setLogLevel(LogLevel.error);
         await _trySetBogusFilter(p, 'lavfi-log-level-error-probe');
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-
-        expect(
-          errors,
-          isNotEmpty,
+        await waitUntil(
+          () => errors.isNotEmpty,
           reason:
               'After setLogLevel(LogLevel.error), mpv error diagnostics '
               'must reach Player.stream.log without recreating the Player.',
