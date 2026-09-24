@@ -112,6 +112,18 @@ class PropertyRegistry {
     return spec.parseAndDispatch(raw, state, commit: commit);
   }
 
+  /// Routes a property that became unavailable to its registered spec,
+  /// which returns to its seed. Same return contract as [dispatch].
+  PlayerState? dispatchUnavailable(
+    String name,
+    PlayerState state, {
+    void Function(PlayerState next)? commit,
+  }) {
+    final spec = _byName[name];
+    if (spec == null) return null;
+    return spec.resetAndDispatch(state, commit: commit);
+  }
+
   /// Closes every registered [ReactiveProperty]'s underlying broadcast
   /// controller. Idempotent — safe to call repeatedly during teardown.
   Future<void> closeAll() async {

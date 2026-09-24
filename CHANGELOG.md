@@ -19,6 +19,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - CI analyzes, tests and builds the package on every platform.
 
 ### Fixed
+- After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size or audio parameters: a property mpv reports unavailable goes back to its default.
 - Windows: the plugin builds with Visual Studio 2026.
 
 ### Build

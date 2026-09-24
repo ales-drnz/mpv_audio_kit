@@ -246,4 +246,52 @@ void main() {
       expect(registry.specFor('unknown'), isNull);
     });
   });
+
+  group('PropertyRegistry.dispatchUnavailable', () {
+    MpvPropertySpec<String> titleSpec(
+      ReactiveProperty<String> title,
+      List<String> changes,
+    ) => MpvPropertySpec<String>.string(
+      name: 'media-title',
+      reactive: title,
+      parse: (raw, _) => raw,
+      reduce: (v, s) => s.copyWith(mediaTitle: v),
+      onChange: changes.add,
+    );
+
+    test('returns the spec to its seed through reduce and onChange', () {
+      final title = ReactiveProperty<String>('');
+      final changes = <String>[];
+      final registry = PropertyRegistry()..register(titleSpec(title, changes));
+
+      final loaded = registry.dispatch(
+        'media-title',
+        'Song',
+        const PlayerState(),
+      );
+      expect(loaded!.mediaTitle, 'Song');
+
+      final unloaded = registry.dispatchUnavailable('media-title', loaded);
+      expect(unloaded, isNotNull);
+      expect(unloaded!.mediaTitle, '');
+      expect(title.value, '');
+      expect(changes, ['Song', '']);
+    });
+
+    test('returns null when the cell already holds its seed', () {
+      final title = ReactiveProperty<String>('');
+      final registry = PropertyRegistry()..register(titleSpec(title, []));
+      expect(
+        registry.dispatchUnavailable('media-title', const PlayerState()),
+        isNull,
+      );
+    });
+
+    test('returns null for unknown property names', () {
+      expect(
+        PropertyRegistry().dispatchUnavailable('nope', const PlayerState()),
+        isNull,
+      );
+    });
+  });
 }

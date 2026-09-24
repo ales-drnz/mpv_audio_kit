@@ -19,7 +19,11 @@ import 'dart:async';
 /// quiet on no-ops.
 class ReactiveProperty<T> {
   /// Creates a [ReactiveProperty] seeded with [initial] as its current value.
-  ReactiveProperty(T initial) : _value = initial;
+  ReactiveProperty(this.initial) : _value = initial;
+
+  /// The seed value, which the cell returns to when mpv reports its
+  /// property unavailable (see [MpvPropertySpec.resetAndDispatch]).
+  final T initial;
 
   T _value;
   final StreamController<T> _ctrl = StreamController<T>.broadcast();

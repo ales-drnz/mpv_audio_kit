@@ -136,9 +136,10 @@ void main() {
           );
           await player.open(Media(fixturePath), play: false);
           await loaded;
-          expect(
-            player.state.duration.inMilliseconds,
-            greaterThan(2500),
+          // The duration can land a tick after PLAYBACK_RESTART, and stop()
+          // cleared the old one.
+          await waitUntil(
+            () => player.state.duration.inMilliseconds > 2500,
             reason: 'with_chapters.mka has duration > 2.5s once demuxed',
           );
         },
@@ -159,9 +160,8 @@ void main() {
             await player.open(Media(fixturePath), play: false);
             await loaded;
           }
-          expect(
-            player.state.duration.inMilliseconds,
-            greaterThan(2500),
+          await waitUntil(
+            () => player.state.duration.inMilliseconds > 2500,
             reason: 'after 20 cycles, duration must still match the fixture',
           );
           expect(

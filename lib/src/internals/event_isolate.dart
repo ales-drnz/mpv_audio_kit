@@ -125,8 +125,7 @@ void _isolateEntry(SendPort initialReplyPort) {
   mpv.MpvLibrary? lib;
 
   // Per-isolate deduplication state — not shared across Player instances.
-  final lastValues = <String, dynamic>{};
-  final lastTimestamps = <String, int>{};
+  final cache = _PropertyCache();
 
   fromMain.listen((message) {
     if (message is _InitMessage) {
@@ -164,6 +163,9 @@ void _isolateEntry(SendPort initialReplyPort) {
         }
         _applyPropertyStrings(lib!, h, message.postInitOptions);
         _applyObserves(lib!, h, message.observes);
+        for (final spec in message.observes) {
+          cache.formats[spec.name] = spec.format;
+        }
         toMain!.send(_InitDone(h.address));
       } catch (e, st) {
         toMain!.send(_InitFailed('init crashed: $e\n$st'));
@@ -173,15 +175,7 @@ void _isolateEntry(SendPort initialReplyPort) {
       // Blocking call — returns when `_runEventLoop` breaks out of
       // its loop on MPV_EVENT_SHUTDOWN (sent by mpv after the main
       // isolate's `quit` command in dispose()).
-      _runEventLoop(
-        lib!,
-        handle!,
-        toMain!,
-        stopFlag,
-        lastValues,
-        lastTimestamps,
-        wakeupCounter,
-      );
+      _runEventLoop(lib!, handle!, toMain!, stopFlag, cache, wakeupCounter);
       // Drop the last live ReceivePort so the VM tears the isolate
       // down naturally — this runs the per-isolate finalizers that
       // release libmpv-side state loaded via `MpvLibrary.open`.
@@ -197,8 +191,7 @@ void _runEventLoop(
   Pointer<mpv.MpvHandle> handle,
   SendPort toMain,
   Pointer<Int32> stopFlag,
-  Map<String, dynamic> lastValues,
-  Map<String, int> lastTimestamps,
+  _PropertyCache cache,
   Pointer<Int64>? wakeupCounter,
 ) {
   while (stopFlag.value == 0) {
@@ -229,7 +222,7 @@ void _runEventLoop(
     // would silently terminate the worker and freeze every property stream
     // for the Player's lifetime while playback keeps running.
     try {
-      _dispatchEvent(lib, handle, toMain, event, lastValues, lastTimestamps);
+      _dispatchEvent(lib, handle, toMain, event, cache);
     } catch (e, st) {
       toMain.send(
         MpvEventLog('event-isolate', 'error', 'event dispatch failed: $e\n$st'),
@@ -247,8 +240,7 @@ void _dispatchEvent(
   Pointer<mpv.MpvHandle> handle,
   SendPort toMain,
   Pointer<mpv.MpvEvent> event,
-  Map<String, dynamic> lastValues,
-  Map<String, int> lastTimestamps,
+  _PropertyCache cache,
 ) {
   final id = event.ref.eventId;
   switch (id) {
@@ -280,6 +272,7 @@ void _dispatchEvent(
         loaded = MpvEventFileLoaded();
       }
       toMain.send(loaded);
+      _rereadUnavailable(lib, handle, toMain, cache);
 
     case mpv.MpvEventId.mpvEventEndFile:
       final ef = event.ref.data.cast<mpv.MpvEventEndFile>().ref;
@@ -287,12 +280,13 @@ void _dispatchEvent(
 
     case mpv.MpvEventId.mpvEventPropertyChange:
       _dispatchProperty(
-        lib,
         toMain,
         event.ref.data.cast<mpv.MpvEventProperty>().ref,
-        lastValues,
-        lastTimestamps,
+        cache,
       );
+
+    case mpv.MpvEventId.mpvEventAudioReconfig:
+      _rereadUnavailable(lib, handle, toMain, cache);
 
     case mpv.MpvEventId.mpvEventSetPropertyReply:
     case mpv.MpvEventId.mpvEventCommandReply:
@@ -331,6 +325,7 @@ void _dispatchEvent(
           timePos: _getPropDouble(lib, handle, 'time-pos'),
         ),
       );
+      _rereadUnavailable(lib, handle, toMain, cache);
   }
 }
 
@@ -459,6 +454,24 @@ int? _getPropInt64(
   });
 }
 
+int? _getPropFlag(
+  mpv.MpvLibrary lib,
+  Pointer<mpv.MpvHandle> handle,
+  String name,
+) {
+  return using<int?>((arena) {
+    final n = name.toNativeUtf8(allocator: arena);
+    final buf = arena<Int32>();
+    final rc = lib.mpvGetProperty(
+      handle,
+      n,
+      mpv.MpvFormat.mpvFormatFlag,
+      buf.cast(),
+    );
+    return rc == mpv.MpvError.mpvErrorSuccess ? buf.value : null;
+  });
+}
+
 dynamic _getPropNode(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
@@ -484,88 +497,140 @@ dynamic _getPropNode(
   }
 }
 
+/// The event isolate's view of the observed properties: the observe
+/// format of each, the last value forwarded (for dedup), the last forward
+/// time of the throttled ones, and the properties mpv reported unavailable
+/// after they had a value.
+class _PropertyCache {
+  final formats = <String, int>{};
+  final lastValues = <String, dynamic>{};
+  final lastTimestamps = <String, int>{};
+  final unavailable = <String>{};
+}
+
 void _dispatchProperty(
-  mpv.MpvLibrary lib,
   SendPort toMain,
   mpv.MpvEventProperty prop,
-  Map<String, dynamic> lastValues,
-  Map<String, int> lastTimestamps,
+  _PropertyCache cache,
 ) {
   final name = decodeMpvString(prop.name.cast());
 
-  if (prop.format == mpv.MpvFormat.mpvFormatDouble && prop.data != nullptr) {
-    final v = prop.data.cast<Double>().value;
-
-    if (_kClockThrottledProps.contains(name)) {
-      // Monotonic clock: a wall-clock jump (NTP sync, manual change) would
-      // freeze or double-fire a DateTime-based throttle.
-      final now = _throttleClock.elapsedMilliseconds;
-      final last = lastTimestamps[name] ?? -_kClockThrottleMs;
-      if (now - last < _kClockThrottleMs) {
-        return;
-      }
-      lastTimestamps[name] = now;
-    }
-
-    if (lastValues[name] == v) {
-      return;
-    }
-    lastValues[name] = v;
-
-    toMain.send(MpvEventPropertyDouble(name, v));
+  if (prop.format == mpv.MpvFormat.mpvFormatNone || prop.data == nullptr) {
+    _forwardUnavailable(toMain, name, cache);
     return;
   }
 
-  if (prop.format == mpv.MpvFormat.mpvFormatFlag && prop.data != nullptr) {
-    final v = prop.data.cast<Int32>().value;
-    if (lastValues[name] == v) {
+  final value = switch (prop.format) {
+    mpv.MpvFormat.mpvFormatDouble => prop.data.cast<Double>().value,
+    mpv.MpvFormat.mpvFormatFlag => prop.data.cast<Int32>().value,
+    mpv.MpvFormat.mpvFormatInt64 => prop.data.cast<Int64>().value,
+    mpv.MpvFormat.mpvFormatString => decodeMpvString(
+      prop.data.cast<Pointer<Utf8>>().value,
+    ),
+    mpv.MpvFormat.mpvFormatNode => decodeMpvNode(
+      prop.data.cast<mpv.MpvNode>().ref,
+    ),
+    // An unobserved format (OSD_STRING, top-level BYTE_ARRAY): drop it.
+    _ => _unobserved,
+  };
+  if (identical(value, _unobserved)) return;
+  _forwardValue(toMain, name, prop.format, value, cache);
+}
+
+const Object _unobserved = Object();
+
+/// Forwards [value] of property [name] to the main isolate unless it equals
+/// the last one forwarded, or it is a clock-driven property inside its
+/// throttle window.
+void _forwardValue(
+  SendPort toMain,
+  String name,
+  int format,
+  dynamic value,
+  _PropertyCache cache,
+) {
+  cache.unavailable.remove(name);
+  final lastValues = cache.lastValues;
+
+  if (format == mpv.MpvFormat.mpvFormatDouble &&
+      _kClockThrottledProps.contains(name)) {
+    // Monotonic clock: a wall-clock jump (NTP sync, manual change) would
+    // freeze or double-fire a DateTime-based throttle.
+    final now = _throttleClock.elapsedMilliseconds;
+    final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
+    if (now - last < _kClockThrottleMs) {
       return;
     }
-    lastValues[name] = v;
-    toMain.send(MpvEventPropertyInt(name, v));
-    return;
+    cache.lastTimestamps[name] = now;
   }
 
-  if (prop.format == mpv.MpvFormat.mpvFormatInt64 && prop.data != nullptr) {
-    final v = prop.data.cast<Int64>().value;
-    if (lastValues[name] == v) {
-      return;
-    }
-    lastValues[name] = v;
-    toMain.send(MpvEventPropertyInt(name, v));
-    return;
-  }
-
-  if (prop.format == mpv.MpvFormat.mpvFormatString && prop.data != nullptr) {
-    final s = decodeMpvString(prop.data.cast<Pointer<Utf8>>().value);
-    if (lastValues[name] == s) {
-      return;
-    }
-    lastValues[name] = s;
-    toMain.send(MpvEventPropertyString(name, s));
-    return;
-  }
-
-  if (prop.format == mpv.MpvFormat.mpvFormatNode && prop.data != nullptr) {
-    final decoded = decodeMpvNode(prop.data.cast<mpv.MpvNode>().ref);
+  if (format == mpv.MpvFormat.mpvFormatNode) {
     // Dedup by structural equality against the previously decoded tree —
     // early-out on the first difference, no per-event string allocation.
     // High-churn nodes (`demuxer-cache-state` during streaming) differ on
     // nearly every emission, so the compare usually exits within a few
     // scalar checks.
     final prev = lastValues[name];
-    if (prev != null && _deepNodeEquals(prev, decoded)) {
+    if (prev != null && _deepNodeEquals(prev, value)) {
       return;
     }
-    lastValues[name] = decoded;
-    toMain.send(MpvEventPropertyNode(name, decoded));
+  } else if (lastValues[name] == value) {
     return;
   }
+  lastValues[name] = value;
 
-  // Fallthrough: an unobserved format (NONE / OSD_STRING / top-level
-  // BYTE_ARRAY) or `data == nullptr` ("property unavailable" mid-stream).
-  // Drop silently — re-emitting a cached value would be wrong and a
-  // sentinel would break downstream dedup.
+  toMain.send(switch (format) {
+    mpv.MpvFormat.mpvFormatDouble => MpvEventPropertyDouble(
+      name,
+      value as double,
+    ),
+    mpv.MpvFormat.mpvFormatString => MpvEventPropertyString(
+      name,
+      value as String,
+    ),
+    mpv.MpvFormat.mpvFormatNode => MpvEventPropertyNode(name, value),
+    _ => MpvEventPropertyInt(name, value as int),
+  });
+}
+
+/// The property became unavailable (`MPV_FORMAT_NONE`, `data == nullptr`):
+/// the file was unloaded, or the new one lacks the value. Forget the cached
+/// value and tell the main isolate once, if it had seen a value. mpv does
+/// not always notify when such a property comes back (a change notified
+/// while it was still unavailable is not repeated), so it is also marked
+/// for [_rereadUnavailable].
+void _forwardUnavailable(SendPort toMain, String name, _PropertyCache cache) {
+  cache.lastTimestamps.remove(name);
+  if (!cache.lastValues.containsKey(name)) return;
+  cache.lastValues.remove(name);
+  cache.unavailable.add(name);
+  toMain.send(MpvEventPropertyUnavailable(name));
+}
+
+/// Reads again every property mpv reported unavailable after it had a
+/// value, and forwards those that are back. Runs at the points where a
+/// new file's values settle (file loaded, audio reconfigured, playback
+/// restarted), since mpv may not send them itself.
+void _rereadUnavailable(
+  mpv.MpvLibrary lib,
+  Pointer<mpv.MpvHandle> handle,
+  SendPort toMain,
+  _PropertyCache cache,
+) {
+  if (cache.unavailable.isEmpty) return;
+  for (final name in cache.unavailable.toList(growable: false)) {
+    final format = cache.formats[name];
+    if (format == null) continue;
+    final value = switch (format) {
+      mpv.MpvFormat.mpvFormatDouble => _getPropDouble(lib, handle, name),
+      mpv.MpvFormat.mpvFormatFlag => _getPropFlag(lib, handle, name),
+      mpv.MpvFormat.mpvFormatInt64 => _getPropInt64(lib, handle, name),
+      mpv.MpvFormat.mpvFormatString => _getPropString(lib, handle, name),
+      mpv.MpvFormat.mpvFormatNode => _getPropNode(lib, handle, name),
+      _ => null,
+    };
+    if (value != null) _forwardValue(toMain, name, format, value, cache);
+  }
 }
 
 /// Decodes the value of an `mpv_event_property` payload into the same Dart

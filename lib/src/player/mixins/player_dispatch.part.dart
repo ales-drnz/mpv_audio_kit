@@ -192,6 +192,8 @@ mixin _DispatchModule on _PlayerBase {
           _dispatchProperty(name, value);
         case MpvEventPropertyNode(:final name, :final value):
           _dispatchProperty(name, value);
+        case MpvEventPropertyUnavailable(:final name):
+          _dispatchUnavailable(name);
         case MpvEventLog(:final prefix, :final level, :final text):
           final typedLevel = LogLevel.fromMpv(level);
           final entry = MpvLogEntry(
@@ -281,6 +283,35 @@ mixin _DispatchModule on _PlayerBase {
         _updateMetadataFromNode(raw);
       case 'demuxer-cache-state':
         _updateBufferingPercentageFromNode(raw);
+    }
+  }
+
+  /// Returns the state behind [name] to its seed when mpv reports the
+  /// property unavailable, so a stopped player or a file without that value
+  /// doesn't keep the previous file's title, duration, size and so on.
+  void _dispatchUnavailable(String name) {
+    if (_registry.specFor(name) != null) {
+      _registry.dispatchUnavailable(name, _state, commit: _commitState);
+      return;
+    }
+    switch (name) {
+      case 'metadata':
+        _updateField(
+          (s) => s.copyWith(metadata: _metadata.initial),
+          _metadata,
+          _metadata.initial,
+        );
+      case 'demuxer-cache-state':
+        _updateField(
+          (s) => s.copyWith(bufferingPercentage: _bufferingPercentage.initial),
+          _bufferingPercentage,
+          _bufferingPercentage.initial,
+        );
+        _updateField(
+          (s) => s.copyWith(demuxerCacheState: _demuxerCacheState.initial),
+          _demuxerCacheState,
+          _demuxerCacheState.initial,
+        );
     }
   }
 

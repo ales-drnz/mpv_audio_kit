@@ -139,6 +139,17 @@ class MpvEventPropertyString extends MpvIsolateEvent {
   MpvEventPropertyString(this.name, this.value);
 }
 
+/// An observed property that had a value became unavailable
+/// (`MPV_FORMAT_NONE`): the file was unloaded, or the new one has no such
+/// value. The player returns the matching state field to its seed.
+class MpvEventPropertyUnavailable extends MpvIsolateEvent {
+  /// The mpv property name that became unavailable.
+  final String name;
+
+  /// Carries the [name] of the property that became unavailable.
+  MpvEventPropertyUnavailable(this.name);
+}
+
 /// mpv emitted a property change with `MPV_FORMAT_NODE`. [value] is the
 /// recursively-decoded tree: `Map<String, dynamic>` for `MPV_FORMAT_NODE_MAP`,
 /// `List<dynamic>` for `MPV_FORMAT_NODE_ARRAY`, a primitive (`String`, `int`,

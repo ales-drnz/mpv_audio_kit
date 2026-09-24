@@ -152,7 +152,8 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     // Aggregate cell shared by three specs. The `audio-params` node
     // carries five of the eight fields; codec and codecName arrive as
     // separate string properties below. Each spec folds its slice via
-    // copyWith so the reactive dedups on the full struct.
+    // copyWith so the reactive dedups on the full struct, and clears only
+    // that slice when its property becomes unavailable.
     MpvPropertySpec<AudioParams>.node(
       name: 'audio-params',
       reactive: r.audioParams,
@@ -167,6 +168,13 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
         );
       },
       reduce: (v, s) => s.copyWith(audioParams: v),
+      unavailable: (s) => s.audioParams.copyWith(
+        format: null,
+        sampleRate: null,
+        channels: null,
+        channelCount: null,
+        hrChannels: null,
+      ),
     ),
     // `codec` and `codecName` mirror mpv's two codec properties one-to-one;
     // their content varies across mpv builds (`mp3` vs `mp3float`, `aac`
@@ -179,6 +187,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       parse: (raw, s) =>
           s.audioParams.copyWith(codec: raw.isEmpty ? null : raw),
       reduce: (v, s) => s.copyWith(audioParams: v),
+      unavailable: (s) => s.audioParams.copyWith(codec: null),
     ),
     MpvPropertySpec<AudioParams>.string(
       name: 'audio-codec-name',
@@ -186,6 +195,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       parse: (raw, s) =>
           s.audioParams.copyWith(codecName: raw.isEmpty ? null : raw),
       reduce: (v, s) => s.copyWith(audioParams: v),
+      unavailable: (s) => s.audioParams.copyWith(codecName: null),
     ),
 
     // ── Audio params (hardware side) ─────────────────────────────────────

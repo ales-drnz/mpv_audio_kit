@@ -28,9 +28,11 @@ class MpvPropertySpec<T> {
     required T Function(dynamic raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
+    T Function(PlayerState state)? unavailable,
   }) : _parse = parse,
        _reduce = reduce,
-       _onChange = onChange;
+       _onChange = onChange,
+       _unavailable = unavailable;
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_DOUBLE`.
   factory MpvPropertySpec.double({
@@ -39,6 +41,7 @@ class MpvPropertySpec<T> {
     required T Function(double raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
+    T Function(PlayerState state)? unavailable,
   }) => MpvPropertySpec._(
     name: name,
     format: MpvFormat.mpvFormatDouble,
@@ -50,6 +53,7 @@ class MpvPropertySpec<T> {
     parse: (raw, state) => parse((raw as num).toDouble(), state),
     reduce: reduce,
     onChange: onChange,
+    unavailable: unavailable,
   );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_FLAG`. The event
@@ -62,6 +66,7 @@ class MpvPropertySpec<T> {
     required T Function(bool raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
+    T Function(PlayerState state)? unavailable,
   }) => MpvPropertySpec._(
     name: name,
     format: MpvFormat.mpvFormatFlag,
@@ -69,6 +74,7 @@ class MpvPropertySpec<T> {
     parse: (raw, state) => parse(raw is int ? raw == 1 : raw as bool, state),
     reduce: reduce,
     onChange: onChange,
+    unavailable: unavailable,
   );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_INT64`.
@@ -78,6 +84,7 @@ class MpvPropertySpec<T> {
     required T Function(int raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
+    T Function(PlayerState state)? unavailable,
   }) => MpvPropertySpec._(
     name: name,
     format: MpvFormat.mpvFormatInt64,
@@ -89,6 +96,7 @@ class MpvPropertySpec<T> {
     parse: (raw, state) => parse((raw as num).toInt(), state),
     reduce: reduce,
     onChange: onChange,
+    unavailable: unavailable,
   );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_STRING`.
@@ -98,6 +106,7 @@ class MpvPropertySpec<T> {
     required T Function(String raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
+    T Function(PlayerState state)? unavailable,
   }) => MpvPropertySpec._(
     name: name,
     format: MpvFormat.mpvFormatString,
@@ -105,6 +114,7 @@ class MpvPropertySpec<T> {
     parse: (raw, state) => parse(raw as String, state),
     reduce: reduce,
     onChange: onChange,
+    unavailable: unavailable,
   );
 
   /// Spec for an mpv property delivered as `MPV_FORMAT_NODE`. The raw value
@@ -121,6 +131,7 @@ class MpvPropertySpec<T> {
     required T Function(dynamic raw, PlayerState state) parse,
     required PlayerState Function(T value, PlayerState state) reduce,
     void Function(T value)? onChange,
+    T Function(PlayerState state)? unavailable,
   }) => MpvPropertySpec._(
     name: name,
     format: MpvFormat.mpvFormatNode,
@@ -128,6 +139,7 @@ class MpvPropertySpec<T> {
     parse: parse,
     reduce: reduce,
     onChange: onChange,
+    unavailable: unavailable,
   );
 
   /// The mpv property name passed to `mpv_observe_property` / `mpv_set_property`.
@@ -144,6 +156,7 @@ class MpvPropertySpec<T> {
   final T Function(dynamic raw, PlayerState state) _parse;
   final PlayerState Function(T value, PlayerState state) _reduce;
   final void Function(T value)? _onChange;
+  final T Function(PlayerState state)? _unavailable;
 
   /// Folds [next] into the player's [PlayerState]. Returning the same state
   /// (== identity) is a valid no-op for properties that don't have a
@@ -174,6 +187,26 @@ class MpvPropertySpec<T> {
     void Function(PlayerState next)? commit,
   }) {
     final value = _parse(raw, state);
+    if (!reactive.update(value)) return null;
+    final next = _reduce(value, state);
+    commit?.call(next);
+    _onChange?.call(value);
+    return next;
+  }
+
+  /// Applies the value the property takes when mpv reports it unavailable
+  /// (no file is loaded, or the loaded one has no such value): the
+  /// `unavailable` callback's result when the spec has one, else the seed
+  /// of [reactive]. A spec sharing its cell with others passes the callback
+  /// to clear only its own slice. Runs the same reduce, [commit] and
+  /// [onChange] steps as [parseAndDispatch], and returns `null` when the
+  /// cell already holds that value.
+  PlayerState? resetAndDispatch(
+    PlayerState state, {
+    void Function(PlayerState next)? commit,
+  }) {
+    final unavailable = _unavailable;
+    final value = unavailable != null ? unavailable(state) : reactive.initial;
     if (!reactive.update(value)) return null;
     final next = _reduce(value, state);
     commit?.call(next);
