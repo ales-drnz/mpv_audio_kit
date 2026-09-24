@@ -29,15 +29,24 @@ const _baseUrl =
 
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
-  'libmpv_android-arm64-v8a.so': '',
-  'libmpv_android-armeabi-v7a.so': '',
-  'libmpv_android-x86_64.so': '',
-  'libmpv_ios.xcframework.zip': '',
-  'libmpv_linux-aarch64.so': '',
-  'libmpv_linux-x86_64.so': '',
-  'libmpv_macos.xcframework.zip': '',
-  'libmpv_windows-arm64.dll': '',
-  'libmpv_windows-x86_64.dll': '',
+  'libmpv_android-arm64-v8a.so':
+      'f79ce1b57bd5145b8b6393d2f81902c267c4733b46ca077dcea93accf4ff7895',
+  'libmpv_android-armeabi-v7a.so':
+      '8be60980283cf01baf6f58517728fcb9443f703bca3630eef608b79612e28307',
+  'libmpv_android-x86_64.so':
+      '66b4df635c6f127dcee1d52e503e265b98924b9b1a538697f89f76ae3f2fa702',
+  'libmpv_ios.xcframework.zip':
+      'a255868b6cbdfdd7ab54eaf74c9e68b5519e6ddfc7d77659cafb41ea27dae959',
+  'libmpv_linux-aarch64.so':
+      '65348ed29cf110f729ac66777e7f6590bcf38130f7d6a00da6c9a8a3e9f663d8',
+  'libmpv_linux-x86_64.so':
+      'b5e4ea8e714c8bebfc1bb742c6fc9d91067671162002b123c4e7b8b9be928a3f',
+  'libmpv_macos.xcframework.zip':
+      'ea488e31c3d1a8620cb2a25572bae90573bcb2f4c24746da3dd497b19ad499ca',
+  'libmpv_windows-arm64.dll':
+      'b7d118a54ce6fe9168af21d637fb1d76619a80314ecc00a708b6bdfe11671320',
+  'libmpv_windows-x86_64.dll':
+      '3073c09acdb2bd4819f22222983dc926087fbd069f8fee4e754cc03437ab081f',
 };
 
 void main(List<String> args) async {

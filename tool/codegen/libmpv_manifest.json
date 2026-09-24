@@ -1,5 +1,5 @@
 {
-  "release": "r14",
+  "release": "r15",
   "mpv": "0.41.0",
   "ffmpeg": "8.1.1",
   "audioFilters": [
@@ -92,14 +92,14 @@
     "virtualbass"
   ],
   "assets": {
-    "libmpv_android-arm64-v8a.so": "6063bef07c5118d76bac37672fda9d4fd2f21423a9561b8cd34d11f6419e003f",
-    "libmpv_android-armeabi-v7a.so": "585021abff1991923befe968e4b13db56df948c32e4e3352d53a166afa52b24b",
-    "libmpv_android-x86_64.so": "69e6040620960a17151aa61322031b0ebd1fe6bf072ad4dde285d7db321222ed",
-    "libmpv_ios.xcframework.zip": "9eb8729f526d2206b6fd6e517da75bf0a98767228da8648028008759e68073a5",
-    "libmpv_linux-aarch64.so": "63b8f2e2d81677bd259d9d1b49bff7c6b4f88bd69fe0971ef937ed4c8ee89c8b",
-    "libmpv_linux-x86_64.so": "19636d832156b1f38fe8a256e3dafceecc36ddb9bcc4f3b2edd441fd29ef23ed",
-    "libmpv_macos.xcframework.zip": "34dbfc25d9390eb1a4343dae8ba2ca43c3de92c7d7e76172dc2a5e660041fed3",
-    "libmpv_windows-arm64.dll": "51c843fe29d33acd831d93a9fe7a20974b582ebeb6da5be70ac7921834906760",
-    "libmpv_windows-x86_64.dll": "dbd5885ea38627e180ce21a6011f603bd343822aa9db6dee81685bdf95d013d3"
+    "libmpv_android-arm64-v8a.so": "f79ce1b57bd5145b8b6393d2f81902c267c4733b46ca077dcea93accf4ff7895",
+    "libmpv_android-armeabi-v7a.so": "8be60980283cf01baf6f58517728fcb9443f703bca3630eef608b79612e28307",
+    "libmpv_android-x86_64.so": "66b4df635c6f127dcee1d52e503e265b98924b9b1a538697f89f76ae3f2fa702",
+    "libmpv_ios.xcframework.zip": "a255868b6cbdfdd7ab54eaf74c9e68b5519e6ddfc7d77659cafb41ea27dae959",
+    "libmpv_linux-aarch64.so": "65348ed29cf110f729ac66777e7f6590bcf38130f7d6a00da6c9a8a3e9f663d8",
+    "libmpv_linux-x86_64.so": "b5e4ea8e714c8bebfc1bb742c6fc9d91067671162002b123c4e7b8b9be928a3f",
+    "libmpv_macos.xcframework.zip": "ea488e31c3d1a8620cb2a25572bae90573bcb2f4c24746da3dd497b19ad499ca",
+    "libmpv_windows-arm64.dll": "b7d118a54ce6fe9168af21d637fb1d76619a80314ecc00a708b6bdfe11671320",
+    "libmpv_windows-x86_64.dll": "3073c09acdb2bd4819f22222983dc926087fbd069f8fee4e754cc03437ab081f"
   }
 }
