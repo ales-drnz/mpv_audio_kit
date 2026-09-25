@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import '../internals/duration_seconds.dart';
+import '../internals/mpv_float.dart';
 import '../models/audio_params.dart';
 import '../models/chapter.dart';
 import '../models/mpv_track.dart';
@@ -88,7 +89,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<double>.double(
       name: 'volume',
       reactive: r.volume,
-      parse: _identityDouble,
+      parse: _canonicalFloat,
       reduce: (v, s) => s.copyWith(volume: v),
     ),
     MpvPropertySpec<double>.double(
@@ -225,13 +226,13 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<ReplayGainSettings>.double(
       name: 'replaygain-preamp',
       reactive: r.replayGain,
-      parse: (raw, s) => s.replayGain.copyWith(preamp: raw),
+      parse: (raw, s) => s.replayGain.copyWith(preamp: canonicalFloat(raw)),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
     MpvPropertySpec<ReplayGainSettings>.double(
       name: 'replaygain-fallback',
       reactive: r.replayGain,
-      parse: (raw, s) => s.replayGain.copyWith(fallback: raw),
+      parse: (raw, s) => s.replayGain.copyWith(fallback: canonicalFloat(raw)),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
     MpvPropertySpec<ReplayGainSettings>.flag(
@@ -243,19 +244,19 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<double>.double(
       name: 'volume-gain',
       reactive: r.volumeGain,
-      parse: _identityDouble,
+      parse: _canonicalFloat,
       reduce: (v, s) => s.copyWith(volumeGain: v),
     ),
     MpvPropertySpec<double>.double(
       name: 'volume-gain-min',
       reactive: r.volumeGainMin,
-      parse: _identityDouble,
+      parse: _canonicalFloat,
       reduce: (v, s) => s.copyWith(volumeGainMin: v),
     ),
     MpvPropertySpec<double>.double(
       name: 'volume-gain-max',
       reactive: r.volumeGainMax,
-      parse: _identityDouble,
+      parse: _canonicalFloat,
       reduce: (v, s) => s.copyWith(volumeGainMax: v),
     ),
     // System-mixer pair. Unavailable on AOs without per-app volume (e.g. the
@@ -264,7 +265,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<double?>.double(
       name: 'ao-volume',
       reactive: r.systemVolume,
-      parse: (raw, _) => raw,
+      parse: (raw, _) => canonicalFloat(raw),
       reduce: (v, s) => s.copyWith(systemVolume: v),
     ),
     MpvPropertySpec<bool?>.flag(
@@ -439,7 +440,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<double>.double(
       name: 'volume-max',
       reactive: r.volumeMax,
-      parse: _identityDouble,
+      parse: _canonicalFloat,
       reduce: (v, s) => s.copyWith(volumeMax: v),
     ),
     MpvPropertySpec<int>.int64(
@@ -745,6 +746,9 @@ Map<String, String> _parseStringMap(dynamic raw) {
 // ── Tiny inline parsers used by buildDefaultSpecs ──────────────────────────
 
 double _identityDouble(double raw, PlayerState _) => raw;
+
+// mpv's `float` options echo a single-precision value; see canonicalFloat.
+double _canonicalFloat(double raw, PlayerState _) => canonicalFloat(raw);
 int _identityInt(int raw, PlayerState _) => raw;
 bool _identityBool(bool raw, PlayerState _) => raw;
 String _identityString(String raw, PlayerState _) => raw;

@@ -62,9 +62,9 @@ mixin _InitModule on _PlayerBase {
     // fft/pcm are NOT bridged here: the pipeline's poll loop arms on its
     // streams' first listener, so the bridges are created lazily by the
     // public controllers' onListen (and reconciled below for subscribers
-    // that landed before bring-up). Settings is config-change traffic and
-    // stays always-bridged.
-    _spectrumPipeline.settingsStream.listen(_spectrumCtrl.add);
+    // that landed before bring-up). The settings live in the state, where
+    // setSpectrum may have put them before bring-up.
+    _spectrumPipeline.setSettings(_state.spectrum);
     _waveformPipeline = WaveformPipeline(
       asyncGet: _getAsync,
       asyncSet: _propRc,
@@ -91,6 +91,10 @@ mixin _InitModule on _PlayerBase {
     OrphanHandleTracker.instance.add(_handle);
 
     _bringUpCompleted = true;
+
+    // A setLogLevel call that came before bring-up finished.
+    final pendingLevel = _pendingLogLevel;
+    if (pendingLevel != null) _applyLogLevel(pendingLevel);
 
     // A DSP subscriber that landed before bring-up finished missed the
     // `onListen` enable — reconcile it now.
@@ -168,7 +172,7 @@ mixin _InitModule on _PlayerBase {
   };
 
   Map<String, String> _buildPostInitOptions() => {
-    'volume': configuration.initialVolume.toStringAsFixed(1),
+    'volume': canonicalFloat(configuration.initialVolume).toString(),
   };
 
   /// Specs for `mpv_observe_property` — registry props plus the small

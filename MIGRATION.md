@@ -140,6 +140,12 @@ The `Mpv` prefix now marks only types that carry mpv's own data
 
 `player.stream.tap(...)` is now a method; calls don't change.
 
+## Synchronous spectrum and log level
+
+`setSpectrum`, `updateSpectrum` and `setLogLevel` return `void`: remove the
+`await`. The spectrum settings moved from `player.spectrumSettings` to
+`player.state.spectrum`, and still stream on `player.stream.spectrum`.
+
 ## State streams start from the current value
 
 Every state stream of `player.stream` now gives a new subscriber the

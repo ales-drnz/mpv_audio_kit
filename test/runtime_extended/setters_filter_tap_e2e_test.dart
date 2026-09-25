@@ -48,7 +48,7 @@ void main() {
             // Speed up the FFT pipeline cadence so PCM flows promptly. The
             // tap pipeline polls on its own timer (33 ms), so this only
             // affects neighbouring streams.
-            await player.setSpectrum(
+            player.setSpectrum(
               const SpectrumSettings(emitInterval: Duration(milliseconds: 16)),
             );
 

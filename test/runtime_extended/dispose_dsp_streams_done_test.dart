@@ -41,6 +41,10 @@ void main() {
         'pcm': watchDone(player.stream.pcm),
         'spectrum': watchDone(player.stream.spectrum),
         'waveform': watchDone(player.stream.waveform),
+        // State the player writes itself, outside the property registry.
+        'playWhenReady': watchDone(player.stream.playWhenReady),
+        'audioDevice': watchDone(player.stream.audioDevice),
+        'audioEffects': watchDone(player.stream.audioEffects),
       };
 
       await player.dispose();

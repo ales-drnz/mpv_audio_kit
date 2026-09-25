@@ -2168,8 +2168,8 @@ for production, `LogLevel.debug` or `.v` for development, `LogLevel.off` to
 silence the engine). Change it at runtime with `setLogLevel`:
 
 ```dart
-await player.setLogLevel(LogLevel.debug); // more detail on demand
-await player.setLogLevel(LogLevel.off);   // silence the engine
+player.setLogLevel(LogLevel.debug); // more detail on demand
+player.setLogLevel(LogLevel.off);   // silence the engine
 ```
 
 #### 11.6 Exceptions
@@ -2408,7 +2408,7 @@ with `Player.updateSpectrum` (copyWith mapper).
 
 ```dart
 // 60 fps with 128 bands and a tighter dB window:
-await player.setSpectrum(const SpectrumSettings(
+player.setSpectrum(const SpectrumSettings(
   fftSize: 2048,
   bandCount: 128,
   emitInterval: Duration(milliseconds: 16),
@@ -2417,7 +2417,7 @@ await player.setSpectrum(const SpectrumSettings(
 ));
 
 // Mutate one field, e.g. UI slider on attack smoothing:
-await player.updateSpectrum((s) => s.copyWith(attackSmoothing: 0.7));
+player.updateSpectrum((s) => s.copyWith(attackSmoothing: 0.7));
 ```
 
 <details>
@@ -2497,7 +2497,7 @@ visualizer, so per-filter and global curves pulse with the exact same
 ballistic:
 
 ```dart
-final processor = BandProcessor(player.spectrumSettings);
+final processor = BandProcessor(player.state.spectrum);
 // Track the global config so the local FFT stays in lock-step.
 final cfgSub = player.stream.spectrum.listen(processor.setSettings);
 final tapSub = player.stream

@@ -26,6 +26,7 @@ import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';
 import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
+import '../internals/mpv_float.dart';
 import '../internals/orphan_handle_tracker.dart';
 import '../internals/uri_resolver.dart';
 import '../media_session/media_session_controller.dart';
@@ -701,6 +702,14 @@ abstract class _PlayerBase {
   Future<int> _command(List<String> args);
   Future<void> _commandChecked(List<String> args);
   Future<bool> _navigate(List<String> args);
+  void _applyLogLevel(LogLevel level);
+  Future<void> _writeBundle<T>(
+    List<(String, String, String)> writes,
+    ReactiveProperty<T> reactive,
+    PlayerState Function(PlayerState state, T value) put,
+    T next,
+    T previous,
+  );
   Future<int> _checkPlaylistIndex(int index, String name);
   Future<int> _setChapterListNode(List<Chapter> chapters);
 
@@ -890,7 +899,6 @@ abstract class _PlayerBase {
         if (sub != null) unawaited(sub.cancel());
       },
     );
-    _spectrumCtrl = StreamController<SpectrumSettings>.broadcast();
     // Listener-gated: the native waveform analyzer arms only while a
     // consumer is subscribed. The pipeline is built during isolate
     // bring-up; a subscriber that lands before then is reconciled
@@ -944,12 +952,7 @@ abstract class _PlayerBase {
       coverArt: replayStream(() => _state.coverArt, _coverArtCtrl.stream),
       fft: _fftCtrl.stream,
       pcm: _pcmStreamCtrl.stream,
-      spectrum: replayStream(
-        () => _bringUpCompleted
-            ? _spectrumPipeline.settings
-            : const SpectrumSettings(),
-        _spectrumCtrl.stream,
-      ),
+      spectrum: _reactives.spectrum.stream,
       waveform: replayStream(() => _lastWaveform, _waveformCtrl.stream),
       loudnessMeter: _loudnessMeterCtrl.stream,
       loudnessScan: replayStream(
@@ -981,6 +984,10 @@ abstract class _PlayerBase {
   late final Future<void> _ready;
   bool _bringUpCompleted = false;
 
+  /// The level of the last [setLogLevel] call, applied at the end of
+  /// bring-up when the call came before it.
+  LogLevel? _pendingLogLevel;
+
   /// Last playlist-entry `path` the waveform pipeline was reset for. Lets the
   /// FILE_LOADED handler skip the redundant reset mpv fires on internal
   /// reloads of the same source (see the dedup in `_handleEvent`).
@@ -992,7 +999,6 @@ abstract class _PlayerBase {
   // listener-gated poll loop armed; see the controllers' onListen).
   StreamSubscription<FftFrame>? _fftPipeSub;
   StreamSubscription<PcmFrame>? _pcmPipeSub;
-  late final StreamController<SpectrumSettings> _spectrumCtrl;
   late final StreamController<WaveformData?> _waveformCtrl;
   // The last envelope and scan result, replayed to a new subscriber of
   // `stream.waveform` and `stream.loudnessScan`.
@@ -1336,6 +1342,12 @@ abstract class _PlayerBase {
       _bufferingPercentage.close(),
       _demuxerCacheState.close(),
       _mediaSession.close(),
+      // Reactives the player writes itself, outside the registry.
+      _reactives.playWhenReady.close(),
+      _reactives.audioDevice.close(),
+      _reactives.audioEffects.close(),
+      _reactives.tlsCaFile.close(),
+      _reactives.spectrum.close(),
     ]);
     // Drop the lazy spectrum bridges before closing their controllers —
     // a dispose with a live fft/pcm listener must not leave the pipeline's
@@ -1360,7 +1372,6 @@ abstract class _PlayerBase {
       // dispose would hang forever.
       _fftCtrl.close(),
       _pcmStreamCtrl.close(),
-      _spectrumCtrl.close(),
       _waveformCtrl.close(),
       _loudnessMeterCtrl.close(),
       _loudnessScanCtrl.close(),

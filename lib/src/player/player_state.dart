@@ -23,6 +23,7 @@ import 'package:mpv_audio_kit/src/types/sealed/channels.dart';
 import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/demuxer_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
+import 'package:mpv_audio_kit/src/types/settings/spectrum_settings.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 
 const _kEmptyPlaylist = Playlist.empty;
@@ -311,6 +312,12 @@ final class PlayerState {
   /// [PlayerStream.audioEffects].
   final List<AudioEffect> audioEffects;
 
+  /// The configuration of the FFT pipeline behind [PlayerStream.fft]
+  /// (size, bands, window, emit rate, smoothing, dB range). Set via
+  /// [Player.setSpectrum] or [Player.updateSpectrum], read live via
+  /// [PlayerStream.spectrum]. Lives on the Dart side only.
+  final SpectrumSettings spectrum;
+
   /// Embedded cover art of the currently loaded track, or `null`
   /// when the file has no embedded picture. Refreshes on every
   /// `Player.open()` / playlist transition. Read live via
@@ -547,6 +554,7 @@ final class PlayerState {
     this.audioDriver = 'auto',
     this.audioOutputState = AudioOutputState.closed,
     this.audioEffects = const [],
+    this.spectrum = SpectrumSettings.defaults,
     this.coverArt,
     this.coverArtAuto = Cover.no,
     this.prefetchPlaylist = false,
@@ -645,6 +653,7 @@ final class PlayerState {
     String? audioDriver,
     AudioOutputState? audioOutputState,
     List<AudioEffect>? audioEffects,
+    SpectrumSettings? spectrum,
     Object? coverArt = unset,
     Cover? coverArtAuto,
     bool? prefetchPlaylist,
@@ -747,6 +756,7 @@ final class PlayerState {
     audioDriver: audioDriver ?? this.audioDriver,
     audioOutputState: audioOutputState ?? this.audioOutputState,
     audioEffects: audioEffects ?? this.audioEffects,
+    spectrum: spectrum ?? this.spectrum,
     coverArt: identical(coverArt, unset)
         ? this.coverArt
         : coverArt as CoverArt?,
@@ -856,6 +866,7 @@ final class PlayerState {
           other.audioDriver == audioDriver &&
           other.audioOutputState == audioOutputState &&
           listEquals(other.audioEffects, audioEffects) &&
+          other.spectrum == spectrum &&
           other.coverArt == coverArt &&
           other.coverArtAuto == coverArtAuto &&
           other.prefetchPlaylist == prefetchPlaylist &&
@@ -954,6 +965,7 @@ final class PlayerState {
     audioDriver,
     audioOutputState,
     Object.hashAll(audioEffects),
+    spectrum,
     coverArt,
     coverArtAuto,
     prefetchPlaylist,

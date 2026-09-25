@@ -40,17 +40,17 @@ void main() {
         await player.dispose();
       });
 
-      test('default SpectrumSettings exposed via spectrumSettings getter', () {
-        // Before any setSpectrum, the pipeline reports defaults.
-        final s = player.spectrumSettings;
+      test('default SpectrumSettings in state.spectrum', () {
+        // Before any setSpectrum, the state holds the defaults.
+        final s = player.state.spectrum;
         expect(s.fftSize, 2048);
         expect(s.bandCount, 64);
         expect(s.window, WindowFunction.hann);
         expect(s.emitInterval, const Duration(milliseconds: 33));
       });
 
-      test('setSpectrum / updateSpectrum round-trip', () async {
-        await player.setSpectrum(
+      test('setSpectrum / updateSpectrum apply synchronously', () {
+        player.setSpectrum(
           const SpectrumSettings(
             fftSize: 1024,
             bandCount: 32,
@@ -62,7 +62,7 @@ void main() {
             maxDb: -5,
           ),
         );
-        var s = player.spectrumSettings;
+        var s = player.state.spectrum;
         expect(s.fftSize, 1024);
         expect(s.bandCount, 32);
         expect(s.window, WindowFunction.blackmanHarris);
@@ -73,8 +73,8 @@ void main() {
         expect(s.maxDb, -5);
 
         // updateSpectrum mapper sees the current settings.
-        await player.updateSpectrum((c) => c.copyWith(bandCount: 128));
-        s = player.spectrumSettings;
+        player.updateSpectrum((c) => c.copyWith(bandCount: 128));
+        s = player.state.spectrum;
         expect(s.bandCount, 128);
         expect(s.fftSize, 1024); // other fields preserved
       });
@@ -102,14 +102,14 @@ void main() {
       test('setSpectrum mid-stream (mutability) does not throw', () async {
         final sub = player.stream.fft.listen((_) {});
         try {
-          await player.updateSpectrum(
+          player.updateSpectrum(
             (c) => c.copyWith(
               fftSize: 4096,
               emitInterval: const Duration(milliseconds: 20),
             ),
           );
           await Future<void>.delayed(const Duration(milliseconds: 80));
-          await player.updateSpectrum(
+          player.updateSpectrum(
             (c) => c.copyWith(fftSize: 512, window: WindowFunction.hann),
           );
           await Future<void>.delayed(const Duration(milliseconds: 80));

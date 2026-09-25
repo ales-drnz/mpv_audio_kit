@@ -14,6 +14,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - State streams give a new subscriber the current value first, then the changes, so `StreamBuilder` needs no `initialData`. Use `skip(1)` to wait for the next change. Event streams are unchanged.
 - The `Mpv` prefix is kept only on types that carry mpv's own data: `MpvPlayerError`, `MpvEndFileError`, `MpvLogError` and `MpvPrefetchState` are now `PlayerError`, `EndFileError`, `LogError` and `PrefetchState`.
 - `stream.loudness` is `stream.loudnessScan`, next to the live `stream.loudnessMeter`.
+- `setSpectrum`, `updateSpectrum` and `setLogLevel` are synchronous and work before the player has started. The spectrum settings are in `state.spectrum`, and the `spectrumSettings` getter is gone.
 
 ### Added
 - libmpv reaches the app through a Dart build hook, with one pinned checksum per binary. An app can bundle its own build with the `libmpv` user define.
@@ -26,6 +27,8 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 
 ### Fixed
 - After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size or audio parameters: a property mpv reports unavailable goes back to its default.
+- A setter emits the value it was given once. Volume, gains and ReplayGain no longer come back rounded (`setVolume(42.37)` then `42.400001525878906`), rate and pitch keep their precision, durations keep their microseconds, and `setCache`, `setDemuxer` and `setReplayGain` no longer emit a half-applied bundle.
+- `dispose()` closes `stream.playWhenReady`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
 - Windows: the plugin builds with Visual Studio 2026.
 
 ### Build

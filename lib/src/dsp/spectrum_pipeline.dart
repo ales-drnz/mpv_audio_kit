@@ -55,22 +55,15 @@ class SpectrumPipeline {
         _maybeStop();
       },
     );
-    // [_settingsCtrl] is NOT lazy — it carries config-change events,
-    // not data, and must always be listenable so the matching
-    // `Player.stream.spectrumSettings` can observe mutations even
-    // before the FFT poll loop is armed.
-    _settingsCtrl = StreamController<SpectrumSettings>.broadcast();
   }
 
   final AsyncPropertyGet _asyncGet;
 
   late final StreamController<FftFrame> _fftCtrl;
   late final StreamController<PcmFrame> _pcmCtrl;
-  late final StreamController<SpectrumSettings> _settingsCtrl;
 
   Stream<FftFrame> get fftStream => _fftCtrl.stream;
   Stream<PcmFrame> get pcmStream => _pcmCtrl.stream;
-  Stream<SpectrumSettings> get settingsStream => _settingsCtrl.stream;
 
   SpectrumSettings _settings = SpectrumSettings.defaults;
   SpectrumSettings get settings => _settings;
@@ -99,7 +92,6 @@ class SpectrumPipeline {
       _pollTimer!.cancel();
       _pollTimer = Timer.periodic(_settings.emitInterval, (_) => _poll());
     }
-    if (!_settingsCtrl.isClosed) _settingsCtrl.add(next);
   }
 
   void _maybeStart() {
@@ -170,6 +162,5 @@ class SpectrumPipeline {
     _pollTimer = null;
     if (!_fftCtrl.isClosed) await _fftCtrl.close();
     if (!_pcmCtrl.isClosed) await _pcmCtrl.close();
-    if (!_settingsCtrl.isClosed) await _settingsCtrl.close();
   }
 }

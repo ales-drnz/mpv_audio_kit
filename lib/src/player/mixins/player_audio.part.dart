@@ -11,8 +11,9 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setVolume(double volume) async {
     _checkRange(volume, 0, double.maxFinite, 'volume');
     await _gate();
-    await _prop('volume', volume.toStringAsFixed(1));
-    _updateField((s) => s.copyWith(volume: volume), _reactives.volume, volume);
+    final value = canonicalFloat(volume);
+    await _prop('volume', value.toString());
+    _updateField((s) => s.copyWith(volume: value), _reactives.volume, value);
   }
 
   /// Sets playback rate (1.0 = normal speed). Throws [RangeError] outside
@@ -20,7 +21,7 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setRate(double rate) async {
     _checkRange(rate, 0.01, 100, 'rate');
     await _gate();
-    await _prop('speed', rate.toStringAsFixed(4));
+    await _prop('speed', rate.toString());
     _updateField((s) => s.copyWith(rate: rate), _reactives.rate, rate);
   }
 
@@ -29,7 +30,7 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setPitch(double pitch) async {
     _checkRange(pitch, 0.01, 100, 'pitch');
     await _gate();
-    await _prop('pitch', pitch.toStringAsFixed(4));
+    await _prop('pitch', pitch.toString());
     _updateField((s) => s.copyWith(pitch: pitch), _reactives.pitch, pitch);
   }
 
@@ -77,7 +78,7 @@ mixin _AudioModule on _PlayerBase {
   /// stripped before the value is sent to mpv.
   Future<void> setAudioDelay(Duration delay) async {
     await _gate();
-    await _prop('audio-delay', durationToSeconds(delay).toStringAsFixed(3));
+    await _prop('audio-delay', durationToSeconds(delay).toStringAsFixed(6));
     _updateField(
       (s) => s.copyWith(audioDelay: delay),
       _reactives.audioDelay,
@@ -102,18 +103,22 @@ mixin _AudioModule on _PlayerBase {
   /// Writes the four backing mpv properties (`replaygain`,
   /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`) in
   /// one shot. If any of the writes fails, the previously-committed
-  /// fields are rolled back to the prior [ReplayGainSettings] before
-  /// the error is rethrown — the consumer never observes a half-applied
-  /// state.
-  Future<void> setReplayGain(ReplayGainSettings settings) async {
+  /// fields and the state go back to the prior [ReplayGainSettings]
+  /// before the error is rethrown, so the consumer never observes a
+  /// half-applied state.
+  Future<void> setReplayGain(ReplayGainSettings requested) async {
     await _gate();
+    final settings = requested.copyWith(
+      preamp: canonicalFloat(requested.preamp),
+      fallback: canonicalFloat(requested.fallback),
+    );
     final previous = state.replayGain;
     final writes = <(String, String, String)>[
       ('replaygain', settings.mode.mpvValue, previous.mode.mpvValue),
       (
         'replaygain-preamp',
-        settings.preamp.toStringAsFixed(2),
-        previous.preamp.toStringAsFixed(2),
+        settings.preamp.toString(),
+        previous.preamp.toString(),
       ),
       (
         'replaygain-clip',
@@ -122,26 +127,16 @@ mixin _AudioModule on _PlayerBase {
       ),
       (
         'replaygain-fallback',
-        settings.fallback.toStringAsFixed(2),
-        previous.fallback.toStringAsFixed(2),
+        settings.fallback.toString(),
+        previous.fallback.toString(),
       ),
     ];
-    final committed = <(String, String)>[];
-    try {
-      for (final (name, value, prior) in writes) {
-        await _prop(name, value);
-        committed.add((name, prior));
-      }
-    } catch (_) {
-      for (final (name, prior) in committed.reversed) {
-        await _propRc(name, prior);
-      }
-      rethrow;
-    }
-    _updateField(
-      (s) => s.copyWith(replayGain: settings),
+    await _writeBundle(
+      writes,
       _reactives.replayGain,
+      (s, v) => s.copyWith(replayGain: v),
       settings,
+      previous,
     );
   }
 
@@ -154,11 +149,12 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setVolumeGain(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
-    await _prop('volume-gain', gainDb.toStringAsFixed(2));
+    final value = canonicalFloat(gainDb);
+    await _prop('volume-gain', value.toString());
     _updateField(
-      (s) => s.copyWith(volumeGain: gainDb),
+      (s) => s.copyWith(volumeGain: value),
       _reactives.volumeGain,
-      gainDb,
+      value,
     );
   }
 
@@ -167,11 +163,12 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setVolumeGainMin(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
-    await _prop('volume-gain-min', gainDb.toStringAsFixed(2));
+    final value = canonicalFloat(gainDb);
+    await _prop('volume-gain-min', value.toString());
     _updateField(
-      (s) => s.copyWith(volumeGainMin: gainDb),
+      (s) => s.copyWith(volumeGainMin: value),
       _reactives.volumeGainMin,
-      gainDb,
+      value,
     );
   }
 
@@ -180,11 +177,12 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setVolumeGainMax(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
-    await _prop('volume-gain-max', gainDb.toStringAsFixed(2));
+    final value = canonicalFloat(gainDb);
+    await _prop('volume-gain-max', value.toString());
     _updateField(
-      (s) => s.copyWith(volumeGainMax: gainDb),
+      (s) => s.copyWith(volumeGainMax: value),
       _reactives.volumeGainMax,
-      gainDb,
+      value,
     );
   }
 
@@ -197,12 +195,13 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setSystemVolume(double volume) async {
     _checkFinite(volume, 'volume');
     await _gate();
-    final rc = await _propRc('ao-volume', volume.toStringAsFixed(1));
+    final value = canonicalFloat(volume);
+    final rc = await _propRc('ao-volume', value.toString());
     if (rc >= 0) {
       _updateField(
-        (s) => s.copyWith(systemVolume: volume),
+        (s) => s.copyWith(systemVolume: value),
         _reactives.systemVolume,
-        volume,
+        value,
       );
     }
   }
@@ -232,11 +231,12 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setVolumeMax(double limit) async {
     _checkFinite(limit, 'limit');
     await _gate();
-    await _prop('volume-max', limit.toStringAsFixed(1));
+    final value = canonicalFloat(limit);
+    await _prop('volume-max', value.toString());
     _updateField(
-      (s) => s.copyWith(volumeMax: limit),
+      (s) => s.copyWith(volumeMax: value),
       _reactives.volumeMax,
-      limit,
+      value,
     );
   }
 
@@ -641,38 +641,37 @@ mixin _AudioModule on _PlayerBase {
   /// settings. Re-arms the poll timer when [SpectrumSettings.emitInterval]
   /// changes mid-stream.
   ///
-  /// The pipeline is **lazy** — calling this when nobody has
-  /// subscribed to [PlayerStream.spectrum] / [PlayerStream.pcm] just
-  /// updates the pending configuration; the poll loop only starts on
-  /// the first subscriber.
-  Future<void> setSpectrum(SpectrumSettings settings) async {
-    await _gate();
-    _spectrumPipeline.setSettings(settings);
+  /// Synchronous: the pipeline is Dart-side, so the new settings are in
+  /// [PlayerState.spectrum] when the call returns, even before the player
+  /// has finished starting. The pipeline is **lazy**: with no subscriber
+  /// to [PlayerStream.fft] or [PlayerStream.pcm] this only stores the
+  /// configuration; the poll loop starts on the first subscriber.
+  void setSpectrum(SpectrumSettings settings) {
+    _checkNotDisposed();
+    _updateField(
+      (s) => s.copyWith(spectrum: settings),
+      _reactives.spectrum,
+      settings,
+    );
+    if (_bringUpCompleted) _spectrumPipeline.setSettings(settings);
   }
 
   /// Mutates the spectrum settings with a Freezed-style copyWith
   /// mapper.
   ///
-  /// Convenience over `setSpectrum(spectrumSettings.copyWith(...))`.
+  /// Convenience over `setSpectrum(state.spectrum.copyWith(...))`.
   /// The mapper receives the current bundle and must return the new
   /// one — same semantics as `Player.updateAudioEffects`.
   ///
   /// Example:
   /// ```dart
   /// // Switch to 60 fps with a Blackman-Harris window:
-  /// await player.updateSpectrum((s) => s.copyWith(
+  /// player.updateSpectrum((s) => s.copyWith(
   ///   emitInterval: const Duration(milliseconds: 16),
   ///   window: WindowFunction.blackmanHarris,
   /// ));
   /// ```
-  Future<void> updateSpectrum(
-    SpectrumSettings Function(SpectrumSettings) mapper,
-  ) async {
-    await setSpectrum(mapper(_spectrumPipeline.settings));
+  void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper) {
+    setSpectrum(mapper(_state.spectrum));
   }
-
-  /// Current spectrum / PCM pipeline configuration. Reflects the last
-  /// [setSpectrum] / [updateSpectrum] call (or [SpectrumSettings.defaults]
-  /// when never set).
-  SpectrumSettings get spectrumSettings => _spectrumPipeline.settings;
 }

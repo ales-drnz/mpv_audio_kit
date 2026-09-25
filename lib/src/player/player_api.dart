@@ -55,10 +55,6 @@ abstract interface class PlayerApi {
   /// events.
   PlayerStream get stream;
 
-  /// Currently-applied spectrum / PCM pipeline configuration. Mutate via
-  /// [setSpectrum] / [updateSpectrum].
-  SpectrumSettings get spectrumSettings;
-
   // ── Lifecycle ──────────────────────────────────────────────────────
 
   /// Tears down the player. Idempotent.
@@ -306,14 +302,13 @@ abstract interface class PlayerApi {
   /// to let mpv auto-probe the best backend (the default).
   Future<void> setAudioDriver(String driver);
 
-  /// Applies the spectrum / PCM pipeline configuration atomically.
-  Future<void> setSpectrum(SpectrumSettings settings);
+  /// Applies the spectrum / PCM pipeline configuration, synchronously:
+  /// it is in [PlayerState.spectrum] when the call returns.
+  void setSpectrum(SpectrumSettings settings);
 
-  /// Mutates the spectrum configuration incrementally by applying [mapper]
-  /// to it and reapplying the result.
-  Future<void> updateSpectrum(
-    SpectrumSettings Function(SpectrumSettings) mapper,
-  );
+  /// Mutates the spectrum configuration by applying [mapper] to
+  /// [PlayerState.spectrum].
+  void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper);
 
   // ── Cache / network ────────────────────────────────────────────────
 
@@ -422,6 +417,7 @@ abstract interface class PlayerApi {
   ///
   /// The initial level comes from [PlayerConfiguration.logLevel]; raise it
   /// (e.g. to [LogLevel.debug]) to surface more diagnostics on demand, or
-  /// lower it to cut log volume. Cheap and thread-safe.
-  Future<void> setLogLevel(LogLevel level);
+  /// lower it to cut log volume. Synchronous, and valid before the player
+  /// has finished starting: the level then applies once it has.
+  void setLogLevel(LogLevel level);
 }

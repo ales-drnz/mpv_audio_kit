@@ -28,9 +28,6 @@ class _ApiProbe implements PlayerApi {
   PlayerStream get stream => throw UnimplementedError();
 
   @override
-  SpectrumSettings get spectrumSettings => const SpectrumSettings();
-
-  @override
   Future<void> dispose() => _record('dispose');
 
   @override
@@ -240,12 +237,11 @@ class _ApiProbe implements PlayerApi {
   Future<void> setAudioDriver(String driver) => _record('setAudioDriver');
 
   @override
-  Future<void> setSpectrum(SpectrumSettings settings) => _record('setSpectrum');
+  void setSpectrum(SpectrumSettings settings) => _record('setSpectrum');
 
   @override
-  Future<void> updateSpectrum(
-    SpectrumSettings Function(SpectrumSettings) mapper,
-  ) => _record('updateSpectrum');
+  void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper) =>
+      _record('updateSpectrum');
 
   @override
   Future<void> setCache(CacheSettings settings) => _record('setCache');
@@ -320,7 +316,7 @@ class _ApiProbe implements PlayerApi {
   Future<void> sendRawCommand(List<String> args) => _record('sendRawCommand');
 
   @override
-  Future<void> setLogLevel(LogLevel level) => _record('setLogLevel');
+  void setLogLevel(LogLevel level) => _record('setLogLevel');
 }
 
 void main() {
@@ -331,10 +327,10 @@ void main() {
       expect((api as _ApiProbe).calls, contains('setTlsCaFile'));
     });
 
-    test('exposes setLogLevel through the interface', () async {
+    test('exposes setLogLevel through the interface', () {
       final api = _ApiProbe();
       final PlayerApi typed = api;
-      await typed.setLogLevel(LogLevel.debug);
+      typed.setLogLevel(LogLevel.debug);
       expect(api.calls, contains('setLogLevel'));
     });
 

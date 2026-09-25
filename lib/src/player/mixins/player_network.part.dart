@@ -19,8 +19,8 @@ mixin _NetworkModule on _PlayerBase {
       ('cache', settings.mode.mpvValue, previous.mode.mpvValue),
       (
         'cache-secs',
-        durationToSeconds(settings.secs).toStringAsFixed(3),
-        durationToSeconds(previous.secs).toStringAsFixed(3),
+        durationToSeconds(settings.secs).toStringAsFixed(6),
+        durationToSeconds(previous.secs).toStringAsFixed(6),
       ),
       (
         'cache-on-disk',
@@ -34,8 +34,8 @@ mixin _NetworkModule on _PlayerBase {
       ),
       (
         'cache-pause-wait',
-        durationToSeconds(settings.pauseWait).toStringAsFixed(3),
-        durationToSeconds(previous.pauseWait).toStringAsFixed(3),
+        durationToSeconds(settings.pauseWait).toStringAsFixed(6),
+        durationToSeconds(previous.pauseWait).toStringAsFixed(6),
       ),
       (
         'cache-pause-initial',
@@ -43,22 +43,12 @@ mixin _NetworkModule on _PlayerBase {
         previous.pauseInitial ? 'yes' : 'no',
       ),
     ];
-    final committed = <(String, String)>[];
-    try {
-      for (final (name, value, prior) in writes) {
-        await _prop(name, value);
-        committed.add((name, prior));
-      }
-    } catch (_) {
-      for (final (name, prior) in committed.reversed) {
-        await _propRc(name, prior);
-      }
-      rethrow;
-    }
-    _updateField(
-      (s) => s.copyWith(cache: settings),
+    await _writeBundle(
+      writes,
       _reactives.cache,
+      (s, v) => s.copyWith(cache: v),
       settings,
+      previous,
     );
   }
 
@@ -70,7 +60,7 @@ mixin _NetworkModule on _PlayerBase {
   /// decrease for live monitoring or low-latency listening.
   Future<void> setAudioBuffer(Duration size) async {
     await _gate();
-    await _prop('audio-buffer', durationToSeconds(size).toStringAsFixed(3));
+    await _prop('audio-buffer', durationToSeconds(size).toStringAsFixed(6));
     _updateField(
       (s) => s.copyWith(audioBuffer: size),
       _reactives.audioBuffer,
@@ -207,22 +197,12 @@ mixin _NetworkModule on _PlayerBase {
         durationToSeconds(previous.readahead).toStringAsFixed(6),
       ),
     ];
-    final committed = <(String, String)>[];
-    try {
-      for (final (name, value, prior) in writes) {
-        await _prop(name, value);
-        committed.add((name, prior));
-      }
-    } catch (_) {
-      for (final (name, prior) in committed.reversed) {
-        await _propRc(name, prior);
-      }
-      rethrow;
-    }
-    _updateField(
-      (s) => s.copyWith(demuxer: settings),
+    await _writeBundle(
+      writes,
       _reactives.demuxer,
+      (s, v) => s.copyWith(demuxer: v),
       settings,
+      previous,
     );
   }
 

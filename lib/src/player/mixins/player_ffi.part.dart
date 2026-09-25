@@ -95,6 +95,35 @@ mixin _FfiModule on _PlayerBase {
     return completer.future;
   }
 
+  /// Applies a settings bundle backed by several mpv properties: [writes]
+  /// holds `(property, value, prior value)`. The state takes [next] first,
+  /// so mpv's echo of each write matches it instead of emitting a
+  /// half-applied bundle. If a write fails, the written properties and
+  /// the state go back to [previous] before the error is rethrown.
+  @override
+  Future<void> _writeBundle<T>(
+    List<(String, String, String)> writes,
+    ReactiveProperty<T> reactive,
+    PlayerState Function(PlayerState state, T value) put,
+    T next,
+    T previous,
+  ) async {
+    _updateField((s) => put(s, next), reactive, next);
+    final committed = <(String, String)>[];
+    try {
+      for (final (name, value, prior) in writes) {
+        await _prop(name, value);
+        committed.add((name, prior));
+      }
+    } catch (_) {
+      for (final (name, prior) in committed.reversed) {
+        await _propRc(name, prior);
+      }
+      _updateField((s) => put(s, previous), reactive, previous);
+      rethrow;
+    }
+  }
+
   /// Runs a playlist navigation command and returns whether it moved:
   /// mpv answers [MpvError.mpvErrorCommand] when there is nowhere to go,
   /// which is a normal outcome, not an error.
@@ -365,9 +394,17 @@ mixin _FfiModule on _PlayerBase {
   }
 
   /// Changes the engine log verbosity at runtime (the initial value comes
-  /// from [PlayerConfiguration.logLevel]).
-  Future<void> setLogLevel(LogLevel level) async {
-    await _gate();
+  /// from [PlayerConfiguration.logLevel]). Synchronous: before the player
+  /// has finished starting, the level is kept and applied once it has.
+  void setLogLevel(LogLevel level) {
+    _checkNotDisposed();
+    _pendingLogLevel = level;
+    if (_bringUpCompleted) _applyLogLevel(level);
+  }
+
+  @override
+  void _applyLogLevel(LogLevel level) {
+    if (_ffiClosed) return;
     // `mpv_request_log_messages` is thread-safe and operates on the shared
     // client handle the same way the main-thread getRawProperty path does,
     // so there's no need to round-trip through the event isolate.

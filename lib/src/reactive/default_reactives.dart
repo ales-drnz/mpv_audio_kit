@@ -16,6 +16,7 @@ import '../types/sealed/channels.dart';
 import '../types/settings/cache_settings.dart';
 import '../types/settings/demuxer_settings.dart';
 import '../types/settings/replay_gain_settings.dart';
+import '../types/settings/spectrum_settings.dart';
 import '../types/state/audio_output_state.dart';
 import '../types/state/prefetch_state.dart';
 import 'reactive_property.dart';
@@ -253,6 +254,10 @@ class DefaultPropertyReactives {
   /// `updateAudioEffects`.
   final ReactiveProperty<List<AudioEffect>> audioEffects =
       ReactiveProperty<List<AudioEffect>>(const []);
+
+  /// The FFT pipeline configuration, set via `Player.setSpectrum`.
+  final ReactiveProperty<SpectrumSettings> spectrum =
+      ReactiveProperty<SpectrumSettings>(SpectrumSettings.defaults);
 
   /// Audio output lifecycle state (`audio-output-state`).
   final ReactiveProperty<AudioOutputState> audioOutputState =

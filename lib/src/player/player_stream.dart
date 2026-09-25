@@ -723,7 +723,7 @@ class PlayerStream {
   /// of the FFT pipeline (size, bands, window, emit rate, smoothing, dB
   /// clip). Emits a fresh snapshot on every [Player.setSpectrum] /
   /// [Player.updateSpectrum] call so reactive UI can bind without
-  /// polling [Player.spectrumSettings] (which remains as a synchronous
+  /// polling [Player.state.spectrum] (which remains as a synchronous
   /// accessor for callers that don't want a subscription).
   ///
   /// Mirrors the bundle-stream pattern of [replayGain] / [cache] /

@@ -51,7 +51,7 @@ void main() {
               'so mpv error logs should be suppressed before the setter.',
         );
 
-        await p.setLogLevel(LogLevel.error);
+        p.setLogLevel(LogLevel.error);
         await _trySetBogusFilter(p, 'lavfi-log-level-error-probe');
         await waitUntil(
           () => errors.isNotEmpty,

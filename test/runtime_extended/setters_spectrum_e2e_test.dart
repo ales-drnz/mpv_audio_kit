@@ -40,7 +40,7 @@ void main() {
       test('PcmFrame arrives within 1s of play() — non-zero samples', () async {
         // Speed up the emit cadence so the test doesn't wait a full
         // 33 ms per tick.
-        await player.setSpectrum(
+        player.setSpectrum(
           const SpectrumSettings(emitInterval: Duration(milliseconds: 16)),
         );
         final completer = Completer<PcmFrame>();
@@ -74,7 +74,7 @@ void main() {
       test(
         'FftFrame bands respond to the sine — at least one band > 0',
         () async {
-          await player.setSpectrum(
+          player.setSpectrum(
             const SpectrumSettings(
               fftSize: 1024,
               emitInterval: Duration(milliseconds: 16),
