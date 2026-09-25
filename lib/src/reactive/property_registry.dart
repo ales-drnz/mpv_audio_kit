@@ -2,23 +2,16 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'dart:ffi';
-
-import 'package:ffi/ffi.dart';
-
-import '../mpv_bindings.dart';
 import '../player/player_state.dart';
 import 'mpv_property_spec.dart';
 
 /// A flat collection of [MpvPropertySpec]s with a single dispatch entry-point.
 ///
-/// The registry owns the mapping from mpv property name → spec, allocates
-/// reply-id integers for `mpv_observe_property`, and exposes lifecycle
+/// The registry owns the mapping from mpv property name → spec (the event
+/// isolate registers the observers from [specs]), and exposes lifecycle
 /// methods used by [Player]:
 ///
 /// - [register] / [registerAll]: collect specs at construction time.
-/// - [observeAll]: call `mpv_observe_property` once per spec on a live mpv
-///   handle.
 /// - [dispatch]: route an incoming property-change event (parsed earlier on
 ///   the event-isolate) to the matching spec, returning the post-reduce
 ///   [PlayerState] or `null` if the property is not in the registry / the
@@ -29,9 +22,9 @@ class PropertyRegistry {
   /// Creates an empty registry; populate it with [register] / [registerAll].
   PropertyRegistry();
 
-  /// Upper bound on reply-IDs the registry assigns in [observeAll].
+  /// Upper bound on the reply-IDs of the registry's observers.
   /// Out-of-registry observers (JSON / aggregate properties wired
-  /// directly in `Player._observe`) must use IDs strictly greater than
+  /// directly in the player's observe list) use IDs strictly greater than
   /// this so the two dispatch halves stay distinguishable in `mpv -v`
   /// logs. mpv itself treats the integer as opaque user data — the
   /// boundary is purely an internal convention.
@@ -61,37 +54,6 @@ class PropertyRegistry {
 
   /// Looks up a spec by mpv property name. Returns `null` for unknown names.
   MpvPropertySpec<Object?>? specFor(String name) => _byName[name];
-
-  /// Calls `mpv_observe_property` for every registered spec.
-  ///
-  /// Reply IDs are auto-assigned starting at 1, in the same order as
-  /// [register] calls. The event isolate doesn't decode reply IDs; mpv
-  /// dispatches property changes by name on the receive side, so reply IDs
-  /// are effectively only for diagnostics in `mpv -v` logs. The assigned
-  /// IDs are guaranteed to stay at or below [registryReplyIdMax] so the
-  /// out-of-registry observers (in `Player._observe`) can use a disjoint
-  /// range — see [registryReplyIdMax].
-  void observeAll(MpvLibrary lib, Pointer<MpvHandle> handle) {
-    assert(
-      _byName.length <= registryReplyIdMax,
-      'PropertyRegistry has ${_byName.length} specs, exceeding the '
-      'reply-id boundary of $registryReplyIdMax. Bump the boundary or '
-      'split the registry — IDs at or above the boundary are reserved '
-      'for out-of-registry observers wired in Player._observe.',
-    );
-    var replyId = 1;
-    for (final spec in _byName.values) {
-      using((arena) {
-        lib.mpvObserveProperty(
-          handle,
-          replyId,
-          spec.name.toNativeUtf8(allocator: arena),
-          spec.format,
-        );
-      });
-      replyId++;
-    }
-  }
 
   /// Routes a property-change event to its registered spec.
   ///

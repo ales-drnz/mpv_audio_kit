@@ -56,17 +56,6 @@ class ReactiveProperty<T> {
     return true;
   }
 
-  /// Forces an emission on [stream] without changing [value].
-  ///
-  /// Used by lifecycle helpers that want to re-broadcast the current value
-  /// (e.g. the file-loaded transition wants to re-emit `playing=true` even
-  /// when `playing` was already `true` before the previous track ended).
-  /// Most callers should use [update] instead.
-  void emitCurrent() {
-    if (_ctrl.isClosed) return;
-    _ctrl.add(_value);
-  }
-
   /// Closes the underlying broadcast controller. Idempotent.
   Future<void> close() {
     if (_ctrl.isClosed) return Future.value();

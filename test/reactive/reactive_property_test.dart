@@ -72,19 +72,6 @@ void main() {
       expect(received, [1, 2]);
     });
 
-    test('emitCurrent broadcasts without changing value', () async {
-      final prop = ReactiveProperty<int>(7);
-      final received = <int>[];
-      prop.changes.listen(received.add);
-
-      prop.emitCurrent();
-      prop.emitCurrent();
-
-      await pumpEventQueue();
-      expect(received, [7, 7]);
-      expect(prop.value, 7);
-    });
-
     test('close is idempotent and isClosed flips', () async {
       final prop = ReactiveProperty<int>(0);
       expect(prop.isClosed, isFalse);

@@ -464,25 +464,6 @@ typedef MpvGetProperty =
       Pointer<Void> data,
     );
 
-// int mpv_set_property(mpv_handle*, const char*, int format, void *data)
-typedef _MpvSetPropertyNative =
-    Int32 Function(
-      Pointer<MpvHandle> ctx,
-      Pointer<Utf8> name,
-      Int32 format,
-      Pointer<Void> data,
-    );
-
-/// Dart signature for `mpv_set_property` — writes a property from `data`
-/// using the given [MpvFormat].
-typedef MpvSetProperty =
-    int Function(
-      Pointer<MpvHandle> ctx,
-      Pointer<Utf8> name,
-      int format,
-      Pointer<Void> data,
-    );
-
 // int mpv_set_property_async(mpv_handle*, uint64_t reply_userdata,
 //                            const char *name, int format, void *data)
 typedef _MpvSetPropertyAsyncNative =
@@ -546,15 +527,6 @@ typedef MpvCommandAsync =
       int replyUserdata,
       Pointer<Pointer<Utf8>> args,
     );
-
-// int mpv_command(mpv_handle *ctx, const char **args)
-typedef _MpvCommandNative =
-    Int32 Function(Pointer<MpvHandle> ctx, Pointer<Pointer<Utf8>> args);
-
-/// Dart signature for `mpv_command` — runs a command from a null-terminated
-/// argument array.
-typedef MpvCommand =
-    int Function(Pointer<MpvHandle> ctx, Pointer<Pointer<Utf8>> args);
 
 // int mpv_command_string(mpv_handle *ctx, const char *args)
 typedef _MpvCommandStringNative =
@@ -680,9 +652,6 @@ class MpvLibrary {
   /// Bound `mpv_get_property`.
   late final MpvGetProperty mpvGetProperty;
 
-  /// Bound `mpv_set_property`.
-  late final MpvSetProperty mpvSetProperty;
-
   /// Bound `mpv_set_property_async`.
   late final MpvSetPropertyAsync mpvSetPropertyAsync;
 
@@ -691,9 +660,6 @@ class MpvLibrary {
 
   /// Bound `mpv_command_async`.
   late final MpvCommandAsync mpvCommandAsync;
-
-  /// Bound `mpv_command`.
-  late final MpvCommand mpvCommand;
 
   /// Bound `mpv_command_string`.
   late final MpvCommandString mpvCommandString;
@@ -765,9 +731,6 @@ class MpvLibrary {
     mpvGetProperty = lib.lookupFunction<_MpvGetPropertyNative, MpvGetProperty>(
       'mpv_get_property',
     );
-    mpvSetProperty = lib.lookupFunction<_MpvSetPropertyNative, MpvSetProperty>(
-      'mpv_set_property',
-    );
     // The async variants enqueue on the core's dispatch and return without
     // waiting for the playloop (verified against the bundled source:
     // `run_async` = reserve_reply + mp_dispatch_enqueue; name/value are
@@ -785,9 +748,6 @@ class MpvLibrary {
         .lookupFunction<_MpvCommandAsyncNative, MpvCommandAsync>(
           'mpv_command_async',
         );
-    mpvCommand = lib.lookupFunction<_MpvCommandNative, MpvCommand>(
-      'mpv_command',
-    );
     mpvCommandString = lib
         .lookupFunction<_MpvCommandStringNative, MpvCommandString>(
           'mpv_command_string',
@@ -836,11 +796,9 @@ class MpvLibrary {
     mpvSetPropertyString = _mpvSetPropertyString;
     mpvGetPropertyString = _mpvGetPropertyString;
     mpvGetProperty = _mpvGetProperty;
-    mpvSetProperty = _mpvSetProperty;
     mpvSetPropertyAsync = _mpvSetPropertyAsync;
     mpvGetPropertyAsync = _mpvGetPropertyAsync;
     mpvCommandAsync = _mpvCommandAsync;
-    mpvCommand = _mpvCommand;
     mpvCommandString = _mpvCommandString;
     mpvWaitEvent = _mpvWaitEvent;
     mpvObserveProperty = _mpvObserveProperty;
@@ -940,14 +898,6 @@ external int _mpvGetProperty(
   Pointer<Void> data,
 );
 
-@Native<_MpvSetPropertyNative>(symbol: 'mpv_set_property')
-external int _mpvSetProperty(
-  Pointer<MpvHandle> ctx,
-  Pointer<Utf8> name,
-  int format,
-  Pointer<Void> data,
-);
-
 @Native<_MpvSetPropertyAsyncNative>(symbol: 'mpv_set_property_async')
 external int _mpvSetPropertyAsync(
   Pointer<MpvHandle> ctx,
@@ -971,9 +921,6 @@ external int _mpvCommandAsync(
   int replyUserdata,
   Pointer<Pointer<Utf8>> args,
 );
-
-@Native<_MpvCommandNative>(symbol: 'mpv_command')
-external int _mpvCommand(Pointer<MpvHandle> ctx, Pointer<Pointer<Utf8>> args);
 
 @Native<_MpvCommandStringNative>(symbol: 'mpv_command_string')
 external int _mpvCommandString(Pointer<MpvHandle> ctx, Pointer<Utf8> args);
