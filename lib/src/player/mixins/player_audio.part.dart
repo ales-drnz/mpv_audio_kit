@@ -315,10 +315,10 @@ mixin _AudioModule on _PlayerBase {
     // Snapshot the load epoch: a content-replacing call landing while the
     // URI resolves makes this add stale — the track belongs to the file
     // that is no longer playing (see [Player.open]).
-    final epoch = _loadEpoch;
+    final load = _snapshotLoad();
     await _gate();
     final resolved = await resolveUri(file.uri);
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }

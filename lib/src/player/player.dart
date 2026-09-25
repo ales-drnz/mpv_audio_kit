@@ -175,9 +175,9 @@ class Player extends _PlayerBase
   Future<void> open(Media media, {bool? play}) async {
     _checkNotDisposed();
     _validateLoadOptions(media);
-    final epoch = ++_loadEpoch;
+    final load = _claimLoad();
     await _gate();
-    if (epoch != _loadEpoch) return;
+    if (load.superseded) return;
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent (the play/pause axis), written at the call point —
     // BEFORE the `resolveUri` / trust-bundle awaits below — so a play() /
@@ -193,7 +193,7 @@ class Player extends _PlayerBase
     _mediaCache.clear();
     _mediaCache[media.uri] = media;
     final resolved = await resolveUri(media.uri);
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }
@@ -201,7 +201,7 @@ class Player extends _PlayerBase
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
     // the replace below, so they apply to the OLD file — see [_settleWrites].
     await _settleWrites();
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }
@@ -266,9 +266,9 @@ class Player extends _PlayerBase
       _validateLoadOptions(m);
     }
     // Claim the load epoch synchronously — see [open].
-    final epoch = ++_loadEpoch;
+    final load = _claimLoad();
     await _gate();
-    if (epoch != _loadEpoch) return;
+    if (load.superseded) return;
     final clampedIndex = index.clamp(0, medias.length - 1);
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point, before the resolve / tls
@@ -297,7 +297,7 @@ class Player extends _PlayerBase
       for (final m in medias) {
         _mediaCache[m.uri] = m;
         final r = await resolveUri(m.uri);
-        if (_disposed || epoch != _loadEpoch) {
+        if (load.superseded) {
           await r.dispose?.call();
           for (final prior in resolved) {
             await prior.dispose?.call();
@@ -319,7 +319,7 @@ class Player extends _PlayerBase
     // Execute in-flight transport writes before the replace — see
     // [_settleWrites].
     await _settleWrites();
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       for (final prior in resolved) {
         await prior.dispose?.call();
       }
@@ -340,10 +340,10 @@ class Player extends _PlayerBase
     }
 
     await _command(['playlist-clear']);
-    if (_disposed || epoch != _loadEpoch) return bailDisposing();
+    if (load.superseded) return bailDisposing();
     final retainedCount =
         int.tryParse(await getRawProperty('playlist-count') ?? '') ?? 0;
-    if (_disposed || epoch != _loadEpoch) return bailDisposing();
+    if (load.superseded) return bailDisposing();
     var parkedAtEof = false;
     if (retainedCount > 0) {
       // A retained entry parked at EOF cannot survive the appends:
@@ -355,10 +355,10 @@ class Player extends _PlayerBase
       // PT_NEXT_ENTRY finds nothing and the core goes idle — where
       // appends provably never autostart.
       parkedAtEof = await getRawProperty('eof-reached') == 'yes';
-      if (_disposed || epoch != _loadEpoch) return bailDisposing();
+      if (load.superseded) return bailDisposing();
       if (parkedAtEof) {
         await _command(['playlist-remove', '0']);
-        if (_disposed || epoch != _loadEpoch) return bailDisposing();
+        if (load.superseded) return bailDisposing();
         // Barrier: wait for the core to actually reach idle before any
         // append. The remove's playback teardown runs asynchronously on
         // the playloop, and an append landing before it completes gets
@@ -369,10 +369,10 @@ class Player extends _PlayerBase
         // playloop iteration; the bound only guards a wedged core.
         for (var i = 0; i < 100; i++) {
           if (await getRawProperty('idle-active') == 'yes') break;
-          if (_disposed || epoch != _loadEpoch) return bailDisposing();
+          if (load.superseded) return bailDisposing();
           await Future<void>.delayed(const Duration(milliseconds: 5));
         }
-        if (_disposed || epoch != _loadEpoch) return bailDisposing();
+        if (load.superseded) return bailDisposing();
       }
     }
     // Whether an old entry is still occupying position 0 (the playing
@@ -398,7 +398,7 @@ class Player extends _PlayerBase
           opts,
         ], medias[i]);
       }
-      if (_disposed || epoch != _loadEpoch) return bailDisposing();
+      if (load.superseded) return bailDisposing();
     }
 
     // ── Phase 3: intent, then one direct jump to the target ───────────
@@ -431,7 +431,7 @@ class Player extends _PlayerBase
     // positions. Tolerant `_command`: a concurrent surgery that already
     // emptied position 0 must not surface as an openAll error.
     if (retainedOld) {
-      if (_disposed || epoch != _loadEpoch) return bailDisposing();
+      if (load.superseded) return bailDisposing();
       await _command(['playlist-remove', '0']);
     }
     // Clear per-track state AFTER the jump's reply — see [open] for why
@@ -459,9 +459,9 @@ class Player extends _PlayerBase
     _checkNotDisposed();
     _validateLoadOptions(playlist);
     // Claim the load epoch synchronously — see [open].
-    final epoch = ++_loadEpoch;
+    final load = _claimLoad();
     await _gate();
-    if (epoch != _loadEpoch) return;
+    if (load.superseded) return;
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point — same rationale as [open].
     _updateField(
@@ -471,14 +471,14 @@ class Player extends _PlayerBase
     );
     _mediaCache.clear();
     final resolved = await resolveUri(playlist.uri);
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }
     // Execute in-flight transport writes before the replace — see
     // [_settleWrites].
     await _settleWrites();
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }
@@ -610,6 +610,14 @@ abstract class _PlayerBase {
   // AFTER a later one — the superseded media would win, and an in-flight
   // open() could resume past a stop() and restart playback.
   int _loadEpoch = 0;
+
+  /// Claims the load epoch for a content-replacing call: every earlier
+  /// load in flight is superseded from now on.
+  _LoadTicket _claimLoad() => _LoadTicket(this, ++_loadEpoch);
+
+  /// Snapshots the load epoch for a call that adds to the content (an
+  /// append): superseded if a content-replacing call lands meanwhile.
+  _LoadTicket _snapshotLoad() => _LoadTicket(this, _loadEpoch);
 
   // ── Property registry (the bulk of state — one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
@@ -1399,4 +1407,17 @@ abstract class _PlayerBase {
       _loudnessScanCtrl.close(),
     ]);
   }
+}
+
+/// A load-path call's view of the load epoch, taken with
+/// [_PlayerBase._claimLoad] or [_PlayerBase._snapshotLoad].
+final class _LoadTicket {
+  _LoadTicket(this._player, this._epoch);
+
+  final _PlayerBase _player;
+  final int _epoch;
+
+  /// Whether the player was disposed, or a later content-replacing call
+  /// took over, since the ticket was taken. Re-check after every await.
+  bool get superseded => _player._disposed || _player._loadEpoch != _epoch;
 }

@@ -20,11 +20,11 @@ mixin _PlaylistModule on _PlayerBase {
     // epoch: if a content-replacing call (open / stop / clearPlaylist)
     // lands while this append is still resolving its URI, the append is
     // stale and must not graft the old queue's entry onto the new one.
-    final epoch = _loadEpoch;
+    final load = _snapshotLoad();
     await _gate();
     _mediaCache[media.uri] = media;
     final resolved = await resolveUri(media.uri);
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }
@@ -148,12 +148,12 @@ mixin _PlaylistModule on _PlayerBase {
     _checkNotDisposed();
     _validateLoadOptions(media);
     // Snapshot the load epoch — same staleness rule as [add].
-    final epoch = _loadEpoch;
+    final load = _snapshotLoad();
     await _gate();
     await _checkPlaylistIndex(index, 'index');
     _mediaCache[media.uri] = media;
     final resolved = await resolveUri(media.uri);
-    if (_disposed || epoch != _loadEpoch) {
+    if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }
@@ -161,12 +161,12 @@ mixin _PlaylistModule on _PlayerBase {
     // Execute in-flight transport writes before the playlist surgery —
     // see [_settleWrites].
     await _settleWrites();
-    if (_disposed || epoch != _loadEpoch) return;
+    if (load.superseded) return;
     final (posErr, posValue) = await _getAsync(
       'playlist-pos',
       MpvFormat.mpvFormatString,
     );
-    if (_disposed || epoch != _loadEpoch) return;
+    if (load.superseded) return;
     final currentPos = posErr < 0
         ? -1
         : (int.tryParse(posValue as String? ?? '') ?? -1);
@@ -197,20 +197,19 @@ mixin _PlaylistModule on _PlayerBase {
     // would RESTART playback a concurrent stop() meant to halt, and
     // `playlist-remove` would delete a now-stale index. Bail and let the later
     // call own the surgery, matching the open() family's per-await discipline.
-    bool superseded() => _disposed || epoch != _loadEpoch;
     if (currentPos == index) {
       // Currently-playing entry: insert the replacement right after
       // the active position, then advance — mpv's playlist-prefetch
       // (already triggered by the insert) makes the cross-fade
       // gapless for typical music files. Finally drop the original.
       await insertAt(index + 1);
-      if (superseded()) return;
+      if (load.superseded) return;
       await _commandChecked(['playlist-next', 'force']);
-      if (superseded()) return;
+      if (load.superseded) return;
       await _commandChecked(['playlist-remove', index.toString()]);
     } else {
       await _commandChecked(['playlist-remove', index.toString()]);
-      if (superseded()) return;
+      if (load.superseded) return;
       await insertAt(index);
     }
   }
@@ -223,17 +222,17 @@ mixin _PlaylistModule on _PlayerBase {
     _checkNotDisposed();
     // Claim the load epoch synchronously so an in-flight open()/add()
     // can't repopulate the queue this call is clearing (see [Player.open]).
-    final epoch = ++_loadEpoch;
+    final load = _claimLoad();
     await _gate();
     _mediaCache.clear();
     // Execute in-flight transport writes first — see [_settleWrites].
     await _settleWrites();
-    if (_disposed || epoch != _loadEpoch) return;
+    if (load.superseded) return;
     // mpv's `playlist-clear` alone keeps the active entry; the
     // explicit `playlist-remove current` makes the call match the
     // method name.
     await _commandChecked(['playlist-clear']);
-    if (_disposed || epoch != _loadEpoch) return;
+    if (load.superseded) return;
     // Fails when nothing is current (an idle player): nothing to clear then.
     await _command(['playlist-remove', 'current']);
   }
