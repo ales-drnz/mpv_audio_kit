@@ -71,13 +71,13 @@ void main() {
           // the next playlist item. With prefetch enabled and a 2-item
           // playlist playing through, at least one non-idle emission must
           // reach the typed stream — otherwise the FFI bridge for
-          // MpvPrefetchState is broken end-to-end.
+          // PrefetchState is broken end-to-end.
           //
           // Skip if the loaded libmpv doesn't expose `prefetch-state` —
           // same pattern as the cover-art-mime smoke on iOS/Android.
           // Pre-subscribe so a fast prefetch.loading emit isn't missed.
           final emitted = player.stream.prefetchState
-              .firstWhere((s) => s != MpvPrefetchState.idle)
+              .firstWhere((s) => s != PrefetchState.idle)
               .timeout(const Duration(seconds: 10));
 
           await player.setPrefetchPlaylist(true);
@@ -91,10 +91,10 @@ void main() {
             expect(
               state,
               isIn([
-                MpvPrefetchState.loading,
-                MpvPrefetchState.ready,
-                MpvPrefetchState.used,
-                MpvPrefetchState.failed,
+                PrefetchState.loading,
+                PrefetchState.ready,
+                PrefetchState.used,
+                PrefetchState.failed,
               ]),
               reason:
                   'mpv must emit at least one non-idle prefetch state '

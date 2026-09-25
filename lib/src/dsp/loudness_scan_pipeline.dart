@@ -14,7 +14,7 @@ import 'dsp_async_io.dart';
 /// Offline loudness-scan pipeline.
 ///
 /// Listener-gated by [setEnabled]: while a listener is attached to
-/// [PlayerStream.loudness] the player writes the
+/// [PlayerStream.loudnessScan] the player writes the
 /// `loudness-scan-enabled` mpv property `true` (the native scan only
 /// runs while this flag is set) and the pipeline polls
 /// `loudness-scan-data` on a low-rate timer. On the last cancel the

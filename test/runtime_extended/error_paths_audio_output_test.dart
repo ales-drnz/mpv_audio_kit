@@ -17,7 +17,7 @@ void main() {
   //   audio-output-state == failed
   //     → registry dispatches via spec.parseAndDispatch
   //     → onAudioOutputState callback (default_specs.dart)
-  //     → buildAudioOutputError returns MpvLogError
+  //     → buildAudioOutputError returns LogError
   //     → _errorCtrl.add lands on Player.stream.error
   //
   // This test bypasses the libmpv AO layer (which is genuinely hard to
@@ -36,7 +36,7 @@ void main() {
         final errorFuture = player.stream.error
             .firstWhere(
               (e) =>
-                  e is MpvLogError &&
+                  e is LogError &&
                   e.text.toLowerCase().contains('audio output'),
             )
             .timeout(const Duration(seconds: 5));
@@ -46,7 +46,7 @@ void main() {
         player.debugDispatchProperty('audio-output-state', 'initializing');
         player.debugDispatchProperty('audio-output-state', 'failed');
 
-        final err = await errorFuture as MpvLogError;
+        final err = await errorFuture as LogError;
         expect(
           err.prefix,
           'mpv_audio_kit',
@@ -73,7 +73,7 @@ void main() {
           configuration: const PlayerConfiguration(logLevel: LogLevel.off),
         );
         try {
-          final errors = <MpvPlayerError>[];
+          final errors = <PlayerError>[];
           final sub = player.stream.error.listen(errors.add);
 
           player.debugDispatchProperty('audio-output-state', 'initializing');

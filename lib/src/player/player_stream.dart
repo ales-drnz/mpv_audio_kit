@@ -7,7 +7,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:mpv_audio_kit/src/events/mpv_hook_event.dart';
 import 'package:mpv_audio_kit/src/events/mpv_log_entry.dart';
-import 'package:mpv_audio_kit/src/events/mpv_player_error.dart';
+import 'package:mpv_audio_kit/src/events/player_error.dart';
 import 'package:mpv_audio_kit/src/generated/audio_effects.dart';
 import 'package:mpv_audio_kit/src/generated/audio_effects_settings.dart';
 import 'package:mpv_audio_kit/src/models/audio_params.dart';
@@ -41,7 +41,7 @@ import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/spectrum_settings.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:mpv_audio_kit/src/types/state/mpv_playback_state.dart';
-import 'package:mpv_audio_kit/src/types/state/mpv_prefetch_state.dart';
+import 'package:mpv_audio_kit/src/types/state/prefetch_state.dart';
 
 /// Typed streams of the [Player]'s state and events.
 ///
@@ -89,10 +89,16 @@ class PlayerStream {
     required this.spectrum,
     required this.waveform,
     required this.loudnessMeter,
-    required this.loudness,
-    required this.tap,
+    required this.loudnessScan,
+    required Stream<PcmFrame> Function(
+      AudioFilter filter, {
+      int instance,
+      required TapSide side,
+    })
+    tap,
     required this.mediaSessionCommands,
-  }) : playing = reactives.playing.stream,
+  }) : _tap = tap,
+       playing = reactives.playing.stream,
        playWhenReady = reactives.playWhenReady.stream,
        position = reactives.position.stream,
        duration = reactives.duration.stream,
@@ -456,7 +462,7 @@ class PlayerStream {
 
   /// Lifecycle of mpv's audio output: `closed → initializing → active`
   /// in the success path, `→ failed` if `ao_init_best()` returns a
-  /// NULL handle. A typed [MpvLogError] is emitted on [error] the
+  /// NULL handle. A typed [LogError] is emitted on [error] the
   /// moment this stream emits [AudioOutputState.failed].
   final Stream<AudioOutputState> audioOutputState;
 
@@ -479,9 +485,9 @@ class PlayerStream {
 
   /// Emits typed error events from the mpv engine.
   ///
-  /// Use pattern matching to distinguish [MpvEndFileError] (playback
-  /// failures) from [MpvLogError] (informational engine errors).
-  final Stream<MpvPlayerError> error;
+  /// Use pattern matching to distinguish [EndFileError] (playback
+  /// failures) from [LogError] (informational engine errors).
+  final Stream<PlayerError> error;
 
   /// Engine-side log entries from mpv at the configured log level
   /// (`PlayerConfiguration.logLevel`).
@@ -505,7 +511,7 @@ class PlayerStream {
 
   /// Lifecycle of mpv's background playlist-prefetch — works uniformly
   /// across HLS, DASH, raw HTTP, SMB, and local files.
-  final Stream<MpvPrefetchState> prefetchState;
+  final Stream<PrefetchState> prefetchState;
 
   /// How much of the next track is buffered ahead by the background
   /// prefetch, as a [Duration]. Pair with [prefetchState] for a
@@ -700,12 +706,18 @@ class PlayerStream {
   /// or reordered. Live streams without an active af chain emit no
   /// frames; the stream is silent (no error) when the loaded libmpv does
   /// not expose the filter-tap property.
+  Stream<PcmFrame> tap(
+    AudioFilter filter, {
+    int instance = 0,
+    required TapSide side,
+  }) => _tap(filter, instance: instance, side: side);
+
   final Stream<PcmFrame> Function(
     AudioFilter filter, {
     int instance,
     required TapSide side,
   })
-  tap;
+  _tap;
 
   /// Reactive view of the current [SpectrumSettings] — the configuration
   /// of the FFT pipeline (size, bands, window, emit rate, smoothing, dB
@@ -776,7 +788,7 @@ class PlayerStream {
   /// ReplayGain tags:
   ///
   /// ```dart
-  /// player.stream.loudness.listen((scan) {
+  /// player.stream.loudnessScan.listen((scan) {
   ///   if (scan?.state == LoudnessScanState.ready) {
   ///     player.setVolumeGain((-18.0 - scan!.integrated!).clamp(-24, 24));
   ///   }
@@ -793,7 +805,7 @@ class PlayerStream {
   ///
   /// **Lazy** — the native scan runs only while a listener is
   /// attached; an idle stream costs nothing.
-  final Stream<LoudnessScan?> loudness;
+  final Stream<LoudnessScan?> loudnessScan;
 
   // ── Media session ──────────────────────────────────────────────────
 

@@ -18,8 +18,8 @@ import '../dsp/spectrum_pipeline.dart';
 import '../dsp/waveform_pipeline.dart';
 import '../events/mpv_hook_event.dart';
 import '../events/mpv_log_entry.dart';
-import '../events/mpv_player_error.dart';
-import '../events/mpv_player_exception.dart';
+import '../events/player_error.dart';
+import '../events/player_exception.dart';
 import '../generated/audio_effects_settings.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
@@ -628,8 +628,8 @@ abstract class _PlayerBase {
   // ── Pure event streams (no current value) ───────────────────────────────
   final StreamController<MpvFileEndedEvent> _endFileCtrl =
       StreamController<MpvFileEndedEvent>.broadcast();
-  final StreamController<MpvPlayerError> _errorCtrl =
-      StreamController<MpvPlayerError>.broadcast();
+  final StreamController<PlayerError> _errorCtrl =
+      StreamController<PlayerError>.broadcast();
   // Log stream from the mpv engine itself (codec / demux / ao / …).
   final StreamController<MpvLogEntry> _logCtrl =
       StreamController<MpvLogEntry>.broadcast();
@@ -669,12 +669,12 @@ abstract class _PlayerBase {
   late final FilterTapPipeline _filterTapPipeline;
 
   // Live EBU R128 meter. Listener-gated: polls `af-metadata` only while
-  // `stream.loudness` has a listener (the `ebur128` effect itself is
+  // `stream.loudnessMeter` has a listener (the `ebur128` effect itself
   // is a stage the consumer puts in the effects chain).
   late final LoudnessMeterPipeline _loudnessMeterPipeline;
 
   // Offline loudness scan. Listener-gated: arms the native whole-file
-  // scan and polls only while `stream.loudness` has a listener.
+  // scan and polls only while `stream.loudnessScan` has a listener.
   late final LoudnessScanPipeline _loudnessScanPipeline;
 
   PlayerState get state => _state;
@@ -914,7 +914,7 @@ abstract class _PlayerBase {
       },
     );
     // Listener-gated like the waveform: the native whole-file scan runs
-    // only while someone is subscribed to `stream.loudness`.
+    // only while someone is subscribed to `stream.loudnessScan`.
     _loudnessScanCtrl = StreamController<LoudnessScan?>.broadcast(
       onListen: () {
         if (_bringUpCompleted) _loudnessScanPipeline.setEnabled(true);
@@ -952,7 +952,10 @@ abstract class _PlayerBase {
       ),
       waveform: replayStream(() => _lastWaveform, _waveformCtrl.stream),
       loudnessMeter: _loudnessMeterCtrl.stream,
-      loudness: replayStream(() => _lastLoudnessScan, _loudnessScanCtrl.stream),
+      loudnessScan: replayStream(
+        () => _lastLoudnessScan,
+        _loudnessScanCtrl.stream,
+      ),
       tap: (filter, {instance = 0, required side}) => switch (side) {
         TapSide.pre => _filterTapPipeline.tapPre(
           audioEffectLabel(filter.filterName, instance),
@@ -992,7 +995,7 @@ abstract class _PlayerBase {
   late final StreamController<SpectrumSettings> _spectrumCtrl;
   late final StreamController<WaveformData?> _waveformCtrl;
   // The last envelope and scan result, replayed to a new subscriber of
-  // `stream.waveform` and `stream.loudness`.
+  // `stream.waveform` and `stream.loudnessScan`.
   WaveformData? _lastWaveform;
   LoudnessScan? _lastLoudnessScan;
   late final StreamController<Loudness> _loudnessMeterCtrl;

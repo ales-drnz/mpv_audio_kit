@@ -16,7 +16,7 @@ enum AudioOutputState {
   /// AO opened successfully and is producing samples.
   active('active'),
 
-  /// AO initialization failed. A typed [MpvLogError] is emitted on
+  /// AO initialization failed. A typed [LogError] is emitted on
   /// [PlayerStream.error] when this state arrives.
   failed('failed');
 

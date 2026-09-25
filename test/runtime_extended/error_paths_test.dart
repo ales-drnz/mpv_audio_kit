@@ -87,14 +87,14 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test(
-        'error event also surfaces on Player.stream.error as MpvEndFileError',
+        'error event also surfaces on Player.stream.error as EndFileError',
         () async {
           // Subscribe to the typed error stream so we can assert the
-          // sealed-union mapping (endFile.error → MpvEndFileError on the
+          // sealed-union mapping (endFile.error → EndFileError on the
           // error stream).
-          final completer = Completer<MpvPlayerError>();
+          final completer = Completer<PlayerError>();
           final sub = player.stream.error.listen((err) {
-            if (err is MpvEndFileError && !completer.isCompleted) {
+            if (err is EndFileError && !completer.isCompleted) {
               completer.complete(err);
             }
           });
@@ -107,8 +107,8 @@ void main() {
             final err = await completer.future.timeout(
               const Duration(seconds: 5),
             );
-            expect(err, isA<MpvEndFileError>());
-            final endErr = err as MpvEndFileError;
+            expect(err, isA<EndFileError>());
+            final endErr = err as EndFileError;
             expect(endErr.reason, MpvEndFileReason.error);
             expect(endErr.code, lessThan(0));
             expect(endErr.message, isNotEmpty);

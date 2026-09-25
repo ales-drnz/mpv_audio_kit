@@ -5,7 +5,7 @@
 import '../types/state/loudness_scan_state.dart';
 
 /// Result of the offline loudness scan (EBU R128 / ITU-R BS.1770) of the
-/// loaded source, emitted on `PlayerStream.loudness`.
+/// loaded source, emitted on `PlayerStream.loudnessScan`.
 ///
 /// Unlike the live `PlayerStream.loudnessMeter` — which measures audio as
 /// it plays — the scan decodes the whole file off the playback path at
@@ -14,7 +14,7 @@ import '../types/state/loudness_scan_state.dart';
 /// for tracks without ReplayGain tags:
 ///
 /// ```dart
-/// player.stream.loudness.listen((scan) {
+/// player.stream.loudnessScan.listen((scan) {
 ///   if (scan?.state == LoudnessScanState.ready) {
 ///     final gainDb = -18.0 - scan!.integrated!; // ReplayGain 2.0 reference
 ///     player.setVolumeGain(gainDb.clamp(-24.0, 24.0));

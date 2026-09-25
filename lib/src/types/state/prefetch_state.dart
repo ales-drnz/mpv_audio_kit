@@ -13,7 +13,7 @@
 /// Backed by mpv's `prefetch-state` property, with the same lifecycle
 /// across every demuxer backend — HLS, DASH, raw HTTP range reads,
 /// SMB, local files.
-enum MpvPrefetchState {
+enum PrefetchState {
   /// No background prefetch is active. Default state.
   idle('idle'),
 
@@ -44,7 +44,7 @@ enum MpvPrefetchState {
   /// the next [loading] or a cancel resets it.
   failed('failed');
 
-  const MpvPrefetchState(this.mpvValue);
+  const PrefetchState(this.mpvValue);
 
   /// The wire-level string mpv emits for this phase.
   final String mpvValue;
@@ -52,10 +52,10 @@ enum MpvPrefetchState {
   /// Parses the string emitted by mpv. Unknown values fall back to
   /// [idle] so future mpv additions don't crash clients — they just
   /// see the phase treated as "not actively prefetching".
-  static MpvPrefetchState fromMpv(String value) {
-    for (final v in MpvPrefetchState.values) {
+  static PrefetchState fromMpv(String value) {
+    for (final v in PrefetchState.values) {
       if (v.mpvValue == value) return v;
     }
-    return MpvPrefetchState.idle;
+    return PrefetchState.idle;
   }
 }

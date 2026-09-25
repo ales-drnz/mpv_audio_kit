@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 /// Lifecycle of the offline loudness scan observed on
-/// `PlayerStream.loudness`.
+/// `PlayerStream.loudnessScan`.
 enum LoudnessScanState {
   /// No scan has run for the current source.
   idle,

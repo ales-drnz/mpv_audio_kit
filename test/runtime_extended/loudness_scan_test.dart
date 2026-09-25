@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 
-// Offline loudness scan (`stream.loudness`): the bundled libmpv
+// Offline loudness scan (`stream.loudnessScan`): the bundled libmpv
 // decodes the whole file off the playback path on load and reports the
 // EBU R128 measurement. The cross-check test pins the offline integrated
 // loudness against the live `ebur128` meter (an independent
@@ -36,7 +36,7 @@ void main() {
       () async {
         // The scan streams `scanning` snapshots before the terminal result, so
         // wait for the ready state specifically (not merely the first non-null).
-        final scan = player.stream.loudness
+        final scan = player.stream.loudnessScan
             .firstWhere((s) => s?.state == LoudnessScanState.ready)
             .timeout(const Duration(seconds: 15));
         await openAndWaitForLoad(player, fixture);
@@ -74,7 +74,7 @@ void main() {
       () async {
         // Offline measurement for the loaded fixture (already scanned in the
         // previous test — re-listen; the pipeline replays the cached result).
-        final offline = (await player.stream.loudness
+        final offline = (await player.stream.loudnessScan
             .firstWhere((s) => s?.state == LoudnessScanState.ready)
             .timeout(const Duration(seconds: 15)))!;
 
@@ -110,8 +110,8 @@ void main() {
 
     test('track change clears the result and rescans the new source', () async {
       final events = <LoudnessScan?>[];
-      final sub = player.stream.loudness.listen(events.add);
-      final fresh = player.stream.loudness
+      final sub = player.stream.loudnessScan.listen(events.add);
+      final fresh = player.stream.loudnessScan
           .firstWhere((s) => s?.state == LoudnessScanState.ready)
           .timeout(const Duration(seconds: 15));
       await openAndWaitForLoad(player, fixtureShort);

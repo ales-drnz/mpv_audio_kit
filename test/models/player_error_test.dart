@@ -3,30 +3,30 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 // Import via the public entry library so we get the typed `MpvEndFileReason`
-// from `models/events/mpv_player_error.dart` (and not the duplicate raw FFI enum
+// from `models/events/player_error.dart` (and not the duplicate raw FFI enum
 // of the same name from `mpv_bindings.dart`, which the public `library`
 // intentionally hides).
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('MpvPlayerError sealed switch', () {
+  group('PlayerError sealed switch', () {
     test('exhaustive pattern match compiles and dispatches by variant', () {
-      const endFile = MpvEndFileError(
+      const endFile = EndFileError(
         reason: MpvEndFileReason.error,
         code: MpvError.mpvErrorLoadingFailed,
         message: 'loading failed',
       );
-      const log = MpvLogError(
+      const log = LogError(
         prefix: 'ffmpeg',
         level: LogLevel.error,
         text: 'codec not found',
       );
 
-      String describe(MpvPlayerError e) {
+      String describe(PlayerError e) {
         return switch (e) {
-          MpvEndFileError() => 'end:${e.code}',
-          MpvLogError() => 'log:${e.prefix}',
+          EndFileError() => 'end:${e.code}',
+          LogError() => 'log:${e.prefix}',
         };
       }
 
@@ -35,14 +35,14 @@ void main() {
     });
 
     test('message getter routes to the variant payload', () {
-      const endFile = MpvEndFileError(
+      const endFile = EndFileError(
         reason: MpvEndFileReason.error,
         code: MpvError.mpvErrorLoadingFailed,
         message: 'mpv-supplied error string',
       );
       expect(endFile.message, 'mpv-supplied error string');
 
-      const log = MpvLogError(
+      const log = LogError(
         prefix: 'demux',
         level: LogLevel.error,
         text: 'failed to open',
@@ -51,9 +51,9 @@ void main() {
     });
   });
 
-  group('MpvEndFileErrorX predicates', () {
+  group('EndFileErrorX predicates', () {
     test('isLoadingError matches mpvErrorLoadingFailed', () {
-      const e = MpvEndFileError(
+      const e = EndFileError(
         reason: MpvEndFileReason.error,
         code: MpvError.mpvErrorLoadingFailed,
         message: '',
@@ -64,7 +64,7 @@ void main() {
     });
 
     test('isAudioOutputError matches mpvErrorAoInitFailed', () {
-      const e = MpvEndFileError(
+      const e = EndFileError(
         reason: MpvEndFileReason.error,
         code: MpvError.mpvErrorAoInitFailed,
         message: '',
@@ -75,12 +75,12 @@ void main() {
     });
 
     test('isFormatError matches both unknown-format and nothing-to-play', () {
-      const unknown = MpvEndFileError(
+      const unknown = EndFileError(
         reason: MpvEndFileReason.error,
         code: MpvError.mpvErrorUnknownFormat,
         message: '',
       );
-      const nothing = MpvEndFileError(
+      const nothing = EndFileError(
         reason: MpvEndFileReason.error,
         code: MpvError.mpvErrorNothingToPlay,
         message: '',
@@ -90,7 +90,7 @@ void main() {
     });
 
     test('zero code does not satisfy any predicate', () {
-      const e = MpvEndFileError(
+      const e = EndFileError(
         reason: MpvEndFileReason.eof,
         code: 0,
         message: '',

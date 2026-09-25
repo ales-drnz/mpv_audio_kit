@@ -9,27 +9,27 @@ import '../mpv_bindings.dart' hide MpvEndFileReason;
 import '../types/enums/log_level.dart';
 
 /// Typed error events delivered on [PlayerStream.error]. A sealed union
-/// over [MpvEndFileError] (playback failures) and [MpvLogError]
+/// over [EndFileError] (playback failures) and [LogError]
 /// (`error` / `fatal` log lines from an mpv subsystem). Pattern-match on
 /// the variant to distinguish them.
 ///
 /// ```dart
 /// player.stream.error.listen((error) {
 ///   switch (error) {
-///     case MpvEndFileError():
+///     case EndFileError():
 ///       print('Playback ended: reason=${error.reason}, code=${error.code}');
-///     case MpvLogError():
+///     case LogError():
 ///       print(error.message);
 ///   }
 /// });
 /// ```
-sealed class MpvPlayerError {
-  const MpvPlayerError();
+sealed class PlayerError {
+  const PlayerError();
 
   /// Human-readable error description.
   ///
-  /// For [MpvEndFileError] this is the mpv-supplied error string; for
-  /// [MpvLogError] it is `'[prefix] level: text'`.
+  /// For [EndFileError] this is the mpv-supplied error string; for
+  /// [LogError] it is `'[prefix] level: text'`.
   String get message;
 }
 
@@ -41,7 +41,7 @@ sealed class MpvPlayerError {
 /// disconnection mid-stream may report as [MpvEndFileReason.eof] rather
 /// than [MpvEndFileReason.error]. Use `Player.stream.endFile` and compare
 /// the player's position against duration to detect premature endings.
-final class MpvEndFileError extends MpvPlayerError {
+final class EndFileError extends PlayerError {
   /// Why the file ended.
   final MpvEndFileReason reason;
 
@@ -55,7 +55,7 @@ final class MpvEndFileError extends MpvPlayerError {
   final String message;
 
   /// Creates a playback-failure error from an mpv end-file event.
-  const MpvEndFileError({
+  const EndFileError({
     required this.reason,
     required this.code,
     required this.message,
@@ -64,7 +64,7 @@ final class MpvEndFileError extends MpvPlayerError {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is MpvEndFileError &&
+      (other is EndFileError &&
           other.reason == reason &&
           other.code == code &&
           other.message == message);
@@ -74,7 +74,7 @@ final class MpvEndFileError extends MpvPlayerError {
 
   @override
   String toString() =>
-      'MpvEndFileError(reason: $reason, code: $code, message: $message)';
+      'EndFileError(reason: $reason, code: $code, message: $message)';
 }
 
 /// A log message at `error` or `fatal` level from an mpv subsystem.
@@ -82,7 +82,7 @@ final class MpvEndFileError extends MpvPlayerError {
 /// These are informational errors from mpv's internal logging — they don't
 /// necessarily mean playback has stopped. For example, a codec warning or
 /// a filter configuration issue.
-final class MpvLogError extends MpvPlayerError {
+final class LogError extends PlayerError {
   /// The mpv subsystem that produced the message (e.g. `'ffmpeg'`,
   /// `'demux'`, `'ao'`).
   final String prefix;
@@ -94,7 +94,7 @@ final class MpvLogError extends MpvPlayerError {
   final String text;
 
   /// Creates a log-derived error from an `error` or `fatal` mpv log line.
-  const MpvLogError({
+  const LogError({
     required this.prefix,
     required this.level,
     required this.text,
@@ -106,7 +106,7 @@ final class MpvLogError extends MpvPlayerError {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is MpvLogError &&
+      (other is LogError &&
           other.prefix == prefix &&
           other.level == level &&
           other.text == text);
@@ -115,12 +115,11 @@ final class MpvLogError extends MpvPlayerError {
   int get hashCode => Object.hash(prefix, level, text);
 
   @override
-  String toString() =>
-      'MpvLogError(prefix: $prefix, level: $level, text: $text)';
+  String toString() => 'LogError(prefix: $prefix, level: $level, text: $text)';
 }
 
-/// Convenience predicates for [MpvEndFileError].
-extension MpvEndFileErrorX on MpvEndFileError {
+/// Convenience predicates for [EndFileError].
+extension EndFileErrorX on EndFileError {
   /// Whether this is likely a loading/network failure.
   bool get isLoadingError => code == MpvError.mpvErrorLoadingFailed;
 
@@ -198,7 +197,7 @@ enum MpvEndFileReason {
   /// The player is quitting.
   quit(MpvEndFileReason._quit),
 
-  /// An error caused playback to abort. The associated [MpvEndFileError.code]
+  /// An error caused playback to abort. The associated [EndFileError.code]
   /// contains the specific mpv error code.
   error(MpvEndFileReason._error),
 

@@ -92,12 +92,12 @@ void main() {
         );
       });
 
-      test('every exception is an MpvPlayerException', () async {
+      test('every exception is an PlayerException', () async {
         await player.dispose();
         Object? error;
         try {
           await player.setVolume(10);
-        } on MpvPlayerException catch (e) {
+        } on PlayerException catch (e) {
           error = e;
         }
         expect(error, isA<PlayerDisposedException>());

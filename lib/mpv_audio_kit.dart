@@ -26,16 +26,16 @@ library;
 export 'src/dsp/band_processor.dart' show BandProcessor;
 export 'src/events/mpv_hook_event.dart' show MpvHookEvent;
 export 'src/events/mpv_log_entry.dart' show MpvLogEntry;
-export 'src/events/mpv_player_error.dart'
+export 'src/events/player_error.dart'
     show
-        MpvPlayerError,
-        MpvEndFileError,
-        MpvEndFileErrorX,
-        MpvLogError,
+        PlayerError,
+        EndFileError,
+        EndFileErrorX,
+        LogError,
         MpvEndFileReason,
         MpvFileEndedEvent,
         MpvFileEndedEventX;
-export 'src/events/mpv_player_exception.dart';
+export 'src/events/player_exception.dart';
 export 'src/generated/audio_effects.dart';
 export 'src/generated/audio_effects_extensions.dart';
 export 'src/generated/audio_effects_settings.dart'
@@ -106,4 +106,4 @@ export 'src/types/settings/spectrum_settings.dart' show SpectrumSettings;
 export 'src/types/state/audio_output_state.dart' show AudioOutputState;
 export 'src/types/state/loudness_scan_state.dart' show LoudnessScanState;
 export 'src/types/state/mpv_playback_state.dart' show MpvPlaybackState;
-export 'src/types/state/mpv_prefetch_state.dart' show MpvPrefetchState;
+export 'src/types/state/prefetch_state.dart' show PrefetchState;

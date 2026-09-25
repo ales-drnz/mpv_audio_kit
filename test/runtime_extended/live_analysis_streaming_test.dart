@@ -173,14 +173,14 @@ void main() {
 
       final fracs = <double>[];
       var sawScanning = false;
-      final sub = player.stream.loudness.listen((s) {
+      final sub = player.stream.loudnessScan.listen((s) {
         if (s?.state == LoudnessScanState.scanning) {
           sawScanning = true;
           if (s?.progress != null) fracs.add(s!.progress!);
         }
       });
 
-      final readyF = player.stream.loudness
+      final readyF = player.stream.loudnessScan
           .firstWhere((s) => s?.state == LoudnessScanState.ready)
           .timeout(const Duration(seconds: 15));
       await openAndWaitForLoad(player, fixture);

@@ -20,7 +20,7 @@ import '../types/settings/cache_settings.dart';
 import '../types/settings/demuxer_settings.dart';
 import '../types/settings/replay_gain_settings.dart';
 import '../types/state/audio_output_state.dart';
-import '../types/state/mpv_prefetch_state.dart';
+import '../types/state/prefetch_state.dart';
 import 'default_reactives.dart';
 import 'mpv_property_spec.dart';
 import 'reactive_property.dart';
@@ -488,10 +488,10 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
 
     // `prefetch-state` is stream-only (no PlayerState field) —
     // exposed through `Player.stream.prefetchState`.
-    MpvPropertySpec<MpvPrefetchState>.string(
+    MpvPropertySpec<PrefetchState>.string(
       name: 'prefetch-state',
       reactive: r.prefetchState,
-      parse: (raw, _) => MpvPrefetchState.fromMpv(raw),
+      parse: (raw, _) => PrefetchState.fromMpv(raw),
       reduce: (_, s) => s,
     ),
     // `prefetch-cache-duration` is stream-only (no PlayerState field) —

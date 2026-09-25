@@ -15,7 +15,7 @@ import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/demuxer_settings.dart';
 import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
-import 'package:mpv_audio_kit/src/types/state/mpv_prefetch_state.dart';
+import 'package:mpv_audio_kit/src/types/state/prefetch_state.dart';
 import 'package:test/test.dart';
 
 /// End-to-end test of the default registry — every mpv property the public
@@ -222,7 +222,7 @@ void main() {
         final initialFingerprint = state;
 
         dispatch('prefetch-state', 'loading');
-        expect(reactives.prefetchState.value, MpvPrefetchState.loading);
+        expect(reactives.prefetchState.value, PrefetchState.loading);
         expect(
           state,
           equals(initialFingerprint),
@@ -230,13 +230,13 @@ void main() {
         );
 
         dispatch('prefetch-state', 'ready');
-        expect(reactives.prefetchState.value, MpvPrefetchState.ready);
+        expect(reactives.prefetchState.value, PrefetchState.ready);
       },
     );
 
     test('unknown prefetch values fall back to idle', () {
       dispatch('prefetch-state', 'totally-bogus');
-      expect(reactives.prefetchState.value, MpvPrefetchState.idle);
+      expect(reactives.prefetchState.value, PrefetchState.idle);
     });
 
     test('prefetch-playlist flag round-trips into state.prefetchPlaylist', () {

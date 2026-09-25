@@ -8,7 +8,7 @@
 /// ```dart
 /// try {
 ///   await player.seek(position);
-/// } on MpvPlayerException catch (e) {
+/// } on PlayerException catch (e) {
 ///   switch (e) {
 ///     case PlayerDisposedException():
 ///     case PlayerInitException(:final message):
@@ -20,12 +20,12 @@
 ///
 /// Invalid arguments are programming errors and throw [ArgumentError] or
 /// [RangeError] instead, before anything reaches libmpv.
-sealed class MpvPlayerException implements Exception {
-  const MpvPlayerException();
+sealed class PlayerException implements Exception {
+  const PlayerException();
 }
 
 /// The [Player] was disposed before or during the call.
-final class PlayerDisposedException extends MpvPlayerException {
+final class PlayerDisposedException extends PlayerException {
   /// Creates the exception thrown by a call on a disposed player.
   const PlayerDisposedException();
 
@@ -35,7 +35,7 @@ final class PlayerDisposedException extends MpvPlayerException {
 
 /// The [Player] could not start: libmpv failed to load or initialize.
 /// Every call on that player throws it.
-final class PlayerInitException extends MpvPlayerException {
+final class PlayerInitException extends PlayerException {
   /// Creates the exception with the reason bring-up failed.
   const PlayerInitException(this.message);
 
@@ -49,7 +49,7 @@ final class PlayerInitException extends MpvPlayerException {
 /// libmpv rejected a command or a property write: an unknown property or
 /// command, a value it refuses, or a command with nothing to act on (a
 /// seek with no file loaded).
-final class MpvCommandException extends MpvPlayerException {
+final class MpvCommandException extends PlayerException {
   /// Creates the exception for a request libmpv rejected.
   const MpvCommandException({
     required this.name,
@@ -74,7 +74,7 @@ final class MpvCommandException extends MpvPlayerException {
 /// libmpv: a missing `asset://`, or an Android `content://` URI the app
 /// cannot read. Failures inside libmpv (a 404, an unsupported format)
 /// arrive on `stream.error` instead, since playback is asynchronous.
-final class SourceException extends MpvPlayerException {
+final class SourceException extends PlayerException {
   /// Creates the exception for [uri] with the reason it failed.
   const SourceException(this.uri, this.message);
 

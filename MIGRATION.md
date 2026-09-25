@@ -99,7 +99,7 @@ await player.updateAudioEffects(
 
 ## One family of exceptions
 
-Every exception a call throws is now a sealed `MpvPlayerException`:
+Every exception a call throws is now a sealed `PlayerException`:
 
 | 0.4.x | 0.5.0 |
 | --- | --- |
@@ -121,6 +121,24 @@ Other changes to handle:
 - `stop()`, `setShuffle()`, `reloadAudio()`, `rescanExternalFiles()` and
   `writeResumeConfig()` throw `MpvCommandException` when mpv rejects them,
   like the other methods.
+
+## Renamed types and streams
+
+The `Mpv` prefix now marks only types that carry mpv's own data
+(`MpvError`, `MpvLogEntry`, `MpvHookEvent`, `MpvTrack`,
+`MpvFileEndedEvent`, `MpvEndFileReason`, `MpvCommandException`).
+`MpvPlaybackState` keeps it so it doesn't clash with audio_service's
+`PlaybackState`.
+
+| 0.4.x | 0.5.0 |
+| --- | --- |
+| `MpvPlayerError` | `PlayerError` |
+| `MpvEndFileError`, `MpvEndFileErrorX` | `EndFileError`, `EndFileErrorX` |
+| `MpvLogError` | `LogError` |
+| `MpvPrefetchState` | `PrefetchState` |
+| `player.stream.loudness` | `player.stream.loudnessScan` |
+
+`player.stream.tap(...)` is now a method; calls don't change.
 
 ## State streams start from the current value
 

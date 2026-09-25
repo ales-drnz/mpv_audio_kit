@@ -25,7 +25,7 @@ import '../_helpers/setter_test_helpers.dart';
 /// (Jellyfin/Plex transcode) the waveform is grown live by the af-tap, so the
 /// restart wiped every already-accumulated bin — the envelope visibly
 /// collapsed the moment the user opened the Now-Playing sheet (which
-/// subscribes to `stream.loudness`). For such a source an integrated loudness
+/// subscribes to `stream.loudnessScan`). For such a source an integrated loudness
 /// is impossible anyway (a live transcode cannot be rewound and scanned in
 /// full), so the restart was pure loss.
 ///
@@ -136,7 +136,7 @@ void main() {
         // THE TRIGGER: subscribe to the loudness scan → writes
         // `loudness-scan-enabled = yes`. Pre-fix this restarted the analyzer and
         // wiped the envelope above.
-        final loudTerminal = player.stream.loudness
+        final loudTerminal = player.stream.loudnessScan
             .firstWhere(
               (s) =>
                   s != null &&

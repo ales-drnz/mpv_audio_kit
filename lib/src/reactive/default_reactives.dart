@@ -17,7 +17,7 @@ import '../types/settings/cache_settings.dart';
 import '../types/settings/demuxer_settings.dart';
 import '../types/settings/replay_gain_settings.dart';
 import '../types/state/audio_output_state.dart';
-import '../types/state/mpv_prefetch_state.dart';
+import '../types/state/prefetch_state.dart';
 import 'reactive_property.dart';
 
 /// Bundles the [ReactiveProperty]s that back state fields the registry
@@ -267,8 +267,8 @@ class DefaultPropertyReactives {
   /// signal, not a snapshot value: the cell exists for dedup and dispose
   /// bookkeeping, but the value is exposed exclusively through
   /// [PlayerStream.prefetchState] — never read `.value` from outside.
-  final ReactiveProperty<MpvPrefetchState> prefetchState =
-      ReactiveProperty<MpvPrefetchState>(MpvPrefetchState.idle);
+  final ReactiveProperty<PrefetchState> prefetchState =
+      ReactiveProperty<PrefetchState>(PrefetchState.idle);
 
   /// Seconds of audio buffered ahead in the background prefetch
   /// (`prefetch-cache-duration`), as a [Duration]. Pair with

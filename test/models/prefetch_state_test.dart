@@ -6,21 +6,21 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('MpvPrefetchState.fromMpv', () {
+  group('PrefetchState.fromMpv', () {
     test('round-trips every known value', () {
       // Pair each enum variant with its expected mpv wire string. If a
       // future maintenance breaks the parse map, this test fails before
       // production silently swallows a transition.
       const cases = {
-        'idle': MpvPrefetchState.idle,
-        'loading': MpvPrefetchState.loading,
-        'ready': MpvPrefetchState.ready,
-        'used': MpvPrefetchState.used,
-        'failed': MpvPrefetchState.failed,
+        'idle': PrefetchState.idle,
+        'loading': PrefetchState.loading,
+        'ready': PrefetchState.ready,
+        'used': PrefetchState.used,
+        'failed': PrefetchState.failed,
       };
       for (final entry in cases.entries) {
         expect(
-          MpvPrefetchState.fromMpv(entry.key),
+          PrefetchState.fromMpv(entry.key),
           entry.value,
           reason: 'parse("${entry.key}") should be ${entry.value}',
         );
@@ -32,20 +32,20 @@ void main() {
       // future mpv values rather than throwing — this is a
       // forward-compatibility guarantee for hosts running mismatched
       // wrapper / mpv versions.
-      expect(MpvPrefetchState.fromMpv('totally-bogus'), MpvPrefetchState.idle);
-      expect(MpvPrefetchState.fromMpv(''), MpvPrefetchState.idle);
+      expect(PrefetchState.fromMpv('totally-bogus'), PrefetchState.idle);
+      expect(PrefetchState.fromMpv(''), PrefetchState.idle);
       expect(
-        MpvPrefetchState.fromMpv('IDLE'),
-        MpvPrefetchState.idle,
+        PrefetchState.fromMpv('IDLE'),
+        PrefetchState.idle,
         reason: 'parse is case-sensitive (mpv emits lowercase)',
       );
     });
 
     test('every variant is reachable via parse', () {
-      final reachable = MpvPrefetchState.values
-          .map((v) => MpvPrefetchState.fromMpv(v.name))
+      final reachable = PrefetchState.values
+          .map((v) => PrefetchState.fromMpv(v.name))
           .toSet();
-      expect(reachable.length, MpvPrefetchState.values.length);
+      expect(reachable.length, PrefetchState.values.length);
     });
   });
 }

@@ -10,7 +10,7 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 
-import '../events/mpv_player_exception.dart';
+import '../events/player_exception.dart';
 import '../mpv_bindings.dart' as mpv;
 
 part 'isolate_events.dart';

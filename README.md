@@ -342,7 +342,7 @@ dependencies:
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/triangle-alert.png" width="32"></td>
-<td valign="middle"><b>Typed errors</b><br>sealed <a href="#111-typed-error-stream"><code>MpvPlayerError</code></a> hierarchy plus dedicated sinks for engine errors, end-file events, AO failures, and logs.</td>
+<td valign="middle"><b>Typed errors</b><br>sealed <a href="#111-typed-error-stream"><code>PlayerError</code></a> hierarchy plus dedicated sinks for engine errors, end-file events, AO failures, and logs.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/terminal.png" width="32"></td>
 <td valign="middle"><b>Raw access</b><br>read or write any mpv property or command; a rejection throws <a href="#116-exceptions"><code>MpvCommandException</code></a>.</td>
 </tr>
@@ -1847,21 +1847,21 @@ warnings when a prefetch is dropped without parsing log lines.
 ```dart
 player.stream.prefetchState.listen((state) {
   switch (state) {
-    case MpvPrefetchState.idle:
+    case PrefetchState.idle:
       // No background prefetch in progress.
-    case MpvPrefetchState.loading:
+    case PrefetchState.loading:
       // The opener thread is creating the demuxer for the next item
       // and the secondary cache is filling.
       showIndicator('Prefetching…');
-    case MpvPrefetchState.ready:
+    case PrefetchState.ready:
       // Secondary demuxer is open AND idle (cache-secs reached,
       // no segment fetches outstanding). Gapless is armed.
       showIndicator('Ready');
-    case MpvPrefetchState.used:
+    case PrefetchState.used:
       // Edge-trigger: the track just transitioned gaplessly.
       // Fires once and then drops back to `idle`.
       showIndicator('Using prefetched');
-    case MpvPrefetchState.failed:
+    case PrefetchState.failed:
       // Edge-trigger: the opener thread failed (network error,
       // unsupported codec, on_load hook abort).
       showIndicator('Prefetch failed');
@@ -2042,20 +2042,20 @@ through these methods.
 
 #### 11.1 Typed error stream
 
-The error stream emits `MpvPlayerError`, a sealed class with two subtypes that let you distinguish between playback failures and informational engine errors:
+The error stream emits `PlayerError`, a sealed class with two subtypes that let you distinguish between playback failures and informational engine errors:
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.png" width="100%">
 
 ```dart
 player.stream.error.listen((error) {
   switch (error) {
-    case MpvEndFileError():
+    case EndFileError():
       // Playback ended due to an error (e.g. network timeout, file not found).
       print('End-file error: reason=${error.reason}, code=${error.code}');
       print('  isLoadingError: ${error.isLoadingError}');
       print('  isAudioOutputError: ${error.isAudioOutputError}');
       print('  isFormatError: ${error.isFormatError}');
-    case MpvLogError():
+    case LogError():
       // An mpv subsystem logged at error or fatal level (e.g. codec issue).
       // Does NOT necessarily mean playback has stopped.
       print('Log error [${error.prefix}] ${error.level}: ${error.message}');
@@ -2063,14 +2063,14 @@ player.stream.error.listen((error) {
 });
 ```
 
-`MpvEndFileError`, emitted when `MPV_EVENT_END_FILE` fires with a non-zero error code:
+`EndFileError`, emitted when `MPV_EVENT_END_FILE` fires with a non-zero error code:
 - `reason`: a `MpvEndFileReason` enum (`eof`, `stop`, `quit`, `error`, `redirect`)
 - `code`: the raw mpv error code (e.g. `-13` for `MPV_ERROR_LOADING_FAILED`)
 - `isLoadingError`: `true` for network or file loading failures
 - `isAudioOutputError`: `true` when the audio output driver failed to initialize
 - `isFormatError`: `true` when the file format is unrecognizable or has no audio
 
-`MpvLogError`, emitted when mpv logs at `error` or `fatal` level:
+`LogError`, emitted when mpv logs at `error` or `fatal` level:
 - `prefix`: the mpv subsystem (e.g. `'ffmpeg'`, `'ao'`, `'demux'`)
 - `level`: `LogLevel` (`LogLevel.error` or `LogLevel.fatal`)
 - `text`: the raw log line from the mpv subsystem
@@ -2137,7 +2137,7 @@ player.stream.audioOutputState.listen((state) {
 });
 ```
 
-The library also surfaces a typed `MpvLogError` on `stream.error` the
+The library also surfaces a typed `LogError` on `stream.error` the
 moment the AO transitions to `failed`, so you don't need a separate
 listener for the "no sound" case.
 
@@ -2175,7 +2175,7 @@ await player.setLogLevel(LogLevel.off);   // silence the engine
 #### 11.6 Exceptions
 
 The streams above report what happens during playback. A call that
-fails throws a `MpvPlayerException`, a sealed class:
+fails throws a `PlayerException`, a sealed class:
 
 - `PlayerDisposedException`: the player was disposed.
 - `PlayerInitException`: libmpv could not load or start. Every call on
@@ -2188,7 +2188,7 @@ fails throws a `MpvPlayerException`, a sealed class:
 ```dart
 try {
   await player.seek(position);
-} on MpvPlayerException catch (e) {
+} on PlayerException catch (e) {
   switch (e) {
     case PlayerDisposedException():
       break;
@@ -2574,7 +2574,7 @@ player.stream.waveform.listen((wave) {
 #### 13.6 Loudness
 
 The EBU R128 loudness of the loaded track is exposed via
-`player.stream.loudness`, measured like the waveform: the whole file is
+`player.stream.loudnessScan`, measured like the waveform: the whole file is
 decoded off the playback path moments after it loads, at many times
 realtime. One terminal `LoudnessScan` per track — integrated LUFS,
 loudness range, sample peak and true peak — before the audio has even
@@ -2584,7 +2584,7 @@ This is how you volume-normalize a library whose files carry no
 ReplayGain tags:
 
 ```dart
-player.stream.loudness.listen((scan) {
+player.stream.loudnessScan.listen((scan) {
   if (scan?.state == LoudnessScanState.ready) {
     // ReplayGain 2.0 reference is -18 LUFS.
     player.setVolumeGain((-18.0 - scan!.integrated!).clamp(-24.0, 24.0));

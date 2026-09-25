@@ -20,7 +20,7 @@ import 'dsp_async_io.dart';
 /// label this pipeline polls.
 ///
 /// Listener-gated by [setEnabled] (driven by the player's `loudness`
-/// controller): polling runs only while `PlayerStream.loudness` has a
+/// controller): polling runs only while `PlayerStream.loudnessMeter` has a
 /// listener, so an unused meter costs nothing. While the filter is not
 /// in the chain the poll reads nothing and emits nothing.
 @internal

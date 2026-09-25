@@ -8,7 +8,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('buildAudioOutputError', () {
-    test('returns an MpvLogError on AudioOutputState.failed', () {
+    test('returns an LogError on AudioOutputState.failed', () {
       final err = buildAudioOutputError(AudioOutputState.failed);
       expect(err, isNotNull);
       expect(err!.prefix, 'mpv_audio_kit');
@@ -22,16 +22,14 @@ void main() {
       expect(buildAudioOutputError(AudioOutputState.active), isNull);
     });
 
-    test('emitted error round-trips through MpvPlayerError sealed type', () {
+    test('emitted error round-trips through PlayerError sealed type', () {
       // Future code that consumes the error stream uses a switch over the
-      // sealed `MpvPlayerError` union. Verify the helper's product is in
+      // sealed `PlayerError` union. Verify the helper's product is in
       // the right branch.
-      final MpvPlayerError err = buildAudioOutputError(
-        AudioOutputState.failed,
-      )!;
+      final PlayerError err = buildAudioOutputError(AudioOutputState.failed)!;
       final isLog = switch (err) {
-        MpvLogError() => true,
-        MpvEndFileError() => false,
+        LogError() => true,
+        EndFileError() => false,
       };
       expect(isLog, isTrue);
     });

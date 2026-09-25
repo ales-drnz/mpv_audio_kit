@@ -145,7 +145,7 @@ mixin _DispatchModule on _PlayerBase {
           );
           if (error < 0) {
             _errorCtrl.add(
-              MpvEndFileError(
+              EndFileError(
                 reason: typedReason,
                 code: error,
                 message: _errorString(error),
@@ -204,7 +204,7 @@ mixin _DispatchModule on _PlayerBase {
           _logCtrl.add(entry);
           if (typedLevel == LogLevel.error || typedLevel == LogLevel.fatal) {
             _errorCtrl.add(
-              MpvLogError(prefix: prefix, level: typedLevel, text: text),
+              LogError(prefix: prefix, level: typedLevel, text: text),
             );
           }
         case MpvEventHookFired(:final id, :final name):

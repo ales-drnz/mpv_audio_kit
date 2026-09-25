@@ -20,7 +20,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import '../events/mpv_player_exception.dart';
+import '../events/player_exception.dart';
 
 const MethodChannel _channel = MethodChannel('mpv_audio_kit');
 final Map<String, String> _assetCache = {};
