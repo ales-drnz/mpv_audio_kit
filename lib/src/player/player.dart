@@ -26,6 +26,7 @@ import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';
 import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
+import '../internals/mpv_client.dart';
 import '../internals/mpv_float.dart';
 import '../internals/orphan_handle_tracker.dart';
 import '../internals/uri_resolver.dart';
@@ -749,24 +750,9 @@ abstract class _PlayerBase {
   Future<(int, dynamic)> _getAsync(String name, int format);
   String _errorString(int code);
 
-  // ── Async-reply correlation ────────────────────────────────────────────
-  // Every `mpv_*_async` call is tagged with a fresh id; the event isolate
-  // forwards the matching reply and `_handleEvent` completes the future.
-  // Ids stay unique for the player's lifetime (an int in Dart does not
-  // wrap), and never collide with `mpv_observe_property` reply ids — those
-  // live in a different event namespace (PROPERTY_CHANGE).
-  int _nextReplyId = 1;
-  final Map<int, Completer<(int, Object?)>> _pendingReplies = {};
-  final Map<int, Completer<(int, dynamic)>> _pendingGetReplies = {};
-
-  /// Set true by dispose AFTER the event isolate has stopped and the pending
-  /// replies are about to be drained, immediately before `mpv_terminate_destroy`
-  /// frees the handle. The FFI primitives in `_FfiModule` check it so a
-  /// continuation the drain resumes (a multi-write setter suspended between
-  /// writes) never issues `mpv_*_async` against the freed handle. Distinct from
-  /// `_disposed` (set at the very start of dispose) because the dispose `quit`
-  /// must still reach mpv — it is issued while this is still false.
-  bool _ffiClosed = false;
+  /// The async request/reply channel to libmpv, created at bring-up
+  /// together with [_lib] and [_handle].
+  late final MpvClient _client;
 
   /// In-flight `registerHook` runs. `mpv_hook_add` locks the core and has no
   /// async variant, so it executes in a throwaway `Isolate.run` against the
@@ -774,24 +760,6 @@ abstract class _PlayerBase {
   /// `mpv_terminate_destroy` frees the handle, or the throwaway isolate would
   /// dereference freed memory (`lock_core(ctx)`).
   final Set<Future<void>> _pendingHookAdds = {};
-
-  /// Completes every still-pending async reply after the event isolate has
-  /// stopped (no reply can arrive anymore). Writes resolve as successes —
-  /// the request was accepted into the queue, matching the pre-async
-  /// behaviour where a call racing dispose still completed normally; reads
-  /// resolve as failures so they surface as `null` values.
-  void _drainPendingReplies() {
-    for (final completer in _pendingReplies.values) {
-      if (!completer.isCompleted) completer.complete((0, null));
-    }
-    _pendingReplies.clear();
-    for (final completer in _pendingGetReplies.values) {
-      if (!completer.isCompleted) {
-        completer.complete((MpvError.mpvErrorGeneric, null));
-      }
-    }
-    _pendingGetReplies.clear();
-  }
 
   /// See `_LoadValidationModule` (player_load_validation.part.dart).
   String _buildLoadfileOptions(Media media);
@@ -1106,12 +1074,7 @@ abstract class _PlayerBase {
   /// commands are executed first, restoring the old inter-call semantics
   /// while the main isolate stays free — under a stalled core the FUTURES
   /// queue up, not the UI thread.
-  Future<void> _settleWrites() {
-    if (_pendingReplies.isEmpty) return Future.value();
-    return Future.wait([
-      for (final completer in _pendingReplies.values) completer.future,
-    ]);
-  }
+  Future<void> _settleWrites() => _client.settleWrites();
 
   /// Rejects NaN / +Inf / -Inf before they reach `toStringAsFixed`,
   /// which would emit the literal `'NaN'` / `'Infinity'` and have mpv
@@ -1307,15 +1270,13 @@ abstract class _PlayerBase {
           hooksSettled = false;
         } catch (_) {}
       }
-      // From here no FFI may touch the handle: the drain below resumes any
-      // setter suspended between writes, and mpv_terminate_destroy frees the
-      // handle on the next synchronous line — the `_ffiClosed` guard in the
-      // FFI primitives makes those resumed continuations no-op instead of
-      // dereferencing freed memory.
-      _ffiClosed = true;
-      // No reply can arrive past this point; settle every in-flight call so
-      // an `await player.setX(...)` racing dispose never hangs.
-      _drainPendingReplies();
+      // From here no FFI may touch the handle, and no reply can arrive:
+      // closing the client resolves every in-flight call, so an
+      // `await player.setX(...)` racing dispose never hangs, and turns the
+      // continuations that resumes (a setter suspended between writes)
+      // into no-ops, since mpv_terminate_destroy frees the handle on the
+      // next synchronous line.
+      _client.close();
       if (exited && hooksSettled) {
         _lib.mpvTerminateDestroy(_handle);
       } else {
@@ -1337,8 +1298,6 @@ abstract class _PlayerBase {
       try {
         await _eventIsolate.stop();
       } catch (_) {}
-      _ffiClosed = true;
-      _drainPendingReplies();
     }
 
     // Tear down the media-session controller before closing the

@@ -66,64 +66,16 @@ mixin _FfiModule on _PlayerBase {
   }
 
   @override
-  Future<int> _propRc(String name, String value) {
-    // A multi-write setter (e.g. setReplayGain's four writes) can be
-    // suspended awaiting reply N when dispose() runs; `_drainPendingReplies`
-    // resumes it as a microtask, and `mpv_terminate_destroy` frees the handle
-    // on the next synchronous line — so the resumed continuation must NOT
-    // issue FFI against the freed handle. Report a synthetic success (the
-    // same contract the drain uses for a write racing dispose) and skip the
-    // native call entirely.
-    if (_ffiClosed) return Future.value(MpvError.mpvErrorSuccess);
-    final id = _nextReplyId++;
-    final completer = Completer<(int, Object?)>();
-    _pendingReplies[id] = completer;
-    final rc = using((arena) {
-      // STRING format: data is a `char**`.
-      final v = arena<Pointer<Utf8>>()
-        ..value = value.toNativeUtf8(allocator: arena);
-      return _lib.mpvSetPropertyAsync(
-        _handle,
-        id,
-        name.toNativeUtf8(allocator: arena),
-        MpvFormat.mpvFormatString,
-        v.cast(),
-      );
-    });
-    if (rc < 0) {
-      // Enqueue rejected (e.g. reply queue full) — no reply will come.
-      _pendingReplies.remove(id);
-      return Future.value(rc);
-    }
-    return completer.future.then((reply) => reply.$1);
-  }
+  Future<int> _propRc(String name, String value) =>
+      _client.setProperty(name, value);
 
   @override
   Future<int> _command(List<String> args) =>
       _commandResult(args).then((reply) => reply.$1);
 
   /// [_command] that also returns the command's decoded result node.
-  Future<(int, Object?)> _commandResult(List<String> args) {
-    // See `_propRc`: never issue FFI on a handle dispose may have freed.
-    if (_ffiClosed) return Future.value((MpvError.mpvErrorSuccess, null));
-    final id = _nextReplyId++;
-    final completer = Completer<(int, Object?)>();
-    _pendingReplies[id] = completer;
-    final rc = using((arena) {
-      final arr = arena<Pointer<Utf8>>(args.length + 1);
-      for (var i = 0; i < args.length; i++) {
-        arr[i] = args[i].toNativeUtf8(allocator: arena);
-      }
-      arr[args.length] = nullptr;
-      return _lib.mpvCommandAsync(_handle, id, arr);
-    });
-    if (rc < 0) {
-      // Parse error or full reply queue — rejected client-side, no reply.
-      _pendingReplies.remove(id);
-      return Future.value((rc, null));
-    }
-    return completer.future;
-  }
+  Future<(int, Object?)> _commandResult(List<String> args) =>
+      _client.command(args);
 
   /// Applies a settings bundle backed by several mpv properties: [writes]
   /// holds `(property, value, prior value)`. The state takes [next] first,
@@ -227,27 +179,8 @@ mixin _FfiModule on _PlayerBase {
   }
 
   @override
-  Future<(int, dynamic)> _getAsync(String name, int format) {
-    // See `_propRc`: never issue FFI on a handle dispose may have freed. A
-    // read racing dispose surfaces as `null` (same as the drain's contract).
-    if (_ffiClosed) return Future.value((MpvError.mpvErrorGeneric, null));
-    final id = _nextReplyId++;
-    final completer = Completer<(int, dynamic)>();
-    _pendingGetReplies[id] = completer;
-    final rc = using(
-      (arena) => _lib.mpvGetPropertyAsync(
-        _handle,
-        id,
-        name.toNativeUtf8(allocator: arena),
-        format,
-      ),
-    );
-    if (rc < 0) {
-      _pendingGetReplies.remove(id);
-      return Future.value((rc, null));
-    }
-    return completer.future;
-  }
+  Future<(int, dynamic)> _getAsync(String name, int format) =>
+      _client.getProperty(name, format);
 
   /// Writes [chapters] to mpv's `chapter-list` — a NODE-array property —
   /// via `mpv_set_property_async`, resolving with the raw mpv rc.
@@ -258,73 +191,52 @@ mixin _FfiModule on _PlayerBase {
   /// allocation is freed on return. An empty list writes an empty array
   /// (clears the chapters).
   @override
-  Future<int> _setChapterListNode(List<Chapter> chapters) {
-    // See `_propRc`: never issue FFI on a handle dispose may have freed.
-    if (_ffiClosed) return Future.value(MpvError.mpvErrorSuccess);
-    final id = _nextReplyId++;
-    final completer = Completer<(int, Object?)>();
-    _pendingReplies[id] = completer;
-    final rc = using((arena) {
-      final n = chapters.length;
-      final arrayList = arena<MpvNodeList>();
-      arrayList.ref.num = n;
-      // Arrays carry no keys (maps do); leave them null.
-      arrayList.ref.keys = nullptr;
-      if (n > 0) {
-        final elements = arena<MpvNode>(n);
-        for (var i = 0; i < n; i++) {
-          final ch = chapters[i];
-          // Two map entries per chapter: title (string) + time (double secs).
-          final entryValues = arena<MpvNode>(2);
-          final entryKeys = arena<Pointer<Utf8>>(2);
+  Future<int> _setChapterListNode(List<Chapter> chapters) =>
+      _client.setNodeProperty('chapter-list', (arena) {
+        final n = chapters.length;
+        final arrayList = arena<MpvNodeList>();
+        arrayList.ref.num = n;
+        // Arrays carry no keys (maps do); leave them null.
+        arrayList.ref.keys = nullptr;
+        if (n > 0) {
+          final elements = arena<MpvNode>(n);
+          for (var i = 0; i < n; i++) {
+            final ch = chapters[i];
+            // Two map entries per chapter: title (string) + time (double secs).
+            final entryValues = arena<MpvNode>(2);
+            final entryKeys = arena<Pointer<Utf8>>(2);
 
-          entryKeys[0] = 'title'.toNativeUtf8(allocator: arena);
-          entryValues[0].format = MpvFormat.mpvFormatString;
-          entryValues[0].u.string = (ch.title ?? '').toNativeUtf8(
-            allocator: arena,
-          );
+            entryKeys[0] = 'title'.toNativeUtf8(allocator: arena);
+            entryValues[0].format = MpvFormat.mpvFormatString;
+            entryValues[0].u.string = (ch.title ?? '').toNativeUtf8(
+              allocator: arena,
+            );
 
-          entryKeys[1] = 'time'.toNativeUtf8(allocator: arena);
-          entryValues[1].format = MpvFormat.mpvFormatDouble;
-          entryValues[1].u.double_ = ch.time.inMicroseconds / 1e6;
+            entryKeys[1] = 'time'.toNativeUtf8(allocator: arena);
+            entryValues[1].format = MpvFormat.mpvFormatDouble;
+            entryValues[1].u.double_ = ch.time.inMicroseconds / 1e6;
 
-          final map = arena<MpvNodeList>();
-          map.ref.num = 2;
-          map.ref.values = entryValues;
-          map.ref.keys = entryKeys;
+            final map = arena<MpvNodeList>();
+            map.ref.num = 2;
+            map.ref.values = entryValues;
+            map.ref.keys = entryKeys;
 
-          elements[i].format = MpvFormat.mpvFormatNodeMap;
-          elements[i].u.list = map;
+            elements[i].format = MpvFormat.mpvFormatNodeMap;
+            elements[i].u.list = map;
+          }
+          arrayList.ref.values = elements;
+        } else {
+          arrayList.ref.values = nullptr;
         }
-        arrayList.ref.values = elements;
-      } else {
-        arrayList.ref.values = nullptr;
-      }
 
-      final root = arena<MpvNode>();
-      root.ref.format = MpvFormat.mpvFormatNodeArray;
-      root.ref.u.list = arrayList;
-
-      return _lib.mpvSetPropertyAsync(
-        _handle,
-        id,
-        'chapter-list'.toNativeUtf8(allocator: arena),
-        MpvFormat.mpvFormatNode,
-        root.cast<Void>(),
-      );
-    });
-    if (rc < 0) {
-      _pendingReplies.remove(id);
-      return Future.value(rc);
-    }
-    return completer.future.then((reply) => reply.$1);
-  }
+        final root = arena<MpvNode>();
+        root.ref.format = MpvFormat.mpvFormatNodeArray;
+        root.ref.u.list = arrayList;
+        return root;
+      });
 
   @override
-  String _errorString(int code) {
-    final p = _lib.mpvErrorString(code);
-    return p == nullptr ? 'error $code' : p.cast<Utf8>().toDartString();
-  }
+  String _errorString(int code) => _client.errorString(code);
 
   // ── Public raw escape hatches ────────────────────────────────────────────
 
@@ -474,7 +386,7 @@ mixin _FfiModule on _PlayerBase {
 
   @override
   void _applyLogLevel(LogLevel level) {
-    if (_ffiClosed) return;
+    if (_client.isClosed) return;
     // `mpv_request_log_messages` is thread-safe and operates on the shared
     // client handle the same way the main-thread getRawProperty path does,
     // so there's no need to round-trip through the event isolate.

@@ -23,7 +23,7 @@ void main() {
       // setReplayGain issues four sequential async writes. Firing it un-awaited
       // and disposing immediately suspends it mid-sequence; dispose drains the
       // pending replies, which resumes the setter — its remaining writes must
-      // hit the `_ffiClosed` guard, not `mpv_*_async` on the destroyed handle.
+      // hit the closed `MpvClient`, not `mpv_*_async` on the destroyed handle.
       for (var i = 0; i < 6; i++) {
         final player = await buildPlayer();
         await openAndWaitForLoad(player, defaultFixturePath());

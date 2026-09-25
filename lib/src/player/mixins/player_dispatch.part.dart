@@ -23,16 +23,10 @@ mixin _DispatchModule on _PlayerBase {
     // protects controller add()s).
     switch (event) {
       case MpvEventReply(:final userdata, :final error, :final result):
-        final completer = _pendingReplies.remove(userdata);
-        if (completer != null && !completer.isCompleted) {
-          completer.complete((error, result));
-        }
+        _client.onReply(userdata, error, result);
         return;
       case MpvEventGetReply(:final userdata, :final error, :final value):
-        final completer = _pendingGetReplies.remove(userdata);
-        if (completer != null && !completer.isCompleted) {
-          completer.complete((error, materializeBytes(value)));
-        }
+        _client.onGetReply(userdata, error, materializeBytes(value));
         return;
       default:
         break;

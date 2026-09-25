@@ -53,6 +53,7 @@ mixin _InitModule on _PlayerBase {
     // in microseconds — no second cold-load cost.
     _lib = MpvLibrary.open(MpvAudioKit.libraryPath);
     _handle = Pointer<MpvHandle>.fromAddress(handleAddress);
+    _client = MpvClient(_lib, _handle);
     // Every DSP pipeline polls mpv through the async-get path (decoded in
     // the event isolate, reply-correlated) rather than a blocking FFI read,
     // so a visualizer's poll loop can never stall the main isolate while the
