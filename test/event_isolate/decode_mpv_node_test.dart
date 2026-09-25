@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'dart:ffi';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
@@ -162,6 +163,25 @@ void main() {
         final result = decodeMpvNode(node.ref);
         expect(result, isA<Uint8List>());
         expect(result, [0x42, 0x99, 0x00, 0xFF]);
+      } finally {
+        dispose();
+      }
+    });
+
+    test('transferBytes: a TransferableTypedData, materialized in place', () {
+      final (node, dispose) = _byteArray([0x42, 0x99, 0x00, 0xFF]);
+      try {
+        final bytes = decodeMpvNode(node.ref, transferBytes: true);
+        expect(bytes, isA<TransferableTypedData>());
+        final reply = <String, dynamic>{
+          'samples': bytes,
+          'nested': [bytes is TransferableTypedData ? 1 : 0],
+        };
+        final out = materializeBytes(reply)! as Map<String, dynamic>;
+        expect(identical(out, reply), isTrue);
+        expect(out['samples'], isA<Uint8List>());
+        expect(out['samples'], [0x42, 0x99, 0x00, 0xFF]);
+        expect(out['nested'], [1]);
       } finally {
         dispose();
       }

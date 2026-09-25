@@ -701,8 +701,12 @@ dynamic _decodePropertyValue(mpv.MpvEventProperty prop) {
     mpv.MpvFormat.mpvFormatString => decodeMpvString(
       prop.data.cast<Pointer<Utf8>>().value,
     ),
+    // Get replies carry the polled PCM, tap and waveform frames: their
+    // bytes cross to the main isolate as TransferableTypedData, copied
+    // once instead of twice.
     mpv.MpvFormat.mpvFormatNode => decodeMpvNode(
       prop.data.cast<mpv.MpvNode>().ref,
+      transferBytes: true,
     ),
     _ => null,
   };
@@ -743,7 +747,9 @@ String decodeMpvString(Pointer<Utf8> ptr) {
 ///   - `MPV_FORMAT_DOUBLE`      → [double]
 ///   - `MPV_FORMAT_NODE_ARRAY`  → `List<dynamic>` of recursively-decoded children
 ///   - `MPV_FORMAT_NODE_MAP`    → `Map<String, dynamic>` of recursively-decoded children
-///   - `MPV_FORMAT_BYTE_ARRAY`  → [Uint8List] copied out of mpv-owned memory
+///   - `MPV_FORMAT_BYTE_ARRAY`  → [Uint8List] copied out of mpv-owned memory,
+///     or with [transferBytes] a [TransferableTypedData], which crosses to
+///     the main isolate without a second copy (see [materializeBytes])
 ///
 /// The returned tree owns its memory: any data borrowed from mpv (strings,
 /// byte arrays) is copied during decoding so the caller can safely dispose
@@ -752,7 +758,7 @@ String decodeMpvString(Pointer<Utf8> ptr) {
 /// Exposed at top-level (rather than file-private) so unit tests can build
 /// synthetic `mpv_node` trees and exercise the decoder without spinning up
 /// a real player.
-dynamic decodeMpvNode(mpv.MpvNode node) {
+dynamic decodeMpvNode(mpv.MpvNode node, {bool transferBytes = false}) {
   switch (node.format) {
     case mpv.MpvFormat.mpvFormatString:
       return decodeMpvString(node.u.string.cast());
@@ -765,7 +771,8 @@ dynamic decodeMpvNode(mpv.MpvNode node) {
     case mpv.MpvFormat.mpvFormatNodeArray:
       final list = node.u.list.ref;
       return [
-        for (var i = 0; i < list.num; i++) decodeMpvNode((list.values + i).ref),
+        for (var i = 0; i < list.num; i++)
+          decodeMpvNode((list.values + i).ref, transferBytes: transferBytes),
       ];
     case mpv.MpvFormat.mpvFormatNodeMap:
       final list = node.u.list.ref;
@@ -773,12 +780,16 @@ dynamic decodeMpvNode(mpv.MpvNode node) {
         for (var i = 0; i < list.num; i++)
           decodeMpvString((list.keys + i).value.cast()): decodeMpvNode(
             (list.values + i).ref,
+            transferBytes: transferBytes,
           ),
       };
     case mpv.MpvFormat.mpvFormatByteArray:
       final ba = node.u.ba.ref;
       // Copy out of mpv-owned memory before the caller frees the node.
-      return Uint8List.fromList(ba.data.cast<Uint8>().asTypedList(ba.size));
+      final bytes = ba.data.cast<Uint8>().asTypedList(ba.size);
+      return transferBytes
+          ? TransferableTypedData.fromList([bytes])
+          : Uint8List.fromList(bytes);
     default:
       return null;
   }

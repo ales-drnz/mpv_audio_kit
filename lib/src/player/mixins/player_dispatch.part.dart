@@ -31,7 +31,7 @@ mixin _DispatchModule on _PlayerBase {
       case MpvEventGetReply(:final userdata, :final error, :final value):
         final completer = _pendingGetReplies.remove(userdata);
         if (completer != null && !completer.isCompleted) {
-          completer.complete((error, value));
+          completer.complete((error, materializeBytes(value)));
         }
         return;
       default:

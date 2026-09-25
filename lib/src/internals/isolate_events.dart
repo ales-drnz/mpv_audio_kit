@@ -231,3 +231,25 @@ class MpvEventHookFired extends MpvIsolateEvent {
   /// Carries the fired hook's [id] and [name].
   MpvEventHookFired(this.id, this.name);
 }
+
+/// Turns the [TransferableTypedData] byte arrays of a get reply back into
+/// [Uint8List]s, in place, on the receiving isolate. Maps and lists are
+/// walked; other values are returned as they are.
+Object? materializeBytes(Object? value) {
+  switch (value) {
+    case TransferableTypedData():
+      return value.materialize().asUint8List();
+    case Map<String, dynamic>():
+      for (final entry in value.entries.toList(growable: false)) {
+        value[entry.key] = materializeBytes(entry.value);
+      }
+      return value;
+    case List<dynamic>():
+      for (var i = 0; i < value.length; i++) {
+        value[i] = materializeBytes(value[i]);
+      }
+      return value;
+    default:
+      return value;
+  }
+}
