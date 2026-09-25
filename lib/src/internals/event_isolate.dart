@@ -23,7 +23,9 @@ part 'isolate_messages.dart';
 /// measured ~11 Hz on macOS coreaudio (mpv 0.41), but AO-dependent and not
 /// guaranteed across platforms. ~33ms ≈ 30Hz is comfortably inside
 /// human-perception territory for a progress bar update and keeps the
-/// message bus uncluttered on outputs that tick faster.
+/// message bus uncluttered on outputs that tick faster. A value that falls
+/// inside the window is held and sent when it closes, so the last one
+/// before mpv goes quiet (a pause) is never lost.
 const int _kClockThrottleMs = 33;
 
 /// The properties the throttle applies to: every member is a pure function
@@ -200,7 +202,7 @@ void _runEventLoop(
     if (wakeupCounter != null) {
       wakeupCounter.value = wakeupCounter.value + 1;
     }
-    final event = lib.mpvWaitEvent(handle, _kWaitEventTimeoutSeconds);
+    final event = lib.mpvWaitEvent(handle, _waitTimeoutSeconds(cache));
 
     // Re-read the flag the instant the wait returns. `requestStop` sets the
     // flag THEN calls `mpv_wakeup`, so a wakeup-driven return lands here with
@@ -215,6 +217,7 @@ void _runEventLoop(
     // MPV_EVENT_NONE on a positive-timeout expiry, or on an `mpv_wakeup` with
     // no pending event — nothing to dispatch, loop and re-check the flag.
     if (id == mpv.MpvEventId.mpvEventNone) {
+      _flushTrailing(toMain, cache);
       continue;
     }
 
@@ -224,6 +227,7 @@ void _runEventLoop(
     // for the Player's lifetime while playback keeps running.
     try {
       _dispatchEvent(lib, handle, toMain, event, cache);
+      _flushTrailing(toMain, cache);
     } catch (e, st) {
       toMain.send(
         MpvEventLog('event-isolate', 'error', 'event dispatch failed: $e\n$st'),
@@ -507,6 +511,41 @@ class _PropertyCache {
   final lastValues = <String, dynamic>{};
   final lastTimestamps = <String, int>{};
   final unavailable = <String>{};
+
+  /// The newest value of each throttled property held back inside its
+  /// window, sent when the window closes.
+  final trailing = <String, double>{};
+}
+
+/// The `mpv_wait_event` timeout: [_kWaitEventTimeoutSeconds], shortened to
+/// the end of the earliest throttle window while a value is held back.
+double _waitTimeoutSeconds(_PropertyCache cache) {
+  if (cache.trailing.isEmpty) return _kWaitEventTimeoutSeconds;
+  final now = _throttleClock.elapsedMilliseconds;
+  var remaining = _kClockThrottleMs;
+  for (final name in cache.trailing.keys) {
+    final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
+    final left = last + _kClockThrottleMs - now;
+    if (left < remaining) remaining = left;
+  }
+  if (remaining <= 0) return 0;
+  final seconds = remaining / 1000;
+  return seconds < _kWaitEventTimeoutSeconds
+      ? seconds
+      : _kWaitEventTimeoutSeconds;
+}
+
+/// Sends the held-back values whose throttle window has closed, so the
+/// last clock value before mpv goes quiet (a pause) still arrives.
+void _flushTrailing(SendPort toMain, _PropertyCache cache) {
+  if (cache.trailing.isEmpty) return;
+  final now = _throttleClock.elapsedMilliseconds;
+  for (final name in cache.trailing.keys.toList(growable: false)) {
+    final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
+    if (now - last < _kClockThrottleMs) continue;
+    final value = cache.trailing.remove(name)!;
+    _forwardValue(toMain, name, mpv.MpvFormat.mpvFormatDouble, value, cache);
+  }
 }
 
 void _dispatchProperty(
@@ -560,9 +599,13 @@ void _forwardValue(
     final now = _throttleClock.elapsedMilliseconds;
     final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
     if (now - last < _kClockThrottleMs) {
+      // Held, not dropped: mpv may send nothing more (a pause), so the
+      // newest value goes out when the window closes (_flushTrailing).
+      cache.trailing[name] = value as double;
       return;
     }
     cache.lastTimestamps[name] = now;
+    cache.trailing.remove(name);
   }
 
   if (format == mpv.MpvFormat.mpvFormatNode) {
@@ -602,6 +645,7 @@ void _forwardValue(
 /// for [_rereadUnavailable].
 void _forwardUnavailable(SendPort toMain, String name, _PropertyCache cache) {
   cache.lastTimestamps.remove(name);
+  cache.trailing.remove(name);
   if (!cache.lastValues.containsKey(name)) return;
   cache.lastValues.remove(name);
   cache.unavailable.add(name);
