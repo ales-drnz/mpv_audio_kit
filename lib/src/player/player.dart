@@ -941,13 +941,18 @@ abstract class _PlayerBase {
       internalLog: _internalLogCtrl.stream,
       hook: _hookCtrl.stream,
       seekCompleted: _seekCompletedCtrl.stream,
-      coverArt: _coverArtCtrl.stream,
+      coverArt: replayStream(() => _state.coverArt, _coverArtCtrl.stream),
       fft: _fftCtrl.stream,
       pcm: _pcmStreamCtrl.stream,
-      spectrum: _spectrumCtrl.stream,
-      waveform: _waveformCtrl.stream,
+      spectrum: replayStream(
+        () => _bringUpCompleted
+            ? _spectrumPipeline.settings
+            : const SpectrumSettings(),
+        _spectrumCtrl.stream,
+      ),
+      waveform: replayStream(() => _lastWaveform, _waveformCtrl.stream),
       loudnessMeter: _loudnessMeterCtrl.stream,
-      loudness: _loudnessScanCtrl.stream,
+      loudness: replayStream(() => _lastLoudnessScan, _loudnessScanCtrl.stream),
       tap: (filter, {instance = 0, required side}) => switch (side) {
         TapSide.pre => _filterTapPipeline.tapPre(
           audioEffectLabel(filter.filterName, instance),
@@ -986,6 +991,10 @@ abstract class _PlayerBase {
   StreamSubscription<PcmFrame>? _pcmPipeSub;
   late final StreamController<SpectrumSettings> _spectrumCtrl;
   late final StreamController<WaveformData?> _waveformCtrl;
+  // The last envelope and scan result, replayed to a new subscriber of
+  // `stream.waveform` and `stream.loudness`.
+  WaveformData? _lastWaveform;
+  LoudnessScan? _lastLoudnessScan;
   late final StreamController<Loudness> _loudnessMeterCtrl;
   late final StreamController<LoudnessScan?> _loudnessScanCtrl;
 

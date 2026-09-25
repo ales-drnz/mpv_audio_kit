@@ -78,9 +78,15 @@ mixin _InitModule on _PlayerBase {
       asyncGet: _getAsync,
       asyncSet: _propRc,
     );
-    _waveformPipeline.stream.listen(_waveformCtrl.add);
+    _waveformPipeline.stream.listen((w) {
+      _lastWaveform = w;
+      _waveformCtrl.add(w);
+    });
     _loudnessMeterPipeline.stream.listen(_loudnessMeterCtrl.add);
-    _loudnessScanPipeline.stream.listen(_loudnessScanCtrl.add);
+    _loudnessScanPipeline.stream.listen((s) {
+      _lastLoudnessScan = s;
+      _loudnessScanCtrl.add(s);
+    });
 
     OrphanHandleTracker.instance.add(_handle);
 

@@ -1639,7 +1639,9 @@ local-file player that wants disk-side artwork.
 `mpv_audio_kit` exposes all player state in two complementary ways:
 
 - **`player.state`**: a synchronous, immutable snapshot of the current state. Safe to read from anywhere.
-- **`player.stream`**: reactive streams that emit on every change. Use with `StreamBuilder` or `.listen()`.
+- **`player.stream`**: reactive streams. Use with `StreamBuilder` or `.listen()`.
+
+A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, …) gives each new subscriber the current value first, then every change, so a `StreamBuilder` needs no `initialData`. To wait for the next change, skip the current value: `player.stream.volume.skip(1).first`. Event streams (`seekCompleted`, `endFile`, `error`, `log`, `hook`, `fft`, `pcm`, `loudnessMeter`, taps) only deliver what happens after `listen()`.
 
 #### 9.1 Core streams
 

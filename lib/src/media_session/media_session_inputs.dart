@@ -97,20 +97,24 @@ class MediaSessionInputs {
 
   /// Convenience builder for the production wiring: pulls the
   /// matching streams off a real [PlayerStream].
-  factory MediaSessionInputs.fromPlayer({required PlayerStream stream}) =>
-      MediaSessionInputs(
-        playWhenReady: stream.playWhenReady,
-        playing: stream.playing,
-        buffering: stream.buffering,
-        rate: stream.rate,
-        seekCompleted: stream.seekCompleted,
-        seekable: stream.seekable,
-        loop: stream.loop,
-        shuffle: stream.shuffle,
-        duration: stream.duration,
-        metadata: stream.metadata,
-        coverArt: stream.coverArt,
-        mediaTitle: stream.mediaTitle,
-        mediaSession: stream.mediaSession,
-      );
+  factory MediaSessionInputs.fromPlayer({required PlayerStream stream}) {
+    // The state streams replay their value to each subscriber; the
+    // controller reacts to changes and pushes the initial state itself.
+    Stream<T> changes<T>(Stream<T> s) => s.skip(1);
+    return MediaSessionInputs(
+      playWhenReady: changes(stream.playWhenReady),
+      playing: changes(stream.playing),
+      buffering: changes(stream.buffering),
+      rate: changes(stream.rate),
+      seekCompleted: stream.seekCompleted,
+      seekable: changes(stream.seekable),
+      loop: changes(stream.loop),
+      shuffle: changes(stream.shuffle),
+      duration: changes(stream.duration),
+      metadata: changes(stream.metadata),
+      coverArt: changes(stream.coverArt),
+      mediaTitle: changes(stream.mediaTitle),
+      mediaSession: changes(stream.mediaSession),
+    );
+  }
 }

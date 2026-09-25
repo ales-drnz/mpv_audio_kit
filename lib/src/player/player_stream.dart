@@ -43,7 +43,7 @@ import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:mpv_audio_kit/src/types/state/mpv_playback_state.dart';
 import 'package:mpv_audio_kit/src/types/state/mpv_prefetch_state.dart';
 
-/// Typed event streams for subscribing to individual [Player] state changes.
+/// Typed streams of the [Player]'s state and events.
 ///
 /// Access via `player.stream`:
 /// ```dart
@@ -51,10 +51,15 @@ import 'package:mpv_audio_kit/src/types/state/mpv_prefetch_state.dart';
 /// player.stream.position.listen((pos) { ... });
 /// ```
 ///
-/// Internally each stream is the broadcast view of a [ReactiveProperty]
-/// (for state-backed signals like `playing`, `volume`, `position`, …) or a
-/// plain [Stream] from a [StreamController] (for transient events like
-/// `error`, `endFile`, `log`).
+/// A state stream (`playing`, `volume`, `position`, `playlist`,
+/// `playbackState`, `coverArt`, `waveform`, …) gives each new subscriber
+/// the current value first, then every change, so a `StreamBuilder` needs
+/// no `initialData`. To wait for the next change instead, skip the first
+/// event: `player.stream.volume.skip(1).first`.
+///
+/// An event stream (`seekCompleted`, `endFile`, `error`, `log`,
+/// `internalLog`, `hook`, `mediaSessionCommands`, `fft`, `pcm`,
+/// `loudnessMeter`, `tap`) only delivers what happens after `listen()`.
 class PlayerStream {
   /// Internal constructor wired by `Player`. Not part of the public API —
   /// the `DefaultPropertyReactives` argument is library-private, so a
@@ -203,22 +208,21 @@ class PlayerStream {
     );
 
     return _bindAggregate<MpvPlaybackState>(snapshot, [
-      r.playing.stream,
-      bufferingProp.stream,
-      completedProp.stream,
-      r.pausedForCache.stream,
-      r.duration.stream,
+      r.playing.changes,
+      bufferingProp.changes,
+      completedProp.changes,
+      r.pausedForCache.changes,
+      r.duration.changes,
     ]);
   }
 
   /// Generic helper for building a broadcast aggregator stream.
   ///
-  /// On the first listener, emits a synchronous initial snapshot and
-  /// subscribes to every input [sources] stream, piping a fresh
-  /// `snapshot()` value to the output controller on each upstream event.
-  /// Repeated upstream events that resolve to the same aggregate value
-  /// are deduplicated so subscribers see one emission per actual change.
-  /// On the last cancel, tears the subscriptions down.
+  /// Each subscriber first receives the current `snapshot()`, then a fresh
+  /// value whenever one of [sources] emits. Repeated upstream events that
+  /// resolve to the same aggregate value are deduplicated, so subscribers
+  /// see one emission per actual change. The sources are subscribed while
+  /// anyone listens.
   static Stream<T> _bindAggregate<T>(
     T Function() snapshot,
     List<Stream<dynamic>> sources,
@@ -237,12 +241,10 @@ class PlayerStream {
 
     ctrl = StreamController<T>.broadcast(
       onListen: () {
-        // Reset the dedup memory on every fresh subscription cycle so a
-        // late subscriber receives the current aggregate as its first
-        // event regardless of whether the previous cycle saw the same
-        // value.
-        primed = false;
-        pump();
+        // The current aggregate reaches each subscriber through the
+        // replay below; this only seeds the dedup memory.
+        last = snapshot();
+        primed = true;
         subs = [for (final s in sources) s.listen((_) => pump())];
       },
       onCancel: () async {
@@ -254,7 +256,7 @@ class PlayerStream {
         }
       },
     );
-    return ctrl.stream;
+    return replayStream(snapshot, ctrl.stream);
   }
 
   // ── Playback / lifecycle ─────────────────────────────────────────────────

@@ -131,7 +131,8 @@ void main() {
               'eof=${player.state.eofReached}';
         }
 
-        final completedSub = player.stream.completed.listen((c) {
+        // Only the changes: skip the replayed initial false.
+        final completedSub = player.stream.completed.skip(1).listen((c) {
           completedValues.add(c);
           completedLog.add('completed=$c (${ctx()})');
         });
@@ -143,9 +144,10 @@ void main() {
         // The intent release fires only at the TRUE end of content (the
         // eof-reached hook gated by the end-of-content check), so it is a
         // boundary-proof "playlist fully drained" anchor. Pre-subscribed
-        // before openAll; the initial false is never re-emitted (dedup),
-        // so this completes only on the genuine final release.
+        // before openAll, skipping the replayed initial false, so this
+        // completes only on the genuine final release.
         final drained = player.stream.playWhenReady
+            .skip(1)
             .firstWhere((p) => !p)
             .timeout(const Duration(seconds: 15));
 

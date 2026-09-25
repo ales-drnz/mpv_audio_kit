@@ -79,7 +79,8 @@ void main() {
           });
 
           final emissions = <bool>[];
-          final sub = player.stream.playWhenReady.listen(emissions.add);
+          // Skip the replayed initial false: only the changes count.
+          final sub = player.stream.playWhenReady.skip(1).listen(emissions.add);
           await player.openAll([
             Media(fixturePath),
             Media(fixturePath),

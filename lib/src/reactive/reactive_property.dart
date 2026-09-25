@@ -31,12 +31,14 @@ class ReactiveProperty<T> {
   /// The current value. Synchronous, never throws.
   T get value => _value;
 
-  /// Broadcast stream of future updates.
-  ///
-  /// Subscribers do **not** receive [value] on subscribe — they only see
-  /// changes that occur after `listen()` is called. Pair with [value] when
-  /// you need the seed.
-  Stream<T> get stream => _ctrl.stream;
+  /// Broadcast stream of the value: each subscriber first receives the
+  /// current [value], then every change.
+  late final Stream<T> stream = replayStream(() => _value, _ctrl.stream);
+
+  /// Broadcast stream of the changes only, without the current value on
+  /// subscribe. For internal consumers that react to a change, such as
+  /// the media session.
+  Stream<T> get changes => _ctrl.stream;
 
   /// Whether [close] has been called.
   bool get isClosed => _ctrl.isClosed;
@@ -71,3 +73,21 @@ class ReactiveProperty<T> {
     return _ctrl.close();
   }
 }
+
+/// A broadcast stream that gives each new subscriber [current]'s result
+/// first, then every event of [changes]. The state streams of `Player`
+/// are built on it, so a `StreamBuilder` starts from the current value
+/// without `initialData`.
+Stream<T> replayStream<T>(T Function() current, Stream<T> changes) =>
+    Stream<T>.multi((controller) {
+      controller.add(current());
+      final sub = changes.listen(
+        controller.add,
+        onError: controller.addError,
+        onDone: controller.close,
+      );
+      controller
+        ..onPause = sub.pause
+        ..onResume = sub.resume
+        ..onCancel = sub.cancel;
+    }, isBroadcast: true);

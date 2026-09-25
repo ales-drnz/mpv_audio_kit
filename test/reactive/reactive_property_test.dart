@@ -7,26 +7,44 @@ import 'package:test/test.dart';
 
 void main() {
   group('ReactiveProperty<int>', () {
-    test('seeds the current value and never emits it on subscribe', () async {
+    test('stream replays the current value on subscribe', () async {
       final prop = ReactiveProperty<int>(42);
       expect(prop.value, 42);
 
       final received = <int>[];
       prop.stream.listen(received.add);
-      // Microtask flush to surface anything that might have synchronously
-      // landed in the broadcast controller; nothing should have.
       await pumpEventQueue();
-      expect(
-        received,
-        isEmpty,
-        reason: 'broadcast streams must not replay the seed value',
-      );
+      expect(received, [42]);
+
+      prop.update(43);
+      final late = <int>[];
+      prop.stream.listen(late.add);
+      await pumpEventQueue();
+      expect(received, [42, 43]);
+      expect(late, [43], reason: 'a late subscriber starts from the latest');
     });
+
+    test('changes does not replay the current value', () async {
+      final prop = ReactiveProperty<int>(42);
+      final received = <int>[];
+      prop.changes.listen(received.add);
+      await pumpEventQueue();
+      expect(received, isEmpty);
+    });
+
+    test(
+      'stream of a closed property replays the value, then closes',
+      () async {
+        final prop = ReactiveProperty<int>(5);
+        await prop.close();
+        expect(await prop.stream.toList(), [5]);
+      },
+    );
 
     test('update emits and mutates value when value changes', () async {
       final prop = ReactiveProperty<int>(0);
       final received = <int>[];
-      prop.stream.listen(received.add);
+      prop.changes.listen(received.add);
 
       expect(prop.update(1), isTrue);
       expect(prop.update(2), isTrue);
@@ -39,7 +57,7 @@ void main() {
     test('update deduplicates equal values without emitting', () async {
       final prop = ReactiveProperty<int>(0);
       final received = <int>[];
-      prop.stream.listen(received.add);
+      prop.changes.listen(received.add);
 
       expect(prop.update(1), isTrue);
       expect(
@@ -57,7 +75,7 @@ void main() {
     test('emitCurrent broadcasts without changing value', () async {
       final prop = ReactiveProperty<int>(7);
       final received = <int>[];
-      prop.stream.listen(received.add);
+      prop.changes.listen(received.add);
 
       prop.emitCurrent();
       prop.emitCurrent();
@@ -101,8 +119,8 @@ void main() {
       prop.update(3);
 
       await pumpEventQueue();
-      expect(a, [1, 2, 3]);
-      expect(b, [1, 2, 3]);
+      expect(a, [0, 1, 2, 3]);
+      expect(b, [0, 1, 2, 3]);
     });
   });
 
@@ -112,7 +130,7 @@ void main() {
       // equality contract for future T types whose `==` is not identity.
       final prop = ReactiveProperty<bool>(false);
       final received = <bool>[];
-      prop.stream.listen(received.add);
+      prop.changes.listen(received.add);
 
       prop.update(false); // dedup vs seed
       prop.update(true);
@@ -128,7 +146,7 @@ void main() {
     test('Duration uses structural equality', () async {
       final prop = ReactiveProperty<Duration>(Duration.zero);
       final received = <Duration>[];
-      prop.stream.listen(received.add);
+      prop.changes.listen(received.add);
 
       prop.update(const Duration(seconds: 1));
       prop.update(

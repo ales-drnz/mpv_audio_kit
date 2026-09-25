@@ -122,6 +122,20 @@ Other changes to handle:
   `writeResumeConfig()` throw `MpvCommandException` when mpv rejects them,
   like the other methods.
 
+## State streams start from the current value
+
+Every state stream of `player.stream` now gives a new subscriber the
+current value first, then the changes. Event streams (`seekCompleted`,
+`endFile`, `error`, `log`, `hook`, `fft`, `pcm`, `loudnessMeter`, taps)
+are unchanged.
+
+- `initialData: player.state.x` in a `StreamBuilder` is no longer needed.
+- `stream.x.first` returns the current value. To wait for the next change,
+  use `stream.x.skip(1).first`. `firstWhere` with a condition works as
+  before, but returns at once when the current value already matches.
+- `playbackState` used to replay only to its first subscriber; now every
+  subscriber gets it.
+
 ## libmpv comes from a build hook
 
 The package now fetches libmpv through a Dart build hook instead of
