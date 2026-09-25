@@ -31,9 +31,9 @@ mixin _PlaylistModule on _PlayerBase {
     _mediaCache[resolved.uri] = media;
     final opts = _buildLoadfileOptions(media);
     if (opts.isEmpty) {
-      await _commandChecked(['loadfile', resolved.uri, 'append']);
+      await _loadfile(['loadfile', resolved.uri, 'append'], media);
     } else {
-      await _commandChecked(['loadfile', resolved.uri, 'append', '-1', opts]);
+      await _loadfile(['loadfile', resolved.uri, 'append', '-1', opts], media);
     }
   }
 
@@ -173,21 +173,21 @@ mixin _PlaylistModule on _PlayerBase {
     final opts = _buildLoadfileOptions(media);
     Future<void> insertAt(int at) {
       if (opts.isEmpty) {
-        return _commandChecked([
+        return _loadfile([
           'loadfile',
           resolved.uri,
           'insert-at',
           at.toString(),
-        ]);
+        ], media);
       }
       // 4th-arg options require an explicit index argument (mpv 0.38+).
-      return _commandChecked([
+      return _loadfile([
         'loadfile',
         resolved.uri,
         'insert-at',
         at.toString(),
         opts,
-      ]);
+      ], media);
     }
 
     // Re-check the epoch between each of the multi-command surgeries below:

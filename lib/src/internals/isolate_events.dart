@@ -194,8 +194,12 @@ class MpvEventReply extends MpvIsolateEvent {
   /// The mpv error code of the request's execution; `0` on success.
   final int error;
 
-  /// Carries the reply's [userdata] tag and [error] code.
-  MpvEventReply(this.userdata, this.error);
+  /// A command's decoded result node, `null` for a property write or a
+  /// command that returns nothing.
+  final Object? result;
+
+  /// Carries the reply's [userdata] tag, [error] code and [result].
+  MpvEventReply(this.userdata, this.error, [this.result]);
 }
 
 /// Outcome of an async property read (MPV_EVENT_GET_PROPERTY_REPLY),

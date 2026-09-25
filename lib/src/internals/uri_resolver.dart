@@ -164,3 +164,18 @@ Future<String> _doCopyAsset(String uri) async {
     unawaited(_assetInflight.remove(uri));
   }
 }
+
+/// Deletes the temp copies of `asset://` sources and forgets them. Called
+/// when the last player of the process is disposed, so mpv holds none of
+/// them open; a later player copies again on demand. Best effort: a file
+/// another process still has open, or one already gone, is skipped.
+Future<void> deleteCopiedAssets() async {
+  if (_assetInflight.isNotEmpty) return;
+  final paths = _assetCache.values.toList(growable: false);
+  _assetCache.clear();
+  for (final path in paths) {
+    try {
+      await File(path).delete();
+    } catch (_) {}
+  }
+}

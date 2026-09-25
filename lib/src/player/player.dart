@@ -134,7 +134,13 @@ class Player extends _PlayerBase
         _MediaSessionModule
     implements PlayerApi {
   /// Creates a [Player] instance with optional [configuration].
-  Player({super.configuration});
+  Player({super.configuration}) {
+    _livePlayers++;
+  }
+
+  /// Players created and not yet disposed. When the last one goes, the
+  /// temp copies of `asset://` sources are deleted.
+  static int _livePlayers = 0;
 
   /// Process-wide single-instance guard for the OS media session.
   /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
@@ -209,13 +215,13 @@ class Player extends _PlayerBase
     await _prop('pause', shouldPlay ? 'no' : 'yes');
     final opts = _buildLoadfileOptions(media);
     if (opts.isEmpty) {
-      await _commandChecked(['loadfile', resolved.uri, 'replace']);
+      await _loadfile(['loadfile', resolved.uri, 'replace'], media);
     } else {
       // Per-Media `httpHeaders` / `httpChunkSize` ride along as the 4th
       // `loadfile` arg (mpv 0.38+: index must be `-1` when options are
       // present), so mpv scopes them as file-local for this exact playlist
       // entry — never writing the global `http-header-fields` / `stream-lavf-o`.
-      await _commandChecked(['loadfile', resolved.uri, 'replace', '-1', opts]);
+      await _loadfile(['loadfile', resolved.uri, 'replace', '-1', opts], media);
     }
     if (parkedAtEof && shouldPlay) {
       await _prop('pause', 'no');
@@ -382,15 +388,15 @@ class Player extends _PlayerBase
     for (var i = 0; i < medias.length; i++) {
       final opts = _buildLoadfileOptions(medias[i]);
       if (opts.isEmpty) {
-        await _commandChecked(['loadfile', resolved[i].uri, 'append']);
+        await _loadfile(['loadfile', resolved[i].uri, 'append'], medias[i]);
       } else {
-        await _commandChecked([
+        await _loadfile([
           'loadfile',
           resolved[i].uri,
           'append',
           '-1',
           opts,
-        ]);
+        ], medias[i]);
       }
       if (_disposed || epoch != _loadEpoch) return bailDisposing();
     }
@@ -503,7 +509,11 @@ class Player extends _PlayerBase
       }
     }
     _cancelHookTimers();
-    await super._disposeImpl();
+    try {
+      await super._disposeImpl();
+    } finally {
+      if (--_livePlayers == 0) await deleteCopiedAssets();
+    }
   }
 }
 
@@ -580,6 +590,16 @@ abstract class _PlayerBase {
   void _assignState(PlayerState s) => _state = s;
 
   final Map<String, Media> _mediaCache = {};
+
+  /// The [Media] of each playlist entry this player loaded, by mpv's
+  /// `playlist_entry_id`. Unlike [_mediaCache], two entries with the same
+  /// URI keep their own `extras`. Pruned to the live entries on every
+  /// playlist change.
+  final Map<int, Media> _mediaByEntry = {};
+
+  /// The last `playlist` node, parsed again when a `loadfile` reply
+  /// registers an entry id after mpv already reported the entry.
+  Object? _lastPlaylistNode;
 
   // Monotonic generation counter for content-replacing transport calls.
   // Bumped synchronously at the head of open() / openAll() /
@@ -700,6 +720,8 @@ abstract class _PlayerBase {
   Future<void> _prop(String name, String value);
   Future<int> _propRc(String name, String value);
   Future<int> _command(List<String> args);
+  Future<void> _loadfile(List<String> args, Media media);
+  void _updatePlaylistFromNode(dynamic raw);
   Future<void> _commandChecked(List<String> args);
   Future<bool> _navigate(List<String> args);
   void _applyLogLevel(LogLevel level);
@@ -726,7 +748,7 @@ abstract class _PlayerBase {
   // wrap), and never collide with `mpv_observe_property` reply ids — those
   // live in a different event namespace (PROPERTY_CHANGE).
   int _nextReplyId = 1;
-  final Map<int, Completer<int>> _pendingReplies = {};
+  final Map<int, Completer<(int, Object?)>> _pendingReplies = {};
   final Map<int, Completer<(int, dynamic)>> _pendingGetReplies = {};
 
   /// Set true by dispose AFTER the event isolate has stopped and the pending
@@ -752,7 +774,7 @@ abstract class _PlayerBase {
   /// resolve as failures so they surface as `null` values.
   void _drainPendingReplies() {
     for (final completer in _pendingReplies.values) {
-      if (!completer.isCompleted) completer.complete(0);
+      if (!completer.isCompleted) completer.complete((0, null));
     }
     _pendingReplies.clear();
     for (final completer in _pendingGetReplies.values) {

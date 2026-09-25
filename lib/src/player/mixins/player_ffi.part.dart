@@ -50,7 +50,7 @@ mixin _FfiModule on _PlayerBase {
     // native call entirely.
     if (_ffiClosed) return Future.value(MpvError.mpvErrorSuccess);
     final id = _nextReplyId++;
-    final completer = Completer<int>();
+    final completer = Completer<(int, Object?)>();
     _pendingReplies[id] = completer;
     final rc = using((arena) {
       // STRING format: data is a `char**`.
@@ -69,15 +69,19 @@ mixin _FfiModule on _PlayerBase {
       _pendingReplies.remove(id);
       return Future.value(rc);
     }
-    return completer.future;
+    return completer.future.then((reply) => reply.$1);
   }
 
   @override
-  Future<int> _command(List<String> args) {
+  Future<int> _command(List<String> args) =>
+      _commandResult(args).then((reply) => reply.$1);
+
+  /// [_command] that also returns the command's decoded result node.
+  Future<(int, Object?)> _commandResult(List<String> args) {
     // See `_propRc`: never issue FFI on a handle dispose may have freed.
-    if (_ffiClosed) return Future.value(MpvError.mpvErrorSuccess);
+    if (_ffiClosed) return Future.value((MpvError.mpvErrorSuccess, null));
     final id = _nextReplyId++;
-    final completer = Completer<int>();
+    final completer = Completer<(int, Object?)>();
     _pendingReplies[id] = completer;
     final rc = using((arena) {
       final arr = arena<Pointer<Utf8>>(args.length + 1);
@@ -90,7 +94,7 @@ mixin _FfiModule on _PlayerBase {
     if (rc < 0) {
       // Parse error or full reply queue — rejected client-side, no reply.
       _pendingReplies.remove(id);
-      return Future.value(rc);
+      return Future.value((rc, null));
     }
     return completer.future;
   }
@@ -153,6 +157,30 @@ mixin _FfiModule on _PlayerBase {
     return count;
   }
 
+  /// Runs a `loadfile` [args] for [media] and records the new playlist
+  /// entry's id, so the playlist maps that entry back to [media] even when
+  /// another entry has the same URI. Throws like [_commandChecked].
+  @override
+  Future<void> _loadfile(List<String> args, Media media) async {
+    final (rc, result) = await _commandResult(args);
+    if (rc < 0) {
+      throw MpvCommandException(
+        name: args.first,
+        code: rc,
+        message: _errorString(rc),
+      );
+    }
+    final id = result is Map ? result['playlist_entry_id'] : null;
+    if (id is! int) return;
+    _mediaByEntry[id] = media;
+    // mpv may report the playlist before this reply: map the entry now.
+    final node = _lastPlaylistNode;
+    if (node is List &&
+        node.any((entry) => entry is Map && entry['id'] == id)) {
+      _updatePlaylistFromNode(node);
+    }
+  }
+
   /// [_command] that throws [MpvCommandException] on rejection — the command
   /// counterpart of [_prop], used by the typed methods whose failure is
   /// a caller-visible error (seek with nothing loaded, loadfile with
@@ -208,7 +236,7 @@ mixin _FfiModule on _PlayerBase {
     // See `_propRc`: never issue FFI on a handle dispose may have freed.
     if (_ffiClosed) return Future.value(MpvError.mpvErrorSuccess);
     final id = _nextReplyId++;
-    final completer = Completer<int>();
+    final completer = Completer<(int, Object?)>();
     _pendingReplies[id] = completer;
     final rc = using((arena) {
       final n = chapters.length;
@@ -263,7 +291,7 @@ mixin _FfiModule on _PlayerBase {
       _pendingReplies.remove(id);
       return Future.value(rc);
     }
-    return completer.future;
+    return completer.future.then((reply) => reply.$1);
   }
 
   @override

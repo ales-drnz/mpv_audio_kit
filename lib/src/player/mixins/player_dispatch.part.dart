@@ -22,10 +22,10 @@ mixin _DispatchModule on _PlayerBase {
     // future (completers are dispose-agnostic; the fence below only
     // protects controller add()s).
     switch (event) {
-      case MpvEventReply(:final userdata, :final error):
+      case MpvEventReply(:final userdata, :final error, :final result):
         final completer = _pendingReplies.remove(userdata);
         if (completer != null && !completer.isCompleted) {
-          completer.complete(error);
+          completer.complete((error, result));
         }
         return;
       case MpvEventGetReply(:final userdata, :final error, :final value):
@@ -323,11 +323,22 @@ mixin _DispatchModule on _PlayerBase {
     _updateField((s) => s.copyWith(loop: next), _loop, next);
   }
 
+  @override
   void _updatePlaylistFromNode(dynamic raw) {
+    _lastPlaylistNode = raw;
     try {
+      // Forget the entries mpv no longer has.
+      if (raw is List) {
+        final live = {
+          for (final entry in raw)
+            if (entry is Map && entry['id'] is int) entry['id'] as int,
+        };
+        _mediaByEntry.removeWhere((id, _) => !live.contains(id));
+      }
       final playlist = parsePlaylistNode(
         raw: raw,
         mediaCache: _mediaCache,
+        mediaByEntry: _mediaByEntry,
         previous: _state.playlist,
       );
       _updateField((s) => s.copyWith(playlist: playlist), _playlist, playlist);

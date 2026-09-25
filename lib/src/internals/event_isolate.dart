@@ -294,8 +294,18 @@ void _dispatchEvent(
       _rereadUnavailable(lib, handle, toMain, cache);
 
     case mpv.MpvEventId.mpvEventSetPropertyReply:
-    case mpv.MpvEventId.mpvEventCommandReply:
       toMain.send(MpvEventReply(event.ref.replyUserdata, event.ref.error));
+
+    case mpv.MpvEventId.mpvEventCommandReply:
+      // The payload is an `mpv_event_command`, whose only member is the
+      // `mpv_node result` (`loadfile` returns `playlist_entry_id` in it).
+      // Valid only until the next mpv_wait_event, hence decoded here.
+      final error = event.ref.error;
+      Object? result;
+      if (error >= 0 && event.ref.data != nullptr) {
+        result = decodeMpvNode(event.ref.data.cast<mpv.MpvNode>().ref);
+      }
+      toMain.send(MpvEventReply(event.ref.replyUserdata, error, result));
 
     case mpv.MpvEventId.mpvEventGetPropertyReply:
       final error = event.ref.error;

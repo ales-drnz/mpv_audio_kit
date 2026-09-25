@@ -29,6 +29,8 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size or audio parameters: a property mpv reports unavailable goes back to its default.
 - A setter emits the value it was given once. Volume, gains and ReplayGain no longer come back rounded (`setVolume(42.37)` then `42.400001525878906`), rate and pitch keep their precision, durations keep their microseconds, and `setCache`, `setDemuxer` and `setReplayGain` no longer emit a half-applied bundle.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
+- Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
+- The temp copies of `asset://` sources are deleted when the last player is disposed.
 - `dispose()` closes `stream.playWhenReady`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
 - Windows: the plugin builds with Visual Studio 2026.
 

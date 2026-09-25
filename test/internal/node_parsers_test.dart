@@ -35,6 +35,30 @@ void main() {
       expect(p.index, 1);
     });
 
+    test('maps entries by id first, so equal URIs keep their Media', () {
+      const one = Media('a.mp3', extras: {'n': 1});
+      const two = Media('a.mp3', extras: {'n': 2});
+      const byUri = Media('b.mp3', extras: {'n': 3});
+      final p = parsePlaylistNode(
+        raw: [
+          {'filename': 'a.mp3', 'id': 7, 'current': true},
+          {'filename': 'a.mp3', 'id': 8},
+          {'filename': 'b.mp3', 'id': 9},
+          {'filename': 'c.mp3', 'id': 10},
+        ],
+        mediaCache: const {'a.mp3': two, 'b.mp3': byUri},
+        mediaByEntry: const {7: one, 8: two},
+        previous: Playlist.empty,
+      );
+      expect(p.items.map((m) => m.extras), [
+        {'n': 1},
+        {'n': 2},
+        {'n': 3},
+        null,
+      ]);
+      expect(p.items[3].uri, 'c.mp3');
+    });
+
     test('attaches Media instances from mediaCache (preserves extras)', () {
       const cached = Media(
         'a.mp3',

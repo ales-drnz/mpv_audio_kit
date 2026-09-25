@@ -26,11 +26,14 @@ import '../types/sealed/channels.dart';
 /// Decodes mpv's `playlist` property (`MPV_FORMAT_NODE_ARRAY`) into a
 /// [Playlist].
 ///
-/// [mediaCache] is the library-side `uri → Media` map that retains the
-/// `extras` and `httpHeaders` (mpv only echoes back the filename, never the
-/// extras attached at construction). On cache miss we fall back to a bare
-/// `Media(uri)` so the playlist stays consistent rather than dropping
-/// entries silently.
+/// [mediaByEntry] maps mpv's playlist entry `id` to the [Media] that
+/// loaded it, and [mediaCache] maps a URI to one: both retain the `extras`
+/// and `httpHeaders` (mpv only echoes back the filename, never the extras
+/// attached at construction). The entry id comes first, so two entries
+/// with the same URI keep their own [Media]; the URI covers entries this
+/// player didn't load itself (a `loadlist`, a raw command). On a miss of
+/// both we fall back to a bare `Media(uri)` so the playlist stays
+/// consistent rather than dropping entries silently.
 ///
 /// [previous] is the previous [Playlist] state, used to recover a reasonable
 /// `index` when mpv's payload omits the `current` flag (which it does
@@ -42,6 +45,7 @@ import '../types/sealed/channels.dart';
 Playlist parsePlaylistNode({
   required dynamic raw,
   required Map<String, Media> mediaCache,
+  Map<int, Media> mediaByEntry = const {},
   required Playlist previous,
 }) {
   // Defensive: a non-list payload means mpv emitted something unexpected
@@ -51,19 +55,25 @@ Playlist parsePlaylistNode({
     return previous;
   }
   final filenames = <String>[];
+  final medias = <Media>[];
   var currentIndex = -1;
   for (var i = 0; i < raw.length; i++) {
     final entry = raw[i];
     if (entry is! Map) {
       filenames.add('');
+      medias.add(const Media(''));
       continue;
     }
-    filenames.add(entry['filename'] as String? ?? '');
+    final filename = entry['filename'] as String? ?? '';
+    final id = entry['id'];
+    filenames.add(filename);
+    medias.add(
+      (id is int ? mediaByEntry[id] : null) ??
+          mediaCache[filename] ??
+          Media(filename),
+    );
     if (entry['current'] == true) currentIndex = i;
   }
-  final medias = filenames
-      .map((f) => mediaCache[f] ?? Media(f))
-      .toList(growable: false);
   final int idx;
   if (currentIndex >= 0) {
     idx = currentIndex;
