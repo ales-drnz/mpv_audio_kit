@@ -52,6 +52,29 @@ void main() {
       },
     );
 
+    test('property commands cannot write af or pause', () {
+      for (final args in [
+        ['set', 'af', 'lavfi-loudnorm'],
+        ['change-list', 'af', 'append', 'lavfi-loudnorm'],
+        ['no-osd', 'set', 'af', ''],
+        ['cycle', 'pause'],
+        ['set', 'pause', 'yes'],
+        ['no-osd', 'af', 'add', 'lavfi-loudnorm'],
+      ]) {
+        expect(
+          () => player.sendRawCommand(args),
+          throwsA(isA<ArgumentError>()),
+          reason: '$args',
+        );
+      }
+    });
+
+    test('property commands on other properties are allowed', () async {
+      await player.sendRawCommand(['set', 'volume', '40']);
+      await player.sendRawCommand(['no-osd', 'add', 'volume', '5']);
+      expect(await player.getRawProperty('volume'), startsWith('45'));
+    });
+
     test('sendRawCommand([screenshot, ...]) is allowed (sanity)', () async {
       // Confirm the guard is targeted, not a blanket sendRawCommand block.
       // `screenshot` is meaningless on the audio-only build but mpv accepts

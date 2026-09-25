@@ -18,6 +18,32 @@ part of '../player.dart';
 /// init (a Bluetooth/AirPlay device waking up) — on the main isolate that
 /// wait is the macOS beachball. Never reintroduce a synchronous
 /// set/get/command on the main isolate.
+/// mpv's input command prefixes, which may precede the command name.
+const _kCommandPrefixes = {
+  'no-osd',
+  'osd-auto',
+  'osd-bar',
+  'osd-msg',
+  'osd-msg-bar',
+  'raw',
+  'expand-properties',
+  'repeatable',
+  'nonrepeatable',
+  'nonscalable',
+  'async',
+  'sync',
+};
+
+/// Commands whose second argument names a property they write.
+const _kPropertyCommands = {
+  'set',
+  'add',
+  'multiply',
+  'cycle',
+  'cycle-values',
+  'change-list',
+};
+
 mixin _FfiModule on _PlayerBase {
   /// Writes a property and throws [MpvCommandException] on rejection.
   ///
@@ -361,27 +387,33 @@ mixin _FfiModule on _PlayerBase {
   /// rejects the property write (unknown name, out-of-range value, etc.).
   @override
   Future<void> setRawProperty(String name, String value) async {
+    _checkNotOwned(name, 'name');
+    await _gate();
+    await _prop(name, value);
+  }
+
+  /// Throws [ArgumentError] when [name] is a property the player owns:
+  /// `af` (the effects chain) or `pause` (the transport intent).
+  void _checkNotOwned(String name, String argName) {
     if (name == 'af') {
       throw ArgumentError.value(
         name,
-        'name',
+        argName,
         'Property `af` is owned by the effects chain. '
-            'Use Player.setAudioEffects / updateAudioEffects, and pass '
-            'experimental or expression-based filters as a RawAudioEffect.',
+        'Use Player.setAudioEffects / updateAudioEffects, and pass '
+        'experimental or expression-based filters as a RawAudioEffect.',
       );
     }
     if (name == 'pause') {
       throw ArgumentError.value(
         name,
-        'name',
+        argName,
         'Property `pause` is owned by the transport intent axis and is not '
-            'observed, so a raw write would desync state.playWhenReady (and '
-            'the OS play/pause button) from actual playback. '
-            'Use Player.play() / Player.pause() instead.',
+        'observed, so a raw write would desync state.playWhenReady (and '
+        'the OS play/pause button) from actual playback. '
+        'Use Player.play() / Player.pause() instead.',
       );
     }
-    await _gate();
-    await _prop(name, value);
   }
 
   /// Sends a raw mpv command.
@@ -396,19 +428,29 @@ mixin _FfiModule on _PlayerBase {
   /// accepted the command; the actual side-effect on playback state
   /// is observed asynchronously via [Player.stream].
   Future<void> sendRawCommand(List<String> args) async {
-    // Symmetric guard with `setRawProperty('af', ...)`: mpv exposes
-    // `af` and `af-command` as commands that mutate the audio chain
-    // incrementally — bypassing the effects chain and desynchronizing
-    // `state.audioEffects`. The chain is the single writer of mpv's `af`
-    // property; raw entries go in it as `RawAudioEffect` stages instead.
-    if (args.isNotEmpty && (args.first == 'af' || args.first == 'af-command')) {
-      throw ArgumentError.value(
-        args.first,
-        'args[0]',
-        'Command `${args.first}` is owned by the effects chain. '
-            'Use Player.setAudioEffects / updateAudioEffects, and pass '
-            'experimental or expression-based filters as a RawAudioEffect.',
-      );
+    // Symmetric guard with setRawProperty: mpv exposes `af` and
+    // `af-command` as commands that mutate the audio chain incrementally,
+    // and `set`, `change-list`, `cycle` and the like write any property,
+    // `af` and `pause` included. Skip the command prefixes (`no-osd`, …)
+    // before looking.
+    var i = 0;
+    while (i < args.length && _kCommandPrefixes.contains(args[i])) {
+      i++;
+    }
+    if (i < args.length) {
+      final command = args[i];
+      if (command == 'af' || command == 'af-command') {
+        throw ArgumentError.value(
+          command,
+          'args',
+          'Command `$command` is owned by the effects chain. '
+              'Use Player.setAudioEffects / updateAudioEffects, and pass '
+              'experimental or expression-based filters as a RawAudioEffect.',
+        );
+      }
+      if (_kPropertyCommands.contains(command) && i + 1 < args.length) {
+        _checkNotOwned(args[i + 1], 'args');
+      }
     }
     await _gate();
     final rc = await _command(args);

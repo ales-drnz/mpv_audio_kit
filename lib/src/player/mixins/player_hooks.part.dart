@@ -40,7 +40,9 @@ mixin _HooksModule on _PlayerBase {
   ///
   /// Idempotent per [hook]: calling [registerHook] more than once for
   /// the same hook on the same [Player] only updates the optional
-  /// [timeout]; the underlying mpv registration happens once. mpv
+  /// [timeout]; the underlying mpv registration happens once, so the
+  /// [priority] of the first one stays (mpv can't change it later, and
+  /// [Player.setSourceResolver] registers `on_load` with priority 0). mpv
   /// allows multiple registrations per name but its shutdown path can
   /// stall when several events for the same hook are still active at
   /// `quit` — duplicates are collapsed here to avoid that race.
