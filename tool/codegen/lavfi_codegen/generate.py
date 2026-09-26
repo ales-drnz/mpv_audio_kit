@@ -427,9 +427,10 @@ def _emit_settings_header(*, needs_set: bool = True, needs_map: bool = True) -> 
     parts.append(
         f"/// Wire-format a double for the lavfi {_NAMING.wire_word}-chain. "
         "Uses 3-decimal\n"
-        "/// fixed-point for normal values; falls back to a 1-significant-\n"
-        "/// figure exponential for tiny values that would otherwise round\n"
-        "/// to `0.000` (e.g. `1e-6` for `asoftclip.threshold`'s minimum).\n"
+        "/// fixed-point when that is exact, 6 decimals when it is not (so\n"
+        "/// `0.0014` keeps its digits), and an exponential for tiny values\n"
+        "/// that would otherwise round to `0.000` (e.g. `1e-6` for\n"
+        "/// `asoftclip.threshold`'s minimum).\n"
         "/// `toStringAsExponential()` is deterministic across runtimes\n"
         "/// (Dart's `toString()` chooses between decimal and exponential\n"
         f"/// based on magnitude and platform), and {_WIRE.accessor}'s "
@@ -439,7 +440,7 @@ def _emit_settings_header(*, needs_set: bool = True, needs_map: bool = True) -> 
         "  final fixed = v.toStringAsFixed(3);\n"
         "  if (v == 0 || double.parse(fixed) == v) return fixed;\n"
         "  if (v.abs() < 0.001) return v.toStringAsExponential();\n"
-        "  return fixed;\n"
+        "  return v.toStringAsFixed(6);\n"
         "}\n"
     )
     return "".join(parts)

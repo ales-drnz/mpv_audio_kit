@@ -29,7 +29,7 @@ void main() {
     test('runtime param change goes through af-command: live graph updates, '
         'af string stays stale, state stays correct', () async {
       await player.setAudioEffects(const [
-        BassEffect(f: 1000),
+        BassEffect(frequency: 1000),
         Ebur128Effect(metadata: true),
       ]);
 
@@ -46,10 +46,10 @@ void main() {
           .timeout(const Duration(seconds: 10));
 
       // Parameter-only change on a command-capable filter → diff path.
-      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 18));
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 18));
 
       // State committed the new bundle…
-      expect(effectOf<BassEffect>(player).g, 18);
+      expect(effectOf<BassEffect>(player).gain, 18);
       // …but the af STRING was not rewritten — the live graph was updated
       // in place via af-command (a rewrite would have produced g=18 here).
       final afterAf = await player.getRawProperty('af');
@@ -74,7 +74,7 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 40)));
 
     test('topology change falls back to a full af rewrite', () async {
-      await putEffect(player, const TrebleEffect(g: -2));
+      await putEffect(player, const TrebleEffect(gain: -2));
       final af = await player.getRawProperty('af');
       expect(
         af,
@@ -94,7 +94,7 @@ void main() {
 
     test('FILE_LOADED resyncs a stale af string from state', () async {
       // Make the string stale again with a runtime-only change…
-      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 6));
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 6));
       expect(
         await player.getRawProperty('af'),
         contains('18.000'),
@@ -125,7 +125,9 @@ void main() {
     test('afcmd-1: a rewrite that FAILS after a diff re-arms the stale flag so '
         'the next load still resyncs the diff value', () async {
       // Clean baseline with a command-capable bass stage at a known gain.
-      await player.setAudioEffects(const [BassEffect(f: 1000, g: 1)]);
+      await player.setAudioEffects(const [
+        BassEffect(frequency: 1000, gain: 1),
+      ]);
       // Let frames reach the rebuilt graph, so the update below goes
       // through af-command rather than the rebuild that heals a failed one.
       final rebuiltAt = player.state.position;
@@ -137,8 +139,8 @@ void main() {
       );
       // Runtime-only change → diff (af-command); the af STRING stays stale at
       // g=1 while the live graph and committed state move to g=9.
-      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 9));
-      expect(effectOf<BassEffect>(player).g, 9);
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 9));
+      expect(effectOf<BassEffect>(player).gain, 9);
       expect(
         await player.getRawProperty('af'),
         isNot(contains('9.000')),
@@ -158,7 +160,7 @@ void main() {
         throwsA(isA<MpvCommandException>()),
       );
       // The optimistic commit rolled back to the diff'd bundle.
-      expect(effectOf<BassEffect>(player).g, 9);
+      expect(effectOf<BassEffect>(player).gain, 9);
       expect(player.state.audioEffects.whereType<RawAudioEffect>(), isEmpty);
 
       // Load a file: the resync must fire (flag re-armed), rebuilding the chain
@@ -178,13 +180,15 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('a value the running graph refuses throws and rolls back', () async {
-      await player.setAudioEffects(const [BassEffect(f: 1000, g: 2)]);
+      await player.setAudioEffects(const [
+        BassEffect(frequency: 1000, gain: 2),
+      ]);
       final before = player.state.audioEffects;
       // The string parses (lavfi-equalizer is a known filter), so only the
       // graph rebuild can reject `f=abc`.
       await expectLater(
         player.setAudioEffects(const [
-          BassEffect(f: 1000, g: 2),
+          BassEffect(frequency: 1000, gain: 2),
           RawAudioEffect('lavfi-equalizer=f=abc'),
         ]),
         throwsA(isA<MpvCommandException>()),
@@ -210,21 +214,21 @@ void main() {
       }
 
       await player.setAudioEffects(const [
-        BassEffect(f: 1000),
+        BassEffect(frequency: 1000),
         Ebur128Effect(metadata: true),
       ]);
       final flat = await settledMomentary();
 
       // Live update: mpv's bass filter now runs at +18 dB while the
       // arguments it was created with still say 0.
-      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 18));
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 18));
       final boosted = await settledMomentary();
       expect(boosted, greaterThan(flat + 6));
 
       // A shape change back to g=0: mpv would keep the bass filter, whose
       // stored arguments equal the new ones, still running at +18 dB.
       await player.setAudioEffects(const [
-        BassEffect(f: 1000),
+        BassEffect(frequency: 1000),
         TrebleEffect(),
         Ebur128Effect(metadata: true),
       ]);

@@ -661,6 +661,10 @@ def parse_options_block(block: str) -> tuple[list[Param], dict[str, list[EnumVal
     seen: set[str] = set()
     params: list[Param] = []
     consts: dict[str, list[EnumValue]] = {}
+    # Index in `params` of the option that owns each struct field. ffmpeg
+    # spells some options twice for one field (equalizer's `f` and
+    # `frequency`, `g` and `gain`); they become one param.
+    by_offset: dict[str, int] = {}
     for entry in _split_entries(block):
         fields = _split_top_level(entry)
         if len(fields) < 4:
@@ -808,6 +812,30 @@ def parse_options_block(block: str) -> tuple[list[Param], dict[str, list[EnumVal
             dart_type = "string"
         if opt_name in seen:
             continue
+        owner = by_offset.get(off) if off.startswith("OFFSET(") else None
+        if owner is not None:
+            kept = params[owner]
+            if (
+                kept.av_type == av_type
+                and kept.unit == unit
+                and kept.default == default
+                and kept.min_value == min_val
+                and kept.max_value == max_val
+            ):
+                # The longer name wins; at equal length the lowercase one,
+                # as in effect_params (loudnorm's `measured_LRA` and
+                # `measured_lra`).
+                if len(opt_name) > len(kept.name) or (
+                    len(opt_name) == len(kept.name)
+                    and opt_name == opt_name.lower()
+                    and kept.name != kept.name.lower()
+                ):
+                    kept.name = opt_name
+                    kept.description = desc or kept.description
+                seen.add(opt_name)
+                continue
+        if off.startswith("OFFSET("):
+            by_offset.setdefault(off, len(params))
         params.append(
             Param(
                 name=opt_name,

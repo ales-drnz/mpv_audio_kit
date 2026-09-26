@@ -185,9 +185,17 @@ def _dart_to_string_as_fixed_3(v: float) -> str:
     return f"{sign}{int_part}.{frac:03d}"
 
 
+def _dart_to_string_as_fixed_6(v: float) -> str:
+    """Replicates Dart's `(num).toStringAsFixed(6)`, which rounds the
+    double's exact binary value half away from zero."""
+    from decimal import ROUND_HALF_UP, Decimal
+
+    return str(Decimal(v).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP))
+
+
 def _wire_double(v: float) -> str:
     """Mirrors `_wireDouble` in the generated Dart settings file:
-    use 3-decimal fixed for normal values, fall back to a precise
+    3-decimal fixed when exact, 6 decimals when not, and a precise
     representation for tiny values that would otherwise round to
     `0.000` (e.g. `1e-06` for asoftclip.threshold's minimum)."""
     fixed = _dart_to_string_as_fixed_3(v)
@@ -201,7 +209,7 @@ def _wire_double(v: float) -> str:
         # Mirror that so the test expectation matches the runtime wire.
         # Examples: 1e-06 → "1e-6", 1e-04 → "0.0001", 5e-7 → "5e-7".
         return _dart_double_to_string(v)
-    return fixed
+    return _dart_to_string_as_fixed_6(v)
 
 
 def _dart_double_to_string(v: float) -> str:

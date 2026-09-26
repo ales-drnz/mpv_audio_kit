@@ -940,8 +940,8 @@ await player.setAudioEffects(const [
   ),
 
   // Bass + treble shelves (two independent shelving effects).
-  BassEffect(g: 4, f: 100),
-  TrebleEffect(g: -2, f: 3000),
+  BassEffect(gain: 4, frequency: 100),
+  TrebleEffect(gain: -2, frequency: 3000),
 ]);
 ```
 

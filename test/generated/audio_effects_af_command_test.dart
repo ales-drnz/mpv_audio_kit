@@ -433,18 +433,10 @@ void main() {
                 ],
               ),
               (
-                label: 'ns=44101',
-                apply: (e) => [(e.single as AfadeEffect).copyWith(ns: 44101)],
-              ),
-              (
                 label: 'silence=0.5',
                 apply: (e) => [
                   (e.single as AfadeEffect).copyWith(silence: 0.5),
                 ],
-              ),
-              (
-                label: 'ss=1',
-                apply: (e) => [(e.single as AfadeEffect).copyWith(ss: 1)],
               ),
               (
                 label: 'startSample=1',
@@ -464,10 +456,6 @@ void main() {
             bundle: const [AfftdnEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'ad=0.75',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(ad: 0.75)],
-              ),
-              (
                 label: 'adaptivity=0.75',
                 apply: (e) => [
                   (e.single as AfftdnEffect).copyWith(adaptivity: 0.75),
@@ -480,22 +468,10 @@ void main() {
                 ],
               ),
               (
-                label: 'fo=1.5',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(fo: 1.5)],
-              ),
-              (
                 label: 'gainSmooth=1',
                 apply: (e) => [
                   (e.single as AfftdnEffect).copyWith(gainSmooth: 1),
                 ],
-              ),
-              (
-                label: 'gs=1',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(gs: 1)],
-              ),
-              (
-                label: 'nf=-49.0',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(nf: -49.0)],
               ),
               (
                 label: 'noiseFloor=-49.0',
@@ -510,26 +486,10 @@ void main() {
                 ],
               ),
               (
-                label: 'nr=13.0',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(nr: 13.0)],
-              ),
-              (
                 label: 'residualFloor=-37.0',
                 apply: (e) => [
                   (e.single as AfftdnEffect).copyWith(residualFloor: -37.0),
                 ],
-              ),
-              (
-                label: 'rf=-37.0',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(rf: -37.0)],
-              ),
-              (
-                label: 'tn=true',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(tn: true)],
-              ),
-              (
-                label: 'tr=true',
-                apply: (e) => [(e.single as AfftdnEffect).copyWith(tr: true)],
               ),
               (
                 label: 'trackNoise=true',
@@ -729,26 +689,14 @@ void main() {
             bundle: const [AllpassEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=3001.0',
-                apply: (e) => [(e.single as AllpassEffect).copyWith(f: 3001.0)],
-              ),
-              (
                 label: 'frequency=3001.0',
                 apply: (e) => [
                   (e.single as AllpassEffect).copyWith(frequency: 3001.0),
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as AllpassEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as AllpassEffect).copyWith(mix: 0.5)],
-              ),
-              (
-                label: 'n=true',
-                apply: (e) => [(e.single as AllpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
@@ -757,16 +705,8 @@ void main() {
                 ],
               ),
               (
-                label: 'o=1',
-                apply: (e) => [(e.single as AllpassEffect).copyWith(o: 1)],
-              ),
-              (
                 label: 'order=1',
                 apply: (e) => [(e.single as AllpassEffect).copyWith(order: 1)],
-              ),
-              (
-                label: 'w=1.707',
-                apply: (e) => [(e.single as AllpassEffect).copyWith(w: 1.707)],
               ),
               (
                 label: 'width=1.707',
@@ -781,14 +721,6 @@ void main() {
             field: 'anlmdn_0',
             bundle: const [AnlmdnEffect()],
             updates: <AfCommandUpdate>[
-              (
-                label: 'm=12.0',
-                apply: (e) => [(e.single as AnlmdnEffect).copyWith(m: 12.0)],
-              ),
-              (
-                label: 's=1.00001',
-                apply: (e) => [(e.single as AnlmdnEffect).copyWith(s: 1.00001)],
-              ),
               (
                 label: 'smooth=12.0',
                 apply: (e) => [
@@ -1138,38 +1070,20 @@ void main() {
                 ],
               ),
               (
-                label: 'f=3001.0',
-                apply: (e) => [
-                  (e.single as BandpassEffect).copyWith(f: 3001.0),
-                ],
-              ),
-              (
                 label: 'frequency=3001.0',
                 apply: (e) => [
                   (e.single as BandpassEffect).copyWith(frequency: 3001.0),
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as BandpassEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as BandpassEffect).copyWith(mix: 0.5)],
-              ),
-              (
-                label: 'n=true',
-                apply: (e) => [(e.single as BandpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as BandpassEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.5',
-                apply: (e) => [(e.single as BandpassEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
@@ -1185,20 +1099,10 @@ void main() {
             bundle: const [BandrejectEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=3001.0',
-                apply: (e) => [
-                  (e.single as BandrejectEffect).copyWith(f: 3001.0),
-                ],
-              ),
-              (
                 label: 'frequency=3001.0',
                 apply: (e) => [
                   (e.single as BandrejectEffect).copyWith(frequency: 3001.0),
                 ],
-              ),
-              (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as BandrejectEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
@@ -1207,20 +1111,10 @@ void main() {
                 ],
               ),
               (
-                label: 'n=true',
-                apply: (e) => [
-                  (e.single as BandrejectEffect).copyWith(n: true),
-                ],
-              ),
-              (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as BandrejectEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.5',
-                apply: (e) => [(e.single as BandrejectEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
@@ -1236,44 +1130,24 @@ void main() {
             bundle: const [BassEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=101.0',
-                apply: (e) => [(e.single as BassEffect).copyWith(f: 101.0)],
-              ),
-              (
                 label: 'frequency=101.0',
                 apply: (e) => [
                   (e.single as BassEffect).copyWith(frequency: 101.0),
                 ],
               ),
               (
-                label: 'g=1.0',
-                apply: (e) => [(e.single as BassEffect).copyWith(g: 1.0)],
-              ),
-              (
                 label: 'gain=1.0',
                 apply: (e) => [(e.single as BassEffect).copyWith(gain: 1.0)],
-              ),
-              (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as BassEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as BassEffect).copyWith(mix: 0.5)],
               ),
               (
-                label: 'n=true',
-                apply: (e) => [(e.single as BassEffect).copyWith(n: true)],
-              ),
-              (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as BassEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.5',
-                apply: (e) => [(e.single as BassEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
@@ -1311,16 +1185,8 @@ void main() {
                 apply: (e) => [(e.single as BiquadEffect).copyWith(b2: 1.0)],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as BiquadEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as BiquadEffect).copyWith(mix: 0.5)],
-              ),
-              (
-                label: 'n=true',
-                apply: (e) => [(e.single as BiquadEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
@@ -1423,18 +1289,6 @@ void main() {
                 ],
               ),
               (
-                label: 'b=true',
-                apply: (e) => [
-                  (e.single as DynaudnormEffect).copyWith(b: true),
-                ],
-              ),
-              (
-                label: 'c=true',
-                apply: (e) => [
-                  (e.single as DynaudnormEffect).copyWith(c: true),
-                ],
-              ),
-              (
                 label: 'compress=1.0',
                 apply: (e) => [
                   (e.single as DynaudnormEffect).copyWith(compress: 1.0),
@@ -1453,29 +1307,15 @@ void main() {
                 ],
               ),
               (
-                label: 'f=501',
-                apply: (e) => [(e.single as DynaudnormEffect).copyWith(f: 501)],
-              ),
-              (
                 label: 'framelen=501',
                 apply: (e) => [
                   (e.single as DynaudnormEffect).copyWith(framelen: 501),
                 ],
               ),
               (
-                label: 'g=32',
-                apply: (e) => [(e.single as DynaudnormEffect).copyWith(g: 32)],
-              ),
-              (
                 label: 'gausssize=32',
                 apply: (e) => [
                   (e.single as DynaudnormEffect).copyWith(gausssize: 32),
-                ],
-              ),
-              (
-                label: 'm=11.0',
-                apply: (e) => [
-                  (e.single as DynaudnormEffect).copyWith(m: 11.0),
                 ],
               ),
               (
@@ -1485,25 +1325,9 @@ void main() {
                 ],
               ),
               (
-                label: 'n=false',
-                apply: (e) => [
-                  (e.single as DynaudnormEffect).copyWith(n: false),
-                ],
-              ),
-              (
-                label: 'o=0.5',
-                apply: (e) => [(e.single as DynaudnormEffect).copyWith(o: 0.5)],
-              ),
-              (
                 label: 'overlap=0.5',
                 apply: (e) => [
                   (e.single as DynaudnormEffect).copyWith(overlap: 0.5),
-                ],
-              ),
-              (
-                label: 'p=0.975',
-                apply: (e) => [
-                  (e.single as DynaudnormEffect).copyWith(p: 0.975),
                 ],
               ),
               (
@@ -1511,18 +1335,6 @@ void main() {
                 apply: (e) => [
                   (e.single as DynaudnormEffect).copyWith(peak: 0.975),
                 ],
-              ),
-              (
-                label: 'r=0.5',
-                apply: (e) => [(e.single as DynaudnormEffect).copyWith(r: 0.5)],
-              ),
-              (
-                label: 's=1.0',
-                apply: (e) => [(e.single as DynaudnormEffect).copyWith(s: 1.0)],
-              ),
-              (
-                label: 't=0.5',
-                apply: (e) => [(e.single as DynaudnormEffect).copyWith(t: 0.5)],
               ),
               (
                 label: 'targetrms=0.5',
@@ -1544,18 +1356,10 @@ void main() {
             bundle: const [EqualizerEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=1.0',
-                apply: (e) => [(e.single as EqualizerEffect).copyWith(f: 1.0)],
-              ),
-              (
                 label: 'frequency=1.0',
                 apply: (e) => [
                   (e.single as EqualizerEffect).copyWith(frequency: 1.0),
                 ],
-              ),
-              (
-                label: 'g=1.0',
-                apply: (e) => [(e.single as EqualizerEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
@@ -1564,28 +1368,16 @@ void main() {
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as EqualizerEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [
                   (e.single as EqualizerEffect).copyWith(mix: 0.5),
                 ],
               ),
               (
-                label: 'n=true',
-                apply: (e) => [(e.single as EqualizerEffect).copyWith(n: true)],
-              ),
-              (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as EqualizerEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=2.0',
-                apply: (e) => [(e.single as EqualizerEffect).copyWith(w: 2.0)],
               ),
               (
                 label: 'width=2.0',
@@ -1633,38 +1425,20 @@ void main() {
             bundle: const [HighpassEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=3001.0',
-                apply: (e) => [
-                  (e.single as HighpassEffect).copyWith(f: 3001.0),
-                ],
-              ),
-              (
                 label: 'frequency=3001.0',
                 apply: (e) => [
                   (e.single as HighpassEffect).copyWith(frequency: 3001.0),
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as HighpassEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as HighpassEffect).copyWith(mix: 0.5)],
-              ),
-              (
-                label: 'n=true',
-                apply: (e) => [(e.single as HighpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as HighpassEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.707',
-                apply: (e) => [(e.single as HighpassEffect).copyWith(w: 1.707)],
               ),
               (
                 label: 'width=1.707',
@@ -1680,20 +1454,10 @@ void main() {
             bundle: const [HighshelfEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=3001.0',
-                apply: (e) => [
-                  (e.single as HighshelfEffect).copyWith(f: 3001.0),
-                ],
-              ),
-              (
                 label: 'frequency=3001.0',
                 apply: (e) => [
                   (e.single as HighshelfEffect).copyWith(frequency: 3001.0),
                 ],
-              ),
-              (
-                label: 'g=1.0',
-                apply: (e) => [(e.single as HighshelfEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
@@ -1702,28 +1466,16 @@ void main() {
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as HighshelfEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [
                   (e.single as HighshelfEffect).copyWith(mix: 0.5),
                 ],
               ),
               (
-                label: 'n=true',
-                apply: (e) => [(e.single as HighshelfEffect).copyWith(n: true)],
-              ),
-              (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as HighshelfEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.5',
-                apply: (e) => [(e.single as HighshelfEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
@@ -1739,36 +1491,20 @@ void main() {
             bundle: const [LowpassEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=501.0',
-                apply: (e) => [(e.single as LowpassEffect).copyWith(f: 501.0)],
-              ),
-              (
                 label: 'frequency=501.0',
                 apply: (e) => [
                   (e.single as LowpassEffect).copyWith(frequency: 501.0),
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as LowpassEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as LowpassEffect).copyWith(mix: 0.5)],
-              ),
-              (
-                label: 'n=true',
-                apply: (e) => [(e.single as LowpassEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as LowpassEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.707',
-                apply: (e) => [(e.single as LowpassEffect).copyWith(w: 1.707)],
               ),
               (
                 label: 'width=1.707',
@@ -1784,18 +1520,10 @@ void main() {
             bundle: const [LowshelfEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=101.0',
-                apply: (e) => [(e.single as LowshelfEffect).copyWith(f: 101.0)],
-              ),
-              (
                 label: 'frequency=101.0',
                 apply: (e) => [
                   (e.single as LowshelfEffect).copyWith(frequency: 101.0),
                 ],
-              ),
-              (
-                label: 'g=1.0',
-                apply: (e) => [(e.single as LowshelfEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
@@ -1804,26 +1532,14 @@ void main() {
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as LowshelfEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as LowshelfEffect).copyWith(mix: 0.5)],
-              ),
-              (
-                label: 'n=true',
-                apply: (e) => [(e.single as LowshelfEffect).copyWith(n: true)],
               ),
               (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as LowshelfEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.5',
-                apply: (e) => [(e.single as LowshelfEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
@@ -1881,29 +1597,15 @@ void main() {
             bundle: const [SpeechnormEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'c=3.0',
-                apply: (e) => [(e.single as SpeechnormEffect).copyWith(c: 3.0)],
-              ),
-              (
                 label: 'compression=3.0',
                 apply: (e) => [
                   (e.single as SpeechnormEffect).copyWith(compression: 3.0),
                 ],
               ),
               (
-                label: 'e=3.0',
-                apply: (e) => [(e.single as SpeechnormEffect).copyWith(e: 3.0)],
-              ),
-              (
                 label: 'expansion=3.0',
                 apply: (e) => [
                   (e.single as SpeechnormEffect).copyWith(expansion: 3.0),
-                ],
-              ),
-              (
-                label: 'f=0.5005',
-                apply: (e) => [
-                  (e.single as SpeechnormEffect).copyWith(f: 0.5005),
                 ],
               ),
               (
@@ -1913,21 +1615,9 @@ void main() {
                 ],
               ),
               (
-                label: 'i=true',
-                apply: (e) => [
-                  (e.single as SpeechnormEffect).copyWith(i: true),
-                ],
-              ),
-              (
                 label: 'invert=true',
                 apply: (e) => [
                   (e.single as SpeechnormEffect).copyWith(invert: true),
-                ],
-              ),
-              (
-                label: 'l=true',
-                apply: (e) => [
-                  (e.single as SpeechnormEffect).copyWith(l: true),
                 ],
               ),
               (
@@ -1937,25 +1627,9 @@ void main() {
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as SpeechnormEffect).copyWith(m: 0.5)],
-              ),
-              (
-                label: 'p=0.975',
-                apply: (e) => [
-                  (e.single as SpeechnormEffect).copyWith(p: 0.975),
-                ],
-              ),
-              (
                 label: 'peak=0.975',
                 apply: (e) => [
                   (e.single as SpeechnormEffect).copyWith(peak: 0.975),
-                ],
-              ),
-              (
-                label: 'r=0.5005',
-                apply: (e) => [
-                  (e.single as SpeechnormEffect).copyWith(r: 0.5005),
                 ],
               ),
               (
@@ -1969,10 +1643,6 @@ void main() {
                 apply: (e) => [
                   (e.single as SpeechnormEffect).copyWith(rms: 0.5),
                 ],
-              ),
-              (
-                label: 't=0.5',
-                apply: (e) => [(e.single as SpeechnormEffect).copyWith(t: 0.5)],
               ),
               (
                 label: 'threshold=0.5',
@@ -2355,20 +2025,10 @@ void main() {
             bundle: const [TiltshelfEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=3001.0',
-                apply: (e) => [
-                  (e.single as TiltshelfEffect).copyWith(f: 3001.0),
-                ],
-              ),
-              (
                 label: 'frequency=3001.0',
                 apply: (e) => [
                   (e.single as TiltshelfEffect).copyWith(frequency: 3001.0),
                 ],
-              ),
-              (
-                label: 'g=1.0',
-                apply: (e) => [(e.single as TiltshelfEffect).copyWith(g: 1.0)],
               ),
               (
                 label: 'gain=1.0',
@@ -2377,28 +2037,16 @@ void main() {
                 ],
               ),
               (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as TiltshelfEffect).copyWith(m: 0.5)],
-              ),
-              (
                 label: 'mix=0.5',
                 apply: (e) => [
                   (e.single as TiltshelfEffect).copyWith(mix: 0.5),
                 ],
               ),
               (
-                label: 'n=true',
-                apply: (e) => [(e.single as TiltshelfEffect).copyWith(n: true)],
-              ),
-              (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as TiltshelfEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.5',
-                apply: (e) => [(e.single as TiltshelfEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',
@@ -2414,44 +2062,24 @@ void main() {
             bundle: const [TrebleEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'f=3001.0',
-                apply: (e) => [(e.single as TrebleEffect).copyWith(f: 3001.0)],
-              ),
-              (
                 label: 'frequency=3001.0',
                 apply: (e) => [
                   (e.single as TrebleEffect).copyWith(frequency: 3001.0),
                 ],
               ),
               (
-                label: 'g=1.0',
-                apply: (e) => [(e.single as TrebleEffect).copyWith(g: 1.0)],
-              ),
-              (
                 label: 'gain=1.0',
                 apply: (e) => [(e.single as TrebleEffect).copyWith(gain: 1.0)],
-              ),
-              (
-                label: 'm=0.5',
-                apply: (e) => [(e.single as TrebleEffect).copyWith(m: 0.5)],
               ),
               (
                 label: 'mix=0.5',
                 apply: (e) => [(e.single as TrebleEffect).copyWith(mix: 0.5)],
               ),
               (
-                label: 'n=true',
-                apply: (e) => [(e.single as TrebleEffect).copyWith(n: true)],
-              ),
-              (
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as TrebleEffect).copyWith(normalize: true),
                 ],
-              ),
-              (
-                label: 'w=1.5',
-                apply: (e) => [(e.single as TrebleEffect).copyWith(w: 1.5)],
               ),
               (
                 label: 'width=1.5',

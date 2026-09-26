@@ -779,22 +779,10 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_adeclick_0:lavfi-adeclick');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const AdeclickEffect(enabled: true, a: 25.0);
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=25.000'));
-      });
-
       test('param `arorder` lands in wire when set to a non-default value', () {
         final s = const AdeclickEffect(enabled: true, arorder: 25.0);
         expect(s.toFilterString(), contains('arorder='));
         expect(s.toFilterString(), contains('arorder=25.000'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const AdeclickEffect(enabled: true, b: 10.0);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=10.000'));
       });
 
       test('param `burst` lands in wire when set to a non-default value', () {
@@ -803,34 +791,16 @@ void main() {
         expect(s.toFilterString(), contains('burst=10.000'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const AdeclickEffect(enabled: true, m: AdeclickM.a);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=a'));
-      });
-
       test('param `method` lands in wire when set to a non-default value', () {
         final s = const AdeclickEffect(enabled: true, method: AdeclickM.a);
         expect(s.toFilterString(), contains('method='));
         expect(s.toFilterString(), contains('method=a'));
       });
 
-      test('param `o` lands in wire when set to a non-default value', () {
-        final s = const AdeclickEffect(enabled: true, o: 95.0);
-        expect(s.toFilterString(), contains('o='));
-        expect(s.toFilterString(), contains('o=95.000'));
-      });
-
       test('param `overlap` lands in wire when set to a non-default value', () {
         final s = const AdeclickEffect(enabled: true, overlap: 95.0);
         expect(s.toFilterString(), contains('overlap='));
         expect(s.toFilterString(), contains('overlap=95.000'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const AdeclickEffect(enabled: true, t: 100.0);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=100.000'));
       });
 
       test(
@@ -842,31 +812,10 @@ void main() {
         },
       );
 
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const AdeclickEffect(enabled: true, w: 100.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=100.000'));
-      });
-
       test('param `window` lands in wire when set to a non-default value', () {
         final s = const AdeclickEffect(enabled: true, window: 100.0);
         expect(s.toFilterString(), contains('window='));
         expect(s.toFilterString(), contains('window=100.000'));
-      });
-
-      test('param `a` const `aMin` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, a: AdeclickEffect.aMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `a` const `aMax` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, a: AdeclickEffect.aMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `a` const `aDefault` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, a: AdeclickEffect.aDefault);
-        expect(s.toFilterString, returnsNormally);
       });
 
       test(
@@ -902,21 +851,6 @@ void main() {
         },
       );
 
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, b: AdeclickEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, b: AdeclickEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, b: AdeclickEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `burst` const `burstMin` is accepted by toFilterString', () {
         final s = AdeclickEffect(enabled: true, burst: AdeclickEffect.burstMin);
         expect(s.toFilterString, returnsNormally);
@@ -937,21 +871,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `o` const `oMin` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, o: AdeclickEffect.oMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oMax` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, o: AdeclickEffect.oMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oDefault` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, o: AdeclickEffect.oDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `overlap` const `overlapMin` is accepted by toFilterString',
@@ -986,21 +905,6 @@ void main() {
         },
       );
 
-      test('param `t` const `tMin` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, t: AdeclickEffect.tMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tMax` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, t: AdeclickEffect.tMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tDefault` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, t: AdeclickEffect.tDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `threshold` const `thresholdMin` is accepted by toFilterString',
         () {
@@ -1033,21 +937,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, w: AdeclickEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, w: AdeclickEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = AdeclickEffect(enabled: true, w: AdeclickEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `window` const `windowMin` is accepted by toFilterString',
@@ -1093,12 +982,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_adeclip_0:lavfi-adeclip');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const AdeclipEffect(enabled: true, a: 25.0);
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=25.000'));
-      });
-
       test('param `arorder` lands in wire when set to a non-default value', () {
         final s = const AdeclipEffect(enabled: true, arorder: 25.0);
         expect(s.toFilterString(), contains('arorder='));
@@ -1111,40 +994,16 @@ void main() {
         expect(s.toFilterString(), contains('hsize=9999'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const AdeclipEffect(enabled: true, m: AdeclipM.a);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=a'));
-      });
-
       test('param `method` lands in wire when set to a non-default value', () {
         final s = const AdeclipEffect(enabled: true, method: AdeclipM.a);
         expect(s.toFilterString(), contains('method='));
         expect(s.toFilterString(), contains('method=a'));
       });
 
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const AdeclipEffect(enabled: true, n: 9999);
-        expect(s.toFilterString(), contains('n='));
-        expect(s.toFilterString(), contains('n=9999'));
-      });
-
-      test('param `o` lands in wire when set to a non-default value', () {
-        final s = const AdeclipEffect(enabled: true, o: 95.0);
-        expect(s.toFilterString(), contains('o='));
-        expect(s.toFilterString(), contains('o=95.000'));
-      });
-
       test('param `overlap` lands in wire when set to a non-default value', () {
         final s = const AdeclipEffect(enabled: true, overlap: 95.0);
         expect(s.toFilterString(), contains('overlap='));
         expect(s.toFilterString(), contains('overlap=95.000'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const AdeclipEffect(enabled: true, t: 100.0);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=100.000'));
       });
 
       test(
@@ -1156,31 +1015,10 @@ void main() {
         },
       );
 
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const AdeclipEffect(enabled: true, w: 100.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=100.000'));
-      });
-
       test('param `window` lands in wire when set to a non-default value', () {
         final s = const AdeclipEffect(enabled: true, window: 100.0);
         expect(s.toFilterString(), contains('window='));
         expect(s.toFilterString(), contains('window=100.000'));
-      });
-
-      test('param `a` const `aMin` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, a: AdeclipEffect.aMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `a` const `aMax` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, a: AdeclipEffect.aMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `a` const `aDefault` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, a: AdeclipEffect.aDefault);
-        expect(s.toFilterString, returnsNormally);
       });
 
       test(
@@ -1237,36 +1075,6 @@ void main() {
         },
       );
 
-      test('param `n` const `nMin` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, n: AdeclipEffect.nMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `n` const `nMax` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, n: AdeclipEffect.nMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `n` const `nDefault` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, n: AdeclipEffect.nDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oMin` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, o: AdeclipEffect.oMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oMax` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, o: AdeclipEffect.oMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oDefault` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, o: AdeclipEffect.oDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `overlap` const `overlapMin` is accepted by toFilterString',
         () {
@@ -1300,21 +1108,6 @@ void main() {
         },
       );
 
-      test('param `t` const `tMin` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, t: AdeclipEffect.tMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tMax` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, t: AdeclipEffect.tMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tDefault` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, t: AdeclipEffect.tDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `threshold` const `thresholdMin` is accepted by toFilterString',
         () {
@@ -1347,21 +1140,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, w: AdeclipEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, w: AdeclipEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = AdeclipEffect(enabled: true, w: AdeclipEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `window` const `windowMin` is accepted by toFilterString',
@@ -2434,15 +2212,6 @@ void main() {
         },
       );
 
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const AevalEffect(
-          enabled: true,
-          c: 'wire_test_alt',
-          exprs: 'val(0)|val(1)',
-        );
-        expect(s.toFilterString(), contains('c='));
-      });
-
       test(
         'param `channel_layout` lands in wire when set to a non-default value',
         () {
@@ -2718,24 +2487,10 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_afade_0:lavfi-afade');
       });
 
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const AfadeEffect(enabled: true, c: AfadeCurve.nofade);
-        expect(s.toFilterString(), contains('c='));
-        expect(s.toFilterString(), contains('c=nofade'));
-      });
-
       test('param `curve` lands in wire when set to a non-default value', () {
         final s = const AfadeEffect(enabled: true, curve: AfadeCurve.nofade);
         expect(s.toFilterString(), contains('curve='));
         expect(s.toFilterString(), contains('curve=nofade'));
-      });
-
-      test('param `d` lands in wire when set to a non-default value', () {
-        final s = const AfadeEffect(
-          enabled: true,
-          d: const Duration(microseconds: 1000000),
-        );
-        expect(s.toFilterString(), contains('d='));
       });
 
       test(
@@ -2764,30 +2519,10 @@ void main() {
         },
       );
 
-      test('param `ns` lands in wire when set to a non-default value', () {
-        final s = const AfadeEffect(enabled: true, ns: 9223372036854775807);
-        expect(s.toFilterString(), contains('ns='));
-        expect(s.toFilterString(), contains('ns=9223372036854775807'));
-      });
-
       test('param `silence` lands in wire when set to a non-default value', () {
         final s = const AfadeEffect(enabled: true, silence: 1.0);
         expect(s.toFilterString(), contains('silence='));
         expect(s.toFilterString(), contains('silence=1.000'));
-      });
-
-      test('param `ss` lands in wire when set to a non-default value', () {
-        final s = const AfadeEffect(enabled: true, ss: 9223372036854775807);
-        expect(s.toFilterString(), contains('ss='));
-        expect(s.toFilterString(), contains('ss=9223372036854775807'));
-      });
-
-      test('param `st` lands in wire when set to a non-default value', () {
-        final s = const AfadeEffect(
-          enabled: true,
-          st: const Duration(microseconds: 1000000),
-        );
-        expect(s.toFilterString(), contains('st='));
       });
 
       test(
@@ -2815,12 +2550,6 @@ void main() {
           expect(s.toFilterString(), contains('start_time='));
         },
       );
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const AfadeEffect(enabled: true, t: AfadeType.out);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=out'));
-      });
 
       test('param `type` lands in wire when set to a non-default value', () {
         final s = const AfadeEffect(enabled: true, type: AfadeType.out);
@@ -2867,21 +2596,6 @@ void main() {
         },
       );
 
-      test('param `ns` const `nsMin` is accepted by toFilterString', () {
-        final s = AfadeEffect(enabled: true, ns: AfadeEffect.nsMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `ns` const `nsMax` is accepted by toFilterString', () {
-        final s = AfadeEffect(enabled: true, ns: AfadeEffect.nsMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `ns` const `nsDefault` is accepted by toFilterString', () {
-        final s = AfadeEffect(enabled: true, ns: AfadeEffect.nsDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `silence` const `silenceMin` is accepted by toFilterString',
         () {
@@ -2908,21 +2622,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `ss` const `ssMin` is accepted by toFilterString', () {
-        final s = AfadeEffect(enabled: true, ss: AfadeEffect.ssMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `ss` const `ssMax` is accepted by toFilterString', () {
-        final s = AfadeEffect(enabled: true, ss: AfadeEffect.ssMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `ss` const `ssDefault` is accepted by toFilterString', () {
-        final s = AfadeEffect(enabled: true, ss: AfadeEffect.ssDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `start_sample` const `startSampleMin` is accepted by toFilterString',
@@ -2986,12 +2685,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_afftdn_0:lavfi-afftdn');
       });
 
-      test('param `ad` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, ad: 1.0);
-        expect(s.toFilterString(), contains('ad='));
-        expect(s.toFilterString(), contains('ad=1.000'));
-      });
-
       test(
         'param `adaptivity` lands in wire when set to a non-default value',
         () {
@@ -3021,17 +2714,6 @@ void main() {
         },
       );
 
-      test('param `bm` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, bm: 5.0);
-        expect(s.toFilterString(), contains('bm='));
-        expect(s.toFilterString(), contains('bm=5.000'));
-      });
-
-      test('param `bn` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, bn: 'wire_test_alt');
-        expect(s.toFilterString(), contains('bn='));
-      });
-
       test(
         'param `floor_offset` lands in wire when set to a non-default value',
         () {
@@ -3041,12 +2723,6 @@ void main() {
         },
       );
 
-      test('param `fo` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, fo: 2.0);
-        expect(s.toFilterString(), contains('fo='));
-        expect(s.toFilterString(), contains('fo=2.000'));
-      });
-
       test(
         'param `gain_smooth` lands in wire when set to a non-default value',
         () {
@@ -3055,24 +2731,6 @@ void main() {
           expect(s.toFilterString(), contains('gain_smooth=50'));
         },
       );
-
-      test('param `gs` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, gs: 50);
-        expect(s.toFilterString(), contains('gs='));
-        expect(s.toFilterString(), contains('gs=50'));
-      });
-
-      test('param `nf` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, nf: -20.0);
-        expect(s.toFilterString(), contains('nf='));
-        expect(s.toFilterString(), contains('nf=-20.000'));
-      });
-
-      test('param `nl` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, nl: AfftdnLink.none);
-        expect(s.toFilterString(), contains('nl='));
-        expect(s.toFilterString(), contains('nl=none'));
-      });
 
       test(
         'param `noise_floor` lands in wire when set to a non-default value',
@@ -3113,24 +2771,6 @@ void main() {
         },
       );
 
-      test('param `nr` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, nr: 97.0);
-        expect(s.toFilterString(), contains('nr='));
-        expect(s.toFilterString(), contains('nr=97.000'));
-      });
-
-      test('param `nt` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, nt: AfftdnType.w);
-        expect(s.toFilterString(), contains('nt='));
-        expect(s.toFilterString(), contains('nt=w'));
-      });
-
-      test('param `om` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, om: AfftdnMode.input);
-        expect(s.toFilterString(), contains('om='));
-        expect(s.toFilterString(), contains('om=input'));
-      });
-
       test(
         'param `output_mode` lands in wire when set to a non-default value',
         () {
@@ -3152,12 +2792,6 @@ void main() {
         },
       );
 
-      test('param `rf` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, rf: -20.0);
-        expect(s.toFilterString(), contains('rf='));
-        expect(s.toFilterString(), contains('rf=-20.000'));
-      });
-
       test(
         'param `sample_noise` lands in wire when set to a non-default value',
         () {
@@ -3169,22 +2803,6 @@ void main() {
           expect(s.toFilterString(), contains('sample_noise=start'));
         },
       );
-
-      test('param `sn` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, sn: AfftdnSample.start);
-        expect(s.toFilterString(), contains('sn='));
-        expect(s.toFilterString(), contains('sn=start'));
-      });
-
-      test('param `tn` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, tn: true);
-        expect(s.toFilterString(), contains('tn='));
-      });
-
-      test('param `tr` lands in wire when set to a non-default value', () {
-        final s = const AfftdnEffect(enabled: true, tr: true);
-        expect(s.toFilterString(), contains('tr='));
-      });
 
       test(
         'param `track_noise` lands in wire when set to a non-default value',
@@ -3201,21 +2819,6 @@ void main() {
           expect(s.toFilterString(), contains('track_residual='));
         },
       );
-
-      test('param `ad` const `adMin` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, ad: AfftdnEffect.adMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `ad` const `adMax` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, ad: AfftdnEffect.adMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `ad` const `adDefault` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, ad: AfftdnEffect.adDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `adaptivity` const `adaptivityMin` is accepted by toFilterString',
@@ -3283,21 +2886,6 @@ void main() {
         },
       );
 
-      test('param `bm` const `bmMin` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, bm: AfftdnEffect.bmMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `bm` const `bmMax` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, bm: AfftdnEffect.bmMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `bm` const `bmDefault` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, bm: AfftdnEffect.bmDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `floor_offset` const `floorOffsetMin` is accepted by toFilterString',
         () {
@@ -3331,21 +2919,6 @@ void main() {
         },
       );
 
-      test('param `fo` const `foMin` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, fo: AfftdnEffect.foMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `fo` const `foMax` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, fo: AfftdnEffect.foMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `fo` const `foDefault` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, fo: AfftdnEffect.foDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `gain_smooth` const `gainSmoothMin` is accepted by toFilterString',
         () {
@@ -3378,36 +2951,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `gs` const `gsMin` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, gs: AfftdnEffect.gsMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `gs` const `gsMax` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, gs: AfftdnEffect.gsMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `gs` const `gsDefault` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, gs: AfftdnEffect.gsDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `nf` const `nfMin` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, nf: AfftdnEffect.nfMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `nf` const `nfMax` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, nf: AfftdnEffect.nfMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `nf` const `nfDefault` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, nf: AfftdnEffect.nfDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `noise_floor` const `noiseFloorMin` is accepted by toFilterString',
@@ -3475,21 +3018,6 @@ void main() {
         },
       );
 
-      test('param `nr` const `nrMin` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, nr: AfftdnEffect.nrMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `nr` const `nrMax` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, nr: AfftdnEffect.nrMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `nr` const `nrDefault` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, nr: AfftdnEffect.nrDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `residual_floor` const `residualFloorMin` is accepted by toFilterString',
         () {
@@ -3522,21 +3050,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `rf` const `rfMin` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, rf: AfftdnEffect.rfMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `rf` const `rfMax` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, rf: AfftdnEffect.rfMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `rf` const `rfDefault` is accepted by toFilterString', () {
-        final s = AfftdnEffect(enabled: true, rf: AfftdnEffect.rfDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
     });
     group('AfftfiltEffect (afftfilt)', () {
       test('disabled → drops out of the chain', () {
@@ -3673,21 +3186,6 @@ void main() {
           expect(s.toFilterString(), contains('channel_layouts='));
         },
       );
-
-      test('param `cl` lands in wire when set to a non-default value', () {
-        final s = const AformatEffect(enabled: true, cl: 'wire_test_alt');
-        expect(s.toFilterString(), contains('cl='));
-      });
-
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const AformatEffect(enabled: true, f: 'wire_test_alt');
-        expect(s.toFilterString(), contains('f='));
-      });
-
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const AformatEffect(enabled: true, r: 'wire_test_alt');
-        expect(s.toFilterString(), contains('r='));
-      });
 
       test(
         'param `sample_fmts` lands in wire when set to a non-default value',
@@ -4374,18 +3872,6 @@ void main() {
         expect(s.toFilterString(), contains('dry=0.000'));
       });
 
-      test('param `e` lands in wire when set to a non-default value', () {
-        final s = const AiirEffect(enabled: true, e: AiirPrecision.flt);
-        expect(s.toFilterString(), contains('e='));
-        expect(s.toFilterString(), contains('e=flt'));
-      });
-
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const AiirEffect(enabled: true, f: AiirFormat.ll);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=ll'));
-      });
-
       test('param `format` lands in wire when set to a non-default value', () {
         final s = const AiirEffect(enabled: true, format: AiirFormat.ll);
         expect(s.toFilterString(), contains('format='));
@@ -4397,20 +3883,10 @@ void main() {
         expect(s.toFilterString(), contains('gains='));
       });
 
-      test('param `k` lands in wire when set to a non-default value', () {
-        final s = const AiirEffect(enabled: true, k: 'wire_test_alt');
-        expect(s.toFilterString(), contains('k='));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const AiirEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const AiirEffect(enabled: true, n: false);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -4420,11 +3896,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const AiirEffect(enabled: true, p: 'wire_test_alt');
-        expect(s.toFilterString(), contains('p='));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const AiirEffect(enabled: true, poles: 'wire_test_alt');
@@ -4449,12 +3920,6 @@ void main() {
         expect(s.toFilterString(), contains('process=d'));
       });
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const AiirEffect(enabled: true, r: AiirProcess.d);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=d'));
-      });
-
       test('param `rate` lands in wire when set to a non-default value', () {
         final s = const AiirEffect(enabled: true, rate: 'wire_test_alt');
         expect(s.toFilterString(), contains('rate='));
@@ -4477,11 +3942,6 @@ void main() {
         final s = const AiirEffect(enabled: true, wet: 0.0);
         expect(s.toFilterString(), contains('wet='));
         expect(s.toFilterString(), contains('wet=0.000'));
-      });
-
-      test('param `z` lands in wire when set to a non-default value', () {
-        final s = const AiirEffect(enabled: true, z: 'wire_test_alt');
-        expect(s.toFilterString(), contains('z='));
       });
 
       test('param `zeros` lands in wire when set to a non-default value', () {
@@ -4634,7 +4094,7 @@ void main() {
       test('param `limit` lands in wire when set to a non-default value', () {
         final s = const AlimiterEffect(enabled: true, limit: 0.0625);
         expect(s.toFilterString(), contains('limit='));
-        expect(s.toFilterString(), contains('limit=0.063'));
+        expect(s.toFilterString(), contains('limit=0.062500'));
       });
 
       test('param `release` lands in wire when set to a non-default value', () {
@@ -4840,20 +4300,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_allpass_0:lavfi-allpass');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(
-          enabled: true,
-          a: AllpassTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
-
       test(
         'param `channels` lands in wire when set to a non-default value',
         () {
@@ -4865,12 +4311,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -4880,21 +4320,10 @@ void main() {
         },
       );
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const AllpassEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -4904,12 +4333,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `o` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, o: 1);
-        expect(s.toFilterString(), contains('o='));
-        expect(s.toFilterString(), contains('o=1'));
-      });
 
       test('param `order` lands in wire when set to a non-default value', () {
         final s = const AllpassEffect(enabled: true, order: 1);
@@ -4929,18 +4352,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, r: AllpassPrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, t: AllpassWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -4952,12 +4363,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const AllpassEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const AllpassEffect(enabled: true, width: 99999.0);
@@ -4976,21 +4381,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, f: AllpassEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, f: AllpassEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, f: AllpassEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
@@ -5025,21 +4415,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, m: AllpassEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, m: AllpassEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, m: AllpassEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = AllpassEffect(enabled: true, mix: AllpassEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -5052,21 +4427,6 @@ void main() {
 
       test('param `mix` const `mixDefault` is accepted by toFilterString', () {
         final s = AllpassEffect(enabled: true, mix: AllpassEffect.mixDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oMin` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, o: AllpassEffect.oMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oMax` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, o: AllpassEffect.oMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oDefault` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, o: AllpassEffect.oDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -5090,21 +4450,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, w: AllpassEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, w: AllpassEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = AllpassEffect(enabled: true, w: AllpassEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = AllpassEffect(enabled: true, width: AllpassEffect.widthMin);
@@ -5217,30 +4562,10 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_anlmdn_0:lavfi-anlmdn');
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const AnlmdnEffect(enabled: true, m: 1000.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=1000.000'));
-      });
-
-      test('param `o` lands in wire when set to a non-default value', () {
-        final s = const AnlmdnEffect(enabled: true, o: AnlmdnMode.i);
-        expect(s.toFilterString(), contains('o='));
-        expect(s.toFilterString(), contains('o=i'));
-      });
-
       test('param `output` lands in wire when set to a non-default value', () {
         final s = const AnlmdnEffect(enabled: true, output: AnlmdnMode.i);
         expect(s.toFilterString(), contains('output='));
         expect(s.toFilterString(), contains('output=i'));
-      });
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const AnlmdnEffect(
-          enabled: true,
-          p: const Duration(microseconds: 1002000),
-        );
-        expect(s.toFilterString(), contains('p='));
       });
 
       test('param `patch` lands in wire when set to a non-default value', () {
@@ -5249,14 +4574,6 @@ void main() {
           patch: const Duration(microseconds: 1002000),
         );
         expect(s.toFilterString(), contains('patch='));
-      });
-
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const AnlmdnEffect(
-          enabled: true,
-          r: const Duration(microseconds: 1006000),
-        );
-        expect(s.toFilterString(), contains('r='));
       });
 
       test(
@@ -5269,12 +4586,6 @@ void main() {
           expect(s.toFilterString(), contains('research='));
         },
       );
-
-      test('param `s` lands in wire when set to a non-default value', () {
-        final s = const AnlmdnEffect(enabled: true, s: 10000.0);
-        expect(s.toFilterString(), contains('s='));
-        expect(s.toFilterString(), contains('s=10000.000'));
-      });
 
       test('param `smooth` lands in wire when set to a non-default value', () {
         final s = const AnlmdnEffect(enabled: true, smooth: 1000.0);
@@ -5290,36 +4601,6 @@ void main() {
           expect(s.toFilterString(), contains('strength=10000.000'));
         },
       );
-
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = AnlmdnEffect(enabled: true, m: AnlmdnEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = AnlmdnEffect(enabled: true, m: AnlmdnEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = AnlmdnEffect(enabled: true, m: AnlmdnEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `s` const `sMin` is accepted by toFilterString', () {
-        final s = AnlmdnEffect(enabled: true, s: AnlmdnEffect.sMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `s` const `sMax` is accepted by toFilterString', () {
-        final s = AnlmdnEffect(enabled: true, s: AnlmdnEffect.sMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `s` const `sDefault` is accepted by toFilterString', () {
-        final s = AnlmdnEffect(enabled: true, s: AnlmdnEffect.sDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `smooth` const `smoothMin` is accepted by toFilterString',
@@ -5834,7 +5115,7 @@ void main() {
       test('param `clip` lands in wire when set to a non-default value', () {
         final s = const ApsyclipEffect(enabled: true, clip: 0.015625);
         expect(s.toFilterString(), contains('clip='));
-        expect(s.toFilterString(), contains('clip=0.016'));
+        expect(s.toFilterString(), contains('clip=0.015625'));
       });
 
       test('param `diff` lands in wire when set to a non-default value', () {
@@ -6435,15 +5716,6 @@ void main() {
           expect(audioEffectsChain(fx), contains('model='));
         },
       );
-
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const ArnndnEffect(
-          enabled: true,
-          m: 'wire_test_alt',
-          model: '',
-        );
-        expect(s.toFilterString(), contains('m='));
-      });
 
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const ArnndnEffect(enabled: true, mix: -1.0, model: '');
@@ -7663,21 +6935,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_bandpass_0:lavfi-bandpass');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(
-          enabled: true,
-          a: BandpassTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -7686,11 +6943,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -7708,12 +6960,6 @@ void main() {
         expect(s.toFilterString(), contains('csg='));
       });
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -7723,21 +6969,10 @@ void main() {
         },
       );
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const BandpassEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -7760,18 +6995,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, r: BandpassPrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, t: BandpassWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -7783,12 +7006,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const BandpassEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const BandpassEffect(enabled: true, width: 99999.0);
@@ -7807,21 +7024,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, b: BandpassEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, b: BandpassEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, b: BandpassEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -7856,21 +7058,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, f: BandpassEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, f: BandpassEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, f: BandpassEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -7904,21 +7091,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, m: BandpassEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, m: BandpassEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, m: BandpassEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = BandpassEffect(enabled: true, mix: BandpassEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -7931,21 +7103,6 @@ void main() {
 
       test('param `mix` const `mixDefault` is accepted by toFilterString', () {
         final s = BandpassEffect(enabled: true, mix: BandpassEffect.mixDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, w: BandpassEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, w: BandpassEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = BandpassEffect(enabled: true, w: BandpassEffect.wDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -7981,21 +7138,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_bandreject_0:lavfi-bandreject');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(
-          enabled: true,
-          a: BandrejectTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -8004,11 +7146,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -8021,12 +7158,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -8036,21 +7167,10 @@ void main() {
         },
       );
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const BandrejectEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -8073,24 +7193,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(
-          enabled: true,
-          r: BandrejectPrecision.s16,
-        );
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(
-          enabled: true,
-          t: BandrejectWidthType.h,
-        );
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -8102,12 +7204,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const BandrejectEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const BandrejectEffect(enabled: true, width: 99999.0);
@@ -8126,21 +7222,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, b: BandrejectEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, b: BandrejectEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, b: BandrejectEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -8175,21 +7256,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, f: BandrejectEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, f: BandrejectEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, f: BandrejectEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -8223,21 +7289,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, m: BandrejectEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, m: BandrejectEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, m: BandrejectEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = BandrejectEffect(enabled: true, mix: BandrejectEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -8253,21 +7304,6 @@ void main() {
           enabled: true,
           mix: BandrejectEffect.mixDefault,
         );
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, w: BandrejectEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, w: BandrejectEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = BandrejectEffect(enabled: true, w: BandrejectEffect.wDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -8309,18 +7345,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_bass_0:lavfi-bass');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, a: BassTransformType.dii);
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -8330,11 +7354,6 @@ void main() {
         },
       );
 
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
-
       test(
         'param `channels` lands in wire when set to a non-default value',
         () {
@@ -8342,12 +7361,6 @@ void main() {
           expect(s.toFilterString(), contains('channels='));
         },
       );
-
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
 
       test(
         'param `frequency` lands in wire when set to a non-default value',
@@ -8358,33 +7371,16 @@ void main() {
         },
       );
 
-      test('param `g` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, g: 900.0);
-        expect(s.toFilterString(), contains('g='));
-        expect(s.toFilterString(), contains('g=900.000'));
-      });
-
       test('param `gain` lands in wire when set to a non-default value', () {
         final s = const BassEffect(enabled: true, gain: 900.0);
         expect(s.toFilterString(), contains('gain='));
         expect(s.toFilterString(), contains('gain=900.000'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const BassEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -8394,12 +7390,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, p: 1);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1'));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const BassEffect(enabled: true, poles: 1);
@@ -8419,18 +7409,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, r: BassPrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, t: BassWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -8442,12 +7420,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const BassEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const BassEffect(enabled: true, width: 99999.0);
@@ -8463,21 +7435,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, b: BassEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, b: BassEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, b: BassEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -8512,21 +7469,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, f: BassEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, f: BassEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, f: BassEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -8560,21 +7502,6 @@ void main() {
         },
       );
 
-      test('param `g` const `gMin` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, g: BassEffect.gMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gMax` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, g: BassEffect.gMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gDefault` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, g: BassEffect.gDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `gain` const `gainMin` is accepted by toFilterString', () {
         final s = BassEffect(enabled: true, gain: BassEffect.gainMin);
         expect(s.toFilterString, returnsNormally);
@@ -8593,21 +7520,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, m: BassEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, m: BassEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, m: BassEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = BassEffect(enabled: true, mix: BassEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -8620,21 +7532,6 @@ void main() {
 
       test('param `mix` const `mixDefault` is accepted by toFilterString', () {
         final s = BassEffect(enabled: true, mix: BassEffect.mixDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, p: BassEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, p: BassEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, p: BassEffect.pDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -8655,21 +7552,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, w: BassEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, w: BassEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = BassEffect(enabled: true, w: BassEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = BassEffect(enabled: true, width: BassEffect.widthMin);
@@ -8700,12 +7582,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_biquad_0:lavfi-biquad');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const BiquadEffect(enabled: true, a: BiquadTransformType.dii);
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
       test('param `a0` lands in wire when set to a non-default value', () {
         final s = const BiquadEffect(enabled: true, a0: 2147483647.0);
         expect(s.toFilterString(), contains('a0='));
@@ -8722,12 +7598,6 @@ void main() {
         final s = const BiquadEffect(enabled: true, a2: 2147483647.0);
         expect(s.toFilterString(), contains('a2='));
         expect(s.toFilterString(), contains('a2=2147483647.000'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const BiquadEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
       });
 
       test('param `b0` lands in wire when set to a non-default value', () {
@@ -8757,11 +7627,6 @@ void main() {
         },
       );
 
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const BiquadEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
-
       test(
         'param `channels` lands in wire when set to a non-default value',
         () {
@@ -8773,21 +7638,10 @@ void main() {
         },
       );
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const BiquadEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const BiquadEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const BiquadEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -8809,12 +7663,6 @@ void main() {
           expect(s.toFilterString(), contains('precision=s16'));
         },
       );
-
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const BiquadEffect(enabled: true, r: BiquadPrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
 
       test(
         'param `transform` lands in wire when set to a non-default value',
@@ -8870,21 +7718,6 @@ void main() {
 
       test('param `a2` const `a2Default` is accepted by toFilterString', () {
         final s = BiquadEffect(enabled: true, a2: BiquadEffect.a2Default);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = BiquadEffect(enabled: true, b: BiquadEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = BiquadEffect(enabled: true, b: BiquadEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = BiquadEffect(enabled: true, b: BiquadEffect.bDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -8965,21 +7798,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = BiquadEffect(enabled: true, m: BiquadEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = BiquadEffect(enabled: true, m: BiquadEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = BiquadEffect(enabled: true, m: BiquadEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = BiquadEffect(enabled: true, mix: BiquadEffect.mixMin);
@@ -10197,16 +9015,6 @@ void main() {
         },
       );
 
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, b: true);
-        expect(s.toFilterString(), contains('b='));
-      });
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, c: true);
-        expect(s.toFilterString(), contains('c='));
-      });
-
       test(
         'param `channels` lands in wire when set to a non-default value',
         () {
@@ -10248,12 +9056,6 @@ void main() {
         expect(s.toFilterString(), contains('curve='));
       });
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, f: 8000);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=8000'));
-      });
-
       test(
         'param `framelen` lands in wire when set to a non-default value',
         () {
@@ -10262,12 +9064,6 @@ void main() {
           expect(s.toFilterString(), contains('framelen=8000'));
         },
       );
-
-      test('param `g` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, g: 301);
-        expect(s.toFilterString(), contains('g='));
-        expect(s.toFilterString(), contains('g=301'));
-      });
 
       test(
         'param `gausssize` lands in wire when set to a non-default value',
@@ -10278,32 +9074,10 @@ void main() {
         },
       );
 
-      test('param `h` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, h: 'wire_test_alt');
-        expect(s.toFilterString(), contains('h='));
-      });
-
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, m: 100.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=100.000'));
-      });
-
       test('param `maxgain` lands in wire when set to a non-default value', () {
         final s = const DynaudnormEffect(enabled: true, maxgain: 100.0);
         expect(s.toFilterString(), contains('maxgain='));
         expect(s.toFilterString(), contains('maxgain=100.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, n: false);
-        expect(s.toFilterString(), contains('n='));
-      });
-
-      test('param `o` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, o: 1.0);
-        expect(s.toFilterString(), contains('o='));
-        expect(s.toFilterString(), contains('o=1.000'));
       });
 
       test('param `overlap` lands in wire when set to a non-default value', () {
@@ -10312,34 +9086,10 @@ void main() {
         expect(s.toFilterString(), contains('overlap=1.000'));
       });
 
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, p: 1.0);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1.000'));
-      });
-
       test('param `peak` lands in wire when set to a non-default value', () {
         final s = const DynaudnormEffect(enabled: true, peak: 1.0);
         expect(s.toFilterString(), contains('peak='));
         expect(s.toFilterString(), contains('peak=1.000'));
-      });
-
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, r: 1.0);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=1.000'));
-      });
-
-      test('param `s` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, s: 30.0);
-        expect(s.toFilterString(), contains('s='));
-        expect(s.toFilterString(), contains('s=30.000'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, t: 1.0);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=1.000'));
       });
 
       test(
@@ -10359,11 +9109,6 @@ void main() {
           expect(s.toFilterString(), contains('threshold=1.000'));
         },
       );
-
-      test('param `v` lands in wire when set to a non-default value', () {
-        final s = const DynaudnormEffect(enabled: true, v: 'wire_test_alt');
-        expect(s.toFilterString(), contains('v='));
-      });
 
       test(
         'param `compress` const `compressMin` is accepted by toFilterString',
@@ -10398,21 +9143,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, f: DynaudnormEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, f: DynaudnormEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, f: DynaudnormEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `framelen` const `framelenMin` is accepted by toFilterString',
         () {
@@ -10445,21 +9175,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `g` const `gMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, g: DynaudnormEffect.gMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, g: DynaudnormEffect.gMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, g: DynaudnormEffect.gDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `gausssize` const `gausssizeMin` is accepted by toFilterString',
@@ -10494,21 +9209,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, m: DynaudnormEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, m: DynaudnormEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, m: DynaudnormEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `maxgain` const `maxgainMin` is accepted by toFilterString',
         () {
@@ -10541,21 +9241,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `o` const `oMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, o: DynaudnormEffect.oMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, o: DynaudnormEffect.oMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `o` const `oDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, o: DynaudnormEffect.oDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `overlap` const `overlapMin` is accepted by toFilterString',
@@ -10590,21 +9275,6 @@ void main() {
         },
       );
 
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, p: DynaudnormEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, p: DynaudnormEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, p: DynaudnormEffect.pDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `peak` const `peakMin` is accepted by toFilterString', () {
         final s = DynaudnormEffect(
           enabled: true,
@@ -10631,51 +9301,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `r` const `rMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, r: DynaudnormEffect.rMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `r` const `rMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, r: DynaudnormEffect.rMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `r` const `rDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, r: DynaudnormEffect.rDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `s` const `sMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, s: DynaudnormEffect.sMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `s` const `sMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, s: DynaudnormEffect.sMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `s` const `sDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, s: DynaudnormEffect.sDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tMin` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, t: DynaudnormEffect.tMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tMax` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, t: DynaudnormEffect.tMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tDefault` is accepted by toFilterString', () {
-        final s = DynaudnormEffect(enabled: true, t: DynaudnormEffect.tDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `targetrms` const `targetrmsMin` is accepted by toFilterString',
@@ -10942,21 +9567,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_equalizer_0:lavfi-equalizer');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(
-          enabled: true,
-          a: EqualizerTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -10965,11 +9575,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -10982,12 +9587,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -10997,33 +9596,16 @@ void main() {
         },
       );
 
-      test('param `g` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, g: 900.0);
-        expect(s.toFilterString(), contains('g='));
-        expect(s.toFilterString(), contains('g=900.000'));
-      });
-
       test('param `gain` lands in wire when set to a non-default value', () {
         final s = const EqualizerEffect(enabled: true, gain: 900.0);
         expect(s.toFilterString(), contains('gain='));
         expect(s.toFilterString(), contains('gain=900.000'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const EqualizerEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -11046,21 +9628,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(
-          enabled: true,
-          r: EqualizerPrecision.s16,
-        );
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, t: EqualizerWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -11072,12 +9639,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const EqualizerEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const EqualizerEffect(enabled: true, width: 99999.0);
@@ -11096,21 +9657,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, b: EqualizerEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, b: EqualizerEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, b: EqualizerEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -11145,21 +9691,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, f: EqualizerEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, f: EqualizerEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, f: EqualizerEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -11193,21 +9724,6 @@ void main() {
         },
       );
 
-      test('param `g` const `gMin` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, g: EqualizerEffect.gMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gMax` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, g: EqualizerEffect.gMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gDefault` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, g: EqualizerEffect.gDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `gain` const `gainMin` is accepted by toFilterString', () {
         final s = EqualizerEffect(enabled: true, gain: EqualizerEffect.gainMin);
         expect(s.toFilterString, returnsNormally);
@@ -11229,21 +9745,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, m: EqualizerEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, m: EqualizerEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, m: EqualizerEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = EqualizerEffect(enabled: true, mix: EqualizerEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -11259,21 +9760,6 @@ void main() {
           enabled: true,
           mix: EqualizerEffect.mixDefault,
         );
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, w: EqualizerEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, w: EqualizerEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = EqualizerEffect(enabled: true, w: EqualizerEffect.wDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -12210,21 +10696,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_highpass_0:lavfi-highpass');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(
-          enabled: true,
-          a: HighpassTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -12233,11 +10704,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -12250,12 +10716,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -12265,21 +10725,10 @@ void main() {
         },
       );
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const HighpassEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -12289,12 +10738,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, p: 1);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1'));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const HighpassEffect(enabled: true, poles: 1);
@@ -12314,18 +10757,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, r: HighpassPrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, t: HighpassWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -12337,12 +10768,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const HighpassEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const HighpassEffect(enabled: true, width: 99999.0);
@@ -12361,21 +10786,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, b: HighpassEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, b: HighpassEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, b: HighpassEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -12410,21 +10820,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, f: HighpassEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, f: HighpassEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, f: HighpassEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -12458,21 +10853,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, m: HighpassEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, m: HighpassEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, m: HighpassEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = HighpassEffect(enabled: true, mix: HighpassEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -12485,21 +10865,6 @@ void main() {
 
       test('param `mix` const `mixDefault` is accepted by toFilterString', () {
         final s = HighpassEffect(enabled: true, mix: HighpassEffect.mixDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, p: HighpassEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, p: HighpassEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, p: HighpassEffect.pDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -12523,21 +10888,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, w: HighpassEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, w: HighpassEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = HighpassEffect(enabled: true, w: HighpassEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = HighpassEffect(enabled: true, width: HighpassEffect.widthMin);
@@ -12571,21 +10921,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_highshelf_0:lavfi-highshelf');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(
-          enabled: true,
-          a: HighshelfTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -12594,11 +10929,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -12611,12 +10941,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -12626,33 +10950,16 @@ void main() {
         },
       );
 
-      test('param `g` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, g: 900.0);
-        expect(s.toFilterString(), contains('g='));
-        expect(s.toFilterString(), contains('g=900.000'));
-      });
-
       test('param `gain` lands in wire when set to a non-default value', () {
         final s = const HighshelfEffect(enabled: true, gain: 900.0);
         expect(s.toFilterString(), contains('gain='));
         expect(s.toFilterString(), contains('gain=900.000'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const HighshelfEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -12662,12 +10969,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, p: 1);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1'));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const HighshelfEffect(enabled: true, poles: 1);
@@ -12687,21 +10988,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(
-          enabled: true,
-          r: HighshelfPrecision.s16,
-        );
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, t: HighshelfWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -12713,12 +10999,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const HighshelfEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const HighshelfEffect(enabled: true, width: 99999.0);
@@ -12737,21 +11017,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, b: HighshelfEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, b: HighshelfEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, b: HighshelfEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -12786,21 +11051,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, f: HighshelfEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, f: HighshelfEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, f: HighshelfEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -12834,21 +11084,6 @@ void main() {
         },
       );
 
-      test('param `g` const `gMin` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, g: HighshelfEffect.gMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gMax` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, g: HighshelfEffect.gMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gDefault` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, g: HighshelfEffect.gDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `gain` const `gainMin` is accepted by toFilterString', () {
         final s = HighshelfEffect(enabled: true, gain: HighshelfEffect.gainMin);
         expect(s.toFilterString, returnsNormally);
@@ -12870,21 +11105,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, m: HighshelfEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, m: HighshelfEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, m: HighshelfEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = HighshelfEffect(enabled: true, mix: HighshelfEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -12900,21 +11120,6 @@ void main() {
           enabled: true,
           mix: HighshelfEffect.mixDefault,
         );
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, p: HighshelfEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, p: HighshelfEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, p: HighshelfEffect.pDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -12944,21 +11149,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, w: HighshelfEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, w: HighshelfEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = HighshelfEffect(enabled: true, w: HighshelfEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = HighshelfEffect(
@@ -13022,24 +11212,6 @@ void main() {
         expect(s.toFilterString(), contains('lra='));
         expect(s.toFilterString(), contains('lra=50.000'));
       });
-
-      test(
-        'param `measured_LRA` lands in wire when set to a non-default value',
-        () {
-          final s = const LoudnormEffect(enabled: true, measuredLRA: 99.0);
-          expect(s.toFilterString(), contains('measured_LRA='));
-          expect(s.toFilterString(), contains('measured_LRA=99.000'));
-        },
-      );
-
-      test(
-        'param `measured_TP` lands in wire when set to a non-default value',
-        () {
-          final s = const LoudnormEffect(enabled: true, measuredTP: -99.0);
-          expect(s.toFilterString(), contains('measured_TP='));
-          expect(s.toFilterString(), contains('measured_TP=-99.000'));
-        },
-      );
 
       test(
         'param `measured_i` lands in wire when set to a non-default value',
@@ -13141,72 +11313,6 @@ void main() {
         final s = LoudnormEffect(enabled: true, lra: LoudnormEffect.lraDefault);
         expect(s.toFilterString, returnsNormally);
       });
-
-      test(
-        'param `measured_LRA` const `measuredLRAMin` is accepted by toFilterString',
-        () {
-          final s = LoudnormEffect(
-            enabled: true,
-            measuredLRA: LoudnormEffect.measuredLRAMin,
-          );
-          expect(s.toFilterString, returnsNormally);
-        },
-      );
-
-      test(
-        'param `measured_LRA` const `measuredLRAMax` is accepted by toFilterString',
-        () {
-          final s = LoudnormEffect(
-            enabled: true,
-            measuredLRA: LoudnormEffect.measuredLRAMax,
-          );
-          expect(s.toFilterString, returnsNormally);
-        },
-      );
-
-      test(
-        'param `measured_LRA` const `measuredLRADefault` is accepted by toFilterString',
-        () {
-          final s = LoudnormEffect(
-            enabled: true,
-            measuredLRA: LoudnormEffect.measuredLRADefault,
-          );
-          expect(s.toFilterString, returnsNormally);
-        },
-      );
-
-      test(
-        'param `measured_TP` const `measuredTPMin` is accepted by toFilterString',
-        () {
-          final s = LoudnormEffect(
-            enabled: true,
-            measuredTP: LoudnormEffect.measuredTPMin,
-          );
-          expect(s.toFilterString, returnsNormally);
-        },
-      );
-
-      test(
-        'param `measured_TP` const `measuredTPMax` is accepted by toFilterString',
-        () {
-          final s = LoudnormEffect(
-            enabled: true,
-            measuredTP: LoudnormEffect.measuredTPMax,
-          );
-          expect(s.toFilterString, returnsNormally);
-        },
-      );
-
-      test(
-        'param `measured_TP` const `measuredTPDefault` is accepted by toFilterString',
-        () {
-          final s = LoudnormEffect(
-            enabled: true,
-            measuredTP: LoudnormEffect.measuredTPDefault,
-          );
-          expect(s.toFilterString, returnsNormally);
-        },
-      );
 
       test(
         'param `measured_i` const `measuredIMin` is accepted by toFilterString',
@@ -13399,21 +11505,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_lowpass_0:lavfi-lowpass');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(
-          enabled: true,
-          a: LowpassTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -13422,11 +11513,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -13439,12 +11525,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -13454,21 +11534,10 @@ void main() {
         },
       );
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const LowpassEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -13478,12 +11547,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, p: 1);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1'));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const LowpassEffect(enabled: true, poles: 1);
@@ -13503,18 +11566,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, r: LowpassPrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, t: LowpassWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -13526,12 +11577,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const LowpassEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const LowpassEffect(enabled: true, width: 99999.0);
@@ -13550,21 +11595,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, b: LowpassEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, b: LowpassEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, b: LowpassEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -13599,21 +11629,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, f: LowpassEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, f: LowpassEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, f: LowpassEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -13647,21 +11662,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, m: LowpassEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, m: LowpassEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, m: LowpassEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = LowpassEffect(enabled: true, mix: LowpassEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -13674,21 +11674,6 @@ void main() {
 
       test('param `mix` const `mixDefault` is accepted by toFilterString', () {
         final s = LowpassEffect(enabled: true, mix: LowpassEffect.mixDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, p: LowpassEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, p: LowpassEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, p: LowpassEffect.pDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -13712,21 +11697,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, w: LowpassEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, w: LowpassEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = LowpassEffect(enabled: true, w: LowpassEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = LowpassEffect(enabled: true, width: LowpassEffect.widthMin);
@@ -13760,21 +11730,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_lowshelf_0:lavfi-lowshelf');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(
-          enabled: true,
-          a: LowshelfTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -13783,11 +11738,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -13800,12 +11750,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -13815,33 +11759,16 @@ void main() {
         },
       );
 
-      test('param `g` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, g: 900.0);
-        expect(s.toFilterString(), contains('g='));
-        expect(s.toFilterString(), contains('g=900.000'));
-      });
-
       test('param `gain` lands in wire when set to a non-default value', () {
         final s = const LowshelfEffect(enabled: true, gain: 900.0);
         expect(s.toFilterString(), contains('gain='));
         expect(s.toFilterString(), contains('gain=900.000'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const LowshelfEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -13851,12 +11778,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, p: 1);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1'));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const LowshelfEffect(enabled: true, poles: 1);
@@ -13876,18 +11797,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, r: LowshelfPrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, t: LowshelfWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -13899,12 +11808,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const LowshelfEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const LowshelfEffect(enabled: true, width: 99999.0);
@@ -13923,21 +11826,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, b: LowshelfEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, b: LowshelfEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, b: LowshelfEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -13972,21 +11860,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, f: LowshelfEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, f: LowshelfEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, f: LowshelfEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -14020,21 +11893,6 @@ void main() {
         },
       );
 
-      test('param `g` const `gMin` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, g: LowshelfEffect.gMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gMax` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, g: LowshelfEffect.gMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gDefault` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, g: LowshelfEffect.gDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `gain` const `gainMin` is accepted by toFilterString', () {
         final s = LowshelfEffect(enabled: true, gain: LowshelfEffect.gainMin);
         expect(s.toFilterString, returnsNormally);
@@ -14056,21 +11914,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, m: LowshelfEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, m: LowshelfEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, m: LowshelfEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = LowshelfEffect(enabled: true, mix: LowshelfEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -14083,21 +11926,6 @@ void main() {
 
       test('param `mix` const `mixDefault` is accepted by toFilterString', () {
         final s = LowshelfEffect(enabled: true, mix: LowshelfEffect.mixDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, p: LowshelfEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, p: LowshelfEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, p: LowshelfEffect.pDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -14121,21 +11949,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, w: LowshelfEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, w: LowshelfEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = LowshelfEffect(enabled: true, w: LowshelfEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = LowshelfEffect(enabled: true, width: LowshelfEffect.widthMin);
@@ -14657,12 +12470,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_speechnorm_0:lavfi-speechnorm');
       });
 
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, c: 50.0);
-        expect(s.toFilterString(), contains('c='));
-        expect(s.toFilterString(), contains('c=50.000'));
-      });
-
       test(
         'param `channels` lands in wire when set to a non-default value',
         () {
@@ -14683,12 +12490,6 @@ void main() {
         },
       );
 
-      test('param `e` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, e: 50.0);
-        expect(s.toFilterString(), contains('e='));
-        expect(s.toFilterString(), contains('e=50.000'));
-      });
-
       test(
         'param `expansion` lands in wire when set to a non-default value',
         () {
@@ -14698,26 +12499,10 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, f: 1.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=1.000'));
-      });
-
       test('param `fall` lands in wire when set to a non-default value', () {
         final s = const SpeechnormEffect(enabled: true, fall: 1.0);
         expect(s.toFilterString(), contains('fall='));
         expect(s.toFilterString(), contains('fall=1.000'));
-      });
-
-      test('param `h` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, h: 'wire_test_alt');
-        expect(s.toFilterString(), contains('h='));
-      });
-
-      test('param `i` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, i: true);
-        expect(s.toFilterString(), contains('i='));
       });
 
       test('param `invert` lands in wire when set to a non-default value', () {
@@ -14725,38 +12510,15 @@ void main() {
         expect(s.toFilterString(), contains('invert='));
       });
 
-      test('param `l` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, l: true);
-        expect(s.toFilterString(), contains('l='));
-      });
-
       test('param `link` lands in wire when set to a non-default value', () {
         final s = const SpeechnormEffect(enabled: true, link: true);
         expect(s.toFilterString(), contains('link='));
-      });
-
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, m: 1.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=1.000'));
-      });
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, p: 1.0);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1.000'));
       });
 
       test('param `peak` lands in wire when set to a non-default value', () {
         final s = const SpeechnormEffect(enabled: true, peak: 1.0);
         expect(s.toFilterString(), contains('peak='));
         expect(s.toFilterString(), contains('peak=1.000'));
-      });
-
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, r: 1.0);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=1.000'));
       });
 
       test('param `raise` lands in wire when set to a non-default value', () {
@@ -14771,12 +12533,6 @@ void main() {
         expect(s.toFilterString(), contains('rms=1.000'));
       });
 
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const SpeechnormEffect(enabled: true, t: 1.0);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=1.000'));
-      });
-
       test(
         'param `threshold` lands in wire when set to a non-default value',
         () {
@@ -14785,21 +12541,6 @@ void main() {
           expect(s.toFilterString(), contains('threshold=1.000'));
         },
       );
-
-      test('param `c` const `cMin` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, c: SpeechnormEffect.cMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `c` const `cMax` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, c: SpeechnormEffect.cMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `c` const `cDefault` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, c: SpeechnormEffect.cDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `compression` const `compressionMin` is accepted by toFilterString',
@@ -14834,21 +12575,6 @@ void main() {
         },
       );
 
-      test('param `e` const `eMin` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, e: SpeechnormEffect.eMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `e` const `eMax` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, e: SpeechnormEffect.eMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `e` const `eDefault` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, e: SpeechnormEffect.eDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `expansion` const `expansionMin` is accepted by toFilterString',
         () {
@@ -14882,21 +12608,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, f: SpeechnormEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, f: SpeechnormEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, f: SpeechnormEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `fall` const `fallMin` is accepted by toFilterString', () {
         final s = SpeechnormEffect(
           enabled: true,
@@ -14924,36 +12635,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, m: SpeechnormEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, m: SpeechnormEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, m: SpeechnormEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, p: SpeechnormEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, p: SpeechnormEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, p: SpeechnormEffect.pDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `peak` const `peakMin` is accepted by toFilterString', () {
         final s = SpeechnormEffect(
           enabled: true,
@@ -14980,21 +12661,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `r` const `rMin` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, r: SpeechnormEffect.rMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `r` const `rMax` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, r: SpeechnormEffect.rMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `r` const `rDefault` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, r: SpeechnormEffect.rDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `raise` const `raiseMin` is accepted by toFilterString', () {
         final s = SpeechnormEffect(
@@ -15038,21 +12704,6 @@ void main() {
           enabled: true,
           rms: SpeechnormEffect.rmsDefault,
         );
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tMin` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, t: SpeechnormEffect.tMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tMax` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, t: SpeechnormEffect.tMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `t` const `tDefault` is accepted by toFilterString', () {
-        final s = SpeechnormEffect(enabled: true, t: SpeechnormEffect.tDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -17230,21 +14881,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_tiltshelf_0:lavfi-tiltshelf');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(
-          enabled: true,
-          a: TiltshelfTransformType.dii,
-        );
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -17253,11 +14889,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -17270,12 +14901,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -17285,33 +14910,16 @@ void main() {
         },
       );
 
-      test('param `g` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, g: 900.0);
-        expect(s.toFilterString(), contains('g='));
-        expect(s.toFilterString(), contains('g=900.000'));
-      });
-
       test('param `gain` lands in wire when set to a non-default value', () {
         final s = const TiltshelfEffect(enabled: true, gain: 900.0);
         expect(s.toFilterString(), contains('gain='));
         expect(s.toFilterString(), contains('gain=900.000'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const TiltshelfEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -17321,12 +14929,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, p: 1);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1'));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const TiltshelfEffect(enabled: true, poles: 1);
@@ -17346,21 +14948,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(
-          enabled: true,
-          r: TiltshelfPrecision.s16,
-        );
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, t: TiltshelfWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -17372,12 +14959,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const TiltshelfEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const TiltshelfEffect(enabled: true, width: 99999.0);
@@ -17396,21 +14977,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, b: TiltshelfEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, b: TiltshelfEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, b: TiltshelfEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -17445,21 +15011,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, f: TiltshelfEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, f: TiltshelfEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, f: TiltshelfEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -17493,21 +15044,6 @@ void main() {
         },
       );
 
-      test('param `g` const `gMin` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, g: TiltshelfEffect.gMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gMax` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, g: TiltshelfEffect.gMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gDefault` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, g: TiltshelfEffect.gDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `gain` const `gainMin` is accepted by toFilterString', () {
         final s = TiltshelfEffect(enabled: true, gain: TiltshelfEffect.gainMin);
         expect(s.toFilterString, returnsNormally);
@@ -17529,21 +15065,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, m: TiltshelfEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, m: TiltshelfEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, m: TiltshelfEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = TiltshelfEffect(enabled: true, mix: TiltshelfEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -17559,21 +15080,6 @@ void main() {
           enabled: true,
           mix: TiltshelfEffect.mixDefault,
         );
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, p: TiltshelfEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, p: TiltshelfEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, p: TiltshelfEffect.pDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -17603,21 +15109,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, w: TiltshelfEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, w: TiltshelfEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = TiltshelfEffect(enabled: true, w: TiltshelfEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = TiltshelfEffect(
@@ -17657,18 +15148,6 @@ void main() {
         expect(audioEffectsChain(fx), '@aek_treble_0:lavfi-treble');
       });
 
-      test('param `a` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, a: TrebleTransformType.dii);
-        expect(s.toFilterString(), contains('a='));
-        expect(s.toFilterString(), contains('a=dii'));
-      });
-
-      test('param `b` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, b: 32768);
-        expect(s.toFilterString(), contains('b='));
-        expect(s.toFilterString(), contains('b=32768'));
-      });
-
       test(
         'param `blocksize` lands in wire when set to a non-default value',
         () {
@@ -17677,11 +15156,6 @@ void main() {
           expect(s.toFilterString(), contains('blocksize=32768'));
         },
       );
-
-      test('param `c` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, c: 'wire_test_alt');
-        expect(s.toFilterString(), contains('c='));
-      });
 
       test(
         'param `channels` lands in wire when set to a non-default value',
@@ -17694,12 +15168,6 @@ void main() {
         },
       );
 
-      test('param `f` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, f: 999999.0);
-        expect(s.toFilterString(), contains('f='));
-        expect(s.toFilterString(), contains('f=999999.000'));
-      });
-
       test(
         'param `frequency` lands in wire when set to a non-default value',
         () {
@@ -17709,33 +15177,16 @@ void main() {
         },
       );
 
-      test('param `g` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, g: 900.0);
-        expect(s.toFilterString(), contains('g='));
-        expect(s.toFilterString(), contains('g=900.000'));
-      });
-
       test('param `gain` lands in wire when set to a non-default value', () {
         final s = const TrebleEffect(enabled: true, gain: 900.0);
         expect(s.toFilterString(), contains('gain='));
         expect(s.toFilterString(), contains('gain=900.000'));
       });
 
-      test('param `m` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, m: 0.0);
-        expect(s.toFilterString(), contains('m='));
-        expect(s.toFilterString(), contains('m=0.000'));
-      });
-
       test('param `mix` lands in wire when set to a non-default value', () {
         final s = const TrebleEffect(enabled: true, mix: 0.0);
         expect(s.toFilterString(), contains('mix='));
         expect(s.toFilterString(), contains('mix=0.000'));
-      });
-
-      test('param `n` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, n: true);
-        expect(s.toFilterString(), contains('n='));
       });
 
       test(
@@ -17745,12 +15196,6 @@ void main() {
           expect(s.toFilterString(), contains('normalize='));
         },
       );
-
-      test('param `p` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, p: 1);
-        expect(s.toFilterString(), contains('p='));
-        expect(s.toFilterString(), contains('p=1'));
-      });
 
       test('param `poles` lands in wire when set to a non-default value', () {
         final s = const TrebleEffect(enabled: true, poles: 1);
@@ -17770,18 +15215,6 @@ void main() {
         },
       );
 
-      test('param `r` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, r: TreblePrecision.s16);
-        expect(s.toFilterString(), contains('r='));
-        expect(s.toFilterString(), contains('r=s16'));
-      });
-
-      test('param `t` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, t: TrebleWidthType.h);
-        expect(s.toFilterString(), contains('t='));
-        expect(s.toFilterString(), contains('t=h'));
-      });
-
       test(
         'param `transform` lands in wire when set to a non-default value',
         () {
@@ -17793,12 +15226,6 @@ void main() {
           expect(s.toFilterString(), contains('transform=dii'));
         },
       );
-
-      test('param `w` lands in wire when set to a non-default value', () {
-        final s = const TrebleEffect(enabled: true, w: 99999.0);
-        expect(s.toFilterString(), contains('w='));
-        expect(s.toFilterString(), contains('w=99999.000'));
-      });
 
       test('param `width` lands in wire when set to a non-default value', () {
         final s = const TrebleEffect(enabled: true, width: 99999.0);
@@ -17817,21 +15244,6 @@ void main() {
           expect(s.toFilterString(), contains('width_type=h'));
         },
       );
-
-      test('param `b` const `bMin` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, b: TrebleEffect.bMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bMax` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, b: TrebleEffect.bMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `b` const `bDefault` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, b: TrebleEffect.bDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test(
         'param `blocksize` const `blocksizeMin` is accepted by toFilterString',
@@ -17866,21 +15278,6 @@ void main() {
         },
       );
 
-      test('param `f` const `fMin` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, f: TrebleEffect.fMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fMax` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, f: TrebleEffect.fMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `f` const `fDefault` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, f: TrebleEffect.fDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test(
         'param `frequency` const `frequencyMin` is accepted by toFilterString',
         () {
@@ -17914,21 +15311,6 @@ void main() {
         },
       );
 
-      test('param `g` const `gMin` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, g: TrebleEffect.gMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gMax` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, g: TrebleEffect.gMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `g` const `gDefault` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, g: TrebleEffect.gDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `gain` const `gainMin` is accepted by toFilterString', () {
         final s = TrebleEffect(enabled: true, gain: TrebleEffect.gainMin);
         expect(s.toFilterString, returnsNormally);
@@ -17947,21 +15329,6 @@ void main() {
         },
       );
 
-      test('param `m` const `mMin` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, m: TrebleEffect.mMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mMax` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, m: TrebleEffect.mMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `m` const `mDefault` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, m: TrebleEffect.mDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
       test('param `mix` const `mixMin` is accepted by toFilterString', () {
         final s = TrebleEffect(enabled: true, mix: TrebleEffect.mixMin);
         expect(s.toFilterString, returnsNormally);
@@ -17974,21 +15341,6 @@ void main() {
 
       test('param `mix` const `mixDefault` is accepted by toFilterString', () {
         final s = TrebleEffect(enabled: true, mix: TrebleEffect.mixDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMin` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, p: TrebleEffect.pMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pMax` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, p: TrebleEffect.pMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `p` const `pDefault` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, p: TrebleEffect.pDefault);
         expect(s.toFilterString, returnsNormally);
       });
 
@@ -18012,21 +15364,6 @@ void main() {
           expect(s.toFilterString, returnsNormally);
         },
       );
-
-      test('param `w` const `wMin` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, w: TrebleEffect.wMin);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wMax` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, w: TrebleEffect.wMax);
-        expect(s.toFilterString, returnsNormally);
-      });
-
-      test('param `w` const `wDefault` is accepted by toFilterString', () {
-        final s = TrebleEffect(enabled: true, w: TrebleEffect.wDefault);
-        expect(s.toFilterString, returnsNormally);
-      });
 
       test('param `width` const `widthMin` is accepted by toFilterString', () {
         final s = TrebleEffect(enabled: true, width: TrebleEffect.widthMin);

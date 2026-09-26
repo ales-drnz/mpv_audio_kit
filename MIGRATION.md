@@ -33,7 +33,7 @@ await player.setAudioEffects(const AudioEffects(
 
 // 0.5: list order is chain order
 await player.setAudioEffects(const [
-  BassEffect(g: 3),
+  BassEffect(gain: 3),
   AcompressorEffect(threshold: 0.1),
 ]);
 ```

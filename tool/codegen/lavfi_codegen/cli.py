@@ -42,13 +42,6 @@ def _do(stage: str, config: Config, *, ffmpeg: str | None = None) -> int:
     Optional stages (tests/catalog) silently skip when their feature
     flag is off; required stages always run."""
     if stage == "parse":
-        if config.features.params_from_runtime:
-            # The C-source AVOption parser doesn't cover this consumer's
-            # filters (video); use runtime `ffmpeg -h filter=` introspection
-            # as the generation schema instead.
-            return parse_from_help.run(
-                config, ffmpeg=ffmpeg, diff_mode=False, out_path=config.output.schema
-            )
         return parse.run(config)
     if stage == "generate":
         return generate.run(config)

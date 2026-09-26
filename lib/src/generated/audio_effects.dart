@@ -134,7 +134,7 @@ enum AcrusherMode {
   }
 }
 
-/// Values for the `m` option of the `adeclick` audio filter.
+/// Values for the `method` option of the `adeclick` audio filter.
 enum AdeclickM {
   /// overlap-add
   add,
@@ -180,7 +180,7 @@ enum AdeclickM {
   }
 }
 
-/// Values for the `m` option of the `adeclip` audio filter.
+/// Values for the `method` option of the `adeclip` audio filter.
 enum AdeclipM {
   /// overlap-add
   add,
@@ -608,7 +608,7 @@ enum AemphasisType {
   }
 }
 
-/// Values for the `c` option of the `afade` audio filter.
+/// Values for the `curve` option of the `afade` audio filter.
 enum AfadeCurve {
   /// no fade; keep audio as-is
   nofade,
@@ -794,7 +794,7 @@ enum AfadeCurve {
   }
 }
 
-/// Values for the `t` option of the `afade` audio filter.
+/// Values for the `type` option of the `afade` audio filter.
 enum AfadeType {
   /// fade-in
   in_,
@@ -826,7 +826,7 @@ enum AfadeType {
   }
 }
 
-/// Values for the `nl` option of the `afftdn` audio filter.
+/// Values for the `noise_link` option of the `afftdn` audio filter.
 enum AfftdnLink {
   /// none
   none,
@@ -872,7 +872,7 @@ enum AfftdnLink {
   }
 }
 
-/// Values for the `om` option of the `afftdn` audio filter.
+/// Values for the `output_mode` option of the `afftdn` audio filter.
 enum AfftdnMode {
   /// input
   input,
@@ -1394,7 +1394,7 @@ enum AgateMode {
   }
 }
 
-/// Values for the `f` option of the `aiir` audio filter.
+/// Values for the `format` option of the `aiir` audio filter.
 enum AiirFormat {
   /// lattice-ladder function
   ll,
@@ -1461,7 +1461,7 @@ enum AiirFormat {
   }
 }
 
-/// Values for the `e` option of the `aiir` audio filter.
+/// Values for the `precision` option of the `aiir` audio filter.
 enum AiirPrecision {
   /// double-precision floating-point
   dbl,
@@ -1599,7 +1599,7 @@ enum AllpassPrecision {
   }
 }
 
-/// Values for the `a` option of the `allpass` audio filter.
+/// Values for the `transform` option of the `allpass` audio filter.
 enum AllpassTransformType {
   /// direct form I
   di,
@@ -1666,7 +1666,7 @@ enum AllpassTransformType {
   }
 }
 
-/// Values for the `t` option of the `allpass` audio filter.
+/// Values for the `width_type` option of the `allpass` audio filter.
 enum AllpassWidthType {
   /// Hz
   h,
@@ -1751,7 +1751,7 @@ enum AnequalizerFscale {
   }
 }
 
-/// Values for the `o` option of the `anlmdn` audio filter.
+/// Values for the `output` option of the `anlmdn` audio filter.
 enum AnlmdnMode {
   /// input
   i,
@@ -2062,7 +2062,7 @@ enum BandpassPrecision {
   }
 }
 
-/// Values for the `a` option of the `bandpass` audio filter.
+/// Values for the `transform` option of the `bandpass` audio filter.
 enum BandpassTransformType {
   /// direct form I
   di,
@@ -2129,7 +2129,7 @@ enum BandpassTransformType {
   }
 }
 
-/// Values for the `t` option of the `bandpass` audio filter.
+/// Values for the `width_type` option of the `bandpass` audio filter.
 enum BandpassWidthType {
   /// Hz
   h,
@@ -2235,7 +2235,7 @@ enum BandrejectPrecision {
   }
 }
 
-/// Values for the `a` option of the `bandreject` audio filter.
+/// Values for the `transform` option of the `bandreject` audio filter.
 enum BandrejectTransformType {
   /// direct form I
   di,
@@ -2302,7 +2302,7 @@ enum BandrejectTransformType {
   }
 }
 
-/// Values for the `t` option of the `bandreject` audio filter.
+/// Values for the `width_type` option of the `bandreject` audio filter.
 enum BandrejectWidthType {
   /// Hz
   h,
@@ -2408,7 +2408,7 @@ enum BassPrecision {
   }
 }
 
-/// Values for the `a` option of the `bass` audio filter.
+/// Values for the `transform` option of the `bass` audio filter.
 enum BassTransformType {
   /// direct form I
   di,
@@ -2475,7 +2475,7 @@ enum BassTransformType {
   }
 }
 
-/// Values for the `t` option of the `bass` audio filter.
+/// Values for the `width_type` option of the `bass` audio filter.
 enum BassWidthType {
   /// Hz
   h,
@@ -2581,7 +2581,7 @@ enum BiquadPrecision {
   }
 }
 
-/// Values for the `a` option of the `biquad` audio filter.
+/// Values for the `transform` option of the `biquad` audio filter.
 enum BiquadTransformType {
   /// direct form I
   di,
@@ -2910,7 +2910,7 @@ enum EqualizerPrecision {
   }
 }
 
-/// Values for the `a` option of the `equalizer` audio filter.
+/// Values for the `transform` option of the `equalizer` audio filter.
 enum EqualizerTransformType {
   /// direct form I
   di,
@@ -2977,7 +2977,7 @@ enum EqualizerTransformType {
   }
 }
 
-/// Values for the `t` option of the `equalizer` audio filter.
+/// Values for the `width_type` option of the `equalizer` audio filter.
 enum EqualizerWidthType {
   /// Hz
   h,
@@ -3433,7 +3433,7 @@ enum HighpassPrecision {
   }
 }
 
-/// Values for the `a` option of the `highpass` audio filter.
+/// Values for the `transform` option of the `highpass` audio filter.
 enum HighpassTransformType {
   /// direct form I
   di,
@@ -3500,7 +3500,7 @@ enum HighpassTransformType {
   }
 }
 
-/// Values for the `t` option of the `highpass` audio filter.
+/// Values for the `width_type` option of the `highpass` audio filter.
 enum HighpassWidthType {
   /// Hz
   h,
@@ -3606,7 +3606,7 @@ enum HighshelfPrecision {
   }
 }
 
-/// Values for the `a` option of the `highshelf` audio filter.
+/// Values for the `transform` option of the `highshelf` audio filter.
 enum HighshelfTransformType {
   /// direct form I
   di,
@@ -3673,7 +3673,7 @@ enum HighshelfTransformType {
   }
 }
 
-/// Values for the `t` option of the `highshelf` audio filter.
+/// Values for the `width_type` option of the `highshelf` audio filter.
 enum HighshelfWidthType {
   /// Hz
   h,
@@ -3818,7 +3818,7 @@ enum LowpassPrecision {
   }
 }
 
-/// Values for the `a` option of the `lowpass` audio filter.
+/// Values for the `transform` option of the `lowpass` audio filter.
 enum LowpassTransformType {
   /// direct form I
   di,
@@ -3885,7 +3885,7 @@ enum LowpassTransformType {
   }
 }
 
-/// Values for the `t` option of the `lowpass` audio filter.
+/// Values for the `width_type` option of the `lowpass` audio filter.
 enum LowpassWidthType {
   /// Hz
   h,
@@ -3991,7 +3991,7 @@ enum LowshelfPrecision {
   }
 }
 
-/// Values for the `a` option of the `lowshelf` audio filter.
+/// Values for the `transform` option of the `lowshelf` audio filter.
 enum LowshelfTransformType {
   /// direct form I
   di,
@@ -4058,7 +4058,7 @@ enum LowshelfTransformType {
   }
 }
 
-/// Values for the `t` option of the `lowshelf` audio filter.
+/// Values for the `width_type` option of the `lowshelf` audio filter.
 enum LowshelfWidthType {
   /// Hz
   h,
@@ -4910,7 +4910,7 @@ enum TiltshelfPrecision {
   }
 }
 
-/// Values for the `a` option of the `tiltshelf` audio filter.
+/// Values for the `transform` option of the `tiltshelf` audio filter.
 enum TiltshelfTransformType {
   /// direct form I
   di,
@@ -4977,7 +4977,7 @@ enum TiltshelfTransformType {
   }
 }
 
-/// Values for the `t` option of the `tiltshelf` audio filter.
+/// Values for the `width_type` option of the `tiltshelf` audio filter.
 enum TiltshelfWidthType {
   /// Hz
   h,
@@ -5083,7 +5083,7 @@ enum TreblePrecision {
   }
 }
 
-/// Values for the `a` option of the `treble` audio filter.
+/// Values for the `transform` option of the `treble` audio filter.
 enum TrebleTransformType {
   /// direct form I
   di,
@@ -5150,7 +5150,7 @@ enum TrebleTransformType {
   }
 }
 
-/// Values for the `t` option of the `treble` audio filter.
+/// Values for the `width_type` option of the `treble` audio filter.
 enum TrebleWidthType {
   /// Hz
   h,

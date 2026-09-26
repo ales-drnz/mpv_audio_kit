@@ -64,12 +64,18 @@ void main() {
       test(
         'bass + treble round-trip — separate biquad shelves preserved',
         () async {
-          await putEffect(player, const BassEffect(g: 4.5, f: 120.0));
-          await putEffect(player, const TrebleEffect(g: -2.0, f: 5500.0));
-          expect(effectOf<BassEffect>(player).g, 4.5);
-          expect(effectOf<BassEffect>(player).f, 120.0);
-          expect(effectOf<TrebleEffect>(player).g, -2.0);
-          expect(effectOf<TrebleEffect>(player).f, 5500.0);
+          await putEffect(
+            player,
+            const BassEffect(gain: 4.5, frequency: 120.0),
+          );
+          await putEffect(
+            player,
+            const TrebleEffect(gain: -2.0, frequency: 5500.0),
+          );
+          expect(effectOf<BassEffect>(player).gain, 4.5);
+          expect(effectOf<BassEffect>(player).frequency, 120.0);
+          expect(effectOf<TrebleEffect>(player).gain, -2.0);
+          expect(effectOf<TrebleEffect>(player).frequency, 5500.0);
 
           // Disabling preserves the parameters.
           await putEffect(
@@ -77,7 +83,7 @@ void main() {
             effectOf<BassEffect>(player).copyWith(enabled: false),
           );
           expect(effectOf<BassEffect>(player).enabled, isFalse);
-          expect(effectOf<BassEffect>(player).g, 4.5);
+          expect(effectOf<BassEffect>(player).gain, 4.5);
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );
@@ -138,8 +144,8 @@ void main() {
       test('setAudioEffects atomic — multiple effects in one write', () async {
         const chain = [
           AcompressorEffect(threshold: 0.1, ratio: 4),
-          BassEffect(g: 3),
-          TrebleEffect(g: -1),
+          BassEffect(gain: 3),
+          TrebleEffect(gain: -1),
           StereotoolsEffect(slev: 1.2),
           LoudnormEffect(i: -16),
         ];

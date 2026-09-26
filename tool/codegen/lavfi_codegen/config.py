@@ -75,8 +75,7 @@ class WireConfig:
 @dataclass(frozen=True)
 class NamingConfig:
     """Domain-specific Dart identifiers + doc nouns. Defaults reproduce the
-    historical audio output verbatim; the video consumer overrides them so the
-    one generator serves both flavors. ``[naming]`` in codegen.toml."""
+    audio output verbatim. ``[naming]`` in codegen.toml."""
 
     enum_name: str = "AudioEffect"          # singular filter-id enum
     bundle_name: str = "AudioEffects"       # plural settings bundle
@@ -112,11 +111,6 @@ class FeatureFlags:
     # feed raw ffmpeg filter strings. Off unless the consumer opts in.
     emit_af_labels: bool = False
     emit_diff_commands: bool = False
-    # Generate from the runtime (`ffmpeg -h filter=`) schema rather than the
-    # C-source AVOption parse. The C-source parser is tuned to the audio
-    # filters' option-table patterns and yields no params for the video
-    # filters; runtime introspection covers them. Set for the video consumer.
-    params_from_runtime: bool = False
 
 
 @dataclass(frozen=True)
@@ -204,7 +198,6 @@ def load_config(toml_path: Path) -> Config:
         emit_example_pages=bool(feat.get("emit_example_pages", False)),
         emit_af_labels=bool(feat.get("emit_af_labels", False)),
         emit_diff_commands=bool(feat.get("emit_diff_commands", False)),
-        params_from_runtime=bool(feat.get("params_from_runtime", False)),
     )
 
     ndata = data.get("naming") or {}
