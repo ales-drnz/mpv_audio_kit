@@ -14,10 +14,10 @@ import 'dsp_async_io.dart';
 ///
 /// Reads the per-frame measurements the `ebur128` lavfi filter injects
 /// into its frame metadata (`lavfi.r128.M/S/I/LRA`) back through mpv's
-/// `af-metadata/<label>` property. The meter follows the first
+/// `af-metadata/<label>` property. The meter follows the first enabled
 /// `Ebur128Effect` in `PlayerState.audioEffects`, which needs its
-/// `metadata` option on; that stage carries the `aek_ebur128_0` chain
-/// label this pipeline polls.
+/// `metadata` option on; the player hands this pipeline that stage's
+/// chain label.
 ///
 /// Listener-gated by [setEnabled] (driven by the player's `loudness`
 /// controller): polling runs only while `PlayerStream.loudnessMeter` has a
@@ -28,15 +28,17 @@ class LoudnessMeterPipeline {
   /// Creates the pipeline over the player's async-get callback.
   LoudnessMeterPipeline({
     required AsyncPropertyGet asyncGet,
+    required String? Function() label,
     Duration pollInterval = const Duration(milliseconds: 100),
   }) : _asyncGet = asyncGet,
+       _label = label,
        _pollInterval = pollInterval;
 
-  /// The chain label of the first `ebur128` stage (see
-  /// `audioEffectLabel`).
-  static const String chainLabel = 'aek_ebur128_0';
-
   final AsyncPropertyGet _asyncGet;
+
+  /// The chain label of the `ebur128` stage to read, `null` when the chain
+  /// has none running.
+  final String? Function() _label;
   final Duration _pollInterval;
 
   final StreamController<Loudness> _ctrl =
@@ -86,10 +88,12 @@ class LoudnessMeterPipeline {
   Future<void> _doPoll() async {
     // Read the four r128 metadata fields off the main isolate. Each is a
     // STRING property; the reply carries the decoded value.
+    final label = _label();
+    if (label == null) return;
     final values = List<double?>.filled(4, null);
     for (var i = 0; i < _keys.length; i++) {
       final (rc, value) = await _asyncGet(
-        'af-metadata/$chainLabel/lavfi.r128.${_keys[i]}',
+        'af-metadata/$label/lavfi.r128.${_keys[i]}',
         MpvFormat.mpvFormatString,
       );
       if (_disposed) return;

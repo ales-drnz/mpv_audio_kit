@@ -689,8 +689,8 @@ class PlayerStream {
   /// ignored for this stream).
   final Stream<PcmFrame> pcm;
 
-  /// Per-filter PCM tap — emits [PcmFrame]s captured at the chosen
-  /// [TapSide] of [filter]'s slot in the `af` chain. Use
+  /// Per-stage PCM tap — emits [PcmFrame]s captured at the chosen
+  /// [TapSide] of one [filter] stage in the effects chain. Use
   /// [TapSide.pre] for "input signal" overlays, [TapSide.post] for
   /// "output signal" overlays in a per-filter editor.
   ///
@@ -702,10 +702,13 @@ class PlayerStream {
   /// [filter] names the stage's filter and [instance] which of its
   /// occurrences in [PlayerState.audioEffects] (0, the default, for the
   /// first): with two [EqualizerEffect]s in the list, `instance: 1` taps
-  /// the second. The tap follows that stage when the others are toggled
-  /// or reordered. Live streams without an active af chain emit no
-  /// frames; the stream is silent (no error) when the loaded libmpv does
-  /// not expose the filter-tap property.
+  /// the second. Disabled stages count too, and a disabled stage emits
+  /// nothing. The tap follows the occurrence, not a particular stage:
+  /// moving other filters around keeps it on the same one, while swapping
+  /// the two equalizers swaps what `instance: 0` taps. libmpv captures up
+  /// to 8 stages at a time. Live streams without an active af chain emit
+  /// no frames; the stream is silent (no error) when the loaded libmpv
+  /// does not expose the filter-tap property.
   Stream<PcmFrame> tap(
     AudioFilter filter, {
     int instance = 0,
@@ -765,8 +768,8 @@ class PlayerStream {
   /// short-term, integrated, range) from the `ebur128` stage of the
   /// audio chain.
   ///
-  /// Requires the meter in the chain: it reads the first [Ebur128Effect]
-  /// of the list, which needs its `metadata` option on —
+  /// Requires the meter in the chain: it reads the first enabled
+  /// [Ebur128Effect] of the list, which needs its `metadata` option on:
   ///
   /// ```dart
   /// await player.updateAudioEffects(

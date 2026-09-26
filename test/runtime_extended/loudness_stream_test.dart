@@ -27,8 +27,8 @@ void main() {
     test(
       'stream.loudnessMeter emits live EBU R128 measurements from the chain',
       () async {
-        // The pipeline polls `af-metadata/aek_ebur128_0/...`, the label of
-        // the first ebur128 stage in the list.
+        // The pipeline polls `af-metadata/<label>/...` of the first
+        // enabled ebur128 stage in the list.
         await player.setAudioEffects(const [Ebur128Effect(metadata: true)]);
         await player.play();
 
@@ -47,6 +47,20 @@ void main() {
       },
       timeout: const Timeout(Duration(seconds: 20)),
     );
+
+    test('the meter reads the first enabled ebur128 stage', () async {
+      // The first ebur128 stage is off: its label is aek_ebur128_0, but
+      // nothing runs under it.
+      await player.setAudioEffects(const [
+        Ebur128Effect(metadata: true, enabled: false),
+        Ebur128Effect(metadata: true),
+      ]);
+      await player.play();
+      final reading = await player.stream.loudnessMeter
+          .firstWhere((l) => (l.momentary ?? -200) > -100)
+          .timeout(const Duration(seconds: 10));
+      expect(reading.momentary!, lessThan(0));
+    }, timeout: const Timeout(Duration(seconds: 20)));
 
     test(
       'loudness stream stays silent when the meter is not in the chain',

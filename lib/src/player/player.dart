@@ -1380,3 +1380,13 @@ final class _LoadTicket {
   /// took over, since the ticket was taken. Re-check after every await.
   bool get superseded => _player._disposed || _player._loadEpoch != _epoch;
 }
+
+/// The chain label of the first enabled [Ebur128Effect] in [effects], the
+/// stage the live loudness meter reads; `null` when none runs.
+String? _meterLabel(List<AudioEffect> effects) {
+  final labels = audioEffectLabels(effects);
+  for (var i = 0; i < effects.length; i++) {
+    if (effects[i] is Ebur128Effect && effects[i].enabled) return labels[i];
+  }
+  return null;
+}

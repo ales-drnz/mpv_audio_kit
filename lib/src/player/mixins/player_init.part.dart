@@ -73,8 +73,12 @@ mixin _InitModule on _PlayerBase {
     _filterTapPipeline = FilterTapPipeline(
       asyncGet: _getAsync,
       asyncSet: _propRc,
+      warn: (message) => _internalLog(message, level: LogLevel.warn),
     );
-    _loudnessMeterPipeline = LoudnessMeterPipeline(asyncGet: _getAsync);
+    _loudnessMeterPipeline = LoudnessMeterPipeline(
+      asyncGet: _getAsync,
+      label: () => _meterLabel(_state.audioEffects),
+    );
     _loudnessScanPipeline = LoudnessScanPipeline(
       asyncGet: _getAsync,
       asyncSet: _propRc,

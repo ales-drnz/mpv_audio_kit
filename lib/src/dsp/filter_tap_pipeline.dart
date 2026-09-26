@@ -18,19 +18,24 @@ import 'dsp_async_io.dart';
 /// `PcmFrame` downstream.
 const int _kMaxTapChannels = 8;
 
+/// How many chain labels the native tap captures at once
+/// (`MAX_TAPS` in the libmpv patch); the labels after these stay silent.
+const int _kMaxActiveTaps = 8;
+
 /// Per-filter pre/post audio tap pipeline.
 ///
 /// Backed by the `audio-tap-frames` and `analyzer-taps` properties
 /// added by the libmpv filter-label-tap patch. The pipeline:
 ///
-///   1. tracks per-`(name, side)` subscriber counts and writes a
-///      comma-separated list of currently-needed filter names to
+///   1. tracks per-`(label, side)` subscriber counts and writes a
+///      comma-separated list of the chain labels currently needed to
 ///      `analyzer-taps`. The C side activates the matching hook in
-///      `user_wrapper_process` only for those names.
+///      `user_wrapper_process` only for those labels, at most
+///      [_kMaxActiveTaps] of them.
 ///   2. polls `audio-tap-frames` at a configurable cadence while at
 ///      least one stream has a listener; parses the MAP_NODE into
-///      per-filter [PcmFrame]s and dispatches them on broadcast
-///      controllers keyed by `(name, side)`.
+///      per-stage [PcmFrame]s and dispatches them on broadcast
+///      controllers keyed by `(label, side)`.
 ///
 /// Idle cost is exactly zero — the polling timer is unarmed and the
 /// active-list is empty until the first listener attaches.
@@ -39,6 +44,7 @@ class FilterTapPipeline {
   FilterTapPipeline({
     required AsyncPropertyGet asyncGet,
     required AsyncPropertySet asyncSet,
+    void Function(String message)? warn,
     // 33 ms ≈ 30 Hz — matches the lib's spectrum pipeline default.
     // The C side now returns the slice of the rolling ring aligned
     // to the AO playback PTS, so the slice walks forward smoothly
@@ -48,10 +54,12 @@ class FilterTapPipeline {
     Duration pollInterval = const Duration(milliseconds: 33),
   }) : _asyncGet = asyncGet,
        _asyncSet = asyncSet,
+       _warn = warn,
        _pollInterval = pollInterval;
 
   final AsyncPropertyGet _asyncGet;
   final AsyncPropertySet _asyncSet;
+  final void Function(String message)? _warn;
   final Duration _pollInterval;
 
   // (name, side) → broadcast controller. Lazy-created on first
@@ -133,15 +141,21 @@ class FilterTapPipeline {
   }
 
   /// Builds the `analyzer-taps` CSV from the union of every distinct
-  /// filter name with at least one (pre or post) refcount > 0, and
+  /// chain label with at least one (pre or post) refcount > 0, and
   /// pushes it to mpv. The C side replaces its active set on every
   /// write; an empty CSV disables every tap.
   void _writeActiveList() {
-    final names = <String>{};
+    final labels = <String>{};
     for (final k in _refs.keys) {
-      names.add(k.name);
+      labels.add(k.name);
     }
-    unawaited(_asyncSet('analyzer-taps', names.join(',')));
+    if (labels.length > _kMaxActiveTaps) {
+      _warn?.call(
+        '${labels.length} stages are tapped; libmpv captures '
+        '$_kMaxActiveTaps at a time, so the others stay silent.',
+      );
+    }
+    unawaited(_asyncSet('analyzer-taps', labels.join(',')));
   }
 
   void _poll() {
@@ -162,14 +176,14 @@ class FilterTapPipeline {
   }
 
   void _parseRoot(Map<dynamic, dynamic> root) {
-    // root: { filterName: { pre: <ring>, post: <ring> } }
+    // root: { label: { pre: <ring>, post: <ring> } }
     root.forEach((filterKey, entry) {
       if (filterKey is! String || entry is! Map) return;
       entry.forEach((sideKey, ring) {
         if (ring is! Map) return;
         final isPost = sideKey == 'post';
-        // The root keys already carry the `lavfi-` prefix the C side emits
-        // (`u->name`), matching how `_streamFor` keys `_controllers`.
+        // The root keys are the chain labels (`u->label`), the same keys
+        // `_streamFor` gives `_controllers`.
         final key = (name: filterKey, isPost: isPost);
         final ctrl = _controllers[key];
         if (ctrl == null || !ctrl.hasListener) return;

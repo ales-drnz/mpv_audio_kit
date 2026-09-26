@@ -60,11 +60,9 @@ class WaveformPipeline {
     _enabled = enabled;
     _writeEnabledProperty(enabled);
     if (enabled) {
-      if (_data != null) {
-        _emit(_data);
-      } else {
-        _armTimer();
-      }
+      // A finished envelope already reaches a new subscriber through the
+      // player's replay of the last value; only an unfinished one polls.
+      if (_data == null) _armTimer();
     } else {
       _pollTimer?.cancel();
       _pollTimer = null;

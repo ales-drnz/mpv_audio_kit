@@ -62,11 +62,9 @@ class LoudnessScanPipeline {
     _enabled = enabled;
     _writeEnabledProperty(enabled);
     if (enabled) {
-      if (_result != null) {
-        _emit(_result);
-      } else {
-        _armTimer();
-      }
+      // A finished result already reaches a new subscriber through the
+      // player's replay of the last value; only a pending one polls.
+      if (_result == null) _armTimer();
     } else {
       _pollTimer?.cancel();
       _pollTimer = null;
