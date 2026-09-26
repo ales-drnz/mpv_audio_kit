@@ -1067,7 +1067,7 @@ void main() {
         final controller = await _buildController(
           rig: rig,
           channel: ch,
-          artworkFetcher: (uri) {
+          artworkFetcher: (uri, _) {
             fetched.add(uri);
             return pending.future;
           },

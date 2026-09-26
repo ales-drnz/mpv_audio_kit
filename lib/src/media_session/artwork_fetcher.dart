@@ -10,8 +10,12 @@ import 'package:flutter/foundation.dart';
 
 import '../models/cover_art.dart';
 
+/// The player's TLS settings (`tls-verify`, `tls-ca-file`), which an
+/// artwork download follows like playback does.
+typedef ArtworkTls = ({bool verify, String caFile});
+
 /// Downloads a remote artwork URL into a [CoverArt]; `null` on any failure.
-typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri);
+typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri, ArtworkTls tls);
 
 /// Upper bound on a downloaded cover. Real covers are a few MB at most;
 /// anything larger is not an image worth putting on the media session.
@@ -35,11 +39,29 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   _ => false,
 };
 
-/// Default [ArtworkFetcher] where [downloadsArtworkOn] holds.
+/// Default [ArtworkFetcher] where [downloadsArtworkOn] holds. It trusts
+/// what playback trusts: any certificate without [ArtworkTls.verify], only
+/// the bundle in [ArtworkTls.caFile] when one is set, the system roots
+/// otherwise. A proxy set in the environment (`https_proxy`) is used.
 @internal
-Future<CoverArt?> downloadArtwork(Uri uri) async {
-  final client = HttpClient()..connectionTimeout = _timeout;
+Future<CoverArt?> downloadArtwork(
+  Uri uri, [
+  ArtworkTls tls = (verify: true, caFile: ''),
+]) async {
+  HttpClient? client;
   try {
+    client = !tls.verify
+        ? (HttpClient()..badCertificateCallback = (_, _, _) => true)
+        : tls.caFile.isNotEmpty
+        ? HttpClient(
+            // A new context starts without the system roots: the bundle
+            // replaces them, as `tls-ca-file` does for playback.
+            context: SecurityContext()..setTrustedCertificates(tls.caFile),
+          )
+        : HttpClient();
+    client
+      ..connectionTimeout = _timeout
+      ..findProxy = HttpClient.findProxyFromEnvironment;
     final request = await client.getUrl(uri).timeout(_timeout);
     final response = await request.close().timeout(_timeout);
     if (response.statusCode != HttpStatus.ok) {
@@ -59,6 +81,6 @@ Future<CoverArt?> downloadArtwork(Uri uri) async {
   } catch (_) {
     return null;
   } finally {
-    client.close(force: true);
+    client?.close(force: true);
   }
 }

@@ -48,4 +48,50 @@ void main() {
     await closed.close();
     expect(await downloadArtwork(Uri.parse('http://127.0.0.1:$port/')), isNull);
   });
+
+  group('over HTTPS with a self-signed certificate', () {
+    final certPath =
+        '${Directory.current.path}/test/fixtures/tls/self_signed_cert.pem';
+    late HttpServer secure;
+    late Uri cover;
+
+    setUpAll(() async {
+      final context = SecurityContext()
+        ..useCertificateChain(certPath)
+        ..usePrivateKey(
+          '${Directory.current.path}/test/fixtures/tls/self_signed_key.pem',
+        );
+      secure = await HttpServer.bindSecure(
+        InternetAddress.loopbackIPv4,
+        0,
+        context,
+      );
+      cover = Uri.parse('https://localhost:${secure.port}/cover');
+      secure.listen((request) {
+        request.response
+          ..headers.contentType = ContentType('image', 'png')
+          ..add(const [9, 8, 7])
+          ..close();
+      });
+    });
+
+    tearDownAll(() => secure.close(force: true));
+
+    test('is refused with verification on and the system roots', () async {
+      expect(await downloadArtwork(cover), isNull);
+    });
+
+    test('loads when the player does not verify', () async {
+      final art = await downloadArtwork(cover, (verify: false, caFile: ''));
+      expect(art?.bytes, [9, 8, 7]);
+    });
+
+    test("loads when the player's CA bundle trusts it", () async {
+      final art = await downloadArtwork(cover, (
+        verify: true,
+        caFile: certPath,
+      ));
+      expect(art?.bytes, [9, 8, 7]);
+    });
+  });
 }

@@ -79,6 +79,10 @@ class MediaSessionController {
   String? _fetchedArtUri;
   CoverArt? _fetchedArt;
   String? _pendingArtUri;
+  // When the last download failed; the same URL is tried again after
+  // [_artworkRetryAfter], so a server that was briefly down gets a cover.
+  DateTime? _artFailedAt;
+  static const _artworkRetryAfter = Duration(seconds: 30);
 
   MediaSessionController._({
     required PlayerState Function() stateSnapshot,
@@ -408,17 +412,26 @@ class MediaSessionController {
   /// download is in flight or after it failed. Starts the download on first
   /// sight of [uri]; its completion re-pushes metadata.
   CoverArt? _downloadedArtwork(String uri) {
-    if (uri == _fetchedArtUri) return _fetchedArt;
+    final failedAt = _artFailedAt;
+    final retry =
+        _fetchedArt == null &&
+        failedAt != null &&
+        DateTime.now().difference(failedAt) > _artworkRetryAfter;
+    if (uri == _fetchedArtUri && !retry) return _fetchedArt;
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
+      final state = _stateSnapshot();
+      final tls = (verify: state.tlsVerify, caFile: state.tlsCaFile);
       unawaited(
-        _artworkFetcher!(Uri.parse(uri)).catchError((Object _) => null).then((
-          cover,
-        ) {
+        _artworkFetcher!(
+          Uri.parse(uri),
+          tls,
+        ).catchError((Object _) => null).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;
           _fetchedArtUri = uri;
           _fetchedArt = cover;
+          _artFailedAt = cover == null ? DateTime.now() : null;
           _markMetadata();
         }),
       );
