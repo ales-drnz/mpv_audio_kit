@@ -75,12 +75,14 @@ mixin _DispatchModule on _PlayerBase {
           // stale string, so rewrite it from state to re-apply the
           // current parameter values. (A mid-file format reconfig has
           // the same hazard but no dedicated event; the next file-load
-          // or bundle write heals it.)
+          // or full rewrite of the chain heals it.)
           if (_afStringStale) {
             _afStringStale = false;
             // Fire-and-forget: the rewrite is best-effort resync; the rc
             // has no consumer here and the event handler must not suspend.
-            unawaited(_propRc('af', audioEffectsChain(_state.audioEffects)));
+            unawaited(
+              _command(['af', 'set', audioEffectsChain(_state.audioEffects)]),
+            );
           }
           _applyPolledPosition(timePos);
           // mpv exposes -1 / -2 etc. as "no chapter active"; surface as

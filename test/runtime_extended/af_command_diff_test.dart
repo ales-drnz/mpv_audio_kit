@@ -164,5 +164,68 @@ void main() {
             'the FILE_LOADED resync re-asserts the diff value (g=9)',
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('a value the running graph refuses throws and rolls back', () async {
+      await player.setAudioEffects(const [BassEffect(f: 1000, g: 2)]);
+      final before = player.state.audioEffects;
+      // The string parses (lavfi-equalizer is a known filter), so only the
+      // graph rebuild can reject `f=abc`.
+      await expectLater(
+        player.setAudioEffects(const [
+          BassEffect(f: 1000, g: 2),
+          RawAudioEffect('lavfi-equalizer=f=abc'),
+        ]),
+        throwsA(isA<MpvCommandException>()),
+      );
+      expect(player.state.audioEffects, before);
+      expect(
+        await player.getRawProperty('af'),
+        isNot(contains('equalizer')),
+        reason: 'mpv keeps the old chain when the rebuild fails',
+      );
+    }, timeout: const Timeout(Duration(seconds: 20)));
+
+    test('a rebuild after live updates applies the requested values, not the '
+        'live ones', () async {
+      await player.setLoop(Loop.file);
+      Future<double> settledMomentary() async {
+        // The momentary window is 400 ms: let it fill with the new signal.
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+        final l = await player.stream.loudnessMeter
+            .skip(1)
+            .firstWhere((l) => l.momentary != null)
+            .timeout(const Duration(seconds: 10));
+        return l.momentary!;
+      }
+
+      await player.setAudioEffects(const [
+        BassEffect(f: 1000, g: 0),
+        Ebur128Effect(metadata: true),
+      ]);
+      final flat = await settledMomentary();
+
+      // Live update: mpv's bass filter now runs at +18 dB while the
+      // arguments it was created with still say 0.
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 18));
+      final boosted = await settledMomentary();
+      expect(boosted, greaterThan(flat + 6));
+
+      // A shape change back to g=0: mpv would keep the bass filter, whose
+      // stored arguments equal the new ones, still running at +18 dB.
+      await player.setAudioEffects(const [
+        BassEffect(f: 1000, g: 0),
+        TrebleEffect(),
+        Ebur128Effect(metadata: true),
+      ]);
+      final after = await settledMomentary();
+      expect(
+        after,
+        closeTo(flat, 3),
+        reason:
+            'the bass stage must be back at 0 dB (flat $flat, '
+            'boosted $boosted, after $after)',
+      );
+      await player.setLoop(Loop.off);
+    }, timeout: const Timeout(Duration(seconds: 40)));
   });
 }
