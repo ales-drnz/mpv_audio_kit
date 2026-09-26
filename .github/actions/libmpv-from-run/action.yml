@@ -1,0 +1,34 @@
+name: libmpv from a libmpv-scripts run
+description: >-
+  Bundles the libraries of a libmpv-scripts CI run instead of the pinned
+  release, through the build hook's libmpv user define. For testing a
+  libmpv build before its release exists. Does nothing without a run id.
+inputs:
+  run-id:
+    description: The libmpv-scripts workflow run whose libmpv-release artifact to use.
+    required: false
+    default: ''
+  token:
+    description: A token that can read the libmpv-scripts artifacts.
+    required: true
+  pubspecs:
+    description: The pubspec.yaml files to point at it, separated by spaces.
+    required: true
+runs:
+  using: composite
+  steps:
+    - if: inputs.run-id != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: libmpv-release
+        repository: ales-drnz/libmpv-scripts
+        run-id: ${{ inputs.run-id }}
+        github-token: ${{ inputs.token }}
+        path: ${{ runner.temp }}/libmpv
+    - if: inputs.run-id != ''
+      shell: bash
+      run: |
+        for pubspec in ${{ inputs.pubspecs }}; do
+          printf '\nhooks:\n  user_defines:\n    mpv_audio_kit:\n      libmpv: %s\n' \
+            "$RUNNER_TEMP/libmpv" >> "$pubspec"
+        done

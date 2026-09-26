@@ -69,6 +69,13 @@ void runtimeSuite(
     extraFixtures: extraFixtures,
   );
   if (reason != null) {
+    // On CI the library and the fixtures are always there: a missing one
+    // means the hook or its output path changed, and skipping would leave
+    // the runtime suites silently out of the run.
+    if (Platform.environment['CI'] == 'true') {
+      test('libmpv and fixtures are available', () => fail(reason));
+      return;
+    }
     group('libmpv', body, skip: reason);
     return;
   }
