@@ -296,7 +296,8 @@ class PlayerStream {
   /// `MPV_EVENT_PLAYBACK_RESTART` signal.
   final Stream<void> seekCompleted;
 
-  /// Emits the duration of the current track. Zero for live / unknown streams.
+  /// Emits the duration of the current track. Zero when unknown: a live
+  /// stream, nothing loaded, or a track still loading.
   final Stream<Duration> duration;
 
   /// Emits the current volume level (0–100+).

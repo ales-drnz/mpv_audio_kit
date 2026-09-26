@@ -21,6 +21,13 @@ order, where the same filter can appear more than once.
 | `AudioEffect.equalizer` (filter id) | `AudioFilter.equalizer` |
 | `LoudnormSettings(I: -16, TP: -1, LRA: 11)` | `LoudnormEffect(i: -16, tp: -1, lra: 11)` |
 | enum members like `lr_to_ms`, `LUFS` | `lrToMs`, `lufs` |
+| both spellings of an option (`f` and `frequency`, `g` and `gain`) | the longer one only: `frequency`, `gain` |
+
+ffmpeg names some options twice, and 0.4 had a field for each spelling.
+0.5 keeps one field per option, the longer name: `BassEffect(g: 3)` is
+`BassEffect(gain: 3)`, and likewise `w` and `width`, `t` and `widthType`
+on the equalizer family, and the short aliases of `afade`, `afftdn`,
+`dynaudnorm`, `speechnorm` and the others. The analyzer names each one.
 
 Setting a chain:
 
@@ -77,16 +84,23 @@ await player.updateAudioEffects((fx) => [
 Clearing the chain: `setAudioEffects(const [])` instead of
 `setAudioEffects(const AudioEffects())`.
 
+A chain mpv refuses now throws `MpvCommandException` and leaves the state
+on the previous list, also when the refusal comes from building the filter
+graph (a bad value in a `RawAudioEffect`), which 0.4 did not report. With
+no file loaded there is no graph yet, and such a value surfaces at the next
+load on `stream.error`.
+
 ### Taps and the loudness meter
 
 `stream.tap` takes the filter as an `AudioFilter` and, when the filter
-appears more than once, which occurrence (0 for the first):
+appears more than once, which occurrence (0 for the first, disabled stages
+included):
 
 ```dart
 player.stream.tap(AudioFilter.equalizer, instance: 1, side: TapSide.post);
 ```
 
-The live loudness meter reads the first `Ebur128Effect` of the chain:
+The live loudness meter reads the first enabled `Ebur128Effect` of the chain:
 
 ```dart
 await player.updateAudioEffects(
@@ -99,7 +113,10 @@ await player.updateAudioEffects(
 
 ## One family of exceptions
 
-Every exception a call throws is now a sealed `PlayerException`:
+A call that fails at libmpv or at its source now throws a sealed
+`PlayerException`. Invalid arguments are programming errors and still
+throw `ArgumentError` or `RangeError`, and enabling the media session on a
+second player throws `StateError`.
 
 | 0.4.x | 0.5.0 |
 | --- | --- |
@@ -138,7 +155,8 @@ The `Mpv` prefix now marks only types that carry mpv's own data
 | `MpvPrefetchState` | `PrefetchState` |
 | `player.stream.loudness` | `player.stream.loudnessScan` |
 
-`player.stream.tap(...)` is now a method; calls don't change.
+`player.stream.tap(...)` is now a method taking an `AudioFilter` and an
+`instance`, see [Taps and the loudness meter](#taps-and-the-loudness-meter).
 
 ## Synchronous spectrum and log level
 
@@ -165,11 +183,16 @@ are unchanged.
 The package now fetches libmpv through a Dart build hook instead of
 Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
 
-- The minimum is Dart 3.10 and Flutter 3.38.
+- The minimum is Dart 3.10 and Flutter 3.38. Building for iOS needs
+  Flutter 3.47.4 or later: older releases mark the bundled framework for
+  an iOS version below the library's 15.0, and the hook stops the build.
+- The first build of each target downloads libmpv, so it needs network
+  access. 32-bit x86 Android emulators and 32-bit Linux have no build and
+  fail to build.
 - The bundled file is `libmpv_audio_kit.so`, `mpv_audio_kit.dll` or
-  `mpv_audio_kit.framework`, so it no longer collides with media_kit's
-  `libmpv`. Scripts or build steps that looked for `libmpv.so` in your
-  app need the new name.
+  `libmpv_audio_kit.framework`, so it no longer collides with media_kit's
+  `libmpv` or with the plugin's own framework. Scripts or build steps that
+  looked for `libmpv.so` in your app need the new name.
 - To bundle your own libmpv build (offline builds, custom filters), set it
   in your app's `pubspec.yaml`:
 
@@ -180,8 +203,22 @@ Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
         libmpv: path/to/your/libmpv
   ```
 
-  `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a library by
-  path at run time.
+  A directory holds files named like the release assets, one per target.
+  A single file is bundled for every target, so it only suits a build for
+  one target and architecture: on Apple it is the framework binary of one
+  slice. `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a
+  library by path at run time.
 - On Linux the package no longer falls back to a system `libmpv.so`.
 - The player logs a warning when the loaded libmpv is not the release the
   package expects.
+
+## Behavior changes
+
+- After `stop()` or a failed load, and while the next track loads, the
+  state no longer keeps the previous file's values: `duration`, `path`,
+  `mediaTitle`, `metadata`, `fileSize`, `audioParams` and the like go back
+  to their defaults (0, empty, `null`) until mpv reports the new ones. A
+  progress bar that divides by `duration` must handle 0. The OS media
+  session is not affected: it holds its metadata while a track loads.
+- `systemVolume` and `systemMute` are `null` while no audio output is open,
+  for example after `stop()`.

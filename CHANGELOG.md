@@ -5,11 +5,12 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 ### Breaking
 - Audio effects are an ordered `List<AudioEffect>`, applied in list order, in place of the `AudioEffects` bundle. The same filter can appear more than once, and raw lavfi entries (`RawAudioEffect`) can sit anywhere in the list.
 - Effect classes are named `XxxEffect` (was `XxxSettings`), their parameters and enum members are camelCase (`levelIn`, `lrToMs`), and `enabled` defaults to `true`.
+- An option ffmpeg spells twice has one field, under the longer name: `BassEffect(gain: 3)`, not `g` or `gain`.
 - The filter-id enum is now `AudioFilter`, and `stream.tap` takes an `instance` for filters that appear more than once.
-- Minimum Dart 3.10 and Flutter 3.38.
-- libmpv is bundled as `libmpv_audio_kit.so`, `mpv_audio_kit.dll` or `mpv_audio_kit.framework`, and the Linux fallback to a system `libmpv.so` is gone.
-- Calls throw one sealed `PlayerException`: `PlayerDisposedException`, `PlayerInitException`, `MpvCommandException` (was `MpvException`) and `SourceException`. A missing `asset://` throws instead of reaching mpv.
-- `next()` and `previous()` return `false` when there is no track to go to, and an index out of range throws `RangeError` in `jump()`, `remove()`, `move()` and `replace()`.
+- Minimum Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 to build for iOS.
+- libmpv is bundled as `libmpv_audio_kit.so`, `mpv_audio_kit.dll` or `libmpv_audio_kit.framework`, and the Linux fallback to a system `libmpv.so` is gone.
+- A call that fails at libmpv or at its source throws one sealed `PlayerException`: `PlayerDisposedException`, `PlayerInitException`, `MpvCommandException` (was `MpvException`) and `SourceException`. A missing `asset://` throws instead of reaching mpv.
+- `next()`, `previous()`, `nextPlaylist()` and `previousPlaylist()` return `false` when there is no track to go to, and an index out of range throws `RangeError` in `jump()`, `remove()`, `move()` and `replace()`.
 - A negative volume, or a rate or pitch outside `[0.01, 100]`, throws `RangeError` before reaching mpv.
 - State streams give a new subscriber the current value first, then the changes, so `StreamBuilder` needs no `initialData`. Use `skip(1)` to wait for the next change. Event streams are unchanged.
 - The `Mpv` prefix is kept only on types that carry mpv's own data: `MpvPlayerError`, `MpvEndFileError`, `MpvLogError` and `MpvPrefetchState` are now `PlayerError`, `EndFileError`, `LogError` and `PrefetchState`.
@@ -17,7 +18,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - `setSpectrum`, `updateSpectrum` and `setLogLevel` are synchronous and work before the player has started. The spectrum settings are in `state.spectrum`, and the `spectrumSettings` getter is gone.
 
 ### Added
-- libmpv reaches the app through a Dart build hook, with one pinned checksum per binary. An app can bundle its own build with the `libmpv` user define.
+- libmpv reaches the app through a Dart build hook, with one pinned checksum per binary. An app can bundle its own build with the `libmpv` user define, a directory of release assets or a single file.
 - The player logs a warning when the loaded libmpv is not the release it expects.
 - Live effect updates, taps and the loudness meter follow one stage when the others are toggled or reordered.
 
@@ -26,21 +27,29 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - CI analyzes, tests and builds the package on every platform.
 
 ### Fixed
-- After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size or audio parameters: a property mpv reports unavailable goes back to its default.
+- After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size or audio parameters: a property mpv reports unavailable goes back to its default. While the next track loads the values are empty, and the OS media session waits for the new ones instead of showing the gap.
+- An effects chain the filter graph refuses throws `MpvCommandException` and keeps the previous list. Before, the call returned, the state showed the new chain and the old one kept playing.
+- A chain rebuilt after live slider changes applies the requested values: a stage moved live and set back could stay at the live value.
+- A parameter value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001`.
+- The live loudness meter reads the first enabled `Ebur128Effect`, so a disabled first one no longer silences it.
 - A setter emits the value it was given once. Volume, gains and ReplayGain no longer come back rounded (`setVolume(42.37)` then `42.400001525878906`), rate and pitch keep their precision, durations keep their microseconds, and `setCache`, `setDemuxer` and `setReplayGain` no longer emit a half-applied bundle.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
-- The temp copies of `asset://` sources are deleted when the last player is disposed.
-- `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, with or without a prefix like `no-osd`, as `setRawProperty` does. They desynced the effects chain or the play/pause state.
+- The temp copies of `asset://` sources live in a directory of their own and are deleted when the last player is disposed, without touching a copy made meanwhile or another app instance's.
+- `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also behind `no-osd`, `options/` or `file-local-options/`, and `loadfile` with them in its per-file options. They desynced the effects chain or the play and pause state.
+- `jump()`, `remove()`, `move()` and `replace()` racing `dispose()` throw `PlayerDisposedException` instead of a `RangeError`.
+- On Linux, Android and Windows a remote cover is downloaded with the player's `tls-verify` and `tls-ca-file`, through a proxy set in the environment, and a failed one is tried again, so a self-hosted server with its own CA shows its covers.
 - `dispose()` closes `stream.playWhenReady`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
 - Windows: the plugin builds with Visual Studio 2026.
 
 ### Build
-- Linux: libmpv loads with glibc 2.31 or later (it needed 2.38), and on systems without PipeWire or PulseAudio.
+- Linux: libmpv loads with glibc 2.31 or later (it needed 2.38) and on systems without PipeWire or PulseAudio, and needs only ALSA. A PipeWire older than 0.3.57 is skipped in favour of PulseAudio.
 - The library's SONAME is `libmpv_audio_kit.so` on Linux and Android, so an app using media_kit too no longer fails to build or load a second `libmpv`.
 - The per-filter tap is keyed on the chain label, so two instances of one filter get separate taps.
 - mpv's version string carries the libmpv release, which the player checks at startup.
-- Every source tarball is pinned by SHA-256.
+- Every source is pinned: tarballs by SHA-256, Windows ones included, and git sources by the commit of their tag.
+- Closing the app while the waveform or loudness scan reads an HTTPS stream no longer frees TLS state under it.
+- A waveform or loudness scan whose workers fail to start stops the ones already running instead of waiting for their whole decode.
 - Updated libmpv to `libmpv-r15` across all platforms.
 
 ## [0.4.8] - 24-09-2026

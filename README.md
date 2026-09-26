@@ -61,7 +61,24 @@ dependencies:
 | **iOS** | 15.0 | arm64, x86_64 | 7.5, 8.0 MB | ✅ | ✅ |
 | **macOS** | 12.0 | arm64, x86_64 | 7.5, 8.0 MB | ✅ | - |
 | **Windows**| 10 | arm64, x86_64 | 8.1, 9.1 MB | ✅ | - |
-| **Linux** | Ubuntu 24.04 | aarch64, x86_64 | 8.7, 7.5 MB | ✅ | - |
+| **Linux** | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.7, 7.5 MB | ✅ | - |
+
+The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire 0.3.57 or later and PulseAudio when they are installed.
+
+### How libmpv reaches the app
+
+A Dart build hook downloads the libmpv build for each target from this repository's releases, checks it against a pinned SHA-256 and bundles it with the app, as `libmpv_audio_kit.so` on Android and Linux, `mpv_audio_kit.dll` on Windows and `libmpv_audio_kit.framework` on iOS and macOS. The first build of each target needs network access; later builds reuse the download.
+
+For offline builds or a libmpv of your own, point the hook at local files in your app's `pubspec.yaml`:
+
+```yaml
+hooks:
+  user_defines:
+    mpv_audio_kit:
+      libmpv: path/to/libmpv
+```
+
+The path can be a directory holding files named like the release assets (`libmpv_android-arm64-v8a.so`, `libmpv_ios.xcframework.zip` and so on), and each target takes its own. A single file is bundled for every target, so it only suits a build for one target and architecture. Local files are bundled without a checksum.
 
 ---
 
@@ -302,7 +319,7 @@ dependencies:
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/zap.png" width="32"></td>
 <td valign="middle" width="45%"><b>Non-blocking</b><br>mpv events run in a background isolate; the UI thread stays free.</td>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/shield-check.png" width="32"></td>
-<td valign="middle" width="45%"><b>Type-safe API</b><br>typed enums, sealed selectors, <code>*Settings</code> bundles. No stringly-typed setters.</td>
+<td valign="middle" width="45%"><b>Type-safe API</b><br>typed enums, sealed selectors, <code>*Effect</code> stages. No stringly-typed setters.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/activity.png" width="32"></td>
@@ -1099,7 +1116,7 @@ or for quick experimentation, use `RawAudioEffect`.
 
 ##### Advanced (mandatory parameter)
 
-These five take a mandatory free-form value with no sensible default, so their `*Settings` constructors make it **required** — pass a valid value or the filter won't initialise. (In the MPV Studio example each has a dedicated page with curated presets, a custom field, and a model-file picker for `arnndn`.)
+These five take a mandatory free-form value with no sensible default, so their `*Effect` constructors make it **required** — pass a valid value or the filter won't initialise. (In the MPV Studio example each has a dedicated page with curated presets, a custom field, and a model-file picker for `arnndn`.)
 
 | Effect | Description | Required |
 |---|---|---|
@@ -2020,7 +2037,11 @@ try {
 #### 10.3 Send a command
 
 Same `MpvCommandException` contract on rejection. `af` and `af-command`
-throw `ArgumentError`: the effects chain owns them.
+throw `ArgumentError`: the effects chain owns them. So do the commands that
+write `af` or `pause` (`set`, `add`, `cycle`, `cycle-values`, `change-list`,
+also through `options/` and `file-local-options/`), and `loadfile` with
+`af` or `pause` in its per-file options. The check covers these commands,
+not every way mpv offers to change a property.
 
 ```dart
 await player.sendRawCommand(['playlist-shuffle']);
@@ -2476,10 +2497,12 @@ count.
 either side of one stage of the effects chain. The stage is named by its
 filter, through the typed `AudioFilter` enum, and by `instance` when the
 filter appears more than once (0, the default, is the first): with two
-`EqualizerEffect`s in the list, `instance: 1` taps the second. The tap
-follows its stage when the others are toggled or reordered. The side is
-one of `TapSide.pre` (before the filter's DSP runs) or `TapSide.post`
-(after).
+`EqualizerEffect`s in the list, `instance: 1` taps the second. Disabled
+stages count too, and emit nothing. The tap follows the occurrence, not a
+particular stage: moving other filters around keeps it where it is, while
+swapping the two equalizers swaps what `instance: 0` taps. libmpv captures
+up to eight stages at a time. The side is one of `TapSide.pre` (before the
+filter's DSP runs) or `TapSide.post` (after).
 
 ```dart
 // Two-curve display: input vs output of a single filter.
@@ -2515,8 +2538,10 @@ stage by stage:
 final seen = <AudioFilter, int>{};
 for (final e in player.state.audioEffects) {
   final f = e.filter;
-  if (f == null || !e.enabled) continue;  // raw or bypassed stage
+  if (f == null) continue;  // raw stage
+  // Disabled stages count toward the instance too.
   final instance = seen.update(f, (n) => n + 1, ifAbsent: () => 0);
+  if (!e.enabled) continue;  // bypassed: nothing to tap
   player.stream.tap(f, instance: instance, side: TapSide.post).listen(_paint);
 }
 ```

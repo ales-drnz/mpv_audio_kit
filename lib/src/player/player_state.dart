@@ -101,7 +101,8 @@ final class PlayerState {
   /// Current playback position.
   final Duration position;
 
-  /// Total duration of the current track. Zero when unknown (e.g. live streams).
+  /// Total duration of the current track. Zero when unknown: a live
+  /// stream, nothing loaded, or a track still loading.
   final Duration duration;
 
   /// Current volume level, 0–100. Values above 100 amplify the signal.
