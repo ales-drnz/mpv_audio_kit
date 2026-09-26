@@ -50,9 +50,30 @@ void main() {
       expect(File(first.uri).existsSync(), isFalse);
 
       final again = await resolveUri('asset://$key');
-      expect(again.uri, first.uri);
       expect(File(again.uri).readAsBytesSync(), payload);
       await deleteCopiedAssets();
     },
   );
+
+  test('a copy made while a deletion runs survives it', () async {
+    final first = await resolveUri('asset://$key');
+    // A new player resolving the same asset right after the last one went.
+    final deletion = deleteCopiedAssets();
+    final again = await resolveUri('asset://$key');
+    await deletion;
+    expect(File(first.uri).existsSync(), isFalse);
+    expect(again.uri, isNot(first.uri));
+    expect(File(again.uri).readAsBytesSync(), payload);
+    await deleteCopiedAssets();
+  });
+
+  test('copies live in a directory of their own', () async {
+    final resolved = await resolveUri('asset://$key');
+    expect(
+      File(resolved.uri).parent.path,
+      isNot(Directory.systemTemp.path),
+      reason: 'another process deleting its copies must not reach ours',
+    );
+    await deleteCopiedAssets();
+  });
 }

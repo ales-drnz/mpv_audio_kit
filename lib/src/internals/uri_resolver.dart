@@ -8,7 +8,7 @@
 // reaches `loadfile`. Translates host-platform schemes that libmpv does
 // not understand into something it does:
 //
-//   asset://path/inside/bundle  → /tmp/mpv_asset_<safe_name>   (every platform)
+//   asset://path/inside/bundle  → <temp>/mpv_audio_kit_<random>/mpv_asset_<safe_name>
 //   content://...               → fd://<n>                     (Android only)
 //
 // All other URIs (`file://`, `http(s)://`, `smb2://`, plain
@@ -24,6 +24,11 @@ import '../events/player_exception.dart';
 
 const MethodChannel _channel = MethodChannel('mpv_audio_kit');
 final Map<String, String> _assetCache = {};
+
+// The directory the current asset copies go to: private to this process,
+// and replaced by a fresh one after [deleteCopiedAssets], so a deletion in
+// progress never removes a copy made after it started.
+Future<Directory>? _assetDir;
 
 // Deduplicates concurrent [resolveUri] calls for the same asset: the
 // first caller does the bundle load + file write, concurrent callers
@@ -142,8 +147,11 @@ Future<String> _doCopyAsset(String uri) async {
     for (final unit in assetPath.codeUnits) {
       pathHash = ((pathHash ^ unit) * 0x01000193) & 0xFFFFFFFF;
     }
+    final dir = await (_assetDir ??= Directory.systemTemp.createTemp(
+      'mpv_audio_kit_',
+    ));
     final file = File(
-      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      '${dir.path}${Platform.pathSeparator}'
       'mpv_asset_${pathHash.toRadixString(16).padLeft(8, '0')}_$safeName',
     );
 
@@ -167,15 +175,15 @@ Future<String> _doCopyAsset(String uri) async {
 
 /// Deletes the temp copies of `asset://` sources and forgets them. Called
 /// when the last player of the process is disposed, so mpv holds none of
-/// them open; a later player copies again on demand. Best effort: a file
-/// another process still has open, or one already gone, is skipped.
+/// them open; a later player copies again on demand, into a new directory.
+/// Best effort: a directory already gone is skipped.
 Future<void> deleteCopiedAssets() async {
   if (_assetInflight.isNotEmpty) return;
-  final paths = _assetCache.values.toList(growable: false);
+  final dir = _assetDir;
+  if (dir == null) return;
+  _assetDir = null;
   _assetCache.clear();
-  for (final path in paths) {
-    try {
-      await File(path).delete();
-    } catch (_) {}
-  }
+  try {
+    await (await dir).delete(recursive: true);
+  } catch (_) {}
 }
