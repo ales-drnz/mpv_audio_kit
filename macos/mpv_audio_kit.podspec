@@ -7,7 +7,7 @@
 #
 # libmpv is not part of this pod: the package's build hook
 # (hook/build.dart) downloads it and Flutter bundles it with the app as
-# mpv_audio_kit.framework, a code asset the Dart side binds with @Native.
+# libmpv_audio_kit.framework, a code asset the Dart side binds with @Native.
 #
 # A Flutter plugin ships both dependency-manager manifests — this podspec
 # (CocoaPods) and Package.swift (Swift Package Manager) — and the consuming

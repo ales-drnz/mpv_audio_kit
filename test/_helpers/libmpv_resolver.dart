@@ -16,7 +16,7 @@ String? resolveLibmpv() {
   final dir = '${Directory.current.path}/build/native_assets';
   final path = switch (Platform.operatingSystem) {
     'linux' => '$dir/linux/libmpv_audio_kit.so',
-    'macos' => '$dir/macos/mpv_audio_kit.framework/mpv_audio_kit',
+    'macos' => '$dir/macos/libmpv_audio_kit.framework/libmpv_audio_kit',
     'windows' => '$dir\\windows\\mpv_audio_kit.dll',
     _ => null,
   };

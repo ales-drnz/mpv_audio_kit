@@ -8,14 +8,18 @@
 // binds with @Native. One script for every platform, in place of a Gradle
 // task, two podspecs, two SwiftPM manifests and two CMake files.
 //
-// Offline builds and custom binaries: point the app at a local file with
+// Offline builds and custom binaries: point the app at a local copy with
 //
 //   hooks:
 //     user_defines:
 //       mpv_audio_kit:
-//         libmpv: path/to/the/library
+//         libmpv: path/to/libmpv
 //
-// in the app's pubspec. The file is bundled as is, without a checksum.
+// in the app's pubspec. A directory holds files named like the release
+// assets (libmpv_android-arm64-v8a.so, libmpv_ios.xcframework.zip, ...),
+// and each target takes its own. A single file is bundled for every
+// target, so it only suits a build for one target and architecture. Local
+// files are bundled as they are, without a checksum.
 
 import 'dart:io';
 
@@ -57,14 +61,34 @@ void main(List<String> args) async {
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
-    if (local != null) {
+    if (local != null &&
+        !await FileSystemEntity.isDirectory(local.toFilePath())) {
+      // A single file is the finished library, bundled for every target.
+      output.dependencies.add(local);
       await File.fromUri(local).copy(out.path);
     } else {
-      final asset = await _fetch(target.asset, input.outputDirectoryShared);
+      final asset = local == null
+          ? await _fetch(target.asset, input.outputDirectoryShared)
+          : await _localAsset(local, target.asset);
+      if (local != null) output.dependencies.add(asset.uri);
       if (target.appleSlice == null) {
         await asset.copy(out.path);
       } else {
-        await _extractAppleSlice(asset, target, code.targetArchitecture, out);
+        // A pinned download never changes, so its unpacked copy is kept
+        // beside it; a local zip may, so it is unpacked again each build.
+        final unpacked = local == null
+            ? Directory('${asset.parent.path}/unzipped')
+            : Directory.fromUri(input.outputDirectory.resolve('unzipped'));
+        if (local != null && await unpacked.exists()) {
+          await unpacked.delete(recursive: true);
+        }
+        await _extractAppleSlice(
+          asset,
+          unpacked,
+          target,
+          code.targetArchitecture,
+          out,
+        );
       }
     }
 
@@ -84,7 +108,9 @@ void main(List<String> args) async {
 /// collide with another plugin's copy on disk or in the loader (bionic
 /// matches a dlopen by name against the SONAMEs already loaded; the SONAME
 /// inside is the same). On Apple the file becomes
-/// `mpv_audio_kit.framework/mpv_audio_kit`.
+/// `libmpv_audio_kit.framework/libmpv_audio_kit`: not `mpv_audio_kit`,
+/// which is the framework CocoaPods builds for the plugin itself under
+/// `use_frameworks!`, and both land in the app's Frameworks directory.
 class _Target {
   const _Target(this.asset, this.fileName, {this.appleSlice});
 
@@ -100,6 +126,16 @@ class _Target {
       'mpv_audio_kit: no libmpv for ${code.targetOS} '
       '$arch in $_release',
     );
+    // The iOS binary is built for iOS 15, and Flutter writes this version
+    // into the framework's MinimumOSVersion: a lower one makes App Store
+    // validation reject the app. Flutter before 3.47.4 passes 12 or 13.
+    if (code.targetOS == OS.iOS && code.iOS.targetVersion < 15) {
+      throw UnsupportedError(
+        'mpv_audio_kit: building for iOS needs Flutter 3.47.4 or later, '
+        'which targets iOS 15 like the bundled libmpv '
+        '(this Flutter targets iOS ${code.iOS.targetVersion}).',
+      );
+    }
     return switch (code.targetOS) {
       OS.linux => _Target(
         'libmpv_linux-${switch (arch) {
@@ -128,12 +164,12 @@ class _Target {
       ),
       OS.macOS => const _Target(
         'libmpv_macos.xcframework.zip',
-        'mpv_audio_kit',
+        'libmpv_audio_kit',
         appleSlice: 'macos-arm64_x86_64',
       ),
       OS.iOS => _Target(
         'libmpv_ios.xcframework.zip',
-        'mpv_audio_kit',
+        'libmpv_audio_kit',
         appleSlice: code.iOS.targetSdk == IOSSdk.iPhoneSimulator
             ? 'ios-arm64_x86_64-simulator'
             : 'ios-arm64',
@@ -141,6 +177,20 @@ class _Target {
       _ => unsupported(),
     };
   }
+}
+
+/// The release [asset] in the user-defined directory [dir].
+Future<File> _localAsset(Uri dir, String asset) async {
+  // Resolve inside the directory even when the path has no trailing slash.
+  final base = dir.path.endsWith('/') ? dir : dir.replace(path: '${dir.path}/');
+  final file = File.fromUri(base.resolve(asset));
+  if (!await file.exists()) {
+    throw StateError(
+      'mpv_audio_kit: the libmpv user define points at ${dir.toFilePath()}, '
+      'which has no $asset',
+    );
+  }
+  return file;
 }
 
 /// The release [asset], downloaded once into [cacheDir] and reused by every
@@ -165,28 +215,29 @@ Future<File> _fetch(String asset, Uri cacheDir) async {
   return partial.rename(cached.path);
 }
 
-/// Copies the libmpv binary of the xcframework slice into [out], thinned to
+/// Copies the libmpv binary of the xcframework slice, unpacked from [zip]
+/// into [dir], into [out], thinned to
 /// [arch] when the slice is universal: Flutter runs the hook once per
 /// architecture and merges the results itself.
 Future<void> _extractAppleSlice(
   File zip,
+  Directory dir,
   _Target target,
   Architecture arch,
   File out,
 ) async {
-  final dir = Directory('${zip.parent.path}/unzipped');
   final framework =
       '${dir.path}/libmpv.xcframework/${target.appleSlice}/libmpv.framework';
   if (!await dir.exists()) {
-    // Unpack beside it and rename into place: the hook may run once per
-    // architecture in parallel, and a rename is atomic where an unzip
-    // into a shared directory is not.
-    final staging = await zip.parent.createTemp('unzip-');
+    // Unpack beside it and rename into place, so an interrupted unzip
+    // never leaves a half directory that a later build would trust.
+    await dir.parent.create(recursive: true);
+    final staging = await dir.parent.createTemp('unzip-');
     await _run('unzip', ['-q', zip.path, '-d', staging.path]);
     try {
       await staging.rename(dir.path);
     } on FileSystemException {
-      // Another run won the rename; its copy is identical.
+      // Another build unpacked the same zip first; its copy is identical.
       await staging.delete(recursive: true);
     }
   }
