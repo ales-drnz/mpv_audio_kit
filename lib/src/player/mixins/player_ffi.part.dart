@@ -34,6 +34,16 @@ const _kCommandPrefixes = {
   'sync',
 };
 
+/// The option names in a `key=value,key=value` list, the per-file options
+/// of `loadfile`. A value can itself hold commas, so this may also return
+/// a word from inside one: good enough to spot `af` and `pause`.
+Iterable<String> _optionKeys(String options) sync* {
+  for (final part in options.split(',')) {
+    final eq = part.indexOf('=');
+    yield (eq < 0 ? part : part.substring(0, eq)).trim();
+  }
+}
+
 /// Commands whose second argument names a property they write.
 const _kPropertyCommands = {
   'set',
@@ -130,6 +140,9 @@ mixin _FfiModule on _PlayerBase {
       'playlist-count',
       MpvFormat.mpvFormatInt64,
     );
+    // A dispose that landed meanwhile drained the read as failed: report
+    // the dispose, not an index out of an empty playlist.
+    _checkNotDisposed();
     final count = rc < 0 ? 0 : value as int;
     RangeError.checkValidIndex(index, null, name, count);
     return count;
@@ -305,8 +318,16 @@ mixin _FfiModule on _PlayerBase {
   }
 
   /// Throws [ArgumentError] when [name] is a property the player owns:
-  /// `af` (the effects chain) or `pause` (the transport intent).
+  /// `af` (the effects chain) or `pause` (the transport intent), also
+  /// through the `options/` and `file-local-options/` prefixes, which
+  /// write the same option.
   void _checkNotOwned(String name, String argName) {
+    for (final prefix in const ['options/', 'file-local-options/']) {
+      if (name.startsWith(prefix)) {
+        _checkNotOwned(name.substring(prefix.length), argName);
+        return;
+      }
+    }
     if (name == 'af') {
       throw ArgumentError.value(
         name,
@@ -360,8 +381,20 @@ mixin _FfiModule on _PlayerBase {
               'experimental or expression-based filters as a RawAudioEffect.',
         );
       }
-      if (_kPropertyCommands.contains(command) && i + 1 < args.length) {
-        _checkNotOwned(args[i + 1], 'args');
+      if (_kPropertyCommands.contains(command)) {
+        // `cycle-values` takes flags such as `!reverse` before the name.
+        var p = i + 1;
+        while (p < args.length && args[p].startsWith('!')) {
+          p++;
+        }
+        if (p < args.length) _checkNotOwned(args[p], 'args');
+      }
+      // `loadfile <url> <flags> <index> <options>` sets per-file options,
+      // which can name `af` or `pause` too.
+      if (command == 'loadfile' && i + 4 < args.length) {
+        for (final key in _optionKeys(args[i + 4])) {
+          _checkNotOwned(key, 'args');
+        }
       }
     }
     await _gate();

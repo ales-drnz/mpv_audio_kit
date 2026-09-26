@@ -40,6 +40,7 @@ export 'src/generated/audio_effects.dart';
 export 'src/generated/audio_effects_extensions.dart';
 export 'src/generated/audio_effects_settings.dart'
     hide
+        AfCommand,
         audioEffectLabel,
         audioEffectLabels,
         audioEffectsChain,

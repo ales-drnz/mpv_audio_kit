@@ -13,15 +13,12 @@ import 'dart:async';
 class ReplyTracker {
   /// Creates a tracker whose [drain] resolves every pending request with
   /// [drained].
-  ReplyTracker({required this.drained, this.firstId = 1}) : _nextId = firstId;
+  ReplyTracker({required this.drained});
 
   /// What [drain] resolves a pending request with.
   final (int, Object?) drained;
 
-  /// The first id [open] hands out.
-  final int firstId;
-
-  int _nextId;
+  int _nextId = 1;
   final Map<int, Completer<(int, Object?)>> _pending = {};
 
   /// Whether any request is still waiting for its reply.

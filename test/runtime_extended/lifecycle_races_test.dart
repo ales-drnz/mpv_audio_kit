@@ -172,6 +172,21 @@ void main() {
         },
         timeout: const Timeout(Duration(seconds: 120)),
       );
+
+      test('an index check racing dispose reports the dispose', () async {
+        final other = await buildPlayer();
+        await other.open(Media(fixturePath), play: false);
+        // The check reads playlist-count; dispose drains that read as
+        // failed, which must not come back as an index out of range.
+        final outcomes = [
+          for (final call in [other.jump(0), other.remove(0)])
+            call.then<Object?>((_) => null, onError: (Object e) => e),
+        ];
+        await other.dispose();
+        for (final outcome in await Future.wait(outcomes)) {
+          expect(outcome, anyOf(isNull, isA<PlayerDisposedException>()));
+        }
+      }, timeout: const Timeout(Duration(seconds: 20)));
     });
   });
 }

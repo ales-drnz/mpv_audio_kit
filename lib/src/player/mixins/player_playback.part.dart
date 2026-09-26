@@ -65,7 +65,7 @@ mixin _PlaybackModule on _PlayerBase {
     // Claim the load epoch synchronously so an in-flight open() that is
     // still resolving its URI aborts instead of resuming after this call
     // and restarting playback (see [Player.open]).
-    _loadEpoch++;
+    _claimLoad();
     await _gate();
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.

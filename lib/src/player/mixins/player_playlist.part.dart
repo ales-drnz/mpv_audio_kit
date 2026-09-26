@@ -247,15 +247,11 @@ mixin _PlaylistModule on _PlayerBase {
     String loopFile(Loop l) => l == Loop.file ? 'inf' : 'no';
     String loopPlaylist(Loop l) => l == Loop.playlist ? 'inf' : 'no';
     final previous = state.loop;
+    await _prop('loop-file', loopFile(loop));
     try {
-      await _prop('loop-file', loopFile(loop));
-      try {
-        await _prop('loop-playlist', loopPlaylist(loop));
-      } catch (_) {
-        await _propRc('loop-file', loopFile(previous));
-        rethrow;
-      }
+      await _prop('loop-playlist', loopPlaylist(loop));
     } catch (_) {
+      await _propRc('loop-file', loopFile(previous));
       rethrow;
     }
     // Optimistic update — `state.loop` reflects the requested mode

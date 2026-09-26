@@ -28,6 +28,16 @@ void main() {
       await player.dispose();
     });
 
+    test('setRawProperty through an option prefix is rejected', () {
+      for (final name in ['options/af', 'file-local-options/pause']) {
+        expect(
+          () => player.setRawProperty(name, 'yes'),
+          throwsA(isA<ArgumentError>()),
+          reason: name,
+        );
+      }
+    });
+
     test('setRawProperty(af, ...) is rejected', () {
       expect(
         () => player.setRawProperty('af', 'lavfi-loudnorm'),
@@ -60,6 +70,11 @@ void main() {
         ['cycle', 'pause'],
         ['set', 'pause', 'yes'],
         ['no-osd', 'af', 'add', 'lavfi-loudnorm'],
+        ['set', 'options/af', 'lavfi-loudnorm'],
+        ['set', 'file-local-options/pause', 'yes'],
+        ['cycle-values', '!reverse', 'pause', 'yes', 'no'],
+        ['loadfile', '/tmp/x.flac', 'replace', '-1', 'start=5,pause=yes'],
+        ['loadfile', '/tmp/x.flac', 'append', '-1', 'af=lavfi-loudnorm'],
       ]) {
         expect(
           () => player.sendRawCommand(args),

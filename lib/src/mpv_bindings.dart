@@ -688,9 +688,6 @@ class MpvLibrary {
   /// Bound `mpv_hook_continue`.
   late final MpvHookContinue mpvHookContinue;
 
-  /// Creates a wrapper from an already opened library (same process).
-  factory MpvLibrary.fromExisting(DynamicLibrary lib) => MpvLibrary._(lib);
-
   /// Test-only: builds an [MpvLibrary] with every `mpv*` field left
   /// as an unassigned `late final`. The caller must set the entries
   /// it exercises; touching an unset one throws
