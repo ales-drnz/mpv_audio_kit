@@ -15,7 +15,7 @@
 # Edit this variable, then run the script:
 # =============================================================================
 
-LIB_VERSION="0.4.7" # Library version (pubspec, podspecs, gradle, README)
+LIB_VERSION="0.4.8" # Library version (pubspec, podspecs, gradle, README)
 
 # =============================================================================
 

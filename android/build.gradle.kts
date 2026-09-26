@@ -1,5 +1,5 @@
 group = "com.alesdrnz.mpv_audio_kit"
-version = "0.4.7"
+version = "0.4.8"
 
 // AGP and the Kotlin Gradle Plugin are supplied by the consuming app's build
 // (and by flutter_tools), so this module declares no buildscript classpath of
