@@ -43,12 +43,8 @@ void main() {
             initialVolume: 42.5,
           ),
         );
-        // Pre-subscribe BEFORE any awaited call: `stream.volume` is a
-        // ReactiveProperty broadcast that does NOT replay its current value on
-        // listen, and the seed burst is delivered as soon as bring-up settles.
-        // Subscribing first guarantees the listener is registered before the
-        // 42.5 PROPERTY_CHANGE is processed — otherwise the (correctly
-        // delivered) emit is simply observed too late.
+        // `stream.volume` replays the current value, which starts at the
+        // state's seed (100), so only mpv's initial burst can deliver 42.5.
         final firstVolume = player.stream.volume
             .firstWhere((v) => v == 42.5)
             .timeout(const Duration(seconds: 5), onTimeout: () => double.nan);

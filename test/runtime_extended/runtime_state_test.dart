@@ -70,20 +70,15 @@ void main() {
         );
       }, timeout: const Timeout(Duration(seconds: 15)));
 
-      test('audioBitrate emits a non-null value during playback', () async {
-        // Subscribe BEFORE play so the first observer event isn't missed.
-        final bitrateCompleter = player.stream.audioBitrate
-            .firstWhere((b) => b != null && b > 0)
-            .timeout(const Duration(seconds: 5));
+      test('audioBitrate holds a value during playback', () async {
+        // The state streams replay the current value, and the file is
+        // already loaded: check the value while audio is playing.
         await player.play();
         try {
-          final br = await bitrateCompleter;
-          expect(br, isNotNull);
-          expect(
-            br!,
-            greaterThan(0),
+          await waitUntil(
+            () => player.state.playing && (player.state.audioBitrate ?? 0) > 0,
             reason:
-                'mpv emits audio-bitrate ~once per second during '
+                'mpv reports audio-bitrate about once per second during '
                 'playback; FLAC at 44.1 kHz mono yields >50 kbps',
           );
         } finally {
@@ -100,15 +95,12 @@ void main() {
           await player.seek(Duration.zero);
           await restarted;
 
-          final bufferCompleter = player.stream.bufferDuration
-              .firstWhere((d) => d > Duration.zero)
-              .timeout(const Duration(seconds: 5));
           await player.play();
           try {
-            final buf = await bufferCompleter;
-            expect(
-              buf.inMilliseconds,
-              greaterThan(0),
+            await waitUntil(
+              () =>
+                  player.state.playing &&
+                  player.state.bufferDuration > Duration.zero,
               reason:
                   'demuxer-cache-duration must show some lookahead '
                   'while audio is producing samples',
@@ -120,31 +112,28 @@ void main() {
         timeout: const Timeout(Duration(seconds: 15)),
       );
 
-      test(
-        'audioPts emits a Duration distinct from time-pos baseline',
-        () async {
-          // audio-pts may or may not differ from time-pos depending on
-          // driver latency; assert only that it emits a non-zero value
-          // during playback.
-          final restarted = player.stream.seekCompleted.first.timeout(
-            const Duration(seconds: 5),
-          );
-          await player.seek(const Duration(seconds: 1));
-          await restarted;
+      test('audioPts advances during playback', () async {
+        final restarted = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 5),
+        );
+        await player.seek(const Duration(seconds: 1));
+        await restarted;
 
-          final ptsCompleter = player.stream.audioPts
-              .firstWhere((d) => d > Duration.zero)
-              .timeout(const Duration(seconds: 5));
-          await player.play();
-          try {
-            final pts = await ptsCompleter;
-            expect(pts.inMilliseconds, greaterThan(0));
-          } finally {
-            await player.pause();
-          }
-        },
-        timeout: const Timeout(Duration(seconds: 15)),
-      );
+        // The value after the seek may already be non-zero; what shows
+        // audio-pts is live is that it advances while playing.
+        final before = player.state.audioPts;
+        await player.play();
+        try {
+          await waitUntil(
+            () =>
+                player.state.audioPts >
+                before + const Duration(milliseconds: 200),
+            reason: 'audio-pts must advance during playback',
+          );
+        } finally {
+          await player.pause();
+        }
+      }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('eofReached flips to true when the file ends naturally', () async {
         // Switch to the 1-second fixture so the wait is bounded and we

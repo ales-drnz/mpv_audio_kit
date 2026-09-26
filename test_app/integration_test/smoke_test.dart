@@ -5,10 +5,10 @@
 //
 // On-device smoke test for mpv_audio_kit.
 //
-// Scope: verify that the bundled libmpv binary loads correctly through the
-// platform's real plugin pipeline (vendored xcframework on iOS, jniLibs on
-// Android, plugin Frameworks on macOS) and that an end-to-end open / play /
-// observe / dispose cycle succeeds. The 246 host tests in `test/` already
+// Scope: verify that the libmpv the package's build hook bundles loads on
+// the device (libmpv_audio_kit.so on Android, libmpv_audio_kit.framework on
+// iOS and macOS) and that an end-to-end open / play / observe / dispose
+// cycle succeeds. The 246 host tests in `test/` already
 // cover Dart-side logic exhaustively — this suite intentionally stays
 // shallow and focuses only on what changes between platforms.
 
@@ -23,10 +23,8 @@ import '_helpers/asset_fixture.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  // libmpv is loaded via the platform's standard lookup on every target the
-  // smoke suite runs on (xcframework symbols on iOS, jniLibs on Android,
-  // plugin bundle on macOS). No explicit path argument — that's the whole
-  // point of the cross-platform check.
+  // libmpv is the code asset the build hook bundles, bound with @Native.
+  // No explicit path argument: that's the whole point of the check.
   setUpAll(() {
     MpvAudioKit.ensureInitialized(hotRestartCleanup: false);
   });
@@ -52,13 +50,12 @@ void main() {
     });
 
     testWidgets('libmpv loads and a Player can be constructed', (_) async {
-      // Reaching this point means MpvLibrary.open() resolved every symbol —
-      // the platform-specific lookup (process() on iOS, default on Android,
-      // bundled framework on macOS) is wired up correctly. The default
-      // PlayerState surfaces non-null reactive defaults; if any of them is
-      // null the FFI bridge wasn't initialized.
-      expect(player.state.volume, isNotNull);
-      expect(player.state.duration, isNotNull);
+      // A reply from mpv means the bundled library loaded, its symbols
+      // resolved and the core started. The version carries the release
+      // the package pins.
+      final version = await player.getRawProperty('mpv-version');
+      expect(version, isNotNull);
+      expect(version, contains('+r'));
     });
 
     testWidgets('open() on a bundled fixture settles duration', (_) async {
@@ -125,11 +122,7 @@ void main() {
       _,
     ) async {
       // Cover art relies on the `embedded-cover-art-mime` property, which
-      // is exposed by the patched libmpv build. macOS / Linux / Windows
-      // ship the patched binary today; iOS / Android currently load an
-      // unpatched libmpv release (libmpv-r5). When those device libraries
-      // are rebuilt with the patch applied, this test will start passing
-      // on every platform — at that point this skip can be removed.
+      // the patched libmpv exposes on every platform.
       final coverFixture = await materializeFixture('sine_with_cover.flac');
       final restartCompleter = Completer<void>();
       final sub = player.stream.seekCompleted.listen((_) {
@@ -142,14 +135,6 @@ void main() {
         await sub.cancel();
       }
       final mime = await player.getRawProperty('embedded-cover-art-mime');
-      if (mime == null) {
-        markTestSkipped(
-          'embedded-cover-art-mime is not exposed by the '
-          'libmpv build loaded on this platform — rebuild with the '
-          'cover-art patch applied to enable this assertion',
-        );
-        return;
-      }
       expect(
         mime,
         'image/png',
@@ -170,9 +155,8 @@ void main() {
       // is a good probe because it has an optimistic state update + a
       // property observer round-trip — exercising both directions of the
       // bridge at once.
-      // Pre-subscribe so the optimistic emit isn't lost on a broadcast
-      // stream with no listener. (See CLAUDE.md "Setter tests must
-      // pre-subscribe BEFORE calling the setter".)
+      // The stream replays the current value (100), so only the set can
+      // satisfy the wait.
       final waitFor = player.stream.volume
           .firstWhere((v) => v == 73.0)
           .timeout(const Duration(seconds: 5));

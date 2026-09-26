@@ -107,7 +107,8 @@ void main() {
               reason: 'Expected a settled envelope after the first load',
             );
             // A different file: the pipeline resets only when the source
-            // changes, not when the same file is loaded again.
+            // changes, not when the same file is loaded again. Only events
+            // after the load count, since the stream replayed a null first.
             final settled = events.length;
             await openAndWaitForLoad(player, stereoPath);
             await waitUntil(
@@ -118,13 +119,6 @@ void main() {
             await sub.cancel();
           }
 
-          // The pipeline emits null on every track-change so a renderer
-          // can clear stale data between tracks.
-          expect(
-            events.contains(null),
-            isTrue,
-            reason: 'Expected at least one null reset on track change',
-          );
           // And it must eventually reach a real envelope on at least
           // one of the loads.
           expect(

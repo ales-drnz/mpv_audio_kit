@@ -18,6 +18,9 @@ void main() {
     setUpAll(() async {
       player = await buildPlayer();
       await openAndWaitForLoad(player, fixture);
+      // Loop so audio keeps flowing: a lavfi graph is built on its first
+      // frame, and af-command has nothing to reach before that.
+      await player.setLoop(Loop.file);
       await player.play();
     });
 
@@ -123,6 +126,15 @@ void main() {
         'the next load still resyncs the diff value', () async {
       // Clean baseline with a command-capable bass stage at a known gain.
       await player.setAudioEffects(const [BassEffect(f: 1000, g: 1)]);
+      // Let frames reach the rebuilt graph, so the update below goes
+      // through af-command rather than the rebuild that heals a failed one.
+      final rebuiltAt = player.state.position;
+      // abs(): the loop may wrap the position back to 0 meanwhile.
+      await waitUntil(
+        () =>
+            (player.state.position - rebuiltAt).abs() >
+            const Duration(milliseconds: 150),
+      );
       // Runtime-only change → diff (af-command); the af STRING stays stale at
       // g=1 while the live graph and committed state move to g=9.
       await putEffect(player, effectOf<BassEffect>(player).copyWith(g: 9));
@@ -187,7 +199,6 @@ void main() {
 
     test('a rebuild after live updates applies the requested values, not the '
         'live ones', () async {
-      await player.setLoop(Loop.file);
       Future<double> settledMomentary() async {
         // The momentary window is 400 ms: let it fill with the new signal.
         await Future<void>.delayed(const Duration(milliseconds: 900));
@@ -199,7 +210,7 @@ void main() {
       }
 
       await player.setAudioEffects(const [
-        BassEffect(f: 1000, g: 0),
+        BassEffect(f: 1000),
         Ebur128Effect(metadata: true),
       ]);
       final flat = await settledMomentary();
@@ -213,7 +224,7 @@ void main() {
       // A shape change back to g=0: mpv would keep the bass filter, whose
       // stored arguments equal the new ones, still running at +18 dB.
       await player.setAudioEffects(const [
-        BassEffect(f: 1000, g: 0),
+        BassEffect(f: 1000),
         TrebleEffect(),
         Ebur128Effect(metadata: true),
       ]);
@@ -225,7 +236,6 @@ void main() {
             'the bass stage must be back at 0 dB (flat $flat, '
             'boosted $boosted, after $after)',
       );
-      await player.setLoop(Loop.off);
     }, timeout: const Timeout(Duration(seconds: 40)));
   });
 }

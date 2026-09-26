@@ -86,6 +86,11 @@ void main() {
           final result = await verifyCodec(player, path, expected);
 
           expect(
+            result.path,
+            path,
+            reason: 'the player must be on the fixture, not the previous one',
+          );
+          expect(
             result.params.sampleRate,
             expected.sampleRate,
             reason: 'sample rate must match the fixture for ${expected.label}',

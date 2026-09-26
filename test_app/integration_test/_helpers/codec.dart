@@ -47,10 +47,16 @@ class CodecExpectation {
 }
 
 class CodecResult {
+  /// The playing file's path, which the caller checks against the fixture.
+  final String path;
   final AudioParams params;
   final Duration duration;
 
-  CodecResult({required this.params, required this.duration});
+  CodecResult({
+    required this.path,
+    required this.params,
+    required this.duration,
+  });
 }
 
 /// Builds a Player wired for tests: no audio device, no auto-play, no logs.
@@ -112,25 +118,33 @@ Future<CodecResult> verifyCodec(
   String path,
   CodecExpectation expected,
 ) async {
-  // Short-circuit on already-settled params (consecutive fixtures with
-  // identical triple — e.g. aac_lc → aac_adts, ac3 → eac3): dedup means
-  // no new emit will fire, so the stream wait would hang.
-  final alreadySettled = _matches(p.state.audioParams, expected);
-
-  Future<AudioParams>? paramsFuture;
-  if (!alreadySettled) {
-    paramsFuture = p.stream.audioParams
-        .firstWhere((x) => _matches(x, expected))
-        .timeout(const Duration(seconds: 10));
-  }
-
+  // Listen before loading: PLAYBACK_RESTART can land before open()
+  // returns.
+  final loaded = p.stream.seekCompleted.first.timeout(
+    const Duration(seconds: 10),
+  );
   await p.open(Media(path), play: false);
-  await waitForFileLoaded(p);
+  await loaded;
 
-  final params = paramsFuture != null
-      ? await paramsFuture
-      : p.state.audioParams;
-  return CodecResult(params: params, duration: p.state.duration);
+  // mpv reports the previous file's audio params and duration unavailable
+  // before FILE_LOADED, and the state returns them to their defaults, so
+  // from here on a matching value belongs to [path]. The state streams
+  // replay, so a wait on them would be satisfied by the previous file's
+  // values instead: poll the state, and hand back what it holds when the
+  // deadline passes, for the caller to assert on.
+  final deadline = DateTime.now().add(const Duration(seconds: 10));
+  bool settled() =>
+      p.state.path == path &&
+      p.state.duration > Duration.zero &&
+      _matches(p.state.audioParams, expected);
+  while (!settled() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+  }
+  return CodecResult(
+    path: p.state.path,
+    params: p.state.audioParams,
+    duration: p.state.duration,
+  );
 }
 
 /// (filename, expectation) pairs — sorted by family for readability.

@@ -7,9 +7,9 @@
 //
 // mpv's audiotrack AO calls into ffmpeg's JNI helpers, which need
 // `av_jni_set_java_vm()` to have been called with the process JavaVM*
-// before any AO init. The bundled libmpv.so achieves this via a
-// JNI_OnLoad it ships, fired the first time the host loads the .so via
-// System.loadLibrary("mpv"). Without that wiring, audiotrack reports
+// before any AO init. The bundled libmpv_audio_kit.so achieves this via a
+// JNI_OnLoad it ships, fired when the plugin loads the .so via
+// System.loadLibrary("mpv_audio_kit"). Without that wiring, audiotrack reports
 // `No Java virtual machine has been registered` and playback is silent.
 //
 // This test loads a local fixture under the default AO list (audiotrack

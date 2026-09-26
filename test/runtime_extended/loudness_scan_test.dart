@@ -109,15 +109,22 @@ void main() {
     );
 
     test('track change clears the result and rescans the new source', () async {
+      final previous = player.state.path;
       final events = <LoudnessScan?>[];
-      final sub = player.stream.loudnessScan.listen(events.add);
+      // skip(1): the replayed value is the previous file's scan.
+      final sub = player.stream.loudnessScan.skip(1).listen(events.add);
+      // The result after the clear is the new file's: a wait from the
+      // replayed value would return the previous file's ready scan.
       final fresh = player.stream.loudnessScan
+          .skip(1)
+          .skipWhile((s) => s != null)
           .firstWhere((s) => s?.state == LoudnessScanState.ready)
           .timeout(const Duration(seconds: 15));
       await openAndWaitForLoad(player, fixtureShort);
       final result = await fresh;
       await sub.cancel();
 
+      expect(player.state.path, isNot(previous));
       expect(
         events,
         contains(null),

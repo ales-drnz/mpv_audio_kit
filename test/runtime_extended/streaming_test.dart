@@ -98,14 +98,15 @@ void main() {
         }
         // Apple BipBop is a finite test stream (~30s clip), so duration
         // should be non-zero once the playlist is parsed.
-        final paramsFuture = player.stream.audioParams
-            .firstWhere((p) => p.sampleRate != null)
-            .timeout(const Duration(seconds: 20));
+        // The previous test's stream still fills the state (the streams
+        // replay it): wait on the state of this one.
         await player.open(const Media(hlsStream), play: false);
-        await paramsFuture;
-        expect(
-          player.state.duration.inMilliseconds,
-          greaterThan(0),
+        await waitUntil(
+          () =>
+              player.state.path == hlsStream &&
+              player.state.audioParams.sampleRate != null &&
+              player.state.duration > Duration.zero,
+          timeout: const Duration(seconds: 20),
           reason:
               'BipBop HLS clip has finite duration; mpv must parse the '
               'playlist and surface it',
