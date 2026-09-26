@@ -141,7 +141,13 @@ class MediaSessionController {
     // the loading indication. They do NOT touch the OS play/pause button (bound
     // to playWhenReady), so they can't flicker it; same-turn pushes coalesce.
     _subscriptions.add(_inputs.playing.listen((_) => _markPlayback()));
-    _subscriptions.add(_inputs.buffering.listen((_) => _markPlayback()));
+    // Loading ends: push the metadata held back while it lasted.
+    _subscriptions.add(
+      _inputs.buffering.listen((buffering) {
+        _markPlayback();
+        if (!buffering) _markMetadata();
+      }),
+    );
     _subscriptions.add(_inputs.rate.listen((_) => _markPlayback()));
     // A seek landing (PLAYBACK_RESTART) carries seek=true so the native side
     // (Linux MPRIS) can emit `Seeked` deterministically.
@@ -243,6 +249,11 @@ class MediaSessionController {
   /// Flushes the coalesced dirty state: at most one metadata + one playback
   /// push per microtask turn. Metadata is deduped against the last-pushed
   /// snapshot so an unchanged value (incl. cover identity) doesn't re-ship.
+  ///
+  /// While a track loads, metadata stays dirty instead: mpv reports the
+  /// previous file's title, tags and duration unavailable before the new
+  /// ones arrive, and pushing that gap would flash an empty entry on the
+  /// lockscreen. The end of loading pushes it once.
   Future<void> _flush() async {
     _flushScheduled = false;
     if (_disposed || _stateSnapshot().mediaSession == null) {
@@ -251,7 +262,7 @@ class MediaSessionController {
       _playbackSeek = false;
       return;
     }
-    if (_metadataDirty) {
+    if (_metadataDirty && !_stateSnapshot().buffering) {
       _metadataDirty = false;
       final snap = _computeMetadata();
       if (_lastMetadata == null || snap != _lastMetadata) {

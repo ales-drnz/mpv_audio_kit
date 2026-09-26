@@ -671,6 +671,72 @@ void main() {
     });
   });
 
+  group('MediaSessionController — track change', () {
+    test('metadata is held while a track loads and pushed once at the '
+        'end', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'Old', 'artist': 'A'},
+        duration: Duration(seconds: 3),
+      );
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      ch.calls.clear();
+
+      // START_FILE, then mpv reports the old file's values unavailable.
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'Old', 'artist': 'A'},
+        duration: Duration(seconds: 3),
+        buffering: true,
+      );
+      rig.buffering.add(true);
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        buffering: true,
+      );
+      rig.duration.add(Duration.zero);
+      rig.metadata.add(const {});
+      await _settle();
+      expect(
+        ch.callsOfType('updateMetadata'),
+        isEmpty,
+        reason: 'the gap between two tracks must not reach the OS',
+      );
+
+      // The new file's values, then FILE_LOADED ends loading.
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'New', 'artist': 'B'},
+        duration: Duration(seconds: 5),
+        buffering: true,
+      );
+      rig.metadata.add(const {'title': 'New', 'artist': 'B'});
+      rig.duration.add(const Duration(seconds: 5));
+      await _settle();
+      expect(ch.callsOfType('updateMetadata'), isEmpty);
+
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'New', 'artist': 'B'},
+        duration: Duration(seconds: 5),
+      );
+      rig.buffering.add(false);
+      await _settle();
+      final pushes = ch.callsOfType('updateMetadata');
+      expect(pushes, hasLength(1));
+      final snap =
+          pushes.single.args['metadata']! as MediaSessionMetadataSnapshot;
+      expect(snap.title, 'New');
+      expect(snap.artist, 'B');
+      expect(snap.duration, const Duration(seconds: 5));
+    });
+  });
+
   group('MediaSessionController — rich metadata', () {
     test(
       'track/disc/albumArtist/genre/url are derived from mpv tags',

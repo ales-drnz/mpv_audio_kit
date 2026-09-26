@@ -276,8 +276,10 @@ void _dispatchEvent(
         );
         loaded = MpvEventFileLoaded();
       }
-      toMain.send(loaded);
+      // The values mpv has not notified again go first, so the main
+      // isolate has them when FILE_LOADED ends the loading state.
       _rereadUnavailable(lib, handle, toMain, cache);
+      toMain.send(loaded);
 
     case mpv.MpvEventId.mpvEventEndFile:
       final ef = event.ref.data.cast<mpv.MpvEventEndFile>().ref;
