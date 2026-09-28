@@ -74,8 +74,7 @@ mixin _AudioModule on _PlayerBase {
   /// when thought of as "audio offset" — positive does NOT mean "audio
   /// ahead".
   ///
-  /// Resolution is millisecond-rounded — sub-millisecond precision is
-  /// stripped before the value is sent to mpv.
+  /// Sent to mpv in seconds with six decimals, so microseconds are kept.
   Future<void> setAudioDelay(Duration delay) async {
     await _gate();
     await _prop('audio-delay', durationToSeconds(delay).toStringAsFixed(6));

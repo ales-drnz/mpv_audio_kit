@@ -655,7 +655,10 @@ class PlayerStream {
   /// The tap is **lazy**: the engine activates the matching hook in
   /// the audio chain only while at least one listener is attached,
   /// and tears down on the last cancel. Multiple subscribers to the
-  /// same `(filter, side)` share a single underlying tap.
+  /// same `(filter, instance, side)` share a single underlying tap. The
+  /// native tap state is one per process: two players tapping the same
+  /// stage read one mixed feed, and at most eight stages are tapped
+  /// across all players.
   ///
   /// [filter] names the stage's filter and [instance] which of its
   /// occurrences in [PlayerState.audioEffects] (0, the default, for the
@@ -684,8 +687,8 @@ class PlayerStream {
   /// of the FFT pipeline (size, bands, window, emit rate, smoothing, dB
   /// clip). Emits a fresh snapshot on every [Player.setSpectrum] /
   /// [Player.updateSpectrum] call so reactive UI can bind without
-  /// polling [Player.state.spectrum] (which remains as a synchronous
-  /// accessor for callers that don't want a subscription).
+  /// polling `state.spectrum` (which remains as a synchronous accessor
+  /// for callers that don't want a subscription).
   ///
   /// Mirrors the bundle-stream pattern of [replayGain] / [cache] /
   /// [audioEffects] — `setX` ↔ `stream.x` of the matching settings
@@ -761,7 +764,7 @@ class PlayerStream {
   ///
   /// Emits one terminal [LoudnessScan] per track (`ready`, `failed`, or
   /// `unavailable` for sources that can only be measured during
-  /// playback — adaptive/live streams; use [loudness] there), and
+  /// playback — adaptive/live streams; use [loudnessMeter] there), and
   /// `null` on the track-change boundary so stale results clear.
   ///
   /// **Lazy** — the native scan runs only while a listener is

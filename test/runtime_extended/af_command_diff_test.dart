@@ -51,7 +51,7 @@ void main() {
       // State committed the new bundle…
       expect(effectOf<BassEffect>(player).gain, 18);
       // …but the af STRING was not rewritten — the live graph was updated
-      // in place via af-command (a rewrite would have produced g=18 here).
+      // in place via af-command (a rewrite would have produced gain=18 here).
       final afterAf = await player.getRawProperty('af');
       expect(
         afterAf,
@@ -81,7 +81,7 @@ void main() {
         contains('@aek_treble_0:'),
         reason: 'enabling a stage rebuilds the chain string',
       );
-      // mpv normalizes option values with a length prefix (`g=%6%18.000`),
+      // mpv normalizes option values with a length prefix (`gain=%6%18.000`),
       // so match the normalized payload.
       expect(
         af,
@@ -138,7 +138,7 @@ void main() {
             const Duration(milliseconds: 150),
       );
       // Runtime-only change → diff (af-command); the af STRING stays stale at
-      // g=1 while the live graph and committed state move to g=9.
+      // gain=1 while the live graph and committed state move to gain=9.
       await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 9));
       expect(effectOf<BassEffect>(player).gain, 9);
       expect(
@@ -175,7 +175,7 @@ void main() {
         contains('9.000'),
         reason:
             'a failed rewrite after a diff must NOT clear the stale flag; '
-            'the FILE_LOADED resync re-asserts the diff value (g=9)',
+            'the FILE_LOADED resync re-asserts the diff value (gain=9)',
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
 
@@ -251,7 +251,7 @@ void main() {
       final boosted = await settledMomentary();
       expect(boosted, greaterThan(flat + 6));
 
-      // A shape change back to g=0: mpv would keep the bass filter, whose
+      // A shape change back to gain=0: mpv would keep the bass filter, whose
       // stored arguments equal the new ones, still running at +18 dB.
       await player.setAudioEffects(const [
         BassEffect(frequency: 1000),

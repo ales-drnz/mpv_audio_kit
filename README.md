@@ -2503,7 +2503,8 @@ filter appears more than once (0, the default, is the first): with two
 stages count too, and emit nothing. The tap follows the occurrence, not a
 particular stage: moving other filters around keeps it where it is, while
 swapping the two equalizers swaps what `instance: 0` taps. libmpv captures
-up to eight stages at a time. The side is one of `TapSide.pre` (before the
+up to eight stages at a time, counted across all players of the process,
+and two players tapping the same stage read one mixed feed. The side is one of `TapSide.pre` (before the
 filter's DSP runs) or `TapSide.post` (after).
 
 ```dart

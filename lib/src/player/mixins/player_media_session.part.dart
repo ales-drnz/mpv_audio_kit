@@ -104,10 +104,9 @@ mixin _MediaSessionModule on _PlayerBase {
   /// `playlist-prev`. Otherwise the command is emit-only, leaving
   /// the consumer's queue logic to handle it.
   void _handleSessionCommand(MediaSessionCommand command) {
-    // Auto-apply. We deliberately don't `await` these — the command
-    // stream callback is synchronous and the Player setters are
-    // optimistic (state updates land before the FFI round-trip). A late
-    // rejection is caught by [_applySessionCommand].
+    // Auto-apply. We deliberately don't `await` these: the command stream
+    // callback is synchronous, and each setter updates the state when mpv
+    // confirms. A late rejection is caught by [_applySessionCommand].
     switch (command) {
       case MediaSessionCommandPlay():
         _applySessionCommand((this as Player).play());
