@@ -173,19 +173,23 @@ void main() {
         timeout: const Timeout(Duration(seconds: 120)),
       );
 
-      test('an index check racing dispose reports the dispose', () async {
+      test('calls under way at dispose complete without an error', () async {
         final other = await buildPlayer();
         await other.open(Media(fixturePath), play: false);
-        // The check reads playlist-count; dispose drains that read as
-        // failed, which must not come back as an index out of range.
+        // Not awaited, as an app would fire them. The index checks read
+        // playlist-count, which dispose drains as failed: that must not
+        // come back as an index out of range, or as any error.
         final outcomes = [
-          for (final call in [other.jump(0), other.remove(0)])
+          for (final call in [
+            other.jump(0),
+            other.remove(0),
+            other.next(),
+            other.seek(const Duration(seconds: 1)),
+          ])
             call.then<Object?>((_) => null, onError: (Object e) => e),
         ];
         await other.dispose();
-        for (final outcome in await Future.wait(outcomes)) {
-          expect(outcome, anyOf(isNull, isA<PlayerDisposedException>()));
-        }
+        expect(await Future.wait(outcomes), everyElement(isNull));
       }, timeout: const Timeout(Duration(seconds: 20)));
     });
   });

@@ -104,6 +104,27 @@ void main() {
         expect(player.state.loop, Loop.off);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
+      test('setLoop between two modes never passes through off', () async {
+        await player.setLoop(Loop.file);
+        final seen = <Loop>[];
+        final sub = player.stream.loop.skip(1).listen(seen.add);
+        await player.setLoop(Loop.playlist);
+        await player.setLoop(Loop.file);
+        // Let mpv's echoes of both writes land.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await sub.cancel();
+        expect(seen, [Loop.playlist, Loop.file]);
+        await player.setLoop(Loop.off);
+      }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test('a negative index throws RangeError before reaching mpv', () {
+        expect(() => player.jump(-1), throwsRangeError);
+        expect(() => player.remove(-1), throwsRangeError);
+        expect(() => player.move(-1, 0), throwsRangeError);
+        expect(() => player.move(0, -1), throwsRangeError);
+        expect(() => player.replace(-1, Media(fixturePath)), throwsRangeError);
+      });
+
       test('next() / previous() advance the playlist index', () async {
         // 3-item playlist so next/previous have a clear before/after to
         // anchor on. jump(0) is the documented entry point; next/prev

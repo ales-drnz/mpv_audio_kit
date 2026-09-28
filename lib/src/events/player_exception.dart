@@ -19,12 +19,15 @@
 /// ```
 ///
 /// Invalid arguments are programming errors and throw [ArgumentError] or
-/// [RangeError] instead, before anything reaches libmpv.
+/// [RangeError] instead, before anything is written to libmpv (a playlist
+/// index is checked against mpv's own playlist count).
 sealed class PlayerException implements Exception {
   const PlayerException();
 }
 
-/// The [Player] was disposed before or during the call.
+/// The [Player] was disposed before the call, or before it finished
+/// starting. A call already under way when [Player.dispose] runs completes
+/// without effect instead, so an un-awaited call never ends in an error.
 final class PlayerDisposedException extends PlayerException {
   /// Creates the exception thrown by a call on a disposed player.
   const PlayerDisposedException();

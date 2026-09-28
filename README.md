@@ -649,7 +649,7 @@ await player.previous();          // Skip to the previous track
 final moved = await player.next();
 await player.jump(2);             // Jump to track at index 2 (0-indexed)
 
-await player.next(force: true);   // Past the last entry: stop playback
+await player.next(force: true);   // Past the last entry: stop playback (returns true)
 await player.nextPlaylist();      // Jump to the next source playlist
 await player.previousPlaylist();  // …and back across concatenated playlists
 ```
@@ -2225,9 +2225,10 @@ try {
 ```
 
 Invalid arguments are programming errors: they throw `ArgumentError` or
-`RangeError` before anything reaches libmpv (a negative volume, a
-playlist index out of range). `next()` and `previous()` return `false`
-when there is no track to go to, without throwing.
+`RangeError` before anything is written to libmpv (a negative volume, a
+playlist index out of range, checked against mpv's own playlist count).
+`next()` and `previous()` return `false` when there is no track to go to,
+without throwing.
 
 ---
 

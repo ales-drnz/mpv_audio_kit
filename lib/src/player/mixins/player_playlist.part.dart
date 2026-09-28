@@ -41,6 +41,7 @@ mixin _PlaylistModule on _PlayerBase {
   ///
   /// Throws [RangeError] if [index] is out of range.
   Future<void> remove(int index) async {
+    RangeError.checkNotNegative(index, 'index');
     await _gate();
     await _checkPlaylistIndex(index, 'index');
     await _commandChecked(['playlist-remove', index.toString()]);
@@ -99,6 +100,7 @@ mixin _PlaylistModule on _PlayerBase {
   ///
   /// Throws [RangeError] if [index] is out of range.
   Future<void> jump(int index) async {
+    RangeError.checkNotNegative(index, 'index');
     await _gate();
     await _checkPlaylistIndex(index, 'index');
     // See [next] — in-flight transport writes apply to the old entry.
@@ -128,6 +130,8 @@ mixin _PlaylistModule on _PlayerBase {
   /// Throws [RangeError] if [from] is out of range, or [to] is outside
   /// `0..length` (`length` moves the track to the end).
   Future<void> move(int from, int to) async {
+    RangeError.checkNotNegative(from, 'from');
+    RangeError.checkNotNegative(to, 'to');
     await _gate();
     final count = await _checkPlaylistIndex(from, 'from');
     RangeError.checkValueInInterval(to, 0, count, 'to');
@@ -146,6 +150,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// this build.)
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
+    RangeError.checkNotNegative(index, 'index');
     _validateLoadOptions(media);
     // Snapshot the load epoch — same staleness rule as [add].
     final load = _snapshotLoad();
@@ -247,11 +252,23 @@ mixin _PlaylistModule on _PlayerBase {
     String loopFile(Loop l) => l == Loop.file ? 'inf' : 'no';
     String loopPlaylist(Loop l) => l == Loop.playlist ? 'inf' : 'no';
     final previous = state.loop;
-    await _prop('loop-file', loopFile(loop));
+    // Write the option that turns on first: going from file to playlist,
+    // `loop-file=no` first would echo a passing Loop.off.
+    final writes = [
+      ('loop-file', loopFile(loop), loopFile(previous)),
+      ('loop-playlist', loopPlaylist(loop), loopPlaylist(previous)),
+    ];
+    if (loop == Loop.playlist) writes.insert(0, writes.removeAt(1));
+    final done = <(String, String, String)>[];
     try {
-      await _prop('loop-playlist', loopPlaylist(loop));
+      for (final w in writes) {
+        await _prop(w.$1, w.$2);
+        done.add(w);
+      }
     } catch (_) {
-      await _propRc('loop-file', loopFile(previous));
+      for (final (name, _, prior) in done.reversed) {
+        await _propRc(name, prior);
+      }
       rethrow;
     }
     // Optimistic update — `state.loop` reflects the requested mode

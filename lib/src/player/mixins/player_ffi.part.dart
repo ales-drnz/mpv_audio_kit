@@ -77,10 +77,10 @@ const _kPropertyCommands = {
 mixin _FfiModule on _PlayerBase {
   /// Writes a property and throws [MpvCommandException] on rejection.
   ///
-  /// All typed setters (setVolume, setRate, setAudioEffects, …) flow
-  /// through this method. Errors are surfaced rather than swallowed so
-  /// the caller can react (out-of-range value, unknown name, malformed
-  /// `af` chain from a [RawAudioEffect], etc.). `_propRc` is the
+  /// The typed setters (setVolume, setRate, …) flow through this method;
+  /// the effects chain goes through the `af set` command instead. Errors
+  /// are surfaced rather than swallowed so the caller can react
+  /// (out-of-range value, unknown name, etc.). `_propRc` is the
   /// rc-returning variant for the few call sites that need to tolerate
   /// failures explicitly.
   @override
@@ -160,9 +160,10 @@ mixin _FfiModule on _PlayerBase {
       'playlist-count',
       MpvFormat.mpvFormatInt64,
     );
-    // A dispose that landed meanwhile drained the read as failed: report
-    // the dispose, not an index out of an empty playlist.
-    _checkNotDisposed();
+    // A dispose that landed meanwhile drained the read as failed. The call
+    // goes on without effect, like any call under way at dispose, instead
+    // of reporting an index out of an empty playlist.
+    if (_disposed) return 1 << 30;
     final count = rc < 0 ? 0 : value as int;
     RangeError.checkValidIndex(index, null, name, count);
     return count;
