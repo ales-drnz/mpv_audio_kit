@@ -93,7 +93,9 @@ void main() {
       );
 
       test('jump() from the parked state starts unpaused', () async {
-        await playToEofPark([shortFixture, shortFixture]);
+        // The entry jumped to lasts 1 s: with two 50 ms entries the
+        // playlist could reach its end and park again before the read.
+        await playToEofPark([fixturePath, shortFixture]);
 
         final loaded = player.stream.seekCompleted.first.timeout(
           const Duration(seconds: 10),
