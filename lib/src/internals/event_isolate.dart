@@ -294,6 +294,7 @@ void _dispatchEvent(
 
     case mpv.MpvEventId.mpvEventAudioReconfig:
       _rereadUnavailable(lib, handle, toMain, cache);
+      toMain.send(MpvEventAudioReconfig());
 
     case mpv.MpvEventId.mpvEventSetPropertyReply:
       toMain.send(MpvEventReply(event.ref.replyUserdata, event.ref.error));

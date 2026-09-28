@@ -213,6 +213,10 @@ void main() {
         return l.momentary!;
       }
 
+      // The fixture loops every 5 s, and a wrap resets the filters, which
+      // rebuilds them from the state now: start at 0 so the checks below
+      // end before one.
+      await player.seek(Duration.zero);
       await player.setAudioEffects(const [
         BassEffect(frequency: 1000),
         Ebur128Effect(metadata: true),
@@ -238,6 +242,39 @@ void main() {
         closeTo(flat, 3),
         reason:
             'the bass stage must be back at 0 dB (flat $flat, '
+            'boosted $boosted, after $after)',
+      );
+    }, timeout: const Timeout(Duration(seconds: 40)));
+
+    test('a seek keeps the values set live', () async {
+      Future<double> settledMomentary() async {
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+        final l = await player.stream.loudnessMeter
+            .skip(1)
+            .firstWhere((l) => l.momentary != null)
+            .timeout(const Duration(seconds: 10));
+        return l.momentary!;
+      }
+
+      await player.seek(Duration.zero);
+      await player.setAudioEffects(const [
+        BassEffect(frequency: 1000),
+        Ebur128Effect(metadata: true),
+      ]);
+      final flat = await settledMomentary();
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 18));
+      final boosted = await settledMomentary();
+      expect(boosted, greaterThan(flat + 6));
+
+      // lavfi frees its graph on a seek and rebuilds each filter from the
+      // arguments it was created with, which still say 0 dB.
+      await player.seek(const Duration(seconds: 1));
+      final after = await settledMomentary();
+      expect(
+        after,
+        closeTo(boosted, 3),
+        reason:
+            'the bass stage must stay at +18 dB (flat $flat, '
             'boosted $boosted, after $after)',
       );
     }, timeout: const Timeout(Duration(seconds: 40)));

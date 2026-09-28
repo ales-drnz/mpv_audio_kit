@@ -768,10 +768,34 @@ abstract class _PlayerBase {
   Future<void> _routeHookEvent(int id, Hook hook, String name);
 
   // Set by the audio module when af-command updates leave the live graph
-  // ahead of the `af` property string; cleared by the dispatch layer when
-  // it resyncs the string on the next file load (mpv rebuilds chains from
-  // the string, which would otherwise revert the live values).
+  // ahead of the arguments mpv stores for each filter. mpv rebuilds a
+  // filter from those arguments on a file load, a seek (lavfi frees its
+  // graph on reset, loop wraps included) and an audio reconfig, which
+  // would revert the live values, so [_resyncStaleAfChain] rewrites the
+  // chain from the state there. Cleared only by a write that carries
+  // every diff sent so far, see [_afDiffGeneration].
   bool _afStringStale = false;
+
+  // Counts the af-command diffs sent. A chain write clears
+  // [_afStringStale] only if no diff was sent after it was queued: the
+  // diff reaches mpv after the write and leaves the arguments behind again.
+  int _afDiffGeneration = 0;
+
+  // Chain writes (`af set`) sent and not answered yet. Each one makes mpv
+  // emit AUDIO_RECONFIG before its reply, without resetting the filters
+  // it keeps, so that event is not a reason to resync.
+  int _afWritesInFlight = 0;
+
+  /// Clears [_afStringStale] after a chain write queued at [generation]
+  /// landed, unless a diff was sent since.
+  void _markAfChainSynced(int generation) {
+    if (generation == _afDiffGeneration) _afStringStale = false;
+  }
+
+  /// Rewrites the chain from the state when af-command updates left mpv's
+  /// filter arguments behind. A filter whose arguments already match is
+  /// kept by mpv, so only the stages moved live are rebuilt.
+  void _resyncStaleAfChain();
 
   /// See `_InitModule` (player_init.part.dart) — called by the constructor.
   Future<void> _bringUpInIsolate();

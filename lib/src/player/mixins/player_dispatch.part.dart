@@ -70,20 +70,9 @@ mixin _DispatchModule on _PlayerBase {
           // `state.playing` is driven by the `core-idle` observer; here we
           // only clear buffering/completed and apply the load payload.
           _updateLifecycle(buffering: false, completed: false);
-          // af-command updates leave the `af` property string behind the
-          // live graph; mpv just rebuilt the new file's chain from that
-          // stale string, so rewrite it from state to re-apply the
-          // current parameter values. (A mid-file format reconfig has
-          // the same hazard but no dedicated event; the next file-load
-          // or full rewrite of the chain heals it.)
-          if (_afStringStale) {
-            _afStringStale = false;
-            // Fire-and-forget: the rewrite is best-effort resync; the rc
-            // has no consumer here and the event handler must not suspend.
-            unawaited(
-              _command(['af', 'set', audioEffectsChain(_state.audioEffects)]),
-            );
-          }
+          // mpv just built the new file's chain from the arguments that
+          // af-command updates left behind.
+          _resyncStaleAfChain();
           _applyPolledPosition(timePos);
           // mpv exposes -1 / -2 etc. as "no chapter active"; surface as
           // null. A failed read (chapterIndex == null) applies nothing.
@@ -128,9 +117,15 @@ mixin _DispatchModule on _PlayerBase {
             }
           }
         case MpvEventPlaybackSeek():
-          // No-op: a seek's landing is observed via PLAYBACK_RESTART
-          // (`seekCompleted`); nothing needs the SEEK event itself.
-          break;
+          // A seek's landing is observed via PLAYBACK_RESTART
+          // (`seekCompleted`). The seek itself resets the filters, which
+          // lavfi rebuilds from their stored arguments.
+          _resyncStaleAfChain();
+        case MpvEventAudioReconfig():
+          // A track switch or format change rebuilt the audio chain from
+          // the stored arguments too. Our own chain writes emit this event
+          // as well, before their reply, and reset nothing.
+          if (_afWritesInFlight == 0) _resyncStaleAfChain();
         case MpvEventPlaybackRestart(:final timePos):
           _applyPolledPosition(timePos);
           _seekCompletedCtrl.add(null);

@@ -452,7 +452,10 @@ mixin _AudioModule on _PlayerBase {
         for (final c in cmds)
           _command(['af-command', c.label, c.option, c.value, c.filterName]),
       ];
-      if (cmds.isNotEmpty) _afStringStale = true;
+      if (cmds.isNotEmpty) {
+        _afStringStale = true;
+        _afDiffGeneration++;
+      }
       settled = _settleAfCommands(rcs);
     } else {
       // After af-command updates, mpv still holds each filter with the
@@ -484,7 +487,25 @@ mixin _AudioModule on _PlayerBase {
   /// the old chain kept, when the rebuild fails. A write of the `af`
   /// property instead succeeds once the string parses and drops a failed
   /// rebuild silently. Resolves with mpv's rc.
-  Future<int> _setAfChain(String chain) => _command(['af', 'set', chain]);
+  Future<int> _setAfChain(String chain) {
+    _afWritesInFlight++;
+    return _command([
+      'af',
+      'set',
+      chain,
+    ]).whenComplete(() => _afWritesInFlight--);
+  }
+
+  @override
+  void _resyncStaleAfChain() {
+    if (!_afStringStale) return;
+    final generation = _afDiffGeneration;
+    unawaited(
+      _setAfChain(audioEffectsChain(_state.audioEffects)).then((rc) {
+        if (rc >= 0) _markAfChainSynced(generation);
+      }),
+    );
+  }
 
   /// Awaits the diff's replies; on any rejected command rewrites the chain
   /// from the LATEST committed list, healing a partial apply (and any
@@ -494,11 +515,12 @@ mixin _AudioModule on _PlayerBase {
   Future<void> _settleAfCommands(List<Future<int>> rcs) async {
     final results = await Future.wait(rcs);
     if (results.any((rc) => rc < 0)) {
+      final generation = _afDiffGeneration;
       final healRc = await _setAfChain(audioEffectsChain(_state.audioEffects));
       // Only mark the string clean if the heal write actually landed; a
-      // rejected heal leaves it stale for the next FILE_LOADED resync.
+      // rejected heal leaves it stale for the next resync.
       if (healRc >= 0) {
-        _afStringStale = false;
+        _markAfChainSynced(generation);
       } else {
         _internalLog(
           'Rebuilding the effects chain after a rejected update failed: '
@@ -522,6 +544,7 @@ mixin _AudioModule on _PlayerBase {
     List<AudioEffect> previous,
     Future<int>? resync,
   ) async {
+    final generation = _afDiffGeneration;
     final rewrite = _setAfChain(audioEffectsChain(effects));
     // The resync only levels mpv's stored arguments; the rewrite after it
     // decides the outcome either way.
@@ -529,7 +552,7 @@ mixin _AudioModule on _PlayerBase {
     final rc = await rewrite;
     if (rc >= 0) {
       _afChainWritten = true;
-      _afStringStale = false;
+      _markAfChainSynced(generation);
       return;
     }
     _afStringStale = true;

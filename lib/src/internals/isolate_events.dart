@@ -70,6 +70,10 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
 /// has been suspended while mpv reinitializes its pipeline.
 class MpvEventPlaybackSeek extends MpvIsolateEvent {}
 
+/// mpv fired MPV_EVENT_AUDIO_RECONFIG: the audio chain was rebuilt, for a
+/// track switch, a format change or an output reopen.
+class MpvEventAudioReconfig extends MpvIsolateEvent {}
+
 /// mpv fired MPV_EVENT_PLAYBACK_RESTART — the seek (or file load) has
 /// finished reinitializing and playback is about to resume.
 /// This is the authoritative "seek request is finished" signal.
