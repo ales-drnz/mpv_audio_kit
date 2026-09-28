@@ -14,8 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/src/internals/uri_resolver.dart';
 
-/// The temp copies of `asset://` sources are deleted when the last player
-/// goes, and copied again when one is needed after that.
+/// The temp copies of `asset://` sources keep one fixed path per asset, so
+/// a relaunch or a killed process leaves nothing that grows.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -40,40 +40,30 @@ void main() {
         .setMockMessageHandler('flutter/assets', null);
   });
 
-  test(
-    'deleteCopiedAssets removes the copies, a later resolve copies again',
-    () async {
-      final first = await resolveUri('asset://$key');
-      expect(File(first.uri).existsSync(), isTrue);
-
-      await deleteCopiedAssets();
-      expect(File(first.uri).existsSync(), isFalse);
-
-      final again = await resolveUri('asset://$key');
-      expect(File(again.uri).readAsBytesSync(), payload);
-      await deleteCopiedAssets();
-    },
-  );
-
-  test('a copy made while a deletion runs survives it', () async {
-    final first = await resolveUri('asset://$key');
-    // A new player resolving the same asset right after the last one went.
-    final deletion = deleteCopiedAssets();
-    final again = await resolveUri('asset://$key');
-    await deletion;
-    expect(File(first.uri).existsSync(), isFalse);
-    expect(again.uri, isNot(first.uri));
-    expect(File(again.uri).readAsBytesSync(), payload);
-    await deleteCopiedAssets();
+  test('a copy has a fixed path in the package directory', () async {
+    final resolved = await resolveUri('asset://$key');
+    final file = File(resolved.uri);
+    expect(file.readAsBytesSync(), payload);
+    expect(
+      file.parent.path,
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      'mpv_audio_kit_assets',
+    );
   });
 
-  test('copies live in a directory of their own', () async {
+  test('a copy that went missing is written again at the same path', () async {
+    final first = await resolveUri('asset://$key');
+    File(first.uri).deleteSync();
+    final again = await resolveUri('asset://$key');
+    expect(again.uri, first.uri);
+    expect(File(again.uri).readAsBytesSync(), payload);
+  });
+
+  test('no partial file is left beside the copy', () async {
     final resolved = await resolveUri('asset://$key');
-    expect(
-      File(resolved.uri).parent.path,
-      isNot(Directory.systemTemp.path),
-      reason: 'another process deleting its copies must not reach ours',
-    );
-    await deleteCopiedAssets();
+    final leftovers = File(
+      resolved.uri,
+    ).parent.listSync().where((e) => e.path.endsWith('.part'));
+    expect(leftovers, isEmpty);
   });
 }

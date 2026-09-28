@@ -8,7 +8,7 @@
 // reaches `loadfile`. Translates host-platform schemes that libmpv does
 // not understand into something it does:
 //
-//   asset://path/inside/bundle  → <temp>/mpv_audio_kit_<random>/mpv_asset_<safe_name>
+//   asset://path/inside/bundle  → <temp>/mpv_audio_kit_assets/mpv_asset_<hash>_<safe_name>
 //   content://...               → fd://<n>                     (Android only)
 //
 // All other URIs (`file://`, `http(s)://`, `smb2://`, plain
@@ -24,11 +24,6 @@ import '../events/player_exception.dart';
 
 const MethodChannel _channel = MethodChannel('mpv_audio_kit');
 final Map<String, String> _assetCache = {};
-
-// The directory the current asset copies go to: private to this process,
-// and replaced by a fresh one after [deleteCopiedAssets], so a deletion in
-// progress never removes a copy made after it started.
-Future<Directory>? _assetDir;
 
 // Deduplicates concurrent [resolveUri] calls for the same asset: the
 // first caller does the bundle load + file write, concurrent callers
@@ -147,9 +142,15 @@ Future<String> _doCopyAsset(String uri) async {
     for (final unit in assetPath.codeUnits) {
       pathHash = ((pathHash ^ unit) * 0x01000193) & 0xFFFFFFFF;
     }
-    final dir = await (_assetDir ??= Directory.systemTemp.createTemp(
-      'mpv_audio_kit_',
-    ));
+    // One fixed directory and one fixed name per asset: a relaunch
+    // overwrites its old copy instead of leaving a new one behind, and a
+    // process killed without dispose (the usual end on mobile) leaks
+    // nothing that grows.
+    final dir = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      'mpv_audio_kit_assets',
+    );
+    await dir.create(recursive: true);
     final file = File(
       '${dir.path}${Platform.pathSeparator}'
       'mpv_asset_${pathHash.toRadixString(16).padLeft(8, '0')}_$safeName',
@@ -159,10 +160,21 @@ Future<String> _doCopyAsset(String uri) async {
     // multiple assets into one backing buffer, and the no-arg
     // asUint8List would span the full backing buffer rather than just
     // this asset's range.
-    await file.writeAsBytes(
+    // Written beside the target and renamed onto it, so another instance
+    // of the app reading the same copy never sees it truncated.
+    final part = File('${file.path}.$pid.part');
+    await part.writeAsBytes(
       data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
       flush: true,
     );
+    try {
+      await part.rename(file.path);
+    } on FileSystemException {
+      // Windows refuses to replace a file another process has open: that
+      // instance holds the same asset, so its copy is kept.
+      await part.delete();
+      if (!await file.exists()) rethrow;
+    }
 
     _assetCache[uri] = file.path;
     return file.path;
@@ -171,19 +183,4 @@ Future<String> _doCopyAsset(String uri) async {
     // discard it — awaiting our own pending Future here would deadlock.
     unawaited(_assetInflight.remove(uri));
   }
-}
-
-/// Deletes the temp copies of `asset://` sources and forgets them. Called
-/// when the last player of the process is disposed, so mpv holds none of
-/// them open; a later player copies again on demand, into a new directory.
-/// Best effort: a directory already gone is skipped.
-Future<void> deleteCopiedAssets() async {
-  if (_assetInflight.isNotEmpty) return;
-  final dir = _assetDir;
-  if (dir == null) return;
-  _assetDir = null;
-  _assetCache.clear();
-  try {
-    await (await dir).delete(recursive: true);
-  } catch (_) {}
 }

@@ -135,13 +135,7 @@ class Player extends _PlayerBase
         _MediaSessionModule
     implements PlayerApi {
   /// Creates a [Player] instance with optional [configuration].
-  Player({super.configuration}) {
-    _livePlayers++;
-  }
-
-  /// Players created and not yet disposed. When the last one goes, the
-  /// temp copies of `asset://` sources are deleted.
-  static int _livePlayers = 0;
+  Player({super.configuration});
 
   /// Process-wide single-instance guard for the OS media session.
   /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
@@ -510,11 +504,7 @@ class Player extends _PlayerBase
       }
     }
     _cancelHookTimers();
-    try {
-      await super._disposeImpl();
-    } finally {
-      if (--_livePlayers == 0) await deleteCopiedAssets();
-    }
+    await super._disposeImpl();
   }
 }
 

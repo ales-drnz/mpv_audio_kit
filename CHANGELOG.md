@@ -35,7 +35,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - A setter emits the value it was given once. Volume, gains and ReplayGain no longer come back rounded (`setVolume(42.37)` then `42.400001525878906`), rate and pitch keep their precision, durations keep their microseconds, and `setCache`, `setDemuxer` and `setReplayGain` no longer emit a half-applied bundle.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
-- The temp copies of `asset://` sources live in a directory of their own and are deleted when the last player is disposed, without touching a copy made meanwhile or another app instance's.
+- The temp copy of an `asset://` source is written aside and renamed into place, so another instance of the app playing the same asset never reads it half written.
 - `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also behind `no-osd`, `options/` or `file-local-options/`, and `loadfile` with them in its per-file options. They desynced the effects chain or the play and pause state.
 - `jump()`, `remove()`, `move()` and `replace()` racing `dispose()` throw `PlayerDisposedException` instead of a `RangeError`.
 - On Linux, Android and Windows a remote cover trusts the player's `tls-ca-file` on top of the system roots, so a self-hosted server with its own CA shows its covers. The certificate is always verified, even with `tls-verify` off.
