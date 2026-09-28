@@ -1116,7 +1116,7 @@ or for quick experimentation, use `RawAudioEffect`.
 
 ##### Advanced (mandatory parameter)
 
-These five take a mandatory free-form value with no sensible default, so their `*Effect` constructors make it **required** — pass a valid value or the filter won't initialise. (In the MPV Studio example each has a dedicated page with curated presets, a custom field, and a model-file picker for `arnndn`.)
+These five take a mandatory free-form value with no sensible default, so their `*Effect` constructors make it **required**: pass a valid value or the filter won't initialise. (In the MPV Studio example each has a dedicated page with curated presets, a custom field, and a model-file picker for `arnndn`.)
 
 | Effect | Description | Required |
 |---|---|---|
@@ -1658,7 +1658,7 @@ local-file player that wants disk-side artwork.
 - **`player.state`**: a synchronous, immutable snapshot of the current state. Safe to read from anywhere.
 - **`player.stream`**: reactive streams. Use with `StreamBuilder` or `.listen()`.
 
-A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, …) gives each new subscriber the current value first, then every change, so a `StreamBuilder` needs no `initialData`. To wait for the next change, skip the current value: `player.stream.volume.skip(1).first`. Event streams (`seekCompleted`, `endFile`, `error`, `log`, `hook`, `fft`, `pcm`, `loudnessMeter`, taps) only deliver what happens after `listen()`.
+A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, …) gives each new subscriber the current value first, then every change, so a `StreamBuilder` needs no `initialData`. To wait for the next change, skip the current value: `player.stream.volume.skip(1).first`. Event streams (`seekCompleted`, `endFile`, `error`, `log`, `internalLog`, `hook`, `mediaSessionCommands`, `fft`, `pcm`, `loudnessMeter`, taps) only deliver what happens after `listen()`.
 
 #### 9.1 Core streams
 

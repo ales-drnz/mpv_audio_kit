@@ -13,13 +13,15 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - `next()`, `previous()`, `nextPlaylist()` and `previousPlaylist()` return `false` when there is no track to go to, and an index out of range throws `RangeError` in `jump()`, `remove()`, `move()` and `replace()`.
 - A negative volume, or a rate or pitch outside `[0.01, 100]`, throws `RangeError` before reaching mpv.
 - State streams give a new subscriber the current value first, then the changes, so `StreamBuilder` needs no `initialData`. Use `skip(1)` to wait for the next change. Event streams are unchanged.
-- The `Mpv` prefix is kept only on types that carry mpv's own data: `MpvPlayerError`, `MpvEndFileError`, `MpvLogError` and `MpvPrefetchState` are now `PlayerError`, `EndFileError`, `LogError` and `PrefetchState`.
+- The `Mpv` prefix is kept only on types that carry mpv's own data: `MpvPlayerError`, `MpvEndFileError`, `MpvLogError` and `MpvPrefetchState` are now `PlayerError`, `EndFileError`, `LogError` and `PrefetchState`, and `MpvEndFileErrorX` is `EndFileErrorX`.
+- `MpvLibraryException`, `AfCommand` and `AudioEffectsX.active` are no longer public: a failed start throws `PlayerInitException`, and each stage has its own `filter`.
+- `systemVolume` and `systemMute` are `null` while no audio output is open.
 - `stream.loudness` is `stream.loudnessScan`, next to the live `stream.loudnessMeter`.
 - `setSpectrum`, `updateSpectrum` and `setLogLevel` are synchronous and work before the player has started. The spectrum settings are in `state.spectrum`, and the `spectrumSettings` getter is gone.
 
 ### Added
 - libmpv reaches the app through a Dart build hook, with one pinned checksum per binary. An app can bundle its own build with the `libmpv` user define, a directory of release assets or a single file.
-- The player logs a warning when the loaded libmpv is not the release it expects.
+- The player reports on `stream.internalLog` when the loaded libmpv is not the release it expects.
 - Live effect updates, taps and the loudness meter follow one stage when the others are toggled or reordered.
 
 ### Changed
@@ -27,17 +29,17 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - CI analyzes, tests and builds the package on every platform.
 
 ### Fixed
-- After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size, audio parameters, cover, waveform or loudness scan: a property mpv reports unavailable goes back to its default. While the next track loads the values are empty, and the OS media session waits for the new ones instead of showing the gap or a live stream.
+- After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's values (path, title, duration, audio parameters, cover, waveform and the like): each goes back to its default. While the next track loads, the OS media session waits for the new ones instead of showing the gap or a live stream.
 - An effects chain the filter graph refuses throws `MpvCommandException`, and the state goes back to the last list mpv accepted. Before, the call returned, the state showed the new chain and the old one kept playing.
 - A chain rebuilt after live slider changes applies the requested values: a stage moved live and set back could stay at the live value.
 - A value an effect got live keeps playing after a seek, a loop or an audio track switch. mpv rebuilds its filters there from the values they were created with, which brought back the old one.
 - A parameter value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001`.
 - The live loudness meter reads the first enabled `Ebur128Effect` with `metadata` on, so a disabled or silent first one no longer mutes it.
-- A setter emits the value it was given once. Volume, gains and ReplayGain no longer come back rounded (`setVolume(42.37)` then `42.400001525878906`), rate and pitch keep their precision, durations keep their microseconds, and `setCache`, `setDemuxer` and `setReplayGain` no longer emit a half-applied bundle.
+- A setter emits the value it was given once: volume, gains and ReplayGain no longer come back rounded (`42.37` as `42.400001525878906`), and durations keep their microseconds. `setCache`, `setDemuxer`, `setReplayGain` and `setLoop` no longer emit a half-applied value.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
 - The temp copy of an `asset://` source is written aside and renamed into place, so another instance of the app playing the same asset never reads it half written.
-- `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also behind `no-osd`, `options/` or `file-local-options/`, and `loadfile` with them in its per-file options. They desynced the effects chain or the play and pause state. The check is against mistakes, not every way mpv offers.
+- `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also through prefixes and `loadfile` options, which desynced the effects chain or the play and pause state. The check is against mistakes, not every way mpv offers.
 - On Linux, Android and Windows a remote cover download always verifies the certificate, against the system roots and the player's `tls-ca-file`, and a failed one is tried again after 30 seconds.
 - `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
 - iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.

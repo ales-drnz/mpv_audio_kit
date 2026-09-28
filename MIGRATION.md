@@ -170,8 +170,8 @@ The `Mpv` prefix now marks only types that carry mpv's own data
 
 Every state stream of `player.stream` now gives a new subscriber the
 current value first, then the changes. Event streams (`seekCompleted`,
-`endFile`, `error`, `log`, `hook`, `fft`, `pcm`, `loudnessMeter`, taps)
-are unchanged.
+`endFile`, `error`, `log`, `internalLog`, `hook`, `mediaSessionCommands`,
+`fft`, `pcm`, `loudnessMeter`, taps) are unchanged.
 
 - `initialData: player.state.x` in a `StreamBuilder` is no longer needed.
 - `stream.x.first` returns the current value. To wait for the next change,
@@ -207,12 +207,12 @@ Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
 
   A directory holds files named like the release assets, one per target.
   A single file is bundled for every target, so it only suits a build for
-  one target and architecture: on Apple it is the framework binary of one
-  slice. `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a
+  one target and architecture: on Apple it is the binary of one slice,
+  thinned to one architecture with `lipo -thin` when the slice is universal. `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a
   library by path at run time.
 - On Linux the package no longer falls back to a system `libmpv.so`.
-- The player logs a warning when the loaded libmpv is not the release the
-  package expects.
+- The player reports on `stream.internalLog` when the loaded libmpv is
+  not the release the package expects.
 
 ## Behavior changes
 
