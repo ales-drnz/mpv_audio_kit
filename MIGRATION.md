@@ -55,7 +55,7 @@ await player.updateAudioEffects(
 
 // 0.5
 await player.updateAudioEffects((fx) => [
-  for (final e in fx) e is BassEffect ? e.copyWith(g: gain) : e,
+  for (final e in fx) e is BassEffect ? e.copyWith(gain: gain) : e,
 ]);
 ```
 
