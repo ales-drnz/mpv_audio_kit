@@ -85,10 +85,11 @@ Clearing the chain: `setAudioEffects(const [])` instead of
 `setAudioEffects(const AudioEffects())`.
 
 A chain mpv refuses now throws `MpvCommandException` and leaves the state
-on the previous list, also when the refusal comes from building the filter
-graph (a bad value in a `RawAudioEffect`), which 0.4 did not report. With
-no file loaded there is no graph yet, and such a value surfaces at the next
-load on `stream.error`.
+on the last list mpv accepted, also when the refusal comes from building
+the filter graph (a bad value in a `RawAudioEffect`), which 0.4 did not
+report. An `updateAudioEffects` that is not awaited can therefore end in an
+unhandled error. With no file loaded there is no graph yet, and such a
+value surfaces at the next load on `stream.error`.
 
 ### Taps and the loudness meter
 

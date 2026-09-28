@@ -201,6 +201,28 @@ void main() {
       );
     }, timeout: const Timeout(Duration(seconds: 20)));
 
+    test(
+      'two refused calls in a row leave the list mpv last accepted',
+      () async {
+        const accepted = [BassEffect(frequency: 1000, gain: 2)];
+        await player.setAudioEffects(accepted);
+        // The second call keeps the first one's bad stage: when both are
+        // refused, rolling back to the first call's list would leave the state
+        // on a chain mpv never ran.
+        final first = player.setAudioEffects(const [
+          BassEffect(frequency: 1000, gain: 2),
+          RawAudioEffect('lavfi-equalizer=f=abc'),
+        ]);
+        final second = player.updateAudioEffects(
+          (fx) => [...fx, const TrebleEffect()],
+        );
+        await expectLater(first, throwsA(isA<MpvCommandException>()));
+        await expectLater(second, throwsA(isA<MpvCommandException>()));
+        expect(player.state.audioEffects, accepted);
+      },
+      timeout: const Timeout(Duration(seconds: 20)),
+    );
+
     test('a rebuild after live updates applies the requested values, not the '
         'live ones', () async {
       Future<double> settledMomentary() async {
