@@ -79,10 +79,10 @@ class MediaSessionController {
   String? _fetchedArtUri;
   CoverArt? _fetchedArt;
   String? _pendingArtUri;
-  // When the last download failed; the same URL is tried again after
-  // [_artworkRetryAfter], so a server that was briefly down gets a cover.
-  DateTime? _artFailedAt;
-  static const _artworkRetryAfter = Duration(seconds: 30);
+  // Runs after a failed download and fetches the same URL again, so a
+  // server that was briefly down still gets a cover on this track.
+  Timer? _artRetry;
+  final Duration _artworkRetryAfter;
 
   // The `seekable` last sent to the OS. mpv reports it unavailable while
   // the next track loads, and the OS reads a non-seekable entry as a live
@@ -96,7 +96,9 @@ class MediaSessionController {
     void Function()? onAudioOutputReset,
     MediaSessionChannel? channel,
     ArtworkFetcher? artworkFetcher,
-  }) : _stateSnapshot = stateSnapshot,
+    Duration artworkRetryAfter = const Duration(seconds: 30),
+  }) : _artworkRetryAfter = artworkRetryAfter,
+       _stateSnapshot = stateSnapshot,
        _inputs = inputs,
        _onCommand = onCommand,
        _onAudioOutputReset = onAudioOutputReset,
@@ -124,6 +126,7 @@ class MediaSessionController {
     void Function()? onAudioOutputReset,
     @visibleForTesting MediaSessionChannel? channel,
     @visibleForTesting ArtworkFetcher? artworkFetcher,
+    @visibleForTesting Duration artworkRetryAfter = const Duration(seconds: 30),
   }) async {
     final c = MediaSessionController._(
       stateSnapshot: stateSnapshot,
@@ -134,6 +137,7 @@ class MediaSessionController {
       artworkFetcher:
           artworkFetcher ??
           (downloadsArtworkOn(defaultTargetPlatform) ? downloadArtwork : null),
+      artworkRetryAfter: artworkRetryAfter,
     );
     await c._wireUp();
     return c;
@@ -217,6 +221,7 @@ class MediaSessionController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _artRetry?.cancel();
 
     for (final s in _subscriptions) {
       await s.cancel();
@@ -417,14 +422,10 @@ class MediaSessionController {
   /// download is in flight or after it failed. Starts the download on first
   /// sight of [uri]; its completion re-pushes metadata.
   CoverArt? _downloadedArtwork(String uri) {
-    final failedAt = _artFailedAt;
-    final retry =
-        _fetchedArt == null &&
-        failedAt != null &&
-        DateTime.now().difference(failedAt) > _artworkRetryAfter;
-    if (uri == _fetchedArtUri && !retry) return _fetchedArt;
+    if (uri == _fetchedArtUri) return _fetchedArt;
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
+      _artRetry?.cancel();
       unawaited(
         _artworkFetcher!(
           Uri.parse(uri),
@@ -434,7 +435,13 @@ class MediaSessionController {
           _pendingArtUri = null;
           _fetchedArtUri = uri;
           _fetchedArt = cover;
-          _artFailedAt = cover == null ? DateTime.now() : null;
+          if (cover == null) {
+            _artRetry = Timer(_artworkRetryAfter, () {
+              // Forget the failure so the next push downloads again.
+              if (_fetchedArtUri == uri) _fetchedArtUri = null;
+              _markMetadata();
+            });
+          }
           _markMetadata();
         }),
       );

@@ -159,6 +159,7 @@ Future<MediaSessionController> _buildController({
   void Function(MediaSessionCommand)? onCommand,
   void Function()? onAudioOutputReset,
   ArtworkFetcher? artworkFetcher,
+  Duration artworkRetryAfter = const Duration(seconds: 30),
 }) => MediaSessionController.create(
   stateSnapshot: () => rig.state,
   inputs: rig.inputs,
@@ -166,6 +167,7 @@ Future<MediaSessionController> _buildController({
   onAudioOutputReset: onAudioOutputReset,
   channel: channel,
   artworkFetcher: artworkFetcher,
+  artworkRetryAfter: artworkRetryAfter,
 );
 
 /// Pumps the Dart event loop until microtasks and any pending `await`
@@ -1140,6 +1142,46 @@ void main() {
         expect(fetched, hasLength(1));
       },
     );
+
+    test('a failed cover is fetched again without a new track', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+
+      final cover = CoverArt(
+        bytes: Uint8List.fromList(const [5]),
+        mimeType: 'image/png',
+      );
+      var calls = 0;
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkFetcher: (_, _) async => ++calls == 1 ? null : cover,
+        artworkRetryAfter: const Duration(milliseconds: 50),
+      );
+      addTearDown(controller.dispose);
+
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'Song'},
+        playlist: Playlist([
+          Media(
+            'https://nd.example/rest/stream.view?id=1',
+            extras: {'art': 'https://nd.example/cover.jpg'},
+          ),
+        ]),
+      );
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(calls, 1);
+
+      // Nothing about the track changes; only the retry can bring the cover.
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await _settle();
+      expect(calls, 2);
+      expect(lastSnap(ch).artwork, cover);
+    });
 
     test(
       "the download gets the player's CA bundle, never its tls-verify",
