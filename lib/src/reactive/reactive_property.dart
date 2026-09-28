@@ -80,3 +80,44 @@ Stream<T> replayStream<T>(T Function() current, Stream<T> changes) =>
         ..onResume = sub.resume
         ..onCancel = sub.cancel;
     }, isBroadcast: true);
+
+/// A broadcast stream of the value [current] derives from [sources]: each
+/// subscriber gets it first, then once per change, whichever source
+/// moved. The dedup is per subscriber, so one that joins while a source
+/// event is still queued is not sent the value it already has. Done when
+/// a source is done, as the sources close together on dispose.
+Stream<T> aggregateStream<T>(
+  T Function() current,
+  List<Stream<Object?>> sources,
+) => Stream<T>.multi((controller) {
+  var last = current();
+  var done = false;
+  controller.add(last);
+  void pump(Object? _) {
+    if (done) return;
+    final next = current();
+    if (next == last) return;
+    last = next;
+    controller.add(next);
+  }
+
+  void finish() {
+    if (done) return;
+    done = true;
+    controller.close();
+  }
+
+  final subs = [for (final s in sources) s.listen(pump, onDone: finish)];
+  controller
+    ..onPause = () {
+      for (final s in subs) {
+        s.pause();
+      }
+    }
+    ..onResume = () {
+      for (final s in subs) {
+        s.resume();
+      }
+    }
+    ..onCancel = () => Future.wait([for (final s in subs) s.cancel()]);
+}, isBroadcast: true);

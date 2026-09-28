@@ -39,7 +39,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also behind `no-osd`, `options/` or `file-local-options/`, and `loadfile` with them in its per-file options. They desynced the effects chain or the play and pause state.
 - `jump()`, `remove()`, `move()` and `replace()` racing `dispose()` throw `PlayerDisposedException` instead of a `RangeError`.
 - On Linux, Android and Windows a remote cover trusts the player's `tls-ca-file` on top of the system roots, so a self-hosted server with its own CA shows its covers. The certificate is always verified, even with `tls-verify` off.
-- `dispose()` closes `stream.playWhenReady`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
+- `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
 - Windows: the plugin builds with Visual Studio 2026.
 
 ### Build

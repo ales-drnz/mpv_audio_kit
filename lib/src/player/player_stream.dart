@@ -213,56 +213,13 @@ class PlayerStream {
       duration: r.duration.value,
     );
 
-    return _bindAggregate<MpvPlaybackState>(snapshot, [
+    return aggregateStream<MpvPlaybackState>(snapshot, [
       r.playing.changes,
       bufferingProp.changes,
       completedProp.changes,
       r.pausedForCache.changes,
       r.duration.changes,
     ]);
-  }
-
-  /// Generic helper for building a broadcast aggregator stream.
-  ///
-  /// Each subscriber first receives the current `snapshot()`, then a fresh
-  /// value whenever one of [sources] emits. Repeated upstream events that
-  /// resolve to the same aggregate value are deduplicated, so subscribers
-  /// see one emission per actual change. The sources are subscribed while
-  /// anyone listens.
-  static Stream<T> _bindAggregate<T>(
-    T Function() snapshot,
-    List<Stream<dynamic>> sources,
-  ) {
-    late final StreamController<T> ctrl;
-    List<StreamSubscription<dynamic>>? subs;
-    late T last;
-    var primed = false;
-    void pump() {
-      final next = snapshot();
-      if (primed && last == next) return;
-      last = next;
-      primed = true;
-      ctrl.add(next);
-    }
-
-    ctrl = StreamController<T>.broadcast(
-      onListen: () {
-        // The current aggregate reaches each subscriber through the
-        // replay below; this only seeds the dedup memory.
-        last = snapshot();
-        primed = true;
-        subs = [for (final s in sources) s.listen((_) => pump())];
-      },
-      onCancel: () async {
-        final toCancel = subs;
-        subs = null;
-        if (toCancel == null) return;
-        for (final s in toCancel) {
-          await s.cancel();
-        }
-      },
-    );
-    return replayStream(snapshot, ctrl.stream);
   }
 
   // ── Playback / lifecycle ─────────────────────────────────────────────────

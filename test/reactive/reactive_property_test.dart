@@ -144,4 +144,52 @@ void main() {
       expect(received, [const Duration(seconds: 1)]);
     });
   });
+
+  group('aggregateStream', () {
+    test(
+      'a subscriber joining while a change is queued gets it once',
+      () async {
+        final a = ReactiveProperty<int>(0);
+        final b = ReactiveProperty<int>(0);
+        final sum = aggregateStream(() => a.value + b.value, [
+          a.changes,
+          b.changes,
+        ]);
+
+        final early = <int>[];
+        sum.listen(early.add);
+        await pumpEventQueue();
+
+        a.update(1); // queued for the sources, the value is already 1
+        final late = <int>[];
+        sum.listen(late.add);
+        await pumpEventQueue();
+
+        expect(early, [0, 1]);
+        expect(late, [1]);
+      },
+    );
+
+    test('changes that keep the aggregate emit nothing', () async {
+      final a = ReactiveProperty<int>(1);
+      final b = ReactiveProperty<int>(1);
+      final sum = aggregateStream(() => a.value + b.value, [
+        a.changes,
+        b.changes,
+      ]);
+      final got = <int>[];
+      sum.listen(got.add);
+      a.update(2);
+      b.update(0);
+      await pumpEventQueue();
+      expect(got, [2]);
+    });
+
+    test('is done when the sources close', () async {
+      final a = ReactiveProperty<int>(0);
+      final done = aggregateStream(() => a.value, [a.changes]).drain<void>();
+      await a.close();
+      await expectLater(done, completes);
+    });
+  });
 }
