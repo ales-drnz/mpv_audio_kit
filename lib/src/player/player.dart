@@ -1406,12 +1406,14 @@ final class _LoadTicket {
   bool get superseded => _player._disposed || _player._loadEpoch != _epoch;
 }
 
-/// The chain label of the first enabled [Ebur128Effect] in [effects], the
-/// stage the live loudness meter reads; `null` when none runs.
+/// The chain label of the first enabled [Ebur128Effect] in [effects] with
+/// its `metadata` option on, the stage the live loudness meter reads;
+/// `null` when none runs. A stage without metadata publishes nothing.
 String? _meterLabel(List<AudioEffect> effects) {
   final labels = audioEffectLabels(effects);
   for (var i = 0; i < effects.length; i++) {
-    if (effects[i] is Ebur128Effect && effects[i].enabled) return labels[i];
+    final e = effects[i];
+    if (e is Ebur128Effect && e.enabled && e.metadata) return labels[i];
   }
   return null;
 }

@@ -32,7 +32,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - A chain rebuilt after live slider changes applies the requested values: a stage moved live and set back could stay at the live value.
 - A value an effect got live keeps playing after a seek, a loop or an audio track switch. mpv rebuilds its filters there from the values they were created with, which brought back the old one.
 - A parameter value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001`.
-- The live loudness meter reads the first enabled `Ebur128Effect`, so a disabled first one no longer silences it.
+- The live loudness meter reads the first enabled `Ebur128Effect` with `metadata` on, so a disabled or silent first one no longer mutes it.
 - A setter emits the value it was given once. Volume, gains and ReplayGain no longer come back rounded (`setVolume(42.37)` then `42.400001525878906`), rate and pitch keep their precision, durations keep their microseconds, and `setCache`, `setDemuxer` and `setReplayGain` no longer emit a half-applied bundle.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.

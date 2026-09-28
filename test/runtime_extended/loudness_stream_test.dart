@@ -62,6 +62,19 @@ void main() {
       expect(reading.momentary!, lessThan(0));
     }, timeout: const Timeout(Duration(seconds: 20)));
 
+    test('the meter skips an ebur128 stage without metadata', () async {
+      // The first stage runs but publishes nothing to read.
+      await player.setAudioEffects(const [
+        Ebur128Effect(),
+        Ebur128Effect(metadata: true),
+      ]);
+      await player.play();
+      final reading = await player.stream.loudnessMeter
+          .firstWhere((l) => (l.momentary ?? -200) > -100)
+          .timeout(const Duration(seconds: 10));
+      expect(reading.momentary!, lessThan(0));
+    }, timeout: const Timeout(Duration(seconds: 20)));
+
     test(
       'loudness stream stays silent when the meter is not in the chain',
       () async {

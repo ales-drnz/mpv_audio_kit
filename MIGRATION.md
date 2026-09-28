@@ -101,7 +101,8 @@ included):
 player.stream.tap(AudioFilter.equalizer, instance: 1, side: TapSide.post);
 ```
 
-The live loudness meter reads the first enabled `Ebur128Effect` of the chain:
+The live loudness meter reads the first enabled `Ebur128Effect` of the chain
+with its `metadata` option on:
 
 ```dart
 await player.updateAudioEffects(

@@ -2629,8 +2629,8 @@ they play (adaptive or live network streams) report
 `player.stream.loudnessMeter` emits momentary, short-term, integrated
 and loudness-range readings of the audio *as it plays* — the data for a
 VU-style meter or a broadcast loudness display. The meter reads the
-first `Ebur128Effect` of the chain, so add one with its `metadata` option
-on, at the point of the chain you want to measure:
+first enabled `Ebur128Effect` of the chain with its `metadata` option on,
+so add one at the point of the chain you want to measure:
 
 ```dart
 await player.updateAudioEffects(

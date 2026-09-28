@@ -727,7 +727,7 @@ class PlayerStream {
   /// audio chain.
   ///
   /// Requires the meter in the chain: it reads the first enabled
-  /// [Ebur128Effect] of the list, which needs its `metadata` option on:
+  /// [Ebur128Effect] of the list with its `metadata` option on:
   ///
   /// ```dart
   /// await player.updateAudioEffects(
