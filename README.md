@@ -2038,10 +2038,11 @@ try {
 
 Same `MpvCommandException` contract on rejection. `af` and `af-command`
 throw `ArgumentError`: the effects chain owns them. So do the commands that
-write `af` or `pause` (`set`, `add`, `cycle`, `cycle-values`, `change-list`,
-also through `options/` and `file-local-options/`), and `loadfile` with
-`af` or `pause` in its per-file options. The check covers these commands,
-not every way mpv offers to change a property.
+write `af` or `pause` (`set`, `add`, `multiply`, `cycle`, `cycle-values`,
+`change-list`, also through `options/` and `file-local-options/`), and
+`loadfile` with `af` or `pause` in its per-file options (`af-add`,
+`no-pause` and the like included). The check is there against mistakes: it
+covers these commands, not every way mpv offers to change a property.
 
 ```dart
 await player.sendRawCommand(['playlist-shuffle']);

@@ -75,6 +75,16 @@ void main() {
         ['cycle-values', '!reverse', 'pause', 'yes', 'no'],
         ['loadfile', '/tmp/x.flac', 'replace', '-1', 'start=5,pause=yes'],
         ['loadfile', '/tmp/x.flac', 'append', '-1', 'af=lavfi-loudnorm'],
+        // mpv reads `_` in a command name as `-`.
+        ['change_list', 'af', 'append', 'lavfi-loudnorm'],
+        ['af_command', 'loudnorm', 'enable'],
+        ['cycle_values', 'pause', 'yes', 'no'],
+        // Per-file options take list actions, `no-`, and quoted keys.
+        ['loadfile', '/tmp/x.flac', 'append', '-1', 'af-add=lavfi-loudnorm'],
+        ['loadfile', '/tmp/x.flac', 'append', '-1', 'no-pause'],
+        ['loadfile', '/tmp/x.flac', 'append', '-1', '"af"=lavfi-loudnorm'],
+        ['loadfile', '/tmp/x.flac', 'append', '-1', '[pause]=yes'],
+        ['loadfile', '/tmp/x.flac', 'append', '-1', '%5%pause=yes'],
       ]) {
         expect(
           () => player.sendRawCommand(args),
@@ -87,6 +97,12 @@ void main() {
     test('property commands on other properties are allowed', () async {
       await player.sendRawCommand(['set', 'volume', '40']);
       await player.sendRawCommand(['no-osd', 'add', 'volume', '5']);
+      // A property that only starts like an owned one reaches mpv, which
+      // refuses the write because af-metadata is read-only.
+      await expectLater(
+        player.sendRawCommand(['set', 'af-metadata', '']),
+        throwsA(isA<MpvCommandException>()),
+      );
       expect(await player.getRawProperty('volume'), startsWith('45'));
     });
 

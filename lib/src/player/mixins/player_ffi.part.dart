@@ -4,20 +4,6 @@
 
 part of '../player.dart';
 
-/// Low-level native bridge: the raw property / command calls every typed
-/// setter funnels through, the `chapter-list` NODE writer, and the mpv
-/// error-string lookup. Declared `on _PlayerBase` so the constructor,
-/// `dispose`, and the domain mixins can reach these across part boundaries
-/// (their abstract signatures live on `_PlayerBase`).
-///
-/// Every write/read here goes through the ASYNC client API: the FFI call
-/// only enqueues the request (libmpv deep-copies the arguments) and the
-/// future completes when the event isolate forwards the matching reply.
-/// The synchronous client API waits for the core's playloop to serve the
-/// request, and the playloop can be stuck for seconds inside audio-output
-/// init (a Bluetooth/AirPlay device waking up) — on the main isolate that
-/// wait is the macOS beachball. Never reintroduce a synchronous
-/// set/get/command on the main isolate.
 /// mpv's input command prefixes, which may precede the command name.
 const _kCommandPrefixes = {
   'no-osd',
@@ -35,13 +21,33 @@ const _kCommandPrefixes = {
 };
 
 /// The option names in a `key=value,key=value` list, the per-file options
-/// of `loadfile`. A value can itself hold commas, so this may also return
-/// a word from inside one: good enough to spot `af` and `pause`.
+/// of `loadfile`, unquoted: mpv also takes `"key"`, `[key]` and `%n%key`.
+/// A value can itself hold commas, so this may also return a word from
+/// inside one: good enough to spot `af` and `pause`.
 Iterable<String> _optionKeys(String options) sync* {
   for (final part in options.split(',')) {
     final eq = part.indexOf('=');
-    yield (eq < 0 ? part : part.substring(0, eq)).trim();
+    var key = (eq < 0 ? part : part.substring(0, eq)).trim();
+    final counted = RegExp(r'^%\d+%').firstMatch(key);
+    if (counted != null) key = key.substring(counted.end);
+    if (key.length >= 2 &&
+        ((key.startsWith('"') && key.endsWith('"')) ||
+            (key.startsWith('[') && key.endsWith(']')))) {
+      key = key.substring(1, key.length - 1);
+    }
+    yield key;
   }
+}
+
+/// The property an option name on the command line writes: `no-pause`
+/// sets `pause`, and `af-add`, `af-set` and the other list actions edit
+/// `af`.
+String _optionProperty(String key) {
+  if (key.startsWith('no-')) return key.substring(3);
+  final list = RegExp(
+    r'^(.+)-(add|append|pre|set|clr|del|remove|toggle)$',
+  ).firstMatch(key);
+  return list == null ? key : list.group(1)!;
 }
 
 /// Commands whose second argument names a property they write.
@@ -54,6 +60,20 @@ const _kPropertyCommands = {
   'change-list',
 };
 
+/// Low-level native bridge: the raw property / command calls every typed
+/// setter funnels through, the `chapter-list` NODE writer, and the mpv
+/// error-string lookup. Declared `on _PlayerBase` so the constructor,
+/// `dispose`, and the domain mixins can reach these across part boundaries
+/// (their abstract signatures live on `_PlayerBase`).
+///
+/// Every write/read here goes through the ASYNC client API: the FFI call
+/// only enqueues the request (libmpv deep-copies the arguments) and the
+/// future completes when the event isolate forwards the matching reply.
+/// The synchronous client API waits for the core's playloop to serve the
+/// request, and the playloop can be stuck for seconds inside audio-output
+/// init (a Bluetooth/AirPlay device waking up) — on the main isolate that
+/// wait is the macOS beachball. Never reintroduce a synchronous
+/// set/get/command on the main isolate.
 mixin _FfiModule on _PlayerBase {
   /// Writes a property and throws [MpvCommandException] on rejection.
   ///
@@ -371,7 +391,8 @@ mixin _FfiModule on _PlayerBase {
       i++;
     }
     if (i < args.length) {
-      final command = args[i];
+      // mpv reads `_` in a command name as `-` (`change_list`).
+      final command = args[i].replaceAll('_', '-');
       if (command == 'af' || command == 'af-command') {
         throw ArgumentError.value(
           command,
@@ -393,7 +414,7 @@ mixin _FfiModule on _PlayerBase {
       // which can name `af` or `pause` too.
       if (command == 'loadfile' && i + 4 < args.length) {
         for (final key in _optionKeys(args[i + 4])) {
-          _checkNotOwned(key, 'args');
+          _checkNotOwned(_optionProperty(key), 'args');
         }
       }
     }
