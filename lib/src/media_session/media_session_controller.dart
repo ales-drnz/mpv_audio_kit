@@ -420,12 +420,10 @@ class MediaSessionController {
     if (uri == _fetchedArtUri && !retry) return _fetchedArt;
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
-      final state = _stateSnapshot();
-      final tls = (verify: state.tlsVerify, caFile: state.tlsCaFile);
       unawaited(
         _artworkFetcher!(
           Uri.parse(uri),
-          tls,
+          _stateSnapshot().tlsCaFile,
         ).catchError((Object _) => null).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;
           _pendingArtUri = null;

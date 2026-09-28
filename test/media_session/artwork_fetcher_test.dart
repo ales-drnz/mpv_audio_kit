@@ -81,17 +81,13 @@ void main() {
       expect(await downloadArtwork(cover), isNull);
     });
 
-    test('loads when the player does not verify', () async {
-      final art = await downloadArtwork(cover, (verify: false, caFile: ''));
+    test("loads when the player's CA bundle trusts it", () async {
+      final art = await downloadArtwork(cover, certPath);
       expect(art?.bytes, [9, 8, 7]);
     });
 
-    test("loads when the player's CA bundle trusts it", () async {
-      final art = await downloadArtwork(cover, (
-        verify: true,
-        caFile: certPath,
-      ));
-      expect(art?.bytes, [9, 8, 7]);
+    test('is refused when the CA bundle cannot be read', () async {
+      expect(await downloadArtwork(cover, '/nonexistent/ca.pem'), isNull);
     });
   });
 }

@@ -10,12 +10,10 @@ import 'package:flutter/foundation.dart';
 
 import '../models/cover_art.dart';
 
-/// The player's TLS settings (`tls-verify`, `tls-ca-file`), which an
-/// artwork download follows like playback does.
-typedef ArtworkTls = ({bool verify, String caFile});
-
-/// Downloads a remote artwork URL into a [CoverArt]; `null` on any failure.
-typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri, ArtworkTls tls);
+/// Downloads a remote artwork URL into a [CoverArt], trusting the extra
+/// CA bundle `caFile` (the player's `tls-ca-file`, empty for none) on top
+/// of the system roots; `null` on any failure.
+typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri, String caFile);
 
 /// Upper bound on a downloaded cover. Real covers are a few MB at most;
 /// anything larger is not an image worth putting on the media session.
@@ -39,29 +37,22 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   _ => false,
 };
 
-/// Default [ArtworkFetcher] where [downloadsArtworkOn] holds. It trusts
-/// what playback trusts: any certificate without [ArtworkTls.verify], only
-/// the bundle in [ArtworkTls.caFile] when one is set, the system roots
-/// otherwise. A proxy set in the environment (`https_proxy`) is used.
+/// Default [ArtworkFetcher] where [downloadsArtworkOn] holds. It always
+/// verifies the certificate, whatever the player's `tls-verify`: that
+/// option is off by default in mpv, and a cover URL often carries the
+/// server's credentials. A [caFile] adds to the system roots, so a
+/// self-hosted server with its own CA shows its covers.
 @internal
-Future<CoverArt?> downloadArtwork(
-  Uri uri, [
-  ArtworkTls tls = (verify: true, caFile: ''),
-]) async {
+Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
   HttpClient? client;
   try {
-    client = !tls.verify
-        ? (HttpClient()..badCertificateCallback = (_, _, _) => true)
-        : tls.caFile.isNotEmpty
-        ? HttpClient(
-            // A new context starts without the system roots: the bundle
-            // replaces them, as `tls-ca-file` does for playback.
-            context: SecurityContext()..setTrustedCertificates(tls.caFile),
-          )
-        : HttpClient();
-    client
-      ..connectionTimeout = _timeout
-      ..findProxy = HttpClient.findProxyFromEnvironment;
+    client = caFile.isEmpty
+        ? HttpClient()
+        : HttpClient(
+            context: SecurityContext(withTrustedRoots: true)
+              ..setTrustedCertificates(caFile),
+          );
+    client.connectionTimeout = _timeout;
     final request = await client.getUrl(uri).timeout(_timeout);
     final response = await request.close().timeout(_timeout);
     if (response.statusCode != HttpStatus.ok) {

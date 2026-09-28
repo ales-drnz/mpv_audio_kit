@@ -2686,14 +2686,16 @@ Artwork is a typed choice on the `artwork` field:
 ```dart
 MediaSessionArtwork.embedded            // default, the file's embedded cover
 MediaSessionArtwork.custom(myCoverArt)  // your own image, ignoring the file cover
-MediaSessionArtwork.uri(myArtUrl)       // a URL fetched natively (only the URL crosses the channel)
+MediaSessionArtwork.uri(myArtUrl)       // a remote image, downloaded before it reaches the OS
 MediaSessionArtwork.none                // no artwork
 ```
 
 Network URLs never reach the OS media session as text, since they often
 carry credentials in the query (Subsonic, Jellyfin, Plex). MPRIS on Linux
 gets `xesam:url` only for local files, and a remote cover is downloaded
-first and handed to the OS as an image on every platform. A tag-less stream
+first and handed to the OS as an image on every platform. The download
+always verifies the server certificate, trusting `tls-ca-file` on top of
+the system roots, even when `tls-verify` is off for playback. A tag-less stream
 with no title falls back to mpv's `media-title`, which is derived from the
 URL: the query is stripped from it, but passing a title through
 `Media.extras` or `MediaSession.title` is still the better choice.

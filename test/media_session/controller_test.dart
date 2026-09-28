@@ -1105,6 +1105,42 @@ void main() {
         expect(fetched, hasLength(1));
       },
     );
+
+    test(
+      "the download gets the player's CA bundle, never its tls-verify",
+      () async {
+        final rig = _Rig();
+        final ch = _RecordingChannel();
+        addTearDown(rig.dispose);
+        addTearDown(ch.close);
+
+        final caFiles = <String>[];
+        final controller = await _buildController(
+          rig: rig,
+          channel: ch,
+          artworkFetcher: (_, caFile) async {
+            caFiles.add(caFile);
+            return null;
+          },
+        );
+        addTearDown(controller.dispose);
+
+        rig.state = const PlayerState(
+          mediaSession: MediaSession(),
+          metadata: {'title': 'Song'},
+          tlsCaFile: '/etc/ssl/home-ca.pem',
+          playlist: Playlist([
+            Media(
+              'https://nd.example/rest/stream.view?id=1',
+              extras: {'art': 'https://nd.example/cover.jpg'},
+            ),
+          ]),
+        );
+        rig.metadata.add(const {'title': 'Song'});
+        await _settle();
+        expect(caFiles, ['/etc/ssl/home-ca.pem']);
+      },
+    );
   });
   group('MediaSessionController — audio output resets', () {
     test('a reset from the OS reaches the player until dispose', () async {
