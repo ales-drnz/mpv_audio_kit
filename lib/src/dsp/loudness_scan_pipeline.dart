@@ -49,6 +49,9 @@ class LoudnessScanPipeline {
   double? _lastScanProgress;
   bool _enabled = false;
   bool _disposed = false;
+  // No file loaded (after [clear]): mpv still holds the last file's
+  // analysis, so nothing is polled until the next [reset].
+  bool _idle = false;
   // Guards against overlapping async polls — see [LoudnessMeterPipeline].
   bool _polling = false;
 
@@ -76,12 +79,24 @@ class LoudnessScanPipeline {
   /// the scan is still enabled.
   void reset() {
     if (_disposed) return;
+    _idle = false;
     _result = null;
     _lastScanProgress = null;
     _pollTimer?.cancel();
     _pollTimer = null;
     _emit(null);
     if (_enabled) _armTimer();
+  }
+
+  /// Drops the current result and emits `null` once no file is loaded,
+  /// without polling again until the next [reset].
+  void clear() {
+    if (_disposed) return;
+    _idle = true;
+    _result = null;
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _emit(null);
   }
 
   Future<void> dispose() async {
@@ -101,7 +116,7 @@ class LoudnessScanPipeline {
   }
 
   void _armTimer() {
-    if (_disposed || _result != null) return;
+    if (_disposed || _idle || _result != null) return;
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
     _poll();
@@ -118,7 +133,7 @@ class LoudnessScanPipeline {
       'loudness-scan-data',
       MpvFormat.mpvFormatNode,
     );
-    if (_disposed || _result != null) return;
+    if (_disposed || _idle || _result != null) return;
     if (rc < 0 || value is! Map) return;
 
     final state = value['state'];

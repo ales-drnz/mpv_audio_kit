@@ -100,5 +100,32 @@ void main() {
         await player.dispose();
       }
     }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('stop() clears the cover and the waveform with the path', () async {
+      final coverPath = '$fixturesDir/sine_with_cover.flac';
+      final player = await buildPlayer();
+      WaveformData? wave;
+      final sub = player.stream.waveform.listen((w) => wave = w);
+      try {
+        await player.open(Media(coverPath), play: false);
+        await waitUntil(
+          () =>
+              player.state.coverArt != null && wave != null && !wave!.decoding,
+          reason: 'cover and settled waveform of the loaded file',
+        );
+
+        await player.stop();
+        await waitUntil(
+          () => player.state.path.isEmpty,
+          reason: 'mpv reports the path unavailable after stop',
+        );
+        expect(player.state.coverArt, isNull);
+        expect(await player.stream.coverArt.first, isNull);
+        expect(wave, isNull);
+      } finally {
+        await sub.cancel();
+        await player.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

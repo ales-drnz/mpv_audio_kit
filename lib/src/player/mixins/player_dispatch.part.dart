@@ -169,11 +169,13 @@ mixin _DispatchModule on _PlayerBase {
           // `eof-reached` hook — so `completed` pulses only at the genuine
           // end of all playable content, never between tracks.
           final isEof = reason == MpvEndFileReason.eof.value;
+          final finished = isEof && _isEndOfContent();
           _updateLifecycle(
             playing: false,
             buffering: false,
-            completed: isEof && _isEndOfContent(),
+            completed: finished,
           );
+          if (finished) _clearFinishedFile();
         case MpvEventReply():
         case MpvEventGetReply():
           // Completed before the dispose fence above; never reaches here.

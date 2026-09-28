@@ -47,6 +47,9 @@ class WaveformPipeline {
   int? _lastDecodeCoverage;
   bool _enabled = false;
   bool _disposed = false;
+  // No file loaded (after [clear]): mpv still holds the last file's
+  // analysis, so nothing is polled until the next [reset].
+  bool _idle = false;
   // Guards against overlapping async polls — see [LoudnessMeterPipeline].
   bool _polling = false;
 
@@ -74,12 +77,24 @@ class WaveformPipeline {
   /// when the analyzer is still enabled.
   void reset() {
     if (_disposed) return;
+    _idle = false;
     _data = null;
     _lastDecodeCoverage = null;
     _pollTimer?.cancel();
     _pollTimer = null;
     _emit(null);
     if (_enabled) _armTimer();
+  }
+
+  /// Drops the current envelope and emits `null` once no file is loaded,
+  /// without polling again until the next [reset].
+  void clear() {
+    if (_disposed) return;
+    _idle = true;
+    _data = null;
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _emit(null);
   }
 
   Future<void> dispose() async {
@@ -99,7 +114,7 @@ class WaveformPipeline {
   }
 
   void _armTimer() {
-    if (_disposed || _data != null) return;
+    if (_disposed || _idle || _data != null) return;
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
     _poll();
@@ -116,7 +131,7 @@ class WaveformPipeline {
       'waveform-data',
       MpvFormat.mpvFormatNode,
     );
-    if (_disposed || _data != null) return;
+    if (_disposed || _idle || _data != null) return;
     try {
       if (rc < 0 || value is! Map) return;
 

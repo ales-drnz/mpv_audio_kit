@@ -1141,6 +1141,17 @@ abstract class _PlayerBase {
     _coverArtCtrl.add(null);
   }
 
+  /// Clears what [_clearPerFileState] clears plus the file's waveform and
+  /// loudness scan, once no file is loaded: mpv reports path, title and
+  /// duration unavailable then, and these would otherwise keep showing
+  /// the file that ended.
+  void _clearFinishedFile() {
+    _clearPerFileState();
+    _lastWaveformSource = null;
+    _waveformPipeline.clear();
+    _loudnessScanPipeline.clear();
+  }
+
   /// Updates the lifecycle triple (playing/buffering/completed) and
   /// emits per-reactive only for fields that actually changed. Used
   /// for compound transitions (start-file, file-loaded, end-file,
