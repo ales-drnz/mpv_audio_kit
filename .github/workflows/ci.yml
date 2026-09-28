@@ -13,8 +13,10 @@ concurrency:
 # Until a libmpv release is published, set the repository variable
 # LIBMPV_SCRIPTS_RUN to the libmpv-scripts run that built it: the jobs that
 # bundle libmpv then take that run's libraries instead of the pinned
-# release (see .github/actions/libmpv-from-run). LIBMPV_SCRIPTS_TOKEN, if
-# set, is a token that can read that repository's artifacts.
+# release (see .github/actions/libmpv-from-run). It needs the secret
+# LIBMPV_SCRIPTS_TOKEN, a token with Actions read access on libmpv-scripts.
+# Unset the variable once the release is out: the run's artifacts expire
+# after 90 days, and main would keep testing them instead of the release.
 env:
   LIBMPV_SCRIPTS_RUN: ${{ vars.LIBMPV_SCRIPTS_RUN }}
 
@@ -61,7 +63,7 @@ jobs:
       - uses: ./.github/actions/libmpv-from-run
         with:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
-          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN || github.token }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: pubspec.yaml
       # The build hook bundles libmpv for flutter test. ALSA is its one
       # audio library linked at load time; PipeWire and PulseAudio are
@@ -100,7 +102,7 @@ jobs:
       - uses: ./.github/actions/libmpv-from-run
         with:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
-          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN || github.token }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: pubspec.yaml
       - run: flutter test -x network
 
@@ -135,7 +137,7 @@ jobs:
             swiftpm: 'off'
             command: >-
               flutter build macos --debug &&
-              ../scripts/ci/check_apple_frameworks.sh build/macos/Build/Products/Debug/mpv_audio_kit_test_app.app/Contents/Frameworks
+              ../scripts/ci/check_apple_frameworks.sh --expect-plugin build/macos/Build/Products/Debug/mpv_audio_kit_test_app.app/Contents/Frameworks
           - name: iOS (SwiftPM)
             os: macos-latest
             command: >-
@@ -146,7 +148,7 @@ jobs:
             swiftpm: 'off'
             command: >-
               flutter build ios --simulator --debug &&
-              ../scripts/ci/check_apple_frameworks.sh build/ios/iphonesimulator/Runner.app/Frameworks
+              ../scripts/ci/check_apple_frameworks.sh --expect-plugin build/ios/iphonesimulator/Runner.app/Frameworks
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -167,7 +169,7 @@ jobs:
       - uses: ./.github/actions/libmpv-from-run
         with:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
-          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN || github.token }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: test_app/pubspec.yaml
       - name: Build test app
         working-directory: test_app
