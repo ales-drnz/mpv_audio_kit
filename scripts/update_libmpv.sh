@@ -72,4 +72,6 @@ dart format "$ROOT/hook/build.dart" >/dev/null
 
 # The codegen reads the filters and the FFmpeg version from its own copy;
 # rerun tool/codegen/regen.sh afterwards if they changed.
-cp "$MANIFEST" "$ROOT/tool/codegen/libmpv_manifest.json"
+if [[ ! "$MANIFEST" -ef "$ROOT/tool/codegen/libmpv_manifest.json" ]]; then
+  cp "$MANIFEST" "$ROOT/tool/codegen/libmpv_manifest.json"
+fi

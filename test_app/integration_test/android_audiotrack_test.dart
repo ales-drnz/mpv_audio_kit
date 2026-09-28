@@ -12,10 +12,10 @@
 // System.loadLibrary("mpv_audio_kit"). Without that wiring, audiotrack reports
 // `No Java virtual machine has been registered` and playback is silent.
 //
-// This test loads a local fixture under the default AO list (audiotrack
-// first), watches the mpv log stream for the no-JVM error, and asserts
-// the playback pipeline reaches a duration > 0 — i.e. an AO actually
-// claimed the stream and started decoding.
+// This test plays a local fixture under the default AO list (audiotrack
+// first), watches the mpv log stream for the no-JVM error, and waits until
+// audiotrack is the current output with its format set, i.e. it claimed
+// the stream.
 //
 // Skipped on non-Android targets where the AO selection is different.
 
@@ -72,15 +72,18 @@ void main() {
       'audiotrack opens against a local fixture (no JVM-registration error)',
       (_) async {
         final shortFixture = await materializeFixture('sine_440hz_1s.wav');
-        await player.open(Media(shortFixture), play: false);
+        await player.setVolume(0);
+        await player.open(Media(shortFixture));
 
-        // Duration > 0 means the demuxer ran AND an AO was successfully
-        // initialized — mpv won't fully load a track if no AO claims it
-        // when the file requires audio output.
-        final d = await player.stream.duration
-            .firstWhere((d) => d.inMilliseconds > 0)
+        // The duration comes from the demuxer, before any audio output
+        // opens: wait for audiotrack itself to take the stream, so an init
+        // error it logs has happened by the check below.
+        await player.stream.currentAo
+            .firstWhere((ao) => ao == 'audiotrack')
             .timeout(const Duration(seconds: 10));
-        expect(d.inMilliseconds, greaterThan(0));
+        await player.stream.audioOutParams
+            .firstWhere((p) => (p.sampleRate ?? 0) > 0)
+            .timeout(const Duration(seconds: 10));
         expect(
           aoErrors,
           isEmpty,
