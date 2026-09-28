@@ -206,7 +206,7 @@ void main() {
           final multitrackPath =
               '${Directory.current.path}/test/fixtures/multitrack_two_audio.mka';
           if (!File(multitrackPath).existsSync()) {
-            markTestSkipped('Multitrack fixture missing: $multitrackPath');
+            skipMissing('Multitrack fixture missing: $multitrackPath');
             return;
           }
 
@@ -247,7 +247,7 @@ void main() {
           final chapterPath =
               '${Directory.current.path}/test/fixtures/with_chapters.mka';
           if (!File(chapterPath).existsSync()) {
-            markTestSkipped('Chapter fixture missing: $chapterPath');
+            skipMissing('Chapter fixture missing: $chapterPath');
             return;
           }
 
@@ -279,7 +279,7 @@ void main() {
         final coverFixturePath =
             '${Directory.current.path}/test/fixtures/sine_with_cover.flac';
         if (!File(coverFixturePath).existsSync()) {
-          markTestSkipped('Cover art fixture missing: $coverFixturePath');
+          skipMissing('Cover art fixture missing: $coverFixturePath');
           return;
         }
 

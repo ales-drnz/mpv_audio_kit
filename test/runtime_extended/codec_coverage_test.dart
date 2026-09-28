@@ -45,7 +45,7 @@ void main() {
           // (see [AudioParams.codec] dartdoc). This test pins the contract.
           final flacPath = '$fixturesDir/flac_44100_16bit.flac';
           if (!File(flacPath).existsSync()) {
-            markTestSkipped('FLAC fixture missing: $flacPath');
+            skipMissing('FLAC fixture missing: $flacPath');
             return;
           }
           final result = await verifyCodec(
@@ -78,7 +78,7 @@ void main() {
         test(expected.label, () async {
           final path = '$fixturesDir/$filename';
           if (!File(path).existsSync()) {
-            markTestSkipped(
+            skipMissing(
               'Fixture missing: run scripts/generate_codec_fixtures.sh',
             );
             return;

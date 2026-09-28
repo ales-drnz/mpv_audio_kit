@@ -142,7 +142,7 @@ void main() {
         final shortPath =
             '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
         if (!File(shortPath).existsSync()) {
-          markTestSkipped('1s fixture missing');
+          skipMissing('1s fixture missing');
           return;
         }
         await openAndWaitForLoad(player, shortPath);

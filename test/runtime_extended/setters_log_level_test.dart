@@ -30,7 +30,7 @@ void main() {
     test('setLogLevel changes the mpv log threshold at runtime', () async {
       final p = player;
       if (p == null) {
-        markTestSkipped('libmpv not found');
+        skipMissing('libmpv not found');
         return;
       }
 

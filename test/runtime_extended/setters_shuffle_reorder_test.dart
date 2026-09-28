@@ -31,7 +31,7 @@ void main() {
       ];
       for (final f in fixtures) {
         if (!File(f).existsSync()) {
-          markTestSkipped('Fixture missing: $f');
+          skipMissing('Fixture missing: $f');
           return;
         }
       }

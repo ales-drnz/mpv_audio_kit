@@ -44,7 +44,7 @@ void main() {
     test('waveform streams a partial envelope, then a correct final one', () async {
       final probe = await player.getRawPropertyNode('waveform-data');
       if (probe == null) {
-        markTestSkipped('libmpv has no waveform-data property.');
+        skipMissing('libmpv has no waveform-data property.');
         return;
       }
 
@@ -167,7 +167,7 @@ void main() {
     test('loudness emits scanning progress, then an exact integrated', () async {
       final probe = await player.getRawPropertyNode('loudness-scan-data');
       if (probe == null) {
-        markTestSkipped('libmpv has no loudness-scan-data property.');
+        skipMissing('libmpv has no loudness-scan-data property.');
         return;
       }
 

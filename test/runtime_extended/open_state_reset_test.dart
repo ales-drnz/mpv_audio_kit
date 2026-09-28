@@ -38,7 +38,7 @@ void main() {
               '${Directory.current.path}/test/fixtures/with_chapters.mka';
           if (!File(coverPath).existsSync() ||
               !File(chaptersPath).existsSync()) {
-            markTestSkipped('Cover / chapters fixture missing.');
+            skipMissing('Cover / chapters fixture missing.');
             return;
           }
 
@@ -103,7 +103,7 @@ void main() {
           final chaptersPath =
               '${Directory.current.path}/test/fixtures/with_chapters.mka';
           if (!File(chaptersPath).existsSync()) {
-            markTestSkipped('Chapters fixture missing.');
+            skipMissing('Chapters fixture missing.');
             return;
           }
           // Loading the SAME file twice in a row would normally trigger

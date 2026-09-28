@@ -56,7 +56,7 @@ void main() {
       final coverPath =
           '${Directory.current.path}/test/fixtures/sine_with_cover.flac';
       if (!File(coverPath).existsSync()) {
-        markTestSkipped('Cover fixture missing: $coverPath');
+        skipMissing('Cover fixture missing: $coverPath');
         return;
       }
 
@@ -132,7 +132,7 @@ void main() {
       final fixture =
           '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
       if (!File(fixture).existsSync()) {
-        markTestSkipped('Fixture missing: $fixture');
+        skipMissing('Fixture missing: $fixture');
         return;
       }
 

@@ -120,7 +120,7 @@ void main() {
     // (MpvAudioKit.ensureInitialized → _applyPlatformQuirks).
     final skip = libmpvSkipReason();
     if (skip != null) {
-      markTestSkipped(skip);
+      skipMissing(skip);
       return;
     }
     initLibmpv();

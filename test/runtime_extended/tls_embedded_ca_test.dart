@@ -58,7 +58,7 @@ void main() {
       'tls-verify ON + public HTTPS verifies via the embedded CA roots',
       () async {
         if (!embedded) {
-          markTestSkipped(
+          skipMissing(
             'libmpv predates the embed_cacert patch — rebuild to activate this pin',
           );
           return;
@@ -102,7 +102,7 @@ void main() {
       'setTlsCaFile("") clears a custom override back to the embedded roots',
       () async {
         if (!embedded) {
-          markTestSkipped(
+          skipMissing(
             'libmpv predates the embed_cacert patch — rebuild to activate this pin',
           );
           return;

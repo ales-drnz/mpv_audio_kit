@@ -31,7 +31,7 @@ void main() {
         final tinyPath =
             '${Directory.current.path}/test/fixtures/sine_50ms.wav';
         if (!File(tinyPath).existsSync()) {
-          markTestSkipped('Tiny fixture missing');
+          skipMissing('Tiny fixture missing');
           return;
         }
         await player.open(Media(tinyPath), play: false);
@@ -53,7 +53,7 @@ void main() {
           final exoticPath =
               '${Directory.current.path}/test/fixtures/sine_88200hz.flac';
           if (!File(exoticPath).existsSync()) {
-            markTestSkipped('88.2kHz fixture missing');
+            skipMissing('88.2kHz fixture missing');
             return;
           }
           await player.open(Media(exoticPath), play: false);
@@ -91,7 +91,7 @@ void main() {
         final fixturePath =
             '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
         if (!File(fixturePath).existsSync()) {
-          markTestSkipped('Fixture missing');
+          skipMissing('Fixture missing');
           return;
         }
         // 2 items, request index 99 — wrapper documents that this clamps
@@ -145,7 +145,7 @@ void main() {
         final fixB =
             '${Directory.current.path}/test/fixtures/sine_88200hz.flac';
         if (!File(fixA).existsSync() || !File(fixB).existsSync()) {
-          markTestSkipped('Fixtures missing');
+          skipMissing('Fixtures missing');
           return;
         }
 

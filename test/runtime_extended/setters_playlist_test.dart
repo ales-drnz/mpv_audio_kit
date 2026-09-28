@@ -169,7 +169,7 @@ void main() {
           final altPath =
               '${Directory.current.path}/test/fixtures/with_chapters.mka';
           if (!File(altPath).existsSync()) {
-            markTestSkipped('Alt fixture missing for replace()');
+            skipMissing('Alt fixture missing for replace()');
             return;
           }
 

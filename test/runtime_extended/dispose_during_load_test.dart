@@ -24,7 +24,7 @@ void main() {
     test('dispose() while open() is in flight tears down within 1s', () async {
       final fix = '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
       if (!File(fix).existsSync()) {
-        markTestSkipped('Fixture missing: $fix');
+        skipMissing('Fixture missing: $fix');
         return;
       }
 

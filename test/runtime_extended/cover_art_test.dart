@@ -40,7 +40,7 @@ void main() {
 
         final coverPath = '$fixturesDir/sine_with_cover.flac';
         if (!File(coverPath).existsSync()) {
-          markTestSkipped('Cover fixture missing: $coverPath');
+          skipMissing('Cover fixture missing: $coverPath');
           return;
         }
         await player.open(Media(coverPath), play: false);
@@ -77,7 +77,7 @@ void main() {
 
         final plainPath = '$fixturesDir/sine_440hz_1s.wav';
         if (!File(plainPath).existsSync()) {
-          markTestSkipped('Plain fixture missing: $plainPath');
+          skipMissing('Plain fixture missing: $plainPath');
           return;
         }
         await player.open(Media(plainPath), play: false);

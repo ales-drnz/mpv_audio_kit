@@ -37,7 +37,7 @@ void main() {
       test('ID3v2 tags from an MP3 surface through state.metadata', () async {
         final path = '$fixturesDir/mp3_with_id3v2.mp3';
         if (!File(path).existsSync()) {
-          markTestSkipped(
+          skipMissing(
             'Fixture missing: run scripts/generate_extra_fixtures.sh',
           );
           return;
@@ -87,7 +87,7 @@ void main() {
         () async {
           final path = '$fixturesDir/flac_with_vorbis_comments.flac';
           if (!File(path).existsSync()) {
-            markTestSkipped(
+            skipMissing(
               'Fixture missing: run scripts/generate_extra_fixtures.sh',
             );
             return;

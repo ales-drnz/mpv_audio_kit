@@ -45,7 +45,7 @@ void main() {
       test('truncated MP3 reaches endFile via the public stream', () async {
         final path = '$fixturesDir/truncated.mp3';
         if (!File(path).existsSync()) {
-          markTestSkipped(
+          skipMissing(
             'Fixture missing: run scripts/generate_extra_fixtures.sh',
           );
           return;
@@ -83,7 +83,7 @@ void main() {
       test('corrupted file (text masquerading as .mp3) is rejected', () async {
         final path = '$fixturesDir/corrupted.mp3';
         if (!File(path).existsSync()) {
-          markTestSkipped(
+          skipMissing(
             'Fixture missing: run scripts/generate_extra_fixtures.sh',
           );
           return;

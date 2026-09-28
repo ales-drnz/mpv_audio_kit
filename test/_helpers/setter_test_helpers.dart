@@ -83,6 +83,15 @@ void runtimeSuite(
   body();
 }
 
+/// Skips the running test because something it needs is missing (the
+/// bundled libmpv, a fixture, a property of the binary), or fails it with
+/// CI=true: on CI all of them are always there, and a skip would leave the
+/// test silently out of the run.
+void skipMissing(String reason) {
+  if (Platform.environment['CI'] == 'true') fail(reason);
+  markTestSkipped(reason);
+}
+
 /// The single stage of type [T] in [player]'s effects chain.
 T effectOf<T extends AudioEffect>(Player player) =>
     player.state.audioEffects.whereType<T>().single;

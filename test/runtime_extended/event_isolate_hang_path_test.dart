@@ -14,6 +14,7 @@ import 'package:mpv_audio_kit/src/internals/event_isolate.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart' as mpv;
 
 import '../_helpers/libmpv_resolver.dart';
+import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // Regression for the macOS Dock-Quit hang: an event isolate parked inside a
@@ -30,7 +31,7 @@ void main() {
       '(no quit / no MPV_EVENT_SHUTDOWN)', () async {
     final libPath = resolveLibmpv();
     if (libPath == null) {
-      markTestSkipped('libmpv not bundled for this host');
+      skipMissing('libmpv not bundled for this host');
       return;
     }
     final lib = mpv.MpvLibrary.open(libPath);

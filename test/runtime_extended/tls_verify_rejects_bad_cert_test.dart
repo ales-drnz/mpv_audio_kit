@@ -102,7 +102,7 @@ void main() {
 
       test('tls-verify on → the self-signed certificate is rejected', () async {
         if (!ready) {
-          markTestSkipped('libmpv not found');
+          skipMissing('libmpv not found');
           return;
         }
         await player.setTlsVerify(true);
@@ -120,7 +120,7 @@ void main() {
         'tls-verify off → the handshake is not rejected at the TLS layer',
         () async {
           if (!ready) {
-            markTestSkipped('libmpv not found');
+            skipMissing('libmpv not found');
             return;
           }
           await player.setTlsVerify(false);

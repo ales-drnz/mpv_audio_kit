@@ -37,7 +37,7 @@ void main() {
             // lacks the waveform support and we skip rather than fail.
             final probe = await player.getRawProperty('waveform-data');
             if (probe == null) {
-              markTestSkipped('libmpv has no waveform-data property.');
+              skipMissing('libmpv has no waveform-data property.');
               return;
             }
 
@@ -94,7 +94,7 @@ void main() {
         try {
           final probe = await player.getRawProperty('waveform-data');
           if (probe == null) {
-            markTestSkipped('libmpv has no waveform-data property.');
+            skipMissing('libmpv has no waveform-data property.');
             return;
           }
 
@@ -136,7 +136,7 @@ void main() {
         try {
           final probe = await player.getRawProperty('waveform-data');
           if (probe == null) {
-            markTestSkipped('libmpv has no waveform-data property.');
+            skipMissing('libmpv has no waveform-data property.');
             return;
           }
 
@@ -180,7 +180,7 @@ void main() {
           try {
             final probe = await player.getRawProperty('waveform-data');
             if (probe == null) {
-              markTestSkipped('libmpv has no waveform-data property.');
+              skipMissing('libmpv has no waveform-data property.');
               return;
             }
 
@@ -201,7 +201,7 @@ void main() {
               );
               final rms = wave.rms;
               if (rms == null) {
-                markTestSkipped('libmpv predates the per-bin rms (r14).');
+                skipMissing('libmpv predates the per-bin rms (r14).');
                 return;
               }
               expect(rms.length, wave.bins);

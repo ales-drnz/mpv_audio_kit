@@ -85,7 +85,7 @@ void main() {
 
       final skip = libmpvSkipReason();
       if (skip != null) {
-        markTestSkipped(skip);
+        skipMissing(skip);
         return;
       }
       initLibmpv();

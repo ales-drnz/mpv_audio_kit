@@ -31,7 +31,7 @@ void main() {
             // Probe the patched property first.
             final probe = await player.getRawProperty('audio-tap-frames');
             if (probe == null) {
-              markTestSkipped(
+              skipMissing(
                 'libmpv has no audio-tap-frames property '
                 '(patch_filter_label_tap.py not applied to this binary).',
               );
@@ -91,7 +91,7 @@ void main() {
           try {
             final probe = await player.getRawProperty('audio-tap-frames');
             if (probe == null) {
-              markTestSkipped('libmpv has no audio-tap-frames property.');
+              skipMissing('libmpv has no audio-tap-frames property.');
               return;
             }
 
