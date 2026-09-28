@@ -41,6 +41,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - `jump()`, `remove()`, `move()` and `replace()` racing `dispose()` throw `PlayerDisposedException` instead of a `RangeError`.
 - On Linux, Android and Windows a remote cover trusts the player's `tls-ca-file` on top of the system roots, so a self-hosted server with its own CA shows its covers. The certificate is always verified, even with `tls-verify` off.
 - `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
+- iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.
 - Windows: the plugin builds with Visual Studio 2026.
 
 ### Build
