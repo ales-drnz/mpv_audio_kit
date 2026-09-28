@@ -27,7 +27,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - CI analyzes, tests and builds the package on every platform.
 
 ### Fixed
-- After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size, audio parameters, cover, waveform or loudness scan: a property mpv reports unavailable goes back to its default. While the next track loads the values are empty, and the OS media session waits for the new ones instead of showing the gap.
+- After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's path, title, duration, size, audio parameters, cover, waveform or loudness scan: a property mpv reports unavailable goes back to its default. While the next track loads the values are empty, and the OS media session waits for the new ones instead of showing the gap or a live stream.
 - An effects chain the filter graph refuses throws `MpvCommandException` and keeps the previous list. Before, the call returned, the state showed the new chain and the old one kept playing.
 - A chain rebuilt after live slider changes applies the requested values: a stage moved live and set back could stay at the live value.
 - A parameter value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001`.

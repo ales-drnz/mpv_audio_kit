@@ -84,6 +84,11 @@ class MediaSessionController {
   DateTime? _artFailedAt;
   static const _artworkRetryAfter = Duration(seconds: 30);
 
+  // The `seekable` last sent to the OS. mpv reports it unavailable while
+  // the next track loads, and the OS reads a non-seekable entry as a live
+  // stream, so the loading gap keeps the previous value.
+  bool? _pushedSeekable;
+
   MediaSessionController._({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
@@ -481,11 +486,15 @@ class MediaSessionController {
     final loopPlaylist = state.loop == Loop.playlist;
     final hasNext = !multi || loopPlaylist || pl.index < pl.items.length - 1;
     final hasPrevious = !multi || loopPlaylist || pl.index > 0;
+    final seekable = state.buffering
+        ? _pushedSeekable ?? state.seekable
+        : state.seekable;
+    _pushedSeekable = seekable;
     return MediaSessionPlaybackSnapshot(
       playing: state.playWhenReady,
       position: state.position,
       rate: state.rate,
-      seekable: state.seekable,
+      seekable: seekable,
       loop: state.loop,
       shuffle: state.shuffle,
       // Terminal end-of-content. The `eof-reached` hook releases

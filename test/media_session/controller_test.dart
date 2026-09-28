@@ -575,6 +575,41 @@ void main() {
       expect(snap.buffering, true);
     });
 
+    test('seekable keeps its value while the next track loads', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        seekable: true,
+      );
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      ch.calls.clear();
+
+      bool lastSeekable() =>
+          (ch.callsOfType('updatePlayback').last.args['snapshot']
+                  as MediaSessionPlaybackSnapshot)
+              .seekable;
+
+      // mpv reports the old file's seekable unavailable inside the load.
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        buffering: true,
+      );
+      rig.buffering.add(true);
+      rig.seekable.add(false);
+      await _settle();
+      expect(lastSeekable(), isTrue, reason: 'not a live stream meanwhile');
+
+      // The loaded file is a live stream after all.
+      rig.state = const PlayerState(mediaSession: MediaSession());
+      rig.buffering.add(false);
+      await _settle();
+      expect(lastSeekable(), isFalse);
+    });
+
     test(
       'hasNext/hasPrevious reflect playlist bounds, loop, and single-item',
       () async {

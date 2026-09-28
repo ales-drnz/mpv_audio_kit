@@ -259,9 +259,9 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       parse: _canonicalFloat,
       reduce: (v, s) => s.copyWith(volumeGainMax: v),
     ),
-    // System-mixer pair. Unavailable on AOs without per-app volume (e.g. the
-    // null AO) — the event isolate drops unavailable emits, so these stay at
-    // their `null` seed until a backend that supports them reports a value.
+    // System-mixer pair. Unavailable while no audio output is open and on
+    // outputs without per-app volume (e.g. the null AO): both go back to
+    // their `null` seed then.
     MpvPropertySpec<double?>.double(
       name: 'ao-volume',
       reactive: r.systemVolume,
