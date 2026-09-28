@@ -120,7 +120,15 @@ abstract final class MpvAudioKit {
         debugLog(' - Address: ${ref.address}');
       }
 
-      final lib = MpvLibrary.open(libmpv);
+      // Best effort: MpvLibraryException is not public, and a library
+      // that cannot be reopened leaves the handles to the process exit.
+      final MpvLibrary lib;
+      try {
+        lib = MpvLibrary.open(libmpv);
+      } on MpvLibraryException catch (e) {
+        debugLog('$tag cannot reopen libmpv: ${e.message}');
+        return;
+      }
       unawaited(reapOrphanedHandles(lib, references));
     });
 

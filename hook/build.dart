@@ -204,15 +204,20 @@ Future<File> _fetch(String asset, Uri cacheDir) async {
   if (await _matches(cached, expected)) return cached;
 
   await cached.parent.create(recursive: true);
-  final partial = File('${cached.path}.part');
-  await _download('$_baseUrl/$asset', partial);
-  if (!await _matches(partial, expected)) {
-    await partial.delete();
-    throw StateError(
-      'mpv_audio_kit: SHA-256 mismatch for $asset from $_baseUrl',
-    );
+  // One partial file per build: Flutter can run the hook for two
+  // architectures at once, and both would download the same asset.
+  final partial = File('${cached.path}.$pid.part');
+  try {
+    await _download('$_baseUrl/$asset', partial);
+    if (!await _matches(partial, expected)) {
+      throw StateError(
+        'mpv_audio_kit: SHA-256 mismatch for $asset from $_baseUrl',
+      );
+    }
+    return await partial.rename(cached.path);
+  } finally {
+    if (await partial.exists()) await partial.delete();
   }
-  return partial.rename(cached.path);
 }
 
 /// Copies the libmpv binary of the xcframework slice, unpacked from [zip]

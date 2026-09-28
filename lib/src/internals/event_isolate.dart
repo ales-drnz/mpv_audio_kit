@@ -277,8 +277,15 @@ void _dispatchEvent(
         loaded = MpvEventFileLoaded();
       }
       // The values mpv has not notified again go first, so the main
-      // isolate has them when FILE_LOADED ends the loading state.
-      _rereadUnavailable(lib, handle, toMain, cache);
+      // isolate has them when FILE_LOADED ends the loading state. A
+      // failure there must not cost the event that ends it.
+      try {
+        _rereadUnavailable(lib, handle, toMain, cache);
+      } catch (e) {
+        toMain.send(
+          MpvEventLog('event-isolate', 'warn', 'property re-read failed: $e'),
+        );
+      }
       toMain.send(loaded);
 
     case mpv.MpvEventId.mpvEventEndFile:
@@ -337,7 +344,10 @@ void _dispatchEvent(
     case mpv.MpvEventId.mpvEventPlaybackRestart:
       // The landing position rides the event payload (read here, where
       // waiting on the core is harmless), so it reaches the stream before
-      // any throttled time-pos event from the property observer.
+      // any throttled time-pos event from the property observer. A clock
+      // value held back from before the seek would land after it and step
+      // the position back: drop it.
+      cache.trailing.clear();
       toMain.send(
         MpvEventPlaybackRestart(
           timePos: _getPropDouble(lib, handle, 'time-pos'),

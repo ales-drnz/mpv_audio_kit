@@ -143,7 +143,14 @@ final class MpvClient {
     int Function(int id) enqueue,
   ) {
     final (id, reply) = tracker.open();
-    final rc = enqueue(id);
+    final int rc;
+    try {
+      rc = enqueue(id);
+    } catch (_) {
+      // Settle the slot, or settleWrites would wait on it forever.
+      tracker.reject(id, MpvError.mpvErrorGeneric);
+      rethrow;
+    }
     // Rejected client-side (a parse error, a full reply queue): no reply
     // will come.
     if (rc < 0) tracker.reject(id, rc);
