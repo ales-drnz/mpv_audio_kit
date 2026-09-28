@@ -515,6 +515,10 @@ mixin _AudioModule on _PlayerBase {
   Future<void> _settleAfCommands(List<Future<int>> rcs) async {
     final results = await Future.wait(rcs);
     if (results.any((rc) => rc < 0)) {
+      _internalLog(
+        'A live effects update was refused; rebuilding the chain.',
+        level: LogLevel.debug,
+      );
       final generation = _afDiffGeneration;
       final healRc = await _setAfChain(audioEffectsChain(_state.audioEffects));
       // Only mark the string clean if the heal write actually landed; a

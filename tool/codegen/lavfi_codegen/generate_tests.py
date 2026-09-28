@@ -856,6 +856,12 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
 _AF_COMMAND_STRING_CASES: dict[str, dict] = {
     "adelay": {"baseline_args": ", delays: '100'", "updates": [("delays", "'400'")]},
     "firequalizer": {"baseline_args": "", "updates": [("gain", "'0'")]},
+    # The default frequency is 0 Hz, which the biquad runs as a bypass, and
+    # a command moving it off 0 is refused now and then: start at 1 kHz.
+    "equalizer": {
+        "baseline_args": ", frequency: 1000.0",
+        "updates": [("frequency", "1001.0")],
+    },
 }
 
 
@@ -943,6 +949,9 @@ def _emit_af_command_coverage(
         curated = _AF_COMMAND_STRING_CASES.get(fname)
         baseline_extra = curated["baseline_args"] if curated else ""
         if curated:
+            # A curated probe replaces the derived one for the same option.
+            own = {_param_dart_name(n) for n, _ in curated["updates"]}
+            updates = [(n, v) for n, v in updates if n not in own]
             updates.extend(
                 (_param_dart_name(n), v) for n, v in curated["updates"]
             )
@@ -972,11 +981,11 @@ def _emit_af_command_coverage(
     lines.append("// declares `.process_command` (the schema's `supports_commands` flag")
     lines.append("// — the gate for live updates in `audioEffectsDiff`), enable the filter on a")
     lines.append("// live playing mpv, then change each runtime-tunable option through")
-    lines.append("// `Player.updateAudioEffects` and assert the `af` property string did")
-    lines.append("// NOT change: the update was applied to the live graph in place via")
-    lines.append("// `af-command` instead of a full chain rewrite. A rewrite here means")
-    lines.append("// the flag (or an option's runtime flag) is wrong for the SHIPPED")
-    lines.append("// binary — fix the codegen and regenerate.")
+    lines.append("// `Player.updateAudioEffects`: the diff must send it as `af-command`,")
+    lines.append("// and mpv must accept it, which the player logs when it does not")
+    lines.append("// before rebuilding the chain. A refusal here means the flag (or an")
+    lines.append("// option's runtime flag) is wrong for the SHIPPED binary — fix the")
+    lines.append("// codegen and regenerate.")
     lines.append("//")
     lines.append("// Probe values stay close to each option's default: corner values can")
     lines.append("// be DYNAMICALLY invalid even when statically inside the AVOption")
@@ -1003,6 +1012,8 @@ def _emit_af_command_coverage(
     lines.append("import 'dart:io';")
     lines.append("")
     lines.append(f"import 'package:{pkg}/{pkg}.dart';")
+    lines.append(f"import 'package:{pkg}/src/generated/audio_effects_settings.dart'")
+    lines.append("    show audioEffectsDiff;")
     lines.append("import 'package:test/test.dart';")
     lines.append("")
     lines.append("import '../_helpers/setter_test_helpers.dart';")
@@ -1081,9 +1092,52 @@ def _emit_af_command_coverage(
         lines.append("        ),")
     lines.append("      ];")
     lines.append("")
+    lines.append("      // mpv refuses an af-command until a rebuilt filter graph has")
+    lines.append("      // seen its first frame, which comes after the audio already")
+    lines.append("      // buffered past it: wait until playback has moved 0.6 s on")
+    lines.append("      // without a jump back, which a loop wrap or the refresh seek of")
+    lines.append("      // a rebuild makes, and which resets the graph again.")
+    lines.append("      Future<double> timePos() async =>")
+    lines.append("          double.tryParse(await player.getRawProperty('time-pos') ?? '') ??")
+    lines.append("          0;")
+    lines.append("      Future<void> flowing() async {")
+    lines.append("        var start = await timePos();")
+    lines.append("        var last = start;")
+    lines.append("        final deadline = DateTime.now().add(const Duration(seconds: 8));")
+    lines.append("        while (DateTime.now().isBefore(deadline)) {")
+    lines.append("          await Future<void>.delayed(const Duration(milliseconds: 50));")
+    lines.append("          final now = await timePos();")
+    lines.append("          if (now < last) start = now;")
+    lines.append("          last = now;")
+    lines.append("          if (now >= start + 0.6) return;")
+    lines.append("        }")
+    lines.append("      }")
+    lines.append("")
+    lines.append("      // The player logs each live update mpv refuses before rebuilding")
+    lines.append("      // the chain from the state.")
+    lines.append("      var refusals = 0;")
+    lines.append("      final logSub = player.stream.internalLog.listen((e) {")
+    lines.append("        if (e.text.startsWith('A live effects update was refused')) {")
+    lines.append("          refusals++;")
+    lines.append("        }")
+    lines.append("      });")
+    lines.append("      addTearDown(logSub.cancel);")
+    lines.append("      Future<bool> refusedLive(")
+    lines.append("        List<AudioEffect> Function(List<AudioEffect>) apply,")
+    lines.append("      ) async {")
+    lines.append("        final before = refusals;")
+    lines.append("        await player.updateAudioEffects(apply);")
+    lines.append("        await pumpEventQueue();")
+    lines.append("        return refusals != before;")
+    lines.append("      }")
+    lines.append("")
     lines.append("      for (final c in cases) {")
+    lines.append("        // mpv 0.41 stalls at the end of a looping file when a chain")
+    lines.append("        // change removes lavfi-rubberband there: change it at the start.")
+    lines.append("        await player.seek(Duration.zero);")
     lines.append("        await player.setAudioEffects(c.bundle);")
-    lines.append("        var baseline = await player.getRawProperty('af');")
+    lines.append("        await flowing();")
+    lines.append("        final baseline = await player.getRawProperty('af');")
     lines.append(
         f"        expect(baseline, contains('@{_NAMING.chain_label_prefix}_"
         "${c.field}:'),"
@@ -1091,33 +1145,31 @@ def _emit_af_command_coverage(
     lines.append("            reason: '${c.filter}: enabled stage must carry its "
                  "chain label',);")
     lines.append("        for (final u in c.updates) {")
-    lines.append("          await player.updateAudioEffects(u.apply);")
-    lines.append("          var after = await player.getRawProperty('af');")
-    lines.append("          if (after != baseline) {")
-    lines.append("            // An af-command can lose the race against a chain "
-                 "(re)build —")
-    lines.append("            // right after the baseline rewrite or on a loop wrap "
-                 "— and the")
-    lines.append("            // player then falls back to a rewrite BY DESIGN. "
-                 "Re-arm the")
-    lines.append("            // baseline values, give the graph a moment, and retry "
-                 "once:")
-    lines.append("            // only a SECOND rewrite is a real unsupported-command "
-                 "signal.")
+    lines.append("          final next = u.apply(player.state.audioEffects);")
+    lines.append("          expect(audioEffectsDiff(player.state.audioEffects, next),")
+    lines.append("              isNotNull,")
+    lines.append("              reason: '${c.filter} ${u.label}: not sent as a live "
+                 "update',);")
+    lines.append("          var refused = await refusedLive(u.apply);")
+    lines.append("          for (var attempt = 1; refused && attempt < 5; "
+                 "attempt++) {")
+    lines.append("            // A loop wrap resets the graph as well, and the refusal "
+                 "rebuilt")
+    lines.append("            // the stage. Re-arm the baseline, let the audio reach "
+                 "the new")
+    lines.append("            // graph and retry: an unsupported command is refused "
+                 "every time,")
+    lines.append("            // a race is not.")
     lines.append("            await player.setAudioEffects(c.bundle);")
-    lines.append("            await Future<void>.delayed("
-                 "const Duration(milliseconds: 250));")
-    lines.append("            baseline = await player.getRawProperty('af');")
-    lines.append("            await player.updateAudioEffects(u.apply);")
-    lines.append("            after = await player.getRawProperty('af');")
+    lines.append("            await flowing();")
+    lines.append("            await Future<void>.delayed(const Duration(seconds: 1));")
+    lines.append("            refused = await refusedLive(u.apply);")
     lines.append("          }")
-    lines.append("          expect(after, baseline,")
-    lines.append("              reason: '${c.filter} ${u.label}: the af string was "
-                 "rewritten — '")
-    lines.append("                  'the runtime update did not go through af-command, "
-                 "so '")
-    lines.append("                  'supports_commands (or the option runtime flag) is "
-                 "wrong '")
+    lines.append("          expect(refused, isFalse,")
+    lines.append("              reason: '${c.filter} ${u.label}: mpv refused the "
+                 "af-command, '")
+    lines.append("                  'so supports_commands (or the option runtime "
+                 "flag) is wrong '")
     lines.append("                  'for the shipped binary',);")
     lines.append("        }")
     lines.append("      }")

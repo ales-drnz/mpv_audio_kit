@@ -9,11 +9,11 @@
 // declares `.process_command` (the schema's `supports_commands` flag
 // — the gate for live updates in `audioEffectsDiff`), enable the filter on a
 // live playing mpv, then change each runtime-tunable option through
-// `Player.updateAudioEffects` and assert the `af` property string did
-// NOT change: the update was applied to the live graph in place via
-// `af-command` instead of a full chain rewrite. A rewrite here means
-// the flag (or an option's runtime flag) is wrong for the SHIPPED
-// binary — fix the codegen and regenerate.
+// `Player.updateAudioEffects`: the diff must send it as `af-command`,
+// and mpv must accept it, which the player logs when it does not
+// before rebuilding the chain. A refusal here means the flag (or an
+// option's runtime flag) is wrong for the SHIPPED binary — fix the
+// codegen and regenerate.
 //
 // Probe values stay close to each option's default: corner values can
 // be DYNAMICALLY invalid even when statically inside the AVOption
@@ -35,6 +35,8 @@ library;
 import 'dart:io';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/generated/audio_effects_settings.dart'
+    show audioEffectsDiff;
 import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';
@@ -1353,14 +1355,8 @@ void main() {
           (
             filter: 'equalizer',
             field: 'equalizer_0',
-            bundle: const [EqualizerEffect()],
+            bundle: const [EqualizerEffect(frequency: 1000.0)],
             updates: <AfCommandUpdate>[
-              (
-                label: 'frequency=1.0',
-                apply: (e) => [
-                  (e.single as EqualizerEffect).copyWith(frequency: 1.0),
-                ],
-              ),
               (
                 label: 'gain=1.0',
                 apply: (e) => [
@@ -1383,6 +1379,12 @@ void main() {
                 label: 'width=2.0',
                 apply: (e) => [
                   (e.single as EqualizerEffect).copyWith(width: 2.0),
+                ],
+              ),
+              (
+                label: 'frequency=1001.0',
+                apply: (e) => [
+                  (e.single as EqualizerEffect).copyWith(frequency: 1001.0),
                 ],
               ),
             ],
@@ -2102,36 +2104,80 @@ void main() {
           ),
         ];
 
+        // mpv refuses an af-command until a rebuilt filter graph has
+        // seen its first frame, which comes after the audio already
+        // buffered past it: wait until playback has moved 0.6 s on
+        // without a jump back, which a loop wrap or the refresh seek of
+        // a rebuild makes, and which resets the graph again.
+        Future<double> timePos() async =>
+            double.tryParse(await player.getRawProperty('time-pos') ?? '') ?? 0;
+        Future<void> flowing() async {
+          var start = await timePos();
+          var last = start;
+          final deadline = DateTime.now().add(const Duration(seconds: 8));
+          while (DateTime.now().isBefore(deadline)) {
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            final now = await timePos();
+            if (now < last) start = now;
+            last = now;
+            if (now >= start + 0.6) return;
+          }
+        }
+
+        // The player logs each live update mpv refuses before rebuilding
+        // the chain from the state.
+        var refusals = 0;
+        final logSub = player.stream.internalLog.listen((e) {
+          if (e.text.startsWith('A live effects update was refused')) {
+            refusals++;
+          }
+        });
+        addTearDown(logSub.cancel);
+        Future<bool> refusedLive(
+          List<AudioEffect> Function(List<AudioEffect>) apply,
+        ) async {
+          final before = refusals;
+          await player.updateAudioEffects(apply);
+          await pumpEventQueue();
+          return refusals != before;
+        }
+
         for (final c in cases) {
+          // mpv 0.41 stalls at the end of a looping file when a chain
+          // change removes lavfi-rubberband there: change it at the start.
+          await player.seek(Duration.zero);
           await player.setAudioEffects(c.bundle);
-          var baseline = await player.getRawProperty('af');
+          await flowing();
+          final baseline = await player.getRawProperty('af');
           expect(
             baseline,
             contains('@aek_${c.field}:'),
             reason: '${c.filter}: enabled stage must carry its chain label',
           );
           for (final u in c.updates) {
-            await player.updateAudioEffects(u.apply);
-            var after = await player.getRawProperty('af');
-            if (after != baseline) {
-              // An af-command can lose the race against a chain (re)build —
-              // right after the baseline rewrite or on a loop wrap — and the
-              // player then falls back to a rewrite BY DESIGN. Re-arm the
-              // baseline values, give the graph a moment, and retry once:
-              // only a SECOND rewrite is a real unsupported-command signal.
+            final next = u.apply(player.state.audioEffects);
+            expect(
+              audioEffectsDiff(player.state.audioEffects, next),
+              isNotNull,
+              reason: '${c.filter} ${u.label}: not sent as a live update',
+            );
+            var refused = await refusedLive(u.apply);
+            for (var attempt = 1; refused && attempt < 5; attempt++) {
+              // A loop wrap resets the graph as well, and the refusal rebuilt
+              // the stage. Re-arm the baseline, let the audio reach the new
+              // graph and retry: an unsupported command is refused every time,
+              // a race is not.
               await player.setAudioEffects(c.bundle);
-              await Future<void>.delayed(const Duration(milliseconds: 250));
-              baseline = await player.getRawProperty('af');
-              await player.updateAudioEffects(u.apply);
-              after = await player.getRawProperty('af');
+              await flowing();
+              await Future<void>.delayed(const Duration(seconds: 1));
+              refused = await refusedLive(u.apply);
             }
             expect(
-              after,
-              baseline,
+              refused,
+              isFalse,
               reason:
-                  '${c.filter} ${u.label}: the af string was rewritten — '
-                  'the runtime update did not go through af-command, so '
-                  'supports_commands (or the option runtime flag) is wrong '
+                  '${c.filter} ${u.label}: mpv refused the af-command, '
+                  'so supports_commands (or the option runtime flag) is wrong '
                   'for the shipped binary',
             );
           }
