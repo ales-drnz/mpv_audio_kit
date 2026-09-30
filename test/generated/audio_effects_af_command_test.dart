@@ -2143,8 +2143,9 @@ void main() {
         }
 
         for (final c in cases) {
-          // mpv 0.41 stalls at the end of a looping file when a chain
-          // change removes lavfi-rubberband there: change it at the start.
+          // Without libmpv-scripts' chain_eof patch, mpv stalls at the end
+          // of a file when a chain change there drops lavfi-rubberband with
+          // the EOF it holds: change the chain at the start.
           await player.seek(Duration.zero);
           await player.setAudioEffects(c.bundle);
           await flowing();
