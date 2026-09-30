@@ -37,6 +37,7 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/generated/audio_effects_settings.dart'
     show audioEffectsDiff;
+import 'package:mpv_audio_kit/src/player/player.dart' show afCommandRefusedLog;
 import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';
@@ -2122,15 +2123,14 @@ void main() {
             last = now;
             if (now >= start + 0.6) return;
           }
+          fail('playback did not move on for 8 s');
         }
 
         // The player logs each live update mpv refuses before rebuilding
         // the chain from the state.
         var refusals = 0;
         final logSub = player.stream.internalLog.listen((e) {
-          if (e.text.startsWith('A live effects update was refused')) {
-            refusals++;
-          }
+          if (e.text == afCommandRefusedLog) refusals++;
         });
         addTearDown(logSub.cancel);
         Future<bool> refusedLive(
@@ -2158,7 +2158,7 @@ void main() {
             final next = u.apply(player.state.audioEffects);
             expect(
               audioEffectsDiff(player.state.audioEffects, next),
-              isNotNull,
+              allOf(isNotNull, isNotEmpty),
               reason: '${c.filter} ${u.label}: not sent as a live update',
             );
             var refused = await refusedLive(u.apply);
@@ -2169,7 +2169,6 @@ void main() {
               // a race is not.
               await player.setAudioEffects(c.bundle);
               await flowing();
-              await Future<void>.delayed(const Duration(seconds: 1));
               refused = await refusedLive(u.apply);
             }
             expect(

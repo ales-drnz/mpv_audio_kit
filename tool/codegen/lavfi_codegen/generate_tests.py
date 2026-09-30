@@ -849,15 +849,17 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-# Filters whose ONLY runtime-tunable options are free strings: no generic
-# safe alternate value can be derived from the schema, so each carries a
-# hand-probed (baseline ctor arg, option, new value) triple — verified
-# rc=0 against the shipped binary (2026-06-11).
-_AF_COMMAND_STRING_CASES: dict[str, dict] = {
+# Hand-picked af-command probes: a baseline constructor argument and the
+# (option, new value) updates to send. A curated probe replaces the one
+# derived from the schema for the same option. Used where no safe value can
+# be derived: options that are free strings (adelay, firequalizer), and a
+# default the filter cannot take live (equalizer).
+_AF_COMMAND_CURATED_CASES: dict[str, dict] = {
     "adelay": {"baseline_args": ", delays: '100'", "updates": [("delays", "'400'")]},
     "firequalizer": {"baseline_args": "", "updates": [("gain", "'0'")]},
-    # The default frequency is 0 Hz, which the biquad runs as a bypass, and
-    # a command moving it off 0 is refused now and then: start at 1 kHz.
+    # The default frequency is 0 Hz, which the biquad takes at creation as a
+    # bypass but refuses in a command (w0 <= 0 is EINVAL), so re-arming the
+    # baseline live fails: start at 1 kHz.
     "equalizer": {
         "baseline_args": ", frequency: 1000.0",
         "updates": [("frequency", "1001.0")],
@@ -916,9 +918,9 @@ def _emit_af_command_coverage(
     """Runtime af-command coverage test: for every filter whose schema
     carries `supports_commands` (the gate for live updates in `audioEffectsDiff`),
     enable it on a live playing mpv, then change each runtime-tunable
-    option through `Player.updateAudioEffects` and assert the `af`
-    property string did NOT change — i.e. the update was applied in place
-    via `af-command` (rc=0) instead of falling back to a full rewrite.
+    option through `Player.updateAudioEffects` and assert that the diff
+    sends it as `af-command` and that mpv accepts it (the player logs
+    `afCommandRefusedLog` on internalLog when it does not).
 
     A failure means the parse-derived `supports_commands` flag (or an
     option's runtime flag) is wrong for the SHIPPED binary — fix the
@@ -946,7 +948,7 @@ def _emit_af_command_coverage(
             if lit is None:
                 continue
             updates.append((_param_dart_name(pname), lit))
-        curated = _AF_COMMAND_STRING_CASES.get(fname)
+        curated = _AF_COMMAND_CURATED_CASES.get(fname)
         baseline_extra = curated["baseline_args"] if curated else ""
         if curated:
             # A curated probe replaces the derived one for the same option.
@@ -1014,6 +1016,7 @@ def _emit_af_command_coverage(
     lines.append(f"import 'package:{pkg}/{pkg}.dart';")
     lines.append(f"import 'package:{pkg}/src/generated/audio_effects_settings.dart'")
     lines.append("    show audioEffectsDiff;")
+    lines.append(f"import 'package:{pkg}/src/player/player.dart' show afCommandRefusedLog;")
     lines.append("import 'package:test/test.dart';")
     lines.append("")
     lines.append("import '../_helpers/setter_test_helpers.dart';")
@@ -1111,15 +1114,14 @@ def _emit_af_command_coverage(
     lines.append("          last = now;")
     lines.append("          if (now >= start + 0.6) return;")
     lines.append("        }")
+    lines.append("        fail('playback did not move on for 8 s');")
     lines.append("      }")
     lines.append("")
     lines.append("      // The player logs each live update mpv refuses before rebuilding")
     lines.append("      // the chain from the state.")
     lines.append("      var refusals = 0;")
     lines.append("      final logSub = player.stream.internalLog.listen((e) {")
-    lines.append("        if (e.text.startsWith('A live effects update was refused')) {")
-    lines.append("          refusals++;")
-    lines.append("        }")
+    lines.append("        if (e.text == afCommandRefusedLog) refusals++;")
     lines.append("      });")
     lines.append("      addTearDown(logSub.cancel);")
     lines.append("      Future<bool> refusedLive(")
@@ -1147,7 +1149,7 @@ def _emit_af_command_coverage(
     lines.append("        for (final u in c.updates) {")
     lines.append("          final next = u.apply(player.state.audioEffects);")
     lines.append("          expect(audioEffectsDiff(player.state.audioEffects, next),")
-    lines.append("              isNotNull,")
+    lines.append("              allOf(isNotNull, isNotEmpty),")
     lines.append("              reason: '${c.filter} ${u.label}: not sent as a live "
                  "update',);")
     lines.append("          var refused = await refusedLive(u.apply);")
@@ -1162,7 +1164,6 @@ def _emit_af_command_coverage(
     lines.append("            // a race is not.")
     lines.append("            await player.setAudioEffects(c.bundle);")
     lines.append("            await flowing();")
-    lines.append("            await Future<void>.delayed(const Duration(seconds: 1));")
     lines.append("            refused = await refusedLive(u.apply);")
     lines.append("          }")
     lines.append("          expect(refused, isFalse,")
