@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="mpv_audio_kit">
-<defs>
-<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#123A9C"/><stop offset="1" stop-color="#081A4D"/></linearGradient>
-<linearGradient id="bars" x1="0" y1="860" x2="0" y2="160" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
-</defs>
-<rect x="24" y="24" width="976" height="976" rx="230" fill="url(#plate)"/>
-<rect x="116" y="452.0" width="48" height="120" rx="24" fill="url(#bars)"/><rect x="209" y="402.0" width="48" height="220" rx="24" fill="url(#bars)"/><rect x="302" y="302.0" width="48" height="420" rx="24" fill="url(#bars)"/><rect x="395" y="362.0" width="48" height="300" rx="24" fill="url(#bars)"/><rect x="488" y="162.0" width="48" height="700" rx="24" fill="url(#bars)"/><rect x="581" y="362.0" width="48" height="300" rx="24" fill="url(#bars)"/><rect x="674" y="302.0" width="48" height="420" rx="24" fill="url(#bars)"/><rect x="767" y="402.0" width="48" height="220" rx="24" fill="url(#bars)"/><rect x="860" y="452.0" width="48" height="120" rx="24" fill="url(#bars)"/>
-</svg>
