@@ -38,7 +38,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - A setter emits the value it was given once: volume, gains and ReplayGain no longer come back rounded (`42.37` as `42.400001525878906`), and durations keep their microseconds. `setCache`, `setDemuxer`, `setReplayGain` and `setLoop` no longer emit a half-applied value.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
-- The temp copy of an `asset://` source is written aside and renamed into place, so another instance of the app playing the same asset never reads it half written.
+- The temp copy of an `asset://` source keeps one path per asset in a directory of the user and app, so relaunches no longer pile up copies, and it is written aside and renamed so another instance never reads it half written.
 - `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also through prefixes and `loadfile` options, which desynced the effects chain or the play and pause state. The check is against mistakes, not every way mpv offers.
 - On Linux, Android and Windows a remote cover download always verifies the certificate, against the system roots and the player's `tls-ca-file`, and a failed one is tried again after 30 seconds.
 - `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.

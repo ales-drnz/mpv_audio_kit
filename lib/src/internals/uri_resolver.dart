@@ -8,7 +8,7 @@
 // reaches `loadfile`. Translates host-platform schemes that libmpv does
 // not understand into something it does:
 //
-//   asset://path/inside/bundle  → <temp>/mpv_audio_kit_assets/mpv_asset_<hash>_<safe_name>
+//   asset://path/inside/bundle  → <temp>/mpv_audio_kit_assets_<app>/mpv_asset_<hash>_<safe_name>
 //   content://...               → fd://<n>                     (Android only)
 //
 // All other URIs (`file://`, `http(s)://`, `smb2://`, plain
@@ -101,6 +101,39 @@ Future<void> _closeAndroidFd(int fd) async {
   }
 }
 
+/// A stable FNV-1a hash of [text] as eight hex digits (deterministic
+/// across sessions, unlike String.hashCode).
+String _fnv1a(String text) {
+  var hash = 0x811c9dc5;
+  for (final unit in text.codeUnits) {
+    hash = ((hash ^ unit) * 0x01000193) & 0xFFFFFFFF;
+  }
+  return hash.toRadixString(16).padLeft(8, '0');
+}
+
+/// The directory the asset copies go to. One fixed directory and one fixed
+/// name per asset: a relaunch overwrites its old copy instead of leaving a
+/// new one behind, and a process killed without dispose (the usual end on
+/// mobile) leaks nothing that grows. The name carries the user and the app,
+/// so two users sharing `/tmp` on Linux, or two apps with an asset of the
+/// same name, never meet; on Linux the per-user `XDG_RUNTIME_DIR` is used
+/// when there is one.
+Future<Directory> _assetDirectory() async {
+  final env = Platform.environment;
+  final runtime = Platform.isLinux ? env['XDG_RUNTIME_DIR'] : null;
+  final base = (runtime != null && runtime.isNotEmpty)
+      ? runtime
+      : Directory.systemTemp.path;
+  final owner =
+      '${env['USER'] ?? env['USERNAME'] ?? ''}'
+      ' ${Platform.resolvedExecutable}';
+  final dir = Directory(
+    '$base${Platform.pathSeparator}mpv_audio_kit_assets_${_fnv1a(owner)}',
+  );
+  await dir.create(recursive: true);
+  return dir;
+}
+
 Future<String> _copyAssetToCache(String uri) async {
   final cached = _assetCache[uri];
   // Re-check the file on every hit. macOS / Linux may evict /tmp between
@@ -136,32 +169,18 @@ Future<String> _doCopyAsset(String uri) async {
         .replaceAll('/', '_');
     // Flattening alone is ambiguous — `a/b.mp3` and `a_b.mp3` collapse to
     // the same name, and the second extraction would overwrite a file mpv
-    // may still be streaming. A stable FNV-1a hash of the ORIGINAL path
-    // disambiguates (deterministic across sessions, unlike String.hashCode).
-    var pathHash = 0x811c9dc5;
-    for (final unit in assetPath.codeUnits) {
-      pathHash = ((pathHash ^ unit) * 0x01000193) & 0xFFFFFFFF;
-    }
-    // One fixed directory and one fixed name per asset: a relaunch
-    // overwrites its old copy instead of leaving a new one behind, and a
-    // process killed without dispose (the usual end on mobile) leaks
-    // nothing that grows.
-    final dir = Directory(
-      '${Directory.systemTemp.path}${Platform.pathSeparator}'
-      'mpv_audio_kit_assets',
-    );
-    await dir.create(recursive: true);
+    // may still be streaming. A hash of the ORIGINAL path disambiguates.
+    final dir = await _assetDirectory();
     final file = File(
       '${dir.path}${Platform.pathSeparator}'
-      'mpv_asset_${pathHash.toRadixString(16).padLeft(8, '0')}_$safeName',
+      'mpv_asset_${_fnv1a(assetPath)}_$safeName',
     );
 
-    // Slice the asset's view explicitly: rootBundle bundles can pack
-    // multiple assets into one backing buffer, and the no-arg
-    // asUint8List would span the full backing buffer rather than just
-    // this asset's range.
     // Written beside the target and renamed onto it, so another instance
-    // of the app reading the same copy never sees it truncated.
+    // of the app reading the same copy never sees it truncated. Slice the
+    // asset's view explicitly: rootBundle bundles can pack multiple assets
+    // into one backing buffer, and the no-arg asUint8List would span the
+    // full backing buffer rather than just this asset's range.
     final part = File('${file.path}.$pid.part');
     await part.writeAsBytes(
       data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
@@ -172,7 +191,11 @@ Future<String> _doCopyAsset(String uri) async {
     } on FileSystemException {
       // Windows refuses to replace a file another process has open: that
       // instance holds the same asset, so its copy is kept.
-      await part.delete();
+      try {
+        await part.delete();
+      } on FileSystemException {
+        // Left behind; the next copy of this asset overwrites it.
+      }
       if (!await file.exists()) rethrow;
     }
 

@@ -40,15 +40,20 @@ void main() {
         .setMockMessageHandler('flutter/assets', null);
   });
 
-  test('a copy has a fixed path in the package directory', () async {
+  test('a copy lives in a directory of this user and app', () async {
     final resolved = await resolveUri('asset://$key');
     final file = File(resolved.uri);
     expect(file.readAsBytesSync(), payload);
+    final dir = file.parent;
+    // Not a name every user and app on the machine would share.
     expect(
-      file.parent.path,
-      '${Directory.systemTemp.path}${Platform.pathSeparator}'
-      'mpv_audio_kit_assets',
+      dir.path.split(Platform.pathSeparator).last,
+      startsWith('mpv_audio_kit_assets_'),
     );
+    final runtime = Platform.environment['XDG_RUNTIME_DIR'];
+    if (Platform.isLinux && runtime != null && runtime.isNotEmpty) {
+      expect(dir.parent.path, runtime, reason: 'per-user on Linux');
+    }
   });
 
   test('a copy that went missing is written again at the same path', () async {
