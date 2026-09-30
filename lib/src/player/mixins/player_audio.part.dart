@@ -3,6 +3,13 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
+/// What the player logs on [PlayerStream.internalLog] when mpv refuses a
+/// live `af-command` update and the chain is rewritten instead. Tests
+/// count refusals by it.
+@visibleForTesting
+const afCommandRefusedLog =
+    'A live effects update was refused; rebuilding the chain.';
+
 /// Audio setters: volume, mute, output device, format / channel layout,
 /// the effects chain, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
@@ -418,15 +425,42 @@ mixin _AudioModule on _PlayerBase {
     await _applyAudioEffects(effects);
   }
 
-  /// Whether the chain has written `af` at least once. The first write
-  /// must always go through — it overrides any pre-existing `af` value
-  /// (e.g. from `mpv.conf`) even when the requested chain is empty.
-  bool _afChainWritten = false;
+  // ── Chain state ────────────────────────────────────────────────────
+  // mpv keeps each filter with the arguments it was created with, and
+  // af-command moves only the live graph. Whenever mpv rebuilds a filter
+  // from its stored arguments (a file load; a seek or loop wrap, since
+  // lavfi frees its graph on reset; a track switch or format change) the
+  // live values would be lost, so the chain is rewritten from the state
+  // there while diffs are ahead of the stored arguments. mpv keeps every
+  // filter whose arguments already match, so only the stages moved live
+  // are rebuilt.
 
   /// The last list mpv accepted, through `af set` or a whole diff of
   /// `af-command`s: what it plays when a later write is refused, and so
-  /// what the state rolls back to.
-  List<AudioEffect> _afAccepted = const [];
+  /// what the state rolls back to. `null` until the first write, which
+  /// always goes through to override any `af` from `mpv.conf`, even empty.
+  List<AudioEffect>? _afAccepted;
+
+  /// The af-command diffs sent, and how many of them a chain write that
+  /// landed already carries. mpv's stored arguments are behind the live
+  /// values while [_afStale].
+  int _afDiffsSent = 0;
+  int _afDiffsSynced = 0;
+  bool get _afStale => _afDiffsSynced < _afDiffsSent;
+
+  /// Chain writes (`af set`) sent and not answered yet. Each one makes mpv
+  /// emit AUDIO_RECONFIG before its reply without resetting the filters it
+  /// keeps, so that event is no reason to resync.
+  int _afWritesInFlight = 0;
+
+  /// The [_afDiffsSent] a resync in flight carries, so a burst of seeks
+  /// sends one.
+  int? _afResyncing;
+
+  /// The confirmation of the last write, which the next one waits for
+  /// before it looks at [_afAccepted]: an empty diff has no reply to wait
+  /// on and would otherwise settle ahead of an earlier write.
+  Future<void> _afSettled = Future.value();
 
   /// Write + commit shared by [setAudioEffects] and [updateAudioEffects].
   /// The diff computation, the wire enqueue and the state commit are all
@@ -444,42 +478,32 @@ mixin _AudioModule on _PlayerBase {
   Future<void> _applyAudioEffects(List<AudioEffect> requested) {
     final effects = List<AudioEffect>.unmodifiable(requested);
     final previous = _state.audioEffects;
+    final written = _afAccepted != null;
     // No-op writes skip the serialization + FFI round-trip entirely.
-    if (_afChainWritten && listEquals(effects, previous)) {
+    if (written && listEquals(effects, previous)) {
       return Future.value();
     }
-    final cmds = _afChainWritten ? audioEffectsDiff(previous, effects) : null;
+    final cmds = written ? audioEffectsDiff(previous, effects) : null;
     final Future<void> settled;
     if (cmds != null) {
       // Enqueue the whole diff now (in order); validate the outcomes when
-      // the replies land. The string is stale the moment the commands are
-      // queued — the live graph moves ahead of the `af` property.
+      // the replies land.
       final rcs = <Future<int>>[
         for (final c in cmds)
           _command(['af-command', c.label, c.option, c.value, c.filterName]),
       ];
-      if (cmds.isNotEmpty) {
-        _afStringStale = true;
-        _afDiffGeneration++;
-      }
-      settled = _settleAfCommands(rcs, effects);
+      if (cmds.isNotEmpty) _afDiffsSent++;
+      settled = _settleAfCommands(_afSettled, rcs, effects, previous);
     } else {
-      // After af-command updates, mpv still holds each filter with the
-      // arguments it was created with, and a rebuild keeps every filter
-      // whose new arguments equal those: a stage moved live from 0 to 6
-      // and set back to 0 would stay at 6. Rebuilding once from the
-      // current list first brings the stored arguments level with the
-      // live values. Enqueued now, ahead of the rewrite, like the diff.
-      final Future<int>? resync = _afStringStale
-          ? _setAfChain(audioEffectsChain(previous))
-          : null;
-      // The `af` string flag is owned by _rewriteAfChain: cleared only once
-      // the rewrite reply confirms the string matches the live graph, and
-      // re-armed if the write is rejected (clearing it eagerly here would,
-      // on a failed rewrite that followed a diff, skip the FILE_LOADED resync
-      // and silently lose the diff'd runtime value).
-      settled = _rewriteAfChain(effects, resync);
+      // A rebuild keeps every filter whose new arguments equal its stored
+      // ones: a stage moved live from 0 to 6 and set back to 0 would stay
+      // at 6. Rebuilding once from the current list first brings the
+      // stored arguments level with the live values. Enqueued now, ahead
+      // of the rewrite, like the diff.
+      final resync = _afStale ? _setAfChain(audioEffectsChain(previous)) : null;
+      settled = _rewriteAfChain(_afSettled, effects, resync);
     }
+    _afSettled = settled.then((_) {}, onError: (Object _) {});
     _updateField(
       (s) => s.copyWith(audioEffects: effects),
       _reactives.audioEffects,
@@ -494,103 +518,133 @@ mixin _AudioModule on _PlayerBase {
   /// property instead succeeds once the string parses and drops a failed
   /// rebuild silently. Resolves with mpv's rc.
   Future<int> _setAfChain(String chain) {
+    final reply = _command(['af', 'set', chain]);
     _afWritesInFlight++;
-    return _command([
-      'af',
-      'set',
-      chain,
-    ]).whenComplete(() => _afWritesInFlight--);
+    return reply.whenComplete(() => _afWritesInFlight--);
+  }
+
+  /// Records that a chain write queued when [sent] diffs had gone out
+  /// landed, and so carries them.
+  void _afSynced(int sent) {
+    if (sent > _afDiffsSynced) _afDiffsSynced = sent;
   }
 
   @override
+  void _onAfChainReset() => _resyncStaleAfChain();
+
+  @override
+  void _onAudioReconfig() {
+    if (_afWritesInFlight == 0) _resyncStaleAfChain();
+  }
+
+  /// Rewrites the chain from the state while diffs are ahead of mpv's
+  /// stored arguments. One resync at a time per diff count.
   void _resyncStaleAfChain() {
-    if (!_afStringStale) return;
-    final generation = _afDiffGeneration;
+    if (!_afStale || _afResyncing == _afDiffsSent) return;
+    final sent = _afResyncing = _afDiffsSent;
     final effects = _state.audioEffects;
     unawaited(
       _setAfChain(audioEffectsChain(effects)).then((rc) {
-        if (rc < 0) return;
+        if (_afResyncing == sent) _afResyncing = null;
+        if (rc < 0) {
+          _internalLog(
+            'Rewriting the effects chain after a reset failed: '
+            '${_errorString(rc)}',
+            level: LogLevel.debug,
+          );
+          return;
+        }
         _afAccepted = effects;
-        _markAfChainSynced(generation);
+        _afSynced(sent);
       }),
     );
   }
 
   /// Puts the state back on [_afAccepted] after mpv refused [effects],
-  /// unless a later call already replaced them, and throws.
-  Never _refuseAudioEffects(List<AudioEffect> effects, String name, int rc) {
+  /// unless a later call already replaced them, and throws. A diff that
+  /// mpv took meanwhile may have moved the live graph: the resync brings
+  /// it back in line with the state.
+  Never _refuseAudioEffects(List<AudioEffect> effects, int rc) {
     if (identical(_state.audioEffects, effects)) {
+      final accepted = _afAccepted ?? const <AudioEffect>[];
       _updateField(
-        (s) => s.copyWith(audioEffects: _afAccepted),
+        (s) => s.copyWith(audioEffects: accepted),
         _reactives.audioEffects,
-        _afAccepted,
+        accepted,
       );
+      _resyncStaleAfChain();
     }
-    throw MpvCommandException(name: name, code: rc, message: _errorString(rc));
+    throw MpvCommandException(name: 'af', code: rc, message: _errorString(rc));
   }
 
-  /// Awaits the diff's replies; on any rejected command rewrites the chain
+  /// Awaits the diff's replies. The diff was computed against [previous]:
+  /// when that is not what mpv last accepted (an earlier write in flight
+  /// was refused), or when a command was refused, the chain is rewritten
   /// from the LATEST committed list, healing a partial apply (and any
   /// later updates already committed). A command mpv refuses while it
   /// rebuilds a graph (until the graph sees a frame) is healed that way
-  /// without an error. Only when the rebuild is refused too, a value the
+  /// without an error. Only when the rewrite is refused too, a value the
   /// filter itself refuses, the state goes back to the last accepted list
   /// and the call throws, as a refused rewrite does.
   Future<void> _settleAfCommands(
+    Future<void> prior,
     List<Future<int>> rcs,
     List<AudioEffect> effects,
+    List<AudioEffect> previous,
   ) async {
+    await prior;
     final results = await Future.wait(rcs);
-    if (!results.any((rc) => rc < 0)) {
+    final refused = results.any((rc) => rc < 0);
+    if (!refused && identical(_afAccepted, previous)) {
       _afAccepted = effects;
       return;
     }
-    _internalLog(
-      'A live effects update was refused; rebuilding the chain.',
-      level: LogLevel.debug,
-    );
-    final generation = _afDiffGeneration;
+    if (refused) {
+      _internalLog(afCommandRefusedLog, level: LogLevel.debug);
+    }
+    final sent = _afDiffsSent;
     final healed = _state.audioEffects;
     final healRc = await _setAfChain(audioEffectsChain(healed));
     if (healRc >= 0) {
       _afAccepted = healed;
-      _markAfChainSynced(generation);
+      _afSynced(sent);
       return;
     }
-    // The string stays stale for the next resync.
-    _refuseAudioEffects(effects, 'af', healRc);
+    _refuseAudioEffects(effects, healRc);
   }
 
-  /// Awaits the full-rewrite reply and owns the `_afStringStale` flag. On
-  /// success the `af` string matches the live graph (flag cleared). On
-  /// rejection (e.g. a malformed [RawAudioEffect]) the string is in an
-  /// unknown state vs the committed list — a preceding diff may have
-  /// moved the live graph ahead of it — so the flag is RE-ARMED for the
-  /// next resync, the optimistic commit is rolled back to the last list
-  /// mpv accepted (unless a later update already replaced it), and the
-  /// [MpvCommandException] propagates to the caller.
+  /// Awaits the full-rewrite reply. On success the stored arguments carry
+  /// every diff sent before it. On rejection (e.g. a malformed
+  /// [RawAudioEffect]) mpv keeps the old chain, the optimistic commit is
+  /// rolled back to the last list mpv accepted (unless a later update
+  /// already replaced it), and the [MpvCommandException] propagates to the
+  /// caller.
   Future<void> _rewriteAfChain(
+    Future<void> prior,
     List<AudioEffect> effects,
     Future<int>? resync,
   ) async {
-    final generation = _afDiffGeneration;
+    final sent = _afDiffsSent;
     final rewrite = _setAfChain(audioEffectsChain(effects));
+    await prior;
     // The resync only levels mpv's stored arguments; the rewrite after it
     // decides the outcome either way.
     if (resync != null) await resync;
     final rc = await rewrite;
     if (rc >= 0) {
-      _afChainWritten = true;
       _afAccepted = effects;
-      _markAfChainSynced(generation);
+      _afSynced(sent);
       return;
     }
-    _afStringStale = true;
-    _refuseAudioEffects(effects, 'af', rc);
+    _refuseAudioEffects(effects, rc);
   }
 
   /// Changes the effects chain through [mapper], which receives the
   /// current list and returns the new one.
+  ///
+  /// Throws [MpvCommandException] like [setAudioEffects] when mpv refuses
+  /// the result, so a call that is not awaited, typical of a slider, ends
+  /// in an unhandled error then.
   ///
   /// ```dart
   /// // A slider on the second stage (an EqualizerEffect):

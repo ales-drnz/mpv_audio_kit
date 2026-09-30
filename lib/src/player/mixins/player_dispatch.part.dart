@@ -70,9 +70,8 @@ mixin _DispatchModule on _PlayerBase {
           // `state.playing` is driven by the `core-idle` observer; here we
           // only clear buffering/completed and apply the load payload.
           _updateLifecycle(buffering: false, completed: false);
-          // mpv just built the new file's chain from the arguments that
-          // af-command updates left behind.
-          _resyncStaleAfChain();
+          // mpv just built the new file's chain from the stored arguments.
+          _onAfChainReset();
           _applyPolledPosition(timePos);
           // mpv exposes -1 / -2 etc. as "no chapter active"; surface as
           // null. A failed read (chapterIndex == null) applies nothing.
@@ -120,12 +119,9 @@ mixin _DispatchModule on _PlayerBase {
           // A seek's landing is observed via PLAYBACK_RESTART
           // (`seekCompleted`). The seek itself resets the filters, which
           // lavfi rebuilds from their stored arguments.
-          _resyncStaleAfChain();
+          _onAfChainReset();
         case MpvEventAudioReconfig():
-          // A track switch or format change rebuilt the audio chain from
-          // the stored arguments too. Our own chain writes emit this event
-          // as well, before their reply, and reset nothing.
-          if (_afWritesInFlight == 0) _resyncStaleAfChain();
+          _onAudioReconfig();
         case MpvEventPlaybackRestart(:final timePos):
           _applyPolledPosition(timePos);
           _seekCompletedCtrl.add(null);

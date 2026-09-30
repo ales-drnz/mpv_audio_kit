@@ -223,6 +223,30 @@ void main() {
       timeout: const Timeout(Duration(seconds: 20)),
     );
 
+    test(
+      'a live update on top of a refused rewrite rolls back with it',
+      () async {
+        const accepted = [BassEffect(frequency: 1000, gain: 2)];
+        await player.setAudioEffects(accepted);
+        // The update changes only the bass gain, which mpv takes live on the
+        // chain it still runs; the list it belongs to holds the bad stage.
+        final rewrite = player.setAudioEffects(const [
+          BassEffect(frequency: 1000, gain: 2),
+          RawAudioEffect('lavfi-equalizer=f=abc'),
+        ]);
+        final live = player.updateAudioEffects(
+          (fx) => [
+            for (final e in fx) e is BassEffect ? e.copyWith(gain: 6) : e,
+          ],
+        );
+        await expectLater(rewrite, throwsA(isA<MpvCommandException>()));
+        await expectLater(live, throwsA(isA<MpvCommandException>()));
+        expect(player.state.audioEffects, accepted);
+        expect(await player.getRawProperty('af'), isNot(contains('equalizer')));
+      },
+      timeout: const Timeout(Duration(seconds: 20)),
+    );
+
     test('a rebuild after live updates applies the requested values, not the '
         'live ones', () async {
       Future<double> settledMomentary() async {
