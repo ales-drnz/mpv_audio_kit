@@ -38,7 +38,7 @@ Many existing Flutter audio libraries are either built on an old version of mpv 
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/wrench.png" width="32" alt=""></td>
-<td valign="middle"><b>Total control</b><br>this library doesn't limit features; it exposes the native engine so you can tune <a href="#7-network-and-caching">buffers and network timeouts</a>, <a href="#5-audio-quality-and-dsp">DSP filters</a> and play with ffmpeg exactly how you want.</td>
+<td valign="middle"><b>Total control</b><br>this library doesn't limit features; it exposes the native engine so you can tune <a href="#7-network-and-caching">buffers and network timeouts</a>, <a href="#5-audio-effects">DSP filters</a> and play with ffmpeg exactly how you want.</td>
 </tr>
 </table>
 
@@ -135,7 +135,7 @@ The path can be a directory holding files named like the release assets (`libmpv
     </details>
 
     <details>
-    <summary><a href="#5-audio-quality-and-dsp"><b>5. Audio quality and DSP</b></a></summary>
+    <summary><a href="#5-audio-effects"><b>5. Audio effects</b></a></summary>
 
     * [5.1 The effects chain](#51-the-effects-chain)
     * [5.2 Common effects: quick examples](#52-common-effects-quick-examples)
@@ -255,10 +255,11 @@ The path can be a directory holding files named like the release assets (`libmpv
 
     * [14.1 Enabling the session](#141-enabling-the-session)
     * [14.2 Overriding metadata](#142-overriding-metadata)
-    * [14.3 Reacting to OS commands](#143-reacting-to-os-commands)
-    * [14.4 Capabilities, intervals and speeds](#144-capabilities-intervals-and-speeds)
-    * [14.5 Audio interruptions](#145-audio-interruptions)
-    * [14.6 App identity (desktop)](#146-app-identity-desktop)
+    * [14.3 Artwork and privacy](#143-artwork-and-privacy)
+    * [14.4 Reacting to OS commands](#144-reacting-to-os-commands)
+    * [14.5 Capabilities, intervals and speeds](#145-capabilities-intervals-and-speeds)
+    * [14.6 Audio interruptions](#146-audio-interruptions)
+    * [14.7 App identity (desktop)](#147-app-identity-desktop)
 
     </details>
 *   [Permissions](#permissions)
@@ -331,7 +332,7 @@ The path can be a directory holding files named like the release assets (`libmpv
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/sliders-horizontal.png" width="32"></td>
-<td valign="middle"><b>Effects chain</b><br>an ordered <a href="#5-audio-quality-and-dsp">list of typed effects</a>: 18-band graphic EQ, compressor, loudness, pitch and tempo, bass and treble, stereo width, headphone crossfeed, silence trim, and any lavfi filter as a raw stage.</td>
+<td valign="middle"><b>Effects chain</b><br>an ordered <a href="#5-audio-effects">list of typed effects</a>: 18-band graphic EQ, compressor, loudness, pitch and tempo, bass and treble, stereo width, headphone crossfeed, silence trim, and any lavfi filter as a raw stage.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/audio-lines.png" width="32"></td>
 <td valign="middle"><b>Visualizer</b><br>real-time <a href="#13-visualizer-waveform-and-loudness">FFT spectrum and PCM streams</a>, a waveform overview and loudness measurement.</td>
 </tr>
@@ -828,7 +829,7 @@ await player.deleteResumeConfig(filename: '/music/audiobook.m4b');
 
 ---
 
-### 5. Audio quality and DSP
+### 5. Audio effects
 
 Everything in this section runs as ffmpeg filters, the same on every
 platform.
@@ -2557,7 +2558,13 @@ await player.setMediaSession(
 );
 ```
 
-Artwork is a typed choice on the `artwork` field:
+A stream with no title tag falls back to mpv's `media-title`, taken from
+the URL with the query removed. Setting `MediaSession.title` is still
+better.
+
+#### 14.3 Artwork and privacy
+
+`MediaSession.artwork` picks the image:
 
 ```dart
 MediaSessionArtwork.embedded            // default, the file's embedded cover
@@ -2575,11 +2582,7 @@ off for playback, trusts `tls-ca-file` on top of the system roots, and is
 tried at most 3 times. On iOS and macOS the system downloads it, with the
 system roots only.
 
-A stream with no title tag falls back to mpv's `media-title`, taken from
-the URL with the query removed. Setting `MediaSession.title` is still
-better.
-
-#### 14.3 Reacting to OS commands
+#### 14.4 Reacting to OS commands
 
 The player applies OS commands itself (play from the lock screen calls
 `play()`, scrubbing calls `seek()`, and so on) and also emits them on
@@ -2600,7 +2603,7 @@ player.stream.mediaSessionCommands.listen((command) {
 });
 ```
 
-#### 14.4 Capabilities, intervals and speeds
+#### 14.5 Capabilities, intervals and speeds
 
 `actions` lists the controls the OS may show. Each platform draws only
 some of them, and a lock screen usually shows 3 or 4. An action a
@@ -2649,7 +2652,7 @@ next.
 ² Windows SMTC stores repeat, shuffle and rate, but its flyout has no
 button for them.
 
-#### 14.5 Audio interruptions
+#### 14.6 Audio interruptions
 
 `interruptionPolicy` decides what happens on a phone call, Siri, or
 another app taking the audio focus:
@@ -2669,7 +2672,7 @@ session, so the policy does nothing there.
 
 Background playback on iOS also needs the setup in [Permissions](#ios).
 
-#### 14.6 App identity (desktop)
+#### 14.7 App identity (desktop)
 
 On Linux (MPRIS) and Windows (SMTC) the OS labels the controls with your
 app's name. macOS, iOS and Android take it from the app bundle and ignore
