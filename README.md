@@ -876,10 +876,12 @@ Future<void> updateAudioEffects(
 
 ```dart
 await player.setAudioEffects([
-  EqualizerEffect(frequency: 100, width: 50, gain: 3),     // low shelf-ish boost
-  EqualizerEffect(frequency: 8000, width: 1000, gain: -2), // tame the highs
-  AcompressorEffect(threshold: 0.1, ratio: 4),             // then compress
-  AlimiterEffect(limit: 0.9),                              // and limit last
+  // +3 dB around 100 Hz, 50 Hz wide
+  EqualizerEffect(frequency: 100, width: 50, widthType: EqualizerWidthType.h, gain: 3),
+  // -2 dB around 8 kHz, 1 kHz wide
+  EqualizerEffect(frequency: 8000, width: 1000, widthType: EqualizerWidthType.h, gain: -2),
+  AcompressorEffect(threshold: 0.1, ratio: 4), // then compress
+  AlimiterEffect(limit: 0.9),                  // and limit last
 ]);
 ```
 
@@ -922,7 +924,7 @@ await player.setAudioEffects(const []);
 >
 > ```dart
 > await player.setAudioEffects(const [
->   RawAudioEffect('lavfi-aeval=val(0)|val(1)'),
+>   RawAudioEffect('lavfi-aeval=val(0)*0.5|val(1)*0.5'),
 >   AcompressorEffect(threshold: 0.1),
 > ]);
 > ```
