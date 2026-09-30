@@ -4,6 +4,8 @@
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 /// Pairs asynchronous libmpv requests with their replies.
 ///
 /// Every `mpv_*_async` call is tagged with an id from [open]; the event
@@ -22,6 +24,7 @@ class ReplyTracker {
   final Map<int, Completer<(int, Object?)>> _pending = {};
 
   /// Whether any request is still waiting for its reply.
+  @visibleForTesting
   bool get hasPending => _pending.isNotEmpty;
 
   /// Starts a request: returns its id and the future its reply resolves.

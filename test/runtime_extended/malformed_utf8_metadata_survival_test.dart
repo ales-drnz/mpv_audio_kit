@@ -106,8 +106,8 @@ void main() {
 
       test('player survives an ICY station name with invalid UTF-8 '
           '(tag surfaces, pipeline stays alive)', () async {
-        // Pre-subscribe BEFORE open — emits can land synchronously relative
-        // to a late firstWhere (see CLAUDE.md, Common patterns).
+        // Subscribed before open: the replay only gives a late subscriber
+        // the current value, not one the metadata already moved past.
         final icyArrived = player.stream.metadata
             .firstWhere((m) => m.keys.any((k) => k.toLowerCase() == 'icy-name'))
             .timeout(

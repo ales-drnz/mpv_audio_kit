@@ -49,9 +49,8 @@ void main() {
           // identical by construction.
           await player.setGapless(Gapless.yes);
 
-          // Pre-subscribe to the playlist index transition before issuing
-          // openAll — broadcast emits during the load phase shouldn't be
-          // missed by a late firstWhere.
+          // Subscribed before openAll: the replay only gives a late
+          // subscriber the current playlist, not a transition already past.
           final advanced = player.stream.playlist
               .firstWhere((p) => p.items.length == 2 && p.index == 1)
               .timeout(const Duration(seconds: 30));

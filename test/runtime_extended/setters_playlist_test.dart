@@ -148,8 +148,8 @@ void main() {
             .firstWhere((p) => p.items.length == 3)
             .timeout(const Duration(seconds: 5));
 
-        // Pre-subscribe to the index transition before each command —
-        // the playlist observer can fire before a late firstWhere binds.
+        // Subscribed before each command: the replay only gives a late
+        // subscriber the current index, not a transition already past.
         Future<void> waitFor(int idx) => player.stream.playlist
             .firstWhere((p) => p.index == idx)
             .timeout(const Duration(seconds: 5));

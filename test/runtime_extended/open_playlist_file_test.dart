@@ -38,9 +38,8 @@ void main() {
       });
 
       test('expands a .m3u into multiple playlist entries', () async {
-        // Pre-subscribe before the load: the playlist + playlist-path each emit
-        // once when the first entry loads, so a late firstWhere would miss them
-        // (see CLAUDE.md). Gate on seekCompleted, then read the state snapshot.
+        // Gate on seekCompleted, an event stream with no replay, subscribed
+        // before the load; then read the state snapshot.
         final loaded = player.stream.seekCompleted.first.timeout(
           const Duration(seconds: 10),
         );

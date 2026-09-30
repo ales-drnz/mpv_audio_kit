@@ -42,9 +42,8 @@ void main() {
           );
           return;
         }
-        // Pre-subscribe to metadata before opening — the broadcast emit
-        // for a populated tag dict can land before a late firstWhere
-        // attaches.
+        // Subscribed before opening: the replay only gives a late
+        // subscriber the current tags, not a dict already replaced.
         final mdFuture = player.stream.metadata
             .firstWhere((m) => m.isNotEmpty)
             .timeout(const Duration(seconds: 10));

@@ -36,8 +36,8 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('hlsBitrate / cookies / httpProxy round-trip', () async {
-        // Pre-subscribe BEFORE the setter: the optimistic emit lands
-        // synchronously and a late firstWhere would miss it.
+        // Subscribed before the setter: the replay only gives a late
+        // subscriber the current value, not one already overwritten.
         final hlsMin = player.stream.hlsBitrate
             .firstWhere((v) => v == HlsBitrate.min)
             .timeout(const Duration(seconds: 5));

@@ -122,9 +122,8 @@ void main() {
         await player.open(Media(fixturePath), play: false);
         await loaded;
 
-        // Pre-subscribe BEFORE the setter — the optimistic emit from
-        // `_updateField` is synchronous, so a late firstWhere would miss
-        // it and time out.
+        // Subscribed before the setter: the replay only gives a late
+        // subscriber the current value, not one already overwritten.
         Future<Duration?> nextA(bool Function(Duration?) pred) => player
             .stream
             .abLoopA
