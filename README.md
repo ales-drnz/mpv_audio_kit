@@ -355,7 +355,7 @@ The path can be a directory holding files named like the release assets (`libmpv
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/package.png" width="32"></td>
-<td valign="middle"><b>Cache control</b><br><a href="#71-cache-configuration"><code>CacheSettings</code></a> sets the memory cache, the disk overflow and the pause on an empty cache in one call.</td>
+<td valign="middle"><b>Cache control</b><br><a href="#71-cache-configuration"><code>CacheSettings</code></a> sets the cache size, where it is kept and the pause on an empty cache in one call.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/webhook.png" width="32"></td>
 <td valign="middle"><b>Hooks</b><br>run your code while a file loads, <a href="#12-hooks">prefetch</a> included, to resolve URLs, redirect or add headers.</td>
 </tr>
@@ -1144,7 +1144,7 @@ await player.setPrefetchPlaylist(true);
 
 #### 6.1 Audio output driver
 
-Select the native backend used for audio output:
+`setAudioDriver` picks the driver mpv uses for audio output:
 
 ```dart
 await player.setAudioDriver('wasapi');    // Windows
@@ -1160,16 +1160,16 @@ await player.setAudioDriver('auto');      // mpv picks (default)
 Asks the driver for exclusive use of the device, so the system mixer does not resample the audio or apply its volume. WASAPI (Windows), CoreAudio (macOS), AAudio (Android) and PipeWire (Linux) honor it; other drivers ignore it. On iOS (AudioUnit) it only stops your audio from mixing with other apps:
 
 ```dart
-await player.setAudioExclusive(true);   // Request exclusive access
-await player.setAudioExclusive(false);  // Release, return to shared mode
+await player.setAudioExclusive(true);
+await player.setAudioExclusive(false);  // back to shared mode
 ```
 
-> Exclusive mode locks the audio device. Always call `player.dispose()` when done, or other apps will have no sound.
+While the player holds the device, other apps have no sound. Turn exclusive mode off or call `dispose()` when you are done.
 
 #### 6.3 Device selection
 
 ```dart
-// Listen to available devices
+// Available devices
 player.stream.audioDevices.listen((devices) {
   for (final d in devices) {
     print('${d.name}: ${d.description}');
@@ -1181,11 +1181,11 @@ final devices = player.state.audioDevices;
 await player.setAudioDevice(devices.first);
 ```
 
-Devices are populated automatically by mpv when the player initializes. The `name` field is the mpv device identifier; `description` is the human-readable label.
+mpv fills the list when the player starts. `name` is mpv's device id and `description` the label to show.
 
 #### 6.4 Output format
 
-Force a specific output format for bit-perfect playback or DAC compatibility:
+Force the output sample rate, sample format or channel layout, for example to match what a DAC accepts:
 
 ```dart
 // Sample rate
@@ -1197,7 +1197,7 @@ await player.setAudioSampleRate(96000);   // 96 kHz (hi-res)
 await player.setAudioSampleRate(192000);  // 192 kHz (studio)
 await player.setAudioSampleRate(384000);  // 384 kHz (DXD)
 
-// Bit depth format
+// Sample format
 await player.setAudioFormat(Format.auto);          // mpv picks (default)
 await player.setAudioFormat(Format.u8);            // 8-bit unsigned, interleaved
 await player.setAudioFormat(Format.u8Planar);      // 8-bit unsigned, planar
@@ -1212,9 +1212,9 @@ await player.setAudioFormat(Format.float32Planar); // 32-bit float, planar
 await player.setAudioFormat(Format.float64);       // 64-bit float, interleaved
 await player.setAudioFormat(Format.float64Planar); // 64-bit float, planar
 
-// Channel layout 
-await player.setAudioChannels(Channels.auto);             // mpv picks
-await player.setAudioChannels(Channels.autoSafe);         // mpv picks, reject multichannel unless verified
+// Channel layout
+await player.setAudioChannels(Channels.auto);             // whatever the device accepts, keeping the source layout when it can
+await player.setAudioChannels(Channels.autoSafe);         // the system's preferred layout, or stereo when there is none
 
 // 1 channel
 await player.setAudioChannels(Channels.mono);             // mono
@@ -1223,12 +1223,12 @@ await player.setAudioChannels(Channels.oneZero);          // 1.0 (alias of mono)
 // 2 channels
 await player.setAudioChannels(Channels.stereo);           // stereo
 await player.setAudioChannels(Channels.twoZero);          // 2.0 (alias of stereo)
-await player.setAudioChannels(Channels.downmix);          // downmix (semantic alias of stereo)
+await player.setAudioChannels(Channels.downmix);          // stereo, named for a downmix
 
 // ...                                                    // ...
 
 // 8 channels
-await player.setAudioChannels(Channels.sevenOne);         // 7.1 canonical
+await player.setAudioChannels(Channels.sevenOne);         // 7.1
 await player.setAudioChannels(Channels.sevenOneAlsa);     // 7.1(alsa)
 await player.setAudioChannels(Channels.sevenOneWide);     // 7.1(wide)
 await player.setAudioChannels(Channels.sevenOneWideSide); // 7.1(wide-side)
@@ -1237,39 +1237,39 @@ await player.setAudioChannels(Channels.sevenOneRear);     // 7.1(rear)
 await player.setAudioChannels(Channels.octagonal);        // octagonal
 await player.setAudioChannels(Channels.cube);             // cube
 
-// Cinema, immersive
+// Immersive
 await player.setAudioChannels(Channels.hexadecagonal);    // hexadecagonal (16ch)
 await player.setAudioChannels(Channels.surround222);      // 22.2 (NHK, ITU-R BS.2051 System H)
 
-// Custom escape, anything mpv recognises but isn't in the named set
+// Any other layout mpv accepts
 await player.setAudioChannels(
   const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
 );
 ```
 
-> When you force a downmix (e.g. 5.1 to stereo), set
-> `PlayerConfiguration.normalizeDownmix: true` to scale the result down so
-> it cannot clip. It is set when you create the player (default `false`).
+When you force a downmix, for example 5.1 to stereo, set
+`PlayerConfiguration.normalizeDownmix: true` when you create the player,
+so the result is scaled down and cannot clip.
 
 #### 6.5 SPDIF passthrough
 
-Send compressed audio (AC3, DTS, TrueHD, â€¦) directly to an AV receiver
-over SPDIF or HDMI:
+`setAudioSpdif` passes compressed audio (AC3, DTS, TrueHD and others)
+through to an AV receiver over SPDIF or HDMI:
 
 ```dart
-// Home-theater Dolby + DTS-HD passthrough
+// Dolby and DTS-HD
 await player.setAudioSpdif({Spdif.ac3, Spdif.eac3, Spdif.trueHd, Spdif.dtsHd});
 
 // Dolby only
 await player.setAudioSpdif({Spdif.ac3, Spdif.eac3, Spdif.trueHd});
 
-// Disable passthrough
+// Off
 await player.setAudioSpdif({});
 ```
 
 #### 6.6 Audio client name
 
-The name shown in system audio mixers:
+`setAudioClientName` sets the name system mixers show for the app:
 
 ```dart
 await player.setAudioClientName('MyMusicApp');
@@ -1277,18 +1277,18 @@ await player.setAudioClientName('MyMusicApp');
 
 #### 6.7 Audio track selection
 
-For containers with multiple audio tracks (e.g. MKV, MP4 with language
-variants), the library exposes both the inventory of tracks the
-demuxer surfaced and the active track:
+For files with several audio tracks, such as an MKV or MP4 with one track
+per language, `state.tracks` lists them and `stream.currentAudioTrack`
+follows the selected one:
 
 ```dart
-// Walk the audio inventory:
+// List the audio tracks
 for (final t in player.state.tracks.where((tr) => tr.type == 'audio')) {
   print('${t.id}: ${t.title ?? t.lang ?? "audio"} '
         '(${t.codec} ${t.sampleRate} Hz ${t.channelCount}ch)');
 }
 
-// Currently selected track
+// Selected track
 player.stream.currentAudioTrack.listen((track) {
   if (track == null) return;
   print('Now decoding track #${track.id}: ${track.title}');
@@ -1297,33 +1297,29 @@ player.stream.currentAudioTrack.listen((track) {
 // Switch by id
 await player.setAudioTrack(const Track.id(2));
 
-// Defer to mpv's automatic choice (container default or first audio)
+// Let mpv choose: the file's default or the first audio track
 await player.setAudioTrack(Track.auto);
 
-// Disable audio output entirely (e.g. show only metadata + cover art)
+// No audio track
 await player.setAudioTrack(Track.off);
 
-// Load an external audio file as an extra selectable track on the current
-// file (a separate-language dub, a commentary track), then remove it.
+// Add an external audio file as a track of the current file, then remove it
 await player.addAudioTrack(Media('commentary.mka'), title: 'Commentary');
 await player.removeAudioTrack(const Track.id(3));
 
-// Re-scan sidecar external files (auto-loaded audio and cover art) without
-// reopening the current file.
+// Look again for audio and cover files next to the current file
 await player.rescanExternalFiles();
 ```
 
-`MpvTrack` ships rich per-track introspection: codec, decoder, sample
-rate, channel count, ReplayGain tags, language, default and forced
-flags, `image` and `albumArt` flags so you can skip embedded picture
-streams when populating a track-switcher UI, plus `external` and
-`externalFilename` (whether the track was loaded from a separate file,
-and its path) and `codecProfile` (the codec profile string when the
-container reports one).
+`MpvTrack` carries the codec, codec profile, decoder, sample rate,
+channel count, ReplayGain tags, language, and the default and forced
+flags. `external` and `externalFilename` mark a track loaded from a
+separate file, and `image` and `albumArt` let a track picker skip
+picture tracks.
 
 #### 6.8 Reload audio
 
-Force the audio output to reinitialize:
+`reloadAudio` closes and reopens the audio output (mpv's `ao-reload`):
 
 ```dart
 await player.reloadAudio();
@@ -1331,14 +1327,12 @@ await player.reloadAudio();
 
 #### 6.9 Media role
 
-On Linux, tag the stream's media role as "music" so the audio server
-(PulseAudio and PipeWire) applies the right routing and per-role volume
-profile. On Android the audiotrack and aaudio backends honour it too; it is a
-no-op elsewhere.
+`setAudioMediaRole(true)` reports the stream as music. PulseAudio and
+PipeWire use the role for routing and per-role volume, and so do the
+`aaudio` and `audiotrack` drivers on Android. Other drivers ignore it.
 
 ```dart
 await player.setAudioMediaRole(true);
-// Observe via player.stream.audioMediaRole and player.state.audioMediaRole
 ```
 
 ---
@@ -1347,56 +1341,52 @@ await player.setAudioMediaRole(true);
 
 #### 7.1 Cache configuration
 
-The six mpv cache properties (`cache`, `cache-secs`,
+`setCache` sets mpv's six cache options (`cache`, `cache-secs`,
 `cache-on-disk`, `cache-pause`, `cache-pause-wait`, `cache-pause-initial`)
-are all set in one call through `setCache(CacheSettings)`:
+in one call:
 
 ```dart
 await player.setCache(const CacheSettings(
-  mode: Cache.yes,                 // .auto (default), .yes, .no
-  secs: Duration(seconds: 30),         // target cache duration ahead of the playhead
-  onDisk: true,                        // spill overflow cache to disk
-  pause: true,                         // auto-pause when cache runs dry
-  pauseWait: Duration(seconds: 3),     // pre-buffer required before resume
-  pauseInitial: true,                  // buffer before playback starts (and after seek)
+  mode: Cache.yes,                     // .auto (default), .yes, .no
+  secs: Duration(seconds: 30),         // how much to cache ahead of the playhead
+  onDisk: true,                        // keep the cache in a file instead of memory
+  pause: true,                         // pause when the cache runs dry
+  pauseWait: Duration(seconds: 3),     // cached time needed to resume
+  pauseInitial: true,                  // also wait before starting and after a seek
 ));
 
-// Tweak a single field via copyWith
+// Change one field
 await player.setCache(
   player.state.cache.copyWith(secs: const Duration(seconds: 60)),
 );
 
-// Subscribe to live changes
 player.stream.cache.listen((cfg) => print('cache: ${cfg.mode} ${cfg.secs}'));
 ```
 
-`pauseInitial` buffers before playback starts, and again after each seek,
-until the cache fills, for a smoother start on network sources (web-radio,
-HLS, Plex). When `onDisk` is set, point the on-disk cache at a writable
-directory with the build-time `PlayerConfiguration.demuxerCacheDir` (it
-defaults to mpv's location, which is often not writable on mobile).
+`pauseInitial` gives network sources a smoother start. With `onDisk`,
+set `PlayerConfiguration.demuxerCacheDir` when you create the player:
+mpv's default location is often not writable on mobile.
 
 #### 7.2 Demuxer memory pool
 
-The demuxer is the component that reads and parses the media container (MP4, MKV, OGG, etc.) before the audio decoder processes it. Its three buffering properties (`demuxer-max-bytes`, `demuxer-max-back-bytes`, `demuxer-readahead-secs`) are all set in one call through `setDemuxer(DemuxerSettings)`:
+The demuxer reads the container (MP4, MKV, Ogg) and hands its packets to the decoder. `setDemuxer` sets its three buffer options (`demuxer-max-bytes`, `demuxer-max-back-bytes`, `demuxer-readahead-secs`) in one call:
 
 ```dart
 await player.setDemuxer(const DemuxerSettings(
-  maxBytes: 50 * 1024 * 1024,          // forward cache cap (default: 150 MiB)
-  maxBackBytes: 20 * 1024 * 1024,      // seekback buffer cap (default: 50 MiB)
-  readahead: Duration(seconds: 5),     // how far ahead to read (default: 1s)
+  maxBytes: 50 * 1024 * 1024,          // ahead of the playhead, default 150 MiB
+  maxBackBytes: 20 * 1024 * 1024,      // behind the playhead, default 50 MiB
+  readahead: Duration(seconds: 5),     // default 1 s
 ));
 
-// Tweak a single field via copyWith
+// Change one field
 await player.setDemuxer(
   player.state.demuxer.copyWith(maxBytes: 100 * 1024 * 1024),
 );
 
-// Subscribe to live changes
 player.stream.demuxer.listen((d) => print('demuxer: ${d.maxBytes} bytes'));
 ```
 
-For radio streams or live content where seeking is not needed, reduce the back buffer to zero to save memory:
+For live radio, where you do not seek back, set the back buffer to zero to save memory:
 
 ```dart
 await player.setDemuxer(player.state.demuxer.copyWith(maxBackBytes: 0));
@@ -1405,7 +1395,7 @@ await player.setDemuxer(player.state.demuxer.copyWith(maxBackBytes: 0));
 #### 7.3 Network timeout
 
 ```dart
-await player.setNetworkTimeout(const Duration(seconds: 10)); // Fail after 10 seconds of no data
+await player.setNetworkTimeout(const Duration(seconds: 10)); // give up after 10 s without data
 ```
 
 #### 7.4 TLS and SSL verification
@@ -1414,34 +1404,34 @@ Certificate verification is off by default, as in mpv. Turn it on for
 playback with `setTlsVerify`:
 
 ```dart
-await player.setTlsVerify(true); // Enable; uses the CA roots baked into libmpv
+await player.setTlsVerify(true); // uses the CA roots built into libmpv
 
-// Override the built-in roots with a custom bundle (e.g. a corporate CA):
+// Replace the built-in roots with your own bundle, e.g. a company CA
 await player.setTlsCaFile('/path/to/corporate-ca.pem');
 ```
 
 #### 7.5 Audio buffer
 
-The hardware audio buffer. Lower values reduce latency, higher values improve stability under load:
+`setAudioBuffer` sets the size of the audio output buffer. A smaller buffer lowers latency; a larger one copes better with load:
 
 ```dart
-await player.setAudioBuffer(const Duration(milliseconds: 100));  // 100 ms (low latency)
-await player.setAudioBuffer(const Duration(milliseconds: 500));  // 500 ms (stable on slow hardware)
+await player.setAudioBuffer(const Duration(milliseconds: 100));  // low latency
+await player.setAudioBuffer(const Duration(milliseconds: 500));  // for slow hardware
 ```
 
 #### 7.6 Audio stream silence
 
-Keep audio hardware active even when playback is paused, to eliminate click or pop on resume:
+`setAudioStreamSilence(true)` keeps the device open while paused, sending silence, so resuming does not click or pop:
 
 ```dart
 await player.setAudioStreamSilence(true);
 ```
 
-> Note on iOS: the audio driver in this case is never released, so after an iOS interruption (phone call, other app audio) it stays suspended and playback can't continue.
+On iOS the driver then never lets go of the device: after an interruption, such as a phone call or another app's audio, it stays suspended and playback cannot continue.
 
 #### 7.7 Untimed null output
 
-When using the `null` audio driver (e.g. for server-side processing or testing without a sound device), this makes the null output run as fast as possible instead of at real time:
+With the `null` driver, for example to process audio on a machine with no sound device, `setAudioNullUntimed(true)` makes it run as fast as possible instead of at real time. It also applies when mpv falls back to `null` because the device failed to open:
 
 ```dart
 await player.setAudioNullUntimed(true);
@@ -1449,7 +1439,7 @@ await player.setAudioNullUntimed(true);
 
 #### 7.8 Radio and live streams
 
-For radio, disable caching and cache-pause to minimize latency:
+For live radio, turn off the cache and the cache pause to keep latency low:
 
 ```dart
 await player.open(Media('https://stream.radio.example.com/live.mp3'));
@@ -1457,7 +1447,7 @@ await player.setCache(const CacheSettings(mode: Cache.no, pause: false));
 await player.setNetworkTimeout(const Duration(seconds: 10));
 ```
 
-For HLS streams (like Jellyfin transcoding), the default cache settings work well. Mpv handles HLS natively and provides precise seeking even on transcoded streams:
+HLS streams, such as Jellyfin's transcoded ones, work with the default cache settings:
 
 ```dart
 await player.open(Media(
@@ -1466,16 +1456,14 @@ await player.open(Media(
 ));
 ```
 
-Two build-time `PlayerConfiguration` knobs tune streaming behaviour:
+Two `PlayerConfiguration` fields, set when you create the player, affect streams:
 
 ```dart
 final player = Player(
   configuration: const PlayerConfiguration(
-    // Allow in-cache seeking on streams mpv reports as non-seekable
-    // (direct-HTTP or HLS audio). Default false.
+    // Seek within the cache on streams mpv reports as not seekable
     forceSeekable: true,
-    // Which rendition mpv picks from an adaptive HLS playlist. Default
-    // .max; use .min to save bandwidth on metered links.
+    // Lowest-bitrate HLS variant, to save data (default .max)
     hlsBitrate: HlsBitrate.min,
   ),
 );
@@ -1493,37 +1481,33 @@ await player.setHttpProxy('http://proxy.example:8080');  // empty string clears 
 
 #### 7.9 Throttling CDNs and chunked requests
 
-Some CDNs, notably progressive YouTube and `googlevideo` audio, rate-limit a single open-ended HTTP range request (the whole rest of the file) to a crawl. Playback is fine from the start but **freezes after a seek**, once the buffered audio drains and the throttled connection can't refill it.
+Some CDNs, YouTube's `googlevideo` audio among them, slow a single open-ended HTTP range request (the rest of the file) to a crawl. Playback starts fine but stalls after a seek, once the buffered audio runs out and the slow connection cannot refill it.
 
-Opt in to bounded range requests for that source via `Media.httpChunkSize`, the same technique yt-dlp uses (`--http-chunk-size`). Each request stays below the CDN's threshold, so it keeps serving at full speed:
+`Media.httpChunkSize` splits the download into bounded range requests, as yt-dlp's `--http-chunk-size` does. Each request stays under the CDN's limit and is served at full speed:
 
 ```dart
 await player.open(Media(
   googlevideoUrl,
-  httpChunkSize: 8 * 1024 * 1024, // 8 MiB chunks
+  httpChunkSize: 8 * 1024 * 1024, // 8 MiB
 ));
 ```
 
-It is opt-in and scoped to that exact track. Leave it `null` (the default) for fast, trusted servers (Plex, Jellyfin, your own library) where one large request buffers fastest. Must be a positive byte count when set.
+It applies to that track only. Leave it `null` (the default) for servers that do not throttle, such as Plex, Jellyfin or your own: one large request buffers fastest there. When set, it must be a positive byte count.
 
 #### 7.10 Monitoring the demuxer cache
 
-`player.stream.demuxerCacheState` (and `player.state.demuxerCacheState`)
-surface a structured `DemuxerCacheState` snapshot for streaming sources:
-the buffered time ranges, the raw download rate, and the eof-cached,
-bof-cached, and underrun flags. It is empty for directly-seekable local files.
-
-The `seekableRanges` are what you render as the downloaded (buffered)
-regions of a network seek bar:
+`player.stream.demuxerCacheState` emits a `DemuxerCacheState` for
+streaming sources: the buffered time ranges, the download rate, and the
+eof-cached, bof-cached and underrun flags. It is empty for local files.
+Draw `seekableRanges` as the buffered parts of a seek bar:
 
 ```dart
 player.stream.demuxerCacheState.listen((cache) {
   for (final r in cache.seekableRanges) {
-    // Each CacheRange is a [start, end] Duration window already buffered.
-    print('buffered ${r.start} â€¦ ${r.end}');
+    print('buffered ${r.start} to ${r.end}');
   }
   if (cache.underrun) {
-    // The cache ran dry, show a buffering spinner.
+    // The cache ran dry: show a spinner
   }
 });
 ```
@@ -1548,29 +1532,29 @@ player.stream.metadata.listen((tags) {
 final meta = player.state.metadata;
 ```
 
-Common tag keys (case as returned by mpv): `title`, `artist`, `album`, `album_artist`, `date`, `track`, `disc`, `genre`, `comment`, `composer`.
+mpv returns the keys in lowercase, whatever the tag format. Common keys: `title`, `artist`, `album`, `album_artist`, `date`, `track`, `disc`, `genre`, `comment`, `composer`.
 
 #### 8.2 Cover art
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/cover_art_flow.png" width="100%">
 
-Embedded cover art is exposed as **raw codec bytes** plus a few
-Flutter conveniences, on a synchronous-state + reactive-stream pair:
+`player.state.coverArt` and `player.stream.coverArt` carry the embedded
+cover as the original image bytes, with a few Flutter helpers:
 
 ```dart
-// Synchronous read: peek at the current track's cover
+// Current track's cover
 final art = player.state.coverArt;
 if (art != null) {
   print('Format: ${art.extension}, ${art.bytes.length} bytes');
 }
 
-// Reactive: emits on every file load, null when no cover is embedded
+// Emits on every file load, null when no cover is embedded
 player.stream.coverArt.listen((art) {
   if (art != null) updateUi(art.image);
 });
 ```
 
-The [`CoverArt`] type carries the bytes plus a few helpers:
+`CoverArt` has these members:
 
 <details>
 <summary><b>5 members</b> (click to expand)</summary>
@@ -1596,7 +1580,7 @@ StreamBuilder<CoverArt?>(
       return const Icon(Icons.music_note, size: 96);
     }
     return Image(
-      image: art.image,         // MemoryImage backed by the raw bytes
+      image: art.image,         // a MemoryImage of the bytes
       fit: BoxFit.cover,
     );
   },
@@ -1616,12 +1600,10 @@ if (art != null) {
 
 - `stream.coverArt` emits on every file load, before playback starts:
   each playlist entry, and again when mpv reloads the same file.
-- The emitted value is `null` when the file has no embedded picture.
-  The stream emits the `null` (rather than skipping the file) so a UI
-  bound to it clears the previous cover on every track change.
-- `state.coverArt` mirrors the latest stream emit synchronously.
-- No re-encoding, no thumbnail generation. The bytes are exactly what
-  the demuxer pulled out of the file.
+- It emits `null` for a file without an embedded picture, so a UI bound
+  to it clears the previous cover.
+- `state.coverArt` holds the last value emitted.
+- The bytes are the image as stored in the file, with no re-encoding.
 
 ##### External cover files
 
@@ -1652,10 +1634,10 @@ unrelated images can't sneak in.
 
 ### 9. State and streams
 
-`mpv_audio_kit` exposes all player state in two complementary ways:
+The player exposes its state in two ways:
 
-- **`player.state`**: a synchronous, immutable snapshot of the current state. Safe to read from anywhere.
-- **`player.stream`**: reactive streams. Use with `StreamBuilder` or `.listen()`.
+- `player.state`: an immutable snapshot of the current state, read synchronously.
+- `player.stream`: streams for `StreamBuilder` or `listen()`.
 
 A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â€¦) gives each new subscriber the current value first, then every change, so a `StreamBuilder` needs no `initialData`. To wait for the next change, skip the current value: `player.stream.volume.skip(1).first`. Event streams (`seekCompleted`, `endFile`, `error`, `log`, `internalLog`, `hook`, `mediaSessionCommands`, `fft`, `pcm`, `loudnessMeter`, taps) only deliver what happens after `listen()`.
 
@@ -1666,23 +1648,23 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 
 | Stream | Type | Notes |
 | :--- | :--- | :--- |
-| `playWhenReady` | `bool` | User intent to play (the play-pause axis). Set by `play`, `pause`, `open` and `stop`; **stable across seeks and buffering**, so bind your play-pause button (and the OS media controls already do) to this, not to `playing`. |
-| `playing` | `bool` | `true` only while audio is actually being produced; tracks mpv's `core-idle` (inverted). **Toggles transiently during seeks and buffering**, so use for a spinner, not a play-pause button. "Actually emitting audio" is `playWhenReady && playing`. |
+| `playWhenReady` | `bool` | Whether the user wants playback. Set by `play`, `pause`, `open` and `stop`, and unchanged by seeks and buffering: bind the play-pause button to it, as the OS media controls do. |
+| `playing` | `bool` | `true` only while audio is produced (mpv's `core-idle`, inverted). It flips during seeks and buffering: use it for a spinner. Audio is playing when `playWhenReady && playing`. |
 | `completed` | `bool` | `true` once playback reaches the end of the last track in the queue, or of the only one. Stays `false` between tracks and while a loop is on; goes back to `false` when a new track starts or you seek back. |
 | `eofReached` | `bool` | mpv's `eof-reached`; `true` while paused at the end of a file with `keep-open=yes`. |
-| `position` | `Duration` | Current playhead, throttled to ~30 Hz. |
+| `position` | `Duration` | Current position, updated about 30 times a second. |
 | `duration` | `Duration` | Total duration of the current file; `Duration.zero` for live streams. |
-| `seekCompleted` | `void` | Fires once per `loadfile` or seek when mpv re-initialises (PLAYBACK_RESTART). Use as the authoritative "file ready" signal. |
+| `seekCompleted` | `void` | Fires after each load or seek, once mpv is ready to play. Use it as the signal that the file is ready. |
 | `buffering` | `bool` | `true` between `start-file` and `file-loaded`. |
 | `buffer` | `Duration` | Absolute timestamp the demuxer has buffered up to. |
 | `bufferDuration` | `Duration` | Headroom ahead of the playhead (`demuxer-cache-duration`). |
-| `bufferingPercentage` | `double` (0-100) | Wrapper-computed cache fill against `state.cache.secs`. |
+| `bufferingPercentage` | `double` (0-100) | Cache fill as a percentage of `state.cache.secs`, computed by the player. |
 | `volume` | `double` | 0-100; values above 100 amplify. |
 | `mute` | `bool` | |
 | `rate` | `double` | Playback speed multiplier. |
 | `pitch` | `double` | Pitch multiplier. |
 | `pitchCorrection` | `bool` | Whether mpv keeps the pitch with `scaletempo2` when the rate changes. Default `true`. |
-| `audioDelay` | `Duration` | Audio offset relative to video (sub-millisecond precision is rounded). |
+| `audioDelay` | `Duration` | Audio offset, rounded to the millisecond. |
 
 </details>
 
@@ -1697,9 +1679,9 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `loop` | `Loop` | `setLoop` |
 | `shuffle` | `bool` | `setShuffle` |
 | `prefetchPlaylist` | `bool` | `setPrefetchPlaylist` |
-| `tracks` | `List<MpvTrack>` | _(observed; populated by demuxer)_ |
+| `tracks` | `List<MpvTrack>` | Read-only, filled by the demuxer |
 | `currentAudioTrack` | `MpvTrack?` | `setAudioTrack` |
-| `chapters` | `List<Chapter>` | _(observed; populated by demuxer)_ |
+| `chapters` | `List<Chapter>` | Read-only, filled by the demuxer |
 | `currentChapter` | `int?` | `setChapter` |
 
 </details>
@@ -1712,11 +1694,11 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | Stream | Type | Setter |
 | :--- | :--- | :--- |
 | `audioDevice` | `Device` | `setAudioDevice` |
-| `audioDevices` | `List<Device>` | _(read-only)_ |
-| `audioParams` | `AudioParams` | _(decoder; observed)_ |
-| `audioOutParams` | `AudioParams` | _(hardware; observed)_ |
-| `audioBitrate` | `double?` | _(observed)_ |
-| `audioOutputState` | `AudioOutputState` | _(see [Â§11.4](#114-audio-output-lifecycle))_ |
+| `audioDevices` | `List<Device>` | Read-only |
+| `audioParams` | `AudioParams` | Read-only, from the decoder |
+| `audioOutParams` | `AudioParams` | Read-only, sent to the output |
+| `audioBitrate` | `double?` | Read-only |
+| `audioOutputState` | `AudioOutputState` | Read-only, see [11.4](#114-audio-output-lifecycle) |
 | `audioDriver` | `String` | `setAudioDriver` |
 | `audioExclusive` | `bool` | `setAudioExclusive` |
 | `audioBuffer` | `Duration` | `setAudioBuffer` |
@@ -1727,8 +1709,8 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `volumeGain` | `double` | `setVolumeGain` |
 | `volumeGainMin` | `double` | `setVolumeGainMin` |
 | `volumeGainMax` | `double` | `setVolumeGainMax` |
-| `systemVolume` | `double?` | `setSystemVolume` (OS mixer; `null` when unsupported by the active AO) |
-| `systemMute` | `bool?` | `setSystemMute` (OS mixer; `null` when unsupported by the active AO) |
+| `systemVolume` | `double?` | `setSystemVolume`; `null` when the driver has no per-app mixer |
+| `systemMute` | `bool?` | `setSystemMute`; `null` when the driver has no per-app mixer |
 | `audioSampleRate` | `int` | `setAudioSampleRate` |
 | `audioFormat` | `Format` | `setAudioFormat` |
 | `audioChannels` | `Channels` | `setAudioChannels` |
@@ -1742,16 +1724,11 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 
 #### 9.4 DSP and filter streams
 
-<details>
-<summary><b>3 streams</b> (click to expand)</summary>
-
 | Stream | Type | Setter |
 | :--- | :--- | :--- |
 | `audioEffects` | `List<AudioEffect>` | `setAudioEffects`, `updateAudioEffects` |
 | `replayGain` | `ReplayGainSettings` | `setReplayGain` |
 | `gapless` | `Gapless` | `setGapless` |
-
-</details>
 
 #### 9.5 Network and cache streams
 
@@ -1766,11 +1743,11 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `hlsBitrate` | `HlsBitrate` | `setHlsBitrate` |
 | `cookies` | `bool` | `setCookies` |
 | `httpProxy` | `String` | `setHttpProxy` |
-| `pausedForCache` | `bool` | _(observed; auto-pause signal)_ |
-| `demuxerViaNetwork` | `bool` | _(observed)_ |
-| `demuxerCacheState` | `DemuxerCacheState` | _(observed; buffered ranges, raw input rate, eof-cached, bof-cached, underrun)_ |
-| `cacheSpeed` | `double` (bytes per second) | _(observed)_ |
-| `cacheBufferingState` | `int` (0-100) | _(observed)_ |
+| `pausedForCache` | `bool` | Read-only; `true` while paused for an empty cache |
+| `demuxerViaNetwork` | `bool` | Read-only |
+| `demuxerCacheState` | `DemuxerCacheState` | Read-only, see [7.10](#710-monitoring-the-demuxer-cache) |
+| `cacheSpeed` | `double` (bytes per second) | Read-only |
+| `cacheBufferingState` | `int` (0-100) | Read-only |
 | `demuxer` | `DemuxerSettings` | `setDemuxer` |
 
 </details>
@@ -1786,10 +1763,10 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `mediaTitle` | `String` | `media-title` (falls back to filename when no `title` tag) |
 | `fileFormat` | `String` | `file-format` |
 | `fileSize` | `int` | `file-size` |
-| `path` | `String` | `path` (canonicalised, post-redirect) |
+| `path` | `String` | `path` (after redirects) |
 | `filename` | `String` | `filename` (no directory) |
 | `streamPath` | `String` | `stream-path` (URI as originally requested) |
-| `streamOpenFilename` | `String` | `stream-open-filename` (URI as opened post-redirect) |
+| `streamOpenFilename` | `String` | `stream-open-filename` (URI as opened, after redirects) |
 | `playlistPath` | `String` | `playlist-path` (source `.m3u` or `.pls`; empty when not loaded via a playlist) |
 | `seekable` | `bool` | `seekable` |
 | `partiallySeekable` | `bool` | `partially-seekable` (HLS or DASH window) |
@@ -1799,16 +1776,11 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 
 #### 9.7 Playback timing streams
 
-<details>
-<summary><b>3 streams</b> (click to expand)</summary>
-
 | Stream | Type | Notes |
 | :--- | :--- | :--- |
-| `audioPts` | `Duration` | mpv's `audio-pts`; per-frame timestamp including AO latency. More granular than [`position`](#91-core-streams). |
+| `audioPts` | `Duration` | mpv's `audio-pts`: position of the audio being heard, counting the output latency. Updates more often than [`position`](#91-core-streams). |
 | `timeRemaining` | `Duration` | Time left in the file, ignoring the playback rate. |
 | `playtimeRemaining` | `Duration` | Time left at the current rate: 60 s of file at 2.0x is 30 s. |
-
-</details>
 
 #### 9.8 A-B loop streams
 
@@ -1820,21 +1792,16 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` |
 | `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` |
 | `abLoopCount` | `int?` (`null` = infinite) | `setAbLoopCount` |
-| `remainingAbLoops` | `int?` (`null` when no loop or infinite) | _(observed; counts down)_ |
+| `remainingAbLoops` | `int?` (`null` when no loop or infinite) | Read-only, counts down |
 
 </details>
 
 #### 9.9 Cover art streams
 
-<details>
-<summary><b>2 streams</b> (click to expand)</summary>
-
 | Stream | Type | Setter |
 | :--- | :--- | :--- |
-| `coverArt` | `CoverArt?` (one emit per file load) | _(observed; from embedded picture)_ |
+| `coverArt` | `CoverArt?` | Read-only, embedded pictures only |
 | `coverArtAuto` | `Cover` | `setCoverArtAuto` |
-
-</details>
 
 #### 9.10 Runtime diagnostics
 
@@ -1843,11 +1810,11 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 
 | Stream | Type | mpv property |
 | :--- | :--- | :--- |
-| `seeking` | `bool` | `seeking` (UI gate against concurrent seeks) |
+| `seeking` | `bool` | `seeking` (`true` while a seek runs) |
 | `percentPos` | `double` (0-100) | `percent-pos` |
 | `currentDemuxer` | `String` | `current-demuxer` |
 | `currentAo` | `String` | `current-ao` |
-| `demuxerStartTime` | `Duration` | `demuxer-start-time` (initial timestamp offset) |
+| `demuxerStartTime` | `Duration` | `demuxer-start-time` (timestamp of the file's start) |
 | `chapterMetadata` | `Map<String, String>` | `chapter-metadata` (per-chapter tags) |
 | `mpvVersion` | `String` | `mpv-version` |
 | `ffmpegVersion` | `String` | `ffmpeg-version` |
@@ -1856,10 +1823,10 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 
 #### 9.11 Prefetch lifecycle stream
 
-mpv pre-opens the next playlist entry in the background to make the
-transition between tracks gapless. The wrapper exposes a typed stream
-so you can drive a "Prefetchingâ€¦" UI, verify gapless, or log
-warnings when a prefetch is dropped without parsing log lines.
+With `setPrefetchPlaylist(true)`, mpv opens the next playlist entry in
+the background before the current one ends. `player.stream.prefetchState`
+follows that work, so you can show progress or log a failed prefetch
+without parsing log lines.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/mpv_prefetch_state.png" width="100%">
 
@@ -1869,19 +1836,17 @@ player.stream.prefetchState.listen((state) {
     case PrefetchState.idle:
       // No background prefetch in progress.
     case PrefetchState.loading:
-      // The opener thread is creating the demuxer for the next item
-      // and the secondary cache is filling.
+      // Opening the next entry and filling its cache
       showIndicator('Prefetchingâ€¦');
     case PrefetchState.ready:
-      // Secondary demuxer is open AND idle (cache-secs reached,
-      // no segment fetches outstanding). Gapless is armed.
+      // The next entry is open and cached up to cache-secs
       showIndicator('Ready');
     case PrefetchState.used:
       // The track just started from the prefetched stream.
       // Stays until the next `loading` or a cancel.
       showIndicator('Using prefetched');
     case PrefetchState.failed:
-      // The opener thread failed (network error, unsupported
+      // Opening the next entry failed (network error, unsupported
       // codec, on_load hook abort). Stays until the next `loading`.
       showIndicator('Prefetch failed');
   }
@@ -1894,41 +1859,38 @@ player.stream.prefetchState.listen((state) {
 | State | When it fires | Notes |
 | :--- | :--- | :--- |
 | `idle` | Default; after a cancel or a dropped prefetch | |
-| `loading` | Opener thread running | Persists until the demuxer is open and the reader goes idle |
-| `ready` | Secondary demuxer open + reader idle | Gapless is armed |
+| `loading` | Opening the next entry | Until the entry is open and cached |
+| `ready` | Next entry open and cached | The track change will use it |
 | `used` | Track transitioned via the prefetched stream | Stays until the next `loading` or a cancel |
-| `failed` | Opener thread error | Stays until the next `loading` |
+| `failed` | Opening the next entry failed | Stays until the next `loading` |
 
 </details>
 
-For a determinate progress bar instead of a spinner, pair the state with
-`player.stream.prefetchCacheDuration`: how much of the next track is
-already buffered ahead, as a `Duration`. Divide it by your configured
-cache target for a percentage; it emits `Duration.zero` while no prefetch
-is in flight.
+For a progress bar, use `player.stream.prefetchCacheDuration`: how much
+of the next entry is cached, as a `Duration`. Divide it by your cache
+target; it is `Duration.zero` while nothing is being prefetched.
 
 ```dart
 player.stream.prefetchCacheDuration.listen((buffered) {
   const target = Duration(seconds: 30); // your cache target
   final pct = (buffered.inMilliseconds / target.inMilliseconds)
       .clamp(0.0, 1.0);
-  showPrefetchProgress(pct); // 0.0 â†’ 1.0
+  showPrefetchProgress(pct); // 0 to 1
 });
 ```
 
 #### 9.12 Aggregate lifecycle
 
-`player.stream.playbackState` collapses the four underlying flags
-(`playing`, `buffering`, `completed`, `pausedForCache`) plus
-`duration` into a single mutually-exclusive `MpvPlaybackState` enum,
-ideal when the UI wants one indicator instead of three.
+`player.stream.playbackState` combines `playing`, `buffering`,
+`completed`, `pausedForCache` and `duration` into one `MpvPlaybackState`,
+for a UI that shows a single indicator.
 
 ```dart
 player.stream.playbackState.listen((phase) {
   switch (phase) {
     case MpvPlaybackState.idle:       // No file loaded
-    case MpvPlaybackState.loading:    // File is opening (demuxer and decoder init)
-    case MpvPlaybackState.buffering:  // Mid-playback network stall
+    case MpvPlaybackState.loading:    // File opening
+    case MpvPlaybackState.buffering:  // Waiting for the network during playback
     case MpvPlaybackState.playing:    // Producing audio
     case MpvPlaybackState.paused:     // File loaded, audio paused
     case MpvPlaybackState.completed:  // Reached the end of the last track
@@ -1970,28 +1932,17 @@ if (i >= 0 && i < s.playlist.items.length) {
 
 #### 9.14 Spectrum and PCM streams
 
-Two real-time streams expose the audio currently flowing through the
-output. See [Â§13](#13-visualizer-waveform-and-spectrum) for the full
-configuration surface, the math behind the pipeline, and a reference
-visualizer.
+`stream.fft` and `stream.pcm` carry the audio going to the output.
+[Section 13](#13-visualizer-waveform-and-spectrum) covers their settings.
 
-<details>
-<summary><b>2 streams</b> (click to expand)</summary>
-
-| Stream                | Type                | What it carries |
-|-----------------------|---------------------|-----------------|
-| `stream.fft`          | `Stream<FftFrame>`  | Smoothed FFT bands plus raw bins, ready for a bar visualizer. |
-| `stream.pcm`          | `Stream<PcmFrame>`  | Raw post-DSP samples, ready for a waveform and VU. |
-
-</details>
-
-Both streams are lazy (poll loop runs only while subscribed) and
-share the same upstream tap, so subscribing to both costs only the
-duplicate FFT computation.
+| Stream | Type | What it carries |
+| :--- | :--- | :--- |
+| `stream.fft` | `Stream<FftFrame>` | Smoothed FFT bands and raw bins, for a bar visualizer. |
+| `stream.pcm` | `Stream<PcmFrame>` | Samples after the effects chain, for a waveform or a level meter. |
 
 ```dart
 player.stream.fft.listen((frame) {
-  // 64 bands, each in [0, 1]. Paint directly:
+  // 64 bands by default, each from 0 to 1
   for (var i = 0; i < frame.bands.length; i++) {
     paintBar(i, frame.bands[i]);
   }
@@ -2000,28 +1951,23 @@ player.stream.fft.listen((frame) {
 
 #### 9.15 Media session streams
 
-Two streams expose the OS media session. See
-[Â§14](#14-os-media-session) for the full setup and command surface.
+Two streams follow the OS media session, covered in
+[section 14](#14-os-media-session).
 
-<details>
-<summary><b>2 streams</b> (click to expand)</summary>
-
-| Stream                          | Type                            | What it carries |
-|---------------------------------|---------------------------------|-----------------|
-| `stream.mediaSession`           | `Stream<MediaSession?>`         | The active session config (or `null` when none is published); mirrors `state.mediaSession`. |
-| `stream.mediaSessionCommands`   | `Stream<MediaSessionCommand>`   | Transport commands the OS sends back (play, pause, next, seek and so on). Auto-applied to the player; surfaced here for analytics or interception. |
-
-</details>
+| Stream | Type | What it carries |
+| :--- | :--- | :--- |
+| `stream.mediaSession` | `Stream<MediaSession?>` | The published session, or `null`. Same as `state.mediaSession`. |
+| `stream.mediaSessionCommands` | `Stream<MediaSessionCommand>` | Commands from the OS (play, pause, next, seek and so on). The player applies them itself; the stream is for logging or extra handling. |
 
 ---
 
 ### 10. Raw API
 
-For anything not covered by the typed API, you can access mpv directly.
+For what the typed API does not cover, the raw API talks to mpv directly.
 
 #### 10.1 Read a property
 
-Returns `null` if the property doesn't exist or the call fails.
+`getRawProperty` returns `null` when the property does not exist or the read fails.
 
 ```dart
 final String? value = await player.getRawProperty('audio-codec');
@@ -2037,9 +1983,9 @@ final tracks = await player.getRawPropertyNode('track-list') as List?;
 
 #### 10.2 Write a property
 
-Throws `MpvCommandException` if libmpv rejects the write (typo,
-out-of-range value, â€¦). Carries `name`, mpv `code`, and the
-human-readable `message` from `mpv_error_string`. Writes to `af` and
+`setRawProperty` throws `MpvCommandException` when mpv rejects the
+write, for a typo or an out-of-range value. The exception carries
+`name`, mpv's `code` and its `message`. Writes to `af` and
 `pause`, also through `options/` and `file-local-options/`, throw
 `ArgumentError`: use the effects chain and `play()` or `pause()` instead.
 
@@ -2054,13 +2000,14 @@ try {
 
 #### 10.3 Send a command
 
-Same `MpvCommandException` contract on rejection. `af` and `af-command`
-throw `ArgumentError`: the effects chain owns them. So do the commands that
-write `af` or `pause` (`set`, `add`, `multiply`, `cycle`, `cycle-values`,
-`change-list`, also through `options/` and `file-local-options/`), and
-`loadfile` with `af` or `pause` in its per-file options (`af-add`,
-`no-pause` and the like included). The check is there against mistakes: it
-covers these commands, not every way mpv offers to change a property.
+`sendRawCommand` throws `MpvCommandException` the same way. `af` and
+`af-command` throw `ArgumentError`, because the effects chain owns them.
+So do the commands that write `af` or `pause` (`set`, `add`, `multiply`,
+`cycle`, `cycle-values`, `change-list`, also through `options/` and
+`file-local-options/`), and `loadfile` with `af` or `pause` in its
+per-file options (`af-add`, `no-pause` and the like included). The check
+guards against mistakes: it covers these commands, not every way mpv
+offers to change a property.
 
 ```dart
 await player.sendRawCommand(['playlist-shuffle']);
@@ -2071,10 +2018,9 @@ Other commands and properties from the
 [mpv documentation](https://mpv.io/manual/master/) go through these
 methods, except the writes to `af` and `pause` listed above.
 
-> Prefer the typed setters (`setVolume`, `setCache`,
-> `setReplayGain`, â€¦) when they cover your use case. They update
-> `state` immediately, while the raw escape hatches have to wait for
-> mpv to confirm the change.
+Prefer the typed setters when they cover what you need: they update
+`state` right away, while a raw write shows up only once mpv reports the
+change.
 
 ---
 
