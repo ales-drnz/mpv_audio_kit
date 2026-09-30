@@ -116,8 +116,8 @@ class MediaSessionController {
   /// [MediaSessionChannel] for the rationale).
   ///
   /// [inputs] declares the exact slice of Player state the controller
-  /// consumes. Production builds it via
-  /// `MediaSessionInputs.fromPlayer(...)`; tests can build a
+  /// consumes. Production builds it from the player's change streams;
+  /// tests can build a
   /// [MediaSessionInputs] from raw [StreamController]s and drive
   /// arbitrary event sequences.
   ///

@@ -65,7 +65,23 @@ mixin _MediaSessionModule on _PlayerBase {
       if (_mediaSessionController == null) {
         final controller = await MediaSessionController.create(
           stateSnapshot: () => _state,
-          inputs: MediaSessionInputs.fromPlayer(stream: stream),
+          // The changes only: the controller pushes the current state
+          // itself, so the replaying state streams are not what it needs.
+          inputs: MediaSessionInputs(
+            playWhenReady: _reactives.playWhenReady.changes,
+            playing: _reactives.playing.changes,
+            buffering: _buffering.changes,
+            rate: _reactives.rate.changes,
+            seekCompleted: _seekCompletedCtrl.stream,
+            seekable: _reactives.seekable.changes,
+            loop: _loop.changes,
+            shuffle: _reactives.shuffle.changes,
+            duration: _reactives.duration.changes,
+            metadata: _metadata.changes,
+            coverArt: _coverArtCtrl.stream,
+            mediaTitle: _reactives.mediaTitle.changes,
+            mediaSession: _mediaSession.changes,
+          ),
           onCommand: _handleSessionCommand,
           onAudioOutputReset: _reloadAudioOutput,
         );
