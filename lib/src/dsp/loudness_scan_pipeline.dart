@@ -2,24 +2,15 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'dart:async';
-
 import 'package:meta/meta.dart';
 
 import '../models/loudness_scan.dart';
-import '../mpv_bindings.dart';
 import '../types/state/loudness_scan_state.dart';
-import 'dsp_async_io.dart';
+import 'analysis_poll_pipeline.dart';
 
-/// Offline loudness-scan pipeline.
-///
-/// Listener-gated by [setEnabled]: while a listener is attached to
-/// [PlayerStream.loudnessScan] the player writes the
-/// `loudness-scan-enabled` mpv property `true` (the native scan only
-/// runs while this flag is set) and the pipeline polls
-/// `loudness-scan-data` on a low-rate timer. On the last cancel the
-/// player writes the flag `false` and the timer stops — an idle scan
-/// costs nothing.
+/// Offline loudness-scan pipeline: polls `loudness-scan-data` while
+/// [PlayerStream.loudnessScan] has a listener (`loudness-scan-enabled`
+/// on), see [AnalysisPollPipeline].
 ///
 /// While the scan runs it emits `scanning` snapshots carrying a progress
 /// fraction on each poll. As soon as it reaches a terminal state (`ready` /
@@ -28,114 +19,24 @@ import 'dsp_async_io.dart';
 /// [reset]: the pipeline drops the current result, emits `null`, and
 /// rearms the timer if still enabled.
 @internal
-class LoudnessScanPipeline {
+class LoudnessScanPipeline extends AnalysisPollPipeline<LoudnessScan> {
   LoudnessScanPipeline({
-    required AsyncPropertyGet asyncGet,
-    required AsyncPropertySet asyncSet,
-    Duration pollInterval = const Duration(milliseconds: 120),
-  }) : _asyncGet = asyncGet,
-       _asyncSet = asyncSet,
-       _pollInterval = pollInterval;
+    required super.asyncGet,
+    required super.asyncSet,
+    super.pollInterval,
+  }) : super(
+         enabledProperty: 'loudness-scan-enabled',
+         dataProperty: 'loudness-scan-data',
+       );
 
-  final AsyncPropertyGet _asyncGet;
-  final AsyncPropertySet _asyncSet;
-  final Duration _pollInterval;
-
-  final StreamController<LoudnessScan?> _ctrl =
-      StreamController<LoudnessScan?>.broadcast();
-  Timer? _pollTimer;
-  LoudnessScan? _result;
   // Last scanning fraction seen, to skip re-emitting unchanged progress.
   double? _lastScanProgress;
-  bool _enabled = false;
-  bool _disposed = false;
-  // No file loaded (after [clear]): mpv still holds the last file's
-  // analysis, so nothing is polled until the next [reset].
-  bool _idle = false;
-  // Guards against overlapping async polls — see [LoudnessMeterPipeline].
-  bool _polling = false;
 
-  Stream<LoudnessScan?> get stream => _ctrl.stream;
+  @override
+  void onDrop() => _lastScanProgress = null;
 
-  /// Arms or disarms the scan. Driven by the `onListen` / `onCancel` of
-  /// the player's scan controller. Writes the
-  /// `loudness-scan-enabled` mpv property and starts / stops polling.
-  void setEnabled(bool enabled) {
-    if (_disposed || enabled == _enabled) return;
-    _enabled = enabled;
-    _writeEnabledProperty(enabled);
-    if (enabled) {
-      // A finished result already reaches a new subscriber through the
-      // player's replay of the last value; only a pending one polls.
-      if (_result == null) _armTimer();
-    } else {
-      _pollTimer?.cancel();
-      _pollTimer = null;
-    }
-  }
-
-  /// Drops the current result and emits `null` so consumers clear stale
-  /// data on the track-change boundary. Rearms the polling timer when
-  /// the scan is still enabled.
-  void reset() {
-    if (_disposed) return;
-    _idle = false;
-    _result = null;
-    _lastScanProgress = null;
-    _pollTimer?.cancel();
-    _pollTimer = null;
-    _emit(null);
-    if (_enabled) _armTimer();
-  }
-
-  /// Drops the current result and emits `null` once no file is loaded,
-  /// without polling again until the next [reset].
-  void clear() {
-    if (_disposed) return;
-    _idle = true;
-    _result = null;
-    _pollTimer?.cancel();
-    _pollTimer = null;
-    _emit(null);
-  }
-
-  Future<void> dispose() async {
-    if (_disposed) return;
-    _disposed = true;
-    _pollTimer?.cancel();
-    _pollTimer = null;
-    if (!_ctrl.isClosed) await _ctrl.close();
-  }
-
-  void _emit(LoudnessScan? result) {
-    if (!_ctrl.isClosed) _ctrl.add(result);
-  }
-
-  void _writeEnabledProperty(bool enabled) {
-    unawaited(_asyncSet('loudness-scan-enabled', enabled ? 'yes' : 'no'));
-  }
-
-  void _armTimer() {
-    if (_disposed || _idle || _result != null) return;
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
-    _poll();
-  }
-
-  void _poll() {
-    if (_disposed || _polling || _result != null) return;
-    _polling = true;
-    unawaited(_doPoll().whenComplete(() => _polling = false));
-  }
-
-  Future<void> _doPoll() async {
-    final (rc, value) = await _asyncGet(
-      'loudness-scan-data',
-      MpvFormat.mpvFormatNode,
-    );
-    if (_disposed || _idle || _result != null) return;
-    if (rc < 0 || value is! Map) return;
-
+  @override
+  void onData(Map<Object?, Object?> value) {
     final state = value['state'];
     if (state is! String) return;
 
@@ -148,22 +49,23 @@ class LoudnessScanPipeline {
     final parsed = LoudnessScanState.fromMpv(state);
     switch (parsed) {
       case LoudnessScanState.ready:
-        _result = LoudnessScan(
-          state: LoudnessScanState.ready,
-          integrated: asDouble(value['integrated_lufs']),
-          range: asDouble(value['lra_lu']),
-          samplePeak: asDouble(value['sample_peak']),
-          truePeak: asDouble(value['true_peak']),
-          gatedBlockCount: asInt(value['gated_block_count']),
-          progress: 1.0,
+        finish(
+          LoudnessScan(
+            state: LoudnessScanState.ready,
+            integrated: asDouble(value['integrated_lufs']),
+            range: asDouble(value['lra_lu']),
+            samplePeak: asDouble(value['sample_peak']),
+            truePeak: asDouble(value['true_peak']),
+            gatedBlockCount: asInt(value['gated_block_count']),
+            progress: 1.0,
+          ),
         );
       case LoudnessScanState.failed:
       case LoudnessScanState.unavailable:
-        _result = LoudnessScan(state: parsed);
+        finish(LoudnessScan(state: parsed));
       case LoudnessScanState.scanning:
-        // Non-terminal: surface a progress snapshot and keep polling. Never
-        // cache it (_result stays null) so the poll loop stays armed until a
-        // terminal state lands. De-dup on the fraction to avoid UI churn.
+        // Non-terminal: surface a progress snapshot and keep polling until
+        // a terminal state lands. De-dup on the fraction to avoid UI churn.
         final progress = asFraction(value['progress']);
         if (progress != _lastScanProgress) {
           _lastScanProgress = progress;
@@ -171,14 +73,11 @@ class LoudnessScanPipeline {
             state: LoudnessScanState.scanning,
             progress: progress,
           );
-          _emit(scan);
+          emit(scan);
         }
         return;
       case LoudnessScanState.idle:
         return; // non-terminal — keep polling
     }
-    _pollTimer?.cancel();
-    _pollTimer = null;
-    _emit(_result);
   }
 }
