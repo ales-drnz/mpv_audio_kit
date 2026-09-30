@@ -1,9 +1,10 @@
-"""Generates the README diagrams in imgs/diagrams, light and dark.
+"""Generates the README diagrams in imgs/diagrams.
 
 Library nodes use the icon's navy plate gradient and your code's nodes the
 cyan-to-white bars gradient. Each diagram is written as SVG and exported to
-PNG at 2x with rsvg-convert, on GitHub's light (#FFFFFF) or dark (#0D1117)
-ground so it stays readable where <picture> is not supported.
+PNG at 2x with rsvg-convert on a white ground, so it reads the same in
+GitHub's light and dark themes and on pub.dev. PAL keeps a dark palette in
+case a dark variant is wanted again.
 
 Run from the repository root: python3 tool/diagrams/generate.py
 """
@@ -289,12 +290,9 @@ def media(t):
 ALL = [architecture, lifecycle, effects, timeline, prefetch, cover, errors, hook, resolver, spectrum, media]
 os.makedirs(OUT, exist_ok=True)
 for f in ALL:
-    for t in ('light', 'dark'):
-        d = f(t)
-        suffix = '' if t == 'light' else '_dark'
-        svg = os.path.join(OUT, f'{d.name}{suffix}.svg')
-        with open(svg, 'w') as fh:
-            fh.write(d.svg())
-        bg = '#0D1117' if t == 'dark' else '#FFFFFF'
-        subprocess.run(['rsvg-convert', '-z', '2', '-b', bg, svg, '-o', svg[:-4] + '.png'], check=True)
-print(len(ALL) * 2, 'diagrams written to', OUT)
+    d = f('light')
+    svg = os.path.join(OUT, f'{d.name}.svg')
+    with open(svg, 'w') as fh:
+        fh.write(d.svg())
+    subprocess.run(['rsvg-convert', '-z', '2', '-b', '#FFFFFF', svg, '-o', svg[:-4] + '.png'], check=True)
+print(len(ALL), 'diagrams written to', OUT)
