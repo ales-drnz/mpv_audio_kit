@@ -26,11 +26,11 @@ Many existing Flutter audio libraries are either built on an old version of mpv 
 <table>
 <tr>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/jellyfin.png" width="32" alt="Jellyfin"></td>
-<td valign="middle"><b>Jellyfin</b><br>for song streaming, supporting <code>.m3u8</code> (<a href="#21-supported-uri-schemes">HLS</a>) is essential when using transcoding. This is particulary handy because it enables seeking on the mpv player instead of blocking it when using <code>.stream</code>.</td>
+<td valign="middle"><b>Jellyfin</b><br>for song streaming, supporting <code>.m3u8</code> (<a href="#21-supported-uri-schemes">HLS</a>) is essential when using transcoding. This is particularly handy because it enables seeking on the mpv player instead of blocking it when using <code>.stream</code>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/plex.png" width="32" alt="Plex"></td>
-<td valign="middle"><b>Plex</b><br>transcoding in this case requires a <code>/decision</code> call before each stream. Plex rejects multiple parallel requests when creating playlists, so instead of relying to a local proxy server, the <code>on_load</code> <a href="#12-hooks">hook method</a> resolves <code>.m3u8</code> or <code>.mpd</code> (<a href="#21-supported-uri-schemes">DASH</a>) URLs lazily.</td>
+<td valign="middle"><b>Plex</b><br>transcoding in this case requires a <code>/decision</code> call before each stream. Plex rejects multiple parallel requests when creating playlists, so instead of relying on a local proxy server, the <code>on_load</code> <a href="#12-hooks">hook method</a> resolves <code>.m3u8</code> or <code>.mpd</code> (<a href="#21-supported-uri-schemes">DASH</a>) URLs lazily.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/samba.png" width="32" alt="Samba"></td>
@@ -53,7 +53,7 @@ dependencies:
   mpv_audio_kit: ^0.5.0
 ```
 
-## Platforms requirements
+## Platform requirements
 
 <!-- TODO: the sizes below are from libmpv-r14; update them after the r15 rebuild. -->
 
@@ -272,7 +272,7 @@ The path can be a directory holding files named like the release assets (`libmpv
 <table>
 <tr>
 <td valign="middle" width="90"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_studio.png" width="70" alt="MPV Studio"></td>
-<td valign="middle">The screenshots below are from <b><a href="https://github.com/ales-drnz/mpv_studio">MPV Studio</a></b>, the standalone showcase app built on <code>mpv_audio_kit</code>. The bundled <code>example/</code> is a deliberately minimal single-file demo.
+<td valign="middle">The screenshots below are from <b><a href="https://github.com/ales-drnz/mpv_studio">MPV Studio</a></b>, the standalone showcase app built on <code>mpv_audio_kit</code>. The bundled <code>example/</code> is a deliberately minimal single-file demo.</td>
 </tr>
 </table>
 
@@ -699,7 +699,7 @@ player.stream.chapterMetadata.listen((tags) => print(tags));
 await player.setChapter(2);
 ```
 
-`Chapter` exposes `time` and an optional `title`. Use `state.demuxerStartTime` if you need the source-side.
+`Chapter` exposes `time` and an optional `title`. Chapter times count from the start of playback; add `state.demuxerStartTime` to get the source's own timestamps.
 
 ---
 
@@ -1363,7 +1363,7 @@ await player.reloadAudio();
 
 On Linux, tag the stream's media role as "music" so the audio server
 (PulseAudio and PipeWire) applies the right routing and per-role volume
-profile. On Android the audtrack and aaudio backends honour it too; it is a
+profile. On Android the audiotrack and aaudio backends honour it too; it is a
 no-op elsewhere.
 
 ```dart
