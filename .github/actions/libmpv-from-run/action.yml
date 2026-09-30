@@ -20,13 +20,22 @@ inputs:
 runs:
   using: composite
   steps:
-    - if: inputs.run-id != ''
+    - id: check
+      if: inputs.run-id != ''
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
         RUN_ID: ${{ inputs.run-id }}
+        FORK: ${{ github.event.pull_request.head.repo.fork }}
       run: |
         if [[ -z "$GH_TOKEN" ]]; then
+          if [[ "$FORK" == true ]]; then
+            # A pull request from a fork gets no secrets: it builds against
+            # the pinned release instead.
+            echo "::warning::No LIBMPV_SCRIPTS_TOKEN on a fork pull request: using the pinned libmpv release."
+            echo "use=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "::error::LIBMPV_SCRIPTS_RUN is set but LIBMPV_SCRIPTS_TOKEN is not: add a token with Actions read access on ales-drnz/libmpv-scripts."
           exit 1
         fi
@@ -39,7 +48,8 @@ runs:
           echo "::error::libmpv-scripts run $RUN_ID did not succeed ($conclusion)."
           exit 1
         fi
-    - if: inputs.run-id != ''
+        echo "use=true" >> "$GITHUB_OUTPUT"
+    - if: steps.check.outputs.use == 'true'
       uses: actions/download-artifact@v4
       with:
         name: libmpv-release
@@ -47,7 +57,7 @@ runs:
         run-id: ${{ inputs.run-id }}
         github-token: ${{ inputs.token }}
         path: ${{ runner.temp }}/libmpv
-    - if: inputs.run-id != ''
+    - if: steps.check.outputs.use == 'true'
       shell: bash
       run: |
         # The user define skips the hook's checksums, so a table that does
@@ -56,6 +66,8 @@ runs:
         jq -r '.assets | to_entries[] | "\(.key) \(.value)"' \
           "$RUNNER_TEMP/libmpv/manifest.json" |
           while read -r asset sha; do
+            # jq.exe on Windows ends its lines with CRLF.
+            sha="${sha%$'\r'}"
             grep -q "$sha" "$hook" ||
               echo "::warning::$asset of this run is not the one pinned in hook/build.dart; run scripts/update_libmpv.sh before the release."
           done

@@ -115,10 +115,13 @@ jobs:
         include:
           - name: Android
             os: ubuntu-24.04
-            # The build hook must have put libmpv in the APK for every ABI.
+            # The build hook must have put libmpv in the APK for every ABI,
+            # with relocations the plugin's minSdk can load.
             command: >-
               flutter build apk --debug &&
-              unzip -l build/app/outputs/flutter-apk/app-debug.apk | grep -c 'lib/.*/libmpv_audio_kit.so' | grep -qx 3
+              unzip -l build/app/outputs/flutter-apk/app-debug.apk | grep -c 'lib/.*/libmpv_audio_kit.so' | grep -qx 3 &&
+              unzip -q -o build/app/outputs/flutter-apk/app-debug.apk 'lib/*/libmpv_audio_kit.so' -d build/apk_libmpv &&
+              ../scripts/check_android_relocs.sh build/apk_libmpv
           - name: Linux
             os: ubuntu-24.04
             command: flutter build linux --debug
