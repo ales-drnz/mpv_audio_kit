@@ -86,16 +86,15 @@ final class PlayerState {
   /// emitting audio" is `playWhenReady && playing`.
   final bool playWhenReady;
 
-  /// Whether the current track has played to its end.
+  /// Whether playback has reached the end of the content.
   ///
-  /// Becomes `true` at the natural end of a track: at the end of every
-  /// finished entry during a playlist, and — crucially under the shipped
-  /// `keep-open` policy, where mpv parks paused on the last frame instead
-  /// of emitting an end-of-file event — at the end of a single track or the
-  /// last playlist entry. Resets to `false` when a new track starts (a fresh
-  /// [Player.open] / [Player.openAll] or a playlist advance) or when you
-  /// seek back into the track. Pairs with [eofReached] (the raw mpv signal);
-  /// drives [MpvPlaybackState.completed].
+  /// Becomes `true` at the end of a single track or of the last playlist
+  /// entry, where the shipped `keep-open` policy makes mpv park paused on
+  /// the last frame. It stays `false` between playlist entries and while
+  /// `loop-file` or `loop-playlist` is on. Resets to `false` when a new
+  /// track starts (a fresh [Player.open] / [Player.openAll] or a playlist
+  /// advance) or when you seek back into the track. Pairs with [eofReached]
+  /// (the raw mpv signal); drives [MpvPlaybackState.completed].
   final bool completed;
 
   /// Current playback position.

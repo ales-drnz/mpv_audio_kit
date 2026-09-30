@@ -1687,7 +1687,7 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | :--- | :--- | :--- |
 | `playWhenReady` | `bool` | User intent to play (the play-pause axis). Set by `play`, `pause`, `open` and `stop`; **stable across seeks and buffering**, so bind your play-pause button (and the OS media controls already do) to this, not to `playing`. |
 | `playing` | `bool` | `true` only while audio is actually being produced; tracks mpv's `core-idle` (inverted). **Toggles transiently during seeks and buffering**, so use for a spinner, not a play-pause button. "Actually emitting audio" is `playWhenReady && playing`. |
-| `completed` | `bool` | `true` once the current track reaches natural EOF. |
+| `completed` | `bool` | `true` once playback reaches the end of the last track in the queue, or of the only one. Stays `false` between tracks and while a loop is on; goes back to `false` when a new track starts or you seek back. |
 | `eofReached` | `bool` | mpv's `eof-reached`; `true` while paused at the end of a file with `keep-open=yes`. |
 | `position` | `Duration` | Current playhead, throttled to ~30 Hz. |
 | `duration` | `Duration` | Total duration of the current file; `Duration.zero` for live streams. |
@@ -1824,8 +1824,8 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | Stream | Type | Notes |
 | :--- | :--- | :--- |
 | `audioPts` | `Duration` | mpv's `audio-pts`; per-frame timestamp including AO latency. More granular than [`position`](#91-core-streams). |
-| `timeRemaining` | `Duration` | Wall-clock time to EOF, **ignoring** playback rate. |
-| `playtimeRemaining` | `Duration` | Time to EOF **adjusted** for playback rate. |
+| `timeRemaining` | `Duration` | Time left in the file, ignoring the playback rate. |
+| `playtimeRemaining` | `Duration` | Time left at the current rate: 60 s of file at 2.0x is 30 s. |
 
 </details>
 
@@ -1950,7 +1950,7 @@ player.stream.playbackState.listen((phase) {
     case MpvPlaybackState.buffering:  // Mid-playback network stall
     case MpvPlaybackState.playing:    // Producing audio
     case MpvPlaybackState.paused:     // File loaded, audio paused
-    case MpvPlaybackState.completed:  // Reached natural EOF
+    case MpvPlaybackState.completed:  // Reached the end of the last track
   }
 });
 ```

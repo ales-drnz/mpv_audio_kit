@@ -239,10 +239,9 @@ class PlayerStream {
   /// [PlayerState.playWhenReady].
   final Stream<bool> playWhenReady;
 
-  /// Emits `true` when the current track finishes playing to its end —
-  /// including a single track or the last playlist entry, where the shipped
-  /// `keep-open` policy makes mpv park paused on the last frame rather than
-  /// emit an end-of-file event. See [PlayerState.completed].
+  /// Emits `true` when playback reaches the end of a single track or of the
+  /// last playlist entry, not between entries and not while looping. See
+  /// [PlayerState.completed].
   final Stream<bool> completed;
 
   /// Emits the current playback position as a [Duration].

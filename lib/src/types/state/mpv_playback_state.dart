@@ -28,6 +28,7 @@ enum MpvPlaybackState {
   /// completion, etc.).
   paused,
 
-  /// Reached natural end-of-file. Advance the queue here.
+  /// Reached the end of a single track or of the last playlist entry,
+  /// with no loop on.
   completed,
 }
