@@ -7,8 +7,9 @@ enum Gapless {
   /// Disabled — close and re-open the audio output between tracks.
   no('no'),
 
-  /// Strict gapless: re-uses the audio decoder across track boundaries.
-  /// Requires identical format/sample-rate/channels between tracks.
+  /// Keeps the audio output open across tracks, in the format chosen for
+  /// the first file. Later files are resampled and converted to that
+  /// format, so a low sample rate on the first file lowers the rest.
   yes('yes'),
 
   /// Weak gapless (mpv default): no underruns, but allows minor format

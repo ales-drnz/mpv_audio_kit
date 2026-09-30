@@ -771,8 +771,9 @@ await player.setPitch(0.9);             // Lower pitch without affecting speed
 await player.setPitchCorrection(true);  // Pitch correction when changing rate
 ```
 
-`setPitchCorrection` enables mpv's `scaletempo` algorithm, which
-adjusts playback speed while preserving the original pitch.
+Pitch correction is on by default: at a rate other than 1.0, mpv adds
+`scaletempo2` to keep the original pitch. With `setPitchCorrection(false)`
+the pitch follows the speed.
 
 For high-quality time-stretching that decouples pitch and tempo, use
 the [`rubberband`](#52-common-effects-quick-examples) effect on the
@@ -1151,7 +1152,7 @@ await player.setReplayGain(
 #### 5.5 Gapless playback
 
 ```dart
-await player.setGapless(Gapless.yes);   // Full gapless. Re-uses the decoder
+await player.setGapless(Gapless.yes);   // Keep the output open, resample to the first track's format
 await player.setGapless(Gapless.weak);  // Gapless only on compatible formats (default)
 await player.setGapless(Gapless.no);    // Close and re-open the AO between tracks
 ```
@@ -1699,7 +1700,7 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `mute` | `bool` | |
 | `rate` | `double` | Playback speed multiplier. |
 | `pitch` | `double` | Pitch multiplier. |
-| `pitchCorrection` | `bool` | Whether `scaletempo` is engaged. |
+| `pitchCorrection` | `bool` | Whether mpv keeps the pitch with `scaletempo2` when the rate changes. Default `true`. |
 | `audioDelay` | `Duration` | Audio offset relative to video (sub-millisecond precision is rounded). |
 
 </details>

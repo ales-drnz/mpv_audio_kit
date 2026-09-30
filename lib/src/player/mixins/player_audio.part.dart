@@ -60,9 +60,9 @@ mixin _AudioModule on _PlayerBase {
     _updateActiveAudioDevice(device.name);
   }
 
-  /// Enables or disables pitch correction (mpv's `scaletempo` engine)
-  /// for non-1.0 playback rates. When disabled, raising the rate also
-  /// raises pitch (chipmunk effect); enabled keeps pitch constant.
+  /// Enables or disables pitch correction (mpv's `audio-pitch-correction`,
+  /// which inserts `scaletempo2`) for non-1.0 playback rates. Enabled by
+  /// default. When disabled, raising the rate also raises the pitch.
   Future<void> setPitchCorrection(bool enable) async {
     await _gate();
     await _prop('audio-pitch-correction', enable ? 'yes' : 'no');
