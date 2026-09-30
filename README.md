@@ -50,10 +50,12 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.4.8
+  mpv_audio_kit: ^0.5.0
 ```
 
 ## Platforms requirements
+
+<!-- TODO: the sizes below are from libmpv-r14; update them after the r15 rebuild. -->
 
 | Platform  | Minimum | Architecture | Size | Device | Emulator |
 | :--- | :--- | :--- | :---: | :---: | :---:
