@@ -78,12 +78,20 @@ void main() {
         // The duration comes from the demuxer, before any audio output
         // opens: wait for audiotrack itself to take the stream, so an init
         // error it logs has happened by the check below.
-        await player.stream.currentAo
-            .firstWhere((ao) => ao == 'audiotrack')
-            .timeout(const Duration(seconds: 10));
-        await player.stream.audioOutParams
-            .firstWhere((p) => (p.sampleRate ?? 0) > 0)
-            .timeout(const Duration(seconds: 10));
+        try {
+          await player.stream.currentAo
+              .firstWhere((ao) => ao == 'audiotrack')
+              .timeout(const Duration(seconds: 10));
+          await player.stream.audioOutParams
+              .firstWhere((p) => (p.sampleRate ?? 0) > 0)
+              .timeout(const Duration(seconds: 10));
+        } on TimeoutException {
+          // mpv fell back to another output: the logged reason says why.
+          fail(
+            'audiotrack never took the stream '
+            '(current output ${player.state.currentAo}): $aoErrors',
+          );
+        }
         expect(
           aoErrors,
           isEmpty,

@@ -77,7 +77,7 @@ void main() {
 
     tearDownAll(() => secure.close(force: true));
 
-    test('is refused with verification on and the system roots', () async {
+    test('is refused against the system roots alone', () async {
       expect(await downloadArtwork(cover), isNull);
     });
 

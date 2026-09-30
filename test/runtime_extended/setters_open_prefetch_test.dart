@@ -101,11 +101,16 @@ void main() {
                   'while a 2-item playlist plays through with prefetch enabled',
             );
           } on TimeoutException {
-            markTestSkipped(
-              'prefetch-state property is not exposed by the '
-              'libmpv build loaded on this platform — rebuild with the '
-              'prefetch-state patch applied to enable this assertion',
-            );
+            // Only a binary without the property may skip; with it, no
+            // non-idle state is a regression.
+            if (await player.getRawProperty('prefetch-state') == null) {
+              skipMissing(
+                'prefetch-state property is not exposed by the '
+                'libmpv build loaded on this platform',
+              );
+              return;
+            }
+            rethrow;
           } finally {
             await player.setPrefetchPlaylist(false);
             await player.stop();

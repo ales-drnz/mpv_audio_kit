@@ -28,11 +28,7 @@ void main() {
     });
 
     test('setLogLevel changes the mpv log threshold at runtime', () async {
-      final p = player;
-      if (p == null) {
-        skipMissing('libmpv not found');
-        return;
-      }
+      final p = player!;
 
       final errors = <MpvLogEntry>[];
       final sub = p.stream.log

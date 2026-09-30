@@ -24,7 +24,6 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   HttpServer? server;
   late String badCertUrl;
-  var ready = false;
 
   runtimeSuite(() {
     setUpAll(() async {
@@ -50,7 +49,6 @@ void main() {
         req.response.close();
       });
       badCertUrl = 'https://127.0.0.1:${server!.port}/x';
-      ready = true;
     });
 
     tearDownAll(() => server?.close(force: true));
@@ -59,14 +57,12 @@ void main() {
       late Player player;
 
       setUpAll(() async {
-        if (!ready) return;
         // warn surfaces mpv's certificate-verification error on stream.log
         // (the default buildPlayer config silences logs).
         player = await buildPlayer(configuration: const PlayerConfiguration());
       });
 
       tearDownAll(() async {
-        if (!ready) return;
         await player.stop();
         await player.dispose();
       });
@@ -101,10 +97,6 @@ void main() {
       }
 
       test('tls-verify on → the self-signed certificate is rejected', () async {
-        if (!ready) {
-          skipMissing('libmpv not found');
-          return;
-        }
         await player.setTlsVerify(true);
         final certErrors = await openAndCollectCertErrors();
         expect(
@@ -119,10 +111,6 @@ void main() {
       test(
         'tls-verify off → the handshake is not rejected at the TLS layer',
         () async {
-          if (!ready) {
-            skipMissing('libmpv not found');
-            return;
-          }
           await player.setTlsVerify(false);
           final certErrors = await openAndCollectCertErrors();
           expect(

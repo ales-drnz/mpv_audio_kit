@@ -74,8 +74,8 @@ void main() {
       final player = await buildPlayer();
       final probe = await player.getRawProperty('waveform-data');
       if (probe == null) {
-        skipMissing('libmpv has no waveform-data property.');
         await player.dispose();
+        skipMissing('libmpv has no waveform-data property.');
         return;
       }
 

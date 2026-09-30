@@ -26,6 +26,27 @@ void main() {
 
     tearDownAll(() => player.dispose());
 
+    // The fixture loops every 5 s, and a wrap resets the filters, which
+    // makes the player rewrite a stale chain: start each test at the
+    // beginning so its checks end before one. Waiting for the landing also
+    // lets the seek's own rewrite go out before the test's first write.
+    setUp(() async {
+      final landed = player.stream.seekCompleted.first;
+      await player.seek(Duration.zero);
+      await landed.timeout(const Duration(seconds: 5));
+    });
+
+    /// The momentary loudness once its 400 ms window holds only the
+    /// current signal.
+    Future<double> settledMomentary() async {
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      final l = await player.stream.loudnessMeter
+          .skip(1)
+          .firstWhere((l) => l.momentary != null)
+          .timeout(const Duration(seconds: 10));
+      return l.momentary!;
+    }
+
     test('runtime param change goes through af-command: live graph updates, '
         'af string stays stale, state stays correct', () async {
       await player.setAudioEffects(const [
@@ -175,7 +196,7 @@ void main() {
         contains('9.000'),
         reason:
             'a failed rewrite after a diff must NOT clear the stale flag; '
-            'the FILE_LOADED resync re-asserts the diff value (gain=9)',
+            'the resync at the next load re-asserts the diff value (gain=9)',
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
 
@@ -249,20 +270,6 @@ void main() {
 
     test('a rebuild after live updates applies the requested values, not the '
         'live ones', () async {
-      Future<double> settledMomentary() async {
-        // The momentary window is 400 ms: let it fill with the new signal.
-        await Future<void>.delayed(const Duration(milliseconds: 900));
-        final l = await player.stream.loudnessMeter
-            .skip(1)
-            .firstWhere((l) => l.momentary != null)
-            .timeout(const Duration(seconds: 10));
-        return l.momentary!;
-      }
-
-      // The fixture loops every 5 s, and a wrap resets the filters, which
-      // rebuilds them from the state now: start at 0 so the checks below
-      // end before one.
-      await player.seek(Duration.zero);
       await player.setAudioEffects(const [
         BassEffect(frequency: 1000),
         Ebur128Effect(metadata: true),
@@ -293,16 +300,6 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 40)));
 
     test('a seek keeps the values set live', () async {
-      Future<double> settledMomentary() async {
-        await Future<void>.delayed(const Duration(milliseconds: 900));
-        final l = await player.stream.loudnessMeter
-            .skip(1)
-            .firstWhere((l) => l.momentary != null)
-            .timeout(const Duration(seconds: 10));
-        return l.momentary!;
-      }
-
-      await player.seek(Duration.zero);
       await player.setAudioEffects(const [
         BassEffect(frequency: 1000),
         Ebur128Effect(metadata: true),

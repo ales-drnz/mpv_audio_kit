@@ -231,10 +231,10 @@ void main() {
         // Filters are only instantiated by libavfilter when a file is
         // active — without one, `setAudioEffects` only stores the chain
         // string and the "filter not found" log line never fires.
+        // Without the fixture no filter would be built and the test would
+        // pass without checking anything: a missing one fails the load.
         final fix = '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
-        if (File(fix).existsSync()) {
-          await openAndWaitForLoad(player, fix);
-        }
+        await openAndWaitForLoad(player, fix);
       });
 
       tearDownAll(() async {
