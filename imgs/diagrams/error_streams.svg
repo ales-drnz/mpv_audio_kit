@@ -1,45 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 10 900 310" font-family="system-ui, -apple-system, sans-serif" font-size="13" role="img" aria-label="Error and log streams">
-  <defs>
-    <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#7a8190"/>
-    </marker>
-  </defs>
-  <style>
-    rect     { rx: 10; ry: 10; fill: #f8f9fb; }
-    .title   { font-weight: 600; fill: #1e2329; }
-    .sub     { fill: #5b6371; font-size: 10.5px; }
-    .arrow   { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#ar2); }
-  </style>
-
-  <!-- Engine source: h=70, y=40 → cy=75. 2 lines: 70, 88 -->
-  <rect x="350" y="40" width="180" height="70"/>
-  <text class="title" x="440" y="70" text-anchor="middle">Player engine</text>
-  <text class="sub"   x="440" y="88" text-anchor="middle">Events, errors, state changes</text>
-
-  <!-- 4 stream cards: h=90, y=200 → cy=245. 3 lines: 232, 250, 266 -->
-
-  <rect x="20" y="200" width="200" height="90"/>
-  <text class="title" x="120" y="232" text-anchor="middle">Errors</text>
-  <text class="sub"   x="120" y="250" text-anchor="middle">Playback failures,</text>
-  <text class="sub"   x="120" y="266" text-anchor="middle">decoder or network errors</text>
-
-  <rect x="240" y="200" width="200" height="90"/>
-  <text class="title" x="340" y="232" text-anchor="middle">End of file</text>
-  <text class="sub"   x="340" y="250" text-anchor="middle">Every track boundary,</text>
-  <text class="sub"   x="340" y="266" text-anchor="middle">EOF, stop, error, redirect</text>
-
-  <rect x="460" y="200" width="200" height="90"/>
-  <text class="title" x="560" y="232" text-anchor="middle">Audio output</text>
-  <text class="sub"   x="560" y="250" text-anchor="middle">Device status</text>
-  <text class="sub"   x="560" y="266" text-anchor="middle">Closed, starting, active, or failed</text>
-
-  <rect x="680" y="200" width="180" height="90"/>
-  <text class="title" x="770" y="232" text-anchor="middle">Logs</text>
-  <text class="sub"   x="770" y="250" text-anchor="middle">Engine and wrapper messages</text>
-  <text class="sub"   x="770" y="266" text-anchor="middle">Filtered by level</text>
-
-  <path class="arrow" d="M440,110 V160 H120 V200"/>
-  <path class="arrow" d="M440,110 V160 H340 V200"/>
-  <path class="arrow" d="M440,110 V160 H560 V200"/>
-  <path class="arrow" d="M440,110 V160 H770 V200"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" width="900" height="340" role="img" aria-label="Error, end of file, audio output and log streams">
+<defs>
+<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#123A9C"/><stop offset="1" stop-color="#081A4D"/></linearGradient>
+<linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
+<marker id="mmain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#123A9C"/></marker><marker id="msec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8C95A3"/></marker><marker id="mfail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B42318"/></marker>
+</defs>
+<rect x="340.0" y="30.0" width="220" height="60" rx="30.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="450" y="56" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#FFFFFF">Player</text>
+<text x="450" y="75" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">events from mpv</text>
+<rect x="15.0" y="179.0" width="200" height="72" rx="36.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="115" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">stream.error</text>
+<text x="115" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">EndFileError, LogError</text>
+<path d="M450,92 L450,130 L115,130 L115,177" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<rect x="235.0" y="179.0" width="200" height="72" rx="36.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="335" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">stream.endFile</text>
+<text x="335" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">every file end</text>
+<path d="M450,92 L450,130 L335,130 L335,177" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<rect x="465.0" y="179.0" width="200" height="72" rx="36.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="565" y="202" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">audioOutputState</text>
+<text x="565" y="221" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">closed, initializing,</text>
+<text x="565" y="237" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">active, failed</text>
+<path d="M450,92 L450,130 L565,130 L565,177" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<rect x="685.0" y="179.0" width="200" height="72" rx="36.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="785" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">log, internalLog</text>
+<text x="785" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">mpv's and the library's</text>
+<path d="M450,92 L450,130 L785,130 L785,177" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<path d="M565,253 C565,300 115,300 115,253" fill="none" stroke="#B42318" stroke-width="1.7" stroke-dasharray="5 5" marker-end="url(#mfail)"/>
+<text x="340" y="326" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#B42318">failed also emits a LogError</text>
 </svg>

@@ -1,67 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -6 720 394" font-family="system-ui, -apple-system, sans-serif" font-size="13" role="img" aria-label="OS media session flow">
-  <defs>
-    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
-            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#7a8190"/>
-    </marker>
-  </defs>
-
-  <style>
-    rect      { fill: #f8f9fb; rx: 10; ry: 10; }
-    .title    { font-weight: 600; fill: #1e2329; }
-    .subtitle { font-size: 10.5px; fill: #5b6371; }
-    .axis     { font-size: 10.5px; fill: #5b6371; font-style: italic; }
-    .arrow    { stroke: #7a8190; stroke-width: 1.6; fill: none;
-                marker-end: url(#ar); }
-    .merge    { stroke: #7a8190; stroke-width: 1.6; fill: none; }
-  </style>
-
-  <!-- ── Your Player ───────────────────────────────────────────────── -->
-  <rect x="210" y="24" width="300" height="58"/>
-  <text class="title"    x="360" y="51" text-anchor="middle">Your Player</text>
-  <text class="subtitle" x="360" y="68" text-anchor="middle">playing a track in mpv</text>
-
-  <!-- ── Two axes between Player and the session ──────────────────────
-       state flows down, commands flow back up -->
-  <path class="arrow" d="M330 86 L330 166"/>
-  <path class="arrow" d="M390 166 L390 86"/>
-  <text class="axis" x="318" y="123" text-anchor="end">now-playing</text>
-  <text class="axis" x="318" y="138" text-anchor="end">state</text>
-  <text class="axis" x="402" y="123" text-anchor="start">OS</text>
-  <text class="axis" x="402" y="138" text-anchor="start">commands</text>
-
-  <!-- ── OS media session (one setter) ────────────────────────────────-->
-  <rect x="190" y="170" width="340" height="58"/>
-  <text class="title"    x="360" y="197" text-anchor="middle">OS media session</text>
-  <text class="subtitle" x="360" y="214" text-anchor="middle">one setMediaSession() call</text>
-
-  <!-- ── Distribute to every platform surface ─────────────────────────-->
-  <path class="merge" d="M360 228 L360 266"/>
-  <path class="merge" d="M90 266 L630 266"/>
-  <path class="arrow" d="M90  266 L90  298"/>
-  <path class="arrow" d="M225 266 L225 298"/>
-  <path class="arrow" d="M360 266 L360 298"/>
-  <path class="arrow" d="M495 266 L495 298"/>
-  <path class="arrow" d="M630 266 L630 298"/>
-
-  <!-- ── Five native surfaces ─────────────────────────────────────────-->
-  <rect x="30"  y="300" width="120" height="58"/>
-  <text class="title"    x="90"  y="327" text-anchor="middle">iOS</text>
-  <text class="subtitle" x="90"  y="344" text-anchor="middle">Now Playing</text>
-
-  <rect x="165" y="300" width="120" height="58"/>
-  <text class="title"    x="225" y="327" text-anchor="middle">macOS</text>
-  <text class="subtitle" x="225" y="344" text-anchor="middle">Control Center</text>
-
-  <rect x="300" y="300" width="120" height="58"/>
-  <text class="title"    x="360" y="327" text-anchor="middle">Android</text>
-  <text class="subtitle" x="360" y="344" text-anchor="middle">Notification</text>
-
-  <rect x="435" y="300" width="120" height="58"/>
-  <text class="title"    x="495" y="327" text-anchor="middle">Windows</text>
-  <text class="subtitle" x="495" y="344" text-anchor="middle">SMTC</text>
-
-  <rect x="570" y="300" width="120" height="58"/>
-  <text class="title"    x="630" y="327" text-anchor="middle">Linux</text>
-  <text class="subtitle" x="630" y="344" text-anchor="middle">MPRIS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" width="900" height="330" role="img" aria-label="OS media session">
+<defs>
+<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#123A9C"/><stop offset="1" stop-color="#081A4D"/></linearGradient>
+<linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
+<marker id="mmain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#123A9C"/></marker><marker id="msec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8C95A3"/></marker><marker id="mfail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B42318"/></marker>
+</defs>
+<rect x="40.0" y="78.0" width="220" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="150" y="106" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#FFFFFF">Player</text>
+<text x="150" y="125" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">setMediaSession(...)</text>
+<rect x="340.0" y="78.0" width="220" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="450" y="106" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Media session</text>
+<text x="450" y="125" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">metadata, state, actions</text>
+<path d="M260,100 L338,100" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<path d="M340,122 L262,122" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="300" y="88" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">now playing</text>
+<text x="300" y="142" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">commands</text>
+<rect x="665.0" y="29.0" width="190" height="46" rx="23.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="760" y="48" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" font-weight="600" fill="#1F2328">iOS</text>
+<text x="760" y="67" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">Now Playing</text>
+<path d="M560,110 C610,110 610,52 663,52" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<rect x="665.0" y="87.0" width="190" height="46" rx="23.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="760" y="106" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" font-weight="600" fill="#1F2328">macOS</text>
+<text x="760" y="125" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">Control Center</text>
+<path d="M560,110 C610,110 610,110 663,110" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<rect x="665.0" y="145.0" width="190" height="46" rx="23.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="760" y="164" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" font-weight="600" fill="#1F2328">Android</text>
+<text x="760" y="183" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">notification</text>
+<path d="M560,110 C610,110 610,168 663,168" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<rect x="665.0" y="203.0" width="190" height="46" rx="23.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="760" y="222" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" font-weight="600" fill="#1F2328">Windows</text>
+<text x="760" y="241" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">SMTC</text>
+<path d="M560,110 C610,110 610,226 663,226" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<rect x="665.0" y="261.0" width="190" height="46" rx="23.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="760" y="280" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" font-weight="600" fill="#1F2328">Linux</text>
+<text x="760" y="299" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">MPRIS</text>
+<path d="M560,110 C610,110 610,284 663,284" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<rect x="40.0" y="227.0" width="300" height="56" rx="28.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<text x="190" y="251" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#0B2A7A">stream.mediaSessionCommands</text>
+<text x="190" y="270" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#2A4A8F">the player applies them too</text>
+<path d="M150,142 L150,225" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
 </svg>

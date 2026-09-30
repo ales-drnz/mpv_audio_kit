@@ -1,65 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 -6 640 476" font-family="system-ui, -apple-system, sans-serif" font-size="13" role="img" aria-label="Cover art flow">
-  <defs>
-    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
-            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#7a8190"/>
-    </marker>
-  </defs>
-
-  <style>
-    rect      { fill: #f8f9fb; rx: 10; ry: 10; }
-    .title    { font-weight: 600; fill: #1e2329; }
-    .subtitle { font-size: 10.5px; fill: #5b6371; }
-    .arrow    { stroke: #7a8190; stroke-width: 1.6; fill: none;
-                marker-end: url(#ar); }
-    .merge    { stroke: #7a8190; stroke-width: 1.6; fill: none; }
-  </style>
-
-  <!-- ── Two source boxes side-by-side ─────────────────────────────── -->
-  <!-- h=64 y=24 cy=56, 2 lines: 51, 69 -->
-
-  <rect x="70"  y="24" width="240" height="64"/>
-  <text class="title"    x="190" y="51" text-anchor="middle">Picture inside the audio</text>
-  <text class="subtitle" x="190" y="69" text-anchor="middle">Embedded by the file tagger</text>
-
-  <rect x="410" y="24" width="240" height="64"/>
-  <text class="title"    x="530" y="51" text-anchor="middle">Picture file in the folder</text>
-  <text class="subtitle" x="530" y="69" text-anchor="middle">For example a cover image next to the track</text>
-
-  <!-- ── Right path: down to gate, through it, down to merge ───────── -->
-  <path class="merge" d="M530 88 L530 116"/>
-
-  <!-- gate h=40 y=118 cy=138, 1 line at y=142 -->
-  <rect x="420" y="118" width="220" height="40"/>
-  <text class="title" x="530" y="142" text-anchor="middle">Only if folder scan is on</text>
-
-  <path class="merge" d="M530 158 L530 192"/>
-
-  <!-- ── Left path: straight down to merge ─────────────────────────── -->
-  <path class="merge" d="M190 88 L190 192"/>
-
-  <!-- Merge line + joint arrow into next card -->
-  <path class="merge" d="M190 192 L530 192"/>
-  <path class="arrow" d="M360 192 L360 220"/>
-
-  <!-- ── All available pictures ────────────────────────────────────── -->
-  <!-- h=64 y=222 cy=254, 2 lines: 249, 267 -->
-  <rect x="200" y="222" width="320" height="64"/>
-  <text class="title"    x="360" y="249" text-anchor="middle">All available pictures</text>
-  <text class="subtitle" x="360" y="267" text-anchor="middle">The player keeps a list of all of them</text>
-
-  <path class="arrow" d="M360 286 L360 314"/>
-
-  <!-- ── Cover art outlet ──────────────────────────────────────────── -->
-  <!-- h=64 y=316 cy=348, 2 lines: 343, 361 -->
-  <rect x="160" y="316" width="400" height="64"/>
-  <text class="title"    x="360" y="343" text-anchor="middle">Cover art</text>
-  <text class="subtitle" x="360" y="361" text-anchor="middle">Ready bytes the consumer can show</text>
-
-  <path class="arrow" d="M360 380 L360 408"/>
-
-  <!-- ── Consumer sink ─────────────────────────────────────────────── -->
-  <!-- h=44 y=410 cy=432, but viewBox 440 → use 1 line at y=434 -->
-  <rect x="240" y="396" width="240" height="44"/>
-  <text class="title" x="360" y="422" text-anchor="middle">Your Flutter widget</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 290" width="900" height="290" role="img" aria-label="Where cover art comes from">
+<defs>
+<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#123A9C"/><stop offset="1" stop-color="#081A4D"/></linearGradient>
+<linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
+<marker id="mmain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#123A9C"/></marker><marker id="msec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8C95A3"/></marker><marker id="mfail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B42318"/></marker>
+</defs>
+<rect x="20.0" y="48.0" width="200" height="64" rx="32.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="120" y="76" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#1F2328">Embedded picture</text>
+<text x="120" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">inside the audio file</text>
+<rect x="290.0" y="48.0" width="200" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="390" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">stream.coverArt</text>
+<text x="390" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">CoverArt bytes, or null</text>
+<rect x="560.0" y="48.0" width="240" height="64" rx="32.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<text x="680" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#0B2A7A">Image(image: art.image)</text>
+<text x="680" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#2A4A8F">your widget</text>
+<path d="M220,80 L288,80" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<path d="M490,80 L558,80" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<rect x="20.0" y="183.0" width="200" height="64" rx="32.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="120" y="211" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#1F2328">Image in the folder</text>
+<text x="120" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">setCoverArtAuto(...)</text>
+<rect x="290.0" y="183.0" width="200" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="390" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">state.tracks</text>
+<text x="390" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">albumArt, externalFilename</text>
+<rect x="560.0" y="183.0" width="240" height="64" rx="32.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<text x="680" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#0B2A7A">File(path)</text>
+<text x="680" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#2A4A8F">you read the file</text>
+<path d="M220,215 L288,215" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<path d="M490,215 L558,215" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="450" y="150" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#59636E">an external image never reaches stream.coverArt</text>
 </svg>

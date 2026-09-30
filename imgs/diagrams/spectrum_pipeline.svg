@@ -1,61 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 10 898 260" font-family="system-ui, -apple-system, sans-serif" font-size="13" role="img" aria-label="Spectrum and PCM pipeline">
-  <defs>
-    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
-            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#7a8190"/>
-    </marker>
-  </defs>
-
-  <style>
-    rect       { fill: #f8f9fb; rx: 10; ry: 10; }
-    .title     { font-weight: 600; fill: #1e2329; }
-    .sub       { font-size: 10.5px; fill: #5b6371; }
-    .arrow     { stroke: #7a8190; stroke-width: 1.6; fill: none;
-                 marker-end: url(#ar); }
-  </style>
-
-  <!-- Row 1 — five-stage pipeline. Boxes 150w × 100h, gap 22. -->
-
-  <!-- 1. Audio frames -->
-  <rect x="15" y="40" width="150" height="100"/>
-  <text class="title" x="90" y="80"  text-anchor="middle">Audio frames</text>
-  <text class="sub"   x="90" y="104" text-anchor="middle">From the player</text>
-
-  <!-- 2. Frequency analysis -->
-  <rect x="187" y="40" width="150" height="100"/>
-  <text class="title" x="262" y="72"  text-anchor="middle">Frequency</text>
-  <text class="title" x="262" y="92"  text-anchor="middle">analysis</text>
-  <text class="sub"   x="262" y="116" text-anchor="middle">Windowed FFT</text>
-
-  <!-- 3. Perceptual bands -->
-  <rect x="359" y="40" width="150" height="100"/>
-  <text class="title" x="434" y="72"  text-anchor="middle">Perceptual</text>
-  <text class="title" x="434" y="92"  text-anchor="middle">bands</text>
-  <text class="sub"   x="434" y="116" text-anchor="middle">Log scale</text>
-
-  <!-- 4. Smoothing -->
-  <rect x="531" y="40" width="150" height="100"/>
-  <text class="title" x="606" y="78"  text-anchor="middle">Smoothing</text>
-  <text class="sub"   x="606" y="102" text-anchor="middle">Fast attack</text>
-  <text class="sub"   x="606" y="118" text-anchor="middle">Slow release</text>
-
-  <!-- 5. FftFrame out -->
-  <rect x="703" y="40" width="150" height="100"/>
-  <text class="title" x="778" y="80"  text-anchor="middle">FftFrame</text>
-  <text class="sub"   x="778" y="104" text-anchor="middle">Ready to draw</text>
-
-  <!-- Row-1 arrows -->
-  <path class="arrow" d="M165,90 L187,90"/>
-  <path class="arrow" d="M337,90 L359,90"/>
-  <path class="arrow" d="M509,90 L531,90"/>
-  <path class="arrow" d="M681,90 L703,90"/>
-
-  <!-- Row 2 — raw-PCM branch tapped off the very first stage. -->
-
-  <rect x="15" y="180" width="150" height="60"/>
-  <text class="title" x="90" y="206" text-anchor="middle">PcmFrame</text>
-  <text class="sub"   x="90" y="225" text-anchor="middle">Raw samples</text>
-
-  <!-- Drop arrow from box 1 down to PcmFrame -->
-  <path class="arrow" d="M90,140 L90,180"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260" role="img" aria-label="Spectrum pipeline">
+<defs>
+<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#123A9C"/><stop offset="1" stop-color="#081A4D"/></linearGradient>
+<linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
+<marker id="mmain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#123A9C"/></marker><marker id="msec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8C95A3"/></marker><marker id="mfail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B42318"/></marker>
+</defs>
+<rect x="20.0" y="48.0" width="150" height="64" rx="32.0" fill="#FFFFFF" stroke="#C9D0DC" stroke-width="1.5"/>
+<text x="95" y="76" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#1F2328">Audio output</text>
+<text x="95" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">after the chain</text>
+<rect x="200.0" y="48.0" width="140" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="270" y="76" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Window</text>
+<text x="270" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">hann by default</text>
+<rect x="365.0" y="48.0" width="130" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="430" y="76" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">FFT</text>
+<text x="430" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">fftSize</text>
+<rect x="520.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="595" y="76" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Log bands</text>
+<text x="595" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">bandCount</text>
+<rect x="695.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="770" y="76" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Smoothing</text>
+<text x="770" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">attack, release</text>
+<path d="M170,80 L198,80" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<path d="M340,80 L363,80" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<path d="M495,80 L518,80" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<path d="M670,80 L693,80" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<rect x="675.0" y="172.0" width="190" height="56" rx="28.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<text x="770" y="196" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#0B2A7A">stream.fft</text>
+<text x="770" y="215" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#2A4A8F">FftFrame: bands, bins</text>
+<path d="M770,112 L770,170" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<rect x="10.0" y="172.0" width="170" height="56" rx="28.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<text x="95" y="196" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#0B2A7A">stream.pcm</text>
+<text x="95" y="215" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#2A4A8F">PcmFrame: samples</text>
+<path d="M95,112 L95,170" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="430" y="205" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#59636E">every emitInterval, 33 ms by default</text>
 </svg>

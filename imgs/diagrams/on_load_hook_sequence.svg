@@ -1,48 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 10 860 448" font-family="system-ui, -apple-system, sans-serif" font-size="11" role="img" aria-label="Load hook sequence">
-  <defs>
-    <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#7a8190"/>
-    </marker>
-  </defs>
-  <style>
-    .lifeline  { stroke: #c8cdd4; stroke-dasharray: 4,4; stroke-width: 1.2; }
-    rect       { fill: #f8f9fb; rx: 10; ry: 10; }
-    .name      { font-weight: 600; fill: #1e2329; }
-    .msg       { stroke: #7a8190; stroke-width: 1.6; fill: none; marker-end: url(#ar3); }
-    .edge-text { fill: #5b6371; font-size: 10.5px; }
-  </style>
-
-  <!-- Lane headers: h=40, y=40 → cy=60. 1 line at y=64 -->
-  <rect x="40"  y="40" width="180" height="40"/>
-  <text class="name" x="130" y="64" text-anchor="middle">Your code</text>
-  <line class="lifeline" x1="130" y1="80" x2="130" y2="430"/>
-
-  <rect x="350" y="40" width="180" height="40"/>
-  <text class="name" x="440" y="64" text-anchor="middle">Player</text>
-  <line class="lifeline" x1="440" y1="80" x2="440" y2="430"/>
-
-  <rect x="660" y="40" width="180" height="40"/>
-  <text class="name" x="750" y="64" text-anchor="middle">Engine</text>
-  <line class="lifeline" x1="750" y1="80" x2="750" y2="430"/>
-
-  <text class="edge-text" x="285" y="110" text-anchor="middle">Register the hook once</text>
-  <path class="msg" d="M130,120 L440,120"/>
-
-  <text class="edge-text" x="595" y="165" text-anchor="middle">Start opening a track</text>
-  <path class="msg" d="M440,175 L750,175"/>
-
-  <text class="edge-text" x="595" y="215" text-anchor="middle">Pause and ask for the URL</text>
-  <path class="msg" d="M750,225 L440,225"/>
-
-  <text class="edge-text" x="285" y="270" text-anchor="middle">Forward to your handler</text>
-  <path class="msg" d="M440,280 L130,280"/>
-
-  <text class="edge-text" x="285" y="325" text-anchor="middle">Rewrite URL or add headers</text>
-  <text class="edge-text" x="285" y="338" text-anchor="middle">if needed</text>
-  <path class="msg" d="M130,348 L440,348"/>
-
-  <text class="edge-text" x="285" y="385" text-anchor="middle">Tell the player to continue</text>
-  <path class="msg" d="M130,398 L440,398"/>
-  <path class="msg" d="M440,420 L750,420"/>
-  <text class="edge-text" x="595" y="412" text-anchor="middle">Engine resumes loading</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400" role="img" aria-label="on_load hook sequence">
+<defs>
+<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#123A9C"/><stop offset="1" stop-color="#081A4D"/></linearGradient>
+<linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
+<marker id="mmain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#123A9C"/></marker><marker id="msec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8C95A3"/></marker><marker id="mfail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B42318"/></marker>
+</defs>
+<rect x="65.0" y="20.0" width="170" height="50" rx="25.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<text x="150" y="50" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#0B2A7A">Your code</text>
+<line x1="150" y1="72" x2="150" y2="385" stroke="#8C95A3" stroke-width="1.2" stroke-dasharray="4 5"/>
+<rect x="365.0" y="20.0" width="170" height="50" rx="25.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="450" y="50" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Player</text>
+<line x1="450" y1="72" x2="450" y2="385" stroke="#8C95A3" stroke-width="1.2" stroke-dasharray="4 5"/>
+<rect x="665.0" y="20.0" width="170" height="50" rx="25.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<text x="750" y="50" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">mpv</text>
+<line x1="750" y1="72" x2="750" y2="385" stroke="#8C95A3" stroke-width="1.2" stroke-dasharray="4 5"/>
+<path d="M150,105 L442,105" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<text x="300.0" y="96" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="400" fill="#1F2328">registerHook(Hook.load)</text>
+<path d="M450,145 L742,145" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="600.0" y="136" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1F2328">registers on_load</text>
+<path d="M750,195 L458,195" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="600.0" y="186" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1F2328">on_load: waits for you</text>
+<path d="M450,235 L158,235" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="300.0" y="226" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="400" fill="#1F2328">stream.hook event</text>
+<path d="M150,267 C210,267 210,287 154,287" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<text x="220" y="281" text-anchor="start" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="400" fill="#1F2328">setRawProperty(...)</text>
+<path d="M150,320 L442,320" fill="none" stroke="#123A9C" stroke-width="2.2" marker-end="url(#mmain)"/>
+<text x="300.0" y="311" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="400" fill="#1F2328">continueHook(event.id)</text>
+<path d="M450,360 L742,360" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="600.0" y="351" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#1F2328">mpv opens the stream</text>
 </svg>
