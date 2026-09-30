@@ -101,31 +101,53 @@ void main() {
       }
     }, timeout: const Timeout(Duration(seconds: 30)));
 
-    test('stop() clears the cover and the waveform with the path', () async {
-      final coverPath = '$fixturesDir/sine_with_cover.flac';
-      final player = await buildPlayer();
-      WaveformData? wave;
-      final sub = player.stream.waveform.listen((w) => wave = w);
-      try {
-        await player.open(Media(coverPath), play: false);
-        await waitUntil(
-          () =>
-              player.state.coverArt != null && wave != null && !wave!.decoding,
-          reason: 'cover and settled waveform of the loaded file',
-        );
+    // Leaving no file loaded, however it happens, clears what belonged to
+    // the last one; mpv keeps its analysis, so nothing may poll it back.
+    for (final (name, unload) in <(String, Future<void> Function(Player))>[
+      ('stop()', (p) => p.stop()),
+      ('clearPlaylist()', (p) => p.clearPlaylist()),
+    ]) {
+      test('$name clears the cover, waveform and loudness scan', () async {
+        final coverPath = '$fixturesDir/sine_with_cover.flac';
+        if (!File(coverPath).existsSync()) {
+          skipMissing('Cover fixture missing: $coverPath');
+          return;
+        }
+        final player = await buildPlayer();
+        WaveformData? wave;
+        LoudnessScan? scan;
+        final subs = [
+          player.stream.waveform.listen((w) => wave = w),
+          player.stream.loudnessScan.listen((l) => scan = l),
+        ];
+        try {
+          await player.open(Media(coverPath), play: false);
+          await waitUntil(
+            () =>
+                player.state.coverArt != null &&
+                wave != null &&
+                !wave!.decoding &&
+                scan != null,
+            reason: 'cover, settled waveform and scan of the loaded file',
+          );
 
-        await player.stop();
-        await waitUntil(
-          () => player.state.path.isEmpty,
-          reason: 'mpv reports the path unavailable after stop',
-        );
-        expect(player.state.coverArt, isNull);
-        expect(await player.stream.coverArt.first, isNull);
-        expect(wave, isNull);
-      } finally {
-        await sub.cancel();
-        await player.dispose();
-      }
-    }, timeout: const Timeout(Duration(seconds: 30)));
+          await unload(player);
+          await waitUntil(
+            () => player.state.path.isEmpty && player.state.coverArt == null,
+            reason: 'mpv idle with no file after $name',
+          );
+          // Longer than the pipelines' poll interval.
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          expect(await player.stream.coverArt.first, isNull);
+          expect(wave, isNull);
+          expect(scan, isNull);
+        } finally {
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    }
   });
 }

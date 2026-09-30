@@ -837,6 +837,9 @@ abstract class _PlayerBase {
                   _reactives.playWhenReady,
                   false,
                 );
+                // No file is loaded any more (stop, a cleared playlist, a
+                // failed load): nothing of the last one should linger.
+                _clearFinishedFile();
               }
             }
           },
@@ -1166,10 +1169,12 @@ abstract class _PlayerBase {
   }
 
   /// Clears what [_clearPerFileState] clears plus the file's waveform and
-  /// loudness scan, once no file is loaded: mpv reports path, title and
-  /// duration unavailable then, and these would otherwise keep showing
-  /// the file that ended.
+  /// loudness scan, once mpv is idle with no file loaded: it reports path,
+  /// title and duration unavailable then, and these would otherwise keep
+  /// showing the file that ended. The end of content under `keep-open`
+  /// keeps the file loaded, and its cover with it.
   void _clearFinishedFile() {
+    if (_disposed) return;
     _clearPerFileState();
     _lastWaveformSource = null;
     _waveformPipeline.clear();

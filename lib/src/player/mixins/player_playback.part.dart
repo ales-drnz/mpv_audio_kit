@@ -77,7 +77,6 @@ mixin _PlaybackModule on _PlayerBase {
     // Execute in-flight transport writes first — see [_settleWrites].
     await _settleWrites();
     await _commandChecked(['stop']);
-    _clearFinishedFile();
   }
 
   /// Seeks playback to a position in the current file.
