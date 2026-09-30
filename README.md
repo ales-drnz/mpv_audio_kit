@@ -2737,10 +2737,12 @@ MediaSessionArtwork.none                // no artwork
 
 Network URLs never reach the OS media session as text, since they often
 carry credentials in the query (Subsonic, Jellyfin, Plex). MPRIS on Linux
-gets `xesam:url` only for local files, and a remote cover is downloaded
-first and handed to the OS as an image on every platform. The download
-always verifies the server certificate, trusting `tls-ca-file` on top of
-the system roots, even when `tls-verify` is off for playback. A tag-less stream
+gets `xesam:url` only for local files. A remote cover reaches the OS as an
+image. On Linux, Android and Windows the package downloads it in Dart: the
+download always verifies the server certificate, even when `tls-verify` is
+off for playback, trusts `tls-ca-file` on top of the system roots, and is
+tried at most 3 times. On iOS and macOS the system downloads it, with the
+system roots only. A tag-less stream
 with no title falls back to mpv's `media-title`, which is derived from the
 URL: the query is stripped from it, but passing a title through
 `Media.extras` or `MediaSession.title` is still the better choice.
@@ -2771,14 +2773,18 @@ player.stream.mediaSessionCommands.listen((command) {
 `actions` advertises the controls the OS may surface. What actually renders
 is **platform-gated, not just space-gated**: each native media UI draws only a
 subset (and a lockscreen typically shows 3 to 4 of those). Advertising an
-action a platform doesn't render is harmless: it simply isn't drawn. The full
-enum also includes `MediaAction.stop` and `MediaAction.like` (a favourite or star).
+action a platform doesn't render is harmless: it simply isn't drawn. The
+default set is `play`, `pause`, `playPause`, `next`, `previous` and `seek`; the
+enum also has `stop`, `fastForward`, `rewind`, `setRepeatMode`, `setShuffle`,
+`setPlaybackRate` and `like` (a favourite or star). The skip intervals and the
+speed list apply only when their action is in the set.
 
 ```dart
 const MediaSession(
   actions: {
     MediaAction.play, MediaAction.pause, MediaAction.playPause,
     MediaAction.next, MediaAction.previous, MediaAction.seek,
+    MediaAction.fastForward, MediaAction.rewind, MediaAction.setPlaybackRate,
     MediaAction.setRepeatMode, MediaAction.setShuffle,
   },
   fastForwardInterval: Duration(seconds: 30),     // skip-forward button
