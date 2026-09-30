@@ -321,5 +321,38 @@ void main() {
             'boosted $boosted, after $after)',
       );
     }, timeout: const Timeout(Duration(seconds: 40)));
+
+    test('an audio track switch keeps the values set live', () async {
+      // Two 5 s FLAC tracks, made with:
+      //   ffmpeg -f lavfi -i sine=frequency=440:sample_rate=22050:duration=5
+      //     -f lavfi -i sine=frequency=660:sample_rate=22050:duration=5
+      //     -map 0 -map 1 -c:a flac multitrack_two_audio_5s.mka
+      final twoTracks =
+          '${Directory.current.path}/test/fixtures/multitrack_two_audio_5s.mka';
+      await player.setLoop(Loop.off);
+      addTearDown(() async {
+        await openAndWaitForLoad(player, fixture);
+        await player.setLoop(Loop.file);
+        await player.play();
+      });
+      await openAndWaitForLoad(player, twoTracks);
+      await player.play();
+      await player.setAudioEffects(const [BassEffect(frequency: 1000)]);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 9));
+      expect(
+        await player.getRawProperty('af'),
+        isNot(contains('9.000')),
+        reason: 'precondition: the update went live, the string is stale',
+      );
+
+      // mpv rebuilds the chain for the new track from the stored
+      // arguments, which still say 0 dB.
+      await player.setAudioTrack(const Track.id(2));
+      await waitUntil(
+        () async => (await player.getRawProperty('af'))!.contains('9.000'),
+        reason: 'the chain is rewritten from the state after the switch',
+      );
+    }, timeout: const Timeout(Duration(seconds: 20)));
   });
 }
