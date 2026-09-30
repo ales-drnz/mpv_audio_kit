@@ -2866,16 +2866,22 @@ the executable, so only `appName` applies there.
 
 ### Android
 
+Network sources need:
+
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.WAKE_LOCK" />
 ```
+
+The package's own manifest declares `FOREGROUND_SERVICE`,
+`FOREGROUND_SERVICE_MEDIA_PLAYBACK` and `POST_NOTIFICATIONS` for the
+[media session](#14-os-media-session). On Android 13 and later, request
+`POST_NOTIFICATIONS` at runtime too, for example with `permission_handler`:
+without it the media notification does not show in the notification shade.
 
 ### iOS
 
-Enable `Audio, AirPlay, and Picture in Picture` in Signing & Capabilities.
-
-Add to `Info.plist`:
+In Signing & Capabilities, add the Background Modes capability and check
+`Audio, AirPlay, and Picture in Picture`. That writes this to `Info.plist`:
 
 ```xml
 <key>UIBackgroundModes</key>
@@ -2898,16 +2904,16 @@ Add to `DebugProfile.entitlements` and `Release.entitlements`:
 ## Troubleshooting
 
 #### Building and testing on containers (WSL, Docker, or Distrobox)
-If you are developing or testing your Flutter app inside a headless Linux container, you will need to install both the core Flutter desktop build tools and the native audio server runtimes. Standard Linux desktops (like Ubuntu or Fedora) already have the audio backends pre-installed, but minimal containers require them to route sound to your host machine:
+libmpv comes prebuilt, so building the app needs only the Flutter desktop tools, no audio `-dev` packages. At runtime libmpv needs `libasound2`, and a PipeWire client (0.3.57 or later) or PulseAudio to reach the host's sound server. Desktop distributions ship them; a minimal container does not:
 
 ```bash
 sudo apt update
 
-# 1. Flutter desktop build essentials:
+# Flutter desktop build tools
 sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 
-# 2. Audio backend runtimes & host routing (required to hear sound inside containers):
-sudo apt install pipewire pipewire-pulse libasound2-dev libpulse-dev libpipewire-0.3-dev
+# Runtime libraries to play sound through the host
+sudo apt install libasound2 libpipewire-0.3-0 libpulse0
 ```
 
 > Note on ALSA: be aware that low-level hardware drivers like ALSA don't work inside containers. Use the PulseAudio or PipeWire backend for container testing.
