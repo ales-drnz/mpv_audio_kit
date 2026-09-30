@@ -189,8 +189,8 @@ Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
   Flutter 3.47.4 or later: older releases mark the bundled framework for
   an iOS version below the library's 15.0, and the hook stops the build.
 - The first build of each target downloads libmpv, so it needs network
-  access. 32-bit x86 Android emulators and 32-bit Linux have no build and
-  fail to build.
+  access. There is no libmpv for 32-bit x86 Android emulators or 32-bit
+  Linux, so building for them stops with an error.
 - The bundled file is `libmpv_audio_kit.so`, `mpv_audio_kit.dll` or
   `libmpv_audio_kit.framework`, so it no longer collides with media_kit's
   `libmpv` or with the plugin's own framework. Scripts or build steps that
@@ -208,7 +208,8 @@ Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
   A directory holds files named like the release assets, one per target.
   A single file is bundled for every target, so it only suits a build for
   one target and architecture: on Apple it is the binary of one slice,
-  thinned to one architecture with `lipo -thin` when the slice is universal. `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a
+  thinned to one architecture with `lipo -thin` when the slice is
+  universal. `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a
   library by path at run time.
 - On Linux the package no longer falls back to a system `libmpv.so`.
 - The player reports on `stream.internalLog` when the loaded libmpv is
