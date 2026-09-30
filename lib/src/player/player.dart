@@ -481,13 +481,13 @@ class Player extends _PlayerBase
     // the base teardown the FFI handle is gone — leaving the native
     // session published would surface a stale lockscreen entry
     // pointing at a dead Player, and incoming commands (play from
-    // the lockscreen) would land on disposed state.
-    if (identical(Player._mediaSessionOwner, this)) {
-      try {
-        await setMediaSession(null);
-      } catch (_) {
-        // Best effort — session teardown must never block disposal.
-      }
+    // the lockscreen) would land on disposed state. New calls are refused
+    // from the first line, as the teardown order below says.
+    _disposed = true;
+    try {
+      await _releaseMediaSession();
+    } catch (_) {
+      // Best effort — session teardown must never block disposal.
     }
     _cancelHookTimers();
     await super._disposeImpl();

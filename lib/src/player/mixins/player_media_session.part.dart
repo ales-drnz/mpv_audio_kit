@@ -91,6 +91,17 @@ mixin _MediaSessionModule on _PlayerBase {
     }
   }
 
+  /// Drops the OS media session without the public checks: called by
+  /// dispose, which has already refused new calls.
+  Future<void> _releaseMediaSession() async {
+    if (identical(Player._mediaSessionOwner, this)) {
+      Player._mediaSessionOwner = null;
+    }
+    final c = _mediaSessionController;
+    _mediaSessionController = null;
+    await c?.dispose();
+  }
+
   /// Handles a remote command issued by the OS media session.
   ///
   /// Auto-applies the command to the [Player] (the optimistic update
