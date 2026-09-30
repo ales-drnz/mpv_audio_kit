@@ -153,17 +153,17 @@ mixin _FfiModule on _PlayerBase {
 
   /// Throws [RangeError] unless [index] is a valid playlist position, per
   /// mpv's own `playlist-count` (the Dart state can lag behind an `add`
-  /// still in flight). Returns the count.
+  /// still in flight). Returns the count, or `null` when a dispose landed
+  /// meanwhile: it drained the read as failed, and the call then ends
+  /// without effect, like any call under way at dispose, instead of
+  /// reporting an index out of an empty playlist.
   @override
-  Future<int> _checkPlaylistIndex(int index, String name) async {
+  Future<int?> _checkPlaylistIndex(int index, String name) async {
     final (rc, value) = await _getAsync(
       'playlist-count',
       MpvFormat.mpvFormatInt64,
     );
-    // A dispose that landed meanwhile drained the read as failed. The call
-    // goes on without effect, like any call under way at dispose, instead
-    // of reporting an index out of an empty playlist.
-    if (_disposed) return 1 << 30;
+    if (_disposed) return null;
     final count = rc < 0 ? 0 : value as int;
     RangeError.checkValidIndex(index, null, name, count);
     return count;

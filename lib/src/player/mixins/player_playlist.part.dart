@@ -43,7 +43,7 @@ mixin _PlaylistModule on _PlayerBase {
   Future<void> remove(int index) async {
     RangeError.checkNotNegative(index, 'index');
     await _gate();
-    await _checkPlaylistIndex(index, 'index');
+    if (await _checkPlaylistIndex(index, 'index') == null) return;
     await _commandChecked(['playlist-remove', index.toString()]);
   }
 
@@ -102,7 +102,7 @@ mixin _PlaylistModule on _PlayerBase {
   Future<void> jump(int index) async {
     RangeError.checkNotNegative(index, 'index');
     await _gate();
-    await _checkPlaylistIndex(index, 'index');
+    if (await _checkPlaylistIndex(index, 'index') == null) return;
     // See [next] — in-flight transport writes apply to the old entry.
     await _settleWrites();
     // Optimistic intent, same as play(): this call unpauses, and `pause`
@@ -134,6 +134,7 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkNotNegative(to, 'to');
     await _gate();
     final count = await _checkPlaylistIndex(from, 'from');
+    if (count == null) return;
     RangeError.checkValueInInterval(to, 0, count, 'to');
     await _commandChecked(['playlist-move', from.toString(), to.toString()]);
   }
@@ -155,7 +156,7 @@ mixin _PlaylistModule on _PlayerBase {
     // Snapshot the load epoch — same staleness rule as [add].
     final load = _snapshotLoad();
     await _gate();
-    await _checkPlaylistIndex(index, 'index');
+    if (await _checkPlaylistIndex(index, 'index') == null) return;
     _mediaCache[media.uri] = media;
     final resolved = await resolveUri(media.uri);
     if (load.superseded) {

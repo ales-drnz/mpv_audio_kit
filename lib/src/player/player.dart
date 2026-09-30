@@ -731,7 +731,7 @@ abstract class _PlayerBase {
     T next,
     T previous,
   );
-  Future<int> _checkPlaylistIndex(int index, String name);
+  Future<int?> _checkPlaylistIndex(int index, String name);
   Future<int> _setChapterListNode(List<Chapter> chapters);
 
   /// Async property read (see `_FfiModule`): enqueues
