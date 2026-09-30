@@ -107,7 +107,10 @@ Stream<T> aggregateStream<T>(
     controller.close();
   }
 
-  final subs = [for (final s in sources) s.listen(pump, onDone: finish)];
+  final subs = [
+    for (final s in sources)
+      s.listen(pump, onError: controller.addError, onDone: finish),
+  ];
   controller
     ..onPause = () {
       for (final s in subs) {

@@ -20,6 +20,12 @@ const _kCommandPrefixes = {
   'sync',
 };
 
+// The `%n%` length prefix and the list actions of an option name.
+final _kCountedPrefix = RegExp(r'^%\d+%');
+final _kListAction = RegExp(
+  r'^(.+)-(add|append|pre|set|clr|del|remove|toggle)$',
+);
+
 /// The option names in a `key=value,key=value` list, the per-file options
 /// of `loadfile`, unquoted: mpv also takes `"key"`, `[key]` and `%n%key`.
 /// A value can itself hold commas, so this may also return a word from
@@ -28,7 +34,7 @@ Iterable<String> _optionKeys(String options) sync* {
   for (final part in options.split(',')) {
     final eq = part.indexOf('=');
     var key = (eq < 0 ? part : part.substring(0, eq)).trim();
-    final counted = RegExp(r'^%\d+%').firstMatch(key);
+    final counted = _kCountedPrefix.firstMatch(key);
     if (counted != null) key = key.substring(counted.end);
     if (key.length >= 2 &&
         ((key.startsWith('"') && key.endsWith('"')) ||
@@ -44,9 +50,7 @@ Iterable<String> _optionKeys(String options) sync* {
 /// `af`.
 String _optionProperty(String key) {
   if (key.startsWith('no-')) return key.substring(3);
-  final list = RegExp(
-    r'^(.+)-(add|append|pre|set|clr|del|remove|toggle)$',
-  ).firstMatch(key);
+  final list = _kListAction.firstMatch(key);
   return list == null ? key : list.group(1)!;
 }
 
