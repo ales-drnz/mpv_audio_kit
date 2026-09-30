@@ -188,19 +188,19 @@ The path can be a directory holding files named like the release assets (`libmpv
     <details>
     <summary><a href="#9-state-and-streams"><b>9. State and streams</b></a></summary>
 
-    * [9.1 Core streams](#91-core-streams)
-    * [9.2 Playlist and track streams](#92-playlist-and-track-streams)
-    * [9.3 Audio hardware streams](#93-audio-hardware-streams)
-    * [9.4 DSP and filter streams](#94-dsp-and-filter-streams)
-    * [9.5 Network and cache streams](#95-network-and-cache-streams)
-    * [9.6 File metadata and path streams](#96-file-metadata-and-path-streams)
-    * [9.7 Playback timing streams](#97-playback-timing-streams)
-    * [9.8 A-B loop streams](#98-a-b-loop-streams)
-    * [9.9 Cover art streams](#99-cover-art-streams)
-    * [9.10 Runtime diagnostics](#910-runtime-diagnostics)
-    * [9.11 Prefetch lifecycle stream](#911-prefetch-lifecycle-stream)
-    * [9.12 Aggregate lifecycle](#912-aggregate-lifecycle)
-    * [9.13 Complete state snapshot](#913-complete-state-snapshot)
+    * [9.1 Playback state](#91-playback-state)
+    * [9.2 State snapshot](#92-state-snapshot)
+    * [9.3 Core streams](#93-core-streams)
+    * [9.4 Playlist and track streams](#94-playlist-and-track-streams)
+    * [9.5 Audio hardware streams](#95-audio-hardware-streams)
+    * [9.6 Effects streams](#96-effects-streams)
+    * [9.7 Network and cache streams](#97-network-and-cache-streams)
+    * [9.8 File metadata and path streams](#98-file-metadata-and-path-streams)
+    * [9.9 Playback timing streams](#99-playback-timing-streams)
+    * [9.10 A-B loop streams](#910-a-b-loop-streams)
+    * [9.11 Cover art streams](#911-cover-art-streams)
+    * [9.12 Runtime diagnostics](#912-runtime-diagnostics)
+    * [9.13 Prefetch lifecycle stream](#913-prefetch-lifecycle-stream)
     * [9.14 Spectrum and PCM streams](#914-spectrum-and-pcm-streams)
     * [9.15 Media session streams](#915-media-session-streams)
 
@@ -325,9 +325,9 @@ The path can be a directory holding files named like the release assets (`libmpv
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/activity.png" width="32"></td>
-<td valign="middle"><b>Reactive state</b><br>a synchronous <a href="#913-complete-state-snapshot"><code>state</code></a> snapshot and <a href="#9-state-and-streams">more than 100 streams</a>.</td>
+<td valign="middle"><b>Reactive state</b><br>a synchronous <a href="#92-state-snapshot"><code>state</code></a> snapshot and <a href="#9-state-and-streams">more than 100 streams</a>.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/music.png" width="32"></td>
-<td valign="middle"><b>Gapless playback</b><br>track changes without a gap, with an observable <a href="#911-prefetch-lifecycle-stream">prefetch lifecycle</a>.</td>
+<td valign="middle"><b>Gapless playback</b><br>track changes without a gap, with an observable <a href="#913-prefetch-lifecycle-stream">prefetch lifecycle</a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/sliders-horizontal.png" width="32"></td>
@@ -1131,7 +1131,7 @@ await player.setGapless(Gapless.no);    // Off
 
 On network playlists, `setPrefetchPlaylist(true)` makes mpv open the next
 entry before the current one ends, so the track change does not wait for
-the network. The [prefetch lifecycle](#911-prefetch-lifecycle-stream)
+the network. The [prefetch lifecycle](#913-prefetch-lifecycle-stream)
 shows its progress.
 
 ```dart
@@ -1655,187 +1655,205 @@ The player exposes its state in two ways:
 
 A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, …) gives each new subscriber the current value first, then every change, so a `StreamBuilder` needs no `initialData`. To wait for the next change, skip the current value: `player.stream.volume.skip(1).first`. Event streams (`seekCompleted`, `endFile`, `error`, `log`, `internalLog`, `hook`, `mediaSessionCommands`, `fft`, `pcm`, `loudnessMeter`, taps) only deliver what happens after `listen()`.
 
-#### 9.1 Core streams
+In the stream tables below, a dash under Set with marks a read-only stream.
 
-<details>
-<summary><b>17 streams</b> (click to expand)</summary>
+#### 9.1 Playback state
 
-| Stream | Type | Notes |
-| :--- | :--- | :--- |
-| `playWhenReady` | `bool` | Whether the user wants playback. Set by `play`, `pause`, `open` and `stop`, and unchanged by seeks and buffering: bind the play-pause button to it, as the OS media controls do. |
-| `playing` | `bool` | `true` only while audio is produced (mpv's `core-idle`, inverted). It flips during seeks and buffering: use it for a spinner. Audio is playing when `playWhenReady && playing`. |
-| `completed` | `bool` | `true` once playback reaches the end of the last track in the queue, or of the only one. Stays `false` between tracks and while a loop is on; goes back to `false` when a new track starts or you seek back. |
-| `eofReached` | `bool` | mpv's `eof-reached`; `true` while paused at the end of a file with `keep-open=yes`. |
-| `position` | `Duration` | Current position, updated about 30 times a second. |
-| `duration` | `Duration` | Total duration of the current file; `Duration.zero` for live streams. |
-| `seekCompleted` | `void` | Fires after each load or seek, once mpv is ready to play. Use it as the signal that the file is ready. |
-| `buffering` | `bool` | `true` between `start-file` and `file-loaded`. |
-| `buffer` | `Duration` | Absolute timestamp the demuxer has buffered up to. |
-| `bufferDuration` | `Duration` | Headroom ahead of the playhead (`demuxer-cache-duration`). |
-| `bufferingPercentage` | `double` (0-100) | Cache fill as a percentage of `state.cache.secs`, computed by the player. |
-| `volume` | `double` | 0-100; values above 100 amplify. |
-| `mute` | `bool` | |
-| `rate` | `double` | Playback speed multiplier. |
-| `pitch` | `double` | Pitch multiplier. |
-| `pitchCorrection` | `bool` | Whether mpv keeps the pitch with `scaletempo2` when the rate changes. Default `true`. |
-| `audioDelay` | `Duration` | Audio offset, rounded to the millisecond. |
+`player.stream.playbackState` combines `playing`, `buffering`,
+`completed`, `pausedForCache` and `duration` into one `MpvPlaybackState`,
+for a UI that shows a single indicator.
 
-</details>
+```dart
+player.stream.playbackState.listen((phase) {
+  switch (phase) {
+    case MpvPlaybackState.idle:       // No file loaded
+    case MpvPlaybackState.loading:    // File opening
+    case MpvPlaybackState.buffering:  // Waiting for the network during playback
+    case MpvPlaybackState.playing:    // Producing audio
+    case MpvPlaybackState.paused:     // File loaded, audio paused
+    case MpvPlaybackState.completed:  // Reached the end of the last track
+  }
+});
+```
 
-#### 9.2 Playlist and track streams
+#### 9.2 State snapshot
 
-<details>
-<summary><b>8 streams</b> (click to expand)</summary>
+`player.state` holds the current value of the state streams below, for
+one-shot reads inside event handlers and `build()` methods. `playbackState`,
+`prefetchState`, `prefetchCacheDuration`, `waveform` and `loudnessScan`
+exist only as streams, and `state.tlsCaFile` has no stream.
 
-| Stream | Type | Setter |
-| :--- | :--- | :--- |
-| `playlist` | `Playlist` | `open`, `openAll`, `add`, `remove`, `move`, `replace`, `clearPlaylist` |
-| `loop` | `Loop` | `setLoop` |
-| `shuffle` | `bool` | `setShuffle` |
-| `prefetchPlaylist` | `bool` | `setPrefetchPlaylist` |
-| `tracks` | `List<MpvTrack>` | Read-only, filled by the demuxer |
-| `currentAudioTrack` | `MpvTrack?` | `setAudioTrack` |
-| `chapters` | `List<Chapter>` | Read-only, filled by the demuxer |
-| `currentChapter` | `int?` | `setChapter` |
+```dart
+final s = player.state;
+print(s.playing);                                // bool
+print(s.position);                               // Duration
+print(s.duration);                               // Duration
+print(s.volume);                                 // double
+print(s.buffer);                                 // Duration
+print(s.metadata['title']);                      // String?
+print(s.audioParams.codec);                      // String?
+print(s.audioEffects.whereType<AcompressorEffect>().firstOrNull?.threshold); // double?
+print(s.cache.secs);                             // Duration
+print(s.replayGain.preamp);                      // double
+print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
+print(s.chapters);                               // List<Chapter>
+print(s.audioOutputState);                       // AudioOutputState
+print(s.mpvVersion);                             // e.g. '0.41.0'
+print(s.ffmpegVersion);                          // e.g. '8.1.1'
 
-</details>
+// index is -1 while openAll is still building the queue.
+final i = s.playlist.index;
+if (i >= 0 && i < s.playlist.items.length) {
+  print(s.playlist.items[i].uri);                // String
+}
+```
 
-#### 9.3 Audio hardware streams
+#### 9.3 Core streams
 
-<details>
-<summary><b>23 streams</b> (click to expand)</summary>
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `playWhenReady` | `bool` | `play`, `pause`, `open`, `stop` | Whether the user wants playback. Unchanged by seeks and buffering: bind the play-pause button to it, as the OS media controls do. |
+| `playing` | `bool` | - | `true` only while audio is produced (mpv's `core-idle`, inverted). It flips during seeks and buffering: use it for a spinner. Audio is playing when `playWhenReady && playing`. |
+| `completed` | `bool` | - | `true` once playback reaches the end of the last track in the queue, or of the only one. Stays `false` between tracks and while a loop is on; goes back to `false` when a new track starts or you seek back. |
+| `eofReached` | `bool` | - | mpv's `eof-reached`; `true` while paused at the end of a file with `keep-open=yes`. |
+| `position` | `Duration` | `seek` | Current position, updated about 30 times a second. |
+| `duration` | `Duration` | - | Total duration of the current file; `Duration.zero` for live streams. |
+| `seekCompleted` | `void` | - | Fires after each load or seek, once mpv is ready to play. Use it as the signal that the file is ready. |
+| `buffering` | `bool` | - | `true` between `start-file` and `file-loaded`. |
+| `buffer` | `Duration` | - | Absolute timestamp the demuxer has buffered up to. |
+| `bufferDuration` | `Duration` | - | Headroom ahead of the playhead (`demuxer-cache-duration`). |
+| `bufferingPercentage` | `double` (0-100) | - | Cache fill as a percentage of `state.cache.secs`, computed by the player. |
+| `volume` | `double` | `setVolume` | 0-100; values above 100 amplify. |
+| `mute` | `bool` | `setMute` |  |
+| `rate` | `double` | `setRate` | Playback speed multiplier. |
+| `pitch` | `double` | `setPitch` | Pitch multiplier. |
+| `pitchCorrection` | `bool` | `setPitchCorrection` | Whether mpv keeps the pitch with `scaletempo2` when the rate changes. Default `true`. |
+| `audioDelay` | `Duration` | `setAudioDelay` | Audio offset, rounded to the millisecond. |
 
-| Stream | Type | Setter |
-| :--- | :--- | :--- |
-| `audioDevice` | `Device` | `setAudioDevice` |
-| `audioDevices` | `List<Device>` | Read-only |
-| `audioParams` | `AudioParams` | Read-only, from the decoder |
-| `audioOutParams` | `AudioParams` | Read-only, sent to the output |
-| `audioBitrate` | `double?` | Read-only |
-| `audioOutputState` | `AudioOutputState` | Read-only, see [11.4](#113-audio-output-lifecycle) |
-| `audioDriver` | `String` | `setAudioDriver` |
-| `audioExclusive` | `bool` | `setAudioExclusive` |
-| `audioBuffer` | `Duration` | `setAudioBuffer` |
-| `audioStreamSilence` | `bool` | `setAudioStreamSilence` |
-| `audioNullUntimed` | `bool` | `setAudioNullUntimed` |
-| `audioSpdif` | `Set<Spdif>` | `setAudioSpdif` |
-| `volumeMax` | `double` | `setVolumeMax` |
-| `volumeGain` | `double` | `setVolumeGain` |
-| `volumeGainMin` | `double` | `setVolumeGainMin` |
-| `volumeGainMax` | `double` | `setVolumeGainMax` |
-| `systemVolume` | `double?` | `setSystemVolume`; `null` when the driver has no per-app mixer |
-| `systemMute` | `bool?` | `setSystemMute`; `null` when the driver has no per-app mixer |
-| `audioSampleRate` | `int` | `setAudioSampleRate` |
-| `audioFormat` | `Format` | `setAudioFormat` |
-| `audioChannels` | `Channels` | `setAudioChannels` |
-| `audioClientName` | `String` | `setAudioClientName` |
-| `audioMediaRole` | `bool` | `setAudioMediaRole` (reports a "music" role to PulseAudio and PipeWire) |
+#### 9.4 Playlist and track streams
 
-</details>
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `playlist` | `Playlist` | `open`, `openAll`, `add`, `remove`, `move`, `replace`, `clearPlaylist` |  |
+| `loop` | `Loop` | `setLoop` |  |
+| `shuffle` | `bool` | `setShuffle` |  |
+| `prefetchPlaylist` | `bool` | `setPrefetchPlaylist` |  |
+| `tracks` | `List<MpvTrack>` | - | Filled by the demuxer |
+| `currentAudioTrack` | `MpvTrack?` | `setAudioTrack` |  |
+| `chapters` | `List<Chapter>` | - | Filled by the demuxer |
+| `currentChapter` | `int?` | `setChapter` |  |
+
+#### 9.5 Audio hardware streams
+
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `audioDevice` | `Device` | `setAudioDevice` |  |
+| `audioDevices` | `List<Device>` | - |  |
+| `audioParams` | `AudioParams` | - | From the decoder |
+| `audioOutParams` | `AudioParams` | - | Sent to the output |
+| `audioBitrate` | `double?` | - |  |
+| `audioOutputState` | `AudioOutputState` | - | See [11.3](#113-audio-output-lifecycle) |
+| `audioDriver` | `String` | `setAudioDriver` |  |
+| `audioExclusive` | `bool` | `setAudioExclusive` |  |
+| `audioBuffer` | `Duration` | `setAudioBuffer` |  |
+| `audioStreamSilence` | `bool` | `setAudioStreamSilence` |  |
+| `audioNullUntimed` | `bool` | `setAudioNullUntimed` |  |
+| `audioSpdif` | `Set<Spdif>` | `setAudioSpdif` |  |
+| `volumeMax` | `double` | `setVolumeMax` |  |
+| `volumeGain` | `double` | `setVolumeGain` |  |
+| `volumeGainMin` | `double` | `setVolumeGainMin` |  |
+| `volumeGainMax` | `double` | `setVolumeGainMax` |  |
+| `systemVolume` | `double?` | `setSystemVolume` | `null` when the driver has no per-app mixer |
+| `systemMute` | `bool?` | `setSystemMute` | `null` when the driver has no per-app mixer |
+| `audioSampleRate` | `int` | `setAudioSampleRate` |  |
+| `audioFormat` | `Format` | `setAudioFormat` |  |
+| `audioChannels` | `Channels` | `setAudioChannels` |  |
+| `audioClientName` | `String` | `setAudioClientName` |  |
+| `audioMediaRole` | `bool` | `setAudioMediaRole` | Reports a "music" role to PulseAudio and PipeWire |
 
 `AudioParams` carries: `format`, `sampleRate`, `channels`,
 `channelCount`, `hrChannels`, `codec`, `codecName`.
 
-#### 9.4 DSP and filter streams
+#### 9.6 Effects streams
 
-| Stream | Type | Setter |
-| :--- | :--- | :--- |
-| `audioEffects` | `List<AudioEffect>` | `setAudioEffects`, `updateAudioEffects` |
-| `replayGain` | `ReplayGainSettings` | `setReplayGain` |
-| `gapless` | `Gapless` | `setGapless` |
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `audioEffects` | `List<AudioEffect>` | `setAudioEffects`, `updateAudioEffects` |  |
+| `replayGain` | `ReplayGainSettings` | `setReplayGain` |  |
+| `gapless` | `Gapless` | `setGapless` |  |
 
-#### 9.5 Network and cache streams
+#### 9.7 Network and cache streams
 
-<details>
-<summary><b>12 streams</b> (click to expand)</summary>
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `cache` | `CacheSettings` | `setCache` |  |
+| `networkTimeout` | `Duration` | `setNetworkTimeout` |  |
+| `tlsVerify` | `bool` | `setTlsVerify` |  |
+| `hlsBitrate` | `HlsBitrate` | `setHlsBitrate` |  |
+| `cookies` | `bool` | `setCookies` |  |
+| `httpProxy` | `String` | `setHttpProxy` |  |
+| `pausedForCache` | `bool` | - | `true` while paused for an empty cache |
+| `demuxerViaNetwork` | `bool` | - |  |
+| `demuxerCacheState` | `DemuxerCacheState` | - | See [7.8](#78-monitoring-the-cache-and-the-network) |
+| `cacheSpeed` | `double` (bytes per second) | - |  |
+| `cacheBufferingState` | `int` (0-100) | - |  |
+| `demuxer` | `DemuxerSettings` | `setDemuxer` |  |
 
-| Stream | Type | Setter |
-| :--- | :--- | :--- |
-| `cache` | `CacheSettings` | `setCache` |
-| `networkTimeout` | `Duration` | `setNetworkTimeout` |
-| `tlsVerify` | `bool` | `setTlsVerify` |
-| `hlsBitrate` | `HlsBitrate` | `setHlsBitrate` |
-| `cookies` | `bool` | `setCookies` |
-| `httpProxy` | `String` | `setHttpProxy` |
-| `pausedForCache` | `bool` | Read-only; `true` while paused for an empty cache |
-| `demuxerViaNetwork` | `bool` | Read-only |
-| `demuxerCacheState` | `DemuxerCacheState` | Read-only, see [7.10](#78-monitoring-the-cache-and-the-network) |
-| `cacheSpeed` | `double` (bytes per second) | Read-only |
-| `cacheBufferingState` | `int` (0-100) | Read-only |
-| `demuxer` | `DemuxerSettings` | `setDemuxer` |
+#### 9.8 File metadata and path streams
 
-</details>
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `metadata` | `Map<String, String>` | - | mpv's `metadata` |
+| `mediaTitle` | `String` | - | mpv's `media-title`, falls back to filename when no `title` tag |
+| `fileFormat` | `String` | - | mpv's `file-format` |
+| `fileSize` | `int` | - | mpv's `file-size` |
+| `path` | `String` | - | mpv's `path`, after redirects |
+| `filename` | `String` | - | mpv's `filename`, no directory |
+| `streamPath` | `String` | - | mpv's `stream-path`, URI as originally requested |
+| `streamOpenFilename` | `String` | - | mpv's `stream-open-filename`, URI as opened, after redirects |
+| `playlistPath` | `String` | - | mpv's `playlist-path`, source `.m3u` or `.pls`; empty when not loaded via a playlist |
+| `seekable` | `bool` | - | mpv's `seekable` |
+| `partiallySeekable` | `bool` | - | mpv's `partially-seekable`, HLS or DASH window |
+| `demuxerIdle` | `bool` | - | mpv's `demuxer-cache-idle` |
 
-#### 9.6 File metadata and path streams
+#### 9.9 Playback timing streams
 
-<details>
-<summary><b>12 streams</b> (click to expand)</summary>
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `audioPts` | `Duration` | - | mpv's `audio-pts`: position of the audio being heard, counting the output latency. Updates more often than [`position`](#93-core-streams). |
+| `timeRemaining` | `Duration` | - | Time left in the file, ignoring the playback rate. |
+| `playtimeRemaining` | `Duration` | - | Time left at the current rate: 60 s of file at 2.0x is 30 s. |
 
-| Stream | Type | mpv property |
-| :--- | :--- | :--- |
-| `metadata` | `Map<String, String>` | `metadata` |
-| `mediaTitle` | `String` | `media-title` (falls back to filename when no `title` tag) |
-| `fileFormat` | `String` | `file-format` |
-| `fileSize` | `int` | `file-size` |
-| `path` | `String` | `path` (after redirects) |
-| `filename` | `String` | `filename` (no directory) |
-| `streamPath` | `String` | `stream-path` (URI as originally requested) |
-| `streamOpenFilename` | `String` | `stream-open-filename` (URI as opened, after redirects) |
-| `playlistPath` | `String` | `playlist-path` (source `.m3u` or `.pls`; empty when not loaded via a playlist) |
-| `seekable` | `bool` | `seekable` |
-| `partiallySeekable` | `bool` | `partially-seekable` (HLS or DASH window) |
-| `demuxerIdle` | `bool` | `demuxer-cache-idle` |
+#### 9.10 A-B loop streams
 
-</details>
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` |  |
+| `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` |  |
+| `abLoopCount` | `int?` (`null` = infinite) | `setAbLoopCount` |  |
+| `remainingAbLoops` | `int?` (`null` when no loop or infinite) | - | Counts down |
 
-#### 9.7 Playback timing streams
+#### 9.11 Cover art streams
 
-| Stream | Type | Notes |
-| :--- | :--- | :--- |
-| `audioPts` | `Duration` | mpv's `audio-pts`: position of the audio being heard, counting the output latency. Updates more often than [`position`](#91-core-streams). |
-| `timeRemaining` | `Duration` | Time left in the file, ignoring the playback rate. |
-| `playtimeRemaining` | `Duration` | Time left at the current rate: 60 s of file at 2.0x is 30 s. |
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `coverArt` | `CoverArt?` | - | Embedded pictures only |
+| `coverArtAuto` | `Cover` | `setCoverArtAuto` |  |
 
-#### 9.8 A-B loop streams
+#### 9.12 Runtime diagnostics
 
-<details>
-<summary><b>4 streams</b> (click to expand)</summary>
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `seeking` | `bool` | - | mpv's `seeking`, `true` while a seek runs |
+| `percentPos` | `double` (0-100) | - | mpv's `percent-pos` |
+| `currentDemuxer` | `String` | - | mpv's `current-demuxer` |
+| `currentAo` | `String` | - | mpv's `current-ao` |
+| `demuxerStartTime` | `Duration` | - | mpv's `demuxer-start-time`, timestamp of the file's start |
+| `chapterMetadata` | `Map<String, String>` | - | mpv's `chapter-metadata`, per-chapter tags |
+| `mpvVersion` | `String` | - | mpv's `mpv-version` |
+| `ffmpegVersion` | `String` | - | mpv's `ffmpeg-version` |
 
-| Stream | Type | Setter |
-| :--- | :--- | :--- |
-| `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` |
-| `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` |
-| `abLoopCount` | `int?` (`null` = infinite) | `setAbLoopCount` |
-| `remainingAbLoops` | `int?` (`null` when no loop or infinite) | Read-only, counts down |
-
-</details>
-
-#### 9.9 Cover art streams
-
-| Stream | Type | Setter |
-| :--- | :--- | :--- |
-| `coverArt` | `CoverArt?` | Read-only, embedded pictures only |
-| `coverArtAuto` | `Cover` | `setCoverArtAuto` |
-
-#### 9.10 Runtime diagnostics
-
-<details>
-<summary><b>8 streams</b> (click to expand)</summary>
-
-| Stream | Type | mpv property |
-| :--- | :--- | :--- |
-| `seeking` | `bool` | `seeking` (`true` while a seek runs) |
-| `percentPos` | `double` (0-100) | `percent-pos` |
-| `currentDemuxer` | `String` | `current-demuxer` |
-| `currentAo` | `String` | `current-ao` |
-| `demuxerStartTime` | `Duration` | `demuxer-start-time` (timestamp of the file's start) |
-| `chapterMetadata` | `Map<String, String>` | `chapter-metadata` (per-chapter tags) |
-| `mpvVersion` | `String` | `mpv-version` |
-| `ffmpegVersion` | `String` | `ffmpeg-version` |
-
-</details>
-
-#### 9.11 Prefetch lifecycle stream
+#### 9.13 Prefetch lifecycle stream
 
 With `setPrefetchPlaylist(true)`, mpv opens the next playlist entry in
 the background before the current one ends. `player.stream.prefetchState`
@@ -1867,9 +1885,6 @@ player.stream.prefetchState.listen((state) {
 });
 ```
 
-<details>
-<summary><b>5 prefetch states</b> (click to expand)</summary>
-
 | State | When it fires | Notes |
 | :--- | :--- | :--- |
 | `idle` | Default; after a cancel or a dropped prefetch | |
@@ -1877,8 +1892,6 @@ player.stream.prefetchState.listen((state) {
 | `ready` | Next entry open and cached | The track change will use it |
 | `used` | Track transitioned via the prefetched stream | Stays until the next `loading` or a cancel |
 | `failed` | Opening the next entry failed | Stays until the next `loading` |
-
-</details>
 
 For a progress bar, use `player.stream.prefetchCacheDuration`: how much
 of the next entry is cached, as a `Duration`. Divide it by your cache
@@ -1893,66 +1906,15 @@ player.stream.prefetchCacheDuration.listen((buffered) {
 });
 ```
 
-#### 9.12 Aggregate lifecycle
-
-`player.stream.playbackState` combines `playing`, `buffering`,
-`completed`, `pausedForCache` and `duration` into one `MpvPlaybackState`,
-for a UI that shows a single indicator.
-
-```dart
-player.stream.playbackState.listen((phase) {
-  switch (phase) {
-    case MpvPlaybackState.idle:       // No file loaded
-    case MpvPlaybackState.loading:    // File opening
-    case MpvPlaybackState.buffering:  // Waiting for the network during playback
-    case MpvPlaybackState.playing:    // Producing audio
-    case MpvPlaybackState.paused:     // File loaded, audio paused
-    case MpvPlaybackState.completed:  // Reached the end of the last track
-  }
-});
-```
-
-#### 9.13 Complete state snapshot
-
-`player.state` holds the current value of the state streams above, for
-one-shot reads inside event handlers and `build()` methods. `playbackState`,
-`prefetchState`, `prefetchCacheDuration`, `waveform` and `loudnessScan`
-exist only as streams, and `state.tlsCaFile` has no stream.
-
-```dart
-final s = player.state;
-print(s.playing);                                // bool
-print(s.position);                               // Duration
-print(s.duration);                               // Duration
-print(s.volume);                                 // double
-print(s.buffer);                                 // Duration
-print(s.metadata['title']);                      // String?
-print(s.audioParams.codec);                      // String?
-print(s.audioEffects.whereType<AcompressorEffect>().firstOrNull?.threshold); // double?
-print(s.cache.secs);                             // Duration
-print(s.replayGain.preamp);                      // double
-print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
-print(s.chapters);                               // List<Chapter>
-print(s.audioOutputState);                       // AudioOutputState
-print(s.mpvVersion);                             // e.g. '0.41.0'
-print(s.ffmpegVersion);                          // e.g. '8.1.1'
-
-// index is -1 while openAll is still building the queue.
-final i = s.playlist.index;
-if (i >= 0 && i < s.playlist.items.length) {
-  print(s.playlist.items[i].uri);                // String
-}
-```
-
 #### 9.14 Spectrum and PCM streams
 
 `stream.fft` and `stream.pcm` carry the audio going to the output.
 [Section 13](#13-visualizer-waveform-and-spectrum) covers their settings.
 
-| Stream | Type | What it carries |
-| :--- | :--- | :--- |
-| `stream.fft` | `Stream<FftFrame>` | Smoothed FFT bands and raw bins, for a bar visualizer. |
-| `stream.pcm` | `Stream<PcmFrame>` | Samples after the effects chain, for a waveform or a level meter. |
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `fft` | `FftFrame` | - | Smoothed FFT bands and raw bins, for a bar visualizer. |
+| `pcm` | `PcmFrame` | - | Samples after the effects chain, for a waveform or a level meter. |
 
 ```dart
 player.stream.fft.listen((frame) {
@@ -1968,10 +1930,10 @@ player.stream.fft.listen((frame) {
 Two streams follow the OS media session, covered in
 [section 14](#14-os-media-session).
 
-| Stream | Type | What it carries |
-| :--- | :--- | :--- |
-| `stream.mediaSession` | `Stream<MediaSession?>` | The published session, or `null`. Same as `state.mediaSession`. |
-| `stream.mediaSessionCommands` | `Stream<MediaSessionCommand>` | Commands from the OS (play, pause, next, seek and so on). The player applies them itself; the stream is for logging or extra handling. |
+| Stream | Type | Set with | Notes |
+| :--- | :--- | :--- | :--- |
+| `mediaSession` | `MediaSession?` | `setMediaSession` | The published session, or `null`. Same as `state.mediaSession`. |
+| `mediaSessionCommands` | `MediaSessionCommand` | - | Commands from the OS (play, pause, next, seek and so on). The player applies them itself; the stream is for logging or extra handling. |
 
 ---
 
