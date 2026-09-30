@@ -1177,15 +1177,15 @@ Select the native backend used for audio output:
 ```dart
 await player.setAudioDriver('wasapi');    // Windows
 await player.setAudioDriver('coreaudio'); // macOS
-await player.setAudioDriver('pulse');     // Linux
-await player.setAudioDriver('alsa');      // Linux
-await player.setAudioDriver('pipewire');  // Linux
-await player.setAudioDriver('auto');      // Auto
+await player.setAudioDriver('audiounit'); // iOS
+await player.setAudioDriver('aaudio');    // Android, also 'audiotrack' and 'opensles'
+await player.setAudioDriver('pipewire');  // Linux, also 'pulse' and 'alsa'
+await player.setAudioDriver('auto');      // mpv picks (default)
 ```
 
 #### 6.2 Exclusive mode
 
-Bypasses the OS audio mixer and writes directly to the hardware. Eliminates software resampling and volume processing for bit-perfect output. Only available on WASAPI (Windows), ALSA (Linux) and CoreAudio (macOS):
+Asks the driver for exclusive use of the device, so the system mixer does not resample the audio or apply its volume. WASAPI (Windows), CoreAudio (macOS), AAudio (Android) and PipeWire (Linux) honor it; other drivers ignore it. On iOS (AudioUnit) it only stops your audio from mixing with other apps:
 
 ```dart
 await player.setAudioExclusive(true);   // Request exclusive access

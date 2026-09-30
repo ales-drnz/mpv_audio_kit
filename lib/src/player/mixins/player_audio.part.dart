@@ -246,7 +246,9 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Enables exclusive audio mode (WASAPI / ALSA / CoreAudio).
+  /// Requests exclusive use of the audio device (mpv's `audio-exclusive`).
+  /// WASAPI, CoreAudio, AAudio and PipeWire honor it; on iOS AudioUnit it
+  /// only turns off mixing with other apps, and other drivers ignore it.
   Future<void> setAudioExclusive(bool exclusive) async {
     await _gate();
     await _prop('audio-exclusive', exclusive ? 'yes' : 'no');
