@@ -13,7 +13,7 @@
 <table>
 <tr>
 <td valign="middle" width="90"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_audio_kit.png" width="70" alt="logo"></td>
-<td valign="middle"><code>mpv_audio_kit</code> is an audio library built on mpv <code>v0.41.0</code>. It provides a dedicated background event loop, a complete DSP pipeline, and direct access to every property, making it the most capable audio library available for Flutter.</td>
+<td valign="middle"><code>mpv_audio_kit</code> is an audio library built on mpv <code>v0.41.0</code>. It provides a dedicated background event loop, a complete DSP pipeline, and raw access to mpv's properties and commands, making it the most capable audio library available for Flutter.</td>
 </tr>
 </table>
 
@@ -321,11 +321,11 @@ The path can be a directory holding files named like the release assets (`libmpv
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/zap.png" width="32"></td>
 <td valign="middle" width="45%"><b>Non-blocking</b><br>mpv events run in a background isolate; the UI thread stays free.</td>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/shield-check.png" width="32"></td>
-<td valign="middle" width="45%"><b>Type-safe API</b><br>typed enums, sealed selectors, <code>*Effect</code> stages. No stringly-typed setters.</td>
+<td valign="middle" width="45%"><b>Type-safe API</b><br>typed enums, sealed selectors, <code>*Effect</code> stages.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/activity.png" width="32"></td>
-<td valign="middle"><b>Reactive state</b><br>synchronous <a href="#913-complete-state-snapshot"><code>state</code></a> snapshot, <a href="#9-state-and-streams">90+ observable streams</a> covering every mpv property.</td>
+<td valign="middle"><b>Reactive state</b><br>synchronous <a href="#913-complete-state-snapshot"><code>state</code></a> snapshot, <a href="#9-state-and-streams">more than 100 observable streams</a>.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/music.png" width="32"></td>
 <td valign="middle"><b>Gapless playback</b><br>seamless track transitions with an observable <a href="#911-prefetch-lifecycle-stream">prefetch lifecycle</a>.</td>
 </tr>
@@ -363,7 +363,7 @@ The path can be a directory holding files named like the release assets (`libmpv
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/triangle-alert.png" width="32"></td>
 <td valign="middle"><b>Typed errors</b><br>sealed <a href="#111-typed-error-stream"><code>PlayerError</code></a> hierarchy plus dedicated sinks for engine errors, end-file events, AO failures, and logs.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/terminal.png" width="32"></td>
-<td valign="middle"><b>Raw access</b><br>read or write any mpv property or command; a rejection throws <a href="#116-exceptions"><code>MpvCommandException</code></a>.</td>
+<td valign="middle"><b>Raw access</b><br>read and write mpv properties and send commands, except writes to <code>af</code> and <code>pause</code>; a rejection throws <a href="#116-exceptions"><code>MpvCommandException</code></a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/media-session.png" width="32"></td>
@@ -2051,9 +2051,9 @@ await player.sendRawCommand(['playlist-shuffle']);
 await player.sendRawCommand(['ao-reload']);
 ```
 
-Any command or property from the
-[mpv documentation](https://mpv.io/manual/master/) is accessible
-through these methods.
+Other commands and properties from the
+[mpv documentation](https://mpv.io/manual/master/) go through these
+methods, except the writes to `af` and `pause` listed above.
 
 > Prefer the typed setters (`setVolume`, `setCache`,
 > `setReplayGain`, …) when they cover your use case. They update
