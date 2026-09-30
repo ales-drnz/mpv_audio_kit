@@ -13,7 +13,7 @@
 <table>
 <tr>
 <td valign="middle" width="90"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_audio_kit.png" width="70" alt="logo"></td>
-<td valign="middle"><code>mpv_audio_kit</code> is an audio library built on mpv <code>v0.41.0</code>. It provides a dedicated background event loop, a complete DSP pipeline, and raw access to mpv's properties and commands, making it the most capable audio library available for Flutter.</td>
+<td valign="middle"><code>mpv_audio_kit</code> is an audio library for Flutter built on mpv <code>v0.41.0</code>. mpv's events run on a background isolate, an ordered chain of ffmpeg filters processes the audio, and a raw API reaches mpv's properties and commands.</td>
 </tr>
 </table>
 
@@ -21,12 +21,12 @@
 
 ## Why did I build this?
 
-Many existing Flutter audio libraries are either built on an old version of mpv or they are simply too restrictive, hiding some cool features relative to audio processing. So I made this project to provide the most powerful and flexible audio library for Flutter and solve 4 main needs:
+Many existing Flutter audio libraries are either built on an old version of mpv or they are simply too restrictive, hiding some cool features related to audio processing. So I made this project to provide the most powerful and flexible audio library for Flutter and solve 4 main needs:
 
 <table>
 <tr>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/jellyfin.png" width="32" alt="Jellyfin"></td>
-<td valign="middle"><b>Jellyfin</b><br>for song streaming, supporting <code>.m3u8</code> (<a href="#21-supported-uri-schemes">HLS</a>) is essential when using transcoding. This is particularly handy because it enables seeking on the mpv player instead of blocking it when using <code>.stream</code>.</td>
+<td valign="middle"><b>Jellyfin</b><br>for song streaming, supporting <code>.m3u8</code> (<a href="#21-supported-uri-schemes">HLS</a>) is essential when using transcoding. This is particularly handy because mpv can seek in it, while a <code>.stream</code> URL blocks seeking.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/plex.png" width="32" alt="Plex"></td>
@@ -59,13 +59,13 @@ dependencies:
 
 | Platform  | Minimum | Architecture | Size | Device | Emulator |
 | :--- | :--- | :--- | :---: | :---: | :---:
-| **Android** | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 8.3, 8.2, 8.9 MB | ✅ | ✅ |
-| **iOS** | 15.0 | arm64, x86_64 | 7.5, 8.0 MB | ✅ | ✅ |
-| **macOS** | 12.0 | arm64, x86_64 | 7.5, 8.0 MB | ✅ | - |
-| **Windows**| 10 | arm64, x86_64 | 8.1, 9.1 MB | ✅ | - |
-| **Linux** | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.7, 7.5 MB | ✅ | - |
+| Android | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 8.3, 8.2, 8.9 MB | Yes | Yes |
+| iOS | 15.0 | arm64, x86_64 | 7.5, 8.0 MB | Yes | Yes |
+| macOS | 12.0 | arm64, x86_64 | 7.5, 8.0 MB | Yes | - |
+| Windows | 10 | arm64, x86_64 | 8.1, 9.1 MB | Yes | - |
+| Linux | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.7, 7.5 MB | Yes | - |
 
-The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire 0.3.57 or later and PulseAudio when they are installed.
+The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire (0.3.57 or later) or PulseAudio when installed.
 
 ### How libmpv reaches the app
 
@@ -272,7 +272,7 @@ The path can be a directory holding files named like the release assets (`libmpv
 <table>
 <tr>
 <td valign="middle" width="90"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_studio.png" width="70" alt="MPV Studio"></td>
-<td valign="middle">The screenshots below are from <b><a href="https://github.com/ales-drnz/mpv_studio">MPV Studio</a></b>, the standalone showcase app built on <code>mpv_audio_kit</code>. The bundled <code>example/</code> is a deliberately minimal single-file demo.</td>
+<td valign="middle">The screenshots below come from <a href="https://github.com/ales-drnz/mpv_studio">MPV Studio</a>, a separate app built on <code>mpv_audio_kit</code>. The <code>example/</code> folder in this repository is a single-file demo.</td>
 </tr>
 </table>
 
@@ -319,55 +319,55 @@ The path can be a directory holding files named like the release assets (`libmpv
 <table>
 <tr>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/zap.png" width="32"></td>
-<td valign="middle" width="45%"><b>Non-blocking</b><br>mpv events run in a background isolate; the UI thread stays free.</td>
+<td valign="middle" width="45%"><b>Non-blocking</b><br>mpv events run in a background isolate, so the UI thread stays free.</td>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/shield-check.png" width="32"></td>
-<td valign="middle" width="45%"><b>Type-safe API</b><br>typed enums, sealed selectors, <code>*Effect</code> stages.</td>
+<td valign="middle" width="45%"><b>Type-safe API</b><br>typed enums, sealed selectors and <code>*Effect</code> stages.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/activity.png" width="32"></td>
-<td valign="middle"><b>Reactive state</b><br>synchronous <a href="#913-complete-state-snapshot"><code>state</code></a> snapshot, <a href="#9-state-and-streams">more than 100 observable streams</a>.</td>
+<td valign="middle"><b>Reactive state</b><br>a synchronous <a href="#913-complete-state-snapshot"><code>state</code></a> snapshot and <a href="#9-state-and-streams">more than 100 streams</a>.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/music.png" width="32"></td>
-<td valign="middle"><b>Gapless playback</b><br>seamless track transitions with an observable <a href="#911-prefetch-lifecycle-stream">prefetch lifecycle</a>.</td>
+<td valign="middle"><b>Gapless playback</b><br>track changes without a gap, with an observable <a href="#911-prefetch-lifecycle-stream">prefetch lifecycle</a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/sliders-horizontal.png" width="32"></td>
-<td valign="middle"><b>DSP pipeline</b><br>an ordered <a href="#5-audio-quality-and-dsp">chain of typed effects</a> covering 18-band graphic EQ, compressor, loudness, pitch and tempo, bass and treble, stereo width, headphone crossfeed, silence trim, plus any custom <code>--af</code> filter.</td>
+<td valign="middle"><b>Effects chain</b><br>an ordered <a href="#5-audio-quality-and-dsp">list of typed effects</a>: 18-band graphic EQ, compressor, loudness, pitch and tempo, bass and treble, stereo width, headphone crossfeed, silence trim, and any lavfi filter as a raw stage.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/audio-lines.png" width="32"></td>
-<td valign="middle"><b>Visualizer</b><br>real-time <a href="#13-visualizer-waveform-and-spectrum">FFT spectrum + raw PCM streams</a> with log-spaced bands and asymmetric smoothing.</td>
+<td valign="middle"><b>Visualizer</b><br>real-time <a href="#13-visualizer-waveform-and-spectrum">FFT spectrum and PCM streams</a>, a waveform overview and loudness measurement.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/scale.png" width="32"></td>
-<td valign="middle"><b>ReplayGain</b><br>track and album normalization, preamp, fallback gain.</td>
+<td valign="middle"><b>ReplayGain</b><br>track and album gain, preamp and fallback gain.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/list-plus.png" width="32"></td>
-<td valign="middle"><b>Dynamic playlist</b><br>add, remove, move, replace mid-playback; <a href="#36-chapter-navigation">chapters</a> and <a href="#43-a-b-loop">A-B loop</a>.</td>
+<td valign="middle"><b>Dynamic playlist</b><br>add, remove, move and replace entries during playback, plus <a href="#36-chapter-navigation">chapters</a> and <a href="#43-a-b-loop">A-B loop</a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/layers.png" width="32"></td>
-<td valign="middle"><b>Multi-track audio</b><br>typed <a href="#67-audio-track-selection">track selection</a> for multilingual containers (MKV, MP4) with codec, language, and gain metadata per track.</td>
+<td valign="middle"><b>Multi-track audio</b><br>typed <a href="#67-audio-track-selection">track selection</a> in containers with several audio tracks (MKV, MP4), with codec, language and gain for each track.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/cpu.png" width="32"></td>
-<td valign="middle"><b>Hardware control</b><br><a href="#62-exclusive-mode">exclusive mode</a>, <a href="#63-device-selection">device selection</a>, <a href="#64-output-format">bit-perfect sample-rate and format</a>, <a href="#65-spdif-passthrough">SPDIF passthrough</a>.</td>
+<td valign="middle"><b>Hardware control</b><br><a href="#62-exclusive-mode">exclusive mode</a>, <a href="#63-device-selection">device selection</a>, <a href="#65-spdif-passthrough">SPDIF passthrough</a>, <a href="#64-output-format">output sample rate and format</a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/tag.png" width="32"></td>
-<td valign="middle"><b>Metadata and cover art</b><br><a href="#82-cover-art">embedded artwork</a> as raw bytes plus a Flutter <a href="#82-cover-art"><code>ImageProvider</code></a> helper, and <a href="#81-metadata-tags">tags</a>.</td>
+<td valign="middle"><b>Metadata and cover art</b><br><a href="#81-metadata-tags">tags</a>, and <a href="#82-cover-art">embedded artwork</a> as raw bytes with a Flutter <code>ImageProvider</code>.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/globe.png" width="32"></td>
 <td valign="middle"><b>Network streams</b><br>HLS, DASH, SMB, HTTP and HTTPS.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/package.png" width="32"></td>
-<td valign="middle"><b>Cache control</b><br><a href="#71-cache-configuration"><code>CacheSettings</code></a> bundle for memory cache, disk overflow, pause-on-empty.</td>
+<td valign="middle"><b>Cache control</b><br><a href="#71-cache-configuration"><code>CacheSettings</code></a> sets the memory cache, the disk overflow and the pause on an empty cache in one call.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/webhook.png" width="32"></td>
-<td valign="middle"><b>Hooks</b><br>intercept the file-loading pipeline (also during <a href="#12-hooks">prefetch</a>) to resolve URLs, redirect, or inject headers.</td>
+<td valign="middle"><b>Hooks</b><br>run your code while a file loads, <a href="#12-hooks">prefetch</a> included, to resolve URLs, redirect or add headers.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/triangle-alert.png" width="32"></td>
-<td valign="middle"><b>Typed errors</b><br>sealed <a href="#111-typed-error-stream"><code>PlayerError</code></a> hierarchy plus dedicated sinks for engine errors, end-file events, AO failures, and logs.</td>
+<td valign="middle"><b>Typed errors</b><br>a sealed <a href="#111-typed-error-stream"><code>PlayerError</code></a> type, plus streams for end-of-file events, audio output failures and logs.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/terminal.png" width="32"></td>
 <td valign="middle"><b>Raw access</b><br>read and write mpv properties and send commands, except writes to <code>af</code> and <code>pause</code>; a rejection throws <a href="#116-exceptions"><code>MpvCommandException</code></a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/media-session.png" width="32"></td>
-<td valign="middle"><b>OS media session</b><br>publish the player to the <a href="#14-os-media-session">system media controls</a>. Now Playing, Control Center and lockscreen, MPRIS on Linux, SMTC on Windows, and the Android media notification.</td>
+<td valign="middle"><b>OS media session</b><br>publish the player to the <a href="#14-os-media-session">system media controls</a>: Now Playing, Control Center and the lock screen on Apple, MPRIS on Linux, SMTC on Windows and the Android media notification.</td>
 <td valign="middle"></td>
 <td valign="middle"></td>
 </tr>
@@ -418,8 +418,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        // Bind the button to the intent axis (`playWhenReady`), not
-        // `playing`. `playing` toggles transiently during seeks.
+        // `playing` flips during seeks and buffering, `playWhenReady` does not.
         onPressed: () =>
             player.state.playWhenReady ? player.pause() : player.play(),
         child: const Icon(Icons.play_arrow),
@@ -2903,7 +2902,7 @@ Add to `DebugProfile.entitlements` and `Release.entitlements`:
 
 ## Troubleshooting
 
-#### Building and testing on containers (WSL, Docker, or Distrobox)
+#### Building and testing in containers (WSL, Docker or Distrobox)
 libmpv comes prebuilt, so building the app needs only the Flutter desktop tools, no audio `-dev` packages. At runtime libmpv needs `libasound2`, and a PipeWire client (0.3.57 or later) or PulseAudio to reach the host's sound server. Desktop distributions ship them; a minimal container does not:
 
 ```bash
@@ -2916,14 +2915,13 @@ sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
 sudo apt install libasound2 libpipewire-0.3-0 libpulse0
 ```
 
-> Note on ALSA: be aware that low-level hardware drivers like ALSA don't work inside containers. Use the PulseAudio or PipeWire backend for container testing.
-> 
-> Note on WSL: PipeWire and ALSA do not work on Windows Subsystem for Linux. You must use the PulseAudio backend to hear sound during development.
+The `alsa` driver cannot reach the sound card from inside a container: use `pipewire` or `pulse`. On WSL only `pulse` works.
+
 ---
 
 ## Project background
 
-All the native bindings, isolate logic, and architectural patterns were implemented through the use of Claude Code.
+I wrote the native bindings, the isolate code and most of the architecture with Claude Code.
 
 ---
 
