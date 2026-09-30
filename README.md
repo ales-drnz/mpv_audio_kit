@@ -2340,7 +2340,7 @@ player.stream.hook.listen((event) async {
         final resolved = await myResolver(url);
         await player.setRawProperty('stream-open-filename', resolved.url);
 
-        // Inject per-file HTTP headers (direct HTTP only; for HLS use URL query params)
+        // Per-file HTTP headers, sent for HLS segments too
         if (resolved.headers.isNotEmpty) {
           final headerString = resolved.headers.entries
               .map((e) => '${e.key}: ${e.value}')
@@ -2362,19 +2362,13 @@ player.stream.hook.listen((event) async {
 
 #### 12.3 HTTP headers via hook
 
-`file-local-options/http-header-fields` sets headers only for the current file. They are applied at the mpv and libmpv layer and work correctly for direct HTTP streams.
-
-Important note for HLS streams: when mpv opens an HLS playlist, the actual segment downloads are handled directly by ffmpeg's lavf, which does not inherit `http-header-fields` set via the hook. If your server requires authentication on the HLS segments, embed the credentials in the URL as query parameters instead:
+`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`:
 
 ```dart
-// ✅ Correct for HLS: auth in the URL, visible to ffmpeg's lavf
-player.setRawProperty(
-  'stream-open-filename',
-  'https://server/stream/playlist.m3u8?token=abc123',
+await player.setRawProperty(
+  'file-local-options/http-header-fields',
+  'Authorization: Bearer abc123',
 );
-
-// ⚠️ Works for direct HTTP streams only; ignored by ffmpeg's lavf for HLS sub-requests
-player.setRawProperty('file-local-options/http-header-fields', 'Authorization: Bearer abc123');
 ```
 
 #### 12.4 Lazy URL resolution
