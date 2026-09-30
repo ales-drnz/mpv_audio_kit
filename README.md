@@ -474,7 +474,7 @@ All `PlayerConfiguration` fields are optional. Their defaults:
 | `resumePlayback` | `true` | Restore the saved position on reopen (watch-later). Only audio-relevant props are persisted, ideal for audiobook and podcast resume |
 | `watchLaterDir` | `null` | Directory for the watch-later resume configs. Often not writable on mobile, point this at an app-writable path |
 | `forceSeekable` | `false` | Allow in-cache seeking on streams mpv reports as non-seekable (direct-HTTP or HLS audio) |
-| `hlsBitrate` | `HlsBitrate.max` | Which variant mpv selects from an adaptive HLS playlist (`HlsBitrate.no`, `.min`, or `.max`). Use `.min` to save bandwidth on metered links |
+| `hlsBitrate` | `HlsBitrate.max` | Which variant mpv selects from an adaptive HLS playlist (`HlsBitrate.no`, `.min`, or `.max`). Use `.min` to save bandwidth on metered links. Change it later with `setHlsBitrate` |
 | `normalizeDownmix` | `false` | Loudness-normalize surround content downmixed to fewer channels, avoiding clipping on 5.1â†’stereo |
 | `demuxerCacheDir` | `null` | Directory for the on-disk demuxer cache (companion of `CacheSettings.onDisk`). Point it at a writable path on mobile |
 
@@ -1435,6 +1435,9 @@ await player.setNetworkTimeout(const Duration(seconds: 10)); // Fail after 10 se
 
 #### 7.4 TLS and SSL verification
 
+Certificate verification is off by default, as in mpv. Turn it on for
+playback with `setTlsVerify`:
+
 ```dart
 await player.setTlsVerify(true); // Enable; uses the CA roots baked into libmpv
 
@@ -1501,6 +1504,16 @@ final player = Player(
     hlsBitrate: HlsBitrate.min,
   ),
 );
+
+// The HLS policy can change later too, from the next load.
+await player.setHlsBitrate(HlsBitrate.max);
+```
+
+Two more network options take effect from the next load:
+
+```dart
+await player.setCookies(true);                           // mpv's cookie jar, off by default
+await player.setHttpProxy('http://proxy.example:8080');  // empty string clears it
 ```
 
 #### 7.9 Throttling CDNs and chunked requests
@@ -1759,13 +1772,16 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 #### 9.5 Network and cache streams
 
 <details>
-<summary><b>9 streams</b> (click to expand)</summary>
+<summary><b>12 streams</b> (click to expand)</summary>
 
 | Stream | Type | Setter |
 | :--- | :--- | :--- |
 | `cache` | `CacheSettings` | `setCache` |
 | `networkTimeout` | `Duration` | `setNetworkTimeout` |
 | `tlsVerify` | `bool` | `setTlsVerify` |
+| `hlsBitrate` | `HlsBitrate` | `setHlsBitrate` |
+| `cookies` | `bool` | `setCookies` |
+| `httpProxy` | `String` | `setHttpProxy` |
 | `pausedForCache` | `bool` | _(observed; auto-pause signal)_ |
 | `demuxerViaNetwork` | `bool` | _(observed)_ |
 | `demuxerCacheState` | `DemuxerCacheState` | _(observed; buffered ranges, raw input rate, eof-cached, bof-cached, underrun)_ |
