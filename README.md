@@ -157,6 +157,9 @@ The path can be a directory holding files named like the release assets (`libmpv
     * [6.7 Audio track selection](#67-audio-track-selection)
     * [6.8 Reload audio](#68-reload-audio)
     * [6.9 Media role](#69-media-role)
+    * [6.10 Audio buffer](#610-audio-buffer)
+    * [6.11 Audio stream silence](#611-audio-stream-silence)
+    * [6.12 Untimed null output](#612-untimed-null-output)
 
     </details>
 
@@ -167,12 +170,10 @@ The path can be a directory holding files named like the release assets (`libmpv
     * [7.2 Demuxer memory pool](#72-demuxer-memory-pool)
     * [7.3 Network timeout](#73-network-timeout)
     * [7.4 TLS and SSL verification](#74-tls-and-ssl-verification)
-    * [7.5 Audio buffer](#75-audio-buffer)
-    * [7.6 Audio stream silence](#76-audio-stream-silence)
-    * [7.7 Untimed null output](#77-untimed-null-output)
-    * [7.8 Radio and live streams](#78-radio-and-live-streams)
-    * [7.9 Throttling CDNs and chunked requests](#79-throttling-cdns-and-chunked-requests)
-    * [7.10 Monitoring the demuxer cache](#710-monitoring-the-demuxer-cache)
+    * [7.5 Proxy and cookies](#75-proxy-and-cookies)
+    * [7.6 Radio and live streams](#76-radio-and-live-streams)
+    * [7.7 Throttling CDNs and chunked requests](#77-throttling-cdns-and-chunked-requests)
+    * [7.8 Monitoring the cache and the network](#78-monitoring-the-cache-and-the-network)
 
     </details>
 
@@ -219,10 +220,9 @@ The path can be a directory holding files named like the release assets (`libmpv
 
     * [11.1 Typed error stream](#111-typed-error-stream)
     * [11.2 End file stream](#112-end-file-stream)
-    * [11.3 Network state](#113-network-state)
-    * [11.4 Audio output lifecycle](#114-audio-output-lifecycle)
-    * [11.5 Log streams](#115-log-streams)
-    * [11.6 Exceptions](#116-exceptions)
+    * [11.3 Audio output lifecycle](#113-audio-output-lifecycle)
+    * [11.4 Log streams](#114-log-streams)
+    * [11.5 Exceptions](#115-exceptions)
 
     </details>
 
@@ -363,7 +363,7 @@ The path can be a directory holding files named like the release assets (`libmpv
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/triangle-alert.png" width="32"></td>
 <td valign="middle"><b>Typed errors</b><br>a sealed <a href="#111-typed-error-stream"><code>PlayerError</code></a> type, plus streams for end-of-file events, audio output failures and logs.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/terminal.png" width="32"></td>
-<td valign="middle"><b>Raw access</b><br>read and write mpv properties and send commands, except writes to <code>af</code> and <code>pause</code>; a rejection throws <a href="#116-exceptions"><code>MpvCommandException</code></a>.</td>
+<td valign="middle"><b>Raw access</b><br>read and write mpv properties and send commands, except writes to <code>af</code> and <code>pause</code>; a rejection throws <a href="#115-exceptions"><code>MpvCommandException</code></a>.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/media-session.png" width="32"></td>
@@ -1335,6 +1335,33 @@ PipeWire use the role for routing and per-role volume, and so do the
 await player.setAudioMediaRole(true);
 ```
 
+#### 6.10 Audio buffer
+
+`setAudioBuffer` sets the size of the audio output buffer. A smaller buffer lowers latency; a larger one copes better with load:
+
+```dart
+await player.setAudioBuffer(const Duration(milliseconds: 100));  // low latency
+await player.setAudioBuffer(const Duration(milliseconds: 500));  // for slow hardware
+```
+
+#### 6.11 Audio stream silence
+
+`setAudioStreamSilence(true)` keeps the device open while paused, sending silence, so resuming does not click or pop:
+
+```dart
+await player.setAudioStreamSilence(true);
+```
+
+On iOS the driver then never lets go of the device: after an interruption, such as a phone call or another app's audio, it stays suspended and playback cannot continue.
+
+#### 6.12 Untimed null output
+
+With the `null` driver, for example to process audio on a machine with no sound device, `setAudioNullUntimed(true)` makes it run as fast as possible instead of at real time. It also applies when mpv falls back to `null` because the device failed to open:
+
+```dart
+await player.setAudioNullUntimed(true);
+```
+
 ---
 
 ### 7. Network and caching
@@ -1410,34 +1437,16 @@ await player.setTlsVerify(true); // uses the CA roots built into libmpv
 await player.setTlsCaFile('/path/to/corporate-ca.pem');
 ```
 
-#### 7.5 Audio buffer
+#### 7.5 Proxy and cookies
 
-`setAudioBuffer` sets the size of the audio output buffer. A smaller buffer lowers latency; a larger one copes better with load:
-
-```dart
-await player.setAudioBuffer(const Duration(milliseconds: 100));  // low latency
-await player.setAudioBuffer(const Duration(milliseconds: 500));  // for slow hardware
-```
-
-#### 7.6 Audio stream silence
-
-`setAudioStreamSilence(true)` keeps the device open while paused, sending silence, so resuming does not click or pop:
+Both take effect from the next load:
 
 ```dart
-await player.setAudioStreamSilence(true);
+await player.setHttpProxy('http://proxy.example:8080');  // empty string clears it
+await player.setCookies(true);                           // mpv's cookie jar, off by default
 ```
 
-On iOS the driver then never lets go of the device: after an interruption, such as a phone call or another app's audio, it stays suspended and playback cannot continue.
-
-#### 7.7 Untimed null output
-
-With the `null` driver, for example to process audio on a machine with no sound device, `setAudioNullUntimed(true)` makes it run as fast as possible instead of at real time. It also applies when mpv falls back to `null` because the device failed to open:
-
-```dart
-await player.setAudioNullUntimed(true);
-```
-
-#### 7.8 Radio and live streams
+#### 7.6 Radio and live streams
 
 For live radio, turn off the cache and the cache pause to keep latency low:
 
@@ -1472,14 +1481,7 @@ final player = Player(
 await player.setHlsBitrate(HlsBitrate.max);
 ```
 
-Two more network options take effect from the next load:
-
-```dart
-await player.setCookies(true);                           // mpv's cookie jar, off by default
-await player.setHttpProxy('http://proxy.example:8080');  // empty string clears it
-```
-
-#### 7.9 Throttling CDNs and chunked requests
+#### 7.7 Throttling CDNs and chunked requests
 
 Some CDNs, YouTube's `googlevideo` audio among them, slow a single open-ended HTTP range request (the rest of the file) to a crawl. Playback starts fine but stalls after a seek, once the buffered audio runs out and the slow connection cannot refill it.
 
@@ -1494,7 +1496,7 @@ await player.open(Media(
 
 It applies to that track only. Leave it `null` (the default) for servers that do not throttle, such as Plex, Jellyfin or your own: one large request buffers fastest there. When set, it must be a positive byte count.
 
-#### 7.10 Monitoring the demuxer cache
+#### 7.8 Monitoring the cache and the network
 
 `player.stream.demuxerCacheState` emits a `DemuxerCacheState` for
 streaming sources: the buffered time ranges, the download rate, and the
@@ -1509,6 +1511,18 @@ player.stream.demuxerCacheState.listen((cache) {
   if (cache.underrun) {
     // The cache ran dry: show a spinner
   }
+});
+```
+
+`player.stream.pausedForCache` is `true` while playback waits for an empty cache to refill, the clearest sign of a network stall. `player.stream.demuxerViaNetwork` tells whether the current file comes over the network, which helps decide whether an error is likely a network one:
+
+```dart
+player.stream.pausedForCache.listen((paused) {
+  if (paused) showBufferingIndicator();
+});
+
+player.stream.demuxerViaNetwork.listen((isNetwork) {
+  print('Network stream: $isNetwork');
 });
 ```
 
@@ -1698,7 +1712,7 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `audioParams` | `AudioParams` | Read-only, from the decoder |
 | `audioOutParams` | `AudioParams` | Read-only, sent to the output |
 | `audioBitrate` | `double?` | Read-only |
-| `audioOutputState` | `AudioOutputState` | Read-only, see [11.4](#114-audio-output-lifecycle) |
+| `audioOutputState` | `AudioOutputState` | Read-only, see [11.4](#113-audio-output-lifecycle) |
 | `audioDriver` | `String` | `setAudioDriver` |
 | `audioExclusive` | `bool` | `setAudioExclusive` |
 | `audioBuffer` | `Duration` | `setAudioBuffer` |
@@ -1745,7 +1759,7 @@ A state stream (`volume`, `position`, `playlist`, `playbackState`, `coverArt`, â
 | `httpProxy` | `String` | `setHttpProxy` |
 | `pausedForCache` | `bool` | Read-only; `true` while paused for an empty cache |
 | `demuxerViaNetwork` | `bool` | Read-only |
-| `demuxerCacheState` | `DemuxerCacheState` | Read-only, see [7.10](#710-monitoring-the-demuxer-cache) |
+| `demuxerCacheState` | `DemuxerCacheState` | Read-only, see [7.10](#78-monitoring-the-cache-and-the-network) |
 | `cacheSpeed` | `double` (bytes per second) | Read-only |
 | `cacheBufferingState` | `int` (0-100) | Read-only |
 | `demuxer` | `DemuxerSettings` | `setDemuxer` |
@@ -2081,21 +2095,7 @@ player.stream.endFile.listen((event) {
 - `reason`: a `MpvEndFileReason` enum value
 - `error`: mpv's error code, non-zero only when `reason` is `MpvEndFileReason.error`
 
-#### 11.3 Network state
-
-`player.stream.pausedForCache` is `true` while playback waits for an empty cache to refill, the clearest sign of a network stall. `player.stream.demuxerViaNetwork` tells whether the current file comes over the network, which helps decide whether an error is likely a network one:
-
-```dart
-player.stream.pausedForCache.listen((paused) {
-  if (paused) showBufferingIndicator();
-});
-
-player.stream.demuxerViaNetwork.listen((isNetwork) {
-  print('Network stream: $isNetwork');
-});
-```
-
-#### 11.4 Audio output lifecycle
+#### 11.3 Audio output lifecycle
 
 `player.stream.audioOutputState` follows the audio output as it opens,
 plays and fails, for a "Connecting" indicator on slow devices or to
@@ -2115,7 +2115,7 @@ player.stream.audioOutputState.listen((state) {
 When the state turns `failed`, `player.stream.error` also emits a
 `LogError`, so one error listener covers the silent case too.
 
-#### 11.5 Log streams
+#### 11.4 Log streams
 
 `player.stream.log` carries mpv's messages and `player.stream.internalLog`
 the library's own, so you can route them apart, for example `log` to a
@@ -2145,7 +2145,7 @@ player.setLogLevel(LogLevel.debug);
 player.setLogLevel(LogLevel.off);
 ```
 
-#### 11.6 Exceptions
+#### 11.5 Exceptions
 
 The streams above report what happens during playback. A call that
 fails throws a `PlayerException`, a sealed class:
