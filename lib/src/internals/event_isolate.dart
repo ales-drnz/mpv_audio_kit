@@ -277,15 +277,8 @@ void _dispatchEvent(
         loaded = MpvEventFileLoaded();
       }
       // The values mpv has not notified again go first, so the main
-      // isolate has them when FILE_LOADED ends the loading state. A
-      // failure there must not cost the event that ends it.
-      try {
-        _rereadUnavailable(lib, handle, toMain, cache);
-      } catch (e) {
-        toMain.send(
-          MpvEventLog('event-isolate', 'warn', 'property re-read failed: $e'),
-        );
-      }
+      // isolate has them when FILE_LOADED ends the loading state.
+      _rereadUnavailable(lib, handle, toMain, cache);
       toMain.send(loaded);
 
     case mpv.MpvEventId.mpvEventEndFile:
@@ -344,10 +337,11 @@ void _dispatchEvent(
     case mpv.MpvEventId.mpvEventPlaybackRestart:
       // The landing position rides the event payload (read here, where
       // waiting on the core is harmless), so it reaches the stream before
-      // any throttled time-pos event from the property observer. A clock
-      // value held back from before the seek would land after it and step
-      // the position back: drop it.
-      cache.trailing.clear();
+      // any throttled time-pos event from the property observer. A held
+      // time-pos from before the seek would land after it and step the
+      // position back: drop it. The other clock values keep the newest one
+      // mpv sent, which the seek may already have moved.
+      cache.trailing.remove('time-pos');
       toMain.send(
         MpvEventPlaybackRestart(
           timePos: _getPropDouble(lib, handle, 'time-pos'),
@@ -689,15 +683,23 @@ void _rereadUnavailable(
   for (final name in cache.unavailable.toList(growable: false)) {
     final format = cache.formats[name];
     if (format == null) continue;
-    final value = switch (format) {
-      mpv.MpvFormat.mpvFormatDouble => _getPropDouble(lib, handle, name),
-      mpv.MpvFormat.mpvFormatFlag => _getPropFlag(lib, handle, name),
-      mpv.MpvFormat.mpvFormatInt64 => _getPropInt64(lib, handle, name),
-      mpv.MpvFormat.mpvFormatString => _getPropString(lib, handle, name),
-      mpv.MpvFormat.mpvFormatNode => _getPropNode(lib, handle, name),
-      _ => null,
-    };
-    if (value != null) _forwardValue(toMain, name, format, value, cache);
+    // One property that fails to read or decode must not cost the others,
+    // or the event (FILE_LOADED, AUDIO_RECONFIG) the caller sends next.
+    try {
+      final value = switch (format) {
+        mpv.MpvFormat.mpvFormatDouble => _getPropDouble(lib, handle, name),
+        mpv.MpvFormat.mpvFormatFlag => _getPropFlag(lib, handle, name),
+        mpv.MpvFormat.mpvFormatInt64 => _getPropInt64(lib, handle, name),
+        mpv.MpvFormat.mpvFormatString => _getPropString(lib, handle, name),
+        mpv.MpvFormat.mpvFormatNode => _getPropNode(lib, handle, name),
+        _ => null,
+      };
+      if (value != null) _forwardValue(toMain, name, format, value, cache);
+    } catch (e) {
+      toMain.send(
+        MpvEventLog('event-isolate', 'warn', 're-reading $name failed: $e'),
+      );
+    }
   }
 }
 
