@@ -80,9 +80,14 @@ class MediaSessionController {
   CoverArt? _fetchedArt;
   String? _pendingArtUri;
   // Runs after a failed download and fetches the same URL again, so a
-  // server that was briefly down still gets a cover on this track.
+  // server that was briefly down still gets a cover on this track. At most
+  // [_artworkAttempts] downloads per URL: a URL that keeps failing (a 404,
+  // an unreadable CA file) is not fetched, credentials and all, forever.
   Timer? _artRetry;
   final Duration _artworkRetryAfter;
+  static const _artworkAttempts = 3;
+  String? _artAttemptsUri;
+  int _artAttempts = 0;
 
   // The `seekable` last sent to the OS. mpv reports it unavailable while
   // the next track loads, and the OS reads a non-seekable entry as a live
@@ -426,6 +431,11 @@ class MediaSessionController {
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
       _artRetry?.cancel();
+      if (uri != _artAttemptsUri) {
+        _artAttemptsUri = uri;
+        _artAttempts = 0;
+      }
+      _artAttempts++;
       unawaited(
         _artworkFetcher!(
           Uri.parse(uri),
@@ -435,7 +445,7 @@ class MediaSessionController {
           _pendingArtUri = null;
           _fetchedArtUri = uri;
           _fetchedArt = cover;
-          if (cover == null) {
+          if (cover == null && _artAttempts < _artworkAttempts) {
             _artRetry = Timer(_artworkRetryAfter, () {
               // Forget the failure so the next push downloads again.
               if (_fetchedArtUri == uri) _fetchedArtUri = null;
@@ -493,6 +503,7 @@ class MediaSessionController {
     final loopPlaylist = state.loop == Loop.playlist;
     final hasNext = !multi || loopPlaylist || pl.index < pl.items.length - 1;
     final hasPrevious = !multi || loopPlaylist || pl.index > 0;
+    // Built only to be pushed, so it records what the OS now shows.
     final seekable = state.buffering
         ? _pushedSeekable ?? state.seekable
         : state.seekable;

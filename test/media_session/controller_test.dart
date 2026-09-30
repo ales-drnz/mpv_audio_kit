@@ -1143,7 +1143,7 @@ void main() {
       },
     );
 
-    test('a failed cover is fetched again without a new track', () async {
+    test('a failed cover is fetched again, a few times at most', () async {
       final rig = _Rig();
       final ch = _RecordingChannel();
       addTearDown(rig.dispose);
@@ -1154,33 +1154,49 @@ void main() {
         mimeType: 'image/png',
       );
       var calls = 0;
+      var succeedOn = 2;
       final controller = await _buildController(
         rig: rig,
         channel: ch,
-        artworkFetcher: (_, _) async => ++calls == 1 ? null : cover,
-        artworkRetryAfter: const Duration(milliseconds: 50),
+        artworkFetcher: (_, _) async => ++calls == succeedOn ? cover : null,
+        artworkRetryAfter: const Duration(milliseconds: 20),
       );
       addTearDown(controller.dispose);
 
-      rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'Song'},
-        playlist: Playlist([
-          Media(
-            'https://nd.example/rest/stream.view?id=1',
-            extras: {'art': 'https://nd.example/cover.jpg'},
-          ),
-        ]),
-      );
-      rig.metadata.add(const {'title': 'Song'});
-      await _settle();
-      expect(calls, 1);
+      Future<void> load(String art) async {
+        rig.state = PlayerState(
+          mediaSession: const MediaSession(),
+          metadata: const {'title': 'Song'},
+          playlist: Playlist([
+            Media('https://nd.example/rest/stream.view', extras: {'art': art}),
+          ]),
+        );
+        rig.metadata.add(const {'title': 'Song'});
+        await _settle();
+      }
 
-      // Nothing about the track changes; only the retry can bring the cover.
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      await _settle();
+      Future<void> until(bool Function() done) async {
+        final deadline = DateTime.now().add(const Duration(seconds: 2));
+        while (!done() && DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          await _settle();
+        }
+      }
+
+      // Nothing about the track changes; only the retry brings the cover.
+      await load('https://nd.example/a.jpg');
+      await until(() => lastSnap(ch).artwork == cover);
       expect(calls, 2);
       expect(lastSnap(ch).artwork, cover);
+
+      // A URL that keeps failing is tried three times, then left alone.
+      calls = 0;
+      succeedOn = -1;
+      await load('https://nd.example/b.jpg');
+      await until(() => calls >= 3);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await _settle();
+      expect(calls, 3);
     });
 
     test(

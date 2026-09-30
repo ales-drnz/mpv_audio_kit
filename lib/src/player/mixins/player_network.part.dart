@@ -120,6 +120,10 @@ mixin _NetworkModule on _PlayerBase {
   /// to override those roots — for example to pin against a corporate root
   /// CA. Passing an empty string clears the override and falls back to the
   /// built-in roots.
+  ///
+  /// The media session's cover downloads (Linux, Android and Windows) use
+  /// this bundle too, on top of the system roots rather than in place of
+  /// them, and always verify the certificate, whatever [setTlsVerify].
   Future<void> setTlsCaFile(String path) async {
     await _gate();
     await _prop('tls-ca-file', path);
