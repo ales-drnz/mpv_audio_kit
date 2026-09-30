@@ -53,10 +53,10 @@ class PlayerConfiguration {
   /// (mpv's default). Set [HlsBitrate.min] to save bandwidth on metered links.
   final HlsBitrate hlsBitrate;
 
-  /// Loudness-normalize surround content downmixed to fewer channels
-  /// (mpv's `--audio-normalize-downmix`). Read when the resampler is built.
-  /// Default `false` (mpv's default): off risks clipping on 5.1→stereo, on
-  /// may sound quieter. Enable for 5.1 music played on stereo output.
+  /// Scale down surround content downmixed to fewer channels so the mix
+  /// cannot clip (mpv's `--audio-normalize-downmix`). Read when the
+  /// resampler is built. Default `false` (mpv's default): off risks
+  /// clipping on 5.1→stereo, on sounds quieter.
   final bool normalizeDownmix;
 
   /// Directory for the on-disk demuxer cache (mpv's `--demuxer-cache-dir`),

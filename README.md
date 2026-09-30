@@ -471,11 +471,11 @@ All `PlayerConfiguration` fields are optional. Their defaults:
 | `autoPlay` | `false` | Whether `open()` starts playback immediately |
 | `initialVolume` | `100.0` | Volume at startup |
 | `logLevel` | `LogLevel.warn` | Threshold forwarded to `player.stream.log`. Typed enum: `LogLevel.off`, `.fatal`, `.error`, `.warn`, `.info`, `.v`, `.debug`, `.trace` |
-| `resumePlayback` | `true` | Restore the saved position on reopen (watch-later). Only audio-relevant props are persisted, ideal for audiobook and podcast resume |
+| `resumePlayback` | `true` | Restore the saved position when a file is opened again. Nothing is saved on its own: call `writeResumeConfig()` (see [4.7](#47-resume-playback-watch-later)) |
 | `watchLaterDir` | `null` | Directory for the watch-later resume configs. Often not writable on mobile, point this at an app-writable path |
 | `forceSeekable` | `false` | Allow in-cache seeking on streams mpv reports as non-seekable (direct-HTTP or HLS audio) |
 | `hlsBitrate` | `HlsBitrate.max` | Which variant mpv selects from an adaptive HLS playlist (`HlsBitrate.no`, `.min`, or `.max`). Use `.min` to save bandwidth on metered links. Change it later with `setHlsBitrate` |
-| `normalizeDownmix` | `false` | Loudness-normalize surround content downmixed to fewer channels, avoiding clipping on 5.1→stereo |
+| `normalizeDownmix` | `false` | Scale down surround audio downmixed to fewer channels so it cannot clip, at the cost of a quieter result |
 | `demuxerCacheDir` | `null` | Directory for the on-disk demuxer cache (companion of `CacheSettings.onDisk`). Point it at a writable path on mobile |
 
 </details>
@@ -827,8 +827,10 @@ current file and restore it the next time that file is opened. Only
 audio-relevant properties are persisted (position, speed, pitch, volume,
 mute, audio delay, the effect chain, and the selected track).
 
-Restore-on-reopen is controlled at build time by
-`PlayerConfiguration.resumePlayback` (default `true`). Point
+`PlayerConfiguration.resumePlayback` (default `true`), set when you
+create the player, restores a saved point when the file is opened again.
+The player never saves one on its own: call `writeResumeConfig()`, for
+example when the app goes to the background or the user pauses. Point
 `watchLaterDir` at an app-writable directory on mobile; the platform
 default is often not writable.
 
@@ -1275,9 +1277,9 @@ await player.setAudioChannels(
 );
 ```
 
-> When you force a downmix (e.g. 5.1 → stereo), set
-> `PlayerConfiguration.normalizeDownmix: true` to loudness-normalize the
-> result and avoid clipping. It is a build-time option (default `false`).
+> When you force a downmix (e.g. 5.1 to stereo), set
+> `PlayerConfiguration.normalizeDownmix: true` to scale the result down so
+> it cannot clip. It is set when you create the player (default `false`).
 
 #### 6.5 SPDIF passthrough
 
