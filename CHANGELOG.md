@@ -52,6 +52,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - mpv's version string carries the libmpv release, which the player checks at startup.
 - Every source is pinned: tarballs by SHA-256, Windows ones included, and git sources by the commit of their tag.
 - Closing the app while the waveform or loudness scan reads an HTTPS stream no longer frees TLS state under it.
+- Changing the effects near the end of a track no longer stops playback there when the change removes a stage that holds the end of the file, such as `RubberbandEffect`.
 - Linux: an app that exits without disposing the player no longer crashes at exit, since PipeWire and PulseAudio stay loaded until the process ends.
 - A waveform or loudness scan whose workers fail to start stops the ones already running instead of waiting for their whole decode.
 - Updated libmpv to `libmpv-r15` across all platforms.
