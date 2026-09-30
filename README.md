@@ -232,13 +232,13 @@ The path can be a directory holding files named like the release assets (`libmpv
     * [12.1 Registering a hook](#121-registering-a-hook)
     * [12.2 Listening and continuing](#122-listening-and-continuing)
     * [12.3 HTTP headers via hook](#123-http-headers-via-hook)
-    * [12.4 Lazy URL resolution](#124-lazy-url-resolution)
-    * [12.5 The source resolver](#125-the-source-resolver)
+    * [12.4 The source resolver](#124-the-source-resolver)
+    * [12.5 Lazy URL resolution](#125-lazy-url-resolution)
 
     </details>
 
     <details>
-    <summary><a href="#13-visualizer-waveform-and-spectrum"><b>13. Visualizer, Waveform and Spectrum</b></a></summary>
+    <summary><a href="#13-visualizer-waveform-and-loudness"><b>13. Visualizer, waveform and loudness</b></a></summary>
 
     * [13.1 Subscribing to the spectrum stream](#131-subscribing-to-the-spectrum-stream)
     * [13.2 Configuring the pipeline](#132-configuring-the-pipeline)
@@ -333,7 +333,7 @@ The path can be a directory holding files named like the release assets (`libmpv
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/sliders-horizontal.png" width="32"></td>
 <td valign="middle"><b>Effects chain</b><br>an ordered <a href="#5-audio-quality-and-dsp">list of typed effects</a>: 18-band graphic EQ, compressor, loudness, pitch and tempo, bass and treble, stereo width, headphone crossfeed, silence trim, and any lavfi filter as a raw stage.</td>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/audio-lines.png" width="32"></td>
-<td valign="middle"><b>Visualizer</b><br>real-time <a href="#13-visualizer-waveform-and-spectrum">FFT spectrum and PCM streams</a>, a waveform overview and loudness measurement.</td>
+<td valign="middle"><b>Visualizer</b><br>real-time <a href="#13-visualizer-waveform-and-loudness">FFT spectrum and PCM streams</a>, a waveform overview and loudness measurement.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/scale.png" width="32"></td>
@@ -543,7 +543,7 @@ await player.open(media);
 ```
 
 For a URL that has to be resolved or refreshed when the track opens, use
-the [source resolver](#125-the-source-resolver).
+the [source resolver](#124-the-source-resolver).
 
 #### 2.3 Extras
 
@@ -1909,7 +1909,7 @@ player.stream.prefetchCacheDuration.listen((buffered) {
 #### 9.14 Spectrum and PCM streams
 
 `stream.fft` and `stream.pcm` carry the audio going to the output.
-[Section 13](#13-visualizer-waveform-and-spectrum) covers their settings.
+[Section 13](#13-visualizer-waveform-and-loudness) covers their settings.
 
 | Stream | Type | Set with | Notes |
 | :--- | :--- | :--- | :--- |
@@ -2151,7 +2151,7 @@ A hook pauses mpv at a step of loading a file, such as right before the stream o
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.png" width="100%">
 
-Headers alone need no hook: pass them in [`Media.httpHeaders`](#22-http-headers). To resolve URLs, [`setSourceResolver`](#125-the-source-resolver) does the hook wiring for you.
+Headers alone need no hook: pass them in [`Media.httpHeaders`](#22-http-headers). To resolve URLs, [`setSourceResolver`](#124-the-source-resolver) does the hook wiring for you.
 
 #### 12.1 Registering a hook
 
@@ -2230,25 +2230,9 @@ await player.setRawProperty(
 );
 ```
 
-#### 12.4 Lazy URL resolution
+#### 12.4 The source resolver
 
-Building a playlist with `Future.wait` runs all the `getStreamUrl` calls at once. If the server refuses parallel sessions, as Plex does for transcoding, keep the session parameters and return a placeholder URL such as `my-scheme://session-id`. `on_load` fires for one track at a time as mpv opens them, so the real calls never overlap:
-
-```dart
-// No real API calls yet
-final medias = await Future.wait(tracks.map((t) async {
-  final url = await service.getStreamUrl(t.id); // returns "my-scheme://abc"
-  return Media(url);
-}));
-await player.openAll(medias);
-
-// When mpv reaches each track, on_load calls myResolver("my-scheme://abc"),
-// which makes the /decision call and returns the start.m3u8 URL
-```
-
-#### 12.5 The source resolver
-
-`setSourceResolver` does the [12.4](#124-lazy-url-resolution) pattern in one callback, with no `registerHook`, `continueHook` or placeholder parsing. The resolver gets the entry's original `Media`, with its `extras` and `httpHeaders`, so it can read your own data (a track id, which login to use) and return the URL to play:
+`setSourceResolver` resolves the URL of each entry right before it opens, in one callback, with no `registerHook`, `continueHook` or placeholder scheme. [12.5](#125-lazy-url-resolution) shows the same idea done by hand with a hook. The resolver gets the entry's original `Media`, with its `extras` and `httpHeaders`, so it can read your own data (a track id, which login to use) and return the URL to play:
 
 ```dart
 player.setSourceResolver((request) async {
@@ -2273,9 +2257,24 @@ Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL
 
 The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. Pass `null` to remove the resolver.
 
+#### 12.5 Lazy URL resolution
+
+Building a playlist with `Future.wait` runs all the `getStreamUrl` calls at once. If the server refuses parallel sessions, as Plex does for transcoding, keep the session parameters and return a placeholder URL such as `my-scheme://session-id`. `on_load` fires for one track at a time as mpv opens them, so the real calls never overlap:
+
+```dart
+// No real API calls yet
+final medias = await Future.wait(tracks.map((t) async {
+  final url = await service.getStreamUrl(t.id); // returns "my-scheme://abc"
+  return Media(url);
+}));
+await player.openAll(medias);
+
+// When mpv reaches each track, on_load calls myResolver("my-scheme://abc"),
+// which makes the /decision call and returns the start.m3u8 URL
+```
 ---
 
-### 13. Visualizer, Waveform and Spectrum
+### 13. Visualizer, waveform and loudness
 
 `player.stream.fft` and `player.stream.pcm` carry the audio going to the
 output, after the effects chain and the volume: what you hear. Paint
