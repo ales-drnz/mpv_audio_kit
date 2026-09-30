@@ -261,7 +261,7 @@ final class PlayerState {
   /// Whether to stream silence when nothing is playing.
   final bool audioStreamSilence;
 
-  /// Whether to fallback to untimed null output.
+  /// Whether the null audio output runs untimed (`ao-null-untimed`).
   final bool audioNullUntimed;
 
   /// All tracks reported by mpv for the current file (audio, video,

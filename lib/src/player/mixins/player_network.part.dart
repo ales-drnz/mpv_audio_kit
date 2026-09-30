@@ -210,7 +210,10 @@ mixin _NetworkModule on _PlayerBase {
     );
   }
 
-  /// Whether to fallback to untimed null output if audio output fails.
+  /// Makes the null audio output run untimed (mpv's `ao-null-untimed`):
+  /// decoding goes as fast as possible instead of at real time. Applies to
+  /// the `null` driver and to the fallback used when the device fails to
+  /// open.
   Future<void> setAudioNullUntimed(bool enable) async {
     await _gate();
     await _prop('ao-null-untimed', enable ? 'yes' : 'no');

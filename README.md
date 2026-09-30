@@ -1269,7 +1269,7 @@ await player.setAudioChannels(Channels.cube);             // cube
 
 // Cinema, immersive
 await player.setAudioChannels(Channels.hexadecagonal);    // hexadecagonal (16ch)
-await player.setAudioChannels(Channels.surround222);      // 22.2 (NHK, ITU-R BS.775)
+await player.setAudioChannels(Channels.surround222);      // 22.2 (NHK, ITU-R BS.2051 System H)
 
 // Custom escape, anything mpv recognises but isn't in the named set
 await player.setAudioChannels(

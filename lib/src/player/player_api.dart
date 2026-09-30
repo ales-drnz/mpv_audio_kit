@@ -264,7 +264,8 @@ abstract interface class PlayerApi {
   /// specific one, [Track.auto] the current. See [Player.removeAudioTrack].
   Future<void> removeAudioTrack(Track track);
 
-  /// Reloads the current audio track, reopening the decoder and output.
+  /// Closes and reopens the audio output (mpv's `ao-reload`). The decoder
+  /// keeps running.
   Future<void> reloadAudio();
 
   /// Re-scans sidecar external files (auto-loaded audio / cover art) for the

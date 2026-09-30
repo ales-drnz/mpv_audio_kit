@@ -384,7 +384,7 @@ class PlayerStream {
   /// Emits whether stream silence is enabled.
   final Stream<bool> audioStreamSilence;
 
-  /// Emits whether fallback to null output is enabled.
+  /// Emits whether the null audio output runs untimed.
   final Stream<bool> audioNullUntimed;
 
   /// All tracks reported by mpv for the current file (audio + embedded

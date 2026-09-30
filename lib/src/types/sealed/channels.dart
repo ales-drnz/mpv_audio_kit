@@ -135,7 +135,7 @@ enum _Named {
   /// Stereo downmix (semantic alias of [stereo]).
   downmix('downmix'),
 
-  /// NHK / ITU-R BS.775 immersive layout (24 channels).
+  /// NHK / ITU-R BS.2051 System H immersive layout (24 channels).
   surround222('22.2');
 
   const _Named(this.mpvValue);
@@ -300,7 +300,7 @@ sealed class Channels {
   /// `downmix` — stereo downmix (semantic alias of [stereo]).
   static const Channels downmix = _StdChannels(_Named.downmix);
 
-  /// `22.2` — NHK / ITU-R BS.775 immersive layout (24 channels).
+  /// `22.2` — NHK / ITU-R BS.2051 System H immersive layout (24 channels).
   static const Channels surround222 = _StdChannels(_Named.surround222);
 
   // ── Escape ─────────────────────────────────────────────────────────
