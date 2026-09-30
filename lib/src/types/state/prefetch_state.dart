@@ -30,9 +30,8 @@ enum PrefetchState {
   /// The prefetched stream was just consumed — the current track ended
   /// and mpv reused the secondary demuxer instead of re-opening. The
   /// state PERSISTS at [used] until the next [loading] (next
-  /// `prefetch_next`) or a cancel resets it to [idle], so observers
-  /// reading `state.prefetchState` after a track transition still see
-  /// the success signal.
+  /// `prefetch_next`) or a cancel resets it to [idle], so a subscriber
+  /// that arrives after a track transition still sees the success signal.
   used('used'),
 
   /// The opener thread failed to create a demuxer for the next playlist
@@ -41,7 +40,7 @@ enum PrefetchState {
   /// rewrite. Distinct from a silent return to [idle] because no
   /// gapless transition is armed: the next track will be re-opened
   /// from scratch when playback reaches it. Persists at [failed] until
-  /// the next [loading] or a cancel resets it.
+  /// the next [loading]; a cancel does not reset it.
   failed('failed');
 
   const PrefetchState(this.mpvValue);

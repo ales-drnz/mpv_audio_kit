@@ -1896,12 +1896,12 @@ player.stream.prefetchState.listen((state) {
       // no segment fetches outstanding). Gapless is armed.
       showIndicator('Ready');
     case PrefetchState.used:
-      // Edge-trigger: the track just transitioned gaplessly.
-      // Fires once and then drops back to `idle`.
+      // The track just started from the prefetched stream.
+      // Stays until the next `loading` or a cancel.
       showIndicator('Using prefetched');
     case PrefetchState.failed:
-      // Edge-trigger: the opener thread failed (network error,
-      // unsupported codec, on_load hook abort).
+      // The opener thread failed (network error, unsupported
+      // codec, on_load hook abort). Stays until the next `loading`.
       showIndicator('Prefetch failed');
   }
 });
@@ -1912,11 +1912,11 @@ player.stream.prefetchState.listen((state) {
 
 | State | When it fires | Notes |
 | :--- | :--- | :--- |
-| `idle` | Default; after every cancel or drop | Also fires right after `used` and `failed` so they read as one-shot transients |
+| `idle` | Default; after a cancel or a dropped prefetch | |
 | `loading` | Opener thread running | Persists until the demuxer is open and the reader goes idle |
 | `ready` | Secondary demuxer open + reader idle | Gapless is armed |
-| `used` | Track transitioned via the prefetched stream | Edge-triggered; pairs with the subsequent `idle` |
-| `failed` | Opener thread error | Edge-triggered; pairs with the subsequent `idle` |
+| `used` | Track transitioned via the prefetched stream | Stays until the next `loading` or a cancel |
+| `failed` | Opener thread error | Stays until the next `loading` |
 
 </details>
 
@@ -1957,8 +1957,10 @@ player.stream.playbackState.listen((phase) {
 
 #### 9.13 Complete state snapshot
 
-`player.state` mirrors every stream above. Use it for one-shot reads
-inside event handlers and `build()` methods:
+`player.state` holds the current value of the state streams above, for
+one-shot reads inside event handlers and `build()` methods. `playbackState`,
+`prefetchState`, `prefetchCacheDuration`, `waveform` and `loudnessScan`
+exist only as streams, and `state.tlsCaFile` has no stream.
 
 ```dart
 final s = player.state;
