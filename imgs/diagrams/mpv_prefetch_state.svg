@@ -12,27 +12,27 @@
 <text x="589" y="68" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">switch</text>
 <path d="M290,112 L290,181" fill="none" stroke="#B42318" stroke-width="1.7" marker-end="url(#mfail)"/>
 <text x="298" y="152" text-anchor="start" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#B42318">error</text>
-<path d="M213,215 C175,215 180,125 218,100" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
-<text x="186" y="176" text-anchor="end" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">next prefetch</text>
-<path d="M690,48 C690,22 290,22 290,46" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<path d="M215,215 L185,215 L185,98 L213,98" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
+<text x="177" y="176" text-anchor="end" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">next prefetch</text>
+<path d="M690,48 L690,26 L290,26 L290,46" fill="none" stroke="#8C95A3" stroke-width="1.7" marker-end="url(#msec)"/>
 <text x="490" y="18" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">next prefetch</text>
 <path d="M490,112 L490,295 M690,112 L690,295 M490,295 L690,295" fill="none" stroke="#8C95A3" stroke-width="1.7" stroke-dasharray="5 5"/>
 <path d="M490,295 L90,295 L90,114" fill="none" stroke="#8C95A3" stroke-width="1.7" stroke-dasharray="5 5" marker-end="url(#msec)"/>
 <text x="590" y="317" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">cancel or dropped</text>
 <text x="290" y="272" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="400" fill="#59636E">a cancel does not reset failed</text>
-<rect x="15.0" y="48.0" width="150" height="64" rx="32.0" fill="none" stroke="#8C95A3" stroke-width="1.5" stroke-dasharray="5 4"/>
-<text x="90" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#1F2328">idle</text>
+<rect x="15.0" y="48.0" width="150" height="64" rx="32.0" fill="#E9EEF6" fill-opacity="0.6"/>
+<text x="90" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#59636E">idle</text>
 <text x="90" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">nothing pending</text>
-<rect x="215.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<rect x="215.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" fill-opacity="1"/>
 <text x="290" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#FFFFFF">loading</text>
 <text x="290" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">opening next entry</text>
-<rect x="415.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<rect x="415.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" fill-opacity="1"/>
 <text x="490" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#FFFFFF">ready</text>
 <text x="490" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">open and cached</text>
-<rect x="615.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" stroke="none" stroke-width="1.5"/>
+<rect x="615.0" y="48.0" width="150" height="64" rx="32.0" fill="url(#plate)" fill-opacity="1"/>
 <text x="690" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#FFFFFF">used</text>
 <text x="690" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">track changed to it</text>
-<rect x="215.0" y="183.0" width="150" height="64" rx="32.0" fill="#FDECEA" stroke="#B42318" stroke-width="1.5"/>
+<rect x="215.0" y="183.0" width="150" height="64" rx="32.0" fill="#FDE3E0" fill-opacity="1"/>
 <text x="290" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="600" fill="#B42318">failed</text>
 <text x="290" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#59636E">could not open</text>
 </svg>

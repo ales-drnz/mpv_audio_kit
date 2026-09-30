@@ -4,20 +4,20 @@
 <linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
 <marker id="mmain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5CE1F7"/></marker><marker id="msec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E7887"/></marker><marker id="mfail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#FF7B72"/></marker>
 </defs>
-<rect x="20.0" y="95.0" width="120" height="60" rx="30.0" fill="#161B22" stroke="#3D4757" stroke-width="1.5"/>
+<rect x="20.0" y="95.0" width="120" height="60" rx="30.0" fill="#1F2735" fill-opacity="1"/>
 <text x="80" y="130" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#E6EDF3">Decoder</text>
 <rect x="170" y="55" width="560" height="120" rx="14" fill="#141A23"/>
 <text x="186" y="79" text-anchor="start" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="600" fill="#9AA4B2">setAudioEffects([...]), in list order</text>
-<rect x="195.0" y="100.0" width="150" height="50" rx="25.0" fill="url(#plate)" stroke="#2F6FD6" stroke-width="1.5"/>
+<rect x="195.0" y="100.0" width="150" height="50" rx="25.0" fill="url(#plate)" fill-opacity="1"/>
 <text x="270" y="130" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#FFFFFF">EqualizerEffect</text>
-<rect x="380.0" y="100.0" width="150" height="50" rx="25.0" fill="url(#plate)" stroke="#2F6FD6" stroke-width="1.5"/>
+<rect x="380.0" y="100.0" width="150" height="50" rx="25.0" fill="url(#plate)" fill-opacity="1"/>
 <text x="455" y="130" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#FFFFFF">AcompressorEffect</text>
-<rect x="565.0" y="100.0" width="150" height="50" rx="25.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<rect x="565.0" y="100.0" width="150" height="50" rx="25.0" fill="url(#bars)" fill-opacity="1"/>
 <text x="640" y="130" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#0B2A7A">RawAudioEffect</text>
 <path d="M140,125 L193,125" fill="none" stroke="#5CE1F7" stroke-width="2.2" marker-end="url(#mmain)"/>
 <path d="M345,125 L378,125" fill="none" stroke="#5CE1F7" stroke-width="2.2" marker-end="url(#mmain)"/>
 <path d="M530,125 L563,125" fill="none" stroke="#5CE1F7" stroke-width="2.2" marker-end="url(#mmain)"/>
-<rect x="760.0" y="95.0" width="150" height="60" rx="30.0" fill="#161B22" stroke="#3D4757" stroke-width="1.5"/>
+<rect x="760.0" y="95.0" width="150" height="60" rx="30.0" fill="#1F2735" fill-opacity="1"/>
 <text x="835" y="121" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#E6EDF3">Volume</text>
 <text x="835" y="140" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#9AA4B2">then the driver</text>
 <path d="M715,125 L758,125" fill="none" stroke="#5CE1F7" stroke-width="2.2" marker-end="url(#mmain)"/>
@@ -25,13 +25,13 @@
 <path d="M163,130 L163,222" fill="none" stroke="#6E7887" stroke-width="1.7" marker-end="url(#msec)"/>
 <circle cx="358" cy="125" r="4.5" fill="#5CE1F7"/>
 <path d="M358,130 L358,222" fill="none" stroke="#6E7887" stroke-width="1.7" marker-end="url(#msec)"/>
-<rect x="113.0" y="225.0" width="100" height="40" rx="20.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<rect x="113.0" y="225.0" width="100" height="40" rx="20.0" fill="url(#bars)" fill-opacity="1"/>
 <text x="163" y="250" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#0B2A7A">pre</text>
-<rect x="308.0" y="225.0" width="100" height="40" rx="20.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<rect x="308.0" y="225.0" width="100" height="40" rx="20.0" fill="url(#bars)" fill-opacity="1"/>
 <text x="358" y="250" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#0B2A7A">post</text>
 <text x="163" y="296" text-anchor="start" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="400" fill="#E6EDF3">stream.tap(AudioFilter.equalizer, side: ...)</text>
 <text x="163" y="316" text-anchor="start" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="400" fill="#9AA4B2">instance counts repeats of the same filter</text>
 <path d="M835,157 L835,222" fill="none" stroke="#6E7887" stroke-width="1.7" marker-end="url(#msec)"/>
-<rect x="760.0" y="225.0" width="150" height="40" rx="20.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<rect x="760.0" y="225.0" width="150" height="40" rx="20.0" fill="url(#bars)" fill-opacity="1"/>
 <text x="835" y="250" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#0B2A7A">fft and pcm</text>
 </svg>

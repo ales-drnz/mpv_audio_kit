@@ -4,24 +4,24 @@
 <linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
 <marker id="mmain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5CE1F7"/></marker><marker id="msec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E7887"/></marker><marker id="mfail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#FF7B72"/></marker>
 </defs>
-<rect x="20.0" y="48.0" width="200" height="64" rx="32.0" fill="#161B22" stroke="#3D4757" stroke-width="1.5"/>
+<rect x="20.0" y="48.0" width="200" height="64" rx="32.0" fill="#1F2735" fill-opacity="1"/>
 <text x="120" y="76" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#E6EDF3">Embedded picture</text>
 <text x="120" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#9AA4B2">inside the audio file</text>
-<rect x="290.0" y="48.0" width="200" height="64" rx="32.0" fill="url(#plate)" stroke="#2F6FD6" stroke-width="1.5"/>
+<rect x="290.0" y="48.0" width="200" height="64" rx="32.0" fill="url(#plate)" fill-opacity="1"/>
 <text x="390" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">stream.coverArt</text>
 <text x="390" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">CoverArt bytes, or null</text>
-<rect x="560.0" y="48.0" width="240" height="64" rx="32.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<rect x="560.0" y="48.0" width="240" height="64" rx="32.0" fill="url(#bars)" fill-opacity="1"/>
 <text x="680" y="76" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="600" fill="#0B2A7A">Image(image: art.image)</text>
 <text x="680" y="95" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#2A4A8F">your widget</text>
 <path d="M220,80 L288,80" fill="none" stroke="#5CE1F7" stroke-width="2.2" marker-end="url(#mmain)"/>
 <path d="M490,80 L558,80" fill="none" stroke="#5CE1F7" stroke-width="2.2" marker-end="url(#mmain)"/>
-<rect x="20.0" y="183.0" width="200" height="64" rx="32.0" fill="#161B22" stroke="#3D4757" stroke-width="1.5"/>
+<rect x="20.0" y="183.0" width="200" height="64" rx="32.0" fill="#1F2735" fill-opacity="1"/>
 <text x="120" y="211" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="600" fill="#E6EDF3">Image in the folder</text>
 <text x="120" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#9AA4B2">setCoverArtAuto(...)</text>
-<rect x="290.0" y="183.0" width="200" height="64" rx="32.0" fill="url(#plate)" stroke="#2F6FD6" stroke-width="1.5"/>
+<rect x="290.0" y="183.0" width="200" height="64" rx="32.0" fill="url(#plate)" fill-opacity="1"/>
 <text x="390" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#FFFFFF">state.tracks</text>
 <text x="390" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#C9DBFF">albumArt, externalFilename</text>
-<rect x="560.0" y="183.0" width="240" height="64" rx="32.0" fill="url(#bars)" stroke="#5CE1F7" stroke-width="1.5"/>
+<rect x="560.0" y="183.0" width="240" height="64" rx="32.0" fill="url(#bars)" fill-opacity="1"/>
 <text x="680" y="211" text-anchor="middle" font-family="Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#0B2A7A">File(path)</text>
 <text x="680" y="230" text-anchor="middle" font-family="Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#2A4A8F">you read the file</text>
 <path d="M220,215 L288,215" fill="none" stroke="#6E7887" stroke-width="1.7" marker-end="url(#msec)"/>

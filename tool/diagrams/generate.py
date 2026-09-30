@@ -15,11 +15,9 @@ MONO = "Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
 
 PAL = {
     'light': dict(ink='#1F2328', muted='#59636E', line='#8C95A3', main='#123A9C',
-                  fail='#B42318', failSoft='#FDECEA', neutral='#FFFFFF', neutralStroke='#C9D0DC',
-                  plateStroke='none', band='#F1F4F9'),
+                  fail='#B42318', failSoft='#FDE3E0', neutral='#E9EEF6', band='#F4F6FA'),
     'dark': dict(ink='#E6EDF3', muted='#9AA4B2', line='#6E7887', main='#5CE1F7',
-                 fail='#FF7B72', failSoft='#2D1618', neutral='#161B22', neutralStroke='#3D4757',
-                 plateStroke='#2F6FD6', band='#141A23'),
+                 fail='#FF7B72', failSoft='#3A1D20', neutral='#1F2735', band='#141A23'),
 }
 
 
@@ -51,17 +49,16 @@ class D:
         c = self.c
         r = h / 2 if r is None else r
         if role == 'lib':
-            fill, stroke, tc, sc = 'url(#plate)', c['plateStroke'], '#FFFFFF', '#C9DBFF'
+            fill, tc, sc, op = 'url(#plate)', '#FFFFFF', '#C9DBFF', 1
         elif role == 'app':
-            fill, stroke, tc, sc = 'url(#bars)', '#5CE1F7', '#0B2A7A', '#2A4A8F'
+            fill, tc, sc, op = 'url(#bars)', '#0B2A7A', '#2A4A8F', 1
         elif role == 'fail':
-            fill, stroke, tc, sc = c['failSoft'], c['fail'], c['fail'], c['muted']
+            fill, tc, sc, op = c['failSoft'], c['fail'], c['muted'], 1
         elif role == 'ghost':
-            fill, stroke, tc, sc = 'none', c['line'], c['ink'], c['muted']
+            fill, tc, sc, op = c['neutral'], c['muted'], c['muted'], 0.6
         else:
-            fill, stroke, tc, sc = c['neutral'], c['neutralStroke'], c['ink'], c['muted']
-        dash = ' stroke-dasharray="5 4"' if role == 'ghost' else ''
-        self.add(f'<rect x="{x - w / 2}" y="{y - h / 2}" width="{w}" height="{h}" rx="{r}" fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}/>')
+            fill, tc, sc, op = c['neutral'], c['ink'], c['muted'], 1
+        self.add(f'<rect x="{x - w / 2}" y="{y - h / 2}" width="{w}" height="{h}" rx="{r}" fill="{fill}" fill-opacity="{op}"/>')
         lines = [s for s in (sub, sub2) if s]
         ty = y + 5 - 9 * len(lines)
         self.add(f'<text x="{x}" y="{ty}" text-anchor="middle" font-family="{MONO if mono else SANS}" font-size="{size}" font-weight="600" fill="{tc}">{esc(title)}</text>')
@@ -99,7 +96,7 @@ def architecture(t):
     d.node(450, 265, 230, 60, 'libmpv', 'mpv 0.41 and ffmpeg', role='lib')
     d.arrow('M450,137 L450,233'); d.text(458, 190, 'mpv_*_async', anchor='start', size=11, mono=True)
     d.arrow('M335,265 L287,265', kind='sec'); d.text(311, 255, 'events', size=11)
-    d.arrow('M240,235 C240,190 390,190 390,139', kind='sec'); d.text(232, 196, 'state, replies', anchor='end', size=11)
+    d.arrow('M240,235 L240,185 L390,185 L390,139', kind='sec'); d.text(232, 214, 'state, replies', anchor='end', size=11)
     d.node(730, 265, 230, 60, 'Platform plugin', 'Media3, Now Playing,', sub2='MPRIS, SMTC', role='neutral', mono=False)
     d.arrow('M730,137 L730,233', kind='sec', head=True); d.arrow('M745,233 L745,139', kind='sec')
     d.text(760, 190, 'commands', anchor='start', size=11)
@@ -179,8 +176,8 @@ def prefetch(t):
     d.arrow('M365,80 L413,80'); d.text(389, 68, 'cached', size=11)
     d.arrow('M565,80 L613,80'); d.text(589, 68, 'switch', size=11)
     d.arrow('M290,112 L290,181', kind='fail'); d.text(298, 152, 'error', anchor='start', size=11, color='fail')
-    d.arrow('M213,215 C175,215 180,125 218,100', kind='sec'); d.text(186, 176, 'next prefetch', anchor='end', size=11)
-    d.arrow('M690,48 C690,22 290,22 290,46', kind='sec'); d.text(490, 18, 'next prefetch', size=11)
+    d.arrow('M215,215 L185,215 L185,98 L213,98', kind='sec'); d.text(177, 176, 'next prefetch', anchor='end', size=11)
+    d.arrow('M690,48 L690,26 L290,26 L290,46', kind='sec'); d.text(490, 18, 'next prefetch', size=11)
     d.add(f'<path d="M490,112 L490,295 M690,112 L690,295 M490,295 L690,295" fill="none" stroke="{d.c["line"]}" stroke-width="1.7" stroke-dasharray="5 5"/>')
     d.arrow('M490,295 L90,295 L90,114', kind='sec', dash=True); d.text(590, 317, 'cancel or dropped', size=11)
     d.text(290, 272, 'a cancel does not reset failed', size=11)
@@ -211,8 +208,8 @@ def errors(t):
     for x, a, b, role in items:
         d.node(x, 215, 200, 72, a, b, role=role, size=14, sub2='active, failed' if a == 'audioOutputState' else None)
         d.arrow(f'M450,92 L450,130 L{x},130 L{x},177')
-    d.arrow('M565,253 C565,300 115,300 115,253', kind='fail', dash=True)
-    d.text(340, 326, 'failed also emits a LogError', size=12, color='fail')
+    d.arrow('M565,253 L565,290 L115,290 L115,253', kind='fail', dash=True)
+    d.text(340, 312, 'failed also emits a LogError', size=12, color='fail')
     return d
 
 
@@ -228,7 +225,7 @@ def hook(t):
              (150, 450, 320, 'continueHook(event.id)', 'main'), (450, 750, 360, 'mpv opens the stream', 'sec')]
     for a, b, y, label, kind in steps:
         if a == b:
-            d.arrow(f'M{a},{y - 8} C{a + 60},{y - 8} {a + 60},{y + 12} {a + 4},{y + 12}', kind=kind)
+            d.arrow(f'M{a},{y - 8} L{a + 45},{y - 8} L{a + 45},{y + 12} L{a + 6},{y + 12}', kind=kind)
             d.text(a + 70, y + 6, label, anchor='start', mono=True, color='ink', size=12)
         else:
             d.arrow(f'M{a},{y} L{b + (8 if b < a else -8)},{y}', kind=kind)
@@ -281,7 +278,9 @@ def media(t):
     for i, (a, b) in enumerate(osn):
         y = 40 + i * 58
         d.node(760, y + 12, 190, 46, a, b, role='neutral', mono=False, size=14)
-        d.arrow(f'M560,110 C610,110 610,{y + 12} 663,{y + 12}', kind='sec')
+        d.arrow(f'M610,{y + 12} L663,{y + 12}', kind='sec')
+    d.arrow('M560,110 L610,110', kind='sec', head=False)
+    d.add(f'<path d="M610,52 L610,284" fill="none" stroke="{d.c["line"]}" stroke-width="1.7"/>')
     d.node(190, 255, 300, 56, 'stream.mediaSessionCommands', 'the player applies them too', role='app', size=13)
     d.arrow('M150,142 L150,225', kind='sec')
     return d
