@@ -2028,7 +2028,7 @@ change.
 
 #### 11.1 Typed error stream
 
-The error stream emits `PlayerError`, a sealed class with two subtypes that let you distinguish between playback failures and informational engine errors:
+`player.stream.error` emits `PlayerError`, a sealed class with two subtypes: `EndFileError` when a file stops because of an error, and `LogError` when mpv logs an error that may not stop playback:
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.png" width="100%">
 
@@ -2036,39 +2036,34 @@ The error stream emits `PlayerError`, a sealed class with two subtypes that let 
 player.stream.error.listen((error) {
   switch (error) {
     case EndFileError():
-      // Playback ended due to an error (e.g. network timeout, file not found).
+      // The file stopped: network timeout, file not found and so on
       print('End-file error: reason=${error.reason}, code=${error.code}');
       print('  isLoadingError: ${error.isLoadingError}');
       print('  isAudioOutputError: ${error.isAudioOutputError}');
       print('  isFormatError: ${error.isFormatError}');
     case LogError():
-      // An mpv subsystem logged at error or fatal level (e.g. codec issue).
-      // Does NOT necessarily mean playback has stopped.
+      // mpv logged at error or fatal level; playback may go on
       print('Log error [${error.prefix}] ${error.level}: ${error.message}');
   }
 });
 ```
 
-`EndFileError`, emitted when `MPV_EVENT_END_FILE` fires with a non-zero error code:
+`EndFileError` fields:
 - `reason`: a `MpvEndFileReason` enum (`eof`, `stop`, `quit`, `error`, `redirect`)
 - `code`: the raw mpv error code (e.g. `-13` for `MPV_ERROR_LOADING_FAILED`)
 - `isLoadingError`: `true` for network or file loading failures
 - `isAudioOutputError`: `true` when the audio output driver failed to initialize
 - `isFormatError`: `true` when the file format is unrecognizable or has no audio
 
-`LogError`, emitted when mpv logs at `error` or `fatal` level:
+`LogError` fields:
 - `prefix`: the mpv subsystem (e.g. `'ffmpeg'`, `'ao'`, `'demux'`)
 - `level`: `LogLevel` (`LogLevel.error` or `LogLevel.fatal`)
 - `text`: the raw log line from the mpv subsystem
-- `message`: getter returning `'[prefix] level.mpvValue: text'`
-
-> Network note: per the mpv documentation, a network disconnection mid-stream
-> may report as `MpvEndFileReason.eof` rather than `MpvEndFileReason.error`.
-> Use `player.stream.endFile` and compare position vs duration for reliable detection (see §11.2).
+- `message`: `'[prefix] level: text'`, with the level as mpv names it (`error`, `fatal`)
 
 #### 11.2 End file stream
 
-`player.stream.endFile` emits an `MpvFileEndedEvent` for **every** file-end, not just errors. This is the only way to detect premature EOFs caused by network disconnections, which mpv reports as `reason: eof` with no error code:
+`player.stream.endFile` emits an `MpvFileEndedEvent` every time a file ends, not only on errors. mpv can report a dropped network connection as a normal end of file (`reason: eof`, no error code), so compare the position with the duration to tell them apart:
 
 ```dart
 player.stream.endFile.listen((event) {
@@ -2076,7 +2071,7 @@ player.stream.endFile.listen((event) {
     final pos = player.state.position;
     final dur = player.state.duration;
     if (dur > Duration.zero && (dur - pos).inSeconds > 5) {
-      print('Premature EOF, likely a network drop');
+      print('Ended early, probably a network drop');
     }
   }
 });
@@ -2084,78 +2079,70 @@ player.stream.endFile.listen((event) {
 
 `MpvFileEndedEvent` fields:
 - `reason`: a `MpvEndFileReason` enum value
-- `error`: the raw mpv error code (non-zero only when `reason == MpvEndFileReason.error`)
+- `error`: mpv's error code, non-zero only when `reason` is `MpvEndFileReason.error`
 
 #### 11.3 Network state
 
-Two dedicated streams for monitoring network conditions:
+`player.stream.pausedForCache` is `true` while playback waits for an empty cache to refill, the clearest sign of a network stall. `player.stream.demuxerViaNetwork` tells whether the current file comes over the network, which helps decide whether an error is likely a network one:
 
 ```dart
-// True when playback is paused because the cache ran empty (network stall).
-// This is the authoritative signal. Prefer it over interpreting error events.
 player.stream.pausedForCache.listen((paused) {
   if (paused) showBufferingIndicator();
 });
 
-// True when the current stream is being read via a network protocol.
-// Useful for deciding whether an error is likely network-related.
 player.stream.demuxerViaNetwork.listen((isNetwork) {
   print('Network stream: $isNetwork');
 });
 ```
 
-Both are also available synchronously via `player.state.pausedForCache` and `player.state.demuxerViaNetwork`.
-
 #### 11.4 Audio output lifecycle
 
-mpv exposes the audio output's lifecycle as a typed stream. Read it
-to drive a "Connecting…" UI on slow backends, or to detect a silent
-player without polling format params.
+`player.stream.audioOutputState` follows the audio output as it opens,
+plays and fails, for a "Connecting" indicator on slow devices or to
+notice a silent player.
 
 ```dart
 player.stream.audioOutputState.listen((state) {
   switch (state) {
-    case AudioOutputState.closed:        // No AO active
-    case AudioOutputState.initializing:  // ao_init_best in flight
-    case AudioOutputState.active:        // AO open, producing samples
-    case AudioOutputState.failed:        // ao_init_best returned NULL
+    case AudioOutputState.closed:        // no audio output open
+    case AudioOutputState.initializing:  // opening the device
+    case AudioOutputState.active:        // open and playing
+    case AudioOutputState.failed:        // the device could not be opened
   }
 });
 ```
 
-The library also surfaces a typed `LogError` on `stream.error` the
-moment the AO transitions to `failed`, so you don't need a separate
-listener for the "no sound" case.
+When the state turns `failed`, `player.stream.error` also emits a
+`LogError`, so one error listener covers the silent case too.
 
 #### 11.5 Log streams
 
-Two streams keep engine and library messages disjoint. Route them to
-different sinks (e.g. show only `log` in a debug overlay while
-forwarding `internalLog` to crash reporting).
+`player.stream.log` carries mpv's messages and `player.stream.internalLog`
+the library's own, so you can route them apart, for example `log` to a
+debug overlay and `internalLog` to crash reporting.
 
 ```dart
-// mpv engine messages: ffmpeg, demux, ao, cplayer, …
+// mpv: ffmpeg, demux, ao, cplayer and so on
 player.stream.log.listen((entry) {
-  // MpvLogEntry has: prefix (String), level (LogLevel), text (String)
   if (entry.level == LogLevel.error || entry.level == LogLevel.fatal) {
     print('[${entry.level.mpvValue}] ${entry.prefix}: ${entry.text}');
   }
 });
 
-// library-side diagnostics: JSON parse warnings, hook timeouts,
-// resolution errors. Always carries prefix: 'mpv_audio_kit'.
+// The library: hook timeouts, resolver errors and so on, with the
+// prefix 'mpv_audio_kit'
 player.stream.internalLog.listen((entry) {
-  print('[wrapper:${entry.level.mpvValue}] ${entry.text}');
+  print('[mpv_audio_kit:${entry.level.mpvValue}] ${entry.text}');
 });
 ```
 
-`PlayerConfiguration.logLevel` sets the initial verbosity (`LogLevel.warn`
-for production, `LogLevel.debug` or `.v` for development, `LogLevel.off` to
-silence the engine). Change it at runtime with `setLogLevel`:
+`PlayerConfiguration.logLevel` sets the starting level: `LogLevel.warn`
+for release builds, `debug` or `v` while developing, `off` to silence mpv.
+`setLogLevel` changes it later:
 
 ```dart
-player.setLogLevel(LogLevel.debug); // more detail on demand
-player.setLogLevel(LogLevel.off);   // silence the engine
+player.setLogLevel(LogLevel.debug);
+player.setLogLevel(LogLevel.off);
 ```
 
 #### 11.6 Exceptions
@@ -2169,7 +2156,7 @@ fails throws a `PlayerException`, a sealed class:
 - `MpvCommandException`: libmpv rejected the request, for example a seek
   with no file loaded. Carries `name`, `code` and `message`.
 - `SourceException`: a source could not be prepared before reaching
-  libmpv, a missing `asset://` or an unreadable `content://`.
+  libmpv, such as a missing `asset://` or an unreadable `content://`.
 
 ```dart
 try {
@@ -2198,52 +2185,47 @@ without throwing.
 
 ### 12. Hooks
 
-Hooks intercept mpv's file-loading pipeline before a stream is opened. Use them to lazily resolve URLs, inject per-file HTTP headers, or redirect to a different source without a local proxy server:
+A hook pauses mpv at a step of loading a file, such as right before the stream opens, until your code says to go on. Use it to resolve a URL at the last moment, add headers for one file or switch to another source, with no local proxy:
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.png" width="100%">
 
-> `Media.httpHeaders` need no hook at all: the wrapper passes them as
-> file-local `loadfile` options, scoped to that exact playlist entry.
-> You only need to register your own hook when you want to handle URL
-> resolution, redirects, or any other per-load logic on top of that.
-> For plain URL resolution there is an official shortcut that skips
-> the wiring entirely: [`setSourceResolver`](#125-the-source-resolver).
+Headers alone need no hook: pass them in [`Media.httpHeaders`](#22-http-headers). To resolve URLs, [`setSourceResolver`](#125-the-source-resolver) does the hook wiring for you.
 
 #### 12.1 Registering a hook
 
-Call `registerHook` **once** after creating the player (before any `open` call).
+Call `registerHook` after creating the player, before the first `open`:
 
 ```dart
 player.registerHook(Hook.load);
 ```
 
-You can add a safety timeout. If `continueHook` isn't called within the given duration, the library auto-continues to prevent mpv from stalling indefinitely (e.g. due to an unhandled exception):
+With a `timeout`, the library continues the hook itself if your code has not done so in time, for example after an unhandled exception:
 
 ```dart
 player.registerHook(Hook.load, timeout: const Duration(seconds: 10));
 ```
 
-The full set of mpv lifecycle hooks:
+The hooks mpv offers:
 
 <details>
-<summary><b>6 lifecycle hooks</b> (click to expand)</summary>
+<summary><b>6 hooks</b> (click to expand)</summary>
 
 | Hook | When it fires |
 | :--- | :--- |
-| `Hook.beforeStartFile` | Before any per-file work begins (drains stale property changes) |
-| `Hook.load` | Before a stream is opened. Redirect the URL or attach per-file headers |
-| `Hook.loadFail` | After a stream failed to open. Useful for fallback URLs |
-| `Hook.preloaded` | File open, demuxer ready, before track selection and decoder init |
-| `Hook.unload` | Before a file is closed. Cleanup hook tied to the current file |
-| `Hook.afterEndFile` | After a file finished and was fully unloaded |
+| `Hook.beforeStartFile` | Before any work on the file begins |
+| `Hook.load` | Before the stream opens. Change the URL or add headers for this file |
+| `Hook.loadFail` | After the stream failed to open. Try a fallback URL |
+| `Hook.preloaded` | File open, before tracks are selected and the decoder starts |
+| `Hook.unload` | Before the file closes. Clean up what belongs to it |
+| `Hook.afterEndFile` | After the file ended and was unloaded |
 
 </details>
 
-> Hooks fire during prefetch too. When mpv pre-opens the next playlist entry to enable gapless transitions, `on_load` is invoked for that track too, so custom URL schemes (e.g. `plex-transcode://` → resolved HLS URL) are resolved for every track, including the one being prefetched in the background. Your listener is called once per track regardless of whether playback is active or prefetching, and `setRawProperty('stream-open-filename', …)` accepts hook-driven rewrites in either context.
+Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track. Your listener runs once per track either way, and `setRawProperty('stream-open-filename', ...)` works in both cases.
 
 #### 12.2 Listening and continuing
 
-Subscribe to `player.stream.hook` and call `continueHook` when processing is done. You must always call `continueHook`, even on error, otherwise mpv stalls indefinitely:
+Listen to `player.stream.hook` and call `continueHook` when you are done. Call it on every path, errors included: until you do, mpv waits.
 
 ```dart
 player.stream.hook.listen((event) async {
@@ -2252,7 +2234,6 @@ player.stream.hook.listen((event) async {
 
     try {
       if (url.startsWith('my-scheme://')) {
-        // Redirect to a real URL
         final resolved = await myResolver(url);
         await player.setRawProperty('stream-open-filename', resolved.url);
 
@@ -2268,7 +2249,7 @@ player.stream.hook.listen((event) async {
         }
       }
     } finally {
-      player.continueHook(event.id); // always call
+      player.continueHook(event.id);
     }
   } else {
     player.continueHook(event.id);
@@ -2289,23 +2270,23 @@ await player.setRawProperty(
 
 #### 12.4 Lazy URL resolution
 
-When building a playlist with `Future.wait`, all `getStreamUrl` calls run in parallel. If your server rejects concurrent session creation (as Plex does for transcoding), store the session parameters and return a placeholder URL (e.g. `my-scheme://session-id`). The `on_load` hook fires **sequentially** as mpv opens each track, so resolution calls never overlap:
+Building a playlist with `Future.wait` runs all the `getStreamUrl` calls at once. If the server refuses parallel sessions, as Plex does for transcoding, keep the session parameters and return a placeholder URL such as `my-scheme://session-id`. `on_load` fires for one track at a time as mpv opens them, so the real calls never overlap:
 
 ```dart
-// Building the queue. No real API calls yet
+// No real API calls yet
 final medias = await Future.wait(tracks.map((t) async {
   final url = await service.getStreamUrl(t.id); // returns "my-scheme://abc"
   return Media(url);
 }));
 await player.openAll(medias);
 
-// When mpv reaches each track, the hook resolves it on demand:
-// on_load → myResolver("my-scheme://abc") → /decision + start.m3u8 URL
+// When mpv reaches each track, on_load calls myResolver("my-scheme://abc"),
+// which makes the /decision call and returns the start.m3u8 URL
 ```
 
 #### 12.5 The source resolver
 
-`setSourceResolver` packages the whole [§12.4](#124-lazy-url-resolution) pattern into one official callback: no `registerHook` and `continueHook` wiring, no placeholder-scheme parsing. The resolver receives the entry's **original `Media`**, with `extras` and `httpHeaders` intact, so it can branch on consumer-attached data (a track id, a per-source auth flow) and return the URL to play:
+`setSourceResolver` does the [12.4](#124-lazy-url-resolution) pattern in one callback, with no `registerHook`, `continueHook` or placeholder parsing. The resolver gets the entry's original `Media`, with its `extras` and `httpHeaders`, so it can read your own data (a track id, which login to use) and return the URL to play:
 
 ```dart
 player.setSourceResolver((request) async {
@@ -2321,46 +2302,45 @@ await player.openAll([
 ]);
 ```
 
-The resolver is consulted:
+The player calls the resolver:
 
-* **before every stream open** (`on_load`), gapless prefetch included;
-* **once more after a failed open** (`on_load_fail`) with `request.isRetry` set: return a fresh URL and mpv retries. This is the expired-token path. The retry fires at most once per load, and only when the returned URL differs from the one that failed.
+* before every stream opens (`on_load`), prefetch included;
+* once more after a failed open (`on_load_fail`), with `request.isRetry` set: return a fresh URL, for example with a new token, and mpv tries again. This happens at most once per load, and only when the new URL differs from the one that failed.
 
-Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error is logged on `internalLog` and treated as "keep the current URL".
+Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error goes to `internalLog` and keeps the current URL.
 
-> The resolver runs on top of the raw hook API, and the two compose: with a consumer-registered `Hook.load` the resolver runs **first**, then the event surfaces on `player.stream.hook` with `stream-open-filename` already rewritten, and your hook still owns `continueHook`. A hung resolver is capped by the `timeout` argument (default 15s), after which the library auto-continues the hook so mpv never stalls. Pass `null` as the resolver to uninstall.
+The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. Pass `null` to remove the resolver.
 
 ---
 
 ### 13. Visualizer, Waveform and Spectrum
 
-A real-time FFT spectrum and a raw PCM stream are exposed straight
-off the audio output, captured *post-DSP* (after volume, EQ,
-compressor: what you actually hear). Drive a `CustomPainter`
-visualizer with `bands`, build a VU meter with `samples`, or run any
-custom feature extraction on top:
+`player.stream.fft` and `player.stream.pcm` carry the audio going to the
+output, after the effects chain and the volume: what you hear. Paint
+`bands` in a `CustomPainter`, drive a level meter with `samples`, or run
+your own analysis:
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/spectrum_pipeline.png" width="100%">
 
-The pipeline is lazy: the FFT runs only while
-`Player.stream.fft` (or `Player.stream.pcm`) has at least one
-listener. On the last cancel the timer stops and the FFT memory is
-freed.
+Every stream in this section does its work only while it has a
+listener: `fft`, `pcm`, the taps, `waveform`, `loudnessScan` and
+`loudnessMeter` start on the first `listen()` and stop on the last
+cancel. There is nothing to turn on.
 
 #### 13.1 Subscribing to the spectrum stream
 
-`Player.stream.fft` emits an [FftFrame] on a fixed interval
-(default 30 fps).
+`player.stream.fft` emits an `FftFrame` at a fixed interval, 30 times a
+second by default.
 
 <details>
 <summary><b>6 fields per frame</b> (click to expand)</summary>
 
 | Field         | Type                | What it is |
 |---------------|---------------------|------------|
-| `bins`        | `Float32List`       | Raw FFT magnitude per linear-frequency bin, normalised `[0, 1]`. Length = `fftSize / 2`. |
-| `bands`       | `Float32List`       | Smoothed log-spaced perceptual bands ready for a bar visualizer. Length = `bandCount`. |
+| `bins`        | `Float32List`       | FFT magnitude per linear-frequency bin, from 0 to 1. Length `fftSize / 2`. |
+| `bands`       | `Float32List`       | Smoothed, log-spaced bands for a bar visualizer. Length `bandCount`. |
 | `timestamp`   | `Duration`          | libmpv's engine clock when the samples were captured, counted from engine start. It is not the position in the track: use `position` for that. |
-| `sampleRate`  | `int`               | Hz of the AO output. |
+| `sampleRate`  | `int`               | Sample rate of the output, in Hz. |
 | `bandLowHz`   | `double`            | Lower edge of the band axis. |
 | `bandHighHz`  | `double`            | Upper edge of the band axis (clamped to Nyquist). |
 
@@ -2368,7 +2348,6 @@ freed.
 
 ```dart
 player.stream.fft.listen((frame) {
-  // 64 bands ready to paint:
   for (var i = 0; i < frame.bands.length; i++) {
     final h = frame.bands[i] * canvasHeight;
     // draw bar i with height h …
@@ -2376,19 +2355,17 @@ player.stream.fft.listen((frame) {
 });
 ```
 
-Use `bands` for visualizers, the band-level asymmetric EMA (fast
-attack, slow release) makes painting them directly produce the
-"bouncy" feel without any client-side animation logic. Use `bins`
-for custom remappings (mel, Bark, constant-Q, peak detection).
+Paint `bands` as they come: they rise fast and fall slowly, so the bars
+move smoothly without animation code. Use `bins` for your own mapping
+(mel, Bark, constant-Q, peak detection).
 
 #### 13.2 Configuring the pipeline
 
-Tune the FFT and the visual smoothing through `SpectrumSettings`,
-applied in one call via `Player.setSpectrum`, or one field at a time
-with `Player.updateSpectrum` (copyWith mapper).
+`SpectrumSettings` holds the FFT and smoothing settings. `setSpectrum`
+applies them in one call, and `updateSpectrum` changes one field.
 
 ```dart
-// 60 fps with 128 bands and a tighter dB window:
+// 60 frames a second, 128 bands, a narrower dB window
 player.setSpectrum(const SpectrumSettings(
   fftSize: 2048,
   bandCount: 128,
@@ -2397,7 +2374,7 @@ player.setSpectrum(const SpectrumSettings(
   maxDb: -20,
 ));
 
-// Mutate one field, e.g. UI slider on attack smoothing:
+// Change one field, e.g. from a slider
 player.updateSpectrum((s) => s.copyWith(attackSmoothing: 0.7));
 ```
 
@@ -2408,33 +2385,28 @@ player.updateSpectrum((s) => s.copyWith(attackSmoothing: 0.7));
 |-------------------|----------------|----------------|
 | `fftSize`         | 2048           | Power of 2: 256, 512, 1024, 2048, 4096 |
 | `bandCount`       | 64             | Typical 32-128 |
-| `bandLowHz`       | 20.0           | Bottom of human hearing |
+| `bandLowHz`       | 20.0           | Lowest band edge, in Hz |
 | `bandHighHz`      | 20000.0        | Clamped to Nyquist (`sampleRate / 2`) |
 | `window`          | `WindowFunction.hann` | Hann, Blackman-Harris, Rectangular |
-| `emitInterval`    | 33 ms (~30 fps)| 8-67 ms (~120-15 fps) |
-| `attackSmoothing` | 0.5            | EMA when band rises; higher = snappier |
-| `releaseSmoothing`| 0.1            | EMA when band falls; lower = slower decay |
-| `minDb`, `maxDb`  | -100, -30      | dB clip range mapped to `[0, 1]`. Matches Web Audio API `AnalyserNode.minDecibels` and `maxDecibels` defaults. |
-| `overlapFactor`   | 4              | Power of 2: 1 (no overlap), 2, 4 (75 %, default), 8, 16 |
+| `emitInterval`    | 33 ms          | 8 to 67 ms (about 120 to 15 frames a second) |
+| `attackSmoothing` | 0.5            | Smoothing while a band rises; higher reacts faster |
+| `releaseSmoothing`| 0.1            | Smoothing while a band falls; lower decays slower |
+| `minDb`, `maxDb`  | -100, -30      | dB range mapped to 0 to 1, the Web Audio `AnalyserNode` defaults |
+| `overlapFactor`   | 4              | Power of 2: 1 (no overlap), 2, 4 (75 %), 8, 16 |
 
 </details>
 
-The pipeline reallocates FFT memory only on changes that require it,
-so flipping settings on every UI tick is cheap.
+The FFT memory is reallocated only when a setting requires it, so
+changing settings from a slider is cheap.
 
-Pause behaviour. When playback pauses, the AO ring stops
-receiving samples and the pipeline stops emitting. The last
-[FftFrame] is "frozen": the consumer holds the displayed state
-until playback resumes. To fade the visualizer to zero on pause,
-animate the held frame client-side.
+While playback is paused no frames arrive, and the last one stays on
+screen. To fade the bars to zero on pause, animate them yourself.
 
 #### 13.3 Raw PCM stream
 
-`Player.stream.pcm` emits [PcmFrame]s on the same cadence as
-`fft`, carrying the raw post-DSP samples instead of the
-frequency-domain transform. Use it for time-domain visualisations:
-oscilloscope-style waveforms, accurate VU and peak meters, custom feature
-extractors that need amplitude.
+`player.stream.pcm` emits `PcmFrame`s at the same rate as `fft`, with the
+samples themselves instead of the spectrum. Use it for an oscilloscope,
+a level or peak meter, or any analysis that needs amplitude.
 
 ```dart
 double peak = 0;
@@ -2447,26 +2419,25 @@ player.stream.pcm.listen((frame) {
 });
 ```
 
-`samples` is a `Float32List` of interleaved channels (`L, R, L, R…`).
-Use `frame.samplesPerChannel` to compute the per-channel sample
-count.
+`samples` is a `Float32List` with the channels interleaved (`L, R, L, R`).
+`frame.samplesPerChannel` is the number of samples in each channel.
 
 #### 13.4 Per-filter PCM taps
 
-`player.stream.tap(filter, side: ...)` captures raw audio samples at
-either side of one stage of the effects chain. The stage is named by its
-filter, through the typed `AudioFilter` enum, and by `instance` when the
+`player.stream.tap(filter, side: ...)` captures the samples on either
+side of one stage of the effects chain. The stage is named by its
+filter, through the `AudioFilter` enum, and by `instance` when the
 filter appears more than once (0, the default, is the first): with two
 `EqualizerEffect`s in the list, `instance: 1` taps the second. Disabled
 stages count too, and emit nothing. The tap follows the occurrence, not a
 particular stage: moving other filters around keeps it where it is, while
 swapping the two equalizers swaps what `instance: 0` taps. libmpv captures
 up to eight stages at a time, counted across all players of the process,
-and two players tapping the same stage read one mixed feed. The side is one of `TapSide.pre` (before the
-filter's DSP runs) or `TapSide.post` (after).
+and two players tapping the same stage read one mixed feed. `TapSide.pre`
+captures before the filter and `TapSide.post` after it.
 
 ```dart
-// Two-curve display: input vs output of a single filter.
+// Input and output of one filter
 player.stream
     .tap(AudioFilter.equalizer, side: TapSide.pre)
     .listen((pcm) => paintInputWaveform(pcm.samples));
@@ -2475,14 +2446,13 @@ player.stream
     .listen((pcm) => paintOutputWaveform(pcm.samples));
 ```
 
-For frequency-domain bands run the samples through `BandProcessor`,
-the same FFT, windowing and smoothing the library uses for the global
-visualizer, so per-filter and global curves pulse with the exact same
-ballistic:
+For bands, run the samples through `BandProcessor`. It uses the same FFT,
+window and smoothing as `stream.fft`, so a stage's curve moves like the
+main one:
 
 ```dart
 final processor = BandProcessor(player.state.spectrum);
-// Track the global config so the local FFT stays in lock-step.
+// Follow the spectrum settings
 final cfgSub = player.stream.spectrum.listen(processor.setSettings);
 final tapSub = player.stream
     .tap(AudioFilter.equalizer, side: TapSide.post)
@@ -2492,7 +2462,7 @@ final tapSub = player.stream
     });
 ```
 
-Every typed stage exposes its `filter`, so you can tap the live rack
+Every typed stage exposes its `filter`, so you can tap the whole chain
 stage by stage:
 
 ```dart
@@ -2502,32 +2472,26 @@ for (final e in player.state.audioEffects) {
   if (f == null) continue;  // raw stage
   // Disabled stages count toward the instance too.
   final instance = seen.update(f, (n) => n + 1, ifAbsent: () => 0);
-  if (!e.enabled) continue;  // bypassed: nothing to tap
+  if (!e.enabled) continue;  // disabled: nothing to tap
   player.stream.tap(f, instance: instance, side: TapSide.post).listen(_paint);
 }
 ```
 
-The taps are lazy in the same way the global pipeline is: the
-matching engine hook activates only while at least one listener is
-attached and tears down on the last cancel.
-
 #### 13.5 Waveform
 
-A mono envelope of the loaded track is exposed via
-[PlayerStream.waveform], computed in the background on a worker thread:
-~2000 bins, each with its min, max and RMS, enough to paint a waveform
+`player.stream.waveform` emits a mono envelope of the loaded track,
+computed on a worker thread: about 2000 bins, each with its min, max and
+RMS, enough to paint a waveform
 overview or a waveform-style seekbar. There is one waveform per process:
 with several players, the last `open()` wins.
 
 Complete seekable files, local or a direct-play HTTP file, are decoded
 ahead of time: partial envelopes arrive while the decode runs
-(`wave.decoding`), then the final one. Streams that can't be decoded
+(`wave.decoding`), then the final one. Streams that cannot be decoded
 ahead of time (adaptive, non-seekable or transcoded network sources)
-**grow progressively**, re-emitting as playback advances, and a live
-stream of unknown length keeps a rolling window (`wave.live`). The
-`wave.filled` flag (one byte per bin: `1` covered, `0` not yet) marks
-which bins hold real data, so a renderer can draw the un-analysed ones as
-a baseline instead of a misleading flat-zero spike.
+fill in as playback advances, and a live stream of unknown length keeps
+a rolling window (`wave.live`). `wave.filled` has one byte per bin, `1`
+once the bin holds data, so you can draw the rest as a flat baseline.
 
 On loud, heavily limited masters the peaks sit near full scale for most
 of the track. Drawing `wave.rms` as the body of the waveform, with the
@@ -2537,21 +2501,16 @@ readable. `wave.rms` is `null` with a libmpv older than `libmpv-r14`.
 The ahead-of-time decode opens the source a second time, with the same
 network options as playback (`tls-verify`, `tls-ca-file`, headers, user
 agent, cookies), so a remote file is downloaded twice. The loudness scan
-below rides the same decode.
-
-The stream is **listener-gated**: the analyzer runs only while
-something is subscribed to `player.stream.waveform`, and costs
-nothing when nobody listens. No configuration, no opt-in setter,
-just listen.
+below uses the same decode.
 
 ```dart
 player.stream.waveform.listen((wave) {
   if (wave == null) return; // null on track change, until the first bins land
   // wave.min and wave.max: Float32List, range [-1, +1], wave.bins long.
   // wave.rms: Float32List?, range [0, 1], same length.
-  // Bin i spans [i / wave.bins * wave.duration, (i + 1) / … ).
+  // Bin i covers wave.duration * i / wave.bins to wave.duration * (i + 1) / wave.bins
   for (var i = 0; i < wave.bins; i++) {
-    if (wave.filled[i] == 0) continue; // not yet analysed, draw a baseline
+    if (wave.filled[i] == 0) continue; // no data yet: draw a baseline
     // draw a light bar from wave.min[i] to wave.max[i]
     // and a solid one from -wave.rms![i] to wave.rms![i]
   }
@@ -2560,16 +2519,15 @@ player.stream.waveform.listen((wave) {
 
 #### 13.6 Loudness
 
-The EBU R128 loudness of the loaded track is exposed via
-`player.stream.loudnessScan`, measured like the waveform: the whole file is
-decoded off the playback path moments after it loads, at many times
-realtime. While the scan runs the stream emits `scanning` snapshots with
+`player.stream.loudnessScan` measures the EBU R128 loudness of the loaded
+track the same way as the waveform: the whole file is decoded apart from
+playback, right after it loads, many times faster than real time. While
+the scan runs the stream emits `scanning` snapshots with
 `progress`, then one final `LoudnessScan` per track with integrated LUFS,
 loudness range, sample peak and true peak, often before the audio has
 started playing.
 
-This is how you volume-normalize a library whose files carry no
-ReplayGain tags:
+Use it to level the volume of files without ReplayGain tags:
 
 ```dart
 player.stream.loudnessScan.listen((scan) {
@@ -2580,17 +2538,16 @@ player.stream.loudnessScan.listen((scan) {
 });
 ```
 
-Like the waveform, the stream is **listener-gated** (the scan runs only
-while something is subscribed) and emits `null` on the track-change
-boundary so stale results clear. Sources that can only be decoded as
-they play (adaptive or live network streams) report
-`LoudnessScanState.unavailable` — use the live meter below for those.
+The stream emits `null` when the track changes, so old results clear.
+Sources that can only be decoded as they play (adaptive or live network
+streams) report `LoudnessScanState.unavailable`: use the live meter below
+for those.
 
 #### 13.7 Live loudness meter
 
 `player.stream.loudnessMeter` emits momentary, short-term, integrated
-and loudness-range readings of the audio *as it plays* — the data for a
-VU-style meter or a broadcast loudness display. The meter reads the
+and loudness-range readings of the audio as it plays, for a level meter
+or a broadcast loudness display. The meter reads the
 first enabled `Ebur128Effect` of the chain with its `metadata` option on,
 so add one at the point of the chain you want to measure:
 
@@ -2601,21 +2558,16 @@ await player.updateAudioEffects(
 player.stream.loudnessMeter.listen((l) => meter.paint(l.momentary));
 ```
 
-**Listener-gated** — the measurement poll runs only while a listener is
-attached. While the meter is not in the chain the stream simply emits
-nothing.
+Without the meter in the chain the stream emits nothing.
 
 ---
 
 ### 14. OS media session
 
-Publish the player to the operating system's media controls (the
-**Now Playing** panel, Control Center and lockscreen on iOS and macOS,
-MPRIS on Linux, SMTC on Windows, and the media notification on Android)
-and receive the transport commands the OS sends back.
-
-Everything goes through one setter, `Player.setMediaSession`. Pass
-`null` to remove the entry. Only one `Player` per process may own the
+`setMediaSession` publishes the player to the system media controls
+(Now Playing, Control Center and the lock screen on iOS and macOS, MPRIS
+on Linux, SMTC on Windows, the media notification on Android) and
+receives the commands the OS sends back. Pass `null` to remove the entry. Only one `Player` per process may own the
 session at a time (enabling a second throws `StateError`); `dispose()`
 releases it automatically.
 
@@ -2623,8 +2575,8 @@ releases it automatically.
 
 #### 14.1 Enabling the session
 
-Title, artist, album, artwork and duration are derived from the playing
-file automatically, you don't have to push anything.
+Title, artist, album, artwork and duration come from the playing file,
+with nothing to push:
 
 ```dart
 await player.setMediaSession(const MediaSession());  // enable
@@ -2633,9 +2585,9 @@ await player.setMediaSession(null);                  // remove
 
 #### 14.2 Overriding metadata
 
-Each metadata field is an override: `null` keeps mpv's value, a value
-takes over, an empty string forces a blank. Use `copyWith` to change one
-field on the fly.
+Each metadata field overrides the file: `null` keeps mpv's value, a
+string replaces it, and an empty string leaves it blank. `copyWith`
+changes one field:
 
 ```dart
 await player.setMediaSession(
@@ -2660,16 +2612,17 @@ image. On Linux, Android and Windows the package downloads it in Dart: the
 download always verifies the server certificate, even when `tls-verify` is
 off for playback, trusts `tls-ca-file` on top of the system roots, and is
 tried at most 3 times. On iOS and macOS the system downloads it, with the
-system roots only. A tag-less stream
-with no title falls back to mpv's `media-title`, which is derived from the
-URL: the query is stripped from it, but passing a title through
-`Media.extras` or `MediaSession.title` is still the better choice.
+system roots only.
+
+A stream with no title tag falls back to mpv's `media-title`, taken from
+the URL with the query removed. Setting `MediaSession.title` is still
+better.
 
 #### 14.3 Reacting to OS commands
 
-Commands are **auto-applied** to the player (lockscreen play → `play()`,
-scrub → `seek()`, …) and also surfaced on
-`Player.stream.mediaSessionCommands` for analytics or interception:
+The player applies OS commands itself (play from the lock screen calls
+`play()`, scrubbing calls `seek()`, and so on) and also emits them on
+`player.stream.mediaSessionCommands`:
 
 ```dart
 player.stream.mediaSessionCommands.listen((command) {
@@ -2688,13 +2641,12 @@ player.stream.mediaSessionCommands.listen((command) {
 
 #### 14.4 Capabilities, intervals and speeds
 
-`actions` advertises the controls the OS may surface. What actually renders
-is **platform-gated, not just space-gated**: each native media UI draws only a
-subset (and a lockscreen typically shows 3 to 4 of those). Advertising an
-action a platform doesn't render is harmless: it simply isn't drawn. The
+`actions` lists the controls the OS may show. Each platform draws only
+some of them, and a lock screen usually shows 3 or 4. An action a
+platform does not draw is simply left out. The
 default set is `play`, `pause`, `playPause`, `next`, `previous` and `seek`; the
 enum also has `stop`, `fastForward`, `rewind`, `setRepeatMode`, `setShuffle`,
-`setPlaybackRate` and `like` (a favourite or star). The skip intervals and the
+`setPlaybackRate` and `like` (a favorite or star). The skip intervals and the
 speed list apply only when their action is in the set.
 
 ```dart
@@ -2705,63 +2657,62 @@ const MediaSession(
     MediaAction.fastForward, MediaAction.rewind, MediaAction.setPlaybackRate,
     MediaAction.setRepeatMode, MediaAction.setShuffle,
   },
-  fastForwardInterval: Duration(seconds: 30),     // skip-forward button
-  rewindInterval: Duration(seconds: 15),          // skip-back button
-  supportedPlaybackRates: [1.0, 1.25, 1.5, 2.0],  // speed picker
-  autoApplyPlaylistNavigation: false,             // handle next and prev yourself
+  fastForwardInterval: Duration(seconds: 30),
+  rewindInterval: Duration(seconds: 15),
+  supportedPlaybackRates: [1.0, 1.25, 1.5, 2.0],
+  autoApplyPlaylistNavigation: false,
 );
 ```
 
-Set `autoApplyPlaylistNavigation: false` to handle the next and previous buttons
-yourself, e.g. a ±30s skip on a multi-file audiobook, instead of the package
-switching track. The command still arrives on
+With `autoApplyPlaylistNavigation: false` the next and previous buttons no
+longer change track, and you handle them yourself, for example as a 30 s
+skip in an audiobook split into files. The command still arrives on
 [`stream.mediaSessionCommands`](#915-media-session-streams).
 
-**Which actions each platform's native media UI actually draws:**
+The actions each platform's media controls draw:
 
 | Action | iOS | macOS | Android | Windows | Linux¹ |
 |---|:--:|:--:|:--:|:--:|:--:|
-| `play`, `pause`, `playPause` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `next`, `previous` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `seek` (scrubber) | ✓ | ✓ | ✓ | ✓ | KDE |
-| `fastForward`, `rewind` | ✓ | ✓ | ✓ | ✓ | ✗ |
-| `stop` | ✗ | ✗ | ✗ | ✓ | ✗ |
-| `setRepeatMode`, `setShuffle` | ✗ | ✗ | ✓ | ✗² | KDE |
-| `setPlaybackRate` | ✗ | ✗ | ✗ | ✗² | KDE |
-| `like` | ✓ | ✗ | ✓ | ✗ | ✗ |
+| `play`, `pause`, `playPause` | Yes | Yes | Yes | Yes | Yes |
+| `next`, `previous` | Yes | Yes | Yes | Yes | Yes |
+| `seek` (scrubber) | Yes | Yes | Yes | Yes | KDE |
+| `fastForward`, `rewind` | Yes | Yes | Yes | Yes | No |
+| `stop` | No | No | No | Yes | No |
+| `setRepeatMode`, `setShuffle` | No | No | Yes | No² | KDE |
+| `setPlaybackRate` | No | No | No | No² | KDE |
+| `like` | Yes | No | Yes | No | No |
 
-¹ Linux depends on the desktop's MPRIS consumer, KDE Plasma draws
-seek, repeat, shuffle, and rate toggles, GNOME's built-in popup shows only
-prev, play-pause, and next.
-² Windows SMTC exposes repeat, shuffle, and rate as settable *properties* but the
-native flyout draws no toggle for them.
+¹ On Linux it depends on the desktop: KDE Plasma draws seek, repeat,
+shuffle and rate, while GNOME's popup shows only previous, play-pause and
+next.
+² Windows SMTC stores repeat, shuffle and rate, but its flyout has no
+button for them.
 
 #### 14.5 Audio interruptions
 
 `interruptionPolicy` decides what happens on a phone call, Siri, or
-another app taking audio focus:
+another app taking the audio focus:
 
 ```dart
-InterruptionPolicy.pauseAndResume // default, pause then resume when the OS allows
-InterruptionPolicy.pauseOnly      // pause, never auto-resume
-InterruptionPolicy.keepPlaying    // stay at full volume, never auto-pause
+InterruptionPolicy.pauseAndResume // default: pause, resume when the OS allows
+InterruptionPolicy.pauseOnly      // pause, never resume on its own
+InterruptionPolicy.keepPlaying    // keep playing at full volume
 ```
 
-`keepPlaying` is the "focused listening, always max" mode. Honest
-limits: on iOS an accepted phone or FaceTime call or Siri still takes the
-audio route (OS-enforced, it can't be overridden), and on Android 12+
-the system may fade the app out when another app gains focus. A
-headphone unplug always pauses, even in `keepPlaying` (Apple HIG). The
-policy is a no-op on macOS, Linux and Windows (no per-app audio session).
+`keepPlaying` has limits the OS sets: on iOS an accepted phone or
+FaceTime call, or Siri, still takes the audio, and on Android 12 and
+later the system may fade the app out when another app gains focus.
+Unplugging headphones always pauses, even with `keepPlaying`, as Apple's
+guidelines require. macOS, Linux and Windows have no per-app audio
+session, so the policy does nothing there.
 
-> **iOS:** background playback also needs the host app's `Info.plist` to
-> declare `UIBackgroundModes` → `audio`.
+Background playback on iOS also needs the setup in [Permissions](#ios).
 
 #### 14.6 App identity (desktop)
 
 On Linux (MPRIS) and Windows (SMTC) the OS labels the controls with your
-app. macOS, iOS and Android use the system bundle identity automatically and
-ignore these fields.
+app's name. macOS, iOS and Android take it from the app bundle and ignore
+these fields.
 
 ```dart
 const MediaSession(
@@ -2770,10 +2721,9 @@ const MediaSession(
 );
 ```
 
-`desktopEntry` is the basename (no `.desktop` extension) of the file you
-install to `/usr/share/applications/`; the Linux desktop uses it to find your
-app icon to show beside the controls. Leave it `null` and the desktop falls
-back to a generic icon rather than a wrong one. On Windows the icon comes from
+`desktopEntry` is the name, without `.desktop`, of the file you install
+in `/usr/share/applications/`. The Linux desktop uses it to find the icon
+shown beside the controls; with `null` it shows a generic icon. On Windows the icon comes from
 the executable, so only `appName` applies there.
 
 ---
