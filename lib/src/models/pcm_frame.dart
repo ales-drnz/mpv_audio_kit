@@ -55,7 +55,9 @@ class PcmFrame {
   /// initialised, not from the start of the track. Use it to detect
   /// fresh frames or to align side-effects in real time; for the
   /// playback PTS of these samples, read [PlayerStream.position] /
-  /// [PlayerStream.audioPts] instead.
+  /// [PlayerStream.audioPts] instead. Frames from [PlayerStream.tap] are
+  /// the exception: their timestamp is the position in the track of the
+  /// last sample.
   final Duration timestamp;
 
   /// Sample rate in Hz (typically 44100 or 48000).

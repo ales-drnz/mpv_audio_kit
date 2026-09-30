@@ -20,7 +20,7 @@ import '../enums/window_function.dart';
 /// Default values pick a balanced "music visualizer" preset:
 /// 2048-point Hann FFT at 30 Hz emit rate, log-spaced 64 bands from
 /// 20 Hz to 20 kHz, asymmetric EMA (fast attack, slow decay) and a
-/// `[-70, -10] dB` clip range that looks lively on most music. Tweak
+/// `[-100, -30] dB` clip range, the Web Audio `AnalyserNode` defaults. Tweak
 /// from there.
 final class SpectrumSettings {
   /// FFT size in samples. Power of 2 between 256 and 4096. Larger

@@ -2443,7 +2443,7 @@ freed.
 |---------------|---------------------|------------|
 | `bins`        | `Float32List`       | Raw FFT magnitude per linear-frequency bin, normalised `[0, 1]`. Length = `fftSize / 2`. |
 | `bands`       | `Float32List`       | Smoothed log-spaced perceptual bands ready for a bar visualizer. Length = `bandCount`. |
-| `timestamp`   | `Duration`          | Playback position the samples correspond to. |
+| `timestamp`   | `Duration`          | libmpv's engine clock when the samples were captured, counted from engine start. It is not the position in the track: use `position` for that. |
 | `sampleRate`  | `int`               | Hz of the AO output. |
 | `bandLowHz`   | `double`            | Lower edge of the band axis. |
 | `bandHighHz`  | `double`            | Upper edge of the band axis (clamped to Nyquist). |
@@ -2600,7 +2600,8 @@ attached and tears down on the last cancel.
 A mono envelope of the loaded track is exposed via
 [PlayerStream.waveform], computed in the background on a worker thread:
 ~2000 bins, each with its min, max and RMS, enough to paint a waveform
-overview or a waveform-style seekbar.
+overview or a waveform-style seekbar. There is one waveform per process:
+with several players, the last `open()` wins.
 
 Complete seekable files, local or a direct-play HTTP file, are decoded
 ahead of time: partial envelopes arrive while the decode runs
@@ -2646,8 +2647,9 @@ player.stream.waveform.listen((wave) {
 The EBU R128 loudness of the loaded track is exposed via
 `player.stream.loudnessScan`, measured like the waveform: the whole file is
 decoded off the playback path moments after it loads, at many times
-realtime. One terminal `LoudnessScan` per track — integrated LUFS,
-loudness range, sample peak and true peak — before the audio has even
+realtime. While the scan runs the stream emits `scanning` snapshots with
+`progress`, then one final `LoudnessScan` per track with integrated LUFS,
+loudness range, sample peak and true peak, often before the audio has
 started playing.
 
 This is how you volume-normalize a library whose files carry no

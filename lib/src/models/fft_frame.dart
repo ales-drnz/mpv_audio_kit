@@ -59,10 +59,12 @@ class FftFrame {
   /// needed.
   final Float32List bands;
 
-  /// Playback position the samples backing this FFT correspond to —
-  /// derived from mpv's tap timestamp (`pts_ns` on the `pcm-tap-frame`
-  /// property). Useful for syncing visual effects against the audio
-  /// playhead.
+  /// Timestamp of the [PcmFrame] this FFT was computed from. On
+  /// [PlayerStream.fft] it is libmpv's engine clock at capture
+  /// (`mp_time_ns()`, `pts_ns` on the `pcm-tap-frame` property), counted
+  /// from engine start: not the position in the track, which
+  /// [PlayerStream.position] gives. From a [PlayerStream.tap] frame run
+  /// through [BandProcessor] it is the tap's position in the track.
   final Duration timestamp;
 
   /// Sample rate of the audio that produced this frame, in Hz.
