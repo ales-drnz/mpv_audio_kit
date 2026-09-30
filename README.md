@@ -1964,10 +1964,9 @@ print(s.position);                               // Duration
 print(s.duration);                               // Duration
 print(s.volume);                                 // double
 print(s.buffer);                                 // Duration
-print(s.playlist.items[s.playlist.index].uri);   // String
 print(s.metadata['title']);                      // String?
 print(s.audioParams.codec);                      // String?
-print(s.audioEffects.acompressor.threshold);     // double (linear ratio)
+print(s.audioEffects.whereType<AcompressorEffect>().firstOrNull?.threshold); // double?
 print(s.cache.secs);                             // Duration
 print(s.replayGain.preamp);                      // double
 print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
@@ -1975,6 +1974,12 @@ print(s.chapters);                               // List<Chapter>
 print(s.audioOutputState);                       // AudioOutputState
 print(s.mpvVersion);                             // e.g. '0.41.0'
 print(s.ffmpegVersion);                          // e.g. '8.1.1'
+
+// index is -1 while openAll is still building the queue.
+final i = s.playlist.index;
+if (i >= 0 && i < s.playlist.items.length) {
+  print(s.playlist.items[i].uri);                // String
+}
 ```
 
 #### 9.14 Spectrum and PCM streams
