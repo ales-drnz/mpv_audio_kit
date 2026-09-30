@@ -1,24 +1,25 @@
-"""Generates the README diagrams in imgs/diagrams.
+"""Generates the README diagrams in imgs/diagrams, as PNG only.
 
 Library nodes use the icon's navy plate gradient and your code's nodes the
-cyan-to-white bars gradient. Each diagram is written as SVG and exported to
-PNG at 2x with rsvg-convert on a white ground, so it reads the same in
-GitHub's light and dark themes and on pub.dev. PAL keeps a dark palette in
-case a dark variant is wanted again.
+cyan-to-white bars gradient. The PNGs are transparent, so they sit on the
+page's own ground: text inside a node relies on the node's fill, and the
+free text, arrows and bands use mid tones that read on white and on
+GitHub's dark ground alike. The SVGs are drawn in a temporary directory and
+exported at 2x with rsvg-convert.
 
 Run from the repository root: python3 tool/diagrams/generate.py
 """
-import os, subprocess
+import os, subprocess, tempfile
 
 OUT = os.path.join('imgs', 'diagrams')
 SANS = "Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif"
 MONO = "Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
 
 PAL = {
-    'light': dict(ink='#1F2328', muted='#59636E', line='#8C95A3', main='#123A9C',
-                  fail='#B42318', failSoft='#FDE3E0', neutral='#E9EEF6', band='#F4F6FA'),
-    'dark': dict(ink='#E6EDF3', muted='#9AA4B2', line='#6E7887', main='#5CE1F7',
-                 fail='#FF7B72', failSoft='#3A1D20', neutral='#1F2735', band='#141A23'),
+    # ink: text inside neutral nodes, on their own fill. label, muted, line,
+    # main, fail and band sit on the page ground, light or dark.
+    'light': dict(ink='#1F2328', label='#6B7689', muted='#6B7689', line='#7D8796', main='#2F6FD6',
+                  fail='#D1392B', failSoft='#FDE3E0', neutral='#E6EBF3', band='#7D8796'),
 }
 
 
@@ -45,7 +46,7 @@ class D:
         return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" width="{self.w}" height="{self.h}" '
                 f'role="img" aria-label="{esc(self.label)}">\n{defs}\n' + '\n'.join(self.body) + '\n</svg>\n')
 
-    # role: lib (navy plate), app (cyan bars), neutral, fail, ghost (dashed outline)
+    # role: lib (navy plate), app (cyan bars), neutral, fail, ghost (dimmed text)
     def node(self, x, y, w, h, title, sub=None, role='lib', mono=True, r=None, sub2=None, size=15):
         c = self.c
         r = h / 2 if r is None else r
@@ -54,11 +55,11 @@ class D:
         elif role == 'app':
             fill, tc, sc, op = 'url(#bars)', '#0B2A7A', '#2A4A8F', 1
         elif role == 'fail':
-            fill, tc, sc, op = c['failSoft'], c['fail'], c['muted'], 1
+            fill, tc, sc, op = c['failSoft'], '#B42318', '#59636E', 1
         elif role == 'ghost':
-            fill, tc, sc, op = c['neutral'], c['muted'], c['muted'], 0.6
+            fill, tc, sc, op = c['neutral'], '#59636E', '#59636E', 1
         else:
-            fill, tc, sc, op = c['neutral'], c['ink'], c['muted'], 1
+            fill, tc, sc, op = c['neutral'], c['ink'], '#59636E', 1
         self.add(f'<rect x="{x - w / 2}" y="{y - h / 2}" width="{w}" height="{h}" rx="{r}" fill="{fill}" fill-opacity="{op}"/>')
         lines = [s for s in (sub, sub2) if s]
         ty = y + 5 - 9 * len(lines)
@@ -79,7 +80,7 @@ class D:
         self.add(f'<text x="{x}" y="{y}" text-anchor="{anchor}" font-family="{MONO if mono else SANS}" font-size="{size}" font-weight="{weight}" fill="{col}">{esc(t)}</text>')
 
     def band(self, x, y, w, h, title):
-        self.add(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="{self.c["band"]}"/>')
+        self.add(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="{self.c["band"]}" fill-opacity="0.12"/>')
         self.text(x + 16, y + 24, title, anchor='start', color='muted', size=12, weight=600)
 
 
@@ -137,7 +138,7 @@ def effects(t):
         d.add(f'<circle cx="{x}" cy="125" r="4.5" fill="{d.c["main"]}"/>')
         d.arrow(f'M{x},130 L{x},222', kind='sec')
     d.node(163, 245, 100, 40, 'pre', role='app', size=13); d.node(358, 245, 100, 40, 'post', role='app', size=13)
-    d.text(163, 296, 'stream.tap(AudioFilter.equalizer, side: ...)', anchor='start', size=12, mono=True, color='ink')
+    d.text(163, 296, 'stream.tap(AudioFilter.equalizer, side: ...)', anchor='start', size=12, mono=True, color='label')
     d.text(163, 316, 'instance counts repeats of the same filter', anchor='start', size=12)
     d.arrow('M835,157 L835,222', kind='sec')
     d.node(835, 245, 150, 40, 'fft and pcm', role='app', size=13)
@@ -150,11 +151,11 @@ def timeline(t):
     marks = [(210, 'play()'), (390, 'seek()'), (560, 'network stall'), (760, 'pause()')]
     for x, m in marks:
         d.add(f'<line x1="{x}" y1="40" x2="{x}" y2="250" stroke="{d.c["line"]}" stroke-width="1" stroke-dasharray="3 4"/>')
-        d.text(x, 32, m, mono=m.endswith(')'), color='ink', size=12)
+        d.text(x, 32, m, mono=m.endswith(')'), color='label', size=12)
     rows = [('playWhenReady', 110, [(x0, 0), (210, 1), (760, 0)]),
             ('playing', 200, [(x0, 0), (230, 1), (390, 0), (430, 1), (560, 0), (650, 1), (760, 0)])]
     for name, y, pts in rows:
-        d.text(20, y - 12, name, anchor='start', mono=True, color='ink', size=14, weight=600)
+        d.text(20, y - 12, name, anchor='start', mono=True, color='label', size=14, weight=600)
         path = f'M{x0},{y}'
         lvl = 0
         for i, (x, v) in enumerate(pts):
@@ -227,10 +228,10 @@ def hook(t):
     for a, b, y, label, kind in steps:
         if a == b:
             d.arrow(f'M{a},{y - 8} L{a + 45},{y - 8} L{a + 45},{y + 12} L{a + 6},{y + 12}', kind=kind)
-            d.text(a + 70, y + 6, label, anchor='start', mono=True, color='ink', size=12)
+            d.text(a + 70, y + 6, label, anchor='start', mono=True, color='label', size=12)
         else:
             d.arrow(f'M{a},{y} L{b + (8 if b < a else -8)},{y}', kind=kind)
-            d.text((a + b) / 2, y - 9, label, mono='(' in label or '.' in label, color='ink', size=12)
+            d.text((a + b) / 2, y - 9, label, mono='(' in label or '.' in label, color='label', size=12)
     return d
 
 
@@ -289,10 +290,12 @@ def media(t):
 
 ALL = [architecture, lifecycle, effects, timeline, prefetch, cover, errors, hook, resolver, spectrum, media]
 os.makedirs(OUT, exist_ok=True)
-for f in ALL:
-    d = f('light')
-    svg = os.path.join(OUT, f'{d.name}.svg')
-    with open(svg, 'w') as fh:
-        fh.write(d.svg())
-    subprocess.run(['rsvg-convert', '-z', '2', '-b', '#FFFFFF', svg, '-o', svg[:-4] + '.png'], check=True)
+with tempfile.TemporaryDirectory() as tmp:
+    for f in ALL:
+        d = f('light')
+        svg = os.path.join(tmp, f'{d.name}.svg')
+        with open(svg, 'w') as fh:
+            fh.write(d.svg())
+        png = os.path.join(OUT, f'{d.name}.png')
+        subprocess.run(['rsvg-convert', '-z', '2', svg, '-o', png], check=True)
 print(len(ALL), 'diagrams written to', OUT)
