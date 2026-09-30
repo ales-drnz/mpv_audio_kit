@@ -607,9 +607,10 @@ class PlayerStream {
   /// `Image.memory(raw.bytes)` or run your own pipeline (resize, encode,
   /// cache) — the bytes are passed through unchanged.
   ///
-  /// Emits exactly once per file load: a [CoverArt] when the new
-  /// file has embedded artwork, or `null` when it does not. Listen for
-  /// `null` to clear stale artwork on tracks without a cover.
+  /// Emits once per file load, including mpv's reloads of the same file:
+  /// a [CoverArt] when the new file has embedded artwork, or `null` when
+  /// it does not. Listen for `null` to clear stale artwork on tracks
+  /// without a cover.
   final Stream<CoverArt?> coverArt;
 
   /// Real-time FFT frequency spectrum of the audio currently playing

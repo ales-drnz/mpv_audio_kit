@@ -678,9 +678,11 @@ mixin _AudioModule on _PlayerBase {
   // ── Cover Art ──────────────────────────────────────────────────────────────
 
   /// Controls whether mpv automatically loads external cover art files
-  /// sitting next to the audio file (e.g. `cover.jpg`). See [Cover] for
-  /// the available variants. Embedded cover bytes are surfaced through
-  /// [PlayerStream.coverArt] regardless of this setting.
+  /// sitting next to the audio file (e.g. `cover.jpg`) as extra tracks.
+  /// See [Cover] for the available variants. A loaded image shows in
+  /// [PlayerState.tracks] with `albumArt` and `externalFilename` set; it
+  /// does not reach [PlayerStream.coverArt], which carries only embedded
+  /// cover bytes, whatever this setting.
   Future<void> setCoverArtAuto(Cover cover) async {
     await _gate();
     await _prop('cover-art-auto', cover.mpvValue);

@@ -13,7 +13,8 @@ enum Cover {
   /// an image extension, plus the names in `--cover-art-whitelist`.
   exact('exact'),
 
-  /// Match any file whose name *contains* the audio file's base name.
+  /// Match any image whose name *contains* the audio file's base name,
+  /// plus the names in `--cover-art-whitelist`.
   fuzzy('fuzzy'),
 
   /// Load every image file in the same directory as the audio file.

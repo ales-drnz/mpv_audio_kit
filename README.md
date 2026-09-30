@@ -1642,8 +1642,8 @@ if (art != null) {
 
 ##### Lifecycle
 
-- `stream.coverArt` emits **once per `open()` call**, on file load,
-  before playback starts.
+- `stream.coverArt` emits on every file load, before playback starts:
+  each playlist entry, and again when mpv reloads the same file.
 - The emitted value is `null` when the file has no embedded picture.
   The stream emits the `null` (rather than skipping the file) so a UI
   bound to it clears the previous cover on every track change.
@@ -1653,19 +1653,28 @@ if (art != null) {
 
 ##### External cover files
 
-If you want mpv to *also* look for a `cover.jpg` sitting
-next to the audio file on disk:
+`setCoverArtAuto` makes mpv load an image sitting next to the audio
+file as an extra track:
 
 ```dart
 await player.setCoverArtAuto(Cover.no);     // library default (disabled)
-await player.setCoverArtAuto(Cover.exact);  // match the audio filename
-await player.setCoverArtAuto(Cover.fuzzy);  // any image in the same folder
-await player.setCoverArtAuto(Cover.all);    // any image, even loosely matched
+await player.setCoverArtAuto(Cover.exact);  // same base name as the audio file, or cover.jpg, folder.jpg and the like
+await player.setCoverArtAuto(Cover.fuzzy);  // also any image whose name contains the audio file's base name
+await player.setCoverArtAuto(Cover.all);    // every image in the folder
+```
+
+The image does not reach `stream.coverArt`, which carries only embedded
+pictures. Find it among the tracks and read the file yourself:
+
+```dart
+final path = player.state.tracks
+    .where((t) => t.external && t.albumArt)
+    .firstOrNull
+    ?.externalFilename;
 ```
 
 The library defaults to `no` (mpv's own default is `exact`) so
-unrelated images can't sneak in. Switch to `exact` or `fuzzy` for a
-local-file player that wants disk-side artwork.
+unrelated images can't sneak in.
 
 ---
 
