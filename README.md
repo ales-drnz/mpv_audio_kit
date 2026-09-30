@@ -2021,11 +2021,20 @@ final String? value = await player.getRawProperty('audio-codec');
 final String? samplerate = await player.getRawProperty('audio-params/samplerate');
 ```
 
+`getRawPropertyNode` returns the property as decoded maps, lists and
+scalars instead of a string:
+
+```dart
+final tracks = await player.getRawPropertyNode('track-list') as List?;
+```
+
 #### 10.2 Write a property
 
 Throws `MpvCommandException` if libmpv rejects the write (typo,
 out-of-range value, …). Carries `name`, mpv `code`, and the
-human-readable `message` from `mpv_error_string`.
+human-readable `message` from `mpv_error_string`. Writes to `af` and
+`pause`, also through `options/` and `file-local-options/`, throw
+`ArgumentError`: use the effects chain and `play()` or `pause()` instead.
 
 ```dart
 try {
