@@ -55,15 +55,13 @@ dependencies:
 
 ## Platform requirements
 
-<!-- TODO: the sizes below are from libmpv-r14; update them after the r15 rebuild. -->
-
 | Platform  | Minimum | Architecture | Size | Device | Emulator |
 | :--- | :--- | :--- | :---: | :---: | :---:
 | Android | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 8.3, 8.2, 8.9 MB | Yes | Yes |
 | iOS | 15.0 | arm64, x86_64 | 7.5, 8.0 MB | Yes | Yes |
 | macOS | 12.0 | arm64, x86_64 | 7.5, 8.0 MB | Yes | - |
 | Windows | 10 | arm64, x86_64 | 8.1, 9.1 MB | Yes | - |
-| Linux | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.7, 7.5 MB | Yes | - |
+| Linux | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.8, 8.6 MB | Yes | - |
 
 The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire (0.3.57 or later) or PulseAudio when installed.
 
