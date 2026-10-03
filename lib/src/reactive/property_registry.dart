@@ -86,6 +86,36 @@ class PropertyRegistry {
     return spec.resetAndDispatch(state, commit: commit);
   }
 
+  /// Applies several changes of properties whose specs share one cell, in
+  /// order, and updates the cell once with the result, so it emits a single
+  /// time. Each change is a property name and its raw value, or `null` raw
+  /// when mpv reported it unavailable. Changes of unknown properties are
+  /// skipped. Same return contract as [dispatch].
+  PlayerState? dispatchGroup(
+    List<(String, Object?)> changes,
+    PlayerState state, {
+    void Function(PlayerState next)? commit,
+  }) {
+    MpvPropertySpec<Object?>? last;
+    Object? value;
+    var next = state;
+    for (final (name, raw) in changes) {
+      final spec = _byName[name];
+      if (spec == null) continue;
+      assert(
+        last == null || identical(spec.reactive, last.reactive),
+        'grouped specs must share one cell: ${last.name} and $name',
+      );
+      value = raw == null ? spec.unavailableValue(next) : spec.parse(raw, next);
+      next = spec.reduce(value, next);
+      last = spec;
+    }
+    if (last == null || !last.reactive.update(value)) return null;
+    commit?.call(next);
+    last.onChange?.call(value);
+    return next;
+  }
+
   /// Closes every registered [ReactiveProperty]'s underlying broadcast
   /// controller. Idempotent — safe to call repeatedly during teardown.
   Future<void> closeAll() async {

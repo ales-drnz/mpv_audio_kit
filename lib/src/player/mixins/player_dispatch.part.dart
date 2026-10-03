@@ -181,6 +181,34 @@ mixin _DispatchModule on _PlayerBase {
           _dispatchProperty(name, value);
         case MpvEventPropertyUnavailable(:final name):
           _dispatchUnavailable(name);
+        case MpvEventPropertyGroup(:final events):
+          _registry.dispatchGroup(
+            [
+              for (final e in events)
+                switch (e) {
+                  MpvEventPropertyNode(:final name, :final value) => (
+                    name,
+                    value,
+                  ),
+                  MpvEventPropertyString(:final name, :final value) => (
+                    name,
+                    value,
+                  ),
+                  MpvEventPropertyDouble(:final name, :final value) => (
+                    name,
+                    value,
+                  ),
+                  MpvEventPropertyInt(:final name, :final value) => (
+                    name,
+                    value,
+                  ),
+                  MpvEventPropertyUnavailable(:final name) => (name, null),
+                  _ => throw StateError('not a property change: $e'),
+                },
+            ],
+            _state,
+            commit: _commitState,
+          );
         case MpvEventLog(:final prefix, :final level, :final text):
           final typedLevel = LogLevel.fromMpv(level);
           final entry = MpvLogEntry(

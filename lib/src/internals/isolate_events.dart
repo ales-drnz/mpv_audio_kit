@@ -171,6 +171,18 @@ class MpvEventPropertyNode extends MpvIsolateEvent {
   MpvEventPropertyNode(this.name, this.value);
 }
 
+/// Changes of several properties that back one state cell, held together
+/// by the event isolate so the cell moves once: each of [events] is an
+/// [MpvEventPropertyNode], [MpvEventPropertyString] or
+/// [MpvEventPropertyUnavailable], applied in order.
+class MpvEventPropertyGroup extends MpvIsolateEvent {
+  /// The held property changes, oldest first.
+  final List<MpvIsolateEvent> events;
+
+  /// Carries the held property changes [events].
+  MpvEventPropertyGroup(this.events);
+}
+
 /// mpv emitted a log line (MPV_EVENT_LOG_MESSAGE) at or above the
 /// requested log level.
 class MpvEventLog extends MpvIsolateEvent {

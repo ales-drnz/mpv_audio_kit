@@ -194,6 +194,19 @@ class MpvPropertySpec<T> {
     return next;
   }
 
+  /// The value [raw] parses to against [state], without touching
+  /// [reactive]. With [unavailableValue], it lets the registry fold the
+  /// changes of several specs that share one cell before a single update.
+  T parse(dynamic raw, PlayerState state) => _parse(raw, state);
+
+  /// The value the property takes when mpv reports it unavailable: the
+  /// `unavailable` callback's result when the spec has one, else the seed
+  /// of [reactive].
+  T unavailableValue(PlayerState state) {
+    final unavailable = _unavailable;
+    return unavailable != null ? unavailable(state) : reactive.initial;
+  }
+
   /// Applies the value the property takes when mpv reports it unavailable
   /// (no file is loaded, or the loaded one has no such value): the
   /// `unavailable` callback's result when the spec has one, else the seed
@@ -205,8 +218,7 @@ class MpvPropertySpec<T> {
     PlayerState state, {
     void Function(PlayerState next)? commit,
   }) {
-    final unavailable = _unavailable;
-    final value = unavailable != null ? unavailable(state) : reactive.initial;
+    final value = unavailableValue(state);
     if (!reactive.update(value)) return null;
     final next = _reduce(value, state);
     commit?.call(next);

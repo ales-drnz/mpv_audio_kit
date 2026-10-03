@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:mpv_audio_kit/src/internals/duration_seconds.dart';
+import 'package:mpv_audio_kit/src/models/audio_params.dart';
 import 'package:mpv_audio_kit/src/player/player_state.dart';
 import 'package:mpv_audio_kit/src/reactive/default_reactives.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
@@ -141,6 +142,44 @@ void main() {
             'populated by audio-codec / audio-codec-name siblings',
       );
       expect(state.audioParams.codecName, 'FLAC');
+    });
+
+    test('a group of audio-params, codec and codec name emits once', () async {
+      final seen = <AudioParams>[];
+      final sub = reactives.audioParams.changes.listen(seen.add);
+      const node = <String, dynamic>{
+        'format': 'floatp',
+        'samplerate': 48000,
+        'channels': 'stereo',
+        'channel-count': 2,
+        'hr-channels': 'L+R',
+      };
+
+      state = registry.dispatchGroup([
+        ('audio-codec', 'flac'),
+        ('audio-codec-name', 'FLAC'),
+        ('audio-params', node),
+      ], state)!;
+      expect(state.audioParams.codec, 'flac');
+      expect(state.audioParams.codecName, 'FLAC');
+      expect(state.audioParams.sampleRate, 48000);
+
+      // The same values again: nothing changes, nothing emits.
+      expect(registry.dispatchGroup([('audio-codec', 'flac')], state), isNull);
+
+      state = registry.dispatchGroup([
+        ('audio-params', null),
+        ('audio-codec', null),
+        ('audio-codec-name', null),
+      ], state)!;
+      expect(state.audioParams, const AudioParams());
+
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      expect(seen, hasLength(2));
+      expect(seen.first.codec, 'flac');
+      expect(seen.first.sampleRate, 48000);
+      expect(seen.last, const AudioParams());
     });
 
     test('`audio-out-params` node populates state.audioOutParams', () {

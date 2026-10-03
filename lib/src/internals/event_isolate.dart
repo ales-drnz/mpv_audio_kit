@@ -40,6 +40,22 @@ const Set<String> _kClockThrottledProps = {
   'audio-pts',
 };
 
+/// The properties behind the one `audioParams` cell. mpv reports them one
+/// at a time, between other events, and the re-reads at FILE_LOADED and
+/// AUDIO_RECONFIG add more, so forwarded one by one a track change emitted
+/// up to six partial values. They are held together instead and cross as
+/// one [MpvEventPropertyGroup]: as soon as all of them changed (a file
+/// unloaded or loaded), before PLAYBACK_RESTART, or [_kGroupWindowMs] after
+/// the first one, for a change that touches only some of them.
+const Set<String> _kGroupedProps = {
+  'audio-params',
+  'audio-codec',
+  'audio-codec-name',
+};
+
+/// How long a held [_kGroupedProps] change waits for the rest of its group.
+const int _kGroupWindowMs = 33;
+
 /// `mpv_wait_event` timeout — a BOUNDED floor in every build.
 ///
 /// The Dart VM cannot interrupt an isolate parked in a blocking FFI call
@@ -342,6 +358,7 @@ void _dispatchEvent(
       // position back: drop it. The other clock values keep the newest one
       // mpv sent, which the seek may already have moved.
       cache.trailing.remove('time-pos');
+      _flushGroup(toMain, cache);
       toMain.send(
         MpvEventPlaybackRestart(
           timePos: _getPropDouble(lib, handle, 'time-pos'),
@@ -532,14 +549,25 @@ class _PropertyCache {
   /// The newest value of each throttled property held back inside its
   /// window, sent when the window closes.
   final trailing = <String, double>{};
+
+  /// The held changes of [_kGroupedProps], the newest one per property.
+  final group = <String, MpvIsolateEvent>{};
+
+  /// When the first change in [group] was held.
+  int groupSince = 0;
 }
 
 /// The `mpv_wait_event` timeout: [_kWaitEventTimeoutSeconds], shortened to
 /// the end of the earliest throttle window while a value is held back.
 double _waitTimeoutSeconds(_PropertyCache cache) {
-  if (cache.trailing.isEmpty) return _kWaitEventTimeoutSeconds;
+  if (cache.trailing.isEmpty && cache.group.isEmpty) {
+    return _kWaitEventTimeoutSeconds;
+  }
   final now = _throttleClock.elapsedMilliseconds;
   var remaining = _kClockThrottleMs;
+  if (cache.group.isNotEmpty) {
+    remaining = cache.groupSince + _kGroupWindowMs - now;
+  }
   for (final name in cache.trailing.keys) {
     final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
     final left = last + _kClockThrottleMs - now;
@@ -553,10 +581,14 @@ double _waitTimeoutSeconds(_PropertyCache cache) {
 }
 
 /// Sends the held-back values whose throttle window has closed, so the
-/// last clock value before mpv goes quiet (a pause) still arrives.
+/// last clock value before mpv goes quiet (a pause) still arrives, and
+/// the held group once its window has closed.
 void _flushTrailing(SendPort toMain, _PropertyCache cache) {
-  if (cache.trailing.isEmpty) return;
+  if (cache.trailing.isEmpty && cache.group.isEmpty) return;
   final now = _throttleClock.elapsedMilliseconds;
+  if (cache.group.isNotEmpty && now - cache.groupSince >= _kGroupWindowMs) {
+    _flushGroup(toMain, cache);
+  }
   for (final name in cache.trailing.keys.toList(growable: false)) {
     final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
     if (now - last < _kClockThrottleMs) continue;
@@ -640,7 +672,7 @@ void _forwardValue(
   }
   lastValues[name] = value;
 
-  toMain.send(switch (format) {
+  _sendProperty(toMain, cache, name, switch (format) {
     mpv.MpvFormat.mpvFormatDouble => MpvEventPropertyDouble(
       name,
       value as double,
@@ -666,7 +698,38 @@ void _forwardUnavailable(SendPort toMain, String name, _PropertyCache cache) {
   if (!cache.lastValues.containsKey(name)) return;
   cache.lastValues.remove(name);
   cache.unavailable.add(name);
-  toMain.send(MpvEventPropertyUnavailable(name));
+  _sendProperty(toMain, cache, name, MpvEventPropertyUnavailable(name));
+}
+
+/// Sends a property change, or holds it in the group when [name] is one of
+/// [_kGroupedProps].
+void _sendProperty(
+  SendPort toMain,
+  _PropertyCache cache,
+  String name,
+  MpvIsolateEvent event,
+) {
+  if (!_kGroupedProps.contains(name)) {
+    toMain.send(event);
+    return;
+  }
+  if (cache.group.isEmpty) {
+    cache.groupSince = _throttleClock.elapsedMilliseconds;
+  }
+  // Re-inserted, so the group keeps the order of the newest changes.
+  cache.group
+    ..remove(name)
+    ..[name] = event;
+  if (cache.group.length == _kGroupedProps.length) _flushGroup(toMain, cache);
+}
+
+/// Sends the held group changes as one [MpvEventPropertyGroup].
+void _flushGroup(SendPort toMain, _PropertyCache cache) {
+  if (cache.group.isEmpty) return;
+  toMain.send(
+    MpvEventPropertyGroup(cache.group.values.toList(growable: false)),
+  );
+  cache.group.clear();
 }
 
 /// Reads again every property mpv reported unavailable after it had a
