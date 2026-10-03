@@ -25,7 +25,7 @@ class PlayerConfiguration {
   /// Initial volume level (0–100). Default: `100`.
   final double initialVolume;
 
-  /// Threshold forwarded to the [Player.stream.log] stream.
+  /// Threshold forwarded to the [PlayerStream.log] stream.
   ///
   /// Default: [LogLevel.warn] — surfaces warnings, errors, fatals.
   final LogLevel logLevel;

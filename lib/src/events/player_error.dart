@@ -174,9 +174,10 @@ final class MpvFileEndedEvent {
 /// Whether the file ended naturally and not because of a stop, error, redirect,
 /// or shutdown.
 extension MpvFileEndedEventX on MpvFileEndedEvent {
-  /// `true` when [reason] is [MpvEndFileReason.eof] — note that mpv also
-  /// reports EOF on mid-stream network disconnects, so this is "natural end
-  /// from mpv's POV", not "track played to completion".
+  /// `true` when [reason] is [MpvEndFileReason.eof].
+  ///
+  /// mpv also reports EOF when a network stream drops, so this means the
+  /// demuxer ran out of data, not that the track played to completion.
   bool get reachedNaturalEnd => reason == MpvEndFileReason.eof;
 }
 

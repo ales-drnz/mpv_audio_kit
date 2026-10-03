@@ -436,8 +436,9 @@ class PlayerStream {
   /// Emits for **every** file-end event — clean completions, stops, errors,
   /// and premature EOFs alike.
   ///
-  /// Use [MpvFileEndedEvent.reachedNaturalEnd] to detect whether an EOF
-  /// was genuine or caused by a network disconnection.
+  /// [MpvFileEndedEventX.reachedNaturalEnd] is `true` for any EOF, and mpv
+  /// also reports EOF when a network stream drops. To tell the two apart,
+  /// compare [PlayerState.position] with [PlayerState.duration].
   final Stream<MpvFileEndedEvent> endFile;
 
   /// Emits typed error events from the mpv engine.
