@@ -112,6 +112,7 @@ await player.updateAudioEffects(
 
 `AudioEffectsX.active` is gone: every stage has a `filter` (its
 `AudioFilter`, `null` for a `RawAudioEffect`) and an `enabled` flag.
+The `AfCommand` record is no longer public.
 
 ## One family of exceptions
 
