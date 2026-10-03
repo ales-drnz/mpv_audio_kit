@@ -61,6 +61,10 @@ SAMPLE_VALUES = {
 # arnndn's required arg is a filesystem path, not an inline literal.
 ARNNDN_MODEL_FIXTURE = "arnndn_model.rnnn"
 
+# The audio the generated runtime tests loop, from the same script: stereo
+# at 48 kHz, which every whitelisted filter accepts.
+FILTER_TONE_FIXTURE = "sine_stereo_48k_5s.flac"
+
 # ── Advanced filters (dedicated detail pages in MPV Studio) ──────────────────
 # The required-param filters can't be safely bulk-enabled (a bare construction
 # fails to init in mpv), so in MPV Studio they get their own dedicated page —

@@ -27,3 +27,22 @@ Future<List<MpvLogEntry>> captureMpvErrors(
   }
   return errors;
 }
+
+/// The errors from making [effects] the whole chain, set a second time
+/// after a failure, from an empty chain and a short pause. Frames the
+/// previous chain left in flight can reach the new first filter in a format
+/// it does not take (`hdcd` wants integer samples, the earlier stage may
+/// have made them float), while a value the filter refuses fails twice.
+Future<List<MpvLogEntry>> captureChainErrors(
+  Player player,
+  List<AudioEffect> effects,
+) async {
+  final errors = await captureMpvErrors(
+    player,
+    () => player.setAudioEffects(effects),
+  );
+  if (errors.isEmpty) return errors;
+  await player.setAudioEffects(const []);
+  await Future<void>.delayed(const Duration(milliseconds: 300));
+  return captureMpvErrors(player, () => player.setAudioEffects(effects));
+}

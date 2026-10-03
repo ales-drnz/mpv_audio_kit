@@ -9,7 +9,13 @@
 #
 # Currently produces:
 #
-#   arnndn_model.rnnn  — a tiny RNNoise model for the `arnndn` filter.
+#   arnndn_model.rnnn     — a tiny RNNoise model for the `arnndn` filter.
+#   sine_stereo_48k_5s.flac — the audio the filter runtime tests loop. Every
+#                           whitelisted filter takes stereo at 48 kHz
+#                           (channelmap needs a second channel, hdcd 44.1 kHz
+#                           or more, mcompand a crossover under Nyquist),
+#                           and the loop keeps audio flowing through each
+#                           new chain, so every filter is really configured.
 #
 # Why this exists
 # ───────────────
@@ -124,10 +130,16 @@ zeros() {
   zeros 1; echo
 } >"$OUT"
 
-size="$(stat -f%z "$OUT" 2>/dev/null || stat -c%s "$OUT")"
+TONE="$HOST_DIR/sine_stereo_48k_5s.flac"
+ffmpeg -hide_banner -loglevel error -y \
+  -f lavfi -i "sine=frequency=440:duration=5:sample_rate=48000" \
+  -af "pan=stereo|c0=c0|c1=c0,volume=0.5" -c:a flac "$TONE"
+
+size_of() { stat -f%z "$1" 2>/dev/null || stat -c%s "$1"; }
 echo "Generating filter fixtures…"
 echo
-printf '  %-24s %6s bytes\n' "arnndn_model.rnnn" "$size"
+printf '  %-24s %6s bytes\n' "arnndn_model.rnnn" "$(size_of "$OUT")"
+printf '  %-24s %6s bytes\n' "sine_stereo_48k_5s.flac" "$(size_of "$TONE")"
 echo
 echo "Done. Written to:"
 echo "  $HOST_DIR"

@@ -25,8 +25,11 @@ import '../_helpers/setter_test_helpers.dart';
 import '../generated/audio_filter_names.dart';
 
 void main() {
+  // Stereo at 48 kHz, which every filter takes, looped and playing: each
+  // new chain gets audio, so each filter is really configured. A short
+  // paused file stops feeding the chain once its end has gone through.
   final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      '${Directory.current.path}/test/fixtures/sine_stereo_48k_5s.flac';
 
   // Filters that compile + register correctly in libavfilter and pass
   // mpv's 1-in/1-out gate, but require at least one option to be set
@@ -63,7 +66,8 @@ void main() {
         configuration: const PlayerConfiguration(logLevel: LogLevel.error),
       );
       await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
+      await player.setLoop(Loop.file);
+      await player.open(Media(fixturePath), play: true);
       // Wait for file-loaded so the audio chain is live; otherwise
       // setting `af` may be deferred and not surface load errors.
       await player.stream.seekCompleted.first.timeout(
@@ -82,9 +86,9 @@ void main() {
         if (requireParams.contains(name)) {
           continue;
         }
-        final errors = await captureMpvErrors(player, () async {
-          await player.setAudioEffects([RawAudioEffect('lavfi-$name')]);
-        });
+        final errors = await captureChainErrors(player, [
+          RawAudioEffect('lavfi-$name'),
+        ]);
         if (errors.isNotEmpty) {
           failures[name] = errors.map((e) => e.text.trim()).toList();
         }

@@ -35,8 +35,11 @@ import '../_helpers/mpv_error_capture.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
+  // Stereo at 48 kHz, which every filter takes, looped and playing: each
+  // new chain gets audio, so each filter is really configured. A short
+  // paused file stops feeding the chain once its end has gone through.
   final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      '${Directory.current.path}/test/fixtures/sine_stereo_48k_5s.flac';
 
   late Player player;
 
@@ -46,7 +49,8 @@ void main() {
         configuration: const PlayerConfiguration(logLevel: LogLevel.error),
       );
       await player.setRawProperty('ao', 'null');
-      await player.open(Media(fixturePath), play: false);
+      await player.setLoop(Loop.file);
+      await player.open(Media(fixturePath), play: true);
       await player.stream.seekCompleted.first.timeout(
         const Duration(seconds: 10),
       );
