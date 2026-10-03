@@ -520,6 +520,7 @@ class Player extends _PlayerBase
 ///   `metadata`, `audioDevices`, `bufferingPercentage`; pure events: log,
 ///   error, hook, end-of-file, seek-completed).
 abstract class _PlayerBase {
+  /// The configuration captured at construction time.
   final PlayerConfiguration configuration;
 
   late final MpvLibrary _lib;
@@ -697,7 +698,13 @@ abstract class _PlayerBase {
   // scan and polls only while `stream.loudnessScan` has a listener.
   late final LoudnessScanPipeline _loudnessScanPipeline;
 
+  /// Synchronous snapshot of the player's complete state. Updated on
+  /// every observed property change before the corresponding stream
+  /// emits.
   PlayerState get state => _state;
+
+  /// Typed event streams for individual state fields and transient
+  /// events.
   late final PlayerStream stream;
 
   /// Test-only; `null` outside [Player.testInstrumented].

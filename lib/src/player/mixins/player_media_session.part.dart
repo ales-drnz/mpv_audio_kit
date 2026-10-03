@@ -28,6 +28,10 @@ part of '../player.dart';
 /// loaded; otherwise they only emit on the consumer stream so the
 /// app's queue logic can react.
 mixin _MediaSessionModule on _PlayerBase {
+  /// Publishes the [Player] to the OS media session, or removes it when
+  /// [session] is `null`. Only one [Player] per process can have an
+  /// active session: a non-null [session] on a second [Player] throws
+  /// [StateError].
   Future<void> setMediaSession(MediaSession? session) async {
     _checkNotDisposed();
 
