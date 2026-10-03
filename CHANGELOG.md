@@ -36,6 +36,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - A numeric option value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001`.
 - The live loudness meter reads the first enabled `Ebur128Effect` with `metadata` on, so a disabled or silent first one no longer mutes it.
 - A setter emits the value it was given once: volume, gains and ReplayGain no longer come back rounded (`42.37` as `42.400001525878906`), and durations keep their microseconds. `setCache`, `setDemuxer`, `setReplayGain` and `setLoop` no longer emit a half-applied value.
+- `AiirChannelsX.withChannels` sets `format` to `tf` and `process` to direct, which its real coefficients need. With the defaults the filter refused the chain.
 - `AphaserEffect.delayMin`, `AresampleEffect.sampleRateMax` and `FirequalizerEffect.accuracyMin` are 0.1, 768000 and 3, values the filter accepts. ffmpeg declares wider ranges than it builds with.
 - `audioParams` emits once when a file unloads and once when the next one loads, with all its fields. mpv reports the codec and the format separately, which made a track change emit up to six partial values.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
