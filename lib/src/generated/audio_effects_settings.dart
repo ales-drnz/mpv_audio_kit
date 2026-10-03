@@ -5556,7 +5556,7 @@ final class ApadEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [decay]: Set decay. Default is 0.4. (range 0...99, default .4)
-/// - [delay]: Set delay in milliseconds. Default is 3.0. (range 0..5, default 3.)
+/// - [delay]: Set delay in milliseconds. Default is 3.0. (range 0.1..5, default 3.)
 /// - [inGain]: Set input gain. Default is 0.4. (range 0..1, default .4)
 /// - [outGain]: Set output gain. Default is 0.74 (range 0..1e9, default .74)
 /// - [speed]: Set modulation speed in Hz. Default is 0.5. (range .1..2, default .5)
@@ -5575,7 +5575,7 @@ final class AphaserEffect extends AudioEffect {
   static const double delayDefault = 3.0;
 
   /// Minimum value for [delay].
-  static const double delayMin = 0.0;
+  static const double delayMin = 0.1;
 
   /// Maximum value for [delay].
   static const double delayMax = 5.0;
@@ -5694,7 +5694,7 @@ final class AphaserEffect extends AudioEffect {
   String toFilterString() {
     assert(decay >= decayMin, 'aphaser.decay must be >= 0');
     assert(decay <= decayMax, 'aphaser.decay must be <= .99');
-    assert(delay >= delayMin, 'aphaser.delay must be >= 0');
+    assert(delay >= delayMin, 'aphaser.delay must be >= 0.1');
     assert(delay <= delayMax, 'aphaser.delay must be <= 5');
     assert(inGain >= inGainMin, 'aphaser.in_gain must be >= 0');
     assert(inGain <= inGainMax, 'aphaser.in_gain must be <= 1');
@@ -6365,7 +6365,7 @@ final class ApulsatorEffect extends AudioEffect {
 /// samples per second compensation:
 ///
 /// Parameters:
-/// - [sampleRate]:  (range 0..2147483647, default 0)
+/// - [sampleRate]:  (range 0..768000, default 0)
 final class AresampleEffect extends AudioEffect {
   /// Default value for [sampleRate].
   static const int sampleRateDefault = 0;
@@ -6374,7 +6374,7 @@ final class AresampleEffect extends AudioEffect {
   static const int sampleRateMin = 0;
 
   /// Maximum value for [sampleRate].
-  static const int sampleRateMax = 2147483647;
+  static const int sampleRateMax = 768000;
 
   /// Whether this effect is applied. `false` keeps it in the
   /// list, with its settings, without inserting it in the chain.
@@ -6422,7 +6422,7 @@ final class AresampleEffect extends AudioEffect {
     assert(sampleRate >= sampleRateMin, 'aresample.sample_rate must be >= 0');
     assert(
       sampleRate <= sampleRateMax,
-      'aresample.sample_rate must be <= 2147483647',
+      'aresample.sample_rate must be <= 768000',
     );
     final parts = <String>[];
     if (sampleRate != 0) parts.add('sample_rate=' + sampleRate.toString());
@@ -11246,7 +11246,7 @@ final class ExtrastereoEffect extends AudioEffect {
 /// The filter accepts the following option:
 ///
 /// Parameters:
-/// - [accuracy]: Set filter accuracy in Hz. Lower value means more accurate. Default is `5`. (range 0.0..1e10, default 5.0)
+/// - [accuracy]: Set filter accuracy in Hz. Lower value means more accurate. Default is `5`. (range 3..1e10, default 5.0)
 /// - [delay]: Set filter delay in seconds. Higher value means more accurate. Default is `0.01`. (range 0.0..1e10, default 0.01)
 /// - [dumpfile]: Set file for dumping, suitable for gnuplot. (range 0..0, default "")
 /// - [dumpscale]: Set scale for dumpfile. Acceptable values are same with scale option. Default is linlog. (range 0..3, default SCALE_LINLOG)
@@ -11264,7 +11264,7 @@ final class FirequalizerEffect extends AudioEffect {
   static const double accuracyDefault = 5.0;
 
   /// Minimum value for [accuracy].
-  static const double accuracyMin = 0.0;
+  static const double accuracyMin = 3.0;
 
   /// Maximum value for [accuracy].
   static const double accuracyMax = 1e10;
@@ -11426,7 +11426,7 @@ final class FirequalizerEffect extends AudioEffect {
   /// Only non-default parameters are emitted.
   @override
   String toFilterString() {
-    assert(accuracy >= accuracyMin, 'firequalizer.accuracy must be >= 0.0');
+    assert(accuracy >= accuracyMin, 'firequalizer.accuracy must be >= 3');
     assert(accuracy <= accuracyMax, 'firequalizer.accuracy must be <= 1e10');
     assert(delay >= delayMin, 'firequalizer.delay must be >= 0.0');
     assert(delay <= delayMax, 'firequalizer.delay must be <= 1e10');

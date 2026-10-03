@@ -123,3 +123,29 @@ def required_for(filter_name):
     """Returns the set of canonical ffmpeg option names that are mandatory
     for `filter_name` (empty set if the filter has no required params)."""
     return set(REQUIRED_PARAMS.get(filter_name, []))
+
+
+# ── Effective ranges ─────────────────────────────────────────────────────────
+# AVOption ranges ffmpeg only enforces in part when it builds the filter: a
+# value inside the declared range can still fail to configure. These bounds
+# replace the declared ones, so the exported Min and Max constants are
+# values the filter accepts.
+EFFECTIVE_RANGES = {
+    # af_aphaser.c config_output: the delay must round to at least one
+    # sample (delay * rate / 1000 >= 0.5); 0.1 ms holds from 5 kHz up.
+    "aphaser": {"delay": {"min": "0.1"}},
+    # af_aresample.c: swresample fails to start at the declared INT_MAX;
+    # 768 kHz is the highest audio rate in use.
+    "aresample": {"sample_rate": {"max": "768000"}},
+    # af_firequalizer.c config_input: the rate must not exceed
+    # accuracy * 2^16; 3 holds up to 196 kHz (the default 5, to 327 kHz).
+    "firequalizer": {"accuracy": {"min": "3"}},
+}
+
+
+def apply_effective_ranges(schema: dict) -> None:
+    """Narrows the declared ranges in [schema] to [EFFECTIVE_RANGES]."""
+    for fname, params in EFFECTIVE_RANGES.items():
+        declared = schema["filters"][fname]["params"]
+        for pname, bounds in params.items():
+            declared[pname].update(bounds)

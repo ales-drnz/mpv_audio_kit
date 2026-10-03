@@ -53,6 +53,7 @@ from pathlib import Path
 from typing import Optional
 
 from .config import Config, resolve_whitelist
+from .required_params import apply_effective_ranges
 
 # AVOption types we know how to emit. Anything else → param skipped.
 #
@@ -1353,6 +1354,7 @@ def run(config: Config) -> int:
         print(f"Loaded texi docs for {len(texi)} sections", file=sys.stderr)
     schema = assemble_schema(filters, whitelist, version)
     merge_texi_into_schema(schema, texi)
+    apply_effective_ranges(schema)
     out = config.output.schema
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n")
