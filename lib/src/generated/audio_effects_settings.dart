@@ -5860,8 +5860,8 @@ final class AphaseshiftEffect extends AudioEffect {
 /// - [diff]: Output only difference samples, useful to hear introduced distortions. By default is disabled. (range 0..1, default 0, runtime-tunable)
 /// - [iterations]: Set number of iterations of psychoacoustic clipper. Allowed range is from 1 to 20. Default value is 10. (range 1..20, default 10, runtime-tunable)
 /// - [level]: Auto level output signal. Default is disabled. This normalizes audio back to 0dBFS if enabled. (range 0..1, default 0, runtime-tunable)
-/// - [levelIn]: Set input gain. By default it is 1. Range is [0.015625 - 64]. (range .015625..64, default 1, runtime-tunable)
-/// - [levelOut]: Set output gain. By default it is 1. Range is [0.015625 - 64]. (range .015625..64, default 1, runtime-tunable)
+/// - [levelIn]: Set input gain. By default it is 1. Range is \[0.015625 - 64\]. (range .015625..64, default 1, runtime-tunable)
+/// - [levelOut]: Set output gain. By default it is 1. Range is \[0.015625 - 64\]. (range .015625..64, default 1, runtime-tunable)
 final class ApsyclipEffect extends AudioEffect {
   /// Default value for [adaptive].
   static const double adaptiveDefault = 0.5;
@@ -6082,16 +6082,16 @@ final class ApsyclipEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [amount]: Set modulation. Define how much of original signal is affected by the LFO. (range 0..1, default 1)
-/// - [bpm]: Set bpm. Default is 120. Allowed range is [30 - 300]. Only used if timing is set to bpm. (range 30..300, default 120)
-/// - [hz]: Set frequency in Hz. Default is 2. Allowed range is [0.01 - 100]. Only used if timing is set to hz. (range 0.01..100, default 2)
-/// - [levelIn]: Set input gain. By default it is 1. Range is [0.015625 - 64]. (range 0.015625..64, default 1)
-/// - [levelOut]: Set output gain. By default it is 1. Range is [0.015625 - 64]. (range 0.015625..64, default 1)
+/// - [bpm]: Set bpm. Default is 120. Allowed range is \[30 - 300\]. Only used if timing is set to bpm. (range 30..300, default 120)
+/// - [hz]: Set frequency in Hz. Default is 2. Allowed range is \[0.01 - 100\]. Only used if timing is set to hz. (range 0.01..100, default 2)
+/// - [levelIn]: Set input gain. By default it is 1. Range is \[0.015625 - 64\]. (range 0.015625..64, default 1)
+/// - [levelOut]: Set output gain. By default it is 1. Range is \[0.015625 - 64\]. (range 0.015625..64, default 1)
 /// - [mode]: Set waveform shape the LFO will use. Can be one of: sine, triangle, square, sawup or sawdown. Default is sine. (range 0..4, default SINE)
-/// - [ms]: Set ms. Default is 500. Allowed range is [10 - 2000]. Only used if timing is set to ms. (range 10..2000, default 500)
-/// - [offsetL]: Set left channel offset. Default is 0. Allowed range is [0 - 1]. (range 0..1, default 0)
-/// - [offsetR]: Set right channel offset. Default is 0.5. Allowed range is [0 - 1]. (range 0..1, default .5)
+/// - [ms]: Set ms. Default is 500. Allowed range is \[10 - 2000\]. Only used if timing is set to ms. (range 10..2000, default 500)
+/// - [offsetL]: Set left channel offset. Default is 0. Allowed range is \[0 - 1\]. (range 0..1, default 0)
+/// - [offsetR]: Set right channel offset. Default is 0.5. Allowed range is \[0 - 1\]. (range 0..1, default .5)
 /// - [timing]: Set possible timing mode. Can be one of: bpm, ms or hz. Default is hz. (range 0..2, default 2)
-/// - [width]: Set pulse width. Default is 1. Allowed range is [0 - 2]. (range 0..2, default 1)
+/// - [width]: Set pulse width. Default is 1. Allowed range is \[0 - 2\]. (range 0..2, default 1)
 final class ApulsatorEffect extends AudioEffect {
   /// Default value for [amount].
   static const double amountDefault = 1.0;
@@ -6353,7 +6353,7 @@ final class ApulsatorEffect extends AudioEffect {
 /// timestamps, do a combination of both or do neither.
 ///
 /// The filter accepts the syntax
-/// [`sample_rate`:]`resampler_options`, where `sample_rate`
+/// \[`sample_rate`:\]`resampler_options`, where `sample_rate`
 /// expresses a sample rate and `resampler_options` is a list of
 /// `key`=`value` pairs, separated by ":". See the
 /// Resampler Options
@@ -7618,7 +7618,7 @@ final class AsuperstopEffect extends AudioEffect {
 ///
 /// The filter accepts exactly one parameter, the audio tempo. If not
 /// specified then the filter will assume nominal 1.0 tempo. Tempo must
-/// be in the [0.5, 100.0] range.
+/// be in the \[0.5, 100.0\] range.
 ///
 /// Note that tempo greater than 2 will skip some samples rather than
 /// blend them in.  If for any reason this is a concern it is always
@@ -9857,7 +9857,7 @@ final class CrystalizerEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [limitergain]: Optional. It should have a value much less than 1 (e.g. 0.05 or 0.02) and is used to prevent clipping. (range 0..1, default 0)
-/// - [shift]: Set the DC shift, allowed range is [-1, 1]. It indicates the amount to shift the audio. (range -1..1, default 0)
+/// - [shift]: Set the DC shift, allowed range is \[-1, 1\]. It indicates the amount to shift the audio. (range -1..1, default 0)
 final class DcshiftEffect extends AudioEffect {
   /// Default value for [limitergain].
   static const double limitergainDefault = 0.0;
@@ -13463,7 +13463,7 @@ final class LowshelfEffect extends AudioEffect {
 /// It accepts the following parameters:
 ///
 /// Parameters:
-/// - [args]: This option syntax is: attack,decay,[attack,decay..] soft-knee points crossover_frequency [delay [initial_volume [gain]]] | attack,decay ... For explanation of each item refer to compand filter documentation. (range 0..0, default "0.005,0.1 6 -47/-40,-34/-34,-17/-33 100 | 0.003,0.05 6 -47/-40,-34/-34,-17/-33 400 | 0.000625,0.0125 6 -47/-40,-34/-34,-15/-33 1600 | 0.0001,0.025 6 -47/-40,-34/-34,-31/-31,-0/-30 6400 | 0,0.025 6 -38/-31,-28/-28,-0/-25 22000")
+/// - [args]: This option syntax is: attack,decay,\[attack,decay..\] soft-knee points crossover_frequency \[delay \[initial_volume \[gain\]\]\] | attack,decay ... For explanation of each item refer to compand filter documentation. (range 0..0, default "0.005,0.1 6 -47/-40,-34/-34,-17/-33 100 | 0.003,0.05 6 -47/-40,-34/-34,-17/-33 400 | 0.000625,0.0125 6 -47/-40,-34/-34,-15/-33 1600 | 0.0001,0.025 6 -47/-40,-34/-34,-31/-31,-0/-30 6400 | 0,0.025 6 -38/-31,-28/-28,-0/-25 22000")
 final class McompandEffect extends AudioEffect {
   /// Whether this effect is applied. `false` keeps it in the
   /// list, with its settings, without inserting it in the chain.

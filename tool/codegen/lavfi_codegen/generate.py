@@ -162,6 +162,21 @@ def _param_dart_name(name: str) -> str:
     return dart
 
 
+_CODE_SPAN = re.compile(r"(`[^`]*`)")
+
+
+def _doc_text(text: str) -> str:
+    """Escapes square brackets in FFmpeg prose outside code spans.
+
+    dartdoc reads `[x]` as a reference, so ranges such as `[0 - 1]` and
+    option grammars such as `[delay [gain]]` would become broken links.
+    """
+    parts = _CODE_SPAN.split(text)
+    for i in range(0, len(parts), 2):
+        parts[i] = parts[i].replace("[", r"\[").replace("]", r"\]")
+    return "".join(parts)
+
+
 _SPECIAL_CHAR_MAP = {
     ">": "_to_",
     "+": "_plus_",
@@ -697,7 +712,7 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     if description:
         lines.append("///")
         for dl in description.splitlines():
-            stripped = dl.rstrip()
+            stripped = _doc_text(dl.rstrip())
             lines.append(f"/// {stripped}" if stripped else "///")
     if params:
         lines.append("///")
@@ -725,7 +740,9 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
             if p.get("deprecated"):
                 extras.append("DEPRECATED")
             extra_str = f" ({', '.join(extras)})" if extras else ""
-            desc = (p.get("desc_long") or p.get("desc") or "").replace("\n", " ").strip()
+            desc = _doc_text(
+                (p.get("desc_long") or p.get("desc") or "").replace("\n", " ").strip()
+            )
             lines.append(f"/// - [{_param_dart_name(pname)}]: {desc}{extra_str}")
     if invalid:
         lines.append("///")
@@ -738,7 +755,9 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
             if p.get("default") is not None:
                 extras.append(f"default {p['default']}")
             extra_str = f" ({', '.join(extras)})" if extras else ""
-            desc = (p.get("desc_long") or p.get("desc") or "").replace("\n", " ").strip()
+            desc = _doc_text(
+                (p.get("desc_long") or p.get("desc") or "").replace("\n", " ").strip()
+            )
             lines.append(f"/// - `{pname}`: {desc}{extra_str}")
 
     lines.append(f"final class {cls} extends {_NAMING.bundle_name[:-1]} {{")
@@ -761,7 +780,9 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     # ffmpeg short description per Dart-cased field name, reused verbatim
     # as the field's doc comment so the public API is self-documenting.
     _field_desc = {
-        _param_dart_name(pn): (p.get("desc") or "").replace("\n", " ").strip()
+        _param_dart_name(pn): _doc_text(
+            (p.get("desc") or "").replace("\n", " ").strip()
+        )
         for pn, p in params.items()
     }
     for name, ftype, _, _ in fields:

@@ -830,8 +830,8 @@ extension AdelayChannelsX on AdelayEffect {
 /// string with a positional grammar
 /// (`attack,decay knee points crossover [delay [init_vol [gain]]]`,
 /// bands joined by `|`). `McompandBandsX` hides that grammar — read
-/// [McompandEffect.bands] for the typed view, write back via
-/// [McompandEffect.withBands].
+/// [McompandBandsX.bands] for the typed view, write back via
+/// [McompandBandsX.withBands].
 final class McompandBand {
   /// dB. Where compression starts. Negative.
   final double thresholdDb;
