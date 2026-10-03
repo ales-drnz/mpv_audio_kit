@@ -214,10 +214,15 @@ void main() {
           .timeout(const Duration(seconds: 5));
       await pumpUntil((s) => s['playbackState'] == 'playing');
 
+      // seekCompleted is an event stream: subscribed before the seek, it
+      // fires for this seek only. A position wait could be met by the
+      // playback alone on a slow device.
+      final landed = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 5),
+      );
       await player.seek(const Duration(milliseconds: 1500));
-      await player.stream.position
-          .firstWhere((p) => p.inMilliseconds >= 1400)
-          .timeout(const Duration(seconds: 5));
+      await landed;
+      expect(player.state.position.inMilliseconds, greaterThanOrEqualTo(1400));
 
       // The settled OS state: elapsed moved to ~1.5s, and the play
       // state stayed playing — i.e. mpv's transient pause during the
@@ -384,10 +389,15 @@ void main() {
         reader: readMediaSession,
       );
 
+      // seekCompleted is an event stream: subscribed before the seek, it
+      // fires for this seek only. A position wait could be met by the
+      // playback alone on a slow device.
+      final landed = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 5),
+      );
       await player.seek(const Duration(milliseconds: 1500));
-      await player.stream.position
-          .firstWhere((p) => p.inMilliseconds >= 1400)
-          .timeout(const Duration(seconds: 5));
+      await landed;
+      expect(player.state.position.inMilliseconds, greaterThanOrEqualTo(1400));
 
       // The settled session: position moved to ~1.5s and the play state
       // stayed playing — mpv's transient seek-pause did NOT leak (intent axis).
