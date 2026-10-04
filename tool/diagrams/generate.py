@@ -1,10 +1,11 @@
-"""Generates the README diagrams in imgs/diagrams, as PNG only.
+"""Generates the package icon (imgs/mpv_audio_kit.png) and the README
+diagrams in imgs/diagrams, as PNG only.
 
-Library nodes use the icon's navy plate gradient and your code's nodes the
-cyan-to-white bars gradient. The PNGs are transparent, so they sit on the
-page's own ground: text inside a node relies on the node's fill, and the
-free text, arrows and bands use mid tones that read on white and on
-GitHub's dark ground alike. The SVGs are drawn in a temporary directory and
+The branding is two flat colors: the icon's navy plate and light blue bars.
+Library nodes take the navy and your code's nodes the light blue. The
+PNGs are transparent, so they sit on the page's own ground: text inside a
+node relies on the node's fill, and the free text, arrows and bands use mid
+tones that read on white and on GitHub's dark ground alike. The SVGs are drawn in a temporary directory and
 exported at 2x with rsvg-convert.
 
 Run from the repository root: python3 tool/diagrams/generate.py
@@ -12,6 +13,9 @@ Run from the repository root: python3 tool/diagrams/generate.py
 import os, subprocess, tempfile
 
 OUT = os.path.join('imgs', 'diagrams')
+ICON = os.path.join('imgs', 'mpv_audio_kit.png')
+NAVY = '#0D2A75'
+LIGHT_BLUE = '#A8EDFA'
 SANS = "Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif"
 MONO = "Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
 
@@ -39,21 +43,19 @@ class D:
     def svg(self):
         c = self.c
         defs = f'''<defs>
-<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#123A9C"/><stop offset="1" stop-color="#081A4D"/></linearGradient>
-<linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#5CE1F7"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
-{''.join(f'<marker id="m{n}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{col}"/></marker>' for n, col in (('main', c['main']), ('sec', c['line']), ('fail', c['fail'])))}
+{''.join(f'<marker id="m{n}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{col}"/></marker>' for n, col in (('main', c['main']), ('sec', c['line']), ('fail', c['fail'])))}
 </defs>'''
         return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" width="{self.w}" height="{self.h}" '
                 f'role="img" aria-label="{esc(self.label)}">\n{defs}\n' + '\n'.join(self.body) + '\n</svg>\n')
 
-    # role: lib (navy plate), app (cyan bars), neutral, fail, ghost (dimmed text)
+    # role: lib (navy), app (cyan), neutral, fail, ghost (dimmed text)
     def node(self, x, y, w, h, title, sub=None, role='lib', mono=True, r=None, sub2=None, size=15):
         c = self.c
-        r = h / 2 if r is None else r
+        r = 10 if r is None else r
         if role == 'lib':
-            fill, tc, sc, op = 'url(#plate)', '#FFFFFF', '#C9DBFF', 1
+            fill, tc, sc, op = NAVY, '#FFFFFF', '#C9DBFF', 1
         elif role == 'app':
-            fill, tc, sc, op = 'url(#bars)', '#0B2A7A', '#2A4A8F', 1
+            fill, tc, sc, op = LIGHT_BLUE, NAVY, '#1D3F7E', 1
         elif role == 'fail':
             fill, tc, sc, op = c['failSoft'], '#B42318', '#59636E', 1
         elif role == 'ghost':
@@ -109,39 +111,39 @@ def architecture(t):
 
 
 def lifecycle(t):
-    d = D('player_lifecycle', 1000, 150, t, 'Player lifecycle')
+    d = D('player_lifecycle', 1150, 150, t, 'Player lifecycle')
     steps = [('ensureInitialized()', 'once, at app start', 'lib'), ('Player()', 'one per session', 'lib'),
              ('open()', 'or openAll()', 'app'), ('stream and setters', 'listen and control', 'app'),
              ('dispose()', 'releases libmpv', 'lib')]
     for i, (a, b, role) in enumerate(steps):
-        x = 105 + i * 197
-        d.node(x, 75, 180, 64, a, b, role=role, size=14)
+        x = 115 + i * 230
+        d.node(x, 75, 190, 64, a, b, role=role, size=14)
         if i:
-            d.arrow(f'M{x - 197 + 91},75 L{x - 93},75')
+            d.arrow(f'M{x - 230 + 95},75 L{x - 97},75')
     return d
 
 
 def effects(t):
-    d = D('effects_chain', 920, 340, t, 'Effects chain with taps')
+    d = D('effects_chain', 1000, 340, t, 'Effects chain with taps')
     d.node(80, 125, 120, 60, 'Decoder', role='neutral', mono=False)
-    d.band(170, 55, 560, 120, 'setAudioEffects([...]), in list order')
+    d.band(175, 55, 600, 120, 'setAudioEffects([...]), in list order')
     stages = [('EqualizerEffect', 'lib'), ('AcompressorEffect', 'lib'), ('RawAudioEffect', 'app')]
-    xs = [270, 455, 640]
+    xs = [275, 485, 695]
     for (n, role), x in zip(stages, xs):
         d.node(x, 125, 150, 50, n, role=role, size=13)
-    d.arrow('M140,125 L193,125')
-    d.arrow('M345,125 L378,125'); d.arrow('M530,125 L563,125')
-    d.node(835, 125, 150, 60, 'Volume', 'then the driver', role='neutral', mono=False)
-    d.arrow('M715,125 L758,125')
+    d.arrow('M140,125 L198,125')
+    d.arrow('M350,125 L408,125'); d.arrow('M560,125 L618,125')
+    d.node(905, 125, 150, 60, 'Volume', 'then the driver', role='neutral', mono=False)
+    d.arrow('M770,125 L828,125')
     # taps: pre on the way into the equalizer, post on the way out
-    for x in (163, 358):
+    for x in (165, 375):
         d.add(f'<circle cx="{x}" cy="125" r="4.5" fill="{d.c["main"]}"/>')
         d.arrow(f'M{x},130 L{x},222', kind='sec')
-    d.node(163, 245, 100, 40, 'pre', role='app', size=13); d.node(358, 245, 100, 40, 'post', role='app', size=13)
-    d.text(163, 296, 'stream.tap(AudioFilter.equalizer, side: ...)', anchor='start', size=12, mono=True, color='label')
-    d.text(163, 316, 'instance counts repeats of the same filter', anchor='start', size=12)
-    d.arrow('M835,157 L835,222', kind='sec')
-    d.node(835, 245, 150, 40, 'fft and pcm', role='app', size=13)
+    d.node(165, 245, 100, 40, 'pre', role='app', size=13); d.node(375, 245, 100, 40, 'post', role='app', size=13)
+    d.text(165, 296, 'stream.tap(AudioFilter.equalizer, side: ...)', anchor='start', size=12, mono=True, color='label')
+    d.text(165, 316, 'instance counts repeats of the same filter', anchor='start', size=12)
+    d.arrow('M905,157 L905,222', kind='sec')
+    d.node(905, 245, 150, 40, 'fft and pcm', role='app', size=13)
     return d
 
 
@@ -227,8 +229,8 @@ def hook(t):
              (150, 450, 320, 'continueHook(event.id)', 'main'), (450, 750, 360, 'mpv opens the stream', 'sec')]
     for a, b, y, label, kind in steps:
         if a == b:
-            d.arrow(f'M{a},{y - 8} L{a + 45},{y - 8} L{a + 45},{y + 12} L{a + 6},{y + 12}', kind=kind)
-            d.text(a + 70, y + 6, label, anchor='start', mono=True, color='label', size=12)
+            d.arrow(f'M{a},{y - 12} L{a + 60},{y - 12} L{a + 60},{y + 16} L{a + 4},{y + 16}', kind=kind)
+            d.text(a + 80, y + 6, label, anchor='start', mono=True, color='label', size=12)
         else:
             d.arrow(f'M{a},{y} L{b + (8 if b < a else -8)},{y}', kind=kind)
             d.text((a + b) / 2, y - 9, label, mono='(' in label or '.' in label, color='label', size=12)
@@ -239,14 +241,14 @@ def resolver(t):
     d = D('source_resolver', 900, 330, t, 'Source resolver: on_load and one retry')
     d.node(110, 70, 170, 56, 'on_load', 'before each open', role='lib')
     d.node(360, 70, 220, 56, 'your resolver', 'request.media, extras', role='app')
-    d.node(640, 70, 220, 56, 'mpv opens', 'the returned URL', role='lib', mono=False)
-    d.arrow('M195,70 L248,70'); d.arrow('M470,70 L528,70'); d.text(499, 58, 'URL or null', size=11)
-    d.node(640, 190, 220, 56, 'on_load_fail', 'the open failed', role='fail')
-    d.arrow('M640,98 L640,160', kind='fail')
+    d.node(690, 70, 220, 56, 'mpv opens', 'the returned URL', role='lib', mono=False)
+    d.arrow('M195,70 L248,70'); d.arrow('M470,70 L578,70'); d.text(524, 58, 'URL or null', size=11)
+    d.node(690, 190, 220, 56, 'on_load_fail', 'the open failed', role='fail')
+    d.arrow('M690,98 L690,160', kind='fail')
     d.node(360, 190, 220, 56, 'your resolver', 'request.isRetry is true', role='app')
-    d.arrow('M530,190 L472,190', kind='sec')
+    d.arrow('M580,190 L472,190', kind='sec')
     d.arrow('M360,162 L360,100', kind='main'); d.text(368, 135, 'new URL: one retry', anchor='start', size=11)
-    d.node(360, 290, 220, 44, 'error', 'same URL or null', role='fail', r=22)
+    d.node(360, 290, 220, 44, 'error', 'same URL or null', role='fail')
     d.arrow('M360,218 L360,266', kind='fail')
     d.node(110, 190, 170, 56, 'Hook.load', 'your hook, if any', role='ghost')
     d.arrow('M110,98 L110,160', kind='sec', dash=True); d.text(118, 135, 'runs after', anchor='start', size=11)
@@ -254,19 +256,19 @@ def resolver(t):
 
 
 def spectrum(t):
-    d = D('spectrum_pipeline', 900, 260, t, 'Spectrum pipeline')
+    d = D('spectrum_pipeline', 940, 260, t, 'Spectrum pipeline')
     d.node(95, 80, 150, 64, 'Audio output', 'after the chain', role='neutral', mono=False)
-    d.node(270, 80, 140, 64, 'Window', 'hann by default', role='lib', mono=False)
-    d.node(430, 80, 130, 64, 'FFT', 'fftSize', role='lib', mono=False)
-    d.node(595, 80, 150, 64, 'Log bands', 'bandCount', role='lib', mono=False)
-    d.node(770, 80, 150, 64, 'Smoothing', 'attack, release', role='lib', mono=False)
-    for a, b in ((170, 200), (340, 365), (495, 520), (670, 695)):
+    d.node(285, 80, 140, 64, 'Window', 'hann by default', role='lib', mono=False)
+    d.node(465, 80, 130, 64, 'FFT', 'fftSize', role='lib', mono=False)
+    d.node(650, 80, 150, 64, 'Log bands', 'bandCount', role='lib', mono=False)
+    d.node(845, 80, 150, 64, 'Smoothing', 'attack, release', role='lib', mono=False)
+    for a, b in ((170, 215), (355, 400), (530, 575), (725, 770)):
         d.arrow(f'M{a},80 L{b - 2},80')
-    d.node(770, 200, 190, 56, 'stream.fft', 'FftFrame: bands, bins', role='app', size=14)
-    d.arrow('M770,112 L770,170')
+    d.node(845, 200, 190, 56, 'stream.fft', 'FftFrame: bands, bins', role='app', size=14)
+    d.arrow('M845,112 L845,170')
     d.node(95, 200, 170, 56, 'stream.pcm', 'PcmFrame: samples', role='app', size=14)
     d.arrow('M95,112 L95,170', kind='sec')
-    d.text(430, 205, 'every emitInterval, 33 ms by default', size=12)
+    d.text(470, 205, 'every emitInterval, 33 ms by default', size=12)
     return d
 
 
@@ -288,6 +290,17 @@ def media(t):
     return d
 
 
+def icon_svg():
+    """The package icon: nine rounded bars, symmetric around the tallest,
+    on a rounded plate."""
+    bars = ''.join(
+        f'<rect x="{116 + 93 * i}" y="{512 - h / 2}" width="48" height="{h}" rx="24" fill="{LIGHT_BLUE}"/>'
+        for i, h in enumerate((120, 220, 420, 300, 700, 300, 420, 220, 120)))
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" '
+            'role="img" aria-label="mpv_audio_kit">\n'
+            f'<rect x="24" y="24" width="976" height="976" rx="230" fill="{NAVY}"/>\n{bars}\n</svg>\n')
+
+
 ALL = [architecture, lifecycle, effects, timeline, prefetch, cover, errors, hook, resolver, spectrum, media]
 os.makedirs(OUT, exist_ok=True)
 with tempfile.TemporaryDirectory() as tmp:
@@ -298,4 +311,8 @@ with tempfile.TemporaryDirectory() as tmp:
             fh.write(d.svg())
         png = os.path.join(OUT, f'{d.name}.png')
         subprocess.run(['rsvg-convert', '-z', '2', svg, '-o', png], check=True)
-print(len(ALL), 'diagrams written to', OUT)
+    svg = os.path.join(tmp, 'icon.svg')
+    with open(svg, 'w') as fh:
+        fh.write(icon_svg())
+    subprocess.run(['rsvg-convert', svg, '-o', ICON], check=True)
+print('Icon written to', ICON, 'and', len(ALL), 'diagrams to', OUT)
