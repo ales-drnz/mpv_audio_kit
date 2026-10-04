@@ -2710,9 +2710,9 @@ Network sources need:
 
 The package's own manifest declares `FOREGROUND_SERVICE`,
 `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and `POST_NOTIFICATIONS` for the
-[media session](#14-os-media-session). On Android 13 and later, request
-`POST_NOTIFICATIONS` at runtime too, for example with `permission_handler`:
-without it the media notification does not show in the notification shade.
+[media session](#14-os-media-session). The app does not need to request
+`POST_NOTIFICATIONS` at runtime: Android 13 and later exempt media session
+notifications, so the media controls show without it.
 
 ### iOS
 
