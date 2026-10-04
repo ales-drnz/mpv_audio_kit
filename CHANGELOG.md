@@ -6,6 +6,7 @@
 ### Fixed
 - On an auto-advance, `state.playlist` and `state.path` name the new track before its cover, waveform reset and first envelope arrive. With prefetch on they often still named the previous one.
 - Windows: the plugin builds with Visual Studio 2026.
+- Android: next and previous from the media keys, Bluetooth and the notification reach the player. The session offered only the media item form of these commands, and Media3 dropped the ones the buttons send.
 
 ## [0.4.8] - 24-09-2026
 

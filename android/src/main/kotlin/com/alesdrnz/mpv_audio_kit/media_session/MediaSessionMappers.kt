@@ -68,8 +68,18 @@ internal object MediaSessionMappers {
             b.add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
             b.add(Player.COMMAND_SEEK_TO_DEFAULT_POSITION)
         }
-        if ("next" in actions) b.add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-        if ("previous" in actions) b.add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+        // Both forms: media keys and the notification buttons call
+        // seekToNext() / seekToPrevious(), which SimpleBasePlayer drops
+        // unless COMMAND_SEEK_TO_NEXT / COMMAND_SEEK_TO_PREVIOUS is
+        // available, while controllers may use the MEDIA_ITEM forms.
+        if ("next" in actions) {
+            b.add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            b.add(Player.COMMAND_SEEK_TO_NEXT)
+        }
+        if ("previous" in actions) {
+            b.add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            b.add(Player.COMMAND_SEEK_TO_PREVIOUS)
+        }
         if ("fastForward" in actions) b.add(Player.COMMAND_SEEK_FORWARD)
         if ("rewind" in actions) b.add(Player.COMMAND_SEEK_BACK)
         if ("setRepeatMode" in actions) b.add(Player.COMMAND_SET_REPEAT_MODE)
