@@ -1,3 +1,11 @@
+## [0.4.9] - unreleased
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): reported that on an auto-advance the cover and waveform of the next track arrived before `state.playlist` moved to it ([#21](https://github.com/ales-drnz/mpv_audio_kit/issues/21)), and that the waveform analyzer downloaded a remote file a second time ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)).
+
+### Fixed
+- On an auto-advance, `state.playlist` and `state.path` name the new track before its cover, waveform reset and first envelope arrive. With prefetch on they often still named the previous one.
+
 ## [0.4.8] - 24-09-2026
 
 ### Contributions

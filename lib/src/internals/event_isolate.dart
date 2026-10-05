@@ -332,11 +332,11 @@ void _dispatchEvent(
   }
 }
 
-/// Reads the file-load payload (path, position, chapters, embedded cover)
-/// for [MpvEventFileLoaded]. A malformed / oversized embedded picture must
-/// not abort the rest of the payload, so the cover read is guarded on its
-/// own — the event then carries a `null` cover and consumers clear stale
-/// artwork.
+/// Reads the file-load payload (path, playlist, position, chapters,
+/// embedded cover) for [MpvEventFileLoaded]. A malformed / oversized
+/// embedded picture must not abort the rest of the payload, so the cover
+/// read is guarded on its own — the event then carries a `null` cover and
+/// consumers clear stale artwork.
 MpvEventFileLoaded _readFileLoadedEvent(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
@@ -354,6 +354,7 @@ MpvEventFileLoaded _readFileLoadedEvent(
   }
   return MpvEventFileLoaded(
     path: _getPropString(lib, handle, 'path'),
+    playlist: _getPropNode(lib, handle, 'playlist'),
     timePos: _getPropDouble(lib, handle, 'time-pos'),
     chapterIndex: _getPropInt64(lib, handle, 'chapter'),
     chapterList: _getPropNode(lib, handle, 'chapter-list'),

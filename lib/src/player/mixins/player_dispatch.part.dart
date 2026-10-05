@@ -67,6 +67,7 @@ mixin _DispatchModule on _PlayerBase {
           _updateLifecycle(buffering: true, completed: false);
         case MpvEventFileLoaded(
             :final path,
+            :final playlist,
             :final timePos,
             :final chapterIndex,
             :final chapterList,
@@ -105,6 +106,12 @@ mixin _DispatchModule on _PlayerBase {
           if (chapterList != null) {
             _dispatchProperty('chapter-list', chapterList);
           }
+          // The new entry reaches the state snapshot before the cover,
+          // waveform and loudness resets below, so a listener pairing them
+          // with `state.playlist` or `state.path` sees the new track. The
+          // `playlist` and `path` streams still emit with the observed
+          // changes that follow this event, as before.
+          _applyLoadedEntry(path, playlist);
           // Emit unconditionally — `null` signals "no cover on the new
           // file" so subscribers can clear stale artwork on track changes.
           final cover = coverData == null
@@ -290,6 +297,26 @@ mixin _DispatchModule on _PlayerBase {
   }
 
   // --- Custom property handlers (JSON / derived) ---
+
+  /// Writes the FILE_LOADED entry into the state snapshot only. The
+  /// reactives keep the last observed values, so the observed `path` and
+  /// `playlist` changes that follow still emit on the streams.
+  void _applyLoadedEntry(String? path, dynamic playlistNode) {
+    Playlist? playlist;
+    if (playlistNode != null) {
+      try {
+        playlist = parsePlaylistNode(
+          raw: playlistNode,
+          mediaCache: _mediaCache,
+          previous: _state.playlist,
+        );
+      } catch (e) {
+        _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
+      }
+    }
+    if (path == null && playlist == null) return;
+    _state = _state.copyWith(path: path, playlist: playlist);
+  }
 
   void _updateLoopFromMpv(String name, String value) {
     final next = deriveLoop(name, value, _state.loop);
