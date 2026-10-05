@@ -35,7 +35,7 @@ import '../generated/_audio_effects_param_corners.dart';
 
 void main() {
   final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      '${Directory.current.path}/test/fixtures/sine_stereo_1s.flac';
 
   // Same set as in `audio_effects_chain_runtime_test.dart`: filters
   // that compile + register correctly but require additional context
@@ -74,6 +74,10 @@ void main() {
     // accepted; only the I64_MAX extreme blows up.
     'afade.start_sample=start_sampleMax',
     'afade.ss=ssMax',
+    // firequalizer: AVOption declares `delay` up to 1e10 s, but a kernel
+    // that long overflows to nan or infinity on macOS ("filter kernel
+    // contains nan or infinity"). Min / Default are accepted.
+    'firequalizer.delay=delayMax',
   };
 
   late Player player;
