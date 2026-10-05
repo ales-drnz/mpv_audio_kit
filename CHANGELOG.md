@@ -10,6 +10,7 @@
 - Android: a libmpv download that fails or does not match its checksum stops the build. Before, the app was built without libmpv and failed at its first `Player`.
 - iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.
 - `AphaserSettings.delayMin`, `AresampleSettings.sample_rateMax` and `FirequalizerSettings.accuracyMin` are 0.1, 768000 and 3, values the filter accepts. ffmpeg declares wider ranges than it builds with.
+- `AiirChannelsX.withChannels` sets `format` to `tf` and `process` to direct, which its real coefficients need. With the defaults the filter refused the chain.
 
 ## [0.4.8] - 24-09-2026
 

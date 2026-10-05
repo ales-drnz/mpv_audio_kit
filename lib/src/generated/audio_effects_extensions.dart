@@ -5,6 +5,7 @@
 //
 // AUTO-GENERATED — do not edit by hand.
 
+import 'audio_effects.dart';
 import 'audio_effects_settings.dart';
 
 // ── aecho ────────────────────────────────────────────────────────────────────
@@ -739,7 +740,12 @@ extension AiirChannelsX on AiirSettings {
     );
   }
 
-  /// Returns a copy whose three CSV strings reflect [channels].
+  /// Returns a copy whose three CSV strings reflect [channels]. While
+  /// [AiirSettings.format] and [AiirSettings.process] are at their defaults
+  /// (`zp` and serial), they become [AiirFormat.tf] and [AiirProcess.d]:
+  /// the coefficients are real, the numerator ([AiirChannel.zeros]) and
+  /// denominator ([AiirChannel.poles]) of a transfer function, which the
+  /// defaults do not read. A format or process set by hand is kept.
   AiirSettings withChannels(List<AiirChannel> channels) {
     if (channels.isEmpty) {
       return copyWith(gains: '', zeros: '', poles: '');
@@ -748,7 +754,11 @@ extension AiirChannelsX on AiirSettings {
         channels
             .map((c) => get(c).map((v) => v.toStringAsFixed(4)).join(inner))
             .join('|');
+    final defaultFormat = format == AiirFormat.zp && f == AiirFormat.zp;
+    final defaultProcess = process == AiirProcess.s && r == AiirProcess.s;
     return copyWith(
+      format: defaultFormat ? AiirFormat.tf : null,
+      process: defaultProcess ? AiirProcess.d : null,
       gains: channels.map((c) => c.gain.toStringAsFixed(4)).join('|'),
       zeros: join((c) => c.zeros, ' '),
       poles: join((c) => c.poles, ' '),
