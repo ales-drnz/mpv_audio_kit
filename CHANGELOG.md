@@ -12,6 +12,7 @@
 - `AphaserSettings.delayMin`, `AresampleSettings.sample_rateMax` and `FirequalizerSettings.accuracyMin` are 0.1, 768000 and 3, values the filter accepts. ffmpeg declares wider ranges than it builds with.
 - `AiirChannelsX.withChannels` sets `format` to `tf` and `process` to direct, which its real coefficients need. With the defaults the filter refused the chain.
 - A numeric effect value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001` and `0.0625` no longer becomes `0.063`.
+- The temp copy of an `asset://` source goes to a directory of the user and app, and is written aside and renamed, so another user or app sharing `/tmp` no longer collides with it and another instance never reads it half written.
 
 ## [0.4.8] - 24-09-2026
 
