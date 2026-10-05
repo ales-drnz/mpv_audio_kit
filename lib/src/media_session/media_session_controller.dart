@@ -79,6 +79,15 @@ class MediaSessionController {
   String? _fetchedArtUri;
   CoverArt? _fetchedArt;
   String? _pendingArtUri;
+  // Runs after a failed download and fetches the same URL again, so a
+  // server that was briefly down still gets a cover on this track. At most
+  // [_artworkAttempts] downloads per URL: a URL that keeps failing (a 404)
+  // is not fetched, credentials and all, forever.
+  Timer? _artRetry;
+  final Duration _artworkRetryAfter;
+  static const _artworkAttempts = 3;
+  String? _artAttemptsUri;
+  int _artAttempts = 0;
 
   MediaSessionController._({
     required PlayerState Function() stateSnapshot,
@@ -87,7 +96,9 @@ class MediaSessionController {
     void Function()? onAudioOutputReset,
     MediaSessionChannel? channel,
     ArtworkFetcher? artworkFetcher,
-  })  : _stateSnapshot = stateSnapshot,
+    Duration artworkRetryAfter = const Duration(seconds: 30),
+  })  : _artworkRetryAfter = artworkRetryAfter,
+        _stateSnapshot = stateSnapshot,
         _inputs = inputs,
         _onCommand = onCommand,
         _onAudioOutputReset = onAudioOutputReset,
@@ -115,6 +126,7 @@ class MediaSessionController {
     void Function()? onAudioOutputReset,
     @visibleForTesting MediaSessionChannel? channel,
     @visibleForTesting ArtworkFetcher? artworkFetcher,
+    @visibleForTesting Duration artworkRetryAfter = const Duration(seconds: 30),
   }) async {
     final c = MediaSessionController._(
       stateSnapshot: stateSnapshot,
@@ -124,6 +136,7 @@ class MediaSessionController {
       channel: channel,
       artworkFetcher: artworkFetcher ??
           (downloadsArtworkOn(defaultTargetPlatform) ? downloadArtwork : null),
+      artworkRetryAfter: artworkRetryAfter,
     );
     await c._wireUp();
     return c;
@@ -198,6 +211,7 @@ class MediaSessionController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _artRetry?.cancel();
 
     for (final s in _subscriptions) {
       await s.cancel();
@@ -383,11 +397,19 @@ class MediaSessionController {
 
   /// The downloaded cover for the remote artwork [uri], or `null` while the
   /// download is in flight or after it failed. Starts the download on first
-  /// sight of [uri]; its completion re-pushes metadata.
+  /// sight of [uri]; its completion re-pushes metadata. A failed download is
+  /// tried again after [_artworkRetryAfter], up to [_artworkAttempts] times
+  /// per URL.
   CoverArt? _downloadedArtwork(String uri) {
     if (uri == _fetchedArtUri) return _fetchedArt;
     if (uri != _pendingArtUri) {
       _pendingArtUri = uri;
+      _artRetry?.cancel();
+      if (uri != _artAttemptsUri) {
+        _artAttemptsUri = uri;
+        _artAttempts = 0;
+      }
+      _artAttempts++;
       unawaited(
         _artworkFetcher!(Uri.parse(uri))
             .catchError((Object _) => null)
@@ -396,6 +418,13 @@ class MediaSessionController {
           _pendingArtUri = null;
           _fetchedArtUri = uri;
           _fetchedArt = cover;
+          if (cover == null && _artAttempts < _artworkAttempts) {
+            _artRetry = Timer(_artworkRetryAfter, () {
+              // Forget the failure so the next push downloads again.
+              if (_fetchedArtUri == uri) _fetchedArtUri = null;
+              _markMetadata();
+            });
+          }
           _markMetadata();
         }),
       );

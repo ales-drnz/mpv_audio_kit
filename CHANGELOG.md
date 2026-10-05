@@ -16,6 +16,7 @@
 - `dispose()` refuses new calls from its start. With a media session it accepted them until the session was released.
 - `setLoop` from file to playlist no longer emits a passing `Loop.off`.
 - `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
+- Android, Windows and Linux: a remote cover that fails to download is tried again after 30 seconds, up to three times. Before, the track kept no cover until the next one.
 
 ## [0.4.8] - 24-09-2026
 
