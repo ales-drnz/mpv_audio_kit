@@ -41,9 +41,10 @@ bool _listEq<T>(List<T> a, List<T> b) {
 }
 
 /// Wire-format a double for the lavfi af-chain. Uses 3-decimal
-/// fixed-point for normal values; falls back to a 1-significant-
-/// figure exponential for tiny values that would otherwise round
-/// to `0.000` (e.g. `1e-6` for `asoftclip.threshold`'s minimum).
+/// fixed-point when that is exact, 6 decimals when it is not (so
+/// `0.0014` keeps its digits), and an exponential for tiny values
+/// that would otherwise round to `0.000` (e.g. `1e-6` for
+/// `asoftclip.threshold`'s minimum).
 /// `toStringAsExponential()` is deterministic across runtimes
 /// (Dart's `toString()` chooses between decimal and exponential
 /// based on magnitude and platform), and mpv's AVOption parser
@@ -52,7 +53,7 @@ String _wireDouble(double v) {
   final fixed = v.toStringAsFixed(3);
   if (v == 0 || double.parse(fixed) == v) return fixed;
   if (v.abs() < 0.001) return v.toStringAsExponential();
-  return fixed;
+  return v.toStringAsFixed(6);
 }
 
 /// Configuration for the `acompressor` audio effect.

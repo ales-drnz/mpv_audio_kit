@@ -59,6 +59,13 @@ void main() {
       expect(af, isNot(contains('attack')));
     });
 
+    test('a value three decimals cannot hold keeps six', () {
+      const fx = AudioEffects(
+        acompressor: AcompressorSettings(enabled: true, threshold: 0.0014),
+      );
+      expect(fx.toAfChain(), contains('threshold=0.001400'));
+    });
+
     test('loudnorm enabled with EBU R128 targets', () {
       // ffmpeg defaults: I=-24, TP=-2, LRA=7. We pick non-default values
       // so they all surface in the wire output.

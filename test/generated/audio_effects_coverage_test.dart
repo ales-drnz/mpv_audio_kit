@@ -3768,7 +3768,7 @@ void main() {
       test('param `limit` lands in wire when set to a non-default value', () {
         final s = const AlimiterSettings(enabled: true, limit: 0.0625);
         expect(s.toFilterString(), contains('limit='));
-        expect(s.toFilterString(), contains('limit=0.063'));
+        expect(s.toFilterString(), contains('limit=0.062500'));
       });
 
       test('param `release` lands in wire when set to a non-default value', () {
@@ -4759,7 +4759,7 @@ void main() {
       test('param `clip` lands in wire when set to a non-default value', () {
         final s = const ApsyclipSettings(enabled: true, clip: 0.015625);
         expect(s.toFilterString(), contains('clip='));
-        expect(s.toFilterString(), contains('clip=0.016'));
+        expect(s.toFilterString(), contains('clip=0.015625'));
       });
 
       test('param `diff` lands in wire when set to a non-default value', () {
