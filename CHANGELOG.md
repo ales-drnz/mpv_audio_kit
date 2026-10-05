@@ -14,6 +14,7 @@
 - A numeric effect value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001` and `0.0625` no longer becomes `0.063`.
 - The temp copy of an `asset://` source goes to a directory of the user and app, and is written aside and renamed, so another user or app sharing `/tmp` no longer collides with it and another instance never reads it half written.
 - `dispose()` refuses new calls from its start. With a media session it accepted them until the session was released.
+- `setLoop` from file to playlist no longer emits a passing `Loop.off`.
 
 ## [0.4.8] - 24-09-2026
 

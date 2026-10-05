@@ -220,15 +220,23 @@ mixin _PlaylistModule on _PlayerBase {
     String loopFile(Loop l) => l == Loop.file ? 'inf' : 'no';
     String loopPlaylist(Loop l) => l == Loop.playlist ? 'inf' : 'no';
     final previous = state.loop;
+    // Write the option that turns on first: going from file to playlist,
+    // `loop-file=no` first would echo a passing Loop.off.
+    final writes = [
+      ('loop-file', loopFile(loop), loopFile(previous)),
+      ('loop-playlist', loopPlaylist(loop), loopPlaylist(previous)),
+    ];
+    if (loop == Loop.playlist) writes.insert(0, writes.removeAt(1));
+    final done = <(String, String, String)>[];
     try {
-      await _prop('loop-file', loopFile(loop));
-      try {
-        await _prop('loop-playlist', loopPlaylist(loop));
-      } catch (_) {
-        await _propRc('loop-file', loopFile(previous));
-        rethrow;
+      for (final w in writes) {
+        await _prop(w.$1, w.$2);
+        done.add(w);
       }
     } catch (_) {
+      for (final (name, _, prior) in done.reversed) {
+        await _propRc(name, prior);
+      }
       rethrow;
     }
     // Optimistic update — `state.loop` reflects the requested mode
