@@ -9,6 +9,7 @@
 - Android: next and previous from the media keys, Bluetooth and the notification reach the player. The session offered only the media item form of these commands, and Media3 dropped the ones the buttons send.
 - Android: a libmpv download that fails or does not match its checksum stops the build. Before, the app was built without libmpv and failed at its first `Player`.
 - iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.
+- `AphaserSettings.delayMin`, `AresampleSettings.sample_rateMax` and `FirequalizerSettings.accuracyMin` are 0.1, 768000 and 3, values the filter accepts. ffmpeg declares wider ranges than it builds with.
 
 ## [0.4.8] - 24-09-2026
 

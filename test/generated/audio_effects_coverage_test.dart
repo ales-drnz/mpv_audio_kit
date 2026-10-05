@@ -5180,10 +5180,9 @@ void main() {
 
       test('param `sample_rate` lands in wire when set to a non-default value',
           () {
-        final s =
-            const AresampleSettings(enabled: true, sample_rate: 2147483647);
+        final s = const AresampleSettings(enabled: true, sample_rate: 768000);
         expect(s.toFilterString(), contains('sample_rate='));
-        expect(s.toFilterString(), contains('sample_rate=2147483647'));
+        expect(s.toFilterString(), contains('sample_rate=768000'));
       });
 
       test(

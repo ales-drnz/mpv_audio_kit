@@ -5977,7 +5977,7 @@ final class ApadSettings {
 ///
 /// Parameters:
 /// - [decay]: Set decay. Default is 0.4. (range 0...99, default .4)
-/// - [delay]: Set delay in milliseconds. Default is 3.0. (range 0..5, default 3.)
+/// - [delay]: Set delay in milliseconds. Default is 3.0. (range 0.1..5, default 3.)
 /// - [in_gain]: Set input gain. Default is 0.4. (range 0..1, default .4)
 /// - [out_gain]: Set output gain. Default is 0.74 (range 0..1e9, default .74)
 /// - [speed]: Set modulation speed in Hz. Default is 0.5. (range .1..2, default .5)
@@ -5996,7 +5996,7 @@ final class AphaserSettings {
   static const double delayDefault = 3.0;
 
   /// Minimum value for [delay].
-  static const double delayMin = 0.0;
+  static const double delayMin = 0.1;
 
   /// Maximum value for [delay].
   static const double delayMax = 5.0;
@@ -6108,7 +6108,7 @@ final class AphaserSettings {
   String toFilterString() {
     assert(decay >= decayMin, 'aphaser.decay must be >= 0');
     assert(decay <= decayMax, 'aphaser.decay must be <= .99');
-    assert(delay >= delayMin, 'aphaser.delay must be >= 0');
+    assert(delay >= delayMin, 'aphaser.delay must be >= 0.1');
     assert(delay <= delayMax, 'aphaser.delay must be <= 5');
     assert(in_gain >= in_gainMin, 'aphaser.in_gain must be >= 0');
     assert(in_gain <= in_gainMax, 'aphaser.in_gain must be <= 1');
@@ -6737,7 +6737,7 @@ final class ApulsatorSettings {
 /// samples per second compensation:
 ///
 /// Parameters:
-/// - [sample_rate]:  (range 0..2147483647, default 0)
+/// - [sample_rate]:  (range 0..768000, default 0)
 final class AresampleSettings {
   /// Default value for [sample_rate].
   static const int sample_rateDefault = 0;
@@ -6746,7 +6746,7 @@ final class AresampleSettings {
   static const int sample_rateMin = 0;
 
   /// Maximum value for [sample_rate].
-  static const int sample_rateMax = 2147483647;
+  static const int sample_rateMax = 768000;
 
   /// Whether this effect is inserted into the audio chain.
   final bool enabled;
@@ -6792,7 +6792,7 @@ final class AresampleSettings {
   String toFilterString() {
     assert(sample_rate >= sample_rateMin, 'aresample.sample_rate must be >= 0');
     assert(sample_rate <= sample_rateMax,
-        'aresample.sample_rate must be <= 2147483647',);
+        'aresample.sample_rate must be <= 768000',);
     final parts = <String>[];
     if (sample_rate != 0) parts.add('sample_rate=' + sample_rate.toString());
     return parts.isEmpty
@@ -12434,7 +12434,7 @@ final class ExtrastereoSettings {
 /// The filter accepts the following option:
 ///
 /// Parameters:
-/// - [accuracy]: Set filter accuracy in Hz. Lower value means more accurate. Default is `5`. (range 0.0..1e10, default 5.0)
+/// - [accuracy]: Set filter accuracy in Hz. Lower value means more accurate. Default is `5`. (range 3..1e10, default 5.0)
 /// - [delay]: Set filter delay in seconds. Higher value means more accurate. Default is `0.01`. (range 0.0..1e10, default 0.01)
 /// - [dumpfile]: Set file for dumping, suitable for gnuplot. (range 0..0, default "")
 /// - [dumpscale]: Set scale for dumpfile. Acceptable values are same with scale option. Default is linlog. (range 0..3, default SCALE_LINLOG)
@@ -12452,7 +12452,7 @@ final class FirequalizerSettings {
   static const double accuracyDefault = 5.0;
 
   /// Minimum value for [accuracy].
-  static const double accuracyMin = 0.0;
+  static const double accuracyMin = 3.0;
 
   /// Maximum value for [accuracy].
   static const double accuracyMax = 1e10;
@@ -12606,7 +12606,7 @@ final class FirequalizerSettings {
   /// Returns the audio chain entry for this effect.
   /// Only non-default parameters are emitted.
   String toFilterString() {
-    assert(accuracy >= accuracyMin, 'firequalizer.accuracy must be >= 0.0');
+    assert(accuracy >= accuracyMin, 'firequalizer.accuracy must be >= 3');
     assert(accuracy <= accuracyMax, 'firequalizer.accuracy must be <= 1e10');
     assert(delay >= delayMin, 'firequalizer.delay must be >= 0.0');
     assert(delay <= delayMax, 'firequalizer.delay must be <= 1e10');
