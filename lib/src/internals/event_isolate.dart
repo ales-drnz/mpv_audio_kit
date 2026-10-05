@@ -22,7 +22,9 @@ part 'isolate_messages.dart';
 /// measured ~11 Hz on macOS coreaudio (mpv 0.41), but AO-dependent and not
 /// guaranteed across platforms. ~33ms ≈ 30Hz is comfortably inside
 /// human-perception territory for a progress bar update and keeps the
-/// message bus uncluttered on outputs that tick faster.
+/// message bus uncluttered on outputs that tick faster. A value that falls
+/// inside the window is held and sent when it closes, so the last one
+/// before mpv goes quiet (a pause) is never lost.
 const int _kClockThrottleMs = 33;
 
 /// The properties the throttle applies to: every member is a pure function
@@ -126,6 +128,9 @@ void _isolateEntry(SendPort initialReplyPort) {
   // Per-isolate deduplication state — not shared across Player instances.
   final lastValues = <String, dynamic>{};
   final lastTimestamps = <String, int>{};
+  // The newest value of each throttled property held back inside its
+  // window, sent when the window closes.
+  final trailing = <String, double>{};
 
   fromMain.listen((message) {
     if (message is _InitMessage) {
@@ -179,6 +184,7 @@ void _isolateEntry(SendPort initialReplyPort) {
         stopFlag,
         lastValues,
         lastTimestamps,
+        trailing,
         wakeupCounter,
       );
       // Drop the last live ReceivePort so the VM tears the isolate
@@ -198,6 +204,7 @@ void _runEventLoop(
   Pointer<Int32> stopFlag,
   Map<String, dynamic> lastValues,
   Map<String, int> lastTimestamps,
+  Map<String, double> trailing,
   Pointer<Int64>? wakeupCounter,
 ) {
   while (stopFlag.value == 0) {
@@ -205,7 +212,10 @@ void _runEventLoop(
     if (wakeupCounter != null) {
       wakeupCounter.value = wakeupCounter.value + 1;
     }
-    final event = lib.mpvWaitEvent(handle, _kWaitEventTimeoutSeconds);
+    final event = lib.mpvWaitEvent(
+      handle,
+      _waitTimeoutSeconds(lastTimestamps, trailing),
+    );
 
     // Re-read the flag the instant the wait returns. `requestStop` sets the
     // flag THEN calls `mpv_wakeup`, so a wakeup-driven return lands here with
@@ -220,6 +230,7 @@ void _runEventLoop(
     // MPV_EVENT_NONE on a positive-timeout expiry, or on an `mpv_wakeup` with
     // no pending event — nothing to dispatch, loop and re-check the flag.
     if (id == mpv.MpvEventId.mpvEventNone) {
+      _flushTrailing(toMain, lastValues, lastTimestamps, trailing);
       continue;
     }
 
@@ -228,7 +239,16 @@ void _runEventLoop(
     // would silently terminate the worker and freeze every property stream
     // for the Player's lifetime while playback keeps running.
     try {
-      _dispatchEvent(lib, handle, toMain, event, lastValues, lastTimestamps);
+      _dispatchEvent(
+        lib,
+        handle,
+        toMain,
+        event,
+        lastValues,
+        lastTimestamps,
+        trailing,
+      );
+      _flushTrailing(toMain, lastValues, lastTimestamps, trailing);
     } catch (e, st) {
       toMain.send(MpvEventLog(
         'event-isolate',
@@ -250,6 +270,7 @@ void _dispatchEvent(
   Pointer<mpv.MpvEvent> event,
   Map<String, dynamic> lastValues,
   Map<String, int> lastTimestamps,
+  Map<String, double> trailing,
 ) {
   final id = event.ref.eventId;
   switch (id) {
@@ -257,6 +278,9 @@ void _dispatchEvent(
       toMain.send(MpvEventShutdown());
 
     case mpv.MpvEventId.mpvEventStartFile:
+      // A clock value held from the previous file must not land after the
+      // new one starts.
+      trailing.clear();
       toMain.send(MpvEventStartFile());
 
     case mpv.MpvEventId.mpvEventFileLoaded:
@@ -291,6 +315,7 @@ void _dispatchEvent(
         event.ref.data.cast<mpv.MpvEventProperty>().ref,
         lastValues,
         lastTimestamps,
+        trailing,
       );
 
     case mpv.MpvEventId.mpvEventSetPropertyReply:
@@ -323,7 +348,10 @@ void _dispatchEvent(
     case mpv.MpvEventId.mpvEventPlaybackRestart:
       // The landing position rides the event payload (read here, where
       // waiting on the core is harmless), so it reaches the stream before
-      // any throttled time-pos event from the property observer.
+      // any throttled time-pos event from the property observer. A clock
+      // value held from before the seek must not land after it and step
+      // the position, or percent-pos and the like, back.
+      trailing.clear();
       toMain.send(
         MpvEventPlaybackRestart(
           timePos: _getPropDouble(lib, handle, 'time-pos'),
@@ -488,6 +516,7 @@ void _dispatchProperty(
   mpv.MpvEventProperty prop,
   Map<String, dynamic> lastValues,
   Map<String, int> lastTimestamps,
+  Map<String, double> trailing,
 ) {
   final name = decodeMpvString(prop.name.cast());
 
@@ -500,9 +529,13 @@ void _dispatchProperty(
       final now = _throttleClock.elapsedMilliseconds;
       final last = lastTimestamps[name] ?? -_kClockThrottleMs;
       if (now - last < _kClockThrottleMs) {
+        // Held, not dropped: mpv may send nothing more (a pause), so the
+        // newest value goes out when the window closes (_flushTrailing).
+        trailing[name] = v;
         return;
       }
       lastTimestamps[name] = now;
+      trailing.remove(name);
     }
 
     if (lastValues[name] == v) {
@@ -563,7 +596,50 @@ void _dispatchProperty(
   // Fallthrough: an unobserved format (NONE / OSD_STRING / top-level
   // BYTE_ARRAY) or `data == nullptr` ("property unavailable" mid-stream).
   // Drop silently — re-emitting a cached value would be wrong and a
-  // sentinel would break downstream dedup.
+  // sentinel would break downstream dedup. A value held for it is stale.
+  trailing.remove(name);
+}
+
+/// The `mpv_wait_event` timeout: [_kWaitEventTimeoutSeconds], shortened to
+/// the end of the earliest throttle window while a value is held back.
+double _waitTimeoutSeconds(
+  Map<String, int> lastTimestamps,
+  Map<String, double> trailing,
+) {
+  if (trailing.isEmpty) return _kWaitEventTimeoutSeconds;
+  final now = _throttleClock.elapsedMilliseconds;
+  var remaining = _kClockThrottleMs;
+  for (final name in trailing.keys) {
+    final last = lastTimestamps[name] ?? -_kClockThrottleMs;
+    final left = last + _kClockThrottleMs - now;
+    if (left < remaining) remaining = left;
+  }
+  if (remaining <= 0) return 0;
+  final seconds = remaining / 1000;
+  return seconds < _kWaitEventTimeoutSeconds
+      ? seconds
+      : _kWaitEventTimeoutSeconds;
+}
+
+/// Sends the held-back values whose throttle window has closed, so the
+/// last clock value before mpv goes quiet (a pause) still arrives.
+void _flushTrailing(
+  SendPort toMain,
+  Map<String, dynamic> lastValues,
+  Map<String, int> lastTimestamps,
+  Map<String, double> trailing,
+) {
+  if (trailing.isEmpty) return;
+  final now = _throttleClock.elapsedMilliseconds;
+  for (final name in trailing.keys.toList(growable: false)) {
+    final last = lastTimestamps[name] ?? -_kClockThrottleMs;
+    if (now - last < _kClockThrottleMs) continue;
+    final v = trailing.remove(name)!;
+    lastTimestamps[name] = now;
+    if (lastValues[name] == v) continue;
+    lastValues[name] = v;
+    toMain.send(MpvEventPropertyDouble(name, v));
+  }
 }
 
 /// Decodes the value of an `mpv_event_property` payload into the same Dart
