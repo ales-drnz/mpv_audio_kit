@@ -1293,6 +1293,10 @@ abstract class _PlayerBase {
       _bufferingPercentage.close(),
       _demuxerCacheState.close(),
       _mediaSession.close(),
+      // Standalone reactives outside the registry and the list above.
+      _reactives.playWhenReady.close(),
+      _reactives.audioDevice.close(),
+      _reactives.audioEffects.close(),
     ]);
     // Drop the lazy spectrum bridges before closing their controllers —
     // a dispose with a live fft/pcm listener must not leave the pipeline's

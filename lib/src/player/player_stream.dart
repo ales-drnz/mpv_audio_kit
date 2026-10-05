@@ -243,8 +243,17 @@ class PlayerStream {
         // value.
         primed = false;
         pump();
+        // The aggregate is done once every input is: dispose closes them
+        // all, and a subscriber awaiting it must not hang.
+        var open = sources.length;
         subs = [
-          for (final s in sources) s.listen((_) => pump()),
+          for (final s in sources)
+            s.listen(
+              (_) => pump(),
+              onDone: () {
+                if (--open == 0) ctrl.close();
+              },
+            ),
         ];
       },
       onCancel: () async {

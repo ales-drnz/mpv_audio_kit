@@ -15,6 +15,7 @@
 - The temp copy of an `asset://` source goes to a directory of the user and app, and is written aside and renamed, so another user or app sharing `/tmp` no longer collides with it and another instance never reads it half written.
 - `dispose()` refuses new calls from its start. With a media session it accepted them until the session was released.
 - `setLoop` from file to playlist no longer emits a passing `Loop.off`.
+- `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
 
 ## [0.4.8] - 24-09-2026
 

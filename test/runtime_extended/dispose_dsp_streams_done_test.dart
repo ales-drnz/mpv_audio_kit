@@ -71,4 +71,36 @@ void main() {
           'subscriber awaiting `.first` across a dispose hangs forever.',
     );
   }, timeout: const Timeout(Duration(seconds: 30)),);
+
+  test('dispose() closes playWhenReady, audioDevice, audioEffects and '
+      'playbackState', () async {
+    final player = await buildPlayer();
+    await player.ready;
+
+    Completer<void> watchDone<T>(Stream<T> stream) {
+      final done = Completer<void>();
+      stream.listen((_) {}, onDone: done.complete);
+      return done;
+    }
+
+    final watched = <String, Completer<void>>{
+      'playWhenReady': watchDone(player.stream.playWhenReady),
+      'audioDevice': watchDone(player.stream.audioDevice),
+      'audioEffects': watchDone(player.stream.audioEffects),
+      'playbackState': watchDone(player.stream.playbackState),
+    };
+
+    await player.dispose();
+
+    final neverClosed = <String>[];
+    for (final entry in watched.entries) {
+      try {
+        await entry.value.future.timeout(const Duration(seconds: 2));
+      } on TimeoutException {
+        neverClosed.add(entry.key);
+      }
+    }
+    expect(neverClosed, isEmpty,
+        reason: 'These streams never emitted done after dispose().',);
+  }, timeout: const Timeout(Duration(seconds: 30)),);
 }
