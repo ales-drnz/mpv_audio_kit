@@ -17,6 +17,7 @@
 - `setLoop` from file to playlist no longer emits a passing `Loop.off`.
 - `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
 - Android, Windows and Linux: a remote cover that fails to download is tried again after 30 seconds, up to three times. Before, the track kept no cover until the next one.
+- The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 
 ## [0.4.8] - 24-09-2026
 
