@@ -26,8 +26,16 @@ class MpvEventStartFile extends MpvIsolateEvent {}
 class MpvEventFileLoaded extends MpvIsolateEvent {
   /// The playlist entry `path` — keys the waveform / loudness-scan reset
   /// so internal reloads (EDL / gapless / track reinit) of the same source
-  /// don't discard a completed envelope. `null` when the read failed.
+  /// don't discard a completed envelope, and is applied to the state before
+  /// the cover and waveform resets go out. `null` when the read failed.
   final String? path;
+
+  /// Freshly read `playlist` node tree. Applied to the state before the
+  /// cover and waveform resets, so a listener pairing them with the current
+  /// entry sees the new track: on an auto-advance the observed `playlist`
+  /// change reaches the main isolate after this event. `null` when the read
+  /// failed.
+  final dynamic playlist;
 
   /// `time-pos` in seconds at load time; `null` when unavailable.
   final double? timePos;
@@ -58,6 +66,7 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
   /// partially failed read still delivers the event.
   MpvEventFileLoaded({
     this.path,
+    this.playlist,
     this.timePos,
     this.chapterIndex,
     this.chapterList,
