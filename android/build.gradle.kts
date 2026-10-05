@@ -169,11 +169,18 @@ val downloadMpvTask = tasks.register("downloadMpvLibraries") {
                     
                     if (calculatedHash != expectedHash) {
                         targetFile.delete()
-                        throw GradleException("SHA-256 verification failed for downloaded ${filename}!")
+                        throw GradleException("SHA-256 verification failed")
                     }
                 } catch (e: Exception) {
-                    println("Failed to download libmpv.so for ${abi}: ${e.message}")
+                    // Stop the build, as CMake and CocoaPods do: going on
+                    // would package an app without libmpv.so that fails at
+                    // its first Player.
                     if (targetFile.exists()) targetFile.delete()
+                    throw GradleException(
+                        "Failed to download ${filename} for ${abi}: ${e.message}. " +
+                            "Place it manually at ${targetFile}",
+                        e
+                    )
                 }
             }
         }
