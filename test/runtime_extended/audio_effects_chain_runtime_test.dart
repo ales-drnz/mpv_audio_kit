@@ -26,7 +26,7 @@ import '../generated/audio_filter_names.dart';
 
 void main() {
   final fixturePath =
-      '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
+      '${Directory.current.path}/test/fixtures/sine_stereo_1s.flac';
 
   // Filters that compile + register correctly in libavfilter and pass
   // mpv's 1-in/1-out gate, but require at least one option to be set
