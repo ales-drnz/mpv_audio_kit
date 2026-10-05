@@ -2502,9 +2502,11 @@ A mono envelope of the loaded track is exposed via
 ~2000 bins, each with its min, max and RMS, enough to paint a waveform
 overview or a waveform-style seekbar.
 
-Complete seekable files, local or a direct-play HTTP file, are decoded
-ahead of time: partial envelopes arrive while the decode runs
-(`wave.decoding`), then the final one. Streams that can't be decoded
+Local files are decoded ahead of time: partial envelopes arrive while the
+decode runs (`wave.decoding`), then the final one. An HTTP file that plays
+from its start, such as a direct-play file, is decoded from mpv's own
+cache as it downloads, so the envelope fills at the pace of the download.
+Streams that can't be decoded
 ahead of time (adaptive, non-seekable or transcoded network sources)
 **grow progressively**, re-emitting as playback advances, and a live
 stream of unknown length keeps a rolling window (`wave.live`). The
@@ -2517,10 +2519,13 @@ of the track. Drawing `wave.rms` as the body of the waveform, with the
 min and max as a lighter outline, keeps verses, choruses and drops
 readable. `wave.rms` is `null` with a libmpv older than `libmpv-r14`.
 
-The ahead-of-time decode opens the source a second time, with the same
-network options as playback (`tls-verify`, `tls-ca-file`, headers, user
-agent, cookies), so a remote file is downloaded twice. The loudness scan
-below rides the same decode.
+Such a file is downloaded once: the analysis reads the packets mpv
+already cached. When one pass from the start to the end is not possible
+(playback starting further in, a seek past the cache, a cut download, the
+cache off or on disk, a file larger than the cache), the analysis opens
+the source a second time, with the same network options as playback
+(`tls-verify`, `tls-ca-file`, headers, user agent, cookies). The loudness
+scan below rides the same decode.
 
 The stream is **listener-gated**: the analyzer runs only while
 something is subscribed to `player.stream.waveform`, and costs

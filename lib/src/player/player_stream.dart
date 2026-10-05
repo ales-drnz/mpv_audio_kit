@@ -734,16 +734,19 @@ class PlayerStream {
   /// overview strip with click-to-seek.
   ///
   /// Emits `null` on every track-change boundary (so renderers can
-  /// clear stale data), then the envelope. A complete seekable file,
-  /// local or a direct-play HTTP file, is decoded in the background:
-  /// partial envelopes with [WaveformData.decoding] set, then the final
-  /// one. Adaptive, non-seekable or transcoded network streams grow the
-  /// envelope from playback instead, and a live stream of unknown length
-  /// emits a rolling window ([WaveformData.live]).
+  /// clear stale data), then the envelope. A local file is decoded in the
+  /// background: partial envelopes with [WaveformData.decoding] set, then
+  /// the final one. An HTTP file that plays from its start, such as a
+  /// direct-play file, is decoded from mpv's cache as it downloads, so it is
+  /// not downloaded twice. Adaptive, non-seekable or transcoded network
+  /// streams grow the envelope from playback instead, and a live stream of
+  /// unknown length emits a rolling window ([WaveformData.live]).
   ///
-  /// The background decode opens the source a second time, with the same
-  /// network options as playback (`tls-verify`, `tls-ca-file`, headers,
-  /// user agent, cookies). For a remote file that means a second download.
+  /// When the cache cannot give one pass from the start to the end
+  /// (playback starting further in, a seek past the cache, the cache off),
+  /// the background decode opens a network source a second time, with the
+  /// same network options as playback (`tls-verify`, `tls-ca-file`,
+  /// headers, user agent, cookies).
   ///
   /// **Listener-gated** — the native analyzer runs and the pipeline
   /// polls only while a listener is attached; the cost of a waveform
@@ -791,8 +794,8 @@ class PlayerStream {
   /// });
   /// ```
   ///
-  /// Like [waveform], the scan opens the source a second time, with the
-  /// same network options as playback.
+  /// Like [waveform], the scan of a network file reads mpv's cache when it
+  /// can, and otherwise opens the source a second time.
   ///
   /// Emits one terminal [LoudnessScan] per track (`ready`, `failed`, or
   /// `unavailable` for sources that can only be measured during

@@ -19,6 +19,9 @@
 - Android, Windows and Linux: a remote cover that fails to download is tried again after 30 seconds, up to three times. Before, the track kept no cover until the next one.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 
+### Build
+- The waveform and loudness scan of a seekable network file decode it from mpv's cache as it downloads, so the file is downloaded once instead of twice ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)). A seek past the cache leaves a gap until mpv downloads that part, and the loudness scan is then `unavailable`.
+
 ## [0.4.8] - 24-09-2026
 
 ### Contributions
