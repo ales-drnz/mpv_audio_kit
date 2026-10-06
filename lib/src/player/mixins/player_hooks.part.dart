@@ -226,7 +226,7 @@ mixin _HooksModule on _PlayerBase {
       if (isRetry && _resolverRetried) return;
       final current = await getRawProperty('stream-open-filename') ?? '';
       if (current.isEmpty || _disposed) return;
-      final media = _mediaCache[current] ?? Media(current);
+      final media = _cachedMedia(current) ?? Media(current);
       final resolved = await resolver(
         SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
       );
@@ -248,5 +248,18 @@ mixin _HooksModule on _PlayerBase {
         level: LogLevel.warn,
       );
     }
+  }
+
+  /// The [Media] cached under [uri]. On Windows mpv hands a local path
+  /// back with backslashes, so a path the resolver returned with forward
+  /// slashes is matched with the separators ignored.
+  Media? _cachedMedia(String uri) {
+    final hit = _mediaCache[uri];
+    if (hit != null || !Platform.isWindows) return hit;
+    final key = uri.replaceAll('/', r'\');
+    for (final entry in _mediaCache.entries) {
+      if (entry.key.replaceAll('/', r'\') == key) return entry.value;
+    }
+    return null;
   }
 }
