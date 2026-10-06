@@ -115,9 +115,10 @@ void main() {
         );
 
         expect(retries, hasLength(1));
+        // mpv reports a Windows path with backslashes.
         expect(
-          retries.single.uri,
-          deadUrl,
+          _slashes(retries.single.uri),
+          _slashes(deadUrl),
           reason: 'the retry sees the URL that just failed',
         );
         expect(
@@ -186,8 +187,8 @@ void main() {
             ),
           );
           expect(
-            await seenByHook.future,
-            fixturePath,
+            _slashes(await seenByHook.future),
+            _slashes(fixturePath),
             reason: 'the consumer hook observes the already-resolved URL',
           );
         } finally {
@@ -221,3 +222,7 @@ void main() {
     });
   });
 }
+
+/// A path with forward slashes only, to compare one mpv reports on
+/// Windows (backslashes) with the one the test built.
+String _slashes(String path) => path.replaceAll(r'\', '/');
