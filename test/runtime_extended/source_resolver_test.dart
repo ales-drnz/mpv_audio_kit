@@ -106,7 +106,8 @@ void main() {
           ),);
 
       expect(retries, hasLength(1));
-      expect(retries.single.uri, deadUrl,
+      // mpv reports a Windows path with backslashes.
+      expect(_slashes(retries.single.uri), _slashes(deadUrl),
           reason: 'the retry sees the URL that just failed',);
       expect(retries.single.media.uri, 'resolve://expired',
           reason: 'the rewritten URL still maps back to the original Media',);
@@ -163,7 +164,7 @@ void main() {
               Media('resolve://composed', extras: {'path': fixturePath}),
               play: false,
             ),);
-        expect(await seenByHook.future, fixturePath,
+        expect(_slashes(await seenByHook.future), _slashes(fixturePath),
             reason: 'the consumer hook observes the already-resolved URL',);
       } finally {
         await sub.cancel();
@@ -194,3 +195,7 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 30)),);
   });
 }
+
+/// A path with forward slashes only, to compare one mpv reports on
+/// Windows (backslashes) with the one the test built.
+String _slashes(String path) => path.replaceAll(r'\', '/');
