@@ -3,7 +3,7 @@ import java.net.URL
 import java.security.MessageDigest
 
 group = "com.alesdrnz.mpv_audio_kit"
-version = "0.4.8"
+version = "0.4.9"
 
 // AGP and the Kotlin Gradle Plugin are supplied by the consuming app's build
 // (and by flutter_tools), so this module declares no buildscript classpath of
@@ -110,7 +110,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 }
 
-val MPV_RELEASE_VERSION = "libmpv-r14"
+val MPV_RELEASE_VERSION = "libmpv-r15"
 val MPV_BASE_URL = "https://github.com/ales-drnz/mpv_audio_kit/releases/download/${MPV_RELEASE_VERSION}"
 
 val downloadMpvTask = tasks.register("downloadMpvLibraries") {
@@ -118,15 +118,15 @@ val downloadMpvTask = tasks.register("downloadMpvLibraries") {
     val abis = mapOf(
         "arm64-v8a" to mapOf(
             "file" to "libmpv_android-arm64-v8a.so",
-            "sha256" to "86d07f1ae190667538d7b7f2d8786870cda54aefb99430881969f04a02708ea6"
+            "sha256" to "60a51dc4379fc99151b59b1a2e70e03a6ba4ee476ebcebf1aca8905682a13d1e"
         ),
         "armeabi-v7a" to mapOf(
             "file" to "libmpv_android-armeabi-v7a.so",
-            "sha256" to "f07d19db60d15722676f8b05b56857979691a2663a68619476ab5161453a8714"
+            "sha256" to "08fed19c4893013f839bd683fbcb5efac73808ce5d6eb5f2890941d2058612f9"
         ),
         "x86_64" to mapOf(
             "file" to "libmpv_android-x86_64.so",
-            "sha256" to "15a4af4d10bd56b12b95c55b6c0a242c9a5192b7aa2bfc436438a6970b32a2eb"
+            "sha256" to "76706891179c3836ca94a91e468e879667821e24bfc3e978f90c3f764f94c8ab"
         )
     )
     
