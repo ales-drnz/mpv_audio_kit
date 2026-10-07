@@ -1,24 +1,33 @@
-## [0.4.9] - unreleased
+## [0.4.9] - 7-10-2026
 
 ### Contributions
-- [@erikjara](https://github.com/erikjara): reported that on an auto-advance the cover and waveform of the next track arrived before `state.playlist` moved to it ([#21](https://github.com/ales-drnz/mpv_audio_kit/issues/21)), and that the waveform analyzer downloaded a remote file a second time ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)).
+- [@erikjara](https://github.com/erikjara): reported that on an auto-advance the cover and waveform of the next track arrived before `state.playlist` moved to it ([#21](https://github.com/ales-drnz/mpv_audio_kit/issues/21)).
+- [@doodlezucc](https://github.com/doodlezucc): reported that a `Media` opened by `file://` URL lost its `extras` in the playlist ([#23](https://github.com/ales-drnz/mpv_audio_kit/issues/23)).
 
 ### Fixed
 - On an auto-advance, `state.playlist` and `state.path` name the new track before its cover, waveform reset and first envelope arrive. With prefetch on they often still named the previous one.
-- Windows: the plugin builds with Visual Studio 2026.
-- Windows: on a retry, a source resolver that returned a local path with forward slashes gets the original `Media` again. mpv reports the path back with backslashes, and the lookup missed it.
-- Android: next and previous from the media keys, Bluetooth and the notification reach the player. The session offered only the media item form of these commands, and Media3 dropped the ones the buttons send.
-- Android: a libmpv download that fails or does not match its checksum stops the build. Before, the app was built without libmpv and failed at its first `Player`.
-- iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.
+- A `Media` opened by `file://` URL keeps its `extras` in `state.playlist` and in the source resolver. mpv names the entry by the decoded path, and the lookup missed it.
 - `AphaserSettings.delayMin`, `AresampleSettings.sample_rateMax` and `FirequalizerSettings.accuracyMin` are 0.1, 768000 and 3, values the filter accepts. ffmpeg declares wider ranges than it builds with.
-- `AiirChannelsX.withChannels` sets `format` to `tf` and `process` to direct, which its real coefficients need. With the defaults the filter refused the chain.
-- A numeric effect value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001` and `0.0625` no longer becomes `0.063`.
-- The temp copy of an `asset://` source goes to a directory of the user and app, and is written aside and renamed, so another user or app sharing `/tmp` no longer collides with it and another instance never reads it half written.
+- `AiirChannelsX.withChannels` turns the default `format` and `process` into `tf` and direct, which its real coefficients need. With the defaults the filter refused the chain. A format or process set by hand is kept.
+- A `double` field of an effect that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001` and `0.0625` no longer becomes `0.063`.
+- The temp copy of an `asset://` source goes to a directory of the user and app, so another user or app sharing `/tmp` no longer collides with it. It is written aside and renamed, so another instance never reads it half written.
 - `dispose()` refuses new calls from its start. With a media session it accepted them until the session was released.
 - `setLoop` from file to playlist no longer emits a passing `Loop.off`.
 - `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
-- Android, Windows and Linux: a remote cover that fails to download is tried again after 30 seconds, up to three times. Before, the track kept no cover until the next one.
 - The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
+- Android, Windows and Linux: a remote cover that fails to download is downloaded again after 30 seconds, three tries at most. Before, the track kept no cover until the next one.
+- Android: next and previous from the media keys, Bluetooth and the notification reach the player. The session offered only the media item form of these commands, and Media3 dropped the ones the buttons send.
+- Android: a libmpv download that fails or does not match its checksum stops the build. Before, the app was built without libmpv and failed at its first `Player`.
+- iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.
+- Windows: the plugin builds with Visual Studio 2026.
+- Windows: on a retry, a source resolver that returned a local path with forward slashes gets the original `Media` again. mpv reports the path back with backslashes, and the lookup missed it.
+
+### Build
+- Closing the app while the waveform or loudness scan reads an HTTPS stream no longer frees TLS state under it.
+- A waveform or loudness scan whose workers fail to start stops the ones already running instead of waiting for their whole decode.
+- Windows: `dispose()` no longer crashes the app or corrupts its memory. libmpv released the audio device watcher on a thread other than the one that created it.
+- Windows: `previousPlaylist()` across two playlist files no longer crashes the app.
+- Updated libmpv to `libmpv-r15` across all platforms.
 
 ## [0.4.8] - 24-09-2026
 
