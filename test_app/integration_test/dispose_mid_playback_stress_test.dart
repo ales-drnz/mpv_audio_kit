@@ -23,7 +23,7 @@ void main() {
 
   group('dispose mid-playback stress', () {
     testWidgets(
-      '30 create→play→dispose cycles with real AO stay bounded in RSS',
+      '2×30 create→play→dispose cycles with real AO stay bounded in RSS',
       (_) async {
         final fixturePath = await materializeFixture('sine_440hz_1s.wav');
 
@@ -49,24 +49,32 @@ void main() {
           await oneCycle();
         }
 
-        final rssBefore = ProcessInfo.currentRss;
-        for (var i = 0; i < cycles; i++) {
-          await oneCycle();
+        // Two windows of the same length: a leak grows both, while a
+        // one-off jump of the allocator or of CoreAudio lands in one. On
+        // the iOS simulator one window alone swings by about 10 MB.
+        final rss = [ProcessInfo.currentRss];
+        for (var w = 0; w < 2; w++) {
+          for (var i = 0; i < cycles; i++) {
+            await oneCycle();
+          }
+          rss.add(ProcessInfo.currentRss);
         }
-        final rssAfter = ProcessInfo.currentRss;
 
-        final delta = rssAfter - rssBefore;
+        final deltas = [rss[1] - rss[0], rss[2] - rss[1]];
         // ignore: avoid_print
-        print('[stress] RSS ${rssBefore ~/ 1024} → ${rssAfter ~/ 1024} KB '
-            '(Δ ${delta ~/ 1024} KB across $cycles cycles)');
+        print('[stress] RSS ${rss.map((r) => r ~/ 1024).join(' → ')} KB '
+            '(Δ ${deltas.map((d) => d ~/ 1024).join(' and ')} KB, '
+            '$cycles cycles each)');
         // A real per-cycle leak (orphan thread, retained mpv handle) is
         // ~1+ MB per cycle; 15 MB across 30 cycles is generous noise
         // headroom while still catching real growth.
+        const limit = 15 * 1024 * 1024;
         expect(
-          delta,
-          lessThan(15 * 1024 * 1024),
-          reason: 'RSS grew by ${delta ~/ 1024} KB across $cycles cycles '
-              '(${rssBefore ~/ 1024} → ${rssAfter ~/ 1024} KB).',
+          deltas.every((d) => d >= limit),
+          isFalse,
+          reason: 'RSS grew by ${deltas.map((d) => d ~/ 1024).join(' and ')} '
+              'KB in two windows of $cycles cycles '
+              '(${rss.map((r) => r ~/ 1024).join(' → ')} KB).',
         );
       },
       timeout: const Timeout(Duration(minutes: 5)),
