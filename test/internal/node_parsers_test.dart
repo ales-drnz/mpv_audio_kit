@@ -116,6 +116,46 @@ void main() {
           reason: "the current entry 'a' moved to position 1",);
     });
 
+    test('a file:// Media is found under the path mpv reports', () {
+      // mpv stores `file://` URLs as decoded paths, and resolveUri caches
+      // the Media under that path too.
+      const media =
+          Media('file:///music/a%20b.flac', extras: {'title': 'A B'});
+      final p = parsePlaylistNode(
+        raw: [
+          {'filename': '/music/a b.flac', 'current': true},
+        ],
+        mediaCache: {media.uri: media, '/music/a b.flac': media},
+        previous: Playlist.empty,
+      );
+      expect(p.items[0], same(media));
+    });
+
+    test('no current flag + MOVED entry loaded as another form → followed',
+        () {
+      // The entry mpv reports differs from the uri the caller passed (a
+      // file:// URL decoded to a path, an asset:// copied to a temp file);
+      // the previously-current entry is followed by its Media.
+      const fileMedia = Media('file:///music/a%20b.flac');
+      const assetMedia = Media('asset://audio/b.mp3');
+      final cache = {
+        '/music/a b.flac': fileMedia,
+        '/tmp/mpv_asset_1234_audio_b.mp3': assetMedia,
+      };
+      for (final current in [fileMedia, assetMedia]) {
+        final p = parsePlaylistNode(
+          raw: [
+            {'filename': 'c'},
+            {'filename': '/tmp/mpv_asset_1234_audio_b.mp3'},
+            {'filename': '/music/a b.flac'},
+          ],
+          mediaCache: cache,
+          previous: Playlist([current, const Media('c')]),
+        );
+        expect(p.index, current == fileMedia ? 2 : 1, reason: current.uri);
+      }
+    });
+
     test(
         'no current flag + nothing was EVER current → -1, NOT 0 '
         '(openAll append build-up phase)', () {

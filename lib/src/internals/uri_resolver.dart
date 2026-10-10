@@ -10,11 +10,15 @@
 //
 //   asset://path/in/bundle → <temp>/mpv_audio_kit_assets_<app>/<hash>_<name>
 //   content://...               → fd://<n>                     (Android only)
+//   file:///path/a%20b.flac     → /path/a b.flac
 //
-// All other URIs (`file://`, `http(s)://`, `smb2://`, plain
-// filesystem paths, …) pass through unchanged.
+// `file://` URIs become the path mpv itself would store for them, so the
+// playlist entries mpv reports match the Media cache keys. All other URIs
+// (`http(s)://`, `smb2://`, plain filesystem paths, …) pass through
+// unchanged.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -66,6 +70,8 @@ class ResolvedUri {
 /// behaviour: the original URI is returned and mpv emits a typed
 /// end-file error if the path does not work either.
 Future<ResolvedUri> resolveUri(String uri) async {
+  final path = fileUrlToPath(uri);
+  if (path != null) return ResolvedUri(path);
   if (uri.startsWith('asset://')) {
     try {
       return ResolvedUri(await _copyAssetToCache(uri));
@@ -94,6 +100,51 @@ Future<ResolvedUri> resolveUri(String uri) async {
     }
   }
   return ResolvedUri(uri);
+}
+
+/// The path mpv stores for a `file://` [uri], or `null` for any other URI.
+///
+/// Mirrors mpv's `mp_file_url_to_filename`, which every `loadfile` goes
+/// through: the scheme is dropped whatever its case, `%NN` escapes are
+/// decoded byte by byte (a malformed one is kept as it is), and on Windows
+/// `/C:/` becomes `C:/`. The playlist then names the entry by this path,
+/// not by the URL it was loaded with.
+@visibleForTesting
+String? fileUrlToPath(String uri, {bool? windows}) {
+  if (uri.length < 7 || uri.substring(0, 7).toLowerCase() != 'file://') {
+    return null;
+  }
+  final src = utf8.encode(uri.substring(7));
+  final out = <int>[];
+  for (var i = 0; i < src.length;) {
+    if (src[i] != 0x25 || i + 2 >= src.length) {
+      out.add(src[i++]);
+      continue;
+    }
+    final hi = _hexDigit(src[i + 1]);
+    final lo = _hexDigit(src[i + 2]);
+    if (hi >= 0 && lo >= 0) {
+      out.add(hi * 16 + lo);
+    } else {
+      out.addAll(src.sublist(i, i + 3));
+    }
+    i += 3;
+  }
+  var path = utf8.decode(out, allowMalformed: true);
+  if ((windows ?? Platform.isWindows) &&
+      path.length > 2 &&
+      path[0] == '/' &&
+      path[2] == ':') {
+    path = path.substring(1);
+  }
+  return path;
+}
+
+int _hexDigit(int c) {
+  if (c >= 0x30 && c <= 0x39) return c - 0x30;
+  if (c >= 0x41 && c <= 0x46) return c - 0x41 + 10;
+  if (c >= 0x61 && c <= 0x66) return c - 0x61 + 10;
+  return -1;
 }
 
 Future<void> _closeAndroidFd(int fd) async {

@@ -72,16 +72,19 @@ Playlist parsePlaylistNode({
   } else if (previous.index >= 0 && previous.index < previous.items.length) {
     // Transient current-flag omission (playlist-move, or a coalesced
     // burst of playlist surgery). Follow the previously-current entry
-    // BY URI, not by raw position: during a move the entry may have
+    // BY MEDIA, not by raw position: during a move the entry may have
     // shifted, and during [Player.openAll]'s rebuild it is gone
     // entirely — mpv coalesces rapid notifications, so the payload can
     // jump straight from the old playlist to the fully-swapped one with
     // no current flag in between. Pinning the old NUMBER would mark an
-    // unrelated incoming entry as active; following the URI keeps the
+    // unrelated incoming entry as active; following the Media keeps the
     // real track highlighted through a move and reports -1 ("no active
-    // entry yet") through a swap. With duplicate URIs the first
-    // occurrence wins — the transient lasts one event either way.
-    idx = filenames.indexOf(previous.items[previous.index].uri);
+    // entry yet") through a swap. The Media, not its uri, is compared
+    // because mpv names the entry by the loaded form (a `file://` URL
+    // decoded to a path, an `asset://` copied to a temp file), which the
+    // uri the caller passed does not match. With duplicate entries the
+    // first occurrence wins — the transient lasts one event either way.
+    idx = medias.indexOf(previous.items[previous.index]);
   } else {
     // Entries exist but none has EVER been current: the append build-up
     // phase of [Player.openAll] (entries queued on an idle core before
