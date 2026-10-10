@@ -269,6 +269,9 @@ void _dispatchEvent(
       toMain.send(MpvEventShutdown());
 
     case mpv.MpvEventId.mpvEventStartFile:
+      // A clock value held from the previous file must not land after the
+      // new one starts.
+      cache.trailing.clear();
       toMain.send(MpvEventStartFile());
 
     case mpv.MpvEventId.mpvEventFileLoaded:
