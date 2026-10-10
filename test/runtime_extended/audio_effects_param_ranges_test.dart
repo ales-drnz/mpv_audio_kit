@@ -77,6 +77,10 @@ void main() {
     // accepted; only the I64_MAX extreme blows up.
     'afade.start_sample=startSampleMax',
     'afade.ss=ssMax',
+    // firequalizer: AVOption declares `delay` up to 1e10 s, but a kernel
+    // that long overflows to nan or infinity on macOS ("filter kernel
+    // contains nan or infinity"). Min / Default are accepted.
+    'firequalizer.delay=delayMax',
   };
 
   late Player player;
