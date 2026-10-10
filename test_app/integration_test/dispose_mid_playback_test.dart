@@ -32,10 +32,9 @@ void main() {
           ),
         );
 
+        final playing = player.stream.playing.firstWhere((p) => p);
         await player.open(Media(fixturePath), play: true);
-        await player.stream.playing
-            .firstWhere((p) => p)
-            .timeout(const Duration(seconds: 5));
+        await playing.timeout(const Duration(seconds: 5));
         // Hold for 500 ms so coreaudio is genuinely consuming frames.
         await Future<void>.delayed(const Duration(milliseconds: 500));
 

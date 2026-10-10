@@ -78,16 +78,14 @@ void main() {
           .firstWhere((d) => d.inMilliseconds > 0)
           .timeout(const Duration(seconds: 10));
 
+      final playing = player.stream.playing.firstWhere((p) => p);
       await player.play();
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 5));
+      await playing.timeout(const Duration(seconds: 5));
       expect(player.state.playing, isTrue);
 
+      final paused = player.stream.playing.firstWhere((p) => !p);
       await player.pause();
-      await player.stream.playing
-          .firstWhere((p) => !p)
-          .timeout(const Duration(seconds: 5));
+      await paused.timeout(const Duration(seconds: 5));
       expect(player.state.playing, isFalse);
     });
 

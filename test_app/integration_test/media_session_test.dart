@@ -138,10 +138,9 @@ void main() {
       // (title/artist/album tags + embedded cover + 2s).
       final tagged = await materializeFixture('tagged.m4a');
       await player.setMediaSession(const MediaSession()); // enable FIRST
+      final playing = player.stream.playing.firstWhere((p) => p);
       await player.open(Media(tagged), play: true); // then autoplay
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 10));
+      await playing.timeout(const Duration(seconds: 10));
       // Let the incremental metadata pushes (title / duration / cover)
       // settle through the channel.
       await Future<void>.delayed(const Duration(seconds: 1));
@@ -167,18 +166,16 @@ void main() {
       await player.setMediaSession(const MediaSession(title: 'E2E'));
       await pumpUntil((s) => s['title'] == 'E2E');
 
+      final playing = player.stream.playing.firstWhere((p) => p);
       await player.play();
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 5));
+      await playing.timeout(const Duration(seconds: 5));
       var np = await pumpUntil((s) => s['playbackState'] == 'playing');
       expect((np['rate'] as num?)?.toDouble(), 1.0,
           reason: 'playing must publish rate 1, got ${np['rate']}',);
 
+      final paused = player.stream.playing.firstWhere((p) => !p);
       await player.pause();
-      await player.stream.playing
-          .firstWhere((p) => !p)
-          .timeout(const Duration(seconds: 5));
+      await paused.timeout(const Duration(seconds: 5));
       np = await pumpUntil((s) => s['playbackState'] == 'paused');
       expect((np['rate'] as num?)?.toDouble(), 0.0,
           reason: 'paused must publish rate 0, got ${np['rate']}',);
@@ -193,10 +190,9 @@ void main() {
       await player.setMediaSession(const MediaSession(title: 'E2E'));
       await pumpUntil((s) => s['title'] == 'E2E');
 
+      final playing = player.stream.playing.firstWhere((p) => p);
       await player.play();
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 5));
+      await playing.timeout(const Duration(seconds: 5));
       await pumpUntil((s) => s['playbackState'] == 'playing');
 
       await player.seek(const Duration(milliseconds: 1500));
@@ -286,10 +282,9 @@ void main() {
         (_) async {
       final tagged = await materializeFixture('tagged.m4a');
       await player.setMediaSession(const MediaSession()); // enable FIRST
+      final playing = player.stream.playing.firstWhere((p) => p);
       await player.open(Media(tagged), play: true); // then autoplay
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 10));
+      await playing.timeout(const Duration(seconds: 10));
 
       final np = await pumpUntil(
         (s) => s['title'] == 'Tagged Title',
@@ -309,10 +304,9 @@ void main() {
       await player.setMediaSession(const MediaSession(title: 'E2E'));
       await pumpUntil((s) => s['title'] == 'E2E', reader: readMediaSession);
 
+      final playing = player.stream.playing.firstWhere((p) => p);
       await player.play();
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 5));
+      await playing.timeout(const Duration(seconds: 5));
       final np = await pumpUntil(
         (s) => s['playbackState'] == 'playing',
         reader: readMediaSession,
@@ -320,10 +314,9 @@ void main() {
       expect((np['rate'] as num?)?.toDouble(), 1.0,
           reason: 'playing must publish rate 1, got ${np['rate']}',);
 
+      final paused = player.stream.playing.firstWhere((p) => !p);
       await player.pause();
-      await player.stream.playing
-          .firstWhere((p) => !p)
-          .timeout(const Duration(seconds: 5));
+      await paused.timeout(const Duration(seconds: 5));
       // Android binds the OS button to the INTENT axis (playWhenReady);
       // playbackState flips to paused while the configured speed stays 1.
       await pumpUntil((s) => s['playbackState'] == 'paused',
@@ -339,10 +332,9 @@ void main() {
       await player.setMediaSession(const MediaSession(title: 'E2E'));
       await pumpUntil((s) => s['title'] == 'E2E', reader: readMediaSession);
 
+      final playing = player.stream.playing.firstWhere((p) => p);
       await player.play();
-      await player.stream.playing
-          .firstWhere((p) => p)
-          .timeout(const Duration(seconds: 5));
+      await playing.timeout(const Duration(seconds: 5));
       await pumpUntil((s) => s['playbackState'] == 'playing',
           reader: readMediaSession,);
 

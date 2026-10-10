@@ -33,10 +33,11 @@ void main() {
               logLevel: LogLevel.off,
             ),
           );
+          // Listened to before open: the stream sends only later changes,
+          // and playback may start before open returns.
+          final playing = player.stream.playing.firstWhere((p) => p);
           await player.open(Media(fixturePath), play: true);
-          await player.stream.playing
-              .firstWhere((p) => p)
-              .timeout(const Duration(seconds: 5));
+          await playing.timeout(const Duration(seconds: 5));
           await Future<void>.delayed(const Duration(milliseconds: 100));
           await player.dispose().timeout(const Duration(seconds: 3));
         }
