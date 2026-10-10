@@ -33,21 +33,12 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - An effects chain the filter graph refuses throws `MpvCommandException`, and the state goes back to the last list mpv accepted. Before, the call returned, the state showed the new chain and the old one kept playing.
 - A chain rebuilt after live slider changes applies the requested values: a stage moved live and set back could stay at the live value.
 - A value an effect got live keeps playing after a seek, a loop or an audio track switch. mpv rebuilds its filters there from the values they were created with, which brought back the old one.
-- A numeric option value that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001`.
 - The live loudness meter reads the first enabled `Ebur128Effect` with `metadata` on, so a disabled or silent first one no longer mutes it.
 - A setter emits the value it was given once: volume, gains and ReplayGain no longer come back rounded (`42.37` as `42.400001525878906`), and durations keep their microseconds. `setCache`, `setDemuxer`, `setReplayGain` and `setLoop` no longer emit a half-applied value.
-- `AiirChannelsX.withChannels` sets `format` to `tf` and `process` to direct, which its real coefficients need. With the defaults the filter refused the chain.
-- `AphaserEffect.delayMin`, `AresampleEffect.sampleRateMax` and `FirequalizerEffect.accuracyMin` are 0.1, 768000 and 3, values the filter accepts. ffmpeg declares wider ranges than it builds with.
 - `audioParams` emits once when a file unloads and once when the next one loads, with all its fields. mpv reports the codec and the format separately, which made a track change emit up to six partial values.
-- The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
-- The temp copy of an `asset://` source keeps one path per asset in a directory of the user and app, so relaunches no longer pile up copies, and it is written aside and renamed so another instance never reads it half written.
 - `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also through prefixes and `loadfile` options, which desynced the effects chain or the play and pause state. The check is against mistakes, not every way mpv offers.
-- On Linux, Android and Windows a remote cover download always verifies the certificate, against the system roots and the player's `tls-ca-file`, and a failed one is tried again after 30 seconds, up to three times.
-- `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
-- Android: next and previous from the media keys, Bluetooth and the notification reach the player. The session offered only the media item form of these commands, and Media3 dropped the ones the buttons send.
-- iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.
-- Windows: the plugin builds with Visual Studio 2026.
+- On Linux, Android and Windows a remote cover download always verifies the certificate, against the system roots and the player's `tls-ca-file`.
 
 ### Build
 - Linux: libmpv loads with glibc 2.31 or later (it needed 2.38) and on systems without PipeWire or PulseAudio, and needs only ALSA. A PipeWire older than 0.3.57 is skipped in favour of PulseAudio.
@@ -55,10 +46,40 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - The per-filter tap is keyed on the chain label, so two instances of one filter get separate taps.
 - mpv's version string carries the libmpv release, which the player checks at startup.
 - Every source is pinned: tarballs by SHA-256, Windows ones included, and git sources by the commit of their tag.
-- Closing the app while the waveform or loudness scan reads an HTTPS stream no longer frees TLS state under it.
 - Changing the effects near the end of a track no longer stops playback there when the change removes a stage that holds the end of the file, such as `RubberbandEffect`.
+- An effect added while the file ends, as during that re-seek, starts on the real audio format: `HdcdEffect` came up disabled.
 - Linux: an app that exits without disposing the player no longer crashes at exit, since PipeWire and PulseAudio stay loaded until the process ends.
+- Updated libmpv to `libmpv-r16` across all platforms.
+
+## [0.4.9] - 10-10-2026
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): reported that on an auto-advance the cover and waveform of the next track arrived before `state.playlist` moved to it ([#21](https://github.com/ales-drnz/mpv_audio_kit/issues/21)).
+- [@doodlezucc](https://github.com/doodlezucc): reported that a `Media` opened by `file://` URL lost its `extras` in the playlist ([#23](https://github.com/ales-drnz/mpv_audio_kit/issues/23)).
+
+### Fixed
+- On an auto-advance, `state.playlist` and `state.path` name the new track before its cover, waveform reset and first envelope arrive. With prefetch on they often still named the previous one.
+- A `Media` opened by `file://` URL keeps its `extras` in `state.playlist` and in the source resolver. mpv names the entry by the decoded path, and the lookup missed it.
+- `AphaserSettings.delayMin`, `AresampleSettings.sample_rateMax` and `FirequalizerSettings.accuracyMin` are 0.1, 768000 and 3, values the filter accepts. ffmpeg declares wider ranges than it builds with.
+- `AiirChannelsX.withChannels` turns the default `format` and `process` into `tf` and direct, which its real coefficients need. With the defaults the filter refused the chain. A format or process set by hand is kept.
+- A `double` field of an effect that three decimals cannot hold goes to the filter with six, so `0.0014` no longer becomes `0.001` and `0.0625` no longer becomes `0.063`.
+- The temp copy of an `asset://` source goes to a directory of the user and app, so another user or app sharing `/tmp` no longer collides with it. It is written aside and renamed, so another instance never reads it half written.
+- `dispose()` refuses new calls from its start. With a media session it accepted them until the session was released.
+- `setLoop` from file to playlist no longer emits a passing `Loop.off`.
+- `dispose()` closes `stream.playWhenReady`, `playbackState`, `audioDevice` and `audioEffects` too, so a subscriber waiting on them no longer hangs.
+- The position no longer stays behind the paused playhead: a clock update that fell inside the 33 ms throttle window was dropped, and mpv sends no other once paused. It is now held and sent when the window closes.
+- Android, Windows and Linux: a remote cover that fails to download is downloaded again after 30 seconds, three tries at most. Before, the track kept no cover until the next one.
+- Android: next and previous from the media keys, Bluetooth and the notification reach the player. The session offered only the media item form of these commands, and Media3 dropped the ones the buttons send.
+- Android: a libmpv download that fails or does not match its checksum stops the build. Before, the app was built without libmpv and failed at its first `Player`.
+- iOS and macOS: the privacy manifest declares the file timestamp, disk space and boot time APIs libmpv calls, so App Store Connect no longer flags them as missing.
+- Windows: the plugin builds with Visual Studio 2026.
+- Windows: on a retry, a source resolver that returned a local path with forward slashes gets the original `Media` again. mpv reports the path back with backslashes, and the lookup missed it.
+
+### Build
+- Closing the app while the waveform or loudness scan reads an HTTPS stream no longer frees TLS state under it.
 - A waveform or loudness scan whose workers fail to start stops the ones already running instead of waiting for their whole decode.
+- Windows: `dispose()` no longer crashes the app or corrupts its memory. libmpv released the audio device watcher on a thread other than the one that created it.
+- Windows: `previousPlaylist()` across two playlist files no longer crashes the app.
 - Updated libmpv to `libmpv-r15` across all platforms.
 
 ## [0.4.8] - 24-09-2026
