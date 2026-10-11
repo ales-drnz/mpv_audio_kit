@@ -2,6 +2,9 @@
 
 A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the changes to make in an app.
 
+### Contributions
+- [@erikjara](https://github.com/erikjara): reported that the waveform analyzer downloaded a remote file a second time ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)).
+
 ### Breaking
 - Audio effects are an ordered `List<AudioEffect>`, applied in list order, in place of the `AudioEffects` bundle. The same filter can appear more than once, and raw lavfi entries (`RawAudioEffect`) can sit anywhere in the list.
 - Effect classes are named `XxxEffect` (was `XxxSettings`), their parameters and enum members are camelCase (`levelIn`, `lrToMs`), and `enabled` defaults to `true`.
@@ -49,6 +52,9 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - Changing the effects near the end of a track no longer stops playback there when the change removes a stage that holds the end of the file, such as `RubberbandEffect`.
 - An effect added while the file ends, as during that re-seek, starts on the real audio format: `HdcdEffect` came up disabled.
 - Linux: an app that exits without disposing the player no longer crashes at exit, since PipeWire and PulseAudio stay loaded until the process ends.
+- The waveform and loudness scan of an HTTP file that plays from its start decode it from mpv's cache as it downloads, so the file is downloaded once instead of twice ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)). Otherwise they open it again as before, with the same result.
+- The waveform and loudness scan of a local file give the result of one decode of it: loudness and peaks no longer drift where the parallel decode splits the file.
+- The loudness scan of a Matroska file no longer reads -70 LUFS, and the one of an MP2 file no longer crashes the app.
 - Updated libmpv to `libmpv-r16` across all platforms.
 
 ## [0.4.9] - 10-10-2026
