@@ -27,30 +27,30 @@ import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
-const _release = 'libmpv-r15';
+const _release = 'libmpv-r16';
 const _baseUrl =
     'https://github.com/ales-drnz/mpv_audio_kit/releases/download/$_release';
 
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      '6c824d72542224890ab886bceb8f9ba0d57c4275cbf1583b5d225f124bc9a911',
+      'f1027731c9ed67101379523f6ef49c4f5a07d0e27da1f4e0114339e803abfea0',
   'libmpv_android-armeabi-v7a.so':
-      'c9d34548d10bfe754afdf9a7322413f82ee110fb6bab90e26b4e2cc4e104f82e',
+      '977703fe0e9d037bc3ab3ee2a9e87534399c06ae56e7a122dfbafe38cab111fb',
   'libmpv_android-x86_64.so':
-      '91948b2df8ecc7254676c30cb11f1c5bf4864e7fea596d9e7bc587b280709e94',
+      '591c23aeb7e5810936c5e7b0bf3933c1eba0f49a558db432729941b365e026ed',
   'libmpv_ios.xcframework.zip':
-      '35893ef2243176d49146c5b47180e867a6880cc1ab5da9670b97fac1253b4fb3',
+      '666b79ec560d8378f1ed9a804f7e53271d22278bd4c6e3d07cb818074d7b7441',
   'libmpv_linux-aarch64.so':
-      'ada287d2fc81af496452f518d91efdbbe9a3e78c6158562f9b41fbe4ee0a26f6',
+      '1e32a5540276a699cedb8be961e72097532a7e1948edf625240b02f326f3933a',
   'libmpv_linux-x86_64.so':
-      '279e8f8e1d3431c2444987706544ab1208dbfb45d7ef85d1e50b59f05f1a3a8d',
+      '8e4c7a50e0ed739b153b9af6313380bab04a547814b19bfc03e09741fad7e6ae',
   'libmpv_macos.xcframework.zip':
-      '2edaec73621ba6758a52daf20211478b0e83269eaace00030a78f3b108295724',
+      'd2a9b6baed7c4a531317c1e46486eba151e1adf130c9ccc634365a1c6d71e96a',
   'libmpv_windows-arm64.dll':
-      'f5f7296075b63af641a2dab0721cfa0f9083fddb066a87d5f7161a5a3f4fc9c8',
+      'd3ffa68fc69ec223718bbd6d196765a2f42cabe1791587fe23b933f5e26c8a6d',
   'libmpv_windows-x86_64.dll':
-      'b7856718d534bdde81c7207f3e4039f1bf78c4679d3f9804d451d58aae92e4f1',
+      '66690b9c15d937f48d02dc6a70cffe3e45187585ca93eb34bbe0b9d5cb406251',
 };
 
 void main(List<String> args) async {
