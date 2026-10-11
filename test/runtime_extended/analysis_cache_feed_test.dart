@@ -306,6 +306,7 @@ void main() {
     late _Analysis mkaRef;
     late Uint8List webm;
     late _Analysis webmRef;
+    late Uint8List longWav;
     late RangeHttpServer server;
     Player? player;
     _Watch? watch;
@@ -314,6 +315,7 @@ void main() {
     const flacName = 'sine_stereo_48k_5s.flac';
     const mkaName = 'multitrack_two_audio_5s.mka';
     const webmName = 'webm_opus.webm';
+    const longName = 'swell_120s.wav';
 
     setUpAll(() async {
       final probe = await buildPlayer();
@@ -327,6 +329,7 @@ void main() {
       }
       tmp = await Directory.systemTemp.createTemp('mak_cache_feed_');
       wav = _makeWav(20);
+      longWav = _makeWav(120);
       wavPath = '${tmp.path}/$wavName';
       await File(wavPath).writeAsBytes(wav);
       flac = await File(flacPath).readAsBytes();
@@ -354,6 +357,7 @@ void main() {
         flacName: flac,
         mkaName: mka,
         webmName: webm,
+        longName: longWav,
       });
       player = await buildPlayer();
       watch = _Watch(player!);
@@ -702,6 +706,64 @@ void main() {
     });
 
     group('teardown during the feed', () {
+      test(
+        'stop or next while the analysis replays a long cached file',
+        () async {
+          // The analysis is armed only after mpv cached the whole file, so it
+          // starts by copying a long cache, a batch at a time on its own
+          // thread. Stopping or advancing then tears the demuxer down under
+          // it: the replay must let go without touching the freed cache and
+          // without opening the file again. The delays land the teardown
+          // before, during or after the replay, which in a release build
+          // lasts a few milliseconds; the use of the freed cache it guards
+          // against shows under AddressSanitizer.
+          await watch!.cancel();
+          watch = null;
+          for (final action in ['stop', 'next']) {
+            for (final delayMs in [0, 2, 5, 15, 40]) {
+              final gets = server.gets('/$longName').length;
+              final opens = _fromStart(server, '/$longName').length;
+              await _openAndLoad(
+                player!,
+                () => player!.openAll([
+                  Media(server.url(longName)),
+                  Media(server.url(flacName)),
+                ], play: true),
+              );
+              await waitFor(
+                () => server
+                    .gets('/$longName')
+                    .skip(gets)
+                    .any((r) => r.completed),
+                'the long file was not cached whole',
+              );
+              final w = _Watch(player!);
+              await Future<void>.delayed(Duration(milliseconds: delayMs));
+              if (action == 'stop') {
+                await player!.stop();
+              } else {
+                expect(await player!.next(), isTrue);
+              }
+              await Future<void>.delayed(const Duration(milliseconds: 600));
+              await w.cancel();
+              expect(
+                _fromStart(server, '/$longName'),
+                hasLength(opens + 1),
+                reason:
+                    '$action ${delayMs}ms into the replay opened the left '
+                    'file again\n${log()}',
+              );
+            }
+          }
+          // The core is still sound: a new file analyses from its cache.
+          watch = _Watch(player!);
+          await player!.open(Media(server.url(flacName)), play: true);
+          final a = (await watch!.settle(log))!;
+          _expectSame(a, flacRef, log());
+        },
+        timeout: const Timeout(Duration(seconds: 120)),
+      );
+
       test('dispose while the feed follows the download', () async {
         server.bytesPerSecond = 300 * 1024;
         final p = player!;
