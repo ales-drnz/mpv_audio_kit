@@ -42,6 +42,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
 - `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also through prefixes and `loadfile` options, which desynced the effects chain or the play and pause state. The check is against mistakes, not every way mpv offers.
 - On Linux, Android and Windows a remote cover download always verifies the certificate, against the system roots and the player's `tls-ca-file`.
+- `open`, `openPlaylistFile` and `jump` with playback on no longer start paused after a playlist whose last track ends as soon as it loads, such as a very short one. The player asks mpv whether it is parked at the end instead of trusting `completed`, which can miss that end.
 
 ### Build
 - Linux: libmpv loads with glibc 2.31 or later (it needed 2.38) and on systems without PipeWire or PulseAudio, and needs only ALSA. A PipeWire older than 0.3.57 is skipped in favour of PulseAudio.

@@ -207,7 +207,11 @@ class Player extends _PlayerBase
     // and `keep-open-pause` re-pauses the core before the loadfile (queued
     // behind this write's async reply round-trip) is ever processed. The
     // corrective write after the replace is what actually sticks.
-    final parkedAtEof = _state.completed;
+    final parkedAtEof = await _parkedAtEof();
+    if (load.superseded) {
+      await resolved.dispose?.call();
+      return;
+    }
     await _prop('pause', shouldPlay ? 'no' : 'yes');
     final opts = _buildLoadfileOptions(media);
     if (opts.isEmpty) {
@@ -350,7 +354,7 @@ class Player extends _PlayerBase
       // NOW instead: the playlist is single-entry after the clear, so
       // PT_NEXT_ENTRY finds nothing and the core goes idle — where
       // appends provably never autostart.
-      parkedAtEof = await getRawProperty('eof-reached') == 'yes';
+      parkedAtEof = await _parkedAtEof();
       if (load.superseded) return bailDisposing();
       if (parkedAtEof) {
         await _command(['playlist-remove', '0']);
@@ -480,7 +484,11 @@ class Player extends _PlayerBase
     }
     // See [open] — parked at EOF the pre-loadlist unpause doesn't survive
     // mpv's keep-open re-pause; a corrective write after the replace does.
-    final parkedAtEof = _state.completed;
+    final parkedAtEof = await _parkedAtEof();
+    if (load.superseded) {
+      await resolved.dispose?.call();
+      return;
+    }
     await _prop('pause', shouldPlay ? 'no' : 'yes');
     await _commandChecked(['loadlist', resolved.uri, 'replace']);
     if (parkedAtEof && shouldPlay) {
@@ -1077,6 +1085,18 @@ abstract class _PlayerBase {
   /// while the main isolate stays free — under a stalled core the FUTURES
   /// queue up, not the UI thread.
   Future<void> _settleWrites() => _client.settleWrites();
+
+  /// Whether mpv is parked paused at the end of content (`keep-open`),
+  /// read from the core's own `eof-reached` rather than from
+  /// `state.completed`. That flag follows the observed `eof-reached`
+  /// edges, and mpv's observer reports a value, not every change: when
+  /// the last entry reaches EOF as soon as it loads (a short track, or a
+  /// slow machine), the core goes from the previous entry's EOF through
+  /// the load and back to EOF between two notifications, no rising edge
+  /// reaches the player, and `completed` stays false while mpv sits
+  /// parked. The transport calls that unpause need the core's answer.
+  Future<bool> _parkedAtEof() async =>
+      await getRawProperty('eof-reached') == 'yes';
 
   /// Rejects NaN / +Inf / -Inf before they reach `toStringAsFixed`,
   /// which would emit the literal `'NaN'` / `'Infinity'` and have mpv

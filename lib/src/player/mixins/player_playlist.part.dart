@@ -117,7 +117,7 @@ mixin _PlaylistModule on _PlayerBase {
     // See [Player.open] — parked at EOF (`keep-open`) the unpause above
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
-    final parkedAtEof = _state.completed;
+    final parkedAtEof = await _parkedAtEof();
     await _prop('pause', 'no');
     await _commandChecked(['playlist-play-index', index.toString()]);
     if (parkedAtEof) {
