@@ -85,9 +85,10 @@ void main() {
           }
           final result = await verifyCodec(player, path, expected);
 
+          // mpv reports a Windows path with backslashes.
           expect(
-            result.path,
-            path,
+            result.path.replaceAll(r'\', '/'),
+            path.replaceAll(r'\', '/'),
             reason: 'the player must be on the fixture, not the previous one',
           );
           expect(

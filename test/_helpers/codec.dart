@@ -133,8 +133,9 @@ Future<CodecResult> verifyCodec(
   // values instead: poll the state, and hand back what it holds when the
   // deadline passes, for the caller to assert on.
   final deadline = DateTime.now().add(const Duration(seconds: 10));
+  // mpv reports a Windows path with backslashes.
   bool settled() =>
-      p.state.path == path &&
+      p.state.path.replaceAll(r'\', '/') == path.replaceAll(r'\', '/') &&
       p.state.duration > Duration.zero &&
       _matches(p.state.audioParams, expected);
   while (!settled() && DateTime.now().isBefore(deadline)) {

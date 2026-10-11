@@ -10,15 +10,23 @@ import 'dart:io';
 /// resolve it on their own.
 ///
 /// `flutter test` runs `hook/build.dart` for the host and places the code
-/// asset under `build/native_assets/<os>/`, named as the hook names it.
+/// asset under `build/native_assets/<os>/`, named as the hook names it. On
+/// macOS the flutter tester installs the framework's binary as a bare
+/// dylib, while an app build keeps the framework: both are looked for.
 /// Returns `null` when it is not there.
 String? resolveLibmpv() {
   final dir = '${Directory.current.path}/build/native_assets';
-  final path = switch (Platform.operatingSystem) {
-    'linux' => '$dir/linux/libmpv_audio_kit.so',
-    'macos' => '$dir/macos/libmpv_audio_kit.framework/libmpv_audio_kit',
-    'windows' => '$dir\\windows\\mpv_audio_kit.dll',
-    _ => null,
+  final candidates = switch (Platform.operatingSystem) {
+    'linux' => ['$dir/linux/libmpv_audio_kit.so'],
+    'macos' => [
+      '$dir/macos/libmpv_audio_kit',
+      '$dir/macos/libmpv_audio_kit.framework/libmpv_audio_kit',
+    ],
+    'windows' => ['$dir\\windows\\mpv_audio_kit.dll'],
+    _ => const <String>[],
   };
-  return path != null && File(path).existsSync() ? path : null;
+  for (final path in candidates) {
+    if (File(path).existsSync()) return path;
+  }
+  return null;
 }
