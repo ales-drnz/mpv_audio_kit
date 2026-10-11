@@ -93,14 +93,14 @@ def architecture(t):
     d.node(450, 105, 230, 64, 'Player', 'state, stream, setters', role='lib')
     d.node(730, 105, 230, 64, 'Media session', 'controller in Dart', role='lib', mono=False)
     d.arrow('M285,95 L333,95'); d.arrow('M335,115 L287,115', kind='sec')
-    d.text(310, 84, 'calls', size=11); d.text(310, 134, 'streams', size=11)
+    d.text(310, 82, 'calls', size=11); d.text(310, 155, 'streams', size=11)
     d.arrow('M565,105 L613,105')
     d.band(20, 200, 560, 110, 'Background')
-    d.node(170, 265, 230, 60, 'Event isolate', 'mpv_wait_event loop', role='lib', mono=False)
-    d.node(450, 265, 230, 60, 'libmpv', 'mpv 0.41 and ffmpeg', role='lib')
-    d.arrow('M450,137 L450,233'); d.text(458, 190, 'mpv_*_async', anchor='start', size=11, mono=True)
-    d.arrow('M335,265 L287,265', kind='sec'); d.text(311, 255, 'events', size=11)
-    d.arrow('M240,235 L240,185 L390,185 L390,139', kind='sec'); d.text(232, 214, 'state, replies', anchor='end', size=11)
+    d.node(170, 265, 210, 60, 'Event isolate', 'mpv_wait_event loop', role='lib', mono=False)
+    d.node(450, 265, 210, 60, 'libmpv', 'mpv 0.41 and ffmpeg', role='lib')
+    d.arrow('M450,137 L450,233'); d.text(462, 190, 'mpv_*_async', anchor='start', size=11, mono=True)
+    d.arrow('M345,265 L277,265', kind='sec'); d.text(311, 251, 'events', size=11)
+    d.arrow('M240,235 L240,185 L390,185 L390,139', kind='sec'); d.text(228, 214, 'state, replies', anchor='end', size=11)
     d.node(730, 265, 230, 60, 'Platform plugin', 'Media3, Now Playing,', sub2='MPRIS, SMTC', role='neutral', mono=False)
     d.arrow('M730,137 L730,233', kind='sec', head=True); d.arrow('M745,233 L745,139', kind='sec')
     d.text(760, 190, 'commands', anchor='start', size=11)
@@ -141,7 +141,7 @@ def effects(t):
         d.arrow(f'M{x},130 L{x},222', kind='sec')
     d.node(165, 245, 100, 40, 'pre', role='app', size=13); d.node(375, 245, 100, 40, 'post', role='app', size=13)
     d.text(165, 296, 'stream.tap(AudioFilter.equalizer, side: ...)', anchor='start', size=12, mono=True, color='label')
-    d.text(165, 316, 'instance counts repeats of the same filter', anchor='start', size=12)
+    d.text(165, 320, 'instance counts repeats of the same filter', anchor='start', size=12)
     d.arrow('M905,157 L905,222', kind='sec')
     d.node(905, 245, 150, 40, 'fft and pcm', role='app', size=13)
     return d
@@ -153,11 +153,11 @@ def timeline(t):
     marks = [(210, 'play()'), (390, 'seek()'), (560, 'network stall'), (760, 'pause()')]
     for x, m in marks:
         d.add(f'<line x1="{x}" y1="40" x2="{x}" y2="250" stroke="{d.c["line"]}" stroke-width="1" stroke-dasharray="3 4"/>')
-        d.text(x, 32, m, mono=m.endswith(')'), color='label', size=12)
+        d.text(x, 28, m, mono=m.endswith(')'), color='label', size=12)
     rows = [('playWhenReady', 110, [(x0, 0), (210, 1), (760, 0)]),
             ('playing', 200, [(x0, 0), (230, 1), (390, 0), (430, 1), (560, 0), (650, 1), (760, 0)])]
     for name, y, pts in rows:
-        d.text(20, y - 12, name, anchor='start', mono=True, color='label', size=14, weight=600)
+        d.text(20, y - 17, name, anchor='start', mono=True, color='label', size=14, weight=600)
         path = f'M{x0},{y}'
         lvl = 0
         for i, (x, v) in enumerate(pts):
@@ -166,7 +166,7 @@ def timeline(t):
             lvl = v
         path += f' L{x1},{y - 40 * lvl}'
         d.arrow(path, head=False, width=2.6)
-        d.text(165, y + 4, 'false', anchor='end', size=11); d.text(165, y - 36, 'true', anchor='end', size=11)
+        d.text(161, y + 4, 'false', anchor='end', size=11); d.text(161, y - 36, 'true', anchor='end', size=11)
     d.text(410, 275, 'playing flips for the seek and the stall; playWhenReady does not', size=12)
     return d
 
@@ -176,17 +176,17 @@ def prefetch(t):
     S = [('idle', 90, 80, 'nothing pending', 'ghost'), ('loading', 290, 80, 'opening next entry', 'lib'),
          ('ready', 490, 80, 'open and cached', 'lib'), ('used', 690, 80, 'track changed to it', 'lib'),
          ('failed', 290, 215, 'could not open', 'fail')]
-    d.arrow('M165,80 L213,80'); d.text(189, 68, 'start', size=11)
-    d.arrow('M365,80 L413,80'); d.text(389, 68, 'cached', size=11)
-    d.arrow('M565,80 L613,80'); d.text(589, 68, 'switch', size=11)
-    d.arrow('M290,112 L290,181', kind='fail'); d.text(298, 152, 'error', anchor='start', size=11, color='fail')
-    d.arrow('M215,215 L185,215 L185,98 L213,98', kind='sec'); d.text(177, 176, 'next prefetch', anchor='end', size=11)
-    d.arrow('M690,48 L690,26 L290,26 L290,46', kind='sec'); d.text(490, 18, 'next prefetch', size=11)
+    d.arrow('M160,80 L218,80'); d.text(189, 68, 'start', size=11)
+    d.arrow('M360,80 L418,80'); d.text(389, 68, 'cached', size=11)
+    d.arrow('M560,80 L618,80'); d.text(589, 68, 'switch', size=11)
+    d.arrow('M290,112 L290,181', kind='fail'); d.text(302, 152, 'error', anchor='start', size=11, color='fail')
+    d.arrow('M220,215 L185,215 L185,98 L218,98', kind='sec'); d.text(137, 176, 'next prefetch', size=11)
+    d.arrow('M690,48 L690,26 L290,26 L290,46', kind='sec'); d.text(490, 13, 'next prefetch', size=11)
     d.add(f'<path d="M490,112 L490,295 M690,112 L690,295 M490,295 L690,295" fill="none" stroke="{d.c["line"]}" stroke-width="1.7" stroke-dasharray="5 5"/>')
     d.arrow('M490,295 L90,295 L90,114', kind='sec', dash=True); d.text(590, 317, 'cancel or dropped', size=11)
     d.text(290, 272, 'a cancel does not reset failed', size=11)
     for k, x, y, sub, role in S:
-        d.node(x, y, 150, 64, k, sub, role=role)
+        d.node(x, y, 140, 64, k, sub, role=role)
     return d
 
 
@@ -233,7 +233,7 @@ def hook(t):
             d.text(a + 80, y + 6, label, anchor='start', mono=True, color='label', size=12)
         else:
             d.arrow(f'M{a},{y} L{b + (8 if b < a else -8)},{y}', kind=kind)
-            d.text((a + b) / 2, y - 9, label, mono='(' in label or '.' in label, color='label', size=12)
+            d.text((a + b) / 2, y - 12, label, mono='(' in label or '.' in label, color='label', size=12)
     return d
 
 
@@ -247,11 +247,11 @@ def resolver(t):
     d.arrow('M690,98 L690,160', kind='fail')
     d.node(360, 190, 220, 56, 'your resolver', 'request.isRetry is true', role='app')
     d.arrow('M580,190 L472,190', kind='sec')
-    d.arrow('M360,162 L360,100', kind='main'); d.text(368, 135, 'new URL: one retry', anchor='start', size=11)
+    d.arrow('M360,162 L360,100', kind='main'); d.text(372, 135, 'new URL: one retry', anchor='start', size=11)
     d.node(360, 290, 220, 44, 'error', 'same URL or null', role='fail')
     d.arrow('M360,218 L360,266', kind='fail')
     d.node(110, 190, 170, 56, 'Hook.load', 'your hook, if any', role='ghost')
-    d.arrow('M110,98 L110,160', kind='sec', dash=True); d.text(118, 135, 'runs after', anchor='start', size=11)
+    d.arrow('M110,98 L110,160', kind='sec', dash=True); d.text(122, 135, 'runs after', anchor='start', size=11)
     return d
 
 
@@ -274,16 +274,16 @@ def spectrum(t):
 
 def media(t):
     d = D('media_session_flow', 900, 330, t, 'OS media session')
-    d.node(150, 110, 220, 64, 'Player', 'setMediaSession(...)', role='lib', size=15)
-    d.node(450, 110, 220, 64, 'Media session', 'metadata, state, actions', role='lib', mono=False)
-    d.arrow('M260,100 L338,100'); d.arrow('M340,122 L262,122', kind='sec')
+    d.node(150, 110, 210, 64, 'Player', 'setMediaSession(...)', role='lib', size=15)
+    d.node(450, 110, 210, 64, 'Media session', 'metadata, state, actions', role='lib', mono=False)
+    d.arrow('M255,100 L343,100'); d.arrow('M345,122 L257,122', kind='sec')
     d.text(300, 88, 'now playing', size=11); d.text(300, 142, 'commands', size=11)
     osn = [('iOS', 'Now Playing'), ('macOS', 'Control Center'), ('Android', 'notification'), ('Windows', 'SMTC'), ('Linux', 'MPRIS')]
     for i, (a, b) in enumerate(osn):
         y = 40 + i * 58
         d.node(760, y + 12, 190, 46, a, b, role='neutral', mono=False, size=14)
         d.arrow(f'M610,{y + 12} L663,{y + 12}', kind='sec')
-    d.arrow('M560,110 L610,110', kind='sec', head=False)
+    d.arrow('M555,110 L610,110', kind='sec', head=False)
     d.add(f'<path d="M610,52 L610,284" fill="none" stroke="{d.c["line"]}" stroke-width="1.7"/>')
     d.node(190, 255, 300, 56, 'stream.mediaSessionCommands', 'the player applies them too', role='app', size=13)
     d.arrow('M150,142 L150,225', kind='sec')
