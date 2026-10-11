@@ -1,7 +1,8 @@
 """Generates the package icon (imgs/mpv_audio_kit.png) and the README
 diagrams in imgs/diagrams, as PNG only.
 
-The branding is two flat colors: the icon's navy plate and light blue bars.
+The branding is flat colors: the icon's navy plate with a white glyph, and
+light blue for your code in the diagrams.
 Library nodes take the navy and your code's nodes the light blue. The
 PNGs are transparent, so they sit on the page's own ground: text inside a
 node relies on the node's fill, and the free text, arrows and bands use mid
@@ -16,6 +17,9 @@ OUT = os.path.join('imgs', 'diagrams')
 ICON = os.path.join('imgs', 'mpv_audio_kit.png')
 NAVY = '#0D2A75'
 LIGHT_BLUE = '#A8EDFA'
+# The icon's glyph: white on the navy disc. The diagrams keep the light
+# blue, which also reads on a light page, where white would vanish.
+GLYPH = '#FFFFFF'
 SANS = "Noto Sans, system-ui, -apple-system, Segoe UI, sans-serif"
 MONO = "Noto Sans Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
 
@@ -296,7 +300,7 @@ def icon_svg():
     k = 0.86  # the bars keep clear of the rim
     bars = ''.join(
         f'<rect x="{512 + k * (116 + 93 * i - 512):.1f}" y="{512 - k * h / 2:.1f}" width="{k * 48:.1f}" '
-        f'height="{k * h:.1f}" rx="{k * 24:.1f}" fill="{LIGHT_BLUE}"/>'
+        f'height="{k * h:.1f}" rx="{k * 24:.1f}" fill="{GLYPH}"/>'
         for i, h in enumerate((120, 220, 420, 300, 700, 300, 420, 220, 120)))
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" '
             'role="img" aria-label="mpv_audio_kit">\n'
