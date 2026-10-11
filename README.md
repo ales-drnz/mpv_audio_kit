@@ -1,3 +1,7 @@
+<p align="center">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/header/banner.png" width="100%" alt="mpv_audio_kit, audio engine for Flutter built on mpv and ffmpeg, shown in the mpv_studio player">
+</p>
+
 # mpv_audio_kit
 
 #### Audio engine for Flutter and Dart.
@@ -10,35 +14,28 @@
 [![](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://www.patreon.com/cw/ales_drnz)
 [![](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/ales.drnz)
 
-<table>
-<tr>
-<td valign="middle" width="90"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_audio_kit.png" width="70" alt="logo"></td>
-<td valign="middle"><code>mpv_audio_kit</code> is an audio library for Flutter built on mpv <code>v0.41.0</code>. mpv's events run on a background isolate, an ordered chain of ffmpeg filters processes the audio, and a raw API reaches mpv's properties and commands.</td>
-</tr>
-</table>
-
 ---
 
-## Why did I build this?
+## Made for your media library
 
-Many existing Flutter audio libraries are either built on an old version of mpv or they are simply too restrictive, hiding some cool features related to audio processing. So I made this project to provide the most powerful and flexible audio library for Flutter and solve 4 main needs:
+mpv_audio_kit is the audio engine for Flutter apps that play from your own server. It talks to Jellyfin, Plex and Samba, and puts everything mpv and ffmpeg can do behind a typed Dart API.
 
 <table>
 <tr>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/jellyfin.png" width="32" alt="Jellyfin"></td>
-<td valign="middle"><b>Jellyfin</b><br>for song streaming, supporting <code>.m3u8</code> (<a href="#21-supported-uri-schemes">HLS</a>) is essential when using transcoding. This is particularly handy because mpv can seek in it, while a <code>.stream</code> URL blocks seeking.</td>
+<td valign="middle"><b>Jellyfin</b><br>Stream your library direct or transcoded. Transcoded streams stay seekable, so the seek bar works while the server converts the file.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/plex.png" width="32" alt="Plex"></td>
-<td valign="middle"><b>Plex</b><br>transcoding in this case requires a <code>/decision</code> call before each stream. Plex rejects multiple parallel requests when creating playlists, so instead of relying on a local proxy server, the <code>on_load</code> <a href="#12-hooks">hook method</a> resolves <code>.m3u8</code> or <code>.mpd</code> (<a href="#21-supported-uri-schemes">DASH</a>) URLs lazily.</td>
+<td valign="middle"><b>Plex</b><br>Play tracks and playlists from Plex. Each track asks the server for its stream only when it loads, so a long queue starts at once and the server is never flooded with requests.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/samba.png" width="32" alt="Samba"></td>
-<td valign="middle"><b>Samba</b><br>for playing from network shares over <code>smb2://</code> (<a href="#21-supported-uri-schemes">SMB</a>), the engine speaks SMB2 and SMB3 natively, so a track on your home server (for example a NAS) streams like any local source.</td>
+<td valign="middle"><b>Samba</b><br>Play straight from a NAS or any network share over SMB2 and SMB3, as if the files were on the device.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/wrench.png" width="32" alt=""></td>
-<td valign="middle"><b>Total control</b><br>this library doesn't limit features; it exposes the native engine so you can tune <a href="#7-network-and-caching">buffers and network timeouts</a>, <a href="#5-audio-effects">DSP filters</a> and play with ffmpeg exactly how you want.</td>
+<td valign="middle"><b>Total control</b><br>Tune the cache and the network, shape the sound with a chain of ffmpeg effects, and watch it with a live spectrum, waveform and loudness meter.</td>
 </tr>
 </table>
 
@@ -2759,6 +2756,8 @@ The `alsa` driver cannot reach the sound card from inside a container: use `pipe
 ## Project background
 
 I wrote the native bindings, the isolate code and most of the architecture with Claude Code.
+
+Jellyfin, Plex and Samba are trademarks of their respective owners. mpv_audio_kit is not affiliated with them.
 
 ---
 
