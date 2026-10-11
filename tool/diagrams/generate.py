@@ -292,13 +292,15 @@ def media(t):
 
 def icon_svg():
     """The package icon: nine rounded bars, symmetric around the tallest,
-    on a rounded plate."""
+    on a round plate like mpv_studio's."""
+    k = 0.86  # the bars keep clear of the rim
     bars = ''.join(
-        f'<rect x="{116 + 93 * i}" y="{512 - h / 2}" width="48" height="{h}" rx="24" fill="{LIGHT_BLUE}"/>'
+        f'<rect x="{512 + k * (116 + 93 * i - 512):.1f}" y="{512 - k * h / 2:.1f}" width="{k * 48:.1f}" '
+        f'height="{k * h:.1f}" rx="{k * 24:.1f}" fill="{LIGHT_BLUE}"/>'
         for i, h in enumerate((120, 220, 420, 300, 700, 300, 420, 220, 120)))
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" '
             'role="img" aria-label="mpv_audio_kit">\n'
-            f'<rect x="24" y="24" width="976" height="976" rx="230" fill="{NAVY}"/>\n{bars}\n</svg>\n')
+            f'<circle cx="512" cy="512" r="512" fill="{NAVY}"/>\n{bars}\n</svg>\n')
 
 
 ALL = [architecture, lifecycle, effects, timeline, prefetch, cover, errors, hook, resolver, spectrum, media]
