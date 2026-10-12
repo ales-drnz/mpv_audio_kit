@@ -77,6 +77,10 @@ void main() {
       expect(fileUrlToPath('file:///%z%41'), '/%z%41');
     });
 
+    test('leaves a URL whose escapes are not UTF-8 to mpv', () {
+      expect(fileUrlToPath('file:///caf%E9.flac'), isNull);
+    });
+
     test('drops the slash before a Windows drive letter on Windows only', () {
       expect(
         fileUrlToPath('file:///C:/a%20b.flac', windows: true),

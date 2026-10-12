@@ -107,7 +107,9 @@ Future<ResolvedUri> resolveUri(String uri) async {
 /// through: the scheme is dropped whatever its case, `%NN` escapes are
 /// decoded byte by byte (a malformed one is kept as it is), and on Windows
 /// `/C:/` becomes `C:/`. The playlist then names the entry by this path,
-/// not by the URL it was loaded with.
+/// not by the URL it was loaded with. Escapes that are not UTF-8 (a
+/// Latin-1 file name) give `null`: a Dart string cannot carry those bytes,
+/// so the URL goes to mpv as it is and mpv decodes it.
 @visibleForTesting
 String? fileUrlToPath(String uri, {bool? windows}) {
   if (uri.length < 7 || uri.substring(0, 7).toLowerCase() != 'file://') {
@@ -129,7 +131,12 @@ String? fileUrlToPath(String uri, {bool? windows}) {
     }
     i += 3;
   }
-  var path = utf8.decode(out, allowMalformed: true);
+  String path;
+  try {
+    path = utf8.decode(out);
+  } on FormatException {
+    return null;
+  }
   if ((windows ?? Platform.isWindows) &&
       path.length > 2 &&
       path[0] == '/' &&
