@@ -46,7 +46,7 @@ the controller's input streams directly.
 
 `darwin/main.swift` is a `swiftc`-compiled executable, not an
 XCTest bundle. It links against the `FlutterMacOS.framework` shipped
-inside the example app's macOS build output, instantiates a real
+inside test_app's macOS build output, instantiates a real
 `MediaSessionPlugin`, drives it through the method channel
 (`enable` / `updatePlayback` / `disable`) plus the scrub entry point
 (`handleScrub`), and asserts against the real
@@ -55,10 +55,10 @@ inside the example app's macOS build output, instantiates a real
 renderer, so each call publishes synchronously; there is no timer or
 seek state machine to spin the run loop for.
 
-The suite expects the example app's macOS build artifacts to exist:
+The suite expects test_app's macOS build artifacts to exist:
 
 ```
-(cd example && flutter build macos --debug)
+(cd test_app && flutter build macos --debug)
 ```
 
 Then:

@@ -10,7 +10,7 @@
 #      together with `test/media_session/darwin/main.swift` into a
 #      single Mach-O executable.
 #   2. Links against `FlutterMacOS.framework` (materialized by a
-#      previous `flutter build macos` of the example app) and
+#      previous `flutter build macos` of test_app) and
 #      `MediaPlayer.framework`.
 #   3. Runs the executable, which drives the plugin (enable,
 #      updatePlayback, handleScrub, disable) and asserts against the
@@ -19,9 +19,9 @@
 #
 # Requirements:
 #   • macOS (uses `swiftc` and Apple frameworks).
-#   • The example app must have been built at least once so the
+#   • test_app must have been built at least once so the
 #     Flutter framework is on disk:
-#       (cd example && flutter build macos --debug)
+#       (cd test_app && flutter build macos --debug)
 #
 # Usage:
 #   bash test/media_session/darwin/run.sh
@@ -40,13 +40,13 @@ if [ "$OS" != "Darwin" ]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-FLUTTER_FW_DIR="$REPO_ROOT/example/build/macos/Build/Products/Debug"
+FLUTTER_FW_DIR="$REPO_ROOT/test_app/build/macos/Build/Products/Debug"
 
 if [ ! -d "$FLUTTER_FW_DIR/FlutterMacOS.framework" ]; then
   echo "FlutterMacOS.framework not found at:" >&2
   echo "  $FLUTTER_FW_DIR" >&2
-  echo "Build the example app first:" >&2
-  echo "  (cd example && flutter build macos --debug)" >&2
+  echo "Build test_app first:" >&2
+  echo "  (cd test_app && flutter build macos --debug)" >&2
   exit 2
 fi
 

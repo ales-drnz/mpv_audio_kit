@@ -52,7 +52,7 @@ class D:
         return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" width="{self.w}" height="{self.h}" '
                 f'role="img" aria-label="{esc(self.label)}">\n{defs}\n' + '\n'.join(self.body) + '\n</svg>\n')
 
-    # role: lib (navy), app (cyan), neutral, fail, ghost (dimmed text)
+    # role: lib (navy), app (light blue), neutral, fail, ghost (dimmed text)
     def node(self, x, y, w, h, title, sub=None, role='lib', mono=True, r=None, sub2=None, size=15):
         c = self.c
         r = 10 if r is None else r
