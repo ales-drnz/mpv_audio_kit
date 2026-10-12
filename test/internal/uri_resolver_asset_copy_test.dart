@@ -52,7 +52,14 @@ void main() {
     );
     final runtime = Platform.environment['XDG_RUNTIME_DIR'];
     if (Platform.isLinux && runtime != null && runtime.isNotEmpty) {
-      expect(dir.parent.path, runtime, reason: 'per-user on Linux');
+      // An XDG_RUNTIME_DIR inherited from another user (su, sudo -E) is
+      // not writable: the copy falls back to temp instead of failing.
+      final writable = _canCreateIn(runtime);
+      expect(
+        dir.parent.path,
+        writable ? runtime : Directory.systemTemp.path,
+        reason: writable ? 'per-user on Linux' : 'temp fallback',
+      );
     }
   });
 
@@ -71,4 +78,13 @@ void main() {
     ).parent.listSync().where((e) => e.path.endsWith('.part'));
     expect(leftovers, isEmpty);
   });
+}
+
+bool _canCreateIn(String path) {
+  try {
+    Directory(path).createTempSync('mpv_audio_kit_probe_').deleteSync();
+    return true;
+  } on FileSystemException {
+    return false;
+  }
 }

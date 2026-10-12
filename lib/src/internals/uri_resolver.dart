@@ -172,14 +172,21 @@ String _fnv1a(String text) {
 Future<Directory> _assetDirectory() async {
   final env = Platform.environment;
   final runtime = Platform.isLinux ? env['XDG_RUNTIME_DIR'] : null;
-  final base = (runtime != null && runtime.isNotEmpty)
-      ? runtime
-      : Directory.systemTemp.path;
   final owner =
       '${env['USER'] ?? env['USERNAME'] ?? ''}'
       ' ${Platform.resolvedExecutable}';
+  final name = 'mpv_audio_kit_assets_${_fnv1a(owner)}';
+  if (runtime != null && runtime.isNotEmpty) {
+    try {
+      final dir = Directory('$runtime${Platform.pathSeparator}$name');
+      await dir.create(recursive: true);
+      return dir;
+    } on FileSystemException {
+      // An inherited XDG_RUNTIME_DIR of another user: fall back to temp.
+    }
+  }
   final dir = Directory(
-    '$base${Platform.pathSeparator}mpv_audio_kit_assets_${_fnv1a(owner)}',
+    '${Directory.systemTemp.path}${Platform.pathSeparator}$name',
   );
   await dir.create(recursive: true);
   return dir;
