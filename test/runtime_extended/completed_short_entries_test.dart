@@ -84,6 +84,37 @@ void main() {
       test('only short entries', () async {
         await playThroughAndCheck([shortFixture, shortFixture, shortFixture]);
       }, timeout: const Timeout(Duration(seconds: 120)));
+
+      test('a loop change at the park follows the end of content', () async {
+        final player = await buildPlayer();
+        try {
+          await player.openAll([Media(shortFixture)], play: true);
+          await waitUntil(
+            () => player.state.completed,
+            timeout: const Duration(seconds: 15),
+            reason: 'mpv never parked at the end',
+          );
+          // A loop at the park means the end is no longer the end; turning
+          // it off again, with the core still parked, means it is.
+          await player.setLoop(Loop.file);
+          await waitUntil(
+            () => !player.state.completed,
+            timeout: const Duration(seconds: 2),
+            reason: 'completed stayed up with a loop on',
+          );
+          await player.setLoop(Loop.off);
+          if (await player.getRawProperty('eof-reached') == 'yes') {
+            await waitUntil(
+              () => player.state.completed,
+              timeout: const Duration(seconds: 2),
+              reason: 'completed missed the end once the loop went off',
+            );
+          }
+        } finally {
+          await player.stop();
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 60)));
     });
   });
 }

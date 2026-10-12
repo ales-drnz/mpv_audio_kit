@@ -60,8 +60,14 @@ const int _kGroupWindowMs = 33;
 /// [MpvEventEndOfContent] read. `eof-reached` is the direct one; `pause`
 /// is observed here only for this (the player does not observe it): the
 /// keep-open park pauses the core, which mpv notifies even when the
-/// `eof-reached` change around it was skipped.
-const Set<String> _kEndOfContentTriggers = {'eof-reached', 'pause'};
+/// `eof-reached` change around it was skipped. A loop change at the park
+/// turns the end of content on or off with nothing else moving.
+const Set<String> _kEndOfContentTriggers = {
+  'eof-reached',
+  'pause',
+  'loop-file',
+  'loop-playlist',
+};
 
 /// Reply id of the isolate's own `pause` observer, above every id the main
 /// isolate hands out.
