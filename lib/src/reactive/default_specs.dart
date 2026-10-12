@@ -72,14 +72,15 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       parse: (raw, _) => !raw,
       reduce: (playing, s) => s.copyWith(playing: playing),
     ),
-    // NOTE: `pause` is deliberately NOT observed. The intent axis
-    // (`playWhenReady`) is driven purely by the play/pause/open/stop
-    // call sites (plus an idle-active reset) — the same "intent changes
-    // only on explicit method calls" model as ExoPlayer's
-    // `playWhenReady` and just_audio's `playing`. Observing `pause`
-    // would mis-report intent at idle (mpv's `pause` defaults to `no`
-    // even when nothing is loaded) and the initial observe burst could
-    // race the optimistic set on the first open.
+    // NOTE: `pause` is deliberately NOT observed here (the event isolate
+    // observes it only for its end-of-content read and never forwards
+    // it). The intent axis (`playWhenReady`) is driven purely by the
+    // play/pause/open/stop call sites (plus the resets at idle and at the
+    // end of content) — the same "intent changes only on explicit method
+    // calls" model as ExoPlayer's `playWhenReady` and just_audio's
+    // `playing`. Observing `pause` would mis-report intent at idle (mpv's
+    // `pause` defaults to `no` even when nothing is loaded) and the initial
+    // observe burst could race the optimistic set on the first open.
     MpvPropertySpec<double>.double(
       name: 'volume',
       reactive: r.volume,

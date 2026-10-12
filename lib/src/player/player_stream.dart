@@ -455,7 +455,7 @@ class PlayerStream {
   /// [internalLog].
   final Stream<MpvLogEntry> log;
 
-  /// Library-side log entries — JSON parse warnings, hook timeouts, and
+  /// Library-side log entries — parse warnings, hook timeouts, and
   /// other messages produced by the Dart layer itself. Always carries
   /// `prefix: 'mpv_audio_kit'`.
   ///
@@ -707,9 +707,10 @@ class PlayerStream {
   /// clear stale data), then the envelope. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
   /// the final one. An HTTP file that plays from its start is decoded from
-  /// mpv's cache as it downloads, the same way. Adaptive, non-seekable or transcoded network streams grow the
-  /// envelope from playback instead, and a live stream of unknown length
-  /// emits a rolling window ([WaveformData.live]).
+  /// mpv's cache as it downloads, the same way. Adaptive, non-seekable or
+  /// transcoded network streams grow the envelope from playback instead,
+  /// and a live stream of unknown length emits a rolling window
+  /// ([WaveformData.live]).
   ///
   /// A remote file is downloaded once: the decode reads the packets mpv
   /// already cached. When one pass from the start to the end is not

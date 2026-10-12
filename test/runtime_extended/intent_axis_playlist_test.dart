@@ -29,7 +29,7 @@ import '../_helpers/setter_test_helpers.dart';
 ///    MPV_EVENT_END_FILE(EOF) for each finished entry; that per-entry
 ///    event must not pulse `completed` / `MpvPlaybackState.completed`
 ///    between two tracks — the same no-flicker contract the
-///    `eof-reached` hook enforces via its end-of-content gate.
+///    end-of-content settle enforces via its last-entry gate.
 void main() {
   // 5-second fixture for the jump test: long enough that the jumped-to
   // track is still mid-playback while we assert.

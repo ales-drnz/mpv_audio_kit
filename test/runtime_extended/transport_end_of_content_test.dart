@@ -21,7 +21,7 @@ import '../_helpers/setter_test_helpers.dart';
 /// or the last playlist entry and withholds BOTH `END_FILE` and
 /// `idle-active` (verified against mpv 0.41.0 `handle_keep_open`,
 /// player/playloop.c:983). The library settles the transport off the
-/// `eof-reached` rising edge instead, so:
+/// event isolate's end-of-content reads instead, so:
 ///   - the play/pause intent (`playWhenReady`, the OS-button binding) is
 ///     released at the true end of content,
 ///   - `completed` / `MpvPlaybackState.completed` are reachable for a lone

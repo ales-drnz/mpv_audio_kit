@@ -525,10 +525,10 @@ class Player extends _PlayerBase
 ///
 /// Owns:
 /// - the FFI handle and event-isolate plumbing,
-/// - the [PropertyRegistry] for the ~60 simple mpv properties,
+/// - the [PropertyRegistry] for the ~90 simple mpv properties,
 /// - the small set of standalone [ReactiveProperty]s and [StreamController]s
 ///   that back state fields not directly mirrored by an mpv property
-///   (lifecycle: `buffering`/`completed`; complex JSON parses: `playlist`,
+///   (lifecycle: `buffering`/`completed`; complex node parses: `playlist`,
 ///   `metadata`, `audioDevices`, `bufferingPercentage`; pure events: log,
 ///   error, hook, end-of-file, seek-completed).
 abstract class _PlayerBase {
@@ -544,10 +544,11 @@ abstract class _PlayerBase {
   bool _disposed = false;
 
   // Latched true on the first MPV_EVENT_START_FILE. Gates the idle-active
-  // intent reset: the initial observe burst delivers `idle-active=true`
-  // (the player starts idle) BEFORE any file load is attempted, and that
-  // stale value must not clear a `playWhenReady` intent set by an
-  // open(play: true) that is still settling. Port delivery is FIFO, so the
+  // intent reset and [_settleEndOfContent]: the initial observe burst
+  // delivers `idle-active=true` (the player starts idle) BEFORE any file
+  // load is attempted, and that stale value must not clear a
+  // `playWhenReady` intent set by an open(play: true) that is still
+  // settling. Port delivery is FIFO, so the
   // startup idle-active always precedes the first START_FILE. Latching on
   // START_FILE (which fires even for a load that fails to open) rather than
   // FILE_LOADED means a failed first open() still arms the reset, so its
@@ -578,7 +579,8 @@ abstract class _PlayerBase {
   SourceResolver? _sourceResolver;
 
   // Latched when the resolver services an `on_load_fail` for the current
-  // load attempt, cleared on the next START_FILE / `on_load`. Caps the
+  // load attempt, cleared on the next START_FILE only (not on `on_load`,
+  // which mpv re-enters for the same attempt after the retry). Caps the
   // resolver-driven retry at ONE per load: a resolver that keeps minting
   // fresh-but-broken URLs (e.g. a timestamped query string) would
   // otherwise put mpv in an infinite open-fail-reopen loop.
@@ -631,7 +633,7 @@ abstract class _PlayerBase {
   // Lifecycle flags driven by file-boundary events, not by a single property.
   final ReactiveProperty<bool> _buffering = ReactiveProperty<bool>(false);
   final ReactiveProperty<bool> _completed = ReactiveProperty<bool>(false);
-  // Derived from JSON properties that need access to player-side context.
+  // Derived from node properties that need access to player-side context.
   final ReactiveProperty<Playlist> _playlist = ReactiveProperty<Playlist>(
     Playlist.empty,
   );
@@ -666,7 +668,7 @@ abstract class _PlayerBase {
   // Log stream from the mpv engine itself (codec / demux / ao / …).
   final StreamController<MpvLogEntry> _logCtrl =
       StreamController<MpvLogEntry>.broadcast();
-  // Log stream from the Dart layer itself — JSON parse warnings, hook
+  // Log stream from the Dart layer itself — node parse warnings, hook
   // timeouts, etc. Kept disjoint from `_logCtrl` so library-side noise
   // can be filtered from genuine engine messages without inspecting
   // the prefix.
@@ -1065,13 +1067,11 @@ abstract class _PlayerBase {
 
   /// Whether mpv is parked paused at the end of content (`keep-open`),
   /// read from the core's own `eof-reached` rather than from
-  /// `state.completed`. That flag follows the observed `eof-reached`
-  /// edges, and mpv's observer reports a value, not every change: when
-  /// the last entry reaches EOF as soon as it loads (a short track, or a
-  /// slow machine), the core goes from the previous entry's EOF through
-  /// the load and back to EOF between two notifications, no rising edge
-  /// reaches the player, and `completed` stays false while mpv sits
-  /// parked. The transport calls that unpause need the core's answer.
+  /// `state.completed`. That flag comes from the event isolate's
+  /// [MpvEventEndOfContent] reads, which reach the main isolate behind the
+  /// events still queued ahead of them: right after a short last entry
+  /// parks, `completed` can still be false. The transport calls that
+  /// unpause need the core's answer at the call.
   Future<bool> _parkedAtEof() async =>
       await getRawProperty('eof-reached') == 'yes';
 
@@ -1166,7 +1166,8 @@ abstract class _PlayerBase {
   /// Updates the lifecycle triple (playing/buffering/completed) and
   /// emits per-reactive only for fields that actually changed. Used
   /// for compound transitions (start-file, file-loaded, end-file,
-  /// shutdown, idle-active). The pure diff lives in [computeLifecycle].
+  /// end of content, shutdown, idle-active). The pure diff lives in
+  /// [computeLifecycle].
   void _updateLifecycle({bool? playing, bool? buffering, bool? completed}) {
     final result = computeLifecycle(
       prev: _state,
@@ -1189,13 +1190,13 @@ abstract class _PlayerBase {
   /// writers that otherwise settle the transport (the END_FILE completed
   /// flag and the idle-active intent reset) never fire for the last entry.
   ///
-  /// It is a level, read again at every load, restart, `eof-reached` and
-  /// `pause` notification, not the observed `eof-reached` edge matched
-  /// against `state.playlist`: mpv samples observed properties once per
-  /// playloop iteration, so an entry that reaches EOF as soon as it loads
-  /// can go from the previous entry's EOF to its own without a change
-  /// being reported, and the state's playlist position can lag or lead
-  /// the entry an edge belonged to. That raised `completed` at a track
+  /// It is a level, read again at every load, restart, `eof-reached`,
+  /// `pause` and `loop-*` notification, not the observed `eof-reached` edge
+  /// matched against `state.playlist`: mpv samples observed properties once
+  /// per playloop iteration, so an entry that reaches EOF as soon as it
+  /// loads can go from the previous entry's EOF to its own without a change
+  /// being reported, and the state's playlist position can lag or lead the
+  /// entry an edge belonged to. That raised `completed` at a track
   /// change, cleared by the next load, and missed the real end.
   void _settleEndOfContent({required bool eof, required bool lastEntry}) {
     if (!_hasLoadedFile) return;
@@ -1337,8 +1338,8 @@ abstract class _PlayerBase {
     // Tear down the media-session controller before closing the
     // backing reactives — its subscriptions need live streams to
     // cancel cleanly, and its final `disable()` call to native
-    // needs the controller still wired. `Player.dispose()` already
-    // calls `setMediaSession(null)` (which tears the controller
+    // needs the controller still wired. `Player._disposeImpl` already
+    // calls `_releaseMediaSession()` (which tears the controller
     // down) before reaching here, but we double-check for safety in
     // case a future code path skips that step.
     final controller = _mediaSessionController;

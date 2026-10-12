@@ -176,8 +176,8 @@ class MpvPropertySpec<T> {
   ///
   /// [commit] is invoked with the post-reduce state BEFORE [onChange] fires,
   /// so a callback that itself reads and mutates the player's committed
-  /// state — the `idle-active` / `eof-reached` hooks that settle the
-  /// transport — builds on the reduced state instead of being overwritten by
+  /// state — the `idle-active` hook that settles the transport — builds
+  /// on the reduced state instead of being overwritten by
   /// the caller assigning this method's return value afterwards. When
   /// [commit] is null, onChange runs against the pre-commit state and the
   /// caller assigns the result itself.

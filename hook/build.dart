@@ -221,9 +221,9 @@ Future<File> _fetch(String asset, Uri cacheDir) async {
 }
 
 /// Copies the libmpv binary of the xcframework slice, unpacked from [zip]
-/// into [dir], into [out], thinned to
-/// [arch] when the slice is universal: Flutter runs the hook once per
-/// architecture and merges the results itself.
+/// into [dir], into [out], thinned to [arch] when the slice is universal:
+/// Flutter runs the hook once per architecture and merges the results
+/// itself.
 Future<void> _extractAppleSlice(
   File zip,
   Directory dir,

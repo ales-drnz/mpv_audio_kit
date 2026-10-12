@@ -515,7 +515,7 @@ class MediaSessionController {
       seekable: seekable,
       loop: state.loop,
       shuffle: state.shuffle,
-      // Terminal end-of-content. The `eof-reached` hook releases
+      // Terminal end-of-content. The end-of-content settle releases
       // `playWhenReady` at true EOF, which already drives a playback push,
       // so the completed transition is carried on that same snapshot.
       completed: state.completed,

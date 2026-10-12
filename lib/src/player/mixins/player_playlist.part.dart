@@ -94,9 +94,9 @@ mixin _PlaylistModule on _PlayerBase {
 
   /// Jumps to the track at [index] in the playlist and starts playback.
   ///
-  /// Unpauses synchronously *before* issuing the playlist jump so the new
-  /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives — no
-  /// shared `_pendingPlay` field to race on with concurrent `open()` calls.
+  /// Writes `pause=no` before issuing the playlist jump (and once more
+  /// after it when mpv was parked at the end of content), so the new
+  /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives.
   ///
   /// Throws [RangeError] if [index] is out of range.
   Future<void> jump(int index) async {
@@ -114,7 +114,7 @@ mixin _PlaylistModule on _PlayerBase {
       _reactives.playWhenReady,
       true,
     );
-    // See [Player.open] — parked at EOF (`keep-open`) the unpause above
+    // See [Player.open] — parked at EOF (`keep-open`) the unpause below
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
     final parkedAtEof = await _parkedAtEof();
@@ -147,8 +147,8 @@ mixin _PlaylistModule on _PlayerBase {
   /// When [index] is the currently-playing entry, the swap is routed
   /// through `playlist-next` so it inherits mpv's prefetch-driven
   /// transition path instead of stopping and restarting playback.
-  /// (Audible only with `--prefetch-playlist=yes`, the default for
-  /// this build.)
+  /// (Audible only with [setPrefetchPlaylist] on, which is off by
+  /// default.)
   Future<void> replace(int index, Media media) async {
     _checkNotDisposed();
     RangeError.checkNotNegative(index, 'index');
@@ -205,9 +205,10 @@ mixin _PlaylistModule on _PlayerBase {
     // call own the surgery, matching the open() family's per-await discipline.
     if (currentPos == index) {
       // Currently-playing entry: insert the replacement right after
-      // the active position, then advance — mpv's playlist-prefetch
-      // (already triggered by the insert) makes the cross-fade
-      // gapless for typical music files. Finally drop the original.
+      // the active position, then advance — with prefetch on (see
+      // [setPrefetchPlaylist]) mpv has the next entry open ahead, so the
+      // switch is gapless for typical music files. Finally drop the
+      // original.
       await insertAt(index + 1);
       if (load.superseded) return;
       await _commandChecked(['playlist-next', 'force']);

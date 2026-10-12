@@ -2,11 +2,11 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-// Ground-truth probe: asks the REAL shipped libmpv whether every native
-// option/property the audit plan relies on actually exists, and of what
-// type. This converts "the agents claimed X exists" into "the binary
-// confirmed X exists". Anything that prints MISSING is a bogus finding and
-// must be dropped from the plan before any Dart code is written for it.
+// Ground-truth probe: asks the REAL shipped libmpv whether each native
+// option/property listed below exists, and of what type, so a libmpv bump
+// that drops or renames one fails here instead of at a setter call site.
+// The `#n` tags in the labels are the numbers of the audit items that
+// introduced each binding.
 //
 // Options are introspected via `option-info/<name>/type` (non-null => the
 // option exists; the value is mpv's own type name: Flag/Double/Integer/

@@ -106,12 +106,13 @@ class MediaSessionPlaybackSnapshot {
   final Loop loop;
   final bool shuffle;
 
-  /// End-of-content reached (mpv's `eof-reached` rising edge, mirrored by
-  /// [PlayerState.completed]). The native side maps this to a terminal
-  /// state — Android `STATE_ENDED`, Linux MPRIS `PlaybackStatus=Stopped`
-  /// with empty `Metadata` — instead of leaving a finished track parked as
-  /// "Paused at full length" on the OS surface. Apple has no distinct
-  /// "ended" playback state and parks acceptably as paused, so it ignores it.
+  /// End-of-content reached ([PlayerState.completed]: `eof-reached` on the
+  /// last playlist entry with no loop on). The native side maps this to a
+  /// terminal state — Android `STATE_ENDED`, Linux MPRIS
+  /// `PlaybackStatus=Stopped` with empty `Metadata` — instead of leaving a
+  /// finished track parked as "Paused at full length" on the OS surface.
+  /// Apple has no distinct "ended" playback state and parks acceptably as
+  /// paused, so it ignores it.
   final bool completed;
 
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as

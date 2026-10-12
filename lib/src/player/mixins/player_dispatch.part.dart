@@ -6,14 +6,15 @@ part of '../player.dart';
 
 /// Inbound event pump: turns each [MpvIsolateEvent] forwarded from the event
 /// isolate into state mutations and stream emits, routes property changes to
-/// the registry (falling back to the custom JSON / derived handlers), and
+/// the registry (falling back to the custom node / derived handlers), and
 /// applies the FILE_LOADED / PLAYBACK_RESTART payloads (position, chapters,
-/// embedded cover, source path) read by the event isolate. No method here
-/// may issue a synchronous read against the core: every such call waits for
-/// the playloop, and during audio-output init (a Bluetooth/AirPlay device
-/// waking up takes seconds) that wait would freeze the main isolate — the
-/// macOS beachball. `_handleEvent` is the abstract member bring-up wires as
-/// the isolate's `onEvent`; the rest are internal to this mixin.
+/// embedded cover, source path, playlist) and the end-of-content reads
+/// taken by the event isolate. No method here may issue a synchronous read
+/// against the core: every such call waits for the playloop, and during
+/// audio-output init (a Bluetooth/AirPlay device waking up takes seconds)
+/// that wait would freeze the main isolate — the macOS beachball.
+/// `_handleEvent` is the abstract member bring-up wires as the isolate's
+/// `onEvent`; the rest are internal to this mixin.
 mixin _DispatchModule on _PlayerBase {
   @override
   void _handleEvent(MpvIsolateEvent event) {
@@ -282,13 +283,13 @@ mixin _DispatchModule on _PlayerBase {
 
   /// Routes a property-change to the registry first, then falls back to the
   /// custom handlers for properties whose update logic doesn't fit a simple
-  /// (parser, reducer) pair (JSON parsing with player-side context, derived
+  /// (parser, reducer) pair (node parsing with player-side context, derived
   /// fields aggregating multiple mpv properties, etc.).
   void _dispatchProperty(String name, dynamic raw) {
     // `commit` assigns the reduced state to `_state` BEFORE the spec's
     // onChange fires, so a hook that reads + mutates `_state` (the
-    // idle-active / eof-reached hooks settling the transport) builds on the
-    // reduced state and isn't clobbered by a late assignment here.
+    // idle-active hook settling the transport) builds on the reduced state
+    // and isn't clobbered by a late assignment here.
     final next = _registry.dispatch(name, raw, _state, commit: _commitState);
     if (next != null) {
       return;
@@ -347,7 +348,7 @@ mixin _DispatchModule on _PlayerBase {
     }
   }
 
-  // --- Custom property handlers (JSON / derived) ---
+  // --- Custom property handlers (node / derived) ---
 
   /// Writes the FILE_LOADED entry into the state snapshot only. The
   /// reactives keep the last observed values, so the observed `path` and

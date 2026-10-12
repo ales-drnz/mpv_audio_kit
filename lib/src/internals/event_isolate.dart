@@ -218,8 +218,8 @@ void _isolateEntry(SendPort initialReplyPort) {
         return;
       }
       // Blocking call — returns when `_runEventLoop` breaks out of
-      // its loop on MPV_EVENT_SHUTDOWN (sent by mpv after the main
-      // isolate's `quit` command in dispose()).
+      // its loop: on the stop flag dispose() sets right after its `quit`
+      // command (MpvEventIsolate.requestStop), or on MPV_EVENT_SHUTDOWN.
       _runEventLoop(lib!, handle!, toMain!, stopFlag, cache, wakeupCounter);
       // Drop the last live ReceivePort so the VM tears the isolate
       // down naturally — this runs the per-isolate finalizers that
@@ -1011,8 +1011,8 @@ bool _deepNodeEquals(dynamic a, dynamic b) {
 /// Manages the dedicated isolate that runs the mpv event loop.
 ///
 /// The mpv API is thread-safe: the main isolate continues to call
-/// [mpv_set_property], [mpv_command] etc. while this isolate blocks on
-/// [mpv_wait_event], keeping the Flutter render thread free.
+/// `mpv_set_property_async`, `mpv_command_async` etc. while this isolate
+/// blocks on `mpv_wait_event`, keeping the Flutter render thread free.
 class MpvEventIsolate {
   Isolate? _isolate;
   SendPort? _toIsolate;
@@ -1026,7 +1026,7 @@ class MpvEventIsolate {
   // arrive between isolate-start and the main-side listen registration.
   // Using a broadcast controller dropped the initial PROPERTY_CHANGE
   // burst (mpv emits one per `mpv_observe_property` call right after
-  // the isolate begins polling — ~70 properties), leaving downstream
+  // the isolate begins polling — ~100 properties), leaving downstream
   // state partially populated.
   final _events = StreamController<MpvIsolateEvent>();
 
@@ -1036,7 +1036,7 @@ class MpvEventIsolate {
 
   /// Spawns the event isolate, runs the heavy mpv init recipe inside
   /// it, and resolves with the live `mpv_handle*` address. Heavy FFI
-  /// (`mpv_create`, `mpv_initialize`, ~80 `mpv_observe_property`)
+  /// (`mpv_create`, `mpv_initialize`, ~100 `mpv_observe_property`)
   /// never touches the main isolate, so the host UI stays responsive
   /// during cold start.
   ///

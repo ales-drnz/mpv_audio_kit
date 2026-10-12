@@ -17,8 +17,7 @@ void main() {
   // Companion to dispose_during_seek_test.dart: races dispose() against
   // an in-flight `open()` (i.e. while the demuxer thread is still
   // building the chain). The cooperative shutdown must complete within
-  // the safety timeout (1 s comfortably) — pre-dispose race fixes
-  // (Player.create() + _eventIsolateReady await) put this in the steady
+  // the safety timeout (1 s comfortably); in practice it lands in the
   // millisecond range.
   runtimeSuite(() {
     test('dispose() while open() is in flight tears down within 1s', () async {

@@ -723,11 +723,6 @@ final class AiirChannel {
 /// (`gains`/`k`, `poles`/`p`, `zeros`/`z`). The Nth `|`-section of
 /// each string belongs to the Nth output channel; coefficient lists
 /// within a channel are space-separated.
-///
-/// The extension always reads / writes the long-form param names
-/// (`gains`, `poles`, `zeros`); the short aliases (`k`, `p`, `z`) are
-/// kept untouched on writes — consumers using both would conflict
-/// with themselves anyway.
 extension AiirChannelsX on AiirEffect {
   /// Decoded channel slots in declaration order. When the three
   /// underlying CSVs differ in length, the shortest list wins (lavfi

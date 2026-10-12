@@ -23,7 +23,7 @@ class PropertyRegistry {
   PropertyRegistry();
 
   /// Upper bound on the reply-IDs of the registry's observers.
-  /// Out-of-registry observers (JSON / aggregate properties wired
+  /// Out-of-registry observers (node / aggregate properties wired
   /// directly in the player's observe list) use IDs strictly greater than
   /// this so the two dispatch halves stay distinguishable in `mpv -v`
   /// logs. mpv itself treats the integer as opaque user data — the

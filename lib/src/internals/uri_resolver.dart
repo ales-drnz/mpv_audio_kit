@@ -4,9 +4,10 @@
 // found in the LICENSE file.
 //
 // Internal URI normalizer invoked by `Player.open()` / `Player.openAll()` /
-// `Player.add()` / `Player.replace()` for every media URI before it
-// reaches `loadfile`. Translates host-platform schemes that libmpv does
-// not understand into something it does:
+// `Player.openPlaylistFile()` / `Player.add()` / `Player.replace()` /
+// `Player.addAudioTrack()` for every media URI before it reaches mpv.
+// Translates host-platform schemes that libmpv does not understand into
+// something it does:
 //
 //   asset://path/inside/bundle  → <temp>/mpv_audio_kit_assets_<app>/mpv_asset_<hash>_<safe_name>
 //   content://...               → fd://<n>                     (Android only)
@@ -40,7 +41,8 @@ final Map<String, Future<String>> _assetInflight = {};
 ///
 /// Carries the libmpv-loadable [uri] plus an optional [dispose] callback
 /// the caller MUST invoke if the URI is never handed to mpv (e.g. when
-/// the caller's `_disposed` flag flips between resolve and `loadfile`).
+/// a dispose or a later load supersedes the call between resolve and
+/// `loadfile`).
 /// For Android `content://` URIs the call detaches a file descriptor
 /// from the JVM side; without disposing on abort the FD is leaked for
 /// the process lifetime.
@@ -252,7 +254,8 @@ Future<String> _doCopyAsset(String uri) async {
       try {
         await part.delete();
       } on FileSystemException {
-        // Left behind; the next copy of this asset overwrites it.
+        // Left behind; only a later copy from this same process (same
+        // pid in the name) overwrites it.
       }
       if (!await file.exists()) rethrow;
     }
