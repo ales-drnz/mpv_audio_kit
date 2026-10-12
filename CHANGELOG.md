@@ -12,7 +12,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - The filter-id enum is now `AudioFilter`, and `stream.tap` takes an `instance` for filters that appear more than once.
 - Minimum Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 to build for iOS.
 - libmpv is bundled as `libmpv_audio_kit.so`, `mpv_audio_kit.dll` or `libmpv_audio_kit.framework`, and the Linux fallback to a system `libmpv.so` is gone.
-- A call that fails at libmpv or at its source throws one sealed `PlayerException`: `PlayerDisposedException`, `PlayerInitException`, `MpvCommandException` (was `MpvException`) and `SourceException`. A missing `asset://` throws instead of reaching mpv.
+- A call that fails at libmpv or at its source throws one sealed `PlayerException`: `PlayerDisposedException`, `PlayerInitException`, `MpvCommandException` (was `MpvException`) and `SourceException`. `stop()` and `setShuffle()` now throw too when mpv rejects them, and a missing `asset://` throws instead of reaching mpv.
 - `next()`, `previous()`, `nextPlaylist()` and `previousPlaylist()` return `false` when there is no track to go to, and an index out of range throws `RangeError` in `jump()`, `remove()`, `move()` and `replace()`.
 - A negative volume, or a rate or pitch outside `[0.01, 100]`, throws `RangeError` before reaching mpv.
 - State streams give a new subscriber the current value first, then the changes, so `StreamBuilder` needs no `initialData` and `skip(1)` waits for the next change. Event streams are unchanged.
@@ -37,7 +37,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - A chain rebuilt after live slider changes applies the requested values: a stage moved live and set back could stay at the live value.
 - A value an effect got live keeps playing after a seek, a loop or an audio track switch. mpv rebuilds its filters there from the values they were created with, which brought back the old one.
 - The live loudness meter reads the first enabled `Ebur128Effect` with `metadata` on, so a disabled or silent first one no longer mutes it.
-- A setter emits the value it was given once: volume, gains and ReplayGain no longer come back rounded (`42.37` as `42.400001525878906`), and durations keep their microseconds. `setCache`, `setDemuxer`, `setReplayGain` and `setLoop` no longer emit a half-applied value.
+- A setter emits the value it was given once: volume, gains and ReplayGain no longer come back rounded (`42.37` as `42.400001525878906`), and durations keep their microseconds. `setCache`, `setDemuxer` and `setReplayGain` no longer emit a half-applied value.
 - `audioParams` emits once when a file unloads and once when the next one loads, with all its fields. mpv reports the codec and the format separately, which made a track change emit up to six partial values.
 - Playlist entries with the same URI keep their own `Media` and `extras`: the player maps mpv's entry ids back to them instead of the URI, where the last one loaded won.
 - `sendRawCommand` rejects `set`, `change-list`, `cycle` and the other property commands on `af` or `pause`, also through prefixes and `loadfile` options, which desynced the effects chain or the play and pause state. The check is against mistakes, not every way mpv offers.
