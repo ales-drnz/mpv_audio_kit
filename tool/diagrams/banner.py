@@ -20,7 +20,7 @@ from PIL import Image, ImageChops
 OUT = os.path.join('imgs', 'header', 'banner.png')
 GIF = os.path.join('imgs', 'playback.gif')
 NAVY = '#0D2A75'
-LIGHT_BLUE = '#A8EDFA'
+GLYPH = '#FFFFFF'       # the icon's bars, white as in imgs/mpv_audio_kit.png
 GROUND = '#EEF8FC'      # light blue tint behind the lockup
 TAG_INK = '#3B4A66'     # tagline, 8.6:1 on the tint
 W, H, R = 1280, 320, 16
@@ -42,7 +42,7 @@ def text(x, y, t, size, color, weight=400, tracking=0.0):
 
 
 def disc(cx, cy, d):
-    """The package icon: nine rounded bars on a navy plate. Bars 0.045 d
+    """The package icon: nine white rounded bars on a navy plate. Bars 0.045 d
     wide and 0.035 d apart, the centre one 0.62 d tall."""
     bw, gap = max(0.045 * d, 2.5), 0.035 * d
     x = cx - (9 * bw + 8 * gap) / 2
@@ -50,7 +50,7 @@ def disc(cx, cy, d):
     for h in (120, 220, 420, 300, 700, 300, 420, 220, 120):
         hh = 0.62 * d * h / 700
         out.append(f'<rect x="{x:.2f}" y="{cy - hh / 2:.2f}" width="{bw:.2f}" height="{hh:.2f}" '
-                   f'rx="{bw / 2:.2f}" fill="{LIGHT_BLUE}"/>')
+                   f'rx="{bw / 2:.2f}" fill="{GLYPH}"/>')
         x += bw + gap
     return '\n'.join(out)
 
