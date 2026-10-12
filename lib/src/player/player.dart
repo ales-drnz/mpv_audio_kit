@@ -1295,12 +1295,15 @@ abstract class _PlayerBase {
       // Bounded: if it doesn't settle (a pathologically stuck playloop), skip
       // the destroy and leak the handle rather than free it under the running
       // isolate (same trade-off as an unconfirmed event-isolate exit).
+      // Re-read the set until it is empty: Future.wait takes a snapshot, and
+      // a setSourceResolver suspended between its two registrations could
+      // start the second one after it.
       var hooksSettled = true;
-      if (_pendingHookAdds.isNotEmpty) {
+      final hooksDeadline = DateTime.now().add(const Duration(seconds: 2));
+      while (hooksSettled && _pendingHookAdds.isNotEmpty) {
+        final left = hooksDeadline.difference(DateTime.now());
         try {
-          await Future.wait(
-            _pendingHookAdds,
-          ).timeout(const Duration(seconds: 2));
+          await Future.wait(_pendingHookAdds.toList()).timeout(left);
         } on TimeoutException {
           hooksSettled = false;
         } catch (_) {}

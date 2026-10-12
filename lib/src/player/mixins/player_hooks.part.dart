@@ -75,6 +75,9 @@ mixin _HooksModule on _PlayerBase {
     final name = hook.mpvValue;
     if (timeout != null) _hookTimeouts[name] = timeout;
     if (_registeredHookNames.contains(name)) return;
+    // A dispose that started after the caller's gate frees the handle once
+    // the runs it knows of settle: no new one may start against it.
+    if (_disposed) return;
     _registeredHookNames.add(name);
     // `mpv_hook_add` locks the core (it waits for the playloop to reach a
     // dispatch point), so on the main isolate it would stall behind a busy
