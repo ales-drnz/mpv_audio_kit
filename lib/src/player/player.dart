@@ -507,12 +507,15 @@ class Player extends _PlayerBase
     // the lockscreen) would land on disposed state. New calls are refused
     // from the first line, as the teardown order below says.
     _disposed = true;
+    // Before the first await: a hook timer firing during the session
+    // release would drop its id without continuing it (it skips the FFI
+    // call once disposed), and mpv would wait on that hook at shutdown.
+    _cancelHookTimers();
     try {
       await _releaseMediaSession();
     } catch (_) {
       // Best effort — session teardown must never block disposal.
     }
-    _cancelHookTimers();
     await super._disposeImpl();
   }
 }
@@ -1014,8 +1017,9 @@ abstract class _PlayerBase {
     // pending hooks during its shutdown path: `dispose()` issues
     // `quit`, mpv tries to drain the hook queue first, and never
     // fires MPV_EVENT_SHUTDOWN — so the event isolate never exits.
-    // `_cancelHookTimers` is called from dispose BEFORE `_disposed`
-    // is flipped, so the handle is still valid here.
+    // `_cancelHookTimers` is called from dispose right after `_disposed`
+    // is flipped and before any await, so the handle is still valid here
+    // and no hook timer can fire in between.
     for (final id in _activeHookIds) {
       _lib.mpvHookContinue(_handle, id);
     }
