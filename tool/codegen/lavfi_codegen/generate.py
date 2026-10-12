@@ -1,38 +1,38 @@
 #!/usr/bin/env python3
-"""Stage 2 of the lavfi codegen: read `schema.json` and emit two files
-under `lib/src/types/`:
-  - `enums/audio_effects.dart`: every Dart enum derived from libavfilter
-    AVOption `.unit` groups (95 today). No Freezed dependency.
-  - `settings/audio_effects_settings.dart`: every per-filter Settings
-    class (one per libavfilter audio filter, 144 today) plus the
-    `AudioEffects` bundle that concatenates everything into mpv's
-    `--af` value. Imports the enums file.
+"""Stage 2 of the lavfi codegen: read `schema.json` and emit the typed
+effects API under `lib/src/generated/` (paths from `[output]` in the
+consumer TOML):
+  - `audio_effects.dart`: the `AudioFilter` id enum and every Dart enum
+    derived from libavfilter AVOption `.unit` groups.
+  - `audio_effects_settings.dart`: the sealed `AudioEffect` stage, the
+    `RawAudioEffect` escape hatch, one `<FilterPascal>Effect` class per
+    whitelisted filter and the chain helpers (`audioEffectsChain`,
+    `audioEffectsDiff`). Imports the enums file.
+  - `audio_effects_extensions.dart`: the hand-written typed helpers from
+    `static/`, re-emitted with the generated banner.
 
-The split keeps each tipo in its categorically-correct folder
-(`types/enums/` vs `types/settings/`) and matches the rest of the
-package's hand-written types.
+Run through the CLI (tool/codegen/regen.sh does it):
 
-Usage:
-    scripts/lavfi_codegen/generate.py
+    python3 -m lavfi_codegen --config mpv_audio_kit.toml generate
 
-Idempotent. Runs `dart format` at the end if the binary is on PATH.
+Idempotent. Runs `dart format` on each emitted file.
 
-Naming rules (load-bearing — see project CLAUDE.md):
-  - Settings class:   `<FilterPascal>Settings` (e.g. `AcompressorSettings`).
-  - Bundle field:     ffmpeg name verbatim (e.g. `e.acompressor`).
-  - Param field:      ffmpeg AVOption.name verbatim (snake_case kept).
-                      Dart reserved word → trailing underscore (`type` →
-                      `type_`). Digit-prefix names → routed via
+Naming rules:
+  - Effect class:     `<FilterPascal>Effect` (e.g. `AcompressorEffect`).
+  - Param field:      ffmpeg AVOption.name in camelCase (`level_in` →
+                      `levelIn`). Dart reserved word → trailing underscore
+                      (`type` → `type_`). Digit-prefix names → routed via
                       `Map<String, T> params` keyed by the exact ffmpeg
                       identifier.
   - Enum type:        `<FilterPascal><UnitPascal>` (e.g. `RubberbandPitch`).
-                      Members keep the ffmpeg CONST name; digit-prefix
-                      members get an `n` prefix (`n50fm` → `'50fm'`).
+                      Members are the ffmpeg CONST name in camelCase;
+                      digit-prefix members get an `n` prefix (`n50fm` →
+                      `'50fm'`).
 
-Wire format: every enabled stage emits `lavfi-NAME=k=v:...` joined with
-`,`. No wrapper labels — the typed bundle is the only writer of mpv's
-`af` property, so `state.audioEffects` is the source of truth and
-external raw writes are not reverse-parsed.
+Wire format: every enabled stage emits `lavfi-NAME=k=v:...`, joined with
+`,` in list order. With `features.emit_af_labels` each typed stage is
+wrapped in its stable `@aek_<filter>_<n>:` label, which the
+`af-command` diff addresses.
 """
 from __future__ import annotations
 
@@ -1320,7 +1320,7 @@ def _emit_extensions(src_path: Path) -> str:
     """Re-emit the hand-maintained typed string-/map-DSL helpers with
     the AUTO-GENERATED banner. The decoder logic lives in the shared
     `static/` dir (or a consumer-specific override path) — never in
-    the consumer repo. Drift against the generated *Settings classes
+    the consumer repo. Drift against the generated `*Effect` classes
     is caught by `flutter analyze` after codegen."""
     src = src_path.read_text()
     # Drop the source file's own leading comment block; _COPYRIGHT (which

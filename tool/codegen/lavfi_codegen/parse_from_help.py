@@ -18,12 +18,12 @@ Why a second parser:
   documented in `libavutil/opt.c::opt_list` — easier to parse than
   C, and impossible to drift from the runtime.
 
-Usage:
-    scripts/lavfi_codegen/parse_from_help.py            # use ffmpeg on PATH
-    scripts/lavfi_codegen/parse_from_help.py /path/to/ffmpeg
-    scripts/lavfi_codegen/parse_from_help.py --diff     # diff vs schema.json
+Usage (from tool/codegen):
+    python3 -m lavfi_codegen --config mpv_audio_kit.toml runtime   # ffmpeg on PATH
+    python3 -m lavfi_codegen --config mpv_audio_kit.toml runtime --ffmpeg /path/to/ffmpeg
+    python3 -m lavfi_codegen --config mpv_audio_kit.toml diff      # diff vs schema.json
 
-Output: `scripts/lavfi_codegen/schema_runtime.json`.
+Output: `[output].schema_runtime` (`.build/<consumer>/schema_runtime.json`).
 
 The diff mode is the recommended QA step after every parse.py change:
 it lists params present in one schema but missing from the other, and

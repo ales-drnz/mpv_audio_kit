@@ -5,7 +5,7 @@ showcase app (the sibling `mpv_studio` package).
 This emits DATA, not widgets: one `filter_catalog.dart` describing every
 non-featured audio filter as a `FilterDescriptor` — its identity, its editable
 parameters (each a typed `ParamSpec` carrying range / options + get/set
-closures over the `AudioEffects` bundle), its category, and (for the
+closures over one chain stage, an `AudioEffect`), its category, and (for the
 required-param "advanced" filters) curated presets. The app renders all of it
 generically (a single `FilterCard` / `ParamControl` renderer), so every visual
 decision lives in the app and the generated artifact stays reusable.

@@ -6,7 +6,7 @@ Run from tool/codegen (tool/codegen/regen.sh does)::
 
 Stages:
     parse      → C-source → schema.json
-    generate   → schema.json → Dart Settings + enums + extensions
+    generate   → schema.json → Dart effect classes + enums + extensions
     tests      → schema.json → coverage + param-corner Dart tests
     studio_catalog → schema.json → mpv_studio's filter catalog (not in `all`)
     runtime    → ffmpeg -h filter → schema_runtime.json

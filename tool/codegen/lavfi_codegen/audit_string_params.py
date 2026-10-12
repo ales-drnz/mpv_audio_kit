@@ -3,7 +3,7 @@
 # All rights reserved.
 
 """Audit `schema.json` for filters whose parameters likely require a
-hand-written typed extension on top of the auto-generated `*Settings`.
+hand-written typed extension on top of the auto-generated `*Effect` classes.
 
 Run after every `parse.py` regeneration (i.e. ffmpeg version bump) to
 discover NEW filters that ship structured data inside opaque AVOption

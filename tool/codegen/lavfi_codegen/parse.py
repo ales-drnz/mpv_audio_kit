@@ -3,11 +3,13 @@
 optional `doc/filters.texi`, emit a single `schema.json` describing every
 audio filter on the build whitelist (params, enum types, doc strings).
 
-Usage:
-    scripts/lavfi_codegen/parse.py [path/to/ffmpeg]
+Usage (from tool/codegen; tool/codegen/regen.sh does it):
+    python3 -m lavfi_codegen --config mpv_audio_kit.toml parse
 
-Defaults to `scripts/lavfi_codegen/ffmpeg-8.1.1/`. Output is
-`scripts/lavfi_codegen/schema.json` (committed; ispezionabile).
+Reads the FFmpeg tree fetch_ffmpeg_src.sh unpacks in
+`.ffmpeg-src/ffmpeg-<version>/` (the version in libmpv_manifest.json).
+Output is `[output].schema` (`.build/<consumer>/schema.json`, a build
+product git ignores).
 
 Schema shape:
     {

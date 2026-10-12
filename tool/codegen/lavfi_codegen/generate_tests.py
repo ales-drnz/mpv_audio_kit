@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Stage 3 of the lavfi codegen: read `schema.json` and emit
-`test/internal/audio_effects_coverage_test.dart` — exhaustive,
-schema-driven verification that every parameter of every filter
-shows up in `toFilterString()`, and every enum member round-trips
-through `mpvValue` / `fromMpv`.
+"""Stage 3 of the lavfi codegen: read `schema.json` and emit the generated
+tests under `test/generated/` (paths from `[output]` in the consumer TOML).
+The main one, `audio_effects_coverage_test.dart`, is an exhaustive,
+schema-driven check that every parameter of every filter shows up in
+`toFilterString()`, and every enum member round-trips through
+`mpvValue` / `fromMpv`; beside it go the filter-name manifest, the
+param corners, the runtime init coverage and the `af-command` probes.
 
-Usage:
-    scripts/lavfi_codegen/generate_tests.py
+Usage (from tool/codegen; tool/codegen/regen.sh does it):
+    python3 -m lavfi_codegen --config mpv_audio_kit.toml tests
 
-Idempotent. Runs `dart format` at the end.
+Idempotent. Runs `dart format` on each emitted file.
 
 Coverage strategy:
   - Per filter:
-    * `enabled: false` → drops out of `toAfChain()`.
+    * `enabled: false` → drops out of `audioEffectsChain()`.
     * `enabled: true` with every param at its ffmpeg default →
       `toFilterString()` returns the bare `lavfi-NAME`.
     * Per param: set it to a known-non-default sentinel value and
@@ -26,7 +28,7 @@ Coverage strategy:
       project convention "Unknown values fall back to a safe default;
       never throw").
 
-This file is deliberately ~6k lines: every test is mechanical, no
+The coverage file is deliberately long (~17k lines): every test is mechanical, no
 human picks. The codegen owns the assertion shape so a regression in
 `generate.py` is caught here at unit-test speed.
 """
@@ -62,8 +64,8 @@ _WIRE: WireConfig = WireConfig()
 # Per-run domain naming; mirrors generate.py. Defaults reproduce audio output.
 _NAMING: NamingConfig = NamingConfig()
 
-# Mirrors generate.py's emit_af_labels: when on, `toAfChain()` wraps each
-# typed stage in its stable `@aek_<field>:` chain label and the bundle-level
+# Mirrors generate.py's emit_af_labels: when on, `audioEffectsChain()` wraps
+# each typed stage in its stable `@aek_<filter>_<n>:` chain label and the bundle-level
 # expectations must include it.
 _LABELS: bool = False
 
