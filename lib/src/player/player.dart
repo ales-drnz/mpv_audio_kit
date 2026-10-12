@@ -822,8 +822,9 @@ abstract class _PlayerBase {
               // and is NOT held by keep-open (e.g. a failed first open). The
               // natural end of playable content under the shipped
               // `keep-open: yes` does NOT fire idle-active — that path is
-              // handled by [onEofReached] instead. A mid-playlist advance
-              // also doesn't fire idle-active, so this never flickers.
+              // handled by [_settleEndOfContent] instead. A mid-playlist
+              // advance also doesn't fire idle-active, so this never
+              // flickers.
               if (_hasLoadedFile) {
                 _updateField(
                   (s) => s.copyWith(playWhenReady: false),
@@ -839,34 +840,6 @@ abstract class _PlayerBase {
           onAudioOutputState: (state) {
             final err = buildAudioOutputError(state);
             if (err != null) _errorCtrl.add(err);
-          },
-          onEofReached: (eof) {
-            // `keep-open: yes` (shipped pre-init option) makes mpv park
-            // paused on the last frame at end-of-content and withhold BOTH
-            // MPV_EVENT_END_FILE and idle-active, so the two writers that
-            // normally settle the transport (the EndFile completed flag and
-            // the idle-active intent reset) never fire for a single track or
-            // the last playlist entry. The `eof-reached` rising edge is the
-            // signal that DOES fire there.
-            if (!_hasLoadedFile) return;
-            if (eof) {
-              // Only at the GENUINE end of content — not a gapless
-              // mid-playlist boundary (where eof-reached can blip) and not
-              // while looping (where the file/playlist restarts). Otherwise
-              // the OS play/pause button would flicker.
-              if (_isEndOfContent()) {
-                _updateLifecycle(completed: true);
-                _updateField(
-                  (s) => s.copyWith(playWhenReady: false),
-                  _reactives.playWhenReady,
-                  false,
-                );
-              }
-            } else if (_state.completed) {
-              // Left the end (a seek back into the track, or a new file):
-              // the track is no longer completed.
-              _updateLifecycle(completed: false);
-            }
           },
         ),
       );
@@ -1203,15 +1176,37 @@ abstract class _PlayerBase {
     if (result.completedDidChange) _completed.update(completed!);
   }
 
-  /// Whether an `eof-reached` rising edge marks the genuine end of all
-  /// playable content — the last (or only) playlist entry, with no active
-  /// loop that will restart it. Used by the `eof-reached` hook to settle the
-  /// transport without firing at a gapless mid-playlist boundary or on every
-  /// loop wrap (either of which would flicker the play/pause button).
-  bool _isEndOfContent() {
-    if (_state.loop != Loop.off) return false;
-    final items = _state.playlist.items;
-    return items.isEmpty || _state.playlist.index >= items.length - 1;
+  /// Settles `completed` from where the core stands against the end of
+  /// content, as the event isolate read it ([MpvEventEndOfContent]): the
+  /// current file reached EOF ([eof]) and is the last playlist entry
+  /// ([lastEntry]), with no loop that will restart it. `keep-open: yes`
+  /// (shipped pre-init option) makes mpv park paused on the last frame
+  /// there and withhold both MPV_EVENT_END_FILE and idle-active, so the two
+  /// writers that otherwise settle the transport (the END_FILE completed
+  /// flag and the idle-active intent reset) never fire for the last entry.
+  ///
+  /// It is a level, read again at every load, restart, `eof-reached` and
+  /// `pause` notification, not the observed `eof-reached` edge matched
+  /// against `state.playlist`: mpv samples observed properties once per
+  /// playloop iteration, so an entry that reaches EOF as soon as it loads
+  /// can go from the previous entry's EOF to its own without a change
+  /// being reported, and the state's playlist position can lag or lead
+  /// the entry an edge belonged to. That raised `completed` at a track
+  /// change, cleared by the next load, and missed the real end.
+  void _settleEndOfContent({required bool eof, required bool lastEntry}) {
+    if (!_hasLoadedFile) return;
+    final end = eof && lastEntry && _state.loop == Loop.off;
+    if (end == _state.completed) return;
+    _updateLifecycle(completed: end);
+    // The play/pause intent is spent at the end of content; leaving the
+    // end (a seek back, a new file) keeps it.
+    if (end) {
+      _updateField(
+        (s) => s.copyWith(playWhenReady: false),
+        _reactives.playWhenReady,
+        false,
+      );
+    }
   }
 
   /// Internal log helper — emits on the library-side log channel

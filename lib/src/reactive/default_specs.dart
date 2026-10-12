@@ -37,16 +37,10 @@ import 'reactive_property.dart';
 /// - [onAudioOutputState]: fires on every transition of
 ///   `audio-output-state`; the player uses it to surface a typed
 ///   error when the AO fails to initialise.
-/// - [onEofReached]: fires on every transition of `eof-reached`; the player
-///   uses the rising edge to settle the transport at the genuine end of
-///   content (mark `completed`, release the play/pause intent) because the
-///   shipped `keep-open: yes` makes mpv withhold both `END_FILE` and
-///   `idle-active` when the last/only track finishes.
 List<MpvPropertySpec<Object?>> buildDefaultSpecs(
   DefaultPropertyReactives r, {
   required void Function(bool idle) onIdleActive,
   required void Function(AudioOutputState state) onAudioOutputState,
-  required void Function(bool eof) onEofReached,
 }) {
   return <MpvPropertySpec<Object?>>[
     // ── Playback / timing ────────────────────────────────────────────────
@@ -541,7 +535,6 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reactive: r.eofReached,
       parse: _identityBool,
       reduce: (v, s) => s.copyWith(eofReached: v),
-      onChange: onEofReached,
     ),
 
     // ── Stream capability ────────────────────────────────────────────────

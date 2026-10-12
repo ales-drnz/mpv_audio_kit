@@ -56,6 +56,17 @@ const Set<String> _kGroupedProps = {
 /// How long a held [_kGroupedProps] change waits for the rest of its group.
 const int _kGroupWindowMs = 33;
 
+/// The observed properties whose notifications take a fresh
+/// [MpvEventEndOfContent] read. `eof-reached` is the direct one; `pause`
+/// is observed here only for this (the player does not observe it): the
+/// keep-open park pauses the core, which mpv notifies even when the
+/// `eof-reached` change around it was skipped.
+const Set<String> _kEndOfContentTriggers = {'eof-reached', 'pause'};
+
+/// Reply id of the isolate's own `pause` observer, above every id the main
+/// isolate hands out.
+const int _kPauseObserverReplyId = 1 << 62;
+
 /// `mpv_wait_event` timeout — a BOUNDED floor in every build.
 ///
 /// The Dart VM cannot interrupt an isolate parked in a blocking FFI call
@@ -182,6 +193,15 @@ void _isolateEntry(SendPort initialReplyPort) {
         }
         _applyPropertyStrings(lib!, h, message.postInitOptions);
         _applyObserves(lib!, h, message.observes);
+        // Not added to `cache.formats`: `pause` never reaches the main
+        // isolate, see [_kEndOfContentTriggers].
+        _applyObserves(lib!, h, const [
+          MpvObserveSpec(
+            'pause',
+            mpv.MpvFormat.mpvFormatFlag,
+            _kPauseObserverReplyId,
+          ),
+        ]);
         for (final spec in message.observes) {
           cache.formats[spec.name] = spec.format;
         }
@@ -272,6 +292,10 @@ void _dispatchEvent(
       // A clock value held from the previous file must not land after the
       // new one starts.
       cache.trailing.clear();
+      cache.startedEntryId = event.ref.data
+          .cast<mpv.MpvEventStartFileData>()
+          .ref
+          .playlistEntryId;
       toMain.send(MpvEventStartFile());
 
     case mpv.MpvEventId.mpvEventFileLoaded:
@@ -299,17 +323,31 @@ void _dispatchEvent(
       // isolate has them when FILE_LOADED ends the loading state.
       _rereadUnavailable(lib, handle, toMain, cache);
       toMain.send(loaded);
+      // A short entry can reach EOF before this event is handled: its
+      // `eof-reached` change may already be spent (re-read above, or
+      // skipped by mpv), so the end of content is read again after it.
+      _sendEndOfContent(lib, handle, toMain, cache);
 
     case mpv.MpvEventId.mpvEventEndFile:
       final ef = event.ref.data.cast<mpv.MpvEventEndFile>().ref;
-      toMain.send(MpvEndFileEvent(ef.reason, ef.error));
+      final ended =
+          ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
+          ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonError;
+      toMain.send(
+        MpvEndFileEvent(
+          ef.reason,
+          ef.error,
+          lastEntry: ended && _isLastEntry(lib, handle, ef.playlistEntryId),
+        ),
+      );
 
     case mpv.MpvEventId.mpvEventPropertyChange:
-      _dispatchProperty(
-        toMain,
-        event.ref.data.cast<mpv.MpvEventProperty>().ref,
-        cache,
-      );
+      final prop = event.ref.data.cast<mpv.MpvEventProperty>().ref;
+      final name = decodeMpvString(prop.name.cast());
+      if (name != 'pause') _dispatchProperty(toMain, prop, cache);
+      if (_kEndOfContentTriggers.contains(name)) {
+        _sendEndOfContent(lib, handle, toMain, cache);
+      }
 
     case mpv.MpvEventId.mpvEventAudioReconfig:
       _rereadUnavailable(lib, handle, toMain, cache);
@@ -368,7 +406,55 @@ void _dispatchEvent(
         ),
       );
       _rereadUnavailable(lib, handle, toMain, cache);
+      _sendEndOfContent(lib, handle, toMain, cache);
   }
+}
+
+/// Reads where the core stands against the end of content and sends it as
+/// [MpvEventEndOfContent]. The reads run when this isolate gets to them,
+/// which under load can be well after mpv queued the events still waiting
+/// here: a short entry can already have loaded and reached its end while
+/// its START_FILE (and the previous entry's END_FILE) are still queued, and
+/// a read sent ahead of them would raise `completed` for the player to
+/// clear again on those events. So a read counts only for the entry whose
+/// START_FILE this isolate already forwarded
+/// ([_PropertyCache.startedEntryId]); the newer entry's own FILE_LOADED and
+/// PLAYBACK_RESTART read again. The current entry is read before and after
+/// `eof-reached`, so the EOF belongs to it.
+void _sendEndOfContent(
+  mpv.MpvLibrary lib,
+  Pointer<mpv.MpvHandle> handle,
+  SendPort toMain,
+  _PropertyCache cache,
+) {
+  final started = cache.startedEntryId;
+  if (started == null) return;
+  final pos = _getPropInt64(lib, handle, 'playlist-pos');
+  if (pos == null || pos < 0) return;
+  if (_getPropInt64(lib, handle, 'playlist/$pos/id') != started) return;
+  final eof = _getPropFlag(lib, handle, 'eof-reached') == 1;
+  final count = _getPropInt64(lib, handle, 'playlist-count');
+  if (_getPropInt64(lib, handle, 'playlist-pos') != pos ||
+      _getPropInt64(lib, handle, 'playlist/$pos/id') != started) {
+    return;
+  }
+  toMain.send(
+    MpvEventEndOfContent(
+      eof: eof,
+      lastEntry: count != null && pos == count - 1,
+    ),
+  );
+}
+
+/// Whether the playlist entry with id [entryId] is the last one.
+bool _isLastEntry(
+  mpv.MpvLibrary lib,
+  Pointer<mpv.MpvHandle> handle,
+  int entryId,
+) {
+  final count = _getPropInt64(lib, handle, 'playlist-count');
+  if (count == null || count <= 0) return false;
+  return _getPropInt64(lib, handle, 'playlist/${count - 1}/id') == entryId;
 }
 
 /// Reads the file-load payload (path, playlist, position, chapters,
@@ -559,6 +645,10 @@ class _PropertyCache {
 
   /// When the first change in [group] was held.
   int groupSince = 0;
+
+  /// The `playlist_entry_id` of the last START_FILE forwarded to the main
+  /// isolate: [_sendEndOfContent] reads count only for that entry.
+  int? startedEntryId;
 }
 
 /// The `mpv_wait_event` timeout: [_kWaitEventTimeoutSeconds], shortened to

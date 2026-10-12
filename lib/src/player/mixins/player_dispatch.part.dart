@@ -69,8 +69,11 @@ mixin _DispatchModule on _PlayerBase {
           :final coverMime,
         ):
           // `state.playing` is driven by the `core-idle` observer; here we
-          // only clear buffering/completed and apply the load payload.
-          _updateLifecycle(buffering: false, completed: false);
+          // only clear buffering and apply the load payload. `completed`
+          // was cleared at START_FILE, and the end-of-content read that
+          // follows this event settles it: a short entry can already be
+          // parked at its end here.
+          _updateLifecycle(buffering: false);
           // mpv just built the new file's chain from the stored arguments.
           _onAfChainReset();
           _applyPolledPosition(timePos);
@@ -132,7 +135,12 @@ mixin _DispatchModule on _PlayerBase {
         case MpvEventPlaybackRestart(:final timePos):
           _applyPolledPosition(timePos);
           _seekCompletedCtrl.add(null);
-        case MpvEndFileEvent(:final reason, :final error):
+        case MpvEventEndOfContent(:final eof, :final lastEntry):
+          // The core's value at the read, ahead of a skipped or late
+          // `eof-reached` notification.
+          _dispatchProperty('eof-reached', eof);
+          _settleEndOfContent(eof: eof, lastEntry: lastEntry);
+        case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
           final typedReason = MpvEndFileReason.fromValue(reason);
           _endFileCtrl.add(
             MpvFileEndedEvent(reason: typedReason, error: error),
@@ -150,10 +158,10 @@ mixin _DispatchModule on _PlayerBase {
             // iteration — mpv's observer then emits NO property change at
             // all, so the idle-active intent reset never fires and the
             // play/pause button sticks on "playing". Settle the intent off
-            // this discrete event instead, with the same end-of-content
-            // gate as the eof-reached hook so a mid-playlist failure that
-            // auto-advances doesn't flicker the button.
-            if (_isEndOfContent()) {
+            // this discrete event instead, gated on the failed entry being
+            // the last one so a mid-playlist failure that auto-advances
+            // doesn't flicker the button.
+            if (lastEntry && _state.loop == Loop.off) {
               _updateField(
                 (s) => s.copyWith(playWhenReady: false),
                 _reactives.playWhenReady,
@@ -162,15 +170,17 @@ mixin _DispatchModule on _PlayerBase {
             }
           }
           // mpv emits END_FILE(EOF) for EVERY finished entry, including a
-          // gapless mid-playlist advance (where START_FILE clears the flag
-          // a moment later). Gate on _isEndOfContent() — same gate as the
-          // `eof-reached` hook — so `completed` pulses only at the genuine
-          // end of all playable content, never between tracks.
+          // gapless mid-playlist advance. Under the shipped `keep-open` the
+          // last entry parks instead (see [_settleEndOfContent]); this
+          // covers a last entry that ends without the park. Gated on the
+          // ended entry being the last one, read by entry id in the event
+          // isolate: the state's playlist position may already be on the
+          // next entry, which raised `completed` between tracks.
           final isEof = reason == MpvEndFileReason.eof.value;
           _updateLifecycle(
             playing: false,
             buffering: false,
-            completed: isEof && _isEndOfContent(),
+            completed: isEof && lastEntry && _state.loop == Loop.off,
           );
         case MpvEventReply():
         case MpvEventGetReply():

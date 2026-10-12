@@ -40,7 +40,6 @@ void main() {
           reactives,
           onIdleActive: (_) {},
           onAudioOutputState: (_) {},
-          onEofReached: (_) {},
         ),
       );
   });
@@ -549,7 +548,6 @@ void main() {
             reactives,
             onIdleActive: (_) {},
             onAudioOutputState: calls.add,
-            onEofReached: (_) {},
           ),
         );
       state = const PlayerState();
@@ -575,7 +573,6 @@ void main() {
             reactives,
             onIdleActive: calls.add,
             onAudioOutputState: (_) {},
-            onEofReached: (_) {},
           ),
         );
       state = const PlayerState();
@@ -583,27 +580,6 @@ void main() {
       registry.dispatch('idle-active', true, state);
       registry.dispatch('idle-active', true, state); // dedup
       registry.dispatch('idle-active', false, state);
-
-      expect(calls, [true, false]);
-    });
-
-    test('onEofReached fires on every eof-reached transition', () {
-      final calls = <bool>[];
-      reactives = DefaultPropertyReactives();
-      registry = PropertyRegistry()
-        ..registerAll(
-          buildDefaultSpecs(
-            reactives,
-            onIdleActive: (_) {},
-            onAudioOutputState: (_) {},
-            onEofReached: calls.add,
-          ),
-        );
-      state = const PlayerState();
-
-      registry.dispatch('eof-reached', true, state);
-      registry.dispatch('eof-reached', true, state); // dedup
-      registry.dispatch('eof-reached', false, state);
 
       expect(calls, [true, false]);
     });

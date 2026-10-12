@@ -107,8 +107,33 @@ class MpvEndFileEvent extends MpvIsolateEvent {
   /// The mpv error code when [reason] is the error reason, else `0`.
   final int error;
 
+  /// Whether the entry that ended is the last one of the playlist, read by
+  /// the event isolate from mpv's playlist (by entry id, so a playlist
+  /// that already moved on cannot mislead it). Only read for the EOF and
+  /// error reasons, `false` for the others.
+  final bool lastEntry;
+
   /// Carries the end-of-file [reason] and [error] codes.
-  MpvEndFileEvent(this.reason, this.error);
+  MpvEndFileEvent(this.reason, this.error, {this.lastEntry = false});
+}
+
+/// Where the core stands against the end of content, read by the event
+/// isolate in one go: whether the current file reached EOF
+/// (`eof-reached`) and whether it is the last playlist entry. Sent after
+/// FILE_LOADED and PLAYBACK_RESTART, and on every `eof-reached` and
+/// `pause` notification (the keep-open park pauses the core). The player
+/// derives `completed` from it: the observed `eof-reached` alone gives
+/// edges mpv can skip between short entries, matched against a playlist
+/// position the main isolate may not have caught up with yet.
+class MpvEventEndOfContent extends MpvIsolateEvent {
+  /// Whether the current file reached its end (`eof-reached`).
+  final bool eof;
+
+  /// Whether the current file is the last playlist entry.
+  final bool lastEntry;
+
+  /// Carries the [eof] and [lastEntry] reads.
+  MpvEventEndOfContent({required this.eof, required this.lastEntry});
 }
 
 /// mpv fired MPV_EVENT_SHUTDOWN — the core is tearing down and the

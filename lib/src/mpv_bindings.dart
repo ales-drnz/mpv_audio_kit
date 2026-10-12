@@ -242,6 +242,16 @@ final class MpvEvent extends Struct {
 }
 
 // ---------------------------------------------------------------------------
+// mpv_event_start_file
+// ---------------------------------------------------------------------------
+/// FFI layout of `mpv_event_start_file`, the payload of a start-file event.
+final class MpvEventStartFileData extends Struct {
+  /// The `playlist_entry_id` of the entry that starts loading.
+  @Int64()
+  external int playlistEntryId;
+}
+
+// ---------------------------------------------------------------------------
 // mpv_event_end_file
 // ---------------------------------------------------------------------------
 /// FFI layout of `mpv_event_end_file`, the payload of an end-file event.
@@ -253,6 +263,10 @@ final class MpvEventEndFile extends Struct {
   /// Error code ([MpvError]) when [reason] is an error; otherwise 0.
   @Int32()
   external int error;
+
+  /// The `playlist_entry_id` of the entry that ended.
+  @Int64()
+  external int playlistEntryId;
 }
 
 // ---------------------------------------------------------------------------
