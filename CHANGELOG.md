@@ -33,6 +33,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 
 ### Fixed
 - After `stop()`, a failed load, or a track without a given value, the state no longer keeps the previous file's values (path, title, duration, audio parameters, cover, waveform and the like): each goes back to its default. While the next track loads, the OS media session waits for the new ones instead of showing the gap or a live stream.
+- A `file://` URL with escapes that are not UTF-8, such as a Latin-1 file name, opens again. Since 0.4.9 it was decoded to a name that does not exist.
 - An effects chain the filter graph refuses throws `MpvCommandException`, and the state goes back to the last list mpv accepted. Before, the call returned, the state showed the new chain and the old one kept playing.
 - A chain rebuilt after live slider changes applies the requested values: a stage moved live and set back could stay at the live value.
 - A value an effect got live keeps playing after a seek, a loop or an audio track switch. mpv rebuilds its filters there from the values they were created with, which brought back the old one.
