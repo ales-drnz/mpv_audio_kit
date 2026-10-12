@@ -54,19 +54,16 @@ Playlist parsePlaylistNode({
   if (raw is! List) {
     return previous;
   }
-  final filenames = <String>[];
   final medias = <Media>[];
   var currentIndex = -1;
   for (var i = 0; i < raw.length; i++) {
     final entry = raw[i];
     if (entry is! Map) {
-      filenames.add('');
       medias.add(const Media(''));
       continue;
     }
     final filename = entry['filename'] as String? ?? '';
     final id = entry['id'];
-    filenames.add(filename);
     medias.add(
       (id is int ? mediaByEntry[id] : null) ??
           mediaCache[filename] ??
