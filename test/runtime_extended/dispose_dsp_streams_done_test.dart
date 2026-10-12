@@ -45,6 +45,7 @@ void main() {
         'playWhenReady': watchDone(player.stream.playWhenReady),
         'audioDevice': watchDone(player.stream.audioDevice),
         'audioEffects': watchDone(player.stream.audioEffects),
+        'playbackState': watchDone(player.stream.playbackState),
       };
 
       await player.dispose();
