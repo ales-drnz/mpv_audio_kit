@@ -744,12 +744,12 @@ extension AiirChannelsX on AiirEffect {
     );
   }
 
-  /// Returns a copy whose three CSV strings reflect [channels], with
-  /// [format] set to [AiirFormat.tf] and [process] to [AiirProcess.d]:
-  /// the coefficients are real, the numerator ([AiirChannel.zeros]) and
-  /// denominator ([AiirChannel.poles]) of the transfer function. The
-  /// default `zp` format reads complex zeros and poles instead, and the
-  /// default serial processing does not take a transfer function.
+  /// Returns a copy whose three CSV strings reflect [channels]. While
+  /// [format] and [process] are at their defaults (`zp` and serial), they
+  /// become [AiirFormat.tf] and [AiirProcess.d]: the coefficients are real,
+  /// the numerator ([AiirChannel.zeros]) and denominator
+  /// ([AiirChannel.poles]) of a transfer function, which the defaults do
+  /// not read. A format or process set by hand is kept.
   AiirEffect withChannels(List<AiirChannel> channels) {
     if (channels.isEmpty) {
       return copyWith(gains: '', zeros: '', poles: '');
@@ -759,8 +759,8 @@ extension AiirChannelsX on AiirEffect {
             .map((c) => get(c).map((v) => v.toStringAsFixed(4)).join(inner))
             .join('|');
     return copyWith(
-      format: AiirFormat.tf,
-      process: AiirProcess.d,
+      format: format == AiirFormat.zp ? AiirFormat.tf : null,
+      process: process == AiirProcess.s ? AiirProcess.d : null,
       gains: channels.map((c) => c.gain.toStringAsFixed(4)).join('|'),
       zeros: join((c) => c.zeros, ' '),
       poles: join((c) => c.poles, ' '),

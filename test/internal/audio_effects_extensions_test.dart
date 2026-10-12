@@ -435,6 +435,23 @@ void main() {
       expect(s.channels.first.gain, 1.0);
     });
 
+    test('default format and process become tf and direct', () {
+      final s = const AiirEffect().withChannels([
+        const AiirChannel(gain: 1.0, zeros: [1.0], poles: [1.0]),
+      ]);
+      expect(s.format, AiirFormat.tf);
+      expect(s.process, AiirProcess.d);
+    });
+
+    test('a format and process set by hand are kept', () {
+      final s = const AiirEffect(format: AiirFormat.ll, process: AiirProcess.p)
+          .withChannels([
+            const AiirChannel(gain: 1.0, zeros: [1.0], poles: [1.0]),
+          ]);
+      expect(s.format, AiirFormat.ll);
+      expect(s.process, AiirProcess.p);
+    });
+
     test('multiple channels round-trip', () {
       const s = AiirEffect();
       final ch = [
