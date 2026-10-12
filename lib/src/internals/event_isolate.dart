@@ -213,6 +213,10 @@ void _isolateEntry(SendPort initialReplyPort) {
         }
         toMain!.send(_InitDone(h.address));
       } catch (e, st) {
+        // The main isolate gets no handle from a failed init, so the core
+        // created above is destroyed here or never.
+        final h = handle;
+        if (h != null) lib!.mpvTerminateDestroy(h);
         toMain!.send(_InitFailed('init crashed: $e\n$st'));
         fromMain.close();
         return;
@@ -1176,6 +1180,10 @@ class MpvEventIsolate {
       _freeStopFlag();
       return true;
     } on TimeoutException {
+      // Leaked on purpose: drop the pointer so a later stop() (dispose
+      // after a timed-out bring-up teardown) cannot free it under the
+      // worker that may still read it.
+      _stopFlag = null;
       return false;
     } finally {
       exitPort.close();
