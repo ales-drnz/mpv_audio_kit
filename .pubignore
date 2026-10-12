@@ -47,3 +47,6 @@ graphify-out/
 
 # The codegen that produces lib/src/generated (tool/codegen/regen.sh)
 /tool/
+/dart_test.yaml
+/build.yaml
+/android/src/test/
