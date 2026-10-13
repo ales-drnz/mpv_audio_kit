@@ -23,19 +23,19 @@ mpv_audio_kit is the audio engine for Flutter apps that play from your own serve
 <table>
 <tr>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/jellyfin.png" width="32" alt="Jellyfin"></td>
-<td valign="middle"><b>Jellyfin</b><br>Stream your library direct or transcoded. Transcoded streams stay seekable, so the seek bar works while the server converts the file.</td>
+<td valign="middle"><b>Jellyfin</b><br>Stream your library direct or transcoded. Transcoded streams (<a href="#21-supported-uri-schemes">HLS</a>) stay seekable, so the seek bar works while the server converts the file.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/plex.png" width="32" alt="Plex"></td>
-<td valign="middle"><b>Plex</b><br>Play tracks and playlists from Plex. Each track asks the server for its stream only when it loads, so a long queue starts at once and the server is never flooded with requests.</td>
+<td valign="middle"><b>Plex</b><br>Play tracks and playlists from Plex. Each track asks the server for its stream (<a href="#21-supported-uri-schemes">HLS</a> or <a href="#21-supported-uri-schemes">DASH</a>) only when it loads, through the <a href="#124-the-source-resolver">source resolver</a>, so a long queue starts at once and the server is never flooded with requests.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/samba.png" width="32" alt="Samba"></td>
-<td valign="middle"><b>Samba</b><br>Play straight from a NAS or any network share over SMB2 and SMB3, as if the files were on the device.</td>
+<td valign="middle"><b>Samba</b><br>Play straight from a NAS or any network share over <a href="#21-supported-uri-schemes">SMB2 and SMB3</a>, as if the files were on the device.</td>
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/wrench.png" width="32" alt=""></td>
-<td valign="middle"><b>Total control</b><br>Tune the cache and the network, shape the sound with a chain of ffmpeg effects, and watch it with a live spectrum, waveform and loudness meter.</td>
+<td valign="middle"><b>Total control</b><br>Tune <a href="#7-network-and-caching">the cache and the network</a>, shape the sound with <a href="#5-audio-effects">a chain of ffmpeg effects</a>, and watch it with <a href="#13-visualizer-waveform-and-loudness">a live spectrum, waveform and loudness meter</a>.</td>
 </tr>
 </table>
 
@@ -61,21 +61,6 @@ dependencies:
 | Linux | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.8, 8.6 MB | Yes | - |
 
 The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire (0.3.57 or later) or PulseAudio when installed.
-
-### How libmpv reaches the app
-
-A Dart build hook downloads the libmpv build for each target from this repository's releases, checks it against a pinned SHA-256 and bundles it with the app, as `libmpv_audio_kit.so` on Android and Linux, `mpv_audio_kit.dll` on Windows and `libmpv_audio_kit.framework` on iOS and macOS. The first build of each target needs network access; later builds reuse the download.
-
-For offline builds or a libmpv of your own, point the hook at local files in your app's `pubspec.yaml`:
-
-```yaml
-hooks:
-  user_defines:
-    mpv_audio_kit:
-      libmpv: path/to/libmpv
-```
-
-The path can be a directory holding files named like the release assets (`libmpv_android-arm64-v8a.so`, `libmpv_ios.xcframework.zip` and so on), and each target takes its own. A single file is bundled for every target, so it only suits a build for one target and architecture. Local files are bundled without a checksum.
 
 ---
 
