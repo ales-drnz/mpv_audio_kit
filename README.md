@@ -181,8 +181,9 @@ The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to bui
     * [9.11 Cover art streams](#911-cover-art-streams)
     * [9.12 Runtime diagnostics](#912-runtime-diagnostics)
     * [9.13 Prefetch lifecycle stream](#913-prefetch-lifecycle-stream)
-    * [9.14 Spectrum and PCM streams](#914-spectrum-and-pcm-streams)
+    * [9.14 Visualizer and analysis streams](#914-visualizer-and-analysis-streams)
     * [9.15 Media session streams](#915-media-session-streams)
+    * [9.16 Event streams](#916-event-streams)
 
     </details>
 
@@ -1687,7 +1688,7 @@ print(s.replayGain.preamp);                      // double
 print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
 print(s.chapters);                               // List<Chapter>
 print(s.audioOutputState);                       // AudioOutputState
-print(s.mpvVersion);                             // e.g. '0.41.0'
+print(s.mpvVersion);                             // e.g. 'mpv v0.41.0+r16'
 print(s.ffmpegVersion);                          // e.g. '8.1.1'
 
 // index is -1 while openAll is still building the queue.
@@ -1895,24 +1896,19 @@ player.stream.prefetchCacheDuration.listen((buffered) {
 });
 ```
 
-#### 9.14 Spectrum and PCM streams
+#### 9.14 Visualizer and analysis streams
 
-`stream.fft` and `stream.pcm` carry the audio going to the output.
-[Section 13](#13-visualizer-waveform-and-loudness) covers their settings.
+[Section 13](#13-visualizer-waveform-and-loudness) covers their settings
+and examples.
 
 | Stream | Type | Set with | Notes |
 | :--- | :--- | :--- | :--- |
 | `fft` | `FftFrame` | - | Smoothed FFT bands and raw bins, for a bar visualizer. |
 | `pcm` | `PcmFrame` | - | Samples after the effects chain, for a waveform or a level meter. |
-
-```dart
-player.stream.fft.listen((frame) {
-  // 64 bands by default, each from 0 to 1
-  for (var i = 0; i < frame.bands.length; i++) {
-    paintBar(i, frame.bands[i]);
-  }
-});
-```
+| `spectrum` | `SpectrumSettings` | `setSpectrum`, `updateSpectrum` | The FFT and smoothing settings. |
+| `waveform` | `WaveformData?` | - | Envelope of the loaded track, `null` on a track change until the first bins. |
+| `loudnessScan` | `LoudnessScan?` | - | Integrated loudness, range, sample and true peak of the loaded track, with its progress. |
+| `loudnessMeter` | `Loudness` | - | Live momentary, short-term, integrated and range readings from an `Ebur128Effect`. |
 
 #### 9.15 Media session streams
 
@@ -1923,6 +1919,18 @@ Two streams follow the OS media session, covered in
 | :--- | :--- | :--- | :--- |
 | `mediaSession` | `MediaSession?` | `setMediaSession` | The published session, or `null`. Same as `state.mediaSession`. |
 | `mediaSessionCommands` | `MediaSessionCommand` | - | Commands from the OS (play, pause, next, seek and so on). The player applies them itself; the stream is for logging or extra handling. |
+
+#### 9.16 Event streams
+
+These deliver only what happens after `listen()`.
+
+| Stream | Type | Notes |
+| :--- | :--- | :--- |
+| `seekCompleted` | `void` | After each load or seek, once mpv is ready to play. |
+| `endFile` | `MpvFileEndedEvent` | Every file end, with its reason. See [11.2](#112-end-file-stream). |
+| `error` | `PlayerError` | Load failures and mpv errors. See [11.1](#111-typed-error-stream). |
+| `log`, `internalLog` | `MpvLogEntry` | mpv's log and the library's. See [11.4](#114-log-streams). |
+| `hook` | `MpvHookEvent` | Hooks you registered. See [12.2](#122-listening-and-continuing). |
 
 ---
 
