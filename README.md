@@ -684,7 +684,7 @@ await player.stop();    // Stop and unload current file
 player.state.playWhenReady ? await player.pause() : await player.play();
 ```
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/play_when_ready.png" width="100%" alt="playWhenReady stays true through a seek and a network stall, while playing drops to false">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/play_when_ready.png" width="100%" alt="playWhenReady stays true through a seek and a network stall, while playing drops to false; at the end of content playWhenReady drops and completed rises">
 
 #### 4.2 Seeking
 
@@ -1399,6 +1399,8 @@ await player.setDemuxer(
 
 player.stream.demuxer.listen((d) => print('demuxer: ${d.maxBytes} bytes'));
 ```
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/demuxer_cache.png" width="100%" alt="The demuxer cache keeps maxBackBytes behind the playhead and CacheSettings.secs ahead of it, capped by maxBytes">
 
 For live radio, where you do not seek back, set the back buffer to zero to save memory:
 
@@ -2458,6 +2460,8 @@ the analysis opens the source a second time, with the same network
 options as playback (`tls-verify`, `tls-ca-file`, headers, user agent,
 cookies). Either way the result is the same. The loudness scan below
 uses the same decode.
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="A network file is downloaded once into mpv's cache, which feeds both playback and the analysis; a second open happens only when one pass from the start to the end is not possible">
 
 ```dart
 player.stream.waveform.listen((wave) {

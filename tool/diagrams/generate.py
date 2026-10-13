@@ -152,14 +152,17 @@ def effects(t):
 
 
 def timeline(t):
-    d = D('play_when_ready', 900, 300, t, 'playWhenReady and playing over time')
-    x0, x1 = 170, 870
-    marks = [(210, 'play()'), (390, 'seek()'), (560, 'network stall'), (760, 'pause()')]
+    d = D('play_when_ready', 1000, 400, t, 'playWhenReady, playing and completed over time')
+    x0, x1 = 170, 970
+    marks = [(210, 'play()'), (370, 'seek()'), (520, 'network stall'), (680, 'pause()'), (760, 'play()'),
+             (900, 'end of content')]
     for x, m in marks:
-        d.add(f'<line x1="{x}" y1="40" x2="{x}" y2="250" stroke="{d.c["line"]}" stroke-width="1" stroke-dasharray="3 4"/>')
+        d.add(f'<line x1="{x}" y1="40" x2="{x}" y2="340" stroke="{d.c["line"]}" stroke-width="1" stroke-dasharray="3 4"/>')
         d.text(x, 28, m, mono=m.endswith(')'), color='label', size=12)
-    rows = [('playWhenReady', 110, [(x0, 0), (210, 1), (760, 0)]),
-            ('playing', 200, [(x0, 0), (230, 1), (390, 0), (430, 1), (560, 0), (650, 1), (760, 0)])]
+    rows = [('playWhenReady', 110, [(x0, 0), (210, 1), (680, 0), (760, 1), (900, 0)]),
+            ('playing', 200, [(x0, 0), (230, 1), (370, 0), (410, 1), (520, 0), (600, 1), (680, 0), (780, 1),
+                              (900, 0)]),
+            ('completed', 290, [(x0, 0), (900, 1)])]
     for name, y, pts in rows:
         d.text(20, y - 17, name, anchor='start', mono=True, color='label', size=14, weight=600)
         path = f'M{x0},{y}'
@@ -171,7 +174,8 @@ def timeline(t):
         path += f' L{x1},{y - 40 * lvl}'
         d.arrow(path, head=False, width=2.6)
         d.text(161, y + 4, 'false', anchor='end', size=11); d.text(161, y - 36, 'true', anchor='end', size=11)
-    d.text(410, 275, 'playing flips for the seek and the stall; playWhenReady does not', size=12)
+    d.text(570, 375, 'playing flips for the seek and the stall; at the end of content playWhenReady drops and '
+                     'completed rises', size=12)
     return d
 
 
@@ -294,6 +298,46 @@ def media(t):
     return d
 
 
+def cache_feed(t):
+    d = D('analysis_cache_feed', 900, 380, t, 'Waveform and loudness of a network file from one download')
+    d.node(120, 80, 180, 60, 'Server', 'HTTP file', role='neutral', mono=False)
+    d.node(420, 80, 230, 64, 'mpv cache', 'packets as they download', role='lib', mono=False)
+    d.node(740, 80, 230, 60, 'Playback', 'decoder, effects, output', role='neutral', mono=False)
+    d.arrow('M210,80 L303,80'); d.text(256, 68, 'one GET', size=11)
+    d.arrow('M535,80 L623,80')
+    d.node(420, 220, 230, 64, 'Analysis', 'decodes the cached packets', role='lib', mono=False)
+    d.arrow('M420,112 L420,186')
+    d.node(740, 220, 230, 64, 'stream.waveform', 'and stream.loudnessScan', role='app', size=14)
+    d.arrow('M535,220 L623,220')
+    d.arrow('M120,110 L120,220 L303,220', kind='sec', dash=True)
+    d.text(132, 205, 'second open', anchor='start', size=11)
+    d.text(120, 300, 'Only when one pass from the start to the end is not possible:', anchor='start', size=12,
+           color='label', weight=600)
+    d.text(120, 322, 'playback starts further in, a seek past the cache, a track switch,', anchor='start', size=12)
+    d.text(120, 342, 'a cut download, the cache off or on disk, a file larger than the cache.', anchor='start',
+           size=12)
+    return d
+
+
+def cache(t):
+    d = D('demuxer_cache', 900, 290, t, 'The demuxer cache around the playhead')
+    c = d.c
+    y = 110
+    d.add(f'<rect x="40" y="{y - 6}" width="820" height="12" rx="6" fill="{c["neutral"]}"/>')
+    d.text(40, y - 24, 'the file', anchor='start', size=11)
+    d.node(285, y, 250, 52, 'behind', 'already played', role='lib', mono=False, r=8)
+    d.node(565, y, 290, 52, 'ahead', 'read before it plays', role='lib', mono=False, r=8)
+    d.add(f'<line x1="415" y1="{y - 46}" x2="415" y2="{y + 46}" stroke="{c["main"]}" stroke-width="3"/>')
+    d.text(415, y - 54, 'playhead', size=12, color='main', weight=600)
+    d.text(285, y + 64, 'DemuxerSettings.maxBackBytes', size=12, mono=True, color='label')
+    d.text(285, y + 84, 'a seek back inside it needs no new request', size=12)
+    d.text(565, y + 64, 'CacheSettings.secs', size=12, mono=True, color='label')
+    d.text(565, y + 84, 'capped by DemuxerSettings.maxBytes', size=12)
+    d.text(450, y + 140, 'With CacheSettings.pause, playback waits when the part ahead runs dry, until pauseWait is '
+                         'cached again.', size=12)
+    return d
+
+
 def icon_svg():
     """The package icon: nine rounded bars, symmetric around the tallest,
     on a round plate like mpv_studio's."""
@@ -307,7 +351,8 @@ def icon_svg():
             f'<circle cx="512" cy="512" r="512" fill="{NAVY}"/>\n{bars}\n</svg>\n')
 
 
-ALL = [architecture, lifecycle, effects, timeline, prefetch, cover, errors, hook, resolver, spectrum, media]
+ALL = [architecture, lifecycle, effects, timeline, prefetch, cover, errors, hook, resolver, spectrum, media,
+       cache_feed, cache]
 os.makedirs(OUT, exist_ok=True)
 with tempfile.TemporaryDirectory() as tmp:
     for f in ALL:
