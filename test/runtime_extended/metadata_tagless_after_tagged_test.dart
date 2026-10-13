@@ -37,10 +37,12 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 300));
 
         expect(await player.getRawPropertyNode('metadata'), isEmpty);
-        expect(player.state.path, tagless);
+        expect(_slashes(player.state.path), _slashes(tagless));
         expect(player.state.metadata, isEmpty);
         expect(await player.stream.metadata.first, isEmpty);
       });
     }
   });
 }
+
+String _slashes(String path) => path.replaceAll(r'\', '/');
