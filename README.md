@@ -416,11 +416,11 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
 The player lives on your main isolate and talks to libmpv without blocking it: commands go out asynchronously, and a background isolate brings events and state back.
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/architecture.png" width="100%" alt="Architecture: your UI and the Player on the main isolate, the event isolate and libmpv in the background, the platform plugin for the media session">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/architecture.png" width="100%" alt="Architecture in four lanes: the Player on the main isolate calls libmpv directly with async calls, the event isolate blocks on mpv_wait_event and forwards events and state, and the platform plugin connects the media session to the OS media controls">
 
 ### 1. Initialization and lifecycle
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/player_lifecycle.png" width="100%" alt="Player lifecycle: ensureInitialized, Player, open, listen and control, dispose">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/player_lifecycle.png" width="100%" alt="Player lifecycle: ensureInitialized once per app, then for each player Player, open, listen and control, dispose; open can be called again at any time">
 
 #### 1.1 Global initialization
 
@@ -685,7 +685,7 @@ await player.stop();    // Stop and unload current file
 player.state.playWhenReady ? await player.pause() : await player.play();
 ```
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/play_when_ready.png" width="100%" alt="playWhenReady stays true through a seek and a network stall, while playing drops to false; at the end of content playWhenReady drops and completed rises">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/play_when_ready.png" width="100%" alt="playWhenReady stays true through the load, a seek and a network stall, while playing waits; at the end of content playWhenReady drops and completed rises until a new track or a seek back">
 
 #### 4.2 Seeking
 
@@ -821,7 +821,7 @@ await player.deleteResumeConfig(filename: '/music/audiobook.m4b');
 Everything in this section runs as ffmpeg filters, the same on every
 platform.
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/effects_chain.png" width="100%" alt="Effects chain: the decoder feeds the stages in list order, then the volume and the driver; taps read before or after a stage">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/effects_chain.png" width="100%" alt="Effects chain: the same waveform probed before and after the equalizer, after the compressor and after the volume, with the tap names that read each point">
 
 #### 5.1 The effects chain
 
@@ -1401,7 +1401,7 @@ await player.setDemuxer(
 player.stream.demuxer.listen((d) => print('demuxer: ${d.maxBytes} bytes'));
 ```
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/demuxer_cache.png" width="100%" alt="The demuxer cache keeps maxBackBytes behind the playhead and CacheSettings.secs ahead of it, capped by maxBytes">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/demuxer_cache.png" width="100%" alt="The demuxer cache around the playhead: maxBackBytes behind it, maxBytes and CacheSettings.secs ahead of it, and CacheSettings.pause waiting until pauseWait is cached again">
 
 For live radio, where you do not seek back, set the back buffer to zero to save memory:
 
@@ -1540,7 +1540,7 @@ mpv returns the keys in lowercase, whatever the tag format. Common keys: `title`
 
 #### 8.2 Cover art
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/cover_art_flow.png" width="100%" alt="Embedded covers reach stream.coverArt; an image in the folder only shows up in state.tracks">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/cover_art_flow.png" width="100%" alt="A picture embedded in the audio file reaches stream.coverArt on every load; cover.jpg in the folder, with setCoverArtAuto, only appears in state.tracks">
 
 `player.state.coverArt` and `player.stream.coverArt` carry the embedded
 cover as the original image bytes, with a few Flutter helpers:
@@ -1850,7 +1850,7 @@ the background before the current one ends. `player.stream.prefetchState`
 follows that work, so you can show progress or log a failed prefetch
 without parsing log lines.
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/mpv_prefetch_state.png" width="100%" alt="Prefetch states: idle, loading, ready, used and failed, with used and failed kept until the next loading">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/mpv_prefetch_state.png" width="100%" alt="Prefetch timeline: while track A plays, track B opens in the background through loading and ready, plays from the prefetch as used, and a failed prefetch stays failed until the next loading">
 
 ```dart
 player.stream.prefetchState.listen((state) {
@@ -2003,7 +2003,7 @@ change.
 
 `player.stream.error` emits `PlayerError`, a sealed class with two subtypes: `EndFileError` when a file stops because of an error, and `LogError` when mpv logs an error that may not stop playback:
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.png" width="100%" alt="The player feeds stream.error, stream.endFile, audioOutputState and the two log streams">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.png" width="100%" alt="Every end of file, log message and audio output change reaches its own stream; errors among them also reach stream.error as EndFileError or LogError, and library messages go to internalLog">
 
 ```dart
 player.stream.error.listen((error) {
@@ -2146,7 +2146,7 @@ without throwing.
 
 A hook pauses mpv at a step of loading a file, such as right before the stream opens, until your code says to go on. Use it to resolve a URL at the last moment, add headers for one file or switch to another source, with no local proxy:
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.png" width="100%" alt="on_load hook sequence between your code, the player and mpv">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.png" width="100%" alt="on_load hook sequence in eight numbered steps between your code, the player and mpv, with mpv paused on the file until continueHook">
 
 Headers alone need no hook: pass them in [`Media.httpHeaders`](#22-http-headers). To resolve URLs, [`setSourceResolver`](#124-the-source-resolver) does the hook wiring for you.
 
@@ -2250,7 +2250,7 @@ The player calls the resolver:
 * before every stream opens (`on_load`), prefetch included;
 * once more after a failed open (`on_load_fail`), with `request.isRetry` set: return a fresh URL, for example with a new token, and mpv tries again. This happens at most once per load, and only when the new URL differs from the one that failed.
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/source_resolver.png" width="100%" alt="The resolver runs before each open and once more after a failed open, when it returns a new URL">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/source_resolver.png" width="100%" alt="The resolver returns a URL with a short-lived token; when the open fails, on_load_fail asks it again with isRetry true and a fresh token plays, at most once per load">
 
 Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error goes to `internalLog` and keeps the current URL.
 
@@ -2280,7 +2280,7 @@ output, after the effects chain and the volume: what you hear. Paint
 `bands` in a `CustomPainter`, drive a level meter with `samples`, or run
 your own analysis:
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/spectrum_pipeline.png" width="100%" alt="Spectrum pipeline: output samples, window, FFT, log bands, smoothing">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/spectrum_pipeline.png" width="100%" alt="Spectrum pipeline: a block of output samples, the window, the linear FFT bins, the log bands and the smoothing, feeding stream.pcm and stream.fft">
 
 Every stream in this section does its work only while it has a
 listener: `fft`, `pcm`, the taps, `waveform`, `loudnessScan` and
@@ -2469,7 +2469,7 @@ options as playback (`tls-verify`, `tls-ca-file`, headers, user agent,
 cookies). Either way the result is the same. The loudness scan below
 uses the same decode.
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="A network file is downloaded once into mpv's cache, which feeds both playback and the analysis; a second open happens only when one pass from the start to the end is not possible">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="A network file downloaded once: playback and the analysis read the same mpv cache, the waveform fills as it decodes, and the analysis opens the source a second time only when one pass from the start to the end is not possible">
 
 ```dart
 player.stream.waveform.listen((wave) {
@@ -2539,7 +2539,7 @@ receives the commands the OS sends back. Pass `null` to remove the entry. Only o
 session at a time (enabling a second throws `StateError`); `dispose()`
 releases it automatically.
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/media_session_flow.png" width="100%" alt="The media session publishes the player to each OS and sends commands back">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/media_session_flow.png" width="100%" alt="The media session publishes the player to the iOS lock screen, the macOS Control Center, the Android notification, the Windows flyout and the Linux MPRIS applet, and sends their commands back">
 
 #### 14.1 Enabling the session
 
