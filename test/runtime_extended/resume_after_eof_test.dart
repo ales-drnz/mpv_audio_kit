@@ -15,6 +15,7 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   final shortFixture = '${Directory.current.path}/test/fixtures/sine_50ms.wav';
   final fixturePath = defaultFixturePath();
+  final longFixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
   runtimeSuite(fixturePath: fixturePath, () {
     group('Resume after keep-open EOF park', () {
@@ -109,6 +110,31 @@ void main() {
           reason: 'jump() must not inherit the keep-open pause',
         );
       }, timeout: const Timeout(Duration(seconds: 60)));
+
+      test(
+        'play() from the parked state starts the last track again',
+        () async {
+          // Long enough to still be playing when checked.
+          await playToEofPark([longFixture]);
+
+          await player.play();
+
+          await waitUntil(
+            () async =>
+                await player.getRawProperty('pause') == 'no' &&
+                player.state.playing &&
+                !player.state.completed,
+            reason: 'play() at the end must play, not only show pause',
+          );
+          expect(player.state.playWhenReady, isTrue);
+          expect(
+            player.state.position,
+            lessThan(const Duration(seconds: 4)),
+            reason: 'the last track starts again from its beginning',
+          );
+        },
+        timeout: const Timeout(Duration(seconds: 60)),
+      );
     });
   });
 }

@@ -7,8 +7,10 @@ part of '../player.dart';
 /// and the A-B loop controls.
 mixin _PlaybackModule on _PlayerBase {
   /// Starts or resumes playback. Idempotent: a no-op when already
-  /// playing. Returns immediately; the actual `pause=no` round-trip
-  /// to mpv settles asynchronously, observable via [PlayerStream.playing].
+  /// playing. At the end of the queue ([PlayerState.completed]) it starts
+  /// the last track again from its beginning. Returns immediately; the
+  /// actual `pause=no` round-trip to mpv settles asynchronously, observable
+  /// via [PlayerStream.playing].
   Future<void> play() async {
     await _gate();
     // Optimistic intent: `pause` is silent on the first load → playing
@@ -19,6 +21,13 @@ mixin _PlaybackModule on _PlayerBase {
       _reactives.playWhenReady,
       true,
     );
+    // Parked at the end (`keep-open`), an unpause alone is undone by the
+    // playloop hitting EOF again, and the intent would show playing over
+    // silence. Seek back first; the unpause after it sticks, as in [jump].
+    // Unchecked: a stream that cannot seek stays parked.
+    if (await _parkedAtEof()) {
+      await _command(['seek', '0', 'absolute']);
+    }
     await _prop('pause', 'no');
   }
 
