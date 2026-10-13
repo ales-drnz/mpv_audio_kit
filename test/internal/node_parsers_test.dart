@@ -324,12 +324,11 @@ void main() {
       expect(m['explicit'], 'true');
     });
 
-    test('returns null on empty/null input (no-op signal)', () {
-      // mpv emits MPV_FORMAT_NONE (decoded null) or an empty map on tracks
-      // with no tags; overwriting an existing metadata map with `{}` would
-      // lose valid prior state during a brief track-change window.
+    test('null is no update, an empty map clears the tags (#25)', () {
       expect(parseMetadataNode(null), isNull);
-      expect(parseMetadataNode(<String, dynamic>{}), isNull);
+      // A file without tags: the previous file's must not stay.
+      expect(parseMetadataNode(<String, dynamic>{}), isEmpty);
+      expect(parseMetadataNode(<String, dynamic>{}), isNotNull);
     });
 
     test('returns null on non-map raw (defensive)', () {

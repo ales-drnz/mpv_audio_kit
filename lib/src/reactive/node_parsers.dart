@@ -127,15 +127,14 @@ List<Device> parseDeviceListNode(dynamic raw) {
 /// Decodes mpv's `metadata` property (`MPV_FORMAT_NODE_MAP`) into a flat
 /// `String → String` map.
 ///
-/// Returns `null` (rather than `{}`) on empty / null input. mpv sometimes
-/// emits an empty payload when a track has no tags, and overwriting the
-/// existing map with an empty one would clobber tags already observed
-/// (e.g. during a brief track-change window). The caller treats `null`
-/// as "no update".
+/// An empty map is a file without tags and gives an empty map, so the
+/// previous file's tags don't stay (#25). Returns `null`, which the caller
+/// treats as "no update", only for input that is not a map; an unavailable
+/// property goes through the player's reset instead.
 Map<String, String>? parseMetadataNode(dynamic raw) {
   if (raw == null) return null;
   if (raw is! Map) return null;
-  if (raw.isEmpty) return null;
+  if (raw.isEmpty) return const <String, String>{};
   return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
 }
 
