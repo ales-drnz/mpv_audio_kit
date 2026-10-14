@@ -1,4 +1,4 @@
-## [0.5.1] - Unreleased
+## [0.5.1] - 15-10-2026
 
 ### Added
 - The variants of `MediaSessionArtwork`, `Track` and `Channels` are exported, so an app can switch over them.
