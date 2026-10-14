@@ -1,4 +1,4 @@
-// AUTO-GENERATED — do not edit by hand.
+// AUTO-GENERATED: do not edit by hand.
 //
 // Per-filter param corner-case manifest. See
 // test/runtime_extended/audio_effects_param_ranges_test.dart

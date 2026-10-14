@@ -3,22 +3,22 @@
 // Use of this source code is governed by BSD 3-Clause license
 // that can be found in the LICENSE file.
 //
-// AUTO-GENERATED — do NOT edit by hand.
+// AUTO-GENERATED: do NOT edit by hand.
 //
 // Runtime af-command coverage. For every filter whose ffmpeg source
 // declares `.process_command` (the schema's `supports_commands` flag
-// — the gate for live updates in `audioEffectsDiff`), enable the filter on a
+// is the gate for live updates in `audioEffectsDiff`), enable the filter on a
 // live playing mpv, then change each runtime-tunable option through
 // `Player.updateAudioEffects`: the diff must send it as `af-command`,
 // and mpv must accept it, which the player logs when it does not
 // before rebuilding the chain. A refusal here means the flag (or an
-// option's runtime flag) is wrong for the SHIPPED binary — fix the
+// option's runtime flag) is wrong for the SHIPPED binary: fix the
 // codegen and regenerate.
 //
 // Probe values stay close to each option's default: corner values can
 // be DYNAMICALLY invalid even when statically inside the AVOption
 // range (e.g. a biquad frequency above Nyquist), and a failed runtime
-// reconfigure poisons the filter instance — every later command on it
+// reconfigure poisons the filter instance: every later command on it
 // fails too, which would read here as a bogus unsupported command.
 //
 // Enum, duration and free-string options have no schema-derivable safe
@@ -56,7 +56,7 @@ typedef AfCommandCase = ({
 
 void main() {
   // The LONG fixture on purpose: the file loops for the whole run and
-  // every loop wrap resets the filter chain — a shorter file would
+  // every loop wrap resets the filter chain; a shorter file would
   // multiply the command-vs-chain-reset races the retry below absorbs.
   final fixturePath = '${Directory.current.path}/test/fixtures/sine_5s.flac';
   final arnndnModelPath =

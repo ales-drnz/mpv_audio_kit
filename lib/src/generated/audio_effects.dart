@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license
 // that can be found in the LICENSE file.
 //
-// AUTO-GENERATED — do not edit by hand.
+// AUTO-GENERATED: do not edit by hand.
 // ignore_for_file: constant_identifier_names, camel_case_types, non_constant_identifier_names
 
 /// Values for the `detection` option of the `acompressor` audio filter.
@@ -25,7 +25,7 @@ enum AcompressorDetection {
   }
 
   /// Parses a mpv wire string back into a [AcompressorDetection].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AcompressorDetection fromMpv(String? raw) {
     switch (raw) {
       case 'peak':
@@ -57,7 +57,7 @@ enum AcompressorLink {
   }
 
   /// Parses a mpv wire string back into a [AcompressorLink].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AcompressorLink fromMpv(String? raw) {
     switch (raw) {
       case 'average':
@@ -89,7 +89,7 @@ enum AcompressorMode {
   }
 
   /// Parses a mpv wire string back into a [AcompressorMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AcompressorMode fromMpv(String? raw) {
     switch (raw) {
       case 'downward':
@@ -121,7 +121,7 @@ enum AcrusherMode {
   }
 
   /// Parses a mpv wire string back into a [AcrusherMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AcrusherMode fromMpv(String? raw) {
     switch (raw) {
       case 'lin':
@@ -163,7 +163,7 @@ enum AdeclickM {
   }
 
   /// Parses a mpv wire string back into a [AdeclickM].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdeclickM fromMpv(String? raw) {
     switch (raw) {
       case 'add':
@@ -209,7 +209,7 @@ enum AdeclipM {
   }
 
   /// Parses a mpv wire string back into a [AdeclipM].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdeclipM fromMpv(String? raw) {
     switch (raw) {
       case 'add':
@@ -255,7 +255,7 @@ enum AdenormType {
   }
 
   /// Parses a mpv wire string back into a [AdenormType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdenormType fromMpv(String? raw) {
     switch (raw) {
       case 'dc':
@@ -301,7 +301,7 @@ enum AdynamicequalizerAuto {
   }
 
   /// Parses a mpv wire string back into a [AdynamicequalizerAuto].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdynamicequalizerAuto fromMpv(String? raw) {
     switch (raw) {
       case 'disabled':
@@ -347,7 +347,7 @@ enum AdynamicequalizerDftype {
   }
 
   /// Parses a mpv wire string back into a [AdynamicequalizerDftype].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdynamicequalizerDftype fromMpv(String? raw) {
     switch (raw) {
       case 'bandpass':
@@ -398,7 +398,7 @@ enum AdynamicequalizerMode {
   }
 
   /// Parses a mpv wire string back into a [AdynamicequalizerMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdynamicequalizerMode fromMpv(String? raw) {
     switch (raw) {
       case 'listen':
@@ -441,7 +441,7 @@ enum AdynamicequalizerPrecision {
   }
 
   /// Parses a mpv wire string back into a [AdynamicequalizerPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdynamicequalizerPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -480,7 +480,7 @@ enum AdynamicequalizerTftype {
   }
 
   /// Parses a mpv wire string back into a [AdynamicequalizerTftype].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AdynamicequalizerTftype fromMpv(String? raw) {
     switch (raw) {
       case 'bell':
@@ -514,7 +514,7 @@ enum AemphasisMode {
   }
 
   /// Parses a mpv wire string back into a [AemphasisMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AemphasisMode fromMpv(String? raw) {
     switch (raw) {
       case 'reproduction':
@@ -581,7 +581,7 @@ enum AemphasisType {
   }
 
   /// Parses a mpv wire string back into a [AemphasisType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AemphasisType fromMpv(String? raw) {
     switch (raw) {
       case 'col':
@@ -737,7 +737,7 @@ enum AfadeCurve {
   }
 
   /// Parses a mpv wire string back into a [AfadeCurve].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfadeCurve fromMpv(String? raw) {
     switch (raw) {
       case 'nofade':
@@ -813,7 +813,7 @@ enum AfadeType {
   }
 
   /// Parses a mpv wire string back into a [AfadeType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfadeType fromMpv(String? raw) {
     switch (raw) {
       case 'in':
@@ -855,7 +855,7 @@ enum AfftdnLink {
   }
 
   /// Parses a mpv wire string back into a [AfftdnLink].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfftdnLink fromMpv(String? raw) {
     switch (raw) {
       case 'none':
@@ -911,7 +911,7 @@ enum AfftdnMode {
   }
 
   /// Parses a mpv wire string back into a [AfftdnMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfftdnMode fromMpv(String? raw) {
     switch (raw) {
       case 'input':
@@ -966,7 +966,7 @@ enum AfftdnSample {
   }
 
   /// Parses a mpv wire string back into a [AfftdnSample].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfftdnSample fromMpv(String? raw) {
     switch (raw) {
       case 'none':
@@ -1034,7 +1034,7 @@ enum AfftdnType {
   }
 
   /// Parses a mpv wire string back into a [AfftdnType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfftdnType fromMpv(String? raw) {
     switch (raw) {
       case 'white':
@@ -1178,7 +1178,7 @@ enum AfftfiltWinFunc {
   }
 
   /// Parses a mpv wire string back into a [AfftfiltWinFunc].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfftfiltWinFunc fromMpv(String? raw) {
     switch (raw) {
       case 'rect':
@@ -1275,7 +1275,7 @@ enum AfwtdnWavet {
   }
 
   /// Parses a mpv wire string back into a [AfwtdnWavet].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AfwtdnWavet fromMpv(String? raw) {
     switch (raw) {
       case 'sym2':
@@ -1317,7 +1317,7 @@ enum AgateDetection {
   }
 
   /// Parses a mpv wire string back into a [AgateDetection].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AgateDetection fromMpv(String? raw) {
     switch (raw) {
       case 'peak':
@@ -1349,7 +1349,7 @@ enum AgateLink {
   }
 
   /// Parses a mpv wire string back into a [AgateLink].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AgateLink fromMpv(String? raw) {
     switch (raw) {
       case 'average':
@@ -1381,7 +1381,7 @@ enum AgateMode {
   }
 
   /// Parses a mpv wire string back into a [AgateMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AgateMode fromMpv(String? raw) {
     switch (raw) {
       case 'downward':
@@ -1438,7 +1438,7 @@ enum AiirFormat {
   }
 
   /// Parses a mpv wire string back into a [AiirFormat].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AiirFormat fromMpv(String? raw) {
     switch (raw) {
       case 'll':
@@ -1490,7 +1490,7 @@ enum AiirPrecision {
   }
 
   /// Parses a mpv wire string back into a [AiirPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AiirPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'dbl':
@@ -1531,7 +1531,7 @@ enum AiirProcess {
   }
 
   /// Parses a mpv wire string back into a [AiirProcess].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AiirProcess fromMpv(String? raw) {
     switch (raw) {
       case 'd':
@@ -1580,7 +1580,7 @@ enum AllpassPrecision {
   }
 
   /// Parses a mpv wire string back into a [AllpassPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AllpassPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -1643,7 +1643,7 @@ enum AllpassTransformType {
   }
 
   /// Parses a mpv wire string back into a [AllpassTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AllpassTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -1700,7 +1700,7 @@ enum AllpassWidthType {
   }
 
   /// Parses a mpv wire string back into a [AllpassWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AllpassWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -1738,7 +1738,7 @@ enum AnequalizerFscale {
   }
 
   /// Parses a mpv wire string back into a [AnequalizerFscale].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AnequalizerFscale fromMpv(String? raw) {
     switch (raw) {
       case 'lin':
@@ -1775,7 +1775,7 @@ enum AnlmdnMode {
   }
 
   /// Parses a mpv wire string back into a [AnlmdnMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AnlmdnMode fromMpv(String? raw) {
     switch (raw) {
       case 'i':
@@ -1819,7 +1819,7 @@ enum AphaserType {
   }
 
   /// Parses a mpv wire string back into a [AphaserType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AphaserType fromMpv(String? raw) {
     switch (raw) {
       case 'triangular':
@@ -1870,7 +1870,7 @@ enum ApulsatorMode {
   }
 
   /// Parses a mpv wire string back into a [ApulsatorMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static ApulsatorMode fromMpv(String? raw) {
     switch (raw) {
       case 'sine':
@@ -1913,7 +1913,7 @@ enum ApulsatorTiming {
   }
 
   /// Parses a mpv wire string back into a [ApulsatorTiming].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static ApulsatorTiming fromMpv(String? raw) {
     switch (raw) {
       case 'bpm':
@@ -1982,7 +1982,7 @@ enum AsoftclipTypes {
   }
 
   /// Parses a mpv wire string back into a [AsoftclipTypes].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static AsoftclipTypes fromMpv(String? raw) {
     switch (raw) {
       case 'hard':
@@ -2043,7 +2043,7 @@ enum BandpassPrecision {
   }
 
   /// Parses a mpv wire string back into a [BandpassPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BandpassPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -2106,7 +2106,7 @@ enum BandpassTransformType {
   }
 
   /// Parses a mpv wire string back into a [BandpassTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BandpassTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -2163,7 +2163,7 @@ enum BandpassWidthType {
   }
 
   /// Parses a mpv wire string back into a [BandpassWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BandpassWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -2216,7 +2216,7 @@ enum BandrejectPrecision {
   }
 
   /// Parses a mpv wire string back into a [BandrejectPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BandrejectPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -2279,7 +2279,7 @@ enum BandrejectTransformType {
   }
 
   /// Parses a mpv wire string back into a [BandrejectTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BandrejectTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -2336,7 +2336,7 @@ enum BandrejectWidthType {
   }
 
   /// Parses a mpv wire string back into a [BandrejectWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BandrejectWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -2389,7 +2389,7 @@ enum BassPrecision {
   }
 
   /// Parses a mpv wire string back into a [BassPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BassPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -2452,7 +2452,7 @@ enum BassTransformType {
   }
 
   /// Parses a mpv wire string back into a [BassTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BassTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -2509,7 +2509,7 @@ enum BassWidthType {
   }
 
   /// Parses a mpv wire string back into a [BassWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BassWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -2562,7 +2562,7 @@ enum BiquadPrecision {
   }
 
   /// Parses a mpv wire string back into a [BiquadPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BiquadPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -2625,7 +2625,7 @@ enum BiquadTransformType {
   }
 
   /// Parses a mpv wire string back into a [BiquadTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static BiquadTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -2672,7 +2672,7 @@ enum DeesserMode {
   }
 
   /// Parses a mpv wire string back into a [DeesserMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static DeesserMode fromMpv(String? raw) {
     switch (raw) {
       case 'i':
@@ -2716,7 +2716,7 @@ enum Ebur128Gaugetype {
   }
 
   /// Parses a mpv wire string back into a [Ebur128Gaugetype].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static Ebur128Gaugetype fromMpv(String? raw) {
     switch (raw) {
       case 'momentary':
@@ -2757,7 +2757,7 @@ enum Ebur128Level {
   }
 
   /// Parses a mpv wire string back into a [Ebur128Level].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static Ebur128Level fromMpv(String? raw) {
     switch (raw) {
       case 'quiet':
@@ -2796,7 +2796,7 @@ enum Ebur128Mode {
   }
 
   /// Parses a mpv wire string back into a [Ebur128Mode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static Ebur128Mode fromMpv(String? raw) {
     switch (raw) {
       case 'none':
@@ -2840,7 +2840,7 @@ enum Ebur128Scaletype {
   }
 
   /// Parses a mpv wire string back into a [Ebur128Scaletype].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static Ebur128Scaletype fromMpv(String? raw) {
     switch (raw) {
       case 'absolute':
@@ -2891,7 +2891,7 @@ enum EqualizerPrecision {
   }
 
   /// Parses a mpv wire string back into a [EqualizerPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static EqualizerPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -2954,7 +2954,7 @@ enum EqualizerTransformType {
   }
 
   /// Parses a mpv wire string back into a [EqualizerTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static EqualizerTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -3011,7 +3011,7 @@ enum EqualizerWidthType {
   }
 
   /// Parses a mpv wire string back into a [EqualizerWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static EqualizerWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -3059,7 +3059,7 @@ enum FirequalizerScale {
   }
 
   /// Parses a mpv wire string back into a [FirequalizerScale].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static FirequalizerScale fromMpv(String? raw) {
     switch (raw) {
       case 'linlin':
@@ -3135,7 +3135,7 @@ enum FirequalizerWfunc {
   }
 
   /// Parses a mpv wire string back into a [FirequalizerWfunc].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static FirequalizerWfunc fromMpv(String? raw) {
     switch (raw) {
       case 'rectangular':
@@ -3183,7 +3183,7 @@ enum FlangerItype {
   }
 
   /// Parses a mpv wire string back into a [FlangerItype].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static FlangerItype fromMpv(String? raw) {
     switch (raw) {
       case 'linear':
@@ -3225,7 +3225,7 @@ enum FlangerType {
   }
 
   /// Parses a mpv wire string back into a [FlangerType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static FlangerType fromMpv(String? raw) {
     switch (raw) {
       case 'triangular':
@@ -3271,7 +3271,7 @@ enum HaasSource {
   }
 
   /// Parses a mpv wire string back into a [HaasSource].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HaasSource fromMpv(String? raw) {
     switch (raw) {
       case 'left':
@@ -3322,7 +3322,7 @@ enum HdcdAnalyzeMode {
   }
 
   /// Parses a mpv wire string back into a [HdcdAnalyzeMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HdcdAnalyzeMode fromMpv(String? raw) {
     switch (raw) {
       case 'off':
@@ -3365,7 +3365,7 @@ enum HdcdBitsPerSample {
   }
 
   /// Parses a mpv wire string back into a [HdcdBitsPerSample].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HdcdBitsPerSample fromMpv(String? raw) {
     switch (raw) {
       case '16':
@@ -3414,7 +3414,7 @@ enum HighpassPrecision {
   }
 
   /// Parses a mpv wire string back into a [HighpassPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HighpassPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -3477,7 +3477,7 @@ enum HighpassTransformType {
   }
 
   /// Parses a mpv wire string back into a [HighpassTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HighpassTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -3534,7 +3534,7 @@ enum HighpassWidthType {
   }
 
   /// Parses a mpv wire string back into a [HighpassWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HighpassWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -3587,7 +3587,7 @@ enum HighshelfPrecision {
   }
 
   /// Parses a mpv wire string back into a [HighshelfPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HighshelfPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -3650,7 +3650,7 @@ enum HighshelfTransformType {
   }
 
   /// Parses a mpv wire string back into a [HighshelfTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HighshelfTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -3707,7 +3707,7 @@ enum HighshelfWidthType {
   }
 
   /// Parses a mpv wire string back into a [HighshelfWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static HighshelfWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -3750,7 +3750,7 @@ enum LoudnormPrintFormat {
   }
 
   /// Parses a mpv wire string back into a [LoudnormPrintFormat].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static LoudnormPrintFormat fromMpv(String? raw) {
     switch (raw) {
       case 'none':
@@ -3799,7 +3799,7 @@ enum LowpassPrecision {
   }
 
   /// Parses a mpv wire string back into a [LowpassPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static LowpassPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -3862,7 +3862,7 @@ enum LowpassTransformType {
   }
 
   /// Parses a mpv wire string back into a [LowpassTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static LowpassTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -3919,7 +3919,7 @@ enum LowpassWidthType {
   }
 
   /// Parses a mpv wire string back into a [LowpassWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static LowpassWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -3972,7 +3972,7 @@ enum LowshelfPrecision {
   }
 
   /// Parses a mpv wire string back into a [LowshelfPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static LowshelfPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -4035,7 +4035,7 @@ enum LowshelfTransformType {
   }
 
   /// Parses a mpv wire string back into a [LowshelfTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static LowshelfTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -4092,7 +4092,7 @@ enum LowshelfWidthType {
   }
 
   /// Parses a mpv wire string back into a [LowshelfWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static LowshelfWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -4130,7 +4130,7 @@ enum RubberbandChannels {
   }
 
   /// Parses a mpv wire string back into a [RubberbandChannels].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandChannels fromMpv(String? raw) {
     switch (raw) {
       case 'apart':
@@ -4167,7 +4167,7 @@ enum RubberbandDetector {
   }
 
   /// Parses a mpv wire string back into a [RubberbandDetector].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandDetector fromMpv(String? raw) {
     switch (raw) {
       case 'compound':
@@ -4201,7 +4201,7 @@ enum RubberbandFormant {
   }
 
   /// Parses a mpv wire string back into a [RubberbandFormant].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandFormant fromMpv(String? raw) {
     switch (raw) {
       case 'shifted':
@@ -4233,7 +4233,7 @@ enum RubberbandPhase {
   }
 
   /// Parses a mpv wire string back into a [RubberbandPhase].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandPhase fromMpv(String? raw) {
     switch (raw) {
       case 'laminar':
@@ -4270,7 +4270,7 @@ enum RubberbandPitch {
   }
 
   /// Parses a mpv wire string back into a [RubberbandPitch].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandPitch fromMpv(String? raw) {
     switch (raw) {
       case 'quality':
@@ -4304,7 +4304,7 @@ enum RubberbandSmoothing {
   }
 
   /// Parses a mpv wire string back into a [RubberbandSmoothing].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandSmoothing fromMpv(String? raw) {
     switch (raw) {
       case 'off':
@@ -4341,7 +4341,7 @@ enum RubberbandTransients {
   }
 
   /// Parses a mpv wire string back into a [RubberbandTransients].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandTransients fromMpv(String? raw) {
     switch (raw) {
       case 'crisp':
@@ -4380,7 +4380,7 @@ enum RubberbandWindow {
   }
 
   /// Parses a mpv wire string back into a [RubberbandWindow].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static RubberbandWindow fromMpv(String? raw) {
     switch (raw) {
       case 'standard':
@@ -4434,7 +4434,7 @@ enum SilenceremoveDetection {
   }
 
   /// Parses a mpv wire string back into a [SilenceremoveDetection].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static SilenceremoveDetection fromMpv(String? raw) {
     switch (raw) {
       case 'avg':
@@ -4474,7 +4474,7 @@ enum SilenceremoveMode {
   }
 
   /// Parses a mpv wire string back into a [SilenceremoveMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static SilenceremoveMode fromMpv(String? raw) {
     switch (raw) {
       case 'any':
@@ -4506,7 +4506,7 @@ enum SilenceremoveTimestamp {
   }
 
   /// Parses a mpv wire string back into a [SilenceremoveTimestamp].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static SilenceremoveTimestamp fromMpv(String? raw) {
     switch (raw) {
       case 'write':
@@ -4543,7 +4543,7 @@ enum StereotoolsBmode {
   }
 
   /// Parses a mpv wire string back into a [StereotoolsBmode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static StereotoolsBmode fromMpv(String? raw) {
     switch (raw) {
       case 'balance':
@@ -4622,7 +4622,7 @@ enum StereotoolsMode {
   }
 
   /// Parses a mpv wire string back into a [StereotoolsMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static StereotoolsMode fromMpv(String? raw) {
     switch (raw) {
       case 'lr>lr':
@@ -4672,7 +4672,7 @@ enum SurroundLfeMode {
   }
 
   /// Parses a mpv wire string back into a [SurroundLfeMode].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static SurroundLfeMode fromMpv(String? raw) {
     switch (raw) {
       case 'add':
@@ -4804,7 +4804,7 @@ enum SurroundWinFunc {
   }
 
   /// Parses a mpv wire string back into a [SurroundWinFunc].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static SurroundWinFunc fromMpv(String? raw) {
     switch (raw) {
       case 'rect':
@@ -4891,7 +4891,7 @@ enum TiltshelfPrecision {
   }
 
   /// Parses a mpv wire string back into a [TiltshelfPrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static TiltshelfPrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -4954,7 +4954,7 @@ enum TiltshelfTransformType {
   }
 
   /// Parses a mpv wire string back into a [TiltshelfTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static TiltshelfTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -5011,7 +5011,7 @@ enum TiltshelfWidthType {
   }
 
   /// Parses a mpv wire string back into a [TiltshelfWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static TiltshelfWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':
@@ -5064,7 +5064,7 @@ enum TreblePrecision {
   }
 
   /// Parses a mpv wire string back into a [TreblePrecision].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static TreblePrecision fromMpv(String? raw) {
     switch (raw) {
       case 'auto':
@@ -5127,7 +5127,7 @@ enum TrebleTransformType {
   }
 
   /// Parses a mpv wire string back into a [TrebleTransformType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static TrebleTransformType fromMpv(String? raw) {
     switch (raw) {
       case 'di':
@@ -5184,7 +5184,7 @@ enum TrebleWidthType {
   }
 
   /// Parses a mpv wire string back into a [TrebleWidthType].
-  /// Unknown / empty input falls back to the first member.
+  /// Unknown or empty input falls back to the first member.
   static TrebleWidthType fromMpv(String? raw) {
     switch (raw) {
       case 'h':

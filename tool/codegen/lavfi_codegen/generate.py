@@ -322,7 +322,7 @@ _COPYRIGHT = (
     "// Use of this source code is governed by BSD 3-Clause license\n"
     "// that can be found in the LICENSE file.\n"
     "//\n"
-    "// AUTO-GENERATED — do not edit by hand.\n"
+    "// AUTO-GENERATED: do not edit by hand.\n"
 )
 
 
@@ -508,7 +508,7 @@ def _emit_enum(
     lines.append("  }")
     lines.append("")
     lines.append(f"  /// Parses a {consumer_label} wire string back into a [{enum_id}].")
-    lines.append("  /// Unknown / empty input falls back to the first member.")
+    lines.append("  /// Unknown or empty input falls back to the first member.")
     lines.append(f"  static {enum_id} {parser}(String? raw) {{")
     lines.append("    switch (raw) {")
     for m in members:

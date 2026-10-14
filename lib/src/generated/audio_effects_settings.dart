@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license
 // that can be found in the LICENSE file.
 //
-// AUTO-GENERATED — do not edit by hand.
+// AUTO-GENERATED: do not edit by hand.
 // ignore_for_file: non_constant_identifier_names, constant_identifier_names, camel_case_types, curly_braces_in_flow_control_structures, prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
 
 import 'package:meta/meta.dart';

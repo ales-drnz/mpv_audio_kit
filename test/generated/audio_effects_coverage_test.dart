@@ -3,13 +3,13 @@
 // Use of this source code is governed by BSD 3-Clause license
 // that can be found in the LICENSE file.
 //
-// AUTO-GENERATED — do NOT edit by hand.
+// AUTO-GENERATED: do NOT edit by hand.
 //
 // Schema-driven coverage of the effects chain (`audioEffectsChain`) and the
 // per-filter `toFilterString()` wire output: every parameter of
 // every libavfilter audio filter shipped with this build has at
 // least one test pinning the wire shape, and every typed enum
-// has its `mpvValue` / `fromMpv` round-trip checked exhaustively.
+// has its `mpvValue` and `fromMpv` round-trip checked exhaustively.
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, unused_local_variable, unnecessary_const, prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
 
 import 'package:test/test.dart';

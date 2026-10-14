@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license
 // that can be found in the LICENSE file.
 //
-// AUTO-GENERATED — do not edit by hand.
+// AUTO-GENERATED: do not edit by hand.
 
 library;
 

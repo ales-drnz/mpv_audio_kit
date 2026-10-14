@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license
 // that can be found in the LICENSE file.
 //
-// AUTO-GENERATED — do not edit by hand.
+// AUTO-GENERATED: do not edit by hand.
 
 import 'audio_effects.dart';
 import 'audio_effects_settings.dart';
@@ -46,7 +46,7 @@ final class AechoTap {
 /// `aecho` packs as `delays`/`decays`.
 ///
 /// The two CSVs are positional: the Nth delay pairs with the Nth
-/// decay. Mismatched lengths are clamped to the shorter list — the
+/// decay. Mismatched lengths are clamped to the shorter list: the
 /// dropped tail would crash the filter at config time anyway.
 extension AechoTapsX on AechoEffect {
   /// Decoded list of taps in declaration order.
@@ -61,7 +61,7 @@ extension AechoTapsX on AechoEffect {
     );
   }
 
-  /// Returns a copy whose [delays] / [decays] reflect [taps].
+  /// Returns a copy whose [delays] and [decays] reflect [taps].
   AechoEffect withTaps(List<AechoTap> taps) {
     if (taps.isEmpty) return copyWith(delays: '0', decays: '0');
     return copyWith(
@@ -135,8 +135,8 @@ final class ChorusVoice {
 /// (`delays`/`decays`/`depths`/`speeds`) lavfi's `chorus` exposes.
 ///
 /// The four lists are positional: the Nth delay/decay/depth/speed
-/// quartet is one voice. Mismatched lengths collapse to the shortest
-/// — lavfi rejects asymmetric configs at chain-build time.
+/// quartet is one voice. Mismatched lengths collapse to the shortest:
+/// lavfi rejects asymmetric configs at chain-build time.
 extension ChorusVoicesX on ChorusEffect {
   /// Decoded list of voices in declaration order.
   List<ChorusVoice> get voices {
@@ -184,7 +184,7 @@ extension ChorusVoicesX on ChorusEffect {
 ///
 /// The transfer function is a piecewise linear mapping of input dB
 /// to output dB; consecutive [CompandPoint]s define the segments.
-/// `compand` interpolates between them — outside the range of the
+/// `compand` interpolates between them; outside the range of the
 /// declared points the output is clipped to the nearest break.
 final class CompandPoint {
   /// Input level in dB.
@@ -248,7 +248,7 @@ extension CompandPointsX on CompandEffect {
   }
 }
 
-/// One per-channel envelope of the lavfi `compand` filter — the
+/// One per-channel envelope of the lavfi `compand` filter: the
 /// attack and decay time-constants the level detector uses on that
 /// channel.
 ///
@@ -309,7 +309,7 @@ extension CompandEnvelopesX on CompandEffect {
     );
   }
 
-  /// Returns a copy whose [attacks] / [decays] reflect [envelopes].
+  /// Returns a copy whose [attacks] and [decays] reflect [envelopes].
   CompandEffect withEnvelopes(List<CompandEnvelope> envelopes) {
     if (envelopes.isEmpty) return copyWith(attacks: '0', decays: '0.8');
     return copyWith(
@@ -321,11 +321,11 @@ extension CompandEnvelopesX on CompandEffect {
   }
 }
 
-/// lavfi-side default for `compand.soft-knee` — leaves the
+/// lavfi-side default for `compand.soft-knee`, which leaves the
 /// transfer-function knee hard.
 const double kCompandSoftKneeDefault = 0.01;
 
-/// Typed access over `compand.soft-knee` — the smoothing applied
+/// Typed access over `compand.soft-knee`: the smoothing applied
 /// across the breakpoints of the transfer function.
 ///
 /// `soft-knee` is a single numeric AVOption, but the codegen routes
@@ -335,7 +335,7 @@ const double kCompandSoftKneeDefault = 0.01;
 /// map by hand.
 extension CompandSoftKneeX on CompandEffect {
   /// Soft-knee smoothing in dB. lavfi default is
-  /// [kCompandSoftKneeDefault] — a hard knee.
+  /// [kCompandSoftKneeDefault], a hard knee.
   double get softKnee => params['soft-knee'] ?? kCompandSoftKneeDefault;
 
   /// Returns a copy whose `params` map carries [v] under the
@@ -359,7 +359,7 @@ extension CompandSoftKneeX on CompandEffect {
 /// `firequalizer` interpolates between the declared entries (linearly
 /// by default, per its `gain_interpolate(f)` expression) into an
 /// arbitrary FIR frequency response. Unlike biquad EQs, the resulting
-/// curve can have any shape — the FIR is constructed from these
+/// curve can have any shape: the FIR is constructed from these
 /// points via inverse-FFT.
 final class FirequalizerEntry {
   /// Frequency in Hz.
@@ -435,7 +435,7 @@ final RegExp _firequalizerEntryRe = RegExp(
 // ── afftdn ───────────────────────────────────────────────────────────────────
 
 /// Number of fixed bands lavfi's `afftdn` uses for its custom noise
-/// profile — the filter splits the spectrum into 15 logarithmic bands
+/// profile: the filter splits the spectrum into 15 logarithmic bands
 /// and lets the consumer set a noise floor per band.
 const int kAfftdnBandCount = 15;
 
@@ -491,7 +491,7 @@ extension AfftdnBandNoiseX on AfftdnEffect {
 /// One logical band of the lavfi `anequalizer` filter.
 ///
 /// On the wire this is repeated once per channel inside the
-/// `params` CSV — the typed model hides that detail. Stereo content
+/// `params` CSV; the typed model hides that detail. Stereo content
 /// hears the band on both channels by default; surround content past
 /// channel 1 is left to mpv's downmix.
 final class AnequalizerBand {
@@ -504,8 +504,8 @@ final class AnequalizerBand {
   /// Gain in dB.
   final double gain;
 
-  /// Filter shape. Defaults to [AnequalizerBandType.butterworth] —
-  /// matches the lavfi `t=0` default.
+  /// Filter shape. Defaults to [AnequalizerBandType.butterworth],
+  /// matching the lavfi `t=0` default.
   final AnequalizerBandType type;
 
   /// Creates an [AnequalizerBand].
@@ -556,13 +556,13 @@ final class AnequalizerBand {
 
 /// lavfi `anequalizer` filter shape. Matches `t=0|1|2` on the wire.
 enum AnequalizerBandType {
-  /// Butterworth response (`t=0`) — maximally flat passband.
+  /// Butterworth response (`t=0`): maximally flat passband.
   butterworth(0),
 
-  /// Chebyshev type-1 response (`t=1`) — passband ripple, steeper rolloff.
+  /// Chebyshev type-1 response (`t=1`): passband ripple, steeper rolloff.
   chebyshev1(1),
 
-  /// Chebyshev type-2 response (`t=2`) — stopband ripple, steeper rolloff.
+  /// Chebyshev type-2 response (`t=2`): stopband ripple, steeper rolloff.
   chebyshev2(2);
 
   /// Wire-side integer consumed by lavfi's `t=` option.
@@ -593,7 +593,7 @@ extension AnequalizerBandsX on AnequalizerEffect {
   List<AnequalizerBand> get bands => _parseAnequalizerBands(params);
 
   /// Returns a copy whose [params] reflects [bands]. Each band is
-  /// emitted once per channel up to [channels] (defaults to 2 — stereo)
+  /// emitted once per channel up to [channels] (defaults to 2, stereo)
   /// so signals get the band on every channel mpv can downmix to.
   AnequalizerEffect withBands(
     List<AnequalizerBand> bands, {
@@ -667,7 +667,7 @@ String _serializeAnequalizerBands(
 
 // ── aiir ─────────────────────────────────────────────────────────────────────
 
-/// One channel slot of the lavfi `aiir` filter — the per-channel gain
+/// One channel slot of the lavfi `aiir` filter: the per-channel gain
 /// plus the polynomial coefficients of its IIR transfer function.
 ///
 /// `aiir` lets the consumer specify a fully custom IIR filter by
@@ -679,10 +679,10 @@ final class AiirChannel {
   /// Linear gain for this channel.
   final double gain;
 
-  /// Numerator (B / "zeros" / reflection) polynomial coefficients.
+  /// Numerator (B, "zeros" or reflection) polynomial coefficients.
   final List<double> zeros;
 
-  /// Denominator (A / "poles" / ladder) polynomial coefficients.
+  /// Denominator (A, "poles" or ladder) polynomial coefficients.
   final List<double> poles;
 
   /// Creates an [AiirChannel].
@@ -779,7 +779,7 @@ List<List<double>> _splitChannelsListCsv(String? src) {
 
 // ── adelay ───────────────────────────────────────────────────────────────────
 
-/// Typed access over lavfi's `adelay.delays` — a pipe-separated list
+/// Typed access over lavfi's `adelay.delays`, a pipe-separated list
 /// of per-channel delays. The Nth entry is the delay applied to the
 /// Nth output channel.
 ///
@@ -815,7 +815,7 @@ extension AdelayChannelsX on AdelayEffect {
 
 // ── mcompand ─────────────────────────────────────────────────────────────────
 
-/// One band of the lavfi `mcompand` filter — a self-contained
+/// One band of the lavfi `mcompand` filter: a self-contained
 /// compander stage with its own dynamics envelope, transfer
 /// function, soft-knee, makeup gain, and crossover frequency.
 ///
@@ -823,14 +823,14 @@ extension AdelayChannelsX on AdelayEffect {
 /// frequencies (lows .. highs in ascending order), runs each band
 /// through its own [McompandBand], then sums them back. The band
 /// model carries the same six parameters as
-/// [AcompressorEffect] — threshold, ratio, attack, release, knee,
-/// makeup — plus the band's upper-edge crossover, which lavfi reads
+/// [AcompressorEffect] (threshold, ratio, attack, release, knee,
+/// makeup) plus the band's upper-edge crossover, which lavfi reads
 /// as the boundary between this band and the next.
 ///
 /// On the wire ffmpeg packs every band into a single opaque `args`
 /// string with a positional grammar
 /// (`attack,decay knee points crossover [delay [init_vol [gain]]]`,
-/// bands joined by `|`). `McompandBandsX` hides that grammar — read
+/// bands joined by `|`). `McompandBandsX` hides that grammar: read
 /// [McompandBandsX.bands] for the typed view, write back via
 /// [McompandBandsX.withBands].
 final class McompandBand {
@@ -854,7 +854,7 @@ final class McompandBand {
   /// dB. Output makeup gain applied after compression.
   final double makeupDb;
 
-  /// Hz. Upper edge of this band — anything above goes to the next
+  /// Hz. Upper edge of this band; anything above goes to the next
   /// band in `mcompand`'s filter chain.
   final double crossoverHz;
 
@@ -927,7 +927,7 @@ final class McompandBand {
 /// This extension mirrors that parser exactly. Round-trip is
 /// lossless for bands produced by [withBands]; bands hand-written
 /// with multi-segment transfer curves collapse to "ratio = last
-/// segment's slope, threshold = last break" — informative for
+/// segment's slope, threshold = last break": informative for
 /// editor display, lossy if echoed back unchanged.
 extension McompandBandsX on McompandEffect {
   /// Decoded list of bands, sorted by ascending crossover.
@@ -1038,7 +1038,7 @@ String _serializeMcompandBands(List<McompandBand> bands) {
 
 /// 18 fixed band centre frequencies of the lavfi `superequalizer`,
 /// in Hz, lows-to-highs in declaration order. The frequencies are
-/// hard-coded inside `af_superequalizer.c` and are not configurable —
+/// hard-coded inside `af_superequalizer.c` and are not configurable;
 /// only the per-band gain is.
 const List<double> kSuperequalizerFrequencies = [
   65,
@@ -1061,7 +1061,7 @@ const List<double> kSuperequalizerFrequencies = [
   20000,
 ];
 
-/// Number of bands the `superequalizer` filter exposes — fixed by
+/// Number of bands the `superequalizer` filter exposes, fixed by
 /// the underlying ISO half-octave grid.
 const int kSuperequalizerBandCount = 18;
 
