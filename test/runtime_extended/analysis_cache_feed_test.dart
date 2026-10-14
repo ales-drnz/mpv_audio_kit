@@ -590,14 +590,25 @@ void main() {
 
       test('playback starting further in', () async {
         await player!.setRawProperty('start', '10');
-        await player!.open(Media(server.url(wavName)), play: true);
+        await _openAndLoad(
+          player!,
+          () => player!.open(Media(server.url(wavName)), play: true),
+        );
+        // Playback begins at 10 s, so the demuxer never reads the first
+        // half. How mpv gets there is FFmpeg's choice: a new range request,
+        // or, when the socket's receive window is larger than the jump
+        // (seen on macOS), reading on through the first connection. The
+        // requests cannot tell, the playhead can.
+        final startPos = double.tryParse(
+          await player!.getRawProperty('time-pos') ?? '',
+        );
+        expect(
+          startPos,
+          allOf(isNotNull, greaterThanOrEqualTo(9.9)),
+          reason: 'playback did not start at the start position\n${log()}',
+        );
         final a = (await watch!.settle(log))!;
 
-        expect(
-          server.gets('/$wavName').any((r) => r.start > wav.length ~/ 3),
-          isTrue,
-          reason: 'mpv did not read from the start position\n${log()}',
-        );
         expect(
           _fromStart(server, '/$wavName').length,
           greaterThanOrEqualTo(2),
