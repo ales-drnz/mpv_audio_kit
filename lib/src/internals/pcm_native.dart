@@ -87,6 +87,13 @@ abstract interface class PcmNative {
 PcmNative pcmNative() {
   final override = debugPcmNativeOverride;
   if (override != null) return override;
+  // The sources live in the library the players use, which
+  // ensureInitialized chooses: before it, a source could land in another.
+  if (!MpvAudioKit.isInitialized) {
+    throw StateError(
+      'Call MpvAudioKit.ensureInitialized() before creating a PcmSource.',
+    );
+  }
   return _native ??= _open(MpvAudioKit.libraryPath);
 }
 
@@ -198,19 +205,17 @@ final class _LookupPcmNative implements PcmNative {
   int create(int capacityBytes) => _c(capacityBytes);
 
   // The typed-data address only reaches @Native leaf calls, so this path
-  // copies through one native buffer, grown as needed and kept.
-  Pointer<Uint8> _scratch = nullptr;
-  int _scratchSize = 0;
-
+  // copies through a native buffer for the call.
   @override
   int write(int id, Uint8List data) {
-    if (data.length > _scratchSize) {
-      if (_scratch != nullptr) malloc.free(_scratch);
-      _scratchSize = data.length;
-      _scratch = malloc<Uint8>(_scratchSize);
+    if (data.isEmpty) return 0;
+    final buffer = malloc<Uint8>(data.length);
+    try {
+      buffer.asTypedList(data.length).setAll(0, data);
+      return _w(id, buffer, data.length);
+    } finally {
+      malloc.free(buffer);
     }
-    _scratch.asTypedList(data.length).setAll(0, data);
-    return _w(id, _scratch, data.length);
   }
 
   @override

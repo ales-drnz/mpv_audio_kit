@@ -7,6 +7,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/services.dart' show RootIsolateToken;
 import 'package:meta/meta.dart';
 
 import '../mpv_bindings.dart';
@@ -70,6 +71,10 @@ abstract final class MpvAudioKit {
   static bool _initialized = false;
   static String? _libraryPath;
 
+  /// Whether [ensureInitialized] ran in this isolate.
+  @internal
+  static bool get isInitialized => _initialized;
+
   /// Returns the path used to initialize the library, if provided.
   static String? get libraryPath => _libraryPath;
 
@@ -89,9 +94,11 @@ abstract final class MpvAudioKit {
   ///
   /// [hotRestartCleanup] (default: `true`) — recovers libmpv handles
   /// leaked across a Flutter Hot-Restart so they don't keep
-  /// exclusive-mode audio devices locked. Pass `false` in test runners
-  /// or other multi-VM scenarios that share a pid; the tracker would
-  /// otherwise mis-attribute prior-VM handles as orphans.
+  /// exclusive-mode audio devices locked, and releases the live PCM
+  /// sources of the replaced VM (in the root isolate only, see
+  /// [releasesPcmSourcesAtInit]). Pass `false` in test runners, background
+  /// isolates and other multi-VM scenarios that share a pid; the tracker
+  /// would otherwise mis-attribute prior-VM handles as orphans.
   static void ensureInitialized({
     String? libmpv,
     bool hotRestartCleanup = true,
@@ -135,18 +142,16 @@ abstract final class MpvAudioKit {
 
     _libraryPath = libmpv;
     _initialized = true;
-    if (OrphanHandleTracker.instance.restarted) _releasePcmSources();
+    if (releasesPcmSourcesAtInit(
+      restarted: OrphanHandleTracker.instance.restarted,
+    )) {
+      _releasePcmSources();
+    }
   }
 
   /// Aborts and frees the live PCM sources of the VM a Hot-Restart
   /// replaced: the native side outlives it, and their readers would wait
-  /// on input that never comes.
-  ///
-  /// Only here, after a Hot-Restart: the sources are process-wide, and a
-  /// release at every init would cut the sources of the other players and
-  /// isolates of the process. The tracker that detects the restart is
-  /// itself single-isolate and debug-only, the cases where hot restart
-  /// happens at all.
+  /// on input that never comes. See [releasesPcmSourcesAtInit].
   static void _releasePcmSources() {
     try {
       pcmNative().releaseAll();
@@ -195,3 +200,18 @@ abstract final class MpvAudioKit {
     }
   }
 }
+
+/// Whether [MpvAudioKit.ensureInitialized] releases every live PCM source
+/// of the process: only after a Hot-Restart ([restarted], which the
+/// debug-only orphan tracker detects), and only in the root isolate.
+///
+/// The sources are process-wide. A release at every init would cut those
+/// of the other players and isolates, and the tracker also reports a
+/// restart to a second isolate of the same process (its per-process file
+/// already exists), whose own release would cut the sources of the first.
+/// Hot-Restart replaces the root isolate, which alone holds a
+/// `RootIsolateToken`. A second Flutter engine in the process (add-to-app)
+/// has a root isolate of its own: pass `hotRestartCleanup: false` there.
+@internal
+bool releasesPcmSourcesAtInit({required bool restarted}) =>
+    restarted && RootIsolateToken.instance != null;
