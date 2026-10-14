@@ -101,8 +101,11 @@ final class _Watch {
   final Player player;
   final samples = <(DateTime, double, bool)>[];
   bool _stop = false;
+  Future<void>? _loop;
 
-  Future<void> run() async {
+  void start() => _loop = _run();
+
+  Future<void> _run() async {
     while (!_stop) {
       final tp = double.tryParse(await player.getRawProperty('time-pos') ?? '');
       final pfc = await player.getRawProperty('paused-for-cache') == 'yes';
@@ -111,7 +114,12 @@ final class _Watch {
     }
   }
 
-  void stop() => _stop = true;
+  /// Ends the polling and waits for the poll in flight, so the player
+  /// can be disposed after it.
+  Future<void> stop() async {
+    _stop = true;
+    await _loop;
+  }
 
   /// Wall time at which the playhead was at 0: the first position seen,
   /// moved back by that position.
@@ -166,7 +174,7 @@ Future<Map<String, Object?>> _playThrough(
   );
   final watch = _Watch(player);
   final source = await player.openPcmStream(f);
-  unawaited(watch.run());
+  watch.start();
   DateTime? firstAdd;
   await source.addStream(
     _feed(
@@ -186,7 +194,7 @@ Future<Map<String, Object?>> _playThrough(
     Duration(milliseconds: totalMs + 10000),
   );
   await Future<void>.delayed(const Duration(milliseconds: 100));
-  watch.stop();
+  await watch.stop();
   final started = watch.started;
   final numbers = <String, Object?>{
     'startLatencyMs': started?.difference(firstAdd!).inMilliseconds,
@@ -397,7 +405,7 @@ void main() {
           await player.setVolume(0);
           final watch = _Watch(player);
           final source = await player.openPcmStream(_speech, lowLatency: low);
-          unawaited(watch.run());
+          watch.start();
           final first = DateTime.now();
           final feeding = source.addStream(_feed(_speech, totalMs: 600));
           await waitUntil(
@@ -410,7 +418,7 @@ void main() {
             await player.getRawProperty('audio-buffer'),
             low ? '0.100000' : '0.200000',
           );
-          watch.stop();
+          await watch.stop();
           await feeding;
           await source.close();
           // The next file gets the player's own buffer back.
