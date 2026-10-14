@@ -17,7 +17,8 @@
 // `test_app/assets/fixtures/codec/`.
 //
 // **Keep this file in lock-step with `test_app/integration_test/_helpers/codec.dart`.**
-// Both copies must have identical content. There's no test_support package
+// Both copies must have identical content
+// (test/packaging/codec_helper_copy_test.dart checks it). There's no test_support package
 // to deduplicate them today — the shared logic is small enough (~80 lines)
 // that two copies are cheaper than the indirection of a sub-package.
 
@@ -67,25 +68,6 @@ Future<Player> createTestPlayer() async {
   );
   await p.setRawProperty('ao', 'null');
   return p;
-}
-
-/// Waits for the mpv `PLAYBACK_RESTART` event (exposed as `seekCompleted`),
-/// which fires exactly once per `loadfile` after the demuxer has settled.
-/// Anchoring on this rather than `duration` avoids the dedup race where a
-/// new fixture with the same duration as the previous one wouldn't emit.
-Future<void> waitForFileLoaded(
-  Player p, {
-  Duration timeout = const Duration(seconds: 10),
-}) async {
-  final c = Completer<void>();
-  final sub = p.stream.seekCompleted.listen((_) {
-    if (!c.isCompleted) c.complete();
-  });
-  try {
-    await c.future.timeout(timeout);
-  } finally {
-    await sub.cancel();
-  }
 }
 
 /// Opens [path] on [p], waits for `audioParams` to settle on the values
