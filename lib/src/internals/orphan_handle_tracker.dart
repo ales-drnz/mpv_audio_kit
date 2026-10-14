@@ -48,6 +48,11 @@ class OrphanHandleTracker {
 
   bool get _isDebug => !const bool.fromEnvironment('dart.vm.product');
 
+  /// Whether an earlier Dart VM of this process initialized the tracker:
+  /// this VM came from a Hot-Restart. Set by [ensureInitialized].
+  bool get restarted => _restarted;
+  bool _restarted = false;
+
   OrphanHandleTracker._() {
     _file = File(
       '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_audio_kit_refs_$pid.txt',
@@ -100,6 +105,7 @@ class OrphanHandleTracker {
         final addressStr = _file.readAsStringSync().trim();
         final address = int.parse(addressStr);
         _buffer = Pointer<IntPtr>.fromAddress(address);
+        _restarted = true;
       }
 
       final orphans = <Pointer<MpvHandle>>[];

@@ -12,6 +12,7 @@ import 'package:meta/meta.dart';
 import '../mpv_bindings.dart';
 import 'debug_log.dart';
 import 'orphan_handle_tracker.dart';
+import 'pcm_native.dart';
 
 /// How long Hot-Restart cleanup waits, after waking a leaked core with
 /// `quit`, before destroying its handle. The previous VM's event isolate
@@ -134,6 +135,25 @@ abstract final class MpvAudioKit {
 
     _libraryPath = libmpv;
     _initialized = true;
+    if (OrphanHandleTracker.instance.restarted) _releasePcmSources();
+  }
+
+  /// Aborts and frees the live PCM sources of the VM a Hot-Restart
+  /// replaced: the native side outlives it, and their readers would wait
+  /// on input that never comes.
+  ///
+  /// Only here, after a Hot-Restart: the sources are process-wide, and a
+  /// release at every init would cut the sources of the other players and
+  /// isolates of the process. The tracker that detects the restart is
+  /// itself single-isolate and debug-only, the cases where hot restart
+  /// happens at all.
+  static void _releasePcmSources() {
+    try {
+      pcmNative().releaseAll();
+    } catch (e) {
+      // A custom libmpv without the live PCM input: nothing to release.
+      debugLog('mpv_audio_kit: no PCM sources to release: $e');
+    }
   }
 
   /// Sets `LC_NUMERIC=C` process-wide on Linux and macOS — mandated
