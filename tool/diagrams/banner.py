@@ -26,9 +26,9 @@ TAG_INK = '#3B4A66'     # tagline, 8.6:1 on the tint
 W, H, R = 1280, 320, 16
 CAP = 0.691             # Fira Sans Medium cap height, in em
 
-FRAME = 88              # the player with the waveform, cover and controls
-DONOR = 86              # same view, pointer and hover line elsewhere
-PATCH = (880, 40, 1060, 345)  # where frame 88 has the pointer, hover line and time label
+FRAME = 0               # the player at the start of the loop, the pointer over the spectrum below the cut
+DONOR = 0               # no pointer to paint out in the visible part
+PATCH = (880, 40, 1060, 345)  # where to paint the pointer out when FRAME shows it in view
 
 
 def esc(t):
