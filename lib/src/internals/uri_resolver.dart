@@ -40,12 +40,12 @@ final Map<String, Future<String>> _assetInflight = {};
 /// Resolution result for a URI passed through [resolveUri].
 ///
 /// Carries the libmpv-loadable [uri] plus an optional [dispose] callback
-/// the caller MUST invoke if the URI is never handed to mpv (e.g. when
-/// a dispose or a later load supersedes the call between resolve and
-/// `loadfile`).
-/// For Android `content://` URIs the call detaches a file descriptor
-/// from the JVM side; without disposing on abort the FD is leaked for
-/// the process lifetime.
+/// that releases what the resolution allocated. For Android `content://`
+/// URIs the call detaches a file descriptor from the JVM side, and mpv
+/// never closes an `fd://` descriptor (it reads it again on every open of
+/// the entry). The player holds it while the entry is in the playlist and
+/// calls [dispose] afterwards, at dispose, or at once when the load is
+/// aborted before mpv gets the URI.
 ///
 /// For URIs that don't allocate platform resources (asset://, plain
 /// paths, network URLs) [dispose] is `null`.
@@ -216,11 +216,6 @@ Future<String> _copyAssetToCache(String uri) async {
 
 Future<String> _doCopyAsset(String uri) async {
   try {
-    // Re-check the cache: a previous in-flight copy for the same URI
-    // may have completed between our cache miss and putIfAbsent.
-    final cached = _assetCache[uri];
-    if (cached != null) return cached;
-
     String assetPath = uri.substring('asset://'.length);
     if (assetPath.startsWith('/')) {
       assetPath = assetPath.substring(1);

@@ -89,8 +89,10 @@ class MpvAudioKitPlugin :
                         // Opens the Content URI and returns a ParcelFileDescriptor.
                         val pfd = context.contentResolver.openFileDescriptor(uri, "r")
                         if (pfd != null) {
-                            // Detaches the raw integer FD. Ownership is transferred to libmpv,
-                            // which will be responsible for closing it after use.
+                            // Detaches the raw integer FD. The Dart side owns it: mpv
+                            // never closes an fd:// descriptor, so the player closes it
+                            // through closeFileDescriptor once the entry has left the
+                            // playlist, or at dispose.
                             val fd = pfd.detachFd()
                             result.success(fd)
                         } else {
@@ -104,9 +106,9 @@ class MpvAudioKitPlugin :
                 }
             }
             "closeFileDescriptor" -> {
-                // Closes a raw FD previously detached in `openFileDescriptor`
-                // when libmpv never consumed it (e.g. the load was aborted on
-                // the Dart side after `_disposed` flipped). Without this the
+                // Closes a raw FD previously detached in `openFileDescriptor`:
+                // when its entry has left the playlist, at dispose, or when the
+                // load was aborted before mpv got it. Without this the
                 // descriptor leaks for the process lifetime.
                 val fd = call.argument<Int>("fd")
                 if (fd != null) {

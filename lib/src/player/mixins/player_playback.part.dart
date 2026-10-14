@@ -7,39 +7,60 @@ part of '../player.dart';
 /// and the A-B loop controls.
 mixin _PlaybackModule on _PlayerBase {
   /// Starts or resumes playback. Idempotent: a no-op when already
-  /// playing. At the end of the queue ([PlayerState.completed]) it starts
-  /// the last track again from its beginning. Returns immediately; the
-  /// actual `pause=no` round-trip to mpv settles asynchronously, observable
-  /// via [PlayerStream.playing].
+  /// playing, including the last moments of the queue while the output
+  /// buffer still plays. Once the queue has ended ([PlayerState.completed])
+  /// it starts the last track again from its beginning; a source that
+  /// cannot seek back there (a live stream, a closed [PcmSource]) stays at
+  /// its end and the intent stays off. With nothing loaded (before any
+  /// open, after [stop]) there is nothing to resume and the intent stays
+  /// off too. The future completes once mpv has taken the unpause; the
+  /// playback itself is observable via [PlayerStream.playing].
   Future<void> play() async {
     await _gate();
     // Optimistic intent: `pause` is silent on the first load → playing
     // transition, so set the intent axis here rather than relying on the
     // observer. See [PlayerState.playWhenReady].
-    _updateField(
-      (s) => s.copyWith(playWhenReady: true),
-      _reactives.playWhenReady,
-      true,
-    );
+    final intent = _claimIntent(true);
     // Parked at the end (`keep-open`), an unpause alone is undone by the
     // playloop hitting EOF again, and the intent would show playing over
     // silence. Seek back first; the unpause after it sticks, as in [jump].
-    // Unchecked: a stream that cannot seek stays parked.
-    if (await _parkedAtEof()) {
+    // In the last buffer before the park mpv is not paused yet and the
+    // audio still plays: nothing to do but the unpause.
+    if (await _parkedPaused()) {
       await _command(['seek', '0', 'absolute']);
+      // A seek that landed has left EOF by the next read: the seek wakes
+      // the core, which runs it before it serves another request. Still at
+      // EOF on a source that cannot seek, it failed. The unpause would only
+      // be paused again by keep-open, too fast for a notification, so it
+      // is not written and the intent goes back off.
+      if (await _parkedAtEof() && await getRawProperty('seekable') != 'yes') {
+        if (intent == _intentEpoch) _writeIntent(false);
+        return;
+      }
+      await _prop('pause', 'no');
+      // A park read still on its way when this call began (the park had
+      // just happened) clears the intent on arrival; by now it has
+      // arrived, so the intent of this call is set again.
+      if (intent == _intentEpoch) _writeIntent(true);
+      return;
     }
     await _prop('pause', 'no');
+    // Idle with nothing to play (before any open, after stop or a failed
+    // load): the unpause only arms the next load, nothing plays now. Not
+    // while a load is running, which is about to give the core content.
+    if (_loadsInFlight == 0 &&
+        await getRawProperty('idle-active') == 'yes' &&
+        _loadsInFlight == 0 &&
+        intent == _intentEpoch) {
+      _writeIntent(false);
+    }
   }
 
   /// Pauses playback. Idempotent: a no-op when already paused. Position
   /// is preserved — call [play] to resume from the same offset.
   Future<void> pause() async {
     await _gate();
-    _updateField(
-      (s) => s.copyWith(playWhenReady: false),
-      _reactives.playWhenReady,
-      false,
-    );
+    _claimIntent(false);
     await _prop('pause', 'yes');
   }
 
@@ -78,11 +99,7 @@ mixin _PlaybackModule on _PlayerBase {
     await _gate();
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.
-    _updateField(
-      (s) => s.copyWith(playWhenReady: false),
-      _reactives.playWhenReady,
-      false,
-    );
+    _claimIntent(false);
     // Execute in-flight transport writes first — see [_settleWrites].
     await _settleWrites();
     await _commandChecked(['stop']);

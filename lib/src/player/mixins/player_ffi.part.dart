@@ -178,6 +178,14 @@ mixin _FfiModule on _PlayerBase {
   /// another entry has the same URI. Throws like [_commandChecked].
   @override
   Future<void> _loadfile(List<String> args, Media media) async {
+    final id = await _loadfileEntry(args, media);
+    if (id != null) _remapReported({id});
+  }
+
+  /// The part of [_loadfile] before the remap: runs the command and
+  /// records the entry, returning its id. A batch of appends remaps once,
+  /// after the last reply, instead of once per entry.
+  Future<int?> _loadfileEntry(List<String> args, Media media) async {
     final (rc, result) = await _commandResult(args);
     if (rc < 0) {
       throw MpvCommandException(
@@ -188,12 +196,18 @@ mixin _FfiModule on _PlayerBase {
     }
     final id = result is Map ? result['playlist_entry_id'] : null;
     if (media.isPcmStream) _holdPcm(id is int ? id : null, media);
-    if (id is! int) return;
+    if (id is! int) return null;
     _mediaByEntry[id] = media;
-    // mpv may report the playlist before this reply: map the entry now.
+    return id;
+  }
+
+  /// mpv may report the playlist before the `loadfile` replies: when the
+  /// last playlist node already lists one of [ids], parse it again so the
+  /// entries map to their [Media].
+  void _remapReported(Set<int> ids) {
     final node = _lastPlaylistNode;
     if (node is List &&
-        node.any((entry) => entry is Map && entry['id'] == id)) {
+        node.any((entry) => entry is Map && ids.contains(entry['id']))) {
       _updatePlaylistFromNode(node);
     }
   }
@@ -321,7 +335,8 @@ mixin _FfiModule on _PlayerBase {
   /// stay consistent — but expect a one-event-loop-tick delay between
   /// the call returning and the cached state catching up. Prefer the
   /// typed setters (`setVolume`, `setCache`, `setReplayGain`, …) when
-  /// they exist, both for type-safety and for synchronous state update.
+  /// they exist, both for type-safety and because they update the state
+  /// as soon as mpv confirms the write, without waiting for the observer.
   ///
   /// Two properties are reserved and rejected:
   /// - `af` — owned by the effects chain (raw lavfi entries included, as

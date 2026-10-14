@@ -125,8 +125,17 @@ mixin _HooksModule on _PlayerBase {
   /// Calling with an invalid [id] (zero or negative — typo in a dispatch
   /// table) is also a no-op: a warning is logged on
   /// [PlayerStream.internalLog] and the FFI call is skipped.
+  ///
+  /// After [Player.dispose] it is a no-op too, unlike the other calls:
+  /// dispose has already continued every pending hook, and a listener that
+  /// finishes its work after a dispose must not get an error for it.
   Future<void> continueHook(int id) async {
-    await _gate();
+    if (_disposed) return;
+    try {
+      await _gate();
+    } on PlayerDisposedException {
+      return;
+    }
     if (id <= 0) {
       _internalLog(
         'continueHook: ignored invalid hook id $id (must be a positive '

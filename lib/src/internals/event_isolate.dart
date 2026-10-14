@@ -430,7 +430,7 @@ void _dispatchEvent(
 /// START_FILE this isolate already forwarded
 /// ([_PropertyCache.startedEntryId]); the newer entry's own FILE_LOADED and
 /// PLAYBACK_RESTART read again. The current entry is read before and after
-/// `eof-reached`, so the EOF belongs to it.
+/// `eof-reached` and `pause`, so both belong to it.
 void _sendEndOfContent(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
@@ -443,6 +443,14 @@ void _sendEndOfContent(
   if (pos == null || pos < 0) return;
   if (_getPropInt64(lib, handle, 'playlist/$pos/id') != started) return;
   final eof = _getPropFlag(lib, handle, 'eof-reached') == 1;
+  // With gapless audio mpv reports EOF once the decoder is done, while the
+  // output buffer still plays; keep-open pauses the core only after it has
+  // played out. Without `keep-open-pause` no pause comes, and EOF is the
+  // closest signal left.
+  final parked =
+      eof &&
+      (_getPropFlag(lib, handle, 'pause') == 1 ||
+          _getPropFlag(lib, handle, 'keep-open-pause') == 0);
   final count = _getPropInt64(lib, handle, 'playlist-count');
   if (_getPropInt64(lib, handle, 'playlist-pos') != pos ||
       _getPropInt64(lib, handle, 'playlist/$pos/id') != started) {
@@ -451,6 +459,7 @@ void _sendEndOfContent(
   toMain.send(
     MpvEventEndOfContent(
       eof: eof,
+      parked: parked,
       lastEntry: count != null && pos == count - 1,
     ),
   );
