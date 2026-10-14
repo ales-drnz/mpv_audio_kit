@@ -40,7 +40,13 @@ void main() {
       await _ticks(5, const Duration(milliseconds: 10));
       meter.setEnabled(false);
       expect(got, isNotEmpty);
-      expect(names, hasLength(got.length), reason: 'one read per tick');
+      // A read still in flight when the meter turns off is dropped, so a
+      // slow host can show one read more than emits.
+      expect(
+        names.length - got.length,
+        inInclusiveRange(0, 1),
+        reason: 'one read per tick',
+      );
       expect(names.toSet(), {'af-metadata/aek_ebur128_0'});
       expect(
         got.first,
