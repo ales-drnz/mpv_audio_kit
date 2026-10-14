@@ -546,3 +546,20 @@ class MediaSessionController {
     return null;
   }
 }
+
+/// Runs a [Player] call issued by an OS media-session command without
+/// awaiting it, and reports a late failure to [onError] instead of
+/// leaving it unhandled.
+///
+/// [action] can complete with any value type (`next` and `previous`
+/// return a `Future<bool>`), so the error handler must not return a value
+/// typed for one of them.
+@internal
+void runSessionCommand(
+  Future<Object?> action,
+  void Function(Object error) onError,
+) {
+  unawaited(
+    action.then<void>((_) {}, onError: (Object e, StackTrace st) => onError(e)),
+  );
+}

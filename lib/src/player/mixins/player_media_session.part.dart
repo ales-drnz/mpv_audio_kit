@@ -209,15 +209,14 @@ mixin _MediaSessionModule on _PlayerBase {
 
   /// Fires an inbound-command action without awaiting it (the command-stream
   /// callback is synchronous and the typed setters are optimistic), but
-  /// catches a late rejection. The setters are genuinely async now, so a
-  /// command mpv rejects — e.g. a lockscreen seek arriving with nothing loaded
-  /// ([Player.seek] throws via `_commandChecked`) — would otherwise escape as
-  /// an unhandled async error (which can crash a guarded zone) seconds later.
-  void _applySessionCommand(Future<void> action) {
-    unawaited(
-      action.catchError((Object e, StackTrace st) {
-        _internalLog('Media-session command failed: $e', level: LogLevel.warn);
-      }),
-    );
+  /// catches a late rejection. A command mpv rejects, for example a
+  /// lockscreen seek arriving with nothing loaded ([Player.seek] throws via
+  /// `_commandChecked`), would otherwise escape as an unhandled async error.
+  /// [runSessionCommand] also takes the `Future<bool>` of `next` and
+  /// `previous`.
+  void _applySessionCommand(Future<Object?> action) {
+    runSessionCommand(action, (e) {
+      _internalLog('Media-session command failed: $e', level: LogLevel.warn);
+    });
   }
 }
