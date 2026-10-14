@@ -29,6 +29,26 @@ class LoudnessScanPipeline extends AnalysisPollPipeline<LoudnessScan> {
          dataProperty: 'loudness-scan-data',
        );
 
+  /// Starts the scan again when turning the waveform off stopped it.
+  ///
+  /// The scan rides the waveform's decode pass, and libmpv-r16 stops that
+  /// pass when `waveform-enabled` goes off, even with the scan still on:
+  /// the scan then stays `scanning` until the next file. Called right
+  /// after the waveform's last listener leaves. It checks the stop
+  /// actually happened (the scan still `scanning`, the waveform back to
+  /// `idle`) before writing the flag again, so a libmpv that keeps the
+  /// pass running is left alone.
+  Future<void> resumeAfterWaveformStop() async {
+    if (!pending) return;
+    final (scanRc, scan) = await readNode('loudness-scan-data');
+    if (!pending || scanRc < 0 || scan is! Map) return;
+    if (scan['state'] != 'scanning') return;
+    final (waveRc, wave) = await readNode('waveform-data');
+    if (!pending || waveRc < 0 || wave is! Map) return;
+    if (wave['state'] != 'idle') return;
+    await restartNative();
+  }
+
   // Last scanning fraction seen, to skip re-emitting unchanged progress.
   double? _lastScanProgress;
 

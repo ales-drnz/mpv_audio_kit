@@ -5,8 +5,8 @@
 
 // The waveform and the loudness scan share one native decode pass and two
 // process-wide flags (`waveform-enabled`, `loudness-scan-enabled`). These
-// pin how the flags follow the listeners across a dispose and a listener
-// that comes back to a finished result.
+// pin how the flags follow the listeners across a dispose, a cancel in the
+// middle of a scan and a listener that comes back to a finished result.
 
 @TestOn('mac-os || linux || windows')
 library;
@@ -16,6 +16,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';
@@ -102,6 +103,40 @@ void main() {
         await b.dispose();
       }
     }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test(
+      'cancelling the waveform mid scan lets the loudness scan finish',
+      () async {
+        final player = await buildPlayer();
+        try {
+          final wave = player.stream.waveform.listen((_) {});
+          final progress = <double?>[];
+          final ready = player.stream.loudnessScan
+              .where((s) {
+                if (s?.state == LoudnessScanState.scanning) {
+                  progress.add(s!.progress);
+                }
+                return s?.state == LoudnessScanState.ready;
+              })
+              .first
+              .timeout(const Duration(seconds: 30));
+          await openAndWaitForLoad(player, longFile);
+          final early = await player.getRawPropertyNode('loudness-scan-data');
+          await wave.cancel();
+          expect(
+            (early as Map?)?['state'],
+            'scanning',
+            reason: 'the file must still be scanning when the waveform goes',
+          );
+          final result = (await ready)!;
+          expect(result.integrated, isNotNull);
+          expect(result.integrated!, lessThan(0));
+        } finally {
+          await player.dispose();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
 
     test(
       'a listener back on a finished waveform does not decode again',
