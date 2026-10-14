@@ -1,4 +1,4 @@
-## [0.5.0] - unreleased
+## [0.5.0] - 14-10-2026
 
 A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the changes to make in an app.
 
