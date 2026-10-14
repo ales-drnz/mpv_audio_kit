@@ -59,6 +59,7 @@ mixin _DispatchModule on _PlayerBase {
           // A new load attempt re-arms the source resolver's single
           // retry allowance — see [_resolverRetried].
           _resolverRetried = false;
+          _heldSources.onStartFile();
           _updateLifecycle(buffering: true, completed: false);
         case MpvEventFileLoaded(
           :final path,
@@ -100,6 +101,7 @@ mixin _DispatchModule on _PlayerBase {
           // `playlist` and `path` streams still emit with the observed
           // changes that follow this event, as before.
           _applyLoadedEntry(path, playlist);
+          _releaseSettledSources();
           // Emit unconditionally — `null` signals "no cover on the new
           // file" so subscribers can clear stale artwork on track changes.
           final cover = coverData == null
@@ -142,6 +144,7 @@ mixin _DispatchModule on _PlayerBase {
           _dispatchProperty('eof-reached', eof);
           _settleEndOfContent(parked: parked, lastEntry: lastEntry);
         case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
+          _releaseSettledSources();
           final typedReason = MpvEndFileReason.fromValue(reason);
           _endFileCtrl.add(
             MpvFileEndedEvent(reason: typedReason, error: error),
@@ -393,6 +396,13 @@ mixin _DispatchModule on _PlayerBase {
             live.add(id);
             if (id > _maxListedEntryId) _maxListedEntryId = id;
           }
+        }
+        if (!_heldSources.isEmpty) {
+          _heldSources.onPlaylist([
+            for (final entry in raw)
+              if (entry is Map && entry['filename'] is String)
+                entry['filename'] as String,
+          ]);
         }
         _mediaByEntry.removeWhere(
           (id, _) => id <= _maxListedEntryId && !live.contains(id),

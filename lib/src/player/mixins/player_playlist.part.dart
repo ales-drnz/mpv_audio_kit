@@ -23,7 +23,7 @@ mixin _PlaylistModule on _PlayerBase {
     final load = _snapshotLoad();
     await _gate();
     _mediaCache[media.uri] = media;
-    final resolved = await resolveUri(media.uri);
+    final resolved = _hold(await resolveUri(media.uri));
     if (load.superseded) {
       await resolved.dispose?.call();
       return;
@@ -158,7 +158,7 @@ mixin _PlaylistModule on _PlayerBase {
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
     _mediaCache[media.uri] = media;
-    final resolved = await resolveUri(media.uri);
+    final resolved = _hold(await resolveUri(media.uri));
     if (load.superseded) {
       await resolved.dispose?.call();
       return;

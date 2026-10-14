@@ -25,6 +25,7 @@ import '../generated/audio_effects_settings.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';
+import '../internals/held_sources.dart';
 import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
 import '../internals/mpv_client.dart';
@@ -196,7 +197,7 @@ class Player extends _PlayerBase
     _mediaCache[media.uri] = media;
     final ResolvedUri resolved;
     try {
-      resolved = await resolveUri(media.uri);
+      resolved = _hold(await resolveUri(media.uri));
     } catch (_) {
       // Nothing was loaded: the intent goes back to what still plays.
       _restoreIntent(load, intent, previousIntent);
@@ -309,7 +310,7 @@ class Player extends _PlayerBase
     try {
       for (final m in medias) {
         _mediaCache[m.uri] = m;
-        final r = await resolveUri(m.uri);
+        final r = _hold(await resolveUri(m.uri));
         if (load.superseded) {
           await r.dispose?.call();
           for (final prior in resolved) {
@@ -516,7 +517,13 @@ class Player extends _PlayerBase
       return;
     }
     await _prop('pause', shouldPlay ? 'no' : 'yes');
-    await _commandChecked(['loadlist', resolved.uri, 'replace']);
+    try {
+      await _commandChecked(['loadlist', resolved.uri, 'replace']);
+    } finally {
+      // mpv reads the list inside the command; its entries are the
+      // playlist, so nothing reads the list itself again.
+      await resolved.dispose?.call();
+    }
     if (parkedAtEof && shouldPlay) {
       await _prop('pause', 'no');
     }
@@ -645,6 +652,27 @@ abstract class _PlayerBase {
 
   /// The highest entry id a playlist node has listed so far.
   int _maxListedEntryId = -1;
+
+  /// The descriptors behind the `fd://` entries (Android `content://`),
+  /// released once mpv can no longer read them.
+  final HeldSources _heldSources = HeldSources();
+
+  /// Hands the platform resource of [resolved] to [_heldSources]. Its
+  /// dispose still releases it at once, for a load that aborts before
+  /// mpv lists the entry.
+  ResolvedUri _hold(ResolvedUri resolved) {
+    final dispose = resolved.dispose;
+    if (dispose == null) return resolved;
+    return ResolvedUri(resolved.uri, _heldSources.hold(resolved.uri, dispose));
+  }
+
+  /// Releases the held resources mpv has stopped reading.
+  void _releaseSettledSources() {
+    if (_heldSources.isEmpty) return;
+    for (final release in _heldSources.takeSettled()) {
+      unawaited(release());
+    }
+  }
 
   /// The last `playlist` node, parsed again when a `loadfile` reply
   /// registers an entry id after mpv already reported the entry.
@@ -1411,6 +1439,10 @@ abstract class _PlayerBase {
       _client.close();
       if (exited && hooksSettled) {
         _lib.mpvTerminateDestroy(_handle);
+        // mpv is gone: nothing reads the descriptors any more.
+        for (final release in _heldSources.takeAll()) {
+          await release();
+        }
       } else {
         // The worker did not confirm it left mpv_wait_event within the bound.
         // Skip mpv_terminate_destroy: freeing the handle while the isolate may
