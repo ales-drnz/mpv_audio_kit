@@ -62,6 +62,33 @@ void main() {
       await player.play();
       await opening;
       expect(player.state.playWhenReady, isTrue);
+      // The pause write of the open comes after the unpause: it follows
+      // the intent the play() set, so the file plays.
+      expect(await player.getRawProperty('pause'), 'no');
+      await waitUntil(() => player.state.playing);
+    }, timeout: t);
+
+    test('pause() right after an unawaited open keeps it paused', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      final opening = player.open(Media(fixturePath), play: true);
+      await player.pause();
+      await opening;
+      expect(player.state.playWhenReady, isFalse);
+      expect(await player.getRawProperty('pause'), 'yes');
+    }, timeout: t);
+
+    test('play() right after an unawaited openAll plays', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      final opening = player.openAll([
+        Media(fixturePath),
+        Media(fixturePath),
+      ], play: false);
+      await player.play();
+      await opening;
+      expect(player.state.playWhenReady, isTrue);
+      expect(await player.getRawProperty('pause'), 'no');
     }, timeout: t);
 
     test('play() at the end of a closed PCM source stays off', () async {

@@ -226,7 +226,8 @@ class Player extends _PlayerBase
       await resolved.dispose?.call();
       return;
     }
-    await _prop('pause', shouldPlay ? 'no' : 'yes');
+    final playNow = _intendedPlay(intent, shouldPlay);
+    await _prop('pause', playNow ? 'no' : 'yes');
     final opts = _buildLoadfileOptions(media);
     if (opts.isEmpty) {
       await _loadfile(['loadfile', resolved.uri, 'replace'], media);
@@ -237,7 +238,7 @@ class Player extends _PlayerBase
       // entry — never writing the global `http-header-fields` / `stream-lavf-o`.
       await _loadfile(['loadfile', resolved.uri, 'replace', '-1', opts], media);
     }
-    if (parkedAtEof && shouldPlay) {
+    if (parkedAtEof && playNow) {
       await _prop('pause', 'no');
     }
     // Drop visible per-track state — cover art, chapter list and current
@@ -431,7 +432,7 @@ class Player extends _PlayerBase
     // playing flow is mid-track. `playlist-play-index` sets
     // playlist->current straight to the target entry (mp_set_playlist_
     // entry) — entries before it are never loaded or made current.
-    await _prop('pause', shouldPlay ? 'no' : 'yes');
+    await _prop('pause', _intendedPlay(intent, shouldPlay) ? 'no' : 'yes');
     final target = (retainedOld ? 1 : 0) + clampedIndex;
     await _commandChecked(['playlist-play-index', target.toString()]);
 
@@ -516,7 +517,8 @@ class Player extends _PlayerBase
       await resolved.dispose?.call();
       return;
     }
-    await _prop('pause', shouldPlay ? 'no' : 'yes');
+    final playNow = _intendedPlay(intent, shouldPlay);
+    await _prop('pause', playNow ? 'no' : 'yes');
     try {
       await _commandChecked(['loadlist', resolved.uri, 'replace']);
     } finally {
@@ -524,7 +526,7 @@ class Player extends _PlayerBase
       // playlist, so nothing reads the list itself again.
       await resolved.dispose?.call();
     }
-    if (parkedAtEof && shouldPlay) {
+    if (parkedAtEof && playNow) {
       await _prop('pause', 'no');
     }
     // Clear per-track state AFTER the replace's reply — see [open].
@@ -723,6 +725,12 @@ abstract class _PlayerBase {
     _writeIntent(value);
     return ++_intentEpoch;
   }
+
+  /// Whether a load that claimed [intent] for [shouldPlay] starts playing:
+  /// a play() or pause() called after it, while it resolved, has the last
+  /// word, so its pause write must not undo theirs.
+  bool _intendedPlay(int intent, bool shouldPlay) =>
+      intent == _intentEpoch ? shouldPlay : _state.playWhenReady;
 
   /// Writes the play/pause intent ([PlayerState.playWhenReady]).
   void _writeIntent(bool value) => _updateField(
