@@ -84,8 +84,14 @@ export 'src/types/enums/replay_gain.dart' show ReplayGain;
 export 'src/types/enums/spdif.dart' show Spdif;
 export 'src/types/enums/tap_side.dart' show TapSide;
 export 'src/types/enums/window_function.dart' show WindowFunction;
-export 'src/types/sealed/channels.dart' show Channels;
-export 'src/types/sealed/media_session_artwork.dart' show MediaSessionArtwork;
+export 'src/types/sealed/channels.dart' show Channels, ChannelsCustom;
+export 'src/types/sealed/media_session_artwork.dart'
+    show
+        MediaSessionArtwork,
+        MediaSessionArtworkEmbedded,
+        MediaSessionArtworkNone,
+        MediaSessionArtworkCustom,
+        MediaSessionArtworkUri;
 export 'src/types/sealed/media_session_command.dart'
     show
         MediaSessionCommand,
@@ -101,7 +107,7 @@ export 'src/types/sealed/media_session_command.dart'
         MediaSessionCommandSetRepeatMode,
         MediaSessionCommandSetShuffle,
         MediaSessionCommandSetPlaybackRate;
-export 'src/types/sealed/track.dart' show Track;
+export 'src/types/sealed/track.dart' show Track, TrackAuto, TrackOff, TrackId;
 export 'src/types/settings/cache_settings.dart' show CacheSettings;
 export 'src/types/settings/demuxer_settings.dart' show DemuxerSettings;
 export 'src/types/settings/replay_gain_settings.dart' show ReplayGainSettings;
