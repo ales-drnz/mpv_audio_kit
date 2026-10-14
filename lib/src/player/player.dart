@@ -533,12 +533,8 @@ class Player extends _PlayerBase
 
   @override
   Future<void> _disposeImpl() async {
-    // Release the OS media session BEFORE tearing libmpv down. After
-    // the base teardown the FFI handle is gone — leaving the native
-    // session published would surface a stale lockscreen entry
-    // pointing at a dead Player, and incoming commands (play from
-    // the lockscreen) would land on disposed state. New calls are refused
-    // from the first line, as the teardown order below says.
+    // New calls are refused from the first line, as the teardown order
+    // in [_PlayerBase.dispose] says.
     _disposed = true;
     // Before the first await: a hook timer firing during the session
     // release would drop its id without continuing it (it skips the FFI
@@ -546,6 +542,11 @@ class Player extends _PlayerBase
     _cancelHookTimers();
     // Before the quit: an ended source wakes a reader blocked on it.
     _endPcmSources();
+    // Release the OS media session BEFORE tearing libmpv down. After
+    // the base teardown the FFI handle is gone: leaving the native
+    // session published would surface a stale lockscreen entry
+    // pointing at a dead Player, and incoming commands (play from
+    // the lockscreen) would land on disposed state.
     try {
       await _releaseMediaSession();
     } catch (_) {
@@ -846,9 +847,9 @@ abstract class _PlayerBase {
   /// client API (`mpv_*_async`): the call enqueues on the core's dispatch
   /// and the returned future completes when the event isolate forwards the
   /// reply — so the main isolate never waits for the playloop (which can be
-  /// stalled for seconds inside audio-output init). The optimistic state
-  /// writes in the setters stay synchronous; only the mpv confirmation is
-  /// deferred.
+  /// stalled for seconds inside audio-output init). Most setters update the
+  /// state once that reply confirms the write; the play/pause intent and
+  /// the settings bundles ([_writeBundle]) update it before the write.
   Future<void> _prop(String name, String value);
   Future<int> _propRc(String name, String value);
   Future<int> _command(List<String> args);
@@ -1126,13 +1127,14 @@ abstract class _PlayerBase {
     }
     _hookTimers.clear();
     // Continue every still-active hook on mpv's side BEFORE we drop
-    // them from the active set. Without this, mpv blocks on the
-    // pending hooks during its shutdown path: `dispose()` issues
-    // `quit`, mpv tries to drain the hook queue first, and never
-    // fires MPV_EVENT_SHUTDOWN — so the event isolate never exits.
-    // `_cancelHookTimers` is called from dispose right after `_disposed`
-    // is flipped and before any await, so the handle is still valid here
-    // and no hook timer can fire in between.
+    // them from the active set, so the `quit` that follows finds no
+    // operation held by this client and shuts down cleanly. (The event
+    // isolate exits anyway, on its stop flag, and mpv_terminate_destroy
+    // completes the hooks of the removed client; the continue just keeps
+    // the core from waiting on them meanwhile.) Called from dispose right
+    // after `_disposed` is flipped and before any await, so no hook timer
+    // can fire in between. An id is active only once bring-up delivered
+    // its hook event, so the handle exists here.
     for (final id in _activeHookIds) {
       _lib.mpvHookContinue(_handle, id);
     }
@@ -1348,11 +1350,14 @@ abstract class _PlayerBase {
   ///
   /// The teardown order is load-bearing. The sequence is:
   ///
-  /// 1. **Flip `_disposed`** so any subsequent setter / public-API call
-  ///    fails fast via `_checkNotDisposed()`.
-  /// 2. **Drop the [OrphanHandleTracker] entry** so a hot-restart that
-  ///    fires before the destroy completes doesn't try to clean up a
-  ///    handle we're already cleaning up.
+  /// 1. **Flip `_disposed`** so any subsequent setter or public-API call
+  ///    fails fast via `_checkNotDisposed()`. Before any await, continue
+  ///    the pending hooks and end the live PCM sources (a reader blocked
+  ///    on one wakes up), then release the OS media session.
+  /// 2. **Await bring-up**, then **drop the [OrphanHandleTracker] entry**
+  ///    so a hot-restart that fires before the destroy completes doesn't
+  ///    try to clean up a handle we're already cleaning up, and **dispose
+  ///    the DSP pipelines** (each turns off what it armed).
   /// 3. **Send the `quit` command** to mpv. mpv processes it
   ///    asynchronously and fires `MPV_EVENT_SHUTDOWN` inside its own
   ///    event queue.
@@ -1361,12 +1366,15 @@ abstract class _PlayerBase {
   ///    `MPV_EVENT_SHUTDOWN` is delayed by a stalled hook.
   /// 5. **Await `_eventIsolate.stop()`**, which returns `true` only once
   ///    the isolate has ACTUALLY exited — so it is provably off
-  ///    `mpv_wait_event`.
-  /// 6. **`mpvTerminateDestroy(_handle)`** ONLY when `stop()` confirmed the
-  ///    exit. Destroying the handle while the isolate is still inside
-  ///    `mpv_wait_event` would race the event-loop thread and crash libmpv
-  ///    when the handle is freed mid-syscall; on an unconfirmed exit we skip
-  ///    destroy and let the OS reclaim the handle.
+  ///    `mpv_wait_event`. Then wait (bounded) for any `registerHook` still
+  ///    running `mpv_hook_add`, and **close the client**, which settles
+  ///    every in-flight call.
+  /// 6. **`mpvTerminateDestroy(_handle)`** ONLY when the exit and the hook
+  ///    registrations are confirmed, then release the held `content://`
+  ///    descriptors. Destroying the handle while the isolate is still
+  ///    inside `mpv_wait_event` would race the event-loop thread and crash
+  ///    libmpv when the handle is freed mid-syscall; on an unconfirmed exit
+  ///    we skip destroy and let the OS reclaim the handle.
   /// 7. **Close all reactive properties + controllers**. Order within
   ///    this group does not matter for correctness (they tolerate
   ///    `close()` while a listener is attached); grouping by ownership
@@ -1382,7 +1390,8 @@ abstract class _PlayerBase {
   Future<void>? _disposeFuture;
 
   Future<void> _disposeImpl() async {
-    _disposed = true;
+    // `_disposed` is already set: [Player._disposeImpl] sets it on its
+    // first line, before its own steps.
 
     // Wait for init to settle. The handle / lib / native-resources
     // fields are only assigned when bring-up reaches the very end of

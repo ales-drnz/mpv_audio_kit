@@ -216,11 +216,6 @@ Future<String> _copyAssetToCache(String uri) async {
 
 Future<String> _doCopyAsset(String uri) async {
   try {
-    // Re-check the cache: a previous in-flight copy for the same URI
-    // may have completed between our cache miss and putIfAbsent.
-    final cached = _assetCache[uri];
-    if (cached != null) return cached;
-
     String assetPath = uri.substring('asset://'.length);
     if (assetPath.startsWith('/')) {
       assetPath = assetPath.substring(1);

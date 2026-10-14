@@ -59,7 +59,8 @@ abstract interface class PlayerApi {
 
   // ── Lifecycle ──────────────────────────────────────────────────────
 
-  /// Tears down the player. Idempotent.
+  /// Tears down the player. Idempotent: every call returns the same
+  /// teardown future.
   Future<void> dispose();
 
   // ── Loading ────────────────────────────────────────────────────────
@@ -94,7 +95,10 @@ abstract interface class PlayerApi {
   // ── Playback ───────────────────────────────────────────────────────
 
   /// Starts or resumes playback (sets the play/pause intent to play).
-  /// Idempotent.
+  /// Idempotent while playing. Once the queue has ended
+  /// ([PlayerState.completed]) it starts the last track again from its
+  /// beginning; with nothing loaded, or at the end of a source that cannot
+  /// seek back, the intent stays off.
   Future<void> play();
 
   /// Pauses playback, preserving the playhead position. Idempotent.
@@ -378,9 +382,9 @@ abstract interface class PlayerApi {
   /// and also surfaced on [PlayerStream.mediaSessionCommands] for
   /// analytics / interception.
   ///
-  /// `dispose()` automatically calls `setMediaSession(null)` before
-  /// tearing down libmpv, so the OS lockscreen never holds a stale
-  /// entry past the player's lifetime.
+  /// `dispose()` releases the session itself before tearing down libmpv,
+  /// as `setMediaSession(null)` would, so the OS lockscreen never holds a
+  /// stale entry past the player's lifetime.
   Future<void> setMediaSession(MediaSession? session);
 
   // ── Hooks ──────────────────────────────────────────────────────────
@@ -391,7 +395,8 @@ abstract interface class PlayerApi {
   Future<void> registerHook(Hook hook, {int priority = 0, Duration? timeout});
 
   /// Releases the hook stage identified by [id], letting mpv resume the
-  /// gated operation.
+  /// gated operation. A no-op after [dispose], which has already released
+  /// every pending hook.
   Future<void> continueHook(int id);
 
   /// Installs a [SourceResolver] — the official callback for resolving or

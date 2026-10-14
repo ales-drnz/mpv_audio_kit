@@ -335,7 +335,8 @@ mixin _FfiModule on _PlayerBase {
   /// stay consistent — but expect a one-event-loop-tick delay between
   /// the call returning and the cached state catching up. Prefer the
   /// typed setters (`setVolume`, `setCache`, `setReplayGain`, …) when
-  /// they exist, both for type-safety and for synchronous state update.
+  /// they exist, both for type-safety and because they update the state
+  /// as soon as mpv confirms the write, without waiting for the observer.
   ///
   /// Two properties are reserved and rejected:
   /// - `af` — owned by the effects chain (raw lavfi entries included, as
