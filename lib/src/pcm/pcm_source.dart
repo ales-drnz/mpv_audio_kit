@@ -169,8 +169,14 @@ final class PcmSource {
   /// playlist. The player opens it with the raw audio demuxer set to
   /// [format], whatever the load path (`open`, `openAll`, `add`,
   /// `replace`).
-  Media toMedia({Map<String, Object?>? extras}) =>
-      Media('$_scheme$_id', extras: extras);
+  ///
+  /// The media keeps this source alive until a player holds it, so it can
+  /// be queued with no other reference to the source.
+  Media toMedia({Map<String, Object?>? extras}) {
+    final media = Media('$_scheme$_id', extras: extras);
+    _byMedia[media] = this;
+    return media;
+  }
 
   /// Completes when the source can take more audio without going past
   /// [maxBuffered]: at once while below it, otherwise once the player has
@@ -572,6 +578,11 @@ final class PcmSource {
 
   // Every source not yet released, for the player that loads its media.
   static final Map<int, WeakReference<PcmSource>> _live = {};
+
+  // The source of each media [toMedia] made: a source the app keeps only
+  // through its media (`player.add(make().toMedia())`) must not be
+  // collected between toMedia and the player holding its entry.
+  static final Expando<PcmSource> _byMedia = Expando<PcmSource>('pcm');
 
   /// Test-only: runs one poll of every source now.
   @visibleForTesting

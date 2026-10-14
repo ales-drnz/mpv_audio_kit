@@ -30,6 +30,16 @@ Uint8List _ramp(int start, int n) =>
 
 Future<void> _flush() => Future<void>.delayed(Duration.zero);
 
+/// Allocates garbage until [done] or a few rounds have passed, to give
+/// the GC a chance to collect what nothing holds.
+Future<void> _churn(bool Function() done) async {
+  for (var i = 0; i < 30 && !done(); i++) {
+    final junk = [for (var j = 0; j < 64; j++) Uint8List(1 << 20)];
+    junk.clear();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
 void main() {
   late FakePcmNative native;
 
@@ -463,6 +473,21 @@ void main() {
   });
 
   group('media', () {
+    test('a media keeps its source alive until a player holds it', () async {
+      // The app may keep only the media: `player.add(make().toMedia())`.
+      (Media, WeakReference<PcmSource>) make() {
+        final s = PcmSource.create(_mono);
+        s.add(_ramp(0, 10));
+        return (s.toMedia(), WeakReference(s));
+      }
+
+      final (media, weak) = make();
+      PcmSource.debugPoll();
+      await _churn(() => weak.target == null);
+      expect(weak.target, isNotNull, reason: 'the media still names it');
+      expect(pcmLoadOptions(media.uri), isNotNull);
+    });
+
     test('toMedia carries the uri, the extras and the load options', () {
       final s = PcmSource.create(
         const PcmFormat(sampleRate: 24000, channels: 1),
