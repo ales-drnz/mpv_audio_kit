@@ -95,7 +95,9 @@ void main() {
             reason: 'mpv never parked at the end',
           );
           // A loop at the park means the end is no longer the end; turning
-          // it off again, with the core still parked, means it is.
+          // it off again means it is, once the entry plays out. mpv restarts
+          // the file when the loop goes on, so eof-reached moves here too:
+          // the loop-only read is checked in end_of_content_shim_test.
           await player.setLoop(Loop.file);
           await waitUntil(
             () => !player.state.completed,
@@ -103,13 +105,10 @@ void main() {
             reason: 'completed stayed up with a loop on',
           );
           await player.setLoop(Loop.off);
-          if (await player.getRawProperty('eof-reached') == 'yes') {
-            await waitUntil(
-              () => player.state.completed,
-              timeout: const Duration(seconds: 2),
-              reason: 'completed missed the end once the loop went off',
-            );
-          }
+          await waitUntil(
+            () => player.state.completed,
+            reason: 'completed missed the end once the loop went off',
+          );
         } finally {
           await player.stop();
           await player.dispose();

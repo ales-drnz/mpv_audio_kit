@@ -29,6 +29,7 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/filter_sets.dart';
 import '../_helpers/mpv_error_capture.dart';
 import '../_helpers/setter_test_helpers.dart';
 import '../generated/_audio_effects_param_corners.dart';
@@ -39,25 +40,6 @@ void main() {
   // paused file stops feeding the chain once its end has gone through.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_stereo_48k_5s.flac';
-
-  // Same set as in `audio_effects_chain_runtime_test.dart`: filters
-  // that compile + register correctly but require additional context
-  // (channel layout, model file, custom expression) before mpv will
-  // initialise them. Setting just one numeric param is not enough,
-  // so corner-case checks for these would always fail.
-  const requireParams = {
-    'aeval',
-    'ametadata',
-    'arnndn',
-    'asegment',
-    'asendcmd',
-    'asidedata',
-    'astreamselect',
-    'channelmap',
-    'chorus',
-    'headphone',
-    'pan',
-  };
 
   // Specific (filter, label) corners that ffmpeg rejects because of
   // CROSS-PARAM constraints the codegen cannot know about. Each one is
@@ -71,12 +53,11 @@ void main() {
     //   * `lfe_low=lfeLowMax (256)` >= default lfe_high (256) → reject
     'surround.lfe_high=lfeHighMin',
     'surround.lfe_low=lfeLowMax',
-    // afade: AVOption declares `start_sample` / `ss` max as I64_MAX,
+    // afade: AVOption declares `start_sample` max as I64_MAX,
     // but the filter rejects it at init time — `start_sample +
     // nb_samples` would overflow internally. Min / Default are
     // accepted; only the I64_MAX extreme blows up.
     'afade.start_sample=startSampleMax',
-    'afade.ss=ssMax',
     // firequalizer: AVOption declares `delay` up to 1e10 s, but a kernel
     // that long overflows to nan or infinity on macOS ("filter kernel
     // contains nan or infinity"). Min / Default are accepted.
@@ -105,21 +86,19 @@ void main() {
     test(
       'every typed numeric param accepts its codegen Min/Default/Max in mpv',
       () async {
-        final failures = <String, List<String>>{};
-        for (final corner in kFilterParamCorners) {
-          if (requireParams.contains(corner.filter)) continue;
-          if (skipCorners.contains('${corner.filter}.${corner.label}')) {
-            continue;
-          }
-          final errors = await captureChainErrors(player, corner.bundle);
-          if (errors.isNotEmpty) {
-            final key = '${corner.filter}.${corner.label}';
-            failures[key] = errors.map((e) => e.text.trim()).toList();
-          }
-          // Reset between iterations so a previous failure doesn't bleed
-          // into the next drain.
-          await player.setAudioEffects(const []);
-        }
+        final cases = <ChainCase>[
+          for (final corner in kFilterParamCorners)
+            if (!kFiltersNeedingParams.contains(corner.filter) &&
+                !skipCorners.contains('${corner.filter}.${corner.label}'))
+              (key: '${corner.filter}.${corner.label}', bundle: corner.bundle),
+        ];
+        final failures = {
+          for (final MapEntry(:key, :value) in (await captureChainErrorsEach(
+            player,
+            cases,
+          )).entries)
+            key: value.map((e) => e.text.trim()).toList(),
+        };
 
         if (failures.isNotEmpty) {
           final buf = StringBuffer()

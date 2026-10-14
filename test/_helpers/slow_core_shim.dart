@@ -14,24 +14,88 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+
+import 'libmpv_resolver.dart';
+import 'setter_test_helpers.dart';
+
+/// Why the shim cannot be built on this host, or `null` when a C compiler
+/// answers. Checked while the tests are declared, so a missing compiler
+/// skips them (or fails them on CI) instead of letting them pass empty.
+String? shimSkipReason() {
+  try {
+    if (Process.runSync('cc', ['--version']).exitCode == 0) return null;
+  } on ProcessException {
+    // Not on PATH.
+  }
+  return 'no host C compiler, cannot build the slow-core shim';
+}
+
+/// Declares a suite that runs [body] against libmpv behind the shim.
+/// [shim] is set before [body]'s own setup runs. Without libmpv, a
+/// fixture or a C compiler, the tests are skipped, and on CI they fail:
+/// there all of them are always there.
+void slowCoreShimSuite(
+  void Function(SlowCoreShim Function() shim) body, {
+  int getDelayUs = 0,
+  int setDelayUs = 0,
+  String? fixturePath,
+  List<String> extraFixtures = const [],
+}) {
+  final noCc = shimSkipReason();
+  if (noCc != null) {
+    if (Platform.environment['CI'] == 'true') {
+      test('a host C compiler is available', () => fail(noCc));
+      return;
+    }
+    group(
+      'slow-core shim',
+      () => body(() => throw StateError(noCc)),
+      skip: noCc,
+    );
+    return;
+  }
+  SlowCoreShim? built;
+  runtimeSuite(
+    initialize: false,
+    fixturePath: fixturePath,
+    extraFixtures: extraFixtures,
+    () {
+      setUpAll(() async {
+        // rootBundle must work for the TLS CA bundle extraction in bring-up.
+        TestWidgetsFlutterBinding.ensureInitialized();
+        final shim = (await SlowCoreShim.build())!;
+        shim.configure(
+          realLibmpvPath: resolveLibmpv()!,
+          getDelayUs: getDelayUs,
+          setDelayUs: setDelayUs,
+        );
+        MpvAudioKit.ensureInitialized(
+          libmpv: shim.path,
+          hotRestartCleanup: false,
+        );
+        built = shim;
+      });
+      body(() => built!);
+    },
+  );
+}
 
 /// A compiled slow-core shim library, ready to be handed to
 /// `MpvAudioKit.ensureInitialized(libmpv: …)`.
 class SlowCoreShim {
-  SlowCoreShim._(this.path);
+  SlowCoreShim._(this.path) : _lib = DynamicLibrary.open(path);
 
   /// Absolute path of the compiled shim dylib/so.
   final String path;
 
+  final DynamicLibrary _lib;
+
   /// Compiles the shim with the host C compiler into a fresh temp dir.
-  /// Returns `null` when no usable `cc` is on PATH (callers skip the test).
+  /// Returns `null` when no usable `cc` is on PATH.
   static Future<SlowCoreShim?> build() async {
-    try {
-      final probe = await Process.run('cc', ['--version']);
-      if (probe.exitCode != 0) return null;
-    } on ProcessException {
-      return null;
-    }
+    if (shimSkipReason() != null) return null;
     final src =
         '${Directory.current.path}/test/_helpers/native/mak_slow_core_shim.c';
     final outDir = Directory.systemTemp.createTempSync('mak_slow_core_shim');
@@ -45,6 +109,7 @@ class SlowCoreShim {
       out,
       src,
       '-ldl',
+      '-lpthread',
     ]);
     if (result.exitCode != 0) {
       throw StateError(
@@ -64,15 +129,60 @@ class SlowCoreShim {
     int getDelayUs = 0,
     int setDelayUs = 0,
   }) {
-    final lib = DynamicLibrary.open(path);
-    final fn = lib
+    final fn = _lib
         .lookupFunction<
           Void Function(Pointer<Utf8>, Int32, Int32),
           void Function(Pointer<Utf8>, int, int)
         >('mak_shim_configure');
-    final p = realLibmpvPath.toNativeUtf8();
+    _withString(realLibmpvPath, (p) => fn(p, getDelayUs, setDelayUs));
+  }
+
+  /// Sets a probe knob: `hook_add_delay_us` (a sleep in front of every
+  /// `mpv_hook_add`) or `hide_eof` (non-zero: synchronous flag reads of
+  /// `eof-reached` answer 0, the reads the event isolate makes).
+  void set(String knob, int value) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>, Int32),
+          void Function(Pointer<Utf8>, int)
+        >('mak_shim_set');
+    _withString(knob, (p) => fn(p, value));
+  }
+
+  /// Counts the synchronous reads of the property [name] from now on.
+  /// Read the count with `counter('watched_gets')`.
+  void watchGet(String name) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>),
+          void Function(Pointer<Utf8>)
+        >('mak_shim_watch_get');
+    _withString(name, fn);
+  }
+
+  /// A probe counter: `hook_adds_entered`, `hook_adds_inflight`,
+  /// `inflight_at_destroy` (the most `mpv_hook_add` calls still running at
+  /// an `mpv_terminate_destroy`), `late_hook_adds` (calls on a handle
+  /// already destroyed, which the shim does not forward), `destroys`,
+  /// `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
+  /// before the destroy) and `watched_gets`.
+  int counter(String name) {
+    final fn = _lib
+        .lookupFunction<
+          Int32 Function(Pointer<Utf8>),
+          int Function(Pointer<Utf8>)
+        >('mak_shim_counter');
+    return _withString(name, fn);
+  }
+
+  /// Zeroes the counters and the knobs. The stalls stay.
+  void reset() =>
+      _lib.lookupFunction<Void Function(), void Function()>('mak_shim_reset')();
+
+  static T _withString<T>(String s, T Function(Pointer<Utf8>) f) {
+    final p = s.toNativeUtf8();
     try {
-      fn(p, getDelayUs, setDelayUs);
+      return f(p);
     } finally {
       calloc.free(p);
     }

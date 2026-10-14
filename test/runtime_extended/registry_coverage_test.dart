@@ -28,6 +28,7 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/filter_sets.dart';
 import '../_helpers/setter_test_helpers.dart';
 import '../generated/audio_filter_names.dart';
 
@@ -132,6 +133,10 @@ const List<String> _kCoreAudioDecoders = [
 /// library rather than something bundled with the package. mpv prefers
 /// these when explicitly selected via `audio-codec` / `ad`.
 const List<String> _kAppleOnlyAudioDecoders = ['aac_at', 'alac_at', 'mp3_at'];
+
+/// How long both the filter check and its meta-test wait for the log of a
+/// missing filter: the meta-test proves the wait the real check uses.
+const _logWait = Duration(milliseconds: 25);
 
 void main() {
   runtimeSuite(() {
@@ -284,7 +289,11 @@ void main() {
 
         final missing = <String>[];
 
+        // The others start from their bare name in
+        // audio_effects_chain_runtime_test, which fails on any error, a
+        // missing filter included.
         for (final name in kAudioFilterNames) {
+          if (!kFiltersNeedingParams.contains(name)) continue;
           if (registrationOnly.contains(name)) continue;
           cannotFind.clear();
           final arg = argDefaults[name];
@@ -297,7 +306,7 @@ void main() {
             // Rejection at the typed-setter boundary is fine — what we
             // care about is whether a "filter not found" log entry fires.
           }
-          await Future<void>.delayed(const Duration(milliseconds: 5));
+          await Future<void>.delayed(_logWait);
           if (cannotFind.isNotEmpty) {
             missing.add('$name → ${cannotFind.first}');
           }
@@ -339,7 +348,7 @@ void main() {
               RawAudioEffect('lavfi-this-filter-does-not-exist'),
             ]);
           } catch (_) {}
-          await Future<void>.delayed(const Duration(milliseconds: 25));
+          await Future<void>.delayed(_logWait);
           await logSub.cancel();
           expect(
             cannotFind,

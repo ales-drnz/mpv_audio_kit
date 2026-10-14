@@ -30,3 +30,24 @@ String? resolveLibmpv() {
   }
   return null;
 }
+
+List<int>? _libmpvBytes;
+
+/// Whether the libmpv at [path] carries [name] as a NUL-terminated string,
+/// the form mpv's property table keeps its names in. Lets a suite that
+/// needs a property of this build (`waveform-data`) decide its skip while
+/// the tests are declared, before any player could ask the core.
+bool libmpvNamesProperty(String path, String name) {
+  final bytes = _libmpvBytes ??= File(path).readAsBytesSync();
+  final needle = [0, ...name.codeUnits, 0];
+  final first = needle[1];
+  outer:
+  for (var i = 1; i + needle.length - 1 <= bytes.length; i++) {
+    if (bytes[i] != first || bytes[i - 1] != 0) continue;
+    for (var j = 2; j < needle.length; j++) {
+      if (bytes[i + j - 1] != needle[j]) continue outer;
+    }
+    return true;
+  }
+  return false;
+}

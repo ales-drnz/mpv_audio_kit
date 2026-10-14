@@ -40,7 +40,7 @@ Pod::Spec.new do |s|
   # MPRemoteCommandCenter for the lockscreen / Control Center / CarPlay
   # Now Playing entry. AVFoundation is needed for AVAudioSession (audio
   # interruption handling).
-  s.frameworks = 'MediaPlayer', 'AVFoundation', 'AudioToolbox', 'Security', 'CoreFoundation'
+  s.frameworks = 'MediaPlayer', 'AVFoundation'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE'  => 'YES',

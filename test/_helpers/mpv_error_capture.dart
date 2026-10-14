@@ -46,3 +46,67 @@ Future<List<MpvLogEntry>> captureChainErrors(
   await Future<void>.delayed(const Duration(milliseconds: 300));
   return captureMpvErrors(player, () => player.setAudioEffects(effects));
 }
+
+/// One chain to check with [captureChainErrorsEach]: [key] names it in
+/// the report.
+typedef ChainCase = ({String key, List<AudioEffect> bundle});
+
+/// The errors of every case in [cases] whose chain mpv refuses, by key, as
+/// [captureChainErrors] finds them case by case, with a short [drain].
+///
+/// While audio plays, mpv builds the chain inside the `af` write: a value
+/// out of range is logged, and the write refused, before the reply. The
+/// long drain of [captureChainErrors] is for the rarer error a filter
+/// raises at its first frames, which can arrive after [drain] and land on
+/// one of the next cases. So any case that shows an error is checked
+/// again, with the [lookBack] cases before it, one by one with the long
+/// drain and its retry, and only those that fail on their own are
+/// reported. A late error after the last case is caught the same way.
+Future<Map<String, List<MpvLogEntry>>> captureChainErrorsEach(
+  Player player,
+  List<ChainCase> cases, {
+  Duration drain = const Duration(milliseconds: 25),
+  int lookBack = 3,
+}) async {
+  final suspects = <int>{};
+  void suspect(int i) {
+    for (var k = i - lookBack; k <= i; k++) {
+      if (k >= 0 && k < cases.length) suspects.add(k);
+    }
+  }
+
+  for (var i = 0; i < cases.length; i++) {
+    final errors = await captureMpvErrors(player, () async {
+      try {
+        await player.setAudioEffects(cases[i].bundle);
+      } on MpvCommandException {
+        // The refusal is logged as an error too.
+      }
+    }, drain: drain);
+    try {
+      await player.setAudioEffects(const []);
+    } on MpvCommandException {
+      // Errors of the chain being dropped are caught on the next case.
+    }
+    if (errors.isNotEmpty) suspect(i);
+  }
+  final tail = await captureMpvErrors(player, () async {});
+  if (tail.isNotEmpty) suspect(cases.length - 1);
+
+  final failures = <String, List<MpvLogEntry>>{};
+  for (final i in suspects.toList()..sort()) {
+    List<MpvLogEntry> own;
+    try {
+      own = await captureChainErrors(player, cases[i].bundle);
+    } on MpvCommandException catch (e) {
+      own = [MpvLogEntry(prefix: 'af', level: LogLevel.error, text: '$e')];
+    }
+    try {
+      await player.setAudioEffects(const []);
+    } on MpvCommandException {
+      // As above.
+    }
+    if (own.isNotEmpty) failures[cases[i].key] = own;
+  }
+  return failures;
+}

@@ -3,10 +3,6 @@
 # the plugin to fail to compile for some customers of the plugin.
 cmake_minimum_required(VERSION 3.10)
 
-if(POLICY CMP0135)
-  cmake_policy(SET CMP0135 NEW)
-endif()
-
 # Project-level configuration.
 set(PROJECT_NAME "mpv_audio_kit")
 project(${PROJECT_NAME} LANGUAGES CXX)

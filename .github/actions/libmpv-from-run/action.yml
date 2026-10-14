@@ -50,7 +50,7 @@ runs:
         fi
         echo "use=true" >> "$GITHUB_OUTPUT"
     - if: steps.check.outputs.use == 'true'
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: libmpv-release
         repository: ales-drnz/libmpv-scripts

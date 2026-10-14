@@ -18,6 +18,18 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$DIR/../.." && pwd)"
 
+# dart format reads the language version from the package config: without
+# it, it formats the generated files for another version and they "drift".
+if [[ ! -f "$ROOT/.dart_tool/package_config.json" ]]; then
+  if command -v flutter >/dev/null; then
+    (cd "$ROOT" && flutter pub get)
+  else
+    echo "regen.sh: no .dart_tool/package_config.json and no flutter on PATH;" \
+      "run flutter pub get in $ROOT first" >&2
+    exit 1
+  fi
+fi
+
 "$DIR/fetch_ffmpeg_src.sh"
 cd "$DIR"
 for stage in parse generate tests; do

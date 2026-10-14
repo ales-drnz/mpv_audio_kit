@@ -107,9 +107,6 @@ final class RangeHttpServer {
   final List<ServedRequest> _requests = [];
   final Set<Socket> _open = {};
 
-  /// Every request so far, in arrival order.
-  List<ServedRequest> get requests => List.unmodifiable(_requests);
-
   /// The GET requests for [path], in arrival order.
   List<ServedRequest> gets(String path) =>
       _requests.where((r) => r.method == 'GET' && r.path == path).toList();

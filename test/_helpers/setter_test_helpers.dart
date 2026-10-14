@@ -21,17 +21,22 @@ String defaultFixturePath() =>
     '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
 
 /// Why a suite that needs the bundled libmpv (and optionally
-/// [fixturePath] and [extraFixtures]) can't run on this host, or `null`
-/// when it can.
+/// [fixturePath], [extraFixtures] and the mpv [properties] of this build)
+/// can't run on this host, or `null` when it can.
 String? libmpvSkipReason({
   String? fixturePath,
   List<String> extraFixtures = const [],
+  List<String> properties = const [],
 }) {
-  if (resolveLibmpv() == null) {
+  final lib = resolveLibmpv();
+  if (lib == null) {
     return 'no bundled libmpv (did the build hook run?)';
   }
   for (final path in [?fixturePath, ...extraFixtures]) {
     if (!File(path).existsSync()) return 'Fixture missing: $path';
+  }
+  for (final name in properties) {
+    if (!libmpvNamesProperty(lib, name)) return 'libmpv has no $name';
   }
   return null;
 }
@@ -48,12 +53,13 @@ void initLibmpv() {
   MpvAudioKit.ensureInitialized(hotRestartCleanup: false);
 }
 
-/// Declares a suite that needs the bundled libmpv. When libmpv or
-/// any fixture is missing, every test in [body] is registered as
-/// skipped with the reason; otherwise a `setUpAll` initializes
-/// [MpvAudioKit] before [body]'s own setup runs. Pass `initialize: false`
-/// for a suite that initializes [MpvAudioKit] itself (e.g. through a
-/// shim), since only the first `ensureInitialized` call takes effect.
+/// Declares a suite that needs the bundled libmpv. When libmpv, any
+/// fixture or any of the mpv [properties] is missing, every test in
+/// [body] is registered as skipped with the reason; otherwise a
+/// `setUpAll` initializes [MpvAudioKit] before [body]'s own setup runs.
+/// Pass `initialize: false` for a suite that initializes [MpvAudioKit]
+/// itself (e.g. through a shim), since only the first
+/// `ensureInitialized` call takes effect.
 ///
 /// A skip has to be decided while tests are declared: `markTestSkipped`
 /// inside `setUpAll` only skips the `setUpAll` itself, and the tests after
@@ -62,11 +68,13 @@ void runtimeSuite(
   void Function() body, {
   String? fixturePath,
   List<String> extraFixtures = const [],
+  List<String> properties = const [],
   bool initialize = true,
 }) {
   final reason = libmpvSkipReason(
     fixturePath: fixturePath,
     extraFixtures: extraFixtures,
+    properties: properties,
   );
   if (reason != null) {
     // On CI the library and the fixtures are always there: a missing one
@@ -82,6 +90,19 @@ void runtimeSuite(
   if (initialize) setUpAll(initLibmpv);
   body();
 }
+
+/// [runtimeSuite] for a suite that needs this build's analysis properties,
+/// `waveform-data` and `loudness-scan-data`.
+void analysisSuite(
+  void Function() body, {
+  String? fixturePath,
+  List<String> extraFixtures = const [],
+}) => runtimeSuite(
+  body,
+  fixturePath: fixturePath,
+  extraFixtures: extraFixtures,
+  properties: const ['waveform-data', 'loudness-scan-data'],
+);
 
 /// Skips the running test because something it needs is missing (the
 /// bundled libmpv, a fixture, a property of the binary), or fails it with

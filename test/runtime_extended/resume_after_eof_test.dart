@@ -17,6 +17,9 @@ void main() {
   final fixturePath = defaultFixturePath();
   final longFixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
+  // These cover the park the player has seen (`completed` up). A park it
+  // has not seen, the case the transport reads eof-reached from the core
+  // for, needs the slow-core shim: see end_of_content_shim_test.
   runtimeSuite(fixturePath: fixturePath, () {
     group('Resume after keep-open EOF park', () {
       late Player player;
