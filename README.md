@@ -2626,8 +2626,8 @@ carry credentials in the query (Subsonic, Jellyfin, Plex). MPRIS on Linux
 gets `xesam:url` only for local files. A remote cover reaches the OS as an
 image. On Linux, Android and Windows the package downloads it in Dart: the
 download always verifies the server certificate, even when `tls-verify` is
-off for playback, trusts `tls-ca-file` on top of the system roots, and is
-tried at most 3 times. On iOS and macOS the system downloads it, with the
+off for playback, trusts `tls-ca-file` on top of the system roots, refuses
+a redirect from `https` to plain `http`, and is tried at most 3 times. On iOS and macOS the system downloads it, with the
 system roots only.
 
 #### 14.4 Reacting to OS commands

@@ -21,6 +21,9 @@ const int _maxArtworkBytes = 20 * 1024 * 1024;
 
 const Duration _timeout = Duration(seconds: 15);
 
+/// Redirects followed before giving up, as many as [HttpClient] follows.
+const int _maxRedirects = 5;
+
 /// Whether the media session downloads remote artwork in Dart on
 /// [platform], handing the native side bytes instead of the URL. Remote
 /// cover URLs often carry credentials in the query (Subsonic `u`, `t` and
@@ -41,7 +44,10 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
 /// verifies the certificate, whatever the player's `tls-verify`: that
 /// option is off by default in mpv, and a cover URL often carries the
 /// server's credentials. A [caFile] adds to the system roots, so a
-/// self-hosted server with its own CA shows its covers.
+/// self-hosted server with its own CA shows its covers. Redirects are
+/// followed by hand, so one from `https` to plain `http` is refused before
+/// anything is sent over it. A response that announces more than 20 MB is
+/// dropped before its body is read.
 @internal
 Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
   HttpClient? client;
@@ -53,10 +59,20 @@ Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
               ..setTrustedCertificates(caFile),
           );
     client.connectionTimeout = _timeout;
-    final request = await client.getUrl(uri).timeout(_timeout);
-    final response = await request.close().timeout(_timeout);
-    if (response.statusCode != HttpStatus.ok) {
+    var target = uri;
+    var response = await _get(client, target);
+    for (var hops = 0; response.isRedirect; hops++) {
+      final location = response.headers.value(HttpHeaders.locationHeader);
       await response.drain<void>();
+      if (location == null || hops == _maxRedirects) return null;
+      final next = target.resolve(location);
+      if (target.scheme == 'https' && next.scheme != 'https') return null;
+      target = next;
+      response = await _get(client, target);
+    }
+    // Not drained: the forced close below drops the connection.
+    if (response.statusCode != HttpStatus.ok ||
+        response.contentLength > _maxArtworkBytes) {
       return null;
     }
     final bytes = BytesBuilder(copy: false);
@@ -74,4 +90,10 @@ Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
   } finally {
     client?.close(force: true);
   }
+}
+
+Future<HttpClientResponse> _get(HttpClient client, Uri uri) async {
+  final request = await client.getUrl(uri).timeout(_timeout);
+  request.followRedirects = false;
+  return request.close().timeout(_timeout);
 }

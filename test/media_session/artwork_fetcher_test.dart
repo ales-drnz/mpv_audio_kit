@@ -68,10 +68,18 @@ void main() {
       );
       cover = Uri.parse('https://localhost:${secure.port}/cover');
       secure.listen((request) {
-        request.response
-          ..headers.contentType = ContentType('image', 'png')
-          ..add(const [9, 8, 7])
-          ..close();
+        switch (request.uri.path) {
+          case '/to-http':
+            // A downgrade: the plain HTTP server serves the cover.
+            request.response.redirect(base.resolve('/cover'));
+          case '/to-https':
+            request.response.redirect(cover);
+          default:
+            request.response
+              ..headers.contentType = ContentType('image', 'png')
+              ..add(const [9, 8, 7])
+              ..close();
+        }
       });
     });
 
@@ -94,6 +102,16 @@ void main() {
           ? 'the download path is not used on Apple platforms'
           : false,
     );
+
+    test('a redirect from https to plain http is refused', () async {
+      final art = await downloadArtwork(cover.resolve('/to-http'), certPath);
+      expect(art, isNull);
+    }, skip: Platform.isMacOS ? 'see above' : false);
+
+    test('a redirect that stays on https is followed', () async {
+      final art = await downloadArtwork(cover.resolve('/to-https'), certPath);
+      expect(art?.bytes, [9, 8, 7]);
+    }, skip: Platform.isMacOS ? 'see above' : false);
 
     test('is refused when the CA bundle cannot be read', () async {
       expect(await downloadArtwork(cover, '/nonexistent/ca.pem'), isNull);
