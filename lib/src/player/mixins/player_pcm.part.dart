@@ -67,6 +67,14 @@ mixin _PcmModule on _PlayerBase {
     source.addCutter(_cutPcm);
     if (entryId == null) return;
     _pcmByEntry[entryId] = source;
+    // mpv does not always report the playlist again when the entry goes
+    // (a stop while idle after a failed load): check it once in a while.
+    _pcmCheckTimer ??= Timer(const Duration(milliseconds: 300), () {
+      _pcmCheckTimer = null;
+      if (_pcmByEntry.keys.any((id) => !_pcmSeen.contains(id))) {
+        _confirmPcmEntries();
+      }
+    });
     unawaited(
       source.done.then((_) {
         _pcmByEntry.removeWhere((id, s) {
@@ -81,21 +89,79 @@ mixin _PcmModule on _PlayerBase {
   /// Lets go of the sources whose entries left the playlist: [live] holds
   /// the ids mpv reports now. An entry is dropped only once a playlist
   /// node showed it, so a node older than its loadfile does not end it.
-  /// A source no entry holds any more ends as stopped: read or not, the
-  /// player will not come back to it.
+  /// An entry missing before any node showed it (the observation merges
+  /// changes: a stop right after the load) is checked against a fresh
+  /// read of the playlist, which comes after its loadfile. A source no
+  /// entry holds any more ends as stopped: read or not, the player will
+  /// not come back to it.
   @override
   void _prunePcm(Set<int> live) {
     if (_pcmByEntry.isEmpty) return;
     final dropped = <PcmSource>[];
+    var unseenMissing = false;
     _pcmByEntry.removeWhere((id, source) {
       if (live.contains(id)) {
         _pcmSeen.add(id);
         return false;
       }
-      if (!_pcmSeen.remove(id)) return false;
+      if (!_pcmSeen.remove(id)) {
+        unseenMissing = true;
+        return false;
+      }
       dropped.add(source);
       return true;
     });
+    _endDropped(dropped);
+    if (unseenMissing) _confirmPcmEntries();
+  }
+
+  // A playlist read for [_confirmPcmEntries] is under way, and whether
+  // another node asked for one meanwhile.
+  bool _pcmConfirming = false;
+  bool _pcmConfirmAgain = false;
+  Timer? _pcmCheckTimer;
+
+  /// Reads the playlist and drops the held entries it does not list. The
+  /// read is issued after every held entry's loadfile reply, so an entry
+  /// it misses has left the playlist.
+  void _confirmPcmEntries() {
+    if (_pcmConfirming) {
+      _pcmConfirmAgain = true;
+      return;
+    }
+    _pcmConfirming = true;
+    final held = _pcmByEntry.keys.toSet();
+    unawaited(() async {
+      try {
+        final (rc, node) = await _getAsync('playlist', MpvFormat.mpvFormatNode);
+        if (rc < 0 || node is! List || _disposed) return;
+        final live = {
+          for (final entry in node)
+            if (entry is Map && entry['id'] is int) entry['id'] as int,
+        };
+        final dropped = <PcmSource>[];
+        _pcmByEntry.removeWhere((id, source) {
+          if (!held.contains(id)) return false;
+          if (live.contains(id)) {
+            _pcmSeen.add(id);
+            return false;
+          }
+          _pcmSeen.remove(id);
+          dropped.add(source);
+          return true;
+        });
+        _endDropped(dropped);
+      } finally {
+        _pcmConfirming = false;
+        if (_pcmConfirmAgain && !_disposed) {
+          _pcmConfirmAgain = false;
+          _confirmPcmEntries();
+        }
+      }
+    }());
+  }
+
+  void _endDropped(List<PcmSource> dropped) {
     for (final source in dropped) {
       if (!_pcmByEntry.containsValue(source)) source.endUnread();
     }
@@ -129,6 +195,8 @@ mixin _PcmModule on _PlayerBase {
 
   /// Ends every source the player holds as stopped (dispose).
   void _endPcmSources() {
+    _pcmCheckTimer?.cancel();
+    _pcmCheckTimer = null;
     final sources = _pcmByEntry.values.toSet();
     _pcmByEntry.clear();
     _pcmSeen.clear();
