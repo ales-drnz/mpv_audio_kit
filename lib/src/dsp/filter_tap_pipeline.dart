@@ -27,7 +27,7 @@ const int _kMaxActiveTaps = 8;
 /// Backed by the `audio-tap-frames` and `analyzer-taps` properties
 /// added by the libmpv filter-label-tap patch. The pipeline:
 ///
-///   1. tracks per-`(label, side)` subscriber counts and writes a
+///   1. tracks which `(label, side)` pairs have a listener and writes a
 ///      comma-separated list of the chain labels currently needed to
 ///      `analyzer-taps`. The C side activates the matching hook in
 ///      `user_wrapper_process` only for those labels, at most
@@ -65,8 +65,12 @@ class FilterTapPipeline {
   // (name, side) → broadcast controller. Lazy-created on first
   // listener; deactivated when the last subscriber cancels.
   final Map<_TapKey, StreamController<PcmFrame>> _controllers = {};
-  // Refcount per (name, side) — drives the analyzer-taps CSV.
-  final Map<_TapKey, int> _refs = {};
+  // The (name, side) pairs with a listener: drives the analyzer-taps CSV.
+  // A broadcast controller calls onListen and onCancel only for its first
+  // and last listener, so membership is all there is to count.
+  final Set<_TapKey> _active = {};
+  // The list last written, empty as mpv starts.
+  String _lastCsv = '';
   // Last native write generation (ring `seq`) dispatched per (name, side).
   // Lets the poll loop skip a redundant decode + add() when the ring is
   // unchanged (e.g. while paused / at EOF the writer isn't advancing it).
@@ -109,9 +113,7 @@ class FilterTapPipeline {
 
   void _onListen(_TapKey key) {
     if (_disposed) return;
-    final next = (_refs[key] ?? 0) + 1;
-    _refs[key] = next;
-    if (next == 1) _writeActiveList();
+    if (_active.add(key)) _writeActiveList();
     if (_pollTimer == null) {
       _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
       _poll();
@@ -120,33 +122,26 @@ class FilterTapPipeline {
 
   void _onCancelLast(_TapKey key) {
     if (_disposed) return;
-    final cur = _refs[key] ?? 0;
-    if (cur <= 1) {
-      _refs.remove(key);
-      // Drop the retained native write-generation. The native ring `seq` is
-      // monotonic and never reset, so keeping a stale `_lastSeq` would make a
-      // FRESH re-subscriber to this paused/EOF tap skip the currently-buffered
-      // slice (its seq still equals the retained value) until the next write.
-      _lastSeq.remove(key);
-    } else {
-      _refs[key] = cur - 1;
-    }
-    if (_refs.isEmpty) {
-      _writeActiveList();
+    _active.remove(key);
+    // Drop the retained native write-generation. The native ring `seq` is
+    // monotonic and never reset, so keeping a stale `_lastSeq` would make a
+    // FRESH re-subscriber to this paused/EOF tap skip the currently-buffered
+    // slice (its seq still equals the retained value) until the next write.
+    _lastSeq.remove(key);
+    _writeActiveList();
+    if (_active.isEmpty) {
       _pollTimer?.cancel();
       _pollTimer = null;
-    } else {
-      _writeActiveList();
     }
   }
 
   /// Builds the `analyzer-taps` CSV from the union of every distinct
-  /// chain label with at least one (pre or post) refcount > 0, and
+  /// chain label with a pre or post listener, and
   /// pushes it to mpv. The C side replaces its active set on every
   /// write; an empty CSV disables every tap.
   void _writeActiveList() {
     final labels = <String>{};
-    for (final k in _refs.keys) {
+    for (final k in _active) {
       labels.add(k.name);
     }
     if (labels.length > _kMaxActiveTaps) {
@@ -155,12 +150,16 @@ class FilterTapPipeline {
         '$_kMaxActiveTaps at a time, so the others stay silent.',
       );
     }
-    unawaited(_asyncSet('analyzer-taps', labels.join(',')));
+    final csv = labels.join(',');
+    // The other side of a tapped label leaves the list as it is.
+    if (csv == _lastCsv) return;
+    _lastCsv = csv;
+    unawaited(_asyncSet('analyzer-taps', csv));
   }
 
   void _poll() {
     if (_disposed || _polling) return;
-    if (_refs.isEmpty) return;
+    if (_active.isEmpty) return;
     _polling = true;
     unawaited(_doPoll().whenComplete(() => _polling = false));
   }
@@ -237,7 +236,7 @@ class FilterTapPipeline {
       if (!c.isClosed) closes.add(c.close());
     }
     _controllers.clear();
-    _refs.clear();
+    _active.clear();
     _lastSeq.clear();
     await Future.wait(closes);
   }
