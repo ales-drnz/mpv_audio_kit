@@ -144,6 +144,7 @@ mixin _DispatchModule on _PlayerBase {
           _dispatchProperty('eof-reached', eof);
           _settleEndOfContent(parked: parked, lastEntry: lastEntry);
         case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
+          _heldSources.onEndFile();
           _releaseSettledSources();
           final typedReason = MpvEndFileReason.fromValue(reason);
           _endFileCtrl.add(

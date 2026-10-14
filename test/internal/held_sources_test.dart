@@ -80,4 +80,42 @@ void main() {
     expect(closed..sort(), ['fd://11', 'fd://12']);
     expect(held.isEmpty, isTrue);
   });
+
+  group('external track', () {
+    test('kept until the file it joined ends', () async {
+      held.onEndFile(); // an earlier file, reported before the add
+      final settle = held.holdTrack(closer('fd://20'));
+      await runAll(held.takeSettled());
+      expect(closed, isEmpty, reason: 'mpv has not taken it yet');
+
+      await settle(true);
+      held.onStartFile();
+      await runAll(held.takeSettled());
+      expect(closed, isEmpty, reason: 'the file still plays');
+
+      held.onEndFile();
+      await runAll(held.takeSettled());
+      expect(closed, ['fd://20']);
+      expect(held.isEmpty, isTrue);
+    });
+
+    test('released at once when the add fails', () async {
+      final settle = held.holdTrack(closer('fd://21'));
+      expect(held.isEmpty, isFalse);
+      await settle(false);
+      expect(closed, ['fd://21']);
+      expect(held.isEmpty, isTrue);
+    });
+
+    test('dispose releases it, added or not', () async {
+      held.holdTrack(closer('fd://22'));
+      final settle = held.holdTrack(closer('fd://23'));
+      await settle(true);
+      await runAll(held.takeAll());
+      expect(closed..sort(), ['fd://22', 'fd://23']);
+      // The add replying after the dispose does not release it again.
+      await settle(true);
+      expect(closed, hasLength(2));
+    });
+  });
 }

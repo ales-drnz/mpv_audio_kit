@@ -339,7 +339,16 @@ mixin _AudioModule on _PlayerBase {
     // mpv's args are positional: to pass `lang` you must also pass `title`.
     if (title != null || lang != null) args.add(title ?? '');
     if (lang != null) args.add(lang);
-    await _command(args);
+    // An Android content:// URI arrives as an fd:// descriptor that mpv
+    // never closes: held until the file the track joins ends.
+    final dispose = resolved.dispose;
+    final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
+    var added = false;
+    try {
+      added = await _command(args) >= 0;
+    } finally {
+      await settle?.call(added);
+    }
   }
 
   /// Removes an audio track (mpv's `audio-remove`). Pass [Track.id] to remove
