@@ -664,6 +664,23 @@ void main() {
       expect(t.replayGainTrackGain, isNull);
       expect(t.metadata, isEmpty);
     });
+
+    test('a ReplayGain of exactly 0 dB is a value, not a missing tag', () {
+      // mpv adds the replaygain fields only when the file carries the tags,
+      // and +0.00 dB is a common track gain.
+      final t = parseCurrentTrackNode({
+        'id': 1,
+        'type': 'audio',
+        'replaygain-track-gain': 0.0,
+        'replaygain-track-peak': 1.0,
+        'replaygain-album-gain': 0.0,
+        'replaygain-album-peak': 0.0,
+      })!;
+      expect(t.replayGainTrackGain, 0.0);
+      expect(t.replayGainTrackPeak, 1.0);
+      expect(t.replayGainAlbumGain, 0.0);
+      expect(t.replayGainAlbumPeak, 0.0);
+    });
   });
 
   group('parseCurrentTrackNode', () {

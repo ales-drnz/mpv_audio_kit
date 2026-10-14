@@ -251,10 +251,10 @@ MpvTrack _parseTrackEntry(dynamic entry) {
     channelCount: _intOrNull(m['demux-channel-count']),
     demuxBitrate: _doubleOrNull(m['demux-bitrate']),
     hlsBitrate: _doubleOrNull(m['hls-bitrate']),
-    replayGainTrackGain: _doubleOrNull(m['replaygain-track-gain']),
-    replayGainTrackPeak: _doubleOrNull(m['replaygain-track-peak']),
-    replayGainAlbumGain: _doubleOrNull(m['replaygain-album-gain']),
-    replayGainAlbumPeak: _doubleOrNull(m['replaygain-album-peak']),
+    replayGainTrackGain: _doubleKeepZero(m['replaygain-track-gain']),
+    replayGainTrackPeak: _doubleKeepZero(m['replaygain-track-peak']),
+    replayGainAlbumGain: _doubleKeepZero(m['replaygain-album-gain']),
+    replayGainAlbumPeak: _doubleKeepZero(m['replaygain-album-peak']),
     metadata: _stringMap(m['metadata']),
   );
 }
@@ -297,6 +297,10 @@ double? _doubleOrNull(dynamic v) {
   final d = v.toDouble();
   return d == 0.0 ? null : d;
 }
+
+// Keeps `0`: for the ReplayGain fields, which mpv adds only when the file
+// carries the tags, so +0.00 dB (or a 0 peak) is a real value.
+double? _doubleKeepZero(dynamic v) => v is num ? v.toDouble() : null;
 
 Map<String, String> _stringMap(dynamic v) {
   if (v is! Map) return const <String, String>{};
