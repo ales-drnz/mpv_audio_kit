@@ -637,8 +637,14 @@ class PlayerStream {
 
   /// Real-time raw PCM samples of the audio currently playing through
   /// the player's output, captured post-DSP. Use for time-domain
-  /// visualisations: scrolling waveforms, accurate VU/peak meters,
-  /// oscilloscopes, custom feature extractors.
+  /// visualisations: accurate VU and peak meters, oscilloscopes, custom
+  /// feature extractors.
+  ///
+  /// Each frame holds the latest audio written to the output, up to
+  /// 4096 frames per channel, so consecutive frames overlap (by about
+  /// 60 % at the default 33 ms). Appending them one after the other
+  /// repeats audio; a scrolling display has to keep only the samples it
+  /// has not drawn yet.
   ///
   /// For frequency-domain visualisations (spectrum bars, glow
   /// effects), prefer [fft] which is computed from the same tap.
@@ -747,7 +753,8 @@ class PlayerStream {
   ///
   /// **Listener-gated** — the measurement poll runs only while a
   /// listener is attached. While the meter is not in the chain the
-  /// stream simply emits nothing.
+  /// stream simply emits nothing. A new listener gets the next reading
+  /// (polled every 100 ms), not the last one.
   final Stream<Loudness> loudnessMeter;
 
   /// Offline loudness scan of the loaded source ([LoudnessScan]:
@@ -768,10 +775,12 @@ class PlayerStream {
   /// Like [waveform], the scan of a remote file reads mpv's cache, and
   /// opens the source a second time only when that pass is not possible.
   ///
-  /// Emits one terminal [LoudnessScan] per track (`ready`, `failed`, or
-  /// `unavailable` for sources that can only be measured during
-  /// playback — adaptive/live streams; use [loudnessMeter] there), and
-  /// `null` on the track-change boundary so stale results clear.
+  /// While the scan runs it emits `scanning` snapshots with a
+  /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track
+  /// (`ready`, `failed`, or `unavailable` for sources that can only be
+  /// measured during playback, such as adaptive or live streams; use
+  /// [loudnessMeter] there), and `null` on the track-change boundary so
+  /// stale results clear.
   ///
   /// **Lazy** — the native scan runs only while a listener is
   /// attached; an idle stream costs nothing.

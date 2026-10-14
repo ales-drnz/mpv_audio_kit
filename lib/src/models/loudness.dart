@@ -8,8 +8,11 @@ import '../internals/unset_sentinel.dart';
 ///
 /// Emitted on `PlayerStream.loudnessMeter` while the `ebur128` audio effect is
 /// enabled with its `metadata` option on — the meter runs inside the audio
-/// chain and the player polls its per-frame measurements. Each field is
-/// `null` until the corresponding window has accumulated enough audio.
+/// chain and the player polls its per-frame measurements.
+///
+/// [momentary] and [shortTerm] are `null` until their window has filled,
+/// and also during digital silence, where the meter reports minus
+/// infinity. [integrated] starts at -70 LUFS and [range] at 0 LU.
 class Loudness {
   /// Momentary loudness (400 ms window), in LUFS.
   final double? momentary;

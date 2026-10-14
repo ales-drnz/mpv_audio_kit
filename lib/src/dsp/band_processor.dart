@@ -29,6 +29,10 @@ import '../types/settings/spectrum_settings.dart';
 /// engine and scratch buffers are not built until [process] is called
 /// for the first time, so an unused processor costs no memory.
 ///
+/// A tap frame holds the latest 4096 frames per channel, so frames
+/// overlap and [process] analyzes part of the audio again on each call,
+/// as the player's own [PlayerStream.fft] does.
+///
 /// Example — bind a per-filter editor's input/output curves to the
 /// player's live spectrum settings:
 ///

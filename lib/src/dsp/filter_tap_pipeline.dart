@@ -32,8 +32,8 @@ const int _kMaxActiveTaps = 8;
 ///      `analyzer-taps`. The C side activates the matching hook in
 ///      `user_wrapper_process` only for those labels, at most
 ///      [_kMaxActiveTaps] of them.
-///   2. polls `audio-tap-frames` at a configurable cadence while at
-///      least one stream has a listener; parses the MAP_NODE into
+///   2. polls `audio-tap-frames` every 33 ms while at least one
+///      stream has a listener; parses the MAP_NODE into
 ///      per-stage [PcmFrame]s and dispatches them on broadcast
 ///      controllers keyed by `(label, side)`.
 ///
