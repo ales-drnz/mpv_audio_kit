@@ -10,9 +10,13 @@ import 'dart:io';
 
 /// An answer that another attempt cannot change (a 404, a 403).
 class DownloadRefused implements Exception {
+  /// The refusal of [url] with [statusCode].
   DownloadRefused(this.statusCode, this.url);
 
+  /// The HTTP status of the answer.
   final int statusCode;
+
+  /// The URL that was refused.
   final String url;
 
   @override

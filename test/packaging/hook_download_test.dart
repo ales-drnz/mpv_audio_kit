@@ -9,9 +9,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:mpv_audio_kit/src/internals/hook_download.dart';
 import 'package:test/test.dart';
-
-import '../../hook/download.dart';
 
 void main() {
   late HttpServer server;

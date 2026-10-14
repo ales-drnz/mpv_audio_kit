@@ -27,7 +27,7 @@ import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
-import 'download.dart';
+import 'package:mpv_audio_kit/src/internals/hook_download.dart';
 
 const _release = 'libmpv-r17';
 const _baseUrl =
