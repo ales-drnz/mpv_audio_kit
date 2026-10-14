@@ -67,7 +67,16 @@ enum PcmSourceState {
 ///
 /// Each source is read once: it cannot be played again, and seeking is
 /// not possible (a seek on it does nothing). Its length is not known in
-/// advance: `state.duration` follows the audio received so far.
+/// advance: `state.duration` follows the audio received so far. mpv
+/// counts it by the start of the last packet, so it can end a few tens
+/// of ms short of the audio fed, and the position can pass it at the end.
+///
+/// Playback starts once the audio output buffer is full: with input at
+/// real time, about that buffer (200 ms, 100 ms with `lowLatency`) less
+/// the first chunk after it arrives, plus the device's own latency.
+/// Input faster than real time starts sooner. When the input runs dry
+/// the output stops and restarts only with its buffer full again: each
+/// gap adds up to a buffer of delay that stays for the rest of the entry.
 /// [Media.isPcmStream] tells a live source from a file.
 final class PcmSource {
   PcmSource._(this.format, this.maxBuffered, this._native, this._id)
@@ -80,9 +89,8 @@ final class PcmSource {
   /// refuses audio: past it, chunks wait in Dart memory.
   ///
   /// [lowLatency] halves the audio output buffer for this entry (100 ms in
-  /// place of 200 ms): playback starts about 0.13 s after the first chunk
-  /// in place of about 0.2 s, with less margin against a late chunk or a
-  /// busy device.
+  /// place of 200 ms): playback starts about 0.1 s sooner after the first
+  /// chunk, with less margin against a late chunk or a busy device.
   ///
   /// Throws [ArgumentError] when [maxBuffered] holds more than 1 GiB of
   /// [format]. Call `MpvAudioKit.ensureInitialized` first, as for a

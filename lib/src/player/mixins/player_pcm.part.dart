@@ -14,8 +14,8 @@ mixin _PcmModule on _PlayerBase {
   /// Feed the returned source and [PcmSource.close] it when the input
   /// ends: the entry then ends normally after the last sample.
   ///
-  /// Playback starts a fraction of a second after the first chunk, as
-  /// soon as mpv has read its first block of audio. [maxBuffered] and
+  /// Playback starts a fraction of a second after the first chunk, once
+  /// the audio output buffer is full (see [PcmSource]). [maxBuffered] and
   /// [lowLatency] are those of [PcmSource.create], [extras] that of
   /// [PcmSource.toMedia].
   ///
