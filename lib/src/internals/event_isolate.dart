@@ -19,7 +19,7 @@ part 'isolate_messages.dart';
 // ── Tunables ─────────────────────────────────────────────────────────────────
 
 /// Throttle window for the playback-clock properties. mpv emits one update
-/// per playloop iteration whose cadence is the audio output's buffer tick —
+/// per playloop iteration whose cadence is the audio output's buffer tick:
 /// measured ~11 Hz on macOS coreaudio (mpv 0.41), but AO-dependent and not
 /// guaranteed across platforms. ~33ms ≈ 30Hz is comfortably inside
 /// human-perception territory for a progress bar update and keeps the
@@ -73,20 +73,20 @@ const Set<String> _kEndOfContentTriggers = {
 /// isolate hands out.
 const int _kPauseObserverReplyId = 1 << 62;
 
-/// `mpv_wait_event` timeout — a BOUNDED floor in every build.
+/// `mpv_wait_event` timeout: a BOUNDED floor in every build.
 ///
 /// The Dart VM cannot interrupt an isolate parked in a blocking FFI call
 /// (dart-lang/sdk#46680): under an infinite `-1` timeout a `Player` left
-/// undisposed at process exit wedges `WaitForIsolateShutdown` forever — the
-/// macOS Dock-Quit hang — and Hot Restart's kill would hang too. A finite
+/// undisposed at process exit wedges `WaitForIsolateShutdown` forever (the
+/// macOS Dock-Quit hang), and Hot Restart's kill would hang too. A finite
 /// timeout guarantees the loop re-reads its stop flag, and the VM gets a
 /// safepoint, at least once per window even with zero cooperation.
 ///
-/// Product: `1.0` s — one cheap idle wakeup/sec. The graceful dispose path
+/// Product: `1.0` s, one cheap idle wakeup a second. The graceful dispose path
 /// unblocks the wait instantly via `mpv_wakeup` ([MpvEventIsolate.requestStop]),
 /// so this value is only the no-dispose floor, never the common-case latency.
 /// Debug: `0.1` s (unchanged) for snappy Hot Restart. It MUST stay finite in
-/// product — an infinite timeout reintroduces the quit hang.
+/// product: an infinite timeout reintroduces the quit hang.
 const double _kWaitEventTimeoutSeconds = bool.fromEnvironment('dart.vm.product')
     ? 1.0
     : 0.1;
@@ -160,7 +160,7 @@ void _isolateEntry(SendPort initialReplyPort) {
   Pointer<mpv.MpvHandle>? handle;
   mpv.MpvLibrary? lib;
 
-  // Per-isolate deduplication state — not shared across Player instances.
+  // Per-isolate deduplication state: not shared across Player instances.
   final cache = _PropertyCache();
 
   fromMain.listen((message) {
@@ -171,7 +171,7 @@ void _isolateEntry(SendPort initialReplyPort) {
           : null;
       final stopFlag = Pointer<Int32>.fromAddress(message.stopFlagAddress);
       try {
-        // The heavy FFI sequence runs here — off the main isolate so
+        // The heavy FFI sequence runs here: off the main isolate so
         // the host UI keeps rendering during cold start.
         lib = mpv.MpvLibrary.open(message.libraryPath);
         final h = lib!.mpvCreate();
@@ -221,12 +221,12 @@ void _isolateEntry(SendPort initialReplyPort) {
         fromMain.close();
         return;
       }
-      // Blocking call — returns when `_runEventLoop` breaks out of
+      // Blocking call: returns when `_runEventLoop` breaks out of
       // its loop: on the stop flag dispose() sets right after its `quit`
       // command (MpvEventIsolate.requestStop), or on MPV_EVENT_SHUTDOWN.
       _runEventLoop(lib!, handle!, toMain!, stopFlag, cache, wakeupCounter);
       // Drop the last live ReceivePort so the VM tears the isolate
-      // down naturally — this runs the per-isolate finalizers that
+      // down naturally: this runs the per-isolate finalizers that
       // release libmpv-side state loaded via `MpvLibrary.open`.
       // `Isolate.exit()` would skip those finalizers and leave
       // subsequent Player creations observing degraded process state.
@@ -252,7 +252,7 @@ void _runEventLoop(
 
     // Re-read the flag the instant the wait returns. `requestStop` sets the
     // flag THEN calls `mpv_wakeup`, so a wakeup-driven return lands here with
-    // the flag already `1` — this is the lost-wakeup-safe exit edge, and it
+    // the flag already `1`: this is the lost-wakeup-safe exit edge, and it
     // does not depend on mpv emitting `MPV_EVENT_SHUTDOWN`.
     if (stopFlag.value != 0) {
       break;
@@ -261,7 +261,7 @@ void _runEventLoop(
     final id = event.ref.eventId;
 
     // MPV_EVENT_NONE on a positive-timeout expiry, or on an `mpv_wakeup` with
-    // no pending event — nothing to dispatch, loop and re-check the flag.
+    // no pending event: nothing to dispatch, loop and re-check the flag.
     if (id == mpv.MpvEventId.mpvEventNone) {
       _flushTrailing(toMain, cache);
       continue;
@@ -314,7 +314,7 @@ void _dispatchEvent(
       // file-load boundary is exactly the window where the playloop can be
       // stuck for seconds initializing the audio output. This isolate is
       // allowed to wait; the main isolate is not. A failed payload read
-      // must never swallow the event itself — lifecycle, af resync and the
+      // must never swallow the event itself: lifecycle, af resync and the
       // waveform re-arm all ride it.
       MpvEventFileLoaded loaded;
       try {
@@ -382,7 +382,7 @@ void _dispatchEvent(
       dynamic value;
       if (error >= 0 && event.ref.data != nullptr) {
         // The payload (an mpv_event_property) is owned by the event and
-        // valid only until the next mpv_wait_event — decode (and copy)
+        // valid only until the next mpv_wait_event: decode (and copy)
         // before forwarding.
         value = _decodePropertyValue(
           event.ref.data.cast<mpv.MpvEventProperty>().ref,
@@ -477,9 +477,9 @@ bool _isLastEntry(
 }
 
 /// Reads the file-load payload (path, playlist, position, chapters,
-/// embedded cover) for [MpvEventFileLoaded]. A malformed / oversized
+/// embedded cover) for [MpvEventFileLoaded]. A malformed or oversized
 /// embedded picture must not abort the rest of the payload, so the cover
-/// read is guarded on its own — the event then carries a `null` cover and
+/// read is guarded on its own: the event then carries a `null` cover and
 /// consumers clear stale artwork.
 MpvEventFileLoaded _readFileLoadedEvent(
   mpv.MpvLibrary lib,
@@ -508,9 +508,10 @@ MpvEventFileLoaded _readFileLoadedEvent(
 }
 
 /// Reads the embedded cover art of the loaded file via the
-/// `embedded-cover-art-data` / `embedded-cover-art-mime` properties.
+/// `embedded-cover-art-data` and `embedded-cover-art-mime` properties.
 /// Returns `null` when the file has no embedded cover. The bytes are the
-/// original PNG / JPEG / … as embedded — no decode, no conversion — copied
+/// original PNG, JPEG or other format as embedded (no decode, no conversion),
+/// copied
 /// once out of mpv-owned memory into a transferable buffer.
 (TransferableTypedData, String)? _readEmbeddedCover(
   mpv.MpvLibrary lib,
@@ -548,7 +549,7 @@ MpvEventFileLoaded _readFileLoadedEvent(
 
 // ── Synchronous property readers (event-isolate side only) ──────────────────
 //
-// These block the calling thread until the playloop serves the request —
+// These block the calling thread until the playloop serves the request:
 // safe here, never on the main isolate.
 
 String? _getPropString(
@@ -636,7 +637,7 @@ dynamic _getPropNode(
       ),
     );
     if (rc < 0) return null;
-    // decodeMpvNode copies every borrowed string/byte buffer, so the node
+    // decodeMpvNode copies every borrowed string and byte buffer, so the node
     // contents can be freed before the tree is returned.
     return decodeMpvNode(node.ref);
   } finally {
@@ -771,7 +772,7 @@ void _forwardValue(
   }
 
   if (format == mpv.MpvFormat.mpvFormatNode) {
-    // Dedup by structural equality against the previously decoded tree —
+    // Dedup by structural equality against the previously decoded tree:
     // early-out on the first difference, no per-event string allocation.
     // High-churn nodes (`demuxer-cache-state` during streaming) differ on
     // nearly every emission, so the compare usually exits within a few
@@ -880,7 +881,7 @@ void _rereadUnavailable(
 }
 
 /// Decodes the value of an `mpv_event_property` payload into the same Dart
-/// shapes the property-change pipeline produces (no dedup / throttle —
+/// shapes the property-change pipeline produces (no dedup or throttle:
 /// replies are one-shot). Returns `null` for `data == nullptr` or an
 /// unobserved format.
 dynamic _decodePropertyValue(mpv.MpvEventProperty prop) {
@@ -910,7 +911,7 @@ void _dispatchLog(SendPort toMain, mpv.MpvEventLogMessage msg) {
   toMain.send(MpvEventLog(prefix, level, text));
 }
 
-// ── String / node decoding ────────────────────────────────────────────────────
+// ── String and node decoding ──────────────────────────────────────────────────
 
 /// Decodes a NUL-terminated mpv-owned C string, replacing invalid UTF-8
 /// sequences with U+FFFD instead of throwing.
@@ -987,7 +988,7 @@ dynamic decodeMpvNode(mpv.MpvNode node, {bool transferBytes = false}) {
 }
 
 /// Structural equality over decoded `mpv_node` trees
-/// (`Map<String, dynamic>` / `List` / scalars / [Uint8List]).
+/// (`Map<String, dynamic>`, `List`, scalars or [Uint8List]).
 bool _deepNodeEquals(dynamic a, dynamic b) {
   if (identical(a, b)) return true;
   if (a is Map) {
@@ -1039,7 +1040,7 @@ class MpvEventIsolate {
   // arrive between isolate-start and the main-side listen registration.
   // Using a broadcast controller dropped the initial PROPERTY_CHANGE
   // burst (mpv emits one per `mpv_observe_property` call right after
-  // the isolate begins polling — ~100 properties), leaving downstream
+  // the isolate begins polling: ~100 properties), leaving downstream
   // state partially populated.
   final _events = StreamController<MpvIsolateEvent>();
 
@@ -1104,7 +1105,7 @@ class MpvEventIsolate {
       }
       // Drop messages that arrive after `stop()` has closed the
       // controller. Without this guard the queued message would throw
-      // "Bad state: Cannot add new events after calling close" —
+      // "Bad state: Cannot add new events after calling close",
       // visible only when many Player instances are created and
       // disposed in rapid succession.
       if (msg is MpvIsolateEvent && !_events.isClosed) {
@@ -1147,7 +1148,7 @@ class MpvEventIsolate {
   ///
   /// Returns `true` iff the exit was confirmed within [_kIsolateExitTimeout].
   /// On `false` the worker is NOT proven to have left `mpv_wait_event`, so the
-  /// caller MUST NOT `mpv_terminate_destroy` the handle — freeing it while the
+  /// caller MUST NOT `mpv_terminate_destroy` the handle: freeing it while the
   /// isolate is still inside the syscall reads freed memory and SIGSEGVs at
   /// teardown. [Isolate.kill] is never used for the same reason (killing
   /// mid-FFI to libmpv is a non-deterministic crash).
@@ -1157,8 +1158,8 @@ class MpvEventIsolate {
   /// leaked (4 bytes, bounded by live Player count, reclaimed at process exit).
   Future<bool> stop() async {
     // Publish the stop intent unconditionally: callers that have no
-    // (lib, handle) pair for [requestStop] — teardown before bring-up
-    // completed — still need the worker's bounded wait to observe the
+    // (lib, handle) pair for [requestStop] (teardown before bring-up
+    // completed) still need the worker's bounded wait to observe the
     // flag and exit on its next timeout expiry.
     _stopFlag?.value = 1;
     _fromIsolate?.close();
@@ -1183,7 +1184,7 @@ class MpvEventIsolate {
 
     // The exit listener was armed in `start()` before the isolate could
     // possibly tear down. The 2 s timeout is a safety net for a pathologically
-    // stuck libmpv — clean exits land in single-digit ms via `mpv_wakeup`.
+    // stuck libmpv: clean exits land in single-digit ms via `mpv_wakeup`.
     try {
       await exitPort.first.timeout(_kIsolateExitTimeout);
       _freeStopFlag();

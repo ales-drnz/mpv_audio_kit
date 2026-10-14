@@ -19,18 +19,18 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 /// buffer and surfaces every still-tracked handle to the caller's
 /// cleanup callback.
 ///
-/// **Production no-op** — guarded by `dart.vm.product`. Hot-Restart
+/// **Production no-op**: guarded by `dart.vm.product`. Hot-Restart
 /// is a development concern; in product builds the parent process
 /// dies with the VM and there are no orphans to rescue.
 ///
-/// **Single-isolate** — [add] / [remove] are not synchronized across
+/// **Single-isolate**: [add] and [remove] are not synchronized across
 /// isolates that share a pid. The test suite disables the tracker
 /// via `MpvAudioKit.ensureInitialized(hotRestartCleanup: false)`.
 class OrphanHandleTracker {
   static const int _kBufferSize = 256;
   // Magic cookie stored alongside every address. Hot-Restart cleanup
   // verifies this before calling into libmpv with a stored address so a
-  // pid-reuse / file-corruption scenario can't trick us into invoking FFI
+  // pid-reuse or file-corruption scenario can't trick us into invoking FFI
   // on a pointer that wasn't ours. Slots are laid out as
   // [cookie₀, addr₀, cookie₁, addr₁, …] in the underlying buffer.
   static const int _kCookie = 0x4D414B5F4D5056AB; // "MAK_MPV\xab"
@@ -77,7 +77,7 @@ class OrphanHandleTracker {
     // The cookie is 64-bit; on a 32-bit IntPtr host the high half would
     // silently truncate and any non-zero residual could pose as a valid
     // pointer in the leak buffer. Skip the tracker entirely on 32-bit
-    // platforms — the targeted desktop / mobile builds are all 64-bit
+    // platforms: the targeted desktop and mobile builds are all 64-bit
     // today.
     if (sizeOf<IntPtr>() != 8) {
       debugLog(
@@ -114,7 +114,7 @@ class OrphanHandleTracker {
         final addrRef = _buffer + (i * _kSlotStride + 1);
         final cookieVal = cookieRef.value;
         final refAddr = addrRef.value;
-        // Skip slots that lack the magic cookie — either empty (cookie=0)
+        // Skip slots that lack the magic cookie: either empty (cookie=0)
         // or filled by something other than us (pid reuse hitting the
         // same buffer address). This is the load-bearing safety check
         // against handing libmpv a dangling pointer.
@@ -144,7 +144,7 @@ class OrphanHandleTracker {
   /// lifetime of the host machine.
   ///
   /// Safe under `flutter test` because the harness disables this tracker
-  /// (`hotRestartCleanup: false`), so the sweep never runs in CI / test
+  /// (`hotRestartCleanup: false`), so the sweep never runs in CI or test
   /// processes that share a pid namespace.
   void _sweepStaleSentinelFiles() {
     try {
@@ -194,8 +194,8 @@ class OrphanHandleTracker {
   /// Records [handle] in the first free slot.
   ///
   /// Silently drops the handle when the buffer is full and emits a
-  /// stderr warning. Hot-Restart cleanup will then miss this handle
-  /// — on Windows that means a WASAPI exclusive-mode device may
+  /// stderr warning. Hot-Restart cleanup will then miss this handle:
+  /// on Windows that means a WASAPI exclusive-mode device may
   /// stay locked until the parent process terminates.
   void add(Pointer<MpvHandle> handle) {
     if (!_isDebug || !_initialized) {
@@ -224,7 +224,7 @@ class OrphanHandleTracker {
   }
 
   /// Clears [handle] from the buffer when [Player.dispose] runs
-  /// normally — keeps the orphan list accurate so the next
+  /// normally: keeps the orphan list accurate so the next
   /// Hot-Restart only sees handles that actually leaked.
   void remove(Pointer<MpvHandle> handle) {
     if (!_isDebug || !_initialized) {

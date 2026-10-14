@@ -3,8 +3,8 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// Internal URI normalizer invoked by `Player.open()` / `Player.openAll()` /
-// `Player.openPlaylistFile()` / `Player.add()` / `Player.replace()` /
+// Internal URI normalizer invoked by `Player.open()`, `Player.openAll()`,
+// `Player.openPlaylistFile()`, `Player.add()`, `Player.replace()` and
 // `Player.addAudioTrack()` for every media URI before it reaches mpv.
 // Translates host-platform schemes that libmpv does not understand into
 // something it does:
@@ -203,7 +203,7 @@ Future<Directory> _assetDirectory() async {
 
 Future<String> _copyAssetToCache(String uri) async {
   final cached = _assetCache[uri];
-  // Re-check the file on every hit. macOS / Linux may evict /tmp between
+  // Re-check the file on every hit. macOS and Linux may evict /tmp between
   // sessions or under disk pressure; without this guard a cached path
   // outlives its file and `loadfile` fails opaquely. The miss path
   // re-extracts the asset.
@@ -229,7 +229,7 @@ Future<String> _doCopyAsset(String uri) async {
     final safeName = assetPath
         .replaceAll(Platform.pathSeparator, '_')
         .replaceAll('/', '_');
-    // Flattening alone is ambiguous — `a/b.mp3` and `a_b.mp3` collapse to
+    // Flattening alone is ambiguous: `a/b.mp3` and `a_b.mp3` collapse to
     // the same name, and the second extraction would overwrite a file mpv
     // may still be streaming. A hash of the ORIGINAL path disambiguates.
     final dir = await _assetDirectory();
@@ -266,7 +266,7 @@ Future<String> _doCopyAsset(String uri) async {
     return file.path;
   } finally {
     // `remove` returns the in-flight Future we are currently completing;
-    // discard it — awaiting our own pending Future here would deadlock.
+    // discard it: awaiting our own pending Future here would deadlock.
     unawaited(_assetInflight.remove(uri));
   }
 }

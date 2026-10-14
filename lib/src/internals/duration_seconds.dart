@@ -8,7 +8,7 @@
 /// `time-pos`, `duration`, `demuxer-cache-time`).
 ///
 /// Centralised here so the conversion strategy is defined once. The current
-/// strategy is **microsecond-rounded**: convert to/from `Duration` via
+/// strategy is **microsecond-rounded**: convert to and from `Duration` via
 /// `inMicroseconds`, divide by `1e6`. This preserves sub-millisecond
 /// precision for properties like `audio-delay` (which can be ~5ms) while
 /// staying well within IEEE-754 double precision for the longest values

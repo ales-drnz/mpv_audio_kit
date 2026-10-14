@@ -10,22 +10,22 @@ part of 'event_isolate.dart';
 /// isolate after init: one subclass per mpv event the player consumes.
 sealed class MpvIsolateEvent {}
 
-/// mpv fired MPV_EVENT_START_FILE — a `loadfile` began opening the
+/// mpv fired MPV_EVENT_START_FILE: a `loadfile` began opening the
 /// next entry (fires even if the open ultimately fails).
 class MpvEventStartFile extends MpvIsolateEvent {}
 
-/// mpv fired MPV_EVENT_FILE_LOADED — the current file is open and its
-/// metadata / track list is available.
+/// mpv fired MPV_EVENT_FILE_LOADED: the current file is open and its
+/// metadata and track list are available.
 ///
 /// Carries every value the player needs at the file-load boundary, read by
 /// the event isolate right after the event is dequeued. The libmpv client
-/// API is synchronous — a property read queues on the core's dispatch and
+/// API is synchronous: a property read queues on the core's dispatch and
 /// waits for the playloop to serve it, which can take seconds while an
-/// audio output initializes (e.g. CoreAudio waking a Bluetooth/AirPlay
+/// audio output initializes (e.g. CoreAudio waking a Bluetooth or AirPlay
 /// device). Riding the payload keeps that wait off the main isolate.
 class MpvEventFileLoaded extends MpvIsolateEvent {
-  /// The playlist entry `path` — keys the waveform / loudness-scan reset
-  /// so internal reloads (EDL / gapless / track reinit) of the same source
+  /// The playlist entry `path`: keys the waveform and loudness scan reset
+  /// so internal reloads (EDL, gapless, track reinit) of the same source
   /// don't discard a completed envelope, and is applied to the state before
   /// the cover and waveform resets go out. `null` when the read failed.
   final String? path;
@@ -44,7 +44,7 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
   /// read failed (no update is applied then, matching a failed poll).
   final int? chapterIndex;
 
-  /// Freshly read `chapter-list` node tree. Read on EVERY file load —
+  /// Freshly read `chapter-list` node tree. Read on EVERY file load:
   /// mpv's observer queue dedups on `equal_mpv_value` (see
   /// `player/client.c::send_client_property_changes`), so two consecutive
   /// tracks with structurally-equal chapter lists (e.g. audiobook parts
@@ -55,7 +55,7 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
 
   /// Embedded cover art bytes, copied out of mpv-owned memory into a
   /// transferable buffer (zero-copy to materialize on the main isolate).
-  /// `null` when the file has no embedded cover or the read failed —
+  /// `null` when the file has no embedded cover or the read failed:
   /// the player emits `null` so consumers clear stale artwork.
   final TransferableTypedData? coverData;
 
@@ -75,7 +75,7 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
   });
 }
 
-/// mpv fired MPV_EVENT_SEEK — a seek request was accepted and playback
+/// mpv fired MPV_EVENT_SEEK: a seek request was accepted and playback
 /// has been suspended while mpv reinitializes its pipeline.
 class MpvEventPlaybackSeek extends MpvIsolateEvent {}
 
@@ -83,13 +83,13 @@ class MpvEventPlaybackSeek extends MpvIsolateEvent {}
 /// track switch, a format change or an output reopen.
 class MpvEventAudioReconfig extends MpvIsolateEvent {}
 
-/// mpv fired MPV_EVENT_PLAYBACK_RESTART — the seek (or file load) has
+/// mpv fired MPV_EVENT_PLAYBACK_RESTART: the seek (or file load) has
 /// finished reinitializing and playback is about to resume.
 /// This is the authoritative "seek request is finished" signal.
 class MpvEventPlaybackRestart extends MpvIsolateEvent {
   /// `time-pos` in seconds where playback restarted, read by the event
   /// isolate at dispatch time so the landing position reaches the stream
-  /// ahead of any throttled `time-pos` observer event — without a
+  /// ahead of any throttled `time-pos` observer event: without a
   /// synchronous read on the main isolate (which would stall behind a
   /// busy playloop, e.g. during audio-output init). `null` when
   /// unavailable.
@@ -99,7 +99,7 @@ class MpvEventPlaybackRestart extends MpvIsolateEvent {
   MpvEventPlaybackRestart({this.timePos});
 }
 
-/// mpv fired MPV_EVENT_END_FILE — playback of the current entry ended.
+/// mpv fired MPV_EVENT_END_FILE: playback of the current entry ended.
 class MpvEndFileEvent extends MpvIsolateEvent {
   /// The `MPV_END_FILE_REASON_*` code (EOF, stop, error, redirect, …).
   final int reason;
@@ -147,7 +147,7 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   });
 }
 
-/// mpv fired MPV_EVENT_SHUTDOWN — the core is tearing down and the
+/// mpv fired MPV_EVENT_SHUTDOWN: the core is tearing down and the
 /// event loop is about to exit.
 class MpvEventShutdown extends MpvIsolateEvent {}
 
@@ -169,7 +169,7 @@ class MpvEventPropertyInt extends MpvIsolateEvent {
   /// The mpv property name that changed.
   final String name;
 
-  /// The new value (a flag is `0` / `1`).
+  /// The new value (a flag is `0` or `1`).
   final int value;
 
   /// Carries the changed property [name] and its new int [value].
@@ -245,7 +245,7 @@ class MpvEventLog extends MpvIsolateEvent {
 }
 
 /// Outcome of an async property write or command
-/// (MPV_EVENT_SET_PROPERTY_REPLY / MPV_EVENT_COMMAND_REPLY). The main
+/// (MPV_EVENT_SET_PROPERTY_REPLY, MPV_EVENT_COMMAND_REPLY). The main
 /// isolate matches [userdata] against its pending-reply map and completes
 /// the corresponding `Future` with [error].
 class MpvEventReply extends MpvIsolateEvent {
@@ -272,8 +272,9 @@ class MpvEventGetReply extends MpvIsolateEvent {
   /// The mpv error code of the read; `0` on success.
   final int error;
 
-  /// The decoded value — same Dart shapes as [MpvEventPropertyNode.value]
-  /// — or `null` when [error] is negative or the format carried no data.
+  /// The decoded value, in the same Dart shapes as
+  /// [MpvEventPropertyNode.value], or `null` when [error] is negative or
+  /// the format carried no data.
   final dynamic value;
 
   /// Carries the reply's [userdata] tag, [error] code and decoded [value].
