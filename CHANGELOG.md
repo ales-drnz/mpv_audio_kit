@@ -14,7 +14,6 @@
 
 ### Fixed
 - Disposing a player turns off the waveform and loudness scan it armed, so the next player no longer decodes every file.
-- The loudness scan reaches its result when the waveform's last listener leaves during a scan.
 - A NaN or infinite sample no longer leaves the spectrum bands stuck at NaN, and an emit interval under 8 ms no longer polls without pause.
 - `play()` with nothing loaded, or at the end of a source that cannot seek back, leaves `playWhenReady` off, and in the last moments of a track it no longer restarts it.
 - A failed `open`, `openAll` or `openPlaylistFile` puts back the previous play intent, and `play()` or `pause()` right after one that is not awaited decides whether the new file plays.
