@@ -28,7 +28,7 @@ import 'player_configuration.dart';
 import 'player_state.dart';
 import 'player_stream.dart';
 
-/// Public surface of the [Player] — every method, getter, and stream a
+/// Public surface of the [Player]: every method, getter, and stream a
 /// consumer interacts with.
 ///
 /// Exists so test code can mock the player cleanly:
@@ -39,7 +39,7 @@ import 'player_stream.dart';
 ///
 /// Without this interface a mock would have to extend `Player` itself,
 /// which drags in the FFI handle, the event isolate, and the `_PlayerBase`
-/// initialization — none of that is mockable in a unit test.
+/// initialization. None of that is mockable in a unit test.
 ///
 /// `Player implements PlayerApi`. Production code that takes a `Player`
 /// argument should consider taking a `PlayerApi` instead unless it needs
@@ -74,9 +74,9 @@ abstract interface class PlayerApi {
   /// multi-item counterpart of [open].
   Future<void> openAll(List<Media> medias, {bool? play, int index = 0});
 
-  /// Loads a playlist file or URL (`.m3u` / `.m3u8` / `.pls` / `.cue`) as the
+  /// Loads a playlist file or URL (`.m3u`, `.m3u8`, `.pls` or `.cue`) as the
   /// new playlist via mpv's `loadlist`, expanding its entries into the
-  /// playlist — the path for internet-radio station lists and remote `.m3u`
+  /// playlist: the path for internet-radio station lists and remote `.m3u`
   /// playlists. Contrast with [open], which loads a single entry. See
   /// [Player.openPlaylistFile] for the per-[Media] option caveats.
   Future<void> openPlaylistFile(Media playlist, {bool? play});
@@ -109,7 +109,7 @@ abstract interface class PlayerApi {
   /// playhead. [exact] forces a sample-accurate (slower) seek.
   Future<void> seek(Duration position, {bool relative, bool exact});
 
-  /// Seeks by percentage of the file duration (0–100). See
+  /// Seeks by percentage of the file duration (0 to 100). See
   /// [Player.seekToPercent].
   Future<void> seekToPercent(double percent, {bool relative, bool exact});
 
@@ -120,9 +120,9 @@ abstract interface class PlayerApi {
   /// Jumps to the 0-based chapter [index] in the current file.
   Future<void> setChapter(int index);
 
-  /// Replaces the current file's chapter markers with [chapters] — an
+  /// Replaces the current file's chapter markers with [chapters], an
   /// external-chapters injection for sources whose container carries none
-  /// (e.g. a resolved YouTube / `googlevideo` audio stream). Writes mpv's
+  /// (e.g. a resolved YouTube or `googlevideo` audio stream). Writes mpv's
   /// `chapter-list` directly, so [PlayerStream.chapters] reflect them and
   /// [setChapter] navigates them. Call after the file is loaded; an empty
   /// list clears them.
@@ -252,7 +252,7 @@ abstract interface class PlayerApi {
   /// Opens the audio device in exclusive mode when [exclusive] is true.
   Future<void> setAudioExclusive(bool exclusive);
 
-  /// Reports a "music" media role to the OS audio server (PulseAudio /
+  /// Reports a "music" media role to the OS audio server (PulseAudio or
   /// PipeWire) when [enable] is true (mpv's `audio-set-media-role`).
   Future<void> setAudioMediaRole(bool enable);
 
@@ -280,7 +280,7 @@ abstract interface class PlayerApi {
   /// keeps running.
   Future<void> reloadAudio();
 
-  /// Re-scans sidecar external files (auto-loaded audio / cover art) for the
+  /// Re-scans sidecar external files (auto-loaded audio or cover art) for the
   /// current file (mpv's `rescan-external-files`). See
   /// [Player.rescanExternalFiles].
   Future<void> rescanExternalFiles({bool keepSelection});
@@ -315,7 +315,7 @@ abstract interface class PlayerApi {
   /// to let mpv auto-probe the best backend (the default).
   Future<void> setAudioDriver(String driver);
 
-  /// Applies the spectrum / PCM pipeline configuration, synchronously:
+  /// Applies the spectrum and PCM pipeline configuration, synchronously:
   /// it is in [PlayerState.spectrum] when the call returns.
   void setSpectrum(SpectrumSettings settings);
 
@@ -323,7 +323,7 @@ abstract interface class PlayerApi {
   /// [PlayerState.spectrum].
   void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper);
 
-  // ── Cache / network ────────────────────────────────────────────────
+  // ── Cache and network ──────────────────────────────────────────────
 
   /// Applies the demuxer cache configuration atomically.
   Future<void> setCache(CacheSettings settings);
@@ -363,8 +363,8 @@ abstract interface class PlayerApi {
 
   // ── Media session ──────────────────────────────────────────────────
 
-  /// Publishes the [Player] to the OS media session (lockscreen / SMTC
-  /// / MPRIS), wiring up Bluetooth AVRCP, headset buttons, Siri /
+  /// Publishes the [Player] to the OS media session (lockscreen, SMTC
+  /// or MPRIS), wiring up Bluetooth AVRCP, headset buttons, Siri or
   /// Google Assistant, and the platform's audio-session lifecycle per
   /// [MediaSession.interruptionPolicy].
   ///
@@ -376,7 +376,7 @@ abstract interface class PlayerApi {
   /// Incoming OS commands (play/pause from the lockscreen, next track
   /// from a Bluetooth headset, …) are auto-applied to this [Player]
   /// and also surfaced on [PlayerStream.mediaSessionCommands] for
-  /// analytics / interception.
+  /// analytics or interception.
   ///
   /// `dispose()` automatically calls `setMediaSession(null)` before
   /// tearing down libmpv, so the OS lockscreen never holds a stale
@@ -394,10 +394,10 @@ abstract interface class PlayerApi {
   /// gated operation.
   Future<void> continueHook(int id);
 
-  /// Installs a [SourceResolver] — the official callback for resolving or
+  /// Installs a [SourceResolver], the official callback for resolving or
   /// refreshing a playback URL right before each track opens (and once
   /// more after a failed open, with [SourceResolveRequest.isRetry] set),
-  /// driven internally by the `on_load` / `on_load_fail` hooks. Return
+  /// driven internally by the `on_load` and `on_load_fail` hooks. Return
   /// `null` to keep the current URL; pass `null` to uninstall. [timeout]
   /// caps a hung resolver (default 15s, `null` disables).
   Future<void> setSourceResolver(
@@ -411,8 +411,8 @@ abstract interface class PlayerApi {
   /// unavailable. Escape hatch for properties without a typed accessor.
   Future<String?> getRawProperty(String name);
 
-  /// Reads an arbitrary mpv property as a decoded node tree (maps / lists /
-  /// scalars / byte arrays); `null` if unset or unavailable. The structured
+  /// Reads an arbitrary mpv property as a decoded node tree (maps, lists,
+  /// scalars or byte arrays); `null` if unset or unavailable. The structured
   /// counterpart of [getRawProperty] for properties like `track-list`.
   Future<Object?> getRawPropertyNode(String name);
 

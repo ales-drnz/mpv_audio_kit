@@ -30,9 +30,9 @@ const _kEmptyPlaylist = Playlist.empty;
 const _kAutoDevice = Device(name: 'auto', description: 'Auto');
 const _kDefaultDevices = <Device>[_kAutoDevice];
 
-// Collection equality helpers — kept inline to avoid a transitive
+// Collection equality helpers, kept inline to avoid a transitive
 // `package:collection` dependency. PlayerState only carries small
-// Set / Map / List<MpvTrack | Chapter | Device | Media> fields, so a
+// Set, Map and List<MpvTrack | Chapter | Device | Media> fields, so a
 // hand-rolled compare is plenty.
 bool _setEq<T>(Set<T> a, Set<T> b) {
   if (identical(a, b)) return true;
@@ -72,14 +72,14 @@ final class PlayerState {
   final Playlist playlist;
 
   /// Whether the player is currently producing output (not paused, not
-  /// buffering, not mid-seek). Mirrors mpv's `core-idle` (inverted) —
+  /// buffering, not mid-seek). Mirrors mpv's `core-idle` (inverted):
   /// the *actual-output* axis. It toggles transiently during seeks and
   /// buffering; for a stable play/pause indicator bind to [playWhenReady]
   /// instead.
   final bool playing;
 
-  /// User intent to play — the play/pause axis, set by [Player.play] /
-  /// [Player.pause] / [Player.open] / [Player.stop] (and released at the
+  /// User intent to play: the play/pause axis, set by [Player.play],
+  /// [Player.pause], [Player.open] and [Player.stop] (and released at the
   /// natural end of content). Unlike [playing], it does NOT flip during a
   /// seek or while buffering, so it is the correct signal to drive a
   /// play/pause button (including the OS media-session control). "Actually
@@ -92,7 +92,7 @@ final class PlayerState {
   /// entry, where the shipped `keep-open` policy makes mpv park paused on
   /// the last frame. It stays `false` between playlist entries and while
   /// `loop-file` or `loop-playlist` is on. Resets to `false` when a new
-  /// track starts (a fresh [Player.open] / [Player.openAll] or a playlist
+  /// track starts (a fresh [Player.open] or [Player.openAll] or a playlist
   /// advance) or when you seek back into the track. Pairs with [eofReached]
   /// (the raw mpv signal); drives [MpvPlaybackState.completed].
   final bool completed;
@@ -104,7 +104,7 @@ final class PlayerState {
   /// stream, nothing loaded, or a track still loading.
   final Duration duration;
 
-  /// Current volume level, 0–100. Values above 100 amplify the signal.
+  /// Current volume level, 0 to 100. Values above 100 amplify the signal.
   final double volume;
 
   /// Playback speed multiplier. 1.0 = normal speed.
@@ -133,14 +133,14 @@ final class PlayerState {
   /// (the headroom ahead of [position]) against a target of your choice.
   final double bufferingPercentage;
 
-  /// Rich demuxer cache snapshot — buffered time ranges + network-cache flags
+  /// Rich demuxer cache snapshot: buffered time ranges + network-cache flags
   /// (mpv's `demuxer-cache-state`). Empty for directly-seekable local files;
   /// populated when streaming. Render `seekableRanges` as the downloaded
   /// regions of a network seek bar. Read live via
   /// [PlayerStream.demuxerCacheState].
   final DemuxerCacheState demuxerCacheState;
 
-  /// Current loop / repeat mode.
+  /// Current loop or repeat mode.
   final Loop loop;
 
   /// Whether the playlist is in shuffle mode.
@@ -214,7 +214,7 @@ final class PlayerState {
 
   /// Whether playback is paused because the network cache ran empty.
   ///
-  /// This is mpv's `paused-for-cache` property — the authoritative signal
+  /// This is mpv's `paused-for-cache` property, the authoritative signal
   /// for network buffering stalls. When `true`, mpv is waiting for data
   /// and will auto-resume once [CacheSettings.pauseWait] seconds are buffered.
   final bool pausedForCache;
@@ -256,7 +256,7 @@ final class PlayerState {
   final bool audioExclusive;
 
   /// Whether mpv tags the stream's media role as "music" on the OS audio
-  /// server (`audio-set-media-role`; PulseAudio / PipeWire). Set via
+  /// server (`audio-set-media-role`; PulseAudio or PipeWire). Set via
   /// [Player.setAudioMediaRole].
   final bool audioMediaRole;
 
@@ -291,8 +291,8 @@ final class PlayerState {
   final int audioSampleRate;
 
   /// Sample format requested from mpv. `Format.auto` defers to
-  /// mpv's pick; the other variants force a specific bit depth /
-  /// signedness / planarity. Setter: [Player.setAudioFormat].
+  /// mpv's pick; the other variants force a specific bit depth,
+  /// signedness or planarity. Setter: [Player.setAudioFormat].
   final Format audioFormat;
 
   /// Channel-layout request. Use the named static fields for the common
@@ -307,7 +307,7 @@ final class PlayerState {
   /// Audio output driver ('auto', 'coreaudio', 'pulse', 'alsa', 'wasapi', etc.).
   final String audioDriver;
 
-  /// Audio output lifecycle (`closed` / `initializing` / `active` /
+  /// Audio output lifecycle (`closed`, `initializing`, `active` or
   /// `failed`). See [AudioOutputState].
   final AudioOutputState audioOutputState;
 
@@ -325,7 +325,7 @@ final class PlayerState {
 
   /// Embedded cover art of the currently loaded track, or `null`
   /// when the file has no embedded picture. Refreshes on every
-  /// `Player.open()` / playlist transition. Read live via
+  /// `Player.open()` or playlist transition. Read live via
   /// [PlayerStream.coverArt].
   final CoverArt? coverArt;
 
@@ -349,7 +349,7 @@ final class PlayerState {
   /// Time remaining until the file ends, ignoring playback speed.
   final Duration timeRemaining;
 
-  /// Time remaining until the file ends, adjusted for playback speed —
+  /// Time remaining until the file ends, adjusted for playback speed:
   /// what the listener will actually wait. At 2.0x speed on a 60 s
   /// remaining file this is 30 s.
   final Duration playtimeRemaining;
@@ -363,8 +363,8 @@ final class PlayerState {
   /// often do not).
   final bool seekable;
 
-  /// Whether the stream is partially seekable — only some ranges are
-  /// reachable (typical for HLS / DASH when only a sliding window is
+  /// Whether the stream is partially seekable: only some ranges are
+  /// reachable (typical for HLS or DASH when only a sliding window is
   /// available).
   final bool partiallySeekable;
 
@@ -379,7 +379,7 @@ final class PlayerState {
   /// Total stream size in bytes. Zero when unknown (live streams).
   final int fileSize;
 
-  /// Buffered duration ahead of the playhead — `demuxer-cache-duration`.
+  /// Buffered duration ahead of the playhead (`demuxer-cache-duration`).
   /// Complements [buffer] (which is `demuxer-cache-time`, an absolute
   /// timestamp): [bufferDuration] is the headroom.
   final Duration bufferDuration;
@@ -394,7 +394,7 @@ final class PlayerState {
   /// is active or the file has none. Setter: [Player.setChapter].
   final int? currentChapter;
 
-  /// Chapters in the current file (audiobook / podcast markers).
+  /// Chapters in the current file (audiobook or podcast markers).
   /// Empty list when the file carries no chapter table.
   final List<Chapter> chapters;
 
@@ -416,8 +416,8 @@ final class PlayerState {
   /// Mirrors mpv's `stream-open-filename`.
   final String streamOpenFilename;
 
-  /// Source playlist of the current entry (`playlist-path`) — the original
-  /// `.m3u` / `.pls` path it was expanded from. Empty when the current file
+  /// Source playlist of the current entry (`playlist-path`): the original
+  /// `.m3u` or `.pls` path it was expanded from. Empty when the current file
   /// was not loaded via a playlist.
   final String playlistPath;
 
@@ -436,7 +436,7 @@ final class PlayerState {
 
   /// Remaining number of A-B loop repetitions in the active loop.
   /// `null` when no loop is active or when the count is infinite.
-  /// Read-only — mirrors mpv's `remaining-ab-loops`.
+  /// Read-only; mirrors mpv's `remaining-ab-loops`.
   final int? remainingAbLoops;
 
   /// Whether mpv is currently seeking. Useful as a UI gate to prevent
@@ -444,7 +444,7 @@ final class PlayerState {
   /// during a long network seek). Mirrors mpv's `seeking`.
   final bool seeking;
 
-  /// Playback position as a percentage of the file duration (0–100).
+  /// Playback position as a percentage of the file duration (0 to 100).
   /// Convenience for progress bar UIs that want a single normalized
   /// value rather than `position / duration` math. Mirrors mpv's
   /// `percent-pos`.
@@ -455,7 +455,7 @@ final class PlayerState {
   /// `cache-speed`.
   final double cacheSpeed;
 
-  /// Cache fill state as a percentage (0–100). Distinct from
+  /// Cache fill state as a percentage (0 to 100). Distinct from
   /// [bufferingPercentage] (which is computed against `cache.secs`):
   /// this is mpv's own assessment of how much of the configured cache
   /// is full. Mirrors mpv's `cache-buffering-state`. `0` when no
@@ -494,8 +494,8 @@ final class PlayerState {
   final String ffmpegVersion;
 
   /// Active OS media-session config + metadata override, or `null`
-  /// when no media session is currently published to the lockscreen /
-  /// SMTC / MPRIS. Set via [Player.setMediaSession]; pass `null` to
+  /// when no media session is currently published to the lockscreen,
+  /// SMTC or MPRIS. Set via [Player.setMediaSession]; pass `null` to
   /// disable. See [MediaSession] for the full field semantics.
   final MediaSession? mediaSession;
 

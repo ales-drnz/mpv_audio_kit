@@ -43,7 +43,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
   required void Function(AudioOutputState state) onAudioOutputState,
 }) {
   return <MpvPropertySpec<Object?>>[
-    // ── Playback / timing ────────────────────────────────────────────────
+    // ── Playback and timing ──────────────────────────────────────────────
     MpvPropertySpec<Duration>.double(
       name: 'time-pos',
       reactive: r.position,
@@ -76,7 +76,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     // observes it only for its end-of-content read and never forwards
     // it). The intent axis (`playWhenReady`) is driven purely by the
     // play/pause/open/stop call sites (plus the resets at idle and at the
-    // end of content) — the same "intent changes only on explicit method
+    // end of content): the same "intent changes only on explicit method
     // calls" model as ExoPlayer's `playWhenReady` and just_audio's
     // `playing`. Observing `pause` would mis-report intent at idle (mpv's
     // `pause` defaults to `no` even when nothing is loaded) and the initial
@@ -142,7 +142,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     // `audio-device` lives outside the registry: the description must
     // cross-reference `state.audioDevices` (parsed from
     // `audio-device-list`), and specs don't have access to that
-    // sibling state — the player's custom dispatcher does.
+    // sibling state; the player's custom dispatcher does.
 
     // ── Audio params (decoder side) ──────────────────────────────────────
     // Aggregate cell shared by three specs. The `audio-params` node
@@ -175,7 +175,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     // `codec` and `codecName` mirror mpv's two codec properties one-to-one;
     // their content varies across mpv builds (`mp3` vs `mp3float`, `aac`
     // vs `aac_lc`, and the short-vs-descriptive split is not stable
-    // either). Treat both fields as opaque hints — see the field-level
+    // either). Treat both fields as opaque hints; see the field-level
     // dartdoc on [AudioParams] for the matching contract.
     MpvPropertySpec<AudioParams>.string(
       name: 'audio-codec',
@@ -210,7 +210,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(gapless: v),
     ),
     // ── ReplayGain ───────────────────────────────────────────────────────
-    // Aggregate cell — same pattern as audio-params above: four specs
+    // Aggregate cell, same pattern as audio-params above: four specs
     // share one reactive that dedups on the full [ReplayGainSettings].
     MpvPropertySpec<ReplayGainSettings>.string(
       name: 'replaygain',
@@ -271,7 +271,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     ),
 
     // ── Cache ────────────────────────────────────────────────────────────
-    // Aggregate cell — six specs share one reactive that dedups on the
+    // Aggregate cell: six specs share one reactive that dedups on the
     // full [CacheSettings].
     MpvPropertySpec<CacheSettings>.string(
       name: 'cache',
@@ -310,7 +310,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(cache: v),
     ),
     // ── Demuxer ──────────────────────────────────────────────────────────
-    // Aggregate cell — three specs share one reactive that dedups on the
+    // Aggregate cell: three specs share one reactive that dedups on the
     // full [DemuxerSettings].
     MpvPropertySpec<DemuxerSettings>.int64(
       name: 'demuxer-max-bytes',
@@ -343,7 +343,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(tlsVerify: v),
     ),
     // `tls-ca-file` is deliberately unobserved: mpv never self-mutates it,
-    // so the optimistic write in `setTlsCaFile` is always the truth — an
+    // so the optimistic write in `setTlsCaFile` is always the truth; an
     // observer would add one more property subscription for zero new
     // information.
     // `hls-bitrate` also accepts a raw numeric rate; an observed number
@@ -380,7 +380,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(demuxerViaNetwork: v),
     ),
 
-    // ── Audio output / driver ────────────────────────────────────────────
+    // ── Audio output and driver ──────────────────────────────────────────
     MpvPropertySpec<Duration>.double(
       name: 'audio-buffer',
       reactive: r.audioBuffer,
@@ -462,8 +462,8 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       parse: _identityString,
       reduce: (v, s) => s.copyWith(audioClientName: v),
     ),
-    // mpv's `af` property is owned exclusively by `setAudioEffects` /
-    // `updateAudioEffects` — the effects chain (raw entries included, as
+    // mpv's `af` property is owned exclusively by `setAudioEffects` and
+    // `updateAudioEffects`: the effects chain (raw entries included, as
     // `RawAudioEffect` stages) is the only writer. Raw writes
     // to `af` are rejected by `setRawProperty`, so the property is not
     // observed here.
@@ -482,7 +482,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(coverArtAuto: v),
     ),
 
-    // `prefetch-state` is stream-only (no PlayerState field) —
+    // `prefetch-state` is stream-only (no PlayerState field),
     // exposed through `Player.stream.prefetchState`.
     MpvPropertySpec<PrefetchState>.string(
       name: 'prefetch-state',
@@ -490,7 +490,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       parse: (raw, _) => PrefetchState.fromMpv(raw),
       reduce: (_, s) => s,
     ),
-    // `prefetch-cache-duration` is stream-only (no PlayerState field) —
+    // `prefetch-cache-duration` is stream-only (no PlayerState field),
     // exposed through `Player.stream.prefetchCacheDuration`.
     MpvPropertySpec<Duration>.double(
       name: 'prefetch-cache-duration',
@@ -552,7 +552,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(partiallySeekable: v),
     ),
 
-    // ── Display / file metadata ──────────────────────────────────────────
+    // ── Display and file metadata ────────────────────────────────────────
     MpvPropertySpec<String>.string(
       name: 'media-title',
       reactive: r.mediaTitle,
@@ -601,7 +601,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reduce: (v, s) => s.copyWith(chapters: v),
     ),
 
-    // ── Path / URI introspection (read-only) ─────────────────────────────
+    // ── Path and URI introspection (read-only) ───────────────────────────
     MpvPropertySpec<String>.string(
       name: 'path',
       reactive: r.path,
@@ -634,8 +634,8 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     ),
 
     // ── A-B loop ────────────────────────────────────────────────────────
-    // mpv emits `ab-loop-a` / `-b` as STRING (`'no'` when disabled, a
-    // numeric string otherwise — `OPT_TIME` with `M_OPT_ALLOW_NO`).
+    // mpv emits `ab-loop-a` and `-b` as STRING (`'no'` when disabled, a
+    // numeric string otherwise: `OPT_TIME` with `M_OPT_ALLOW_NO`).
     MpvPropertySpec<Duration?>.string(
       name: 'ab-loop-a',
       reactive: r.abLoopA,
@@ -730,7 +730,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
 
 /// Decodes a `MPV_FORMAT_NODE_MAP` whose values are uniformly strings
 /// (mpv emits this shape for `chapter-metadata`, `vf-metadata`, …).
-/// Falls back to an empty map on a non-map payload — a single malformed
+/// Falls back to an empty map on a non-map payload; a single malformed
 /// emission shouldn't tear down the metadata view.
 Map<String, String> _parseStringMap(dynamic raw) {
   if (raw is! Map) return const <String, String>{};
@@ -748,7 +748,7 @@ bool _identityBool(bool raw, PlayerState _) => raw;
 String _identityString(String raw, PlayerState _) => raw;
 Duration _toDuration(double raw, PlayerState _) => secondsToDuration(raw);
 
-/// `ab-loop-a` / `ab-loop-b` parser. mpv emits `'no'` when disabled
+/// `ab-loop-a` and `ab-loop-b` parser. mpv emits `'no'` when disabled
 /// (the `M_OPT_ALLOW_NO` flag on `OPT_TIME`); any other value is a
 /// numeric string in seconds.
 Duration? _parseAbLoopTime(String raw) {

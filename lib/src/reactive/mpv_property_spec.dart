@@ -122,9 +122,9 @@ class MpvPropertySpec<T> {
   /// passed to [parse] is a Dart-native tree (`Map<String, dynamic>`,
   /// `List<dynamic>`, scalar, or `null`) decoded by the event isolate from
   /// mpv's `mpv_node` recursive struct. Use this for properties mpv exposes
-  /// natively as structured data — `playlist`, `metadata`,
+  /// natively as structured data (`playlist`, `metadata`,
   /// `audio-device-list`, `audio-params`, `audio-out-params`,
-  /// `demuxer-cache-state`, `track-list` — instead of observing them as
+  /// `demuxer-cache-state`, `track-list`) instead of observing them as
   /// strings and parsing JSON in Dart.
   factory MpvPropertySpec.node({
     required String name,
@@ -143,10 +143,11 @@ class MpvPropertySpec<T> {
     unavailable: unavailable,
   );
 
-  /// The mpv property name passed to `mpv_observe_property` / `mpv_set_property`.
+  /// The mpv property name passed to `mpv_observe_property` and
+  /// `mpv_set_property`.
   final String name;
 
-  /// One of the [MpvFormat] integer constants — selects the wire format used
+  /// One of the [MpvFormat] integer constants. Selects the wire format used
   /// by mpv when delivering value updates.
   final int format;
 
@@ -166,7 +167,7 @@ class MpvPropertySpec<T> {
   PlayerState reduce(T next, PlayerState state) => _reduce(next, state);
 
   /// Optional side-effect callback fired after [reactive] has been updated
-  /// and [reduce] has been applied. Use sparingly — keep cross-property
+  /// and [reduce] has been applied. Use sparingly; keep cross-property
   /// orchestration out of specs and in the player itself.
   void Function(T next)? get onChange => _onChange;
 
@@ -177,7 +178,7 @@ class MpvPropertySpec<T> {
   ///
   /// [commit] is invoked with the post-reduce state BEFORE [onChange] fires,
   /// so a callback that itself reads and mutates the player's committed
-  /// state — the `idle-active` hook that settles the transport — builds
+  /// state (the `idle-active` hook that settles the transport) builds
   /// on the reduced state instead of being overwritten by
   /// the caller assigning this method's return value afterwards. When
   /// [commit] is null, onChange runs against the pre-commit state and the

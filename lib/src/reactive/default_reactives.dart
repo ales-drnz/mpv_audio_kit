@@ -40,12 +40,12 @@ class DefaultPropertyReactives {
   final ReactiveProperty<bool> playing = ReactiveProperty<bool>(false);
 
   /// User intent to play (the play/pause axis). Distinct from [playing]
-  /// (which mirrors `core-idle` — actual output). Driven by the
+  /// (which mirrors `core-idle`, actual output). Driven by the
   /// play/pause/open/stop call sites plus an idle-active reset, never by
   /// mpv's `pause` property; unaffected by seeking or buffering.
   final ReactiveProperty<bool> playWhenReady = ReactiveProperty<bool>(false);
 
-  // Playback / timing.
+  // Playback and timing.
 
   /// Current playhead position (`time-pos`).
   final ReactiveProperty<Duration> position = ReactiveProperty<Duration>(
@@ -97,19 +97,19 @@ class DefaultPropertyReactives {
     const Device(name: 'auto', description: 'Auto'),
   );
 
-  /// Decoder-side audio parameters — aggregate of `audio-params` (NODE),
+  /// Decoder-side audio parameters: aggregate of `audio-params` (NODE),
   /// `audio-codec`, and `audio-codec-name`. The three specs all dedup and
   /// emit on this single cell so listeners see one [AudioParams] snapshot
   /// per change.
   final ReactiveProperty<AudioParams> audioParams =
       ReactiveProperty<AudioParams>(const AudioParams());
 
-  /// Hardware-side audio parameters (`audio-out-params`) — a single
+  /// Hardware-side audio parameters (`audio-out-params`): a single
   /// node-map; mpv exposes no codec/codec-name siblings on the output side.
   final ReactiveProperty<AudioParams> audioOutParamsNode =
       ReactiveProperty<AudioParams>(const AudioParams());
 
-  /// ReplayGain configuration — aggregate of `replaygain`,
+  /// ReplayGain configuration: aggregate of `replaygain`,
   /// `replaygain-preamp`, `replaygain-fallback`, and `replaygain-clip`.
   /// All four specs dedup and emit on this single cell.
   final ReactiveProperty<ReplayGainSettings> replayGain =
@@ -128,14 +128,14 @@ class DefaultPropertyReactives {
 
   /// OS per-app mixer volume in percent (`ao-volume`); `null` when the active
   /// audio output doesn't expose system volume (e.g. the null AO, or a
-  /// backend without per-app volume). Best-effort — distinct from soft
+  /// backend without per-app volume). Best-effort, distinct from soft
   /// [volume].
   final ReactiveProperty<double?> systemVolume = ReactiveProperty<double?>(
     null,
   );
 
   /// OS per-app mute (`ao-mute`); `null` when the active audio output doesn't
-  /// expose system mute. Best-effort — distinct from soft [mute].
+  /// expose system mute. Best-effort, distinct from soft [mute].
   final ReactiveProperty<bool?> systemMute = ReactiveProperty<bool?>(null);
 
   /// Gapless-playback policy across playlist boundaries (`gapless-audio`).
@@ -143,14 +143,14 @@ class DefaultPropertyReactives {
     Gapless.weak,
   );
 
-  /// Demuxer cache configuration — aggregate of `cache`, `cache-secs`,
+  /// Demuxer cache configuration: aggregate of `cache`, `cache-secs`,
   /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`, and
   /// `cache-pause-initial`. All six specs dedup and emit on this single cell.
   final ReactiveProperty<CacheSettings> cache = ReactiveProperty<CacheSettings>(
     const CacheSettings(),
   );
 
-  /// Demuxer buffering configuration — aggregate of `demuxer-max-bytes`,
+  /// Demuxer buffering configuration: aggregate of `demuxer-max-bytes`,
   /// `demuxer-max-back-bytes`, and `demuxer-readahead-secs`. All three specs
   /// dedup and emit on this single cell so listeners see one [DemuxerSettings]
   /// snapshot per change.
@@ -195,7 +195,7 @@ class DefaultPropertyReactives {
   final ReactiveProperty<bool> audioExclusive = ReactiveProperty<bool>(false);
 
   /// Whether mpv tags the stream's media role as "music" on the audio server
-  /// (`audio-set-media-role`; PulseAudio / PipeWire).
+  /// (`audio-set-media-role`; PulseAudio or PipeWire).
   final ReactiveProperty<bool> audioMediaRole = ReactiveProperty<bool>(false);
 
   /// Output device buffer size (`audio-buffer`).
@@ -254,7 +254,7 @@ class DefaultPropertyReactives {
   /// Active audio output driver (`ao`).
   final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
 
-  /// The effects chain, replaced atomically via `Player.setAudioEffects` /
+  /// The effects chain, replaced atomically via `Player.setAudioEffects` or
   /// `updateAudioEffects`.
   final ReactiveProperty<List<AudioEffect>> audioEffects =
       ReactiveProperty<List<AudioEffect>>(const []);
@@ -275,7 +275,7 @@ class DefaultPropertyReactives {
   /// Background prefetch progress (`prefetch-state`). An event-shaped
   /// signal, not a snapshot value: the cell exists for dedup and dispose
   /// bookkeeping, but the value is exposed exclusively through
-  /// [PlayerStream.prefetchState] — never read `.value` from outside.
+  /// [PlayerStream.prefetchState]; never read `.value` from outside.
   final ReactiveProperty<PrefetchState> prefetchState =
       ReactiveProperty<PrefetchState>(PrefetchState.idle);
 
@@ -352,8 +352,8 @@ class DefaultPropertyReactives {
   /// Path of the underlying stream after protocol resolution (`stream-path`).
   final ReactiveProperty<String> streamPath = ReactiveProperty<String>('');
 
-  /// Source playlist of the current entry (`playlist-path`) — the original
-  /// `.m3u` / `.pls` path the entry was expanded from. Empty when the current
+  /// Source playlist of the current entry (`playlist-path`): the original
+  /// `.m3u` or `.pls` path the entry was expanded from. Empty when the current
   /// file was not loaded via a playlist.
   final ReactiveProperty<String> playlistPath = ReactiveProperty<String>('');
 

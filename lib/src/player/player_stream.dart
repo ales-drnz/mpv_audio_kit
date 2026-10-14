@@ -61,7 +61,7 @@ import 'package:mpv_audio_kit/src/types/state/prefetch_state.dart';
 /// `internalLog`, `hook`, `mediaSessionCommands`, `fft`, `pcm`,
 /// `loudnessMeter`, `tap`) only delivers what happens after `listen()`.
 class PlayerStream {
-  /// Internal constructor wired by `Player`. Not part of the public API —
+  /// Internal constructor wired by `Player`. Not part of the public API:
   /// the `DefaultPropertyReactives` argument is library-private, so a
   /// downstream call cannot satisfy it without reaching into `src/`.
   @internal
@@ -114,7 +114,7 @@ class PlayerStream {
        audioDevice = reactives.audioDevice.stream,
        audioParams = reactives.audioParams.stream,
        // mpv exposes `audio-out-params` as a single MPV_FORMAT_NODE_MAP
-       // and there is no codec / codec-name sibling on the output side, so
+       // and there is no codec or codec-name sibling on the output side, so
        // the aggregator is a direct passthrough of the node reactive.
        audioOutParams = reactives.audioOutParamsNode.stream,
        gapless = reactives.gapless.stream,
@@ -222,19 +222,19 @@ class PlayerStream {
     ]);
   }
 
-  // ── Playback / lifecycle ─────────────────────────────────────────────────
+  // ── Playback and lifecycle ───────────────────────────────────────────────
 
   /// Emits whenever the active playlist changes (adds, removes, reorders).
   final Stream<Playlist> playlist;
 
-  /// Emits when actual audio output starts/stops — mpv's `core-idle`
+  /// Emits when actual audio output starts/stops: mpv's `core-idle`
   /// (inverted). Toggles transiently during seeks and buffering. For a
   /// stable play/pause button, listen to [playWhenReady] instead.
   final Stream<bool> playing;
 
-  /// Emits the user-intent-to-play axis, driven by [Player.play] /
-  /// [Player.pause] / [Player.open] / [Player.stop] (and released at the
-  /// natural end of content). Stable across seeks and buffering — this is
+  /// Emits the user-intent-to-play axis, driven by [Player.play],
+  /// [Player.pause], [Player.open] and [Player.stop] (and released at the
+  /// natural end of content). Stable across seeks and buffering; this is
   /// the signal to bind a play/pause button to. See
   /// [PlayerState.playWhenReady].
   final Stream<bool> playWhenReady;
@@ -248,7 +248,7 @@ class PlayerStream {
   final Stream<Duration> position;
 
   /// Emits once after a seek request has been fully reinitialized by mpv
-  /// and playback is about to resume — i.e. the authoritative
+  /// and playback is about to resume, i.e. the authoritative
   /// `MPV_EVENT_PLAYBACK_RESTART` signal.
   final Stream<void> seekCompleted;
 
@@ -256,7 +256,7 @@ class PlayerStream {
   /// stream, nothing loaded, or a track still loading.
   final Stream<Duration> duration;
 
-  /// Emits the current volume level (0–100+).
+  /// Emits the current volume level (0 to 100+).
   final Stream<double> volume;
 
   /// Emits the current playback speed multiplier.
@@ -319,8 +319,8 @@ class PlayerStream {
   /// Emits the gapless playback mode.
   final Stream<Gapless> gapless;
 
-  /// Aggregate ReplayGain configuration — emits a fresh
-  /// [ReplayGainSettings] whenever any of mode / preamp / clip /
+  /// Aggregate ReplayGain configuration: emits a fresh
+  /// [ReplayGainSettings] whenever any of mode, preamp, clip or
   /// fallback changes. Set with [Player.setReplayGain].
   final Stream<ReplayGainSettings> replayGain;
 
@@ -341,13 +341,13 @@ class PlayerStream {
   /// output doesn't expose it.
   final Stream<bool?> systemMute;
 
-  /// Aggregate cache configuration — emits a fresh [CacheSettings]
-  /// whenever any of mode / secs / onDisk / pause / pauseWait / pauseInitial
+  /// Aggregate cache configuration: emits a fresh [CacheSettings]
+  /// whenever any of mode, secs, onDisk, pause, pauseWait or pauseInitial
   /// changes. Set with [Player.setCache].
   final Stream<CacheSettings> cache;
 
-  /// Aggregate demuxer-buffering configuration — emits a fresh
-  /// [DemuxerSettings] whenever any of maxBytes / maxBackBytes / readahead
+  /// Aggregate demuxer-buffering configuration: emits a fresh
+  /// [DemuxerSettings] whenever any of maxBytes, maxBackBytes or readahead
   /// changes. Set with [Player.setDemuxer].
   final Stream<DemuxerSettings> demuxer;
 
@@ -428,7 +428,7 @@ class PlayerStream {
   final Stream<AudioOutputState> audioOutputState;
 
   /// The effects chain: the ordered list of stages in mpv's `af`
-  /// pipeline. Set with [Player.setAudioEffects] /
+  /// pipeline. Set with [Player.setAudioEffects] or
   /// [Player.updateAudioEffects].
   final Stream<List<AudioEffect>> audioEffects;
 
@@ -437,7 +437,7 @@ class PlayerStream {
   /// Emits the current external cover-art auto-load policy.
   final Stream<Cover> coverArtAuto;
 
-  /// Emits for **every** file-end event — clean completions, stops, errors,
+  /// Emits for **every** file-end event: clean completions, stops, errors,
   /// and premature EOFs alike.
   ///
   /// [MpvFileEndedEventX.reachedNaturalEnd] is `true` for any EOF, and mpv
@@ -459,7 +459,7 @@ class PlayerStream {
   /// [internalLog].
   final Stream<MpvLogEntry> log;
 
-  /// Library-side log entries — parse warnings, hook timeouts, and
+  /// Library-side log entries: parse warnings, hook timeouts, and
   /// other messages produced by the Dart layer itself. Always carries
   /// `prefix: 'mpv_audio_kit'`.
   ///
@@ -471,7 +471,7 @@ class PlayerStream {
   /// Emits whenever mpv fires a registered hook (see `Player.registerHook`).
   final Stream<MpvHookEvent> hook;
 
-  /// Lifecycle of mpv's background playlist-prefetch — works uniformly
+  /// Lifecycle of mpv's background playlist-prefetch. Works uniformly
   /// across HLS, DASH, raw HTTP, SMB, and local files.
   final Stream<PrefetchState> prefetchState;
 
@@ -501,7 +501,7 @@ class PlayerStream {
   /// Whether the current stream supports seeking.
   final Stream<bool> seekable;
 
-  /// Whether the stream is only partially seekable (HLS / DASH window).
+  /// Whether the stream is only partially seekable (HLS or DASH window).
   final Stream<bool> partiallySeekable;
 
   /// Display name for the current track (`media-title`); falls back to
@@ -540,7 +540,7 @@ class PlayerStream {
   /// Mirrors mpv's `stream-path`.
   final Stream<String> streamPath;
 
-  /// Source playlist of the current entry (`playlist-path`) — the `.m3u` /
+  /// Source playlist of the current entry (`playlist-path`): the `.m3u` or
   /// `.pls` path it was expanded from; empty when not loaded via a playlist.
   final Stream<String> playlistPath;
 
@@ -561,7 +561,7 @@ class PlayerStream {
   final Stream<int?> abLoopCount;
 
   /// Remaining A-B loop repetitions in the active loop. `null` when no
-  /// loop is active or count is infinite. Read-only — mirrors mpv's
+  /// loop is active or count is infinite. Read-only; mirrors mpv's
   /// `remaining-ab-loops`.
   final Stream<int?> remainingAbLoops;
 
@@ -569,13 +569,13 @@ class PlayerStream {
   /// seek commands during a long (network) seek.
   final Stream<bool> seeking;
 
-  /// Playback position as percentage of duration (0–100).
+  /// Playback position as percentage of duration (0 to 100).
   final Stream<double> percentPos;
 
   /// Demuxer cache download speed in bytes per second.
   final Stream<double> cacheSpeed;
 
-  /// Cache fill state as percentage (0–100). mpv's own metric, distinct
+  /// Cache fill state as percentage (0 to 100). mpv's own metric, distinct
   /// from [bufferingPercentage].
   final Stream<int> cacheBufferingState;
 
@@ -606,11 +606,11 @@ class PlayerStream {
   /// long as a listener is attached. See [MpvPlaybackState] for the state mapping.
   final Stream<MpvPlaybackState> playbackState;
 
-  /// Embedded cover-art payload after each file load — the original
-  /// codec bytes (PNG / JPEG / WEBP / …) from the file's attached
+  /// Embedded cover-art payload after each file load: the original
+  /// codec bytes (PNG, JPEG, WEBP, …) from the file's attached
   /// picture stream, plus the MIME type. Hand straight to
   /// `Image.memory(raw.bytes)` or run your own pipeline (resize, encode,
-  /// cache) — the bytes are passed through unchanged.
+  /// cache); the bytes are passed through unchanged.
   ///
   /// Emits once per file load, including mpv's reloads of the same file:
   /// a [CoverArt] when the new file has embedded artwork, or `null` when
@@ -620,14 +620,14 @@ class PlayerStream {
 
   /// Real-time FFT frequency spectrum of the audio currently playing
   /// through the player's output, captured post-DSP (after volume,
-  /// EQ, compressor, etc. — what you actually hear).
+  /// EQ, compressor, etc.: what you actually hear).
   ///
   /// Emit rate, FFT size, perceptual band layout, smoothing and dB
   /// clipping are all configured via [Player.setSpectrum]. The default
   /// preset emits 30 frames/sec with 64 log-spaced bands ready for a
   /// `CustomPainter`-style visualizer.
   ///
-  /// **Lazy** — the FFT pipeline allocates and the FFI poll loop
+  /// **Lazy**: the FFT pipeline allocates and the FFI poll loop
   /// starts on the first listener, and tears down on the last cancel.
   /// Both [fft] and [pcm] share the same upstream tap, so
   /// subscribing to both costs only the FFT computation, not a second
@@ -635,7 +635,7 @@ class PlayerStream {
   ///
   /// Stops emitting while playback is paused (the AO ring stops
   /// receiving samples). The last [FftFrame] is "frozen" in the sense
-  /// that no further events fire — hold the last value as the
+  /// that no further events fire; hold the last value as the
   /// displayed state until playback resumes.
   final Stream<FftFrame> fft;
 
@@ -647,12 +647,12 @@ class PlayerStream {
   /// For frequency-domain visualisations (spectrum bars, glow
   /// effects), prefer [fft] which is computed from the same tap.
   ///
-  /// Same lazy / pause semantics as [fft]. Configured by the
+  /// Same lazy and pause semantics as [fft]. Configured by the
   /// emit rate of [Player.setSpectrum] (the FFT-side knobs are
   /// ignored for this stream).
   final Stream<PcmFrame> pcm;
 
-  /// Per-stage PCM tap — emits [PcmFrame]s captured at the chosen
+  /// Per-stage PCM tap: emits [PcmFrame]s captured at the chosen
   /// [TapSide] of one [filter] stage in the effects chain. Use
   /// [TapSide.pre] for "input signal" overlays, [TapSide.post] for
   /// "output signal" overlays in a per-filter editor.
@@ -688,15 +688,15 @@ class PlayerStream {
   })
   _tap;
 
-  /// Reactive view of the current [SpectrumSettings] — the configuration
+  /// Reactive view of the current [SpectrumSettings]: the configuration
   /// of the FFT pipeline (size, bands, window, emit rate, smoothing, dB
-  /// clip). Emits a fresh snapshot on every [Player.setSpectrum] /
+  /// clip). Emits a fresh snapshot on every [Player.setSpectrum] or
   /// [Player.updateSpectrum] call so reactive UI can bind without
   /// polling `state.spectrum` (which remains as a synchronous accessor
   /// for callers that don't want a subscription).
   ///
-  /// Mirrors the bundle-stream pattern of [replayGain] / [cache] /
-  /// [audioEffects] — `setX` ↔ `stream.x` of the matching settings
+  /// Mirrors the bundle-stream pattern of [replayGain], [cache] and
+  /// [audioEffects]: `setX` ↔ `stream.x` of the matching settings
   /// type. Unlike those, this one lives entirely Dart-side: the stream
   /// is fed from the FFT pipeline's local cache, not from an mpv
   /// property observer (the underlying `pcm-tap-frame` property only
@@ -724,7 +724,7 @@ class PlayerStream {
   /// (`tls-verify`, `tls-ca-file`, headers, user agent, cookies), and gives
   /// the same result.
   ///
-  /// **Listener-gated** — the native analyzer runs and the pipeline
+  /// **Listener-gated**: the native analyzer runs and the pipeline
   /// polls only while a listener is attached; the cost of a waveform
   /// nobody is listening to is zero.
   ///
@@ -749,7 +749,7 @@ class PlayerStream {
   /// player.stream.loudnessMeter.listen((l) => meter.paint(l.momentary));
   /// ```
   ///
-  /// **Listener-gated** — the measurement poll runs only while a
+  /// **Listener-gated**: the measurement poll runs only while a
   /// listener is attached. While the meter is not in the chain the
   /// stream simply emits nothing.
   final Stream<Loudness> loudnessMeter;
@@ -757,7 +757,7 @@ class PlayerStream {
   /// Offline loudness scan of the loaded source ([LoudnessScan]:
   /// integrated LUFS, loudness range, sample/true peak), measured by
   /// decoding the whole file off the playback path at many times
-  /// realtime — the result lands moments after the file loads, before
+  /// realtime; the result lands moments after the file loads, before
   /// the audio has played. Use it to volume-normalize tracks without
   /// ReplayGain tags:
   ///
@@ -774,18 +774,18 @@ class PlayerStream {
   ///
   /// Emits one terminal [LoudnessScan] per track (`ready`, `failed`, or
   /// `unavailable` for sources that can only be measured during
-  /// playback — adaptive/live streams; use [loudnessMeter] there), and
+  /// playback, i.e. adaptive/live streams; use [loudnessMeter] there), and
   /// `null` on the track-change boundary so stale results clear.
   ///
-  /// **Lazy** — the native scan runs only while a listener is
+  /// **Lazy**: the native scan runs only while a listener is
   /// attached; an idle stream costs nothing.
   final Stream<LoudnessScan?> loudnessScan;
 
   // ── Media session ──────────────────────────────────────────────────
 
   /// Current OS media-session config + metadata, or `null` when the
-  /// session is disabled. Emits on every [Player.setMediaSession] call
-  /// — `null` on disable, a fresh [MediaSession] on enable or
+  /// session is disabled. Emits on every [Player.setMediaSession] call:
+  /// `null` on disable, a fresh [MediaSession] on enable or
   /// reconfigure.
   ///
   /// To check just "enabled or not" without subscribing to every
@@ -793,18 +793,18 @@ class PlayerStream {
   /// `stream.mediaSession.map((s) => s != null).distinct()`.
   final Stream<MediaSession?> mediaSession;
 
-  /// Incoming commands issued by the OS media session — taps on the
-  /// lockscreen, Bluetooth headset button presses, Siri / Google
-  /// Assistant playback requests, Android Auto / CarPlay actions.
+  /// Incoming commands issued by the OS media session: taps on the
+  /// lockscreen, Bluetooth headset button presses, Siri or Google
+  /// Assistant playback requests, Android Auto or CarPlay actions.
   ///
   /// By default these are auto-applied to the [Player]: play →
   /// [Player.play], pause → [Player.pause], seekTo → [Player.seek],
   /// etc. Subscribing here is for analytics, logging, or intercepting
-  /// edge cases — the stream emits *after* the optimistic state
+  /// edge cases. The stream emits *after* the optimistic state
   /// update, so observing it from a UI is safe and ordered.
   ///
-  /// For [MediaSessionCommandNext] / [MediaSessionCommandPrevious]:
-  /// the package routes them to mpv's `playlist-next` /
+  /// For [MediaSessionCommandNext] and [MediaSessionCommandPrevious]:
+  /// the package routes them to mpv's `playlist-next` or
   /// `playlist-prev` when a playlist is loaded; otherwise the command
   /// arrives here unhandled, for the consumer's queue logic to act
   /// on.

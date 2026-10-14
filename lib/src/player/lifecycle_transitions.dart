@@ -10,10 +10,10 @@ import 'player_state.dart';
 /// Result of a lifecycle transition, used by [computeLifecycle].
 ///
 /// The three `*DidChange` flags tell the caller which of the three
-/// observable lifecycle reactives (playing / buffering / completed) needs
+/// observable lifecycle reactives (playing, buffering, completed) needs
 /// to be fed an `update()`. Splitting the diff out of the dispatch site
 /// keeps `state.copyWith(...)` and `controller.add(...)` from drifting
-/// out of sync — they share one decision point and one set of flags.
+/// out of sync: they share one decision point and one set of flags.
 @internal
 class LifecycleResult {
   const LifecycleResult({
@@ -30,8 +30,8 @@ class LifecycleResult {
 }
 
 /// Pure-function core of the lifecycle update used on file boundaries.
-/// Given the previous [PlayerState] and any subset of `playing` /
-/// `buffering` / `completed` overrides, returns the new state plus a
+/// Given the previous [PlayerState] and any subset of `playing`,
+/// `buffering` and `completed` overrides, returns the new state plus a
 /// per-field "did-change" flag the caller pushes to the corresponding
 /// broadcast reactives.
 @internal
@@ -55,13 +55,13 @@ LifecycleResult computeLifecycle({
 
 /// Folds an event from one of mpv's two loop properties (`loop-file`,
 /// `loop-playlist`) into a typed [Loop]. Returns `null` when the
-/// event isn't a meaningful state change — e.g. `loop-file=no` while the
+/// event isn't a meaningful state change, e.g. `loop-file=no` while the
 /// active mode is [Loop.playlist], where the file-side toggle must
 /// not reset the playlist loop.
 @internal
 Loop? deriveLoop(String mpvName, String value, Loop prevMode) {
-  // `loop-file` / `loop-playlist` accept `'inf'`, `'no'`, or a non-negative
-  // integer (finite repeat count). Any value other than `'no'` / `'0'` is
+  // `loop-file` and `loop-playlist` accept `'inf'`, `'no'`, or a non-negative
+  // integer (finite repeat count). Any value other than `'no'` or `'0'` is
   // an active loop; both `'inf'` and `'N>0'` collapse into the
   // corresponding [Loop].
   bool isActiveLoopValue(String v) {

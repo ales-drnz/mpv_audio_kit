@@ -15,7 +15,7 @@ import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 
 // ---------------------------------------------------------------------------
-// mpv_error  (subset — limited to required error codes)
+// mpv_error  (subset, limited to required error codes)
 // ---------------------------------------------------------------------------
 /// Mirror of libmpv's `mpv_error` return codes (the subset this package uses).
 ///
@@ -94,7 +94,7 @@ abstract final class MpvError {
 /// Mirror of libmpv's `mpv_format` data-type tags used when reading or
 /// writing properties and decoding [MpvNode] values.
 abstract final class MpvFormat {
-  /// No value / invalid format (`MPV_FORMAT_NONE`).
+  /// No value or invalid format (`MPV_FORMAT_NONE`).
   static const int mpvFormatNone = 0;
 
   /// UTF-8 string (`MPV_FORMAT_STRING`).
@@ -118,7 +118,7 @@ abstract final class MpvFormat {
   /// Node array (`MPV_FORMAT_NODE_ARRAY`).
   static const int mpvFormatNodeArray = 7;
 
-  /// Node map / key-value object (`MPV_FORMAT_NODE_MAP`).
+  /// Node map or key-value object (`MPV_FORMAT_NODE_MAP`).
   static const int mpvFormatNodeMap = 8;
 
   /// Raw byte array (`MPV_FORMAT_BYTE_ARRAY`).
@@ -340,7 +340,7 @@ final class MpvNodeUnion extends Union {
   @Double()
   external double double_;
 
-  /// List/map contents, valid for `MPV_FORMAT_NODE_ARRAY` / `_NODE_MAP`.
+  /// List/map contents, valid for `MPV_FORMAT_NODE_ARRAY` or `_NODE_MAP`.
   external Pointer<MpvNodeList> list;
 
   /// Byte-array contents, valid when the node format is
@@ -386,32 +386,32 @@ final class MpvEventHook extends Struct {
 }
 
 // ---------------------------------------------------------------------------
-// Function typedefs — native side
+// Function typedefs: native side
 // ---------------------------------------------------------------------------
 
 // mpv_handle *mpv_create(void)
 typedef _MpvCreateNative = Pointer<MpvHandle> Function();
 
-/// Dart signature for `mpv_create` — allocates a new mpv client handle.
+/// Dart signature for `mpv_create`: allocates a new mpv client handle.
 typedef MpvCreate = Pointer<MpvHandle> Function();
 
 // int mpv_initialize(mpv_handle *ctx)
 typedef _MpvInitializeNative = Int32 Function(Pointer<MpvHandle> ctx);
 
-/// Dart signature for `mpv_initialize` — starts the mpv core for [ctx].
+/// Dart signature for `mpv_initialize`: starts the mpv core for [ctx].
 typedef MpvInitialize = int Function(Pointer<MpvHandle> ctx);
 
 // void mpv_terminate_destroy(mpv_handle *ctx)
 typedef _MpvTerminateDestroyNative = Void Function(Pointer<MpvHandle> ctx);
 
-/// Dart signature for `mpv_terminate_destroy` — stops the core and releases
+/// Dart signature for `mpv_terminate_destroy`: stops the core and releases
 /// [ctx], blocking until shutdown completes.
 typedef MpvTerminateDestroy = void Function(Pointer<MpvHandle> ctx);
 
 // void mpv_wakeup(mpv_handle *ctx)
 typedef _MpvWakeupNative = Void Function(Pointer<MpvHandle> ctx);
 
-/// Dart signature for `mpv_wakeup` — interrupts a thread parked in
+/// Dart signature for `mpv_wakeup`: interrupts a thread parked in
 /// `mpv_wait_event` on [ctx], making that call return `MPV_EVENT_NONE`. If no
 /// thread is currently waiting, the next `mpv_wait_event` returns immediately
 /// (libmpv guarantees no lost wakeups). Safe to call from any thread.
@@ -425,7 +425,7 @@ typedef _MpvSetOptionStringNative =
       Pointer<Utf8> data,
     );
 
-/// Dart signature for `mpv_set_option_string` — sets a pre-init option by name.
+/// Dart signature for `mpv_set_option_string`: sets a pre-init option by name.
 typedef MpvSetOptionString =
     int Function(
       Pointer<MpvHandle> ctx,
@@ -441,7 +441,7 @@ typedef _MpvSetPropertyStringNative =
       Pointer<Utf8> data,
     );
 
-/// Dart signature for `mpv_set_property_string` — sets a property from a
+/// Dart signature for `mpv_set_property_string`: sets a property from a
 /// string value.
 typedef MpvSetPropertyString =
     int Function(
@@ -454,7 +454,7 @@ typedef MpvSetPropertyString =
 typedef _MpvGetPropertyStringNative =
     Pointer<Utf8> Function(Pointer<MpvHandle> ctx, Pointer<Utf8> name);
 
-/// Dart signature for `mpv_get_property_string` — reads a property as a
+/// Dart signature for `mpv_get_property_string`: reads a property as a
 /// newly allocated string the caller must release with `mpv_free`.
 typedef MpvGetPropertyString =
     Pointer<Utf8> Function(Pointer<MpvHandle> ctx, Pointer<Utf8> name);
@@ -468,7 +468,7 @@ typedef _MpvGetPropertyNative =
       Pointer<Void> data,
     );
 
-/// Dart signature for `mpv_get_property` — reads a property into `data`
+/// Dart signature for `mpv_get_property`: reads a property into `data`
 /// using the given [MpvFormat].
 typedef MpvGetProperty =
     int Function(
@@ -489,7 +489,7 @@ typedef _MpvSetPropertyAsyncNative =
       Pointer<Void> data,
     );
 
-/// Dart signature for `mpv_set_property_async` — queues a property write and
+/// Dart signature for `mpv_set_property_async`: queues a property write and
 /// returns immediately; libmpv deep-copies [name] and the value before
 /// returning, and delivers the outcome as an `MPV_EVENT_SET_PROPERTY_REPLY`
 /// tagged with `reply_userdata`. Unlike the synchronous setter it never
@@ -513,7 +513,7 @@ typedef _MpvGetPropertyAsyncNative =
       Int32 format,
     );
 
-/// Dart signature for `mpv_get_property_async` — queues a property read and
+/// Dart signature for `mpv_get_property_async`: queues a property read and
 /// returns immediately; the value arrives as an `MPV_EVENT_GET_PROPERTY_REPLY`
 /// carrying an `mpv_event_property` payload, tagged with `reply_userdata`.
 typedef MpvGetPropertyAsync =
@@ -532,7 +532,7 @@ typedef _MpvCommandAsyncNative =
       Pointer<Pointer<Utf8>> args,
     );
 
-/// Dart signature for `mpv_command_async` — parses [args] client-side,
+/// Dart signature for `mpv_command_async`: parses [args] client-side,
 /// queues the command and returns immediately; the outcome arrives as an
 /// `MPV_EVENT_COMMAND_REPLY` tagged with `reply_userdata`.
 typedef MpvCommandAsync =
@@ -546,7 +546,7 @@ typedef MpvCommandAsync =
 typedef _MpvCommandStringNative =
     Int32 Function(Pointer<MpvHandle> ctx, Pointer<Utf8> args);
 
-/// Dart signature for `mpv_command_string` — runs a command from a single
+/// Dart signature for `mpv_command_string`: runs a command from a single
 /// command-line string.
 typedef MpvCommandString =
     int Function(Pointer<MpvHandle> ctx, Pointer<Utf8> args);
@@ -555,7 +555,7 @@ typedef MpvCommandString =
 typedef _MpvWaitEventNative =
     Pointer<MpvEvent> Function(Pointer<MpvHandle> ctx, Double timeout);
 
-/// Dart signature for `mpv_wait_event` — blocks up to `timeout` seconds for
+/// Dart signature for `mpv_wait_event`: blocks up to `timeout` seconds for
 /// the next [MpvEvent].
 typedef MpvWaitEvent =
     Pointer<MpvEvent> Function(Pointer<MpvHandle> ctx, double timeout);
@@ -569,7 +569,7 @@ typedef _MpvObservePropertyNative =
       Int32 format,
     );
 
-/// Dart signature for `mpv_observe_property` — subscribes to change events
+/// Dart signature for `mpv_observe_property`: subscribes to change events
 /// for a property, tagged with `reply_userdata`.
 typedef MpvObserveProperty =
     int Function(
@@ -582,20 +582,20 @@ typedef MpvObserveProperty =
 // void mpv_free(void *data)
 typedef _MpvFreeNative = Void Function(Pointer<Void> data);
 
-/// Dart signature for `mpv_free` — frees memory allocated by libmpv.
+/// Dart signature for `mpv_free`: frees memory allocated by libmpv.
 typedef MpvFree = void Function(Pointer<Void> data);
 
 // void mpv_free_node_contents(mpv_node *node)
 typedef _MpvFreeNodeContentsNative = Void Function(Pointer<MpvNode> node);
 
-/// Dart signature for `mpv_free_node_contents` — frees memory owned by the
+/// Dart signature for `mpv_free_node_contents`: frees memory owned by the
 /// contents of an [MpvNode].
 typedef MpvFreeNodeContents = void Function(Pointer<MpvNode> node);
 
 // const char *mpv_error_string(int error)
 typedef _MpvErrorStringNative = Pointer<Utf8> Function(Int32 error);
 
-/// Dart signature for `mpv_error_string` — maps an [MpvError] code to a
+/// Dart signature for `mpv_error_string`: maps an [MpvError] code to a
 /// human-readable description.
 typedef MpvErrorString = Pointer<Utf8> Function(int error);
 
@@ -603,7 +603,7 @@ typedef MpvErrorString = Pointer<Utf8> Function(int error);
 typedef _MpvRequestLogMessagesNative =
     Int32 Function(Pointer<MpvHandle> ctx, Pointer<Utf8> minLevel);
 
-/// Dart signature for `mpv_request_log_messages` — enables log-message events
+/// Dart signature for `mpv_request_log_messages`: enables log-message events
 /// at or above `min_level`.
 typedef MpvRequestLogMessages =
     int Function(Pointer<MpvHandle> ctx, Pointer<Utf8> minLevel);
@@ -617,7 +617,7 @@ typedef _MpvHookAddNative =
       Int32 priority,
     );
 
-/// Dart signature for `mpv_hook_add` — registers a hook handler for the named
+/// Dart signature for `mpv_hook_add`: registers a hook handler for the named
 /// hook at the given priority.
 typedef MpvHookAdd =
     int Function(
@@ -631,7 +631,7 @@ typedef MpvHookAdd =
 typedef _MpvHookContinueNative =
     Int32 Function(Pointer<MpvHandle> ctx, Uint64 id);
 
-/// Dart signature for `mpv_hook_continue` — resumes mpv after a hook with the
+/// Dart signature for `mpv_hook_continue`: resumes mpv after a hook with the
 /// given id has been handled.
 typedef MpvHookContinue = int Function(Pointer<MpvHandle> ctx, int id);
 
@@ -651,7 +651,7 @@ class MpvLibrary {
   /// Bound `mpv_terminate_destroy`.
   late final MpvTerminateDestroy mpvTerminateDestroy;
 
-  /// Bound `mpv_wakeup` — unblocks a parked `mpv_wait_event`.
+  /// Bound `mpv_wakeup`: unblocks a parked `mpv_wait_event`.
   late final MpvWakeup mpvWakeup;
 
   /// Bound `mpv_set_option_string`.

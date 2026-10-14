@@ -17,7 +17,7 @@ import '../types/sealed/channels.dart';
 // Pure parsers for mpv properties delivered as `MPV_FORMAT_NODE`.
 //
 // Each function takes a Dart-native tree decoded by [decodeMpvNode] in
-// `event_isolate.dart` (`Map<String, dynamic>` / `List<dynamic>` / scalar /
+// `event_isolate.dart` (`Map<String, dynamic>`, `List<dynamic>`, scalar or
 // `null`) and produces a typed model value. They are deliberately
 // side-effect-free so the property dispatch pipeline can stay testable
 // without spinning up a real player.
@@ -40,7 +40,7 @@ import '../types/sealed/channels.dart';
 /// transiently during `playlist-move`). Without this fallback the index
 /// would snap to 0 mid-reorder, briefly highlighting the wrong entry in the
 /// UI. When no entry has EVER been current (entries appended on an idle
-/// core, before playback starts) the index is `-1` instead — see
+/// core, before playback starts) the index is `-1` instead; see
 /// [Playlist.index].
 Playlist parsePlaylistNode({
   required dynamic raw,
@@ -82,7 +82,7 @@ Playlist parsePlaylistNode({
     // burst of playlist surgery). Follow the previously-current entry
     // BY MEDIA, not by raw position: during a move the entry may have
     // shifted, and during [Player.openAll]'s rebuild it is gone
-    // entirely — mpv coalesces rapid notifications, so the payload can
+    // entirely: mpv coalesces rapid notifications, so the payload can
     // jump straight from the old playlist to the fully-swapped one with
     // no current flag in between. Pinning the old NUMBER would mark an
     // unrelated incoming entry as active; following the Media keeps the
@@ -91,7 +91,7 @@ Playlist parsePlaylistNode({
     // because mpv names the entry by the loaded form (a `file://` URL
     // decoded to a path, an `asset://` copied to a temp file), which the
     // uri the caller passed does not match. With duplicate entries the
-    // first occurrence wins — the transient lasts one event either way.
+    // first occurrence wins; the transient lasts one event either way.
     idx = medias.indexOf(previous.items[previous.index]);
   } else {
     // Entries exist but none has EVER been current: the append build-up
@@ -107,8 +107,8 @@ Playlist parsePlaylistNode({
 /// Decodes mpv's `audio-device-list` property (`MPV_FORMAT_NODE_ARRAY`).
 ///
 /// Each entry in the array is a `MPV_FORMAT_NODE_MAP` with `name` and
-/// `description` fields. Missing fields fall back to `'unknown'` / `''`
-/// rather than throwing — `audio-device-list` is queried on every
+/// `description` fields. Missing fields fall back to `'unknown'` and `''`
+/// rather than throwing: `audio-device-list` is queried on every
 /// `audio-reconfig` and a single malformed entry shouldn't tear down the
 /// stream.
 List<Device> parseDeviceListNode(dynamic raw) {
@@ -156,7 +156,7 @@ double parseDemuxerCacheStateNode(dynamic raw, Duration cacheSecsTarget) {
   return (cacheDuration / targetSecs * 100.0).clamp(0.0, 100.0);
 }
 
-/// Decodes the rich part of mpv's `demuxer-cache-state` node — the buffered
+/// Decodes the rich part of mpv's `demuxer-cache-state` node: the buffered
 /// time ranges and network-cache flags useful to a streaming UI. Empty for
 /// directly-seekable local files (mpv leaves the cache state unpopulated).
 DemuxerCacheState parseDemuxerCacheStateFull(dynamic raw) {
@@ -187,7 +187,7 @@ DemuxerCacheState parseDemuxerCacheStateFull(dynamic raw) {
 /// mpv exposes on the wire (`format`, `sampleRate`, `channels`,
 /// `channel-count`, `hr-channels`).
 ///
-/// `codec` and `codecName` are NOT emitted by these node maps — they live
+/// `codec` and `codecName` are NOT emitted by these node maps; they live
 /// on separate properties (`audio-codec`, `audio-codec-name`). The caller's
 /// `reduce` function should `copyWith` only the fields this parser
 /// populates so the codec fields, populated by their own observers, survive
@@ -209,16 +209,16 @@ AudioParams parseAudioParamsNode(dynamic raw) {
 ///
 /// Each entry is a `MPV_FORMAT_NODE_MAP` describing one track. Missing
 /// `id` entries fall back to `-1` and missing `type` to `''` rather
-/// than throwing — mpv occasionally emits transient malformed entries
+/// than throwing, since mpv occasionally emits transient malformed entries
 /// during track reconfig.
 List<MpvTrack> parseTrackListNode(dynamic raw) {
   if (raw is! List) return const [];
   return raw.map(_parseTrackEntry).toList(growable: false);
 }
 
-/// Decodes mpv's `current-tracks/audio` property (`MPV_FORMAT_NODE_MAP`)
-/// — the metadata of the currently-active audio track. Returns `null`
-/// when no audio track is active (mpv emits `null` / non-map).
+/// Decodes mpv's `current-tracks/audio` property (`MPV_FORMAT_NODE_MAP`):
+/// the metadata of the currently-active audio track. Returns `null`
+/// when no audio track is active (mpv emits `null` or a non-map).
 MpvTrack? parseCurrentTrackNode(dynamic raw) {
   if (raw is! Map) return null;
   return _parseTrackEntry(raw);
@@ -264,7 +264,7 @@ MpvTrack _parseTrackEntry(dynamic entry) {
 ///
 /// Each entry is a `MPV_FORMAT_NODE_MAP` with `time` (seconds, double)
 /// and an optional `title`. Missing or malformed entries fall back to
-/// `Duration.zero` / `null` rather than throwing — a single bad
+/// `Duration.zero` and `null` rather than throwing; a single bad
 /// chapter shouldn't tear down the whole list.
 List<Chapter> parseChapterListNode(dynamic raw) {
   if (raw is! List) return const [];
@@ -284,9 +284,9 @@ String? _stringOrNull(dynamic v) {
   return v;
 }
 
-// Treats `0` as missing — for the audio-track node fields where the
+// Treats `0` as missing, for the audio-track node fields where the
 // caller cannot distinguish "explicit zero" from "absent", and zero
-// would not be a meaningful sample rate / channel count anyway.
+// would not be a meaningful sample rate or channel count anyway.
 int? _intOrNull(dynamic v) {
   if (v is int) return v == 0 ? null : v;
   if (v is num) return v == 0 ? null : v.toInt();

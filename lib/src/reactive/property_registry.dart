@@ -11,22 +11,22 @@ import 'mpv_property_spec.dart';
 /// isolate registers the observers from [specs]), and exposes lifecycle
 /// methods used by [Player]:
 ///
-/// - [register] / [registerAll]: collect specs at construction time.
+/// - [register] and [registerAll]: collect specs at construction time.
 /// - [dispatch]: route an incoming property-change event (parsed earlier on
 ///   the event-isolate) to the matching spec, returning the post-reduce
-///   [PlayerState] or `null` if the property is not in the registry / the
+///   [PlayerState] or `null` if the property is not in the registry or the
 ///   value was deduplicated.
 /// - [closeAll]: tear down the underlying [ReactiveProperty] broadcast
 ///   controllers when the player is disposed.
 class PropertyRegistry {
-  /// Creates an empty registry; populate it with [register] / [registerAll].
+  /// Creates an empty registry; populate it with [register] or [registerAll].
   PropertyRegistry();
 
   /// Upper bound on the reply-IDs of the registry's observers.
-  /// Out-of-registry observers (node / aggregate properties wired
+  /// Out-of-registry observers (node and aggregate properties wired
   /// directly in the player's observe list) use IDs strictly greater than
   /// this so the two dispatch halves stay distinguishable in `mpv -v`
-  /// logs. mpv itself treats the integer as opaque user data — the
+  /// logs. mpv itself treats the integer as opaque user data; the
   /// boundary is purely an internal convention.
   static const int registryReplyIdMax = 10000;
 
@@ -60,7 +60,7 @@ class PropertyRegistry {
   /// Returns the new [PlayerState] when a spec was matched and the value
   /// actually changed, or `null` when:
   /// - no spec is registered for [name] (the caller may handle it via custom
-  ///   logic — see complex properties in `Player`); or
+  ///   logic; see complex properties in `Player`); or
   /// - the spec deduplicated the value (the [ReactiveProperty]'s previous
   ///   value was equal).
   PlayerState? dispatch(
@@ -117,7 +117,7 @@ class PropertyRegistry {
   }
 
   /// Closes every registered [ReactiveProperty]'s underlying broadcast
-  /// controller. Idempotent — safe to call repeatedly during teardown.
+  /// controller. Idempotent: safe to call repeatedly during teardown.
   Future<void> closeAll() async {
     final futures = <Future<void>>[];
     for (final spec in _byName.values) {

@@ -5,29 +5,29 @@
 import '../types/enums/hls_bitrate.dart';
 import '../types/enums/log_level.dart';
 
-/// Build-time configuration for a [Player] — the set-once choices applied
-/// before / at `mpv_initialize`.
+/// Build-time configuration for a [Player]: the set-once choices applied
+/// before or at `mpv_initialize`.
 ///
 /// The split is grounded in mpv's own option model: an option mpv applies
-/// reactively at runtime (one carrying an `UPDATE_*` flag — `volume`,
+/// reactively at runtime (one carrying an `UPDATE_*` flag: `volume`,
 /// `audio-client-name`, the audio driver, …) is exposed as a `setX(...)`
 /// method, **not** duplicated here. This class holds the set-once consumer
 /// choices read at use-time (the resume policy, the watch-later dir) plus the
 /// initial value of the few runtime properties whose starting state matters
 /// before the first `setX` can land ([initialVolume], [logLevel]). The
-/// audio-only library invariants (video / scripting disabled, …) are fixed and
-/// deliberately not configurable.
+/// audio-only library invariants (video and scripting disabled, …) are fixed
+/// and deliberately not configurable.
 class PlayerConfiguration {
   /// If `true`, playback starts automatically as soon as a track finishes
   /// loading. Default: `false`.
   final bool autoPlay;
 
-  /// Initial volume level (0–100). Default: `100`.
+  /// Initial volume level (0 to 100). Default: `100`.
   final double initialVolume;
 
   /// Threshold forwarded to the [PlayerStream.log] stream.
   ///
-  /// Default: [LogLevel.warn] — surfaces warnings, errors, fatals.
+  /// Default: [LogLevel.warn]. Surfaces warnings, errors, fatals.
   final LogLevel logLevel;
 
   /// Whether to resume playback from the saved "watch later" position when a
@@ -38,14 +38,14 @@ class PlayerConfiguration {
 
   /// Directory where the "watch later" resume configs are stored
   /// (mpv's `--watch-later-dir`). `null` uses mpv's default location, which
-  /// is often not writable on mobile — point this at an app-writable path
+  /// is often not writable on mobile; point this at an app-writable path
   /// (e.g. from `getApplicationSupportDirectory()`) when using resume there.
   final String? watchLaterDir;
 
   /// Force in-cache seeking on streams mpv reports as non-seekable
   /// (mpv's `--force-seekable`). Read at demux open, so it governs every
   /// subsequent load. Default `false`. Useful to keep the scrub bar live on
-  /// direct-HTTP / HLS audio that doesn't advertise seeking.
+  /// direct-HTTP or HLS audio that doesn't advertise seeking.
   final bool forceSeekable;
 
   /// Which HLS variant mpv selects from an adaptive master playlist
@@ -61,7 +61,7 @@ class PlayerConfiguration {
 
   /// Directory for the on-disk demuxer cache (mpv's `--demuxer-cache-dir`),
   /// the companion of [CacheSettings.onDisk]. `null` uses mpv's default
-  /// location (often not writable on mobile) — point this at an app-writable
+  /// location (often not writable on mobile); point this at an app-writable
   /// path (e.g. `getTemporaryDirectory()`) when spilling the cache to disk.
   final String? demuxerCacheDir;
 
