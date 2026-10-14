@@ -16,7 +16,9 @@ void main() {
   final chapterPath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';
 
-  runtimeSuite(fixturePath: chapterPath, () {
+  final plainPath = '${Directory.current.path}/test/fixtures/sine_5s.flac';
+
+  runtimeSuite(fixturePath: chapterPath, extraFixtures: [plainPath], () {
     group('setChapter end-to-end', () {
       late Player player;
 
@@ -51,6 +53,52 @@ void main() {
           player.state.currentChapter,
           1,
           reason: 'observer roundtrip must not destabilise the value',
+        );
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
+
+    group('setChapters on a file without chapters', () {
+      late Player player;
+
+      setUpAll(() async {
+        player = await buildPlayer();
+        await openAndWaitForLoad(player, plainPath);
+      });
+
+      tearDownAll(() async {
+        await player.dispose();
+      });
+
+      test('mpv takes the markers, setChapter navigates them, and an empty '
+          'list clears them', () async {
+        expect(player.state.chapters, isEmpty);
+        const chapters = [
+          Chapter(time: Duration.zero, title: 'Intro'),
+          Chapter(time: Duration(seconds: 3), title: 'Outro'),
+        ];
+
+        await player.setChapters(chapters);
+        expect(player.state.chapters, chapters);
+        final node = await player.getRawPropertyNode('chapter-list');
+        expect(node, isA<List<Object?>>());
+        final list = (node as List<Object?>).cast<Map<Object?, Object?>>();
+        expect(list.map((c) => c['title']), ['Intro', 'Outro']);
+        expect((list[1]['time'] as num).toDouble(), closeTo(3.0, 1e-3));
+
+        await player.setChapter(1);
+        await waitUntil(
+          () async =>
+              (double.tryParse(await player.getRawProperty('time-pos') ?? '') ??
+                  0) >=
+              2.9,
+          reason: 'setChapter(1) did not seek to the injected marker',
+        );
+
+        await player.setChapters(const []);
+        expect(player.state.chapters, isEmpty);
+        await waitUntil(
+          () async => await player.getRawProperty('chapters') == '0',
+          reason: 'an empty list must clear mpv\'s chapters',
         );
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
