@@ -25,9 +25,11 @@ class MediaSessionMetadataSnapshot {
   /// image). Mutually exclusive with [artworkUri] — at most one is set.
   final CoverArt? artwork;
 
-  /// A remote / file artwork URL the native side resolves itself
-  /// ([MediaSessionArtwork.uri], or the consumer-attached `extras['art']`
-  /// fallback for a tag-less stream). Mutually exclusive with [artwork].
+  /// An artwork URL the native side loads itself ([MediaSessionArtwork.uri],
+  /// or the consumer-attached `extras['art']` fallback for a tag-less
+  /// stream). On Android, Windows and Linux only a non-HTTP URL (a
+  /// `file://` path) gets here: an `http(s)://` one is downloaded first and
+  /// sent as [artwork]. Mutually exclusive with [artwork].
   final String? artworkUri;
   final Duration? duration;
 
@@ -279,9 +281,9 @@ class MediaSessionChannel {
         'album': m.album,
         'artworkBytes': m.artwork?.bytes,
         'artworkMime': m.artwork?.mimeType,
-        // A URL the native side fetches itself (mutually exclusive with the
-        // bytes above) — keeps the (multi-MB) blob off the channel for
-        // remote covers. `null` when artwork is embedded/custom/none.
+        // A URL the native side loads itself, mutually exclusive with the
+        // bytes above: a remote cover on Apple, a `file://` one elsewhere.
+        // `null` when the artwork is embedded, custom, none or downloaded.
         'artworkUri': m.artworkUri,
         'durationMs': m.duration?.inMilliseconds,
         'trackNumber': m.trackNumber,

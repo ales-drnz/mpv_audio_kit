@@ -52,8 +52,10 @@ class MediaSessionController {
   final void Function()? _onAudioOutputReset;
   final MediaSessionChannel _channel;
 
-  /// Downloads remote artwork so only a local file reaches the OS (Linux,
-  /// see [downloadArtwork]); `null` passes artwork URLs through to native.
+  /// Downloads `http(s)://` artwork so the OS gets the image bytes, not the
+  /// URL (Android, Windows and Linux, see [downloadsArtworkOn]); `null`
+  /// passes artwork URLs through to native, where the Apple plugin loads
+  /// them privately.
   final ArtworkFetcher? _artworkFetcher;
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];

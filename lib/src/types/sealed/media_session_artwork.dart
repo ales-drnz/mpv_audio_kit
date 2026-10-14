@@ -11,11 +11,11 @@ import '../../models/cover_art.dart';
 ///   the playing file, exposed by [PlayerStream.coverArt].
 /// - [MediaSessionArtwork.custom]: a specific image you supply, ignoring
 ///   the file's embedded cover.
-/// - [MediaSessionArtwork.uri]: a remote / file URL the OS fetches
-///   itself — for streams whose file carries no embedded cover (e.g. a
-///   transcoded server track). Cheaper than [MediaSessionArtwork.custom]:
-///   only the URL crosses the platform channel, not the decoded bytes.
-/// - [MediaSessionArtwork.none]: no artwork — the OS shows its own
+/// - [MediaSessionArtwork.uri]: an image at a URL, for streams whose file
+///   carries no embedded cover (for example a transcoded server track).
+///   An `http(s)://` URL is downloaded and only the image reaches the OS;
+///   a `file://` URL is opened by the native side.
+/// - [MediaSessionArtwork.none]: no artwork. The OS shows its own
 ///   placeholder (typically the app icon).
 sealed class MediaSessionArtwork {
   const MediaSessionArtwork._();
@@ -30,16 +30,17 @@ sealed class MediaSessionArtwork {
   const factory MediaSessionArtwork.custom(CoverArt cover) =
       MediaSessionArtworkCustom._;
 
-  /// Show the image at [uri], ignoring any embedded cover. The URL itself
-  /// never reaches the OS, since cover URLs often carry credentials: on
-  /// Android, Windows and Linux the package downloads an `http(s)://` URL
-  /// and hands the native side the bytes, and the Apple plugin loads it
-  /// with `URLSession` and publishes only the image.
+  /// Show the image at [uri], ignoring any embedded cover. An `http(s)://`
+  /// URL never reaches the OS, since cover URLs often carry credentials:
+  /// on Android, Windows and Linux the package downloads it and hands the
+  /// native side the bytes, and the Apple plugin loads it with
+  /// `URLSession` and publishes only the image. A `file://` URL is passed
+  /// to the native side, which reads the file.
   ///
-  /// [uri] must be self-resolvable by the OS: an `http(s)://` URL that
-  /// needs no custom auth headers (a tokenised query string is fine), or a
-  /// `file://` path. For art behind custom headers, fetch the bytes
-  /// yourself and use [MediaSessionArtwork.custom].
+  /// [uri] must load without custom headers: an `http(s)://` URL (a
+  /// tokenised query string is fine) or a `file://` path. For art behind
+  /// custom headers, fetch the bytes yourself and use
+  /// [MediaSessionArtwork.custom].
   const factory MediaSessionArtwork.uri(Uri uri) = MediaSessionArtworkUri._;
 }
 
@@ -79,10 +80,10 @@ final class MediaSessionArtworkCustom extends MediaSessionArtwork {
   String toString() => 'MediaSessionArtwork.custom($cover)';
 }
 
-/// The [MediaSessionArtwork.uri] variant: a remote / file URL the OS
-/// fetches itself.
+/// The [MediaSessionArtwork.uri] variant: the image at an `http(s)://` or
+/// `file://` URL, see [MediaSessionArtwork.uri] for who loads it.
 final class MediaSessionArtworkUri extends MediaSessionArtwork {
-  /// The artwork location — an `http(s)://` or `file://` URL.
+  /// The artwork location, an `http(s)://` or `file://` URL.
   final Uri uri;
 
   const MediaSessionArtworkUri._(this.uri) : super._();

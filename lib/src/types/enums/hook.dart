@@ -14,13 +14,16 @@
 /// ```dart
 /// player.registerHook(Hook.load);
 /// player.stream.hook.listen((event) async {
-///   switch (event.hook) {
-///     case Hook.load:
+///   try {
+///     switch (event.hook) {
+///       case Hook.load:
 ///       // Redirect the URL via stream-open-filename, attach
 ///       // file-local-options/http-header-fields, etc.
-///     default:
+///       default:
+///     }
+///   } finally {
+///     player.continueHook(event.id); // always, even on error
 ///   }
-///   player.continueHook(event.id); // always call, even on error
 /// });
 /// ```
 enum Hook {

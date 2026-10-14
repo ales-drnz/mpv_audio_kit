@@ -39,7 +39,7 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 ///   extras: {
 ///     'title':   'Episode 42',
 ///     'artist':  'The Podcast',
-///     'artUri':  'https://cdn.example.com/art.jpg',
+///     'art':     'https://cdn.example.com/art.jpg',
 ///     'startAt': Duration(minutes: 5),
 ///   },
 ///   httpHeaders: {
@@ -52,9 +52,10 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 /// final yt = Media(googlevideoUrl, httpChunkSize: 8 * 1024 * 1024);
 /// ```
 ///
-/// Equality considers all fields ([uri], [extras] and [httpHeaders]) so two
-/// instances that differ in any of them sort and compare distinctly — useful
-/// when diffing playlists for re-render decisions.
+/// Equality compares every field ([uri], [extras], [httpHeaders],
+/// [httpChunkSize] and [demuxerLavfOptions]), so two instances that differ
+/// in any of them are not equal: useful when diffing playlists for
+/// re-render decisions. The maps compare by content, their values by `==`.
 final class Media {
   /// The URI of the media resource.
   ///
@@ -64,9 +65,15 @@ final class Media {
 
   /// Optional user-supplied metadata attached to this track.
   ///
-  /// The player itself does not interpret these values; they are carried
-  /// through the playlist so the UI layer can access them without a
-  /// separate lookup.
+  /// The values are carried through the playlist so the UI layer can
+  /// access them without a separate lookup. Playback ignores them; the OS
+  /// media session reads four string keys as a fallback for files without
+  /// tags (a transcoded stream, a radio):
+  /// - `title`, `artist` and `album`: used when the file has no such tag
+  ///   and [MediaSession] sets no override. `title` comes before mpv's
+  ///   `media-title`, which falls back to the file name or URL.
+  /// - `art`: an `http(s)://` or `file://` URL of the cover, used when the
+  ///   artwork is [MediaSessionArtwork.embedded] and the file has none.
   final Map<String, Object?>? extras;
 
   /// Optional HTTP headers for network streams.
@@ -115,7 +122,8 @@ final class Media {
   final int? httpChunkSize;
 
   /// Creates an immutable media item for [uri], with optional consumer
-  /// [extras], per-request [httpHeaders] and [httpChunkSize].
+  /// [extras], per-request [httpHeaders] and [httpChunkSize], and
+  /// per-entry [demuxerLavfOptions].
   const Media(
     this.uri, {
     this.extras,

@@ -6,23 +6,27 @@ import '../types/enums/hook.dart';
 
 /// Emitted by [PlayerStream.hook] when mpv fires a registered hook.
 ///
-/// You **must** call [Player.continueHook] with [id] exactly once,
-/// even if processing fails — otherwise mpv will stall indefinitely.
+/// You **must** call [Player.continueHook] with [id] exactly once, even
+/// if processing fails: until then mpv waits on the file. Call it in a
+/// `finally`, so an error in the handler still releases mpv.
 ///
 /// Example:
 /// ```dart
 /// player.registerHook(Hook.load);
 /// player.stream.hook.listen((event) async {
-///   if (event.hook == Hook.load) {
-///     final url = await player.getRawProperty('stream-open-filename') ?? '';
-///     if (url.startsWith('my-scheme://')) {
-///       await player.setRawProperty(
-///         'stream-open-filename',
-///         await resolve(url),
-///       );
+///   try {
+///     if (event.hook == Hook.load) {
+///       final url = await player.getRawProperty('stream-open-filename') ?? '';
+///       if (url.startsWith('my-scheme://')) {
+///         await player.setRawProperty(
+///           'stream-open-filename',
+///           await resolve(url),
+///         );
+///       }
 ///     }
+///   } finally {
+///     player.continueHook(event.id); // always, even on error
 ///   }
-///   player.continueHook(event.id); // always call, even on error
 /// });
 /// ```
 class MpvHookEvent {

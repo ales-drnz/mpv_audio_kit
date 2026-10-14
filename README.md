@@ -535,7 +535,10 @@ the [source resolver](#124-the-source-resolver).
 #### 2.3 Extras
 
 `extras` attaches your own data to a track. It stays with the entry in
-the playlist, so the UI can read it back without a separate lookup:
+the playlist, so the UI can read it back without a separate lookup.
+Playback ignores it. The OS media session reads `title`, `artist`,
+`album` and `art` (a cover URL) as a fallback for files without tags, see
+[14.2](#142-overriding-metadata):
 
 ```dart
 final media = Media(
@@ -2231,9 +2234,8 @@ Listen to `player.stream.hook` and call `continueHook` when you are done. Call i
 ```dart
 player.stream.hook.listen((event) async {
   if (event.hook == Hook.load) {
-    final url = await player.getRawProperty('stream-open-filename') ?? '';
-
     try {
+      final url = await player.getRawProperty('stream-open-filename') ?? '';
       if (url.startsWith('my-scheme://')) {
         final resolved = await myResolver(url);
         await player.setRawProperty('stream-open-filename', resolved.url);
@@ -2606,9 +2608,12 @@ await player.setMediaSession(
 );
 ```
 
-A stream with no title tag falls back to mpv's `media-title`, taken from
-the URL with the query removed. Setting `MediaSession.title` is still
-better.
+For a file without tags, such as a transcoded stream, each field falls
+back to the entry's `Media.extras`: `title`, `artist` and `album` as
+strings, and `art` as an `http(s)://` or `file://` cover URL when the
+artwork is `embedded` and the file has none. A stream with no title tag
+and no `extras['title']` falls back to mpv's `media-title`, taken from the
+URL with the query removed. Setting `MediaSession.title` is still better.
 
 #### 14.3 Artwork and privacy
 
