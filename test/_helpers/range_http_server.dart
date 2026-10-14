@@ -97,6 +97,11 @@ final class RangeHttpServer {
   /// that download; a GET from anywhere else is served.
   bool refuseResume = false;
 
+  /// When set, every request waits for it before it is answered, so a test
+  /// can keep mpv's open from completing until it has done something during
+  /// the load. The requests are logged as they arrive.
+  Future<void>? hold;
+
   int? _cutAt;
 
   final List<ServedRequest> _requests = [];
@@ -217,6 +222,8 @@ final class RangeHttpServer {
     final path = Uri.parse(target).path;
     final req = ServedRequest._(method, path, headers['range'], DateTime.now());
     _requests.add(req);
+    final gate = hold;
+    if (gate != null) await gate;
 
     final file = _files[path.startsWith('/') ? path.substring(1) : path];
     if (file == null) {
@@ -407,6 +414,8 @@ final class RangeHttpServer {
       'flac' => 'audio/flac',
       'mka' => 'audio/x-matroska',
       'mp3' => 'audio/mpeg',
+      'aac' => 'audio/aac',
+      'm3u8' => 'application/vnd.apple.mpegurl',
       _ => 'application/octet-stream',
     };
   }
