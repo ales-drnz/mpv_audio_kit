@@ -399,21 +399,30 @@ class Player extends _PlayerBase
     // append-play), even on an idle core. Per-Media `httpHeaders` ride
     // along as the 4th `loadfile` arg, so mpv scopes them as file-local
     // without ever writing the global `http-header-fields` option.
-    for (var i = 0; i < medias.length; i++) {
-      final opts = _buildLoadfileOptions(medias[i]);
-      if (opts.isEmpty) {
-        await _loadfile(['loadfile', resolved[i].uri, 'append'], medias[i]);
-      } else {
-        await _loadfile([
-          'loadfile',
-          resolved[i].uri,
-          'append',
-          '-1',
-          opts,
-        ], medias[i]);
+    // All appends go out at once: mpv runs them in order, and the playlist
+    // changes they cause fold into a few notifications. Awaited one by
+    // one, every append made mpv report the whole playlist again, which
+    // grew with the square of the album size.
+    final appends = <Future<int?>>[
+      for (var i = 0; i < medias.length; i++)
+        _loadfileEntry(switch (_buildLoadfileOptions(medias[i])) {
+          '' => ['loadfile', resolved[i].uri, 'append'],
+          final opts => ['loadfile', resolved[i].uri, 'append', '-1', opts],
+        }, medias[i]),
+    ];
+    final appended = <int>{};
+    (Object, StackTrace)? failure;
+    for (final append in appends) {
+      try {
+        final id = await append;
+        if (id != null) appended.add(id);
+      } catch (e, st) {
+        failure ??= (e, st);
       }
-      if (load.superseded) return bailDisposing();
     }
+    if (appended.isNotEmpty) _remapReported(appended);
+    if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
+    if (load.superseded) return bailDisposing();
 
     // ── Phase 3: intent, then one direct jump to the target ───────────
     // The pause write cannot be fought by keep-open here: the parked
@@ -633,6 +642,9 @@ abstract class _PlayerBase {
   /// URI keep their own `extras`. Pruned to the live entries on every
   /// playlist change.
   final Map<int, Media> _mediaByEntry = {};
+
+  /// The highest entry id a playlist node has listed so far.
+  int _maxListedEntryId = -1;
 
   /// The last `playlist` node, parsed again when a `loadfile` reply
   /// registers an entry id after mpv already reported the entry.

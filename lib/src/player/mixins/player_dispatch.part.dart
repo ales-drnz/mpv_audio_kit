@@ -381,13 +381,22 @@ mixin _DispatchModule on _PlayerBase {
   void _updatePlaylistFromNode(dynamic raw) {
     _lastPlaylistNode = raw;
     try {
-      // Forget the entries mpv no longer has.
+      // Forget the entries mpv no longer has. mpv numbers entries in
+      // order, so one newer than every entry a node has listed was
+      // appended after this node was taken (a batch of appends replies
+      // ahead of the playlist notifications): it stays.
       if (raw is List) {
-        final live = {
-          for (final entry in raw)
-            if (entry is Map && entry['id'] is int) entry['id'] as int,
-        };
-        _mediaByEntry.removeWhere((id, _) => !live.contains(id));
+        final live = <int>{};
+        for (final entry in raw) {
+          if (entry is Map && entry['id'] is int) {
+            final id = entry['id'] as int;
+            live.add(id);
+            if (id > _maxListedEntryId) _maxListedEntryId = id;
+          }
+        }
+        _mediaByEntry.removeWhere(
+          (id, _) => id <= _maxListedEntryId && !live.contains(id),
+        );
         _prunePcm(live);
       }
       final playlist = parsePlaylistNode(
