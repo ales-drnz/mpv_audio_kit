@@ -10,12 +10,12 @@ import 'package:meta/meta.dart';
 ///
 /// Hand-rolled `copyWith` for nullable fields needs a way to
 /// distinguish a caller-omitted field (preserve current value) from
-/// `null` (set the field to null). Default-`null` parameters can't —
+/// `null` (set the field to null). Default-`null` parameters can't:
 /// they collapse the two cases. This sentinel does the disambiguation:
 /// declare the parameter as `Object? field = unset`, then in the body
 /// `identical(field, unset) ? this.field : field as T?`.
 ///
-/// Internal — every value type with nullable fields imports this and
+/// Internal: every value type with nullable fields imports this and
 /// uses the shared [unset] constant instead of declaring its own
 /// per-file copy.
 @internal

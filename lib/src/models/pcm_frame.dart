@@ -4,7 +4,7 @@
 
 import 'dart:typed_data';
 
-/// One PCM frame — raw post-DSP audio samples captured at the player's
+/// One PCM frame: raw post-DSP audio samples captured at the player's
 /// output, before they're handed to the OS audio driver.
 ///
 /// Emitted on [PlayerStream.pcm] at the rate configured in
@@ -23,7 +23,7 @@ import 'dart:typed_data';
 /// share the same upstream tap, so subscribing to both costs only
 /// the duplicate FFT computation, not a second tap.
 ///
-/// Example — a peak-hold VU meter:
+/// Example: a peak-hold VU meter:
 ///
 /// ```dart
 /// double peak = 0;
@@ -51,12 +51,12 @@ class PcmFrame {
   /// `samplesPerChannel * channels`. Total samples per channel:
   /// `samples.length ~/ channels`.
   ///
-  /// Owned by this frame — safe to pass to `CustomPainter`, isolate
+  /// Owned by this frame: safe to pass to `CustomPainter`, isolate
   /// boundaries, or background processing without copying.
   final Float32List samples;
 
   /// Wall-clock timestamp at which the audio output captured this
-  /// frame. Process-monotonic — derived from libmpv's internal
+  /// frame. Process-monotonic: derived from libmpv's internal
   /// `mp_time_ns()`, which counts from the moment the engine
   /// initialised, not from the start of the track. Use it to detect
   /// fresh frames or to align side-effects in real time; for the
@@ -69,10 +69,10 @@ class PcmFrame {
   /// Sample rate in Hz (typically 44100 or 48000).
   final int sampleRate;
 
-  /// Channel count — 1 for mono, 2 for stereo, 6 for 5.1, etc.
+  /// Channel count: 1 for mono, 2 for stereo, 6 for 5.1, etc.
   /// Combine with [samples].length to compute `samplesPerChannel`.
   final int channels;
 
-  /// Convenience: number of samples per channel — `samples.length / channels`.
+  /// Convenience: number of samples per channel (`samples.length / channels`).
   int get samplesPerChannel => channels == 0 ? 0 : samples.length ~/ channels;
 }

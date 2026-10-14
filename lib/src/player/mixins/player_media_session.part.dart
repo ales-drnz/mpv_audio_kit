@@ -145,8 +145,8 @@ mixin _MediaSessionModule on _PlayerBase {
         _applySessionCommand((this as Player).pause());
       case MediaSessionCommandPlayPause():
         // Resolve against the INTENT axis, not actual output: `_state.playing`
-        // (core-idle inverted) toggles transiently on every seek/buffer, so a
-        // single-button PlayPause landing during a transient would flip the
+        // (core-idle inverted) toggles transiently on every seek and buffer, so
+        // a single-button PlayPause landing during a transient would flip the
         // wrong way. The OS button itself binds to `playWhenReady`; match it.
         if (_state.playWhenReady) {
           _applySessionCommand((this as Player).pause());
@@ -193,7 +193,7 @@ mixin _MediaSessionModule on _PlayerBase {
         _applySessionCommand((this as Player).setRate(rate));
     }
     // Always emit on the consumer-facing stream, regardless of
-    // whether the command was auto-applied. Even for next/previous
+    // whether the command was auto-applied. Even for next and previous
     // on a single-media playlist (where auto-apply is a no-op) the
     // consumer needs to see the command to drive its own queue.
     _mediaSessionCommandsCtrl.add(command);

@@ -13,8 +13,8 @@ import 'analysis_poll_pipeline.dart';
 /// on), see [AnalysisPollPipeline].
 ///
 /// While the scan runs it emits `scanning` snapshots carrying a progress
-/// fraction on each poll. As soon as it reaches a terminal state (`ready` /
-/// `failed` / `unavailable`) the result is emitted via [stream] and the timer
+/// fraction on each poll. As soon as it reaches a terminal state (`ready`,
+/// `failed` or `unavailable`) the result is emitted via [stream] and the timer
 /// stops until the next track-change. On track change the player calls
 /// [reset]: the pipeline drops the current result, emits `null`, and
 /// rearms the timer if still enabled.
@@ -97,7 +97,7 @@ class LoudnessScanPipeline extends AnalysisPollPipeline<LoudnessScan> {
         }
         return;
       case LoudnessScanState.idle:
-        return; // non-terminal — keep polling
+        return; // non-terminal, keep polling
     }
   }
 }

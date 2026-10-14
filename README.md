@@ -593,8 +593,10 @@ await source.addStream(
 await source.close();
 ```
 
-- Playback starts about 0.2 s after the first chunk, or about 0.13 s with
-  `lowLatency: true`, which halves the output buffer of that entry.
+- Playback starts up to about 0.2 s after the first chunk, or about 0.1 s
+  with `lowLatency: true`, which halves the output buffer of that entry. It
+  starts sooner when the input arrives faster than real time. A gap in the
+  input adds up to one buffer of delay, which stays.
 - `add` never blocks. `addStream` pauses its stream while more than
   `maxBuffered` (30 s by default) waits, and `ready` does the same for a
   loop of `add` calls.

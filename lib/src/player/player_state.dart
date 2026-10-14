@@ -74,15 +74,15 @@ final class PlayerState {
   /// Whether the player is currently producing output (not paused, not
   /// buffering, not mid-seek). Mirrors mpv's `core-idle` (inverted):
   /// the *actual-output* axis. It toggles transiently during seeks and
-  /// buffering; for a stable play/pause indicator bind to [playWhenReady]
+  /// buffering; for a stable play-pause indicator bind to [playWhenReady]
   /// instead.
   final bool playing;
 
-  /// User intent to play: the play/pause axis, set by [Player.play],
+  /// User intent to play: the play-pause axis, set by [Player.play],
   /// [Player.pause], [Player.open] and [Player.stop] (and released at the
   /// natural end of content). Unlike [playing], it does NOT flip during a
   /// seek or while buffering, so it is the correct signal to drive a
-  /// play/pause button (including the OS media-session control). "Actually
+  /// play-pause button (including the OS media-session control). "Actually
   /// emitting audio" is `playWhenReady && playing`.
   final bool playWhenReady;
 
@@ -174,7 +174,7 @@ final class PlayerState {
   /// Whether pitch correction is enabled when changing playback speed.
   final bool pitchCorrection;
 
-  /// Dictionary of tags/metadata for the current track (e.g. Title, Artist).
+  /// Dictionary of tags (metadata) for the current track (e.g. Title, Artist).
   final Map<String, String> metadata;
 
   /// Gapless playback mode.

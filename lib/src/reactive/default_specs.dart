@@ -65,7 +65,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     // `state.playing = !core-idle`. mpv's `pause` defaults to `no`
     // while idle and doesn't fire PROPERTY_CHANGE on the load → playing
     // transition for the first file; `core-idle` flips reliably on
-    // every start/stop/pause/seek/buffer/EOF.
+    // every start, stop, pause, seek, buffer and EOF.
     MpvPropertySpec<bool>.flag(
       name: 'core-idle',
       reactive: r.playing,
@@ -75,7 +75,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     // NOTE: `pause` is deliberately NOT observed here (the event isolate
     // observes it only for its end-of-content read and never forwards
     // it). The intent axis (`playWhenReady`) is driven purely by the
-    // play/pause/open/stop call sites (plus the resets at idle and at the
+    // play, pause, open and stop call sites (plus the resets at idle and at the
     // end of content): the same "intent changes only on explicit method
     // calls" model as ExoPlayer's `playWhenReady` and just_audio's
     // `playing`. Observing `pause` would mis-report intent at idle (mpv's

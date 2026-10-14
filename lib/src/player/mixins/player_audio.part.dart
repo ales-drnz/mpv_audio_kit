@@ -10,7 +10,7 @@ part of '../player.dart';
 const afCommandRefusedLog =
     'A live effects update was refused; rebuilding the chain.';
 
-/// Audio setters: volume, mute, output device, format / channel layout,
+/// Audio setters: volume, mute, output device, format and channel layout,
 /// the effects chain, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
   /// Sets volume (0–100; values above 100 amplify the signal, up to
@@ -50,7 +50,7 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the active audio output device.
   ///
-  /// The `description` field of [device] is ignored — the description
+  /// The `description` field of [device] is ignored: the description
   /// is resolved from `state.audioDevices` (mpv's authoritative
   /// `audio-device-list`). Pass [Device]s built from that list, or use
   /// the `name` only.
@@ -78,7 +78,7 @@ mixin _AudioModule on _PlayerBase {
   /// Sign convention: positive values **delay** audio relative to video
   /// (audio plays later), negative values **advance** it (audio plays
   /// earlier). This matches mpv's convention but is counterintuitive
-  /// when thought of as "audio offset" — positive does NOT mean "audio
+  /// when thought of as "audio offset": positive does NOT mean "audio
   /// ahead".
   ///
   /// Sent to mpv in seconds with six decimals, so microseconds are kept.
@@ -149,7 +149,7 @@ mixin _AudioModule on _PlayerBase {
   /// Sets volume gain in dB (pre-amplification on top of [setVolume]).
   ///
   /// Hard range: -150 to +150 dB. The default soft clamp mpv applies is
-  /// -96 to +12 dB, configurable via [setVolumeGainMin] / [setVolumeGainMax].
+  /// -96 to +12 dB, configurable via [setVolumeGainMin] and [setVolumeGainMax].
   /// 0 dB = unity. Values above ~+6 dB risk clipping unless [setReplayGain]
   /// or a downstream limiter is in the chain.
   Future<void> setVolumeGain(double gainDb) async {
@@ -192,12 +192,12 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the OS per-app mixer volume in percent (`ao-volume`) — the system
+  /// Sets the OS per-app mixer volume in percent (`ao-volume`): the system
   /// volume slider for this app, distinct from the soft [setVolume].
   ///
   /// Best-effort: when the active audio output doesn't expose system volume
   /// (the null AO, or a backend without per-app volume) the call is silently
-  /// ignored — it does NOT throw, and [PlayerState.systemVolume] stays `null`.
+  /// ignored: it does NOT throw, and [PlayerState.systemVolume] stays `null`.
   Future<void> setSystemVolume(double volume) async {
     _checkFinite(volume, 'volume');
     await _gate();
@@ -260,8 +260,8 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Whether mpv reports a "music" media role to the OS audio server
-  /// (mpv's `audio-set-media-role`). On PulseAudio / PipeWire (Linux) this
-  /// lets the server apply the right routing / volume profile for music;
+  /// (mpv's `audio-set-media-role`). On PulseAudio and PipeWire (Linux) this
+  /// lets the server apply the right routing and volume profile for music;
   /// a no-op on backends without a media-role concept.
   Future<void> setAudioMediaRole(bool enable) async {
     await _gate();
@@ -273,7 +273,7 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets HDMI/S/PDIF audio passthrough codecs.
+  /// Sets HDMI and S/PDIF audio passthrough codecs.
   ///
   /// Pass a [Set] of [Spdif] values to enable passthrough for those
   /// codecs (e.g. `{Spdif.ac3, Spdif.dts}`); pass `{}` to disable
@@ -288,7 +288,7 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Selects the audio track via a typed [Track] —
+  /// Selects the audio track via a typed [Track]:
   /// [Track.auto] defers to mpv's automatic choice
   /// (container default or first audio track),
   /// [Track.off] disables audio output entirely, and
@@ -296,21 +296,21 @@ mixin _AudioModule on _PlayerBase {
   /// (match an entry in [PlayerState.tracks]).
   ///
   /// State updates flow through the `current-tracks/audio` observer
-  /// (no optimistic update — mpv may reject an unknown id).
+  /// (no optimistic update: mpv may reject an unknown id).
   Future<void> setAudioTrack(Track track) async {
     await _gate();
     await _prop('aid', track.mpvValue);
   }
 
   /// Loads an external audio file as an additional selectable track on the
-  /// currently-playing file (mpv's `audio-add`) — e.g. a separate-language
+  /// currently-playing file (mpv's `audio-add`), e.g. a separate-language
   /// dub or a commentary track. The new track appears in
   /// [PlayerState.tracks]; switch to it with [setAudioTrack].
   ///
   /// [select] `true` (default) selects the new track immediately; `false`
-  /// adds it without switching. [title] / [lang] tag it for the track list.
+  /// adds it without switching. [title] and [lang] tag it for the track list.
   /// Requires a file to be loaded first. Per-[Media] options
-  /// (`httpHeaders`, …) are validated but not applied — `audio-add` has no
+  /// (`httpHeaders`, …) are validated but not applied: `audio-add` has no
   /// file-local options slot.
   Future<void> addAudioTrack(
     Media file, {
@@ -322,7 +322,7 @@ mixin _AudioModule on _PlayerBase {
     _rejectPcm(file, 'file');
     _validateLoadOptions(file);
     // Snapshot the load epoch: a content-replacing call landing while the
-    // URI resolves makes this add stale — the track belongs to the file
+    // URI resolves makes this add stale: the track belongs to the file
     // that is no longer playing (see [Player.open]).
     final load = _snapshotLoad();
     await _gate();
@@ -339,7 +339,16 @@ mixin _AudioModule on _PlayerBase {
     // mpv's args are positional: to pass `lang` you must also pass `title`.
     if (title != null || lang != null) args.add(title ?? '');
     if (lang != null) args.add(lang);
-    await _command(args);
+    // An Android content:// URI arrives as an fd:// descriptor that mpv
+    // never closes: held until the file the track joins ends.
+    final dispose = resolved.dispose;
+    final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
+    var added = false;
+    try {
+      added = await _command(args) >= 0;
+    } finally {
+      await settle?.call(added);
+    }
   }
 
   /// Removes an audio track (mpv's `audio-remove`). Pass [Track.id] to remove
@@ -375,12 +384,13 @@ mixin _AudioModule on _PlayerBase {
     await _commandChecked(['ao-reload']);
   }
 
-  /// Re-scans sidecar external files (auto-loaded audio / cover art) for the
-  /// current file — mpv's `rescan-external-files`. Use after dropping a cover
+  /// Re-scans sidecar external files (auto-loaded audio and cover art) for the
+  /// current file: mpv's `rescan-external-files`. Use after dropping a cover
   /// or companion audio file next to the playing file so it gets picked up
   /// without reopening. With [keepSelection] the current track selection is
   /// preserved; otherwise mpv reselects the default streams. Newly found
-  /// tracks / cover art fold into [PlayerState.tracks] / the cover-art stream.
+  /// tracks and cover art fold into [PlayerState.tracks] and the cover-art
+  /// stream.
   Future<void> rescanExternalFiles({bool keepSelection = false}) async {
     await _gate();
     await _commandChecked([
@@ -467,14 +477,14 @@ mixin _AudioModule on _PlayerBase {
 
   /// Write + commit shared by [setAudioEffects] and [updateAudioEffects].
   /// The diff computation, the wire enqueue and the state commit are all
-  /// SUSPENSION-FREE — [updateAudioEffects] relies on mapper → enqueue →
+  /// SUSPENSION-FREE: [updateAudioEffects] relies on mapper → enqueue →
   /// commit happening in one microtask so that concurrent un-awaited calls
   /// each observe the previous commit, and the async client API enqueues
   /// in call order so the core sees the writes FIFO. Only the mpv
   /// confirmation (the returned future) is deferred.
   ///
   /// Parameter-only changes on command-capable filters go through
-  /// `af-command` — the live graph updates in place instead of being
+  /// `af-command`: the live graph updates in place instead of being
   /// torn down and rebuilt (glitch-free slider drags). Any change to the
   /// list's shape, non-runtime options and command failures fall back to
   /// the full `af` rewrite, which is always correct.
@@ -742,12 +752,12 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the audio output driver — e.g. `'coreaudio'` (macOS),
-  /// `'wasapi'` (Windows), `'pulse'` / `'alsa'` / `'pipewire'` (Linux).
+  /// Sets the audio output driver, e.g. `'coreaudio'` (macOS),
+  /// `'wasapi'` (Windows), `'pulse'`, `'alsa'` or `'pipewire'` (Linux).
   ///
   /// Pass `'auto'` or an empty string to let mpv auto-probe the best
   /// available backend (the default). mpv has no backend literally named
-  /// `auto` — setting `ao=auto` fails to initialize any output — so both
+  /// `auto` (setting `ao=auto` fails to initialize any output), so both
   /// are normalized to an empty `ao`, which is mpv's auto-probe value.
   Future<void> setAudioDriver(String driver) async {
     await _gate();
@@ -762,20 +772,20 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  // ── Spectrum / PCM streams ───────────────────────────────────────────
+  // ── Spectrum and PCM streams ───────────────────────────────────────
   // The FFT spectrum + raw PCM streams are a separate subsystem from
-  // the typed mpv setters above — they don't write any mpv property,
+  // the typed mpv setters above: they don't write any mpv property,
   // they configure the polling pipeline that reads the
   // `pcm-tap-frame` property at the configured emit rate.
 
-  /// Replaces the spectrum / PCM pipeline configuration.
+  /// Replaces the spectrum and PCM pipeline configuration.
   ///
   /// Use for full-bundle config (initial setup, preset application).
-  /// To mutate a single field — typical of UI sliders — prefer
+  /// To mutate a single field (typical of UI sliders), prefer
   /// [updateSpectrum].
   ///
-  /// Reallocates FFT memory only when [SpectrumSettings.fftSize] /
-  /// window / band layout actually changes; idempotent on no-op
+  /// Reallocates FFT memory only when [SpectrumSettings.fftSize],
+  /// window or band layout actually changes; idempotent on no-op
   /// settings. Re-arms the poll timer when [SpectrumSettings.emitInterval]
   /// changes mid-stream.
   ///
@@ -803,7 +813,7 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Convenience over `setSpectrum(state.spectrum.copyWith(...))`.
   /// The mapper receives the current bundle and must return the new
-  /// one — same semantics as `Player.updateAudioEffects`.
+  /// one: same semantics as `Player.updateAudioEffects`.
   ///
   /// Example:
   /// ```dart

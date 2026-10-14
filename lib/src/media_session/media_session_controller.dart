@@ -24,7 +24,7 @@ import 'media_session_inputs.dart';
 /// - `playWhenReady`, `rate`, `seekCompleted`, `seekable`, `loop` and
 ///   `shuffle` → push a fresh playback snapshot (the OS extrapolates
 ///   position forward from this, so we never push raw `time-pos`
-///   ticks). The OS play/pause state is driven by `playWhenReady` (user
+///   ticks). The OS play-pause state is driven by `playWhenReady` (user
 ///   intent), which is stable across seeks, so the button never
 ///   flickers while scrubbing. The `seekCompleted` push re-syncs the
 ///   landed position to the OS slider.
@@ -158,7 +158,7 @@ class MediaSessionController {
     // snaps to ~0 on playlist auto-advance).
     _subscriptions.add(_inputs.playWhenReady.listen((_) => _markPlayback()));
     // Actual-output + buffering changes drive position-extrapolation gating and
-    // the loading indication. They do NOT touch the OS play/pause button (bound
+    // the loading indication. They do NOT touch the OS play-pause button (bound
     // to playWhenReady), so they can't flicker it; same-turn pushes coalesce.
     _subscriptions.add(_inputs.playing.listen((_) => _markPlayback()));
     // Loading ends: push the metadata held back while it lasted.
@@ -174,7 +174,7 @@ class MediaSessionController {
     _subscriptions.add(
       _inputs.seekCompleted.listen((_) => _markPlayback(seek: true)),
     );
-    // Seekable governs both the OS scrubber (enabled/disabled) and
+    // Seekable governs both the OS scrubber (enabled or disabled) and
     // the "live stream" UI mode; re-push when it flips.
     _subscriptions.add(_inputs.seekable.listen((_) => _markPlayback()));
     // Loop + shuffle drive the OS repeat and shuffle button visual state
@@ -245,9 +245,9 @@ class MediaSessionController {
 
   /// Marks the playback snapshot dirty and schedules a coalesced flush.
   ///
-  /// The OS play/pause state comes from `playWhenReady` (user intent),
+  /// The OS play-pause state comes from `playWhenReady` (user intent),
   /// not `core-idle`, so it stays stable while mpv churns through the
-  /// seek/restart cycle and the scrub-bar button never flickers. No
+  /// seek and restart cycle and the scrub-bar button never flickers. No
   /// seek-transient masking is needed. [seek] sticks across the coalescing
   /// window so a seek landing in the same turn still emits MPRIS `Seeked`.
   void _markPlayback({bool seek = false}) {
@@ -308,7 +308,7 @@ class MediaSessionController {
 
     // The currently-playing queue item. Its consumer-attached
     // [Media.extras] are the metadata fallback for tag-less files, most
-    // importantly transcoded streams (HLS/DASH), where mpv sees no tags and
+    // importantly transcoded streams (HLS or DASH), where mpv sees no tags and
     // reports the stream URL as `media-title`. extras sit below mpv's real
     // tags but above the filename-derived `media-title`.
     final playlist = state.playlist;
@@ -477,8 +477,9 @@ class MediaSessionController {
   /// For the default [MediaSessionArtwork.embedded] the file's embedded cover
   /// wins; when it has none (the common case for a transcoded stream) we
   /// fall back to a network artwork URL the consumer attached to the queue
-  /// item as `extras['art']`, mirroring the title/artist/album fallback. An
-  /// explicit [MediaSessionArtwork.none] suppresses art outright (no fallback).
+  /// item as `extras['art']`, mirroring the title, artist and album fallback.
+  /// An explicit [MediaSessionArtwork.none] suppresses art outright (no
+  /// fallback).
   ({CoverArt? bytes, String? uri}) _resolveArtwork(
     MediaSession? override,
     CoverArt? embedded,
@@ -500,7 +501,7 @@ class MediaSessionController {
     final state = _stateSnapshot();
     // Navigability: a real multi-item mpv playlist reflects its bounds
     // (loop=playlist wraps both ways); a single item stays navigable so an
-    // external-queue consumer still receives next/previous.
+    // external-queue consumer still receives next and previous.
     final pl = state.playlist;
     final multi = pl.items.length > 1;
     final loopPlaylist = state.loop == Loop.playlist;

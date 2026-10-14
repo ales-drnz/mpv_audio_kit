@@ -94,7 +94,7 @@ abstract interface class PlayerApi {
 
   // ── Playback ───────────────────────────────────────────────────────
 
-  /// Starts or resumes playback (sets the play/pause intent to play).
+  /// Starts or resumes playback (sets the play-pause intent to play).
   /// Idempotent while playing. Once the queue has ended
   /// ([PlayerState.completed]) it starts the last track again from its
   /// beginning; with nothing loaded, or at the end of a source that cannot
@@ -377,7 +377,7 @@ abstract interface class PlayerApi {
   /// at a time; calling this with a non-null [session] on a second
   /// [Player] throws [StateError].
   ///
-  /// Incoming OS commands (play/pause from the lockscreen, next track
+  /// Incoming OS commands (play-pause from the lockscreen, next track
   /// from a Bluetooth headset, …) are auto-applied to this [Player]
   /// and also surfaced on [PlayerStream.mediaSessionCommands] for
   /// analytics or interception.

@@ -32,7 +32,7 @@ import 'dart:typed_data';
 /// in absolute media time and you can scrub anywhere the cache still
 /// covers.
 ///
-/// Example — paint a bar per bin:
+/// Example: paint a bar per bin:
 ///
 /// ```dart
 /// player.stream.waveform.listen((wave) {
@@ -70,9 +70,9 @@ final class WaveformData {
   /// for a bin that has real data, `0` for one not yet covered.
   ///
   /// For a fully-analysed (local-file) waveform every bin is `1`. For a
-  /// progressively-grown one (network / transcode streams, filled as
-  /// playback advances) bins ahead of the playhead — or skipped by a seek
-  /// — are `0`, so a renderer can draw them as a baseline instead of a
+  /// progressively-grown one (network or transcode streams, filled as
+  /// playback advances) bins ahead of the playhead (or skipped by a seek)
+  /// are `0`, so a renderer can draw them as a baseline instead of a
   /// misleading flat-zero spike.
   final Uint8List filled;
 
@@ -80,13 +80,13 @@ final class WaveformData {
   /// sliding window anchored to the demuxer cache rather than a fixed
   /// `[0, duration]` track axis (see the class docs and [start]). A renderer
   /// places the playhead at the true playback position (it does NOT pin to
-  /// "now" / auto-follow the newest bin) and allows scrubbing only within
+  /// "now" or auto-follow the newest bin) and allows scrubbing only within
   /// `[start, start + duration]`.
   final bool live;
 
   /// True while the local-file analyzer is still decoding: this envelope is a
   /// *partial* snapshot that grows on every poll until the final one arrives
-  /// (a last emission with `decoding == false`). The bins are safe to draw —
+  /// (a last emission with `decoding == false`). The bins are safe to draw:
   /// [filled] `== 1` marks the regions decoded so far (the analyzer fills
   /// several regions in parallel, so coverage is not strictly left-to-right);
   /// `0` bins render as a baseline. Use [decodeFraction] for a progress
@@ -105,7 +105,7 @@ final class WaveformData {
 
   /// Creates a waveform. Used internally by the waveform pipeline.
   ///
-  /// The per-bin arrays must share one length — the painter indexes
+  /// The per-bin arrays must share one length: the painter indexes
   /// `max[i]` off `min.length` with no per-element guard, so a mismatched
   /// producer would read out of range. The assert makes that contract fail
   /// loudly in debug instead of silently misrendering.
@@ -127,7 +127,7 @@ final class WaveformData {
          'WaveformData min, max, rms and filled must share one length',
        );
 
-  /// Number of bins. Convenience accessor — equal to `min.length`.
+  /// Number of bins. Convenience accessor: equal to `min.length`.
   int get bins => min.length;
 
   /// Absolute media time at the end of the bin axis (`start + duration`).

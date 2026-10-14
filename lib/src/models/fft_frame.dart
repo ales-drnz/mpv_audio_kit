@@ -4,22 +4,22 @@
 
 import 'dart:typed_data';
 
-/// One FFT frame — a frequency-domain snapshot of the audio currently
+/// One FFT frame: a frequency-domain snapshot of the audio currently
 /// playing through the player's output.
 ///
 /// Emitted on [PlayerStream.fft] at the rate configured in
 /// [SpectrumSettings.emitInterval] (default ~30 Hz). Each frame carries
 /// both the **raw FFT bins** (linear frequency axis, post-window
 /// magnitude, normalised to `[0, 1]`) and the **perceptual bands**
-/// (log-spaced bucketing of the bins with asymmetric EMA smoothing —
+/// (log-spaced bucketing of the bins with asymmetric EMA smoothing,
 /// the visualizer staple). Most callers only need [bands]; [bins] is
 /// exposed for custom remappings (mel, Bark, constant-Q).
 ///
-/// The frame is immutable and thread-safe to pass between isolates —
+/// The frame is immutable and thread-safe to pass between isolates:
 /// the underlying [Float32List]s are not aliased into the audio thread's
 /// ring buffer; they were copied out before this object was constructed.
 ///
-/// Example — paint a 64-bar spectrum analyzer:
+/// Example: paint a 64-bar spectrum analyzer:
 ///
 /// ```dart
 /// player.stream.fft.listen((frame) {
@@ -44,7 +44,7 @@ class FftFrame {
   /// power → log → clip → normalise pipeline. Length is half of
   /// [SpectrumSettings.fftSize] (the real FFT only returns the
   /// positive-frequency half). Bin `i` covers `i * sampleRate / fftSize`
-  /// Hz. No smoothing is applied here — it runs on [bands] only.
+  /// Hz. No smoothing is applied here: it runs on [bands] only.
   ///
   /// Use [bands] for the typical visualizer; [bins] is for custom
   /// frequency-axis remappings (mel, Bark, constant-Q, peak detection).
@@ -55,7 +55,7 @@ class FftFrame {
   /// [SpectrumSettings.bandCount].
   ///
   /// Each entry is in `[0, 1]`. Hand straight to a `CustomPainter`
-  /// rendering bars, blobs, radial waves — no further smoothing is
+  /// rendering bars, blobs, radial waves: no further smoothing is
   /// needed.
   final Float32List bands;
 

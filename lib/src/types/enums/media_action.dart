@@ -32,7 +32,7 @@ enum MediaAction {
   /// Stop playback and clear the now-playing entry. Default-off: most
   /// music apps do not expose stop on the lockscreen; including it
   /// causes the OS to allocate UI space for a third button alongside
-  /// the existing play/pause and seek.
+  /// the existing play-pause and seek.
   stop,
 
   /// Skip to the next track. See [MediaSession.actions] for the
@@ -45,7 +45,7 @@ enum MediaAction {
   previous,
 
   /// Seek to an absolute position. Required for the scrubber bar on
-  /// iOS/macOS lockscreen, Windows SMTC progress, and the seek gesture
+  /// iOS and macOS lockscreen, Windows SMTC progress, and the seek gesture
   /// on Android Auto.
   seek,
 
@@ -62,7 +62,7 @@ enum MediaAction {
   /// via `LoopStatus`. Command arrives as [MediaSessionCommandSetRepeatMode].
   setRepeatMode,
 
-  /// Toggle shuffle on/off from the OS UI. Same surfaces as
+  /// Toggle shuffle on or off from the OS UI. Same surfaces as
   /// [setRepeatMode]. Command arrives as [MediaSessionCommandSetShuffle].
   setShuffle,
 

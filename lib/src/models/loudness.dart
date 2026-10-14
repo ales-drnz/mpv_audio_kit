@@ -4,10 +4,10 @@
 
 import '../internals/unset_sentinel.dart';
 
-/// EBU R128 loudness measurement snapshot, in LUFS / LU.
+/// EBU R128 loudness measurement snapshot, in LUFS and LU.
 ///
 /// Emitted on `PlayerStream.loudnessMeter` while the `ebur128` audio effect is
-/// enabled with its `metadata` option on — the meter runs inside the audio
+/// enabled with its `metadata` option on: the meter runs inside the audio
 /// chain and the player polls its per-frame measurements.
 ///
 /// [momentary] and [shortTerm] are `null` until their window has filled,

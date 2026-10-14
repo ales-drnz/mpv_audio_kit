@@ -39,7 +39,7 @@ final class AudioParams {
   final String? codec;
 
   /// Raw value of mpv's `audio-codec-name` property. Same volatility
-  /// caveat as [codec]: the short/descriptive split is not stable
+  /// caveat as [codec]: the split between short and descriptive is not stable
   /// across mpv versions, and one of the two may be absent on a
   /// given file.
   final String? codecName;

@@ -3,21 +3,21 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Playlist setters: queue mutation (add / remove / move / replace),
-/// navigation (next / previous / jump), repeat / shuffle / prefetch
-/// modes.
+/// Playlist setters: queue mutation (add, remove, move, replace),
+/// navigation (next, previous, jump), and the repeat, shuffle and
+/// prefetch modes.
 mixin _PlaylistModule on _PlayerBase {
   /// Appends [media] to the end of the current playlist.
   ///
   /// `media.httpHeaders` ride along as the 4th `loadfile` argument
   /// (mpv 0.38+: `loadfile <url> append -1 <opts>`), so mpv scopes
-  /// them as file-local for this exact entry — even if the entry
+  /// them as file-local for this exact entry, even if the entry
   /// only loads minutes later when playback advances.
   Future<void> add(Media media) async {
     _checkNotDisposed();
     _validateLoadOptions(media);
-    // Snapshot (not bump — appends don't supersede each other) the load
-    // epoch: if a content-replacing call (open / stop / clearPlaylist)
+    // Snapshot (not bump: appends don't supersede each other) the load
+    // epoch: if a content-replacing call (open, stop, clearPlaylist)
     // lands while this append is still resolving its URI, the append is
     // stale and must not graft the old queue's entry onto the new one.
     final load = _snapshotLoad();
@@ -54,7 +54,7 @@ mixin _PlaylistModule on _PlayerBase {
   Future<bool> next({bool force = false}) async {
     await _gate();
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
-    // the track change, so they apply to the OLD entry — see [_settleWrites].
+    // the track change, so they apply to the OLD entry; see [_settleWrites].
     await _settleWrites();
     return _navigate(['playlist-next', force ? 'force' : 'weak']);
   }
@@ -65,19 +65,19 @@ mixin _PlaylistModule on _PlayerBase {
   /// already playing.
   Future<bool> previous({bool force = false}) async {
     await _gate();
-    // See [next] — in-flight transport writes apply to the old entry.
+    // See [next]: in-flight transport writes apply to the old entry.
     await _settleWrites();
     return _navigate(['playlist-prev', force ? 'force' : 'weak']);
   }
 
   /// Jumps to the next entry whose source playlist (`playlist-path`) differs
-  /// from the current one — for navigating across concatenated playlists
+  /// from the current one, for navigating across concatenated playlists
   /// (e.g. several internet-radio `.m3u` lists appended into one queue).
   /// Returns `false`, doing nothing, when no later entry comes from a
   /// different playlist.
   Future<bool> nextPlaylist() async {
     await _gate();
-    // See [next] — in-flight transport writes apply to the old entry.
+    // See [next]: in-flight transport writes apply to the old entry.
     await _settleWrites();
     return _navigate(['playlist-next-playlist']);
   }
@@ -87,7 +87,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// [nextPlaylist], with the same return value.
   Future<bool> previousPlaylist() async {
     await _gate();
-    // See [next] — in-flight transport writes apply to the old entry.
+    // See [next]: in-flight transport writes apply to the old entry.
     await _settleWrites();
     return _navigate(['playlist-prev-playlist']);
   }
@@ -103,18 +103,18 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkNotNegative(index, 'index');
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
-    // See [next] — in-flight transport writes apply to the old entry.
+    // See [next]: in-flight transport writes apply to the old entry.
     await _settleWrites();
     // Optimistic intent, same as play(): this call unpauses, and `pause`
     // is deliberately unobserved, so skipping the write here would leave
-    // `state.playWhenReady` (and the OS play/pause button bound to it)
+    // `state.playWhenReady` (and the OS play-pause button bound to it)
     // stuck on "paused" while audio is audibly playing.
     _updateField(
       (s) => s.copyWith(playWhenReady: true),
       _reactives.playWhenReady,
       true,
     );
-    // See [Player.open] — parked at EOF (`keep-open`) the unpause below
+    // See [Player.open]: parked at EOF (`keep-open`) the unpause below
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
     final parkedAtEof = await _parkedAtEof();
@@ -142,7 +142,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// Replaces the track at [index] with a new [media] item.
   ///
   /// `media.httpHeaders` ride along as file-local options on the
-  /// inserted entry, same as [add] / [Player.open].
+  /// inserted entry, same as [add] and [Player.open].
   ///
   /// When [index] is the currently-playing entry, the swap is routed
   /// through `playlist-next` so it inherits mpv's prefetch-driven
@@ -153,7 +153,7 @@ mixin _PlaylistModule on _PlayerBase {
     _checkNotDisposed();
     RangeError.checkNotNegative(index, 'index');
     _validateLoadOptions(media);
-    // Snapshot the load epoch — same staleness rule as [add].
+    // Snapshot the load epoch: same staleness rule as [add].
     final load = _snapshotLoad();
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
@@ -164,7 +164,7 @@ mixin _PlaylistModule on _PlayerBase {
       return;
     }
     _mediaCache[resolved.uri] = media;
-    // Execute in-flight transport writes before the playlist surgery —
+    // Execute in-flight transport writes before the playlist surgery:
     // see [_settleWrites].
     await _settleWrites();
     if (load.superseded) return;
@@ -198,14 +198,14 @@ mixin _PlaylistModule on _PlayerBase {
 
     // Re-check the epoch between each of the multi-command surgeries below:
     // every await now spans an event-isolate reply round-trip, during which a
-    // concurrent content-replacing call (stop / open / clearPlaylist) can bump
+    // concurrent content-replacing call (stop, open, clearPlaylist) can bump
     // _loadEpoch and own the queue. Without the guard, `playlist-next force`
     // would RESTART playback a concurrent stop() meant to halt, and
     // `playlist-remove` would delete a now-stale index. Bail and let the later
     // call own the surgery, matching the open() family's per-await discipline.
     if (currentPos == index) {
       // Currently-playing entry: insert the replacement right after
-      // the active position, then advance — with prefetch on (see
+      // the active position, then advance: with prefetch on (see
       // [setPrefetchPlaylist]) mpv has the next entry open ahead, so the
       // switch is gapless for typical music files. Finally drop the
       // original.
@@ -232,7 +232,7 @@ mixin _PlaylistModule on _PlayerBase {
     final load = _claimLoad();
     await _gate();
     _mediaCache.clear();
-    // Execute in-flight transport writes first — see [_settleWrites].
+    // Execute in-flight transport writes first; see [_settleWrites].
     await _settleWrites();
     if (load.superseded) return;
     // mpv's `playlist-clear` alone keeps the active entry; the
@@ -273,7 +273,7 @@ mixin _PlaylistModule on _PlayerBase {
       }
       rethrow;
     }
-    // Optimistic update — `state.loop` reflects the requested mode
+    // Optimistic update: `state.loop` reflects the requested mode
     // without waiting for the two underlying observers to round-trip.
     _updateField((s) => s.copyWith(loop: loop), _loop, loop);
   }

@@ -4,11 +4,11 @@
 
 import '../types/state/loudness_scan_state.dart';
 
-/// Result of the offline loudness scan (EBU R128 / ITU-R BS.1770) of the
+/// Result of the offline loudness scan (EBU R128, ITU-R BS.1770) of the
 /// loaded source, emitted on `PlayerStream.loudnessScan`.
 ///
-/// Unlike the live `PlayerStream.loudnessMeter` — which measures audio as
-/// it plays — the scan decodes the whole file off the playback path at
+/// Unlike the live `PlayerStream.loudnessMeter`, which measures audio as
+/// it plays, the scan decodes the whole file off the playback path at
 /// many times realtime, so the integrated loudness of the entire track is
 /// known moments after the file loads. Use it to normalize playback volume
 /// for tracks without ReplayGain tags:
@@ -44,7 +44,7 @@ class LoudnessScan {
   /// 4× oversampled signal per BS.1770.
   final double? truePeak;
 
-  /// Number of 400 ms blocks that survived the BS.1770 gating — a
+  /// Number of 400 ms blocks that survived the BS.1770 gating: a
   /// confidence indicator (0 means the track never rose above the
   /// silence gate and [integrated] is pinned at -70 LUFS).
   final int? gatedBlockCount;

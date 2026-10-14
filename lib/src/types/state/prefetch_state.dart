@@ -8,7 +8,7 @@
 /// Emitted by [PlayerStream.prefetchState] whenever mpv transitions
 /// between phases, so clients can show "Prefetching…" UI, verify that
 /// gapless transitions are actually reusing the buffered stream, or log
-/// warnings when a prefetch is aborted/dropped.
+/// warnings when a prefetch is aborted or dropped.
 ///
 /// Backed by mpv's `prefetch-state` property, with the same lifecycle
 /// across every demuxer backend: HLS, DASH, raw HTTP range reads,

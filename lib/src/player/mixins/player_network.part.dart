@@ -54,7 +54,7 @@ mixin _NetworkModule on _PlayerBase {
 
   /// Sets the audio output buffer depth.
   ///
-  /// Range: 0 to 10 seconds. Default 200 ms — matches mpv's default and is
+  /// Range: 0 to 10 seconds. Default 200 ms: matches mpv's default and is
   /// a sane trade-off between latency and underrun resistance. Increase
   /// for high-latency wireless outputs (Bluetooth, network speakers);
   /// decrease for live monitoring or low-latency listening.
@@ -101,7 +101,7 @@ mixin _NetworkModule on _PlayerBase {
     );
   }
 
-  /// Whether to verify TLS/SSL certificates for network streams.
+  /// Whether to verify TLS (SSL) certificates for network streams.
   Future<void> setTlsVerify(bool enable) async {
     await _gate();
     await _prop('tls-verify', enable ? 'yes' : 'no');
@@ -117,7 +117,7 @@ mixin _NetworkModule on _PlayerBase {
   ///
   /// The bundled libmpv ships with the Mozilla CA roots compiled in, so
   /// [setTlsVerify] works out of the box on every platform. Call this only
-  /// to override those roots — for example to pin against a corporate root
+  /// to override those roots: for example to pin against a corporate root
   /// CA. Passing an empty string clears the override and falls back to the
   /// built-in roots.
   ///

@@ -74,7 +74,7 @@ final class MpvTrack {
   /// container itself. Mirrors mpv's `external`.
   final bool external;
 
-  /// Path/URI of the external file backing this track, or `null` for tracks
+  /// Path or URI of the external file backing this track, or `null` for tracks
   /// embedded in the main container. Mirrors mpv's `external-filename`.
   final String? externalFilename;
 

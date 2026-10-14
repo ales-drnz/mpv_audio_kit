@@ -72,16 +72,16 @@ class SpectrumPipeline {
   bool _pcmActive = false;
   bool _disposed = false;
   Timer? _pollTimer;
-  // Guards against overlapping async polls — see [LoudnessMeterPipeline].
+  // Guards against overlapping async polls; see [LoudnessMeterPipeline].
   bool _polling = false;
 
-  // Shared FFT / windowing / EMA pipeline — same component the
+  // Shared FFT, windowing and EMA pipeline: same component the
   // public [BandProcessor] exposes, so global and per-filter
   // spectrum surfaces stay byte-identical when fed equivalent PCM.
   late final BandProcessor _processor = BandProcessor(_settings);
   int _lastPolledPtsNs = 0;
 
-  /// Replaces the pipeline configuration. Reallocates FFT / window /
+  /// Replaces the pipeline configuration. Reallocates FFT, window and
   /// EMA memory only on changes that require it; the poll timer is
   /// re-armed only when [SpectrumSettings.emitInterval] changes.
   void setSettings(SpectrumSettings next) {
@@ -105,7 +105,7 @@ class SpectrumPipeline {
   void _maybeStart() {
     if (_disposed || _pollTimer != null) return;
     // [BandProcessor] allocates lazily on first [process], so we don't
-    // need to prime anything here — just arm the poll loop.
+    // need to prime anything here: just arm the poll loop.
     _pollTimer = Timer.periodic(_interval, (_) => _poll());
   }
 
@@ -130,7 +130,7 @@ class SpectrumPipeline {
     if (_disposed) return;
     if (rc < 0 || value is! Map) return;
 
-    // Scalars first: a stale frame (same pts as the previous poll — e.g.
+    // Scalars first: a stale frame (same pts as the previous poll, e.g.
     // while paused) is discarded BEFORE the sample buffer is reinterpreted.
     final sampleRate = value['sample_rate'] is int
         ? value['sample_rate'] as int

@@ -21,13 +21,20 @@ import 'package:meta/meta.dart';
 /// and read by the stream on its way out. So a release waits for a file
 /// start after the entry left, then for that start to settle (the file
 /// loaded or failed), and runs at the latest when the player is disposed.
+///
+/// An external track (`audio-add`) belongs to the file it was added to:
+/// mpv closes its stream when that file ends, before it reports the end
+/// (END_FILE). So its descriptor is released at the first file end after
+/// mpv took the track.
 @internal
 class HeldSources {
   final _holds = <String, _Hold>{};
+  final _tracks = <_Hold>{};
   int _starts = 0;
+  int _ends = 0;
 
   /// Whether nothing is held.
-  bool get isEmpty => _holds.isEmpty;
+  bool get isEmpty => _holds.isEmpty && _tracks.isEmpty;
 
   /// Holds [release] for the entries mpv lists as [uri]. Returns the
   /// release to call when the load aborts before mpv got the URI: it runs
@@ -56,8 +63,29 @@ class HeldSources {
     }
   }
 
+  /// Holds [release] for an external track about to be added to the
+  /// current file. Returns the call to make with the outcome of the add:
+  /// once mpv took the track the hold lasts until that file ends,
+  /// otherwise it runs the release now.
+  Future<void> Function(bool added) holdTrack(Future<void> Function() release) {
+    final h = _Hold(release);
+    _tracks.add(h);
+    return (added) async {
+      if (added && !h._done) {
+        // A file end already reported belongs to an earlier file.
+        h.leftAt = _ends;
+        return;
+      }
+      _tracks.remove(h);
+      await h.run();
+    };
+  }
+
   /// mpv started a file (START_FILE).
   void onStartFile() => _starts++;
+
+  /// mpv ended a file (END_FILE), before [takeSettled].
+  void onEndFile() => _ends++;
 
   /// mpv loaded a file or ended one (FILE_LOADED, END_FILE): returns the
   /// releases whose entry left before the last file start.
@@ -69,13 +97,23 @@ class HeldSources {
       out.add(h.run);
       return true;
     });
+    _tracks.removeWhere((h) {
+      final added = h.leftAt;
+      if (added == null || added >= _ends) return false;
+      out.add(h.run);
+      return true;
+    });
     return out;
   }
 
   /// Every release still held, for dispose.
   List<Future<void> Function()> takeAll() {
-    final out = [for (final h in _holds.values) h.run];
+    final out = [
+      for (final h in _holds.values) h.run,
+      for (final h in _tracks) h.run,
+    ];
     _holds.clear();
+    _tracks.clear();
     return out;
   }
 }
@@ -89,7 +127,8 @@ class _Hold {
   /// Whether a playlist report has listed the entry.
   bool listed = false;
 
-  /// The file-start count when the entry left the playlist.
+  /// The file-start count when the entry left the playlist. For a track,
+  /// the file-end count when mpv took it.
   int? leftAt;
 
   Future<void> run() async {

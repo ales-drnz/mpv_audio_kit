@@ -30,7 +30,7 @@ final class CacheSettings {
   /// 1 second mirrors mpv's `--cache-pause-wait=1.0`.
   final Duration pauseWait;
 
-  /// Whether to enter the buffering/paused state before playback starts
+  /// Whether to enter the buffering and paused state before playback starts
   /// (and again after every seek restart) until the cache fills. The fix
   /// for choppy start-up on network sources (web-radio, HLS or Plex).
   /// Default `false`, matching mpv's `--cache-pause-initial=no`; only takes

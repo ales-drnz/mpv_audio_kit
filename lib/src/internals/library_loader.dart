@@ -19,7 +19,7 @@ import 'pcm_native.dart';
 /// `quit`, before destroying its handle. The previous VM's event isolate
 /// may still be parked inside `mpv_wait_event` on that handle, and a Dart
 /// isolate blocked in a synchronous FFI call can't be killed until it
-/// returns to a safepoint — destroying the handle before then frees the
+/// returns to a safepoint: destroying the handle before then frees the
 /// mutex it sleeps on (use-after-free). This comfortably exceeds the
 /// 0.1 s debug wait-event timeout so the isolate has provably unwound.
 const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
@@ -31,7 +31,7 @@ const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
 /// MPV_EVENT_SHUTDOWN and is reaped. `quit` alone does NOT free the core's
 /// worker threads or audio output. Phase 2, after [delay], destroys each
 /// handle (`mpv_terminate_destroy` joins the core thread and releases the
-/// audio output) — deferred so the destroy never races an isolate still
+/// audio output): deferred so the destroy never races an isolate still
 /// inside the syscall (use-after-free).
 @internal
 Future<void> reapOrphanedHandles(
@@ -84,7 +84,7 @@ abstract final class MpvAudioKit {
   /// Handles cleanup of orphaned `libmpv` native resources
   /// (e.g., handles that leaked across a Flutter Hot-Restart).
   ///
-  /// [libmpv] (optional) — explicit path or filename for the native
+  /// [libmpv] (optional): explicit path or filename for the native
   /// `libmpv` library to load via `DynamicLibrary.open`. When `null`
   /// (the default), the libmpv the package's build hook bundles with the
   /// app is used. Pass an explicit path only when shipping a custom
@@ -92,7 +92,7 @@ abstract final class MpvAudioKit {
   /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
   /// app's pubspec instead.
   ///
-  /// [hotRestartCleanup] (default: `true`) — recovers libmpv handles
+  /// [hotRestartCleanup] (default: `true`): recovers libmpv handles
   /// leaked across a Flutter Hot-Restart so they don't keep
   /// exclusive-mode audio devices locked, and releases the live PCM
   /// sources of the replaced VM (in the root isolate only, see
@@ -161,7 +161,7 @@ abstract final class MpvAudioKit {
     }
   }
 
-  /// Sets `LC_NUMERIC=C` process-wide on Linux and macOS — mandated
+  /// Sets `LC_NUMERIC=C` process-wide on Linux and macOS: mandated
   /// by libmpv's API contract (`mpv/client.h`; mpv aborts loading
   /// otherwise).
   ///
@@ -186,7 +186,7 @@ abstract final class MpvAudioKit {
           >('setlocale');
 
       // The LC_NUMERIC constant is libc-specific: glibc (Linux) numbers
-      // it 1, the BSD layout (macOS/iOS) numbers it 4 — there, 1 is
+      // it 1, the BSD layout (macOS and iOS) numbers it 4: there, 1 is
       // LC_COLLATE, which would leave the numeric locale untouched.
       final lcNumeric = Platform.isLinux ? 1 : 4;
       using((arena) {

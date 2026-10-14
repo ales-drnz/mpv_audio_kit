@@ -79,7 +79,7 @@ sealed class MediaSessionCommand {
   /// [MediaAction.like]). **Emit-only:** NOT auto-applied; there is no
   /// built-in favourite concept, so react to it on
   /// [PlayerStream.mediaSessionCommands] and reflect the new state back via
-  /// [MediaSession.isFavorite] (fills/empties the star).
+  /// [MediaSession.isFavorite] (fills or empties the star).
   static const MediaSessionCommand like = MediaSessionCommandLike._();
 }
 
@@ -134,7 +134,7 @@ final class MediaSessionCommandPrevious extends MediaSessionCommand {
   String toString() => 'MediaSessionCommand.previous';
 }
 
-/// The [MediaSessionCommand.like] variant: the favourite/like control was
+/// The [MediaSessionCommand.like] variant: the favourite (like) control was
 /// pressed. Emit-only (no built-in player effect).
 final class MediaSessionCommandLike extends MediaSessionCommand {
   const MediaSessionCommandLike._() : super._();

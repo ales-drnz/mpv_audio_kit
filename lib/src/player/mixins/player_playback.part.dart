@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Transport setters: play / pause / stop / seek, chapter navigation,
+/// Transport setters: play, pause, stop, seek, chapter navigation,
 /// and the A-B loop controls.
 mixin _PlaybackModule on _PlayerBase {
   /// Starts or resumes playback. Idempotent: a no-op when already
@@ -57,7 +57,7 @@ mixin _PlaybackModule on _PlayerBase {
   }
 
   /// Pauses playback. Idempotent: a no-op when already paused. Position
-  /// is preserved — call [play] to resume from the same offset.
+  /// is preserved: call [play] to resume from the same offset.
   Future<void> pause() async {
     await _gate();
     _claimIntent(false);
@@ -76,8 +76,8 @@ mixin _PlaybackModule on _PlayerBase {
     await _commandChecked(['write-watch-later-config']);
   }
 
-  /// Deletes the "watch later" resume config — for the current file, or for
-  /// [filename] when given — clearing any saved resume point.
+  /// Deletes the "watch later" resume config for the current file, or for
+  /// [filename] when given, clearing any saved resume point.
   Future<void> deleteResumeConfig({String? filename}) async {
     await _gate();
     await _command(
@@ -100,9 +100,14 @@ mixin _PlaybackModule on _PlayerBase {
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.
     _claimIntent(false);
-    // Execute in-flight transport writes first — see [_settleWrites].
+    // Execute in-flight transport writes first; see [_settleWrites].
     await _settleWrites();
     await _commandChecked(['stop']);
+    // mpv clears its playlist on stop but reports the change only when a
+    // file was playing. Idle (after a failed load) it stays silent, so the
+    // state would keep the old entries and the live sources they hold.
+    final (rc, node) = await _getAsync('playlist', MpvFormat.mpvFormatNode);
+    if (rc >= 0 && node is List && !_disposed) _updatePlaylistFromNode(node);
   }
 
   /// Seeks playback to a position in the current file.
@@ -110,7 +115,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// With [relative] = `false` (default), [position] is an absolute
   /// timestamp from the start of the file (clamped to `[0, duration]`).
   /// With [relative] = `true`, [position] is a signed offset from the
-  /// current playhead — positive moves forward, negative moves backward.
+  /// current playhead: positive moves forward, negative moves backward.
   ///
   /// Examples:
   /// ```dart
@@ -119,7 +124,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// await player.seek(const Duration(seconds: 30), relative: true);    // skip forward 30s
   /// ```
   ///
-  /// Throws [MpvCommandException] if mpv rejects the seek — most commonly when
+  /// Throws [MpvCommandException] if mpv rejects the seek: most commonly when
   /// nothing is loaded.
   Future<void> seek(
     Duration position, {
@@ -155,7 +160,7 @@ mixin _PlaybackModule on _PlayerBase {
     ]);
   }
 
-  /// Undoes the last [seek] / [seekToPercent], jumping back to the position
+  /// Undoes the last [seek] or [seekToPercent], jumping back to the position
   /// before it; calling it again undoes the revert. Works only within the
   /// current file (mpv's `revert-seek`).
   Future<void> revertSeek() async {
@@ -179,16 +184,16 @@ mixin _PlaybackModule on _PlayerBase {
     );
   }
 
-  /// Replaces the current file's chapter markers with [chapters] — an
+  /// Replaces the current file's chapter markers with [chapters]: an
   /// "external chapters" injection for sources whose container carries none.
   ///
-  /// The canonical case is a resolved YouTube / `googlevideo` audio stream:
+  /// The canonical case is a resolved YouTube (`googlevideo`) audio stream:
   /// YouTube's chapters live in the video description
   /// not in the audio container, so a freshly-loaded stream has an empty
   /// `chapter-list`. This writes the list directly through the stable C API
   /// (`mpv_set_property` on `chapter-list`), so [PlayerStream.chapters] /
   /// [PlayerState.chapters] then reflect them and [setChapter] navigates them
-  /// natively — no demuxer chapters required. Pass an empty list to clear.
+  /// natively: no demuxer chapters required. Pass an empty list to clear.
   ///
   /// Timing: call this AFTER the file is loaded (e.g. on the first
   /// [PlayerStream.duration] event for the track). mpv resets `chapter-list`
@@ -205,7 +210,7 @@ mixin _PlaybackModule on _PlayerBase {
       );
     }
     // Reflect optimistically; the `chapter-list` observer confirms with mpv's
-    // normalized view (e.g. clamped/sorted times) on the next event.
+    // normalized view (e.g. clamped or sorted times) on the next event.
     final list = List<Chapter>.unmodifiable(chapters);
     _updateField((s) => s.copyWith(chapters: list), _reactives.chapters, list);
   }

@@ -6,16 +6,17 @@ part of '../player.dart';
 
 /// Builds the file-local `loadfile` `<options>` argument from a [Media]
 /// and validates its load-time options (HTTP headers, chunk size, demuxer
-/// lavf options) up-front. The `open` / `openAll` / `openPlaylistFile`
-/// entry points and the audio / playlist mixins all reach these via the
+/// lavf options) up-front. The `open`, `openAll` and `openPlaylistFile`
+/// entry points and the audio and playlist mixins all reach these via the
 /// abstract signatures on `_PlayerBase`.
 mixin _LoadValidationModule on _PlayerBase {
   /// Builds the `loadfile` `<options>` argument from a [Media]'s
   /// `httpHeaders` and `httpChunkSize`, and the raw audio demuxer of a
   /// live PCM source. Each value is length-prefixed
   /// (`%N%`) so the outer option-list parser doesn't split on the commas
-  /// inside it — hence the per-key/value rejection of CR, LF, `,`, NUL
-  /// (and `:` in keys) by [_validateHeaderKey] / [_validateHeaderValue].
+  /// inside it: hence the rejection of CR, LF, `,` and NUL in keys and
+  /// values (and `:` in keys) by [_validateHeaderKey] and
+  /// [_validateHeaderValue].
   /// Returns `''` when the media carries neither.
   @override
   String _buildLoadfileOptions(Media media) {
@@ -52,7 +53,7 @@ mixin _LoadValidationModule on _PlayerBase {
       // drops (mpv already sets `reconnect=1`).
       //
       // Why BOTH options (verified against FFmpeg 8.1.1 `libavformat/http.c`):
-      //   • `request_size` bounds EVERY request, the first one included — the
+      //   • `request_size` bounds EVERY request, the first one included: the
       //     gate is `if (s->initial_requests || s->request_size)` (http.c:1594)
       //     and mpv leaves `seekable` unset (→ -1, ≠ 0), so the bounded-range
       //     branch is taken even for the opening probe.
@@ -62,7 +63,7 @@ mixin _LoadValidationModule on _PlayerBase {
       //     `Range: bytes=off-`.
       // Setting both keeps the probe AND every steady-state read bounded.
       // (`request_size` alone would also suffice here; `initial_request_size`
-      // alone would NOT — chunk 2+ would go unbounded.)
+      // alone would NOT: chunk 2+ would go unbounded.)
       final value =
           'initial_request_size=$chunk,request_size=$chunk,'
           'reconnect_streamed=1,reconnect_on_network_error=1';
@@ -131,9 +132,9 @@ mixin _LoadValidationModule on _PlayerBase {
 
   static final RegExp _kForbiddenInLavfOption = RegExp(r'[\r\n,\x00]');
 
-  /// A `demuxer-lavf-o` entry sits in a comma-separated list, so its key/value
-  /// must be non-empty and free of comma / CR / LF / NUL. Mirrors the header
-  /// validators.
+  /// A `demuxer-lavf-o` entry sits in a comma-separated list, so its key and
+  /// value must be non-empty and free of comma, CR, LF and NUL. Mirrors the
+  /// header validators.
   void _validateDemuxerLavfOption(String key, String value) {
     if (key.isEmpty) {
       throw ArgumentError.value(
