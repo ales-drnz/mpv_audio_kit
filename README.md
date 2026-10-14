@@ -582,7 +582,11 @@ final socket = await WebSocket.connect('wss://example.com/speech');
 final source = await player.openPcmStream(
   const PcmFormat(sampleRate: 24000, channels: 1), // s16le by default
 );
-await source.addStream(socket.cast<List<int>>().map(Uint8List.fromList));
+await source.addStream(
+  socket.where((m) => m is List<int>).map(
+    (m) => m is Uint8List ? m : Uint8List.fromList(m as List<int>),
+  ),
+);
 await source.close();
 ```
 
@@ -596,19 +600,17 @@ await source.close();
 - `close` plays out what is buffered, then the entry ends after its last
   sample (`completed`). `abort` cuts it at once: the player moves to the
   next entry, or stops at the last one.
-- `done` completes once the player has read everything, or the source was
-  aborted or stopped by `stop`, `next` or another `open`.
+- `done` completes once the player has read everything, or when the
+  source is aborted, or stopped: `stop`, `next`, another `open`, a removal
+  from the playlist or a dispose.
 - Encodings: `u8`, `s16le`, `s24le`, `s32le` and `f32le`, 1 to 8 channels.
 
 A source plays once and cannot seek, and `state.duration` follows the
 audio received so far. To queue several sources, create them with
 `PcmSource.create` and pass `source.toMedia()` to `openAll` or `add`: each
-starts when the previous one ends. Disposing the player aborts the sources
-`openPcmStream` opened.
-
-With prefetch on, the player opens the next live source while the current
-entry plays. A source the player opened and then left, by a skip or a jump
-elsewhere, is `stopped` and cannot play again.
+starts when the previous one ends. The player keeps each queued source
+while its entry is in the playlist, so the app need not. Prefetch skips
+live entries: a queued source opens when its entry starts.
 
 ---
 
