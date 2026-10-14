@@ -86,6 +86,7 @@ The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to bui
     * [2.2 HTTP headers](#22-http-headers)
     * [2.3 Extras](#23-extras)
     * [2.4 Demuxer options](#24-demuxer-options)
+    * [2.5 Live PCM input](#25-live-pcm-input)
 
     </details>
 
@@ -569,6 +570,39 @@ final media = Media(
 ```
 
 Keys must not be empty, and values must not contain a comma.
+
+#### 2.5 Live PCM input
+
+A `PcmSource` plays raw PCM chunks while they arrive, such as speech
+generated piece by piece or samples sent over a socket. There is no file,
+no local server and no header: the chunks go straight to mpv.
+
+```dart
+final socket = await WebSocket.connect('wss://example.com/speech');
+final source = await player.openPcmStream(
+  const PcmFormat(sampleRate: 24000, channels: 1), // s16le by default
+);
+await source.addStream(socket.cast<List<int>>().map(Uint8List.fromList));
+await source.close();
+```
+
+- Playback starts about a quarter of a second after the first chunk.
+- `add` never blocks. `addStream` pauses its stream while more than
+  `maxBuffered` (30 s by default) waits, and `ready` does the same for a
+  loop of `add` calls.
+- A chunk may end in the middle of a frame: the rest is joined to the next
+  chunk.
+- `close` plays out what is buffered, then the entry ends (`completed`).
+  `abort` drops the buffer and ends it at once.
+- `done` completes once the player has read everything, or the source was
+  aborted or stopped by `stop`, `next` or another `open`.
+- Encodings: `u8`, `s16le`, `s24le`, `s32le` and `f32le`, 1 to 8 channels.
+
+A source plays once and cannot seek, and `state.duration` follows the
+audio received so far. To queue several sources, create them with
+`PcmSource.create` and pass `source.toMedia()` to `openAll` or `add`: each
+starts when the previous one ends. Disposing the player aborts the sources
+`openPcmStream` opened.
 
 ---
 
