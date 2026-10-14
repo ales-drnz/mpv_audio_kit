@@ -2,24 +2,30 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// mpv_audio_kit — Flutter audio player powered by libmpv.
+/// mpv_audio_kit: a Flutter audio player powered by libmpv.
 ///
 /// Supports macOS, Windows, Linux, iOS, and Android.
 ///
 /// ## Quick start
 /// ```dart
+/// import 'package:flutter/widgets.dart';
 /// import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 ///
-/// final player = Player();
+/// Future<void> main() async {
+///   WidgetsFlutterBinding.ensureInitialized();
+///   MpvAudioKit.ensureInitialized(); // once, before any Player
 ///
-/// player.stream.position.listen((pos) => print(pos));
-/// player.stream.playing.listen((p)   => print('playing: $p'));
+///   final player = Player();
 ///
-/// await player.open(Media('https://example.com/audio.mp3'));
-/// await player.play();
+///   player.stream.position.listen((pos) => print(pos));
+///   player.stream.playing.listen((p) => print('playing: $p'));
 ///
-/// // ...
-/// await player.dispose();
+///   await player.open(const Media('https://example.com/audio.mp3'));
+///   await player.play();
+///
+///   // ...
+///   await player.dispose();
+/// }
 /// ```
 library;
 

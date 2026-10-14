@@ -1,7 +1,12 @@
 // Minimal mpv_audio_kit example
+import 'package:flutter/widgets.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 Future<void> main() async {
+  // The media session talks to the OS through a platform channel, which
+  // needs the Flutter binding.
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Registers the native libmpv backend. Call once before any Player.
   MpvAudioKit.ensureInitialized();
 
