@@ -27,6 +27,8 @@ import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
+import 'download.dart';
+
 const _release = 'libmpv-r16';
 const _baseUrl =
     'https://github.com/ales-drnz/mpv_audio_kit/releases/download/$_release';
@@ -61,6 +63,14 @@ void main(List<String> args) async {
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
+    if (local != null &&
+        await FileSystemEntity.type(local.toFilePath()) ==
+            FileSystemEntityType.notFound) {
+      throw StateError(
+        'mpv_audio_kit: the libmpv user define points at '
+        '${local.toFilePath()}, which does not exist',
+      );
+    }
     if (local != null &&
         !await FileSystemEntity.isDirectory(local.toFilePath())) {
       // A single file is the finished library, bundled for every target.
@@ -208,7 +218,7 @@ Future<File> _fetch(String asset, Uri cacheDir) async {
   // architectures at once, and both would download the same asset.
   final partial = File('${cached.path}.$pid.part');
   try {
-    await _download('$_baseUrl/$asset', partial);
+    await download('$_baseUrl/$asset', partial);
     if (!await _matches(partial, expected)) {
       throw StateError(
         'mpv_audio_kit: SHA-256 mismatch for $asset from $_baseUrl',
@@ -271,21 +281,6 @@ Future<bool> _matches(File file, String sha256Hex) async {
   if (!await file.exists()) return false;
   final digest = await sha256.bind(file.openRead()).first;
   return digest.toString() == sha256Hex;
-}
-
-Future<void> _download(String url, File target) async {
-  final client = HttpClient()..findProxy = HttpClient.findProxyFromEnvironment;
-  try {
-    final response = await (await client.getUrl(Uri.parse(url))).close();
-    if (response.statusCode != HttpStatus.ok) {
-      throw HttpException(
-        'mpv_audio_kit: HTTP ${response.statusCode} for $url',
-      );
-    }
-    await response.pipe(target.openWrite());
-  } finally {
-    client.close();
-  }
 }
 
 Future<String> _run(String executable, List<String> arguments) async {
