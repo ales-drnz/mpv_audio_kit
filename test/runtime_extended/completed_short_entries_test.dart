@@ -94,10 +94,11 @@ void main() {
             timeout: const Duration(seconds: 15),
             reason: 'mpv never parked at the end',
           );
-          // A loop at the park means the end is no longer the end; turning
-          // it off again means it is, once the entry plays out. mpv restarts
-          // the file when the loop goes on, so eof-reached moves here too:
-          // the loop-only read is checked in end_of_content_shim_test.
+          // A loop at the park means the end is no longer the end. mpv
+          // rewinds the file when the loop goes on and stays paused, so
+          // eof-reached moves here too: the loop-only read is checked in
+          // end_of_content_shim_test. With the loop off again the entry
+          // sits paused at its start, not at its end, until it plays out.
           await player.setLoop(Loop.file);
           await waitUntil(
             () => !player.state.completed,
@@ -105,6 +106,13 @@ void main() {
             reason: 'completed stayed up with a loop on',
           );
           await player.setLoop(Loop.off);
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          expect(
+            player.state.completed,
+            isFalse,
+            reason: 'the rewound entry is paused at its start',
+          );
+          await player.play();
           await waitUntil(
             () => player.state.completed,
             reason: 'completed missed the end once the loop went off',
