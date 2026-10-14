@@ -10,11 +10,9 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter_test/flutter_test.dart' show TestWidgetsFlutterBinding;
+import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:test/test.dart';
 
-import '../_helpers/libmpv_resolver.dart';
 import '../_helpers/setter_test_helpers.dart';
 import '../_helpers/slow_core_shim.dart';
 
@@ -30,29 +28,9 @@ const int _getDelayUs = 500 * 1000;
 const int _maxGapMs = 350;
 
 void main() {
-  var ready = false;
-
-  runtimeSuite(initialize: false, () {
-    setUpAll(() async {
-      // rootBundle must work for the TLS CA bundle extraction in bring-up.
-      TestWidgetsFlutterBinding.ensureInitialized();
-      final real = resolveLibmpv()!;
-      final shim = await SlowCoreShim.build();
-      if (shim == null) {
-        markTestSkipped('no host C compiler — cannot build the slow-core shim');
-        return;
-      }
-      shim.configure(realLibmpvPath: real, getDelayUs: _getDelayUs);
-      MpvAudioKit.ensureInitialized(
-        libmpv: shim.path,
-        hotRestartCleanup: false,
-      );
-      ready = true;
-    });
-
+  slowCoreShimSuite(getDelayUs: _getDelayUs, (_) {
     test('a busy mpv core cannot stall the main isolate through the '
         'file-load window', () async {
-      if (!ready) return;
       final coverPath =
           '${Directory.current.path}/test/fixtures/sine_with_cover.flac';
       if (!File(coverPath).existsSync()) {
@@ -128,7 +106,6 @@ void main() {
 
     test('a busy mpv core cannot stall the main isolate while a DSP visualizer '
         'is polling', () async {
-      if (!ready) return;
       final fixture =
           '${Directory.current.path}/test/fixtures/sine_440hz_1s.wav';
       if (!File(fixture).existsSync()) {
