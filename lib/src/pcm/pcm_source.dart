@@ -239,7 +239,8 @@ final class PcmSource {
   /// Adds every chunk of [stream], pausing it while the source is past
   /// [maxBuffered] (see [ready]). Completes when [stream] ends, or when
   /// the source is [done], which cancels the subscription. An error of
-  /// [stream] cancels it and completes the future with that error.
+  /// [stream] cancels it and completes the future with that error, and so
+  /// does a chunk that arrives after [close], with a [StateError].
   ///
   /// Does not [close] the source, so several streams can follow each
   /// other: call [close] after the last one.
@@ -262,6 +263,14 @@ final class PcmSource {
     sub = stream.listen(
       (chunk) {
         if (isDone) return finish();
+        if (_closing) {
+          if (completer.isCompleted) return;
+          unawaited(sub.cancel());
+          completer.completeError(
+            StateError('PcmSource.addStream() got a chunk after close()'),
+          );
+          return;
+        }
         add(chunk);
         if (_bufferedBytes >= _highBytes && !sub.isPaused) {
           sub.pause();

@@ -464,6 +464,24 @@ void main() {
       },
     );
 
+    test('close during addStream ends it with a StateError', () async {
+      final s = PcmSource.create(_mono);
+      var cancelled = false;
+      final c = StreamController<Uint8List>(onCancel: () => cancelled = true);
+      final fed = s.addStream(c.stream);
+      c.add(_ramp(0, 10));
+      await _flush();
+      final closing = s.close();
+      c.add(_ramp(10, 10));
+      await expectLater(
+        fed.timeout(const Duration(seconds: 1)),
+        throwsStateError,
+      );
+      expect(cancelled, isTrue);
+      s.abort();
+      await closing;
+    });
+
     test('addStream forwards an error of its stream', () async {
       final s = PcmSource.create(_mono);
       final fed = s.addStream(Stream<Uint8List>.error(StateError('socket')));
