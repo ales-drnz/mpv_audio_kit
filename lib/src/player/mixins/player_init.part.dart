@@ -33,10 +33,10 @@ mixin _InitModule on _PlayerBase {
     if (_disposed) {
       // dispose() landed while the isolate was initializing. dispose()
       // found `_bringUpCompleted == false` and has no handle to tear
-      // down — this is the only code that ever sees it, so the teardown
+      // down: this is the only code that ever sees it, so the teardown
       // duty lands here: unwind the worker deterministically (stop flag
       // + wakeup), then destroy the core only on confirmed exit (same
-      // rule as dispose — destroying mid-`mpv_wait_event` SIGSEGVs).
+      // rule as dispose: destroying mid-`mpv_wait_event` SIGSEGVs).
       // dispose() awaits `_ready`, i.e. this very teardown, before
       // proceeding, so it cannot observe a half-released core.
       final lib = MpvLibrary.open(MpvAudioKit.libraryPath);
@@ -50,17 +50,17 @@ mixin _InitModule on _PlayerBase {
 
     // Re-open the library on the main isolate. The OS keeps libmpv
     // mapped after the event isolate's first dlopen, so this resolves
-    // in microseconds — no second cold-load cost.
+    // in microseconds: no second cold-load cost.
     _lib = MpvLibrary.open(MpvAudioKit.libraryPath);
     _handle = Pointer<MpvHandle>.fromAddress(handleAddress);
     _client = MpvClient(_lib, _handle);
     // Every DSP pipeline polls mpv through the async-get path (decoded in
     // the event isolate, reply-correlated) rather than a blocking FFI read,
     // so a visualizer's poll loop can never stall the main isolate while the
-    // core is busy initializing an audio output. `_getAsync` / `_propRc` are
+    // core is busy initializing an audio output. `_getAsync` and `_propRc` are
     // the same async client-API calls the typed setters use.
     _spectrumPipeline = SpectrumPipeline(asyncGet: _getAsync);
-    // fft/pcm are NOT bridged here: the pipeline's poll loop arms on its
+    // fft and pcm are NOT bridged here: the pipeline's poll loop arms on its
     // streams' first listener, so the bridges are created lazily by the
     // public controllers' onListen (and reconciled below for subscribers
     // that landed before bring-up). The settings live in the state, where
@@ -102,7 +102,7 @@ mixin _InitModule on _PlayerBase {
     if (pendingLevel != null) _applyLogLevel(pendingLevel);
 
     // A DSP subscriber that landed before bring-up finished missed the
-    // `onListen` enable — reconcile it now.
+    // `onListen` enable: reconcile it now.
     if (_fftCtrl.hasListener) {
       _fftPipeSub ??= _spectrumPipeline.fftStream.listen(_fftCtrl.add);
     }
@@ -141,8 +141,8 @@ mixin _InitModule on _PlayerBase {
     'vid': 'no',
     'sid': 'no',
     'vo': 'null',
-    // Watch-later / resume. Persist only the audio-relevant props (mpv's
-    // default list includes video/sub keys this build can't restore).
+    // Watch-later and resume. Persist only the audio-relevant props (mpv's
+    // default list includes video and sub keys this build can't restore).
     'resume-playback': configuration.resumePlayback ? 'yes' : 'no',
     'watch-later-options': 'start,speed,pitch,volume,mute,audio-delay,af,aid',
     if (configuration.watchLaterDir != null)
@@ -152,7 +152,7 @@ mixin _InitModule on _PlayerBase {
     if (configuration.normalizeDownmix) 'audio-normalize-downmix': 'yes',
     if (configuration.demuxerCacheDir != null)
       'demuxer-cache-dir': configuration.demuxerCacheDir!,
-    // If the audio device can't be opened (Bluetooth/AirPlay sink gone,
+    // If the audio device can't be opened (Bluetooth or AirPlay sink gone,
     // a stale device id), fall back to the null AO and keep the position
     // clock running instead of hard-failing playback. The failure is
     // still surfaced through `audio-output-state`.
@@ -180,7 +180,7 @@ mixin _InitModule on _PlayerBase {
     'volume': canonicalFloat(configuration.initialVolume).toString(),
   };
 
-  /// Specs for `mpv_observe_property` — registry props plus the small
+  /// Specs for `mpv_observe_property`: registry props plus the small
   /// out-of-registry set kept here for cross-reference clarity.
   List<MpvObserveSpec> _buildObserveSpecs() {
     final specs = <MpvObserveSpec>[];

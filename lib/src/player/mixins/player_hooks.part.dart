@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Hook setters: register / continue mpv hooks, plus the high-level
+/// Hook setters: register and continue mpv hooks, plus the high-level
 /// [Player.setSourceResolver] built on top of them. Hooks let you
 /// intercept mpv's file-loading pipeline to lazily resolve a URL, inject
 /// per-file HTTP headers, or redirect to a different source. For plain
@@ -30,7 +30,7 @@ mixin _HooksModule on _PlayerBase {
   ///
   /// Hook events are delivered via [PlayerStream.hook]. Call
   /// [continueHook] with the event's [MpvHookEvent.id] when processing
-  /// is complete — until then, mpv suspends the operation guarded by
+  /// is complete: until then, mpv suspends the operation guarded by
   /// this hook.
   ///
   /// If [timeout] is provided, the library automatically calls
@@ -45,7 +45,7 @@ mixin _HooksModule on _PlayerBase {
   /// [Player.setSourceResolver] registers `on_load` with priority 0). mpv
   /// allows multiple registrations per name but its shutdown path can
   /// stall when several events for the same hook are still active at
-  /// `quit` — duplicates are collapsed here to avoid that race.
+  /// `quit`: duplicates are collapsed here to avoid that race.
   ///
   /// See [Hook] for the full set of available phases. Higher
   /// [priority] values run earlier; the default (0) is fine for most
@@ -81,13 +81,13 @@ mixin _HooksModule on _PlayerBase {
     _registeredHookNames.add(name);
     // `mpv_hook_add` locks the core (it waits for the playloop to reach a
     // dispatch point), so on the main isolate it would stall behind a busy
-    // audio-output init. There is no command/async equivalent in the client
-    // API — run it in a throwaway isolate, where waiting is harmless. The
+    // audio-output init. There is no command or async equivalent in the client
+    // API: run it in a throwaway isolate, where waiting is harmless. The
     // registration targets the shared client handle, so hook events still
     // arrive on the player's event isolate.
     final handleAddress = _handle.address;
     final libraryPath = MpvAudioKit.libraryPath;
-    // Track the run so dispose() can await it before freeing the handle —
+    // Track the run so dispose() can await it before freeing the handle:
     // mpv_hook_add does `lock_core(ctx)` on the shared core, and a busy
     // playloop can hold it long enough for a concurrent dispose to reach
     // mpv_terminate_destroy first (use-after-free on the freed MPContext).
@@ -113,7 +113,7 @@ mixin _HooksModule on _PlayerBase {
   /// Signals mpv that hook processing for [id] is complete.
   ///
   /// Should be called exactly once per [MpvHookEvent] received on
-  /// [PlayerStream.hook], even if your processing fails — otherwise mpv
+  /// [PlayerStream.hook], even if your processing fails: otherwise mpv
   /// will stall indefinitely waiting for the hook to return.
   ///
   /// Idempotent on a per-id basis: a second [continueHook] call for the
@@ -122,7 +122,7 @@ mixin _HooksModule on _PlayerBase {
   /// mpv's behaviour for an already-continued id is undefined across
   /// versions, so the active set is tracked internally.
   ///
-  /// Calling with an invalid [id] (zero or negative — typo in a dispatch
+  /// Calling with an invalid [id] (zero or negative, a typo in a dispatch
   /// table) is also a no-op: a warning is logged on
   /// [PlayerStream.internalLog] and the FFI call is skipped.
   ///
@@ -146,7 +146,7 @@ mixin _HooksModule on _PlayerBase {
     }
     if (!_activeHookIds.remove(id)) {
       // Already continued (manual + auto-timer race, or caller
-      // double-dispatch). Drop silently — the first continue already
+      // double-dispatch). Drop silently: the first continue already
       // unblocked mpv.
       return;
     }
@@ -154,11 +154,11 @@ mixin _HooksModule on _PlayerBase {
     // Safe on the main isolate even though `mpv_hook_continue` locks the
     // core: a live id in `_activeHookIds` means mpv is parked at the hook's
     // dispatch point waiting for exactly this call, so the lock is granted
-    // immediately — the playloop cannot simultaneously be busy elsewhere.
+    // immediately: the playloop cannot simultaneously be busy elsewhere.
     _lib.mpvHookContinue(_handle, id);
   }
 
-  /// Installs [resolver] as the player's source resolver — the official
+  /// Installs [resolver] as the player's source resolver: the official
   /// callback for resolving or refreshing a playback URL right before a
   /// track opens, without wiring `on_load` hooks by hand.
   ///
@@ -168,13 +168,13 @@ mixin _HooksModule on _PlayerBase {
   ///
   /// - before every stream open (`on_load`), and
   /// - once more after a failed open (`on_load_fail`) with
-  ///   [SourceResolveRequest.isRetry] `true` — return a fresh URL and mpv
-  ///   retries, covering expired CDN / token URLs. The retry fires at
+  ///   [SourceResolveRequest.isRetry] `true`: return a fresh URL and mpv
+  ///   retries, covering expired CDN or token URLs. The retry fires at
   ///   most once per load, and only when the returned URL differs from
   ///   the one that failed.
   ///
   /// Return the URL to play, or `null` (or the incoming
-  /// [SourceResolveRequest.uri] unchanged) to leave the source alone —
+  /// [SourceResolveRequest.uri] unchanged) to leave the source alone:
   /// the default no-resolver behaviour is unaffected for entries the
   /// resolver doesn't care about. A thrown error is logged on
   /// [PlayerStream.internalLog] and treated as "keep the current URL".
@@ -208,12 +208,12 @@ mixin _HooksModule on _PlayerBase {
 
   /// Single entry point for every MPV_EVENT_HOOK, called by the dispatch
   /// layer. Ordering per event: resolver pass (when installed and the
-  /// hook is `on_load` / `on_load_fail`) → consumer delivery on
+  /// hook is `on_load` or `on_load_fail`) → consumer delivery on
   /// [PlayerStream.hook] (only when the consumer registered this hook) →
   /// otherwise internal [continueHook].
   ///
   /// When no resolver is installed and the hook is consumer-registered,
-  /// no await runs before the stream add — delivery stays in the same
+  /// no await runs before the stream add: delivery stays in the same
   /// microtask as the native event, preserving the pre-resolver timing.
   @override
   Future<void> _routeHookEvent(int id, Hook hook, String name) async {
@@ -233,13 +233,13 @@ mixin _HooksModule on _PlayerBase {
   /// original [Media] in the media cache, invoke the consumer callback,
   /// and rewrite `stream-open-filename` when it returns a different URL.
   ///
-  /// Never throws — the hook MUST reach its continue in [_routeHookEvent]
+  /// Never throws: the hook MUST reach its continue in [_routeHookEvent]
   /// regardless of what the consumer callback does, so failures are
   /// logged on [PlayerStream.internalLog] and resolution is skipped.
   Future<void> _runSourceResolver(SourceResolver resolver, Hook hook) async {
     try {
       final isRetry = hook == Hook.loadFail;
-      // One resolver-driven retry per load attempt — see
+      // One resolver-driven retry per load attempt: see
       // [_resolverRetried] for the loop hazard this caps. The flag is
       // cleared on START_FILE only, NOT on `on_load`: after an
       // `on_load_fail` rewrite mpv re-enters the load cycle from

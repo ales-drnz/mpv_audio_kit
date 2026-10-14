@@ -64,20 +64,20 @@ const _kPropertyCommands = {
   'change-list',
 };
 
-/// Low-level native bridge: the raw property / command calls every typed
+/// Low-level native bridge: the raw property and command calls every typed
 /// setter funnels through, the `chapter-list` NODE writer, and the mpv
 /// error-string lookup. Declared `on _PlayerBase` so the constructor,
 /// `dispose`, and the domain mixins can reach these across part boundaries
 /// (their abstract signatures live on `_PlayerBase`).
 ///
-/// Every write/read here goes through the ASYNC client API: the FFI call
+/// Every write and read here goes through the ASYNC client API: the FFI call
 /// only enqueues the request (libmpv deep-copies the arguments) and the
 /// future completes when the event isolate forwards the matching reply.
 /// The synchronous client API waits for the core's playloop to serve the
 /// request, and the playloop can be stuck for seconds inside audio-output
-/// init (a Bluetooth/AirPlay device waking up) — on the main isolate that
+/// init (a Bluetooth or AirPlay device waking up): on the main isolate that
 /// wait is the macOS beachball. Never reintroduce a synchronous
-/// set/get/command on the main isolate.
+/// set, get or command on the main isolate.
 mixin _FfiModule on _PlayerBase {
   /// Writes a property and throws [MpvCommandException] on rejection.
   ///
@@ -212,7 +212,7 @@ mixin _FfiModule on _PlayerBase {
     }
   }
 
-  /// [_command] that throws [MpvCommandException] on rejection — the command
+  /// [_command] that throws [MpvCommandException] on rejection: the command
   /// counterpart of [_prop], used by the typed methods whose failure is
   /// a caller-visible error (seek with nothing loaded, loadfile with
   /// malformed options). Call sites where a non-zero rc is an expected
@@ -235,7 +235,7 @@ mixin _FfiModule on _PlayerBase {
   Future<(int, dynamic)> _getAsync(String name, int format) =>
       _client.getProperty(name, format);
 
-  /// Writes [chapters] to mpv's `chapter-list` — a NODE-array property —
+  /// Writes [chapters] to mpv's `chapter-list` (a NODE-array property)
   /// via `mpv_set_property_async`, resolving with the raw mpv rc.
   ///
   /// `chapter-list` is an array of maps `{title: string, time: double secs}`.
@@ -297,7 +297,7 @@ mixin _FfiModule on _PlayerBase {
   ///
   /// **Escape hatch for properties not surfaced by the typed API.** For
   /// observed properties (`volume`, `pause`, `cache-secs`, …), prefer
-  /// `player.state.<field>` — the cached value is updated on every
+  /// `player.state.<field>`: the cached value is updated on every
   /// property-change event from mpv and avoids an FFI round-trip.
   ///
   /// Returns `null` if the property doesn't exist or the read
@@ -313,8 +313,8 @@ mixin _FfiModule on _PlayerBase {
   ///
   /// Typed counterpart of [getRawProperty] for structured properties
   /// (`track-list`, `metadata`, `demuxer-cache-state`, …): returns the
-  /// same shapes the event pipeline produces — `Map<String, dynamic>`,
-  /// `List<dynamic>`, [String], [int], [double], [bool], byte arrays —
+  /// same shapes the event pipeline produces (`Map<String, dynamic>`,
+  /// `List<dynamic>`, [String], [int], [double], [bool], byte arrays),
   /// with no string re-parsing on the caller's side.
   ///
   /// Returns `null` if the property doesn't exist or is currently
@@ -332,21 +332,21 @@ mixin _FfiModule on _PlayerBase {
   /// properties (volume, cache-*, replaygain*, ao, …), the
   /// resulting state mutation will *also* flow through the property
   /// observer on mpv's side, so `player.state` and `player.stream` will
-  /// stay consistent — but expect a one-event-loop-tick delay between
+  /// stay consistent, but expect a one-event-loop-tick delay between
   /// the call returning and the cached state catching up. Prefer the
   /// typed setters (`setVolume`, `setCache`, `setReplayGain`, …) when
   /// they exist, both for type-safety and because they update the state
   /// as soon as mpv confirms the write, without waiting for the observer.
   ///
   /// Two properties are reserved and rejected:
-  /// - `af` — owned by the effects chain (raw lavfi entries included, as
+  /// - `af`: owned by the effects chain (raw lavfi entries included, as
   ///   [RawAudioEffect] stages); a raw write would silently desync
-  ///   `state.audioEffects`. Use [setAudioEffects] / [updateAudioEffects].
-  /// - `pause` — owned by the transport intent axis. It is deliberately not
+  ///   `state.audioEffects`. Use [setAudioEffects] or [updateAudioEffects].
+  /// - `pause`: owned by the transport intent axis. It is deliberately not
   ///   observed (see [PlayerState.playWhenReady]), so a raw write would
   ///   change actual playback while leaving `state.playWhenReady` (and the
-  ///   OS play/pause button bound to it) reporting the old intent. Use
-  ///   [play] / [pause].
+  ///   OS play-pause button bound to it) reporting the old intent. Use
+  ///   [play] or [pause].
   ///
   /// Throws [PlayerDisposedException] if the player has been disposed,
   /// [ArgumentError] if [name] is reserved, or [MpvCommandException] if mpv
@@ -393,7 +393,7 @@ mixin _FfiModule on _PlayerBase {
   /// Sends a raw mpv command.
   ///
   /// **Escape hatch.** Same caveats as [setRawProperty]: prefer the
-  /// typed playback / playlist methods (`play`, `pause`, `seek`,
+  /// typed playback and playlist methods (`play`, `pause`, `seek`,
   /// `add`, `jump`, …) when they cover your use case.
   ///
   /// Throws [PlayerDisposedException] if the player has been disposed, or

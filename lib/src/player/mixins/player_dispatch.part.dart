@@ -6,13 +6,13 @@ part of '../player.dart';
 
 /// Inbound event pump: turns each [MpvIsolateEvent] forwarded from the event
 /// isolate into state mutations and stream emits, routes property changes to
-/// the registry (falling back to the custom node / derived handlers), and
-/// applies the FILE_LOADED / PLAYBACK_RESTART payloads (position, chapters,
+/// the registry (falling back to the custom node and derived handlers), and
+/// applies the FILE_LOADED and PLAYBACK_RESTART payloads (position, chapters,
 /// embedded cover, source path, playlist) and the end-of-content reads
 /// taken by the event isolate. No method here may issue a synchronous read
 /// against the core: every such call waits for the playloop, and during
-/// audio-output init (a Bluetooth/AirPlay device waking up takes seconds)
-/// that wait would freeze the main isolate — the macOS beachball.
+/// audio-output init (a Bluetooth or AirPlay device waking up takes seconds)
+/// that wait would freeze the main isolate: the macOS beachball.
 /// `_handleEvent` is the abstract member bring-up wires as the isolate's
 /// `onEvent`; the rest are internal to this mixin.
 mixin _DispatchModule on _PlayerBase {
@@ -32,16 +32,16 @@ mixin _DispatchModule on _PlayerBase {
       default:
         break;
     }
-    // Single fence for every controller add() in this method — dispose()
+    // Single fence for every controller add() in this method: dispose()
     // flips `_disposed` before the event isolate's `stop()` closes the event
     // stream, so any event still delivered between the flip and that close
     // lands here with `_disposed` already true. Passing this check therefore
     // guarantees every downstream add() lands on an open controller without
     // per-call isClosed checks.
     if (_disposed) return;
-    // A throw from any branch below — most plausibly a malformed observed
+    // A throw from any branch below, most plausibly a malformed observed
     // NODE property reaching the one unguarded parser path (registry
-    // dispatch) — must never escape this onData callback: the event
+    // dispatch), must never escape this onData callback: the event
     // subscription registers no onError, so an escaped throw becomes an
     // unhandled async error (and under a guarded zone can escalate). Contain
     // and log it; one bad event is dropped, the stream keeps delivering.
@@ -49,15 +49,15 @@ mixin _DispatchModule on _PlayerBase {
       switch (event) {
         case MpvEventStartFile():
           // Latch "a file load has been attempted" HERE, not on FILE_LOADED:
-          // START_FILE fires for every load attempt — including one that will
-          // fail to open — so a failed first open() still arms the
+          // START_FILE fires for every load attempt, including one that will
+          // fail to open, so a failed first open() still arms the
           // idle-active intent reset (otherwise its intent would stick true
           // forever). START_FILE is always delivered AFTER the cold-start
           // idle-active burst (FIFO), so the latch still can't be tripped by
           // the startup burst.
           _hasLoadedFile = true;
           // A new load attempt re-arms the source resolver's single
-          // retry allowance — see [_resolverRetried].
+          // retry allowance; see [_resolverRetried].
           _resolverRetried = false;
           _heldSources.onStartFile();
           _updateLifecycle(buffering: true, completed: false);
@@ -79,7 +79,7 @@ mixin _DispatchModule on _PlayerBase {
           // mpv just built the new file's chain from the stored arguments.
           _onAfChainReset();
           _applyPolledPosition(timePos);
-          // mpv exposes -1 / -2 etc. as "no chapter active"; surface as
+          // mpv exposes -1, -2 etc. as "no chapter active"; surface as
           // null. A failed read (chapterIndex == null) applies nothing.
           if (chapterIndex != null) {
             final idx = chapterIndex < 0 ? null : chapterIndex;
@@ -102,7 +102,7 @@ mixin _DispatchModule on _PlayerBase {
           // changes that follow this event, as before.
           _applyLoadedEntry(path, playlist);
           _releaseSettledSources();
-          // Emit unconditionally — `null` signals "no cover on the new
+          // Emit unconditionally: `null` signals "no cover on the new
           // file" so subscribers can clear stale artwork on track changes.
           final cover = coverData == null
               ? null
@@ -113,10 +113,10 @@ mixin _DispatchModule on _PlayerBase {
           _state = _state.copyWith(coverArt: cover);
           _coverArtCtrl.add(cover);
           // Re-arm the waveform ONLY on a genuine source change. mpv re-emits
-          // FILE_LOADED on internal reloads (EDL / segment / gapless / track
+          // FILE_LOADED on internal reloads (EDL, segment, gapless, track
           // reinit) for the same audio; resetting there would discard a
           // completed bulk envelope, force a full re-decode, and flash the meter
-          // to empty. Key off the playlist entry `path` — stable across an
+          // to empty. Key off the playlist entry `path`: stable across an
           // on_load hook that rewrites stream-open-filename but not `path`,
           // and distinct per track.
           if (_bringUpCompleted) {
@@ -160,9 +160,9 @@ mixin _DispatchModule on _PlayerBase {
             );
             // A terminal load failure parks mpv idle, but the idle-active
             // false→true round-trip can coalesce inside one playloop
-            // iteration — mpv's observer then emits NO property change at
+            // iteration: mpv's observer then emits NO property change at
             // all, so the idle-active intent reset never fires and the
-            // play/pause button sticks on "playing". Settle the intent off
+            // play-pause button sticks on "playing". Settle the intent off
             // this discrete event instead, gated on the failed entry being
             // the last one so a mid-playlist failure that auto-advances
             // doesn't flicker the button.
@@ -247,7 +247,7 @@ mixin _DispatchModule on _PlayerBase {
         case MpvEventHookFired(:final id, :final name):
           final hook = Hook.fromMpv(name);
           if (hook == null) {
-            // Unknown hook name — likely a future mpv build added a new
+            // Unknown hook name: likely a future mpv build added a new
             // phase. Auto-continue so mpv never stalls, log it on the
             // internal channel for diagnostics.
             _internalLog(
@@ -266,7 +266,7 @@ mixin _DispatchModule on _PlayerBase {
           // [PlayerStream.hook] (user-registered hook) or continues it
           // internally (resolver-only registration). With no resolver
           // and a user registration the add() inside is still
-          // synchronous — same-microtask emission as before.
+          // synchronous: same-microtask emission as before.
           unawaited(_routeHookEvent(id, hook, name));
       }
     } catch (e, st) {
@@ -299,7 +299,7 @@ mixin _DispatchModule on _PlayerBase {
       return;
     }
     if (_registry.specFor(name) != null) {
-      // Spec exists but value was deduplicated — nothing to do.
+      // Spec exists but value was deduplicated: nothing to do.
       return;
     }
     // Custom out-of-registry handlers for the few properties whose update
@@ -352,7 +352,7 @@ mixin _DispatchModule on _PlayerBase {
     }
   }
 
-  // --- Custom property handlers (node / derived) ---
+  // --- Custom property handlers (node and derived) ---
 
   /// Writes the FILE_LOADED entry into the state snapshot only. The
   /// reactives keep the last observed values, so the observed `path` and
@@ -427,7 +427,7 @@ mixin _DispatchModule on _PlayerBase {
     // mpv only echoes the device name back on `audio-device`. Recover
     // the proper description by looking it up in the parsed
     // `audio-device-list` (state.audioDevices). Falls back to the name
-    // on cache miss — typical at boot, before the list arrives.
+    // on cache miss: typical at boot, before the list arrives.
     final list = _state.audioDevices;
     String description = name;
     for (final d in list) {
@@ -490,7 +490,7 @@ mixin _DispatchModule on _PlayerBase {
 
   /// Applies a `time-pos` value carried on an event payload (seconds, read
   /// by the event isolate at dispatch time). `null` means the read failed
-  /// or the property was unavailable — nothing is applied.
+  /// or the property was unavailable: nothing is applied.
   void _applyPolledPosition(double? seconds) {
     if (seconds == null) return;
     final pos = Duration(microseconds: (seconds * 1e6).round());
