@@ -117,6 +117,17 @@ void main() {
           await sub.cancel();
         }
       }, timeout: const Timeout(Duration(seconds: 5)));
+
+      test('an emit interval under 8 ms is rejected', () {
+        final before = player.state.spectrum;
+        expect(
+          () => player.setSpectrum(
+            const SpectrumSettings(emitInterval: Duration.zero),
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(player.state.spectrum, before);
+      });
     });
   });
 }

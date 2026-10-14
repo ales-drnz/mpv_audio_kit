@@ -786,6 +786,10 @@ mixin _AudioModule on _PlayerBase {
   /// configuration; the poll loop starts on the first subscriber.
   void setSpectrum(SpectrumSettings settings) {
     _checkNotDisposed();
+    assert(
+      settings.emitInterval >= SpectrumPipeline.minEmitInterval,
+      'emitInterval must be at least 8 ms',
+    );
     _updateField(
       (s) => s.copyWith(spectrum: settings),
       _reactives.spectrum,

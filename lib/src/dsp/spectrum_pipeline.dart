@@ -17,7 +17,7 @@ import 'dsp_async_io.dart';
 /// property.
 ///
 /// Owns two broadcast streams ([spectrumStream], [pcmStream]) and a
-/// poll loop that calls `mpv_get_property("pcm-tap-frame")` at the
+/// poll loop that reads `pcm-tap-frame` with an async get at the
 /// configured emit rate. The poll loop is **lazy**: it starts on the
 /// first listener (to either stream) and stops on the last cancel.
 ///
@@ -90,15 +90,23 @@ class SpectrumPipeline {
     _processor.setSettings(next);
     if (emitChanged && _pollTimer != null) {
       _pollTimer!.cancel();
-      _pollTimer = Timer.periodic(_settings.emitInterval, (_) => _poll());
+      _pollTimer = Timer.periodic(_interval, (_) => _poll());
     }
   }
+
+  /// The shortest poll period. A shorter [SpectrumSettings.emitInterval]
+  /// (a zero one would poll as fast as replies come back) is raised to it.
+  static const Duration minEmitInterval = Duration(milliseconds: 8);
+
+  Duration get _interval => _settings.emitInterval < minEmitInterval
+      ? minEmitInterval
+      : _settings.emitInterval;
 
   void _maybeStart() {
     if (_disposed || _pollTimer != null) return;
     // [BandProcessor] allocates lazily on first [process], so we don't
     // need to prime anything here — just arm the poll loop.
-    _pollTimer = Timer.periodic(_settings.emitInterval, (_) => _poll());
+    _pollTimer = Timer.periodic(_interval, (_) => _poll());
   }
 
   void _maybeStop() {

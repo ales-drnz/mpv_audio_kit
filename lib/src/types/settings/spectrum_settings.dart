@@ -51,10 +51,11 @@ final class SpectrumSettings {
   /// universal music-visualizer choice.
   final WindowFunction window;
 
-  /// Time between [FftFrame] / [PcmFrame] emissions. 33 ms ≈ 30 fps
+  /// Time between [FftFrame] and [PcmFrame] emissions. 33 ms ≈ 30 fps
   /// (default), 16 ms ≈ 60 fps. Range 8 ms (~120 fps) to 67 ms
   /// (~15 fps); the pipeline is gated by this independently of the
-  /// FFT block rate.
+  /// FFT block rate. [Player.setSpectrum] asserts it is at least 8 ms,
+  /// and a shorter value is polled every 8 ms.
   final Duration emitInterval;
 
   /// EMA smoothing coefficient applied when a band's new value is
