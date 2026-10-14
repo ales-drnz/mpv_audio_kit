@@ -260,12 +260,11 @@ void main() {
       expect(r['sourceState'], 'drained');
     }, timeout: t);
 
-    test('abort ends the entry at once', () async {
+    test('abort cuts the entry at once', () async {
       final player = await buildPlayer();
-      // keep-open parks the last entry at its end: `completed` rises.
-      final ended = Completer<DateTime>();
-      final sub = player.stream.completed.listen((c) {
-        if (c && !ended.isCompleted) ended.complete(DateTime.now());
+      final ended = Completer<(DateTime, MpvFileEndedEvent)>();
+      final sub = player.stream.endFile.listen((e) {
+        if (!ended.isCompleted) ended.complete((DateTime.now(), e));
       });
       final source = await player.openPcmStream(_speech);
       final feeding = source.addStream(_feed(_speech, totalMs: 4000));
@@ -278,14 +277,46 @@ void main() {
       );
       final at = DateTime.now();
       source.abort();
-      final endAt = await ended.future.timeout(const Duration(seconds: 3));
+      final (endAt, e) = await ended.future.timeout(const Duration(seconds: 3));
       await feeding.timeout(const Duration(seconds: 1));
       final ms = endAt.difference(at).inMilliseconds;
-      final pos = await player.getRawProperty('time-pos');
-      _log('abort', {'completedAfterAbortMs': ms, 'timePos': pos});
-      expect(ms, lessThan(1000));
+      _log('abort', {'endFileAfterAbortMs': ms, 'reason': e.reason.name});
+      expect(ms, lessThan(500));
       expect(source.state, PcmSourceState.aborted);
       await sub.cancel();
+      await player.dispose();
+    }, timeout: t);
+
+    test('abort of the current source starts the next entry', () async {
+      final player = await buildPlayer();
+      final a = PcmSource.create(_speech);
+      final b = PcmSource.create(_speech);
+      b.add(_tone(_speech, 0, 1000));
+      await b.close();
+      await player.openAll([a.toMedia(), b.toMedia()], play: true);
+      final feeding = a.addStream(_feed(_speech, totalMs: 4000));
+      await waitUntil(
+        () async =>
+            (double.tryParse(await player.getRawProperty('time-pos') ?? '') ??
+                0) >
+            0.5,
+        reason: 'the first source plays',
+      );
+      final sw = Stopwatch()..start();
+      a.abort();
+      await waitUntil(
+        () => player.state.playlist.index == 1,
+        reason: 'the second entry is current',
+      );
+      final switchMs = sw.elapsedMilliseconds;
+      await waitUntil(
+        () => b.isDone,
+        reason: 'the second source plays to its end',
+      );
+      await feeding;
+      _log('abort to next', {'switchMs': switchMs, 'b': b.state.name});
+      expect(switchMs, lessThan(500));
+      expect(b.state, PcmSourceState.drained);
       await player.dispose();
     }, timeout: t);
 
@@ -326,6 +357,33 @@ void main() {
         await player.dispose();
       }, timeout: t);
     }
+
+    test('lowLatency starts sooner and stays with its entry', () async {
+      final latencies = <bool, int>{};
+      for (final low in [false, true]) {
+        final player = await buildPlayer();
+        final watch = _Watch(player);
+        final source = await player.openPcmStream(_speech, lowLatency: low);
+        unawaited(watch.run());
+        final first = DateTime.now();
+        final feeding = source.addStream(_feed(_speech, totalMs: 1000));
+        await waitUntil(() => watch.started != null, reason: 'playback starts');
+        latencies[low] = watch.started!.difference(first).inMilliseconds;
+        expect(
+          await player.getRawProperty('audio-buffer'),
+          low ? '0.100000' : '0.200000',
+        );
+        watch.stop();
+        await feeding;
+        await source.close();
+        // The next file gets the player's own buffer back.
+        await openAndWaitForLoad(player, defaultFixturePath());
+        expect(await player.getRawProperty('audio-buffer'), '0.200000');
+        await player.dispose();
+      }
+      _log('lowLatency', {'startLatencyMs': latencies});
+      expect(latencies[true]!, lessThan(1500));
+    }, timeout: t);
 
     test('analysis listeners keep one reader', () async {
       final player = await buildPlayer();
