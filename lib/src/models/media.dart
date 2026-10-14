@@ -125,7 +125,8 @@ final class Media {
   });
 
   /// Whether this media is a live PCM input made by `PcmSource.toMedia`
-  /// (a `mak-pcm://` URI): read once, not seekable, with no duration.
+  /// (a `mak-pcm://` URI): read once, not seekable, of a length not known
+  /// in advance.
   bool get isPcmStream => uri.startsWith('mak-pcm://');
 
   /// Returns a copy with the given fields replaced. Pass `null` for

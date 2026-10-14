@@ -372,7 +372,8 @@ void main() {
       expect(
         pcmLoadOptions(m.uri),
         'demuxer=rawaudio,demuxer-rawaudio-format=s16le,'
-        'demuxer-rawaudio-rate=24000,demuxer-rawaudio-channels=1',
+        'demuxer-rawaudio-rate=24000,demuxer-rawaudio-channels=1,'
+        'gapless-audio=no',
       );
       expect(
         pcmLoadOptions(PcmSource.create(_stereo).toMedia().uri),

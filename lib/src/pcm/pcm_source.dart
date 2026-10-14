@@ -60,9 +60,9 @@ enum PcmSourceState {
 /// ```
 ///
 /// Each source is read once: it cannot be played again, and seeking is
-/// not possible (a seek on it does nothing). Its `duration` is unknown,
-/// so `state.duration` stays zero; [Media.isPcmStream] tells a live
-/// source from a file.
+/// not possible (a seek on it does nothing). Its length is not known in
+/// advance: `state.duration` follows the audio received so far.
+/// [Media.isPcmStream] tells a live source from a file.
 final class PcmSource {
   PcmSource._(this.format, this.maxBuffered, this._native, this._id)
     : _capacity = _capacityFor(format, maxBuffered);
@@ -258,8 +258,9 @@ final class PcmSource {
   }
 
   /// Ends the input: the player plays what is buffered, then the entry
-  /// ends normally. Completes once every chunk has reached the native
-  /// buffer; [done] completes once the player has read it all.
+  /// ends normally, once its last sample has played (`completed` rises,
+  /// or the next entry starts). Completes once every chunk has reached
+  /// the native buffer; [done] completes once the player has read it all.
   ///
   /// A partial frame left over from [add] is dropped. Calling it again,
   /// or after [done], does nothing.
@@ -284,7 +285,8 @@ final class PcmSource {
 
   /// Stops feeding and cuts the playback of this source: the native
   /// buffer and the queued chunks are dropped and the player's entry ends
-  /// at once. Does nothing once the source is [done].
+  /// as soon as the audio output has played what it already holds (a
+  /// fraction of a second). Does nothing once the source is [done].
   void abort() {
     if (isDone) return;
     if (!_released) _native.abort(_id);
@@ -504,8 +506,10 @@ final class _NativeRef {
 bool isPcmUri(String uri) => uri.startsWith(PcmSource._scheme);
 
 /// The file-local `loadfile` options that play the `mak-pcm://` [uri]:
-/// mpv's raw audio demuxer set to the source's format. `null` when [uri]
-/// is not one. Throws [ArgumentError] for a source that is released or
+/// mpv's raw audio demuxer set to the source's format, and no gapless
+/// audio, so the entry ends once its last sample has played rather than
+/// once the audio output holds it (a buffer earlier, with nothing after
+/// it to join). `null` when [uri] is not one. Throws [ArgumentError] for a source that is released or
 /// was never created in this isolate.
 @internal
 String? pcmLoadOptions(String uri) {
@@ -522,7 +526,8 @@ String? pcmLoadOptions(String uri) {
   return 'demuxer=rawaudio,'
       'demuxer-rawaudio-format=${format.encoding.mpvValue},'
       'demuxer-rawaudio-rate=${format.sampleRate},'
-      'demuxer-rawaudio-channels=${format.channels}';
+      'demuxer-rawaudio-channels=${format.channels},'
+      'gapless-audio=no';
 }
 
 extension on PcmFormat {
