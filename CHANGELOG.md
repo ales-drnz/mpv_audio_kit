@@ -1,3 +1,42 @@
+## [0.5.1] - Unreleased
+
+### Added
+- The variants of `MediaSessionArtwork`, `Track` and `Channels` are exported, so an app can switch over them.
+- `CoverArt.toString` shows the MIME type and the size.
+
+### Changed
+- `completed` turns true when the end of the last track is heard, at mpv's keep-open park, instead of one output buffer earlier when the decoder finishes.
+- `openAll` sends a large playlist in one go: 5000 entries load in about 0.2 s instead of 40 s.
+- Coming back to a finished waveform or loudness scan reuses the result instead of decoding the file again.
+- The loudness meter reads its four values in one call, and a growing waveform is not emitted again while it does not change.
+- `chapters`, `tracks`, `chapterMetadata` and `audioSpdif` emit only when their content changes.
+- `Media.toString` no longer prints HTTP header values.
+
+### Fixed
+- Disposing a player turns off the waveform and loudness scan it armed, so the next player no longer decodes every file.
+- The loudness scan reaches its result when the waveform's last listener leaves during a scan.
+- A NaN or infinite sample no longer leaves the spectrum bands stuck at NaN, and an emit interval under 8 ms no longer polls without pause.
+- `play()` with nothing loaded, or at the end of a source that cannot seek back, leaves `playWhenReady` off, and in the last moments of a track it no longer restarts it.
+- A failed `open`, `openAll` or `openPlaylistFile` puts back the previous play intent, and `play()` or `pause()` right after one that is not awaited decides whether the new file plays.
+- `playbackState` no longer flashes `idle` while a file loads: `idle` means no file is loaded.
+- `stop()` after a failed load empties the playlist and ends a live PCM source queued there.
+- A live PCM source whose entry left early, or that the app keeps only through its `Media`, ends or plays as expected, and a live entry stays unseekable with the cache forced on.
+- `PcmSource.addStream` fails with a `StateError` on a chunk after `close()`.
+- Android `content://` file descriptors, from `open`, the playlist calls and `addAudioTrack`, are closed once their entry or file is gone, and at dispose.
+- A player whose init fails no longer reports an unhandled error when nothing awaits it, and `continueHook` after `dispose` does nothing instead of throwing.
+- A failing next or previous from the OS media session is logged instead of escaping as an unhandled error.
+- A ReplayGain tag of 0 dB is read as 0, not as missing.
+- The media session artwork download refuses a redirect from https to plain http.
+
+### Build
+- The build hook's download times out and retries network failures, a 404 points at the `libmpv` user define, and a user define with a missing path fails with a clear message.
+- The iOS podspec no longer links AudioToolbox, Security and CoreFoundation, which the plugin does not use.
+- Removing the next playlist entry while a source resolver runs for its prefetch no longer reads freed memory.
+- Two players tapping a filter with the same label no longer write past the tap buffer, and frames larger than the tap scratch keep all their samples.
+- Turning the waveform off keeps a running loudness scan going, and stopping a file ends the analysis it fed instead of leaving it half done.
+- The SMB timeout is read in microseconds, as mpv passes it.
+- Updated libmpv to `libmpv-r17` across all platforms.
+
 ## [0.5.0] - 14-10-2026
 
 A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the changes to make in an app.
