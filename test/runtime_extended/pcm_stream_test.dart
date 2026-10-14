@@ -7,6 +7,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -147,6 +148,27 @@ Future<void> _churn(bool Function() done) async {
 void _log(String name, Map<String, Object?> numbers) =>
     // ignore: avoid_print
     print('PCM $name: $numbers');
+
+/// Underruns of the null output while a 5 s file plays: the control for
+/// a host that stalls mpv whatever it plays.
+Future<int> _fileUnderruns() async {
+  final player = await buildPlayer(
+    configuration: const PlayerConfiguration(), // logs from warn up
+  );
+  var underruns = 0;
+  final sub = player.stream.log.listen((l) {
+    if (l.text.contains('Audio device underrun')) underruns++;
+  });
+  final done = player.stream.completed.firstWhere((c) => c);
+  await player.open(
+    Media('${Directory.current.path}/test/fixtures/sine_5s.flac'),
+    play: true,
+  );
+  await done.timeout(const Duration(seconds: 20));
+  await sub.cancel();
+  await player.dispose();
+  return underruns;
+}
 
 /// Plays [totalMs] of [f] through openPcmStream with the given feed, and
 /// returns the numbers once the entry completed.
@@ -323,6 +345,18 @@ void main() {
       if (lead < 40) {
         markTestSkipped('the host fed $lead ms ahead of the playhead');
         return;
+      }
+      // A virtual host can stall mpv's own threads past the buffer: the
+      // macOS runners run a plain file dry too, a few seconds at a time.
+      // A file played right after tells the host apart from the source.
+      if (r['underruns'] != 0) {
+        final control = await _fileUnderruns();
+        if (control > 0) {
+          markTestSkipped(
+            'the host ran a plain file dry too ($control underruns)',
+          );
+          return;
+        }
       }
       expect(r['underruns'], 0);
       expect(r['timePosAtEnd']! as double, greaterThan(3.95));
