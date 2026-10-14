@@ -110,4 +110,33 @@ void main() {
       expect(b.hashCode, c.hashCode);
     });
   });
+
+  group('toString hides header values', () {
+    const media = Media(
+      'https://example.com/a.mp3',
+      httpHeaders: {'Authorization': 'Bearer s3cr3t', 'X-Token': 'abc123'},
+    );
+
+    test('Media keeps the header names, not their values', () {
+      final out = media.toString();
+      expect(out, contains('Authorization'));
+      expect(out, contains('X-Token'));
+      expect(out, isNot(contains('s3cr3t')));
+      expect(out, isNot(contains('abc123')));
+    });
+
+    test('SourceResolveRequest prints its media without header values', () {
+      final out = const SourceResolveRequest(
+        media: media,
+        uri: 'https://example.com/a.mp3',
+        isRetry: false,
+      ).toString();
+      expect(out, contains('Authorization'));
+      expect(out, isNot(contains('s3cr3t')));
+    });
+
+    test('no headers prints null', () {
+      expect(const Media('a.mp3').toString(), contains('httpHeaders: null'));
+    });
+  });
 }

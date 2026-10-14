@@ -185,9 +185,15 @@ final class Media {
           ),
   );
 
+  /// Prints the [httpHeaders] names only: their values often carry
+  /// credentials (an `Authorization` token) that must not reach a log.
   @override
-  String toString() =>
-      'Media(uri: $uri, extras: $extras, '
-      'httpHeaders: $httpHeaders, httpChunkSize: $httpChunkSize, '
-      'demuxerLavfOptions: $demuxerLavfOptions)';
+  String toString() {
+    final headers = httpHeaders == null
+        ? null
+        : '{${httpHeaders!.keys.map((k) => '$k: <redacted>').join(', ')}}';
+    return 'Media(uri: $uri, extras: $extras, '
+        'httpHeaders: $headers, httpChunkSize: $httpChunkSize, '
+        'demuxerLavfOptions: $demuxerLavfOptions)';
+  }
 }
