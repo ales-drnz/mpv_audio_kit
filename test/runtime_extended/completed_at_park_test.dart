@@ -55,5 +55,32 @@ void main() {
       await waitUntil(() => !player.state.playing);
       expect(player.state.playWhenReady, isFalse);
     }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('play() in the last buffer does not restart the track', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      await player.setRawProperty('ao-null-buffer', '1');
+
+      await player.open(Media(fixturePath), play: true);
+      // mpv reports the core idle once the decoder is done, so `playing`
+      // is already false here: the core's own pause tells the drain apart.
+      await waitUntil(
+        () async =>
+            player.state.eofReached &&
+            await player.getRawProperty('pause') == 'no',
+        timeout: const Duration(seconds: 15),
+        reason: 'never saw eof-reached while the buffer still played',
+      );
+      await player.play();
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(
+        player.state.position,
+        greaterThan(player.state.duration ~/ 2),
+        reason: 'play() while still playing went back to the start',
+      );
+      await player.stream.completed
+          .firstWhere((c) => c)
+          .timeout(const Duration(seconds: 5));
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

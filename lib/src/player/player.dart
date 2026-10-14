@@ -174,7 +174,10 @@ class Player extends _PlayerBase
   /// clearPlaylist) has claimed a newer one — so the call that is LAST
   /// in program order wins, regardless of per-URI resolve latency.
   @override
-  Future<void> open(Media media, {bool? play}) async {
+  Future<void> open(Media media, {bool? play}) =>
+      _trackLoad(() => _open(media, play));
+
+  Future<void> _open(Media media, bool? play) async {
     _checkNotDisposed();
     _validateLoadOptions(media);
     final load = _claimLoad();
@@ -187,14 +190,18 @@ class Player extends _PlayerBase
     // order instead of racing this write past the I/O hops. mpv leaves
     // `pause` at `no` and fires no PROPERTY_CHANGE on the first autoplay
     // load, so the observer alone would never surface this intent.
-    _updateField(
-      (s) => s.copyWith(playWhenReady: shouldPlay),
-      _reactives.playWhenReady,
-      shouldPlay,
-    );
+    final previousIntent = _state.playWhenReady;
+    final intent = _claimIntent(shouldPlay);
     _mediaCache.clear();
     _mediaCache[media.uri] = media;
-    final resolved = await resolveUri(media.uri);
+    final ResolvedUri resolved;
+    try {
+      resolved = await resolveUri(media.uri);
+    } catch (_) {
+      // Nothing was loaded: the intent goes back to what still plays.
+      _restoreIntent(load, intent, previousIntent);
+      rethrow;
+    }
     if (load.superseded) {
       await resolved.dispose?.call();
       return;
@@ -261,7 +268,10 @@ class Player extends _PlayerBase
   /// the jump; while entries build up on an idle core the playlist
   /// `index` reports `-1` (see [Playlist.index]).
   @override
-  Future<void> openAll(List<Media> medias, {bool? play, int index = 0}) async {
+  Future<void> openAll(List<Media> medias, {bool? play, int index = 0}) =>
+      _trackLoad(() => _openAll(medias, play, index));
+
+  Future<void> _openAll(List<Media> medias, bool? play, int index) async {
     _checkNotDisposed();
     if (medias.isEmpty) {
       return;
@@ -279,11 +289,8 @@ class Player extends _PlayerBase
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point, before the resolve / tls
     // awaits below — see [open] for the rationale.
-    _updateField(
-      (s) => s.copyWith(playWhenReady: shouldPlay),
-      _reactives.playWhenReady,
-      shouldPlay,
-    );
+    final previousIntent = _state.playWhenReady;
+    final intent = _claimIntent(shouldPlay);
     // Snapshot the outgoing current entry's Media so it keeps its
     // metadata while still visible in playlist events during the
     // transition (retained until the post-jump remove below).
@@ -320,6 +327,7 @@ class Player extends _PlayerBase
       for (final prior in resolved) {
         await prior.dispose?.call();
       }
+      _restoreIntent(load, intent, previousIntent);
       rethrow;
     }
     // Execute in-flight transport writes before the replace — see
@@ -423,12 +431,8 @@ class Player extends _PlayerBase
     // play-index reply lands, so re-asserting the intent here is the
     // last word — without this the OS play button would stick on
     // "paused" while the new album plays.
-    if (parkedAtEof) {
-      _updateField(
-        (s) => s.copyWith(playWhenReady: shouldPlay),
-        _reactives.playWhenReady,
-        shouldPlay,
-      );
+    if (parkedAtEof && intent == _intentEpoch) {
+      _writeIntent(shouldPlay);
     }
 
     // ── Phase 4: drop the retained old entry ──────────────────────────
@@ -461,7 +465,10 @@ class Player extends _PlayerBase
   /// file-local options slot. Entries parsed out of the playlist inherit the
   /// global network/demuxer settings.
   @override
-  Future<void> openPlaylistFile(Media playlist, {bool? play}) async {
+  Future<void> openPlaylistFile(Media playlist, {bool? play}) =>
+      _trackLoad(() => _openPlaylistFile(playlist, play));
+
+  Future<void> _openPlaylistFile(Media playlist, bool? play) async {
     _checkNotDisposed();
     _rejectPcm(playlist, 'playlist');
     _validateLoadOptions(playlist);
@@ -471,13 +478,16 @@ class Player extends _PlayerBase
     if (load.superseded) return;
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point — same rationale as [open].
-    _updateField(
-      (s) => s.copyWith(playWhenReady: shouldPlay),
-      _reactives.playWhenReady,
-      shouldPlay,
-    );
+    final previousIntent = _state.playWhenReady;
+    final intent = _claimIntent(shouldPlay);
     _mediaCache.clear();
-    final resolved = await resolveUri(playlist.uri);
+    final ResolvedUri resolved;
+    try {
+      resolved = await resolveUri(playlist.uri);
+    } catch (_) {
+      _restoreIntent(load, intent, previousIntent);
+      rethrow;
+    }
     if (load.superseded) {
       await resolved.dispose?.call();
       return;
@@ -645,6 +655,47 @@ abstract class _PlayerBase {
   /// Snapshots the load epoch for a call that adds to the content (an
   /// append): superseded if a content-replacing call lands meanwhile.
   _LoadTicket _snapshotLoad() => _LoadTicket(this, _loadEpoch);
+
+  /// How many open(), openAll() and openPlaylistFile() calls are running.
+  /// While one is, an idle core is about to get content, so [Player.play]
+  /// keeps its intent.
+  int _loadsInFlight = 0;
+
+  /// Runs a content-replacing load, counted in [_loadsInFlight].
+  Future<void> _trackLoad(Future<void> Function() load) async {
+    _loadsInFlight++;
+    try {
+      await load();
+    } finally {
+      _loadsInFlight--;
+    }
+  }
+
+  /// Bumped by every public call that sets the play/pause intent, so a
+  /// call that corrects the intent after an await can tell whether a later
+  /// call set it meanwhile (and then leaves it alone).
+  int _intentEpoch = 0;
+
+  /// Sets the play/pause intent for a public call and returns the epoch
+  /// that call owns.
+  int _claimIntent(bool value) {
+    _writeIntent(value);
+    return ++_intentEpoch;
+  }
+
+  /// Writes the play/pause intent ([PlayerState.playWhenReady]).
+  void _writeIntent(bool value) => _updateField(
+    (s) => s.copyWith(playWhenReady: value),
+    _reactives.playWhenReady,
+    value,
+  );
+
+  /// Puts back the intent a failed load replaced, unless a later call took
+  /// over the load or the intent.
+  void _restoreIntent(_LoadTicket load, int intent, bool previous) {
+    if (load.superseded || intent != _intentEpoch) return;
+    _writeIntent(previous);
+  }
 
   // ── Property registry (the bulk of state — one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
@@ -853,11 +904,7 @@ abstract class _PlayerBase {
               // advance also doesn't fire idle-active, so this never
               // flickers.
               if (_hasLoadedFile) {
-                _updateField(
-                  (s) => s.copyWith(playWhenReady: false),
-                  _reactives.playWhenReady,
-                  false,
-                );
+                _writeIntent(false);
                 // No file is loaded any more (stop, a cleared playlist, a
                 // failed load): nothing of the last one should linger.
                 _clearFinishedFile();
@@ -1087,15 +1134,24 @@ abstract class _PlayerBase {
   /// queue up, not the UI thread.
   Future<void> _settleWrites() => _client.settleWrites();
 
-  /// Whether mpv is parked paused at the end of content (`keep-open`),
-  /// read from the core's own `eof-reached` rather than from
-  /// `state.completed`. That flag comes from the event isolate's
-  /// [MpvEventEndOfContent] reads, which reach the main isolate behind the
-  /// events still queued ahead of them: right after a short last entry
-  /// parks, `completed` can still be false. The transport calls that
-  /// unpause need the core's answer at the call.
+  /// Whether mpv reached the end of the current file, parked by
+  /// `keep-open` or about to park, read from the core's own `eof-reached`
+  /// rather than from `state.completed`. That flag comes from the event
+  /// isolate's [MpvEventEndOfContent] reads, which reach the main isolate
+  /// behind the events still queued ahead of them: right after a short
+  /// last entry parks, `completed` can still be false. The calls that
+  /// replace or jump need the core's answer at the call: an unpause
+  /// written while mpv is about to park does not survive the park, so
+  /// they write it again after the load.
   Future<bool> _parkedAtEof() async =>
       await getRawProperty('eof-reached') == 'yes';
+
+  /// Whether mpv is parked: at the end of the file and paused, which
+  /// keep-open does only once the output buffer has played out. In the
+  /// last buffer before that, `eof-reached` is already true while the
+  /// audio still plays.
+  Future<bool> _parkedPaused() async =>
+      await _parkedAtEof() && await getRawProperty('pause') == 'yes';
 
   /// Rejects NaN / +Inf / -Inf before they reach `toStringAsFixed`,
   /// which would emit the literal `'NaN'` / `'Infinity'` and have mpv
@@ -1229,14 +1285,10 @@ abstract class _PlayerBase {
     if (end == _state.completed) return;
     _updateLifecycle(completed: end);
     // The play/pause intent is spent at the end of content; leaving the
-    // end (a seek back, a new file) keeps it.
-    if (end) {
-      _updateField(
-        (s) => s.copyWith(playWhenReady: false),
-        _reactives.playWhenReady,
-        false,
-      );
-    }
+    // end (a seek back, a new file) keeps it. Only on the edge: a jump or
+    // a replace issued at the park can see one more parked read before
+    // its load starts, and must keep its intent.
+    if (end) _writeIntent(false);
   }
 
   /// Internal log helper — emits on the library-side log channel
