@@ -8,6 +8,8 @@ import '../models/device.dart';
 import '../models/media.dart';
 import '../models/media_session.dart';
 import '../models/source_resolve_request.dart';
+import '../pcm/pcm_format.dart';
+import '../pcm/pcm_source.dart';
 import '../types/enums/cover.dart';
 import '../types/enums/format.dart';
 import '../types/enums/gapless.dart';
@@ -78,6 +80,15 @@ abstract interface class PlayerApi {
   /// playlists. Contrast with [open], which loads a single entry. See
   /// [Player.openPlaylistFile] for the per-[Media] option caveats.
   Future<void> openPlaylistFile(Media playlist, {bool? play});
+
+  /// Creates a live [PcmSource] of [format] and opens it as the sole
+  /// playlist entry. See [Player.openPcmStream].
+  Future<PcmSource> openPcmStream(
+    PcmFormat format, {
+    bool play = true,
+    Duration maxBuffered = const Duration(seconds: 30),
+    Map<String, Object?>? extras,
+  });
 
   // ── Playback ───────────────────────────────────────────────────────
 

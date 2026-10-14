@@ -124,6 +124,10 @@ final class Media {
     this.demuxerLavfOptions,
   });
 
+  /// Whether this media is a live PCM input made by `PcmSource.toMedia`
+  /// (a `mak-pcm://` URI): read once, not seekable, with no duration.
+  bool get isPcmStream => uri.startsWith('mak-pcm://');
+
   /// Returns a copy with the given fields replaced. Pass `null` for
   /// [extras], [httpHeaders], [httpChunkSize] or [demuxerLavfOptions] to
   /// clear them; omitted fields keep their current value.

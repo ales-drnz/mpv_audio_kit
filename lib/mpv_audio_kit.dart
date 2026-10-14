@@ -63,6 +63,8 @@ export 'src/models/source_resolve_request.dart'
     show SourceResolveRequest, SourceResolver;
 export 'src/models/waveform_data.dart' show WaveformData;
 export 'src/mpv_bindings.dart' show MpvError;
+export 'src/pcm/pcm_format.dart' show PcmEncoding, PcmFormat;
+export 'src/pcm/pcm_source.dart' show PcmSource, PcmSourceState;
 export 'src/player/player.dart' show Player;
 export 'src/player/player_api.dart' show PlayerApi;
 export 'src/player/player_configuration.dart' show PlayerConfiguration;

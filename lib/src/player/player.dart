@@ -47,6 +47,8 @@ import '../models/playlist.dart';
 import '../models/source_resolve_request.dart';
 import '../models/waveform_data.dart';
 import '../mpv_bindings.dart' hide MpvEndFileReason;
+import '../pcm/pcm_format.dart';
+import '../pcm/pcm_source.dart';
 import '../reactive/default_reactives.dart';
 import '../reactive/default_specs.dart';
 import '../reactive/node_parsers.dart';
@@ -93,6 +95,8 @@ export '../models/media.dart';
 export '../models/media_session.dart';
 export '../models/playlist.dart';
 export '../models/source_resolve_request.dart';
+export '../pcm/pcm_format.dart';
+export '../pcm/pcm_source.dart' show PcmSource, PcmSourceState;
 export '../types/enums/format.dart';
 export '../types/enums/interruption_policy.dart';
 export '../types/enums/loop.dart';
@@ -114,6 +118,7 @@ part 'mixins/player_init.part.dart';
 part 'mixins/player_load_validation.part.dart';
 part 'mixins/player_media_session.part.dart';
 part 'mixins/player_network.part.dart';
+part 'mixins/player_pcm.part.dart';
 part 'mixins/player_playback.part.dart';
 part 'mixins/player_playlist.part.dart';
 
@@ -132,6 +137,7 @@ class Player extends _PlayerBase
         _PlaylistModule,
         _AudioModule,
         _NetworkModule,
+        _PcmModule,
         _HooksModule,
         _MediaSessionModule
     implements PlayerApi {
@@ -511,6 +517,8 @@ class Player extends _PlayerBase
     // release would drop its id without continuing it (it skips the FFI
     // call once disposed), and mpv would wait on that hook at shutdown.
     _cancelHookTimers();
+    // Before the quit: an aborted source wakes a reader blocked on it.
+    _abortPcmSources();
     try {
       await _releaseMediaSession();
     } catch (_) {
@@ -596,6 +604,10 @@ abstract class _PlayerBase {
   void _assignState(PlayerState s) => _state = s;
 
   final Map<String, Media> _mediaCache = {};
+
+  /// The live PCM sources [Player.openPcmStream] opened and not yet done,
+  /// aborted at dispose.
+  final Set<PcmSource> _pcmSources = {};
 
   /// The [Media] of each playlist entry this player loaded, by mpv's
   /// `playlist_entry_id`. Unlike [_mediaCache], two entries with the same

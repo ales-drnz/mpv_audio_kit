@@ -11,7 +11,8 @@ part of '../player.dart';
 /// abstract signatures on `_PlayerBase`.
 mixin _LoadValidationModule on _PlayerBase {
   /// Builds the `loadfile` `<options>` argument from a [Media]'s
-  /// `httpHeaders` and `httpChunkSize`. Each value is length-prefixed
+  /// `httpHeaders` and `httpChunkSize`, and the raw audio demuxer of a
+  /// live PCM source. Each value is length-prefixed
   /// (`%N%`) so the outer option-list parser doesn't split on the commas
   /// inside it — hence the per-key/value rejection of CR, LF, `,`, NUL
   /// (and `:` in keys) by [_validateHeaderKey] / [_validateHeaderValue].
@@ -19,6 +20,10 @@ mixin _LoadValidationModule on _PlayerBase {
   @override
   String _buildLoadfileOptions(Media media) {
     final parts = <String>[];
+
+    // A live PCM source: mpv's raw audio demuxer in the source's format.
+    final pcm = pcmLoadOptions(media.uri);
+    if (pcm != null) parts.add(pcm);
 
     final headers = media.httpHeaders;
     if (headers != null && headers.isNotEmpty) {
@@ -86,6 +91,7 @@ mixin _LoadValidationModule on _PlayerBase {
   /// before any optimistic state write.
   @override
   void _validateLoadOptions(Media media) {
+    pcmLoadOptions(media.uri);
     final headers = media.httpHeaders;
     if (headers != null && headers.isNotEmpty) {
       for (final e in headers.entries) {
