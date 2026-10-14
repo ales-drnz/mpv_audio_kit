@@ -61,6 +61,7 @@ Stream<Uint8List> _feed(
   int burstEvery = 0,
   bool split = false,
   void Function()? onFirst,
+  List<(int, DateTime)>? arrivals,
 }) async* {
   final rnd = math.Random(27);
   final start = DateTime.now();
@@ -77,6 +78,7 @@ Stream<Uint8List> _feed(
     }
     if (wait > Duration.zero) await Future<void>.delayed(wait);
     final ms = math.min(chunkMs, totalMs - sentMs);
+    arrivals?.add((sentMs, DateTime.now()));
     final pcm = _tone(f, frame, ms);
     frame += pcm.length ~/ f.bytesPerFrame;
     sentMs += ms;
@@ -181,6 +183,7 @@ Future<Map<String, Object?>> _playThrough(
   final source = await player.openPcmStream(f);
   watch.start();
   DateTime? firstAdd;
+  final arrivals = <(int, DateTime)>[];
   await source.addStream(
     _feed(
       f,
@@ -190,6 +193,7 @@ Future<Map<String, Object?>> _playThrough(
       burstEvery: burstEvery,
       split: split,
       onFirst: () => firstAdd = DateTime.now(),
+      arrivals: arrivals,
     ),
   );
   final lastAdd = DateTime.now();
@@ -211,6 +215,18 @@ Future<Map<String, Object?>> _playThrough(
         : end.difference(started).inMilliseconds,
     'completedAfterLastAddMs': end.difference(lastAdd).inMilliseconds,
     'underruns': underruns,
+    // How far ahead of the playhead the latest chunk arrived: the playhead
+    // reaches a chunk's start `sentMs` after playback started, if it never
+    // ran dry. Below zero the feed itself was late for the output.
+    'minLeadMs': started == null
+        ? null
+        : arrivals
+              .map(
+                (a) =>
+                    started.add(Duration(milliseconds: a.$1)).difference(a.$2),
+              )
+              .reduce((a, b) => a < b ? a : b)
+              .inMilliseconds,
     'sourceState': source.state.name,
     'endFile': ends.map((e) => e.reason.name).toList(),
     'liveDurationMs': liveDuration.inMilliseconds,
@@ -299,6 +315,15 @@ void main() {
         burstEvery: 10,
       );
       _log('jitter', r);
+      // The feed paces by absolute deadlines, so the start delay is the
+      // lead every later chunk gets. A host whose timers fall behind by
+      // more than that runs the output dry by design, not by a fault of
+      // the source: the check holds when the feed kept a lead.
+      final lead = r['minLeadMs']! as int;
+      if (lead < 40) {
+        markTestSkipped('the host fed $lead ms ahead of the playhead');
+        return;
+      }
       expect(r['underruns'], 0);
       expect(r['timePosAtEnd']! as double, greaterThan(3.95));
     }, timeout: t);
