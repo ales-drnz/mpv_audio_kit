@@ -96,7 +96,7 @@ final class Media {
   /// [httpHeaders]. Each `key: value` becomes one `key=value` entry, scoped to
   /// this exact playlist entry.
   ///
-  /// A common use is reaching the segment demuxer of an HLS/DASH stream via the
+  /// A common use is reaching the segment demuxer of an HLS or DASH stream via the
   /// HLS demuxer's `seg_format_options` dictionary, e.g.
   /// `{'seg_format_options': 'advanced_editlist=0'}`.
   ///

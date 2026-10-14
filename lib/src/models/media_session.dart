@@ -9,7 +9,7 @@ import '../types/sealed/media_session_artwork.dart';
 
 /// Configuration and metadata for the OS media session: the
 /// lockscreen, SMTC or MPRIS entry, Bluetooth AVRCP, headset
-/// buttons, and (on iOS/Android) the AVAudioSession or AudioFocus
+/// buttons, and (on iOS and Android) the AVAudioSession or AudioFocus
 /// integration.
 ///
 /// Apply via [Player.setMediaSession]; pass `null` to disable the
@@ -118,10 +118,10 @@ class MediaSession {
 
   /// Whether the package automatically calls [Player.next] and [Player.previous]
   /// when the active playlist has multiple items and the OS issues a
-  /// next/previous track command.
+  /// next or previous track command.
   ///
   /// Defaults to `true`. Set to `false` if the application wants to intercept
-  /// and handle next/previous track commands manually (e.g. for custom skip
+  /// and handle next and previous track commands manually (e.g. for custom skip
   /// behavior, seeking, or server-driven playlists).
   final bool autoApplyPlaylistNavigation;
 
