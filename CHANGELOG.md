@@ -60,6 +60,7 @@ A revision of the whole package. See [MIGRATION.md](MIGRATION.md) for the change
 - Changing the effects right after a seek no longer stalls a short file when a stage with a long look-ahead, such as `DynaudnormEffect`, already holds its end.
 - Linux: an app that exits without disposing the player no longer crashes at exit, since PipeWire and PulseAudio stay loaded until the process ends.
 - The waveform and loudness scan of an HTTP file that plays from its start decode it from mpv's cache as it downloads, so the file is downloaded once instead of twice ([#22](https://github.com/ales-drnz/mpv_audio_kit/issues/22)). Otherwise they open it again as before, with the same result.
+- A waveform or loudness scan enabled while a file opens, as by a view that subscribes when the queue fills, no longer opens the file a second time. A Jellyfin HLS transcode could fail to open.
 - The waveform and loudness scan of a local file give the result of one decode of it: loudness and peaks no longer drift where the parallel decode splits the file.
 - The loudness scan of a Matroska file no longer reads -70 LUFS, and the one of an MP2 file no longer crashes the app.
 - The waveform of an MP3 no longer ends one encoder delay short.
