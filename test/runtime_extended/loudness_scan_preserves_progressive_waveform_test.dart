@@ -36,16 +36,16 @@ import '../_helpers/setter_test_helpers.dart';
 /// Reproduced hermetically: a localhost HTTP server serves the 5 s sine FLAC
 /// but REFUSES range requests, so the host mpv classifies it as a non-seekable
 /// network stream and grows the waveform from playback — exactly the
-/// transcode shape, with no external network. If the host mpv nonetheless
-/// treats the source as seekable (bulk-decoded), the precondition is not met
-/// and the test self-skips rather than asserting against the wrong path.
+/// transcode shape, with no external network. A host mpv that treats the
+/// source as seekable (bulk-decoded) fails the test: the path under test
+/// would be gone.
 void main() {
   final fixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
   HttpServer? server;
   late String url;
 
-  runtimeSuite(fixturePath: fixture, () {
+  analysisSuite(fixturePath: fixture, () {
     setUpAll(() async {
       final bytes = await File(fixture).readAsBytes();
       // Range-refusing server: always 200 with the full body and
@@ -72,12 +72,6 @@ void main() {
 
     test('enabling loudness-scan mid-progressive does not wipe the waveform', () async {
       final player = await buildPlayer();
-      final probe = await player.getRawProperty('waveform-data');
-      if (probe == null) {
-        await player.dispose();
-        skipMissing('libmpv has no waveform-data property.');
-        return;
-      }
 
       final waves = <WaveformData>[];
       final waveSub = player.stream.waveform.listen(
@@ -99,7 +93,8 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 200));
           if (waves.isEmpty) continue;
           final w = waves.last;
-          if (w.live) continue; // rolling axis slides — handled by its own test
+          // A rolling axis slides: handled by its own test.
+          if (w.live) continue;
           final filledCount = _filledCount(w);
           final partial = filledCount > 0 && filledCount < w.bins;
           if (partial && prevFilled >= 0 && filledCount > prevFilled) {
@@ -109,13 +104,14 @@ void main() {
           prevFilled = filledCount;
         }
 
+        // The server refuses ranges, so mpv cannot seek the source and must
+        // grow the envelope from playback. A bulk decode here means that
+        // classification changed, and the path under test is gone.
         if (grown == null) {
-          markTestSkipped(
-            'host mpv did not grow a PROGRESSIVE envelope for the non-range '
-            'HTTP source (it may have decoded it as seekable) — the mid-'
-            'progressive reset path is not exercised on this host.',
+          fail(
+            'mpv did not grow a PROGRESSIVE envelope for the non-range '
+            'HTTP source (it decoded it as seekable)',
           );
-          return;
         }
 
         // Snapshot the bins accumulated so far. A bin behind the playhead is

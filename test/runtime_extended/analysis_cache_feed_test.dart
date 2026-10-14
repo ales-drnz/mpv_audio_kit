@@ -295,7 +295,7 @@ void main() {
   final mkaPath = '$fixtures/multitrack_two_audio_5s.mka';
   final webmPath = '$fixtures/codec/webm_opus.webm';
 
-  runtimeSuite(extraFixtures: [flacPath, mkaPath, webmPath], () {
+  analysisSuite(extraFixtures: [flacPath, mkaPath, webmPath], () {
     late Directory tmp;
     late String wavPath;
     late Uint8List wav;
@@ -318,15 +318,6 @@ void main() {
     const longName = 'swell_120s.wav';
 
     setUpAll(() async {
-      final probe = await buildPlayer();
-      try {
-        if (await probe.getRawPropertyNode('waveform-data') == null ||
-            await probe.getRawPropertyNode('loudness-scan-data') == null) {
-          skipMissing('libmpv has no waveform-data or loudness-scan-data.');
-        }
-      } finally {
-        await probe.dispose();
-      }
       tmp = await Directory.systemTemp.createTemp('mak_cache_feed_');
       wav = _makeWav(20);
       longWav = _makeWav(120);

@@ -84,7 +84,7 @@ void main() {
   final mp3Path = '$fixtures/codec/mp3_44100_stereo.mp3';
   final aacPath = '$fixtures/codec/aac_adts_44100.aac';
 
-  runtimeSuite(extraFixtures: [flacPath, mp3Path, aacPath], () {
+  analysisSuite(extraFixtures: [flacPath, mp3Path, aacPath], () {
     const flacName = 'sine_stereo_48k_5s.flac';
     const mp3Name = 'mp3_44100_stereo.mp3';
     late Map<String, Uint8List> files;
@@ -94,15 +94,6 @@ void main() {
     final subs = <StreamSubscription<Object?>>[];
 
     setUpAll(() async {
-      final probe = await buildPlayer();
-      try {
-        if (await probe.getRawPropertyNode('waveform-data') == null ||
-            await probe.getRawPropertyNode('loudness-scan-data') == null) {
-          skipMissing('libmpv has no waveform-data or loudness-scan-data.');
-        }
-      } finally {
-        await probe.dispose();
-      }
       files = {
         flacName: await File(flacPath).readAsBytes(),
         mp3Name: await File(mp3Path).readAsBytes(),

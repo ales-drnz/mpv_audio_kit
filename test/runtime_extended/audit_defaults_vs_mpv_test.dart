@@ -81,7 +81,9 @@ void main() {
       for (final (name, seed) in entries) {
         final mpv = await player.getRawProperty(name);
         final ok = mpv != null && (mpv == seed || sameNum(mpv, seed));
-        if (!ok && mpv != null) mismatches.add('$name: dart=$seed  mpv=$mpv');
+        // A property mpv does not answer counts too: a renamed or removed
+        // option would otherwise pass with its seed never compared.
+        if (!ok) mismatches.add('$name: dart=$seed  mpv=$mpv');
         // ignore: avoid_print
         print(
           '  ${mpv == null
