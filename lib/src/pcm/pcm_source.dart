@@ -28,12 +28,11 @@ enum PcmSourceState {
   /// The player read everything up to the end set by [PcmSource.close].
   drained,
 
-  /// [PcmSource.abort] was called, or the player that opened it was
-  /// disposed.
+  /// [PcmSource.abort] was called.
   aborted,
 
-  /// The player let it go before the end: `stop()`, a next track, another
-  /// `open()`, or a dispose.
+  /// The player let it go before the end, read or not: `stop()`, a next
+  /// track, another `open()`, a removal from the playlist, or a dispose.
   stopped,
 }
 
@@ -59,9 +58,12 @@ enum PcmSourceState {
 /// await source.close();
 /// ```
 ///
-/// With prefetch on, the player opens the next live source in its queue
-/// while the current entry plays: a source it opened and then left (a skip
-/// or a jump elsewhere) is [PcmSourceState.stopped].
+/// A player holds the source of each entry it loaded while the entry is
+/// in its playlist, so a queued source needs no other reference. Prefetch
+/// skips live entries: a queued source opens when its entry starts, and
+/// what was added meanwhile waits in its buffer. An entry that leaves the
+/// playlist (a skip, a removal, another `open()`, a dispose) ends its
+/// source as [PcmSourceState.stopped], read or not.
 ///
 /// Each source is read once: it cannot be played again, and seeking is
 /// not possible (a seek on it does nothing). Its length is not known in
@@ -78,12 +80,15 @@ final class PcmSource {
   /// refuses audio: past it, chunks wait in Dart memory.
   ///
   /// [lowLatency] halves the audio output buffer for this entry (100 ms in
-  /// place of 200 ms): playback starts about 80 ms sooner, with less
-  /// margin against a late chunk or a busy device.
+  /// place of 200 ms): playback starts about 0.13 s after the first chunk
+  /// in place of about 0.2 s, with less margin against a late chunk or a
+  /// busy device.
   ///
-  /// Call `MpvAudioKit.ensureInitialized` first, as for a [Player]. Throws
-  /// [UnsupportedError] when the loaded libmpv has no live PCM input (a
-  /// custom build without the mpv_audio_kit patches).
+  /// Throws [ArgumentError] when [maxBuffered] holds more than 1 GiB of
+  /// [format]. Call `MpvAudioKit.ensureInitialized` first, as for a
+  /// [Player]: throws [StateError] otherwise, and [UnsupportedError] when
+  /// the loaded libmpv has no live PCM input (a custom build without the
+  /// mpv_audio_kit patches).
   static PcmSource create(
     PcmFormat format, {
     Duration maxBuffered = const Duration(seconds: 30),
@@ -92,6 +97,13 @@ final class PcmSource {
     format.validate();
     if (maxBuffered <= Duration.zero) {
       throw ArgumentError.value(maxBuffered, 'maxBuffered', 'must be > 0');
+    }
+    if (format.durationBytes(maxBuffered) > _maxCapacity) {
+      throw ArgumentError.value(
+        maxBuffered,
+        'maxBuffered',
+        'holds more than 1 GiB of $format',
+      );
     }
     final native = pcmNative();
     final source = PcmSource._(format, maxBuffered, native, 0);
@@ -297,8 +309,9 @@ final class PcmSource {
 
   /// Stops feeding and cuts the playback of this source at once: the
   /// queued chunks are dropped, and a player playing it moves to its next
-  /// entry, or stops when there is none (as `next(force: true)`). The
-  /// audio output does not play out what it holds.
+  /// entry, or stops when there is none (as `next(force: true)`, so with
+  /// `loop-playlist` on it wraps to the first entry). The audio output
+  /// does not play out what it holds.
   ///
   /// A source aborted before a player opened it fails to load there, so
   /// abort a queued source only to drop it. Does nothing once the source
@@ -325,6 +338,23 @@ final class PcmSource {
             _native.abort(_id);
             _release();
           }),
+    );
+  }
+
+  /// Ends the source as [PcmSourceState.stopped] (or drained, when the
+  /// reader got to the end): the player dropped its entry, or never loaded
+  /// it, so no reader will come or stay. Aborts the native side, which
+  /// ends a reader still closing at once.
+  @internal
+  void endUnread() {
+    if (isDone) return;
+    if (_released) return _end(PcmSourceState.stopped);
+    _native.abort(_id);
+    final code = _native.state(_id);
+    _end(
+      code == PcmNative.stateDrained
+          ? PcmSourceState.drained
+          : PcmSourceState.stopped,
     );
   }
 
@@ -472,9 +502,7 @@ final class PcmSource {
     _released = true;
     _finalizer.detach(this);
     _native.release(_id);
-    _formats.remove(_id);
-    _lowLatency.remove(_id);
-    _live.remove(_id);
+    _forget(_id);
   }
 
   // ── polling ──────────────────────────────────────────────────────────
@@ -519,9 +547,21 @@ final class PcmSource {
     }
   }
 
-  static final Finalizer<_NativeRef> _finalizer = Finalizer<_NativeRef>(
-    (ref) => ref.native.release(ref.id),
-  );
+  // A source the app dropped: the native side lets go, and its media is
+  // refused from then on.
+  static final Finalizer<_NativeRef> _finalizer = Finalizer<_NativeRef>((ref) {
+    ref.native.release(ref.id);
+    _forget(ref.id);
+  });
+
+  static void _forget(int id) {
+    _formats.remove(id);
+    _lowLatency.remove(id);
+    _live.remove(id);
+  }
+
+  // The native side refuses a larger buffer.
+  static const int _maxCapacity = 1 << 30;
 
   static const String _scheme = 'mak-pcm://';
 
@@ -541,9 +581,24 @@ final class PcmSource {
   @visibleForTesting
   static bool get debugPolling => _timer != null;
 
+  /// Test-only: forgets every source and stops the poll timer.
+  @visibleForTesting
+  static void debugReset() {
+    _timer?.cancel();
+    _timer = null;
+    _watched.clear();
+    _held.clear();
+    _formats.clear();
+    _lowLatency.clear();
+    _live.clear();
+  }
+
   static int _capacityFor(PcmFormat format, Duration maxBuffered) {
     final floor = format.bytesPerSecond;
-    final bytes = math.max(floor, format.durationBytes(maxBuffered));
+    final bytes = math.min(
+      _maxCapacity,
+      math.max(floor, format.durationBytes(maxBuffered)),
+    );
     return bytes ~/ format.bytesPerFrame * format.bytesPerFrame;
   }
 }

@@ -186,9 +186,8 @@ mixin _FfiModule on _PlayerBase {
         message: _errorString(rc),
       );
     }
-    // A live source cut by its abort() leaves this player's entry first.
-    if (media.isPcmStream) pcmSourceFor(media.uri)?.addCutter(_cutPcm);
     final id = result is Map ? result['playlist_entry_id'] : null;
+    if (media.isPcmStream) _holdPcm(id is int ? id : null, media);
     if (id is! int) return;
     _mediaByEntry[id] = media;
     // mpv may report the playlist before this reply: map the entry now.

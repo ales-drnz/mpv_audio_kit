@@ -388,6 +388,7 @@ mixin _DispatchModule on _PlayerBase {
             if (entry is Map && entry['id'] is int) entry['id'] as int,
         };
         _mediaByEntry.removeWhere((id, _) => !live.contains(id));
+        _prunePcm(live);
       }
       final playlist = parsePlaylistNode(
         raw: raw,

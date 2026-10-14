@@ -319,6 +319,7 @@ mixin _AudioModule on _PlayerBase {
     String? lang,
   }) async {
     _checkNotDisposed();
+    _rejectPcm(file, 'file');
     _validateLoadOptions(file);
     // Snapshot the load epoch: a content-replacing call landing while the
     // URI resolves makes this add stale — the track belongs to the file

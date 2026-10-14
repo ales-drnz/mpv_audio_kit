@@ -6,6 +6,8 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:typed_data';
+
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/internals/pcm_native.dart';
 import 'package:test/test.dart';
@@ -15,43 +17,111 @@ import '../pcm/fake_pcm_native.dart';
 
 // The player side of a live PCM source over a fake native layer: what the
 // player does with the source, whatever mpv makes of the `mak-pcm://` URI.
+int _id(PcmSource s) =>
+    int.parse(s.toMedia().uri.substring('mak-pcm://'.length));
+
 void main() {
   runtimeSuite(() {
     late FakePcmNative native;
 
     setUp(() {
+      PcmSource.debugReset();
       native = FakePcmNative();
       debugPcmNativeOverride = native;
     });
 
     tearDown(() => debugPcmNativeOverride = null);
 
-    test(
-      'dispose aborts and releases the sources openPcmStream opened',
-      () async {
+    const f = PcmFormat(sampleRate: 24000, channels: 1);
+
+    test('dispose ends the sources the player holds as stopped', () async {
+      final player = await buildPlayer();
+      final a = await player.openPcmStream(f, play: false);
+      final queued = PcmSource.create(f);
+      await player.add(queued.toMedia());
+      final other = PcmSource.create(f);
+      await waitUntil(
+        () => player.state.playlist.items.length == 2,
+        reason: 'the live entries reach the playlist',
+      );
+      expect(player.state.playlist.items.first.isPcmStream, isTrue);
+      await player.dispose();
+      for (final s in [a, queued]) {
+        await s.done.timeout(const Duration(seconds: 1));
+        expect(s.state, PcmSourceState.stopped);
+      }
+      expect(native[_id(a)].state, PcmNative.stateAborted);
+      expect(native[_id(a)].freed, isTrue);
+      // A source the player never loaded stays the app's.
+      expect(other.isDone, isFalse);
+      other.abort();
+    });
+
+    for (final takeOver in ['open', 'stop']) {
+      test('openPcmStream superseded by $takeOver ends as stopped', () async {
         final player = await buildPlayer();
-        final a = await player.openPcmStream(
-          const PcmFormat(sampleRate: 24000, channels: 1),
-          play: false,
-        );
-        final other = PcmSource.create(
-          const PcmFormat(sampleRate: 24000, channels: 1),
-        );
-        await waitUntil(
-          () => player.state.playlist.items.length == 1,
-          reason: 'the live entry reaches the playlist',
-        );
-        expect(player.state.playlist.items.single.isPcmStream, isTrue);
+        final opening = player.openPcmStream(f);
+        if (takeOver == 'open') {
+          await player.open(Media(defaultFixturePath()), play: false);
+        } else {
+          await player.stop();
+        }
+        final s = await opening;
+        expect(s.state, PcmSourceState.stopped);
+        await s.done.timeout(const Duration(seconds: 1));
+        expect(native[_id(s)].freed, isTrue);
         await player.dispose();
-        expect(a.state, PcmSourceState.aborted);
-        expect(native.sources.values.first.state, PcmNative.stateAborted);
-        expect(native.sources.values.first.released, isTrue);
-        await a.done.timeout(const Duration(seconds: 1));
-        // A source the player did not open stays the app's.
-        expect(other.isDone, isFalse);
-        other.abort();
-      },
-    );
+      });
+    }
+
+    for (final how in ['remove', 'clearPlaylist', 'open', 'playlist-remove']) {
+      test(
+        'a queued source removed by $how before it plays ends as stopped',
+        () async {
+          final player = await buildPlayer();
+          final s = PcmSource.create(f);
+          s.add(Uint8List(4800));
+          final fed = s.addStream(const Stream<Uint8List>.empty());
+          await player.openAll([
+            Media(defaultFixturePath()),
+            s.toMedia(),
+          ], play: false);
+          await waitUntil(
+            () => player.state.playlist.items.length == 2,
+            reason: 'both entries reach the playlist',
+          );
+          switch (how) {
+            case 'remove':
+              await player.remove(1);
+            case 'clearPlaylist':
+              await player.clearPlaylist();
+            case 'open':
+              await player.open(Media(defaultFixturePath()), play: false);
+            case 'playlist-remove':
+              await player.sendRawCommand(['playlist-remove', '1']);
+          }
+          await s.done.timeout(const Duration(seconds: 3));
+          await fed.timeout(const Duration(seconds: 1));
+          await s.close();
+          expect(s.state, PcmSourceState.stopped);
+          await player.dispose();
+        },
+      );
+    }
+
+    test('addAudioTrack and openPlaylistFile refuse a live source', () async {
+      final player = await buildPlayer();
+      await openAndWaitForLoad(player, defaultFixturePath());
+      final s = PcmSource.create(f);
+      await expectLater(player.addAudioTrack(s.toMedia()), throwsArgumentError);
+      await expectLater(
+        player.openPlaylistFile(s.toMedia()),
+        throwsArgumentError,
+      );
+      expect(s.isDone, isFalse);
+      s.abort();
+      await player.dispose();
+    });
 
     test(
       'a media of a source that is done is refused before loading',

@@ -115,6 +115,20 @@ mixin _LoadValidationModule on _PlayerBase {
     }
   }
 
+  /// Throws [ArgumentError] for a live PCM [media] on a path that cannot
+  /// give it its load options (`audio-add`, `loadlist`): mpv would open it
+  /// without them and use up its single reader.
+  @override
+  void _rejectPcm(Media media, String name) {
+    if (!isPcmUri(media.uri)) return;
+    throw ArgumentError.value(
+      media.uri,
+      name,
+      'a live PcmSource plays only as a playlist entry '
+      '(open, openAll, add, replace)',
+    );
+  }
+
   static final RegExp _kForbiddenInLavfOption = RegExp(r'[\r\n,\x00]');
 
   /// A `demuxer-lavf-o` entry sits in a comma-separated list, so its key/value

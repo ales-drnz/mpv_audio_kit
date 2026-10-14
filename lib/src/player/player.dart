@@ -463,6 +463,7 @@ class Player extends _PlayerBase
   @override
   Future<void> openPlaylistFile(Media playlist, {bool? play}) async {
     _checkNotDisposed();
+    _rejectPcm(playlist, 'playlist');
     _validateLoadOptions(playlist);
     // Claim the load epoch synchronously — see [open].
     final load = _claimLoad();
@@ -517,8 +518,8 @@ class Player extends _PlayerBase
     // release would drop its id without continuing it (it skips the FFI
     // call once disposed), and mpv would wait on that hook at shutdown.
     _cancelHookTimers();
-    // Before the quit: an aborted source wakes a reader blocked on it.
-    _abortPcmSources();
+    // Before the quit: an ended source wakes a reader blocked on it.
+    _endPcmSources();
     try {
       await _releaseMediaSession();
     } catch (_) {
@@ -605,12 +606,17 @@ abstract class _PlayerBase {
 
   final Map<String, Media> _mediaCache = {};
 
-  /// The live PCM sources [Player.openPcmStream] opened and not yet done,
-  /// aborted at dispose.
-  final Set<PcmSource> _pcmSources = {};
+  /// The live PCM source of each playlist entry that plays one, by mpv's
+  /// `playlist_entry_id`: held while the entry is in the playlist and the
+  /// source not done, so the app need not keep a reference.
+  final Map<int, PcmSource> _pcmByEntry = {};
+
+  /// The entries of [_pcmByEntry] a playlist node has shown.
+  final Set<int> _pcmSeen = {};
 
   /// See `_PcmModule` (player_pcm.part.dart).
-  Future<void>? _cutPcm(PcmSource source);
+  void _holdPcm(int? entryId, Media media);
+  void _prunePcm(Set<int> live);
 
   /// The [Media] of each playlist entry this player loaded, by mpv's
   /// `playlist_entry_id`. Unlike [_mediaCache], two entries with the same
@@ -790,6 +796,7 @@ abstract class _PlayerBase {
   /// See `_LoadValidationModule` (player_load_validation.part.dart).
   String _buildLoadfileOptions(Media media);
   void _validateLoadOptions(Media media);
+  void _rejectPcm(Media media, String name);
 
   /// See `_FfiModule` — the raw property escape hatches, redeclared here
   /// so the source-resolver driver in `_HooksModule` can read and rewrite

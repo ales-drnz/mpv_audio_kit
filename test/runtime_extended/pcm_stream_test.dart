@@ -209,6 +209,34 @@ Future<Map<String, Object?>> _playThrough(
   return numbers;
 }
 
+/// Queues [first] then a closed source no Dart variable keeps, paused,
+/// and returns a weak reference to that second source.
+Future<WeakReference<PcmSource>> _queueDropped(
+  Player player,
+  PcmSource first,
+) async {
+  final second = PcmSource.create(_speech);
+  second.add(_tone(_speech, 0, 300));
+  await second.close();
+  await player.openAll([first.toMedia(), second.toMedia()], play: false);
+  return WeakReference(second);
+}
+
+/// Queues [n] closed sources of 0.5 s that no Dart variable keeps,
+/// paused, and returns weak references to them.
+Future<List<WeakReference<PcmSource>>> _queueClosed(
+  Player player,
+  int n,
+) async {
+  final sources = [for (var i = 0; i < n; i++) PcmSource.create(_speech)];
+  for (final s in sources) {
+    s.add(_tone(_speech, 0, 500));
+    await s.close();
+  }
+  await player.openAll([for (final s in sources) s.toMedia()], play: false);
+  return [for (final s in sources) WeakReference(s)];
+}
+
 void main() {
   runtimeSuite(() {
     const t = Timeout(Duration(seconds: 60));
@@ -350,39 +378,131 @@ void main() {
           'state': source.state.name,
         });
         expect(sw.elapsedMilliseconds, lessThan(2000));
-        expect(
-          source.state,
-          action == 'dispose' ? PcmSourceState.aborted : PcmSourceState.stopped,
-        );
+        expect(source.state, PcmSourceState.stopped);
         await player.dispose();
       }, timeout: t);
     }
 
     test('lowLatency starts sooner and stays with its entry', () async {
-      final latencies = <bool, int>{};
-      for (final low in [false, true]) {
-        final player = await buildPlayer();
-        final watch = _Watch(player);
-        final source = await player.openPcmStream(_speech, lowLatency: low);
-        unawaited(watch.run());
-        final first = DateTime.now();
-        final feeding = source.addStream(_feed(_speech, totalMs: 1000));
-        await waitUntil(() => watch.started != null, reason: 'playback starts');
-        latencies[low] = watch.started!.difference(first).inMilliseconds;
-        expect(
-          await player.getRawProperty('audio-buffer'),
-          low ? '0.100000' : '0.200000',
-        );
-        watch.stop();
-        await feeding;
-        await source.close();
-        // The next file gets the player's own buffer back.
-        await openAndWaitForLoad(player, defaultFixturePath());
-        expect(await player.getRawProperty('audio-buffer'), '0.200000');
-        await player.dispose();
+      final latencies = <bool, List<int>>{false: [], true: []};
+      String? ao;
+      for (var round = 0; round < 3; round++) {
+        for (final low in [false, true]) {
+          final player = await buildPlayer();
+          // The null output ignores audio-buffer: a real one, muted.
+          await player.setRawProperty(
+            'ao',
+            'pipewire,pulse,alsa,coreaudio,wasapi',
+          );
+          await player.setVolume(0);
+          final watch = _Watch(player);
+          final source = await player.openPcmStream(_speech, lowLatency: low);
+          unawaited(watch.run());
+          final first = DateTime.now();
+          final feeding = source.addStream(_feed(_speech, totalMs: 600));
+          await waitUntil(
+            () => watch.started != null,
+            reason: 'playback starts',
+          );
+          latencies[low]!.add(watch.started!.difference(first).inMilliseconds);
+          ao = await player.getRawProperty('current-ao');
+          expect(
+            await player.getRawProperty('audio-buffer'),
+            low ? '0.100000' : '0.200000',
+          );
+          watch.stop();
+          await feeding;
+          await source.close();
+          // The next file gets the player's own buffer back.
+          await openAndWaitForLoad(player, defaultFixturePath());
+          expect(await player.getRawProperty('audio-buffer'), '0.200000');
+          await player.dispose();
+        }
       }
-      _log('lowLatency', {'startLatencyMs': latencies});
-      expect(latencies[true]!, lessThan(1500));
+      int median(List<int> v) => (v.toList()..sort())[v.length ~/ 2];
+      _log('lowLatency', {'ao': ao, 'startLatencyMs': latencies});
+      if (ao == null || ao == 'null') {
+        markTestSkipped(
+          'no audio device: the null output has no buffer to cut',
+        );
+        return;
+      }
+      expect(
+        median(latencies[true]!),
+        lessThan(median(latencies[false]!) - 20),
+      );
+    }, timeout: t);
+
+    test('a queued source the app dropped still plays', () async {
+      final player = await buildPlayer();
+      final ends = <MpvFileEndedEvent>[];
+      final sub = player.stream.endFile.listen(ends.add);
+      final first = PcmSource.create(_speech);
+      first.add(_tone(_speech, 0, 300));
+      await first.close();
+      // The second source is referenced by its playlist entry only.
+      final weak = await _queueDropped(player, first);
+      // Collect it if nothing holds it: before the fix the finalizer then
+      // released the finished, unread source and its entry failed to load.
+      for (var i = 0; i < 40 && weak.target != null; i++) {
+        final junk = [for (var j = 0; j < 64; j++) Uint8List(1 << 20)];
+        junk.clear();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      await player.play();
+      await waitUntil(
+        () => ends.isNotEmpty && player.state.completed,
+        timeout: const Duration(seconds: 10),
+        reason: 'both entries play',
+      );
+      _log('dropped source', {
+        'collected': weak.target == null,
+        'endFile': ends.map((e) => '${e.reason.name}:${e.error}').toList(),
+      });
+      expect(ends.single.reason, MpvEndFileReason.eof);
+      expect(player.state.playlist.index, 1);
+      expect(
+        double.parse(await player.getRawProperty('time-pos') ?? '0'),
+        greaterThan(0.25),
+      );
+      await sub.cancel();
+      await player.dispose();
+    }, timeout: t);
+
+    test('with prefetch on, dropped queued sources all play', () async {
+      final player = await buildPlayer();
+      await player.setPrefetchPlaylist(true);
+      final ends = <MpvFileEndedEvent>[];
+      final sub = player.stream.endFile.listen(ends.add);
+      final weak = await _queueClosed(player, 3);
+      for (var i = 0; i < 20; i++) {
+        final junk = [for (var j = 0; j < 64; j++) Uint8List(1 << 20)];
+        junk.clear();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      final sw = Stopwatch()..start();
+      await player.play();
+      await waitUntil(
+        () => ends.length == 2 && player.state.completed,
+        timeout: const Duration(seconds: 10),
+        reason: 'the three entries play',
+      );
+      final pos = double.parse(await player.getRawProperty('time-pos') ?? '0');
+      _log('prefetch', {
+        'playedMs': sw.elapsedMilliseconds,
+        'endFile': ends.map((e) => '${e.reason.name}:${e.error}').toList(),
+        'lastPos': pos,
+        'collected': weak.where((w) => w.target == null).length,
+      });
+      expect(ends.map((e) => e.reason), [
+        MpvEndFileReason.eof,
+        MpvEndFileReason.eof,
+      ]);
+      expect(player.state.playlist.index, 2);
+      expect(pos, greaterThan(0.45));
+      expect(sw.elapsedMilliseconds, greaterThan(1400));
+      await sub.cancel();
+      await player.dispose();
     }, timeout: t);
 
     test('analysis listeners keep one reader', () async {
@@ -409,6 +529,9 @@ void main() {
       });
       expect(source.state, PcmSourceState.drained);
       expect(errors, isEmpty);
+      // The waveform rolls with the live input; the scan has no file to read.
+      expect(waves.any((w) => w != null && w.live), isTrue);
+      expect(scans.last?.state, LoudnessScanState.unavailable);
       for (final s in subs) {
         await s.cancel();
       }

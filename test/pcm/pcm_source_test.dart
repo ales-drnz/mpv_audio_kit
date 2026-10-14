@@ -34,11 +34,15 @@ void main() {
   late FakePcmNative native;
 
   setUp(() {
+    PcmSource.debugReset();
     native = FakePcmNative();
     debugPcmNativeOverride = native;
   });
 
-  tearDown(() => debugPcmNativeOverride = null);
+  tearDown(() {
+    debugPcmNativeOverride = null;
+    PcmSource.debugReset();
+  });
 
   group('PcmFormat', () {
     test('bytes per frame and durations', () {
@@ -59,6 +63,28 @@ void main() {
     test('equality', () {
       expect(_mono, const PcmFormat(sampleRate: 1000, channels: 1));
       expect(_mono == _stereo, isFalse);
+    });
+
+    test('create rejects a buffer past the native 1 GiB', () {
+      const wide = PcmFormat(
+        sampleRate: 384000,
+        channels: 8,
+        encoding: PcmEncoding.f32le,
+      );
+      // 12.3 MB a second: 87 s fit in 1 GiB.
+      PcmSource.create(wide, maxBuffered: const Duration(seconds: 80)).abort();
+      expect(
+        () => PcmSource.create(wide, maxBuffered: const Duration(seconds: 90)),
+        throwsA(
+          isA<ArgumentError>().having((e) => e.name, 'name', 'maxBuffered'),
+        ),
+      );
+      expect(native.sources.values.single.capacity, lessThanOrEqualTo(1 << 30));
+    });
+
+    test('create needs MpvAudioKit.ensureInitialized', () {
+      debugPcmNativeOverride = null;
+      expect(() => PcmSource.create(_mono), throwsStateError);
     });
 
     test('create rejects a buffer of no time', () {
@@ -288,6 +314,31 @@ void main() {
       expect(native[id].released, isTrue);
     });
 
+    test('endUnread ends an unread source as stopped', () async {
+      final s = PcmSource.create(_mono);
+      final id = _id(s);
+      s.add(_ramp(0, 100));
+      final fed = s.addStream(const Stream<Uint8List>.empty());
+      s.endUnread();
+      expect(s.state, PcmSourceState.stopped);
+      expect(native[id].state, PcmNative.stateAborted);
+      expect(native[id].freed, isTrue);
+      await s.done;
+      await fed;
+      expect(() => pcmLoadOptions(s.toMedia().uri), throwsArgumentError);
+    });
+
+    test('endUnread keeps drained for a source read to its end', () async {
+      final s = PcmSource.create(_mono);
+      final id = _id(s);
+      native.open(id);
+      s.add(_ramp(0, 100));
+      await s.close();
+      native.readBytes(id, 100);
+      s.endUnread();
+      expect(s.state, PcmSourceState.drained);
+    });
+
     test('a source released behind its back reads as aborted', () async {
       final s = PcmSource.create(_mono);
       native.releaseAll();
@@ -427,10 +478,12 @@ void main() {
         'demuxer-rawaudio-rate=24000,demuxer-rawaudio-channels=1,'
         'cache-pause=no,demuxer-termination-timeout=0,gapless-audio=no',
       );
+      final stereo = PcmSource.create(_stereo);
       expect(
-        pcmLoadOptions(PcmSource.create(_stereo).toMedia().uri),
+        pcmLoadOptions(stereo.toMedia().uri),
         contains('demuxer-rawaudio-format=floatle'),
       );
+      stereo.abort();
       expect(pcmLoadOptions('https://x/y.mp3'), isNull);
       final low = PcmSource.create(_mono, lowLatency: true);
       expect(pcmLoadOptions(low.toMedia().uri), endsWith(',audio-buffer=0.1'));
