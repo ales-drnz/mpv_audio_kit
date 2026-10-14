@@ -122,8 +122,9 @@ mixin _PcmModule on _PlayerBase {
 
   /// Reads the playlist and drops the held entries it does not list. The
   /// read is issued after every held entry's loadfile reply, so an entry
-  /// it misses has left the playlist. An entry that leaves later, with no
-  /// playlist node to tell (a stop while mpv is idle), is not caught.
+  /// it misses has left the playlist. An entry that leaves later with no
+  /// playlist node to tell (a stop while mpv is idle) is caught by the
+  /// playlist read that [Player.stop] makes.
   void _confirmPcmEntries() {
     if (_pcmConfirming) {
       _pcmConfirmAgain = true;

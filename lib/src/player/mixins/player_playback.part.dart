@@ -103,6 +103,11 @@ mixin _PlaybackModule on _PlayerBase {
     // Execute in-flight transport writes first — see [_settleWrites].
     await _settleWrites();
     await _commandChecked(['stop']);
+    // mpv clears its playlist on stop but reports the change only when a
+    // file was playing. Idle (after a failed load) it stays silent, so the
+    // state would keep the old entries and the live sources they hold.
+    final (rc, node) = await _getAsync('playlist', MpvFormat.mpvFormatNode);
+    if (rc >= 0 && node is List && !_disposed) _updatePlaylistFromNode(node);
   }
 
   /// Seeks playback to a position in the current file.
