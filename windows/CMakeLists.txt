@@ -12,10 +12,6 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 # versions of CMake.
 cmake_policy(VERSION 3.14...3.25)
 
-if(POLICY CMP0135)
-  cmake_policy(SET CMP0135 NEW)
-endif()
-
 # This value is used when generating builds using this plugin, so it must
 # not be changed
 set(PLUGIN_NAME "mpv_audio_kit_plugin")
