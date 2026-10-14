@@ -13,7 +13,6 @@ import 'dart:typed_data';
 
 import 'package:mpv_audio_kit/src/dsp/loudness_scan_pipeline.dart';
 import 'package:mpv_audio_kit/src/dsp/waveform_pipeline.dart';
-import 'package:mpv_audio_kit/src/types/state/loudness_scan_state.dart';
 import 'package:test/test.dart';
 
 /// A fake mpv: [values] answers the gets, every set is recorded.
@@ -115,65 +114,6 @@ void main() {
       await p.dispose();
       await _settle();
       expect(mpv.sets, ['waveform-enabled=yes', 'waveform-enabled=no']);
-    });
-  });
-
-  group('loudness scan resumes after the waveform stops its pass', () {
-    Future<(_FakeMpv, LoudnessScanPipeline)> scanning({
-      required String waveState,
-    }) async {
-      final mpv = _FakeMpv()
-        ..values['loudness-scan-data'] = {'state': 'scanning', 'progress': 0.0}
-        ..values['waveform-data'] = {'state': waveState};
-      final p = LoudnessScanPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
-      p.setEnabled(true);
-      await _settle();
-      mpv.sets.clear();
-      return (mpv, p);
-    }
-
-    test('rearms when the shared pass is gone', () async {
-      final (mpv, p) = await scanning(waveState: 'idle');
-      await p.resumeAfterWaveformStop();
-      expect(mpv.sets, ['loudness-scan-enabled=yes']);
-      await p.dispose();
-    });
-
-    test('leaves a pass that still runs alone', () async {
-      final (mpv, p) = await scanning(waveState: 'decoding');
-      await p.resumeAfterWaveformStop();
-      expect(mpv.sets, isEmpty);
-      await p.dispose();
-    });
-
-    test('leaves a finished scan alone', () async {
-      final mpv = _FakeMpv()
-        ..values['loudness-scan-data'] = {
-          'state': 'ready',
-          'integrated_lufs': -20.0,
-        }
-        ..values['waveform-data'] = {'state': 'idle'};
-      final p = LoudnessScanPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
-      final done = p.stream.firstWhere(
-        (s) => s?.state == LoudnessScanState.ready,
-      );
-      p.setEnabled(true);
-      await done;
-      mpv.sets.clear();
-      final gets = mpv.gets;
-      await p.resumeAfterWaveformStop();
-      expect(mpv.sets, isEmpty);
-      expect(mpv.gets, gets, reason: 'nothing to check on a final result');
-      await p.dispose();
-    });
-
-    test('does nothing without a listener', () async {
-      final mpv = _FakeMpv()..values['waveform-data'] = {'state': 'idle'};
-      final p = LoudnessScanPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
-      await p.resumeAfterWaveformStop();
-      expect(mpv.sets, isEmpty);
-      expect(mpv.gets, 0);
-      await p.dispose();
     });
   });
 

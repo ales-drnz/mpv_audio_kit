@@ -115,23 +115,6 @@ abstract class AnalysisPollPipeline<T extends Object> {
     if (!_ctrl.isClosed) await _ctrl.close();
   }
 
-  /// Whether a listener wants a result this file has not delivered yet.
-  @protected
-  bool get pending => !_disposed && !_idle && _enabled && _result == null;
-
-  /// Reads [name] as a node, the same way the poll does.
-  @protected
-  Future<(int, dynamic)> readNode(String name) =>
-      _asyncGet(name, MpvFormat.mpvFormatNode);
-
-  /// Writes the enable property on again, so the native side starts a
-  /// new pass for the loaded file.
-  @protected
-  Future<void> restartNative() async {
-    _nativeOn = true;
-    await _asyncSet(_enabledProperty, 'yes');
-  }
-
   void _setNative(bool on) {
     if (on == _nativeOn) return;
     _nativeOn = on;
