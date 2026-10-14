@@ -51,8 +51,6 @@ class LoudnessMeterPipeline {
   // while one read is still outstanding.
   bool _polling = false;
 
-  static const List<String> _keys = ['M', 'S', 'I', 'LRA'];
-
   /// The live measurement stream. Emits one [Loudness] per poll tick
   /// while the meter is active in the chain.
   Stream<Loudness> get stream => _ctrl.stream;
@@ -86,33 +84,36 @@ class LoudnessMeterPipeline {
   }
 
   Future<void> _doPoll() async {
-    // Read the four r128 metadata fields off the main isolate. Each is a
-    // STRING property; the reply carries the decoded value.
+    // One read of the stage's whole frame metadata: the four fields come
+    // from the same frame, in one round trip off the main isolate.
     final label = _label();
     if (label == null) return;
-    final values = List<double?>.filled(4, null);
-    for (var i = 0; i < _keys.length; i++) {
-      final (rc, value) = await _asyncGet(
-        'af-metadata/$label/lavfi.r128.${_keys[i]}',
-        MpvFormat.mpvFormatString,
-      );
-      if (_disposed) return;
-      if (rc >= 0 && value is String) values[i] = double.tryParse(value);
+    final (rc, value) = await _asyncGet(
+      'af-metadata/$label',
+      MpvFormat.mpvFormatNode,
+    );
+    if (_disposed || rc < 0 || value is! Map) return;
+    double? field(String key) {
+      final v = value['lavfi.r128.$key'];
+      return v is String
+          ? double.tryParse(v)
+          : (v is num ? v.toDouble() : null);
     }
 
-    // Nothing available — the meter is not in the chain (or no frame has
+    final next = Loudness(
+      momentary: field('M'),
+      shortTerm: field('S'),
+      integrated: field('I'),
+      range: field('LRA'),
+    );
+    // Nothing available: the meter is not in the chain (or no frame has
     // flowed yet). Stay silent rather than emitting an all-null snapshot.
-    if (values.every((v) => v == null)) return;
-
-    if (!_ctrl.isClosed) {
-      _ctrl.add(
-        Loudness(
-          momentary: values[0],
-          shortTerm: values[1],
-          integrated: values[2],
-          range: values[3],
-        ),
-      );
+    if (next.momentary == null &&
+        next.shortTerm == null &&
+        next.integrated == null &&
+        next.range == null) {
+      return;
     }
+    if (!_ctrl.isClosed) _ctrl.add(next);
   }
 }
