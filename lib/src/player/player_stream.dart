@@ -227,15 +227,15 @@ class PlayerStream {
   /// Emits whenever the active playlist changes (adds, removes, reorders).
   final Stream<Playlist> playlist;
 
-  /// Emits when actual audio output starts/stops: mpv's `core-idle`
+  /// Emits when actual audio output starts or stops: mpv's `core-idle`
   /// (inverted). Toggles transiently during seeks and buffering. For a
-  /// stable play/pause button, listen to [playWhenReady] instead.
+  /// stable play-pause button, listen to [playWhenReady] instead.
   final Stream<bool> playing;
 
   /// Emits the user-intent-to-play axis, driven by [Player.play],
   /// [Player.pause], [Player.open] and [Player.stop] (and released at the
   /// natural end of content). Stable across seeks and buffering; this is
-  /// the signal to bind a play/pause button to. See
+  /// the signal to bind a play-pause button to. See
   /// [PlayerState.playWhenReady].
   final Stream<bool> playWhenReady;
 
@@ -624,7 +624,7 @@ class PlayerStream {
   ///
   /// Emit rate, FFT size, perceptual band layout, smoothing and dB
   /// clipping are all configured via [Player.setSpectrum]. The default
-  /// preset emits 30 frames/sec with 64 log-spaced bands ready for a
+  /// preset emits 30 frames a second with 64 log-spaced bands ready for a
   /// `CustomPainter`-style visualizer.
   ///
   /// **Lazy**: the FFT pipeline allocates and the FFI poll loop
@@ -762,7 +762,7 @@ class PlayerStream {
   final Stream<Loudness> loudnessMeter;
 
   /// Offline loudness scan of the loaded source ([LoudnessScan]:
-  /// integrated LUFS, loudness range, sample/true peak), measured by
+  /// integrated LUFS, loudness range, sample and true peak), measured by
   /// decoding the whole file off the playback path at many times
   /// realtime; the result lands moments after the file loads, before
   /// the audio has played. Use it to volume-normalize tracks without

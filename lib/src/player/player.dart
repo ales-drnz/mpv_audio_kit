@@ -147,7 +147,7 @@ class Player extends _PlayerBase
 
   /// Process-wide single-instance guard for the OS media session.
   /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
-  /// single-instance per process — enabling on a second [Player]
+  /// single-instance per process: enabling on a second [Player]
   /// would silently steal the first one's lockscreen entry. Linux
   /// MPRIS could support multiple instances via `instance<PID>`
   /// suffixing, but we ban it universally for cross-OS consistency.
@@ -155,7 +155,7 @@ class Player extends _PlayerBase
   static Player? _mediaSessionOwner;
 
   /// Test-only. The event isolate writes to [wakeupCounterAddress] on
-  /// every wakeup — a bogus value corrupts process memory.
+  /// every wakeup: a bogus value corrupts process memory.
   @visibleForTesting
   Player.testInstrumented({
     super.configuration,
@@ -171,8 +171,8 @@ class Player extends _PlayerBase
   /// (a per-file option can skip the `PROPERTY_CHANGE` emit).
   /// Rapid back-to-back `open()` calls don't race: each call claims the
   /// load epoch synchronously and aborts at its next await once a later
-  /// content-replacing call (open / openAll / openPlaylistFile / stop /
-  /// clearPlaylist) has claimed a newer one — so the call that is LAST
+  /// content-replacing call (open, openAll, openPlaylistFile, stop,
+  /// clearPlaylist) has claimed a newer one, so the call that is LAST
   /// in program order wins, regardless of per-URI resolve latency.
   @override
   Future<void> open(Media media, {bool? play}) =>
@@ -185,8 +185,8 @@ class Player extends _PlayerBase
     await _gate();
     if (load.superseded) return;
     final shouldPlay = play ?? configuration.autoPlay;
-    // Optimistic intent (the play/pause axis), written at the call point —
-    // BEFORE the `resolveUri` / trust-bundle awaits below — so a play() /
+    // Optimistic intent (the play-pause axis), written at the call point,
+    // BEFORE the `resolveUri` and trust-bundle awaits below, so a play() or
     // pause() issued right after open() (without awaiting it) wins by call
     // order instead of racing this write past the I/O hops. mpv leaves
     // `pause` at `no` and fires no PROPERTY_CHANGE on the first autoplay
@@ -209,7 +209,7 @@ class Player extends _PlayerBase
     }
     _mediaCache[resolved.uri] = media;
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
-    // the replace below, so they apply to the OLD file — see [_settleWrites].
+    // the replace below, so they apply to the OLD file; see [_settleWrites].
     await _settleWrites();
     if (load.superseded) {
       await resolved.dispose?.call();
@@ -217,7 +217,7 @@ class Player extends _PlayerBase
     }
     // Captured BEFORE the pause write: when true, mpv is parked paused on
     // the last frame (`keep-open`), and the pre-loadfile `pause=no` below
-    // does not survive — unpausing at EOF makes the playloop hit EOF again
+    // does not survive: unpausing at EOF makes the playloop hit EOF again
     // and `keep-open-pause` re-pauses the core before the loadfile (queued
     // behind this write's async reply round-trip) is ever processed. The
     // corrective write after the replace is what actually sticks.
@@ -232,22 +232,23 @@ class Player extends _PlayerBase
     if (opts.isEmpty) {
       await _loadfile(['loadfile', resolved.uri, 'replace'], media);
     } else {
-      // Per-Media `httpHeaders` / `httpChunkSize` ride along as the 4th
+      // Per-Media `httpHeaders` and `httpChunkSize` ride along as the 4th
       // `loadfile` arg (mpv 0.38+: index must be `-1` when options are
       // present), so mpv scopes them as file-local for this exact playlist
-      // entry — never writing the global `http-header-fields` / `stream-lavf-o`.
+      // entry, never writing the global `http-header-fields` or
+      // `stream-lavf-o`.
       await _loadfile(['loadfile', resolved.uri, 'replace', '-1', opts], media);
     }
     if (parkedAtEof && playNow) {
       await _prop('pause', 'no');
     }
-    // Drop visible per-track state — cover art, chapter list and current
-    // chapter index — so a UI that reads the state immediately after
+    // Drop visible per-track state (cover art, chapter list and current
+    // chapter index) so a UI that reads the state immediately after
     // `open()` returns doesn't render the previous track's data. Placed
     // AFTER the loadfile reply (not before): the async writes above
     // suspend, and by FIFO port delivery every still-queued OLD-file
     // PROPERTY_CHANGE (e.g. a trailing `chapter-list`) has been received
-    // and applied by the time that reply lands — clearing here is the last
+    // and applied by the time that reply lands: clearing here is the last
     // word before return, so none of those stale events survive into the
     // post-`open()` snapshot. The NEW file's FILE_LOADED arrives later and
     // repopulates.
@@ -263,7 +264,7 @@ class Player extends _PlayerBase
   /// `loadfile append` never autostarts), then a single
   /// `playlist-play-index` starts directly at [index]. The entry at
   /// position 0 is never loaded, played, or reported as current unless
-  /// it IS the requested index — so a UI bound to
+  /// it IS the requested index, so a UI bound to
   /// [PlayerState.playlist]'s `index` never flashes track 1 before the
   /// selected track, and no audio from track 1 leaks out. During the
   /// transition the outgoing track keeps playing (or stays parked) until
@@ -283,14 +284,14 @@ class Player extends _PlayerBase
     for (final m in medias) {
       _validateLoadOptions(m);
     }
-    // Claim the load epoch synchronously — see [open].
+    // Claim the load epoch synchronously; see [open].
     final load = _claimLoad();
     await _gate();
     if (load.superseded) return;
     final clampedIndex = index.clamp(0, medias.length - 1);
     final shouldPlay = play ?? configuration.autoPlay;
-    // Optimistic intent written at the call point, before the resolve / tls
-    // awaits below — see [open] for the rationale.
+    // Optimistic intent written at the call point, before the resolve and tls
+    // awaits below; see [open] for the rationale.
     final previousIntent = _state.playWhenReady;
     final intent = _claimIntent(shouldPlay);
     // Snapshot the outgoing current entry's Media so it keeps its
@@ -305,7 +306,7 @@ class Player extends _PlayerBase
         : null;
     _mediaCache.clear();
     if (oldCurrent != null) _mediaCache[oldCurrent.uri] = oldCurrent;
-    // Resolve once per media — content:// resolutions detach a JVM-side
+    // Resolve once per media: content:// resolutions detach a JVM-side
     // FD, doing it twice would leak one FD per track.
     final resolved = <ResolvedUri>[];
     try {
@@ -324,7 +325,7 @@ class Player extends _PlayerBase
       }
     } catch (_) {
       // Mid-loop failure: dispose the partially-resolved entries to
-      // avoid leaking content:// file descriptors / asset cache files,
+      // avoid leaking content:// file descriptors and asset cache files,
       // then rethrow so the caller observes the original error.
       for (final prior in resolved) {
         await prior.dispose?.call();
@@ -332,7 +333,7 @@ class Player extends _PlayerBase
       _restoreIntent(load, intent, previousIntent);
       rethrow;
     }
-    // Execute in-flight transport writes before the replace — see
+    // Execute in-flight transport writes before the replace: see
     // [_settleWrites].
     await _settleWrites();
     if (load.superseded) {
@@ -344,7 +345,7 @@ class Player extends _PlayerBase
     // ── Phase 1: clear the outgoing playlist ──────────────────────────
     // `playlist-clear` keeps ONLY the current entry (mpv's
     // playlist_clear_except_current), so the outgoing track keeps
-    // playing while the new entries build up — no idle gap, no silence.
+    // playing while the new entries build up: no idle gap, no silence.
     // The flow is decided from mpv's own properties AFTER the clear
     // (`playlist-count`, `eof-reached`), not from the Dart-side state
     // snapshot: state can lag the core by an event round-trip, and a
@@ -365,10 +366,10 @@ class Player extends _PlayerBase
       // A retained entry parked at EOF cannot survive the appends:
       // `keep-open` holds the park only while no next entry exists (mpv's
       // handle_keep_open), so the first append would create a "next" and
-      // mpv would auto-advance into the new album's entry 0 —
+      // mpv would auto-advance into the new album's entry 0,
       // resurrecting the exact transient this flow eliminates. Remove it
       // NOW instead: the playlist is single-entry after the clear, so
-      // PT_NEXT_ENTRY finds nothing and the core goes idle — where
+      // PT_NEXT_ENTRY finds nothing and the core goes idle, where
       // appends provably never autostart.
       parkedAtEof = await _parkedAtEof();
       if (load.superseded) return bailDisposing();
@@ -378,9 +379,9 @@ class Player extends _PlayerBase
         // Barrier: wait for the core to actually reach idle before any
         // append. The remove's playback teardown runs asynchronously on
         // the playloop, and an append landing before it completes gets
-        // picked up by the end-of-file advancement — playlist_get_next
+        // picked up by the end-of-file advancement (playlist_get_next
         // from a NULL current with the playlist not started returns
-        // entry 0 — which would start the incoming album's first track:
+        // entry 0), which would start the incoming album's first track:
         // the exact transient this flow eliminates. Idle lands within a
         // playloop iteration; the bound only guards a wedged core.
         for (var i = 0; i < 100; i++) {
@@ -396,7 +397,7 @@ class Player extends _PlayerBase
     // drops it.
     final retainedOld = retainedCount > 0 && !parkedAtEof;
 
-    // ── Phase 2: append every entry — playback never starts here ──────
+    // ── Phase 2: append every entry; playback never starts here ──────
     // mpv's `loadfile append` is play=false unconditionally (unlike
     // append-play), even on an idle core. Per-Media `httpHeaders` ride
     // along as the 4th `loadfile` arg, so mpv scopes them as file-local
@@ -431,7 +432,7 @@ class Player extends _PlayerBase
     // flow already left EOF (idle after the remove above), and the
     // playing flow is mid-track. `playlist-play-index` sets
     // playlist->current straight to the target entry (mp_set_playlist_
-    // entry) — entries before it are never loaded or made current.
+    // entry): entries before it are never loaded or made current.
     await _prop('pause', _intendedPlay(intent, shouldPlay) ? 'no' : 'yes');
     final target = (retainedOld ? 1 : 0) + clampedIndex;
     await _commandChecked(['playlist-play-index', target.toString()]);
@@ -440,7 +441,7 @@ class Player extends _PlayerBase
     // playWhenReady (its job when content genuinely ends). By FIFO
     // event delivery that reset has already been applied once the
     // play-index reply lands, so re-asserting the intent here is the
-    // last word — without this the OS play button would stick on
+    // last word: without this the OS play button would stick on
     // "paused" while the new album plays.
     if (parkedAtEof && intent == _intentEpoch) {
       _writeIntent(shouldPlay);
@@ -455,26 +456,26 @@ class Player extends _PlayerBase
       if (load.superseded) return bailDisposing();
       await _command(['playlist-remove', '0']);
     }
-    // Clear per-track state AFTER the jump's reply — see [open] for why
+    // Clear per-track state AFTER the jump's reply; see [open] for why
     // the placement (post-reply) is what makes the clear the last word
     // over trailing OLD-file PROPERTY_CHANGE events.
     _clearPerFileState();
   }
 
-  /// Loads a playlist FILE or URL (`.m3u` / `.m3u8` / `.pls` / `.cue`) and
-  /// optionally starts playback. Unlike [open] — which loads [playlist] as a
-  /// single entry — this parses it with mpv's `loadlist`, so its entries
+  /// Loads a playlist FILE or URL (`.m3u`, `.m3u8`, `.pls` or `.cue`) and
+  /// optionally starts playback. Unlike [open], which loads [playlist] as a
+  /// single entry, this parses it with mpv's `loadlist`, so its entries
   /// become the playlist. This is the path for internet-radio station lists
   /// and remote `.m3u` playlists.
   ///
-  /// [PlayerStream.playlist] / [PlayerState.playlist] reflect the parsed
+  /// [PlayerStream.playlist] and [PlayerState.playlist] reflect the parsed
   /// entries once mpv expands them. When [play] is null the configuration's
   /// autoplay value decides. Replaces any currently loaded file or playlist.
   ///
   /// Per-[Media] options (`httpHeaders`, `demuxerLavfOptions`, `httpChunkSize`)
-  /// are validated but NOT applied to the playlist fetch — `loadlist` has no
+  /// are validated but NOT applied to the playlist fetch: `loadlist` has no
   /// file-local options slot. Entries parsed out of the playlist inherit the
-  /// global network/demuxer settings.
+  /// global network and demuxer settings.
   @override
   Future<void> openPlaylistFile(Media playlist, {bool? play}) =>
       _trackLoad(() => _openPlaylistFile(playlist, play));
@@ -483,12 +484,12 @@ class Player extends _PlayerBase
     _checkNotDisposed();
     _rejectPcm(playlist, 'playlist');
     _validateLoadOptions(playlist);
-    // Claim the load epoch synchronously — see [open].
+    // Claim the load epoch synchronously; see [open].
     final load = _claimLoad();
     await _gate();
     if (load.superseded) return;
     final shouldPlay = play ?? configuration.autoPlay;
-    // Optimistic intent written at the call point — same rationale as [open].
+    // Optimistic intent written at the call point: same rationale as [open].
     final previousIntent = _state.playWhenReady;
     final intent = _claimIntent(shouldPlay);
     _mediaCache.clear();
@@ -503,14 +504,14 @@ class Player extends _PlayerBase
       await resolved.dispose?.call();
       return;
     }
-    // Execute in-flight transport writes before the replace — see
+    // Execute in-flight transport writes before the replace: see
     // [_settleWrites].
     await _settleWrites();
     if (load.superseded) {
       await resolved.dispose?.call();
       return;
     }
-    // See [open] — parked at EOF the pre-loadlist unpause doesn't survive
+    // See [open]: parked at EOF the pre-loadlist unpause doesn't survive
     // mpv's keep-open re-pause; a corrective write after the replace does.
     final parkedAtEof = await _parkedAtEof();
     if (load.superseded) {
@@ -529,7 +530,7 @@ class Player extends _PlayerBase
     if (parkedAtEof && playNow) {
       await _prop('pause', 'no');
     }
-    // Clear per-track state AFTER the replace's reply — see [open].
+    // Clear per-track state AFTER the replace's reply; see [open].
     _clearPerFileState();
   }
 
@@ -552,7 +553,7 @@ class Player extends _PlayerBase
     try {
       await _releaseMediaSession();
     } catch (_) {
-      // Best effort — session teardown must never block disposal.
+      // Best effort: session teardown must never block disposal.
     }
     await super._disposeImpl();
   }
@@ -596,7 +597,7 @@ abstract class _PlayerBase {
   // `_activeHookIds` is authoritative for [Player.continueHook]: mpv's
   // behaviour on stale ids is undefined across versions, so duplicate
   // continues are rejected here before they reach FFI.
-  // `_registeredHookNames` collapses duplicate registrations per name —
+  // `_registeredHookNames` collapses duplicate registrations per name:
   // mpv allows multiples, but its shutdown path can stall when several
   // events for the same hook are still in flight at quit time.
   final _hookTimeouts = <String, Duration>{};
@@ -605,7 +606,7 @@ abstract class _PlayerBase {
   final _registeredHookNames = <String>{};
   // Hook names the CONSUMER registered via [Player.registerHook], a
   // subset of `_registeredHookNames` (the resolver below registers
-  // `on_load` / `on_load_fail` internally without adding here). Only
+  // `on_load` and `on_load_fail` internally without adding here). Only
   // user-registered hooks surface on [PlayerStream.hook] and transfer
   // the continue obligation to the consumer; internally-registered ones
   // are continued by the library.
@@ -613,7 +614,7 @@ abstract class _PlayerBase {
 
   // The installed [SourceResolver]; null = feature off. Set by
   // [Player.setSourceResolver], consulted by `_routeHookEvent` on every
-  // `on_load` / `on_load_fail` event.
+  // `on_load` or `on_load_fail` event.
   SourceResolver? _sourceResolver;
 
   // Latched when the resolver services an `on_load_fail` for the current
@@ -626,7 +627,7 @@ abstract class _PlayerBase {
 
   PlayerState _state = const PlayerState();
 
-  /// Reused `commit` callback for every registry dispatch — tearing off (or
+  /// Reused `commit` callback for every registry dispatch: tearing off (or
   /// closing over) per event would be one piece of garbage per property
   /// change, so the tear-off is captured once.
   late final void Function(PlayerState) _commitState = _assignState;
@@ -682,12 +683,12 @@ abstract class _PlayerBase {
   Object? _lastPlaylistNode;
 
   // Monotonic generation counter for content-replacing transport calls.
-  // Bumped synchronously at the head of open() / openAll() /
-  // openPlaylistFile() / stop() / clearPlaylist(); every load path
+  // Bumped synchronously at the head of open(), openAll(),
+  // openPlaylistFile(), stop() and clearPlaylist(); every load path
   // re-checks it after each await and aborts when stale. Without it,
   // per-scheme resolve latencies (asset:// does real I/O, a plain path
   // resolves in one microtask) let an EARLIER call issue its loadfile
-  // AFTER a later one — the superseded media would win, and an in-flight
+  // AFTER a later one: the superseded media would win, and an in-flight
   // open() could resume past a stop() and restart playback.
   int _loadEpoch = 0;
 
@@ -714,12 +715,12 @@ abstract class _PlayerBase {
     }
   }
 
-  /// Bumped by every public call that sets the play/pause intent, so a
+  /// Bumped by every public call that sets the play-pause intent, so a
   /// call that corrects the intent after an await can tell whether a later
   /// call set it meanwhile (and then leaves it alone).
   int _intentEpoch = 0;
 
-  /// Sets the play/pause intent for a public call and returns the epoch
+  /// Sets the play-pause intent for a public call and returns the epoch
   /// that call owns.
   int _claimIntent(bool value) {
     _writeIntent(value);
@@ -732,7 +733,7 @@ abstract class _PlayerBase {
   bool _intendedPlay(int intent, bool shouldPlay) =>
       intent == _intentEpoch ? shouldPlay : _state.playWhenReady;
 
-  /// Writes the play/pause intent ([PlayerState.playWhenReady]).
+  /// Writes the play-pause intent ([PlayerState.playWhenReady]).
   void _writeIntent(bool value) => _updateField(
     (s) => s.copyWith(playWhenReady: value),
     _reactives.playWhenReady,
@@ -746,7 +747,7 @@ abstract class _PlayerBase {
     _writeIntent(previous);
   }
 
-  // ── Property registry (the bulk of state — one spec per mpv property) ──
+  // ── Property registry (the bulk of state: one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
   late final PropertyRegistry _registry;
 
@@ -786,10 +787,10 @@ abstract class _PlayerBase {
       StreamController<MpvFileEndedEvent>.broadcast();
   final StreamController<PlayerError> _errorCtrl =
       StreamController<PlayerError>.broadcast();
-  // Log stream from the mpv engine itself (codec / demux / ao / …).
+  // Log stream from the mpv engine itself (codec, demux, ao and so on).
   final StreamController<MpvLogEntry> _logCtrl =
       StreamController<MpvLogEntry>.broadcast();
-  // Log stream from the Dart layer itself — node parse warnings, hook
+  // Log stream from the Dart layer itself: node parse warnings, hook
   // timeouts, etc. Kept disjoint from `_logCtrl` so library-side noise
   // can be filtered from genuine engine messages without inspecting
   // the prefix.
@@ -801,12 +802,12 @@ abstract class _PlayerBase {
       StreamController<void>.broadcast();
   // Nullable payload: each file-loaded transition emits exactly once,
   // with `null` when the new file has no embedded cover. This lets a
-  // UI clear / reset on every track change without having to compare
+  // UI clear or reset on every track change without having to compare
   // against a separate file-transition signal.
   final StreamController<CoverArt?> _coverArtCtrl =
       StreamController<CoverArt?>.broadcast();
   // Incoming commands from the OS media session (lockscreen, BT
-  // headset, Siri / Assistant), routed back from the per-platform
+  // headset, Siri, Assistant), routed back from the per-platform
   // native implementation.
   final StreamController<MediaSessionCommand> _mediaSessionCommandsCtrl =
       StreamController<MediaSessionCommand>.broadcast();
@@ -819,7 +820,7 @@ abstract class _PlayerBase {
   // analyzer and polls only while `stream.waveform` has a listener.
   late final WaveformPipeline _waveformPipeline;
 
-  // Per-filter pre/post audio tap. Lazy: arms the analyzer-taps
+  // Per-filter pre and post audio tap. Lazy: arms the analyzer-taps
   // property only when at least one [PlayerStream.tap] stream has a
   // listener.
   late final FilterTapPipeline _filterTapPipeline;
@@ -847,16 +848,16 @@ abstract class _PlayerBase {
 
   // ── Cross-mixin surface ──────────────────────────────────────────────────
   // These members live in the `.part` mixins below but are declared here
-  // (abstract) so `_PlayerBase`'s constructor / `dispose` and the sibling
-  // domain mixins can call across part boundaries — `on _PlayerBase` only
+  // (abstract) so `_PlayerBase`'s constructor, `dispose` and the sibling
+  // domain mixins can call across part boundaries: `on _PlayerBase` only
   // exposes what `_PlayerBase` itself declares.
 
   /// See `_FfiModule` (player_ffi.part.dart). All writes ride the async
   /// client API (`mpv_*_async`): the call enqueues on the core's dispatch
   /// and the returned future completes when the event isolate forwards the
-  /// reply — so the main isolate never waits for the playloop (which can be
+  /// reply, so the main isolate never waits for the playloop (which can be
   /// stalled for seconds inside audio-output init). Most setters update the
-  /// state once that reply confirms the write; the play/pause intent and
+  /// state once that reply confirms the write; the play-pause intent and
   /// the settings bundles ([_writeBundle]) update it before the write.
   Future<void> _prop(String name, String value);
   Future<int> _propRc(String name, String value);
@@ -882,7 +883,7 @@ abstract class _PlayerBase {
   Future<(int, dynamic)> _getAsync(String name, int format);
   String _errorString(int code);
 
-  /// The async request/reply channel to libmpv, created at bring-up
+  /// The async request and reply channel to libmpv, created at bring-up
   /// together with [_lib] and [_handle].
   late final MpvClient _client;
 
@@ -898,13 +899,13 @@ abstract class _PlayerBase {
   void _validateLoadOptions(Media media);
   void _rejectPcm(Media media, String name);
 
-  /// See `_FfiModule` — the raw property escape hatches, redeclared here
+  /// See `_FfiModule`: the raw property escape hatches, redeclared here
   /// so the source-resolver driver in `_HooksModule` can read and rewrite
   /// `stream-open-filename` across the part boundary.
   Future<String?> getRawProperty(String name);
   Future<void> setRawProperty(String name, String value);
 
-  /// See `_HooksModule` (player_hooks.part.dart) — called by the dispatch
+  /// See `_HooksModule` (player_hooks.part.dart): called by the dispatch
   /// layer for every MPV_EVENT_HOOK: runs the source resolver when one is
   /// installed, then either surfaces the event on [PlayerStream.hook]
   /// (user-registered hook) or continues it internally.
@@ -917,14 +918,14 @@ abstract class _PlayerBase {
   /// mpv sent AUDIO_RECONFIG: see `_AudioModule`.
   void _onAudioReconfig();
 
-  /// See `_InitModule` (player_init.part.dart) — called by the constructor.
+  /// See `_InitModule` (player_init.part.dart): called by the constructor.
   Future<void> _bringUpInIsolate();
 
-  /// See `_DispatchModule` (player_dispatch.part.dart) — wired as the event
+  /// See `_DispatchModule` (player_dispatch.part.dart): wired as the event
   /// isolate's `onEvent` during bring-up.
   void _handleEvent(MpvIsolateEvent event);
 
-  /// See `_DispatchModule` — `setAudioDevice` reuses it to optimistically
+  /// See `_DispatchModule`: `setAudioDevice` reuses it to optimistically
   /// resolve the device description from the parsed `audio-device-list`.
   void _updateActiveAudioDevice(String name);
 
@@ -942,13 +943,13 @@ abstract class _PlayerBase {
             if (idle) {
               _updateLifecycle(playing: false, buffering: false);
               // mpv has entered its idle loop (nothing loaded) → the
-              // play/pause intent is spent; settle the OS button on "play".
+              // play-pause intent is spent; settle the OS button on "play".
               // Gated on [_hasLoadedFile] so the startup idle-active burst
               // can't clear a fresh open(play: true) intent. mpv reaches idle
               // after a `stop`, or after a load that ends with no next entry
               // and is NOT held by keep-open (e.g. a failed first open). The
               // natural end of playable content under the shipped
-              // `keep-open: yes` does NOT fire idle-active — that path is
+              // `keep-open: yes` does NOT fire idle-active; that path is
               // handled by [_settleEndOfContent] instead. A mid-playlist
               // advance also doesn't fire idle-active, so this never
               // flickers.
@@ -967,11 +968,11 @@ abstract class _PlayerBase {
         ),
       );
 
-    // Streams that don't need _lib/_handle can be wired immediately —
+    // Streams that don't need _lib or _handle can be wired immediately:
     // a consumer subscribing right after `Player()` sees no events
     // until init completes, which is the correct semantics.
     //
-    // The fft/pcm bridges into the spectrum pipeline are listener-gated:
+    // The fft and pcm bridges into the spectrum pipeline are listener-gated:
     // the pipeline arms its 30fps `pcm-tap-frame` poll as soon as its own
     // streams have a listener, so bridging unconditionally would keep the
     // poll running for the player's whole lifetime with zero consumers.
@@ -1087,7 +1088,7 @@ abstract class _PlayerBase {
     _ready = _bringUpInIsolate()..ignore();
   }
 
-  /// Test-only — allows tests to await the post-`Player()` init that
+  /// Test-only: allows tests to await the post-`Player()` init that
   /// now runs in the background isolate. Public methods already
   /// `await _ready` internally so consumers don't normally need this.
   @visibleForTesting
@@ -1106,7 +1107,7 @@ abstract class _PlayerBase {
   String? _lastWaveformSource;
   late final StreamController<FftFrame> _fftCtrl;
   late final StreamController<PcmFrame> _pcmStreamCtrl;
-  // Lazy bridges into the spectrum pipeline — non-null exactly while the
+  // Lazy bridges into the spectrum pipeline: non-null exactly while the
   // matching public stream has a listener (they keep the pipeline's
   // listener-gated poll loop armed; see the controllers' onListen).
   StreamSubscription<FftFrame>? _fftPipeSub;
@@ -1164,8 +1165,8 @@ abstract class _PlayerBase {
   /// Shared prologue for every public method that touches the FFI handle:
   /// fail fast when already disposed, await bring-up, then verify bring-up
   /// actually assigned the FFI fields. A dispose() that lands while the
-  /// caller is parked on [_ready] aborts bring-up early — [_ready] still
-  /// completes normally, but `_lib` / `_handle` were never assigned, so
+  /// caller is parked on [_ready] aborts bring-up early: [_ready] still
+  /// completes normally, but `_lib` and `_handle` were never assigned, so
   /// resuming into an FFI call would throw [LateInitializationError]
   /// instead of the [PlayerDisposedException] the API contract promises.
   Future<void> _gate() async {
@@ -1183,12 +1184,12 @@ abstract class _PlayerBase {
   /// The synchronous client API implicitly guaranteed "previous request
   /// EXECUTED before the next public call's request is issued"; with the
   /// async API two requests can coalesce into one core dispatch drain and
-  /// interact — e.g. an un-awaited `seek` surviving a replace `loadfile`
+  /// interact: e.g. an un-awaited `seek` surviving a replace `loadfile`
   /// (its `queue_seek` entry rides into the NEW file) instead of being
   /// aborted by it. Content-replacing and playlist-navigation methods call
   /// this right before their first write so earlier in-flight transport
   /// commands are executed first, restoring the old inter-call semantics
-  /// while the main isolate stays free — under a stalled core the FUTURES
+  /// while the main isolate stays free: under a stalled core the FUTURES
   /// queue up, not the UI thread.
   Future<void> _settleWrites() => _client.settleWrites();
 
@@ -1211,8 +1212,8 @@ abstract class _PlayerBase {
   Future<bool> _parkedPaused() async =>
       await _parkedAtEof() && await getRawProperty('pause') == 'yes';
 
-  /// Rejects NaN / +Inf / -Inf before they reach `toStringAsFixed`,
-  /// which would emit the literal `'NaN'` / `'Infinity'` and have mpv
+  /// Rejects NaN, +Inf and -Inf before they reach `toStringAsFixed`,
+  /// which would emit the literal `'NaN'` or `'Infinity'` and have mpv
   /// reject the property write at the FFI boundary. Catching it on the
   /// wrapper side gives the caller a precise [ArgumentError] naming the
   /// parameter, instead of an opaque [MpvCommandException] from libmpv.
@@ -1299,7 +1300,7 @@ abstract class _PlayerBase {
     _loudnessScanPipeline.clear();
   }
 
-  /// Updates the lifecycle triple (playing/buffering/completed) and
+  /// Updates the lifecycle triple (playing, buffering, completed) and
   /// emits per-reactive only for fields that actually changed. Used
   /// for compound transitions (start-file, file-loaded, end-file,
   /// end of content, shutdown, idle-active). The pure diff lives in
@@ -1342,14 +1343,14 @@ abstract class _PlayerBase {
     final end = parked && lastEntry && _state.loop == Loop.off;
     if (end == _state.completed) return;
     _updateLifecycle(completed: end);
-    // The play/pause intent is spent at the end of content; leaving the
+    // The play-pause intent is spent at the end of content; leaving the
     // end (a seek back, a new file) keeps it. Only on the edge: a jump or
     // a replace issued at the park can see one more parked read before
     // its load starts, and must keep its intent.
     if (end) _writeIntent(false);
   }
 
-  /// Internal log helper — emits on the library-side log channel
+  /// Internal log helper: emits on the library-side log channel
   /// ([PlayerStream.internalLog]), kept separate from mpv's engine log
   /// stream ([PlayerStream.log]). Dropped once dispose closed the channel:
   /// an async path (a source resolver failing late) can still log then.
@@ -1379,7 +1380,7 @@ abstract class _PlayerBase {
   ///    unwinds deterministically even if `quit` was dropped or
   ///    `MPV_EVENT_SHUTDOWN` is delayed by a stalled hook.
   /// 5. **Await `_eventIsolate.stop()`**, which returns `true` only once
-  ///    the isolate has ACTUALLY exited — so it is provably off
+  ///    the isolate has ACTUALLY exited, so it is provably off
   ///    `mpv_wait_event`. Then wait (bounded) for any `registerHook` still
   ///    running `mpv_hook_add`, and **close the client**, which settles
   ///    every in-flight call.
@@ -1394,7 +1395,7 @@ abstract class _PlayerBase {
   ///    `close()` while a listener is attached); grouping by ownership
   ///    is for auditability.
   ///
-  /// Idempotent AND await-safe: every call — including concurrent ones —
+  /// Idempotent AND await-safe: every call, including concurrent ones,
   /// returns the same teardown future, so a second `await dispose()`
   /// completes only when the teardown has actually finished (a bare
   /// `_disposed` early-return would let the second caller proceed while
@@ -1407,10 +1408,10 @@ abstract class _PlayerBase {
     // `_disposed` is already set: [Player._disposeImpl] sets it on its
     // first line, before its own steps.
 
-    // Wait for init to settle. The handle / lib / native-resources
+    // Wait for init to settle. The handle, lib and native-resources
     // fields are only assigned when bring-up reaches the very end of
     // its body, so `_bringUpCompleted` is the authoritative gate for
-    // touching them — even if `_ready` resolved without throwing it
+    // touching them, even if `_ready` resolved without throwing it
     // may have early-returned because dispose flipped during init.
     try {
       await _ready;
@@ -1427,14 +1428,14 @@ abstract class _PlayerBase {
       // mpv_wait_event returns. requestStop (stop flag + mpv_wakeup) unblocks
       // the loop deterministically even if `quit` was dropped or SHUTDOWN is
       // delayed by a stalled hook. mpv_terminate_destroy runs only AFTER the
-      // confirmed exit below — destroying mid-syscall would crash libmpv.
+      // confirmed exit below: destroying mid-syscall would crash libmpv.
       // Fire-and-forget: quit's reply may never be forwarded (the isolate is
-      // about to stop) — the drain below settles the dangling future.
+      // about to stop): the drain below settles the dangling future.
       unawaited(_command(['quit']));
       _eventIsolate.requestStop(_lib, _handle);
       final exited = await _eventIsolate.stop();
       // A registerHook may still be running mpv_hook_add in a throwaway
-      // isolate against this handle — it MUST finish before the handle is
+      // isolate against this handle: it MUST finish before the handle is
       // freed below. quit + the stop above have driven the core toward a
       // dispatch point, so the core-locked hook_add is granted and returns.
       // Bounded: if it doesn't settle (a pathologically stuck playloop), skip
@@ -1478,7 +1479,7 @@ abstract class _PlayerBase {
       }
     } else {
       // Bring-up never completed: either init failed, or this dispose
-      // aborted it — in which case bring-up's early-return branch (the
+      // aborted it, in which case bring-up's early-return branch (the
       // only code that ever saw the handle) has already quit the core
       // and stopped the worker, and the `await _ready` above waited for
       // that teardown. The stop() here is a best-effort no-op backstop.
@@ -1488,7 +1489,7 @@ abstract class _PlayerBase {
     }
 
     // Tear down the media-session controller before closing the
-    // backing reactives — its subscriptions need live streams to
+    // backing reactives: its subscriptions need live streams to
     // cancel cleanly, and its final `disable()` call to native
     // needs the controller still wired. `Player._disposeImpl` already
     // calls `_releaseMediaSession()` (which tears the controller
@@ -1500,12 +1501,12 @@ abstract class _PlayerBase {
       try {
         await controller.dispose();
       } catch (_) {
-        // Best effort — never block disposal on session teardown.
+        // Best effort: never block disposal on session teardown.
       }
     }
 
     // Close registry-backed reactives, then standalone ones, then
-    // pure-event controllers. Order is for auditability — close() is
+    // pure-event controllers. Order is for auditability: close() is
     // safe with attached listeners.
     await _registry.closeAll();
     await Future.wait<void>([
@@ -1525,8 +1526,8 @@ abstract class _PlayerBase {
       _reactives.tlsCaFile.close(),
       _reactives.spectrum.close(),
     ]);
-    // Drop the lazy spectrum bridges before closing their controllers —
-    // a dispose with a live fft/pcm listener must not leave the pipeline's
+    // Drop the lazy spectrum bridges before closing their controllers:
+    // a dispose with a live fft or pcm listener must not leave the pipeline's
     // poll loop armed against a torn-down handle.
     await _fftPipeSub?.cancel();
     _fftPipeSub = null;
@@ -1543,7 +1544,7 @@ abstract class _PlayerBase {
       _mediaSessionCommandsCtrl.close(),
       // Player-side DSP controllers: the pipelines close their own
       // internal streams, which completes the forwarding subscriptions
-      // but does NOT propagate `done` to these — without an explicit
+      // but does NOT propagate `done` to these: without an explicit
       // close, a consumer awaiting `stream.fft.first` (etc.) across a
       // dispose would hang forever.
       _fftCtrl.close(),
