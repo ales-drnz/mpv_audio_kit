@@ -663,13 +663,16 @@ String? pcmLoadOptions(String uri) {
   // otherwise hold playback until a second is buffered, a lag that stays
   // for the rest of the entry. demuxer-termination-timeout=0: stop, next
   // or a dispose with a starved reader return at once instead of after
-  // 100 ms.
+  // 100 ms. demuxer-seekable-cache=no: with the cache forced on (cache=yes)
+  // mpv would seek back into what it cached of the live input and keep a
+  // back buffer of up to 50 MiB for it.
   return 'demuxer=rawaudio,'
       'demuxer-rawaudio-format=${format.encoding.mpvValue},'
       'demuxer-rawaudio-rate=${format.sampleRate},'
       'demuxer-rawaudio-channels=${format.channels},'
       'cache-pause=no,'
       'demuxer-termination-timeout=0,'
+      'demuxer-seekable-cache=no,'
       'gapless-audio=no'
       '${PcmSource._lowLatency.contains(id) ? ',audio-buffer=0.1' : ''}';
 }

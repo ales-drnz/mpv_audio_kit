@@ -519,7 +519,8 @@ void main() {
         pcmLoadOptions(m.uri),
         'demuxer=rawaudio,demuxer-rawaudio-format=s16le,'
         'demuxer-rawaudio-rate=24000,demuxer-rawaudio-channels=1,'
-        'cache-pause=no,demuxer-termination-timeout=0,gapless-audio=no',
+        'cache-pause=no,demuxer-termination-timeout=0,'
+        'demuxer-seekable-cache=no,gapless-audio=no',
       );
       final stereo = PcmSource.create(_stereo);
       expect(

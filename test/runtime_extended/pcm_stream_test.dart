@@ -593,34 +593,47 @@ void main() {
       await player.dispose();
     }, timeout: t);
 
-    test('a seek on a live entry does nothing', () async {
-      final player = await buildPlayer();
-      final source = await player.openPcmStream(_speech);
-      final feeding = source.addStream(_feed(_speech, totalMs: 3000));
-      await waitUntil(
-        () async =>
-            (double.tryParse(await player.getRawProperty('time-pos') ?? '') ??
-                0) >
-            1.0,
-        reason: 'playback reaches 1 s',
+    for (final cache in [Cache.auto, Cache.yes]) {
+      test(
+        'a seek on a live entry does nothing, cache ${cache.name}',
+        () async {
+          final player = await buildPlayer();
+          // With the cache forced on, mpv would seek back in what it cached.
+          await player.setCache(player.state.cache.copyWith(mode: cache));
+          final source = await player.openPcmStream(_speech);
+          final feeding = source.addStream(_feed(_speech, totalMs: 3000));
+          await waitUntil(
+            () async =>
+                (double.tryParse(
+                      await player.getRawProperty('time-pos') ?? '',
+                    ) ??
+                    0) >
+                1.0,
+            reason: 'playback reaches 1 s',
+          );
+          Object? error;
+          try {
+            await player.seek(const Duration(milliseconds: 100));
+          } catch (e) {
+            error = e;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          final pos = double.parse(
+            await player.getRawProperty('time-pos') ?? '0',
+          );
+          _log('seek', {
+            'error': '$error',
+            'posAfter': pos,
+            'seekable': await player.getRawProperty('seekable'),
+          });
+          expect(pos, greaterThan(1.0));
+          expect(await player.getRawProperty('seekable'), 'no');
+          source.abort();
+          await feeding;
+          await player.dispose();
+        },
+        timeout: t,
       );
-      Object? error;
-      try {
-        await player.seek(const Duration(milliseconds: 100));
-      } catch (e) {
-        error = e;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      final pos = double.parse(await player.getRawProperty('time-pos') ?? '0');
-      _log('seek', {
-        'error': '$error',
-        'posAfter': pos,
-        'seekable': await player.getRawProperty('seekable'),
-      });
-      expect(pos, greaterThan(1.0));
-      source.abort();
-      await feeding;
-      await player.dispose();
-    }, timeout: t);
+    }
   });
 }
