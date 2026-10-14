@@ -196,9 +196,9 @@ class PlayerStream {
        audioEffects = audioEffects.stream,
        mediaSession = mediaSession.stream;
 
-  /// Aggregate [MpvPlaybackState] derived from the 5 underlying signals
-  /// the library already tracks (`playing`, `buffering`, `completed`,
-  /// `pausedForCache`, `duration`). Lazy: subscriptions to the source
+  /// Aggregate [MpvPlaybackState] derived from 5 signals the library
+  /// already tracks (`playing`, `buffering`, `completed`, `pausedForCache`
+  /// and whether `path` names a loaded file). Lazy: subscriptions to the source
   /// streams open only on the first listener.
   static Stream<MpvPlaybackState> _playbackStateStream(
     DefaultPropertyReactives r,
@@ -210,7 +210,7 @@ class PlayerStream {
       buffering: bufferingProp.value,
       completed: completedProp.value,
       pausedForCache: r.pausedForCache.value,
-      duration: r.duration.value,
+      fileLoaded: r.path.value.isNotEmpty,
     );
 
     return aggregateStream<MpvPlaybackState>(snapshot, [
@@ -218,7 +218,7 @@ class PlayerStream {
       bufferingProp.changes,
       completedProp.changes,
       r.pausedForCache.changes,
-      r.duration.changes,
+      r.path.changes,
     ]);
   }
 
@@ -596,10 +596,10 @@ class PlayerStream {
 
   /// Aggregate playback lifecycle as a single mutually-exclusive enum.
   ///
-  /// Derived lazily from `playing` / `buffering` / `completed` /
-  /// `pausedForCache` / `duration` — subscribing here opens
-  /// subscriptions to those 5 streams only for as long as a listener
-  /// is attached. See [MpvPlaybackState] for the state mapping.
+  /// Derived lazily from `playing`, `buffering`, `completed`,
+  /// `pausedForCache` and `path` (idle means no file is loaded).
+  /// Subscribing here opens subscriptions to those 5 streams only for as
+  /// long as a listener is attached. See [MpvPlaybackState] for the state mapping.
   final Stream<MpvPlaybackState> playbackState;
 
   /// Embedded cover-art payload after each file load — the original

@@ -2,8 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// Aggregate playback lifecycle, derived from `playing` / `buffering` /
-/// `completed` / `pausedForCache` / `duration`. Subscribe via
+/// Aggregate playback lifecycle, derived from `playing`, `buffering`,
+/// `completed`, `pausedForCache` and whether a file is loaded. Subscribe via
 /// `PlayerStream.playbackState` when a single mutually-exclusive
 /// state fits the UI better than three separate booleans. The underlying
 /// booleans remain available on `PlayerStream` for granular use cases.
