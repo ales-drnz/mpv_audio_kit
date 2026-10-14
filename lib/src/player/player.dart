@@ -1295,11 +1295,14 @@ abstract class _PlayerBase {
 
   /// Internal log helper — emits on the library-side log channel
   /// ([PlayerStream.internalLog]), kept separate from mpv's engine log
-  /// stream ([PlayerStream.log]).
-  void _internalLog(String message, {LogLevel level = LogLevel.info}) =>
-      _internalLogCtrl.add(
-        MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message),
-      );
+  /// stream ([PlayerStream.log]). Dropped once dispose closed the channel:
+  /// an async path (a source resolver failing late) can still log then.
+  void _internalLog(String message, {LogLevel level = LogLevel.info}) {
+    if (_internalLogCtrl.isClosed) return;
+    _internalLogCtrl.add(
+      MpvLogEntry(prefix: 'mpv_audio_kit', level: level, text: message),
+    );
+  }
 
   /// Tears down the player.
   ///

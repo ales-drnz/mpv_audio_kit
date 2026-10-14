@@ -21,8 +21,8 @@ void main() {
       'Dispose safety — escape hatches throw PlayerDisposedException after dispose',
       () {
         test(
-          'getRawProperty / setRawProperty / sendRawCommand / registerHook / '
-          'continueHook all throw PlayerDisposedException post-dispose',
+          'getRawProperty, setRawProperty, sendRawCommand and registerHook '
+          'throw PlayerDisposedException post-dispose, continueHook is a no-op',
           () async {
             final player = await buildPlayer();
             // Bring-up (event isolate included) is done before disposing.
@@ -45,10 +45,9 @@ void main() {
               () => player.registerHook(Hook.load),
               throwsA(isA<PlayerDisposedException>()),
             );
-            expect(
-              () => player.continueHook(1),
-              throwsA(isA<PlayerDisposedException>()),
-            );
+            // Dispose continued every pending hook: a late continue from
+            // a listener is a no-op, not an error.
+            await player.continueHook(1);
           },
           timeout: const Timeout(Duration(seconds: 15)),
         );
