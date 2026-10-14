@@ -68,12 +68,11 @@ mixin _PcmModule on _PlayerBase {
     if (entryId == null) return;
     _pcmByEntry[entryId] = source;
     // mpv does not always report the playlist again when the entry goes
-    // (a stop while idle after a failed load): check it once in a while.
-    _pcmCheckTimer ??= Timer(const Duration(milliseconds: 300), () {
+    // (a stop while idle after a failed load): read it once shortly after.
+    _pcmCheckTimer?.cancel();
+    _pcmCheckTimer = Timer(const Duration(milliseconds: 300), () {
       _pcmCheckTimer = null;
-      if (_pcmByEntry.keys.any((id) => !_pcmSeen.contains(id))) {
-        _confirmPcmEntries();
-      }
+      if (_pcmByEntry.isNotEmpty) _confirmPcmEntries();
     });
     unawaited(
       source.done.then((_) {
@@ -123,7 +122,8 @@ mixin _PcmModule on _PlayerBase {
 
   /// Reads the playlist and drops the held entries it does not list. The
   /// read is issued after every held entry's loadfile reply, so an entry
-  /// it misses has left the playlist.
+  /// it misses has left the playlist. An entry that leaves later, with no
+  /// playlist node to tell (a stop while mpv is idle), is not caught.
   void _confirmPcmEntries() {
     if (_pcmConfirming) {
       _pcmConfirmAgain = true;

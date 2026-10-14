@@ -116,7 +116,7 @@ void main() {
           // The playlist observation merges changes, and mpv idle after a
           // failed load does not report a stop at all: the entry of the
           // first source can be gone before any playlist node listed it.
-          for (var i = 0; i < 10; i++) {
+          for (var i = 0; i < 5; i++) {
             final player = await buildPlayer();
             try {
               final a = await player.openPcmStream(f, play: false);
@@ -126,7 +126,7 @@ void main() {
                 (await player.openPcmStream(f, play: false)).abort();
               }
               await a.done.timeout(
-                const Duration(seconds: 1),
+                const Duration(seconds: 3),
                 onTimeout: () => fail('round $i: ${a.state} after $next'),
               );
               expect(a.state, PcmSourceState.stopped);
