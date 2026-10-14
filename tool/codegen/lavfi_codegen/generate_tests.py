@@ -794,15 +794,13 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
         iter_name = "cases"
     else:
         iter_name = "_kRuntimeCases"
-    lines.append("      final failures = <String, List<String>>{};")
-    lines.append(f"      for (final c in {iter_name}) {{")
-    lines.append("        final errors = await captureChainErrors(player, c.bundle);")
-    lines.append("        if (errors.isNotEmpty) {")
-    lines.append("          failures[c.filter] = errors.map((e) => e.text.trim()).toList();")
-    lines.append("        }")
-    lines.append("        // Reset between iterations so a failure doesn't bleed forward.")
-    lines.append("        await player.setAudioEffects(const []);")
-    lines.append("      }")
+    lines.append("      final errors = await captureChainErrorsEach(player, [")
+    lines.append(f"        for (final c in {iter_name}) (key: c.filter, bundle: c.bundle),")
+    lines.append("      ]);")
+    lines.append("      final failures = {")
+    lines.append("        for (final MapEntry(:key, :value) in errors.entries)")
+    lines.append("          key: value.map((e) => e.text.trim()).toList(),")
+    lines.append("      };")
     lines.append("")
     lines.append("      if (failures.isNotEmpty) {")
     lines.append("        final buf = StringBuffer()")

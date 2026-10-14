@@ -170,15 +170,13 @@ void main() {
           ..._kRuntimeCases,
           (filter: 'arnndn', bundle: [ArnndnEffect(model: arnndnModelPath)]),
         ];
-        final failures = <String, List<String>>{};
-        for (final c in cases) {
-          final errors = await captureChainErrors(player, c.bundle);
-          if (errors.isNotEmpty) {
-            failures[c.filter] = errors.map((e) => e.text.trim()).toList();
-          }
-          // Reset between iterations so a failure doesn't bleed forward.
-          await player.setAudioEffects(const []);
-        }
+        final errors = await captureChainErrorsEach(player, [
+          for (final c in cases) (key: c.filter, bundle: c.bundle),
+        ]);
+        final failures = {
+          for (final MapEntry(:key, :value) in errors.entries)
+            key: value.map((e) => e.text.trim()).toList(),
+        };
 
         if (failures.isNotEmpty) {
           final buf = StringBuffer()
