@@ -1205,12 +1205,15 @@ abstract class _PlayerBase {
 
   /// Settles `completed` from where the core stands against the end of
   /// content, as the event isolate read it ([MpvEventEndOfContent]): the
-  /// current file reached EOF ([eof]) and is the last playlist entry
-  /// ([lastEntry]), with no loop that will restart it. `keep-open: yes`
-  /// (shipped pre-init option) makes mpv park paused on the last frame
+  /// current file is parked at its end ([parked]) and is the last playlist
+  /// entry ([lastEntry]), with no loop that will restart it. `keep-open:
+  /// yes` (shipped pre-init option) makes mpv park paused on the last frame
   /// there and withhold both MPV_EVENT_END_FILE and idle-active, so the two
   /// writers that otherwise settle the transport (the END_FILE completed
   /// flag and the idle-active intent reset) never fire for the last entry.
+  /// The park, not `eof-reached`, is the end: with gapless audio mpv
+  /// reports EOF once the decoder is done, an output buffer before the end
+  /// is heard, and pauses only after that buffer has played.
   ///
   /// It is a level, read again at every load, restart, `eof-reached`,
   /// `pause` and `loop-*` notification, not the observed `eof-reached` edge
@@ -1220,9 +1223,9 @@ abstract class _PlayerBase {
   /// being reported, and the state's playlist position can lag or lead the
   /// entry an edge belonged to. That raised `completed` at a track
   /// change, cleared by the next load, and missed the real end.
-  void _settleEndOfContent({required bool eof, required bool lastEntry}) {
+  void _settleEndOfContent({required bool parked, required bool lastEntry}) {
     if (!_hasLoadedFile) return;
-    final end = eof && lastEntry && _state.loop == Loop.off;
+    final end = parked && lastEntry && _state.loop == Loop.off;
     if (end == _state.completed) return;
     _updateLifecycle(completed: end);
     // The play/pause intent is spent at the end of content; leaving the

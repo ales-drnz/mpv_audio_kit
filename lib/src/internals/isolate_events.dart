@@ -119,7 +119,8 @@ class MpvEndFileEvent extends MpvIsolateEvent {
 
 /// Where the core stands against the end of content, read by the event
 /// isolate in one go: whether the current file reached EOF
-/// (`eof-reached`) and whether it is the last playlist entry. Sent after
+/// (`eof-reached`), whether mpv parked on it, and whether it is the last
+/// playlist entry. Sent after
 /// FILE_LOADED and PLAYBACK_RESTART, and on every `eof-reached`, `pause`
 /// (the keep-open park pauses the core), `loop-file` and `loop-playlist`
 /// notification. The player derives `completed` from it: the observed
@@ -130,11 +131,20 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   /// Whether the current file reached its end (`eof-reached`).
   final bool eof;
 
+  /// Whether mpv parked at the end: [eof] and the core paused, which
+  /// keep-open does only once the output buffer has played out. Equal to
+  /// [eof] when `keep-open-pause` is off, since no pause comes then.
+  final bool parked;
+
   /// Whether the current file is the last playlist entry.
   final bool lastEntry;
 
-  /// Carries the [eof] and [lastEntry] reads.
-  MpvEventEndOfContent({required this.eof, required this.lastEntry});
+  /// Carries the [eof], [parked] and [lastEntry] reads.
+  MpvEventEndOfContent({
+    required this.eof,
+    required this.parked,
+    required this.lastEntry,
+  });
 }
 
 /// mpv fired MPV_EVENT_SHUTDOWN — the core is tearing down and the

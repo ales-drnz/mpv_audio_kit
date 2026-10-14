@@ -136,11 +136,11 @@ mixin _DispatchModule on _PlayerBase {
         case MpvEventPlaybackRestart(:final timePos):
           _applyPolledPosition(timePos);
           _seekCompletedCtrl.add(null);
-        case MpvEventEndOfContent(:final eof, :final lastEntry):
+        case MpvEventEndOfContent(:final eof, :final parked, :final lastEntry):
           // The core's value at the read, ahead of a skipped or late
           // `eof-reached` notification.
           _dispatchProperty('eof-reached', eof);
-          _settleEndOfContent(eof: eof, lastEntry: lastEntry);
+          _settleEndOfContent(parked: parked, lastEntry: lastEntry);
         case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
           final typedReason = MpvEndFileReason.fromValue(reason);
           _endFileCtrl.add(

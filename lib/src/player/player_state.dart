@@ -90,11 +90,14 @@ final class PlayerState {
   ///
   /// Becomes `true` at the end of a single track or of the last playlist
   /// entry, where the shipped `keep-open` policy makes mpv park paused on
-  /// the last frame. It stays `false` between playlist entries and while
-  /// `loop-file` or `loop-playlist` is on. Resets to `false` when a new
-  /// track starts (a fresh [Player.open] / [Player.openAll] or a playlist
-  /// advance) or when you seek back into the track. Pairs with [eofReached]
-  /// (the raw mpv signal); drives [MpvPlaybackState.completed].
+  /// the last frame. mpv parks once the audio output has played its
+  /// buffer, so `completed` comes when the end is heard. [eofReached]
+  /// turns `true` earlier, as soon as the decoder is done, about one
+  /// output buffer before. It stays `false` between playlist entries and
+  /// while `loop-file` or `loop-playlist` is on. Resets to `false` when a
+  /// new track starts (a fresh [Player.open] or [Player.openAll], or a
+  /// playlist advance) or when you seek back into the track. Drives
+  /// [MpvPlaybackState.completed].
   final bool completed;
 
   /// Current playback position.
