@@ -586,14 +586,16 @@ await source.addStream(socket.cast<List<int>>().map(Uint8List.fromList));
 await source.close();
 ```
 
-- Playback starts about a quarter of a second after the first chunk.
+- Playback starts about 0.2 s after the first chunk, or about 0.13 s with
+  `lowLatency: true`, which halves the output buffer of that entry.
 - `add` never blocks. `addStream` pauses its stream while more than
   `maxBuffered` (30 s by default) waits, and `ready` does the same for a
   loop of `add` calls.
 - A chunk may end in the middle of a frame: the rest is joined to the next
   chunk.
-- `close` plays out what is buffered, then the entry ends (`completed`).
-  `abort` drops the buffer and ends it at once.
+- `close` plays out what is buffered, then the entry ends after its last
+  sample (`completed`). `abort` cuts it at once: the player moves to the
+  next entry, or stops at the last one.
 - `done` completes once the player has read everything, or the source was
   aborted or stopped by `stop`, `next` or another `open`.
 - Encodings: `u8`, `s16le`, `s24le`, `s32le` and `f32le`, 1 to 8 channels.
@@ -603,6 +605,10 @@ audio received so far. To queue several sources, create them with
 `PcmSource.create` and pass `source.toMedia()` to `openAll` or `add`: each
 starts when the previous one ends. Disposing the player aborts the sources
 `openPcmStream` opened.
+
+With prefetch on, the player opens the next live source while the current
+entry plays. A source the player opened and then left, by a skip or a jump
+elsewhere, is `stopped` and cannot play again.
 
 ---
 
