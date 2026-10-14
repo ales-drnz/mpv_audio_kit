@@ -6,23 +6,23 @@ import 'dart:typed_data';
 
 /// Issues an async mpv property read and resolves with `(errorCode, value)`
 /// once the event isolate forwards the reply. The FFI call only enqueues the
-/// request — it never waits for the core's playloop — so a DSP pipeline's
+/// request (it never waits for the core's playloop) so a DSP pipeline's
 /// poll loop can run without a blocking read on the main isolate (the macOS
 /// beachball while an audio output initializes). `value` is the same decoded
-/// shape the property-change pipeline produces (`Map` / `List` / scalar /
+/// shape the property-change pipeline produces (`Map`, `List`, scalar or
 /// [Uint8List]), already copied out of mpv-owned memory in the event isolate.
 typedef AsyncPropertyGet =
     Future<(int, dynamic)> Function(String name, int format);
 
 /// Issues an async mpv property write and resolves with the mpv rc. Used by
 /// the listener-gated pipelines to flip their native `*-enabled` flags
-/// (waveform / loudness-scan) and the filter-tap active list off the main
+/// (waveform and loudness scan) and the filter-tap active list off the main
 /// isolate.
 typedef AsyncPropertySet = Future<int> Function(String name, String value);
 
-/// Reinterprets a decoded `MPV_FORMAT_BYTE_ARRAY` value — a [Uint8List] of
-/// interleaved, host-order Float32 PCM, the wire format every audio tap emits
-/// — as a [Float32List]. Returns `null` for a non-byte value or one too small
+/// Reinterprets a decoded `MPV_FORMAT_BYTE_ARRAY` value (a [Uint8List] of
+/// interleaved, host-order Float32 PCM, the wire format every audio tap emits)
+/// as a [Float32List]. Returns `null` for a non-byte value or one too small
 /// to hold a single sample.
 ///
 /// Host order == little-endian on every supported target, so the

@@ -56,12 +56,12 @@ abstract class AnalysisPollPipeline<T extends Object> {
   // No file loaded (after [clear]): mpv still holds the last file's
   // analysis, so nothing is polled until the next [reset].
   bool _idle = false;
-  // Guards against overlapping async polls — see [LoudnessMeterPipeline].
+  // Guards against overlapping async polls; see [LoudnessMeterPipeline].
   bool _polling = false;
 
   Stream<T?> get stream => _ctrl.stream;
 
-  /// Arms or disarms the analysis. Driven by the `onListen` / `onCancel`
+  /// Arms or disarms the analysis. Driven by the `onListen` and `onCancel`
   /// of the player's controller. Writes the enable property and starts or
   /// stops polling.
   void setEnabled(bool enabled) {

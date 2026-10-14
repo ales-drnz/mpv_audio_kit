@@ -94,7 +94,7 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
         ? rmsValue
         : null;
 
-    // Fall back to all-covered if the native side omitted/mismatched the
+    // Fall back to all-covered if the native side omitted or mismatched the
     // flags, so the renderer never misreads it.
     Uint8List safeFilled(Float32List m) =>
         (filled != null && filled.length == m.length)
@@ -103,7 +103,7 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
 
     // ROLLING (true live, unknown total): a sliding window keyed to the
     // demuxer cache. The native side reports the absolute range it holds;
-    // the envelope grows and slides, so never cache it — keep polling.
+    // the envelope grows and slides, so never cache it: keep polling.
     if (rolling && haveBins && rangeEndUs > rangeStartUs) {
       final data = WaveformData(
         start: Duration(microseconds: rangeStartUs),
@@ -120,7 +120,7 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
 
     // DECODING (local-file bulk analysis in flight): a partial envelope that
     // grows on every poll. The full axis is emitted with [filled] marking the
-    // regions decoded so far. Never cache it and never stop the timer — the
+    // regions decoded so far. Never cache it and never stop the timer: the
     // final `ready` emission below supersedes it. De-dup on coverage so an
     // unchanged snapshot does not churn the UI.
     if (decoding && durationUs > 0 && haveBins) {
@@ -161,8 +161,8 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
       return;
     }
     if (state == 'failed') {
-      // No envelope is coming (true live / unsupported). Stop polling
-      // and clear — there is nothing further to wait for.
+      // No envelope is coming (true live or unsupported). Stop polling
+      // and clear: there is nothing further to wait for.
       stopPolling();
       _lastGrowing = null;
       emit(null);

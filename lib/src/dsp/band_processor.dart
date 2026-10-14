@@ -11,12 +11,12 @@ import '../models/fft_frame.dart';
 import '../models/pcm_frame.dart';
 import '../types/settings/spectrum_settings.dart';
 
-/// Stateful PCM-to-bands processor — runs the same FFT, windowing,
+/// Stateful PCM-to-bands processor: runs the same FFT, windowing,
 /// log-band aggregation and asymmetric-EMA smoothing the library uses
 /// internally to back [PlayerStream.fft].
 ///
 /// Use it to compute frequency-domain bands from any [PcmFrame] stream
-/// — typically the per-filter [PlayerStream.tap] — when you want the
+/// (typically the per-filter [PlayerStream.tap]) when you want the
 /// bands to share the global visualizer's exact settings (FFT size,
 /// window, overlap, smoothing, dB clip, log-band layout).
 ///
@@ -33,7 +33,7 @@ import '../types/settings/spectrum_settings.dart';
 /// overlap and [process] analyzes part of the audio again on each call,
 /// as the player's own [PlayerStream.fft] does.
 ///
-/// Example — bind a per-filter editor's input/output curves to the
+/// Example: bind a per-filter editor's input and output curves to the
 /// player's live spectrum settings:
 ///
 /// ```dart
@@ -65,7 +65,7 @@ class BandProcessor {
   int _samplesInRing = 0;
   int _samplesUntilNextHop = 0;
 
-  // ── FFT machinery — recreated only on `fftSize` / window changes.
+  // ── FFT machinery: recreated only on `fftSize` or window changes.
   FFT? _fft;
   Float64List? _windowed;
   Float64x2List? _buffer;
@@ -78,13 +78,13 @@ class BandProcessor {
   Int32List? _bandEndBin;
   int _lastBandSampleRate = 0;
 
-  // The most-recent raw bin power vector — the consumer-facing
+  // The most-recent raw bin power vector: the consumer-facing
   // [FftFrame.bins] payload of the next emitted frame. Allocated
   // once (size = fftSize / 2) and overwritten every FFT.
   Float32List? _rawBins;
 
   /// Replaces the configuration. Reallocates only the buffers that
-  /// depend on changed fields (FFT size / window / band layout).
+  /// depend on changed fields (FFT size, window or band layout).
   /// Smoothing is reset on band-count change so the bands don't
   /// inherit stale heights from a different layout.
   void setSettings(SpectrumSettings next) {
@@ -115,7 +115,7 @@ class BandProcessor {
       _bandEndBin = null;
     }
     if (overlapChanged) {
-      // Overlap change retunes the hop spacing — let the next push
+      // Overlap change retunes the hop spacing: let the next push
       // re-prime the countdown.
       _samplesUntilNextHop = 0;
     }
@@ -214,7 +214,7 @@ class BandProcessor {
 
     // Normalise bin magnitude by N/2 so the dB scale matches the Web
     // Audio API convention (`AnalyserNode` magnitudes are divided by
-    // `fftSize` — equivalent here since the input is real-valued and
+    // `fftSize`: equivalent here since the input is real-valued and
     // `binCount = fftSize / 2`). Without this the dB output drifts up
     // by ~`20·log10(N/2)` and the [SpectrumSettings.minDb] /
     // [SpectrumSettings.maxDb] defaults stop matching every Web-Audio

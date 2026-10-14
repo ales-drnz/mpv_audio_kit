@@ -55,7 +55,7 @@ class LoudnessMeterPipeline {
   /// while the meter is active in the chain.
   Stream<Loudness> get stream => _ctrl.stream;
 
-  /// Starts or stops polling. Driven by the `onListen` / `onCancel` of
+  /// Starts or stops polling. Driven by the `onListen` and `onCancel` of
   /// the player's `loudness` controller.
   void setEnabled(bool enabled) {
     if (_disposed || enabled == _enabled) return;

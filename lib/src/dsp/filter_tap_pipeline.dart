@@ -22,7 +22,7 @@ const int _kMaxTapChannels = 8;
 /// (`MAX_TAPS` in the libmpv patch); the labels after these stay silent.
 const int _kMaxActiveTaps = 8;
 
-/// Per-filter pre/post audio tap pipeline.
+/// Per-filter pre and post audio tap pipeline.
 ///
 /// Backed by the `audio-tap-frames` and `analyzer-taps` properties
 /// added by the libmpv filter-label-tap patch. The pipeline:
@@ -37,7 +37,7 @@ const int _kMaxActiveTaps = 8;
 ///      per-stage [PcmFrame]s and dispatches them on broadcast
 ///      controllers keyed by `(label, side)`.
 ///
-/// Idle cost is exactly zero — the polling timer is unarmed and the
+/// Idle cost is exactly zero: the polling timer is unarmed and the
 /// active-list is empty until the first listener attaches.
 @internal
 class FilterTapPipeline {
@@ -45,7 +45,7 @@ class FilterTapPipeline {
     required AsyncPropertyGet asyncGet,
     required AsyncPropertySet asyncSet,
     void Function(String message)? warn,
-    // 33 ms ≈ 30 Hz — matches the lib's spectrum pipeline default.
+    // 33 ms ≈ 30 Hz: matches the lib's spectrum pipeline default.
     // The C side now returns the slice of the rolling ring aligned
     // to the AO playback PTS, so the slice walks forward smoothly
     // at the audio output rate regardless of the chain's bursty
@@ -73,11 +73,11 @@ class FilterTapPipeline {
   String _lastCsv = '';
   // Last native write generation (ring `seq`) dispatched per (name, side).
   // Lets the poll loop skip a redundant decode + add() when the ring is
-  // unchanged (e.g. while paused / at EOF the writer isn't advancing it).
+  // unchanged (e.g. while paused or at EOF the writer isn't advancing it).
   final Map<_TapKey, int> _lastSeq = {};
 
   Timer? _pollTimer;
-  // Guards against overlapping async polls — see [LoudnessMeterPipeline].
+  // Guards against overlapping async polls; see [LoudnessMeterPipeline].
   bool _polling = false;
   bool _disposed = false;
 
@@ -125,7 +125,7 @@ class FilterTapPipeline {
     _active.remove(key);
     // Drop the retained native write-generation. The native ring `seq` is
     // monotonic and never reset, so keeping a stale `_lastSeq` would make a
-    // FRESH re-subscriber to this paused/EOF tap skip the currently-buffered
+    // FRESH re-subscriber to this tap, paused or at EOF, skip the currently-buffered
     // slice (its seq still equals the retained value) until the next write.
     _lastSeq.remove(key);
     _writeActiveList();
@@ -188,8 +188,8 @@ class FilterTapPipeline {
         if (ctrl == null || !ctrl.hasListener) return;
         // Skip the decode + dispatch when the native write generation is
         // unchanged since the last poll. The C side bumps the ring `seq`
-        // on every write and holds it stable while paused / at EOF, so an
-        // unchanged seq means an identical slice — re-emitting it only
+        // on every write and holds it stable while paused or at EOF, so an
+        // unchanged seq means an identical slice: re-emitting it only
         // churns a Float32List + StreamController.add() for no new data.
         // seq == 0 means "unavailable"; fall back to always emitting.
         final seq = ring['seq'] is int ? ring['seq'] as int : 0;
