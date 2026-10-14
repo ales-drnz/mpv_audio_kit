@@ -73,6 +73,50 @@ void main() {
     });
   });
 
+  group('a new listener on a finished result does not decode again', () {
+    test('no yes while the result stands, yes on the next file', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      expect(got.whereType<Object>(), hasLength(1), reason: 'ready');
+
+      p.setEnabled(false);
+      p.setEnabled(true);
+      p.setEnabled(false);
+      p.setEnabled(true);
+      await _settle();
+      expect(mpv.sets, ['waveform-enabled=yes', 'waveform-enabled=no']);
+
+      // The next file arms the analysis again.
+      mpv.values.remove('waveform-data');
+      p.reset();
+      await _settle();
+      expect(mpv.sets.last, 'waveform-enabled=yes');
+
+      // And the next cancel turns it off.
+      p.setEnabled(false);
+      await _settle();
+      expect(mpv.sets.last, 'waveform-enabled=no');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('dispose after a deferred yes writes nothing more', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      p.setEnabled(true);
+      await _settle();
+      p.setEnabled(false);
+      p.setEnabled(true);
+      await p.dispose();
+      await _settle();
+      expect(mpv.sets, ['waveform-enabled=yes', 'waveform-enabled=no']);
+    });
+  });
+
   test('a poll in flight at dispose emits nothing', () async {
     final gate = Completer<void>();
     final mpv = _FakeMpv();

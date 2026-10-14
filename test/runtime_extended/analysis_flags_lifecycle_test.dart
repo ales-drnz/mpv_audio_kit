@@ -5,12 +5,13 @@
 
 // The waveform and the loudness scan share one native decode pass and two
 // process-wide flags (`waveform-enabled`, `loudness-scan-enabled`). These
-// pin how the flags follow the listeners across a dispose, a cancel in the
-// middle of a scan and a listener that comes back to a finished result.
+// pin how the flags follow the listeners across a dispose and a listener
+// that comes back to a finished result.
 
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -101,5 +102,48 @@ void main() {
         await b.dispose();
       }
     }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test(
+      'a listener back on a finished waveform does not decode again',
+      () async {
+        final player = await buildPlayer();
+        try {
+          // Loaded first, so the track change is behind us.
+          await openAndWaitForLoad(player, fixture);
+          final done = (await player.stream.waveform
+              .firstWhere((w) => w != null && !w.decoding)
+              .timeout(const Duration(seconds: 10)))!;
+
+          // Back on the same file: the replay gives the result and the
+          // native analyzer stays off.
+          final again = await player.stream.waveform.first.timeout(
+            const Duration(seconds: 2),
+          );
+          expect(again, same(done));
+          final sub = player.stream.waveform.listen((_) {});
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          expect(await player.getRawProperty('waveform-enabled'), 'no');
+          final data = await player.getRawPropertyNode('waveform-data');
+          expect((data as Map?)?['state'], isNot('decoding'));
+
+          // The next file is analyzed for the listener that stayed.
+          final next = player.stream.waveform
+              .skipWhile((w) => w != null)
+              .firstWhere((w) => w != null && !w.decoding)
+              .timeout(const Duration(seconds: 10));
+          await openAndWaitForLoad(
+            player,
+            '${Directory.current.path}/test/fixtures/sine_stereo_1s.flac',
+          );
+          final w = (await next)!;
+          expect(w.duration.inMilliseconds, closeTo(1000, 50));
+          expect(await player.getRawProperty('waveform-enabled'), 'yes');
+          await sub.cancel();
+        } finally {
+          await player.dispose();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
   });
 }
