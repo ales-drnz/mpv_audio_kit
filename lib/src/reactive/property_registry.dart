@@ -35,8 +35,8 @@ class PropertyRegistry {
   // the common upper bound [Object?] is the right element type.
   final Map<String, MpvPropertySpec<Object?>> _byName = {};
 
-  /// Registers a single spec. Subsequent calls with the same [MpvPropertySpec.name]
-  /// overwrite — useful for tests and for player subclasses that want to
+  /// Registers a single spec. A later call with the same
+  /// [MpvPropertySpec.name] overwrites the earlier one, which tests use to
   /// shadow a default spec.
   void register(MpvPropertySpec<Object?> spec) {
     _byName[spec.name] = spec;

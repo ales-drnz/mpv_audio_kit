@@ -20,13 +20,13 @@ bool _mapEq(Map<String, String> a, Map<String, String> b) {
 /// integer [id] (used for switching via
 /// `Player.setAudioTrack(Track.id(...))`), a
 /// [type] (`'audio'`, `'video'`, `'sub'`, etc.), and metadata like
-/// [title] / [lang] / [defaultTrack] / [forced]. Audio tracks
-/// additionally expose decoder-side parameters ([sampleRate],
-/// [channels], [channelCount]).
+/// [title], [lang], [defaultTrack] and [forced]. Audio tracks
+/// additionally expose the parameters the demuxer reports ([sampleRate],
+/// [channels], [channelCount], from mpv's `demux-*` fields).
 ///
-/// The [image] / [albumArt] flags distinguish embedded picture streams
-/// (`attached_pic`) from regular audio tracks — set [image] to skip
-/// such pseudo-tracks when populating a "switch audio track" UI.
+/// The [image] and [albumArt] flags distinguish embedded picture streams
+/// (`attached_pic`) from regular audio tracks: check [image] to skip such
+/// pseudo-tracks when populating a "switch audio track" UI.
 final class MpvTrack {
   /// mpv's integer track ID. Wrap in [Track.id] and pass to
   /// `Player.setAudioTrack` to switch to this track.

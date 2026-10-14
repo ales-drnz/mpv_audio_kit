@@ -12,8 +12,9 @@ import 'reactive_property.dart';
 /// cell that owns the value, a `(raw, state) → T` parser, and a
 /// `(T, state) → PlayerState` reducer. The full update pipeline runs on
 /// every observed change: parse → dedup → reactive update → state reduce
-/// → onChange. Adding an observed property to the public API is a
-/// one-line edit to the spec list.
+/// → onChange. Adding an observed property to the public API takes a spec
+/// in the list, plus its reactive cell, its [PlayerState] field and its
+/// `PlayerStream` stream.
 ///
 /// The generic [T] is the type of the [reactive] cell. For scalar
 /// properties [T] is also the parsed value type. For aggregate properties
