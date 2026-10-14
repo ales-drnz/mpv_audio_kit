@@ -42,6 +42,18 @@ class _ApiProbe implements PlayerApi {
       _record('openPlaylistFile');
 
   @override
+  Future<PcmSource> openPcmStream(
+    PcmFormat format, {
+    bool play = true,
+    Duration maxBuffered = const Duration(seconds: 30),
+    bool lowLatency = false,
+    Map<String, Object?>? extras,
+  }) {
+    calls.add('openPcmStream');
+    return Future.error(UnimplementedError());
+  }
+
+  @override
   Future<void> play() => _record('play');
 
   @override
