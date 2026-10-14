@@ -5,7 +5,7 @@
 /// How [Player.setAudioTrack] should resolve mpv's `aid` property.
 ///
 /// Sealed because [Track.id] carries an `int` payload that plain
-/// enums can't model. Use the [auto] / [off] static fields and the
+/// enums can't model. Use the [auto] and [off] static fields and the
 /// [id] factory at call-site:
 ///
 /// ```dart
@@ -22,7 +22,7 @@ sealed class Track {
   static const Track auto = TrackAuto._();
 
   /// Disable audio output entirely. Equivalent to mpv's `aid=no`.
-  /// Useful for files where you want only metadata / cover art without
+  /// Useful for files where you want only metadata or cover art without
   /// playing audio.
   static const Track off = TrackOff._();
 
@@ -38,17 +38,17 @@ sealed class Track {
   };
 }
 
-/// The [Track.auto] variant — defer to mpv's automatic track choice.
+/// The [Track.auto] variant: defer to mpv's automatic track choice.
 final class TrackAuto extends Track {
   const TrackAuto._() : super._();
 }
 
-/// The [Track.off] variant — disable audio output entirely.
+/// The [Track.off] variant: disable audio output entirely.
 final class TrackOff extends Track {
   const TrackOff._() : super._();
 }
 
-/// The [Track.id] variant — select a specific track by mpv track id.
+/// The [Track.id] variant: select a specific track by mpv track id.
 final class TrackId extends Track {
   /// The mpv track id to select, matching an entry's `MpvTrack.id`.
   final int trackId;

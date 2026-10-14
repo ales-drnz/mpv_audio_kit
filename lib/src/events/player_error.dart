@@ -10,7 +10,7 @@ import '../types/enums/log_level.dart';
 
 /// Typed error events delivered on [PlayerStream.error]. A sealed union
 /// over [EndFileError] (playback failures) and [LogError]
-/// (`error` / `fatal` log lines from an mpv subsystem). Pattern-match on
+/// (`error` or `fatal` log lines from an mpv subsystem). Pattern-match on
 /// the variant to distinguish them.
 ///
 /// ```dart
@@ -79,7 +79,7 @@ final class EndFileError extends PlayerError {
 
 /// A log message at `error` or `fatal` level from an mpv subsystem.
 ///
-/// These are informational errors from mpv's internal logging — they don't
+/// These are informational errors from mpv's internal logging; they don't
 /// necessarily mean playback has stopped. For example, a codec warning or
 /// a filter configuration issue.
 final class LogError extends PlayerError {
@@ -87,7 +87,7 @@ final class LogError extends PlayerError {
   /// `'demux'`, `'ao'`).
   final String prefix;
 
-  /// The log level — either [LogLevel.error] or [LogLevel.fatal].
+  /// The log level: either [LogLevel.error] or [LogLevel.fatal].
   final LogLevel level;
 
   /// Raw log text from the mpv subsystem.
@@ -181,7 +181,7 @@ extension MpvFileEndedEventX on MpvFileEndedEvent {
   bool get reachedNaturalEnd => reason == MpvEndFileReason.eof;
 }
 
-/// Why a file ended — mirrors `mpv_end_file_reason` from the C API.
+/// Why a file ended: mirrors `mpv_end_file_reason` from the C API.
 ///
 /// See the [mpv documentation](https://mpv.io/manual/master/) for details.
 enum MpvEndFileReason {
@@ -202,7 +202,7 @@ enum MpvEndFileReason {
   /// contains the specific mpv error code.
   error(MpvEndFileReason._error),
 
-  /// The file was a playlist or redirect — its entries were appended to the
+  /// The file was a playlist or redirect; its entries were appended to the
   /// playlist and this entry was removed.
   redirect(MpvEndFileReason._redirect);
 

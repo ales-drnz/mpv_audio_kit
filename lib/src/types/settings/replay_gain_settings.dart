@@ -12,7 +12,7 @@ import 'package:mpv_audio_kit/src/types/enums/replay_gain.dart';
 /// configuration via [PlayerState.replayGain] or observe live changes
 /// via [PlayerStream.replayGain].
 final class ReplayGainSettings {
-  /// Normalization mode (off / per-track / per-album).
+  /// Normalization mode (off, per-track or per-album).
   final ReplayGain mode;
 
   /// Pre-amplification in dB applied before normalization.

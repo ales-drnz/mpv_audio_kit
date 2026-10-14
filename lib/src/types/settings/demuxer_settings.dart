@@ -12,12 +12,12 @@ final class DemuxerSettings {
   /// Maximum bytes the demuxer is allowed to cache ahead of the playhead.
   /// Default 150 MiB (mpv's `--demuxer-max-bytes=150MiB`). Forwarded as a raw
   /// byte count, so sub-MiB precision is preserved (mpv accepts plain integers
-  /// and SI / IEC suffixes interchangeably).
+  /// and SI or IEC suffixes interchangeably).
   final int maxBytes;
 
   /// Maximum bytes of already-played content kept buffered for instant
   /// seekback. Default 50 MiB (mpv's `--demuxer-max-back-bytes=50MiB`). Set to
-  /// `0` on live / radio streams where seeking back is never needed.
+  /// `0` on live or radio streams where seeking back is never needed.
   final int maxBackBytes;
 
   /// Minimum amount of audio the demuxer keeps buffered ahead of the playhead.

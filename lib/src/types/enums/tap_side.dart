@@ -6,7 +6,7 @@
 ///
 /// Selects whether [PlayerStream.tap] reads the audio just before the
 /// filter's DSP runs ([pre], "input signal") or just after ([post],
-/// "output signal"). The two sides share the same engine machinery —
+/// "output signal"). The two sides share the same engine machinery:
 /// pick whichever matches the metering or visualisation you need.
 enum TapSide {
   /// Tap captures samples *before* the filter applies its DSP. Use
@@ -16,7 +16,7 @@ enum TapSide {
   pre,
 
   /// Tap captures samples *after* the filter has processed them. Use
-  /// for "output signal" overlays — what the listener will actually
+  /// for "output signal" overlays: what the listener will actually
   /// hear once this stage is in the chain.
   post,
 }

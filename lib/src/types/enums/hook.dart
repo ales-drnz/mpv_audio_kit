@@ -32,7 +32,7 @@ enum Hook {
   /// event fires.
   beforeStartFile('on_before_start_file'),
 
-  /// Before a stream is opened. The most common interception point —
+  /// Before a stream is opened. The most common interception point:
   /// rewrite `stream-open-filename` to redirect the URL, or set
   /// `file-local-options/http-header-fields` to attach per-file
   /// HTTP headers.
@@ -61,7 +61,7 @@ enum Hook {
   final String mpvValue;
 
   /// Maps an mpv-side hook name to the typed enum. Returns `null` for
-  /// unknown values — forward-compat with future mpv builds that may
+  /// unknown values, forward-compat with future mpv builds that may
   /// add new hook phases (a warning is logged and the hook auto-
   /// continues so mpv never stalls).
   static Hook? fromMpv(String raw) => switch (raw) {

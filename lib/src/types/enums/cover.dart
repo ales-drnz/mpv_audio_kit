@@ -5,7 +5,7 @@
 /// External cover-art auto-load behaviour, mirroring
 /// `--cover-art-auto=<no|exact|fuzzy|all>`.
 enum Cover {
-  /// Disabled — no external cover-art loading. The library default
+  /// Disabled: no external cover-art loading. The library default
   /// (mpv's own default is [exact]).
   no('no'),
 

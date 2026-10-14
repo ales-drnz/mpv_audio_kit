@@ -8,7 +8,7 @@ import 'dart:typed_data';
 /// Window function applied to each FFT block before transform.
 ///
 /// Windows trade off main-lobe width vs side-lobe leakage. For music
-/// visualizers the default is [hann] — smooth taper, decent leakage,
+/// visualizers the default is [hann]: smooth taper, decent leakage,
 /// the canonical music-visualizer window. [blackmanHarris] suppresses
 /// side-lobes harder for cleaner-looking peaks at the cost of a wider
 /// main lobe. [rectangular] is the no-window debug option (DC ripple,
@@ -16,7 +16,7 @@ import 'dart:typed_data';
 ///
 /// Set via [SpectrumSettings.window].
 enum WindowFunction {
-  /// Hann (a.k.a. Hanning): 0.5 - 0.5·cos(2πn/(N-1)). Default —
+  /// Hann (a.k.a. Hanning): 0.5 - 0.5·cos(2πn/(N-1)). Default:
   /// smooth taper to zero at edges, -31 dB peak side-lobe, -18 dB/oct
   /// roll-off. The universal music-visualizer choice.
   hann,
@@ -26,7 +26,7 @@ enum WindowFunction {
   /// midrange frequencies blur into each other on Hann.
   blackmanHarris,
 
-  /// No window — every sample multiplied by 1.0. Severe spectral
+  /// No window: every sample multiplied by 1.0. Severe spectral
   /// leakage; useful only for debugging. Don't ship this in a
   /// visualizer.
   rectangular;
@@ -41,7 +41,7 @@ enum WindowFunction {
           w[i] = 0.5 - 0.5 * math.cos(2 * math.pi * i / (n - 1));
         }
       case WindowFunction.blackmanHarris:
-        // 4-term Blackman-Harris coefficients — Harris (1978).
+        // 4-term Blackman-Harris coefficients (Harris, 1978).
         const a0 = 0.35875, a1 = 0.48829, a2 = 0.14128, a3 = 0.01168;
         for (var i = 0; i < n; i++) {
           final t = 2 * math.pi * i / (n - 1);

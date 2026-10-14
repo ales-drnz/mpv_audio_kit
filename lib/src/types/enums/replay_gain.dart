@@ -4,7 +4,7 @@
 
 /// ReplayGain normalization mode, mirroring `--replaygain=<no|track|album>`.
 enum ReplayGain {
-  /// Disabled — no normalization.
+  /// Disabled: no normalization.
   no('no'),
 
   /// Per-track ReplayGain.

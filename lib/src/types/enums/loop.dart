@@ -7,7 +7,7 @@
 /// mpv splits looping across two properties (`loop-file` and
 /// `loop-playlist`); this enum aggregates them into a single mutually-
 /// exclusive choice, matching the way most player UIs expose the
-/// concept (off / repeat-track / repeat-playlist).
+/// concept (off, repeat-track or repeat-playlist).
 ///
 /// Variant names follow mpv's vocabulary: `file` mirrors `loop-file`,
 /// `playlist` mirrors `loop-playlist`.

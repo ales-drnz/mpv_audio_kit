@@ -6,9 +6,9 @@
 ///
 /// Set via [Player.setAudioFormat]; reset to mpv's auto-pick with
 /// [Format.auto]. The wire-level value mpv expects is exposed via
-/// [mpvValue]. Unknown / empty values map back to [auto].
+/// [mpvValue]. Unknown or empty values map back to [auto].
 enum Format {
-  /// Let mpv pick the format (mpv's `no` / unset). Default.
+  /// Let mpv pick the format (mpv's `no` or unset). Default.
   auto('no'),
 
   /// 8-bit unsigned integer (interleaved).
@@ -52,7 +52,7 @@ enum Format {
   /// The wire-level string mpv expects on the `audio-format` property.
   final String mpvValue;
 
-  /// Maps a raw mpv-side value back to the enum. Unknown / empty → [auto].
+  /// Maps a raw mpv-side value back to the enum. Unknown or empty → [auto].
   static Format fromMpv(String raw) => switch (raw) {
     '' || 'no' => auto,
     'u8' => u8,

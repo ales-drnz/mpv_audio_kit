@@ -11,7 +11,7 @@
 /// warnings when a prefetch is aborted/dropped.
 ///
 /// Backed by mpv's `prefetch-state` property, with the same lifecycle
-/// across every demuxer backend — HLS, DASH, raw HTTP range reads,
+/// across every demuxer backend: HLS, DASH, raw HTTP range reads,
 /// SMB, local files.
 enum PrefetchState {
   /// No background prefetch is active. Default state.
@@ -27,7 +27,7 @@ enum PrefetchState {
   /// are outstanding). Gapless transition is armed.
   ready('ready'),
 
-  /// The prefetched stream was just consumed — the current track ended
+  /// The prefetched stream was just consumed: the current track ended
   /// and mpv reused the secondary demuxer instead of re-opening. The
   /// state PERSISTS at [used] until the next [loading] (next
   /// `prefetch_next`) or a cancel resets it to [idle], so a subscriber
@@ -35,7 +35,7 @@ enum PrefetchState {
   used('used'),
 
   /// The opener thread failed to create a demuxer for the next playlist
-  /// item — typically a network error (404 / timeout / DNS), an
+  /// item, typically a network error (404, timeout or DNS), an
   /// unsupported codec, or a deliberate abort by an `on_load` hook
   /// rewrite. Distinct from a silent return to [idle] because no
   /// gapless transition is armed: the next track will be re-opened
@@ -49,7 +49,7 @@ enum PrefetchState {
   final String mpvValue;
 
   /// Parses the string emitted by mpv. Unknown values fall back to
-  /// [idle] so future mpv additions don't crash clients — they just
+  /// [idle] so future mpv additions don't crash clients; they just
   /// see the phase treated as "not actively prefetching".
   static PrefetchState fromMpv(String value) {
     for (final v in PrefetchState.values) {

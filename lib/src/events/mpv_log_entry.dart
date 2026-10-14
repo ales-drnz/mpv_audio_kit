@@ -22,7 +22,7 @@ class MpvLogEntry {
   /// The mpv subsystem that generated this message (e.g. `'ffmpeg'`, `'demux'`).
   final String prefix;
 
-  /// Severity level — see [LogLevel] for the closed set.
+  /// Severity level: see [LogLevel] for the closed set.
   final LogLevel level;
 
   /// The log message text. Trailing newlines are stripped before delivery

@@ -46,7 +46,7 @@ enum LogLevel {
   final String mpvValue;
 
   /// Maps a mpv-side level string to the typed enum. Returns [info] for
-  /// unknown values — forward-compat with future mpv builds that may
+  /// unknown values, forward-compat with future mpv builds that may
   /// add new levels.
   static LogLevel fromMpv(String value) {
     for (final level in LogLevel.values) {

@@ -11,14 +11,14 @@ enum LoudnessScanState {
   /// The scan is decoding the file.
   scanning,
 
-  /// The scan finished — the measurement fields are populated.
+  /// The scan finished: the measurement fields are populated.
   ready,
 
   /// The scan could not complete (decode error).
   failed,
 
-  /// The source cannot be scanned up-front (adaptive / live /
-  /// non-seekable stream) — use the live `PlayerStream.loudnessMeter`
+  /// The source cannot be scanned up-front (adaptive, live or
+  /// non-seekable stream): use the live `PlayerStream.loudnessMeter`
   /// instead.
   unavailable;
 

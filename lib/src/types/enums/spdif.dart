@@ -22,7 +22,7 @@
 /// ```
 ///
 /// **Note on [dtsHd]**: it is a *modifier* applied when the source codec
-/// is DTS — it requests DTS-HD MA passthrough but also implicitly enables
+/// is DTS: it requests DTS-HD MA passthrough but also implicitly enables
 /// the standard DTS path. Specifying both `dts` and `dtsHd` is equivalent
 /// to specifying `dtsHd` alone.
 enum Spdif {
@@ -32,14 +32,14 @@ enum Spdif {
   /// DTS Coherent Acoustics passthrough (low-bitrate core).
   dts('dts'),
 
-  /// DTS-HD Master Audio passthrough — implies and supersedes [dts].
-  /// Receiver / OS support varies.
+  /// DTS-HD Master Audio passthrough: implies and supersedes [dts].
+  /// Receiver and OS support varies.
   dtsHd('dts-hd'),
 
   /// Dolby Digital Plus (Enhanced AC-3) passthrough.
   eac3('eac3'),
 
-  /// Dolby TrueHD passthrough — high-bitrate lossless over HDMI.
+  /// Dolby TrueHD passthrough: high-bitrate lossless over HDMI.
   trueHd('truehd');
 
   const Spdif(this.mpvValue);
@@ -60,7 +60,7 @@ enum Spdif {
   };
 
   /// Parses mpv's wire-level CSV (`'ac3,dts,truehd'`) into a typed set.
-  /// Empty / whitespace-only input → empty set. Unknown tokens are
+  /// Empty or whitespace-only input → empty set. Unknown tokens are
   /// dropped silently.
   static Set<Spdif> parseMpvList(String raw) {
     if (raw.trim().isEmpty) return const <Spdif>{};

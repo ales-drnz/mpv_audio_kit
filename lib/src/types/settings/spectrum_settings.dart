@@ -11,7 +11,7 @@ import '../enums/window_function.dart';
 /// a copyWith mapper). Read live via [PlayerStream.spectrum] and
 /// [PlayerStream.pcm].
 ///
-/// The streams are **lazy** — the FFT pipeline allocates and the FFI
+/// The streams are **lazy**: the FFT pipeline allocates and the FFI
 /// poll loop starts only on the first listener, and tears down on
 /// the last cancel. A subscriber to either [PlayerStream.spectrum]
 /// or [PlayerStream.pcm] alone is enough to arm the pipeline; both
@@ -26,14 +26,14 @@ final class SpectrumSettings {
   /// FFT size in samples. Power of 2 between 256 and 4096. Larger
   /// = better frequency resolution at the cost of time resolution
   /// (a 2048-point FFT @ 48 kHz spans 42.7 ms of audio). 2048 is
-  /// the visualizer sweet spot — sub-50 Hz resolution to separate
+  /// the visualizer sweet spot: sub-50 Hz resolution to separate
   /// kick fundamentals from sub-bass, latency below the ~80 ms
   /// A/V sync threshold.
   final int fftSize;
 
   /// Number of perceptual bands the [FftFrame.bands] field is
-  /// bucketed into. Typical 32 / 64 / 128. Bands are log-spaced
-  /// from [bandLowHz] to [bandHighHz] — geometric edges, ratio
+  /// bucketed into. Typical 32, 64 or 128. Bands are log-spaced
+  /// from [bandLowHz] to [bandHighHz], geometric edges, ratio
   /// `(bandHighHz / bandLowHz)^(1 / bandCount)` per band.
   final int bandCount;
 
@@ -51,7 +51,7 @@ final class SpectrumSettings {
   /// universal music-visualizer choice.
   final WindowFunction window;
 
-  /// Time between [FftFrame] / [PcmFrame] emissions. 33 ms ≈ 30 fps
+  /// Time between [FftFrame] and [PcmFrame] emissions. 33 ms ≈ 30 fps
   /// (default), 16 ms ≈ 60 fps. Range 8 ms (~120 fps) to 67 ms
   /// (~15 fps); the pipeline is gated by this independently of the
   /// FFT block rate.
@@ -59,25 +59,25 @@ final class SpectrumSettings {
 
   /// EMA smoothing coefficient applied when a band's new value is
   /// **higher** than the previous frame. Range `[0, 1]`; higher =
-  /// snappier attack. 0.5 default — visualizer pops with transients
+  /// snappier attack. 0.5 default: visualizer pops with transients
   /// (kicks, snare hits) without flickering on noise.
   final double attackSmoothing;
 
   /// EMA smoothing coefficient applied when a band's new value is
   /// **lower** than the previous frame. Range `[0, 1]`; lower =
-  /// slower decay ("afterglow"). 0.1 default. Asymmetric attack /
-  /// release is the standard choice — symmetric EMA is simultaneously
+  /// slower decay ("afterglow"). 0.1 default. Asymmetric attack and
+  /// release is the standard choice; symmetric EMA is simultaneously
   /// sluggish on transients AND jittery on decays.
   final double releaseSmoothing;
 
   /// Lower edge of the dB clip range mapped to band value 0.0.
-  /// Anything below [minDb] reads as silent. -100 dB default — matches
+  /// Anything below [minDb] reads as silent. -100 dB default, matches
   /// the Web Audio API `AnalyserNode.minDecibels` default and gives
   /// quiet passages room to breathe at the bottom of the visualizer.
   final double minDb;
 
   /// Upper edge of the dB clip range mapped to band value 1.0.
-  /// Anything above [maxDb] saturates at 1.0. -30 dB default — matches
+  /// Anything above [maxDb] saturates at 1.0. -30 dB default, matches
   /// the Web Audio API `AnalyserNode.maxDecibels` default. Modern
   /// loudness-war masters animate in the upper range with peaks
   /// touching the top on transients; quieter classical material
@@ -87,7 +87,7 @@ final class SpectrumSettings {
   /// Overlap-add factor for the FFT loop. `1` runs a single FFT per
   /// emit on the latest [fftSize] samples (snappy, no interpolation
   /// between blocks). `4` (default) runs four FFTs spaced
-  /// `fftSize / 4` samples apart — the classic 75 % overlap, visibly
+  /// `fftSize / 4` samples apart: the classic 75 % overlap, visibly
   /// smoother visualizer motion at no extra latency. Higher values
   /// trade CPU for smoother curves; values must be powers of two so
   /// `fftSize / overlapFactor` is an integer hop.
@@ -136,7 +136,7 @@ final class SpectrumSettings {
          'overlapFactor must be a power of two',
        );
 
-  /// Default visualizer preset — 2048 Hann FFT at 30 fps with 64
+  /// Default visualizer preset: 2048 Hann FFT at 30 fps with 64
   /// log-spaced bands. Convenience `setSpectrum(SpectrumSettings.defaults)`
   /// to reset.
   static const SpectrumSettings defaults = SpectrumSettings();

@@ -14,7 +14,7 @@ enum MpvPlaybackState {
   /// No file loaded. UI should hide transport controls.
   idle,
 
-  /// File is opening — demuxer / decoder init, before the first audio frame.
+  /// File is opening: demuxer and decoder init, before the first audio frame.
   loading,
 
   /// Mid-playback network stall (`paused-for-cache=true`). Distinct from

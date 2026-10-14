@@ -4,7 +4,7 @@
 
 /// Internal enum for the 41 named layouts mpv recognises (mpv's
 /// `std_layout_names[]` table minus its leading `empty` placeholder, which is
-/// not a usable output layout). Private — consumers use the [Channels]
+/// not a usable output layout). Private: consumers use the [Channels]
 /// static fields (`Channels.stereo`, `Channels.fiveOneSide`, …) which
 /// wrap each member in a [Channels] instance.
 enum _Named {
@@ -66,13 +66,13 @@ enum _Named {
   /// 4.1 in ALSA channel order.
   fourOneAlsa('4.1(alsa)'),
 
-  /// Five main channels + LFE, back surrounds (DVD / Dolby Digital).
+  /// Five main channels + LFE, back surrounds (DVD or Dolby Digital).
   fiveOne('5.1'),
 
   /// 5.1 in ALSA channel order.
   fiveOneAlsa('5.1(alsa)'),
 
-  /// Five main channels + LFE, side surrounds (DTS / ATSC).
+  /// Five main channels + LFE, side surrounds (DTS or ATSC).
   fiveOneSide('5.1(side)'),
 
   /// Front + back-centre + side surrounds, no LFE.
@@ -105,7 +105,7 @@ enum _Named {
   /// 7.0 with surround-direct-left/right (rear).
   sevenZeroRear('7.0(rear)'),
 
-  /// Seven main channels + LFE — canonical 7.1.
+  /// Seven main channels + LFE, canonical 7.1.
   sevenOne('7.1'),
 
   /// 7.1 in ALSA channel order.
@@ -135,7 +135,7 @@ enum _Named {
   /// Stereo downmix (semantic alias of [stereo]).
   downmix('downmix'),
 
-  /// NHK / ITU-R BS.2051 System H immersive layout (24 channels).
+  /// NHK or ITU-R BS.2051 System H immersive layout (24 channels).
   surround222('22.2');
 
   const _Named(this.mpvValue);
@@ -146,7 +146,7 @@ enum _Named {
 /// property.
 ///
 /// Sealed union over:
-/// - [auto] / [autoSafe] — let mpv pick.
+/// - [auto] and [autoSafe]: let mpv pick.
 /// - 41 named layouts (mirror of mpv's `std_layout_names[]`).
 /// - [Channels.custom] for raw mpv strings (comma-separated layouts or
 ///   speaker-tag arrays such as `'fl-fr-fc-bl-br-sl-sr-lfe'`).
@@ -173,139 +173,139 @@ sealed class Channels {
   /// explicitly advertises support. `audio-channels=auto-safe`.
   static const Channels autoSafe = _StdChannels(_Named.autoSafe);
 
-  // ── Named layouts (41 — mirror of mpv std_layout_names[]) ──────────
+  // ── Named layouts (41, mirror of mpv std_layout_names[]) ──────────
 
-  /// `mono` — single front-centre channel.
+  /// `mono`: single front-centre channel.
   static const Channels mono = _StdChannels(_Named.mono);
 
-  /// `1.0` — alias of [mono].
+  /// `1.0`: alias of [mono].
   static const Channels oneZero = _StdChannels(_Named.oneZero);
 
-  /// `stereo` — front-left + front-right.
+  /// `stereo`: front-left + front-right.
   static const Channels stereo = _StdChannels(_Named.stereo);
 
-  /// `2.0` — alias of [stereo].
+  /// `2.0`: alias of [stereo].
   static const Channels twoZero = _StdChannels(_Named.twoZero);
 
-  /// `2.1` — two main channels + LFE.
+  /// `2.1`: two main channels + LFE.
   static const Channels twoOne = _StdChannels(_Named.twoOne);
 
-  /// `3.0` — front-left + front-right + front-centre.
+  /// `3.0`: front-left + front-right + front-centre.
   static const Channels threeZero = _StdChannels(_Named.threeZero);
 
-  /// `3.0(back)` — front pair + back-centre.
+  /// `3.0(back)`: front pair + back-centre.
   static const Channels threeZeroBack = _StdChannels(_Named.threeZeroBack);
 
-  /// `4.0` — front pair + front-centre + back-centre.
+  /// `4.0`: front pair + front-centre + back-centre.
   static const Channels fourZero = _StdChannels(_Named.fourZero);
 
-  /// `quad` — front pair + back pair.
+  /// `quad`: front pair + back pair.
   static const Channels quad = _StdChannels(_Named.quad);
 
-  /// `quad(side)` — front pair + side surrounds (instead of back).
+  /// `quad(side)`: front pair + side surrounds (instead of back).
   static const Channels quadSide = _StdChannels(_Named.quadSide);
 
-  /// `3.1` — three main channels + LFE.
+  /// `3.1`: three main channels + LFE.
   static const Channels threeOne = _StdChannels(_Named.threeOne);
 
-  /// `3.1(back)` — 3.1 with back-centre.
+  /// `3.1(back)`: 3.1 with back-centre.
   static const Channels threeOneBack = _StdChannels(_Named.threeOneBack);
 
-  /// `5.0` — five main channels (front + back surrounds), no LFE.
+  /// `5.0`: five main channels (front + back surrounds), no LFE.
   static const Channels fiveZero = _StdChannels(_Named.fiveZero);
 
-  /// `5.0(alsa)` — 5.0 in ALSA channel order.
+  /// `5.0(alsa)`: 5.0 in ALSA channel order.
   static const Channels fiveZeroAlsa = _StdChannels(_Named.fiveZeroAlsa);
 
-  /// `5.0(side)` — 5.0 with side surrounds (instead of back).
+  /// `5.0(side)`: 5.0 with side surrounds (instead of back).
   static const Channels fiveZeroSide = _StdChannels(_Named.fiveZeroSide);
 
-  /// `4.1` — four main channels + LFE.
+  /// `4.1`: four main channels + LFE.
   static const Channels fourOne = _StdChannels(_Named.fourOne);
 
-  /// `4.1(alsa)` — 4.1 in ALSA channel order.
+  /// `4.1(alsa)`: 4.1 in ALSA channel order.
   static const Channels fourOneAlsa = _StdChannels(_Named.fourOneAlsa);
 
-  /// `5.1` — five main channels + LFE, back surrounds (DVD / Dolby
+  /// `5.1`: five main channels + LFE, back surrounds (DVD or Dolby
   /// Digital canonical).
   static const Channels fiveOne = _StdChannels(_Named.fiveOne);
 
-  /// `5.1(alsa)` — 5.1 in ALSA channel order.
+  /// `5.1(alsa)`: 5.1 in ALSA channel order.
   static const Channels fiveOneAlsa = _StdChannels(_Named.fiveOneAlsa);
 
-  /// `5.1(side)` — five main channels + LFE, side surrounds (DTS / ATSC).
+  /// `5.1(side)`: five main channels + LFE, side surrounds (DTS or ATSC).
   static const Channels fiveOneSide = _StdChannels(_Named.fiveOneSide);
 
-  /// `6.0` — front + back-centre + side surrounds, no LFE.
+  /// `6.0`: front + back-centre + side surrounds, no LFE.
   static const Channels sixZero = _StdChannels(_Named.sixZero);
 
-  /// `6.0(front)` — 6.0 with front-left/right-of-centre.
+  /// `6.0(front)`: 6.0 with front-left/right-of-centre.
   static const Channels sixZeroFront = _StdChannels(_Named.sixZeroFront);
 
-  /// `hexagonal` — six-channel hexagonal layout.
+  /// `hexagonal`: six-channel hexagonal layout.
   static const Channels hexagonal = _StdChannels(_Named.hexagonal);
 
-  /// `6.1` — six main channels + LFE.
+  /// `6.1`: six main channels + LFE.
   static const Channels sixOne = _StdChannels(_Named.sixOne);
 
-  /// `6.1(back)` — 6.1 with back surrounds.
+  /// `6.1(back)`: 6.1 with back surrounds.
   static const Channels sixOneBack = _StdChannels(_Named.sixOneBack);
 
-  /// `6.1(top)` — 6.1 with top-centre channel.
+  /// `6.1(top)`: 6.1 with top-centre channel.
   static const Channels sixOneTop = _StdChannels(_Named.sixOneTop);
 
-  /// `6.1(front)` — 6.1 with front-left/right-of-centre.
+  /// `6.1(front)`: 6.1 with front-left/right-of-centre.
   static const Channels sixOneFront = _StdChannels(_Named.sixOneFront);
 
-  /// `7.0` — seven main channels (front + back + side), no LFE.
+  /// `7.0`: seven main channels (front + back + side), no LFE.
   static const Channels sevenZero = _StdChannels(_Named.sevenZero);
 
-  /// `7.0(front)` — 7.0 with front wide channels.
+  /// `7.0(front)`: 7.0 with front wide channels.
   static const Channels sevenZeroFront = _StdChannels(_Named.sevenZeroFront);
 
-  /// `7.0(rear)` — 7.0 with surround-direct-left/right (rear).
+  /// `7.0(rear)`: 7.0 with surround-direct-left/right (rear).
   static const Channels sevenZeroRear = _StdChannels(_Named.sevenZeroRear);
 
-  /// `7.1` — seven main channels + LFE, canonical layout.
+  /// `7.1`: seven main channels + LFE, canonical layout.
   static const Channels sevenOne = _StdChannels(_Named.sevenOne);
 
-  /// `7.1(alsa)` — 7.1 in ALSA channel order.
+  /// `7.1(alsa)`: 7.1 in ALSA channel order.
   static const Channels sevenOneAlsa = _StdChannels(_Named.sevenOneAlsa);
 
-  /// `7.1(wide)` — 7.1 with front wide channels (instead of side
+  /// `7.1(wide)`: 7.1 with front wide channels (instead of side
   /// surrounds).
   static const Channels sevenOneWide = _StdChannels(_Named.sevenOneWide);
 
-  /// `7.1(wide-side)` — 7.1 with both wide-fronts AND side surrounds
+  /// `7.1(wide-side)`: 7.1 with both wide-fronts AND side surrounds
   /// (no back surrounds).
   static const Channels sevenOneWideSide = _StdChannels(
     _Named.sevenOneWideSide,
   );
 
-  /// `7.1(top)` — 7.1 with top-front-left/right (height channels).
+  /// `7.1(top)`: 7.1 with top-front-left/right (height channels).
   static const Channels sevenOneTop = _StdChannels(_Named.sevenOneTop);
 
-  /// `7.1(rear)` — 7.1 with surround-direct-left/right (rear).
+  /// `7.1(rear)`: 7.1 with surround-direct-left/right (rear).
   static const Channels sevenOneRear = _StdChannels(_Named.sevenOneRear);
 
-  /// `octagonal` — eight-channel octagonal layout.
+  /// `octagonal`: eight-channel octagonal layout.
   static const Channels octagonal = _StdChannels(_Named.octagonal);
 
-  /// `cube` — front pair + back pair + four top channels.
+  /// `cube`: front pair + back pair + four top channels.
   static const Channels cube = _StdChannels(_Named.cube);
 
-  /// `hexadecagonal` — 16-channel cinema-grade overhead array.
+  /// `hexadecagonal`: 16-channel cinema-grade overhead array.
   static const Channels hexadecagonal = _StdChannels(_Named.hexadecagonal);
 
-  /// `downmix` — stereo downmix (semantic alias of [stereo]).
+  /// `downmix`: stereo downmix (semantic alias of [stereo]).
   static const Channels downmix = _StdChannels(_Named.downmix);
 
-  /// `22.2` — NHK / ITU-R BS.2051 System H immersive layout (24 channels).
+  /// `22.2`: NHK or ITU-R BS.2051 System H immersive layout (24 channels).
   static const Channels surround222 = _StdChannels(_Named.surround222);
 
   // ── Escape ─────────────────────────────────────────────────────────
 
-  /// Any other mpv-recognised channel string — comma-separated layouts
+  /// Any other mpv-recognised channel string: comma-separated layouts
   /// or raw speaker-tag lists (e.g. `'fl-fr-fc-bl-br-sl-sr-lfe'`).
   /// Forwarded to mpv verbatim.
   const factory Channels.custom(String mpvLayout) = ChannelsCustom._;
@@ -325,7 +325,7 @@ sealed class Channels {
 }
 
 /// Pattern-matching variant for any of the 41 named layouts. Carries the
-/// internal [_Named] tag — consumers compare via `==` against the
+/// internal [_Named] tag; consumers compare via `==` against the
 /// `Channels.<name>` static fields, or pattern-match the outer
 /// [Channels] sealed type.
 final class _StdChannels extends Channels {
@@ -347,7 +347,7 @@ final class _StdChannels extends Channels {
   String toString() => 'Channels.${name.name}';
 }
 
-/// Custom-string variant — escape hatch for mpv layouts beyond the
+/// Custom-string variant: escape hatch for mpv layouts beyond the
 /// 41 named ones (comma-separated layouts, raw speaker tags, future mpv
 /// additions).
 final class ChannelsCustom extends Channels {

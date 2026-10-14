@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// HLS variant-selection policy for adaptive streams — mpv's `--hls-bitrate`.
+/// HLS variant-selection policy for adaptive streams: mpv's `--hls-bitrate`.
 ///
 /// Chooses which audio rendition mpv picks from an HLS master playlist. The
 /// per-variant bitrate *values* are read-side on `MpvTrack.hlsBitrate`; this
@@ -12,10 +12,10 @@ enum HlsBitrate {
   /// Disable HLS bitrate-based selection (mpv's `no`).
   no('no'),
 
-  /// Prefer the lowest-bitrate variant — least bandwidth (mpv's `min`).
+  /// Prefer the lowest-bitrate variant, least bandwidth (mpv's `min`).
   min('min'),
 
-  /// Prefer the highest-bitrate variant — best quality (mpv's `max`).
+  /// Prefer the highest-bitrate variant, best quality (mpv's `max`).
   /// mpv's default.
   max('max');
 
