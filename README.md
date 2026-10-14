@@ -1754,7 +1754,7 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `buffering` | `bool` | - | `true` between `start-file` and `file-loaded`. |
 | `buffer` | `Duration` | - | Absolute timestamp the demuxer has buffered up to. |
 | `bufferDuration` | `Duration` | - | Headroom ahead of the playhead (`demuxer-cache-duration`). |
-| `bufferingPercentage` | `double` (0-100) | - | Cache fill as a percentage of `state.cache.secs`, computed by the player. |
+| `bufferingPercentage` | `double` (0-100) | - | Cache fill as a percentage of `state.cache.secs`, computed by the player. Near 0 with mpv's default `cache-secs` of 1000 hours: for a buffering indicator use `cacheBufferingState`, or `bufferDuration` against your own target. |
 | `volume` | `double` | `setVolume` | 0-100; values above 100 amplify. |
 | `mute` | `bool` | `setMute` |  |
 | `rate` | `double` | `setRate` | Playback speed multiplier. |

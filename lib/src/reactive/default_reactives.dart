@@ -22,9 +22,9 @@ import '../types/state/prefetch_state.dart';
 import 'reactive_property.dart';
 
 /// Bundles the [ReactiveProperty]s that back state fields the registry
-/// "owns" — for the most part one per observed mpv property, but a few
-/// (`playing`, `audioParams`, `cache`, `replayGain`) are aggregate cells
-/// that several specs share so dedup happens on the full struct.
+/// "owns": for the most part one per observed mpv property, but a few
+/// (`audioParams`, `cache`, `replayGain`) are aggregate cells that several
+/// specs share so dedup happens on the full struct.
 class DefaultPropertyReactives {
   /// Creates the bundle with every cell seeded to mpv's documented default.
   DefaultPropertyReactives();
@@ -55,7 +55,8 @@ class DefaultPropertyReactives {
     Duration.zero,
   );
 
-  /// Buffered-ahead time as a wall-clock instant (`demuxer-cache-time`).
+  /// Absolute timestamp in the file the demuxer has buffered up to
+  /// (`demuxer-cache-time`).
   final ReactiveProperty<Duration> buffer = ReactiveProperty<Duration>(
     Duration.zero,
   );

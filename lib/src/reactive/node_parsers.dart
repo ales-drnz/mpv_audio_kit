@@ -142,8 +142,9 @@ Map<String, String>? parseMetadataNode(dynamic raw) {
 /// into a 0..100 buffering percentage normalized against the user's
 /// `cache-secs` target.
 ///
-/// Falls back to a 1-second denominator if [cacheSecsTarget] is zero
-/// (which can happen during boot before `cache-secs` is observed). The
+/// With mpv's default `cache-secs` (1000 hours) the result stays near 0:
+/// a minute of cache is 0.0017 %. Falls back to a 1-second denominator if
+/// [cacheSecsTarget] is zero (a `cache-secs` of 0 set by the app). The
 /// result is clamped to `[0, 100]` because mpv may overshoot the target
 /// briefly when rebuffering.
 double parseDemuxerCacheStateNode(dynamic raw, Duration cacheSecsTarget) {

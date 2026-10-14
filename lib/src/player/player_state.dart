@@ -125,7 +125,12 @@ final class PlayerState {
   /// or any progress-bar UI without adding [position].
   final Duration buffer;
 
-  /// Buffer fill percentage (0.0–100.0).
+  /// Cache fill as a percentage (0.0 to 100.0) of [CacheSettings.secs].
+  ///
+  /// With mpv's default `cache-secs` (1000 hours) this stays near 0 on any
+  /// real stream. For a buffering indicator use [cacheBufferingState]
+  /// (mpv's own 0 to 100 while it waits for data), or [bufferDuration]
+  /// (the headroom ahead of [position]) against a target of your choice.
   final double bufferingPercentage;
 
   /// Rich demuxer cache snapshot — buffered time ranges + network-cache flags

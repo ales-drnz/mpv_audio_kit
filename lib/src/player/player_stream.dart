@@ -268,10 +268,14 @@ class PlayerStream {
   /// Emits `true` while buffering data; `false` once playback resumes.
   final Stream<bool> buffering;
 
-  /// Emits the current demuxer buffer depth as a [Duration].
+  /// Emits the absolute timestamp the demuxer has buffered up to
+  /// (`demuxer-cache-time`), not a depth: [bufferDuration] is the headroom
+  /// ahead of the playhead. See [PlayerState.buffer].
   final Stream<Duration> buffer;
 
-  /// Emits the buffer fill percentage (0.0–100.0).
+  /// Emits the cache fill as a percentage (0.0 to 100.0) of
+  /// [CacheSettings.secs]. Near 0 with mpv's default `cache-secs` of 1000
+  /// hours: see [PlayerState.bufferingPercentage] for what to use instead.
   final Stream<double> bufferingPercentage;
 
   /// Emits the rich demuxer cache state (buffered ranges + network flags).
