@@ -236,6 +236,58 @@ void main() {
       expect(native[id].released, isTrue);
     });
 
+    test('a write the reader refuses stops feeding', () async {
+      final s = PcmSource.create(_mono);
+      final id = _id(s);
+      native.open(id);
+      native.closeReader(id);
+      s.add(_ramp(0, 100));
+      expect(s.isDone, isTrue);
+      expect(s.state, PcmSourceState.stopped);
+      await s.done;
+    });
+
+    test(
+      'abort lets a player leave the entry before the native abort',
+      () async {
+        final s = PcmSource.create(_mono);
+        final id = _id(s);
+        native.open(id);
+        final left = Completer<void>();
+        var cuts = 0;
+        Future<void>? cut(PcmSource source) {
+          cuts++;
+          return left.future;
+        }
+
+        s
+          ..addCutter(cut)
+          ..addCutter(cut);
+        s.abort();
+        expect(cuts, 1);
+        expect(s.state, PcmSourceState.aborted);
+        expect(s.isDone, isTrue);
+        // Still readable until the player has left the entry.
+        expect(native[id].state, PcmNative.stateReading);
+        expect(native[id].released, isFalse);
+        left.complete();
+        await _flush();
+        await _flush();
+        expect(native[id].state, PcmNative.stateAborted);
+        expect(native[id].released, isTrue);
+      },
+    );
+
+    test('a cutter with nothing to do aborts at once', () {
+      final s = PcmSource.create(_mono);
+      final id = _id(s);
+      s
+        ..addCutter((_) => null)
+        ..abort();
+      expect(native[id].state, PcmNative.stateAborted);
+      expect(native[id].released, isTrue);
+    });
+
     test('a source released behind its back reads as aborted', () async {
       final s = PcmSource.create(_mono);
       native.releaseAll();
@@ -373,13 +425,17 @@ void main() {
         pcmLoadOptions(m.uri),
         'demuxer=rawaudio,demuxer-rawaudio-format=s16le,'
         'demuxer-rawaudio-rate=24000,demuxer-rawaudio-channels=1,'
-        'gapless-audio=no',
+        'cache-pause=no,demuxer-termination-timeout=0,gapless-audio=no',
       );
       expect(
         pcmLoadOptions(PcmSource.create(_stereo).toMedia().uri),
         contains('demuxer-rawaudio-format=floatle'),
       );
       expect(pcmLoadOptions('https://x/y.mp3'), isNull);
+      final low = PcmSource.create(_mono, lowLatency: true);
+      expect(pcmLoadOptions(low.toMedia().uri), endsWith(',audio-buffer=0.1'));
+      expect(pcmLoadOptions(m.uri), isNot(contains('audio-buffer')));
+      low.abort();
       s.abort();
       expect(() => pcmLoadOptions(m.uri), throwsArgumentError);
       expect(() => pcmLoadOptions('mak-pcm://zz'), throwsArgumentError);

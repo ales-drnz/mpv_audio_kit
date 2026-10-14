@@ -87,6 +87,7 @@ abstract interface class PlayerApi {
     PcmFormat format, {
     bool play = true,
     Duration maxBuffered = const Duration(seconds: 30),
+    bool lowLatency = false,
     Map<String, Object?>? extras,
   });
 

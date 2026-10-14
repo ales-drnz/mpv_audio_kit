@@ -609,6 +609,9 @@ abstract class _PlayerBase {
   /// aborted at dispose.
   final Set<PcmSource> _pcmSources = {};
 
+  /// See `_PcmModule` (player_pcm.part.dart).
+  Future<void>? _cutPcm(PcmSource source);
+
   /// The [Media] of each playlist entry this player loaded, by mpv's
   /// `playlist_entry_id`. Unlike [_mediaCache], two entries with the same
   /// URI keep their own `extras`. Pruned to the live entries on every

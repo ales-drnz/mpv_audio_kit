@@ -59,6 +59,10 @@ enum PcmSourceState {
 /// await source.close();
 /// ```
 ///
+/// With prefetch on, the player opens the next live source in its queue
+/// while the current entry plays: a source it opened and then left (a skip
+/// or a jump elsewhere) is [PcmSourceState.stopped].
+///
 /// Each source is read once: it cannot be played again, and seeking is
 /// not possible (a seek on it does nothing). Its length is not known in
 /// advance: `state.duration` follows the audio received so far.
@@ -73,12 +77,17 @@ final class PcmSource {
   /// [ready] holds back and [addStream] pauses its stream. [add] never
   /// refuses audio: past it, chunks wait in Dart memory.
   ///
+  /// [lowLatency] halves the audio output buffer for this entry (100 ms in
+  /// place of 200 ms): playback starts about 80 ms sooner, with less
+  /// margin against a late chunk or a busy device.
+  ///
   /// Call `MpvAudioKit.ensureInitialized` first, as for a [Player]. Throws
   /// [UnsupportedError] when the loaded libmpv has no live PCM input (a
   /// custom build without the mpv_audio_kit patches).
   static PcmSource create(
     PcmFormat format, {
     Duration maxBuffered = const Duration(seconds: 30),
+    bool lowLatency = false,
   }) {
     format.validate();
     if (maxBuffered <= Duration.zero) {
@@ -92,6 +101,8 @@ final class PcmSource {
     }
     source._id = id;
     _formats[id] = format;
+    if (lowLatency) _lowLatency.add(id);
+    _live[id] = WeakReference(source);
     _finalizer.attach(source, _NativeRef(native, id), detach: source);
     _watch(source);
     return source;
@@ -123,6 +134,7 @@ final class PcmSource {
   Completer<void>? _closed;
   Completer<void>? _ready;
   final Completer<void> _done = Completer<void>();
+  final List<Future<void>? Function(PcmSource)> _cutters = [];
 
   /// Where the source is in its life.
   PcmSourceState get state => _state;
@@ -283,14 +295,45 @@ final class PcmSource {
     return completer.future;
   }
 
-  /// Stops feeding and cuts the playback of this source: the native
-  /// buffer and the queued chunks are dropped and the player's entry ends
-  /// as soon as the audio output has played what it already holds (a
-  /// fraction of a second). Does nothing once the source is [done].
+  /// Stops feeding and cuts the playback of this source at once: the
+  /// queued chunks are dropped, and a player playing it moves to its next
+  /// entry, or stops when there is none (as `next(force: true)`). The
+  /// audio output does not play out what it holds.
+  ///
+  /// A source aborted before a player opened it fails to load there, so
+  /// abort a queued source only to drop it. Does nothing once the source
+  /// is [done].
   void abort() {
     if (isDone) return;
-    if (!_released) _native.abort(_id);
-    _end(PcmSourceState.aborted);
+    final cuts = [for (final cut in _cutters) ?cut(this)];
+    if (cuts.isEmpty) {
+      if (!_released) _native.abort(_id);
+      _end(PcmSourceState.aborted);
+      return;
+    }
+    // The player leaves the entry first: aborting the native side now
+    // would end it as a normal end of file, which plays out the audio
+    // output, and could let the player reach the next entry before the
+    // cut and skip that one instead.
+    _end(PcmSourceState.aborted, release: false);
+    unawaited(
+      Future.wait(cuts)
+          .timeout(const Duration(seconds: 1))
+          .then<void>((_) {}, onError: (Object _) {})
+          .whenComplete(() {
+            if (_released) return;
+            _native.abort(_id);
+            _release();
+          }),
+    );
+  }
+
+  /// Registers [cut], called by [abort] while the source is not done: a
+  /// player that loaded it leaves the entry when it is current, and
+  /// returns when that is done, or `null` when it has nothing to do.
+  @internal
+  void addCutter(Future<void>? Function(PcmSource source) cut) {
+    if (!isDone && !_cutters.contains(cut)) _cutters.add(cut);
   }
 
   @override
@@ -337,9 +380,12 @@ final class PcmSource {
       _id,
       n == bytes.length ? bytes : Uint8List.sublistView(bytes, 0, n),
     );
+    // Out of memory: the chunk stays queued for the next poll.
+    if (rc == PcmNative.errNoMemory) return 0;
     if (rc < 0) {
+      // The reader closed, or the source was aborted: stop feeding.
       _sync();
-      if (!isDone) abort();
+      if (!isDone) _end(PcmSourceState.aborted);
       return -1;
     }
     return rc;
@@ -405,12 +451,13 @@ final class PcmSource {
   }
 
   /// Settles every waiter and lets the native side go.
-  void _end(PcmSourceState state) {
+  void _end(PcmSourceState state, {bool release = true}) {
     _state = state;
     _queue.clear();
     _queuedBytes = 0;
     _carryLength = 0;
-    _release();
+    _cutters.clear();
+    if (release) _release();
     final closed = _closed;
     if (closed != null && !closed.isCompleted) closed.complete();
     final ready = _ready;
@@ -426,6 +473,8 @@ final class PcmSource {
     _finalizer.detach(this);
     _native.release(_id);
     _formats.remove(_id);
+    _lowLatency.remove(_id);
+    _live.remove(_id);
   }
 
   // ── polling ──────────────────────────────────────────────────────────
@@ -479,6 +528,10 @@ final class PcmSource {
   // The format of every source not yet released, for the load options of
   // its media.
   static final Map<int, PcmFormat> _formats = {};
+  static final Set<int> _lowLatency = {};
+
+  // Every source not yet released, for the player that loads its media.
+  static final Map<int, WeakReference<PcmSource>> _live = {};
 
   /// Test-only: runs one poll of every source now.
   @visibleForTesting
@@ -501,6 +554,14 @@ final class _NativeRef {
   final int id;
 }
 
+/// The live source [uri] names, while it is not released.
+@internal
+PcmSource? pcmSourceFor(String uri) {
+  if (!isPcmUri(uri)) return null;
+  final id = int.tryParse(uri.substring(PcmSource._scheme.length));
+  return id == null ? null : PcmSource._live[id]?.target;
+}
+
 /// Whether [uri] names a live PCM source.
 @internal
 bool isPcmUri(String uri) => uri.startsWith(PcmSource._scheme);
@@ -509,8 +570,8 @@ bool isPcmUri(String uri) => uri.startsWith(PcmSource._scheme);
 /// mpv's raw audio demuxer set to the source's format, and no gapless
 /// audio, so the entry ends once its last sample has played rather than
 /// once the audio output holds it (a buffer earlier, with nothing after
-/// it to join). `null` when [uri] is not one. Throws [ArgumentError] for a source that is released or
-/// was never created in this isolate.
+/// it to join). `null` when [uri] is not one. Throws [ArgumentError] for
+/// a source that is released or was never created in this isolate.
 @internal
 String? pcmLoadOptions(String uri) {
   if (!isPcmUri(uri)) return null;
@@ -523,11 +584,19 @@ String? pcmLoadOptions(String uri) {
       'is not a live PcmSource: it is done, or was not created here',
     );
   }
+  // cache-pause=no: a pause in the input (between two sentences) would
+  // otherwise hold playback until a second is buffered, a lag that stays
+  // for the rest of the entry. demuxer-termination-timeout=0: stop, next
+  // or a dispose with a starved reader return at once instead of after
+  // 100 ms.
   return 'demuxer=rawaudio,'
       'demuxer-rawaudio-format=${format.encoding.mpvValue},'
       'demuxer-rawaudio-rate=${format.sampleRate},'
       'demuxer-rawaudio-channels=${format.channels},'
-      'gapless-audio=no';
+      'cache-pause=no,'
+      'demuxer-termination-timeout=0,'
+      'gapless-audio=no'
+      '${PcmSource._lowLatency.contains(id) ? ',audio-buffer=0.1' : ''}';
 }
 
 extension on PcmFormat {
