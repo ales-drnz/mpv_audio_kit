@@ -33,8 +33,24 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
   // Last coverage seen while DECODING, to skip re-emitting unchanged partials.
   int? _lastDecodeCoverage;
 
+  // Last envelope emitted while it grows with playback (progressive or
+  // rolling). Polled on a timer, it is unchanged while paused: emitting it
+  // again would copy up to a few MB to the UI for nothing. A new listener
+  // still gets it from the player's replay.
+  WaveformData? _lastGrowing;
+
   @override
-  void onDrop() => _lastDecodeCoverage = null;
+  void onDrop() {
+    _lastDecodeCoverage = null;
+    _lastGrowing = null;
+  }
+
+  void _emitGrowing(WaveformData data) {
+    final last = _lastGrowing;
+    if (last != null && _sameEnvelope(last, data)) return;
+    _lastGrowing = data;
+    emit(data);
+  }
 
   @override
   void onData(Map<Object?, Object?> value) {
@@ -98,7 +114,7 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
         filled: safeFilled(min),
         live: true,
       );
-      emit(data);
+      _emitGrowing(data);
       return;
     }
 
@@ -110,6 +126,7 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
     if (decoding && durationUs > 0 && haveBins) {
       if (coverageBins == null || coverageBins != _lastDecodeCoverage) {
         _lastDecodeCoverage = coverageBins;
+        _lastGrowing = null;
         final data = WaveformData(
           duration: Duration(microseconds: durationUs),
           min: min,
@@ -140,14 +157,51 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
       }
       // Progressive (network) envelope grows: keep the timer running so
       // each poll drives the native fold and emits the grown envelope.
-      emit(data);
+      _emitGrowing(data);
       return;
     }
     if (state == 'failed') {
       // No envelope is coming (true live / unsupported). Stop polling
       // and clear — there is nothing further to wait for.
       stopPolling();
+      _lastGrowing = null;
       emit(null);
     }
   }
+}
+
+/// Whether [a] and [b] carry the same axis and the same bins.
+bool _sameEnvelope(WaveformData a, WaveformData b) =>
+    a.live == b.live &&
+    a.start == b.start &&
+    a.duration == b.duration &&
+    _sameFloats(a.min, b.min) &&
+    _sameFloats(a.max, b.max) &&
+    _sameFloatsOrNull(a.rms, b.rms) &&
+    _sameBytes(a.filled, b.filled);
+
+bool _sameFloatsOrNull(Float32List? a, Float32List? b) =>
+    a == null || b == null ? a == b : _sameFloats(a, b);
+
+// Bit compare: NaN equals itself, 0.0 and -0.0 differ, as in the bytes.
+bool _sameFloats(Float32List a, Float32List b) =>
+    a.length == b.length &&
+    _sameWords(
+      a.buffer.asUint32List(a.offsetInBytes, a.length),
+      b.buffer.asUint32List(b.offsetInBytes, b.length),
+    );
+
+bool _sameWords(Uint32List a, Uint32List b) {
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+bool _sameBytes(Uint8List a, Uint8List b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
