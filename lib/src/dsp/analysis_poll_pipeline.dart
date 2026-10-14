@@ -17,6 +17,9 @@ import 'dsp_async_io.dart';
 /// timer. On the last cancel the property goes back to `false` and the
 /// timer stops, so an idle analysis costs nothing.
 ///
+/// The enable property is a static of the libmpv process, shared by every
+/// player: [dispose] turns it off when this pipeline turned it on.
+///
 /// A subclass decodes each poll in [onData]: it [emit]s partial values and
 /// calls [finish] with the final one, which stops polling until the next
 /// [reset] (a new file) or [clear] (no file).
@@ -91,6 +94,9 @@ abstract class AnalysisPollPipeline<T extends Object> {
     if (_disposed) return;
     _disposed = true;
     stopPolling();
+    // The flag outlives this player: left on, the next player in the
+    // process would analyze every file it loads.
+    if (_enabled) unawaited(_asyncSet(_enabledProperty, 'no'));
     if (!_ctrl.isClosed) await _ctrl.close();
   }
 
