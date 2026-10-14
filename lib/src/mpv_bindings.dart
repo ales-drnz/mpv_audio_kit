@@ -30,7 +30,8 @@ abstract final class MpvError {
   /// Memory allocation failed (`MPV_ERROR_NOMEM`).
   static const int mpvErrorNomem = -2;
 
-  /// The mpv core was not configured/initialized (`MPV_ERROR_UNINITIALIZED`).
+  /// The mpv core was not configured or initialized
+  /// (`MPV_ERROR_UNINITIALIZED`).
   static const int mpvErrorUninitialized = -3;
 
   /// A function received an invalid parameter (`MPV_ERROR_INVALID_PARAMETER`).
@@ -63,7 +64,7 @@ abstract final class MpvError {
   /// A command failed during execution (`MPV_ERROR_COMMAND`).
   static const int mpvErrorCommand = -12;
 
-  /// Loading the requested file/URL failed (`MPV_ERROR_LOADING_FAILED`).
+  /// Loading the requested file or URL failed (`MPV_ERROR_LOADING_FAILED`).
   static const int mpvErrorLoadingFailed = -13;
 
   /// Initializing the audio output failed (`MPV_ERROR_AO_INIT_FAILED`).
@@ -313,7 +314,7 @@ final class MpvEventLogMessage extends Struct {
 // ---------------------------------------------------------------------------
 
 /// FFI layout of `mpv_node`, mpv's tagged-union container for arbitrary
-/// property/command values.
+/// property and command values.
 final class MpvNode extends Struct {
   /// The value union; the active member is selected by [format].
   external MpvNodeUnion u;
@@ -340,7 +341,7 @@ final class MpvNodeUnion extends Union {
   @Double()
   external double double_;
 
-  /// List/map contents, valid for `MPV_FORMAT_NODE_ARRAY` or `_NODE_MAP`.
+  /// List or map contents, valid for `MPV_FORMAT_NODE_ARRAY` or `_NODE_MAP`.
   external Pointer<MpvNodeList> list;
 
   /// Byte-array contents, valid when the node format is
@@ -722,7 +723,7 @@ class MpvLibrary {
     // isLeaf: documented non-blocking and callback-free (libmpv client.h),
     // so the call skips the generated trampoline's thread-state transition.
     // NEVER mark a call that can block on the core (wait_event, command,
-    // set/get property) or re-enter Dart as leaf.
+    // set or get property) or re-enter Dart as leaf.
     mpvWakeup = lib.lookupFunction<_MpvWakeupNative, MpvWakeup>(
       'mpv_wakeup',
       isLeaf: true,
@@ -744,7 +745,7 @@ class MpvLibrary {
     );
     // The async variants enqueue on the core's dispatch and return without
     // waiting for the playloop (verified against the bundled source:
-    // `run_async` = reserve_reply + mp_dispatch_enqueue; name/value are
+    // `run_async` = reserve_reply + mp_dispatch_enqueue; name and value are
     // deep-copied first). They still take short-lived internal locks, so
     // they are NOT leaf-safe.
     mpvSetPropertyAsync = lib

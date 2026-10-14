@@ -36,12 +36,12 @@ class DefaultPropertyReactives {
   /// Actual-output axis: `true` only while mpv is genuinely producing
   /// audio. Mirrors `core-idle` inverted, so it toggles transiently on
   /// every seek and while buffering. Use it for spinners, not the
-  /// play/pause button.
+  /// play-pause button.
   final ReactiveProperty<bool> playing = ReactiveProperty<bool>(false);
 
-  /// User intent to play (the play/pause axis). Distinct from [playing]
+  /// User intent to play (the play-pause axis). Distinct from [playing]
   /// (which mirrors `core-idle`, actual output). Driven by the
-  /// play/pause/open/stop call sites plus an idle-active reset, never by
+  /// play, pause, open and stop call sites plus an idle-active reset, never by
   /// mpv's `pause` property; unaffected by seeking or buffering.
   final ReactiveProperty<bool> playWhenReady = ReactiveProperty<bool>(false);
 
@@ -105,7 +105,7 @@ class DefaultPropertyReactives {
       ReactiveProperty<AudioParams>(const AudioParams());
 
   /// Hardware-side audio parameters (`audio-out-params`): a single
-  /// node-map; mpv exposes no codec/codec-name siblings on the output side.
+  /// node-map; mpv exposes no codec or codec-name siblings on the output side.
   final ReactiveProperty<AudioParams> audioOutParamsNode =
       ReactiveProperty<AudioParams>(const AudioParams());
 

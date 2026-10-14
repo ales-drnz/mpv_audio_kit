@@ -120,7 +120,7 @@ final class LogError extends PlayerError {
 
 /// Convenience predicates for [EndFileError].
 extension EndFileErrorX on EndFileError {
-  /// Whether this is likely a loading/network failure.
+  /// Whether this is likely a loading or network failure.
   bool get isLoadingError => code == MpvError.mpvErrorLoadingFailed;
 
   /// Whether the audio output failed to initialize.

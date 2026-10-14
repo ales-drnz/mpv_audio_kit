@@ -24,8 +24,8 @@ import '../types/enums/loop.dart';
 /// fields the controller does not look at).
 @internal
 class MediaSessionInputs {
-  /// User intent to play, driven by the play/pause/open/stop call sites.
-  /// This is the axis the OS play/pause button binds to, stable across
+  /// User intent to play, driven by the play, pause, open and stop call sites.
+  /// This is the axis the OS play-pause button binds to, stable across
   /// seeks and buffering, so the button never flickers while scrubbing.
   /// (Deliberately NOT `core-idle`, which toggles on every seek.)
   final Stream<bool> playWhenReady;
@@ -47,7 +47,7 @@ class MediaSessionInputs {
   /// Every PLAYBACK_RESTART, irrespective of cause (seek OR file load).
   /// Drives the forced position re-sync to the OS bridge so the slider
   /// snaps to the landed position (e.g. ~0 on a playlist auto-advance).
-  /// The OS play/pause button is bound to [playWhenReady] (stable across
+  /// The OS play-pause button is bound to [playWhenReady] (stable across
   /// seeks), so no seek-transient suppression is needed here.
   final Stream<void> seekCompleted;
 
@@ -58,7 +58,7 @@ class MediaSessionInputs {
   /// Loop mode aggregate (`loop-file` + `loop-playlist`).
   final Stream<Loop> loop;
 
-  /// Shuffle on/off.
+  /// Shuffle on or off.
   final Stream<bool> shuffle;
 
   /// Track duration. Drives the OS scrubber's end-of-track marker.

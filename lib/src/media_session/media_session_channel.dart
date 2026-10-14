@@ -96,7 +96,7 @@ class MediaSessionMetadataSnapshot {
 
 /// Effective playback snapshot pushed to native. The OS extrapolates
 /// [position] forward using [rate] from receipt time, so this is pushed
-/// on state changes (play/pause/seek), not on every `time-pos` tick.
+/// on state changes (play, pause, seek), not on every `time-pos` tick.
 /// [seekable] mirrors mpv's `seekable`: the native side gates the OS
 /// scrubber on it and treats a non-seekable source as a live stream.
 @internal
@@ -118,7 +118,7 @@ class MediaSessionPlaybackSnapshot {
   final bool completed;
 
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
-  /// opposed to a plain play/pause/rate change. Linux MPRIS uses it to emit
+  /// opposed to a plain play, pause or rate change. Linux MPRIS uses it to emit
   /// the `Seeked` signal deterministically, even for a sub-second scrub that
   /// a magnitude heuristic would miss, which otherwise leaves the OS slider
   /// snapped back to the pre-seek position.
@@ -223,7 +223,7 @@ class MediaSessionChannel {
       _invoke('updateMetadata', _encodeMetadata(metadata));
 
   /// Push a fresh playback state to the native side: playing,
-  /// position and rate. Called on play/pause transitions, seek
+  /// position and rate. Called on play-pause transitions, seek
   /// completion, rate changes. NOT on every `time-pos` tick: the OS
   /// extrapolates from the last update's `(position, rate, timestamp)`.
   Future<void> updatePlayback(MediaSessionPlaybackSnapshot playback) =>
