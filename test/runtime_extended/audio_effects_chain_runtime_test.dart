@@ -20,6 +20,7 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/filter_sets.dart';
 import '../_helpers/mpv_error_capture.dart';
 import '../_helpers/setter_test_helpers.dart';
 import '../generated/audio_filter_names.dart';
@@ -30,28 +31,6 @@ void main() {
   // paused file stops feeding the chain once its end has gone through.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_stereo_48k_5s.flac';
-
-  // Filters that compile + register correctly in libavfilter and pass
-  // mpv's 1-in/1-out gate, but require at least one option to be set
-  // before they can initialise. Bare `lavfi-<name>` invocation fails
-  // with "filter failed to initialize". The typed effects API
-  // exposes them — the consumer is expected to provide the required
-  // params via copyWith/setAudioEffects. This test skips the bare-name
-  // invocation since it has no way to fabricate sensible required
-  // values across all of them.
-  const requireParams = {
-    'aeval', // expression(s)
-    'ametadata', // mode + key
-    'arnndn', // model file
-    'asegment', // timestamps or counts
-    'asendcmd', // commands or filename
-    'asidedata', // side data type
-    'astreamselect', // mapping definition
-    'channelmap', // output layout / map
-    'chorus', // delays/decays/speeds/depths
-    'headphone', // HRTF mapping
-    'pan', // channel layout + definitions
-  };
 
   // Filter names come from the auto-generated test manifest; sorting
   // keeps the failure report deterministic across runs.
@@ -80,22 +59,15 @@ void main() {
     });
 
     test('every typed audio filter loads in mpv\'s `af` chain', () async {
-      final failures = <String, List<String>>{};
-
-      for (final name in filterNames) {
-        if (requireParams.contains(name)) {
-          continue;
-        }
-        final errors = await captureChainErrors(player, [
-          RawAudioEffect('lavfi-$name'),
-        ]);
-        if (errors.isNotEmpty) {
-          failures[name] = errors.map((e) => e.text.trim()).toList();
-        }
-        // Reset so the next iteration starts from a clean chain — and
-        // any error from THIS filter doesn't bleed into the next drain.
-        await player.setAudioEffects(const []);
-      }
+      final errors = await captureChainErrorsEach(player, [
+        for (final name in filterNames)
+          if (!kFiltersNeedingParams.contains(name))
+            (key: name, bundle: [RawAudioEffect('lavfi-$name')]),
+      ]);
+      final failures = {
+        for (final MapEntry(:key, :value) in errors.entries)
+          key: value.map((e) => e.text.trim()).toList(),
+      };
 
       if (failures.isNotEmpty) {
         final buf = StringBuffer()

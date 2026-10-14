@@ -29,6 +29,7 @@ import 'dart:io';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/filter_sets.dart';
 import '../_helpers/mpv_error_capture.dart';
 import '../_helpers/setter_test_helpers.dart';
 import '../generated/_audio_effects_param_corners.dart';
@@ -39,25 +40,6 @@ void main() {
   // paused file stops feeding the chain once its end has gone through.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/sine_stereo_48k_5s.flac';
-
-  // Same set as in `audio_effects_chain_runtime_test.dart`: filters
-  // that compile + register correctly but require additional context
-  // (channel layout, model file, custom expression) before mpv will
-  // initialise them. Setting just one numeric param is not enough,
-  // so corner-case checks for these would always fail.
-  const requireParams = {
-    'aeval',
-    'ametadata',
-    'arnndn',
-    'asegment',
-    'asendcmd',
-    'asidedata',
-    'astreamselect',
-    'channelmap',
-    'chorus',
-    'headphone',
-    'pan',
-  };
 
   // Specific (filter, label) corners that ffmpeg rejects because of
   // CROSS-PARAM constraints the codegen cannot know about. Each one is
@@ -106,7 +88,7 @@ void main() {
       () async {
         final cases = <ChainCase>[
           for (final corner in kFilterParamCorners)
-            if (!requireParams.contains(corner.filter) &&
+            if (!kFiltersNeedingParams.contains(corner.filter) &&
                 !skipCorners.contains('${corner.filter}.${corner.label}'))
               (key: '${corner.filter}.${corner.label}', bundle: corner.bundle),
         ];
