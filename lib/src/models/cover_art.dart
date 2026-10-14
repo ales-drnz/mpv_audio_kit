@@ -67,4 +67,8 @@ class CoverArt {
 
   /// Whether [mimeType] is `image/gif`.
   bool get isGif => mimeType == 'image/gif';
+
+  /// The MIME type and the size, never the bytes.
+  @override
+  String toString() => 'CoverArt($mimeType, ${bytes.length} bytes)';
 }

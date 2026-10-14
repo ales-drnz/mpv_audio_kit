@@ -36,6 +36,10 @@ void main() {
     expect(_artwork(MediaSessionArtwork.none), 'none');
     expect(_artwork(MediaSessionArtwork.custom(cover)), 'custom image/png');
     expect(
+      MediaSessionArtwork.custom(cover).toString(),
+      'MediaSessionArtwork.custom(CoverArt(image/png, 3 bytes))',
+    );
+    expect(
       _artwork(MediaSessionArtwork.uri(Uri.parse('https://a.b/c.jpg'))),
       'uri https://a.b/c.jpg',
     );
