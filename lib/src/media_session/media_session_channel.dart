@@ -12,7 +12,7 @@ import '../models/media_session.dart';
 import '../types/enums/loop.dart';
 import '../types/sealed/media_session_command.dart';
 
-/// Effective metadata snapshot pushed to native — already resolved
+/// Effective metadata snapshot pushed to native, already resolved
 /// (override > mpv-derived). The controller computes this and hands it
 /// to the channel; the channel just serialises and ships.
 @internal
@@ -22,7 +22,7 @@ class MediaSessionMetadataSnapshot {
   final String? album;
 
   /// Decoded artwork bytes (embedded cover or a [MediaSessionArtwork.custom]
-  /// image). Mutually exclusive with [artworkUri] — at most one is set.
+  /// image). Mutually exclusive with [artworkUri]: at most one is set.
   final CoverArt? artwork;
 
   /// An artwork URL the native side loads itself ([MediaSessionArtwork.uri],
@@ -59,7 +59,7 @@ class MediaSessionMetadataSnapshot {
   });
 
   // Value equality so the controller can dedup unchanged snapshots before
-  // re-shipping. The byte [artwork] compares by reference identity — the
+  // re-shipping. The byte [artwork] compares by reference identity: the
   // resolver returns a stable [CoverArt] until the cover genuinely changes,
   // so the (multi-MB) bytes are never walked here; [artworkUri] is a small
   // string and compares by value.
@@ -110,8 +110,8 @@ class MediaSessionPlaybackSnapshot {
 
   /// End-of-content reached ([PlayerState.completed]: `eof-reached` on the
   /// last playlist entry with no loop on). The native side maps this to a
-  /// terminal state — Android `STATE_ENDED`, Linux MPRIS
-  /// `PlaybackStatus=Stopped` with empty `Metadata` — instead of leaving a
+  /// terminal state (Android `STATE_ENDED`, Linux MPRIS
+  /// `PlaybackStatus=Stopped` with empty `Metadata`) instead of leaving a
   /// finished track parked as "Paused at full length" on the OS surface.
   /// Apple has no distinct "ended" playback state and parks acceptably as
   /// paused, so it ignores it.
@@ -119,7 +119,7 @@ class MediaSessionPlaybackSnapshot {
 
   /// This snapshot originates from a seek landing (PLAYBACK_RESTART), as
   /// opposed to a plain play/pause/rate change. Linux MPRIS uses it to emit
-  /// the `Seeked` signal deterministically — even for a sub-second scrub that
+  /// the `Seeked` signal deterministically, even for a sub-second scrub that
   /// a magnitude heuristic would miss, which otherwise leaves the OS slider
   /// snapped back to the pre-seek position.
   final bool seek;
@@ -130,15 +130,15 @@ class MediaSessionPlaybackSnapshot {
   /// doesn't keep moving during a buffer stall or a seek transient.
   final bool actualPlaying;
 
-  /// Buffering / loading. Mapped to a loading state where the OS supports one
+  /// Buffering or loading. Mapped to a loading state where the OS supports one
   /// (Android `STATE_BUFFERING`).
   final bool buffering;
 
-  /// Whether next / previous navigation is available right now. For a real
+  /// Whether next or previous navigation is available right now. For a real
   /// multi-item mpv playlist these reflect the actual bounds (respecting
   /// `loop == playlist` wrap); for a single item they stay `true` so a
   /// consumer driving an external queue still receives the command. The OS
-  /// greys the skip buttons out when false (Windows / Linux / Apple).
+  /// greys the skip buttons out when false (Windows, Linux and Apple).
   final bool hasNext;
   final bool hasPrevious;
 
@@ -159,10 +159,10 @@ class MediaSessionPlaybackSnapshot {
 }
 
 /// Two platform channels: a method channel (`mpv_audio_kit/media_session`,
-/// Dart → native: `enable` / `update*` / `disable`) and an event channel
+/// Dart → native: `enable`, `update*` and `disable`) and an event channel
 /// (`.../commands`, native → Dart: the OS remote commands). Method calls
-/// swallow [MissingPluginException] / [PlatformException] so an unwired
-/// platform is a no-op, not a crash — Dart-side state stays correct.
+/// swallow [MissingPluginException] and [PlatformException] so an unwired
+/// platform is a no-op, not a crash; Dart-side state stays correct.
 @internal
 class MediaSessionChannel {
   static const String _methodName = 'mpv_audio_kit/media_session';
@@ -209,21 +209,21 @@ class MediaSessionChannel {
     });
   }
 
-  /// Push a new configuration to the native side — actions, artwork
+  /// Push a new configuration to the native side: actions, artwork
   /// source, audio-interruption flags. Called when the consumer
   /// reconfigures via `setMediaSession(newSession)` while the session
   /// is already enabled.
   Future<void> updateConfig(MediaSession session) =>
       _invoke('updateConfig', _encodeConfig(session));
 
-  /// Push a fresh metadata snapshot to the native side — title /
-  /// artist / album / artwork / duration. Called on metadata or
+  /// Push a fresh metadata snapshot to the native side: title,
+  /// artist, album, artwork and duration. Called on metadata or
   /// cover-art changes.
   Future<void> updateMetadata(MediaSessionMetadataSnapshot metadata) =>
       _invoke('updateMetadata', _encodeMetadata(metadata));
 
-  /// Push a fresh playback state to the native side — playing /
-  /// position / rate. Called on play/pause transitions, seek
+  /// Push a fresh playback state to the native side: playing,
+  /// position and rate. Called on play/pause transitions, seek
   /// completion, rate changes. NOT on every `time-pos` tick: the OS
   /// extrapolates from the last update's `(position, rate, timestamp)`.
   Future<void> updatePlayback(MediaSessionPlaybackSnapshot playback) =>
@@ -237,10 +237,10 @@ class MediaSessionChannel {
     try {
       await _method.invokeMethod<void>(method, args);
     } on MissingPluginException {
-      // Native side not yet wired on this platform — Dart-side state
+      // Native side not yet wired on this platform; Dart-side state
       // is still consistent, only the OS lockscreen entry is absent.
     } on PlatformException {
-      // Native side reported a failure — swallow so a misbehaving
+      // Native side reported a failure: swallow so a misbehaving
       // platform implementation can't take down the Dart isolate. The
       // next state-change push re-syncs: pushes are event-driven, so a
       // dropped one self-heals on the following change.
@@ -259,7 +259,8 @@ class MediaSessionChannel {
       'supportedPlaybackRates': s.supportedPlaybackRates,
     };
     // `appName` is consumed by Windows SMTC (the process AUMID) and Linux MPRIS
-    // (Identity / bus name); macOS / iOS / Android use the system app identity.
+    // (Identity and bus name); macOS, iOS and Android use the system app
+    // identity.
     // The app icon bytes are NOT read by any native side (Windows derives the
     // SMTC icon from the AUMID; MPRIS has no per-player icon beyond
     // DesktopEntry), so they are never shipped across the channel.
@@ -267,7 +268,7 @@ class MediaSessionChannel {
         defaultTargetPlatform == TargetPlatform.linux) {
       config['appName'] = s.appName;
     }
-    // `desktopEntry` resolves the MPRIS app icon — Linux only.
+    // `desktopEntry` resolves the MPRIS app icon (Linux only).
     if (defaultTargetPlatform == TargetPlatform.linux) {
       config['desktopEntry'] = s.desktopEntry;
     }
@@ -300,8 +301,8 @@ class MediaSessionChannel {
         'rate': p.rate,
         'seekable': p.seekable,
         // Wire-level strings keep the protocol stable even if the
-        // Dart enum gains variants — native side maps to its own
-        // platform enum (MPRepeatType / MediaSession REPEAT_MODE_*).
+        // Dart enum gains variants; native side maps to its own
+        // platform enum (MPRepeatType or MediaSession REPEAT_MODE_*).
         'loop': p.loop.name,
         'shuffle': p.shuffle,
         'completed': p.completed,
@@ -314,7 +315,7 @@ class MediaSessionChannel {
 
   /// Decodes one incoming event from the native event channel into a
   /// [MediaSessionCommand]. Returns `null` for malformed or unknown
-  /// command types — those are filtered out before reaching consumer
+  /// command types; those are filtered out before reaching consumer
   /// subscribers.
   MediaSessionCommand? _decodeCommand(dynamic raw) {
     if (raw is! Map) return null;

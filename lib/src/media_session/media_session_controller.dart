@@ -21,26 +21,26 @@ import 'media_session_inputs.dart';
 ///
 /// Subscribes to a focused subset of [PlayerStream]:
 ///
-/// - `playWhenReady` / `rate` / `seekCompleted` / `seekable` / `loop` /
+/// - `playWhenReady`, `rate`, `seekCompleted`, `seekable`, `loop` and
 ///   `shuffle` → push a fresh playback snapshot (the OS extrapolates
 ///   position forward from this, so we never push raw `time-pos`
 ///   ticks). The OS play/pause state is driven by `playWhenReady` (user
-///   intent), which is stable across seeks — so the button never
+///   intent), which is stable across seeks, so the button never
 ///   flickers while scrubbing. The `seekCompleted` push re-syncs the
 ///   landed position to the OS slider.
-/// - `duration` / `metadata` / `coverArt` / `mediaTitle` → push a
+/// - `duration`, `metadata`, `coverArt` and `mediaTitle` → push a
 ///   fresh metadata snapshot.
 /// - `mediaSession` (the config field itself) → push a config update
 ///   when the consumer reconfigures while enabled.
 ///
 /// Computes effective metadata (override > mpv-derived) using the
 /// current [PlayerState] snapshot at push time, so streams are only
-/// signal sources — never source of truth.
+/// signal sources, never source of truth.
 ///
 /// Incoming commands from the OS event channel are routed through
 /// [onCommand]. The owner ([_MediaSessionModule]) is responsible for
 /// applying them to the [Player] and forwarding to consumer
-/// subscribers — this class is transport-only.
+/// subscribers; this class is transport-only.
 ///
 /// Lifecycle: instantiated on first `setMediaSession(non-null)`,
 /// disposed on `setMediaSession(null)` or `Player.dispose()`.
@@ -114,7 +114,7 @@ class MediaSessionController {
 
   /// Wires the controller up and pushes the initial full state to the
   /// native side. Returns once the initial `enable` call has been
-  /// dispatched (native ACK is fire-and-forget — see
+  /// dispatched (native ACK is fire-and-forget; see
   /// [MediaSessionChannel] for the rationale).
   ///
   /// [inputs] declares the exact slice of Player state the controller
@@ -151,7 +151,7 @@ class MediaSessionController {
   }
 
   Future<void> _wireUp() async {
-    // Playback-state signals — drive `updatePlayback`. The OS button
+    // Playback-state signals: drive `updatePlayback`. The OS button
     // tracks `playWhenReady` (user intent), which is flicker-free across
     // seeks. The `seekCompleted` push re-syncs the landed position on
     // EVERY restart (seek + file-load) so the OS slider tracks mpv (e.g.
@@ -175,22 +175,22 @@ class MediaSessionController {
       _inputs.seekCompleted.listen((_) => _markPlayback(seek: true)),
     );
     // Seekable governs both the OS scrubber (enabled/disabled) and
-    // the "live stream" UI mode — re-push when it flips.
+    // the "live stream" UI mode; re-push when it flips.
     _subscriptions.add(_inputs.seekable.listen((_) => _markPlayback()));
-    // Loop + shuffle drive the OS repeat / shuffle button visual state
-    // (Apple's `currentRepeatType` / `currentShuffleType`,
-    // MPRIS `LoopStatus` / `Shuffle`, MediaSession actions).
+    // Loop + shuffle drive the OS repeat and shuffle button visual state
+    // (Apple's `currentRepeatType` and `currentShuffleType`,
+    // MPRIS `LoopStatus` and `Shuffle`, MediaSession actions).
     _subscriptions.add(_inputs.loop.listen((_) => _markPlayback()));
     _subscriptions.add(_inputs.shuffle.listen((_) => _markPlayback()));
 
-    // Metadata signals — drive `updateMetadata`.
+    // Metadata signals: drive `updateMetadata`.
     _subscriptions.add(_inputs.duration.listen((_) => _markMetadata()));
     _subscriptions.add(_inputs.metadata.listen((_) => _markMetadata()));
     _subscriptions.add(_inputs.coverArt.listen((_) => _markMetadata()));
     _subscriptions.add(_inputs.mediaTitle.listen((_) => _markMetadata()));
 
-    // Config changes — drive `updateConfig`, AND re-push metadata. The
-    // metadata-override fields (title / artist / album / artwork /
+    // Config changes: drive `updateConfig`, AND re-push metadata. The
+    // metadata-override fields (title, artist, album, artwork and
     // duration) live in the metadata snapshot, not the config map, so a
     // `setMediaSession(copyWith(title: ...))` must also re-push metadata
     // or the override would never reach the OS until an unrelated mpv
@@ -246,7 +246,7 @@ class MediaSessionController {
   /// Marks the playback snapshot dirty and schedules a coalesced flush.
   ///
   /// The OS play/pause state comes from `playWhenReady` (user intent),
-  /// not `core-idle` — so it stays stable while mpv churns through the
+  /// not `core-idle`, so it stays stable while mpv churns through the
   /// seek/restart cycle and the scrub-bar button never flickers. No
   /// seek-transient masking is needed. [seek] sticks across the coalescing
   /// window so a seek landing in the same turn still emits MPRIS `Seeked`.
@@ -307,7 +307,7 @@ class MediaSessionController {
     final mpvMeta = state.metadata;
 
     // The currently-playing queue item. Its consumer-attached
-    // [Media.extras] are the metadata fallback for tag-less files — most
+    // [Media.extras] are the metadata fallback for tag-less files, most
     // importantly transcoded streams (HLS/DASH), where mpv sees no tags and
     // reports the stream URL as `media-title`. extras sit below mpv's real
     // tags but above the filename-derived `media-title`.
@@ -353,7 +353,8 @@ class MediaSessionController {
         _firstTagValue(mpvMeta, const ['album_artist']) ??
         _extra(extras, 'artist');
     final genre = _firstTagValue(mpvMeta, const ['genre']);
-    // mpv `track` / `disc` tags are often "3" or "3/12" — take the leading int.
+    // mpv `track` and `disc` tags are often "3" or "3/12"; take the leading
+    // int.
     final trackNumber = _parseLeadingInt(
       _firstTagValue(mpvMeta, const ['track']),
     );
@@ -470,11 +471,11 @@ class MediaSessionController {
   }
 
   /// Resolves the effective artwork into the two mutually-exclusive shapes the
-  /// snapshot carries: decoded [bytes] (embedded / custom) or a [uri] the
+  /// snapshot carries: decoded [bytes] (embedded or custom) or a [uri] the
   /// native side fetches itself.
   ///
   /// For the default [MediaSessionArtwork.embedded] the file's embedded cover
-  /// wins; when it has none — the common case for a transcoded stream — we
+  /// wins; when it has none (the common case for a transcoded stream) we
   /// fall back to a network artwork URL the consumer attached to the queue
   /// item as `extras['art']`, mirroring the title/artist/album fallback. An
   /// explicit [MediaSessionArtwork.none] suppresses art outright (no fallback).
@@ -522,7 +523,7 @@ class MediaSessionController {
       // so the completed transition is carried on that same snapshot.
       completed: state.completed,
       seek: seek,
-      // Actual output + buffering — for extrapolation gating and the loading
+      // Actual output + buffering, for extrapolation gating and the loading
       // state. Independent of the intent axis the button binds to.
       actualPlaying: state.playing,
       buffering: state.buffering,
@@ -533,7 +534,7 @@ class MediaSessionController {
 
   /// First non-empty value among [keys] in the mpv metadata map, matched
   /// **case-insensitively**: mpv's tag-key casing varies by container
-  /// (ID3v2 / Vorbis come back lowercase, but MP4 / iTunes atoms do not),
+  /// (ID3v2 and Vorbis come back lowercase, but MP4 and iTunes atoms do not),
   /// so never assume a fixed case. [keys] are given lowercase; the list
   /// also carries semantic fallbacks (e.g. `album_artist` when `artist`
   /// is absent).

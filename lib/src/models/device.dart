@@ -9,7 +9,7 @@ final class Device {
   /// The special value `"auto"` lets mpv choose the default system device.
   final String name;
 
-  /// Human-readable description shown in system mixer / device pickers.
+  /// Human-readable description shown in system mixer and device pickers.
   final String description;
 
   /// Creates a device descriptor from its mpv [name] and [description].
@@ -18,7 +18,7 @@ final class Device {
   /// The default automatic device selection.
   static const Device auto = Device(name: 'auto', description: 'Auto');
 
-  // Equality on [name] only — same-name instances must dedup even when
+  // Equality on [name] only: same-name instances must dedup even when
   // [description] differs, since mpv echoes only the name and the
   // description is reattached from `audio-device-list` afterwards.
   @override

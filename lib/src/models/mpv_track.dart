@@ -32,7 +32,7 @@ final class MpvTrack {
   /// `Player.setAudioTrack` to switch to this track.
   final int id;
 
-  /// `'audio'` / `'video'` / `'sub'`. Empty when mpv omits the field.
+  /// `'audio'`, `'video'` or `'sub'`. Empty when mpv omits the field.
   final String type;
 
   /// Whether mpv currently has this track selected for output.
@@ -62,7 +62,7 @@ final class MpvTrack {
   /// hearing-impaired listeners; common in broadcast).
   final bool hearingImpaired;
 
-  /// Whether this track is an embedded picture / cover art stream
+  /// Whether this track is an embedded picture or cover art stream
   /// (`attached_pic`). UI track switchers should typically skip these.
   final bool image;
 
@@ -136,9 +136,9 @@ final class MpvTrack {
   final double? replayGainAlbumPeak;
 
   /// Per-track tag dictionary. Distinct from [PlayerState.metadata]
-  /// (which is global / file-level): this is the metadata mpv keeps
+  /// (which is global and file-level): this is the metadata mpv keeps
   /// per stream, useful in multi-track containers where each track
-  /// carries its own title / artist / role tags.
+  /// carries its own title, artist and role tags.
   final Map<String, String> metadata;
 
   /// Creates a track descriptor. Only [id] and [type] are required; the

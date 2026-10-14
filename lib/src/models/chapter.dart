@@ -6,7 +6,7 @@ import '../internals/unset_sentinel.dart';
 
 /// A chapter entry in the current track's `chapter-list`.
 ///
-/// Audiobook / podcast files often carry chapter markers that mpv
+/// Audiobook and podcast files often carry chapter markers that mpv
 /// surfaces via the `chapter-list` property. Subscribe via
 /// [PlayerStream.chapters] for the live list; observe
 /// [PlayerStream.currentChapter] for the active index, or jump with

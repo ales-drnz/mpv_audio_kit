@@ -3,13 +3,13 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// Media-session setter: publishes the [Player] to the OS lockscreen /
-/// SMTC / MPRIS entry, wires Bluetooth AVRCP and headset buttons, and
+/// Media-session setter: publishes the [Player] to the OS lockscreen,
+/// SMTC or MPRIS entry, wires Bluetooth AVRCP and headset buttons, and
 /// (when enabled) integrates with the platform's audio-session
-/// lifecycle for phone-call / Siri / navigation auto-pause.
+/// lifecycle for phone-call, Siri and navigation auto-pause.
 ///
 /// Pass `null` to disable. Only one [Player] per process can hold the
-/// session — see [Player._mediaSessionOwner]. `dispose()` releases the
+/// session; see [Player._mediaSessionOwner]. `dispose()` releases the
 /// session automatically before tearing down libmpv.
 ///
 /// Lifecycle:
@@ -23,8 +23,8 @@ part of '../player.dart';
 ///
 /// Inbound commands are auto-applied to the [Player] (play → play(),
 /// seek → seek(), …) AND emitted on
-/// [PlayerStream.mediaSessionCommands] for analytics / interception.
-/// `next` / `previous` are routed to mpv's playlist when one is
+/// [PlayerStream.mediaSessionCommands] for analytics or interception.
+/// `next` and `previous` are routed to mpv's playlist when one is
 /// loaded; otherwise they only emit on the consumer stream so the
 /// app's queue logic can react.
 mixin _MediaSessionModule on _PlayerBase {
@@ -92,7 +92,7 @@ mixin _MediaSessionModule on _PlayerBase {
         // Re-check EVERYTHING that gated the create, not just ownership:
         // a concurrent `setMediaSession(non-null)` also passed the
         // `== null` pre-check above and may have assigned its controller
-        // during this await — overwriting it here would strand the other
+        // during this await; overwriting it here would strand the other
         // one with live subscriptions, double-pushing to native for the
         // rest of the process. Exactly one create wins; the losers tear
         // their fresh controller down.
@@ -129,9 +129,9 @@ mixin _MediaSessionModule on _PlayerBase {
   /// then emits on [PlayerStream.mediaSessionCommands] so consumer
   /// subscribers can observe the resolved order.
   ///
-  /// [MediaSessionCommandNext] / [MediaSessionCommandPrevious] use
+  /// [MediaSessionCommandNext] and [MediaSessionCommandPrevious] use
   /// the smart-default routing: if the active playlist has more than
-  /// one entry, the package calls mpv's `playlist-next` /
+  /// one entry, the package calls mpv's `playlist-next` or
   /// `playlist-prev`. Otherwise the command is emit-only, leaving
   /// the consumer's queue logic to handle it.
   void _handleSessionCommand(MediaSessionCommand command) {
@@ -183,7 +183,7 @@ mixin _MediaSessionModule on _PlayerBase {
         // arithmetic against its own live playhead. Computing an absolute
         // target from `_state.position` here would compose off a stale
         // base when skip buttons repeat faster than the position observer
-        // updates — rapid lockscreen / headset double-taps would under-skip.
+        // updates; rapid lockscreen or headset double-taps would under-skip.
         _applySessionCommand((this as Player).seek(offset, relative: true));
       case MediaSessionCommandSetRepeatMode(:final loop):
         _applySessionCommand((this as Player).setLoop(loop));

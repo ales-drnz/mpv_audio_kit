@@ -7,21 +7,21 @@ import '../types/enums/interruption_policy.dart';
 import '../types/enums/media_action.dart';
 import '../types/sealed/media_session_artwork.dart';
 
-/// Configuration and metadata for the OS media session — the
-/// lockscreen / SMTC / MPRIS entry, Bluetooth AVRCP, headset
-/// buttons, and (on iOS/Android) the AVAudioSession / AudioFocus
+/// Configuration and metadata for the OS media session: the
+/// lockscreen, SMTC or MPRIS entry, Bluetooth AVRCP, headset
+/// buttons, and (on iOS/Android) the AVAudioSession or AudioFocus
 /// integration.
 ///
 /// Apply via [Player.setMediaSession]; pass `null` to disable the
 /// session entirely. Only one [Player] instance per process can have
-/// an active media session at a time — attempting to enable a second
+/// an active media session at a time; attempting to enable a second
 /// throws [StateError].
 ///
 /// **Metadata fields** ([title], [artist], [album], [duration]) are
 /// *overrides*: a `null` field falls back to the value derived from
-/// mpv (`metadata.title` / `media-title`, `metadata.artist`,
+/// mpv (`metadata.title` or `media-title`, `metadata.artist`,
 /// `metadata.album`, `duration`); an empty string is an explicit
-/// blank. [artwork] is a typed choice — see [MediaSessionArtwork].
+/// blank. [artwork] is a typed choice; see [MediaSessionArtwork].
 ///
 /// **Config fields** (everything else) are always applied verbatim
 /// when the session is enabled.
@@ -29,7 +29,7 @@ import '../types/sealed/media_session_artwork.dart';
 /// Updates use the standard [copyWith] pattern:
 ///
 /// ```dart
-/// // Enable with all defaults — metadata comes from mpv
+/// // Enable with all defaults: metadata comes from mpv
 /// await player.setMediaSession(const MediaSession());
 ///
 /// // Override the title for the current track
@@ -44,7 +44,7 @@ import '../types/sealed/media_session_artwork.dart';
 class MediaSession {
   // ── Metadata override (null = derive from mpv) ─────────────────────
 
-  /// Track title shown on the lockscreen / SMTC top line. `null` falls
+  /// Track title shown on the lockscreen or SMTC top line. `null` falls
   /// back to mpv's `metadata.title` (or `media-title` if absent).
   final String? title;
 
@@ -72,16 +72,16 @@ class MediaSession {
 
   /// Capabilities advertised to the OS. What actually renders is
   /// **platform-gated**, not just space-gated: each native media UI draws
-  /// only a subset (a lockscreen typically shows 3–4 of those), and the wider
-  /// set is offered to Siri / Google Assistant / Android Auto / CarPlay. The
-  /// iteration order is preserved when pushing the configuration to native
-  /// media sessions.
+  /// only a subset (a lockscreen typically shows 3 to 4 of those), and the
+  /// wider set is offered to Siri, Google Assistant, Android Auto and CarPlay.
+  /// The iteration order is preserved when pushing the configuration to
+  /// native media sessions.
   /// Advertising an action a platform doesn't render is harmless. See the
   /// per-platform support matrix in the README's *OS media session* section,
   /// and the per-value notes on [MediaAction].
   final Set<MediaAction> actions;
 
-  /// Whether the "like" / favourite control ([MediaAction.like]) shows as
+  /// Whether the "like" or favourite control ([MediaAction.like]) shows as
   /// active (the filled star) on surfaces that render it (the iOS lock
   /// screen). Flip it in response to [MediaSessionCommandLike]. Default
   /// `false`; ignored where the action isn't rendered.
@@ -91,21 +91,21 @@ class MediaSession {
 
   /// How the player reacts to an OS audio interruption (phone call,
   /// Siri, another app taking focus). Defaults to
-  /// [InterruptionPolicy.pauseAndResume]; honoured on iOS / Android and
-  /// a no-op on macOS / Linux / Windows. See [InterruptionPolicy].
+  /// [InterruptionPolicy.pauseAndResume]; honoured on iOS and Android and
+  /// a no-op on macOS, Linux and Windows. See [InterruptionPolicy].
   final InterruptionPolicy interruptionPolicy;
 
   // ── Skip intervals ─────────────────────────────────────────────────
 
   /// Interval used by the system "skip forward N seconds" button when
-  /// [MediaAction.fastForward] is in [actions]. Default 15 seconds —
-  /// matches Apple Podcasts' default and audio_service's
+  /// [MediaAction.fastForward] is in [actions]. Default 15 seconds,
+  /// matching Apple Podcasts' default and audio_service's
   /// `fastForwardInterval`. The OS shows this number on the skip icon
-  /// (e.g. "+15") on iOS / macOS / Android Auto.
+  /// (e.g. "+15") on iOS, macOS and Android Auto.
   final Duration fastForwardInterval;
 
   /// Interval used by the system "skip backward N seconds" button when
-  /// [MediaAction.rewind] is in [actions]. Default 15 seconds —
+  /// [MediaAction.rewind] is in [actions]. Default 15 seconds,
   /// symmetric with [fastForwardInterval].
   final Duration rewindInterval;
 
@@ -128,13 +128,13 @@ class MediaSession {
   // ── App identity ───────────────────────────────────────────────────
 
   /// Display name shown by MPRIS (Linux) and SMTC (Windows) for the
-  /// app identity. `null` defers to the executable / bundle name.
+  /// app identity. `null` defers to the executable or bundle name.
   /// macOS, iOS and Android always use the bundle display name.
   final String? appName;
 
   /// Basename of the installed `.desktop` file (without the `.desktop`
-  /// extension) — used by MPRIS on Linux to resolve the app icon shown beside
-  /// the media controls in GNOME / KDE. For
+  /// extension), used by MPRIS on Linux to resolve the app icon shown beside
+  /// the media controls in GNOME or KDE. For
   /// `/usr/share/applications/com.example.myapp.desktop`, pass
   /// `'com.example.myapp'`. `null` omits the hint. Ignored on every
   /// non-Linux platform.
@@ -171,9 +171,9 @@ class MediaSession {
   ///
   /// The nullable override fields ([title], [artist], [album], [duration],
   /// [appName], [desktopEntry]) accept `null` to CLEAR the override back to the
-  /// mpv-derived / default value: passing `null` is distinguished from omitting
-  /// the argument (which keeps the current value). The non-nullable fields keep
-  /// their current value when omitted.
+  /// mpv-derived or default value: passing `null` is distinguished from
+  /// omitting the argument (which keeps the current value). The non-nullable
+  /// fields keep their current value when omitted.
   MediaSession copyWith({
     Object? title = unset,
     Object? artist = unset,

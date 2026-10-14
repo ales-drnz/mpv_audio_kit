@@ -15,8 +15,8 @@ import '../types/enums/loop.dart';
 /// consumes.
 ///
 /// Defining this as a separate type instead of passing the whole
-/// [PlayerStream] makes the controller's dependency surface explicit
-/// — adding a new subscription means adding a field here, which
+/// [PlayerStream] makes the controller's dependency surface explicit:
+/// adding a new subscription means adding a field here, which
 /// shows up immediately at the construction site. It also makes the
 /// controller cleanly unit-testable: tests build a
 /// [MediaSessionInputs] from raw [StreamController]s rather than
@@ -25,7 +25,7 @@ import '../types/enums/loop.dart';
 @internal
 class MediaSessionInputs {
   /// User intent to play, driven by the play/pause/open/stop call sites.
-  /// This is the axis the OS play/pause button binds to — stable across
+  /// This is the axis the OS play/pause button binds to, stable across
   /// seeks and buffering, so the button never flickers while scrubbing.
   /// (Deliberately NOT `core-idle`, which toggles on every seek.)
   final Stream<bool> playWhenReady;
@@ -37,7 +37,7 @@ class MediaSessionInputs {
   /// genuinely advancing) and the buffering indication.
   final Stream<bool> playing;
 
-  /// Buffering / loading (cache underrun while intending to play). Surfaced as
+  /// Buffering or loading (cache underrun while intending to play). Surfaced as
   /// a loading state on the OS where supported (Android `STATE_BUFFERING`).
   final Stream<bool> buffering;
 
@@ -51,7 +51,7 @@ class MediaSessionInputs {
   /// seeks), so no seek-transient suppression is needed here.
   final Stream<void> seekCompleted;
 
-  /// Mirrors mpv's `seekable` property — toggles when the OS-visible
+  /// Mirrors mpv's `seekable` property; toggles when the OS-visible
   /// scrubber should be enabled (HLS sliding window, live → DVR).
   final Stream<bool> seekable;
 
@@ -75,8 +75,8 @@ class MediaSessionInputs {
   /// a `title` tag).
   final Stream<String> mediaTitle;
 
-  /// The current [MediaSession] config (override + capability bits)
-  /// — `null` when the OS session is disabled.
+  /// The current [MediaSession] config (override + capability bits),
+  /// `null` when the OS session is disabled.
   final Stream<MediaSession?> mediaSession;
 
   const MediaSessionInputs({

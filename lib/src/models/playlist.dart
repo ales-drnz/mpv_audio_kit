@@ -16,7 +16,7 @@ bool _listEq<T>(List<T> a, List<T> b) {
 /// An ordered list of [Media] items loaded into the [Player].
 ///
 /// Two playlists compare equal only when both [items] (deep equality)
-/// and [index] match — useful when diffing playlists for re-render
+/// and [index] match, useful when diffing playlists for re-render
 /// decisions.
 final class Playlist {
   /// The ordered list of tracks.
@@ -32,7 +32,7 @@ final class Playlist {
   /// marking the active track (defaults to the first).
   const Playlist(this.items, {this.index = 0});
 
-  /// The empty playlist — no tracks, index 0. Const-evaluable so it can
+  /// The empty playlist: no tracks, index 0. Const-evaluable so it can
   /// seed default fields without runtime allocation.
   static const Playlist empty = Playlist(<Media>[]);
 

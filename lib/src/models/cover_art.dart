@@ -8,9 +8,9 @@ import 'package:flutter/widgets.dart';
 
 /// Cover-art payload extracted from the currently loaded file.
 ///
-/// [bytes] holds the original codec data (PNG / JPEG / WEBP / BMP /
+/// [bytes] holds the original codec data (PNG, JPEG, WEBP, BMP or
 /// GIF) exactly as it was embedded in the audio file's attached
-/// picture stream — no re-encoding, no thumbnail generation.
+/// picture stream: no re-encoding, no thumbnail generation.
 ///
 /// Drop directly into a Flutter `Image` widget via [image]:
 ///
@@ -29,7 +29,7 @@ class CoverArt {
   /// The raw file content (e.g. PNG bytes starting with `\x89PNG`).
   final Uint8List bytes;
 
-  /// MIME type — `image/png`, `image/jpeg`, `image/webp`, `image/bmp`,
+  /// MIME type: `image/png`, `image/jpeg`, `image/webp`, `image/bmp`,
   /// or `image/gif`.
   final String mimeType;
 
@@ -37,7 +37,7 @@ class CoverArt {
   /// `Image(image: …)`.
   ImageProvider get image => MemoryImage(bytes);
 
-  /// File extension matching [mimeType] — `png`, `jpg`, `webp`, `bmp`,
+  /// File extension matching [mimeType]: `png`, `jpg`, `webp`, `bmp`,
   /// `gif`, or empty if the MIME type is unknown.
   ///
   /// Useful for saving the cover to disk:

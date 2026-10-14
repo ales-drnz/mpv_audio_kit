@@ -18,21 +18,21 @@ typedef SourceResolver =
 
 /// The context handed to a [SourceResolver] for one load attempt.
 ///
-/// Carries the original [Media] of the playlist entry being opened — with
-/// its [Media.extras] and [Media.httpHeaders] intact — so the resolver can
+/// Carries the original [Media] of the playlist entry being opened (with
+/// its [Media.extras] and [Media.httpHeaders] intact) so the resolver can
 /// branch on consumer-attached data (a track id, a per-source auth flow)
 /// without a separate lookup:
 ///
 /// ```dart
 /// player.setSourceResolver((request) async {
 ///   final id = request.media.extras?['trackId'] as String?;
-///   if (id == null) return null;           // not ours — keep the URL
-///   return service.getPlaybackUrl(id);     // temporary CDN / token URL
+///   if (id == null) return null;           // not ours: keep the URL
+///   return service.getPlaybackUrl(id);     // temporary CDN or token URL
 /// });
 /// ```
 final class SourceResolveRequest {
   /// The playlist entry being opened, as originally passed to
-  /// [Player.open] / [Player.openAll] / [Player.add] — [Media.extras]
+  /// [Player.open], [Player.openAll] or [Player.add], with [Media.extras]
   /// and [Media.httpHeaders] included. Falls back to a bare
   /// `Media(uri)` when the entry did not come from this player's load
   /// API (e.g. expanded out of a playlist file).
@@ -45,7 +45,7 @@ final class SourceResolveRequest {
 
   /// `false` for the regular pre-open resolution (`on_load`), `true`
   /// when the resolver is re-invoked after a failed open
-  /// (`on_load_fail`) — the "URL has expired" case. At most one retry
+  /// (`on_load_fail`): the "URL has expired" case. At most one retry
   /// is attempted per load, and only when the resolver returns a URL
   /// different from [uri].
   final bool isRetry;

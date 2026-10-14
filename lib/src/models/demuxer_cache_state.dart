@@ -12,7 +12,7 @@ final class CacheRange {
   /// End of the cached range, relative to the file timeline.
   final Duration end;
 
-  /// Creates a cache range spanning [start]–[end].
+  /// Creates a cache range spanning [start] to [end].
   const CacheRange(this.start, this.end);
 
   @override
@@ -27,15 +27,15 @@ final class CacheRange {
   String toString() => 'CacheRange($start–$end)';
 }
 
-/// Rich snapshot of mpv's `demuxer-cache-state` — the parts useful to an
+/// Rich snapshot of mpv's `demuxer-cache-state`: the parts useful to an
 /// audio UI streaming over the network. Complements the scalar
-/// [PlayerState.bufferingPercentage] / [PlayerState.bufferDuration] with the
+/// [PlayerState.bufferingPercentage] and [PlayerState.bufferDuration] with the
 /// structured cache picture.
 ///
-/// All fields are empty / `false` / `null` for directly-seekable local files
-/// (mpv only populates the cache state for network / cached sources).
+/// All fields are empty, `false` or `null` for directly-seekable local files
+/// (mpv only populates the cache state for network or cached sources).
 final class DemuxerCacheState {
-  /// Time ranges currently buffered — render these as the "downloaded"
+  /// Time ranges currently buffered; render these as the "downloaded"
   /// regions of a network seek bar. Empty when nothing is cached.
   final List<CacheRange> seekableRanges;
 
@@ -44,7 +44,7 @@ final class DemuxerCacheState {
   /// cache fill rate); this is the raw stream read rate.
   final double? rawInputRate;
 
-  /// Whether the cache holds data up to the end of the stream — a seek to the
+  /// Whether the cache holds data up to the end of the stream: a seek to the
   /// end is instant and no further network reads are needed.
   final bool eofCached;
 
@@ -64,7 +64,7 @@ final class DemuxerCacheState {
     this.underrun = false,
   });
 
-  /// The inactive cache state — no ranges, nothing cached.
+  /// The inactive cache state: no ranges, nothing cached.
   static const DemuxerCacheState empty = DemuxerCacheState();
 
   @override

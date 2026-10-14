@@ -12,7 +12,7 @@ import '../types/sealed/channels.dart';
 final class AudioParams {
   /// Sample format reported by mpv. `null` when no audio is currently
   /// being decoded. mpv occasionally emits a format string the wrapper
-  /// doesn't recognise (e.g. a future-version sample type) — those fall
+  /// doesn't recognise (e.g. a future-version sample type); those fall
   /// back to [Format.auto] via [Format.fromMpv].
   final Format? format;
 
@@ -39,7 +39,7 @@ final class AudioParams {
   final String? codec;
 
   /// Raw value of mpv's `audio-codec-name` property. Same volatility
-  /// caveat as [codec] — the short/descriptive split is not stable
+  /// caveat as [codec]: the short/descriptive split is not stable
   /// across mpv versions, and one of the two may be absent on a
   /// given file.
   final String? codecName;

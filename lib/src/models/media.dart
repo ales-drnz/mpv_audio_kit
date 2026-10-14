@@ -47,7 +47,7 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 ///   },
 /// );
 ///
-/// // Opt in to chunked range requests so a throttling CDN (YouTube /
+/// // Opt in to chunked range requests so a throttling CDN (YouTube or
 /// // googlevideo) keeps serving at full speed after a seek.
 /// final yt = Media(googlevideoUrl, httpChunkSize: 8 * 1024 * 1024);
 /// ```
@@ -78,7 +78,7 @@ final class Media {
 
   /// Optional HTTP headers for network streams.
   ///
-  /// Applied automatically on every load path — [Player.open],
+  /// Applied automatically on every load path: [Player.open],
   /// [Player.openAll], [Player.add] and [Player.replace] all attach
   /// these headers to the matching mpv `loadfile` as file-local
   /// options (`http-header-fields=...`), so the headers ride along
@@ -92,7 +92,7 @@ final class Media {
   final Map<String, String>? httpHeaders;
 
   /// Optional per-track options for libmpv's libavformat (`lavf`) demuxer,
-  /// applied as the file-local `demuxer-lavf-o` — the demuxer-side analogue of
+  /// applied as the file-local `demuxer-lavf-o`, the demuxer-side analogue of
   /// [httpHeaders]. Each `key: value` becomes one `key=value` entry, scoped to
   /// this exact playlist entry.
   ///
@@ -105,11 +105,11 @@ final class Media {
   final Map<String, String>? demuxerLavfOptions;
 
   /// Opt-in maximum size, in bytes, of each HTTP range request for this
-  /// source. `null` (default) leaves mpv's normal behaviour — one open-ended
+  /// source. `null` (default) leaves mpv's normal behaviour: one open-ended
   /// request for the rest of the file.
   ///
-  /// Set it to fetch the stream in bounded chunks instead. Some CDNs —
-  /// notably progressive YouTube / `googlevideo` audio — rate-limit a single
+  /// Set it to fetch the stream in bounded chunks instead. Some CDNs
+  /// (notably progressive YouTube or `googlevideo` audio) rate-limit a single
   /// open-ended request for the whole file to a crawl, so seeking back
   /// freezes once the buffered audio drains. Capping each request below the
   /// CDN's threshold (a common value is `8 * 1024 * 1024`, 8 MiB) keeps it
