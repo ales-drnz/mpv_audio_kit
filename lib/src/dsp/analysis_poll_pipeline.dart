@@ -17,6 +17,12 @@ import 'dsp_async_io.dart';
 /// timer. On the last cancel the property goes back to `false` and the
 /// timer stops, so an idle analysis costs nothing.
 ///
+/// The enable property is a static of the libmpv process, shared by every
+/// player: [dispose] turns it off when this pipeline turned it on. A
+/// listener that comes back while the file's result stands gets it from
+/// the player's replay, and the property stays off until the next file
+/// ([reset]): writing it on would decode the whole file again.
+///
 /// A subclass decodes each poll in [onData]: it [emit]s partial values and
 /// calls [finish] with the final one, which stops polling until the next
 /// [reset] (a new file) or [clear] (no file).
@@ -44,6 +50,8 @@ abstract class AnalysisPollPipeline<T extends Object> {
   Timer? _pollTimer;
   T? _result;
   bool _enabled = false;
+  // Whether this pipeline left the native enable property on.
+  bool _nativeOn = false;
   bool _disposed = false;
   // No file loaded (after [clear]): mpv still holds the last file's
   // analysis, so nothing is polled until the next [reset].
@@ -59,12 +67,16 @@ abstract class AnalysisPollPipeline<T extends Object> {
   void setEnabled(bool enabled) {
     if (_disposed || enabled == _enabled) return;
     _enabled = enabled;
-    unawaited(_asyncSet(_enabledProperty, enabled ? 'yes' : 'no'));
     if (enabled) {
       // A finished result already reaches a new subscriber through the
-      // player's replay of the last value; only a pending one polls.
-      if (_result == null) _armTimer();
+      // player's replay of the last value: the native side stays off until
+      // the next file. Only a pending result arms it and polls.
+      if (_result == null) {
+        _setNative(true);
+        _armTimer();
+      }
     } else {
+      _setNative(false);
       stopPolling();
     }
   }
@@ -76,7 +88,10 @@ abstract class AnalysisPollPipeline<T extends Object> {
     if (_disposed) return;
     _idle = false;
     _drop();
-    if (_enabled) _armTimer();
+    if (_enabled) {
+      _setNative(true);
+      _armTimer();
+    }
   }
 
   /// Drops the current result and emits `null` once no file is loaded,
@@ -91,7 +106,36 @@ abstract class AnalysisPollPipeline<T extends Object> {
     if (_disposed) return;
     _disposed = true;
     stopPolling();
+    // The flag outlives this player: left on, the next player in the
+    // process would analyze every file it loads.
+    if (_nativeOn) {
+      _nativeOn = false;
+      unawaited(_asyncSet(_enabledProperty, 'no'));
+    }
     if (!_ctrl.isClosed) await _ctrl.close();
+  }
+
+  /// Whether a listener wants a result this file has not delivered yet.
+  @protected
+  bool get pending => !_disposed && !_idle && _enabled && _result == null;
+
+  /// Reads [name] as a node, the same way the poll does.
+  @protected
+  Future<(int, dynamic)> readNode(String name) =>
+      _asyncGet(name, MpvFormat.mpvFormatNode);
+
+  /// Writes the enable property on again, so the native side starts a
+  /// new pass for the loaded file.
+  @protected
+  Future<void> restartNative() async {
+    _nativeOn = true;
+    await _asyncSet(_enabledProperty, 'yes');
+  }
+
+  void _setNative(bool on) {
+    if (on == _nativeOn) return;
+    _nativeOn = on;
+    unawaited(_asyncSet(_enabledProperty, on ? 'yes' : 'no'));
   }
 
   /// Decodes one reply of the data property, a map.

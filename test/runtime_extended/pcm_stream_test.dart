@@ -17,7 +17,8 @@ import '../_helpers/setter_test_helpers.dart';
 
 // Live PCM input against the bundled libmpv: chunks fed at real-time pace
 // into `mak-pcm://`, played on the null audio output (which keeps real
-// time). The bounds are generous; the measured numbers are printed.
+// time). The bounds leave room for a loaded machine; the measured numbers
+// are printed.
 
 const _speech = PcmFormat(sampleRate: 24000, channels: 1);
 const _music = PcmFormat(
@@ -95,11 +96,11 @@ Stream<Uint8List> _feed(
   if (pending.isNotEmpty) yield Uint8List.fromList(pending);
 }
 
-/// Polls `time-pos` and `paused-for-cache` while a source plays.
+/// Polls `time-pos` while a source plays.
 final class _Watch {
   _Watch(this.player);
   final Player player;
-  final samples = <(DateTime, double, bool)>[];
+  final samples = <(DateTime, double)>[];
   bool _stop = false;
   Future<void>? _loop;
 
@@ -108,8 +109,7 @@ final class _Watch {
   Future<void> _run() async {
     while (!_stop) {
       final tp = double.tryParse(await player.getRawProperty('time-pos') ?? '');
-      final pfc = await player.getRawProperty('paused-for-cache') == 'yes';
-      if (tp != null) samples.add((DateTime.now(), tp, pfc));
+      if (tp != null) samples.add((DateTime.now(), tp));
       await Future<void>.delayed(const Duration(milliseconds: 5));
     }
   }
@@ -130,18 +130,15 @@ final class _Watch {
   }
 
   double get lastPos => samples.isEmpty ? 0 : samples.last.$2;
+}
 
-  /// Times `paused-for-cache` went up after playback started.
-  int get underruns {
-    var n = 0;
-    var playing = false;
-    var prev = false;
-    for (final (_, tp, pfc) in samples) {
-      if (tp > 0.05) playing = true;
-      if (playing && pfc && !prev) n++;
-      prev = pfc;
-    }
-    return n;
+/// Allocates garbage until [done] or a few rounds have passed, to give
+/// the GC a chance to collect what nothing holds.
+Future<void> _churn(bool Function() done) async {
+  for (var i = 0; i < 40 && !done(); i++) {
+    final junk = [for (var j = 0; j < 64; j++) Uint8List(1 << 20)];
+    junk.clear();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
   }
 }
 
@@ -159,12 +156,20 @@ Future<Map<String, Object?>> _playThrough(
   int burstEvery = 0,
   bool split = false,
 }) async {
-  final player = await buildPlayer();
+  // Warnings on: mpv logs each time the audio output ran dry. The source
+  // loads with cache-pause=no, so paused-for-cache never tells.
+  final player = await buildPlayer(
+    configuration: const PlayerConfiguration(), // logs from warn up
+  );
   final errors = <PlayerError>[];
   final ends = <MpvFileEndedEvent>[];
+  var underruns = 0;
   final subs = [
     player.stream.error.listen(errors.add),
     player.stream.endFile.listen(ends.add),
+    player.stream.log.listen((l) {
+      if (l.text.contains('Audio device underrun')) underruns++;
+    }),
   ];
   final completed = Completer<DateTime>();
   subs.add(
@@ -193,6 +198,7 @@ Future<Map<String, Object?>> _playThrough(
   final end = await completed.future.timeout(
     Duration(milliseconds: totalMs + 10000),
   );
+  final finalDuration = player.state.duration;
   await Future<void>.delayed(const Duration(milliseconds: 100));
   await watch.stop();
   final started = watch.started;
@@ -204,10 +210,11 @@ Future<Map<String, Object?>> _playThrough(
         ? null
         : end.difference(started).inMilliseconds,
     'completedAfterLastAddMs': end.difference(lastAdd).inMilliseconds,
-    'underruns': watch.underruns,
+    'underruns': underruns,
     'sourceState': source.state.name,
     'endFile': ends.map((e) => e.reason.name).toList(),
     'liveDurationMs': liveDuration.inMilliseconds,
+    'finalDurationMs': finalDuration.inMilliseconds,
     'errors': errors.length,
   };
   for (final s in subs) {
@@ -259,7 +266,9 @@ void main() {
           final r = await _playThrough(f);
           _log(name, r);
           expect(r['startLatencyMs'], isNotNull);
-          expect(r['startLatencyMs']! as int, lessThan(1500));
+          // About 165 ms here (audio-buffer 0.2 s less the first 40 ms
+          // chunk): three times that is a regression, not a slow machine.
+          expect(r['startLatencyMs']! as int, lessThan(500));
           // Everything fed played: the playhead reached the fed duration,
           // and completed came no earlier than its playing time.
           expect(r['timePosAtEnd']! as double, greaterThan(1.95));
@@ -268,8 +277,13 @@ void main() {
             greaterThanOrEqualTo(1900),
           );
           expect(r['sourceState'], 'drained');
-          // mpv reports the audio received so far as the duration.
+          // mpv reports the audio received so far as the duration (1920
+          // ms here: it counts packets by their start).
           expect(r['liveDurationMs']! as int, lessThanOrEqualTo(2000));
+          expect(r['liveDurationMs']! as int, greaterThan(1500));
+          // At the end it can stay one packet short of the fed audio, below
+          // the position the playhead reached.
+          expect(r['finalDurationMs']! as int, inInclusiveRange(1900, 2000));
           expect(r['errors'], 0);
         },
         timeout: t,
@@ -450,13 +464,10 @@ void main() {
       await first.close();
       // The second source is referenced by its playlist entry only.
       final weak = await _queueDropped(player, first);
-      // Collect it if nothing holds it: before the fix the finalizer then
-      // released the finished, unread source and its entry failed to load.
-      for (var i = 0; i < 40 && weak.target != null; i++) {
-        final junk = [for (var j = 0; j < 64; j++) Uint8List(1 << 20)];
-        junk.clear();
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
+      // Give the GC a chance: if nothing held it, the finalizer would
+      // release the finished, unread source and its entry fail to load.
+      await _churn(() => weak.target == null);
+      expect(weak.target, isNotNull, reason: 'its queued entry holds it');
       await player.play();
       await waitUntil(
         () => ends.isNotEmpty && player.state.completed,
@@ -464,7 +475,6 @@ void main() {
         reason: 'both entries play',
       );
       _log('dropped source', {
-        'collected': weak.target == null,
         'endFile': ends.map((e) => '${e.reason.name}:${e.error}').toList(),
       });
       expect(ends.single.reason, MpvEndFileReason.eof);
@@ -483,11 +493,12 @@ void main() {
       final ends = <MpvFileEndedEvent>[];
       final sub = player.stream.endFile.listen(ends.add);
       final weak = await _queueClosed(player, 3);
-      for (var i = 0; i < 20; i++) {
-        final junk = [for (var j = 0; j < 64; j++) Uint8List(1 << 20)];
-        junk.clear();
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
+      await _churn(() => weak.every((w) => w.target == null));
+      expect(
+        weak.where((w) => w.target != null),
+        hasLength(3),
+        reason: 'their queued entries hold them',
+      );
       final sw = Stopwatch()..start();
       await player.play();
       await waitUntil(
@@ -500,7 +511,6 @@ void main() {
         'playedMs': sw.elapsedMilliseconds,
         'endFile': ends.map((e) => '${e.reason.name}:${e.error}').toList(),
         'lastPos': pos,
-        'collected': weak.where((w) => w.target == null).length,
       });
       expect(ends.map((e) => e.reason), [
         MpvEndFileReason.eof,
@@ -593,34 +603,47 @@ void main() {
       await player.dispose();
     }, timeout: t);
 
-    test('a seek on a live entry does nothing', () async {
-      final player = await buildPlayer();
-      final source = await player.openPcmStream(_speech);
-      final feeding = source.addStream(_feed(_speech, totalMs: 3000));
-      await waitUntil(
-        () async =>
-            (double.tryParse(await player.getRawProperty('time-pos') ?? '') ??
-                0) >
-            1.0,
-        reason: 'playback reaches 1 s',
+    for (final cache in [Cache.auto, Cache.yes]) {
+      test(
+        'a seek on a live entry does nothing, cache ${cache.name}',
+        () async {
+          final player = await buildPlayer();
+          // With the cache forced on, mpv would seek back in what it cached.
+          await player.setCache(player.state.cache.copyWith(mode: cache));
+          final source = await player.openPcmStream(_speech);
+          final feeding = source.addStream(_feed(_speech, totalMs: 3000));
+          await waitUntil(
+            () async =>
+                (double.tryParse(
+                      await player.getRawProperty('time-pos') ?? '',
+                    ) ??
+                    0) >
+                1.0,
+            reason: 'playback reaches 1 s',
+          );
+          Object? error;
+          try {
+            await player.seek(const Duration(milliseconds: 100));
+          } catch (e) {
+            error = e;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          final pos = double.parse(
+            await player.getRawProperty('time-pos') ?? '0',
+          );
+          _log('seek', {
+            'error': '$error',
+            'posAfter': pos,
+            'seekable': await player.getRawProperty('seekable'),
+          });
+          expect(pos, greaterThan(1.0));
+          expect(await player.getRawProperty('seekable'), 'no');
+          source.abort();
+          await feeding;
+          await player.dispose();
+        },
+        timeout: t,
       );
-      Object? error;
-      try {
-        await player.seek(const Duration(milliseconds: 100));
-      } catch (e) {
-        error = e;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      final pos = double.parse(await player.getRawProperty('time-pos') ?? '0');
-      _log('seek', {
-        'error': '$error',
-        'posAfter': pos,
-        'seekable': await player.getRawProperty('seekable'),
-      });
-      expect(pos, greaterThan(1.0));
-      source.abort();
-      await feeding;
-      await player.dispose();
-    }, timeout: t);
+    }
   });
 }

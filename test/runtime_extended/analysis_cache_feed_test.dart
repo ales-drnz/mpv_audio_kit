@@ -758,6 +758,10 @@ void main() {
             }
           }
           // The core is still sound: a new file analyses from its cache.
+          // The last `next` left this FLAC loaded and analysed: a listener
+          // back on it gets that result without a new pass, so the
+          // player stops first and the open below is a new file.
+          await player!.stop();
           watch = _Watch(player!);
           await player!.open(Media(server.url(flacName)), play: true);
           final a = (await watch!.settle(log))!;

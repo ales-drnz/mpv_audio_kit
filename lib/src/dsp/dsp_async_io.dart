@@ -35,6 +35,7 @@ Float32List? float32FromByteValue(Object? value) {
   if (value.offsetInBytes == 0) {
     return value.buffer.asFloat32List(0, n);
   }
-  final aligned = Uint8List.fromList(value.sublist(0, n * 4));
+  // sublist copies into a new buffer, which starts at offset 0.
+  final aligned = value.sublist(0, n * 4);
   return aligned.buffer.asFloat32List(0, n);
 }

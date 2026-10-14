@@ -1004,7 +1004,13 @@ abstract class _PlayerBase {
         if (_bringUpCompleted) _waveformPipeline.setEnabled(true);
       },
       onCancel: () {
-        if (_bringUpCompleted) _waveformPipeline.setEnabled(false);
+        if (!_bringUpCompleted) return;
+        _waveformPipeline.setEnabled(false);
+        // libmpv-r16 stops the shared decode pass with the waveform, and
+        // a loudness scan still listened to would stay `scanning`.
+        if (_loudnessScanCtrl.hasListener) {
+          unawaited(_loudnessScanPipeline.resumeAfterWaveformStop());
+        }
       },
     );
     // Same listener-gating as the waveform: the af-metadata poll runs

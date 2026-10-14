@@ -109,6 +109,37 @@ void main() {
       );
     }
 
+    for (final next in ['openPcmStream', 'stop']) {
+      test(
+        'a source replaced by $next before mpv shows it ends as stopped',
+        () async {
+          // The playlist observation merges changes, and mpv idle after a
+          // failed load does not report a stop at all: the entry of the
+          // first source can be gone before any playlist node listed it.
+          for (var i = 0; i < 5; i++) {
+            final player = await buildPlayer();
+            try {
+              final a = await player.openPcmStream(f, play: false);
+              if (next == 'stop') {
+                await player.stop();
+              } else {
+                (await player.openPcmStream(f, play: false)).abort();
+              }
+              await a.done.timeout(
+                const Duration(seconds: 3),
+                onTimeout: () => fail('round $i: ${a.state} after $next'),
+              );
+              expect(a.state, PcmSourceState.stopped);
+              expect(native[_id(a)].freed, isTrue);
+            } finally {
+              await player.dispose();
+            }
+          }
+        },
+        timeout: const Timeout(Duration(seconds: 60)),
+      );
+    }
+
     test('addAudioTrack and openPlaylistFile refuse a live source', () async {
       final player = await buildPlayer();
       await openAndWaitForLoad(player, defaultFixturePath());

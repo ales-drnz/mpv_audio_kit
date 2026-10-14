@@ -29,6 +29,10 @@ import '../types/settings/spectrum_settings.dart';
 /// engine and scratch buffers are not built until [process] is called
 /// for the first time, so an unused processor costs no memory.
 ///
+/// A tap frame holds the latest 4096 frames per channel, so frames
+/// overlap and [process] analyzes part of the audio again on each call,
+/// as the player's own [PlayerStream.fft] does.
+///
 /// Example — bind a per-filter editor's input/output curves to the
 /// player's live spectrum settings:
 ///
@@ -162,6 +166,10 @@ class BandProcessor {
         }
         mono = sum * invChannels;
       }
+      // A NaN or an infinity (an unstable filter, a corrupt float file)
+      // would turn every bin of the next FFTs into NaN, and the smoothing
+      // would keep the bands NaN for good. Read it as silence.
+      if (!mono.isFinite) mono = 0;
       _ring![_ringWrite] = mono;
       _ringWrite = (_ringWrite + 1) % fftSize;
       if (_samplesInRing < fftSize) _samplesInRing++;
@@ -219,7 +227,7 @@ class BandProcessor {
       final mag = math.sqrt(c.x * c.x + c.y * c.y) * invBinCount;
       final db = 20 * (math.log(mag + 1e-12) / math.ln10);
       var n = (db - minDb) / dbRange;
-      if (n < 0) n = 0;
+      if (!(n >= 0)) n = 0; // NaN too
       if (n > 1) n = 1;
       raw[i] = n;
     }

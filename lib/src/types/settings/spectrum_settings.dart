@@ -8,12 +8,13 @@ import '../enums/window_function.dart';
 ///
 /// Apply atomically via [Player.setSpectrum] (replace the whole
 /// bundle) or [Player.updateSpectrum] (mutate one or more fields with
-/// a copyWith mapper). Read live via [PlayerStream.spectrum] and
-/// [PlayerStream.pcm].
+/// a copyWith mapper). Read the current settings via
+/// [PlayerStream.spectrum]; the frames they shape arrive on
+/// [PlayerStream.fft] and [PlayerStream.pcm].
 ///
 /// The streams are **lazy**: the FFT pipeline allocates and the FFI
 /// poll loop starts only on the first listener, and tears down on
-/// the last cancel. A subscriber to either [PlayerStream.spectrum]
+/// the last cancel. A subscriber to either [PlayerStream.fft]
 /// or [PlayerStream.pcm] alone is enough to arm the pipeline; both
 /// streams share the same upstream tap.
 ///
@@ -54,7 +55,8 @@ final class SpectrumSettings {
   /// Time between [FftFrame] and [PcmFrame] emissions. 33 ms ≈ 30 fps
   /// (default), 16 ms ≈ 60 fps. Range 8 ms (~120 fps) to 67 ms
   /// (~15 fps); the pipeline is gated by this independently of the
-  /// FFT block rate.
+  /// FFT block rate. [Player.setSpectrum] asserts it is at least 8 ms,
+  /// and a shorter value is polled every 8 ms.
   final Duration emitInterval;
 
   /// EMA smoothing coefficient applied when a band's new value is
@@ -84,11 +86,13 @@ final class SpectrumSettings {
   /// occupies the lower range without bottoming out.
   final double maxDb;
 
-  /// Overlap-add factor for the FFT loop. `1` runs a single FFT per
-  /// emit on the latest [fftSize] samples (snappy, no interpolation
-  /// between blocks). `4` (default) runs four FFTs spaced
-  /// `fftSize / 4` samples apart: the classic 75 % overlap, visibly
-  /// smoother visualizer motion at no extra latency. Higher values
+  /// Overlap factor for the FFT loop: an FFT runs every
+  /// `fftSize / overlapFactor` samples, the classic 75 % overlap at the
+  /// default `4`, for visibly smoother visualizer motion at no extra
+  /// latency. Each emit feeds the processor the whole frame the tap
+  /// holds (4096 samples per channel), so at the defaults an emit runs
+  /// 8 FFTs, and 2 with `1`. The smoothing steps once per FFT, so this
+  /// factor also sets how fast the bands rise and fall. Higher values
   /// trade CPU for smoother curves; values must be powers of two so
   /// `fftSize / overlapFactor` is an integer hop.
   final int overlapFactor;

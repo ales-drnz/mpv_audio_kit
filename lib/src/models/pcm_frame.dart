@@ -10,8 +10,13 @@ import 'dart:typed_data';
 /// Emitted on [PlayerStream.pcm] at the rate configured in
 /// [SpectrumSettings.emitInterval] (default ~30 Hz). Use this for
 /// time-domain visualisations the FFT pipeline can't express:
-/// scrolling waveforms, accurate VU/peak meters, oscilloscopes,
-/// vectorscopes, custom feature extractors that need raw amplitude.
+/// accurate VU and peak meters, oscilloscopes, vectorscopes, custom
+/// feature extractors that need raw amplitude.
+///
+/// A frame holds the latest audio the tap saw, up to 4096 frames per
+/// channel, whatever came before: consecutive frames overlap (about
+/// 60 % on [PlayerStream.pcm] at the default 33 ms), so they cannot be
+/// appended one after the other into a continuous signal.
 ///
 /// For a frequency-domain visualizer (spectrum bars, glow effects),
 /// prefer [FftFrame] from [PlayerStream.fft]. The two streams
@@ -39,7 +44,8 @@ class PcmFrame {
     required this.channels,
   });
 
-  /// Interleaved Float32 samples in the range `[-1.0, +1.0]`. For
+  /// Interleaved Float32 samples, nominally in `[-1.0, +1.0]` (float
+  /// audio can exceed it, for example after a gain stage). For
   /// stereo audio the layout is `L, R, L, R, …`; for 5.1 it's
   /// `L, R, C, LFE, Ls, Rs, …`. Length is
   /// `samplesPerChannel * channels`. Total samples per channel:

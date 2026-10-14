@@ -6,9 +6,12 @@ import 'dart:typed_data';
 
 /// Mono min, max and RMS amplitude envelope of the audio currently loaded.
 ///
-/// Emitted once per track on [PlayerStream.waveform] after the engine
-/// finishes decoding the file in the background. The track is mixed
-/// down to mono and binned into a fixed ~2000-entry envelope.
+/// Emitted on [PlayerStream.waveform] for the loaded track. The track is
+/// mixed down to mono and binned into a fixed ~2000-entry envelope. A
+/// local file is decoded in the background: partial envelopes
+/// ([decoding] true) come first, then the final one. A network file
+/// grows with playback (unfilled bins in [filled]), and a [live] stream
+/// is a sliding window of up to 131072 bins.
 ///
 /// Bin `i` spans the time slice
 /// `[start + i / bins * duration, start + (i + 1) / bins * duration)`.

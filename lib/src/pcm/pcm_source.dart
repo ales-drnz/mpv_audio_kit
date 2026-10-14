@@ -67,7 +67,16 @@ enum PcmSourceState {
 ///
 /// Each source is read once: it cannot be played again, and seeking is
 /// not possible (a seek on it does nothing). Its length is not known in
-/// advance: `state.duration` follows the audio received so far.
+/// advance: `state.duration` follows the audio received so far. mpv
+/// counts it by the start of the last packet, so it can end a few tens
+/// of ms short of the audio fed, and the position can pass it at the end.
+///
+/// Playback starts once the audio output buffer is full: with input at
+/// real time, about that buffer (200 ms, 100 ms with `lowLatency`) less
+/// the first chunk after it arrives, plus the device's own latency.
+/// Input faster than real time starts sooner. When the input runs dry
+/// the output stops and restarts only with its buffer full again: each
+/// gap adds up to a buffer of delay that stays for the rest of the entry.
 /// [Media.isPcmStream] tells a live source from a file.
 final class PcmSource {
   PcmSource._(this.format, this.maxBuffered, this._native, this._id)
@@ -80,9 +89,8 @@ final class PcmSource {
   /// refuses audio: past it, chunks wait in Dart memory.
   ///
   /// [lowLatency] halves the audio output buffer for this entry (100 ms in
-  /// place of 200 ms): playback starts about 0.13 s after the first chunk
-  /// in place of about 0.2 s, with less margin against a late chunk or a
-  /// busy device.
+  /// place of 200 ms): playback starts about 0.1 s sooner after the first
+  /// chunk, with less margin against a late chunk or a busy device.
   ///
   /// Throws [ArgumentError] when [maxBuffered] holds more than 1 GiB of
   /// [format]. Call `MpvAudioKit.ensureInitialized` first, as for a
@@ -169,8 +177,14 @@ final class PcmSource {
   /// playlist. The player opens it with the raw audio demuxer set to
   /// [format], whatever the load path (`open`, `openAll`, `add`,
   /// `replace`).
-  Media toMedia({Map<String, Object?>? extras}) =>
-      Media('$_scheme$_id', extras: extras);
+  ///
+  /// The media keeps this source alive until a player holds it, so it can
+  /// be queued with no other reference to the source.
+  Media toMedia({Map<String, Object?>? extras}) {
+    final media = Media('$_scheme$_id', extras: extras);
+    _byMedia[media] = this;
+    return media;
+  }
 
   /// Completes when the source can take more audio without going past
   /// [maxBuffered]: at once while below it, otherwise once the player has
@@ -233,7 +247,8 @@ final class PcmSource {
   /// Adds every chunk of [stream], pausing it while the source is past
   /// [maxBuffered] (see [ready]). Completes when [stream] ends, or when
   /// the source is [done], which cancels the subscription. An error of
-  /// [stream] cancels it and completes the future with that error.
+  /// [stream] cancels it and completes the future with that error, and so
+  /// does a chunk that arrives after [close], with a [StateError].
   ///
   /// Does not [close] the source, so several streams can follow each
   /// other: call [close] after the last one.
@@ -256,6 +271,14 @@ final class PcmSource {
     sub = stream.listen(
       (chunk) {
         if (isDone) return finish();
+        if (_closing) {
+          if (completer.isCompleted) return;
+          unawaited(sub.cancel());
+          completer.completeError(
+            StateError('PcmSource.addStream() got a chunk after close()'),
+          );
+          return;
+        }
         add(chunk);
         if (_bufferedBytes >= _highBytes && !sub.isPaused) {
           sub.pause();
@@ -573,6 +596,11 @@ final class PcmSource {
   // Every source not yet released, for the player that loads its media.
   static final Map<int, WeakReference<PcmSource>> _live = {};
 
+  // The source of each media [toMedia] made: a source the app keeps only
+  // through its media (`player.add(make().toMedia())`) must not be
+  // collected between toMedia and the player holding its entry.
+  static final Expando<PcmSource> _byMedia = Expando<PcmSource>('pcm');
+
   /// Test-only: runs one poll of every source now.
   @visibleForTesting
   static void debugPoll() => _pollAll();
@@ -643,13 +671,16 @@ String? pcmLoadOptions(String uri) {
   // otherwise hold playback until a second is buffered, a lag that stays
   // for the rest of the entry. demuxer-termination-timeout=0: stop, next
   // or a dispose with a starved reader return at once instead of after
-  // 100 ms.
+  // 100 ms. demuxer-seekable-cache=no: with the cache forced on (cache=yes)
+  // mpv would seek back into what it cached of the live input and keep a
+  // back buffer of up to 50 MiB for it.
   return 'demuxer=rawaudio,'
       'demuxer-rawaudio-format=${format.encoding.mpvValue},'
       'demuxer-rawaudio-rate=${format.sampleRate},'
       'demuxer-rawaudio-channels=${format.channels},'
       'cache-pause=no,'
       'demuxer-termination-timeout=0,'
+      'demuxer-seekable-cache=no,'
       'gapless-audio=no'
       '${PcmSource._lowLatency.contains(id) ? ',audio-buffer=0.1' : ''}';
 }
