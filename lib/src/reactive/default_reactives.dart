@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:flutter/foundation.dart' show listEquals, mapEquals, setEquals;
+
 import '../generated/audio_effects_settings.dart';
 import '../models/audio_params.dart';
 import '../models/chapter.dart';
@@ -212,7 +214,7 @@ class DefaultPropertyReactives {
 
   /// Full track inventory of the current file (`track-list`).
   final ReactiveProperty<List<MpvTrack>> tracks =
-      ReactiveProperty<List<MpvTrack>>(const []);
+      ReactiveProperty<List<MpvTrack>>(const [], equals: listEquals);
 
   /// Currently selected audio track (`current-tracks/audio`); `null` when
   /// none is active.
@@ -222,6 +224,7 @@ class DefaultPropertyReactives {
   /// Set of codecs currently passed through as bitstream (`audio-spdif`).
   final ReactiveProperty<Set<Spdif>> audioSpdif = ReactiveProperty<Set<Spdif>>(
     const <Spdif>{},
+    equals: setEquals,
   );
 
   /// Upper bound the [volume] setter accepts (`volume-max`), in percent.
@@ -338,7 +341,7 @@ class DefaultPropertyReactives {
 
   /// Chapter list of the current file (`chapter-list`).
   final ReactiveProperty<List<Chapter>> chapters =
-      ReactiveProperty<List<Chapter>>(const []);
+      ReactiveProperty<List<Chapter>>(const [], equals: listEquals);
 
   /// Resolved path or URI of the current file (`path`).
   final ReactiveProperty<String> path = ReactiveProperty<String>('');
@@ -397,7 +400,10 @@ class DefaultPropertyReactives {
 
   /// Metadata tags attached to the active chapter (`chapter-metadata`).
   final ReactiveProperty<Map<String, String>> chapterMetadata =
-      ReactiveProperty<Map<String, String>>(const <String, String>{});
+      ReactiveProperty<Map<String, String>>(
+        const <String, String>{},
+        equals: mapEquals,
+      );
 
   /// mpv build version string (`mpv-version`).
   final ReactiveProperty<String> mpvVersion = ReactiveProperty<String>('');

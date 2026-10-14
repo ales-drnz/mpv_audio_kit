@@ -11,21 +11,29 @@ import 'dart:async';
 /// property owns a [ReactiveProperty] of the appropriate Dart type, and the
 /// property registry mutates them as raw mpv events arrive.
 ///
-/// The [update] method deduplicates writes — a write of the same value (by
-/// `==`) is a no-op and does not emit on the stream. This is the primary
+/// The [update] method deduplicates writes: a write of the same value (by
+/// `==`, or by the cell's `equals`) is a no-op and does not emit on the
+/// stream. This is the primary
 /// reason this class exists: it removes the per-call-site burden of "did the
 /// value actually change?" branching, so a setter that updates state
 /// optimistically can write unconditionally and trust that streams stay
 /// quiet on no-ops.
 class ReactiveProperty<T> {
   /// Creates a [ReactiveProperty] seeded with [initial] as its current value.
-  ReactiveProperty(this.initial) : _value = initial;
+  ///
+  /// [equals] replaces `==` in the dedup of [update]. A collection cell
+  /// passes a content comparison, since `==` on a `List`, `Set` or `Map`
+  /// is identity and every mpv event builds a new one.
+  ReactiveProperty(this.initial, {bool Function(T a, T b)? equals})
+    : _value = initial,
+      _equals = equals;
 
   /// The seed value, which the cell returns to when mpv reports its
   /// property unavailable (see [MpvPropertySpec.resetAndDispatch]).
   final T initial;
 
   T _value;
+  final bool Function(T a, T b)? _equals;
   final StreamController<T> _ctrl = StreamController<T>.broadcast();
 
   /// The current value. Synchronous, never throws.
@@ -45,12 +53,14 @@ class ReactiveProperty<T> {
 
   /// Updates the current [value] and emits on [stream].
   ///
-  /// If [next] equals the current value (by `==`), this is a no-op: no update
+  /// If [next] equals the current value (by `==`, or by the `equals` the
+  /// cell was created with), this is a no-op: no update
   /// to the cached value, no emission. Returns `true` if the value changed
   /// and was emitted, `false` on dedup (or if the controller is closed).
   bool update(T next) {
     if (_ctrl.isClosed) return false;
-    if (_value == next) return false;
+    final equals = _equals;
+    if (equals != null ? equals(_value, next) : _value == next) return false;
     _value = next;
     _ctrl.add(next);
     return true;

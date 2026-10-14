@@ -2,6 +2,9 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/reactive/default_reactives.dart';
+import 'package:mpv_audio_kit/src/reactive/node_parsers.dart';
 import 'package:mpv_audio_kit/src/reactive/reactive_property.dart';
 import 'package:test/test.dart';
 
@@ -190,6 +193,45 @@ void main() {
       final done = aggregateStream(() => a.value, [a.changes]).drain<void>();
       await a.close();
       await expectLater(done, completes);
+    });
+  });
+
+  group('collection cells compare by content', () {
+    // mpv sends a fresh list on every node event, and the player reads
+    // chapter-list again on each load: a list equal to the current one
+    // must not reach the streams again.
+    final r = DefaultPropertyReactives();
+    const twoTracks = [
+      {'id': 1, 'type': 'audio', 'codec': 'flac'},
+      {'id': 2, 'type': 'audio', 'codec': 'opus'},
+    ];
+    const twoChapters = [
+      {'time': 0.0, 'title': 'A'},
+      {'time': 1.5, 'title': 'B'},
+    ];
+
+    test('tracks', () {
+      expect(r.tracks.update(parseTrackListNode(twoTracks)), isTrue);
+      expect(r.tracks.update(parseTrackListNode(twoTracks)), isFalse);
+      expect(r.tracks.update(parseTrackListNode(twoTracks.sublist(1))), isTrue);
+    });
+
+    test('chapters', () {
+      expect(r.chapters.update(parseChapterListNode(twoChapters)), isTrue);
+      expect(r.chapters.update(parseChapterListNode(twoChapters)), isFalse);
+      expect(r.chapters.update(const []), isTrue);
+    });
+
+    test('chapterMetadata', () {
+      expect(r.chapterMetadata.update({'title': 'A'}), isTrue);
+      expect(r.chapterMetadata.update({'title': 'A'}), isFalse);
+      expect(r.chapterMetadata.update({'title': 'B'}), isTrue);
+    });
+
+    test('audioSpdif', () {
+      expect(r.audioSpdif.update({Spdif.ac3, Spdif.dts}), isTrue);
+      expect(r.audioSpdif.update({Spdif.dts, Spdif.ac3}), isFalse);
+      expect(r.audioSpdif.update({Spdif.ac3}), isTrue);
     });
   });
 }
