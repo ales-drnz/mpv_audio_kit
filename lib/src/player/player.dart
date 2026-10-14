@@ -1026,8 +1026,10 @@ abstract class _PlayerBase {
     );
 
     // Build the recipe and hand it to the event isolate. All heavy
-    // FFI runs there; the main isolate stays free.
-    _ready = _bringUpInIsolate();
+    // FFI runs there; the main isolate stays free. A failed init reaches
+    // every call that awaits it; a player nobody uses yet must not report
+    // it as an unhandled error.
+    _ready = _bringUpInIsolate()..ignore();
   }
 
   /// Test-only — allows tests to await the post-`Player()` init that
