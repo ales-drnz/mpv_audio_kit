@@ -7,9 +7,9 @@
 # anything to check, and writes code=true or code=false to $GITHUB_OUTPUT.
 # They are skipped for a change to the docs alone (README, CHANGELOG,
 # MIGRATION, imgs, doc, tool/diagrams) on top of a commit that passed, and
-# for a commit already run on another branch (the same commit pushed to
-# main and to a release branch runs once). When GitHub cannot be asked,
-# they run.
+# for a commit that already passed on another branch (the same commit
+# pushed to main and to a release branch runs once when the first run is
+# green). When GitHub cannot be asked, they run.
 #
 # Reads from the environment:
 #   EVENT   github.event_name
@@ -56,11 +56,12 @@ if [[ -n "$BASE" && ! "$BASE" =~ ^0+$ ]] &&
   fi
 fi
 if [[ "$code" == true && "$EVENT" == push ]]; then
-  # A run of this commit that is still going or went green.
-  earlier=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=push&per_page=50" \
-    --jq "[.workflow_runs[] | select(.id < $RUN_ID and (.conclusion == null or .conclusion == \"success\"))] | length")
-  if (( earlier > 0 )); then
-    echo "::notice::$SHA already runs (or passed) on another branch: tests and builds are skipped."
+  # Only a run that went green: one still going may yet fail or be
+  # cancelled, and nothing would come back to test this commit.
+  if ! green="$(green_runs "$SHA")"; then
+    echo "::warning::Could not look up the runs of $SHA: tests and builds run."
+  elif (( green > 0 )); then
+    echo "::notice::$SHA already passed on another branch: tests and builds are skipped."
     code=false
   fi
 fi

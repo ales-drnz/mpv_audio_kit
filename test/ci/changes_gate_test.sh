@@ -137,4 +137,35 @@ new_gh
 runs_of "$c3" 400:push:failure
 expect_eq "a commit failed on another branch runs" true "$(gate push "$c2" "$c3")"
 
+# A run still going may yet fail or be cancelled, and nothing would come
+# back to test the commit: only a green run counts.
+new_gh
+runs_of "$c3" 400:push:null 500:push:null
+expect_eq "a commit still running on another branch runs" true "$(gate push "$c2" "$c3")"
+
+new_gh
+runs_of "$c3" 400:push:failure 401:push:success 500:push:null
+expect_eq "a commit green on a rerun is skipped" false "$(gate push "$c2" "$c3")"
+
+new_gh
+runs_of "$c3" 400:pull_request:success
+expect_eq "a green pull request run of the commit does not count" true \
+  "$(gate push "$c2" "$c3")"
+
+new_gh
+runs_of "$c1" 400:push:success
+runs_of "$c2" 450:push:success
+expect_eq "a commit green after a docs-only skip is skipped" false \
+  "$(gate push "$c0" "$c2")"
+
+new_gh
+touch "$FAKE_GH/down"
+expect_eq "a push runs when GitHub cannot be asked" true "$(gate push "$c2" "$c3")"
+expect_log "with a warning" "::warning::"
+
+new_gh
+touch "$FAKE_GH/down"
+expect_eq "a docs-only push runs when GitHub cannot be asked" true \
+  "$(gate push "$c1" "$c2")"
+
 finish

@@ -12,7 +12,7 @@ concurrency:
 
 permissions:
   contents: read
-  # The changes job looks for an earlier run of the same commit.
+  # The changes job looks for green runs of a commit and of its parent.
   actions: read
 
 # Until a libmpv release is published, set the repository variable
@@ -29,9 +29,10 @@ jobs:
   # Decides whether the tests and the builds have anything to check. They
   # are skipped, not left out, so the required checks still report: for a
   # change to the docs alone (README, CHANGELOG, MIGRATION, imgs, doc,
-  # tool/diagrams), and for a commit already run on another branch (the
-  # same commit pushed to main and to a release branch runs once). The
-  # rules live in scripts/ci/changes_gate.sh.
+  # tool/diagrams) on top of a commit that passed, and for a commit that
+  # already passed on another branch (the same commit pushed to main and to
+  # a release branch runs once). The rules live in
+  # scripts/ci/changes_gate.sh.
   changes:
     name: Changes
     runs-on: ubuntu-24.04
