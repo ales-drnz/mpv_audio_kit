@@ -240,18 +240,45 @@ jobs:
           channel: stable
           cache: true
       # Gradle installs the NDK of the Flutter release and CMake on every
-      # run otherwise: the runner image has neither version.
+      # run otherwise: the runner image has neither version. They come from
+      # the cache or, before Gradle, from sdkmanager with retries, since a
+      # download cut halfway fails the whole build. The cache is saved as
+      # soon as they are in, so a build that fails later keeps it. Without
+      # a version (Flutter moved it), Gradle installs them as before.
       - name: NDK version
         id: ndk
         if: matrix.name == 'Android'
         run: |
           ndk=$(grep -oP 'val ndkVersion: String = "\K[^"]+' \
-            "$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt")
+            "$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt" || true)
+          if [[ -z "$ndk" ]]; then
+            echo "::warning::No ndkVersion in FlutterExtension.kt: Gradle installs the NDK, uncached."
+          fi
           echo "version=$ndk" >> "$GITHUB_OUTPUT"
           # The runner's own variable, which the env context does not carry.
           echo "sdk=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v6
+      - id: ndk-cache
         if: matrix.name == 'Android' && steps.ndk.outputs.version != ''
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ steps.ndk.outputs.sdk }}/ndk/${{ steps.ndk.outputs.version }}
+            ${{ steps.ndk.outputs.sdk }}/cmake/3.22.1
+          key: android-ndk-${{ steps.ndk.outputs.version }}-cmake-3.22.1
+      - name: Install the NDK and CMake
+        if: matrix.name == 'Android' && steps.ndk.outputs.version != '' && steps.ndk-cache.outputs.cache-hit != 'true'
+        env:
+          SDK: ${{ steps.ndk.outputs.sdk }}
+          NDK: ${{ steps.ndk.outputs.version }}
+        run: |
+          for attempt in 1 2 3; do
+            "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK" "cmake;3.22.1" && exit 0
+            echo "::warning::sdkmanager failed, attempt $attempt of 3."
+            sleep 20
+          done
+          exit 1
+      - if: matrix.name == 'Android' && steps.ndk.outputs.version != '' && steps.ndk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
         with:
           path: |
             ${{ steps.ndk.outputs.sdk }}/ndk/${{ steps.ndk.outputs.version }}
