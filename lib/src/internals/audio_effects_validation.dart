@@ -13,6 +13,7 @@
 /// never refused.
 library;
 
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -35,6 +36,8 @@ void validateAudioEffects(List<AudioEffect> effects) {
         _checkAnequalizer(e, 'effects[$i]');
       case ChorusEffect():
         _checkChorus(e, 'effects[$i]');
+      case PanEffect():
+        _checkPan(e, 'effects[$i]');
       default:
     }
   }
@@ -121,6 +124,61 @@ void _checkChorus(ChorusEffect e, String stage) {
   }
 }
 
+/// pan maps an input channel name to its id with av_channel_from_string
+/// and indexes 64-slot arrays with it, bounded for `cN` but not for a
+/// name: UNK, UNSD and any name starting with AMBI have ids from 0x200 up.
+/// The input side of each output channel is read the way pan reads it: a
+/// gain sscanf takes, with an optional `*`, then up to 7 capitals or
+/// `cN`, then `+` or `-` and the next channel. The layout and the output
+/// channel are mapped through the layout, which bounds them.
+void _checkPan(PanEffect e, String stage) {
+  for (final spec in _strtok(e.args, '|').skip(1)) {
+    var i = spec.indexOf(_panAssign);
+    if (i < 0) continue;
+    i++;
+    while (true) {
+      final gain = _cNumber.matchAsPrefix(spec, i);
+      if (gain != null) {
+        i = gain.end;
+        final star = _skipSpaces(spec, i);
+        if (star < spec.length && spec[star] == '*') i = star + 1;
+      }
+      i = _skipSpaces(spec, i);
+      final name = _panName.matchAsPrefix(spec, i)?.group(0);
+      if (name != null) {
+        if (name == 'UNK' || name == 'UNSD' || name.startsWith('AMBI')) {
+          throw ArgumentError.value(
+            e.args,
+            '$stage.args',
+            'pan has no input slot for channel $name',
+          );
+        }
+        i += name.length;
+      } else {
+        final index = _panIndex.matchAsPrefix(spec, i);
+        if (index == null) break;
+        i = index.end;
+      }
+      i = _skipSpaces(spec, i);
+      if (i == spec.length || (spec[i] != '+' && spec[i] != '-')) break;
+      i++;
+    }
+  }
+}
+
+final RegExp _panAssign = RegExp('[=<]');
+final RegExp _panName = RegExp('[A-Z]{1,7}');
+final RegExp _panIndex = RegExp(r'c[ \t\n\v\f\r]*[+-]?\d+');
+
+/// The index of the first character of [s] from [i] on that is not white
+/// space, as C's isspace sees it.
+int _skipSpaces(String s, int i) {
+  while (i < s.length && ' \t\n\v\f\r'.contains(s[i])) {
+    i++;
+  }
+  return i;
+}
+
 /// Throws when a value of [values], read from [list], is not finite or
 /// fails [ok].
 void _checkRange(
@@ -175,21 +233,46 @@ List<String> _strtok(String s, String delimiters) {
 }
 
 /// The number sscanf's `%lf` reads at the start of [item], or `null` when
-/// it reads none: leading white space, then a decimal number, `inf`,
-/// `infinity` or `nan` in any case. What follows the number is ignored.
+/// it reads none: leading white space, then a decimal or hexadecimal
+/// number, `inf`, `infinity` or `nan` in any case. What follows the
+/// number is ignored.
 double? _scanDouble(String item) {
-  final m = _cNumber.firstMatch(item);
+  final m = _cNumber.matchAsPrefix(item);
   if (m == null) return null;
-  final sign = m.group(1)!;
-  final digits = m.group(3);
-  if (digits != null) return double.parse('$sign$digits');
-  if (m.group(2)!.toLowerCase().startsWith('nan')) return double.nan;
-  return sign == '-' ? double.negativeInfinity : double.infinity;
+  final negative = m.group(1) == '-';
+  final double v;
+  if (m.group(3) case final decimal?) {
+    v = double.parse(decimal);
+  } else if (m.group(2) case final hex?) {
+    v = _hexValue(hex.substring(2));
+  } else if (m.group(4)!.toLowerCase().startsWith('nan')) {
+    return double.nan;
+  } else {
+    v = double.infinity;
+  }
+  return negative ? -v : v;
+}
+
+/// The value of a C hexadecimal float, `0x` left out: hex digits with an
+/// optional point, then an optional binary exponent.
+double _hexValue(String hex) {
+  final p = hex.toLowerCase().indexOf('p');
+  final mantissa = p < 0 ? hex : hex.substring(0, p);
+  final exponent = p < 0 ? 0 : int.tryParse(hex.substring(p + 1)) ?? 99999;
+  final point = mantissa.indexOf('.');
+  var v = 0.0;
+  for (final digit in mantissa.replaceAll('.', '').split('')) {
+    v = v * 16 + int.parse(digit, radix: 16);
+  }
+  if (v == 0) return 0;
+  final fraction = point < 0 ? 0 : mantissa.length - point - 1;
+  return v * math.pow(2, exponent.clamp(-99999, 99999) - 4 * fraction);
 }
 
 final RegExp _cNumber = RegExp(
-  r'^[ \t\n\v\f\r]*([+-]?)'
-  r'(?:(inf(?:inity)?|nan(?:\([0-9a-z_]*\))?)|'
-  r'((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?))',
+  r'[ \t\n\v\f\r]*([+-]?)'
+  r'(?:(0x(?:[0-9a-f]+\.?[0-9a-f]*|\.[0-9a-f]+)(?:p[+-]?\d+)?)|'
+  r'((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)|'
+  r'(inf(?:inity)?|nan(?:\([0-9a-z_]*\))?))',
   caseSensitive: false,
 );

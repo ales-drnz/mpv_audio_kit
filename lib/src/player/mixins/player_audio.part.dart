@@ -427,7 +427,9 @@ mixin _AudioModule on _PlayerBase {
   ///   delay or depth, or a speed that is not above 0 and at most 100 Hz;
   /// - aecho delays that are not above 0 and at most 90000 ms, or decays
   ///   that are not above 0 and at most 1;
-  /// - an anequalizer band value that is NaN or infinite.
+  /// - an anequalizer band value that is NaN or infinite;
+  /// - a pan input channel named UNK, UNSD or AMBI, which pan has no slot
+  ///   for.
   ///
   /// A [RawAudioEffect] is not checked.
   ///

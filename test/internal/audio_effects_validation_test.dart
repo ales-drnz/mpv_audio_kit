@@ -214,6 +214,34 @@ void main() {
     });
   });
 
+  group('pan', () {
+    test('an input channel with no slot below 64 is refused', () {
+      // pan bounds `cN` but not a name: UNK, UNSD and AMBI have ids from
+      // 0x200 up and index its 64-slot arrays past their end.
+      _refused(const PanEffect(args: 'stereo|FL=UNK|FR=FR'));
+      _refused(const PanEffect(args: 'stereo|FL=AMBI1'));
+      _refused(const PanEffect(args: 'stereo|FL=FL+UNSD|FR=FR'));
+      _refused(const PanEffect(args: 'stereo|FL<0.5*FL+0.5 * AMBIX|FR=FR'));
+      _refused(const PanEffect(args: 'stereo|FL=FL|FR=FR-0.3*UNK'));
+      // pan reads at most 7 capitals as a name: the first 7 start with AMBI.
+      _refused(const PanEffect(args: 'stereo|FL=AMBIAMBI'));
+      // The gain is read by sscanf, which takes NAN as a number, so the
+      // name starts right after it.
+      _refused(const PanEffect(args: 'stereo|FL=NANUNK'));
+    });
+
+    test('the same names elsewhere pass', () {
+      // In the output layout and as an output channel the name is mapped
+      // through the layout, which bounds it.
+      _accepted(const PanEffect(args: 'FL+UNK|UNK=FL|FL=FR'));
+      // Names pan does not know (it refuses them itself), and an input
+      // part that reads no further than a name that fails.
+      _accepted(const PanEffect(args: 'stereo|FL=UNKNOWN|FR=XAMBI'));
+      _accepted(const PanEffect(args: 'stereo|FL=0.5*FL+0.5*FC-0.25*BL|FR<FR'));
+      _accepted(const PanEffect(args: 'stereo|c0=c0+c1|c1=0x1p-1*c1'));
+    });
+  });
+
   group('the effects manifest', () {
     test('every corner passes', () {
       for (final c in kFilterParamCorners) {
