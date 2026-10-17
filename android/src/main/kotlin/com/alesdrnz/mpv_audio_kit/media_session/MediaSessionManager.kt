@@ -257,6 +257,12 @@ internal object MediaSessionManager :
         scrubFreezeMs = null
         enabled = true
         ensureSessionCreated()
+        // A new session starts from a clean audio focus. An enable with no
+        // disable before it (a Hot Restart whose disable never arrived)
+        // would keep the old latch and play intent, and the next focus gain
+        // would start the new player on its own.
+        audioFocus?.release()
+        audioFocus = null
         ensureAudioFocus()
         startService()
         publish()
