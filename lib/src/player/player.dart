@@ -427,7 +427,12 @@ class Player extends _PlayerBase
     }
     if (appended.isNotEmpty) _remapReported(appended);
     if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
-    if (load.superseded) return bailDisposing();
+    // From here on mpv has the entries, and may read them again until it
+    // leaves them (a previous, a loop, a prefetch): their sources stay with
+    // [_heldSources], which releases each one once it left the playlist and
+    // mpv moved on. Released now, an Android descriptor would go to the
+    // next file the app opens while mpv still lists its number.
+    if (load.superseded) return;
 
     // ── Phase 3: intent, then one direct jump to the target ───────────
     // The pause write cannot be fought by keep-open here: the parked
@@ -455,7 +460,8 @@ class Player extends _PlayerBase
     // positions. Tolerant `_command`: a concurrent surgery that already
     // emptied position 0 must not surface as an openAll error.
     if (retainedOld) {
-      if (load.superseded) return bailDisposing();
+      // The target plays from its source now: see the check after phase 2.
+      if (load.superseded) return;
       await _command(['playlist-remove', '0']);
     }
     // Clear per-track state AFTER the jump's reply; see [open] for why

@@ -48,16 +48,25 @@ class HeldSources {
     };
   }
 
-  /// A playlist report: the URIs of every entry it lists.
-  void onPlaylist(Iterable<String> listed) {
+  /// mpv accepted the `loadfile` of [uri] as entry [id]. A report taken
+  /// after that which does not list it means the entry left, even when no
+  /// report ever listed it: the next load can replace it first.
+  void onAdded(String uri, int id) => _holds[uri]?.addedId = id;
+
+  /// A playlist report: the URIs of every entry it lists, and [newestId],
+  /// the highest entry id any report has listed so far. mpv numbers the
+  /// entries in order, so an entry added with an id up to [newestId] was
+  /// there before this report was taken.
+  void onPlaylist(Iterable<String> listed, {int newestId = -1}) {
     if (_holds.isEmpty) return;
     final live = listed.toSet();
     for (final MapEntry(key: uri, value: h) in _holds.entries) {
+      final added = h.addedId;
       if (live.contains(uri)) {
         h
           ..listed = true
           ..leftAt = null;
-      } else if (h.listed) {
+      } else if (h.listed || (added != null && added <= newestId)) {
         h.leftAt ??= _starts;
       }
     }
@@ -126,6 +135,9 @@ class _Hold {
 
   /// Whether a playlist report has listed the entry.
   bool listed = false;
+
+  /// The entry id mpv gave the entry, once its `loadfile` was accepted.
+  int? addedId;
 
   /// The file-start count when the entry left the playlist. For a track,
   /// the file-end count when mpv took it.

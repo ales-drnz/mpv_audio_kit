@@ -102,6 +102,94 @@ void main() {
       });
     });
 
+    // A `test://` URI resolves to its own link to the long fixture, with a
+    // release that is counted, as the player holds a `content://`
+    // descriptor; `test://broken` fails to resolve.
+    group('sources', () {
+      late Directory tmp;
+      late List<String> released;
+
+      setUp(() {
+        tmp = Directory.systemTemp.createTempSync('mak_src_');
+        released = [];
+        debugResolveUriOverride = (uri) async {
+          if (!uri.startsWith('test://')) return ResolvedUri(uri);
+          final name = uri.substring('test://'.length);
+          if (name == 'broken') throw SourceException(uri, 'no descriptor');
+          final link = Link('${tmp.path}/$name.flac');
+          if (!link.existsSync()) link.createSync(longFixture);
+          return ResolvedUri(link.path, () async => released.add(uri));
+        };
+      });
+
+      tearDown(() async {
+        await player.dispose();
+        tmp.deleteSync(recursive: true);
+      });
+
+      List<Media> album(String name, int n) => [
+        for (var i = 0; i < n; i++) Media('test://$name$i'),
+      ];
+
+      /// The test entries the playlist lists.
+      Set<String> listed() => {
+        for (final m in player.state.playlist.items)
+          if (m.uri.startsWith('test://')) m.uri,
+      };
+
+      /// Runs [load] with the reply to its [command] held back, and while
+      /// it waits overtakes it with an open() that fails to resolve, so
+      /// nothing replaces what mpv took from [load].
+      Future<void> overtake(
+        String command,
+        Future<void> Function() load,
+      ) async {
+        shim().holdReply(command, const Duration(milliseconds: 400));
+        final loading = load();
+        await waitUntil(
+          () => shim().counter('replies_held') > 0,
+          reason: 'the $command reply was never held',
+        );
+        await expectLater(
+          player.open(const Media('test://broken')),
+          throwsA(isA<SourceException>()),
+        );
+        await loading;
+      }
+
+      // mpv reads an fd:// entry again on every open of it (a previous, a
+      // loop, a prefetch): closed while listed, the number goes to the next
+      // descriptor the app opens.
+      test('an openAll overtaken after its appends keeps them', () async {
+        await overtake(
+          'loadfile',
+          () => player.openAll(album('a', 3), play: false),
+        );
+        await waitUntil(
+          () => listed().length == 3,
+          reason: 'mpv never listed the entries',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        expect(released, isEmpty, reason: 'released while mpv lists them');
+      });
+
+      test('an openAll overtaken after its jump keeps them', () async {
+        await player.open(Media(longFixture), play: true);
+        await waitUntil(() => player.state.playing);
+        await overtake(
+          'playlist-play-index',
+          () => player.openAll(album('b', 3), play: true),
+        );
+        await waitUntil(
+          () => listed().length == 3,
+          reason: 'mpv never listed the entries',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        expect(await player.getRawProperty('path'), endsWith('b0.flac'));
+        expect(released, isEmpty, reason: 'released while mpv plays one');
+      });
+    });
+
     group('test seams', () {
       test('a refused loadfile fails like a full reply queue', () async {
         shim().refuseLoadfile('mak-refused');
