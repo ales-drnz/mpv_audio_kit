@@ -14,7 +14,9 @@ mixin _PlaybackModule on _PlayerBase {
   /// its end and the intent stays off. With nothing loaded (before any
   /// open, after [stop]) there is nothing to resume and the intent stays
   /// off too. The future completes once mpv has taken the unpause; the
-  /// playback itself is observable via [PlayerStream.playing].
+  /// playback itself is observable via [PlayerStream.playing]. A [pause],
+  /// [stop] or load called after it has the last word: then it writes
+  /// nothing.
   Future<void> play() async {
     await _gate();
     // Optimistic intent: `pause` is silent on the first load → playing
@@ -26,17 +28,28 @@ mixin _PlaybackModule on _PlayerBase {
     // silence. Seek back first; the unpause after it sticks, as in [jump].
     // In the last buffer before the park mpv is not paused yet and the
     // audio still plays: nothing to do but the unpause.
-    if (await _parkedPaused()) {
+    final parked = await _parkedPaused();
+    // A later call claimed the transport during the reads: its pause write
+    // is already out, and an unpause written now would undo it.
+    if (intent != _intentEpoch) return;
+    if (parked) {
       await _command(['seek', '0', 'absolute']);
       // A seek that landed has left EOF by the next read: the seek wakes
       // the core, which runs it before it serves another request. Still at
       // EOF on a source that cannot seek, it failed. The unpause would only
       // be paused again by keep-open, too fast for a notification, so it
-      // is not written and the intent goes back off.
-      if (await _parkedAtEof() && await getRawProperty('seekable') != 'yes') {
+      // is not written and the intent goes back off. Not while a load is
+      // running: it replaces the parked file (openAll removes it first), so
+      // the reads tell nothing about the source, and the unpause arms the
+      // load.
+      if (_loadsInFlight == 0 &&
+          await _parkedAtEof() &&
+          await getRawProperty('seekable') != 'yes' &&
+          _loadsInFlight == 0) {
         if (intent == _intentEpoch) _writeIntent(false);
         return;
       }
+      if (intent != _intentEpoch) return;
       await _prop('pause', 'no');
       // A park read still on its way when this call began (the park had
       // just happened) clears the intent on arrival; by now it has

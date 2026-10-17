@@ -5,6 +5,7 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -18,6 +19,8 @@ import '../_helpers/setter_test_helpers.dart';
 /// a load that fails before reaching mpv leaves the intent it found.
 void main() {
   final fixturePath = defaultFixturePath();
+  final longFixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
+  final shortFixture = '${Directory.current.path}/test/fixtures/sine_50ms.wav';
   const speech = PcmFormat(sampleRate: 24000, channels: 1);
 
   Uint8List tone(int ms) {
@@ -125,6 +128,158 @@ void main() {
       await waitUntil(() => !player.state.completed && player.state.playing);
       expect(player.state.playWhenReady, isTrue);
     }, timeout: t);
+
+    // play() reads the core before it unpauses: a pause() called after it
+    // has the last word, and the unpause must not land after its write.
+    test('play() then pause() without awaiting leaves it paused', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      await openAndWaitForLoad(player, longFixture);
+      final playing = player.play();
+      final pausing = player.pause();
+      await Future.wait([playing, pausing]);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('pause'), 'yes');
+      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playing, isFalse);
+    }, timeout: t);
+
+    test('play() at the end then pause() stays paused', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      final completed = player.stream.completed
+          .firstWhere((c) => c)
+          .timeout(const Duration(seconds: 10));
+      await player.open(Media(fixturePath), play: true);
+      await completed;
+
+      final playing = player.play();
+      final pausing = player.pause();
+      await Future.wait([playing, pausing]);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('pause'), 'yes');
+      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playing, isFalse);
+    }, timeout: t);
+
+    // At the end of the queue openAll steps through idle: mpv cannot append
+    // behind a parked entry without playing into the new album. That idle
+    // is the load's own step, not the end of the content: it must not
+    // spend the intent. Eight runs each, since the step lasts a few ms.
+    group('openAll at the end of the queue', () {
+      const runs = 8;
+
+      Future<Player> parked() async {
+        final player = await buildPlayer();
+        await player.openAll([Media(shortFixture)], play: true);
+        await waitUntil(
+          () => player.state.completed,
+          timeout: const Duration(seconds: 15),
+          reason: 'never parked',
+        );
+        return player;
+      }
+
+      test('with play() in flight plays', () async {
+        for (var run = 0; run < runs; run++) {
+          final player = await parked();
+          try {
+            final opening = player.openAll([
+              Media(fixturePath),
+              Media(fixturePath),
+            ], play: false);
+            await player.play();
+            await opening;
+            await waitUntil(
+              () => player.state.playing && player.state.playWhenReady,
+              timeout: const Duration(seconds: 2),
+              reason:
+                  'run $run: playing ${player.state.playing}, '
+                  'playWhenReady ${player.state.playWhenReady}',
+            );
+            expect(await player.getRawProperty('pause'), 'no');
+          } finally {
+            await player.dispose();
+          }
+        }
+      }, timeout: const Timeout(Duration(seconds: 120)));
+
+      test('with play: true never shows paused', () async {
+        for (var run = 0; run < runs; run++) {
+          final player = await parked();
+          final seen = <bool>[];
+          final sub = player.stream.playWhenReady.listen(seen.add);
+          try {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            seen.clear();
+            await player.openAll([
+              Media(fixturePath),
+              Media(fixturePath),
+            ], play: true);
+            await waitUntil(
+              () => player.state.playing,
+              timeout: const Duration(seconds: 2),
+              reason: 'run $run: not playing',
+            );
+            await Future<void>.delayed(const Duration(milliseconds: 200));
+            expect(seen, isNot(contains(false)), reason: 'run $run: $seen');
+            expect(player.state.playWhenReady, isTrue);
+          } finally {
+            await sub.cancel();
+            await player.dispose();
+          }
+        }
+      }, timeout: const Timeout(Duration(seconds: 120)));
+    });
+
+    // jump() claims the intent at the call, like play() and open().
+    group('jump()', () {
+      Future<Player> pausedQueue() async {
+        final player = await buildPlayer();
+        addTearDown(player.dispose);
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.openAll([
+          Media(longFixture),
+          Media(longFixture),
+          Media(longFixture),
+        ], play: false);
+        await loaded;
+        return player;
+      }
+
+      test('then pause() without awaiting loads the entry paused', () async {
+        final player = await pausedQueue();
+        final jumping = player.jump(2);
+        final pausing = player.pause();
+        await Future.wait([jumping, pausing]);
+        await waitUntil(
+          () async => await player.getRawProperty('playlist-pos') == '2',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(await player.getRawProperty('pause'), 'yes');
+        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playing, isFalse);
+      }, timeout: t);
+
+      test('after an unawaited open() has the last word', () async {
+        final player = await pausedQueue();
+        final opening = player.open(Media(longFixture), play: false);
+        final jumping = player.jump(0);
+        await Future.wait([opening, jumping]);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(await player.getRawProperty('pause'), 'no');
+        expect(player.state.playWhenReady, isTrue);
+      }, timeout: t);
+
+      test('out of range leaves the intent it found', () async {
+        final player = await pausedQueue();
+        await expectLater(player.jump(5), throwsRangeError);
+        expect(player.state.playWhenReady, isFalse);
+        expect(await player.getRawProperty('pause'), 'yes');
+      }, timeout: t);
+    });
 
     test('a failed open puts the intent back', () async {
       final player = await buildPlayer();

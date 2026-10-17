@@ -72,6 +72,26 @@ void main() {
     expect(closed, ['fd://10']);
   });
 
+  // A load overtaken right after its loadfile: the next one replaced the
+  // entry before any report listed it. The ids tell the reports apart:
+  // mpv numbers entries in order, so a report that lists a newer id than
+  // the entry's was taken after mpv added it.
+  test('added, then dropped before any report listed it', () async {
+    held.hold('fd://13', closer('fd://13'));
+    held.onAdded('fd://13', 20);
+    held.onPlaylist(['other'], newestId: 19);
+    held.onStartFile();
+    await runAll(held.takeSettled());
+    expect(closed, isEmpty, reason: 'that report is older than the entry');
+
+    held.onPlaylist(['other'], newestId: 21);
+    await runAll(held.takeSettled());
+    expect(closed, isEmpty, reason: 'no file started since it left');
+    held.onStartFile();
+    await runAll(held.takeSettled());
+    expect(closed, ['fd://13']);
+  });
+
   test('dispose releases every hold, listed or not', () async {
     held.hold('fd://11', closer('fd://11'));
     held.hold('fd://12', closer('fd://12'));

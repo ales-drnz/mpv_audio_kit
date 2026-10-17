@@ -30,10 +30,22 @@ mixin _PlaylistModule on _PlayerBase {
     }
     _mediaCache[resolved.uri] = media;
     final opts = _buildLoadfileOptions(media);
-    if (opts.isEmpty) {
-      await _loadfile(['loadfile', resolved.uri, 'append'], media);
-    } else {
-      await _loadfile(['loadfile', resolved.uri, 'append', '-1', opts], media);
+    try {
+      if (opts.isEmpty) {
+        await _loadfile(['loadfile', resolved.uri, 'append'], media);
+      } else {
+        await _loadfile([
+          'loadfile',
+          resolved.uri,
+          'append',
+          '-1',
+          opts,
+        ], media);
+      }
+    } catch (_) {
+      // mpv refused the entry: nothing will ever read the source.
+      await resolved.dispose?.call();
+      rethrow;
     }
   }
 
@@ -96,33 +108,42 @@ mixin _PlaylistModule on _PlayerBase {
   ///
   /// Writes `pause=no` before issuing the playlist jump (and once more
   /// after it when mpv was parked at the end of content), so the new
-  /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives.
+  /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives. A
+  /// [pause] called after it has the last word: the track then loads
+  /// paused.
   ///
   /// Throws [RangeError] if [index] is out of range.
   Future<void> jump(int index) async {
     RangeError.checkNotNegative(index, 'index');
     await _gate();
-    if (await _checkPlaylistIndex(index, 'index') == null) return;
-    // See [next]: in-flight transport writes apply to the old entry.
-    await _settleWrites();
-    // Optimistic intent, same as play(): this call unpauses, and `pause`
-    // is deliberately unobserved, so skipping the write here would leave
+    // Optimistic intent, same as play(), claimed at the call so that the
+    // call order decides: this call unpauses, and `pause` is deliberately
+    // unobserved, so skipping the write here would leave
     // `state.playWhenReady` (and the OS play-pause button bound to it)
     // stuck on "paused" while audio is audibly playing.
-    _updateField(
-      (s) => s.copyWith(playWhenReady: true),
-      _reactives.playWhenReady,
-      true,
-    );
+    final previous = _state.playWhenReady;
+    final intent = _claimIntent(true);
+    try {
+      if (await _checkPlaylistIndex(index, 'index') == null) return;
+    } catch (_) {
+      // Out of range: nothing moved, so the intent goes back.
+      if (intent == _intentEpoch) _writeIntent(previous);
+      rethrow;
+    }
+    // See [next]: in-flight transport writes apply to the old entry.
+    await _settleWrites();
     // See [Player.open]: parked at EOF (`keep-open`) the unpause below
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
     final parkedAtEof = await _parkedAtEof();
-    await _prop('pause', 'no');
+    await _prop('pause', _intendedPlay(intent, true) ? 'no' : 'yes');
     await _commandChecked(['playlist-play-index', index.toString()]);
-    if (parkedAtEof) {
+    if (parkedAtEof && _intendedPlay(intent, true)) {
       await _prop('pause', 'no');
     }
+    // A park read on its way when this call began clears the intent on
+    // arrival, as in [play]: set again while this call still owns it.
+    if (intent == _intentEpoch) _writeIntent(true);
   }
 
   /// Moves the track at [from] to position [to].
@@ -159,65 +180,73 @@ mixin _PlaylistModule on _PlayerBase {
     if (await _checkPlaylistIndex(index, 'index') == null) return;
     _mediaCache[media.uri] = media;
     final resolved = _hold(await resolveUri(media.uri));
-    if (load.superseded) {
-      await resolved.dispose?.call();
-      return;
-    }
-    _mediaCache[resolved.uri] = media;
-    // Execute in-flight transport writes before the playlist surgery:
-    // see [_settleWrites].
-    await _settleWrites();
-    if (load.superseded) return;
-    final (posErr, posValue) = await _getAsync(
-      'playlist-pos',
-      MpvFormat.mpvFormatString,
-    );
-    if (load.superseded) return;
-    final currentPos = posErr < 0
-        ? -1
-        : (int.tryParse(posValue as String? ?? '') ?? -1);
-    final opts = _buildLoadfileOptions(media);
-    Future<void> insertAt(int at) {
-      if (opts.isEmpty) {
+    // Until mpv takes the entry its source is this call's to release, on
+    // every way out: a later load, a command that fails. Once taken, it
+    // stays with the held sources while mpv lists it.
+    var inserted = false;
+    try {
+      if (load.superseded) return;
+      _mediaCache[resolved.uri] = media;
+      // Execute in-flight transport writes before the playlist surgery:
+      // see [_settleWrites].
+      await _settleWrites();
+      if (load.superseded) return;
+      final (posErr, posValue) = await _getAsync(
+        'playlist-pos',
+        MpvFormat.mpvFormatString,
+      );
+      if (load.superseded) return;
+      final currentPos = posErr < 0
+          ? -1
+          : (int.tryParse(posValue as String? ?? '') ?? -1);
+      final opts = _buildLoadfileOptions(media);
+      Future<void> insertAt(int at) {
+        if (opts.isEmpty) {
+          return _loadfile([
+            'loadfile',
+            resolved.uri,
+            'insert-at',
+            at.toString(),
+          ], media);
+        }
+        // 4th-arg options require an explicit index argument (mpv 0.38+).
         return _loadfile([
           'loadfile',
           resolved.uri,
           'insert-at',
           at.toString(),
+          opts,
         ], media);
       }
-      // 4th-arg options require an explicit index argument (mpv 0.38+).
-      return _loadfile([
-        'loadfile',
-        resolved.uri,
-        'insert-at',
-        at.toString(),
-        opts,
-      ], media);
-    }
 
-    // Re-check the epoch between each of the multi-command surgeries below:
-    // every await now spans an event-isolate reply round-trip, during which a
-    // concurrent content-replacing call (stop, open, clearPlaylist) can bump
-    // _loadEpoch and own the queue. Without the guard, `playlist-next force`
-    // would RESTART playback a concurrent stop() meant to halt, and
-    // `playlist-remove` would delete a now-stale index. Bail and let the later
-    // call own the surgery, matching the open() family's per-await discipline.
-    if (currentPos == index) {
-      // Currently-playing entry: insert the replacement right after
-      // the active position, then advance: with prefetch on (see
-      // [setPrefetchPlaylist]) mpv has the next entry open ahead, so the
-      // switch is gapless for typical music files. Finally drop the
-      // original.
-      await insertAt(index + 1);
-      if (load.superseded) return;
-      await _commandChecked(['playlist-next', 'force']);
-      if (load.superseded) return;
-      await _commandChecked(['playlist-remove', index.toString()]);
-    } else {
-      await _commandChecked(['playlist-remove', index.toString()]);
-      if (load.superseded) return;
-      await insertAt(index);
+      // Re-check the epoch between each of the multi-command surgeries
+      // below: every await now spans an event-isolate reply round-trip,
+      // during which a concurrent content-replacing call (stop, open,
+      // clearPlaylist) can bump _loadEpoch and own the queue. Without the
+      // guard, `playlist-next force` would RESTART playback a concurrent
+      // stop() meant to halt, and `playlist-remove` would delete a now-stale
+      // index. Bail and let the later call own the surgery, matching the
+      // open() family's per-await discipline.
+      if (currentPos == index) {
+        // Currently-playing entry: insert the replacement right after
+        // the active position, then advance: with prefetch on (see
+        // [setPrefetchPlaylist]) mpv has the next entry open ahead, so the
+        // switch is gapless for typical music files. Finally drop the
+        // original.
+        await insertAt(index + 1);
+        inserted = true;
+        if (load.superseded) return;
+        await _commandChecked(['playlist-next', 'force']);
+        if (load.superseded) return;
+        await _commandChecked(['playlist-remove', index.toString()]);
+      } else {
+        await _commandChecked(['playlist-remove', index.toString()]);
+        if (load.superseded) return;
+        await insertAt(index);
+        inserted = true;
+      }
+    } finally {
+      if (!inserted) await resolved.dispose?.call();
     }
   }
 

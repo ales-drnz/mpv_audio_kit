@@ -6,14 +6,17 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/range_http_server.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   final fixturePath = defaultFixturePath();
+  final longFixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
   runtimeSuite(fixturePath: fixturePath, () {
     group('openPlaylistFile (loadlist)', () {
       late Player player;
@@ -64,6 +67,50 @@ void main() {
         );
         // play:false must leave the intent axis down.
         expect(player.state.playWhenReady, isFalse);
+      }, timeout: const Timeout(Duration(seconds: 20)));
+    });
+
+    // mpv keeps its playlist when the list cannot be read: the track that
+    // was there goes on as it did, with the intent it had.
+    group('openPlaylistFile of a list that answers 404', () {
+      late RangeHttpServer server;
+      late Player player;
+
+      setUp(() async {
+        server = await RangeHttpServer.start(const <String, Uint8List>{});
+        player = await buildPlayer();
+      });
+
+      tearDown(() async {
+        await player.dispose();
+        await server.close();
+      });
+
+      test('leaves a paused track paused', () async {
+        await openAndWaitForLoad(player, longFixture);
+        await expectLater(
+          player.openPlaylistFile(Media(server.url('dead.m3u')), play: true),
+          throwsA(isA<MpvCommandException>()),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(await player.getRawProperty('pause'), 'yes');
+        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playing, isFalse);
+        expect(player.state.playlist.items, hasLength(1));
+      }, timeout: const Timeout(Duration(seconds: 20)));
+
+      test('leaves a playing track playing', () async {
+        await openAndWaitForLoad(player, longFixture);
+        await player.play();
+        await waitUntil(() => player.state.playing);
+        await expectLater(
+          player.openPlaylistFile(Media(server.url('dead.m3u')), play: false),
+          throwsA(isA<MpvCommandException>()),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(await player.getRawProperty('pause'), 'no');
+        expect(player.state.playWhenReady, isTrue);
+        expect(player.state.playing, isTrue);
       }, timeout: const Timeout(Duration(seconds: 20)));
     });
   });

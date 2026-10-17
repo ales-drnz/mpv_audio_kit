@@ -63,6 +63,12 @@ class ResolvedUri {
   final Future<void> Function()? dispose;
 }
 
+/// Test-only: replaces [resolveUri] for every load, so a test can stand in
+/// for a source that holds a platform resource (an Android `content://`
+/// descriptor) on any host, and count its releases.
+@visibleForTesting
+Future<ResolvedUri> Function(String uri)? debugResolveUriOverride;
+
 /// Resolves [uri] for libmpv and returns a [ResolvedUri] whose
 /// [ResolvedUri.dispose] callback must be invoked if the result is
 /// never passed to `loadfile`.
@@ -72,6 +78,8 @@ class ResolvedUri {
 /// open file descriptor, so the failure surfaces at the `Player.open()`
 /// call site rather than as a URI mpv cannot open.
 Future<ResolvedUri> resolveUri(String uri) async {
+  final override = debugResolveUriOverride;
+  if (override != null) return override(uri);
   final path = fileUrlToPath(uri);
   if (path != null) return ResolvedUri(path);
   if (uri.startsWith('asset://')) {

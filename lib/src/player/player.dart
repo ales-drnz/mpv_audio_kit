@@ -229,17 +229,37 @@ class Player extends _PlayerBase
     final playNow = _intendedPlay(intent, shouldPlay);
     await _prop('pause', playNow ? 'no' : 'yes');
     final opts = _buildLoadfileOptions(media);
-    if (opts.isEmpty) {
-      await _loadfile(['loadfile', resolved.uri, 'replace'], media);
-    } else {
-      // Per-Media `httpHeaders` and `httpChunkSize` ride along as the 4th
-      // `loadfile` arg (mpv 0.38+: index must be `-1` when options are
-      // present), so mpv scopes them as file-local for this exact playlist
-      // entry, never writing the global `http-header-fields` or
-      // `stream-lavf-o`.
-      await _loadfile(['loadfile', resolved.uri, 'replace', '-1', opts], media);
+    try {
+      if (opts.isEmpty) {
+        await _loadfile(['loadfile', resolved.uri, 'replace'], media);
+      } else {
+        // Per-Media `httpHeaders` and `httpChunkSize` ride along as the 4th
+        // `loadfile` arg (mpv 0.38+: index must be `-1` when options are
+        // present), so mpv scopes them as file-local for this exact playlist
+        // entry, never writing the global `http-header-fields` or
+        // `stream-lavf-o`.
+        await _loadfile([
+          'loadfile',
+          resolved.uri,
+          'replace',
+          '-1',
+          opts,
+        ], media);
+      }
+    } catch (_) {
+      // mpv refused the entry and kept what it had: nothing will ever read
+      // the source, and the track there goes on with its own intent and
+      // pause, as after a failed [openPlaylistFile].
+      await resolved.dispose?.call();
+      if (_restoreIntent(load, intent, previousIntent) &&
+          playNow != previousIntent) {
+        await _propRc('pause', previousIntent ? 'no' : 'yes');
+      }
+      rethrow;
     }
-    if (parkedAtEof && playNow) {
+    // Asked again, not reused: a pause() called while the loadfile was in
+    // flight has the last word.
+    if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
       await _prop('pause', 'no');
     }
     // Drop visible per-track state (cover art, chapter list and current
@@ -402,30 +422,72 @@ class Player extends _PlayerBase
     // append-play), even on an idle core. Per-Media `httpHeaders` ride
     // along as the 4th `loadfile` arg, so mpv scopes them as file-local
     // without ever writing the global `http-header-fields` option.
-    // All appends go out at once: mpv runs them in order, and the playlist
-    // changes they cause fold into a few notifications. Awaited one by
-    // one, every append made mpv report the whole playlist again, which
-    // grew with the square of the album size.
-    final appends = <Future<int?>>[
-      for (var i = 0; i < medias.length; i++)
-        _loadfileEntry(switch (_buildLoadfileOptions(medias[i])) {
-          '' => ['loadfile', resolved[i].uri, 'append'],
-          final opts => ['loadfile', resolved[i].uri, 'append', '-1', opts],
-        }, medias[i]),
-    ];
+    // The appends go out in windows of [_kAppendWindow], each sent at once:
+    // mpv runs them in order, and the playlist changes they cause fold into
+    // a few notifications. Awaited one by one, every append made mpv report
+    // the whole playlist again, which grew with the square of the album
+    // size. Each append holds one of the 1000 reply slots mpv keeps per
+    // client until its reply is read, and a full queue refuses the next
+    // request: a window waits for its replies before the next goes out.
     final appended = <int>{};
+    // By index, not by id: an accepted append can reply without an id.
+    final refused = <int>[];
     (Object, StackTrace)? failure;
-    for (final append in appends) {
-      try {
-        final id = await append;
-        if (id != null) appended.add(id);
-      } catch (e, st) {
-        failure ??= (e, st);
+    var sent = 0;
+    while (sent < medias.length && failure == null && !load.superseded) {
+      final end = sent + _kAppendWindow < medias.length
+          ? sent + _kAppendWindow
+          : medias.length;
+      // A refused append fails at once, before the loop below awaits it:
+      // marked handled here, so its error reaches that loop instead of
+      // surfacing as unhandled.
+      final window = <Future<int?>>[
+        for (var i = sent; i < end; i++)
+          _loadfileEntry(switch (_buildLoadfileOptions(medias[i])) {
+            '' => ['loadfile', resolved[i].uri, 'append'],
+            final opts => ['loadfile', resolved[i].uri, 'append', '-1', opts],
+          }, medias[i])..ignore(),
+      ];
+      for (var j = 0; j < window.length; j++) {
+        try {
+          final id = await window[j];
+          if (id != null) appended.add(id);
+        } catch (e, st) {
+          refused.add(sent + j);
+          failure ??= (e, st);
+        }
       }
+      sent = end;
     }
     if (appended.isNotEmpty) _remapReported(appended);
-    if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
-    if (load.superseded) return bailDisposing();
+    // mpv never had the refused entries, nor the ones not sent after a
+    // refusal or a later load: nothing reads their sources.
+    for (final i in [
+      ...refused,
+      for (var i = sent; i < medias.length; i++) i,
+    ]) {
+      await resolved[i].dispose?.call();
+    }
+    if (failure != null) {
+      // mpv turns an append down only when its reply queue is full.
+      // The call fails as a whole: the entries that went in come out
+      // again. `playlist-clear` keeps only the current entry, the track
+      // that still plays (none at the park, removed above). The pause was
+      // not written yet, so only the intent goes back. A later load owns
+      // the playlist instead, and the entries mpv took stay with
+      // [_heldSources] until they leave.
+      if (!load.superseded) {
+        _restoreIntent(load, intent, previousIntent);
+        await _command(['playlist-clear']);
+      }
+      Error.throwWithStackTrace(failure.$1, failure.$2);
+    }
+    // From here on mpv has the entries, and may read them again until it
+    // leaves them (a previous, a loop, a prefetch): their sources stay with
+    // [_heldSources], which releases each one once it left the playlist and
+    // mpv moved on. Released now, an Android descriptor would go to the
+    // next file the app opens while mpv still lists its number.
+    if (load.superseded) return;
 
     // ── Phase 3: intent, then one direct jump to the target ───────────
     // The pause write cannot be fought by keep-open here: the parked
@@ -435,17 +497,9 @@ class Player extends _PlayerBase
     // entry): entries before it are never loaded or made current.
     await _prop('pause', _intendedPlay(intent, shouldPlay) ? 'no' : 'yes');
     final target = (retainedOld ? 1 : 0) + clampedIndex;
+    // The parked flow went through idle, which does not spend the intent
+    // while this call runs: see the idle-active observer.
     await _commandChecked(['playlist-play-index', target.toString()]);
-
-    // Parked flow traversed idle, and the idle-active observer resets
-    // playWhenReady (its job when content genuinely ends). By FIFO
-    // event delivery that reset has already been applied once the
-    // play-index reply lands, so re-asserting the intent here is the
-    // last word: without this the OS play button would stick on
-    // "paused" while the new album plays.
-    if (parkedAtEof && intent == _intentEpoch) {
-      _writeIntent(shouldPlay);
-    }
 
     // ── Phase 4: drop the retained old entry ──────────────────────────
     // Non-current by now (the jump moved current to the target), so the
@@ -453,7 +507,8 @@ class Player extends _PlayerBase
     // positions. Tolerant `_command`: a concurrent surgery that already
     // emptied position 0 must not surface as an openAll error.
     if (retainedOld) {
-      if (load.superseded) return bailDisposing();
+      // The target plays from its source now: see the check after phase 2.
+      if (load.superseded) return;
       await _command(['playlist-remove', '0']);
     }
     // Clear per-track state AFTER the jump's reply; see [open] for why
@@ -522,12 +577,23 @@ class Player extends _PlayerBase
     await _prop('pause', playNow ? 'no' : 'yes');
     try {
       await _commandChecked(['loadlist', resolved.uri, 'replace']);
+    } catch (_) {
+      // mpv keeps the playlist it had when the list cannot be read, and the
+      // track there goes on: the intent and the pause written above go back
+      // to what they were, unless a later call took them over. Tolerant
+      // write, so the error the caller sees is the loadlist one.
+      if (_restoreIntent(load, intent, previousIntent) &&
+          playNow != previousIntent) {
+        await _propRc('pause', previousIntent ? 'no' : 'yes');
+      }
+      rethrow;
     } finally {
       // mpv reads the list inside the command; its entries are the
       // playlist, so nothing reads the list itself again.
       await resolved.dispose?.call();
     }
-    if (parkedAtEof && playNow) {
+    // See [open]: asked again, a pause() during the loadlist wins.
+    if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
       await _prop('pause', 'no');
     }
     // Clear per-track state AFTER the replace's reply; see [open].
@@ -702,8 +768,13 @@ abstract class _PlayerBase {
 
   /// How many open(), openAll() and openPlaylistFile() calls are running.
   /// While one is, an idle core is about to get content, so [Player.play]
-  /// keeps its intent.
+  /// and the idle-active observer keep the intent.
   int _loadsInFlight = 0;
+
+  /// mpv went idle while a load was running (openAll steps through idle
+  /// at the end of the queue), and the intent reset that idle makes waits
+  /// for the loads to end. Cleared when mpv leaves idle.
+  bool _idleResetPending = false;
 
   /// Runs a content-replacing load, counted in [_loadsInFlight].
   Future<void> _trackLoad(Future<void> Function() load) async {
@@ -712,7 +783,23 @@ abstract class _PlayerBase {
       await load();
     } finally {
       _loadsInFlight--;
+      if (_loadsInFlight == 0 && _idleResetPending) await _settleIdleReset();
     }
+  }
+
+  /// The intent reset left to the end of the loads: still idle with no
+  /// load running (one failed, or a later call cleared the playlist),
+  /// nothing will play. Read from the core, since the notification that
+  /// mpv left idle can come after the loads end.
+  Future<void> _settleIdleReset() async {
+    if (_disposed) return;
+    final (rc, idle) = await _getAsync(
+      'idle-active',
+      MpvFormat.mpvFormatString,
+    );
+    if (!_idleResetPending || _loadsInFlight > 0 || _disposed) return;
+    _idleResetPending = false;
+    if (rc >= 0 && idle == 'yes') _writeIntent(false);
   }
 
   /// Bumped by every public call that sets the play-pause intent, so a
@@ -741,10 +828,11 @@ abstract class _PlayerBase {
   );
 
   /// Puts back the intent a failed load replaced, unless a later call took
-  /// over the load or the intent.
-  void _restoreIntent(_LoadTicket load, int intent, bool previous) {
-    if (load.superseded || intent != _intentEpoch) return;
+  /// over the load or the intent. Returns whether it did.
+  bool _restoreIntent(_LoadTicket load, int intent, bool previous) {
+    if (load.superseded || intent != _intentEpoch) return false;
     _writeIntent(previous);
+    return true;
   }
 
   // ── Property registry (the bulk of state: one spec per mpv property) ──
@@ -951,14 +1039,24 @@ abstract class _PlayerBase {
               // natural end of playable content under the shipped
               // `keep-open: yes` does NOT fire idle-active; that path is
               // handled by [_settleEndOfContent] instead. A mid-playlist
-              // advance also doesn't fire idle-active, so this never
-              // flickers.
+              // advance also doesn't fire idle-active. While a load runs
+              // the idle is its own step (openAll at the end of the queue
+              // removes the parked entry before its appends), so the reset
+              // waits for the loads to end ([_settleIdleReset]): made
+              // now, it flickered the OS button and undid a play() called
+              // during the load.
               if (_hasLoadedFile) {
-                _writeIntent(false);
+                if (_loadsInFlight > 0) {
+                  _idleResetPending = true;
+                } else {
+                  _writeIntent(false);
+                }
                 // No file is loaded any more (stop, a cleared playlist, a
                 // failed load): nothing of the last one should linger.
                 _clearFinishedFile();
               }
+            } else {
+              _idleResetPending = false;
             }
           },
           onAudioOutputState: (state) {
@@ -1563,6 +1661,11 @@ final class _LoadTicket {
   /// took over, since the ticket was taken. Re-check after every await.
   bool get superseded => _player._disposed || _player._loadEpoch != _epoch;
 }
+
+/// How many `loadfile append` requests [Player.openAll] has in flight at
+/// most: well under the 1000 replies mpv queues per client, so the appends
+/// leave room for the events and the other calls.
+const _kAppendWindow = 512;
 
 /// The chain label of the first enabled [Ebur128Effect] in [effects] with
 /// its `metadata` option on, the stage the live loudness meter reads;

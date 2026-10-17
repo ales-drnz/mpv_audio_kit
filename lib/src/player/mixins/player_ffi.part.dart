@@ -198,6 +198,7 @@ mixin _FfiModule on _PlayerBase {
     if (media.isPcmStream) _holdPcm(id is int ? id : null, media);
     if (id is! int) return null;
     _mediaByEntry[id] = media;
+    _heldSources.onAdded(args[1], id);
     return id;
   }
 

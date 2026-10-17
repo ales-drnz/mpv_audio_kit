@@ -403,7 +403,7 @@ mixin _DispatchModule on _PlayerBase {
             for (final entry in raw)
               if (entry is Map && entry['filename'] is String)
                 entry['filename'] as String,
-          ]);
+          ], newestId: _maxListedEntryId);
         }
         _mediaByEntry.removeWhere(
           (id, _) => id <= _maxListedEntryId && !live.contains(id),
