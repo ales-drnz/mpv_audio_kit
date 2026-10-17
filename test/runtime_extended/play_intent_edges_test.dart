@@ -161,6 +161,55 @@ void main() {
       expect(player.state.playing, isFalse);
     }, timeout: t);
 
+    // jump() claims the intent at the call, like play() and open().
+    group('jump()', () {
+      Future<Player> pausedQueue() async {
+        final player = await buildPlayer();
+        addTearDown(player.dispose);
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.openAll([
+          Media(longFixture),
+          Media(longFixture),
+          Media(longFixture),
+        ], play: false);
+        await loaded;
+        return player;
+      }
+
+      test('then pause() without awaiting loads the entry paused', () async {
+        final player = await pausedQueue();
+        final jumping = player.jump(2);
+        final pausing = player.pause();
+        await Future.wait([jumping, pausing]);
+        await waitUntil(
+          () async => await player.getRawProperty('playlist-pos') == '2',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(await player.getRawProperty('pause'), 'yes');
+        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playing, isFalse);
+      }, timeout: t);
+
+      test('after an unawaited open() has the last word', () async {
+        final player = await pausedQueue();
+        final opening = player.open(Media(longFixture), play: false);
+        final jumping = player.jump(0);
+        await Future.wait([opening, jumping]);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(await player.getRawProperty('pause'), 'no');
+        expect(player.state.playWhenReady, isTrue);
+      }, timeout: t);
+
+      test('out of range leaves the intent it found', () async {
+        final player = await pausedQueue();
+        await expectLater(player.jump(5), throwsRangeError);
+        expect(player.state.playWhenReady, isFalse);
+        expect(await player.getRawProperty('pause'), 'yes');
+      }, timeout: t);
+    });
+
     test('a failed open puts the intent back', () async {
       final player = await buildPlayer();
       addTearDown(player.dispose);

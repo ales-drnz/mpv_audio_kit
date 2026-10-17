@@ -96,33 +96,42 @@ mixin _PlaylistModule on _PlayerBase {
   ///
   /// Writes `pause=no` before issuing the playlist jump (and once more
   /// after it when mpv was parked at the end of content), so the new
-  /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives.
+  /// track starts playing as soon as `MPV_EVENT_FILE_LOADED` arrives. A
+  /// [pause] called after it has the last word: the track then loads
+  /// paused.
   ///
   /// Throws [RangeError] if [index] is out of range.
   Future<void> jump(int index) async {
     RangeError.checkNotNegative(index, 'index');
     await _gate();
-    if (await _checkPlaylistIndex(index, 'index') == null) return;
-    // See [next]: in-flight transport writes apply to the old entry.
-    await _settleWrites();
-    // Optimistic intent, same as play(): this call unpauses, and `pause`
-    // is deliberately unobserved, so skipping the write here would leave
+    // Optimistic intent, same as play(), claimed at the call so that the
+    // call order decides: this call unpauses, and `pause` is deliberately
+    // unobserved, so skipping the write here would leave
     // `state.playWhenReady` (and the OS play-pause button bound to it)
     // stuck on "paused" while audio is audibly playing.
-    _updateField(
-      (s) => s.copyWith(playWhenReady: true),
-      _reactives.playWhenReady,
-      true,
-    );
+    final previous = _state.playWhenReady;
+    final intent = _claimIntent(true);
+    try {
+      if (await _checkPlaylistIndex(index, 'index') == null) return;
+    } catch (_) {
+      // Out of range: nothing moved, so the intent goes back.
+      if (intent == _intentEpoch) _writeIntent(previous);
+      rethrow;
+    }
+    // See [next]: in-flight transport writes apply to the old entry.
+    await _settleWrites();
     // See [Player.open]: parked at EOF (`keep-open`) the unpause below
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
     final parkedAtEof = await _parkedAtEof();
-    await _prop('pause', 'no');
+    await _prop('pause', _intendedPlay(intent, true) ? 'no' : 'yes');
     await _commandChecked(['playlist-play-index', index.toString()]);
-    if (parkedAtEof) {
+    if (parkedAtEof && _intendedPlay(intent, true)) {
       await _prop('pause', 'no');
     }
+    // A park read on its way when this call began clears the intent on
+    // arrival, as in [play]: set again while this call still owns it.
+    if (intent == _intentEpoch) _writeIntent(true);
   }
 
   /// Moves the track at [from] to position [to].
