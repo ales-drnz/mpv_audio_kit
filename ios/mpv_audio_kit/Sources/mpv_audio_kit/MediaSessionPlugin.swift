@@ -138,6 +138,26 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       name: eventChannelName,
       binaryMessenger: messenger)
     eventChannel.setStreamHandler(instance)
+
+    // The engine calls `detachFromEngine(for:)` only on published values.
+    registrar.publish(instance)
+  }
+
+  /// The engine is going away, and its Dart side may never have called
+  /// `disable` (an add-to-app engine released while playing). Close the
+  /// session this instance owns: otherwise the Now Playing entry and its
+  /// enabled commands outlive it, and every tap fails once the weak
+  /// `currentInstance` is gone.
+  public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+    onMain { self.detachEngine() }
+  }
+
+  /// `detachFromEngine(for:)` without the registrar, for the test driver.
+  internal func detachEngine() {
+    dispatchPrecondition(condition: .onQueue(.main))
+    eventSink = nil
+    // Only an accepted enable sets `enabled`, so this is the owner.
+    if enabled { disable() }
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

@@ -424,6 +424,34 @@ func runNonOwnerDisableKeepsOwnerEntry() {
   }
 }
 
+/// An engine released without its Dart side calling `disable` (add-to-app):
+/// its detach retires the entry, so no Now Playing entry is left whose
+/// commands fail. The detach of another engine leaves the
+/// owner's entry alone.
+func runDetachRetiresTheOwnersEntry() {
+  scenario("the owner's engine detach retires the entry, another engine's does not") {
+    let a = Harness()
+    enable(a, playback: makePlayback(playing: true, positionMs: 30_000))
+    let b = Harness()
+
+    b.plugin.detachEngine()
+    check(Frame.capture().title == "Test Track",
+          "another engine's detach must keep the owner's entry")
+
+    a.plugin.detachEngine()
+    let f = Frame.capture()
+    check(f.title == nil, "the owner's detach must clear the entry, got \(f.description)")
+    check(f.playbackState == .stopped, "the owner's detach must mark .stopped, got \(f.description)")
+    check(!MPRemoteCommandCenter.shared().playCommand.isEnabled,
+          "the owner's detach must disable the commands")
+
+    // The session is free for another engine.
+    let c = Harness(); defer { c.reset() }
+    enable(c)
+    check(c.plugin.enabled, "a new engine can enable after the detach")
+  }
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────
 
 print("=== MediaSessionPlugin renderer tests ===\n")
@@ -441,6 +469,7 @@ runDedupCoalescesIdenticalPushes()
 runDisableClearsNowPlaying()
 runNoTitlePoisonGuard()
 runNonOwnerDisableKeepsOwnerEntry()
+runDetachRetiresTheOwnersEntry()
 
 print("=== Summary ===")
 if failures.isEmpty {
