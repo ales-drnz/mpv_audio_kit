@@ -604,7 +604,8 @@ await source.close();
   chunk.
 - `close` plays out what is buffered, then the entry ends after its last
   sample (`completed`). `abort` cuts it at once: the player moves to the
-  next entry, or stops at the last one.
+  next entry, or stops at the last one. A source still queued leaves the
+  playlist.
 - `done` completes once the player has read everything, or when the
   source is aborted, or stopped: `stop`, `next`, another `open`, a removal
   from the playlist or a dispose.

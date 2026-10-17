@@ -63,7 +63,7 @@ mixin _PcmModule on _PlayerBase {
   void _holdPcm(int? entryId, Media media) {
     final source = pcmSourceFor(media.uri);
     if (source == null || source.isDone) return;
-    // abort() first leaves the entry this player plays (see [_cutPcm]).
+    // abort() first takes the entries of this player out (see [_cutPcm]).
     source.addCutter(_cutPcm);
     if (entryId == null) return;
     _pcmByEntry[entryId] = source;
@@ -168,11 +168,16 @@ mixin _PcmModule on _PlayerBase {
     }
   }
 
-  /// Leaves the entry when mpv plays [source], which is being aborted: the
-  /// next entry starts, or playback stops at the last one (wraps to the
-  /// first with `loop-playlist` on), without the audio output playing out
-  /// what it holds. Asks mpv which entry plays, since the playlist in the
-  /// state can lag it. `null` when this player holds no entry of [source].
+  /// Takes the entries of [source], which is being aborted, out of
+  /// playback. The entry mpv plays is left: the next entry starts, or
+  /// playback stops at the last one (wraps to the first with
+  /// `loop-playlist` on), without the audio output playing out what it
+  /// holds. A queued entry leaves the playlist: loaded later, it would
+  /// fail. Asks mpv for the playlist, since the one in the state can lag
+  /// it, and again before each removal, since mpv removes by index and an
+  /// index read earlier can be stale. Not behind the playlist calls: abort
+  /// waits for the cut 1 s at most. `null` when this player holds no entry
+  /// of [source].
   Future<void>? _cutPcm(PcmSource source) {
     if (_disposed) return null;
     // Taken now: the abort completes `done`, which drops the entries.
@@ -181,15 +186,32 @@ mixin _PcmModule on _PlayerBase {
         if (identical(e.value, source)) e.key,
     };
     if (ids.isEmpty) return null;
-    return () async {
+    Future<List<Object?>?> playlist() async {
       final (rc, node) = await _getAsync('playlist', MpvFormat.mpvFormatNode);
-      if (rc < 0 || node is! List || _disposed) return;
+      return rc < 0 || node is! List || _disposed ? null : node;
+    }
+
+    return () async {
+      final node = await playlist();
+      if (node == null) return;
+      final queued = <Object?>[];
+      var playing = false;
       for (final entry in node) {
-        if (entry is! Map || entry['playing'] != true) continue;
-        if (ids.contains(entry['id'])) {
-          await _command(['playlist-next', 'force']);
+        if (entry is! Map || !ids.contains(entry['id'])) continue;
+        if (entry['playing'] == true) {
+          playing = true;
+        } else {
+          queued.add(entry['id']);
         }
-        return;
+      }
+      if (playing) await _command(['playlist-next', 'force']);
+      for (final id in queued) {
+        final now = await playlist();
+        if (now == null) return;
+        final at = now.indexWhere((e) => e is Map && e['id'] == id);
+        // Gone already, or taken by a later call. One that became the
+        // current entry meanwhile is cut by the removal too.
+        if (at >= 0) await _command(['playlist-remove', '$at']);
       }
     }();
   }

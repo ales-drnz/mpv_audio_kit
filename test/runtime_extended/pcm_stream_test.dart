@@ -433,6 +433,49 @@ void main() {
       await player.dispose();
     }, timeout: t);
 
+    test('abort of a queued source removes its entry', () async {
+      final player = await buildPlayer();
+      final errors = <PlayerError>[];
+      final ends = <MpvFileEndedEvent>[];
+      final subs = [
+        player.stream.error.listen(errors.add),
+        player.stream.endFile.listen(ends.add),
+      ];
+      final file = defaultFixturePath();
+      final source = PcmSource.create(_speech);
+      source.add(_tone(_speech, 0, 1000));
+      await player.openAll([Media(file), source.toMedia()], play: true);
+      await waitUntil(() => player.state.playing, reason: 'the file plays');
+      expect(player.state.playlist.items, hasLength(2));
+      source.abort();
+      await waitUntil(
+        () => player.state.playlist.items.length == 1,
+        timeout: const Duration(seconds: 1),
+        reason: 'the aborted entry is still queued',
+      );
+      expect(player.state.playlist.items.single.uri, file);
+      // The file plays to its end, with no load of the aborted entry
+      // failing after it.
+      await waitUntil(
+        () => player.state.completed,
+        reason: 'the file completes',
+      );
+      _log('abort queued', {
+        'state': source.state.name,
+        'endFile': ends.map((e) => e.reason.name).toList(),
+      });
+      expect(source.state, PcmSourceState.aborted);
+      expect(errors, isEmpty);
+      expect(
+        ends.map((e) => e.reason),
+        isNot(contains(MpvEndFileReason.error)),
+      );
+      for (final s in subs) {
+        await s.cancel();
+      }
+      await player.dispose();
+    }, timeout: t);
+
     for (final action in ['stop', 'dispose', 'open']) {
       test('$action while the reader waits for input returns soon', () async {
         final player = await buildPlayer();
