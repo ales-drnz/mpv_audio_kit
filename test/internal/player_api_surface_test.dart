@@ -134,7 +134,8 @@ class _ApiProbe implements PlayerApi {
   Future<void> insert(int index, Media media) => _record('insert');
 
   @override
-  Future<void> clearPlaylist() => _record('clearPlaylist');
+  Future<void> clearPlaylist({bool keepCurrent = false}) =>
+      _record(keepCurrent ? 'clearPlaylist(keepCurrent)' : 'clearPlaylist');
 
   @override
   Future<void> setLoop(Loop loop) => _record('setLoop');
@@ -384,7 +385,15 @@ void main() {
       await typed.add(const Media('a'));
       await typed.insert(0, const Media('b'));
       await typed.replace(0, const Media('c'));
-      expect(api.calls, ['add', 'insert', 'replace']);
+      await typed.clearPlaylist(keepCurrent: true);
+      await typed.clearPlaylist();
+      expect(api.calls, [
+        'add',
+        'insert',
+        'replace',
+        'clearPlaylist(keepCurrent)',
+        'clearPlaylist',
+      ]);
     });
 
     test('raw escape hatches all reachable through the interface', () async {

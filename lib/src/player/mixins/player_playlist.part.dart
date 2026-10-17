@@ -290,13 +290,25 @@ mixin _PlaylistModule on _PlayerBase {
   /// Playback stops; `state.playlist.items` becomes empty and
   /// `state.playing` becomes `false`. Use [remove] for selective
   /// clearing that keeps the active entry alive.
-  Future<void> clearPlaylist() async {
+  ///
+  /// With [keepCurrent] true only the other entries go: the current one
+  /// keeps playing as the only entry. With nothing current, both forms
+  /// empty the playlist. Either way an open, openAll or add still
+  /// resolving its source when this is called does not load.
+  Future<void> clearPlaylist({bool keepCurrent = false}) async {
     _checkNotDisposed();
     // Claim the load epoch synchronously so an in-flight open()/add()
     // can't repopulate the queue this call is clearing (see [Player.open]).
     final load = _claimLoad();
     await _gate();
-    _mediaCache.clear();
+    // The kept entry keeps its Media, under every URI it is cached by: the
+    // source resolver looks it up there when the entry loads again (a
+    // playlist loop).
+    final playlist = _state.playlist;
+    final current = keepCurrent && playlist.index >= 0
+        ? playlist.items.elementAtOrNull(playlist.index)
+        : null;
+    _mediaCache.removeWhere((_, media) => current == null || media != current);
     // Execute in-flight transport writes first; see [_settleWrites].
     await _settleWrites();
     if (load.superseded) return;
@@ -304,7 +316,7 @@ mixin _PlaylistModule on _PlayerBase {
     // explicit `playlist-remove current` makes the call match the
     // method name.
     await _commandChecked(['playlist-clear']);
-    if (load.superseded) return;
+    if (load.superseded || keepCurrent) return;
     // Fails when nothing is current (an idle player): nothing to clear then.
     await _command(['playlist-remove', 'current']);
   }

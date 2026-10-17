@@ -678,6 +678,7 @@ await player.replace(2, newTrack);   // Replace track at index 2
 // An index out of range throws RangeError.
 
 await player.clearPlaylist();        // Remove all tracks (stops playback)
+await player.clearPlaylist(keepCurrent: true); // Keep only the track playing
 ```
 
 #### 3.4 Navigation

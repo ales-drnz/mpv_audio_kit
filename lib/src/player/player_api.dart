@@ -200,8 +200,9 @@ abstract interface class PlayerApi {
   /// [Player.insert].
   Future<void> insert(int index, Media media);
 
-  /// Removes every entry from the playlist.
-  Future<void> clearPlaylist();
+  /// Removes every entry from the playlist; with [keepCurrent] true the
+  /// current one stays and keeps playing. See [Player.clearPlaylist].
+  Future<void> clearPlaylist({bool keepCurrent = false});
 
   /// Sets the loop policy (off, current file, or whole playlist).
   Future<void> setLoop(Loop loop);
