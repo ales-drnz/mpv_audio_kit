@@ -6,9 +6,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A pull request cancels the run its next push makes stale. Pushes to main
+# and the release branches are never cancelled: each pushed commit has a
+# group of its own, since a shared group would still replace a run that
+# waits in it. Every pushed commit then gets a result, which the changes
+# gate reads back for the next one.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'latest' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
