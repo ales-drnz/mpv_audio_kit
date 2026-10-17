@@ -71,10 +71,11 @@ class FilterTapPipeline {
   final Set<_TapKey> _active = {};
   // The list last written, empty as mpv starts.
   String _lastCsv = '';
-  // Last native write generation (ring `seq`) dispatched per (name, side).
-  // Lets the poll loop skip a redundant decode + add() when the ring is
-  // unchanged (e.g. while paused or at EOF the writer isn't advancing it).
-  final Map<_TapKey, int> _lastSeq = {};
+  // The slice last dispatched per (name, side): the ring's write
+  // generation (`seq`) and the slice's end (`pts_ns`). Lets the poll loop
+  // skip a redundant decode + add() when neither moved (e.g. while paused
+  // or at EOF the writer isn't advancing it and the position stands).
+  final Map<_TapKey, ({int seq, int ptsNs})> _lastSlice = {};
 
   Timer? _pollTimer;
   // Guards against overlapping async polls; see [LoudnessMeterPipeline].
@@ -123,11 +124,11 @@ class FilterTapPipeline {
   void _onCancelLast(_TapKey key) {
     if (_disposed) return;
     _active.remove(key);
-    // Drop the retained native write-generation. The native ring `seq` is
-    // monotonic and never reset, so keeping a stale `_lastSeq` would make a
-    // FRESH re-subscriber to this tap, paused or at EOF, skip the currently-buffered
-    // slice (its seq still equals the retained value) until the next write.
-    _lastSeq.remove(key);
+    // Drop the retained slice. The native ring `seq` is monotonic and never
+    // reset, so keeping a stale one would make a FRESH re-subscriber to this
+    // tap, paused or at EOF, skip the currently-buffered slice (its seq and
+    // pts still equal the retained ones) until the next write.
+    _lastSlice.remove(key);
     _writeActiveList();
     if (_active.isEmpty) {
       _pollTimer?.cancel();
@@ -186,15 +187,19 @@ class FilterTapPipeline {
         final key = (name: filterKey, isPost: isPost);
         final ctrl = _controllers[key];
         if (ctrl == null || !ctrl.hasListener) return;
-        // Skip the decode + dispatch when the native write generation is
-        // unchanged since the last poll. The C side bumps the ring `seq`
-        // on every write and holds it stable while paused or at EOF, so an
-        // unchanged seq means an identical slice: re-emitting it only
-        // churns a Float32List + StreamController.add() for no new data.
+        // Skip the decode + dispatch when the slice is the one dispatched
+        // last. The C side bumps the ring `seq` on every write, once per
+        // decoded frame (about 104 ms with a FLAC), and returns the slice
+        // that ends at the playback position: between two writes the same
+        // seq comes with a later `pts_ns`, a new slice. Paused or at EOF
+        // both stand still, and re-emitting the slice would only churn a
+        // Float32List + StreamController.add() for no new data.
         // seq == 0 means "unavailable"; fall back to always emitting.
         final seq = ring['seq'] is int ? ring['seq'] as int : 0;
-        if (seq != 0 && _lastSeq[key] == seq) return;
-        _lastSeq[key] = seq;
+        final ptsNs = ring['pts_ns'] is int ? ring['pts_ns'] as int : 0;
+        final slice = (seq: seq, ptsNs: ptsNs);
+        if (seq != 0 && _lastSlice[key] == slice) return;
+        _lastSlice[key] = slice;
         final frame = _decodeRing(ring);
         if (frame == null) return;
         if (!ctrl.isClosed) ctrl.add(frame);
@@ -239,7 +244,7 @@ class FilterTapPipeline {
     }
     _controllers.clear();
     _active.clear();
-    _lastSeq.clear();
+    _lastSlice.clear();
   }
 }
 
