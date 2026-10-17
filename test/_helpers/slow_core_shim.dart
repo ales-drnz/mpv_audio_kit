@@ -160,12 +160,26 @@ class SlowCoreShim {
     _withString(name, fn);
   }
 
+  /// Holds the reply to the next async request naming [name] (a command
+  /// such as `loadfile`, or the property of a get or a set) for [hold]:
+  /// mpv runs the request at once, and the reply reaches the player late,
+  /// with every event behind it. `counter('replies_held')` counts the
+  /// holds that started.
+  void holdReply(String name, Duration hold) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>, Int32),
+          void Function(Pointer<Utf8>, int)
+        >('mak_shim_hold_reply');
+    _withString(name, (p) => fn(p, hold.inMicroseconds));
+  }
+
   /// A probe counter: `hook_adds_entered`, `hook_adds_inflight`,
   /// `inflight_at_destroy` (the most `mpv_hook_add` calls still running at
   /// an `mpv_terminate_destroy`), `late_hook_adds` (calls on a handle
   /// already destroyed, which the shim does not forward), `destroys`,
   /// `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
-  /// before the destroy) and `watched_gets`.
+  /// before the destroy), `watched_gets` and `replies_held`.
   int counter(String name) {
     final fn = _lib
         .lookupFunction<

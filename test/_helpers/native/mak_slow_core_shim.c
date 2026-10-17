@@ -116,6 +116,15 @@ static atomic_int destroys;
 static atomic_int hooks_pending_at_destroy;
 static atomic_int watched_gets;
 static char watched_get[64];
+static atomic_int replies_held;
+
+// One reply held back in mpv_wait_event (mak_shim_hold_reply): the request
+// it answers, matched by name, then by its reply id and event.
+static char hold_name[64];
+static int hold_us;
+static int hold_state; // 0 off, 1 waiting for the request, 2 for its reply
+static int hold_event; // the reply's event id: 3 get, 4 set, 5 command
+static uint64_t hold_ud;
 
 // Guards the handle and hook bookkeeping below. mpv_hook_add holds it
 // across the real call, so a destroy cannot free the handle under it.
@@ -174,6 +183,7 @@ int mak_shim_counter(const char *name) {
     return hooks_pending_at_destroy;
   }
   if (strcmp(name, "watched_gets") == 0) return watched_gets;
+  if (strcmp(name, "replies_held") == 0) return replies_held;
   fprintf(stderr, "mak_slow_core_shim: unknown counter %s\n", name);
   abort();
 }
@@ -190,6 +200,31 @@ void mak_shim_reset(void) {
   atomic_store(&hooks_pending_at_destroy, 0);
   atomic_store(&watched_gets, 0);
   watched_get[0] = 0;
+  atomic_store(&replies_held, 0);
+  hold_state = 0;
+  pthread_mutex_unlock(&mu);
+}
+
+// Holds the reply to the next async request naming [name] (a command's
+// first argument, or the property of a get or a set) for [us] in
+// mpv_wait_event, as a core that answers late: the request runs, only its
+// reply waits, and every event behind it with it.
+void mak_shim_hold_reply(const char *name, int us) {
+  pthread_mutex_lock(&mu);
+  snprintf(hold_name, sizeof hold_name, "%s", name);
+  hold_us = us;
+  hold_state = 1;
+  pthread_mutex_unlock(&mu);
+}
+
+// Called before the request is queued, so its reply cannot come first.
+static void note_request(int event, uint64_t ud, const char *name) {
+  pthread_mutex_lock(&mu);
+  if (hold_state == 1 && name && strcmp(name, hold_name) == 0) {
+    hold_event = event;
+    hold_ud = ud;
+    hold_state = 2;
+  }
   pthread_mutex_unlock(&mu);
 }
 
@@ -316,6 +351,20 @@ struct shim_event_hook {
 
 void *mpv_wait_event(void *h, double timeout) {
   struct shim_event *ev = real_mpv_wait_event(h, timeout);
+  if (ev) {
+    int held = 0;
+    pthread_mutex_lock(&mu);
+    if (hold_state == 2 && ev->event_id == hold_event &&
+        ev->reply_userdata == hold_ud) {
+      hold_state = 0;
+      held = hold_us;
+    }
+    pthread_mutex_unlock(&mu);
+    if (held) {
+      atomic_fetch_add(&replies_held, 1);
+      stall(held);
+    }
+  }
   // MPV_EVENT_HOOK is 25: remember the id until it is continued.
   if (ev && ev->event_id == 25 && ev->data) {
     pthread_mutex_lock(&mu);
@@ -367,15 +416,23 @@ int mpv_hook_continue(void *h, uint64_t id) {
   return real_mpv_hook_continue(h, id);
 }
 
+// MPV_EVENT_GET_PROPERTY_REPLY, _SET_PROPERTY_REPLY and _COMMAND_REPLY.
+#define GET_REPLY 3
+#define SET_REPLY 4
+#define COMMAND_REPLY 5
+
 int mpv_set_property_async(void *h, uint64_t ud, const char *n, int fmt,
                            void *data) {
+  note_request(SET_REPLY, ud, n);
   return real_mpv_set_property_async(h, ud, n, fmt, data);
 }
 
 int mpv_get_property_async(void *h, uint64_t ud, const char *n, int fmt) {
+  note_request(GET_REPLY, ud, n);
   return real_mpv_get_property_async(h, ud, n, fmt);
 }
 
 int mpv_command_async(void *h, uint64_t ud, const char **args) {
+  note_request(COMMAND_REPLY, ud, args[0]);
   return real_mpv_command_async(h, ud, args);
 }

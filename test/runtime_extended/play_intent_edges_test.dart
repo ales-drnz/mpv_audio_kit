@@ -5,6 +5,7 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -18,6 +19,7 @@ import '../_helpers/setter_test_helpers.dart';
 /// a load that fails before reaching mpv leaves the intent it found.
 void main() {
   final fixturePath = defaultFixturePath();
+  final longFixture = '${Directory.current.path}/test/fixtures/sine_5s.flac';
   const speech = PcmFormat(sampleRate: 24000, channels: 1);
 
   Uint8List tone(int ms) {
@@ -124,6 +126,39 @@ void main() {
       await player.play();
       await waitUntil(() => !player.state.completed && player.state.playing);
       expect(player.state.playWhenReady, isTrue);
+    }, timeout: t);
+
+    // play() reads the core before it unpauses: a pause() called after it
+    // has the last word, and the unpause must not land after its write.
+    test('play() then pause() without awaiting leaves it paused', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      await openAndWaitForLoad(player, longFixture);
+      final playing = player.play();
+      final pausing = player.pause();
+      await Future.wait([playing, pausing]);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('pause'), 'yes');
+      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playing, isFalse);
+    }, timeout: t);
+
+    test('play() at the end then pause() stays paused', () async {
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      final completed = player.stream.completed
+          .firstWhere((c) => c)
+          .timeout(const Duration(seconds: 10));
+      await player.open(Media(fixturePath), play: true);
+      await completed;
+
+      final playing = player.play();
+      final pausing = player.pause();
+      await Future.wait([playing, pausing]);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('pause'), 'yes');
+      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playing, isFalse);
     }, timeout: t);
 
     test('a failed open puts the intent back', () async {

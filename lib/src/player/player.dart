@@ -239,7 +239,9 @@ class Player extends _PlayerBase
       // `stream-lavf-o`.
       await _loadfile(['loadfile', resolved.uri, 'replace', '-1', opts], media);
     }
-    if (parkedAtEof && playNow) {
+    // Asked again, not reused: a pause() called while the loadfile was in
+    // flight has the last word.
+    if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
       await _prop('pause', 'no');
     }
     // Drop visible per-track state (cover art, chapter list and current
@@ -527,7 +529,8 @@ class Player extends _PlayerBase
       // playlist, so nothing reads the list itself again.
       await resolved.dispose?.call();
     }
-    if (parkedAtEof && playNow) {
+    // See [open]: asked again, a pause() during the loadlist wins.
+    if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
       await _prop('pause', 'no');
     }
     // Clear per-track state AFTER the replace's reply; see [open].
