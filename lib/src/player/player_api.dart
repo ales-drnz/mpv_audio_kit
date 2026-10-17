@@ -194,6 +194,12 @@ abstract interface class PlayerApi {
   /// [RangeError] if [index] is out of range.
   Future<void> replace(int index, Media media);
 
+  /// Inserts [media] at [index] in the playlist, before the entry there;
+  /// [index] equal to the length appends. The current entry keeps
+  /// playing. Throws [RangeError] if [index] is outside `0..length`. See
+  /// [Player.insert].
+  Future<void> insert(int index, Media media);
+
   /// Removes every entry from the playlist.
   Future<void> clearPlaylist();
 

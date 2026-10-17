@@ -219,5 +219,101 @@ void main() {
         timeout: const Timeout(Duration(seconds: 30)),
       );
     });
+
+    group('insert', () {
+      final a = '${Directory.current.path}/test/fixtures/sine_5s.flac';
+      final b =
+          '${Directory.current.path}/test/fixtures/sine_stereo_48k_5s.flac';
+      final c = '${Directory.current.path}/test/fixtures/with_chapters.mka';
+      final d = fixturePath;
+      late Player player;
+      late List<MpvFileEndedEvent> ends;
+
+      setUp(() async {
+        player = await buildPlayer();
+        ends = [];
+        final sub = player.stream.endFile.listen(ends.add);
+        addTearDown(sub.cancel);
+      });
+
+      tearDown(() async {
+        await player.dispose();
+      });
+
+      Future<void> openThree({int index = 0}) async {
+        final restarted = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.openAll(
+          [Media(a), Media(b), Media(c)],
+          play: true,
+          index: index,
+        );
+        await restarted;
+        await waitUntil(() => player.state.playlist.items.length == 3);
+        ends.clear();
+      }
+
+      List<String> uris() =>
+          player.state.playlist.items.map((m) => m.uri).toList();
+
+      test('puts an entry before the one at index, the current one playing '
+          'on', () async {
+        await openThree();
+        final path = player.state.path;
+        await player.insert(1, Media(d, extras: const {'tag': 'inserted'}));
+        await waitUntil(() => player.state.playlist.items.length == 4);
+        expect(uris(), [a, d, b, c]);
+        expect(player.state.playlist.items[1].extras, {'tag': 'inserted'});
+        expect(player.state.playlist.index, 0);
+        expect(player.state.path, path);
+        expect(player.state.playing, isTrue);
+        expect(ends, isEmpty, reason: 'the current entry was not reloaded');
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('before the current entry, the index follows it', () async {
+        await openThree(index: 1);
+        await player.insert(0, Media(d));
+        await waitUntil(() => player.state.playlist.index == 2);
+        expect(uris(), [d, a, b, c]);
+        expect(ends, isEmpty);
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('at the length it appends, and its options ride along', () async {
+        await openThree();
+        await player.insert(
+          3,
+          Media(d, httpHeaders: const {'X-Inserted': 'yes'}),
+        );
+        await waitUntil(() => player.state.playlist.items.length == 4);
+        expect(uris(), [a, b, c, d]);
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.jump(3);
+        await loaded;
+        expect(
+          await player.getRawProperty('http-header-fields'),
+          contains('X-Inserted: yes'),
+        );
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('outside 0..length it throws RangeError', () async {
+        await openThree();
+        await expectLater(player.insert(4, Media(d)), throwsRangeError);
+        await expectLater(player.insert(-1, Media(d)), throwsRangeError);
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        expect(uris(), [a, b, c]);
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('entries with the same URI keep their own Media', () async {
+        await openThree();
+        await player.insert(1, Media(d, extras: const {'n': 1}));
+        await player.insert(2, Media(d, extras: const {'n': 2}));
+        await waitUntil(() => player.state.playlist.items.length == 5);
+        expect(player.state.playlist.items[1].extras, {'n': 1});
+        expect(player.state.playlist.items[2].extras, {'n': 2});
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
   });
 }

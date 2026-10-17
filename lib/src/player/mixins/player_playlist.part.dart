@@ -22,6 +22,43 @@ mixin _PlaylistModule on _PlayerBase {
     // stale and must not graft the old queue's entry onto the new one.
     final load = _snapshotLoad();
     await _gate();
+    await _addEntry(media, load);
+  }
+
+  /// Inserts [media] at [index] in the playlist: the entry there and the
+  /// ones after it move down by one, and [index] equal to the playlist
+  /// length appends, as [add] does. The current entry keeps playing.
+  ///
+  /// The per-entry options of [media] ride along as in [add]. To play it
+  /// next, pass `state.playlist.index + 1`.
+  ///
+  /// Throws [RangeError] if [index] is outside `0..length`.
+  Future<void> insert(int index, Media media) async {
+    _checkNotDisposed();
+    RangeError.checkNotNegative(index, 'index');
+    _validateLoadOptions(media);
+    // The same staleness rule as [add].
+    final load = _snapshotLoad();
+    await _gate();
+    // mpv's own count, as in [move]: the state can lag an add in flight.
+    final (rc, count) = await _getAsync(
+      'playlist-count',
+      MpvFormat.mpvFormatInt64,
+    );
+    if (_disposed) return;
+    RangeError.checkValueInInterval(
+      index,
+      0,
+      rc < 0 ? 0 : count as int,
+      'index',
+    );
+    await _addEntry(media, load, at: index);
+  }
+
+  /// The load of [add] and [insert]: resolves [media] and appends it, or
+  /// inserts it at [at]. An index past the end, after a concurrent remove,
+  /// appends in mpv.
+  Future<void> _addEntry(Media media, _LoadTicket load, {int? at}) async {
     _mediaCache[media.uri] = media;
     final resolved = _hold(await resolveUri(media.uri));
     if (load.superseded) {
@@ -32,17 +69,14 @@ mixin _PlaylistModule on _PlayerBase {
     await _forgetFdResume(resolved);
     final opts = _buildLoadfileOptions(media);
     try {
-      if (opts.isEmpty) {
-        await _loadfile(['loadfile', resolved.uri, 'append'], media);
-      } else {
-        await _loadfile([
-          'loadfile',
-          resolved.uri,
-          'append',
-          '-1',
-          opts,
-        ], media);
-      }
+      await _loadfile([
+        'loadfile',
+        resolved.uri,
+        if (at == null) 'append' else 'insert-at',
+        // The options need the index argument (mpv 0.38+), -1 to append.
+        if (at != null) '$at' else if (opts.isNotEmpty) '-1',
+        if (opts.isNotEmpty) opts,
+      ], media);
     } catch (_) {
       // mpv refused the entry: nothing will ever read the source.
       await resolved.dispose?.call();

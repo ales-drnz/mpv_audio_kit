@@ -131,6 +131,9 @@ class _ApiProbe implements PlayerApi {
   Future<void> replace(int index, Media media) => _record('replace');
 
   @override
+  Future<void> insert(int index, Media media) => _record('insert');
+
+  @override
   Future<void> clearPlaylist() => _record('clearPlaylist');
 
   @override
@@ -373,6 +376,15 @@ void main() {
         'setAudioStreamSilence',
         'setAudioNullUntimed',
       ]);
+    });
+
+    test('playlist calls reachable through the interface', () async {
+      final api = _ApiProbe();
+      final PlayerApi typed = api;
+      await typed.add(const Media('a'));
+      await typed.insert(0, const Media('b'));
+      await typed.replace(0, const Media('c'));
+      expect(api.calls, ['add', 'insert', 'replace']);
     });
 
     test('raw escape hatches all reachable through the interface', () async {

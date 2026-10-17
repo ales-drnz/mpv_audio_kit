@@ -669,6 +669,8 @@ await player.openPlaylistFile(Media('https://example.com/stations.m3u'));
 
 ```dart
 await player.add(newTrack);          // Append to end
+await player.insert(1, newTrack);    // Insert at index 1, before the track there
+await player.insert(player.state.playlist.index + 1, newTrack); // Play next
 await player.remove(0);              // Remove track at index 0
 await player.move(5, 0);             // Move track from index 5 to index 0
 await player.replace(2, newTrack);   // Replace track at index 2
