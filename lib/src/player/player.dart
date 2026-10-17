@@ -1471,7 +1471,8 @@ abstract class _PlayerBase {
   ///    event queue.
   /// 4. **`requestStop` (stop flag + `mpv_wakeup`)** so the event loop
   ///    unwinds deterministically even if `quit` was dropped or
-  ///    `MPV_EVENT_SHUTDOWN` is delayed by a stalled hook.
+  ///    `MPV_EVENT_SHUTDOWN` is delayed by a stalled hook. Then dispose
+  ///    the filter taps, whose streams the app listens to directly.
   /// 5. **Await `_eventIsolate.stop()`**, which returns `true` only once
   ///    the isolate has ACTUALLY exited, so it is provably off
   ///    `mpv_wait_event`. Then wait (bounded) for any `registerHook` still
@@ -1512,7 +1513,6 @@ abstract class _PlayerBase {
 
     if (_bringUpCompleted) {
       OrphanHandleTracker.instance.remove(_handle);
-      await _filterTapPipeline.dispose();
       await _waveformPipeline.dispose();
       await _spectrumPipeline.dispose();
       await _loudnessMeterPipeline.dispose();
@@ -1526,6 +1526,10 @@ abstract class _PlayerBase {
       // about to stop): the drain below settles the dangling future.
       unawaited(_command(['quit']));
       _eventIsolate.requestStop(_lib, _handle);
+      // The taps after the quit: their streams are the app's own, and
+      // nothing a listener does may keep mpv alive. The analyzer-taps write
+      // still reaches the core, which serves it before the destroy below.
+      await _filterTapPipeline.dispose();
       final exited = await _eventIsolate.stop();
       // A registerHook may still be running mpv_hook_add in a throwaway
       // isolate against this handle: it MUST finish before the handle is

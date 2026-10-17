@@ -5,6 +5,8 @@
 
 // The filter tap's active list against a fake mpv, with no libmpv loaded.
 
+import 'dart:async';
+
 import 'package:mpv_audio_kit/src/dsp/filter_tap_pipeline.dart';
 import 'package:test/test.dart';
 
@@ -36,5 +38,25 @@ void main() {
     await post.cancel();
     expect(sets.last, 'analyzer-taps=');
     await p.dispose();
+  });
+
+  test('dispose finishes with a paused listener', () async {
+    final p = FilterTapPipeline(
+      asyncGet: (name, format) async => (-10, null),
+      asyncSet: (name, value) async => 0,
+      pollInterval: const Duration(milliseconds: 5),
+    );
+    final done = Completer<void>();
+    final sub = p
+        .tapPost('aek_equalizer_0')
+        .listen((_) {}, onDone: done.complete);
+    sub.pause();
+    // A paused listener takes the done only when it resumes: waiting for
+    // it would hold the player's dispose, and its quit, forever.
+    await p.dispose().timeout(const Duration(seconds: 1));
+    expect(done.isCompleted, isFalse);
+    sub.resume();
+    await done.future.timeout(const Duration(seconds: 1));
+    await sub.cancel();
   });
 }

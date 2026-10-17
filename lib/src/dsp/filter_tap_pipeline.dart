@@ -231,14 +231,15 @@ class FilterTapPipeline {
     _pollTimer = null;
     // Best-effort: clear analyzer-taps so the C side stops capturing.
     unawaited(_asyncSet('analyzer-taps', ''));
-    final closes = <Future<void>>[];
+    // Not awaited: the controllers are the app's own subscriptions, and a
+    // paused one takes the done only when it resumes, so waiting would
+    // hold the player's dispose forever. An active one gets it right after.
     for (final c in _controllers.values) {
-      if (!c.isClosed) closes.add(c.close());
+      if (!c.isClosed) unawaited(c.close());
     }
     _controllers.clear();
     _active.clear();
     _lastSeq.clear();
-    await Future.wait(closes);
   }
 }
 
