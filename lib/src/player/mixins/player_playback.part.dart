@@ -91,12 +91,16 @@ mixin _PlaybackModule on _PlayerBase {
 
   /// Deletes the "watch later" resume config for the current file, or for
   /// [filename] when given, clearing any saved resume point.
+  ///
+  /// Name [filename] as the [Media] given to [Player.open]: a `file://`
+  /// URL or an `asset://` URI stands for the path the load gives mpv,
+  /// which keys the resume point.
   Future<void> deleteResumeConfig({String? filename}) async {
     await _gate();
     await _command(
       filename == null
           ? ['delete-watch-later-config']
-          : ['delete-watch-later-config', filename],
+          : ['delete-watch-later-config', await loadedName(filename)],
     );
   }
 

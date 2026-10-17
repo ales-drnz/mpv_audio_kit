@@ -6,9 +6,10 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';
 
@@ -90,6 +91,72 @@ void main() {
         tmp.listSync(),
         isEmpty,
         reason: 'deleteResumeConfig removed the current file\'s resume config',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('deleteResumeConfig takes the file:// URL the file was opened '
+        'with', () async {
+      final tmp = Directory.systemTemp.createTempSync('mak_delresume_url_');
+      addTearDown(() {
+        try {
+          tmp.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      final p = await buildPlayer(
+        configuration: PlayerConfiguration(
+          logLevel: LogLevel.off,
+          watchLaterDir: tmp.path,
+        ),
+      );
+      addTearDown(p.dispose);
+      final url = Uri.file(fx).toString();
+      await openAndWaitForLoad(p, url);
+      await p.seek(const Duration(milliseconds: 600));
+      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await p.writeResumeConfig();
+      await waitUntil(() => tmp.listSync().isNotEmpty);
+
+      await p.deleteResumeConfig(filename: url);
+      await waitUntil(
+        () => tmp.listSync().isEmpty,
+        reason: 'the resume point of the file opened by URL is gone',
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('deleteResumeConfig takes the asset:// URI the file was opened '
+        'with', () async {
+      final tmp = Directory.systemTemp.createTempSync('mak_delresume_asset_');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final bytes = File(fx).readAsBytesSync();
+      messenger.setMockMessageHandler(
+        'flutter/assets',
+        (_) async => ByteData.sublistView(bytes),
+      );
+      addTearDown(() {
+        messenger.setMockMessageHandler('flutter/assets', null);
+        try {
+          tmp.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      final p = await buildPlayer(
+        configuration: PlayerConfiguration(
+          logLevel: LogLevel.off,
+          watchLaterDir: tmp.path,
+        ),
+      );
+      addTearDown(p.dispose);
+      const asset = 'asset:///assets/resume_delete.wav';
+      await openAndWaitForLoad(p, asset);
+      await p.seek(const Duration(milliseconds: 600));
+      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await p.writeResumeConfig();
+      await waitUntil(() => tmp.listSync().isNotEmpty);
+
+      await p.deleteResumeConfig(filename: asset);
+      await waitUntil(
+        () => tmp.listSync().isEmpty,
+        reason: 'the resume point of the asset copy is gone',
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
 

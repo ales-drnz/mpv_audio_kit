@@ -109,6 +109,20 @@ Future<ResolvedUri> resolveUri(String uri) async {
   return ResolvedUri(uri);
 }
 
+/// The name [resolveUri] gives mpv for [uri], worked out without loading
+/// or copying anything: the path of a `file://` URL or of an `asset://`
+/// copy, or [uri] itself. mpv keys a resume point by that name. An
+/// Android `content://` URI gets a new descriptor at each load, so it
+/// has no name to give and comes back as it is.
+Future<String> loadedName(String uri) async {
+  final path = fileUrlToPath(uri);
+  if (path != null) return path;
+  if (uri.startsWith('asset://')) {
+    return _assetCache[uri] ?? await _assetCopyPath(_assetKey(uri));
+  }
+  return uri;
+}
+
 /// The path mpv stores for a `file://` [uri], or `null` for any other URI.
 ///
 /// Mirrors mpv's `mp_file_url_to_filename`, which every `loadfile` goes
@@ -222,29 +236,33 @@ Future<String> _copyAssetToCache(String uri) async {
   return _assetInflight.putIfAbsent(uri, () => _doCopyAsset(uri));
 }
 
+/// The bundle key of an `asset://` [uri].
+String _assetKey(String uri) {
+  final assetPath = uri.substring('asset://'.length);
+  return assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
+}
+
+/// Where the copy of the asset at [assetPath] goes.
+Future<String> _assetCopyPath(String assetPath) async {
+  // Both POSIX (`/`) and Windows (`\`) separators are flattened so the
+  // temp filename never contains directory parts. On POSIX
+  // `Platform.pathSeparator` is `/` and the second pass is a no-op.
+  final safeName = assetPath
+      .replaceAll(Platform.pathSeparator, '_')
+      .replaceAll('/', '_');
+  // Flattening alone is ambiguous: `a/b.mp3` and `a_b.mp3` collapse to
+  // the same name, and the second extraction would overwrite a file mpv
+  // may still be streaming. A hash of the ORIGINAL path disambiguates.
+  final dir = await _assetDirectory();
+  return '${dir.path}${Platform.pathSeparator}'
+      'mpv_asset_${_fnv1a(assetPath)}_$safeName';
+}
+
 Future<String> _doCopyAsset(String uri) async {
   try {
-    String assetPath = uri.substring('asset://'.length);
-    if (assetPath.startsWith('/')) {
-      assetPath = assetPath.substring(1);
-    }
-
+    final assetPath = _assetKey(uri);
     final data = await rootBundle.load(assetPath);
-
-    // Both POSIX (`/`) and Windows (`\`) separators are flattened so the
-    // temp filename never contains directory parts. On POSIX
-    // `Platform.pathSeparator` is `/` and the second pass is a no-op.
-    final safeName = assetPath
-        .replaceAll(Platform.pathSeparator, '_')
-        .replaceAll('/', '_');
-    // Flattening alone is ambiguous: `a/b.mp3` and `a_b.mp3` collapse to
-    // the same name, and the second extraction would overwrite a file mpv
-    // may still be streaming. A hash of the ORIGINAL path disambiguates.
-    final dir = await _assetDirectory();
-    final file = File(
-      '${dir.path}${Platform.pathSeparator}'
-      'mpv_asset_${_fnv1a(assetPath)}_$safeName',
-    );
+    final file = File(await _assetCopyPath(assetPath));
 
     // Written beside the target and renamed onto it, so another instance
     // of the app reading the same copy never sees it truncated. Slice the
