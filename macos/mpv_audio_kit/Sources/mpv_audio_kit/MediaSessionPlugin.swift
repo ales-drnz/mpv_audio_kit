@@ -258,19 +258,24 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     dispatchPrecondition(condition: .onQueue(.main))
     enabled = false
 
-    // `.stopped` BEFORE `nil` notifies the system the publisher is
-    // retiring, so the Now Playing entry clears within ~1s instead of
-    // holding a ghost entry for the IPC cache TTL.
-    let center = MPNowPlayingInfoCenter.default()
-    center.playbackState = .stopped
-    center.nowPlayingInfo = nil
-
-    // Targets stay installed (re-enable is one isEnabled flip away);
-    // disable them so the OS knows nothing is actionable.
-    for (command, _) in MediaSessionPlugin.sharedCommandTargets {
-      command.isEnabled = false
-    }
+    // The Now Playing center and the command targets are process-wide, so
+    // only the owner retires them. Another engine whose enable was refused
+    // still sends `disable` when its Player goes, and must not take down the
+    // owner's entry. A Hot Restart keeps this instance, so the disable of
+    // its new VM is the owner's.
     if MediaSessionPlugin.currentInstance === self {
+      // `.stopped` BEFORE `nil` notifies the system the publisher is
+      // retiring, so the Now Playing entry clears within ~1s instead of
+      // holding a ghost entry for the IPC cache TTL.
+      let center = MPNowPlayingInfoCenter.default()
+      center.playbackState = .stopped
+      center.nowPlayingInfo = nil
+
+      // Targets stay installed (re-enable is one isEnabled flip away);
+      // disable them so the OS knows nothing is actionable.
+      for (command, _) in MediaSessionPlugin.sharedCommandTargets {
+        command.isEnabled = false
+      }
       MediaSessionPlugin.currentInstance = nil
     }
 

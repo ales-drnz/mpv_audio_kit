@@ -403,6 +403,27 @@ func runNonSeekableWithDurationIsNotLive() {
   }
 }
 
+/// Two engines (add-to-app): A owns the session and plays, B's enable was
+/// refused. B's Player still sends `disable` when it is disposed, and that
+/// must not retire A's entry or its commands.
+func runNonOwnerDisableKeepsOwnerEntry() {
+  scenario("a disable from an engine that does not own the session keeps the owner's") {
+    let a = Harness(); defer { a.reset() }
+    enable(a, playback: makePlayback(playing: true, positionMs: 30_000))
+    let b = Harness()
+    enable(b)
+    check(!b.plugin.enabled, "precondition: the second engine's enable is refused")
+
+    b.call("disable", args: nil)
+    let f = Frame.capture()
+    check(f.title == "Test Track",
+          "the owner's entry must stay, got \(String(describing: f.title))")
+    check(f.playbackState == .playing, "the owner's state must stay, got \(f.description)")
+    check(MPRemoteCommandCenter.shared().playCommand.isEnabled,
+          "the owner's commands must stay enabled")
+  }
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────
 
 print("=== MediaSessionPlugin renderer tests ===\n")
@@ -419,6 +440,7 @@ runRepeatShuffleVisualState()
 runDedupCoalescesIdenticalPushes()
 runDisableClearsNowPlaying()
 runNoTitlePoisonGuard()
+runNonOwnerDisableKeepsOwnerEntry()
 
 print("=== Summary ===")
 if failures.isEmpty {
