@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
@@ -137,6 +138,70 @@ void main() {
           }
         },
         timeout: const Timeout(Duration(seconds: 10)),
+      );
+
+      test(
+        'a second player taps a stage and goes, the first keeps its tap',
+        () async {
+          // analyzer-taps is one list per process, replaced by each write.
+          final a = await buildPlayer();
+          final b = await buildPlayer();
+          var bGone = false;
+          try {
+            final probe = await a.getRawProperty('audio-tap-frames');
+            if (probe == null) {
+              skipMissing('libmpv has no audio-tap-frames property.');
+              return;
+            }
+            final flac = '${Directory.current.path}/test/fixtures/sine_5s.flac';
+            await a.setAudioEffects(const [EqualizerEffect()]);
+            await b.setAudioEffects(const [BassEffect()]);
+            await a.setRawProperty('loop-file', 'inf');
+            await openAndWaitForLoad(a, flac);
+            var frames = 0;
+            final eq = a.stream
+                .tap(AudioFilter.equalizer, side: TapSide.pre)
+                .listen((_) => frames++);
+            try {
+              await a.play();
+              Future<void> flowing(String reason) {
+                final from = frames;
+                return waitUntil(() => frames > from + 2, reason: reason);
+              }
+
+              Future<void> listed(String csv) => waitUntil(
+                () async => await a.getRawProperty('analyzer-taps') == csv,
+                reason: 'analyzer-taps is not $csv',
+              );
+
+              await flowing('the first player taps nothing');
+              final bass = b.stream
+                  .tap(AudioFilter.bass, side: TapSide.post)
+                  .listen((_) {});
+              await Future<void>.delayed(const Duration(milliseconds: 100));
+              await flowing('the tap stopped when the second player tapped');
+              await listed('aek_equalizer_0,aek_bass_0');
+
+              // The second player goes with its listener attached.
+              await b.dispose();
+              bGone = true;
+              await bass.cancel();
+              await Future<void>.delayed(const Duration(milliseconds: 100));
+              await flowing('the tap stopped when the second player went');
+              await listed('aek_equalizer_0');
+            } finally {
+              await eq.cancel();
+            }
+            await waitUntil(
+              () async =>
+                  (await a.getRawProperty('analyzer-taps') ?? '').isEmpty,
+            );
+          } finally {
+            if (!bGone) await b.dispose();
+            await a.dispose();
+          }
+        },
+        timeout: const Timeout(Duration(seconds: 20)),
       );
     });
   });

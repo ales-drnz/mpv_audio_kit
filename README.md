@@ -2439,8 +2439,10 @@ stages count too, and emit nothing. The tap follows the occurrence, not a
 particular stage: moving other filters around keeps it where it is, while
 swapping the two equalizers swaps what `instance: 0` taps. libmpv captures
 up to eight stages at a time, counted across all players of the process,
-and two players tapping the same stage read one mixed feed. `TapSide.pre`
-captures before the filter and `TapSide.post` after it.
+and two players tapping the same stage read one mixed feed. The players of
+one isolate keep the list of tapped stages together; a player in another
+isolate replaces it with its own. `TapSide.pre` captures before the filter
+and `TapSide.post` after it.
 
 ```dart
 // Input and output of one filter

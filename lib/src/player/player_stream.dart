@@ -671,7 +671,8 @@ class PlayerStream {
   /// same `(filter, instance, side)` share a single underlying tap. The
   /// native tap state is one per process: two players tapping the same
   /// stage read one mixed feed, and at most eight stages are tapped
-  /// across all players.
+  /// across all players. The players of one isolate keep that list
+  /// together. A player in another isolate replaces it with its own.
   ///
   /// [filter] names the stage's filter and [instance] which of its
   /// occurrences in [PlayerState.audioEffects] (0, the default, for the

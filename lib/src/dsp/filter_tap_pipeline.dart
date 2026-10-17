@@ -9,6 +9,7 @@ import 'package:meta/meta.dart';
 import '../models/pcm_frame.dart';
 import '../mpv_bindings.dart';
 import 'dsp_async_io.dart';
+import 'shared_property_writer.dart';
 
 /// Upper bound on the channel count reported by the native filter tap.
 ///
@@ -31,7 +32,8 @@ const int _kMaxActiveTaps = 8;
 ///      comma-separated list of the chain labels currently needed to
 ///      `analyzer-taps`. The C side activates the matching hook in
 ///      `user_wrapper_process` only for those labels, at most
-///      [_kMaxActiveTaps] of them.
+///      [_kMaxActiveTaps] of them. The list is one per process, so it
+///      holds the labels of every player of this isolate.
 ///   2. polls `audio-tap-frames` every 33 ms while at least one
 ///      stream has a listener; parses the MAP_NODE into
 ///      per-stage [PcmFrame]s and dispatches them on broadcast
@@ -69,8 +71,20 @@ class FilterTapPipeline {
   // A broadcast controller calls onListen and onCancel only for its first
   // and last listener, so membership is all there is to count.
   final Set<_TapKey> _active = {};
+  // The labels this pipeline adds to [_tapped].
+  final Set<String> _labels = {};
+
+  // analyzer-taps is a static of the libmpv process, and a write replaces
+  // the whole list: every player of this isolate writes the labels of all.
+  // Each label counts the pipelines that tap it, in the order it was first
+  // tapped, so a new label never pushes out one already captured (the C
+  // side keeps the first [_kMaxActiveTaps]).
+  static final Map<String, int> _tapped = {};
   // The list last written, empty as mpv starts.
-  String _lastCsv = '';
+  static String _written = '';
+  static final SharedPropertyWriter _writer = SharedPropertyWriter(
+    'analyzer-taps',
+  );
   // The slice last dispatched per (name, side): the ring's write
   // generation (`seq`) and the slice's end (`pts_ns`). Lets the poll loop
   // skip a redundant decode + add() when neither moved (e.g. while paused
@@ -137,26 +151,47 @@ class FilterTapPipeline {
   }
 
   /// Builds the `analyzer-taps` CSV from the union of every distinct
-  /// chain label with a pre or post listener, and
-  /// pushes it to mpv. The C side replaces its active set on every
-  /// write; an empty CSV disables every tap.
+  /// chain label with a pre or post listener, in this pipeline and in the
+  /// other players' of this isolate, and pushes it to mpv. The C side
+  /// replaces its active set on every write; an empty CSV disables every
+  /// tap.
   void _writeActiveList() {
-    final labels = <String>{};
-    for (final k in _active) {
-      labels.add(k.name);
+    final labels = {for (final k in _active) k.name};
+    for (final label in _labels.difference(labels)) {
+      _untap(label);
     }
-    if (labels.length > _kMaxActiveTaps) {
+    for (final label in labels.difference(_labels)) {
+      _tapped.update(label, (n) => n + 1, ifAbsent: () => 1);
+    }
+    _labels
+      ..clear()
+      ..addAll(labels);
+    if (_tapped.length > _kMaxActiveTaps) {
       _warn?.call(
-        '${labels.length} stages are tapped; libmpv captures '
+        '${_tapped.length} stages are tapped; libmpv captures '
         '$_kMaxActiveTaps at a time, so the others stay silent.',
       );
     }
-    final csv = labels.join(',');
-    // The other side of a tapped label leaves the list as it is.
-    if (csv == _lastCsv) return;
-    _lastCsv = csv;
-    unawaited(_asyncSet('analyzer-taps', csv));
+    _publish();
   }
+
+  static void _untap(String label) {
+    final n = _tapped[label]! - 1;
+    if (n == 0) {
+      _tapped.remove(label);
+    } else {
+      _tapped[label] = n;
+    }
+  }
+
+  /// Writes the labels of every player, unless mpv has them already (the
+  /// other side of a tapped label leaves the list as it is).
+  void _publish() => _writer.write(_asyncSet, () {
+    final csv = _tapped.keys.join(',');
+    if (csv == _written) return null;
+    _written = csv;
+    return csv;
+  }, anyCore: true);
 
   void _poll() {
     if (_disposed || _polling) return;
@@ -234,8 +269,12 @@ class FilterTapPipeline {
     _disposed = true;
     _pollTimer?.cancel();
     _pollTimer = null;
-    // Best-effort: clear analyzer-taps so the C side stops capturing.
-    unawaited(_asyncSet('analyzer-taps', ''));
+    // This player's labels leave the list, the other players' stay. The
+    // player disposes the taps after its quit: the core still serves this
+    // write before it is destroyed.
+    _labels.forEach(_untap);
+    _labels.clear();
+    _publish();
     // Not awaited: the controllers are the app's own subscriptions, and a
     // paused one takes the done only when it resumes, so waiting would
     // hold the player's dispose forever. An active one gets it right after.

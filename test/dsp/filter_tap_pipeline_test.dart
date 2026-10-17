@@ -103,4 +103,64 @@ void main() {
     await sub.cancel();
     await p.dispose();
   });
+
+  group('two players', () {
+    // analyzer-taps is a static of the libmpv process: each player writes
+    // it through its own core, and a write replaces the whole list.
+    final sets = <String>[];
+    FilterTapPipeline player(String who, {Future<int>? reply}) =>
+        FilterTapPipeline(
+          asyncGet: (name, format) async => (-10, null),
+          asyncSet: (name, value) {
+            sets.add('$who $value');
+            return reply ?? Future.value(0);
+          },
+          pollInterval: const Duration(milliseconds: 5),
+        );
+    Future<void> settle() =>
+        Future<void>.delayed(const Duration(milliseconds: 5));
+
+    setUp(sets.clear);
+
+    test('one player keeps its taps when another taps or goes', () async {
+      final a = player('A');
+      final b = player('B');
+      final eq = a.tapPre('aek_equalizer_0').listen((_) {});
+      await settle();
+      final bass = b.tapPost('aek_bass_0').listen((_) {});
+      await settle();
+      expect(sets.last, 'B aek_equalizer_0,aek_bass_0');
+      // B goes with its listener still attached.
+      await b.dispose();
+      await settle();
+      expect(sets.last, 'B aek_equalizer_0');
+      await bass.cancel();
+      await eq.cancel();
+      await settle();
+      expect(sets.last, 'A ');
+      await a.dispose();
+      await settle();
+      expect(sets.last, 'A ', reason: 'nothing left to write');
+    });
+
+    test('a write joins the core already writing', () async {
+      // A's core is busy (an audio output opening): B's list must not
+      // land before A's.
+      final reply = Completer<int>();
+      final a = player('A', reply: reply.future);
+      final b = player('B');
+      final eq = a.tapPre('aek_equalizer_0').listen((_) {});
+      final bass = b.tapPost('aek_bass_0').listen((_) {});
+      expect(sets, ['A aek_equalizer_0', 'A aek_equalizer_0,aek_bass_0']);
+      reply.complete(0);
+      await settle();
+      await bass.cancel();
+      expect(sets.last, 'B aek_equalizer_0');
+      await eq.cancel();
+      await a.dispose();
+      await b.dispose();
+      await settle();
+      expect(sets.last, 'A ');
+    });
+  });
 }
