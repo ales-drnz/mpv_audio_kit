@@ -307,7 +307,9 @@ final class PlayerState {
   /// Audio client name (used by backend drivers like PulseAudio).
   final String audioClientName;
 
-  /// Audio output driver ('auto', 'coreaudio', 'pulse', 'alsa', 'wasapi', etc.).
+  /// Requested audio output driver ('coreaudio', 'pulse', 'alsa',
+  /// 'wasapi', etc.), or empty for mpv's automatic choice, which is also
+  /// what `setAudioDriver('auto')` stores.
   final String audioDriver;
 
   /// Audio output lifecycle (`closed`, `initializing`, `active` or
@@ -476,8 +478,8 @@ final class PlayerState {
 
   /// Name of the audio output driver in use (e.g. `coreaudio`,
   /// `pulse`, `wasapi`). Differs from [audioDriver] (which is the
-  /// requested driver, possibly `auto`): this is what mpv actually
-  /// resolved at runtime. Mirrors mpv's `current-ao`.
+  /// requested driver, empty for the automatic choice): this is what mpv
+  /// actually resolved at runtime. Mirrors mpv's `current-ao`.
   final String currentAo;
 
   /// Initial timestamp offset of the current file, as reported by the
@@ -564,7 +566,7 @@ final class PlayerState {
     this.audioFormat = Format.auto,
     this.audioChannels = Channels.auto,
     this.audioClientName = 'mpv_audio_kit',
-    this.audioDriver = 'auto',
+    this.audioDriver = '',
     this.audioOutputState = AudioOutputState.closed,
     this.audioEffects = const [],
     this.spectrum = SpectrumSettings.defaults,

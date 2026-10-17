@@ -1804,7 +1804,7 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `audioOutParams` | `AudioParams` | - | Sent to the output |
 | `audioBitrate` | `double?` | - |  |
 | `audioOutputState` | `AudioOutputState` | - | See [11.3](#113-audio-output-lifecycle) |
-| `audioDriver` | `String` | `setAudioDriver` |  |
+| `audioDriver` | `String` | `setAudioDriver` | Empty for the automatic choice |
 | `audioExclusive` | `bool` | `setAudioExclusive` |  |
 | `audioBuffer` | `Duration` | `setAudioBuffer` |  |
 | `audioStreamSilence` | `bool` | `setAudioStreamSilence` |  |

@@ -251,8 +251,9 @@ class DefaultPropertyReactives {
     'mpv_audio_kit',
   );
 
-  /// Active audio output driver (`ao`).
-  final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
+  /// Requested audio output driver (`ao`); empty for mpv's automatic
+  /// choice.
+  final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('');
 
   /// The effects chain, replaced atomically via `Player.setAudioEffects` or
   /// `updateAudioEffects`.

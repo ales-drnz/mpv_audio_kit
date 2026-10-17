@@ -11,6 +11,7 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/reactive/default_reactives.dart';
 import 'package:test/test.dart';
 
@@ -101,6 +102,18 @@ void main() {
         reason:
             'Dart seeds diverge from real mpv defaults:\n${mismatches.join('\n')}',
       );
+    }, timeout: const Timeout(Duration(seconds: 25)));
+
+    test('the audioDriver seed matches the automatic choice', () async {
+      // Not in the list above: buildPlayer sets ao=null.
+      final player = Player(
+        configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+      );
+      addTearDown(player.dispose);
+      final seed = DefaultPropertyReactives().audioDriver.value;
+      expect(player.state.audioDriver, seed);
+      expect(await player.getRawProperty('ao'), seed);
+      expect(const PlayerState().audioDriver, seed);
     }, timeout: const Timeout(Duration(seconds: 25)));
   });
 }
