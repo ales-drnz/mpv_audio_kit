@@ -741,7 +741,9 @@ class PlayerStream {
   /// process-global singleton: the most recent `open()` wins, so with
   /// multiple [Player]s alive only the last-loaded file's waveform is
   /// computed. This matches the single-player-per-app usage this package
-  /// targets; don't rely on concurrent waveforms across players.
+  /// targets; don't rely on concurrent waveforms across players. The
+  /// analyzer stays on while a player of this isolate listens: another
+  /// player's cancel or dispose does not turn it off.
   final Stream<WaveformData?> waveform;
 
   /// Live EBU R128 loudness measurements ([Loudness]: momentary,
@@ -790,7 +792,8 @@ class PlayerStream {
   /// stale results clear.
   ///
   /// **Lazy**: the native scan runs only while a listener is
-  /// attached; an idle stream costs nothing.
+  /// attached; an idle stream costs nothing. Like the [waveform]
+  /// analyzer, it stays on while a player of this isolate listens.
   final Stream<LoudnessScan?> loudnessScan;
 
   // ── Media session ──────────────────────────────────────────────────

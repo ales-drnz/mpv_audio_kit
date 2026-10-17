@@ -2491,7 +2491,9 @@ for (final e in player.state.audioEffects) {
 computed on a worker thread: about 2000 bins, each with its min, max and
 RMS, enough to paint a waveform
 overview or a waveform-style seekbar. There is one waveform per process:
-with several players, the last `open()` wins.
+with several players, the last `open()` wins. It stays on while a player
+of the same isolate listens: another player's cancel or dispose does not
+turn it off.
 
 Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
@@ -2557,7 +2559,8 @@ player.stream.loudnessScan.listen((scan) {
 The stream emits `null` when the track changes, so old results clear.
 Sources that can only be decoded as they play (adaptive or live network
 streams) report `LoudnessScanState.unavailable`: use the live meter below
-for those.
+for those. Like the waveform, the scan stays on while a player of the same
+isolate listens.
 
 #### 13.7 Live loudness meter
 

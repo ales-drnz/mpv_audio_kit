@@ -180,5 +180,65 @@ void main() {
       },
       timeout: const Timeout(Duration(seconds: 30)),
     );
+
+    test(
+      "one player's cancel or dispose leaves another's analysis on",
+      () async {
+        final a = await buildPlayer();
+        final b = await buildPlayer();
+        var bGone = false;
+        try {
+          final aWave = a.stream.waveform.listen((_) {});
+          final aScan = a.stream.loudnessScan.listen((_) {});
+          Future<void> flags(String value) => waitUntil(
+            () async =>
+                await a.getRawProperty('waveform-enabled') == value &&
+                await a.getRawProperty('loudness-scan-enabled') == value,
+            reason: 'the analysis flags are not $value',
+          );
+          Future<void> analyzed(String path) async {
+            final wave = a.stream.waveform
+                .firstWhere((w) => w != null && !w.decoding)
+                .timeout(const Duration(seconds: 10));
+            final scan = a.stream.loudnessScan
+                .firstWhere((s) => s?.state == LoudnessScanState.ready)
+                .timeout(const Duration(seconds: 10));
+            await openAndWaitForLoad(a, path);
+            await wave;
+            await scan;
+          }
+
+          await flags('yes');
+
+          // B comes and goes without loading anything: a page that
+          // subscribes and leaves.
+          await b.stream.waveform.listen((_) {}).cancel();
+          await b.stream.loudnessScan.listen((_) {}).cancel();
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await analyzed(fixture);
+
+          // B goes with its listeners attached.
+          final bWave = b.stream.waveform.listen((_) {});
+          final bScan = b.stream.loudnessScan.listen((_) {});
+          await b.dispose();
+          bGone = true;
+          await bWave.cancel();
+          await bScan.cancel();
+          await analyzed(
+            '${Directory.current.path}/test/fixtures/sine_stereo_1s.flac',
+          );
+          await flags('yes');
+
+          // The last listener of the isolate turns them off.
+          await aWave.cancel();
+          await aScan.cancel();
+          await flags('no');
+        } finally {
+          if (!bGone) await b.dispose();
+          await a.dispose();
+        }
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
   });
 }
