@@ -1195,10 +1195,6 @@ abstract class _PlayerBase {
   /// bring-up when the call came before it.
   LogLevel? _pendingLogLevel;
 
-  /// Last playlist-entry `path` the waveform pipeline was reset for. Lets the
-  /// FILE_LOADED handler skip the redundant reset mpv fires on internal
-  /// reloads of the same source (see the dedup in `_handleEvent`).
-  String? _lastWaveformSource;
   late final StreamController<FftFrame> _fftCtrl;
   late final StreamController<PcmFrame> _pcmStreamCtrl;
   // Lazy bridges into the spectrum pipeline: non-null exactly while the
@@ -1389,7 +1385,6 @@ abstract class _PlayerBase {
   void _clearFinishedFile() {
     if (_disposed) return;
     _clearPerFileState();
-    _lastWaveformSource = null;
     _waveformPipeline.clear();
     _loudnessScanPipeline.clear();
   }

@@ -24,10 +24,8 @@ class MpvEventStartFile extends MpvIsolateEvent {}
 /// audio output initializes (e.g. CoreAudio waking a Bluetooth or AirPlay
 /// device). Riding the payload keeps that wait off the main isolate.
 class MpvEventFileLoaded extends MpvIsolateEvent {
-  /// The playlist entry `path`: keys the waveform and loudness scan reset
-  /// so internal reloads (EDL, gapless, track reinit) of the same source
-  /// don't discard a completed envelope, and is applied to the state before
-  /// the cover and waveform resets go out. `null` when the read failed.
+  /// The playlist entry `path`, applied to the state before the cover and
+  /// waveform resets go out. `null` when the read failed.
   final String? path;
 
   /// Freshly read `playlist` node tree. Applied to the state before the

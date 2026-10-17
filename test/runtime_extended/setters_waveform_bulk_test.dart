@@ -8,11 +8,43 @@ library;
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';
+
+/// A 16-bit mono 48 kHz WAV: [seconds] of a 440 Hz sine at [amplitude].
+Uint8List _sineWav(int seconds, double amplitude) {
+  const rate = 48000;
+  final frames = rate * seconds;
+  final data = ByteData(44 + frames * 2);
+  void ascii(int at, String s) {
+    for (var k = 0; k < s.length; k++) {
+      data.setUint8(at + k, s.codeUnitAt(k));
+    }
+  }
+
+  ascii(0, 'RIFF');
+  data.setUint32(4, 36 + frames * 2, Endian.little);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  data.setUint32(16, 16, Endian.little);
+  data.setUint16(20, 1, Endian.little);
+  data.setUint16(22, 1, Endian.little);
+  data.setUint32(24, rate, Endian.little);
+  data.setUint32(28, rate * 2, Endian.little);
+  data.setUint16(32, 2, Endian.little);
+  data.setUint16(34, 16, Endian.little);
+  ascii(36, 'data');
+  data.setUint32(40, frames * 2, Endian.little);
+  for (var i = 0; i < frames; i++) {
+    final v = amplitude * math.sin(2 * math.pi * 440 * i / rate);
+    data.setInt16(44 + i * 2, (v * 32767).round(), Endian.little);
+  }
+  return data.buffer.asUint8List();
+}
 
 /// End-to-end coverage for [PlayerStream.waveform], backed by the
 /// `waveform-data` / `waveform-enabled` mpv properties.
@@ -106,9 +138,8 @@ void main() {
               () => events.any((w) => w != null),
               reason: 'Expected a settled envelope after the first load',
             );
-            // A different file: the pipeline resets only when the source
-            // changes, not when the same file is loaded again. Only events
-            // after the load count, since the stream replayed a null first.
+            // A different file. Only events after the load count, since
+            // the stream replayed a null first.
             final settled = events.length;
             await openAndWaitForLoad(player, stereoPath);
             await waitUntil(
@@ -130,6 +161,79 @@ void main() {
           await player.dispose();
         }
       }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test('a file loaded again at the same path is analyzed again', () async {
+        // The same path with new content: a file downloaded or encoded
+        // again. mpv analyzes every load from scratch, and the player must
+        // follow it, not keep the result of the first content.
+        final tmp = Directory.systemTemp.createTempSync('mak_samepath_');
+        addTearDown(() {
+          try {
+            tmp.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+        final path = '${tmp.path}/track.wav';
+        File(path).writeAsBytesSync(_sineWav(1, 0.1));
+        final player = await buildPlayer();
+        try {
+          final waves = <WaveformData?>[];
+          final scans = <LoudnessScan?>[];
+          final waveSub = player.stream.waveform.listen(waves.add);
+          final scanSub = player.stream.loudnessScan.listen(scans.add);
+          try {
+            await openAndWaitForLoad(player, path);
+            await waitUntil(
+              () => waves.any((w) => w != null && !w.decoding),
+              reason: 'the first content settles an envelope',
+            );
+            await waitUntil(
+              () => scans.any((s) => s?.state == LoudnessScanState.ready),
+              reason: 'the first content settles a loudness scan',
+            );
+            final first = scans.lastWhere(
+              (s) => s?.state == LoudnessScanState.ready,
+            )!;
+
+            File(path).writeAsBytesSync(_sineWav(3, 0.8));
+            final settled = waves.length;
+            final scanned = scans.length;
+            await openAndWaitForLoad(player, path);
+            await waitUntil(
+              () => waves
+                  .skip(settled)
+                  .any(
+                    (w) =>
+                        w != null &&
+                        !w.decoding &&
+                        w.duration.inMilliseconds > 2500,
+                  ),
+              timeout: const Duration(seconds: 8),
+              reason: 'the new content gets its own envelope, about 3 s long',
+            );
+            await waitUntil(
+              () => scans
+                  .skip(scanned)
+                  .any((s) => s?.state == LoudnessScanState.ready),
+              timeout: const Duration(seconds: 8),
+              reason: 'the new content gets its own loudness scan',
+            );
+            final second = scans.lastWhere(
+              (s) => s?.state == LoudnessScanState.ready,
+            )!;
+            // 0.8 against 0.1 of amplitude: about 18 dB louder.
+            expect(
+              second.integrated! - first.integrated!,
+              greaterThan(12),
+              reason: 'the scan measured the new content',
+            );
+          } finally {
+            await waveSub.cancel();
+            await scanSub.cancel();
+          }
+        } finally {
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('listener-gated — no envelope emitted while unsubscribed', () async {
         final player = await buildPlayer();

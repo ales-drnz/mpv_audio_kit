@@ -16,7 +16,7 @@ import 'dsp_async_io.dart';
 ///
 /// As soon as the analyzer reports `state == "ready"` the assembled
 /// envelope is emitted once via [stream] and the timer stops until the
-/// next track-change. On track change the player calls [reset]: the
+/// next file load. On every file load the player calls [reset]: the
 /// pipeline drops the current envelope, emits `null`, and rearms the
 /// timer if still enabled.
 @internal

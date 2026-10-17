@@ -1954,7 +1954,7 @@ and examples.
 | `fft` | `FftFrame` | - | Smoothed FFT bands and raw bins, for a bar visualizer. |
 | `pcm` | `PcmFrame` | - | Samples after the effects chain, for a waveform or a level meter. |
 | `spectrum` | `SpectrumSettings` | `setSpectrum`, `updateSpectrum` | The FFT and smoothing settings. |
-| `waveform` | `WaveformData?` | - | Envelope of the loaded track, `null` on a track change until the first bins. |
+| `waveform` | `WaveformData?` | - | Envelope of the loaded track, `null` at each file load until the first bins. |
 | `loudnessScan` | `LoudnessScan?` | - | Integrated loudness, range, sample and true peak of the loaded track, with its progress. |
 | `loudnessMeter` | `Loudness` | - | Live momentary, short-term, integrated and range readings from an `Ebur128Effect`. |
 
@@ -2524,7 +2524,7 @@ uses the same decode.
 
 ```dart
 player.stream.waveform.listen((wave) {
-  if (wave == null) return; // null on track change, until the first bins land
+  if (wave == null) return; // null at each file load, until the first bins land
   // wave.min and wave.max: Float32List, range [-1, +1], wave.bins long.
   // wave.rms: Float32List?, range [0, 1], same length.
   // Bin i covers wave.duration * i / wave.bins to wave.duration * (i + 1) / wave.bins
@@ -2557,7 +2557,7 @@ player.stream.loudnessScan.listen((scan) {
 });
 ```
 
-The stream emits `null` when the track changes, so old results clear.
+The stream emits `null` each time a file loads, so old results clear.
 Sources that can only be decoded as they play (adaptive or live network
 streams) report `LoudnessScanState.unavailable`: use the live meter below
 for those. Like the waveform, the scan stays on while a player of the same

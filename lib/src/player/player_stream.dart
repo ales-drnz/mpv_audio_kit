@@ -716,8 +716,8 @@ class PlayerStream {
   /// across the full track duration. Use for a static full-track
   /// overview strip with click-to-seek.
   ///
-  /// Emits `null` on every track-change boundary (so renderers can
-  /// clear stale data), then the envelope. A local file is decoded in the
+  /// Emits `null` each time a file loads, the same file loaded again
+  /// included (so renderers can clear stale data), then the envelope. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
   /// the final one. An HTTP file that plays from its start is decoded from
   /// mpv's cache as it downloads, the same way. Adaptive, non-seekable or
@@ -788,8 +788,8 @@ class PlayerStream {
   /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track
   /// (`ready`, `failed`, or `unavailable` for sources that can only be
   /// measured during playback, such as adaptive or live streams; use
-  /// [loudnessMeter] there), and `null` on the track-change boundary so
-  /// stale results clear.
+  /// [loudnessMeter] there), and `null` each time a file loads, the same
+  /// file loaded again included, so stale results clear.
   ///
   /// **Lazy**: the native scan runs only while a listener is
   /// attached; an idle stream costs nothing. Like the [waveform]
