@@ -1004,6 +1004,14 @@ abstract class _PlayerBase {
   /// (a file load or a seek): see `_AudioModule`.
   void _onAfChainReset();
 
+  /// mpv loaded a file, after applying the resume point it may hold: see
+  /// `_AudioModule`.
+  void _reassertAfChain();
+
+  /// The MPV_EVENT_START_FILE events seen so far. A reply that arrives
+  /// after a newer one may describe the file that load opened.
+  int _fileStarts = 0;
+
   /// mpv sent AUDIO_RECONFIG: see `_AudioModule`.
   void _onAudioReconfig();
 

@@ -56,6 +56,7 @@ mixin _DispatchModule on _PlayerBase {
           // idle-active burst (FIFO), so the latch still can't be tripped by
           // the startup burst.
           _hasLoadedFile = true;
+          _fileStarts++;
           // A new load attempt re-arms the source resolver's single
           // retry allowance; see [_resolverRetried].
           _resolverRetried = false;
@@ -78,6 +79,7 @@ mixin _DispatchModule on _PlayerBase {
           _updateLifecycle(buffering: false);
           // mpv just built the new file's chain from the stored arguments.
           _onAfChainReset();
+          _reassertAfChain();
           _applyPolledPosition(timePos);
           // mpv exposes -1, -2 etc. as "no chapter active"; surface as
           // null. A failed read (chapterIndex == null) applies nothing.

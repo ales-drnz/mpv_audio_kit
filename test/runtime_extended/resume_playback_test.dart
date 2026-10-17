@@ -121,6 +121,65 @@ void main() {
       expect(saved.readAsStringSync(), isNot(contains('af=')));
     }, timeout: const Timeout(Duration(seconds: 30)));
 
+    test('a chain restored from an older resume point gives way to the '
+        "player's own", () async {
+      final tmp = Directory.systemTemp.createTempSync('mak_resume_oldaf_');
+      addTearDown(() {
+        try {
+          tmp.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      final p = await buildPlayer(
+        configuration: PlayerConfiguration(
+          logLevel: LogLevel.off,
+          watchLaterDir: tmp.path,
+        ),
+      );
+      addTearDown(p.dispose);
+      await p.setAudioEffects(const [
+        EqualizerEffect(frequency: 1000, width: 200, gain: 12),
+      ]);
+      final restored = (await p.getRawProperty('af'))!;
+      await openAndWaitForLoad(p, fx);
+      await p.seek(const Duration(milliseconds: 600));
+      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await p.writeResumeConfig();
+      // A resume point written by 0.5.1 or earlier also held the chain.
+      _resumeFile(tmp).writeAsStringSync(
+        'af=%${restored.length}%$restored\n',
+        mode: FileMode.append,
+      );
+
+      // The player's chain is empty now: the load must not bring the
+      // saved equalizer back behind the state.
+      await p.setAudioEffects(const []);
+      await openAndWaitForLoad(p, fx);
+      expect(
+        p.state.position.inMilliseconds,
+        greaterThan(400),
+        reason: 'precondition: the resume point applied',
+      );
+      await waitUntil(
+        () async => await p.getRawProperty('af') == '',
+        reason: 'the empty chain of the state plays, not the saved one',
+      );
+
+      // Same shape, other values: the state's values play.
+      await p.setAudioEffects(const [
+        EqualizerEffect(frequency: 1000, width: 200, gain: -6),
+      ]);
+      final mine = (await p.getRawProperty('af'))!;
+      expect(mine, isNot(restored));
+      await openAndWaitForLoad(p, fx);
+      await waitUntil(
+        () async => await p.getRawProperty('af') == mine,
+        reason: "the state's equalizer plays, not the saved one",
+      );
+      expect(p.state.audioEffects, const [
+        EqualizerEffect(frequency: 1000, width: 200, gain: -6),
+      ]);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
     test('resumePlayback=false does NOT restore position', () async {
       final tmp = Directory.systemTemp.createTempSync('mak_noresume_');
       addTearDown(() {
