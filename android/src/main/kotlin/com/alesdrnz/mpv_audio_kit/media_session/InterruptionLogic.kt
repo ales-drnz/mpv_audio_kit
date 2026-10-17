@@ -15,7 +15,8 @@ import android.media.AudioManager
  * so it is unit-testable on the plain JVM — see `InterruptionLogicTest`.
  *
  * Mirrors the Apple `AVAudioSession` behaviour in `MediaSessionPlugin.swift`:
- * - `pauseAndResume`: pause on loss; resume only after a *transient* loss.
+ * - `pauseAndResume`: pause on loss; resume only after a *transient* loss
+ *   that interrupted playback.
  * - `pauseOnly`: pause on loss; never auto-resume.
  * - `keepPlaying`: never auto-pause on focus loss (the system still auto-ducks).
  * A headphone unplug ("becoming noisy") always pauses, even under
@@ -42,8 +43,16 @@ internal object InterruptionLogic {
     )
 
     /** Reaction to an `OnAudioFocusChangeListener` callback. [resumeArmed]
-     *  is the current latch (set when we auto-paused for a transient loss). */
-    fun onFocusChange(focusChange: Int, policy: String, resumeArmed: Boolean): Reaction =
+     *  is the current latch (set when we auto-paused for a transient loss).
+     *  [wasPlaying] is the play intent when the focus changed: a paused
+     *  player keeps its focus, and the end of a call must not start what
+     *  the user had paused (Apple checks `wasPlayingBeforeInterruption`). */
+    fun onFocusChange(
+        focusChange: Int,
+        policy: String,
+        resumeArmed: Boolean,
+        wasPlaying: Boolean,
+    ): Reaction =
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS ->
                 if (policy == KEEP_PLAYING) {
@@ -58,11 +67,15 @@ internal object InterruptionLogic {
                 if (policy == KEEP_PLAYING) {
                     Reaction(command = null, resumeOnFocusGain = false, abandonFocus = false)
                 } else {
-                    // Transient (call, alarm). Pause; arm auto-resume only for
-                    // pauseAndResume.
+                    // Transient (call, alarm). Pause (harmless when already
+                    // paused); arm auto-resume only for pauseAndResume and only
+                    // if something was playing. A latch already armed stays:
+                    // the pause we caused makes the player inactive before a
+                    // second transient loss arrives.
                     Reaction(
                         command = PAUSE,
-                        resumeOnFocusGain = policy == PAUSE_AND_RESUME,
+                        resumeOnFocusGain =
+                            policy == PAUSE_AND_RESUME && (wasPlaying || resumeArmed),
                         abandonFocus = false,
                     )
                 }
