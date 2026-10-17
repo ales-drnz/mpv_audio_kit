@@ -636,7 +636,9 @@ class PlayerStream {
   /// Stops emitting while playback is paused (the AO ring stops
   /// receiving samples). The last [FftFrame] is "frozen" in the sense
   /// that no further events fire; hold the last value as the
-  /// displayed state until playback resumes.
+  /// displayed state until playback resumes. When the stream gets its
+  /// first listener while paused, that listener receives the last frame
+  /// once.
   final Stream<FftFrame> fft;
 
   /// Real-time raw PCM samples of the audio currently playing through

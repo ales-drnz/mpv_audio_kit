@@ -23,7 +23,8 @@ import 'dsp_async_io.dart';
 ///
 /// The pipeline:
 ///   1. Poll the property → MAP_NODE { sample_rate, channels, pts_ns, samples }.
-///   2. Skip emit when `pts_ns` matches the previous poll (no new audio).
+///   2. Skip a stream when `pts_ns` matches the frame it got last (no new
+///      audio). A stream's first listener gets the current frame, paused too.
 ///   3. Mix down to mono (mean of channels).
 ///   4. Multiply by the configured window function.
 ///   5. Real FFT (fftea) → magnitude per bin.
@@ -38,7 +39,9 @@ class SpectrumPipeline {
     _fftCtrl = StreamController<FftFrame>.broadcast(
       onListen: () {
         _fftActive = true;
+        _lastFftPtsNs = 0;
         _maybeStart();
+        _poll();
       },
       onCancel: () {
         _fftActive = false;
@@ -48,7 +51,9 @@ class SpectrumPipeline {
     _pcmCtrl = StreamController<PcmFrame>.broadcast(
       onListen: () {
         _pcmActive = true;
+        _lastPcmPtsNs = 0;
         _maybeStart();
+        _poll();
       },
       onCancel: () {
         _pcmActive = false;
@@ -79,7 +84,13 @@ class SpectrumPipeline {
   // public [BandProcessor] exposes, so global and per-filter
   // spectrum surfaces stay byte-identical when fed equivalent PCM.
   late final BandProcessor _processor = BandProcessor(_settings);
-  int _lastPolledPtsNs = 0;
+  // The frame each stream got last. Paused, the output writes nothing and
+  // every poll reads the same frame: a stream skips it once it has it.
+  // Its first listener starts from 0, so it gets the frame the output
+  // holds now (a listener that comes back while paused, an fft listener
+  // next to a pcm one), and the other stream gets no duplicate.
+  int _lastFftPtsNs = 0;
+  int _lastPcmPtsNs = 0;
 
   /// Replaces the pipeline configuration. Reallocates FFT, window and
   /// EMA memory only on changes that require it; the poll timer is
@@ -139,8 +150,9 @@ class SpectrumPipeline {
     final ptsNs = value['pts_ns'] is int ? value['pts_ns'] as int : 0;
 
     if (sampleRate <= 0 || channels <= 0 || ptsNs == 0) return;
-    if (ptsNs == _lastPolledPtsNs) return;
-    _lastPolledPtsNs = ptsNs;
+    final fftNew = _fftActive && ptsNs != _lastFftPtsNs;
+    final pcmNew = _pcmActive && ptsNs != _lastPcmPtsNs;
+    if (!fftNew && !pcmNew) return;
 
     final samples = float32FromByteValue(value['samples']);
     if (samples == null) return;
@@ -153,11 +165,13 @@ class SpectrumPipeline {
       channels: channels,
     );
 
-    if (_pcmActive && !_pcmCtrl.isClosed) {
+    if (pcmNew && !_pcmCtrl.isClosed) {
+      _lastPcmPtsNs = ptsNs;
       _pcmCtrl.add(pcm);
     }
 
-    if (_fftActive && !_fftCtrl.isClosed) {
+    if (fftNew && !_fftCtrl.isClosed) {
+      _lastFftPtsNs = ptsNs;
       final frame = _processor.process(pcm);
       if (frame != null) _fftCtrl.add(frame);
     }
