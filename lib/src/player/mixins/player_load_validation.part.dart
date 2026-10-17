@@ -32,15 +32,16 @@ mixin _LoadValidationModule on _PlayerBase {
 }
 
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
-/// `httpHeaders` and `httpChunkSize`, and the raw audio demuxer of a
-/// live PCM source. Each value is length-prefixed
+/// `httpHeaders`, `httpChunkSize`, `demuxerLavfOptions` and `start`, and
+/// the raw audio demuxer of a live PCM source. Each value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
 /// inside it: hence the rejection of CR, LF, `,` and NUL in keys and
 /// values (and `:` in keys) by [_validateHeaderKey] and
 /// [_validateHeaderValue].
-/// Returns `''` when the media carries neither.
+/// Returns `''` when the media carries none.
 @visibleForTesting
 String loadfileOptions(Media media) {
+  _checkStart(media);
   final parts = <String>[];
 
   // A live PCM source: mpv's raw audio demuxer in the source's format.
@@ -100,7 +101,28 @@ String loadfileOptions(Media media) {
     parts.add('demuxer-lavf-o=%${utf8.encode(value).length}%$value');
   }
 
+  // mpv applies it after a resume point it loads for the file, so it wins.
+  final start = media.start;
+  if (start != null) parts.add('start=${durationToOption(start)}');
+
   return parts.join(',');
+}
+
+/// Throws [ArgumentError] for a negative [Media.start], or one on a live
+/// PCM entry, which is not seekable and plays from its first chunk.
+void _checkStart(Media media) {
+  final start = media.start;
+  if (start == null) return;
+  if (start.isNegative) {
+    throw ArgumentError.value(start, 'start', 'must not be negative');
+  }
+  if (isPcmUri(media.uri)) {
+    throw ArgumentError.value(
+      start,
+      'start',
+      'a live PcmSource plays from its first chunk',
+    );
+  }
 }
 
 final RegExp _kForbiddenInHeaderKey = RegExp(r'[\r\n,:\x00]');
@@ -111,6 +133,7 @@ final RegExp _kForbiddenInHeaderValue = RegExp(r'[\r\n,\x00]');
 /// before any optimistic state write.
 @visibleForTesting
 void validateLoadOptions(Media media) {
+  _checkStart(media);
   pcmLoadOptions(media.uri);
   final headers = media.httpHeaders;
   if (headers != null && headers.isNotEmpty) {

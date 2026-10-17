@@ -74,7 +74,39 @@ void main() {
     });
   });
 
+  group('Media.start copyWith', () {
+    test('omitted keeps the current value', () {
+      const a = Media('a', start: Duration(seconds: 3));
+      expect(a.copyWith(uri: 'b').start, const Duration(seconds: 3));
+    });
+
+    test('set overrides', () {
+      const a = Media('a');
+      expect(
+        a.copyWith(start: const Duration(seconds: 4)).start,
+        const Duration(seconds: 4),
+      );
+    });
+
+    test('explicit null clears', () {
+      const a = Media('a', start: Duration(seconds: 3));
+      expect(a.copyWith(start: null).start, isNull);
+    });
+  });
+
   group('Media equality — 0.1.0 full-field semantics', () {
+    test('start participates in equality', () {
+      const a = Media('a');
+      const b = Media('a', start: Duration(seconds: 2));
+      expect(a, isNot(b));
+      expect(a.hashCode, isNot(b.hashCode));
+      expect(b, const Media('a', start: Duration(seconds: 2)));
+      expect(
+        b.hashCode,
+        const Media('a', start: Duration(seconds: 2)).hashCode,
+      );
+    });
+
     // Regression tests for the 0.1.0 breaking change: `Media` equality
     // now considers `extras` and `httpHeaders`, not just `uri`. The
     // previous behaviour silently broke playlist deduplication when a
@@ -133,6 +165,13 @@ void main() {
       ).toString();
       expect(out, contains('Authorization'));
       expect(out, isNot(contains('s3cr3t')));
+    });
+
+    test('the start is printed', () {
+      expect(
+        const Media('a.mp3', start: Duration(seconds: 2)).toString(),
+        contains('start: 0:00:02.000000'),
+      );
     });
 
     test('no headers prints null', () {

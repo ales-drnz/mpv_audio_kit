@@ -631,7 +631,13 @@ await player.open(media);
 // Override auto-play for this call
 await player.open(media, play: true);
 await player.open(media, play: false); // Load but do not start
+
+// Start 12 minutes in, e.g. where the app saved the position
+await player.open(Media(path, start: const Duration(minutes: 12)));
 ```
+
+`Media.start` works the same way with `openAll`, `add` and `replace`, and
+holds each time the entry loads.
 
 #### 3.2 Opening multiple tracks
 
@@ -848,6 +854,17 @@ The player never saves one on its own: call `writeResumeConfig()`, for
 example when the app goes to the background or the user pauses. Point
 `watchLaterDir` at an app-writable directory on mobile; the platform
 default is often not writable.
+
+When the app keeps the position itself, `Media.start` is enough, with no
+watch later at all:
+
+```dart
+await player.open(Media(path, start: savedPosition));
+```
+
+Watch later is for when mpv saves the point. When both apply, `start`
+wins over the saved position, and the other saved values (speed, volume
+and so on) still apply. mpv deletes a resume point once a load used it.
 
 ```dart
 final player = Player(

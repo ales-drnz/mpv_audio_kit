@@ -23,3 +23,13 @@ Duration secondsToDuration(double seconds) =>
 /// Converts a [Duration] back into fractional seconds for mpv property
 /// strings. Returns a [double] suitable for `toStringAsFixed(3)` etc.
 double durationToSeconds(Duration d) => d.inMicroseconds / 1e6;
+
+/// [d] in seconds for an mpv option string: 3 decimals when that is exact,
+/// 6 when it is not, which holds every microsecond. Never an exponent,
+/// which `toString` writes for small values and mpv's time parser does
+/// not read. The same form as the durations of the effects chain.
+String durationToOption(Duration d) {
+  final v = durationToSeconds(d);
+  final fixed = v.toStringAsFixed(3);
+  return double.parse(fixed) == v ? fixed : v.toStringAsFixed(6);
+}
