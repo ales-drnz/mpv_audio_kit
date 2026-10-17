@@ -30,7 +30,8 @@ jobs:
   # are skipped, not left out, so the required checks still report: for a
   # change to the docs alone (README, CHANGELOG, MIGRATION, imgs, doc,
   # tool/diagrams), and for a commit already run on another branch (the
-  # same commit pushed to main and to a release branch runs once).
+  # same commit pushed to main and to a release branch runs once). The
+  # rules live in scripts/ci/changes_gate.sh.
   changes:
     name: Changes
     runs-on: ubuntu-24.04
@@ -49,31 +50,7 @@ jobs:
           SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
           REPO: ${{ github.repository }}
-        run: |
-          code=true
-          if [[ -n "$BASE" && ! "$BASE" =~ ^0+$ ]] &&
-            git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            code=false
-            while read -r path; do
-              case "$path" in
-                ''|README.md|CHANGELOG.md|MIGRATION.md|imgs/*|doc/*|tool/diagrams/*) ;;
-                *) code=true ;;
-              esac
-            done < <(git diff --name-only "$BASE" "$SHA")
-            if [[ "$code" == false ]]; then
-              echo "::notice::Only docs changed: tests and builds are skipped."
-            fi
-          fi
-          if [[ "$code" == true && "$EVENT" == push ]]; then
-            # A run of this commit that is still going or went green.
-            earlier=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=push&per_page=50" \
-              --jq "[.workflow_runs[] | select(.id < $RUN_ID and (.conclusion == null or .conclusion == \"success\"))] | length")
-            if (( earlier > 0 )); then
-              echo "::notice::$SHA already runs (or passed) on another branch: tests and builds are skipped."
-              code=false
-            fi
-          fi
-          echo "code=$code" >> "$GITHUB_OUTPUT"
+        run: scripts/ci/changes_gate.sh
 
   analyze:
     name: Analyze (Flutter ${{ matrix.flutter }})
