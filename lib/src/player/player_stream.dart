@@ -548,20 +548,21 @@ class PlayerStream {
   /// `stream-open-filename`.
   final Stream<String> streamOpenFilename;
 
-  /// A-B loop start point. `null` when disabled. Set via
-  /// [Player.setAbLoopA].
+  /// A-B loop start point. `null` when disabled, and again once the file
+  /// it was set on ends. Set via [Player.setAbLoopA].
   final Stream<Duration?> abLoopA;
 
-  /// A-B loop end point. `null` when disabled. Set via
-  /// [Player.setAbLoopB].
+  /// A-B loop end point. `null` when disabled, and again once the file it
+  /// was set on ends. Set via [Player.setAbLoopB].
   final Stream<Duration?> abLoopB;
 
-  /// Total A-B loop repetitions. `null` = infinite. Set via
-  /// [Player.setAbLoopCount].
+  /// How many times playback jumps back to A after the first pass.
+  /// `null` = infinite, `0` = off. Set via [Player.setAbLoopCount].
   final Stream<int?> abLoopCount;
 
-  /// Remaining A-B loop repetitions in the active loop. `null` when no
-  /// loop is active or count is infinite. Read-only; mirrors mpv's
+  /// How many more times playback will jump back to A. `null` only when
+  /// the count is infinite; it starts from [abLoopCount] at every load and
+  /// every change of A, B or the count. Read-only; mirrors mpv's
   /// `remaining-ab-loops`.
   final Stream<int?> remainingAbLoops;
 

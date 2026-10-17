@@ -117,8 +117,9 @@ abstract interface class PlayerApi {
   /// [Player.seekToPercent].
   Future<void> seekToPercent(double percent, {bool relative, bool exact});
 
-  /// Undoes the last seek, returning to the prior position (mpv's
-  /// `revert-seek`). See [Player.revertSeek].
+  /// Jumps back to where playback was before the last jump in the current
+  /// file (mpv's `revert-seek`); throws [MpvCommandException] when there
+  /// is none yet. See [Player.revertSeek].
   Future<void> revertSeek();
 
   /// Jumps to the 0-based chapter [index] in the current file.
@@ -132,13 +133,15 @@ abstract interface class PlayerApi {
   /// list clears them.
   Future<void> setChapters(List<Chapter> chapters);
 
-  /// Sets the A-B loop start point; `null` disables it.
+  /// Sets the A-B loop start point for the current file; `null` disables
+  /// it. See [Player.setAbLoopA].
   Future<void> setAbLoopA(Duration? position);
 
-  /// Sets the A-B loop end point; `null` disables it.
+  /// Sets the A-B loop end point for the current file; `null` disables it.
   Future<void> setAbLoopB(Duration? position);
 
-  /// Sets the number of A-B loop repetitions; `null` loops infinitely.
+  /// Sets how many times playback jumps back to A after the first pass;
+  /// `null` loops infinitely and `0` turns the loop off.
   Future<void> setAbLoopCount(int? count);
 
   /// Saves a "watch later" resume point for the current file (mpv's

@@ -190,9 +190,15 @@ mixin _PlaybackModule on _PlayerBase {
     ]);
   }
 
-  /// Undoes the last [seek] or [seekToPercent], jumping back to the position
-  /// before it; calling it again undoes the revert. Works only within the
-  /// current file (mpv's `revert-seek`).
+  /// Jumps back to where playback was before the last jump in the current
+  /// file (mpv's `revert-seek`). A jump is a [seek] or [seekToPercent], and
+  /// also a chapter change, a return to A of the A-B loop, the restart
+  /// [play] makes from the end, or a seek from the OS media session. Jumps
+  /// less than about 2 seconds apart count as one. Calling it again undoes
+  /// the revert.
+  ///
+  /// Throws [MpvCommandException] when the current file has nothing to
+  /// undo yet, for example right after it loaded.
   Future<void> revertSeek() async {
     await _gate();
     await _commandChecked(['revert-seek']);
@@ -252,6 +258,11 @@ mixin _PlaybackModule on _PlayerBase {
   /// Combined with [setAbLoopB], creates a playback loop: when the head
   /// crosses the B point, mpv seeks back to A. Common in language-learning
   /// or audiobook apps for repeated practice of a passage.
+  ///
+  /// The points belong to the current file: when it ends, or another file
+  /// loads, they go back to `null`. Points set with no file loaded apply to
+  /// every file instead. Keep both inside the file: past its end, the end
+  /// of the file seeks back to A again and again.
   Future<void> setAbLoopA(Duration? position) async {
     await _gate();
     await _prop(
@@ -265,7 +276,8 @@ mixin _PlaybackModule on _PlayerBase {
     );
   }
 
-  /// Sets the A-B loop end point. Pass `null` to disable. See [setAbLoopA].
+  /// Sets the A-B loop end point. Pass `null` to disable. Like A, it
+  /// belongs to the current file. See [setAbLoopA].
   Future<void> setAbLoopB(Duration? position) async {
     await _gate();
     await _prop(
@@ -279,8 +291,10 @@ mixin _PlaybackModule on _PlayerBase {
     );
   }
 
-  /// Sets the total A-B loop repetitions. Pass `null` for infinite looping
-  /// (mpv's `inf`); non-negative int for explicit count. Mirrors mpv's
+  /// Sets how many times playback jumps back to A after the first pass:
+  /// with 3 the section is heard 4 times. Pass `null` for infinite looping
+  /// (mpv's `inf`); `0` turns the A-B loop off even with both points set.
+  /// Unlike the points, the count stays for the next files. Mirrors mpv's
   /// `--ab-loop-count` option.
   Future<void> setAbLoopCount(int? count) async {
     if (count != null && count < 0) {

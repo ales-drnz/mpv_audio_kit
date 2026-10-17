@@ -751,24 +751,26 @@ await player.seek(const Duration(seconds: 30), exact: true);
 // Percentage-based seeking (for progress-bar scrubbing)
 await player.seekToPercent(50); // jump to the half-way point (0 to 100)
 
-// Undo the last seek
+// Back to where the last jump started (a seek, a chapter, an A-B loop)
 await player.revertSeek();
 ```
 
 #### 4.3 A-B loop
 
 Loop between two points of the current track, for example to practice
-a passage or replay a sentence.
+a passage or replay a sentence. The points belong to that track: when it
+ends or another one loads, they go back to `null`. The count stays.
 
 ```dart
 // Set the A and B markers (null disables the marker)
 await player.setAbLoopA(const Duration(seconds: 30));
 await player.setAbLoopB(const Duration(seconds: 45));
 
-// Limit the number of repetitions; null = infinite
+// Jumps back to A after the first pass: 3 plays the section 4 times.
+// null = infinite, 0 = off.
 await player.setAbLoopCount(3);
 
-// Read remaining iterations (null = no loop or infinite)
+// Jumps back to A still to come (null = infinite)
 player.stream.remainingAbLoops.listen((n) => print('left: $n'));
 
 // Disable
@@ -1877,10 +1879,10 @@ if (i >= 0 && i < s.playlist.items.length) {
 
 | Stream | Type | Set with | Notes |
 | :--- | :--- | :--- | :--- |
-| `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` |  |
-| `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` |  |
-| `abLoopCount` | `int?` (`null` = infinite) | `setAbLoopCount` |  |
-| `remainingAbLoops` | `int?` (`null` when no loop or infinite) | - | Counts down |
+| `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` | Back to `null` when the file ends |
+| `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` | Back to `null` when the file ends |
+| `abLoopCount` | `int?` (`null` = infinite, `0` = off) | `setAbLoopCount` |  |
+| `remainingAbLoops` | `int?` (`null` when infinite) | - | Counts down, from `abLoopCount` at each load |
 
 #### 9.11 Cover art streams
 

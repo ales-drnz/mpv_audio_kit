@@ -372,8 +372,7 @@ class DefaultPropertyReactives {
   /// infinite.
   final ReactiveProperty<int?> abLoopCount = ReactiveProperty<int?>(null);
 
-  /// Repetitions left in the active A-B loop (`remaining-ab-loops`); `null`
-  /// is infinite.
+  /// Jumps back to A left (`remaining-ab-loops`); `null` is infinite.
   final ReactiveProperty<int?> remainingAbLoops = ReactiveProperty<int?>(null);
 
   /// Whether a seek is currently in flight (`seeking`).

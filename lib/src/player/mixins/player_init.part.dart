@@ -147,6 +147,9 @@ mixin _InitModule on _PlayerBase {
     // restored on its own would play without the state knowing.
     'resume-playback': configuration.resumePlayback ? 'yes' : 'no',
     'watch-later-options': 'start,speed,pitch,volume,mute,audio-delay,aid',
+    // A-B points belong to the file they were set on: mpv puts back, at
+    // the end of each file, the value they had when it started.
+    'reset-on-next-file': 'ab-loop-a,ab-loop-b',
     if (configuration.watchLaterDir != null)
       'watch-later-dir': configuration.watchLaterDir!,
     if (configuration.forceSeekable) 'force-seekable': 'yes',
