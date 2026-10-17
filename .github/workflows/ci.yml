@@ -214,11 +214,15 @@ jobs:
             command: >-
               flutter build macos --debug &&
               ../scripts/ci/check_apple_frameworks.sh --expect-plugin build/macos/Build/Products/Debug/mpv_audio_kit_test_app.app/Contents/Frameworks
+          # A device build too, unsigned: the hook takes the xcframework's
+          # ios-arm64 slice there, which no simulator build touches.
           - name: iOS (SwiftPM)
             os: macos-latest
             command: >-
               flutter build ios --simulator --debug &&
-              ../scripts/ci/check_apple_frameworks.sh build/ios/iphonesimulator/Runner.app/Frameworks
+              ../scripts/ci/check_apple_frameworks.sh build/ios/iphonesimulator/Runner.app/Frameworks &&
+              flutter build ios --debug --no-codesign &&
+              ../scripts/ci/check_apple_frameworks.sh build/ios/iphoneos/Runner.app/Frameworks
           - name: iOS (CocoaPods)
             os: macos-latest
             swiftpm: 'off'
