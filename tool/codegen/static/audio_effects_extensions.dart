@@ -496,9 +496,11 @@ extension AfftdnBandNoiseX on AfftdnEffect {
 /// One logical band of the lavfi `anequalizer` filter.
 ///
 /// On the wire this is repeated once per channel inside the
-/// `params` CSV; the typed model hides that detail. Stereo content
-/// hears the band on both channels by default; surround content past
-/// channel 1 is left to mpv's downmix.
+/// `params` CSV; the typed model hides that detail. By default the band
+/// covers channels 0 and 1. The effects chain runs on the source layout,
+/// before mpv mixes it to the output, so the other channels of a surround
+/// source pass without the band unless [AnequalizerBandsX.withBands] is
+/// given the source's channel count.
 final class AnequalizerBand {
   /// Centre frequency in Hz.
   final double frequency;
@@ -585,9 +587,8 @@ enum AnequalizerBandType {
   };
 }
 
-/// Default channel count covered by [AnequalizerBandsX.withBands]. Two
-/// channels (L+R) is the canonical stereo case; surround content is
-/// left to mpv's automatic downmix.
+/// Default channel count covered by [AnequalizerBandsX.withBands]:
+/// channels 0 and 1, the two of a stereo source.
 const int _anequalizerDefaultChannels = 2;
 
 /// Typed access over the raw `params` CSV held by [AnequalizerEffect].
@@ -598,8 +599,13 @@ extension AnequalizerBandsX on AnequalizerEffect {
   List<AnequalizerBand> get bands => _parseAnequalizerBands(params);
 
   /// Returns a copy whose [params] reflects [bands]. Each band is
-  /// emitted once per channel up to [channels] (defaults to 2, stereo)
-  /// so signals get the band on every channel mpv can downmix to.
+  /// emitted for channels 0 to [channels] - 1 of the filter's input.
+  ///
+  /// The effects chain runs on the source layout, before mpv mixes it to
+  /// the output. With the default 2, the centre, LFE and surround
+  /// channels of a 5.1 or 7.1 source pass without the band and are then
+  /// mixed into the output. For a surround source pass its channel count,
+  /// e.g. `state.audioParams.channelCount`.
   AnequalizerEffect withBands(
     List<AnequalizerBand> bands, {
     int channels = _anequalizerDefaultChannels,
