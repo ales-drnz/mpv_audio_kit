@@ -119,12 +119,28 @@ void main() {
     );
   });
 
-  // The tracker stores its 64-bit cookie inline in an `IntPtr` — on a
-  // 32-bit IntPtr host the high half would silently truncate, so the
-  // tracker degrades to a no-op. This pins the assumption that today's
-  // targeted desktop / mobile builds are all 64-bit.
-  test('host has a 64-bit IntPtr — required by OrphanHandleTracker', () {
-    expect(sizeOf<IntPtr>(), 8);
+  // A slot is two Int64 words on every ABI. In IntPtr words a 32-bit ABI
+  // (armeabi-v7a) cut the 64-bit cookie, so the tracker turned itself off
+  // there and a Hot Restart left the old cores playing (F228). This host is
+  // 64-bit, so the layout is read back instead: cookie and address in
+  // 8-byte words, as a 32-bit ABI now has them too.
+  test('a slot is two Int64 words on every ABI', () async {
+    expect(OrphanHandleTracker.slotBytes, 16);
+    final env = _FakeEnvironment();
+    final tracker = OrphanHandleTracker.forTesting(env);
+    bringUp(tracker);
+    tracker
+      ..add(h1)
+      ..add(h2);
+    await Future<void>.delayed(Duration.zero);
+    final address = int.parse(env.values[_name]!.split(':').last);
+    const cookie = 0x4D414B5F4D5056AB;
+    expect(Pointer<Int64>.fromAddress(address).asTypedList(4), [
+      cookie,
+      h1.address,
+      cookie,
+      h2.address,
+    ]);
   });
 }
 

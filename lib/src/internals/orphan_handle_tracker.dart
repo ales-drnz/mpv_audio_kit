@@ -42,8 +42,14 @@ class OrphanHandleTracker {
   // pointer that wasn't ours. Slots are laid out as
   // [cookie₀, addr₀, cookie₁, addr₁, …] in the underlying buffer.
   static const int _kCookie = 0x4D414B5F4D5056AB; // "MAK_MPV\xab"
-  // 2 IntPtrs per slot (cookie + address).
+  // 2 Int64 words per slot (cookie + address) on every ABI: the cookie
+  // keeps its 64 bits on a 32-bit ABI (armeabi-v7a), and an address of
+  // that ABI fits in the second word.
   static const int _kSlotStride = 2;
+
+  /// The bytes of one slot, the same on every ABI.
+  @visibleForTesting
+  static int get slotBytes => _kSlotStride * sizeOf<Int64>();
 
   /// The process environment variable that holds `<pid>:<address>` of
   /// the buffer.
@@ -67,7 +73,7 @@ class OrphanHandleTracker {
   bool _initialized = false;
 
   // Null until [ensureInitialized] runs, and if it fails.
-  Pointer<IntPtr>? _buffer;
+  Pointer<Int64>? _buffer;
   final Completer<void> _completer = Completer<void>();
 
   bool get _isDebug => kHotRestartPossible;
@@ -95,32 +101,17 @@ class OrphanHandleTracker {
     if (_initialized) {
       return;
     }
-    // The cookie is 64-bit; on a 32-bit IntPtr host the high half would
-    // silently truncate and any non-zero residual could pose as a valid
-    // pointer in the leak buffer. Skip the tracker entirely on 32-bit
-    // platforms: the targeted desktop and mobile builds are all 64-bit
-    // today.
-    if (sizeOf<IntPtr>() != 8) {
-      debugLog(
-        'mpv_audio_kit: OrphanHandleTracker requires a 64-bit IntPtr '
-        '(got ${sizeOf<IntPtr>() * 8}-bit). Hot-restart cleanup disabled.',
-      );
-      if (!_completer.isCompleted) {
-        _completer.complete();
-      }
-      return;
-    }
     _initialized = true;
 
     try {
       final previous = _publishedBuffer();
-      final Pointer<IntPtr> buffer;
+      final Pointer<Int64> buffer;
       if (previous == null) {
         // Intentionally never freed: the buffer must outlive the Dart VM
         // so the next Hot-Restart can rehydrate orphan addresses from it.
         // The OS reclaims the allocation when the host process eventually
         // exits.
-        buffer = calloc<IntPtr>(_kBufferSize * _kSlotStride);
+        buffer = calloc<Int64>(_kBufferSize * _kSlotStride);
         _buffer = buffer;
         if (!_env.set(envName, '$pid:${buffer.address}')) {
           debugLog(
@@ -166,7 +157,7 @@ class OrphanHandleTracker {
   /// The buffer an earlier VM of this process published, or `null` when
   /// there is none. A value with another pid came from the parent of
   /// this process, which a child inherits: its address is not ours.
-  Pointer<IntPtr>? _publishedBuffer() {
+  Pointer<Int64>? _publishedBuffer() {
     final value = _env.get(envName);
     if (value == null) return null;
     final sep = value.indexOf(':');
