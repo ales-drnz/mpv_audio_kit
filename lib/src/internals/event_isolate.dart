@@ -12,6 +12,7 @@ import 'package:ffi/ffi.dart';
 
 import '../events/player_exception.dart';
 import '../mpv_bindings.dart' as mpv;
+import 'build_mode.dart';
 
 part 'isolate_events.dart';
 part 'isolate_messages.dart';
@@ -82,14 +83,13 @@ const int _kPauseObserverReplyId = 1 << 62;
 /// timeout guarantees the loop re-reads its stop flag, and the VM gets a
 /// safepoint, at least once per window even with zero cooperation.
 ///
-/// Product: `1.0` s, one cheap idle wakeup a second. The graceful dispose path
-/// unblocks the wait instantly via `mpv_wakeup` ([MpvEventIsolate.requestStop]),
-/// so this value is only the no-dispose floor, never the common-case latency.
-/// Debug: `0.1` s (unchanged) for snappy Hot Restart. It MUST stay finite in
-/// product: an infinite timeout reintroduces the quit hang.
-const double _kWaitEventTimeoutSeconds = bool.fromEnvironment('dart.vm.product')
-    ? 1.0
-    : 0.1;
+/// Release and profile: `1.0` s, one cheap idle wakeup a second. The graceful
+/// dispose path unblocks the wait instantly via `mpv_wakeup`
+/// ([MpvEventIsolate.requestStop]), so this value is only the no-dispose
+/// floor, never the common-case latency. Debug: `0.1` s for snappy Hot
+/// Restart, which only debug builds have ([kHotRestartPossible]). It MUST
+/// stay finite in release: an infinite timeout reintroduces the quit hang.
+const double _kWaitEventTimeoutSeconds = kHotRestartPossible ? 0.1 : 1.0;
 
 /// Maximum time [MpvEventIsolate.stop] waits for the background isolate
 /// to finish unwinding after `MPV_EVENT_SHUTDOWN`. The loop's natural
@@ -170,6 +170,7 @@ void _isolateEntry(SendPort initialReplyPort) {
           ? Pointer<Int64>.fromAddress(message.wakeupCounterAddress!)
           : null;
       final stopFlag = Pointer<Int32>.fromAddress(message.stopFlagAddress);
+      _isolateStopFlag = stopFlag;
       try {
         // The heavy FFI sequence runs here: off the main isolate so
         // the host UI keeps rendering during cold start.
@@ -517,6 +518,7 @@ MpvEventFileLoaded _readFileLoadedEvent(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
 ) {
+  if (_stopRequested) return null;
   final result = calloc<mpv.MpvNode>();
   try {
     return using<(TransferableTypedData, String)?>((arena) {
@@ -550,13 +552,26 @@ MpvEventFileLoaded _readFileLoadedEvent(
 // ── Synchronous property readers (event-isolate side only) ──────────────────
 //
 // These block the calling thread until the playloop serves the request:
-// safe here, never on the main isolate.
+// safe here, never on the main isolate. Each one answers null once a stop is
+// requested ([_stopRequested]).
+
+/// This isolate's stop flag, set at init: see [_stopRequested].
+Pointer<Int32>? _isolateStopFlag;
+
+/// Whether dispose asked this isolate to stop ([MpvEventIsolate.requestStop]).
+/// One event takes up to a dozen synchronous reads, each a wait on the core.
+/// Read after read past the stop, against a busy core, they outlasted
+/// [_kIsolateExitTimeout], and dispose skipped the destroy. Nothing read
+/// after a stop reaches the main isolate anyway: [MpvEventIsolate.stop]
+/// closed the port.
+bool get _stopRequested => (_isolateStopFlag?.value ?? 0) != 0;
 
 String? _getPropString(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
   String name,
 ) {
+  if (_stopRequested) return null;
   return using<String?>((arena) {
     final n = name.toNativeUtf8(allocator: arena);
     final ptr = lib.mpvGetPropertyString(handle, n);
@@ -572,6 +587,7 @@ double? _getPropDouble(
   Pointer<mpv.MpvHandle> handle,
   String name,
 ) {
+  if (_stopRequested) return null;
   return using<double?>((arena) {
     final n = name.toNativeUtf8(allocator: arena);
     final buf = arena<Double>();
@@ -590,6 +606,7 @@ int? _getPropInt64(
   Pointer<mpv.MpvHandle> handle,
   String name,
 ) {
+  if (_stopRequested) return null;
   return using<int?>((arena) {
     final n = name.toNativeUtf8(allocator: arena);
     final buf = arena<Int64>();
@@ -608,6 +625,7 @@ int? _getPropFlag(
   Pointer<mpv.MpvHandle> handle,
   String name,
 ) {
+  if (_stopRequested) return null;
   return using<int?>((arena) {
     final n = name.toNativeUtf8(allocator: arena);
     final buf = arena<Int32>();
@@ -626,6 +644,7 @@ dynamic _getPropNode(
   Pointer<mpv.MpvHandle> handle,
   String name,
 ) {
+  if (_stopRequested) return null;
   final node = calloc<mpv.MpvNode>();
   try {
     final rc = using(

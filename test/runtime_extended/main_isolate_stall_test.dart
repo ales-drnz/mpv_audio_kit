@@ -28,7 +28,7 @@ const int _getDelayUs = 500 * 1000;
 const int _maxGapMs = 350;
 
 void main() {
-  slowCoreShimSuite(getDelayUs: _getDelayUs, (_) {
+  slowCoreShimSuite(getDelayUs: _getDelayUs, (shim) {
     test('a busy mpv core cannot stall the main isolate through the '
         'file-load window', () async {
       final coverPath =
@@ -159,6 +159,37 @@ void main() {
       } finally {
         await player.dispose();
       }
+    });
+
+    // dispose() gives the event isolate 2 s to exit and skips the destroy
+    // when it does not, leaving the core alive in the process. One event
+    // takes up to a dozen synchronous reads, 500 ms each here: read after
+    // read past the stop flag, the isolate outlived the bound (F31).
+    test('a dispose in the middle of the file-load reads still destroys '
+        'the core', () async {
+      final player = await buildPlayer();
+      shim().watchGet('path');
+      unawaited(
+        player
+            .open(Media(defaultFixturePath()), play: false)
+            .catchError((_) {}),
+      );
+      // FILE_LOADED reads the path after the cover: the rest of its reads,
+      // and those of the end-of-content check, are still to come.
+      await waitUntil(
+        () => shim().counter('watched_gets') > 0,
+        timeout: const Duration(seconds: 30),
+        reason: 'the file-load reads never started',
+      );
+      final destroys = shim().counter('destroys');
+      await player.dispose().timeout(const Duration(seconds: 20));
+      expect(
+        shim().counter('destroys'),
+        destroys + 1,
+        reason:
+            'dispose skipped mpv_terminate_destroy: the event isolate kept '
+            'reading past the stop flag',
+      );
     });
   });
 }

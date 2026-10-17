@@ -10,6 +10,7 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart' show RootIsolateToken;
 import 'package:meta/meta.dart';
 
+import '../media_session/media_session_channel.dart';
 import '../mpv_bindings.dart';
 import 'debug_log.dart';
 import 'orphan_handle_tracker.dart';
@@ -24,6 +25,15 @@ import 'pcm_native.dart';
 /// 0.1 s debug wait-event timeout so the isolate has provably unwound.
 const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
 
+/// The `set` commands that turn off the analysis switches of libmpv. The
+/// loudness scan goes first: turning the waveform off while the scan still
+/// runs would restart the decode pass for the scan alone.
+const List<String> _kAnalysisOff = [
+  'set loudness-scan-enabled no',
+  'set waveform-enabled no',
+  'set analyzer-taps ""',
+];
+
 /// Two-phase teardown for libmpv handles leaked across a Hot-Restart.
 ///
 /// Phase 1 sends `quit` to each handle, which wakes the leaked core so the
@@ -33,21 +43,29 @@ const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
 /// handle (`mpv_terminate_destroy` joins the core thread and releases the
 /// audio output): deferred so the destroy never races an isolate still
 /// inside the syscall (use-after-free).
+///
+/// With [stopAnalysis], phase 1 first turns off the waveform, the loudness
+/// scan and the analyzer taps. libmpv keeps them per process, not per core,
+/// and the previous VM never ran the dispose that turns them off: left on,
+/// every file the new VM opens is decoded for nobody.
 @internal
 Future<void> reapOrphanedHandles(
   MpvLibrary lib,
   List<Pointer<MpvHandle>> references, {
   Duration delay = _kOrphanReapDelay,
+  bool stopAnalysis = true,
 }) async {
   const tag = 'mpv_audio_kit:';
   for (final ref in references) {
-    final cmd = 'quit'.toNativeUtf8();
-    try {
-      lib.mpvCommandString(ref, cmd);
-    } catch (e) {
-      debugLog('$tag Error waking leaked handle: $e');
-    } finally {
-      calloc.free(cmd);
+    for (final command in [if (stopAnalysis) ..._kAnalysisOff, 'quit']) {
+      final cmd = command.toNativeUtf8();
+      try {
+        lib.mpvCommandString(ref, cmd);
+      } catch (e) {
+        debugLog('$tag Error sending "$command" to a leaked handle: $e');
+      } finally {
+        calloc.free(cmd);
+      }
     }
   }
 
@@ -94,11 +112,13 @@ abstract final class MpvAudioKit {
   ///
   /// [hotRestartCleanup] (default: `true`): recovers libmpv handles
   /// leaked across a Flutter Hot-Restart so they don't keep
-  /// exclusive-mode audio devices locked, and releases the live PCM
-  /// sources of the replaced VM (in the root isolate only, see
-  /// [releasesPcmSourcesAtInit]). Pass `false` in test runners, background
-  /// isolates and other multi-VM scenarios that share a pid; the tracker
-  /// would otherwise mis-attribute prior-VM handles as orphans.
+  /// exclusive-mode audio devices locked. In the root isolate only (see
+  /// [releasesPcmSourcesAtInit]), it also releases the live PCM sources of
+  /// the replaced VM, turns off the waveform, loudness scan and filter taps
+  /// its listeners left on, and disables its OS media session. Pass `false`
+  /// in test runners, background isolates and other multi-VM scenarios
+  /// that share a pid; the tracker would otherwise mis-attribute prior-VM
+  /// handles as orphans.
   static void ensureInitialized({
     String? libmpv,
     bool hotRestartCleanup = true,
@@ -137,7 +157,17 @@ abstract final class MpvAudioKit {
         debugLog('$tag cannot reopen libmpv: ${e.message}');
         return;
       }
-      unawaited(reapOrphanedHandles(lib, references));
+      // The analysis switches are process-wide, like the PCM sources below:
+      // only the root isolate a Hot-Restart replaced turns them off.
+      unawaited(
+        reapOrphanedHandles(
+          lib,
+          references,
+          stopAnalysis: releasesPcmSourcesAtInit(
+            restarted: OrphanHandleTracker.instance.restarted,
+          ),
+        ),
+      );
     });
 
     _libraryPath = libmpv;
@@ -146,6 +176,7 @@ abstract final class MpvAudioKit {
       restarted: OrphanHandleTracker.instance.restarted,
     )) {
       _releasePcmSources();
+      _disableMediaSession();
     }
   }
 
@@ -159,6 +190,21 @@ abstract final class MpvAudioKit {
       // A custom libmpv without the live PCM input: nothing to release.
       debugLog('mpv_audio_kit: no PCM sources to release: $e');
     }
+  }
+
+  /// Turns off the OS media session of the VM a Hot-Restart replaced. The
+  /// engine and its plugins outlive the VM: the notification, the lock
+  /// screen entry and the audio focus stay, still showing the old track,
+  /// and their buttons reach no listener. Sent before any `enable` of
+  /// this VM, on the same channel, so it lands first.
+  static void _disableMediaSession() {
+    // Needs the services binding (`WidgetsFlutterBinding.ensureInitialized`
+    // first, as the README shows): without it the session stays on.
+    unawaited(
+      MediaSessionChannel().disable().catchError((Object e) {
+        debugLog('mpv_audio_kit: cannot disable the old media session: $e');
+      }),
+    );
   }
 
   /// Sets `LC_NUMERIC=C` process-wide on Linux and macOS: mandated
@@ -207,11 +253,14 @@ abstract final class MpvAudioKit {
 ///
 /// The sources are process-wide. A release at every init would cut those
 /// of the other players and isolates, and the tracker also reports a
-/// restart to a second isolate of the same process (its per-process file
-/// already exists), whose own release would cut the sources of the first.
+/// restart to a second isolate of the same process (the process
+/// environment already holds its buffer), whose own release would cut the
+/// sources of the first.
 /// Hot-Restart replaces the root isolate, which alone holds a
 /// `RootIsolateToken`. A second Flutter engine in the process (add-to-app)
 /// has a root isolate of its own: pass `hotRestartCleanup: false` there.
+/// The orphan reap turns off the analysis switches, process-wide too, under
+/// the same guard.
 @internal
 bool releasesPcmSourcesAtInit({required bool restarted}) =>
     restarted && RootIsolateToken.instance != null;
