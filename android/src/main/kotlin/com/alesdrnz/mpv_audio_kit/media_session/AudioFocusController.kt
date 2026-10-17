@@ -42,6 +42,9 @@ internal class AudioFocusController(
     private var hasFocus = false
     private var resumeOnFocusGain = false
     private var noisyRegistered = false
+    // The play intent, as the last onPlaybackActive or onPlaybackInactive
+    // set it: a focus loss arms the resume only when it was true.
+    private var playbackActive = false
 
     private val focusListener =
         AudioManager.OnAudioFocusChangeListener { change -> onFocusChange(change) }
@@ -59,6 +62,7 @@ internal class AudioFocusController(
      *  Gate on the request result — a FAILED/DELAYED grant pauses instead of
      *  barging over a non-duckable holder (active call / assistant). */
     fun onPlaybackActive() {
+        playbackActive = true
         val result = requestFocus()
         registerNoisy()
         val r = InterruptionLogic.onFocusRequestResult(result, policy())
@@ -70,6 +74,7 @@ internal class AudioFocusController(
      *  paused stream can't be "becoming noisy" — but keep audio focus held so
      *  a quick resume doesn't re-duck other apps. */
     fun onPlaybackInactive() {
+        playbackActive = false
         unregisterNoisy()
     }
 
@@ -78,10 +83,13 @@ internal class AudioFocusController(
         abandonFocus()
         unregisterNoisy()
         resumeOnFocusGain = false
+        playbackActive = false
     }
 
     private fun onFocusChange(focusChange: Int) {
-        val r = InterruptionLogic.onFocusChange(focusChange, policy(), resumeOnFocusGain)
+        val r = InterruptionLogic.onFocusChange(
+            focusChange, policy(), resumeOnFocusGain, wasPlaying = playbackActive,
+        )
         resumeOnFocusGain = r.resumeOnFocusGain
         if (r.abandonFocus) abandonFocus()
         r.command?.let { emit(mapOf("type" to it)) }

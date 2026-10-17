@@ -272,10 +272,17 @@ internal class MpvControllerPlayer(looper: Looper) : SimpleBasePlayer(looper) {
                     mapOf("type" to "seekBy", "offsetMs" to -mgr.config.rewindIntervalMs),
                 )
 
-            else ->
+            else -> {
                 // SEEK_IN_CURRENT_MEDIA_ITEM / SEEK_TO_MEDIA_ITEM / default:
-                // absolute scrub. Pin the slider, then forward.
-                mgr.onScrub(positionMs)
+                // absolute. A scrub pins the slider, then forwards; the
+                // default position goes to 0 unpinned (see ScrubFreeze).
+                val seek = ScrubFreeze.absoluteSeek(seekCommand, positionMs)
+                if (seek.pin) {
+                    mgr.onScrub(seek.positionMs)
+                } else {
+                    mgr.forwardCommand(mapOf("type" to "seekTo", "positionMs" to seek.positionMs))
+                }
+            }
         }
         return Futures.immediateVoidFuture()
     }

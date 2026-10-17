@@ -296,11 +296,18 @@ void SmtcController::PublishMetadata() {
   mp.Artist(winrt::to_hstring(metadata_.artist.value_or("")));
   mp.AlbumTitle(winrt::to_hstring(metadata_.album.value_or("")));
   mp.AlbumArtist(winrt::to_hstring(metadata_.album_artist.value_or("")));
-  if (metadata_.track_number.has_value() && *metadata_.track_number > 0) {
-    mp.TrackNumber(static_cast<uint32_t>(*metadata_.track_number));
-  }
+  // The DisplayUpdater keeps every property until ClearAll, so each one is
+  // replaced here, absent ones included: Genres is a list that Append would
+  // grow track after track, and a track without a number would keep the
+  // previous one. 0 is the WinRT default, no number.
+  const bool has_track =
+      metadata_.track_number.has_value() && *metadata_.track_number > 0;
+  mp.TrackNumber(has_track ? static_cast<uint32_t>(*metadata_.track_number)
+                           : 0u);
+  auto genres = mp.Genres();
+  genres.Clear();
   if (metadata_.genre.has_value() && !metadata_.genre->empty()) {
-    mp.Genres().Append(winrt::to_hstring(*metadata_.genre));
+    genres.Append(winrt::to_hstring(*metadata_.genre));
   }
 
   if (!metadata_.artwork.empty()) {

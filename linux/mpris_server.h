@@ -67,6 +67,8 @@ class MprisServer {
  private:
   void EnsureOwned();
   void ReleaseBus();
+  void ParseConfig(FlValue* config);
+  void EmitRootChanged(bool identity, bool desktop_entry);
   void MarkChanged(const char* prop);
   void FlushChanged();
   void RepublishAll();

@@ -642,8 +642,10 @@ void MprisServer::SweepArtwork() {
 
 // ── Public state ops ────────────────────────────────────────────────────────
 
-void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) {
-  // config
+// Reads the config fields Enable and UpdateConfig share: actions, appName,
+// desktopEntry and the rate bounds. An absent or empty rate list keeps the
+// bounds in place.
+void MprisServer::ParseConfig(FlValue* config) {
   actions_.clear();
   FlValue* acts = config ? fl_value_lookup_string(config, "actions") : nullptr;
   if (acts && fl_value_get_type(acts) == FL_VALUE_TYPE_LIST) {
@@ -698,6 +700,10 @@ void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) 
       max_rate_ = mx;
     }
   }
+}
+
+void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) {
+  ParseConfig(config);
 
   UpdateMetadata(metadata);  // parses metadata + writes artwork
   // playback (anchor without seek detection on enable)
@@ -722,27 +728,57 @@ void MprisServer::Enable(FlValue* config, FlValue* metadata, FlValue* playback) 
 }
 
 void MprisServer::UpdateConfig(FlValue* config) {
-  actions_.clear();
-  FlValue* acts = config ? fl_value_lookup_string(config, "actions") : nullptr;
-  if (acts && fl_value_get_type(acts) == FL_VALUE_TYPE_LIST) {
-    size_t n = fl_value_get_length(acts);
-    for (size_t i = 0; i < n; i++) {
-      FlValue* e = fl_value_get_list_value(acts, i);
-      if (fl_value_get_type(e) == FL_VALUE_TYPE_STRING) {
-        actions_.insert(fl_value_get_string(e));
-      }
-    }
-  }
-  // Note: the bus name is fixed at first Enable; an appName change mid-session
-  // does not rename it.
+  const std::string old_app_name = app_name_;
+  const std::string old_desktop_entry = desktop_entry_;
+  const double old_min_rate = min_rate_;
+  const double old_max_rate = max_rate_;
+  ParseConfig(config);
+  // The bus name is fixed at the first Enable: an appName change renames
+  // Identity only.
   if (enabled_) {
     MarkChanged("CanGoNext");
     MarkChanged("CanGoPrevious");
     MarkChanged("CanPlay");
     MarkChanged("CanPause");
     MarkChanged("CanSeek");
+    if (min_rate_ != old_min_rate) MarkChanged("MinimumRate");
+    if (max_rate_ != old_max_rate) MarkChanged("MaximumRate");
+    EmitRootChanged(app_name_ != old_app_name,
+                    desktop_entry_ != old_desktop_entry);
   }
   ++publish_count_;
+}
+
+// Identity and DesktopEntry live on the root interface, which the batched
+// FlushChanged does not cover, so their PropertiesChanged goes out here. An
+// unset DesktopEntry reads as absent (its getter returns an error), so it is
+// listed as invalidated rather than sent with a value.
+void MprisServer::EmitRootChanged(bool identity, bool desktop_entry) {
+  if (!connection_ || (!identity && !desktop_entry)) return;
+  GVariantBuilder changed;
+  g_variant_builder_init(&changed, G_VARIANT_TYPE("a{sv}"));
+  GVariantBuilder invalidated;
+  g_variant_builder_init(&invalidated, G_VARIANT_TYPE("as"));
+  if (identity) {
+    g_variant_builder_add(
+        &changed, "{sv}", "Identity",
+        g_variant_new_string(app_name_.empty() ? "mpv_audio_kit"
+                                               : app_name_.c_str()));
+  }
+  if (desktop_entry) {
+    if (desktop_entry_.empty()) {
+      g_variant_builder_add(&invalidated, "s", "DesktopEntry");
+    } else {
+      g_variant_builder_add(&changed, "{sv}", "DesktopEntry",
+                            g_variant_new_string(desktop_entry_.c_str()));
+    }
+  }
+  GVariant* params =
+      g_variant_new("(s@a{sv}@as)", kRootIface, g_variant_builder_end(&changed),
+                    g_variant_builder_end(&invalidated));
+  g_dbus_connection_emit_signal(connection_, nullptr, kObjectPath,
+                                "org.freedesktop.DBus.Properties",
+                                "PropertiesChanged", params, nullptr);
 }
 
 void MprisServer::UpdateMetadata(FlValue* metadata) {

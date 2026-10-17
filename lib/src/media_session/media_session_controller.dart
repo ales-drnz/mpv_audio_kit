@@ -146,7 +146,18 @@ class MediaSessionController {
           (downloadsArtworkOn(defaultTargetPlatform) ? downloadArtwork : null),
       artworkRetryAfter: artworkRetryAfter,
     );
-    await c._wireUp();
+    try {
+      await c._wireUp();
+    } catch (_) {
+      // Its subscriptions are live by now: tear them down, or every push
+      // of the player would reach a controller nobody holds.
+      try {
+        await c.dispose();
+      } catch (_) {
+        // The original error is the one the caller needs.
+      }
+      rethrow;
+    }
     return c;
   }
 

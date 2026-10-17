@@ -10,6 +10,7 @@ import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/services.dart' show RootIsolateToken;
 import 'package:meta/meta.dart';
 
 import '../dsp/filter_tap_pipeline.dart';
@@ -155,6 +156,10 @@ class Player extends _PlayerBase
   /// suffixing, but we ban it universally for cross-OS consistency.
   /// Cleared on `dispose()` and on `setMediaSession(null)`.
   static Player? _mediaSessionOwner;
+
+  /// The media-session work of every [Player] in this isolate, one call
+  /// after the other. See [_MediaSessionModule._queueMediaSessionSync].
+  static Future<void> _mediaSessionQueue = Future<void>.value();
 
   /// Test-only. The event isolate writes to [wakeupCounterAddress] on
   /// every wakeup: a bogus value corrupts process memory.

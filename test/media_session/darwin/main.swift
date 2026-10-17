@@ -403,6 +403,55 @@ func runNonSeekableWithDurationIsNotLive() {
   }
 }
 
+/// Two engines (add-to-app): A owns the session and plays, B's enable was
+/// refused. B's Player still sends `disable` when it is disposed, and that
+/// must not retire A's entry or its commands.
+func runNonOwnerDisableKeepsOwnerEntry() {
+  scenario("a disable from an engine that does not own the session keeps the owner's") {
+    let a = Harness(); defer { a.reset() }
+    enable(a, playback: makePlayback(playing: true, positionMs: 30_000))
+    let b = Harness()
+    enable(b)
+    check(!b.plugin.enabled, "precondition: the second engine's enable is refused")
+
+    b.call("disable", args: nil)
+    let f = Frame.capture()
+    check(f.title == "Test Track",
+          "the owner's entry must stay, got \(String(describing: f.title))")
+    check(f.playbackState == .playing, "the owner's state must stay, got \(f.description)")
+    check(MPRemoteCommandCenter.shared().playCommand.isEnabled,
+          "the owner's commands must stay enabled")
+  }
+}
+
+/// An engine released without its Dart side calling `disable` (add-to-app):
+/// its detach retires the entry, so no Now Playing entry is left whose
+/// commands fail. The detach of another engine leaves the
+/// owner's entry alone.
+func runDetachRetiresTheOwnersEntry() {
+  scenario("the owner's engine detach retires the entry, another engine's does not") {
+    let a = Harness()
+    enable(a, playback: makePlayback(playing: true, positionMs: 30_000))
+    let b = Harness()
+
+    b.plugin.detachEngine()
+    check(Frame.capture().title == "Test Track",
+          "another engine's detach must keep the owner's entry")
+
+    a.plugin.detachEngine()
+    let f = Frame.capture()
+    check(f.title == nil, "the owner's detach must clear the entry, got \(f.description)")
+    check(f.playbackState == .stopped, "the owner's detach must mark .stopped, got \(f.description)")
+    check(!MPRemoteCommandCenter.shared().playCommand.isEnabled,
+          "the owner's detach must disable the commands")
+
+    // The session is free for another engine.
+    let c = Harness(); defer { c.reset() }
+    enable(c)
+    check(c.plugin.enabled, "a new engine can enable after the detach")
+  }
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────
 
 print("=== MediaSessionPlugin renderer tests ===\n")
@@ -419,6 +468,8 @@ runRepeatShuffleVisualState()
 runDedupCoalescesIdenticalPushes()
 runDisableClearsNowPlaying()
 runNoTitlePoisonGuard()
+runNonOwnerDisableKeepsOwnerEntry()
+runDetachRetiresTheOwnersEntry()
 
 print("=== Summary ===")
 if failures.isEmpty {

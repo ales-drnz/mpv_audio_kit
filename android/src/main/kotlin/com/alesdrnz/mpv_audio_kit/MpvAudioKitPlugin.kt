@@ -6,24 +6,18 @@
 package com.alesdrnz.mpv_audio_kit
 
 import android.content.Context
-import android.net.Uri
-import android.os.ParcelFileDescriptor
 import androidx.media3.common.util.UnstableApi
 import com.alesdrnz.mpv_audio_kit.media_session.MediaSessionManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
 
 /**
  * Android entry point. The package itself is direct FFI to libmpv; this plugin
- * only wires the OS media session (Media3) and its method/event channels.
+ * only opens Content URIs as file descriptors ([FileDescriptorChannel]) and
+ * wires the OS media session (Media3) and its method/event channels.
  */
-class MpvAudioKitPlugin :
-    FlutterPlugin,
-    MethodCallHandler {
+class MpvAudioKitPlugin : FlutterPlugin {
 
     companion object {
         init {
@@ -38,7 +32,7 @@ class MpvAudioKitPlugin :
         }
     }
 
-    private lateinit var channel: MethodChannel
+    private lateinit var fileDescriptors: FileDescriptorChannel
     private lateinit var mediaSessionMethodChannel: MethodChannel
     private lateinit var mediaSessionEventChannel: EventChannel
     private lateinit var context: Context
@@ -49,8 +43,9 @@ class MpvAudioKitPlugin :
     @UnstableApi
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         context = flutterPluginBinding.applicationContext
-        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "mpv_audio_kit")
-        channel.setMethodCallHandler(this)
+        // Content URIs opened as file descriptors, off the main thread.
+        fileDescriptors = FileDescriptorChannel { context.contentResolver }
+        fileDescriptors.attach(flutterPluginBinding.binaryMessenger)
 
         // OS media session (Media3): lockscreen / notification controls,
         // hardware & Bluetooth media keys. The MediaSessionManager owns the
@@ -61,71 +56,24 @@ class MpvAudioKitPlugin :
             flutterPluginBinding.binaryMessenger,
             "mpv_audio_kit/media_session"
         )
-        mediaSessionMethodChannel.setMethodCallHandler(MediaSessionManager)
+        // The manager is one per process: each engine reaches it with its own
+        // plugin as the token, so the detach of another engine (a workmanager
+        // task) leaves alone the session this one enabled.
+        mediaSessionMethodChannel.setMethodCallHandler { call, result ->
+            MediaSessionManager.onMethodCall(this, call, result)
+        }
 
         mediaSessionEventChannel = EventChannel(
             flutterPluginBinding.binaryMessenger,
             "mpv_audio_kit/media_session/commands"
         )
-        mediaSessionEventChannel.setStreamHandler(MediaSessionManager)
-    }
+        mediaSessionEventChannel.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) =
+                MediaSessionManager.onListen(this@MpvAudioKitPlugin, events)
 
-    /**
-     * Handles MethodChannel calls from Dart.
-     *
-     * Significant work on Android includes handling Content URIs (e.g., from the file picker)
-     * by converting them to low-level File Descriptors that libmpv can consume.
-     */
-    override fun onMethodCall(
-        call: MethodCall,
-        result: Result
-    ) {
-        when (call.method) {
-            "openFileDescriptor" -> {
-                val uriStr = call.argument<String>("uri")
-                if (uriStr != null) {
-                    try {
-                        val uri = Uri.parse(uriStr)
-                        // Opens the Content URI and returns a ParcelFileDescriptor.
-                        val pfd = context.contentResolver.openFileDescriptor(uri, "r")
-                        if (pfd != null) {
-                            // Detaches the raw integer FD. The Dart side owns it: mpv
-                            // never closes an fd:// descriptor, so the player closes it
-                            // through closeFileDescriptor once the entry has left the
-                            // playlist, or at dispose.
-                            val fd = pfd.detachFd()
-                            result.success(fd)
-                        } else {
-                            result.success(null)
-                        }
-                    } catch (e: Exception) {
-                        result.error("ERROR", e.message, null)
-                    }
-                } else {
-                    result.error("INVALID", "uri is null", null)
-                }
-            }
-            "closeFileDescriptor" -> {
-                // Closes a raw FD previously detached in `openFileDescriptor`:
-                // when its entry has left the playlist, at dispose, or when the
-                // load was aborted before mpv got it. Without this the
-                // descriptor leaks for the process lifetime.
-                val fd = call.argument<Int>("fd")
-                if (fd != null) {
-                    try {
-                        ParcelFileDescriptor.adoptFd(fd).close()
-                        result.success(null)
-                    } catch (e: Exception) {
-                        result.error("ERROR", e.message, null)
-                    }
-                } else {
-                    result.error("INVALID", "fd is null", null)
-                }
-            }
-            else -> {
-                result.notImplemented()
-            }
-        }
+            override fun onCancel(arguments: Any?) =
+                MediaSessionManager.onCancel(this@MpvAudioKitPlugin)
+        })
     }
 
     /**
@@ -133,9 +81,9 @@ class MpvAudioKitPlugin :
      */
     @UnstableApi
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel.setMethodCallHandler(null)
+        fileDescriptors.detach()
         mediaSessionMethodChannel.setMethodCallHandler(null)
         mediaSessionEventChannel.setStreamHandler(null)
-        MediaSessionManager.detach()
+        MediaSessionManager.detach(this)
     }
 }

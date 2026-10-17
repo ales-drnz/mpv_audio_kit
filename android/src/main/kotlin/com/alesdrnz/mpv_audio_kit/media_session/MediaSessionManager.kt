@@ -31,7 +31,10 @@ import io.flutter.plugin.common.MethodChannel
  * (enforced Dart-side), so a singleton is the natural fit and lets
  * [MpvMediaSessionService] — which Media3 may create / destroy on its own
  * schedule — always resolve the live session and command target without a
- * Binder handshake.
+ * Binder handshake. Every Flutter engine of the process reaches it through
+ * its own plugin, which passes itself as the engine token: the session and
+ * the command sink belong to the engine that enabled and listened (see
+ * [EngineOwnership]).
  *
  * It is a *stateless renderer*: each `enable` / `update*` replaces a
  * `@Volatile` snapshot and calls [MpvControllerPlayer.invalidateState];
@@ -45,9 +48,7 @@ import io.flutter.plugin.common.MethodChannel
  * correct if the player is ever moved to a dedicated looper.
  */
 @UnstableApi
-internal object MediaSessionManager :
-    MethodChannel.MethodCallHandler,
-    EventChannel.StreamHandler {
+internal object MediaSessionManager {
 
     // ── Snapshots (the single source of truth lives in Dart) ────────────
 
@@ -112,8 +113,10 @@ internal object MediaSessionManager :
     @Volatile var playback: PlaybackSnapshot = PlaybackSnapshot.EMPTY
         private set
 
-    @Volatile var scrubFreezeMs: Long? = null
-        private set
+    private val scrub = ScrubFreeze()
+
+    /** The scrub target the seek bar is pinned at, or `null` (see [ScrubFreeze]). */
+    val scrubFreezeMs: Long? get() = scrub.targetMs
 
     @Volatile var enabled: Boolean = false
         private set
@@ -125,6 +128,10 @@ internal object MediaSessionManager :
     private var player: MpvControllerPlayer? = null
     private var session: MediaSession? = null
     private var audioFocus: AudioFocusController? = null
+
+    // Which engine enabled the session and which one listens for commands:
+    // every engine of the process reaches this object through its own plugin.
+    private val engines = EngineOwnership()
 
     // A self-connected controller binds [MpvMediaSessionService] so Media3
     // promotes it to the foreground and posts (and keeps updating) the media
@@ -182,21 +189,23 @@ internal object MediaSessionManager :
         appContext = context.applicationContext
     }
 
-    /** Tear everything down when the engine detaches (defensive — Dart
-     *  normally calls `disable` on dispose first). */
-    fun detach() {
-        eventSink = null
-        if (enabled) disable()
-        appContext = null
+    /** [engine] detaches: tear down what it owns (defensive, Dart normally
+     *  calls `disable` on dispose first). The session and the sink of
+     *  another engine stay, and the application context serves them all. */
+    fun detach(engine: Any) {
+        val teardown = engines.onDetach(engine)
+        if (teardown.sink) eventSink = null
+        if (teardown.session && enabled) disable()
     }
 
-    // ── Method channel (Dart → native) ──────────────────────────────────
+    // ── Method channel (Dart → native), per engine ──────────────────────
 
-    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+    fun onMethodCall(engine: Any, call: MethodCall, result: MethodChannel.Result) {
         try {
             when (call.method) {
                 "enable" -> {
                     val a = call.arguments as Map<*, *>
+                    engines.onEnable(engine)
                     enable(
                         a["config"] as Map<*, *>,
                         a["metadata"] as Map<*, *>,
@@ -214,7 +223,9 @@ internal object MediaSessionManager :
                     updatePlayback(call.arguments as Map<*, *>); result.success(null)
                 }
                 "disable" -> {
-                    disable(); result.success(null)
+                    // Only the owner's: another engine's Player never had it.
+                    if (engines.mayDisable(engine)) disable()
+                    result.success(null)
                 }
                 "debugMediaSessionState" -> result.success(debugState())
                 else -> result.notImplemented()
@@ -224,14 +235,15 @@ internal object MediaSessionManager :
         }
     }
 
-    // ── Event channel (native → Dart) ───────────────────────────────────
+    // ── Event channel (native → Dart), per engine ───────────────────────
 
-    override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+    fun onListen(engine: Any, events: EventChannel.EventSink) {
+        engines.onListen(engine)
         eventSink = events
     }
 
-    override fun onCancel(arguments: Any?) {
-        eventSink = null
+    fun onCancel(engine: Any) {
+        if (engines.onCancel(engine)) eventSink = null
     }
 
     /** Forwards an OS remote command to Dart, on the platform thread. */
@@ -241,12 +253,20 @@ internal object MediaSessionManager :
 
     /** A scrub from the OS slider: pin the slider at the drop target
      *  (republish), then forward the absolute seek. The freeze clears in
-     *  [updatePlayback] once the landed position confirms. */
+     *  [updatePlayback] once the landed position confirms, on a new track
+     *  in [updateMetadata], or at the backstop. */
     fun onScrub(positionMs: Long) = runOnMain {
-        scrubFreezeMs = positionMs
+        val generation = scrub.start(positionMs, trackOf(metadata))
         player?.republish()
         eventSink?.success(mapOf("type" to "seekTo", "positionMs" to positionMs))
+        mainHandler.postDelayed({
+            if (scrub.expire(generation) && enabled) publish()
+        }, ScrubFreeze.BACKSTOP_MS)
     }
+
+    /** What tells one track from the next for the scrub freeze: Dart pushes
+     *  the metadata of a new track once it has loaded. */
+    private fun trackOf(m: MetadataSnapshot): Any = Pair(m.title, m.durationMs)
 
     // ── Snapshot mutations ──────────────────────────────────────────────
 
@@ -254,9 +274,15 @@ internal object MediaSessionManager :
         this.config = parseConfig(config)
         this.metadata = parseMetadata(metadata)
         this.playback = parsePlayback(playback)
-        scrubFreezeMs = null
+        scrub.clear()
         enabled = true
         ensureSessionCreated()
+        // A new session starts from a clean audio focus. An enable with no
+        // disable before it (a Hot Restart whose disable never arrived)
+        // would keep the old latch and play intent, and the next focus gain
+        // would start the new player on its own.
+        audioFocus?.release()
+        audioFocus = null
         ensureAudioFocus()
         startService()
         publish()
@@ -272,19 +298,17 @@ internal object MediaSessionManager :
 
     private fun updateMetadata(metadata: Map<*, *>) = runOnMain {
         this.metadata = parseMetadata(metadata)
+        // A scrub made on the previous track will never land on this one.
+        scrub.onTrack(trackOf(this.metadata))
         publish()
     }
 
     private fun updatePlayback(playback: Map<*, *>) = runOnMain {
         val pb = parsePlayback(playback)
         this.playback = pb
-        val frozen = scrubFreezeMs
-        // Clear the scrub freeze once Dart confirms the landed position is
-        // within ~1s of the drop target — the slider then tracks playback
-        // again. A stale push mid-seek keeps the slider pinned.
-        if (frozen != null && kotlin.math.abs(pb.positionMs - frozen) <= 1000) {
-            scrubFreezeMs = null
-        }
+        // The slider tracks playback again once Dart confirms the landed
+        // position; a stale push mid-seek keeps it pinned.
+        scrub.onPlayback(pb.positionMs)
         publish()
         // Acquire focus when playback starts (idempotent while held); focus is
         // held across a user pause and released only on disable. On pause, drop
@@ -298,12 +322,13 @@ internal object MediaSessionManager :
 
     private fun disable() = runOnMain {
         enabled = false
+        engines.onDisabled()
         audioFocus?.release()
         audioFocus = null
         config = ConfigSnapshot.EMPTY
         metadata = MetadataSnapshot.EMPTY
         playback = PlaybackSnapshot.EMPTY
-        scrubFreezeMs = null
+        scrub.clear()
         lastButtons = emptyList()
         // Publish the idle/empty state first so Media3 removes the
         // notification and demotes the foreground service, THEN release.

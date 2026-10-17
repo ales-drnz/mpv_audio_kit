@@ -32,10 +32,25 @@ mixin _MediaSessionModule on _PlayerBase {
   /// [session] is `null`. Only one [Player] per process can have an
   /// active session: a non-null [session] on a second [Player] throws
   /// [StateError].
+  ///
+  /// The session needs the root isolate, the one the OS sends its commands
+  /// to: a non-null [session] on a [Player] of another isolate throws
+  /// [StateError].
   Future<void> setMediaSession(MediaSession? session) async {
     _checkNotDisposed();
 
-    // 1. Single-instance guard.
+    // 1. Root isolate only: platform messages reach no other isolate, and
+    //    the channels of a background isolate fail. `null` is allowed
+    //    anywhere, as there is nothing to undo.
+    if (session != null && RootIsolateToken.instance == null) {
+      throw StateError(
+        'setMediaSession needs the root isolate: the OS media session '
+        'sends its commands only there. Publish from a Player created in '
+        'the root isolate.',
+      );
+    }
+
+    // 2. Single-instance guard.
     if (session != null) {
       final owner = Player._mediaSessionOwner;
       if (owner != null && !identical(owner, this)) {
@@ -53,7 +68,7 @@ mixin _MediaSessionModule on _PlayerBase {
       Player._mediaSessionOwner = null;
     }
 
-    // 2. Update state synchronously (optimistic). The controller's
+    // 3. Update state synchronously (optimistic). The controller's
     //    own subscription to `stream.mediaSession` will pick up the
     //    config change and push it to native via `updateConfig`.
     _updateField(
@@ -62,64 +77,93 @@ mixin _MediaSessionModule on _PlayerBase {
       session,
     );
 
-    // 3. Lazily allocate the controller on first enable; tear it
-    //    down on disable. Recreating per-enable would race the
-    //    bootstrap `enable` call against any in-flight teardown.
-    if (session != null) {
-      if (_mediaSessionController == null) {
-        final controller = await MediaSessionController.create(
-          stateSnapshot: () => _state,
-          // The changes only: the controller pushes the current state
-          // itself, so the replaying state streams are not what it needs.
-          inputs: MediaSessionInputs(
-            playWhenReady: _reactives.playWhenReady.changes,
-            playing: _reactives.playing.changes,
-            buffering: _buffering.changes,
-            rate: _reactives.rate.changes,
-            seekCompleted: _seekCompletedCtrl.stream,
-            seekable: _reactives.seekable.changes,
-            loop: _loop.changes,
-            shuffle: _reactives.shuffle.changes,
-            duration: _reactives.duration.changes,
-            metadata: _metadata.changes,
-            coverArt: _coverArtCtrl.stream,
-            mediaTitle: _reactives.mediaTitle.changes,
-            mediaSession: _mediaSession.changes,
-          ),
-          onCommand: _handleSessionCommand,
-          onAudioOutputReset: _reloadAudioOutput,
-        );
-        // Re-check EVERYTHING that gated the create, not just ownership:
-        // a concurrent `setMediaSession(non-null)` also passed the
-        // `== null` pre-check above and may have assigned its controller
-        // during this await; overwriting it here would strand the other
-        // one with live subscriptions, double-pushing to native for the
-        // rest of the process. Exactly one create wins; the losers tear
-        // their fresh controller down.
-        if (_mediaSessionController == null &&
-            identical(Player._mediaSessionOwner, this) &&
-            _state.mediaSession != null) {
-          _mediaSessionController = controller;
-        } else {
-          await controller.dispose();
+    // 4. Bring the controller in line with the state, in turn with the
+    //    other calls: see [_queueMediaSessionSync].
+    try {
+      await _queueMediaSessionSync();
+    } catch (_) {
+      // The controller could not be created: undo the owner and the state
+      // this call wrote, unless a later call has replaced them.
+      if (session != null &&
+          identical(_state.mediaSession, session) &&
+          _mediaSessionController == null) {
+        if (identical(Player._mediaSessionOwner, this)) {
+          Player._mediaSessionOwner = null;
         }
+        _updateField(
+          (s) => s.copyWith(mediaSession: null),
+          _mediaSession,
+          null,
+        );
       }
-    } else {
-      final c = _mediaSessionController;
-      _mediaSessionController = null;
-      await c?.dispose();
+      rethrow;
     }
   }
 
   /// Drops the OS media session without the public checks: called by
-  /// dispose, which has already refused new calls.
+  /// dispose, which has already refused new calls. It takes its turn
+  /// after the calls queued before it, so a controller still being
+  /// created is torn down once it exists.
   Future<void> _releaseMediaSession() async {
     if (identical(Player._mediaSessionOwner, this)) {
       Player._mediaSessionOwner = null;
     }
-    final c = _mediaSessionController;
-    _mediaSessionController = null;
-    await c?.dispose();
+    await _queueMediaSessionSync();
+  }
+
+  /// Runs [_syncMediaSessionController] after the media-session work every
+  /// [Player] of the isolate queued before it. Calls that are not awaited
+  /// overlap: two enables in one turn, a `null` followed by a session, a
+  /// dispose followed by a new [Player]. Run side by side, a controller
+  /// torn down late sent its `disable` after the `enable` of the next one,
+  /// and its cancel removed the command channel handler the next one
+  /// listens on. A failure reaches the caller and does not stop the queue.
+  Future<void> _queueMediaSessionSync() {
+    final run = Player._mediaSessionQueue.then(
+      (_) => _syncMediaSessionController(),
+    );
+    Player._mediaSessionQueue = run.then<void>((_) {}, onError: (Object _) {});
+    return run;
+  }
+
+  /// Creates the controller when this [Player] publishes and has none,
+  /// and tears it down when it no longer does. It reads the state at its
+  /// turn, so overlapping calls settle on the last one: the config of a
+  /// later call reaches the native side with the `enable`, or through
+  /// `updateConfig` once the controller exists.
+  Future<void> _syncMediaSessionController() async {
+    final wanted =
+        !_disposed &&
+        _state.mediaSession != null &&
+        identical(Player._mediaSessionOwner, this);
+    final current = _mediaSessionController;
+    if (wanted && current == null) {
+      _mediaSessionController = await MediaSessionController.create(
+        stateSnapshot: () => _state,
+        // The changes only: the controller pushes the current state
+        // itself, so the replaying state streams are not what it needs.
+        inputs: MediaSessionInputs(
+          playWhenReady: _reactives.playWhenReady.changes,
+          playing: _reactives.playing.changes,
+          buffering: _buffering.changes,
+          rate: _reactives.rate.changes,
+          seekCompleted: _seekCompletedCtrl.stream,
+          seekable: _reactives.seekable.changes,
+          loop: _loop.changes,
+          shuffle: _reactives.shuffle.changes,
+          duration: _reactives.duration.changes,
+          metadata: _metadata.changes,
+          coverArt: _coverArtCtrl.stream,
+          mediaTitle: _reactives.mediaTitle.changes,
+          mediaSession: _mediaSession.changes,
+        ),
+        onCommand: _handleSessionCommand,
+        onAudioOutputReset: _reloadAudioOutput,
+      );
+    } else if (!wanted && current != null) {
+      _mediaSessionController = null;
+      await current.dispose();
+    }
   }
 
   /// Handles a remote command issued by the OS media session.

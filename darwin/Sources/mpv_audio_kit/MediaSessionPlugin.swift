@@ -138,6 +138,26 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       name: eventChannelName,
       binaryMessenger: messenger)
     eventChannel.setStreamHandler(instance)
+
+    // The engine calls `detachFromEngine(for:)` only on published values.
+    registrar.publish(instance)
+  }
+
+  /// The engine is going away, and its Dart side may never have called
+  /// `disable` (an add-to-app engine released while playing). Close the
+  /// session this instance owns: otherwise the Now Playing entry and its
+  /// enabled commands outlive it, and every tap fails once the weak
+  /// `currentInstance` is gone.
+  public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+    onMain { self.detachEngine() }
+  }
+
+  /// `detachFromEngine(for:)` without the registrar, for the test driver.
+  internal func detachEngine() {
+    dispatchPrecondition(condition: .onQueue(.main))
+    eventSink = nil
+    // Only an accepted enable sets `enabled`, so this is the owner.
+    if enabled { disable() }
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -258,19 +278,24 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     dispatchPrecondition(condition: .onQueue(.main))
     enabled = false
 
-    // `.stopped` BEFORE `nil` notifies the system the publisher is
-    // retiring, so the Now Playing entry clears within ~1s instead of
-    // holding a ghost entry for the IPC cache TTL.
-    let center = MPNowPlayingInfoCenter.default()
-    center.playbackState = .stopped
-    center.nowPlayingInfo = nil
-
-    // Targets stay installed (re-enable is one isEnabled flip away);
-    // disable them so the OS knows nothing is actionable.
-    for (command, _) in MediaSessionPlugin.sharedCommandTargets {
-      command.isEnabled = false
-    }
+    // The Now Playing center and the command targets are process-wide, so
+    // only the owner retires them. Another engine whose enable was refused
+    // still sends `disable` when its Player goes, and must not take down the
+    // owner's entry. A Hot Restart keeps this instance, so the disable of
+    // its new VM is the owner's.
     if MediaSessionPlugin.currentInstance === self {
+      // `.stopped` BEFORE `nil` notifies the system the publisher is
+      // retiring, so the Now Playing entry clears within ~1s instead of
+      // holding a ghost entry for the IPC cache TTL.
+      let center = MPNowPlayingInfoCenter.default()
+      center.playbackState = .stopped
+      center.nowPlayingInfo = nil
+
+      // Targets stay installed (re-enable is one isEnabled flip away);
+      // disable them so the OS knows nothing is actionable.
+      for (command, _) in MediaSessionPlugin.sharedCommandTargets {
+        command.isEnabled = false
+      }
       MediaSessionPlugin.currentInstance = nil
     }
 
