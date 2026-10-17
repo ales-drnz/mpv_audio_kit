@@ -6,6 +6,8 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:io';
+
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
@@ -93,5 +95,57 @@ void main() {
         }
       },
     );
+
+    // mpv falls back to the null output when the device cannot be opened
+    // (audio-fallback-to-null): the state goes active and the position
+    // runs, but nothing is heard.
+    test(
+      'a fallback to the null output lands on stream.error once',
+      () async {
+        final player = await buildPlayer();
+        addTearDown(player.dispose);
+        // ALSA on a card that does not exist: the open fails.
+        await player.setRawProperty('ao', 'alsa');
+        await player.setRawProperty('audio-device', 'alsa/hw:99,99');
+        final errors = <PlayerError>[];
+        final sub = player.stream.error.listen(errors.add);
+        addTearDown(sub.cancel);
+        await openAndWaitForLoad(player, defaultFixturePath());
+        await waitUntil(
+          () => player.state.currentAo == 'null',
+          reason: 'precondition: mpv fell back to the null output',
+        );
+        await waitUntil(
+          () => errors.whereType<LogError>().any(
+            (e) => e.prefix == 'mpv_audio_kit' && e.text.contains('null'),
+          ),
+          reason: 'the silent fallback is reported',
+        );
+        // A seek restarts the audio without opening the output again.
+        await player.seek(const Duration(milliseconds: 300));
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(
+          errors.whereType<LogError>().where(
+            (e) => e.prefix == 'mpv_audio_kit',
+          ),
+          hasLength(1),
+        );
+      },
+      skip: Platform.isLinux ? false : 'needs ALSA',
+      timeout: const Timeout(Duration(seconds: 20)),
+    );
+
+    test('the null output chosen by the app is no error', () async {
+      // buildPlayer sets ao=null, as the runtime suites do.
+      final player = await buildPlayer();
+      addTearDown(player.dispose);
+      final errors = <PlayerError>[];
+      final sub = player.stream.error.listen(errors.add);
+      addTearDown(sub.cancel);
+      await openAndWaitForLoad(player, defaultFixturePath());
+      await waitUntil(() => player.state.currentAo == 'null');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(errors, isEmpty);
+    }, timeout: const Timeout(Duration(seconds: 20)));
   });
 }

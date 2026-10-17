@@ -2132,8 +2132,12 @@ player.stream.audioOutputState.listen((state) {
 });
 ```
 
-When the state turns `failed`, `player.stream.error` also emits a
-`LogError`, so one error listener covers the silent case too.
+When no device can be opened, mpv usually falls back to the null output
+instead: the state turns `active`, the position runs and nothing is heard.
+`player.stream.error` emits a `LogError` once for each such opening, and
+also when the state turns `failed`, so one error listener covers the
+silent cases. A null output the app chose with `setAudioDriver('null')`
+is no error.
 
 #### 11.4 Log streams
 

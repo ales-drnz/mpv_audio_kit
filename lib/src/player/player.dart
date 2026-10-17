@@ -72,6 +72,7 @@ import '../types/settings/cache_settings.dart';
 import '../types/settings/demuxer_settings.dart';
 import '../types/settings/replay_gain_settings.dart';
 import '../types/settings/spectrum_settings.dart';
+import '../types/state/audio_output_state.dart';
 import 'audio_output_error.dart';
 import 'lifecycle_transitions.dart';
 import 'player_api.dart';
@@ -1085,6 +1086,9 @@ abstract class _PlayerBase {
           onAudioOutputState: (state) {
             final err = buildAudioOutputError(state);
             if (err != null) _errorCtrl.add(err);
+            if (state == AudioOutputState.active) {
+              unawaited(_reportNullFallback());
+            }
           },
         ),
       );
@@ -1459,6 +1463,24 @@ abstract class _PlayerBase {
     // a replace issued at the park can see one more parked read before
     // its load starts, and must keep its intent.
     if (end) _writeIntent(false);
+  }
+
+  /// The output just opened. With `audio-fallback-to-null` (pre-init
+  /// options) mpv opens the null driver when no device can be opened: the
+  /// state says `active` and the position runs, but nothing is heard.
+  /// Reported on [PlayerStream.error] once for each opening, unless the
+  /// app chose the null driver itself. Read from the core, not the state:
+  /// `current-ao` is reported after `audio-output-state`.
+  Future<void> _reportNullFallback() async {
+    if (!_bringUpCompleted || _disposed) return;
+    final (rc, current) = await _getAsync(
+      'current-ao',
+      MpvFormat.mpvFormatString,
+    );
+    if (rc < 0 || current != 'null' || _disposed) return;
+    final (aoRc, ao) = await _getAsync('ao', MpvFormat.mpvFormatString);
+    if (aoRc < 0 || ao is! String || aoListHasNull(ao) || _disposed) return;
+    _errorCtrl.add(nullOutputError);
   }
 
   /// Internal log helper: emits on the library-side log channel

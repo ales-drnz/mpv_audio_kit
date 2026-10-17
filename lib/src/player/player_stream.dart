@@ -425,6 +425,11 @@ class PlayerStream {
   /// in the success path, `→ failed` if `ao_init_best()` returns a
   /// NULL handle. A typed [LogError] is emitted on [error] the
   /// moment this stream emits [AudioOutputState.failed].
+  ///
+  /// When no device can be opened mpv usually opens the null output
+  /// instead, and this stream says [AudioOutputState.active] while
+  /// nothing is heard. Then [error] gets a [LogError] once for that
+  /// opening, unless the app chose the null driver itself.
   final Stream<AudioOutputState> audioOutputState;
 
   /// The effects chain: the ordered list of stages in mpv's `af`

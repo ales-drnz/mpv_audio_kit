@@ -158,9 +158,11 @@ mixin _InitModule on _PlayerBase {
     if (configuration.demuxerCacheDir != null)
       'demuxer-cache-dir': configuration.demuxerCacheDir!,
     // If the audio device can't be opened (Bluetooth or AirPlay sink gone,
-    // a stale device id), fall back to the null AO and keep the position
-    // clock running instead of hard-failing playback. The failure is
-    // still surfaced through `audio-output-state`.
+    // a stale device id, an exclusive mode refused), fall back to the null
+    // AO and keep the position clock running instead of hard-failing
+    // playback. `audio-output-state` then says active, so the player reports
+    // the silent fallback on the error stream itself (once per opening). On
+    // a libmpv without the audio-output-state patch nothing reports it.
     'audio-fallback-to-null': 'yes',
     'audio-display': 'embedded-first',
     'cover-art-auto': 'no',
