@@ -188,6 +188,58 @@ void main() {
         expect(await player.getRawProperty('path'), endsWith('b0.flac'));
         expect(released, isEmpty, reason: 'released while mpv plays one');
       });
+
+      // A source mpv never took is released at once, not at dispose.
+      group('released when mpv never took the entry', () {
+        Future<void> queueOfFour() async {
+          await player.openAll([
+            for (var i = 0; i < 4; i++) Media(longFixture),
+          ], play: false);
+          await waitUntil(() => player.state.playlist.items.length == 4);
+        }
+
+        test('a replace whose index a remove took first', () async {
+          await queueOfFour();
+          final replacing = player.replace(3, const Media('test://r0'));
+          await player.remove(3);
+          await expectLater(replacing, throwsA(isA<MpvCommandException>()));
+          expect(released, ['test://r0']);
+        });
+
+        test('a replace overtaken by an open', () async {
+          await queueOfFour();
+          shim().holdReply('playlist-pos', const Duration(milliseconds: 400));
+          final replacing = player.replace(1, const Media('test://r1'));
+          await waitUntil(
+            () => shim().counter('replies_held') > 0,
+            reason: 'the playlist-pos reply was never held',
+          );
+          final opening = player.open(Media(fixturePath));
+          await replacing;
+          await opening;
+          expect(released, ['test://r1']);
+        });
+
+        test('an add that mpv refuses', () async {
+          await queueOfFour();
+          shim().refuseLoadfile('refused');
+          await expectLater(
+            player.add(const Media('test://refused-add')),
+            throwsA(isA<MpvCommandException>()),
+          );
+          expect(released, ['test://refused-add']);
+        });
+
+        test('an open that mpv refuses', () async {
+          await queueOfFour();
+          shim().refuseLoadfile('refused');
+          await expectLater(
+            player.open(const Media('test://refused-open')),
+            throwsA(isA<MpvCommandException>()),
+          );
+          expect(released, ['test://refused-open']);
+        });
+      });
     });
 
     group('test seams', () {

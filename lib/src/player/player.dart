@@ -229,15 +229,27 @@ class Player extends _PlayerBase
     final playNow = _intendedPlay(intent, shouldPlay);
     await _prop('pause', playNow ? 'no' : 'yes');
     final opts = _buildLoadfileOptions(media);
-    if (opts.isEmpty) {
-      await _loadfile(['loadfile', resolved.uri, 'replace'], media);
-    } else {
-      // Per-Media `httpHeaders` and `httpChunkSize` ride along as the 4th
-      // `loadfile` arg (mpv 0.38+: index must be `-1` when options are
-      // present), so mpv scopes them as file-local for this exact playlist
-      // entry, never writing the global `http-header-fields` or
-      // `stream-lavf-o`.
-      await _loadfile(['loadfile', resolved.uri, 'replace', '-1', opts], media);
+    try {
+      if (opts.isEmpty) {
+        await _loadfile(['loadfile', resolved.uri, 'replace'], media);
+      } else {
+        // Per-Media `httpHeaders` and `httpChunkSize` ride along as the 4th
+        // `loadfile` arg (mpv 0.38+: index must be `-1` when options are
+        // present), so mpv scopes them as file-local for this exact playlist
+        // entry, never writing the global `http-header-fields` or
+        // `stream-lavf-o`.
+        await _loadfile([
+          'loadfile',
+          resolved.uri,
+          'replace',
+          '-1',
+          opts,
+        ], media);
+      }
+    } catch (_) {
+      // mpv refused the entry: nothing will ever read the source.
+      await resolved.dispose?.call();
+      rethrow;
     }
     // Asked again, not reused: a pause() called while the loadfile was in
     // flight has the last word.
