@@ -12,6 +12,7 @@ import 'package:ffi/ffi.dart';
 
 import '../events/player_exception.dart';
 import '../mpv_bindings.dart' as mpv;
+import 'build_mode.dart';
 
 part 'isolate_events.dart';
 part 'isolate_messages.dart';
@@ -82,14 +83,13 @@ const int _kPauseObserverReplyId = 1 << 62;
 /// timeout guarantees the loop re-reads its stop flag, and the VM gets a
 /// safepoint, at least once per window even with zero cooperation.
 ///
-/// Product: `1.0` s, one cheap idle wakeup a second. The graceful dispose path
-/// unblocks the wait instantly via `mpv_wakeup` ([MpvEventIsolate.requestStop]),
-/// so this value is only the no-dispose floor, never the common-case latency.
-/// Debug: `0.1` s (unchanged) for snappy Hot Restart. It MUST stay finite in
-/// product: an infinite timeout reintroduces the quit hang.
-const double _kWaitEventTimeoutSeconds = bool.fromEnvironment('dart.vm.product')
-    ? 1.0
-    : 0.1;
+/// Release and profile: `1.0` s, one cheap idle wakeup a second. The graceful
+/// dispose path unblocks the wait instantly via `mpv_wakeup`
+/// ([MpvEventIsolate.requestStop]), so this value is only the no-dispose
+/// floor, never the common-case latency. Debug: `0.1` s for snappy Hot
+/// Restart, which only debug builds have ([kHotRestartPossible]). It MUST
+/// stay finite in release: an infinite timeout reintroduces the quit hang.
+const double _kWaitEventTimeoutSeconds = kHotRestartPossible ? 0.1 : 1.0;
 
 /// Maximum time [MpvEventIsolate.stop] waits for the background isolate
 /// to finish unwinding after `MPV_EVENT_SHUTDOWN`. The loop's natural

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
+import 'package:mpv_audio_kit/src/internals/build_mode.dart';
 import 'package:mpv_audio_kit/src/internals/debug_log.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 
@@ -19,9 +20,9 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 /// buffer and surfaces every still-tracked handle to the caller's
 /// cleanup callback.
 ///
-/// **Production no-op**: guarded by `dart.vm.product`. Hot-Restart
-/// is a development concern; in product builds the parent process
-/// dies with the VM and there are no orphans to rescue.
+/// **Debug only**: guarded by [kHotRestartPossible]. Profile and
+/// release builds have no Hot-Restart: the parent process dies with
+/// the VM and there are no orphans to rescue.
 ///
 /// **Single-isolate**: [add] and [remove] are not synchronized across
 /// isolates that share a pid. The test suite disables the tracker
@@ -46,7 +47,7 @@ class OrphanHandleTracker {
   late final Pointer<IntPtr> _buffer;
   final Completer<void> _completer = Completer<void>();
 
-  bool get _isDebug => !const bool.fromEnvironment('dart.vm.product');
+  bool get _isDebug => kHotRestartPossible;
 
   /// Whether an earlier Dart VM of this process initialized the tracker:
   /// this VM came from a Hot-Restart. Set by [ensureInitialized].
