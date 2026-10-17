@@ -75,3 +75,10 @@ dart format "$ROOT/hook/build.dart" >/dev/null
 if [[ ! "$MANIFEST" -ef "$ROOT/tool/codegen/libmpv_manifest.json" ]]; then
   cp "$MANIFEST" "$ROOT/tool/codegen/libmpv_manifest.json"
 fi
+
+if [[ -n "${2:-}" ]]; then
+  echo "While $TAG is not published, CI needs the repository" \
+    "variable LIBMPV_SCRIPTS_RUN set to the libmpv-scripts run that built it," \
+    "and the secret LIBMPV_SCRIPTS_TOKEN present and not expired" \
+    "(see .github/workflows/ci.yml)."
+fi

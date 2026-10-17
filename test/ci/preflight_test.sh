@@ -55,10 +55,45 @@ touch "$FAKE_GH/down"
 expect_eq "a release lookup GitHub cannot answer only warns" 0 "$(preflight "" "" "")"
 expect_log "with a warning" "::warning::"
 
+# The libmpv-scripts run 4242, finished with $1.
+scripts_run() {
+  echo "{\"id\":4242,\"head_sha\":\"abc123\",\"head_branch\":\"release/r99\",\"conclusion\":\"$1\"}" \
+    > "$FAKE_GH/run/4242.json"
+}
+
 new_gh
-expect_eq "a libmpv-scripts run leaves the pinned release alone" 0 \
+scripts_run success
+expect_eq "a green libmpv-scripts run passes" 0 "$(preflight 4242 scripts-token "")"
+expect_log "and says which build is under test" "run 4242: release/r99 at abc123"
+expect_eq "looked up with LIBMPV_SCRIPTS_TOKEN, leaving the pinned release alone" \
+  "scripts-token api repos/ales-drnz/libmpv-scripts/actions/runs/4242" \
+  "$(cut -d' ' -f1-3 "$FAKE_GH/calls")"
+
+new_gh
+scripts_run success
+expect_eq "a libmpv-scripts run without the token stops the run" 1 "$(preflight 4242 "" "")"
+expect_log "and names the secret" "::error::LIBMPV_SCRIPTS_RUN is set but LIBMPV_SCRIPTS_TOKEN is not"
+
+new_gh
+scripts_run success
+echo scripts-token > "$FAKE_GH/expired"
+expect_eq "an expired token stops the run" 1 "$(preflight 4242 scripts-token "")"
+expect_log "and says it expired" "::error::LIBMPV_SCRIPTS_TOKEN was refused (HTTP 401).*expired"
+
+new_gh
+expect_eq "a run the token cannot see stops the run" 1 "$(preflight 4242 scripts-token "")"
+expect_log "and says so" "::error::.*run 4242.*HTTP 404"
+
+new_gh
+scripts_run failure
+expect_eq "a run that failed stops the run" 1 "$(preflight 4242 scripts-token "")"
+expect_log "and says so" "::error::libmpv-scripts run 4242 did not succeed (failure)"
+
+new_gh
+touch "$FAKE_GH/down"
+expect_eq "a run lookup GitHub cannot answer only warns" 0 \
   "$(preflight 4242 scripts-token "")"
-expect_eq "without looking it up" "" "$(grep releases "$FAKE_GH/calls" || true)"
+expect_log "with a warning" "::warning::"
 
 new_gh
 expect_eq "a fork without the token checks the pinned release" 1 \

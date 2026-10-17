@@ -9,11 +9,13 @@
 # on macOS.
 #
 # With LIBMPV_SCRIPTS_RUN set, the jobs take that libmpv-scripts run's
-# libraries (.github/actions/libmpv-from-run). A pull request from a fork
-# gets no secrets and falls back to the pinned release, like the action
-# does. Otherwise the release pinned in hook/build.dart must be published
-# with every asset its checksum table names. A lookup that fails for want
-# of GitHub only warns: the jobs will try again.
+# libraries (.github/actions/libmpv-from-run): LIBMPV_SCRIPTS_TOKEN must be
+# set, still valid (a fine-grained token expires, and GitHub then answers
+# 401) and able to read the run, and the run must be green. A pull request
+# from a fork gets no secrets and falls back to the pinned release, like
+# the action does. Otherwise the release pinned in hook/build.dart must be
+# published with every asset its checksum table names. A lookup that fails
+# for want of GitHub only warns: the jobs will try again.
 #
 # Reads from the environment:
 #   LIBMPV_SCRIPTS_RUN    the repository variable, empty when unset
@@ -60,10 +62,41 @@ check_release() {
   echo "The pinned libmpv release $tag is published with every asset the hook pins."
 }
 
+check_run() {
+  local run="$LIBMPV_SCRIPTS_RUN" line sha branch conclusion
+  if ! line="$(GH_TOKEN="$LIBMPV_SCRIPTS_TOKEN" gh api "repos/$scripts_repo/actions/runs/$run" \
+    --jq '"\(.head_sha) \(.head_branch) \(.conclusion)"' 2>"$err")"; then
+    case "$(http_status)" in
+      401)
+        echo "::error::LIBMPV_SCRIPTS_TOKEN was refused (HTTP 401): it has most likely expired. Renew it, Actions read access on $scripts_repo only, and note its new expiry date."
+        exit 1
+        ;;
+      '')
+        echo "::warning::Could not look up libmpv-scripts run $run: $(cat "$err")"
+        return 0
+        ;;
+      *)
+        echo "::error::libmpv-scripts run $run cannot be read with LIBMPV_SCRIPTS_TOKEN: $(cat "$err")"
+        exit 1
+        ;;
+    esac
+  fi
+  read -r sha branch conclusion <<<"$line"
+  echo "libmpv-scripts run $run: $branch at $sha, $conclusion"
+  if [[ "$conclusion" != success ]]; then
+    echo "::error::libmpv-scripts run $run did not succeed ($conclusion)."
+    exit 1
+  fi
+}
+
 if [[ -n "${LIBMPV_SCRIPTS_RUN:-}" ]]; then
-  if [[ -n "${LIBMPV_SCRIPTS_TOKEN:-}" || "${FORK:-}" != true ]]; then
-    echo "The jobs take the libraries of libmpv-scripts run $LIBMPV_SCRIPTS_RUN."
+  if [[ -n "${LIBMPV_SCRIPTS_TOKEN:-}" ]]; then
+    check_run
     exit 0
+  fi
+  if [[ "${FORK:-}" != true ]]; then
+    echo "::error::LIBMPV_SCRIPTS_RUN is set but LIBMPV_SCRIPTS_TOKEN is not: add a fine-grained token with Actions read access on $scripts_repo."
+    exit 1
   fi
   echo "::warning::No LIBMPV_SCRIPTS_TOKEN on a fork pull request: the jobs use the pinned libmpv release."
 fi

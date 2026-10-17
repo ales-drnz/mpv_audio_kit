@@ -23,10 +23,15 @@ permissions:
 # Until a libmpv release is published, set the repository variable
 # LIBMPV_SCRIPTS_RUN to the libmpv-scripts run that built it: the jobs that
 # bundle libmpv then take that run's libraries instead of the pinned
-# release (see .github/actions/libmpv-from-run). It needs the secret
-# LIBMPV_SCRIPTS_TOKEN, a token with Actions read access on libmpv-scripts.
-# Unset the variable once the release is out: the run's artifacts expire
-# after 90 days, and main would keep testing them instead of the release.
+# release (see .github/actions/libmpv-from-run). Unset the variable once
+# the release is out: the run's artifacts expire after 90 days, and main
+# would keep testing them instead of the release.
+#
+# Before setting it, check that the secret LIBMPV_SCRIPTS_TOKEN exists and
+# has not expired: a fine-grained token with Actions read access on
+# ales-drnz/libmpv-scripts only, renewed before the expiry date chosen when
+# it was made. The changes job checks the token, the run and the pinned
+# release before anything else starts (scripts/ci/preflight.sh).
 env:
   LIBMPV_SCRIPTS_RUN: ${{ vars.LIBMPV_SCRIPTS_RUN }}
 
@@ -63,6 +68,7 @@ jobs:
         if: steps.diff.outputs.code == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          LIBMPV_SCRIPTS_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           FORK: ${{ github.event.pull_request.head.repo.fork }}
         run: scripts/ci/preflight.sh
 
