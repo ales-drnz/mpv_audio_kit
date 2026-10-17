@@ -481,6 +481,23 @@ void main() {
       }
     });
 
+    test('coefficients keep full precision', () {
+      // A second-order Butterworth low-pass at 50 Hz and 48 kHz: at 4
+      // decimals its numerator was 0, a filter that plays silence.
+      const lowPass = AiirChannel(
+        gain: 1,
+        zeros: [
+          1.065983454073511e-05,
+          2.131966908147022e-05,
+          1.065983454073511e-05,
+        ],
+        poles: [1, -1.9907440595050483, 0.9907866988432114],
+      );
+      final s = const AiirEffect().withChannels(const [lowPass]);
+      // The channel read back from the written strings is the one given.
+      expect(s.channels.single, lowPass);
+    });
+
     test('mismatched channel count clamps to the shortest list', () {
       const s = AiirEffect(
         gains: '1|0.5|0.25',

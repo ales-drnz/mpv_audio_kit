@@ -750,18 +750,20 @@ extension AiirChannelsX on AiirEffect {
   /// the numerator ([AiirChannel.zeros]) and denominator
   /// ([AiirChannel.poles]) of a transfer function, which the defaults do
   /// not read. A format or process set by hand is kept.
+  ///
+  /// Gains and coefficients are written in full, the shortest form that
+  /// reads back as the same double: a narrow or low filter has
+  /// coefficients far below 0.0001.
   AiirEffect withChannels(List<AiirChannel> channels) {
     if (channels.isEmpty) {
       return copyWith(gains: '', zeros: '', poles: '');
     }
     String join(List<double> Function(AiirChannel) get, String inner) =>
-        channels
-            .map((c) => get(c).map((v) => v.toStringAsFixed(4)).join(inner))
-            .join('|');
+        channels.map((c) => get(c).join(inner)).join('|');
     return copyWith(
       format: format == AiirFormat.zp ? AiirFormat.tf : null,
       process: process == AiirProcess.s ? AiirProcess.d : null,
-      gains: channels.map((c) => c.gain.toStringAsFixed(4)).join('|'),
+      gains: channels.map((c) => c.gain).join('|'),
       zeros: join((c) => c.zeros, ' '),
       poles: join((c) => c.poles, ' '),
     );
