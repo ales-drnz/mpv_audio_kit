@@ -64,6 +64,45 @@ new_gh
 runs_of "$c0" 400:push:cancelled
 expect_eq "a code push after a cancelled run runs" true "$(gate push "$c0" "$c1")"
 
+# The diff is measured from the last pushed commit, not the last tested
+# one: docs on top of untested code must not skip the code with them.
+new_gh
+runs_of "$c1" 400:push:cancelled
+expect_eq "a docs-only push after a cancelled run runs" true "$(gate push "$c1" "$c2")"
+expect_log "and says why" "$c1 has no green run"
+
+new_gh
+runs_of "$c1" 400:push:failure 401:push:cancelled
+expect_eq "a docs-only push after a failed run runs" true "$(gate push "$c1" "$c2")"
+
+new_gh
+runs_of "$c1" 400:push:null
+expect_eq "a docs-only push while its parent still runs runs" true \
+  "$(gate push "$c1" "$c2")"
+
+new_gh
+expect_eq "a docs-only push after an untested commit runs" true "$(gate push "$c1" "$c2")"
+
+new_gh
+runs_of "$c1" 400:pull_request:success
+expect_eq "a green pull request run does not test the commit itself" true \
+  "$(gate push "$c1" "$c2")"
+
+new_gh
+runs_of "$c1" 400:workflow_dispatch:success
+expect_eq "a green manual run does" false "$(gate push "$c1" "$c2")"
+
+new_gh
+runs_of "$c1" 400:push:failure
+expect_eq "a pull request with docs only on a red base runs" true \
+  "$(gate pull_request "$c1" "$c2")"
+
+new_gh
+touch "$FAKE_GH/down"
+expect_eq "a docs-only pull request runs when GitHub cannot be asked" true \
+  "$(gate pull_request "$c1" "$c2")"
+expect_log "with a warning" "::warning::"
+
 new_gh
 expect_eq "a push that opens a branch runs" true "$(gate push "$zero" "$c2")"
 
