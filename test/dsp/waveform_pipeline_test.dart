@@ -86,4 +86,41 @@ void main() {
       await p.dispose();
     });
   });
+
+  test('a ready envelope shorter than its axis pads the tail', () async {
+    // The length estimated from the bitrate was three times the audio:
+    // the decode filled 10 bins of the 30 on the axis.
+    final p = WaveformPipeline(
+      asyncGet: (name, format) async => (
+        0,
+        {
+          'state': 'ready',
+          'duration_us': 18000000,
+          'total_bins': 30,
+          'min': _floats(10, -0.5),
+          'max': _floats(10, 0.5),
+          'rms': _floats(10, 0.25),
+          'filled': Uint8List(10)..fillRange(0, 10, 1),
+        },
+      ),
+      asyncSet: (name, value) async => 0,
+      pollInterval: const Duration(milliseconds: 10),
+    );
+    final got = <WaveformData?>[];
+    p.stream.listen(got.add);
+    p.setEnabled(true);
+    await _ticks(2, const Duration(milliseconds: 10));
+    final w = got.whereType<WaveformData>().single;
+    expect(w.bins, 30);
+    expect(w.duration, const Duration(seconds: 18));
+    expect(w.filled.sublist(0, 10), everyElement(1));
+    expect(w.filled.sublist(10), everyElement(0));
+    expect(w.min[9], closeTo(-0.5, 1e-6));
+    expect(w.max[9], closeTo(0.5, 1e-6));
+    expect(w.rms![9], closeTo(0.25, 1e-6));
+    expect(w.min.sublist(10), everyElement(0));
+    expect(w.max.sublist(10), everyElement(0));
+    expect(w.rms!.sublist(10), everyElement(0));
+    await p.dispose();
+  });
 }

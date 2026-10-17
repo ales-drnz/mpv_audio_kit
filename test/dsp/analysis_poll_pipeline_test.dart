@@ -135,4 +135,56 @@ void main() {
     await _settle();
     expect(got, isEmpty);
   });
+
+  group('two players', () {
+    test('one player\'s cancel or dispose leaves the other\'s on', () async {
+      final a = _FakeMpv();
+      final b = _FakeMpv();
+      final pa = WaveformPipeline(asyncGet: a.get, asyncSet: a.set);
+      final pb = WaveformPipeline(asyncGet: b.get, asyncSet: b.set);
+      pa.setEnabled(true);
+      pb.setEnabled(true);
+      await _settle();
+      pb.setEnabled(false);
+      pb.setEnabled(true);
+      await pb.dispose();
+      await _settle();
+      expect(a.sets, ['waveform-enabled=yes']);
+      expect(b.sets, ['waveform-enabled=yes', 'waveform-enabled=yes']);
+
+      // The last one to let go turns it off.
+      pa.setEnabled(false);
+      await _settle();
+      expect(a.sets.last, 'waveform-enabled=no');
+      await pa.dispose();
+    });
+
+    test('an enable waits for the other player\'s disable', () async {
+      // B's core is busy: its no must land before A's yes.
+      final reply = Completer<int>();
+      final a = _FakeMpv();
+      final bSets = <String>[];
+      final pa = LoudnessScanPipeline(asyncGet: a.get, asyncSet: a.set);
+      final pb = LoudnessScanPipeline(
+        asyncGet: a.get,
+        asyncSet: (name, value) {
+          bSets.add('$name=$value');
+          return reply.future;
+        },
+      );
+      pb.setEnabled(true);
+      pb.setEnabled(false);
+      pa.setEnabled(true);
+      await _settle();
+      expect(bSets, ['loudness-scan-enabled=yes', 'loudness-scan-enabled=no']);
+      expect(a.sets, isEmpty);
+      reply.complete(0);
+      await _settle();
+      expect(a.sets, ['loudness-scan-enabled=yes']);
+      await pa.dispose();
+      await pb.dispose();
+      await _settle();
+      expect(a.sets.last, 'loudness-scan-enabled=no');
+    });
+  });
 }

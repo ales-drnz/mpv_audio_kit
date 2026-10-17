@@ -334,11 +334,12 @@ final class PcmSource {
   /// queued chunks are dropped, and a player playing it moves to its next
   /// entry, or stops when there is none (as `next(force: true)`, so with
   /// `loop-playlist` on it wraps to the first entry). The audio output
-  /// does not play out what it holds.
+  /// does not play out what it holds. A player that holds it queued
+  /// removes its entry from the playlist, and the entries after it move
+  /// up by one.
   ///
-  /// A source aborted before a player opened it fails to load there, so
-  /// abort a queued source only to drop it. Does nothing once the source
-  /// is [done].
+  /// A source aborted before a player opened it fails to load there.
+  /// Does nothing once the source is [done].
   void abort() {
     if (isDone) return;
     final cuts = [for (final cut in _cutters) ?cut(this)];

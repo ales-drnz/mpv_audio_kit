@@ -16,6 +16,10 @@
 #   truncated.mp3                  — MP3 with a valid header but cut payload;
 #                                    must trigger endFile.error, not crash
 #   corrupted.mp3                  — Plain text renamed .mp3; must fail clean
+#   vbr_no_xing.mp3                  VBR MP3 without a Xing header, 2 s of
+#                                    silence then 4 s of noise: the length
+#                                    estimated from the first frames is
+#                                    about 18 s, and the waveform keeps it
 
 set -euo pipefail
 
@@ -108,6 +112,25 @@ emit_to_both truncated.mp3 "$TRUNCATED"
 CORRUPTED="$TMP_DIR/corrupted.mp3"
 printf 'this is plain text masquerading as an mp3 — the demuxer must reject it' > "$CORRUPTED"
 emit_to_both corrupted.mp3 "$CORRUPTED"
+
+echo
+echo "Waveform axis:"
+
+# A VBR MP3 without a Xing header: the demuxer estimates the length from
+# the bitrate of the first frames, silent and small, so it reads about
+# 18 s for 6 s of audio. The waveform ends its decode with fewer bins than
+# its axis.
+SILENCE="$TMP_DIR/silence.wav"
+ffmpeg -hide_banner -loglevel error -y \
+  -f lavfi -i "anullsrc=r=44100:cl=mono" -t 2 "$SILENCE"
+NOISE="$TMP_DIR/noise.wav"
+ffmpeg -hide_banner -loglevel error -y \
+  -f lavfi -i "anoisesrc=r=44100:a=0.5:c=white:seed=1" -t 4 "$NOISE"
+VBR_NO_XING="$TMP_DIR/vbr_no_xing.mp3"
+ffmpeg -hide_banner -loglevel error -y -i "$SILENCE" -i "$NOISE" \
+  -filter_complex "[0:a][1:a]concat=n=2:v=0:a=1" \
+  -c:a libmp3lame -q:a 0 -write_xing 0 "$VBR_NO_XING"
+emit_to_both vbr_no_xing.mp3 "$VBR_NO_XING"
 
 echo
 echo "Done. Files written to:"

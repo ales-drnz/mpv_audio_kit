@@ -152,7 +152,7 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
       );
       if (ready) {
         // Bulk envelope is final: keep it and stop polling.
-        finish(data);
+        finish(_padded(data, totalBins));
         return;
       }
       // Progressive (network) envelope grows: keep the timer running so
@@ -168,6 +168,28 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
       emit(null);
     }
   }
+}
+
+/// The most bins an axis holds (a live window's), a bound on a malformed
+/// `total_bins`.
+const int _kMaxBins = 131072;
+
+/// [data] on an axis of [total] bins. A decode that ends short of the axis
+/// (mpv estimated the length from the bitrate, and the audio is shorter)
+/// fills fewer bins than the axis holds: the tail goes out unfilled, so
+/// each bin stays at its time on the track's `[0, duration]`.
+WaveformData _padded(WaveformData data, int? total) {
+  final bins = data.bins;
+  if (total == null || total <= bins || total > _kMaxBins) return data;
+  Float32List pad(Float32List v) => Float32List(total)..setRange(0, bins, v);
+  final rms = data.rms;
+  return WaveformData(
+    duration: data.duration,
+    min: pad(data.min),
+    max: pad(data.max),
+    rms: rms == null ? null : pad(rms),
+    filled: Uint8List(total)..setRange(0, bins, data.filled),
+  );
 }
 
 /// Whether [a] and [b] carry the same axis and the same bins.

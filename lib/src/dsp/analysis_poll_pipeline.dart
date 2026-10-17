@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import '../mpv_bindings.dart';
 import 'dsp_async_io.dart';
+import 'shared_property_writer.dart';
 
 /// The polling shared by the per-file analyses (waveform, loudness scan).
 ///
@@ -18,9 +19,10 @@ import 'dsp_async_io.dart';
 /// timer stops, so an idle analysis costs nothing.
 ///
 /// The enable property is a static of the libmpv process, shared by every
-/// player: [dispose] turns it off when this pipeline turned it on. A
-/// listener that comes back while the file's result stands gets it from
-/// the player's replay, and the property stays off until the next file
+/// player: it stays on while a pipeline of this isolate holds it, and the
+/// last one to let go (a cancel, or [dispose]) turns it off. A listener
+/// that comes back while the file's result stands gets it from the
+/// player's replay, and the property stays off until the next file
 /// ([reset]): writing it on would decode the whole file again.
 ///
 /// A subclass decodes each poll in [onData]: it [emit]s partial values and
@@ -50,8 +52,15 @@ abstract class AnalysisPollPipeline<T extends Object> {
   Timer? _pollTimer;
   T? _result;
   bool _enabled = false;
-  // Whether this pipeline left the native enable property on.
+  // Whether this pipeline holds the native enable property on.
   bool _nativeOn = false;
+  late final _Switch _switch = _switches.putIfAbsent(
+    _enabledProperty,
+    () => _Switch(_enabledProperty),
+  );
+
+  // The enable properties, one per analysis, by name.
+  static final Map<String, _Switch> _switches = {};
   bool _disposed = false;
   // No file loaded (after [clear]): mpv still holds the last file's
   // analysis, so nothing is polled until the next [reset].
@@ -108,17 +117,28 @@ abstract class AnalysisPollPipeline<T extends Object> {
     stopPolling();
     // The flag outlives this player: left on, the next player in the
     // process would analyze every file it loads.
-    if (_nativeOn) {
-      _nativeOn = false;
-      unawaited(_asyncSet(_enabledProperty, 'no'));
-    }
+    _setNative(false);
     if (!_ctrl.isClosed) await _ctrl.close();
   }
 
   void _setNative(bool on) {
     if (on == _nativeOn) return;
     _nativeOn = on;
-    unawaited(_asyncSet(_enabledProperty, on ? 'yes' : 'no'));
+    final sw = _switch;
+    if (on) {
+      sw.holders++;
+      // Written on every enable, held already or not: on a core with a
+      // file loaded it starts the analysis of that file, so it goes
+      // through this player's core.
+      sw.writer.write(_asyncSet, () => _nativeOn ? 'yes' : null);
+    } else if (--sw.holders == 0) {
+      // Off only when no other player of this isolate holds it.
+      sw.writer.write(
+        _asyncSet,
+        () => sw.holders == 0 ? 'no' : null,
+        anyCore: true,
+      );
+    }
   }
 
   /// Decodes one reply of the data property, a map.
@@ -180,4 +200,13 @@ abstract class AnalysisPollPipeline<T extends Object> {
       // the next file. The next tick retries against fresh native state.
     }
   }
+}
+
+/// One enable property: how many pipelines of this isolate hold it on, and
+/// the writer that orders their writes across the players' cores.
+final class _Switch {
+  _Switch(String property) : writer = SharedPropertyWriter(property);
+
+  final SharedPropertyWriter writer;
+  int holders = 0;
 }

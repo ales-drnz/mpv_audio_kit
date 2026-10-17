@@ -105,6 +105,53 @@ void main() {
         },
         timeout: const Timeout(Duration(seconds: 5)),
       );
+
+      test(
+        'a listener that comes while paused gets the current frame',
+        () async {
+          player.setSpectrum(
+            const SpectrumSettings(emitInterval: Duration(milliseconds: 16)),
+          );
+          await player.seek(Duration.zero);
+          final played = Completer<void>();
+          var sub = player.stream.fft.listen((f) {
+            if (f.bands.any((b) => b > 0.01) && !played.isCompleted) {
+              played.complete();
+            }
+          });
+          await player.play();
+          await played.future.timeout(const Duration(seconds: 3));
+          await player.pause();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          await sub.cancel();
+
+          // Back on the page while paused: the frame the output holds.
+          var fft = Completer<void>();
+          sub = player.stream.fft.listen((_) {
+            if (!fft.isCompleted) fft.complete();
+          });
+          await fft.future.timeout(const Duration(seconds: 1));
+          await sub.cancel();
+
+          // An fft listener next to a pcm one gets it too.
+          final pcm = Completer<void>();
+          final pcmSub = player.stream.pcm.listen((_) {
+            if (!pcm.isCompleted) pcm.complete();
+          });
+          await pcm.future.timeout(const Duration(seconds: 1));
+          fft = Completer<void>();
+          sub = player.stream.fft.listen((_) {
+            if (!fft.isCompleted) fft.complete();
+          });
+          try {
+            await fft.future.timeout(const Duration(seconds: 1));
+          } finally {
+            await sub.cancel();
+            await pcmSub.cancel();
+          }
+        },
+        timeout: const Timeout(Duration(seconds: 10)),
+      );
     });
   });
 }

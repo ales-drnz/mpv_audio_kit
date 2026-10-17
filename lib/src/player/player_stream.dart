@@ -636,7 +636,9 @@ class PlayerStream {
   /// Stops emitting while playback is paused (the AO ring stops
   /// receiving samples). The last [FftFrame] is "frozen" in the sense
   /// that no further events fire; hold the last value as the
-  /// displayed state until playback resumes.
+  /// displayed state until playback resumes. When the stream gets its
+  /// first listener while paused, that listener receives the last frame
+  /// once.
   final Stream<FftFrame> fft;
 
   /// Real-time raw PCM samples of the audio currently playing through
@@ -669,7 +671,8 @@ class PlayerStream {
   /// same `(filter, instance, side)` share a single underlying tap. The
   /// native tap state is one per process: two players tapping the same
   /// stage read one mixed feed, and at most eight stages are tapped
-  /// across all players.
+  /// across all players. The players of one isolate keep that list
+  /// together. A player in another isolate replaces it with its own.
   ///
   /// [filter] names the stage's filter and [instance] which of its
   /// occurrences in [PlayerState.audioEffects] (0, the default, for the
@@ -738,7 +741,9 @@ class PlayerStream {
   /// process-global singleton: the most recent `open()` wins, so with
   /// multiple [Player]s alive only the last-loaded file's waveform is
   /// computed. This matches the single-player-per-app usage this package
-  /// targets; don't rely on concurrent waveforms across players.
+  /// targets; don't rely on concurrent waveforms across players. The
+  /// analyzer stays on while a player of this isolate listens: another
+  /// player's cancel or dispose does not turn it off.
   final Stream<WaveformData?> waveform;
 
   /// Live EBU R128 loudness measurements ([Loudness]: momentary,
@@ -787,7 +792,8 @@ class PlayerStream {
   /// stale results clear.
   ///
   /// **Lazy**: the native scan runs only while a listener is
-  /// attached; an idle stream costs nothing.
+  /// attached; an idle stream costs nothing. Like the [waveform]
+  /// analyzer, it stays on while a player of this isolate listens.
   final Stream<LoudnessScan?> loudnessScan;
 
   // ── Media session ──────────────────────────────────────────────────

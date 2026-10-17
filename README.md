@@ -604,7 +604,8 @@ await source.close();
   chunk.
 - `close` plays out what is buffered, then the entry ends after its last
   sample (`completed`). `abort` cuts it at once: the player moves to the
-  next entry, or stops at the last one.
+  next entry, or stops at the last one. A source still queued leaves the
+  playlist.
 - `done` completes once the player has read everything, or when the
   source is aborted, or stopped: `stop`, `next`, another `open`, a removal
   from the playlist or a dispose.
@@ -2439,8 +2440,10 @@ stages count too, and emit nothing. The tap follows the occurrence, not a
 particular stage: moving other filters around keeps it where it is, while
 swapping the two equalizers swaps what `instance: 0` taps. libmpv captures
 up to eight stages at a time, counted across all players of the process,
-and two players tapping the same stage read one mixed feed. `TapSide.pre`
-captures before the filter and `TapSide.post` after it.
+and two players tapping the same stage read one mixed feed. The players of
+one isolate keep the list of tapped stages together; a player in another
+isolate replaces it with its own. `TapSide.pre` captures before the filter
+and `TapSide.post` after it.
 
 ```dart
 // Input and output of one filter
@@ -2489,7 +2492,9 @@ for (final e in player.state.audioEffects) {
 computed on a worker thread: about 2000 bins, each with its min, max and
 RMS, enough to paint a waveform
 overview or a waveform-style seekbar. There is one waveform per process:
-with several players, the last `open()` wins.
+with several players, the last `open()` wins. It stays on while a player
+of the same isolate listens: another player's cancel or dispose does not
+turn it off.
 
 Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
@@ -2555,7 +2560,8 @@ player.stream.loudnessScan.listen((scan) {
 The stream emits `null` when the track changes, so old results clear.
 Sources that can only be decoded as they play (adaptive or live network
 streams) report `LoudnessScanState.unavailable`: use the live meter below
-for those.
+for those. Like the waveform, the scan stays on while a player of the same
+isolate listens.
 
 #### 13.7 Live loudness meter
 
