@@ -102,6 +102,21 @@ void main() {
       });
     });
 
+    // mpv keeps what it had when it refuses a load: the track there goes
+    // on as it did, with the intent it had.
+    test('an open that mpv refuses leaves a paused track paused', () async {
+      await openAndWaitForLoad(player, longFixture);
+      shim().refuseLoadfile('mak-refused');
+      await expectLater(
+        player.open(Media('$dir/mak-refused.wav'), play: true),
+        throwsA(isA<MpvCommandException>()),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('pause'), 'yes');
+      expect(player.state.playWhenReady, isFalse);
+      expect(player.state.playing, isFalse);
+    });
+
     // A `test://` URI resolves to its own link to the long fixture, with a
     // release that is counted, as the player holds a `content://`
     // descriptor; `test://broken` fails to resolve.

@@ -247,8 +247,14 @@ class Player extends _PlayerBase
         ], media);
       }
     } catch (_) {
-      // mpv refused the entry: nothing will ever read the source.
+      // mpv refused the entry and kept what it had: nothing will ever read
+      // the source, and the track there goes on with its own intent and
+      // pause, as after a failed [openPlaylistFile].
       await resolved.dispose?.call();
+      if (_restoreIntent(load, intent, previousIntent) &&
+          playNow != previousIntent) {
+        await _propRc('pause', previousIntent ? 'no' : 'yes');
+      }
       rethrow;
     }
     // Asked again, not reused: a pause() called while the loadfile was in
