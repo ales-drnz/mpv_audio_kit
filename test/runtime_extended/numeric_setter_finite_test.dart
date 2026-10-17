@@ -63,6 +63,27 @@ void main() {
       expect(() => player.setVolumeMax(double.infinity), throwsArgumentError);
     });
 
+    test('setSystemVolume rejects values outside 0 to 100', () async {
+      // mpv refuses them, and the refusal used to be dropped as if the
+      // audio output had no system volume.
+      final prior = player.state.systemVolume;
+      for (final bad in [-5.0, -0.01, 100.01, 150.0]) {
+        await expectLater(
+          player.setSystemVolume(bad),
+          throwsRangeError,
+          reason: 'systemVolume=$bad',
+        );
+      }
+      await expectLater(
+        player.setSystemVolume(double.nan),
+        throwsArgumentError,
+      );
+      expect(player.state.systemVolume, prior);
+      // The bounds themselves pass; the null output ignores them.
+      await player.setSystemVolume(0);
+      await player.setSystemVolume(100);
+    });
+
     test('finite values still pass (regression sanity)', () async {
       await player.setVolume(50);
       expect(player.state.volume, 50);

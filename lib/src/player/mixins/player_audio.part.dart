@@ -194,12 +194,13 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the OS per-app mixer volume in percent (`ao-volume`): the system
   /// volume slider for this app, distinct from the soft [setVolume].
+  /// Throws [RangeError] outside `[0, 100]`.
   ///
   /// Best-effort: when the active audio output doesn't expose system volume
   /// (the null AO, or a backend without per-app volume) the call is silently
   /// ignored: it does NOT throw, and [PlayerState.systemVolume] stays `null`.
   Future<void> setSystemVolume(double volume) async {
-    _checkFinite(volume, 'volume');
+    _checkRange(volume, 0, 100, 'volume');
     await _gate();
     final value = canonicalFloat(volume);
     final rc = await _propRc('ao-volume', value.toString());
