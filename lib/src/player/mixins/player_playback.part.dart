@@ -84,19 +84,36 @@ mixin _PlaybackModule on _PlayerBase {
   /// Pairs with [PlayerConfiguration.resumePlayback] (on by default) and
   /// [PlayerConfiguration.watchLaterDir]. On mobile, set `watchLaterDir` to a
   /// writable path or the write silently fails.
+  ///
+  /// An Android `content://` source has no resume point: it plays from a
+  /// file descriptor, whose number the system gives again to other files.
+  /// For it the call writes nothing and says so on
+  /// [PlayerStream.internalLog].
   Future<void> writeResumeConfig() async {
     await _gate();
+    final (rc, path) = await _getAsync('path', MpvFormat.mpvFormatString);
+    if (rc >= 0 && path is String && isFdUri(path)) {
+      _internalLog(
+        'No resume point for $path: a descriptor number names another '
+        'file once it is closed.',
+      );
+      return;
+    }
     await _commandChecked(['write-watch-later-config']);
   }
 
   /// Deletes the "watch later" resume config for the current file, or for
   /// [filename] when given, clearing any saved resume point.
+  ///
+  /// Name [filename] as the [Media] given to [Player.open]: a `file://`
+  /// URL or an `asset://` URI stands for the path the load gives mpv,
+  /// which keys the resume point.
   Future<void> deleteResumeConfig({String? filename}) async {
     await _gate();
     await _command(
       filename == null
           ? ['delete-watch-later-config']
-          : ['delete-watch-later-config', filename],
+          : ['delete-watch-later-config', await loadedName(filename)],
     );
   }
 
@@ -126,7 +143,8 @@ mixin _PlaybackModule on _PlayerBase {
   /// Seeks playback to a position in the current file.
   ///
   /// With [relative] = `false` (default), [position] is an absolute
-  /// timestamp from the start of the file (clamped to `[0, duration]`).
+  /// timestamp from the start of the file: a negative one seeks to the
+  /// start, and one past the end ends the file as if it played there.
   /// With [relative] = `true`, [position] is a signed offset from the
   /// current playhead: positive moves forward, negative moves backward.
   ///
@@ -145,7 +163,11 @@ mixin _PlaybackModule on _PlayerBase {
     bool exact = false,
   }) async {
     await _gate();
-    final secs = durationToSeconds(position);
+    // mpv counts a negative absolute time from the end of the file, and
+    // fails it when the length is unknown.
+    final secs = !relative && position.isNegative
+        ? 0.0
+        : durationToSeconds(position);
     final mode = relative ? 'relative' : 'absolute';
     await _commandChecked([
       'seek',
@@ -154,8 +176,9 @@ mixin _PlaybackModule on _PlayerBase {
     ]);
   }
 
-  /// Seeks by percentage of the file duration (0–100). Absolute by default,
-  /// or relative to the current percent position when [relative] is true.
+  /// Seeks by percentage of the file duration (0 to 100; past 100 the file
+  /// ends). Absolute by default, or relative to the current percent position
+  /// when [relative] is true.
   /// [exact] forces a sample-accurate (slower) seek instead of snapping to a
   /// keyframe. Counterpart of [seek] for progress-bar scrubbing.
   Future<void> seekToPercent(
@@ -173,9 +196,15 @@ mixin _PlaybackModule on _PlayerBase {
     ]);
   }
 
-  /// Undoes the last [seek] or [seekToPercent], jumping back to the position
-  /// before it; calling it again undoes the revert. Works only within the
-  /// current file (mpv's `revert-seek`).
+  /// Jumps back to where playback was before the last jump in the current
+  /// file (mpv's `revert-seek`). A jump is a [seek] or [seekToPercent], and
+  /// also a chapter change, a return to A of the A-B loop, the restart
+  /// [play] makes from the end, or a seek from the OS media session. Jumps
+  /// less than about 2 seconds apart count as one. Calling it again undoes
+  /// the revert.
+  ///
+  /// Throws [MpvCommandException] when the current file has nothing to
+  /// undo yet, for example right after it loaded.
   Future<void> revertSeek() async {
     await _gate();
     await _commandChecked(['revert-seek']);
@@ -183,10 +212,13 @@ mixin _PlaybackModule on _PlayerBase {
 
   /// Jumps to the chapter at [index] in the current file.
   ///
-  /// Indexing is 0-based and matches [PlayerState.chapters]. mpv handles
-  /// out-of-range values (negative or beyond the last chapter) by
-  /// clamping; the optimistic [PlayerState.currentChapter] update reflects
-  /// the requested value and is corrected by the next observer event.
+  /// Indexing is 0-based and matches [PlayerState.chapters]; -1 goes to
+  /// the start of the file. mpv refuses any index outside -1 to
+  /// `chapters.length - 1`, and the call then throws
+  /// [MpvCommandException] with [PlayerState.currentChapter] unchanged:
+  /// check the length for a "next chapter" button. An accepted index
+  /// reaches [PlayerState.currentChapter] at once, and the next observer
+  /// event confirms it.
   Future<void> setChapter(int index) async {
     await _gate();
     await _prop('chapter', index.toString());
@@ -212,6 +244,10 @@ mixin _PlaybackModule on _PlayerBase {
   /// [PlayerStream.duration] event for the track). mpv resets `chapter-list`
   /// to the demuxer's own chapters on each load, so a write issued before the
   /// load settles would be overwritten.
+  ///
+  /// mpv keeps only the markers from 0 up to the end of the file, none when
+  /// the length is unknown (a live stream), and does not sort them: pass
+  /// the list in time order. The state takes the list mpv kept.
   Future<void> setChapters(List<Chapter> chapters) async {
     await _gate();
     final rc = await _setChapterListNode(chapters);
@@ -222,9 +258,16 @@ mixin _PlaybackModule on _PlayerBase {
         message: _errorString(rc),
       );
     }
-    // Reflect optimistically; the `chapter-list` observer confirms with mpv's
-    // normalized view (e.g. clamped or sorted times) on the next event.
-    final list = List<Chapter>.unmodifiable(chapters);
+    // Read back what mpv kept: its observer reports nothing when that
+    // equals its list before the write.
+    final (readRc, node) = await _getAsync(
+      'chapter-list',
+      MpvFormat.mpvFormatNode,
+    );
+    if (_disposed) return;
+    final list = readRc >= 0
+        ? List<Chapter>.unmodifiable(parseChapterListNode(node))
+        : List<Chapter>.unmodifiable(chapters);
     _updateField((s) => s.copyWith(chapters: list), _reactives.chapters, list);
   }
 
@@ -235,6 +278,11 @@ mixin _PlaybackModule on _PlayerBase {
   /// Combined with [setAbLoopB], creates a playback loop: when the head
   /// crosses the B point, mpv seeks back to A. Common in language-learning
   /// or audiobook apps for repeated practice of a passage.
+  ///
+  /// The points belong to the current file: when it ends, or another file
+  /// loads, they go back to `null`. Points set with no file loaded apply to
+  /// every file instead. Keep both inside the file: past its end, the end
+  /// of the file seeks back to A again and again.
   Future<void> setAbLoopA(Duration? position) async {
     await _gate();
     await _prop(
@@ -248,7 +296,8 @@ mixin _PlaybackModule on _PlayerBase {
     );
   }
 
-  /// Sets the A-B loop end point. Pass `null` to disable. See [setAbLoopA].
+  /// Sets the A-B loop end point. Pass `null` to disable. Like A, it
+  /// belongs to the current file. See [setAbLoopA].
   Future<void> setAbLoopB(Duration? position) async {
     await _gate();
     await _prop(
@@ -262,8 +311,10 @@ mixin _PlaybackModule on _PlayerBase {
     );
   }
 
-  /// Sets the total A-B loop repetitions. Pass `null` for infinite looping
-  /// (mpv's `inf`); non-negative int for explicit count. Mirrors mpv's
+  /// Sets how many times playback jumps back to A after the first pass:
+  /// with 3 the section is heard 4 times. Pass `null` for infinite looping
+  /// (mpv's `inf`); `0` turns the A-B loop off even with both points set.
+  /// Unlike the points, the count stays for the next files. Mirrors mpv's
   /// `--ab-loop-count` option.
   Future<void> setAbLoopCount(int? count) async {
     if (count != null && count < 0) {

@@ -307,7 +307,9 @@ final class PlayerState {
   /// Audio client name (used by backend drivers like PulseAudio).
   final String audioClientName;
 
-  /// Audio output driver ('auto', 'coreaudio', 'pulse', 'alsa', 'wasapi', etc.).
+  /// Requested audio output driver ('coreaudio', 'pulse', 'alsa',
+  /// 'wasapi', etc.), or empty for mpv's automatic choice, which is also
+  /// what `setAudioDriver('auto')` stores.
   final String audioDriver;
 
   /// Audio output lifecycle (`closed`, `initializing`, `active` or
@@ -424,22 +426,27 @@ final class PlayerState {
   /// was not loaded via a playlist.
   final String playlistPath;
 
-  /// A-B loop start point. `null` when disabled. Setter:
-  /// [Player.setAbLoopA]. Mirrors mpv's `ab-loop-a`.
+  /// A-B loop start point. `null` when disabled, and again once the file
+  /// it was set on ends. Setter: [Player.setAbLoopA]. Mirrors mpv's
+  /// `ab-loop-a`.
   final Duration? abLoopA;
 
-  /// A-B loop end point. `null` when disabled. Setter:
-  /// [Player.setAbLoopB]. Mirrors mpv's `ab-loop-b`.
+  /// A-B loop end point. `null` when disabled, and again once the file it
+  /// was set on ends. Setter: [Player.setAbLoopB]. Mirrors mpv's
+  /// `ab-loop-b`.
   final Duration? abLoopB;
 
-  /// Total number of A-B loop repetitions configured. `null` =
-  /// infinite loop (mpv's `inf`); positive = explicit count. Setter:
-  /// [Player.setAbLoopCount]. Mirrors mpv's `ab-loop-count`.
+  /// How many times playback jumps back to A after the first pass, so the
+  /// section is heard this count plus one times. `null` = infinite loop
+  /// (mpv's `inf`); `0` turns the A-B loop off even with both points set.
+  /// Setter: [Player.setAbLoopCount]. Mirrors mpv's `ab-loop-count`.
   final int? abLoopCount;
 
-  /// Remaining number of A-B loop repetitions in the active loop.
-  /// `null` when no loop is active or when the count is infinite.
-  /// Read-only; mirrors mpv's `remaining-ab-loops`.
+  /// How many more times playback will jump back to A. `null` only when
+  /// the count is infinite; reported even with no points set. It starts
+  /// from [abLoopCount] at every load and every change of A, B or the
+  /// count, and reads 0 on the last pass. Read-only; mirrors mpv's
+  /// `remaining-ab-loops`.
   final int? remainingAbLoops;
 
   /// Whether mpv is currently seeking. Useful as a UI gate to prevent
@@ -471,8 +478,8 @@ final class PlayerState {
 
   /// Name of the audio output driver in use (e.g. `coreaudio`,
   /// `pulse`, `wasapi`). Differs from [audioDriver] (which is the
-  /// requested driver, possibly `auto`): this is what mpv actually
-  /// resolved at runtime. Mirrors mpv's `current-ao`.
+  /// requested driver, empty for the automatic choice): this is what mpv
+  /// actually resolved at runtime. Mirrors mpv's `current-ao`.
   final String currentAo;
 
   /// Initial timestamp offset of the current file, as reported by the
@@ -559,7 +566,7 @@ final class PlayerState {
     this.audioFormat = Format.auto,
     this.audioChannels = Channels.auto,
     this.audioClientName = 'mpv_audio_kit',
-    this.audioDriver = 'auto',
+    this.audioDriver = '',
     this.audioOutputState = AudioOutputState.closed,
     this.audioEffects = const [],
     this.spectrum = SpectrumSettings.defaults,

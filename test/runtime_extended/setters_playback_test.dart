@@ -157,6 +157,60 @@ void main() {
         await waitBClear;
         expect(player.state.abLoopB, isNull);
       }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('A-B points apply to the current file only', () async {
+        // Left on, they would loop the next file at the same times, or
+        // seek forever past the end of a shorter one.
+        var loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.openAll([
+          Media(fixturePath),
+          Media(defaultFixturePath()),
+        ], play: false);
+        await loaded;
+        await player.setAbLoopA(const Duration(milliseconds: 500));
+        await player.setAbLoopB(const Duration(milliseconds: 1500));
+        expect(await player.getRawProperty('ab-loop-a'), startsWith('0.5'));
+
+        loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        expect(await player.next(), isTrue);
+        await loaded;
+        await waitUntil(
+          () => player.state.abLoopA == null && player.state.abLoopB == null,
+          reason: 'the state follows mpv back to no points',
+        );
+        expect(await player.getRawProperty('ab-loop-a'), 'no');
+        expect(await player.getRawProperty('ab-loop-b'), 'no');
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('A-B points set with no file loaded apply to every file', () async {
+        await player.stop();
+        await waitUntil(
+          () async => await player.getRawProperty('idle-active') == 'yes',
+        );
+        await player.setAbLoopA(const Duration(milliseconds: 200));
+        await player.setAbLoopB(const Duration(milliseconds: 400));
+        var loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.openAll([
+          Media(fixturePath),
+          Media(defaultFixturePath()),
+        ], play: false);
+        await loaded;
+        loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        expect(await player.next(), isTrue);
+        await loaded;
+        expect(await player.getRawProperty('ab-loop-a'), startsWith('0.2'));
+        expect(player.state.abLoopA, const Duration(milliseconds: 200));
+        await player.setAbLoopA(null);
+        await player.setAbLoopB(null);
+      }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });
 }

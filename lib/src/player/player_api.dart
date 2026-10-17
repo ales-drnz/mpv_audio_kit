@@ -109,19 +109,22 @@ abstract interface class PlayerApi {
   Future<void> stop();
 
   /// Seeks within the current file. With [relative] `false` [position] is
-  /// an absolute timestamp; with `true` it is a signed offset from the
-  /// playhead. [exact] forces a sample-accurate (slower) seek.
+  /// an absolute timestamp, a negative one going to the start; with `true`
+  /// it is a signed offset from the playhead. [exact] forces a
+  /// sample-accurate (slower) seek.
   Future<void> seek(Duration position, {bool relative, bool exact});
 
   /// Seeks by percentage of the file duration (0 to 100). See
   /// [Player.seekToPercent].
   Future<void> seekToPercent(double percent, {bool relative, bool exact});
 
-  /// Undoes the last seek, returning to the prior position (mpv's
-  /// `revert-seek`). See [Player.revertSeek].
+  /// Jumps back to where playback was before the last jump in the current
+  /// file (mpv's `revert-seek`); throws [MpvCommandException] when there
+  /// is none yet. See [Player.revertSeek].
   Future<void> revertSeek();
 
-  /// Jumps to the 0-based chapter [index] in the current file.
+  /// Jumps to the 0-based chapter [index] in the current file; throws
+  /// [MpvCommandException] when [index] is out of range.
   Future<void> setChapter(int index);
 
   /// Replaces the current file's chapter markers with [chapters], an
@@ -132,13 +135,15 @@ abstract interface class PlayerApi {
   /// list clears them.
   Future<void> setChapters(List<Chapter> chapters);
 
-  /// Sets the A-B loop start point; `null` disables it.
+  /// Sets the A-B loop start point for the current file; `null` disables
+  /// it. See [Player.setAbLoopA].
   Future<void> setAbLoopA(Duration? position);
 
-  /// Sets the A-B loop end point; `null` disables it.
+  /// Sets the A-B loop end point for the current file; `null` disables it.
   Future<void> setAbLoopB(Duration? position);
 
-  /// Sets the number of A-B loop repetitions; `null` loops infinitely.
+  /// Sets how many times playback jumps back to A after the first pass;
+  /// `null` loops infinitely and `0` turns the loop off.
   Future<void> setAbLoopCount(int? count);
 
   /// Saves a "watch later" resume point for the current file (mpv's
@@ -189,8 +194,15 @@ abstract interface class PlayerApi {
   /// [RangeError] if [index] is out of range.
   Future<void> replace(int index, Media media);
 
-  /// Removes every entry from the playlist.
-  Future<void> clearPlaylist();
+  /// Inserts [media] at [index] in the playlist, before the entry there;
+  /// [index] equal to the length appends. The current entry keeps
+  /// playing. Throws [RangeError] if [index] is outside `0..length`. See
+  /// [Player.insert].
+  Future<void> insert(int index, Media media);
+
+  /// Removes every entry from the playlist; with [keepCurrent] true the
+  /// current one stays and keeps playing. See [Player.clearPlaylist].
+  Future<void> clearPlaylist({bool keepCurrent = false});
 
   /// Sets the loop policy (off, current file, or whole playlist).
   Future<void> setLoop(Loop loop);

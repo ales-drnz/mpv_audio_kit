@@ -72,6 +72,7 @@ import '../types/settings/cache_settings.dart';
 import '../types/settings/demuxer_settings.dart';
 import '../types/settings/replay_gain_settings.dart';
 import '../types/settings/spectrum_settings.dart';
+import '../types/state/audio_output_state.dart';
 import 'audio_output_error.dart';
 import 'lifecycle_transitions.dart';
 import 'player_api.dart';
@@ -209,6 +210,7 @@ class Player extends _PlayerBase
       return;
     }
     _mediaCache[resolved.uri] = media;
+    await _forgetFdResume(resolved);
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
     // the replace below, so they apply to the OLD file; see [_settleWrites].
     await _settleWrites();
@@ -343,6 +345,7 @@ class Player extends _PlayerBase
         }
         _mediaCache[r.uri] = m;
         resolved.add(r);
+        await _forgetFdResume(r);
       }
     } catch (_) {
       // Mid-loop failure: dispose the partially-resolved entries to
@@ -528,9 +531,9 @@ class Player extends _PlayerBase
   /// entries once mpv expands them. When [play] is null the configuration's
   /// autoplay value decides. Replaces any currently loaded file or playlist.
   ///
-  /// Per-[Media] options (`httpHeaders`, `demuxerLavfOptions`, `httpChunkSize`)
-  /// are validated but NOT applied to the playlist fetch: `loadlist` has no
-  /// file-local options slot. Entries parsed out of the playlist inherit the
+  /// Per-[Media] options (`httpHeaders`, `demuxerLavfOptions`, `httpChunkSize`,
+  /// `start`, `end`) are validated but NOT applied to the playlist fetch:
+  /// `loadlist` has no file-local options slot. Entries parsed out of the playlist inherit the
   /// global network and demuxer settings.
   @override
   Future<void> openPlaylistFile(Media playlist, {bool? play}) =>
@@ -735,6 +738,18 @@ abstract class _PlayerBase {
     final dispose = resolved.dispose;
     if (dispose == null) return resolved;
     return ResolvedUri(resolved.uri, _heldSources.hold(resolved.uri, dispose));
+  }
+
+  /// Deletes a resume point saved under the descriptor number of an
+  /// `fd://` [resolved] source, before its load. mpv keys the point by
+  /// that number, which the system hands out again to the next file
+  /// opened, so a point saved for one file (0.5.1 and earlier wrote them)
+  /// started another at its position. mpv reads the point as the entry
+  /// loads, before any option of the entry applies, so no option can turn
+  /// it off for one entry.
+  Future<void> _forgetFdResume(ResolvedUri resolved) async {
+    if (!isFdUri(resolved.uri)) return;
+    await _command(['delete-watch-later-config', resolved.uri]);
   }
 
   /// Releases the held resources mpv has stopped reading.
@@ -1004,6 +1019,14 @@ abstract class _PlayerBase {
   /// (a file load or a seek): see `_AudioModule`.
   void _onAfChainReset();
 
+  /// mpv loaded a file, after applying the resume point it may hold: see
+  /// `_AudioModule`.
+  void _reassertAfChain();
+
+  /// The MPV_EVENT_START_FILE events seen so far. A reply that arrives
+  /// after a newer one may describe the file that load opened.
+  int _fileStarts = 0;
+
   /// mpv sent AUDIO_RECONFIG: see `_AudioModule`.
   void _onAudioReconfig();
 
@@ -1063,6 +1086,9 @@ abstract class _PlayerBase {
           onAudioOutputState: (state) {
             final err = buildAudioOutputError(state);
             if (err != null) _errorCtrl.add(err);
+            if (state == AudioOutputState.active) {
+              unawaited(_reportNullFallback());
+            }
           },
         ),
       );
@@ -1195,10 +1221,6 @@ abstract class _PlayerBase {
   /// bring-up when the call came before it.
   LogLevel? _pendingLogLevel;
 
-  /// Last playlist-entry `path` the waveform pipeline was reset for. Lets the
-  /// FILE_LOADED handler skip the redundant reset mpv fires on internal
-  /// reloads of the same source (see the dedup in `_handleEvent`).
-  String? _lastWaveformSource;
   late final StreamController<FftFrame> _fftCtrl;
   late final StreamController<PcmFrame> _pcmStreamCtrl;
   // Lazy bridges into the spectrum pipeline: non-null exactly while the
@@ -1389,7 +1411,6 @@ abstract class _PlayerBase {
   void _clearFinishedFile() {
     if (_disposed) return;
     _clearPerFileState();
-    _lastWaveformSource = null;
     _waveformPipeline.clear();
     _loudnessScanPipeline.clear();
   }
@@ -1442,6 +1463,24 @@ abstract class _PlayerBase {
     // a replace issued at the park can see one more parked read before
     // its load starts, and must keep its intent.
     if (end) _writeIntent(false);
+  }
+
+  /// The output just opened. With `audio-fallback-to-null` (pre-init
+  /// options) mpv opens the null driver when no device can be opened: the
+  /// state says `active` and the position runs, but nothing is heard.
+  /// Reported on [PlayerStream.error] once for each opening, unless the
+  /// app chose the null driver itself. Read from the core, not the state:
+  /// `current-ao` is reported after `audio-output-state`.
+  Future<void> _reportNullFallback() async {
+    if (!_bringUpCompleted || _disposed) return;
+    final (rc, current) = await _getAsync(
+      'current-ao',
+      MpvFormat.mpvFormatString,
+    );
+    if (rc < 0 || current != 'null' || _disposed) return;
+    final (aoRc, ao) = await _getAsync('ao', MpvFormat.mpvFormatString);
+    if (aoRc < 0 || ao is! String || aoListHasNull(ao) || _disposed) return;
+    _errorCtrl.add(nullOutputError);
   }
 
   /// Internal log helper: emits on the library-side log channel

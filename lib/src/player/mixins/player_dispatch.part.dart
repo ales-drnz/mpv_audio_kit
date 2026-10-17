@@ -56,6 +56,7 @@ mixin _DispatchModule on _PlayerBase {
           // idle-active burst (FIFO), so the latch still can't be tripped by
           // the startup burst.
           _hasLoadedFile = true;
+          _fileStarts++;
           // A new load attempt re-arms the source resolver's single
           // retry allowance; see [_resolverRetried].
           _resolverRetried = false;
@@ -78,6 +79,7 @@ mixin _DispatchModule on _PlayerBase {
           _updateLifecycle(buffering: false);
           // mpv just built the new file's chain from the stored arguments.
           _onAfChainReset();
+          _reassertAfChain();
           _applyPolledPosition(timePos);
           // mpv exposes -1, -2 etc. as "no chapter active"; surface as
           // null. A failed read (chapterIndex == null) applies nothing.
@@ -112,21 +114,16 @@ mixin _DispatchModule on _PlayerBase {
                 );
           _state = _state.copyWith(coverArt: cover);
           _coverArtCtrl.add(cover);
-          // Re-arm the waveform ONLY on a genuine source change. mpv re-emits
-          // FILE_LOADED on internal reloads (EDL, segment, gapless, track
-          // reinit) for the same audio; resetting there would discard a
-          // completed bulk envelope, force a full re-decode, and flash the meter
-          // to empty. Key off the playlist entry `path`: stable across an
-          // on_load hook that rewrites stream-open-filename but not `path`,
-          // and distinct per track.
+          // Re-arm the waveform and the loudness scan on every load, the
+          // same file loaded again included: mpv emits FILE_LOADED once per
+          // load and starts a new analysis on each one, so a result kept
+          // across it may belong to other content, or to a pass that
+          // failed. The path is no key for it: with the prefetch it can name
+          // the next entry.
           if (_bringUpCompleted) {
-            if (path != _lastWaveformSource) {
-              _lastWaveformSource = path;
-              _waveformPipeline.reset();
-              // The offline loudness scan rides the same native decode
-              // pass and shares the track-change boundary.
-              _loudnessScanPipeline.reset();
-            }
+            _waveformPipeline.reset();
+            // The offline loudness scan rides the same native decode pass.
+            _loudnessScanPipeline.reset();
           }
         case MpvEventPlaybackSeek():
           // A seek's landing is observed via PLAYBACK_RESTART

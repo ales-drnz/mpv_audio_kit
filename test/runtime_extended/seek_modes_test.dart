@@ -34,5 +34,23 @@ void main() {
       await player.seekToPercent(25, exact: true);
       await waitNear(250); // 25% of the ~1s fixture
     }, timeout: const Timeout(Duration(seconds: 25)));
+
+    test('an absolute seek before the start goes to the start', () async {
+      final player = await buildPlayerWithFixture(fixturePath: fx);
+      addTearDown(player.dispose);
+      await player.seek(const Duration(milliseconds: 700), exact: true);
+      await waitUntil(() => player.state.position.inMilliseconds > 600);
+      // An app's "back 15 s" near the start: mpv alone counts a negative
+      // absolute time from the end of the file.
+      final restarted = player.stream.seekCompleted.first.timeout(
+        const Duration(seconds: 5),
+      );
+      await player.seek(const Duration(milliseconds: -200), exact: true);
+      await restarted;
+      await waitUntil(
+        () => player.state.position.inMilliseconds < 100,
+        reason: 'expected the start, was ${player.state.position}',
+      );
+    }, timeout: const Timeout(Duration(seconds: 25)));
   });
 }

@@ -57,6 +57,36 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
 
+    group('setChapter out of range', () {
+      late Player player;
+
+      setUpAll(() async {
+        player = await buildPlayer();
+        final chaptersReady = player.stream.chapters
+            .firstWhere((c) => c.length == 3)
+            .timeout(const Duration(seconds: 5));
+        await openAndWaitForLoad(player, chapterPath);
+        if (player.state.chapters.length != 3) await chaptersReady;
+      });
+
+      tearDownAll(() async {
+        await player.dispose();
+      });
+
+      test('throws instead of clamping', () async {
+        // "Next chapter" past the last one.
+        await expectLater(
+          player.setChapter(3),
+          throwsA(isA<MpvCommandException>()),
+        );
+        await expectLater(
+          player.setChapter(-5),
+          throwsA(isA<MpvCommandException>()),
+        );
+        expect(player.state.currentChapter, isNot(3));
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
+
     group('setChapters on a file without chapters', () {
       late Player player;
 
@@ -100,6 +130,23 @@ void main() {
           () async => await player.getRawProperty('chapters') == '0',
           reason: 'an empty list must clear mpv\'s chapters',
         );
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('the state keeps the markers mpv took', () async {
+        // A fresh load: after setChapter(1) above, a shorter list makes
+        // libmpv r17 read chapter-metadata past its array (a crash).
+        await openAndWaitForLoad(player, plainPath);
+        const intro = Chapter(time: Duration.zero, title: 'Intro');
+        await player.setChapters(const [intro]);
+        // mpv drops a marker past the end of the 5 s file. What it keeps
+        // equals its list before, so no change is reported after it.
+        await player.setChapters(const [
+          intro,
+          Chapter(time: Duration(seconds: 20), title: 'Past the end'),
+        ]);
+        expect(await player.getRawProperty('chapters'), '1');
+        expect(player.state.chapters, const [intro]);
+        await player.setChapters(const []);
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });

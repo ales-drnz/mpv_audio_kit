@@ -452,8 +452,10 @@ mixin _AudioModule on _PlayerBase {
   /// A [RawAudioEffect] carries a lavfi entry written by hand, for
   /// expression-based filters or anything without a typed effect. The
   /// chain is the only writer of mpv's `af` property: raw writes via
-  /// `setRawProperty('af', ...)` are rejected, and any pre-existing `af`
-  /// value (e.g. from `mpv.conf`) is overridden by the first call here.
+  /// `setRawProperty('af', ...)` are rejected. An `af` value already
+  /// there, such as the chain a resume point saved by 0.5.1 or earlier
+  /// brings back with its file, is replaced by the first call here, and
+  /// after that call at every load.
   ///
   /// ```dart
   /// await player.setAudioEffects([
@@ -481,7 +483,7 @@ mixin _AudioModule on _PlayerBase {
   /// The last list mpv accepted, through `af set` or a whole diff of
   /// `af-command`s: what it plays when a later write is refused, and so
   /// what the state rolls back to. `null` until the first write, which
-  /// always goes through to override any `af` from `mpv.conf`, even empty.
+  /// always goes through to override an `af` already there, even empty.
   List<AudioEffect>? _afAccepted;
 
   /// The af-command diffs sent, and how many of them a chain write that
@@ -504,6 +506,13 @@ mixin _AudioModule on _PlayerBase {
   /// before it looks at [_afAccepted]: an empty diff has no reply to wait
   /// on and would otherwise settle ahead of an earlier write.
   Future<void> _afSettled = Future.value();
+
+  /// mpv's `af` as read right after the last chain write, in mpv's own
+  /// printing, or `null` when unknown: a file started between the write
+  /// and the read, or the read failed. The player is the only other
+  /// writer of `af`, so a different value at a load comes from a resume
+  /// point that still holds a chain.
+  String? _afHeld;
 
   /// Write + commit shared by [setAudioEffects] and [updateAudioEffects].
   /// The diff computation, the wire enqueue and the state commit are all
@@ -565,6 +574,16 @@ mixin _AudioModule on _PlayerBase {
   Future<int> _setAfChain(String chain) {
     final reply = _command(['af', 'set', chain]);
     _afWritesInFlight++;
+    // Queued right behind the write: mpv runs the two in order, so the
+    // read sees the chain the write left, refused or not, unless a file
+    // started in between and its resume point set `af`.
+    final starts = _fileStarts;
+    unawaited(
+      _getAsync('af', MpvFormat.mpvFormatString).then((r) {
+        final (rc, af) = r;
+        _afHeld = rc >= 0 && af is String && starts == _fileStarts ? af : null;
+      }),
+    );
     return reply.whenComplete(() => _afWritesInFlight--);
   }
 
@@ -576,6 +595,35 @@ mixin _AudioModule on _PlayerBase {
 
   @override
   void _onAfChainReset() => _resyncStaleAfChain();
+
+  /// A resume point written by 0.5.1 or earlier holds an `af` line, which
+  /// mpv applies as it loads the file. Once the player wrote a chain, a
+  /// chain it did not write gives way to the state's. Before that, a
+  /// chain already there stays until the first write, as documented on
+  /// [setAudioEffects].
+  @override
+  void _reassertAfChain() {
+    if (_afAccepted != null) unawaited(_reassertAfChainFor(_fileStarts));
+  }
+
+  Future<void> _reassertAfChainFor(int starts) async {
+    final (rc, af) = await _getAsync('af', MpvFormat.mpvFormatString);
+    // A newer load checks for itself.
+    if (rc < 0 || _disposed || starts != _fileStarts || af == _afHeld) return;
+    final sent = _afDiffsSent;
+    final effects = _state.audioEffects;
+    final setRc = await _setAfChain(audioEffectsChain(effects));
+    if (setRc < 0) {
+      _internalLog(
+        'Restoring the effects chain over a resume point failed: '
+        '${_errorString(setRc)}',
+        level: LogLevel.debug,
+      );
+      return;
+    }
+    _afAccepted = effects;
+    _afSynced(sent);
+  }
 
   @override
   void _onAudioReconfig() {

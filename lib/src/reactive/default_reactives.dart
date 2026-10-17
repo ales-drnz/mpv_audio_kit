@@ -251,8 +251,9 @@ class DefaultPropertyReactives {
     'mpv_audio_kit',
   );
 
-  /// Active audio output driver (`ao`).
-  final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('auto');
+  /// Requested audio output driver (`ao`); empty for mpv's automatic
+  /// choice.
+  final ReactiveProperty<String> audioDriver = ReactiveProperty<String>('');
 
   /// The effects chain, replaced atomically via `Player.setAudioEffects` or
   /// `updateAudioEffects`.
@@ -372,8 +373,7 @@ class DefaultPropertyReactives {
   /// infinite.
   final ReactiveProperty<int?> abLoopCount = ReactiveProperty<int?>(null);
 
-  /// Repetitions left in the active A-B loop (`remaining-ab-loops`); `null`
-  /// is infinite.
+  /// Jumps back to A left (`remaining-ab-loops`); `null` is infinite.
   final ReactiveProperty<int?> remainingAbLoops = ReactiveProperty<int?>(null);
 
   /// Whether a seek is currently in flight (`seeking`).

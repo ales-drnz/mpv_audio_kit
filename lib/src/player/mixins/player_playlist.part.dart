@@ -22,6 +22,43 @@ mixin _PlaylistModule on _PlayerBase {
     // stale and must not graft the old queue's entry onto the new one.
     final load = _snapshotLoad();
     await _gate();
+    await _addEntry(media, load);
+  }
+
+  /// Inserts [media] at [index] in the playlist: the entry there and the
+  /// ones after it move down by one, and [index] equal to the playlist
+  /// length appends, as [add] does. The current entry keeps playing.
+  ///
+  /// The per-entry options of [media] ride along as in [add]. To play it
+  /// next, pass `state.playlist.index + 1`.
+  ///
+  /// Throws [RangeError] if [index] is outside `0..length`.
+  Future<void> insert(int index, Media media) async {
+    _checkNotDisposed();
+    RangeError.checkNotNegative(index, 'index');
+    _validateLoadOptions(media);
+    // The same staleness rule as [add].
+    final load = _snapshotLoad();
+    await _gate();
+    // mpv's own count, as in [move]: the state can lag an add in flight.
+    final (rc, count) = await _getAsync(
+      'playlist-count',
+      MpvFormat.mpvFormatInt64,
+    );
+    if (_disposed) return;
+    RangeError.checkValueInInterval(
+      index,
+      0,
+      rc < 0 ? 0 : count as int,
+      'index',
+    );
+    await _addEntry(media, load, at: index);
+  }
+
+  /// The load of [add] and [insert]: resolves [media] and appends it, or
+  /// inserts it at [at]. An index past the end, after a concurrent remove,
+  /// appends in mpv.
+  Future<void> _addEntry(Media media, _LoadTicket load, {int? at}) async {
     _mediaCache[media.uri] = media;
     final resolved = _hold(await resolveUri(media.uri));
     if (load.superseded) {
@@ -29,19 +66,17 @@ mixin _PlaylistModule on _PlayerBase {
       return;
     }
     _mediaCache[resolved.uri] = media;
+    await _forgetFdResume(resolved);
     final opts = _buildLoadfileOptions(media);
     try {
-      if (opts.isEmpty) {
-        await _loadfile(['loadfile', resolved.uri, 'append'], media);
-      } else {
-        await _loadfile([
-          'loadfile',
-          resolved.uri,
-          'append',
-          '-1',
-          opts,
-        ], media);
-      }
+      await _loadfile([
+        'loadfile',
+        resolved.uri,
+        if (at == null) 'append' else 'insert-at',
+        // The options need the index argument (mpv 0.38+), -1 to append.
+        if (at != null) '$at' else if (opts.isNotEmpty) '-1',
+        if (opts.isNotEmpty) opts,
+      ], media);
     } catch (_) {
       // mpv refused the entry: nothing will ever read the source.
       await resolved.dispose?.call();
@@ -187,6 +222,7 @@ mixin _PlaylistModule on _PlayerBase {
     try {
       if (load.superseded) return;
       _mediaCache[resolved.uri] = media;
+      await _forgetFdResume(resolved);
       // Execute in-flight transport writes before the playlist surgery:
       // see [_settleWrites].
       await _settleWrites();
@@ -254,13 +290,25 @@ mixin _PlaylistModule on _PlayerBase {
   /// Playback stops; `state.playlist.items` becomes empty and
   /// `state.playing` becomes `false`. Use [remove] for selective
   /// clearing that keeps the active entry alive.
-  Future<void> clearPlaylist() async {
+  ///
+  /// With [keepCurrent] true only the other entries go: the current one
+  /// keeps playing as the only entry. With nothing current, both forms
+  /// empty the playlist. Either way an open, openAll or add still
+  /// resolving its source when this is called does not load.
+  Future<void> clearPlaylist({bool keepCurrent = false}) async {
     _checkNotDisposed();
     // Claim the load epoch synchronously so an in-flight open()/add()
     // can't repopulate the queue this call is clearing (see [Player.open]).
     final load = _claimLoad();
     await _gate();
-    _mediaCache.clear();
+    // The kept entry keeps its Media, under every URI it is cached by: the
+    // source resolver looks it up there when the entry loads again (a
+    // playlist loop).
+    final playlist = _state.playlist;
+    final current = keepCurrent && playlist.index >= 0
+        ? playlist.items.elementAtOrNull(playlist.index)
+        : null;
+    _mediaCache.removeWhere((_, media) => current == null || media != current);
     // Execute in-flight transport writes first; see [_settleWrites].
     await _settleWrites();
     if (load.superseded) return;
@@ -268,7 +316,7 @@ mixin _PlaylistModule on _PlayerBase {
     // explicit `playlist-remove current` makes the call match the
     // method name.
     await _commandChecked(['playlist-clear']);
-    if (load.superseded) return;
+    if (load.superseded || keepCurrent) return;
     // Fails when nothing is current (an idle player): nothing to clear then.
     await _command(['playlist-remove', 'current']);
   }

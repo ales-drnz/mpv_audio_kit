@@ -131,7 +131,11 @@ class _ApiProbe implements PlayerApi {
   Future<void> replace(int index, Media media) => _record('replace');
 
   @override
-  Future<void> clearPlaylist() => _record('clearPlaylist');
+  Future<void> insert(int index, Media media) => _record('insert');
+
+  @override
+  Future<void> clearPlaylist({bool keepCurrent = false}) =>
+      _record(keepCurrent ? 'clearPlaylist(keepCurrent)' : 'clearPlaylist');
 
   @override
   Future<void> setLoop(Loop loop) => _record('setLoop');
@@ -372,6 +376,23 @@ void main() {
         'setAudioBuffer',
         'setAudioStreamSilence',
         'setAudioNullUntimed',
+      ]);
+    });
+
+    test('playlist calls reachable through the interface', () async {
+      final api = _ApiProbe();
+      final PlayerApi typed = api;
+      await typed.add(const Media('a'));
+      await typed.insert(0, const Media('b'));
+      await typed.replace(0, const Media('c'));
+      await typed.clearPlaylist(keepCurrent: true);
+      await typed.clearPlaylist();
+      expect(api.calls, [
+        'add',
+        'insert',
+        'replace',
+        'clearPlaylist(keepCurrent)',
+        'clearPlaylist',
       ]);
     });
 

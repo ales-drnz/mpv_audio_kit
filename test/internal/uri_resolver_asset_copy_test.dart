@@ -71,6 +71,23 @@ void main() {
     expect(File(again.uri).readAsBytesSync(), payload);
   });
 
+  test(
+    'the name of an asset is the path of its copy, before any copy',
+    () async {
+      // Another key: this process never copied it, as after a relaunch.
+      const fresh = 'assets/fixtures/named.wav';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMessageHandler('flutter/assets', (ByteData? message) async {
+            return ByteData.sublistView(payload);
+          });
+      final name = await loadedName('asset:///$fresh');
+      expect(File(name).existsSync(), isFalse, reason: 'nothing was copied');
+      final resolved = await resolveUri('asset:///$fresh');
+      expect(name, resolved.uri);
+      File(resolved.uri).deleteSync();
+    },
+  );
+
   test('no partial file is left beside the copy', () async {
     final resolved = await resolveUri('asset://$key');
     final leftovers = File(

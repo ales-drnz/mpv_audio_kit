@@ -15,7 +15,7 @@ import 'analysis_poll_pipeline.dart';
 /// While the scan runs it emits `scanning` snapshots carrying a progress
 /// fraction on each poll. As soon as it reaches a terminal state (`ready`,
 /// `failed` or `unavailable`) the result is emitted via [stream] and the timer
-/// stops until the next track-change. On track change the player calls
+/// stops until the next file load. On every file load the player calls
 /// [reset]: the pipeline drops the current result, emits `null`, and
 /// rearms the timer if still enabled.
 @internal

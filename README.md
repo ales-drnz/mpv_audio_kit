@@ -631,7 +631,22 @@ await player.open(media);
 // Override auto-play for this call
 await player.open(media, play: true);
 await player.open(media, play: false); // Load but do not start
+
+// Start 12 minutes in, e.g. where the app saved the position
+await player.open(Media(path, start: const Duration(minutes: 12)));
+
+// A 30 second preview from 1:00: the entry ends at 1:30
+await player.open(Media(
+  url,
+  start: const Duration(minutes: 1),
+  end: const Duration(minutes: 1, seconds: 30),
+));
 ```
+
+`Media.start` and `Media.end` work the same way with `openAll`, `add` and
+`replace`, and hold each time the entry loads. An entry with an end
+finishes there as at the end of the file, while `duration` stays the
+length of the whole file.
 
 #### 3.2 Opening multiple tracks
 
@@ -654,6 +669,8 @@ await player.openPlaylistFile(Media('https://example.com/stations.m3u'));
 
 ```dart
 await player.add(newTrack);          // Append to end
+await player.insert(1, newTrack);    // Insert at index 1, before the track there
+await player.insert(player.state.playlist.index + 1, newTrack); // Play next
 await player.remove(0);              // Remove track at index 0
 await player.move(5, 0);             // Move track from index 5 to index 0
 await player.replace(2, newTrack);   // Replace track at index 2
@@ -661,6 +678,7 @@ await player.replace(2, newTrack);   // Replace track at index 2
 // An index out of range throws RangeError.
 
 await player.clearPlaylist();        // Remove all tracks (stops playback)
+await player.clearPlaylist(keepCurrent: true); // Keep only the track playing
 ```
 
 #### 3.4 Navigation
@@ -751,24 +769,26 @@ await player.seek(const Duration(seconds: 30), exact: true);
 // Percentage-based seeking (for progress-bar scrubbing)
 await player.seekToPercent(50); // jump to the half-way point (0 to 100)
 
-// Undo the last seek
+// Back to where the last jump started (a seek, a chapter, an A-B loop)
 await player.revertSeek();
 ```
 
 #### 4.3 A-B loop
 
 Loop between two points of the current track, for example to practice
-a passage or replay a sentence.
+a passage or replay a sentence. The points belong to that track: when it
+ends or another one loads, they go back to `null`. The count stays.
 
 ```dart
 // Set the A and B markers (null disables the marker)
 await player.setAbLoopA(const Duration(seconds: 30));
 await player.setAbLoopB(const Duration(seconds: 45));
 
-// Limit the number of repetitions; null = infinite
+// Jumps back to A after the first pass: 3 plays the section 4 times.
+// null = infinite, 0 = off.
 await player.setAbLoopCount(3);
 
-// Read remaining iterations (null = no loop or infinite)
+// Jumps back to A still to come (null = infinite)
 player.stream.remainingAbLoops.listen((n) => print('left: $n'));
 
 // Disable
@@ -837,7 +857,8 @@ await player.setAudioDelay(const Duration(milliseconds: -200));
 For audiobooks and podcasts, the player can save a resume point for the
 current file and restore it the next time that file is opened. Only
 audio-relevant properties are persisted (position, speed, pitch, volume,
-mute, audio delay, the effects chain and the selected track).
+mute, audio delay and the selected track). The effects chain is not: it
+belongs to the app, which can keep one per file if it wants.
 
 `PlayerConfiguration.resumePlayback` (default `true`), set when you
 create the player, restores a saved point when the file is opened again.
@@ -845,6 +866,17 @@ The player never saves one on its own: call `writeResumeConfig()`, for
 example when the app goes to the background or the user pauses. Point
 `watchLaterDir` at an app-writable directory on mobile; the platform
 default is often not writable.
+
+When the app keeps the position itself, `Media.start` is enough, with no
+watch later at all:
+
+```dart
+await player.open(Media(path, start: savedPosition));
+```
+
+Watch later is for when mpv saves the point. When both apply, `start`
+wins over the saved position, and the other saved values (speed, volume
+and so on) still apply. mpv deletes a resume point once a load used it.
 
 ```dart
 final player = Player(
@@ -861,6 +893,16 @@ await player.writeResumeConfig();
 await player.deleteResumeConfig();
 await player.deleteResumeConfig(filename: '/music/audiobook.m4b');
 ```
+
+mpv keys a resume point by the name of the file. Give `deleteResumeConfig`
+the URI you gave `open`: a `file://` or `asset://` URI stands for the path
+the load passes to mpv. A URL whose token changes, such as an API key after
+a new login, gets a new key each time; with a source resolver
+([12.4](#124-the-source-resolver)) the key is the URI of the `Media`, which
+stays the same. On Android a `content://` source has no resume point: it
+plays from a file descriptor, whose number the system gives to other files
+later. `writeResumeConfig()` writes nothing for it, and a point saved under
+that number by an older version is deleted before the load.
 
 ---
 
@@ -1791,7 +1833,7 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `audioOutParams` | `AudioParams` | - | Sent to the output |
 | `audioBitrate` | `double?` | - |  |
 | `audioOutputState` | `AudioOutputState` | - | See [11.3](#113-audio-output-lifecycle) |
-| `audioDriver` | `String` | `setAudioDriver` |  |
+| `audioDriver` | `String` | `setAudioDriver` | Empty for the automatic choice |
 | `audioExclusive` | `bool` | `setAudioExclusive` |  |
 | `audioBuffer` | `Duration` | `setAudioBuffer` |  |
 | `audioStreamSilence` | `bool` | `setAudioStreamSilence` |  |
@@ -1866,10 +1908,10 @@ if (i >= 0 && i < s.playlist.items.length) {
 
 | Stream | Type | Set with | Notes |
 | :--- | :--- | :--- | :--- |
-| `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` |  |
-| `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` |  |
-| `abLoopCount` | `int?` (`null` = infinite) | `setAbLoopCount` |  |
-| `remainingAbLoops` | `int?` (`null` when no loop or infinite) | - | Counts down |
+| `abLoopA` | `Duration?` (`null` = disabled) | `setAbLoopA` | Back to `null` when the file ends |
+| `abLoopB` | `Duration?` (`null` = disabled) | `setAbLoopB` | Back to `null` when the file ends |
+| `abLoopCount` | `int?` (`null` = infinite, `0` = off) | `setAbLoopCount` |  |
+| `remainingAbLoops` | `int?` (`null` when infinite) | - | Counts down, from `abLoopCount` at each load |
 
 #### 9.11 Cover art streams
 
@@ -1954,7 +1996,7 @@ and examples.
 | `fft` | `FftFrame` | - | Smoothed FFT bands and raw bins, for a bar visualizer. |
 | `pcm` | `PcmFrame` | - | Samples after the effects chain, for a waveform or a level meter. |
 | `spectrum` | `SpectrumSettings` | `setSpectrum`, `updateSpectrum` | The FFT and smoothing settings. |
-| `waveform` | `WaveformData?` | - | Envelope of the loaded track, `null` on a track change until the first bins. |
+| `waveform` | `WaveformData?` | - | Envelope of the loaded track, `null` at each file load until the first bins. |
 | `loudnessScan` | `LoudnessScan?` | - | Integrated loudness, range, sample and true peak of the loaded track, with its progress. |
 | `loudnessMeter` | `Loudness` | - | Live momentary, short-term, integrated and range readings from an `Ebur128Effect`. |
 
@@ -2119,8 +2161,12 @@ player.stream.audioOutputState.listen((state) {
 });
 ```
 
-When the state turns `failed`, `player.stream.error` also emits a
-`LogError`, so one error listener covers the silent case too.
+When no device can be opened, mpv usually falls back to the null output
+instead: the state turns `active`, the position runs and nothing is heard.
+`player.stream.error` emits a `LogError` once for each such opening, and
+also when the state turns `failed`, so one error listener covers the
+silent cases. A null output the app chose with `setAudioDriver('null')`
+is no error.
 
 #### 11.4 Log streams
 
@@ -2524,7 +2570,7 @@ uses the same decode.
 
 ```dart
 player.stream.waveform.listen((wave) {
-  if (wave == null) return; // null on track change, until the first bins land
+  if (wave == null) return; // null at each file load, until the first bins land
   // wave.min and wave.max: Float32List, range [-1, +1], wave.bins long.
   // wave.rms: Float32List?, range [0, 1], same length.
   // Bin i covers wave.duration * i / wave.bins to wave.duration * (i + 1) / wave.bins
@@ -2557,7 +2603,7 @@ player.stream.loudnessScan.listen((scan) {
 });
 ```
 
-The stream emits `null` when the track changes, so old results clear.
+The stream emits `null` each time a file loads, so old results clear.
 Sources that can only be decoded as they play (adaptive or live network
 streams) report `LoudnessScanState.unavailable`: use the live meter below
 for those. Like the waveform, the scan stays on while a player of the same

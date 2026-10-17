@@ -425,6 +425,11 @@ class PlayerStream {
   /// in the success path, `→ failed` if `ao_init_best()` returns a
   /// NULL handle. A typed [LogError] is emitted on [error] the
   /// moment this stream emits [AudioOutputState.failed].
+  ///
+  /// When no device can be opened mpv usually opens the null output
+  /// instead, and this stream says [AudioOutputState.active] while
+  /// nothing is heard. Then [error] gets a [LogError] once for that
+  /// opening, unless the app chose the null driver itself.
   final Stream<AudioOutputState> audioOutputState;
 
   /// The effects chain: the ordered list of stages in mpv's `af`
@@ -548,20 +553,21 @@ class PlayerStream {
   /// `stream-open-filename`.
   final Stream<String> streamOpenFilename;
 
-  /// A-B loop start point. `null` when disabled. Set via
-  /// [Player.setAbLoopA].
+  /// A-B loop start point. `null` when disabled, and again once the file
+  /// it was set on ends. Set via [Player.setAbLoopA].
   final Stream<Duration?> abLoopA;
 
-  /// A-B loop end point. `null` when disabled. Set via
-  /// [Player.setAbLoopB].
+  /// A-B loop end point. `null` when disabled, and again once the file it
+  /// was set on ends. Set via [Player.setAbLoopB].
   final Stream<Duration?> abLoopB;
 
-  /// Total A-B loop repetitions. `null` = infinite. Set via
-  /// [Player.setAbLoopCount].
+  /// How many times playback jumps back to A after the first pass.
+  /// `null` = infinite, `0` = off. Set via [Player.setAbLoopCount].
   final Stream<int?> abLoopCount;
 
-  /// Remaining A-B loop repetitions in the active loop. `null` when no
-  /// loop is active or count is infinite. Read-only; mirrors mpv's
+  /// How many more times playback will jump back to A. `null` only when
+  /// the count is infinite; it starts from [abLoopCount] at every load and
+  /// every change of A, B or the count. Read-only; mirrors mpv's
   /// `remaining-ab-loops`.
   final Stream<int?> remainingAbLoops;
 
@@ -716,8 +722,8 @@ class PlayerStream {
   /// across the full track duration. Use for a static full-track
   /// overview strip with click-to-seek.
   ///
-  /// Emits `null` on every track-change boundary (so renderers can
-  /// clear stale data), then the envelope. A local file is decoded in the
+  /// Emits `null` each time a file loads, the same file loaded again
+  /// included (so renderers can clear stale data), then the envelope. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
   /// the final one. An HTTP file that plays from its start is decoded from
   /// mpv's cache as it downloads, the same way. Adaptive, non-seekable or
@@ -788,8 +794,8 @@ class PlayerStream {
   /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track
   /// (`ready`, `failed`, or `unavailable` for sources that can only be
   /// measured during playback, such as adaptive or live streams; use
-  /// [loudnessMeter] there), and `null` on the track-change boundary so
-  /// stale results clear.
+  /// [loudnessMeter] there), and `null` each time a file loads, the same
+  /// file loaded again included, so stale results clear.
   ///
   /// **Lazy**: the native scan runs only while a listener is
   /// attached; an idle stream costs nothing. Like the [waveform]

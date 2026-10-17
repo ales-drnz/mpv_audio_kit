@@ -33,18 +33,19 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 /// final local = Media('file:///home/user/music/song.flac');
 /// final asset = Media('asset:///assets/audio/sample.mp3');
 ///
-/// // Attach arbitrary data to a track (available via Player.state.playlist).
+/// // Attach arbitrary data to a track (available via Player.state.playlist),
+/// // and start it 5 minutes in.
 /// final rich = Media(
 ///   'https://cdn.example.com/episode-42.mp3',
 ///   extras: {
-///     'title':   'Episode 42',
-///     'artist':  'The Podcast',
-///     'art':     'https://cdn.example.com/art.jpg',
-///     'startAt': Duration(minutes: 5),
+///     'title':  'Episode 42',
+///     'artist': 'The Podcast',
+///     'art':    'https://cdn.example.com/art.jpg',
 ///   },
 ///   httpHeaders: {
 ///     'User-Agent': 'mpv_audio_kit',
 ///   },
+///   start: Duration(minutes: 5),
 /// );
 ///
 /// // Opt in to chunked range requests so a throttling CDN (YouTube or
@@ -53,9 +54,10 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 /// ```
 ///
 /// Equality compares every field ([uri], [extras], [httpHeaders],
-/// [httpChunkSize] and [demuxerLavfOptions]), so two instances that differ
-/// in any of them are not equal: useful when diffing playlists for
-/// re-render decisions. The maps compare by content, their values by `==`.
+/// [httpChunkSize], [demuxerLavfOptions], [start] and [end]), so two instances
+/// that differ in any of them are not equal: useful when diffing playlists
+/// for re-render decisions. The maps compare by content, their values by
+/// `==`.
 final class Media {
   /// The URI of the media resource.
   ///
@@ -121,15 +123,56 @@ final class Media {
   /// playlist entries. Must be positive when set.
   final int? httpChunkSize;
 
+  /// Where this entry starts playing, as a time from the start of the
+  /// file (mpv's per-file `start`). `null` (default) starts at the
+  /// beginning, or at a resume point saved for the file.
+  ///
+  /// It holds each time the entry loads: going back to it with
+  /// [Player.previous] or [Player.jump], or a playlist loop, starts it here
+  /// again. [Loop.file] and [Player.play] at the end of the queue start the
+  /// file from its beginning. It wins over a resume point saved with
+  /// [Player.writeResumeConfig], whose other values (speed, volume and so
+  /// on) still apply, and the load uses that point up as any resume does.
+  /// With [Player.setPrefetchPlaylist] on, an entry whose
+  /// options differ from the playing entry's, a start included, is not
+  /// opened ahead from libmpv-r18 on, so the change to it is not gapless.
+  ///
+  /// Must not be negative. Past the end of the file the entry ends at
+  /// once. Like the other per-entry options it does not apply to
+  /// [Player.openPlaylistFile], and a live [PcmSource] entry refuses it:
+  /// it plays from its first chunk.
+  final Duration? start;
+
+  /// Where this entry stops, as a time from the start of the file (mpv's
+  /// per-file `end`). `null` (default) plays the file to its end. For a
+  /// preview, or a section of a long file queued as an entry of its own.
+  ///
+  /// The entry ends there as at the end of the file: the playlist moves
+  /// on, or the last entry parks and [PlayerState.completed] turns true.
+  /// [PlayerState.duration], `timeRemaining` and `percentPos` still
+  /// describe the whole file. [Loop.file] and [Player.play] at the end of
+  /// the queue start the file again from its beginning, and stop at [end]
+  /// again. With [Player.setPrefetchPlaylist] on, an entry with an end is
+  /// opened ahead only from libmpv-r18 on when the playing entry has the
+  /// same options, and the entry after one that ends early only once mpv
+  /// has read its file to the end.
+  ///
+  /// Must be later than [start], or than zero when [start] is null. Like
+  /// [start] it does not apply to [Player.openPlaylistFile], and a live
+  /// [PcmSource] entry refuses it.
+  final Duration? end;
+
   /// Creates an immutable media item for [uri], with optional consumer
-  /// [extras], per-request [httpHeaders] and [httpChunkSize], and
-  /// per-entry [demuxerLavfOptions].
+  /// [extras], per-request [httpHeaders] and [httpChunkSize], per-entry
+  /// [demuxerLavfOptions], and the [start] and [end] of what it plays.
   const Media(
     this.uri, {
     this.extras,
     this.httpHeaders,
     this.httpChunkSize,
     this.demuxerLavfOptions,
+    this.start,
+    this.end,
   });
 
   /// Whether this media is a live PCM input made by `PcmSource.toMedia`
@@ -138,14 +181,17 @@ final class Media {
   bool get isPcmStream => uri.startsWith('mak-pcm://');
 
   /// Returns a copy with the given fields replaced. Pass `null` for
-  /// [extras], [httpHeaders], [httpChunkSize] or [demuxerLavfOptions] to
-  /// clear them; omitted fields keep their current value.
+  /// [extras], [httpHeaders], [httpChunkSize], [demuxerLavfOptions],
+  /// [start] or [end] to clear them; omitted fields keep their current
+  /// value.
   Media copyWith({
     String? uri,
     Object? extras = unset,
     Object? httpHeaders = unset,
     Object? httpChunkSize = unset,
     Object? demuxerLavfOptions = unset,
+    Object? start = unset,
+    Object? end = unset,
   }) => Media(
     uri ?? this.uri,
     extras: identical(extras, unset)
@@ -160,6 +206,8 @@ final class Media {
     demuxerLavfOptions: identical(demuxerLavfOptions, unset)
         ? this.demuxerLavfOptions
         : demuxerLavfOptions as Map<String, String>?,
+    start: identical(start, unset) ? this.start : start as Duration?,
+    end: identical(end, unset) ? this.end : end as Duration?,
   );
 
   @override
@@ -168,6 +216,8 @@ final class Media {
       (other is Media &&
           other.uri == uri &&
           other.httpChunkSize == httpChunkSize &&
+          other.start == start &&
+          other.end == end &&
           _mapEqDyn(extras, other.extras) &&
           _mapEq(httpHeaders, other.httpHeaders) &&
           _mapEq(demuxerLavfOptions, other.demuxerLavfOptions));
@@ -176,6 +226,8 @@ final class Media {
   int get hashCode => Object.hash(
     uri,
     httpChunkSize,
+    start,
+    end,
     extras == null
         ? null
         : Object.hashAllUnordered(
@@ -202,6 +254,7 @@ final class Media {
         : '{${httpHeaders!.keys.map((k) => '$k: <redacted>').join(', ')}}';
     return 'Media(uri: $uri, extras: $extras, '
         'httpHeaders: $headers, httpChunkSize: $httpChunkSize, '
-        'demuxerLavfOptions: $demuxerLavfOptions)';
+        'demuxerLavfOptions: $demuxerLavfOptions, start: $start, '
+        'end: $end)';
   }
 }
