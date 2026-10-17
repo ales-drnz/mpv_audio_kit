@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
+# All rights reserved.
+# Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
+#
+# A stand-in for the GitHub CLI in the CI script tests. It answers only
+# `gh api <path> [--jq <filter>]`, from fixtures under $FAKE_GH:
+#   runs/<sha>.json     the ci.yml runs of a commit (none by default); an
+#                       event= in the query keeps only that event, as
+#                       GitHub does
+#   run/<id>.json       a workflow run of another repository (404 by default)
+#   release/<tag>.json  a release (404 by default)
+# A file $FAKE_GH/down fails every call the way a network error does, and
+# a token listed in $FAKE_GH/expired is refused with a 401. Like gh, an
+# HTTP error writes its JSON body to stdout and "gh: ... (HTTP n)" to
+# stderr. Each call is logged to $FAKE_GH/calls as "<GH_TOKEN> <args>".
+set -euo pipefail
+
+root="${FAKE_GH:?FAKE_GH is not set}"
+printf '%s %s\n' "${GH_TOKEN:-}" "$*" >> "$root/calls"
+
+fail() { # status, message
+  printf '{"message":"%s","status":"%s"}\n' "$2" "$1"
+  echo "gh: $2 (HTTP $1)" >&2
+  exit 1
+}
+
+if [[ -e "$root/down" ]]; then
+  echo "error connecting to api.github.com" >&2
+  exit 1
+fi
+if [[ "${1:-}" != api ]]; then
+  echo "fake gh: unexpected call: $*" >&2
+  exit 99
+fi
+shift
+path=""
+filter=""
+while (( $# )); do
+  case "$1" in
+    --jq) filter="$2"; shift 2 ;;
+    -*) echo "fake gh: unexpected flag $1" >&2; exit 99 ;;
+    *) path="$1"; shift ;;
+  esac
+done
+
+if [[ -n "${GH_TOKEN:-}" && -f "$root/expired" ]] &&
+  grep -qxF -- "$GH_TOKEN" "$root/expired"; then
+  fail 401 "Bad credentials"
+fi
+
+query="${path#*\?}"
+[[ "$query" == "$path" ]] && query=""
+param() { sed -n "s/.*\(^\|&\)$1=\([^&]*\).*/\2/p" <<<"$query"; }
+
+case "${path%%\?*}" in
+  repos/*/actions/workflows/ci.yml/runs)
+    file="$root/runs/$(param head_sha).json"
+    event="$(param event)"
+    body='{"total_count":0,"workflow_runs":[]}'
+    [[ -f "$file" ]] && body="$(cat "$file")"
+    if [[ -n "$event" ]]; then
+      body="$(jq --arg e "$event" '.workflow_runs |= map(select(.event == $e))' <<<"$body")"
+    fi
+    ;;
+  repos/*/actions/runs/*)
+    file="$root/run/${path##*/}.json"
+    [[ -f "$file" ]] || fail 404 "Not Found"
+    body="$(cat "$file")"
+    ;;
+  repos/*/releases/tags/*)
+    file="$root/release/${path##*/}.json"
+    [[ -f "$file" ]] || fail 404 "Not Found"
+    body="$(cat "$file")"
+    ;;
+  *)
+    echo "fake gh: unexpected path: $path" >&2
+    exit 99
+    ;;
+esac
+
+if [[ -n "$filter" ]]; then
+  jq -r "$filter" <<<"$body"
+else
+  printf '%s\n' "$body"
+fi

@@ -90,6 +90,10 @@ jobs:
             git diff -- lib/src/generated test/generated | head -200
             exit 1
           fi
+      # The scripts of the changes job, against a fake gh (test/ci).
+      - name: CI script tests
+        if: matrix.flutter == 'any'
+        run: for t in test/ci/*_test.sh; do bash "$t"; done
 
   test-linux:
     name: Test (Linux)
