@@ -113,6 +113,105 @@ void main() {
         ),
       );
     });
+
+    ChorusEffect voice({
+      String delays = '40',
+      String decays = '0.4',
+      String speeds = '0.25',
+      String depths = '2',
+    }) => ChorusEffect(
+      delays: delays,
+      decays: decays,
+      speeds: speeds,
+      depths: depths,
+    );
+
+    test('values out of the range chorus can run are refused', () {
+      // A negative or NaN depth, or a speed of 0 or above the sample rate,
+      // puts the modulation index outside the delay line.
+      _refused(voice(depths: '-2'));
+      _refused(voice(depths: 'nan'));
+      _refused(voice(delays: '-40'));
+      _refused(voice(speeds: '0'));
+      _refused(voice(speeds: '50000'));
+      _refused(voice(speeds: 'inf'));
+      _refused(voice(decays: 'NaN'));
+      _refused(voice(delays: '1e39'));
+      _refused(
+        const ChorusEffect(
+          delays: '',
+          decays: '',
+          speeds: '',
+          depths: '',
+        ).withVoices(const [
+          ChorusVoice(delayMs: 40, decay: 0.4, depthMs: 0 / 0, speedHz: 0.25),
+        ]),
+      );
+    });
+
+    test('the edges of that range pass', () {
+      _accepted(voice(delays: '0', depths: '0'));
+      _accepted(voice(speeds: '100'));
+      _accepted(voice(speeds: '0.001'));
+    });
+  });
+
+  group('aecho', () {
+    AechoEffect taps(String delays, String decays) =>
+        AechoEffect(delays: delays, decays: decays);
+
+    test('NaN and values out of range are refused', () {
+      // aecho checks `delay <= 0 || delay > 90000`, false for NaN, then
+      // indexes its buffer with (int)NaN.
+      _refused(
+        const AechoEffect().withTaps(const [
+          AechoTap(delayMs: 500, decay: 0.5),
+          AechoTap(delayMs: double.nan, decay: 0.5),
+        ]),
+      );
+      _refused(taps('1000|nan', '0.5|0.5'));
+      _refused(taps('1000', 'nan'));
+      _refused(taps('inf', '0.5'));
+      _refused(taps('0', '0.5'));
+      _refused(taps('90001', '0.5'));
+      _refused(taps('1000', '1.5'));
+      _refused(taps('1000', '0'));
+    });
+
+    test('the edges of the range pass, read as floats like aecho', () {
+      _accepted(taps('90000', '1'));
+      // 90000.001 is 90000 as a float.
+      _accepted(taps('90000.001', '1.00000001'));
+      _accepted(taps('0.001', '0.001'));
+    });
+  });
+
+  group('anequalizer', () {
+    test('a band with a NaN or infinite value is refused', () {
+      // anequalizer checks `freq < 0 || freq > rate / 2`, false for NaN,
+      // and does not check width and gain: the band's coefficients turn
+      // to NaN.
+      _refused(const AnequalizerEffect(params: 'c0 f=nan w=100 g=6 t=0'));
+      _refused(const AnequalizerEffect(params: 'c0 f=1000 w=inf g=6'));
+      _refused(
+        const AnequalizerEffect(
+          params: 'c0 f=1000 w=100 g=6|c1 f=1000 w=100 g=-nan',
+        ),
+      );
+      _refused(
+        const AnequalizerEffect().withBands(const [
+          AnequalizerBand(frequency: 1000, bandwidth: 100, gain: double.nan),
+        ]),
+      );
+    });
+
+    test('finite bands pass, whatever their range', () {
+      _accepted(
+        const AnequalizerEffect(
+          params: 'c0 f=1000 w=100 g=-6 t=1|c1 f=30000 w=100 g=6',
+        ),
+      );
+    });
   });
 
   group('the effects manifest', () {

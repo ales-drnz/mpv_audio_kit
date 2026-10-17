@@ -421,8 +421,15 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Throws [ArgumentError], before anything reaches mpv and with the
   /// state unchanged, when a stage holds a value its filter would take and
-  /// then read or write out of its buffers with: chorus lists with
-  /// different numbers of voices. A [RawAudioEffect] is not checked.
+  /// then read or write out of its buffers with, or turn the audio to NaN
+  /// with:
+  /// - chorus lists with different numbers of voices, a negative or NaN
+  ///   delay or depth, or a speed that is not above 0 and at most 100 Hz;
+  /// - aecho delays that are not above 0 and at most 90000 ms, or decays
+  ///   that are not above 0 and at most 1;
+  /// - an anequalizer band value that is NaN or infinite.
+  ///
+  /// A [RawAudioEffect] is not checked.
   ///
   /// A [RawAudioEffect] carries a lavfi entry written by hand, for
   /// expression-based filters or anything without a typed effect. The

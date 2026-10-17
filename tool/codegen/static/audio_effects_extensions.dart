@@ -18,11 +18,11 @@ import 'audio_effects_settings.dart';
 /// transient, attenuated by [decay]. Several taps in series produce
 /// the classic multi-tap echo (think spring reverb fingerprint).
 final class AechoTap {
-  /// Delay in milliseconds.
+  /// Delay in milliseconds, above 0 and at most 90000.
   final double delayMs;
 
-  /// Decay factor in `[0, 1]`. `1.0` = no attenuation, `0.5` =
-  /// half-amplitude.
+  /// Decay factor, above 0 and at most 1. `1.0` = no attenuation,
+  /// `0.5` = half-amplitude.
   final double decay;
 
   /// Creates an [AechoTap].
@@ -82,16 +82,17 @@ extension AechoTapsX on AechoEffect {
 /// Each [ChorusVoice] is one of those copies with its own delay,
 /// decay, modulation depth, and modulation rate.
 final class ChorusVoice {
-  /// Delay in milliseconds (typical chorus range: 30..50 ms).
+  /// Delay in milliseconds, 0 or more (typical chorus range: 30..50 ms).
   final double delayMs;
 
   /// Decay factor in `[0, 1]`.
   final double decay;
 
-  /// LFO modulation depth in milliseconds.
+  /// LFO modulation depth in milliseconds, 0 or more.
   final double depthMs;
 
-  /// LFO modulation rate in Hz (typical chorus range: 0.1..1 Hz).
+  /// LFO modulation rate in Hz, above 0 and at most 100 (typical chorus
+  /// range: 0.1..1 Hz).
   final double speedHz;
 
   /// Creates a [ChorusVoice].
