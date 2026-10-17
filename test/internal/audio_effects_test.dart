@@ -287,6 +287,28 @@ void main() {
         'aek_agate_0 ratio',
       ]);
     });
+
+    // adelay's command sets absolute delays on lines its setup already
+    // shortened by the common padding, ignores `all`, does nothing on a
+    // filter created without delays, and skips the size check.
+    test('an adelay delays change needs a rebuild', () {
+      const cases = <(AdelayEffect, AdelayEffect)>[
+        (AdelayEffect(delays: '500|500'), AdelayEffect(delays: '600|600')),
+        (AdelayEffect(), AdelayEffect(delays: '500')),
+        (AdelayEffect(delays: '500'), AdelayEffect()),
+        (
+          AdelayEffect(all: true, delays: '500'),
+          AdelayEffect(all: true, delays: '600'),
+        ),
+      ];
+      for (final (from, to) in cases) {
+        expect(
+          audioEffectsDiff([from], [to]),
+          isNull,
+          reason: '${from.delays} to ${to.delays}',
+        );
+      }
+    });
   });
 
   group('Enum.fromMpv non-throwing fallback', () {

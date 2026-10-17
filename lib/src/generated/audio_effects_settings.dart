@@ -1398,7 +1398,7 @@ final class AdecorrelateEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [all]: Use last set delay for all remaining channels. By default is disabled. This option if enabled changes how option `delays` is interpreted. (range 0..1, default 0)
-/// - [delays]: Set list of delays in milliseconds for each channel separated by '|'. Unused delays will be silently ignored. If number of given delays is smaller than number of channels all remaining channels will not be delayed. If you want to delay exact number of samples, append 'S' to number. If you want instead to delay in seconds, append 's' to number. (range 0..0, default "", runtime-tunable)
+/// - [delays]: Set list of delays in milliseconds for each channel separated by '|'. Unused delays will be silently ignored. If number of given delays is smaller than number of channels all remaining channels will not be delayed. If you want to delay exact number of samples, append 'S' to number. If you want instead to delay in seconds, append 's' to number. (range 0..0, default "")
 final class AdelayEffect extends AudioEffect {
   /// Whether this effect is applied. `false` keeps it in the
   /// list, with its settings, without inserting it in the chain.
@@ -1462,9 +1462,7 @@ final class AdelayEffect extends AudioEffect {
   List<(String, String)>? _runtimeDiff(covariant AdelayEffect prev) {
     final out = <(String, String)>[];
     if (all != prev.all) return null;
-    if (delays != prev.delays) {
-      out.add(('delays', delays));
-    }
+    if (delays != prev.delays) return null;
     return out;
   }
 }

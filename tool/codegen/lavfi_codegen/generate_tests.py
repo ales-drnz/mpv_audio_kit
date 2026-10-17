@@ -854,10 +854,9 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
 # Hand-picked af-command probes: a baseline constructor argument and the
 # (option, new value) updates to send. A curated probe replaces the one
 # derived from the schema for the same option. Used where no safe value can
-# be derived: options that are free strings (adelay, firequalizer), and a
-# default the filter cannot take live (equalizer).
+# be derived: options that are free strings (firequalizer), and a default
+# the filter cannot take live (equalizer).
 _AF_COMMAND_CURATED_CASES: dict[str, dict] = {
-    "adelay": {"baseline_args": ", delays: '100'", "updates": [("delays", "'400'")]},
     "firequalizer": {"baseline_args": "", "updates": [("gain", "'0'")]},
     # The default frequency is 0 Hz, which the biquad takes at creation as a
     # bypass but refuses in a command (w0 <= 0 is EINVAL), so re-arming the

@@ -24,7 +24,7 @@
 // Enum, duration and free-string options have no schema-derivable safe
 // alternate value and are skipped (string-only filters carry curated
 // hand-probed values instead). Command-capable filters with NO
-// runtime-tunable options (anequalizer, compensationdelay) can never
+// runtime-tunable options (adelay, anequalizer, compensationdelay) can never
 // receive a diff command, so there is nothing to validate for them.
 
 @TestOn('mac-os || linux || windows')
@@ -207,19 +207,6 @@ void main() {
                 label: 'samples=2.0',
                 apply: (e) => [
                   (e.single as AcrusherEffect).copyWith(samples: 2.0),
-                ],
-              ),
-            ],
-          ),
-          (
-            filter: 'adelay',
-            field: 'adelay_0',
-            bundle: const [AdelayEffect(delays: '100')],
-            updates: <AfCommandUpdate>[
-              (
-                label: 'delays=400',
-                apply: (e) => [
-                  (e.single as AdelayEffect).copyWith(delays: '400'),
                 ],
               ),
             ],

@@ -175,6 +175,11 @@ NOT_LIVE = {
     # af_afreqshift.c config_input computes the coefficients for the order.
     "afreqshift": ["order"],
     "aphaseshift": ["order"],
+    # af_adelay.c process_command sets absolute delays on lines config_input
+    # already shortened by the common padding, ignores `all`, does nothing
+    # on a filter created without delays and skips the size check that
+    # config_input makes.
+    "adelay": ["delays"],
 }
 
 
