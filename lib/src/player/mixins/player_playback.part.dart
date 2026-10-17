@@ -84,8 +84,21 @@ mixin _PlaybackModule on _PlayerBase {
   /// Pairs with [PlayerConfiguration.resumePlayback] (on by default) and
   /// [PlayerConfiguration.watchLaterDir]. On mobile, set `watchLaterDir` to a
   /// writable path or the write silently fails.
+  ///
+  /// An Android `content://` source has no resume point: it plays from a
+  /// file descriptor, whose number the system gives again to other files.
+  /// For it the call writes nothing and says so on
+  /// [PlayerStream.internalLog].
   Future<void> writeResumeConfig() async {
     await _gate();
+    final (rc, path) = await _getAsync('path', MpvFormat.mpvFormatString);
+    if (rc >= 0 && path is String && isFdUri(path)) {
+      _internalLog(
+        'No resume point for $path: a descriptor number names another '
+        'file once it is closed.',
+      );
+      return;
+    }
     await _commandChecked(['write-watch-later-config']);
   }
 

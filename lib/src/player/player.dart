@@ -209,6 +209,7 @@ class Player extends _PlayerBase
       return;
     }
     _mediaCache[resolved.uri] = media;
+    await _forgetFdResume(resolved);
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
     // the replace below, so they apply to the OLD file; see [_settleWrites].
     await _settleWrites();
@@ -343,6 +344,7 @@ class Player extends _PlayerBase
         }
         _mediaCache[r.uri] = m;
         resolved.add(r);
+        await _forgetFdResume(r);
       }
     } catch (_) {
       // Mid-loop failure: dispose the partially-resolved entries to
@@ -735,6 +737,18 @@ abstract class _PlayerBase {
     final dispose = resolved.dispose;
     if (dispose == null) return resolved;
     return ResolvedUri(resolved.uri, _heldSources.hold(resolved.uri, dispose));
+  }
+
+  /// Deletes a resume point saved under the descriptor number of an
+  /// `fd://` [resolved] source, before its load. mpv keys the point by
+  /// that number, which the system hands out again to the next file
+  /// opened, so a point saved for one file (0.5.1 and earlier wrote them)
+  /// started another at its position. mpv reads the point as the entry
+  /// loads, before any option of the entry applies, so no option can turn
+  /// it off for one entry.
+  Future<void> _forgetFdResume(ResolvedUri resolved) async {
+    if (!isFdUri(resolved.uri)) return;
+    await _command(['delete-watch-later-config', resolved.uri]);
   }
 
   /// Releases the held resources mpv has stopped reading.

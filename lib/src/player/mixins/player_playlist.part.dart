@@ -29,6 +29,7 @@ mixin _PlaylistModule on _PlayerBase {
       return;
     }
     _mediaCache[resolved.uri] = media;
+    await _forgetFdResume(resolved);
     final opts = _buildLoadfileOptions(media);
     try {
       if (opts.isEmpty) {
@@ -187,6 +188,7 @@ mixin _PlaylistModule on _PlayerBase {
     try {
       if (load.superseded) return;
       _mediaCache[resolved.uri] = media;
+      await _forgetFdResume(resolved);
       // Execute in-flight transport writes before the playlist surgery:
       // see [_settleWrites].
       await _settleWrites();

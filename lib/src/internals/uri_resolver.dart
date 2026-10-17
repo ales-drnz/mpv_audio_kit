@@ -123,6 +123,11 @@ Future<String> loadedName(String uri) async {
   return uri;
 }
 
+/// Whether mpv reads [uri] from an open descriptor (`fd://N`, as an
+/// Android `content://` URI loads, or `fdclose://N`).
+bool isFdUri(String uri) =>
+    uri.startsWith('fd://') || uri.startsWith('fdclose://');
+
 /// The path mpv stores for a `file://` [uri], or `null` for any other URI.
 ///
 /// Mirrors mpv's `mp_file_url_to_filename`, which every `loadfile` goes

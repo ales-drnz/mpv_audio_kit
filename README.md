@@ -863,6 +863,16 @@ await player.deleteResumeConfig();
 await player.deleteResumeConfig(filename: '/music/audiobook.m4b');
 ```
 
+mpv keys a resume point by the name of the file. Give `deleteResumeConfig`
+the URI you gave `open`: a `file://` or `asset://` URI stands for the path
+the load passes to mpv. A URL whose token changes, such as an API key after
+a new login, gets a new key each time; with a source resolver
+([12.4](#124-the-source-resolver)) the key is the URI of the `Media`, which
+stays the same. On Android a `content://` source has no resume point: it
+plays from a file descriptor, whose number the system gives to other files
+later. `writeResumeConfig()` writes nothing for it, and a point saved under
+that number by an older version is deleted before the load.
+
 ---
 
 ### 5. Audio effects

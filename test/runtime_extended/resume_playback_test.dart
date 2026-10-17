@@ -5,9 +5,13 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -160,6 +164,73 @@ void main() {
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
 
+    group(
+      'an fd:// entry',
+      skip: Platform.isWindows ? 'POSIX descriptors' : false,
+      () {
+        // mpv keys its resume point by the descriptor number, which the
+        // system hands out again to the next file opened (Android content://
+        // URIs load as fd://N).
+        test('writeResumeConfig saves nothing for it', () async {
+          final tmp = Directory.systemTemp.createTempSync('mak_resume_fdw_');
+          addTearDown(() {
+            try {
+              tmp.deleteSync(recursive: true);
+            } catch (_) {}
+          });
+          final fd = _openFd(fx);
+          addTearDown(() => _closeFd(fd));
+          final p = await buildPlayer(
+            configuration: PlayerConfiguration(
+              logLevel: LogLevel.off,
+              watchLaterDir: tmp.path,
+            ),
+          );
+          addTearDown(p.dispose);
+          await openAndWaitForLoad(p, 'fd://$fd');
+          await p.seek(const Duration(milliseconds: 600));
+          await waitUntil(() => p.state.position.inMilliseconds > 500);
+          final logged = p.stream.internalLog
+              .firstWhere((e) => e.text.contains('fd://$fd'))
+              .timeout(const Duration(seconds: 5));
+          await p.writeResumeConfig();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          expect(tmp.listSync(), isEmpty, reason: 'no resume point written');
+          await logged;
+        }, timeout: const Timeout(Duration(seconds: 30)));
+
+        test('does not take a resume point saved under its number', () async {
+          final tmp = Directory.systemTemp.createTempSync('mak_resume_fdr_');
+          addTearDown(() {
+            try {
+              tmp.deleteSync(recursive: true);
+            } catch (_) {}
+          });
+          final fd = _openFd(fx);
+          addTearDown(() => _closeFd(fd));
+          // As 0.5.1 wrote it for whatever file had this number before.
+          final key = 'fd://$fd';
+          final stale = File(
+            '${tmp.path}/${md5.convert(utf8.encode(key)).toString().toUpperCase()}',
+          )..writeAsStringSync('start=0.600000\n');
+          final p = await buildPlayer(
+            configuration: PlayerConfiguration(
+              logLevel: LogLevel.off,
+              watchLaterDir: tmp.path,
+            ),
+          );
+          addTearDown(p.dispose);
+          await openAndWaitForLoad(p, key);
+          expect(
+            p.state.position.inMilliseconds,
+            lessThan(300),
+            reason: 'the file starts from its beginning',
+          );
+          expect(stale.existsSync(), isFalse);
+        }, timeout: const Timeout(Duration(seconds: 30)));
+      },
+    );
+
     test('the resume point does not save the effects chain', () async {
       final tmp = Directory.systemTemp.createTempSync('mak_resume_af_');
       addTearDown(() {
@@ -294,3 +365,23 @@ void main() {
 File _resumeFile(Directory dir) => dir.listSync().whereType<File>().singleWhere(
   (f) => !f.readAsStringSync().contains('# redirect entry'),
 );
+
+/// A descriptor of [path] opened read-only with libc's `open`.
+int _openFd(String path) {
+  final open = DynamicLibrary.process()
+      .lookupFunction<
+        Int32 Function(Pointer<Utf8>, Int32),
+        int Function(Pointer<Utf8>, int)
+      >('open');
+  final p = path.toNativeUtf8();
+  try {
+    final fd = open(p, 0);
+    if (fd < 0) throw StateError('open($path) failed');
+    return fd;
+  } finally {
+    malloc.free(p);
+  }
+}
+
+void _closeFd(int fd) => DynamicLibrary.process()
+    .lookupFunction<Int32 Function(Int32), int Function(int)>('close')(fd);
