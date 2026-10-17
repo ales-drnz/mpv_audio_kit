@@ -42,7 +42,7 @@ String? libmpvSkipReason({
 }
 
 /// Initializes [MpvAudioKit] against the bundled libmpv, with the
-/// hot-restart tracker disabled (the per-VM-pid sentinel is incompatible
+/// hot-restart tracker disabled (its per-process buffer is incompatible
 /// with `flutter test`'s isolate reuse). Only call it when
 /// [libmpvSkipReason] returned `null`.
 void initLibmpv() {

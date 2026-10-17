@@ -25,12 +25,14 @@ String dartExecutable() {
 
 /// Runs [script] (a path relative to the package root) with [args], in a
 /// `dart` process compiled with [defines] (`name=value`). [tempDir] becomes
-/// the system temp directory of the process.
+/// the system temp directory of the process, and [environment] is added to
+/// the one it inherits.
 Future<ProcessResult> runDartProbe(
   String script, {
   List<String> args = const [],
   List<String> defines = const [],
   Directory? tempDir,
+  Map<String, String> environment = const {},
 }) {
   final tmp = tempDir?.path;
   return Process.run(
@@ -39,6 +41,7 @@ Future<ProcessResult> runDartProbe(
     workingDirectory: Directory.current.path,
     environment: {
       if (tmp != null) ...{'TMPDIR': tmp, 'TMP': tmp, 'TEMP': tmp},
+      ...environment,
     },
     stdoutEncoding: utf8,
     stderrEncoding: utf8,

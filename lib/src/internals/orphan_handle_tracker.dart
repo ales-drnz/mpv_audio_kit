@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
+import 'package:meta/meta.dart';
 import 'package:mpv_audio_kit/src/internals/build_mode.dart';
 import 'package:mpv_audio_kit/src/internals/debug_log.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
@@ -15,10 +16,16 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 /// Flutter replaces the Dart VM but keeps the parent process alive,
 /// so handles allocated by the previous VM stay open (and block
 /// exclusive-mode audio devices like WASAPI) until the process exits.
-/// The tracker stashes a per-pid native buffer of live handle
-/// addresses in a tmp file; on startup the new VM rehydrates that
-/// buffer and surfaces every still-tracked handle to the caller's
+/// The tracker keeps the live handle addresses in a native buffer and
+/// publishes the buffer in a variable of the process environment
+/// ([envName]), with the pid. On startup the new VM finds the buffer
+/// there and surfaces every still-tracked handle to the caller's
 /// cleanup callback.
+///
+/// The environment lives and dies with the process, like the buffer:
+/// a new process never sees the value of an old one, and nothing is
+/// left on disk. A child process inherits the value with the pid of
+/// its parent, and ignores it.
 ///
 /// **Debug only**: guarded by [kHotRestartPossible]. Profile and
 /// release builds have no Hot-Restart: the parent process dies with
@@ -30,21 +37,37 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 class OrphanHandleTracker {
   static const int _kBufferSize = 256;
   // Magic cookie stored alongside every address. Hot-Restart cleanup
-  // verifies this before calling into libmpv with a stored address so a
-  // pid-reuse or file-corruption scenario can't trick us into invoking FFI
-  // on a pointer that wasn't ours. Slots are laid out as
+  // verifies this before calling into libmpv with a stored address so
+  // a buffer that is not ours can't trick us into invoking FFI on a
+  // pointer that wasn't ours. Slots are laid out as
   // [cookie₀, addr₀, cookie₁, addr₁, …] in the underlying buffer.
   static const int _kCookie = 0x4D414B5F4D5056AB; // "MAK_MPV\xab"
   // 2 IntPtrs per slot (cookie + address).
   static const int _kSlotStride = 2;
 
-  /// The process-wide singleton. One tracker shares the per-pid leak
-  /// buffer across every [Player] created in this Dart VM.
-  static final OrphanHandleTracker instance = OrphanHandleTracker._();
-  static bool _initialized = false;
+  /// The process environment variable that holds `<pid>:<address>` of
+  /// the buffer.
+  @visibleForTesting
+  static const String envName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER';
 
-  late final File _file;
-  late final Pointer<IntPtr> _buffer;
+  /// The process-wide singleton. One tracker shares the per-process leak
+  /// buffer across every [Player] created in this Dart VM.
+  static final OrphanHandleTracker instance = OrphanHandleTracker._(
+    ProcessEnvironment.native(),
+  );
+
+  /// A tracker over [env] instead of the process environment: each one
+  /// stands for one Dart VM of the process [env] belongs to.
+  @visibleForTesting
+  OrphanHandleTracker.forTesting(ProcessEnvironment env) : this._(env);
+
+  OrphanHandleTracker._(this._env);
+
+  final ProcessEnvironment _env;
+  bool _initialized = false;
+
+  // Null until [ensureInitialized] runs, and if it fails.
+  Pointer<IntPtr>? _buffer;
   final Completer<void> _completer = Completer<void>();
 
   bool get _isDebug => kHotRestartPossible;
@@ -54,18 +77,15 @@ class OrphanHandleTracker {
   bool get restarted => _restarted;
   bool _restarted = false;
 
-  OrphanHandleTracker._() {
-    _file = File(
-      '${Directory.systemTemp.path}${Platform.pathSeparator}mpv_audio_kit_refs_$pid.txt',
-    );
-  }
-
   /// Initializes the tracker once per Dart VM.
   ///
-  /// On a fresh launch the buffer is allocated and the file written;
-  /// on a Hot-Restart the file already exists and the existing buffer
-  /// is reattached. Any non-zero entries in the buffer are surfaced
-  /// to [onOrphanFound] for the caller to clean up.
+  /// On a fresh launch the buffer is allocated and published in the
+  /// process environment; on a Hot-Restart the published buffer is
+  /// reattached. Any non-zero entries in the buffer are surfaced to
+  /// [onOrphanFound] for the caller to clean up.
+  ///
+  /// The environment is written once per process, here: before any
+  /// [Player] creates an mpv core, whose threads may read it.
   void ensureInitialized(
     void Function(List<Pointer<MpvHandle>>) onOrphanFound,
   ) {
@@ -92,33 +112,37 @@ class OrphanHandleTracker {
     }
     _initialized = true;
 
-    _sweepStaleSentinelFiles();
-
     try {
-      if (!_file.existsSync()) {
+      final previous = _publishedBuffer();
+      final Pointer<IntPtr> buffer;
+      if (previous == null) {
         // Intentionally never freed: the buffer must outlive the Dart VM
         // so the next Hot-Restart can rehydrate orphan addresses from it.
         // The OS reclaims the allocation when the host process eventually
         // exits.
-        _buffer = calloc<IntPtr>(_kBufferSize * _kSlotStride);
-        _file.writeAsStringSync(_buffer.address.toString());
+        buffer = calloc<IntPtr>(_kBufferSize * _kSlotStride);
+        _buffer = buffer;
+        if (!_env.set(envName, '$pid:${buffer.address}')) {
+          debugLog(
+            'mpv_audio_kit: OrphanHandleTracker cannot publish its buffer. '
+            'Hot-restart cleanup disabled for the next restart.',
+          );
+        }
       } else {
-        final addressStr = _file.readAsStringSync().trim();
-        final address = int.parse(addressStr);
-        _buffer = Pointer<IntPtr>.fromAddress(address);
+        buffer = previous;
+        _buffer = buffer;
         _restarted = true;
       }
 
       final orphans = <Pointer<MpvHandle>>[];
       for (int i = 0; i < _kBufferSize; i++) {
-        final cookieRef = _buffer + (i * _kSlotStride);
-        final addrRef = _buffer + (i * _kSlotStride + 1);
+        final cookieRef = buffer + (i * _kSlotStride);
+        final addrRef = buffer + (i * _kSlotStride + 1);
         final cookieVal = cookieRef.value;
         final refAddr = addrRef.value;
         // Skip slots that lack the magic cookie: either empty (cookie=0)
-        // or filled by something other than us (pid reuse hitting the
-        // same buffer address). This is the load-bearing safety check
-        // against handing libmpv a dangling pointer.
+        // or filled by something other than us. This is the load-bearing
+        // safety check against handing libmpv a dangling pointer.
         if (cookieVal != _kCookie) continue;
         if (refAddr != 0) {
           orphans.add(Pointer.fromAddress(refAddr));
@@ -139,57 +163,18 @@ class OrphanHandleTracker {
     }
   }
 
-  /// Cleans up `mpv_audio_kit_refs_<pid>.txt` files from previous Dart
-  /// VMs whose host process is no longer alive. Without this sweep the
-  /// system temp directory accumulates one file per dev session for the
-  /// lifetime of the host machine.
-  ///
-  /// Safe under `flutter test` because the harness disables this tracker
-  /// (`hotRestartCleanup: false`), so the sweep never runs in CI or test
-  /// processes that share a pid namespace.
-  void _sweepStaleSentinelFiles() {
-    try {
-      final tmp = Directory(Directory.systemTemp.path);
-      if (!tmp.existsSync()) return;
-      final keepName = _file.uri.pathSegments.last;
-      for (final entry in tmp.listSync(followLinks: false)) {
-        if (entry is! File) continue;
-        final name = entry.uri.pathSegments.last;
-        if (!name.startsWith('mpv_audio_kit_refs_') ||
-            !name.endsWith('.txt') ||
-            name == keepName) {
-          continue;
-        }
-        final pidStr = name.substring(
-          'mpv_audio_kit_refs_'.length,
-          name.length - '.txt'.length,
-        );
-        final otherPid = int.tryParse(pidStr);
-        if (otherPid == null || otherPid == pid) continue;
-        if (_isPidAlive(otherPid)) continue;
-        try {
-          entry.deleteSync();
-        } catch (_) {
-          // Best-effort: another VM may be racing the same sweep.
-        }
-      }
-    } catch (e) {
-      debugLog('mpv_audio_kit: stale-sentinel sweep failed: $e');
-    }
-  }
-
-  /// Returns `true` when [otherPid] points at a live process (POSIX:
-  /// `kill -0`; Windows: best-effort assume alive). The check is purely
-  /// to avoid wiping the sentinel of a still-running sibling Dart VM
-  /// (rare in practice, but the tracker is shared per-pid).
-  bool _isPidAlive(int otherPid) {
-    if (Platform.isWindows) {
-      // No cheap POSIX-equivalent without an FFI call; err on the side
-      // of keeping the file so we never delete a live VM's sentinel.
-      return true;
-    }
-    final result = Process.runSync('kill', ['-0', otherPid.toString()]);
-    return result.exitCode == 0;
+  /// The buffer an earlier VM of this process published, or `null` when
+  /// there is none. A value with another pid came from the parent of
+  /// this process, which a child inherits: its address is not ours.
+  Pointer<IntPtr>? _publishedBuffer() {
+    final value = _env.get(envName);
+    if (value == null) return null;
+    final sep = value.indexOf(':');
+    if (sep < 0) return null;
+    final owner = int.tryParse(value.substring(0, sep));
+    final address = int.tryParse(value.substring(sep + 1));
+    if (owner != pid || address == null || address == 0) return null;
+    return Pointer.fromAddress(address);
   }
 
   /// Records [handle] in the first free slot.
@@ -203,12 +188,13 @@ class OrphanHandleTracker {
       return;
     }
     _completer.future.then((_) {
-      if (handle == nullptr) {
+      final buffer = _buffer;
+      if (buffer == null || handle == nullptr) {
         return;
       }
       for (int i = 0; i < _kBufferSize; i++) {
-        final cookieRef = _buffer + (i * _kSlotStride);
-        final addrRef = _buffer + (i * _kSlotStride + 1);
+        final cookieRef = buffer + (i * _kSlotStride);
+        final addrRef = buffer + (i * _kSlotStride + 1);
         if (cookieRef.value == 0 && addrRef.value == 0) {
           cookieRef.value = _kCookie;
           addrRef.value = handle.address;
@@ -232,12 +218,13 @@ class OrphanHandleTracker {
       return;
     }
     _completer.future.then((_) {
-      if (handle == nullptr) {
+      final buffer = _buffer;
+      if (buffer == null || handle == nullptr) {
         return;
       }
       for (int i = 0; i < _kBufferSize; i++) {
-        final cookieRef = _buffer + (i * _kSlotStride);
-        final addrRef = _buffer + (i * _kSlotStride + 1);
+        final cookieRef = buffer + (i * _kSlotStride);
+        final addrRef = buffer + (i * _kSlotStride + 1);
         if (cookieRef.value == _kCookie && addrRef.value == handle.address) {
           cookieRef.value = 0;
           addrRef.value = 0;
@@ -246,4 +233,111 @@ class OrphanHandleTracker {
       }
     });
   }
+}
+
+/// One variable at a time of the process environment, which outlives the
+/// Dart VM. Not `Platform.environment`, which only reads a copy.
+@internal
+abstract interface class ProcessEnvironment {
+  /// Through the C library (`getenv` and `setenv`), or kernel32 on
+  /// Windows.
+  factory ProcessEnvironment.native() =>
+      Platform.isWindows ? _Kernel32Environment() : _LibcEnvironment();
+
+  /// The value of [name], or `null` when it is not set.
+  String? get(String name);
+
+  /// Sets [name] to [value]. Returns whether it succeeded.
+  ///
+  /// Not safe while another thread reads the environment (POSIX
+  /// `setenv`): call it before the threads that could exist.
+  bool set(String name, String value);
+}
+
+final class _LibcEnvironment implements ProcessEnvironment {
+  _LibcEnvironment() : this._(_openLibc());
+
+  _LibcEnvironment._(DynamicLibrary libc)
+    : _getenv = libc
+          .lookupFunction<
+            Pointer<Utf8> Function(Pointer<Utf8>),
+            Pointer<Utf8> Function(Pointer<Utf8>)
+          >('getenv'),
+      _setenv = libc
+          .lookupFunction<
+            Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Int32),
+            int Function(Pointer<Utf8>, Pointer<Utf8>, int)
+          >('setenv');
+
+  final Pointer<Utf8> Function(Pointer<Utf8>) _getenv;
+  final int Function(Pointer<Utf8>, Pointer<Utf8>, int) _setenv;
+
+  static DynamicLibrary _openLibc() => switch (Platform.operatingSystem) {
+    'linux' => DynamicLibrary.open('libc.so.6'),
+    'android' => DynamicLibrary.open('libc.so'),
+    // macOS and iOS.
+    _ => DynamicLibrary.open('libSystem.B.dylib'),
+  };
+
+  @override
+  String? get(String name) => using((arena) {
+    final value = _getenv(name.toNativeUtf8(allocator: arena));
+    return value == nullptr ? null : value.toDartString();
+  });
+
+  @override
+  bool set(String name, String value) => using(
+    (arena) =>
+        _setenv(
+          name.toNativeUtf8(allocator: arena),
+          value.toNativeUtf8(allocator: arena),
+          1,
+        ) ==
+        0,
+  );
+}
+
+final class _Kernel32Environment implements ProcessEnvironment {
+  _Kernel32Environment() : this._(DynamicLibrary.open('kernel32.dll'));
+
+  _Kernel32Environment._(DynamicLibrary kernel32)
+    : _getVariable = kernel32
+          .lookupFunction<
+            Uint32 Function(Pointer<Utf16>, Pointer<Utf16>, Uint32),
+            int Function(Pointer<Utf16>, Pointer<Utf16>, int)
+          >('GetEnvironmentVariableW'),
+      _setVariable = kernel32
+          .lookupFunction<
+            Int32 Function(Pointer<Utf16>, Pointer<Utf16>),
+            int Function(Pointer<Utf16>, Pointer<Utf16>)
+          >('SetEnvironmentVariableW');
+
+  // The values written here are `<pid>:<address>`, well under this.
+  static const int _kCapacity = 128;
+
+  final int Function(Pointer<Utf16>, Pointer<Utf16>, int) _getVariable;
+  final int Function(Pointer<Utf16>, Pointer<Utf16>) _setVariable;
+
+  @override
+  String? get(String name) => using((arena) {
+    final buffer = arena<Uint16>(_kCapacity).cast<Utf16>();
+    final length = _getVariable(
+      name.toNativeUtf16(allocator: arena),
+      buffer,
+      _kCapacity,
+    );
+    // 0: not set (or empty). Not under the capacity: not one of ours.
+    if (length == 0 || length >= _kCapacity) return null;
+    return buffer.toDartString(length: length);
+  });
+
+  @override
+  bool set(String name, String value) => using(
+    (arena) =>
+        _setVariable(
+          name.toNativeUtf16(allocator: arena),
+          value.toNativeUtf16(allocator: arena),
+        ) !=
+        0,
+  );
 }
