@@ -422,39 +422,54 @@ class Player extends _PlayerBase
     // append-play), even on an idle core. Per-Media `httpHeaders` ride
     // along as the 4th `loadfile` arg, so mpv scopes them as file-local
     // without ever writing the global `http-header-fields` option.
-    // All appends go out at once: mpv runs them in order, and the playlist
-    // changes they cause fold into a few notifications. Awaited one by
-    // one, every append made mpv report the whole playlist again, which
-    // grew with the square of the album size. A refused append fails at
-    // once, before the loop below awaits it: marked handled here, so its
-    // error reaches that loop instead of surfacing as unhandled.
-    final appends = <Future<int?>>[
-      for (var i = 0; i < medias.length; i++)
-        _loadfileEntry(switch (_buildLoadfileOptions(medias[i])) {
-          '' => ['loadfile', resolved[i].uri, 'append'],
-          final opts => ['loadfile', resolved[i].uri, 'append', '-1', opts],
-        }, medias[i])..ignore(),
-    ];
+    // The appends go out in windows of [_kAppendWindow], each sent at once:
+    // mpv runs them in order, and the playlist changes they cause fold into
+    // a few notifications. Awaited one by one, every append made mpv report
+    // the whole playlist again, which grew with the square of the album
+    // size. Each append holds one of the 1000 reply slots mpv keeps per
+    // client until its reply is read, and a full queue refuses the next
+    // request: a window waits for its replies before the next goes out.
     final appended = <int>{};
     // By index, not by id: an accepted append can reply without an id.
     final refused = <int>[];
     (Object, StackTrace)? failure;
-    for (var i = 0; i < appends.length; i++) {
-      try {
-        final id = await appends[i];
-        if (id != null) appended.add(id);
-      } catch (e, st) {
-        refused.add(i);
-        failure ??= (e, st);
+    var sent = 0;
+    while (sent < medias.length && failure == null && !load.superseded) {
+      final end = sent + _kAppendWindow < medias.length
+          ? sent + _kAppendWindow
+          : medias.length;
+      // A refused append fails at once, before the loop below awaits it:
+      // marked handled here, so its error reaches that loop instead of
+      // surfacing as unhandled.
+      final window = <Future<int?>>[
+        for (var i = sent; i < end; i++)
+          _loadfileEntry(switch (_buildLoadfileOptions(medias[i])) {
+            '' => ['loadfile', resolved[i].uri, 'append'],
+            final opts => ['loadfile', resolved[i].uri, 'append', '-1', opts],
+          }, medias[i])..ignore(),
+      ];
+      for (var j = 0; j < window.length; j++) {
+        try {
+          final id = await window[j];
+          if (id != null) appended.add(id);
+        } catch (e, st) {
+          refused.add(sent + j);
+          failure ??= (e, st);
+        }
       }
+      sent = end;
     }
     if (appended.isNotEmpty) _remapReported(appended);
+    // mpv never had the refused entries, nor the ones not sent after a
+    // refusal or a later load: nothing reads their sources.
+    for (final i in [
+      ...refused,
+      for (var i = sent; i < medias.length; i++) i,
+    ]) {
+      await resolved[i].dispose?.call();
+    }
     if (failure != null) {
-      // mpv turns an append down only when its reply queue is full. It
-      // never had the refused entries, so nothing reads their sources.
-      for (final i in refused) {
-        await resolved[i].dispose?.call();
-      }
+      // mpv turns an append down only when its reply queue is full.
       // The call fails as a whole: the entries that went in come out
       // again. `playlist-clear` keeps only the current entry, the track
       // that still plays (none at the park, removed above). The pause was
@@ -1623,6 +1638,11 @@ final class _LoadTicket {
   /// took over, since the ticket was taken. Re-check after every await.
   bool get superseded => _player._disposed || _player._loadEpoch != _epoch;
 }
+
+/// How many `loadfile append` requests [Player.openAll] has in flight at
+/// most: well under the 1000 replies mpv queues per client, so the appends
+/// leave room for the events and the other calls.
+const _kAppendWindow = 512;
 
 /// The chain label of the first enabled [Ebur128Effect] in [effects] with
 /// its `metadata` option on, the stage the live loudness meter reads;

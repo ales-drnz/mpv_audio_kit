@@ -117,6 +117,20 @@ void main() {
       expect(player.state.playing, isFalse);
     });
 
+    // Each append holds one of the 1000 reply slots mpv keeps per client
+    // until the player reads its reply, and mpv refuses a request once they
+    // are all taken. With the replies held back, as on a busy device, an
+    // album sent all at once runs out of them.
+    test('an openAll of 3000 entries fits the reply queue', () async {
+      const n = 3000;
+      shim().holdReply('loadfile', const Duration(milliseconds: 300));
+      await player.openAll([
+        for (var i = 0; i < n; i++) Media(fixturePath),
+      ], play: false);
+      await waitUntil(() => player.state.playlist.items.length == n);
+      expect(shim().counter('replies_held'), 1);
+    });
+
     // A `test://` URI resolves to its own link to the long fixture, with a
     // release that is counted, as the player holds a `content://`
     // descriptor; `test://broken` fails to resolve.
