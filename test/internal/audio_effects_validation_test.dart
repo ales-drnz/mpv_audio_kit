@@ -242,6 +242,54 @@ void main() {
     });
   });
 
+  group('mcompand', () {
+    McompandEffect band(String band) => McompandEffect(args: band);
+
+    test('an empty attack or decay among an even number is refused', () {
+      // mcompand counts the commas, then reads attack and decay pairs
+      // with av_strtok, which skips empty items: it runs out of items and
+      // hands NULL to sscanf.
+      _refused(band('0.005,0.1,, 6 -47/-40,-34/-34,-17/-33 100'));
+      _refused(band(',0.005,0.1, 6 -47/-40,-34/-34,-17/-33 100'));
+      _refused(band('0.005,,0.1,0.2 6 -47/-40,-34/-34,-17/-33 100'));
+      _refused(
+        band(
+          '0.005,0.1 6 -47/-40,-34/-34,-17/-33 100 | '
+          '0.003,0.05,,0.04 6 -47/-40,-34/-34,-17/-33 400',
+        ),
+      );
+    });
+
+    test('a NaN crossover frequency is refused', () {
+      // The range check is false for NaN, and the crossover filters turn
+      // the band to NaN.
+      _refused(band('0.005,0.1 6 -47/-40,-34/-34,-17/-33 nan'));
+    });
+
+    test('what mcompand refuses itself, or reads safely, passes', () {
+      // An odd count fails mcompand's own parity check.
+      _accepted(band('0.005,0.1,0.2 6 -47/-40,-34/-34,-17/-33 100'));
+      _accepted(band('0.005,0.1,0.2,0.3 6 -47/-40,-34/-34,-17/-33 100'));
+      _accepted(band('  0.005,0.1   6 -47/-40,-34/-34,-17/-33 100 |'));
+    });
+  });
+
+  group('compand', () {
+    test('attacks and decays that both start with no number are refused', () {
+      // With no number read from either list, compand copies channel -1
+      // into the others. It reads one item per channel: a mono source
+      // reads only the first.
+      _refused(const CompandEffect(attacks: 'x', decays: 'x'));
+      _refused(const CompandEffect(attacks: 'x|0.1', decays: 'y|0.2'));
+    });
+
+    test('a number first in either list passes', () {
+      _accepted(const CompandEffect(attacks: '0|x', decays: 'y'));
+      _accepted(const CompandEffect(attacks: 'x', decays: '0.5'));
+      _accepted(const CompandEffect(attacks: '0.1 0.2', decays: '0.3|0.4'));
+    });
+  });
+
   group('the effects manifest', () {
     test('every corner passes', () {
       for (final c in kFilterParamCorners) {

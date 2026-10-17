@@ -36,6 +36,10 @@ void validateAudioEffects(List<AudioEffect> effects) {
         _checkAnequalizer(e, 'effects[$i]');
       case ChorusEffect():
         _checkChorus(e, 'effects[$i]');
+      case CompandEffect():
+        _checkCompand(e, 'effects[$i]');
+      case McompandEffect():
+        _checkMcompand(e, 'effects[$i]');
       case PanEffect():
         _checkPan(e, 'effects[$i]');
       default:
@@ -121,6 +125,56 @@ void _checkChorus(ChorusEffect e, String stage) {
       ok,
       'chorus $name $domain',
     );
+  }
+}
+
+/// compand reads one attack and one decay per channel, splitting on
+/// spaces and `|`, and counts those sscanf reads a number from. When it
+/// reads none from either list the counts match at 0, and it copies
+/// channel -1 into the others. A mono source reads only the first item,
+/// so the first item of one list needs a number. A list with no item at
+/// all is refused by compand itself.
+void _checkCompand(CompandEffect e, String stage) {
+  final attacks = _strtok(e.attacks, ' |');
+  final decays = _strtok(e.decays, ' |');
+  if (attacks.isEmpty || decays.isEmpty) return;
+  if (_scanDouble(attacks.first) == null && _scanDouble(decays.first) == null) {
+    throw ArgumentError.value(
+      e.attacks,
+      '$stage.attacks',
+      'compand needs a number first in attacks or in decays, not '
+          '${attacks.first} and ${decays.first}',
+    );
+  }
+}
+
+/// mcompand counts the commas of a band's attack and decay rates, checks
+/// the count is even, then reads the pairs with av_strtok, which skips
+/// empty items: with an empty one it runs out and hands NULL to sscanf.
+/// Its crossover frequency check is false for NaN, which turns the band
+/// to NaN.
+void _checkMcompand(McompandEffect e, String stage) {
+  for (final band in _strtok(e.args, '|')) {
+    final fields = _strtok(band, ' ');
+    if (fields.isEmpty) continue;
+    final rates = fields.first;
+    final count = ','.allMatches(rates).length + 1;
+    if (count.isEven && _strtok(rates, ',').length < count) {
+      throw ArgumentError.value(
+        e.args,
+        '$stage.args',
+        'mcompand has an empty attack or decay in $rates',
+      );
+    }
+    if (fields.length > 3) {
+      _checkRange(
+        e.args,
+        '$stage.args',
+        [?_scanDouble(fields[3])],
+        (_) => true,
+        'mcompand crossover frequencies must be finite',
+      );
+    }
   }
 }
 

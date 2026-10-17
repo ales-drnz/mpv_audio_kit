@@ -429,7 +429,10 @@ mixin _AudioModule on _PlayerBase {
   ///   that are not above 0 and at most 1;
   /// - an anequalizer band value that is NaN or infinite;
   /// - a pan input channel named UNK, UNSD or AMBI, which pan has no slot
-  ///   for.
+  ///   for;
+  /// - an mcompand band with an empty attack or decay among an even number
+  ///   of them, or a NaN crossover frequency;
+  /// - compand attacks and decays that both start with no number.
   ///
   /// A [RawAudioEffect] is not checked.
   ///
