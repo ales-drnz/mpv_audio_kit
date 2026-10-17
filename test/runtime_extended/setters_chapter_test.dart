@@ -101,6 +101,23 @@ void main() {
           reason: 'an empty list must clear mpv\'s chapters',
         );
       }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('the state keeps the markers mpv took', () async {
+        // A fresh load: after setChapter(1) above, a shorter list makes
+        // libmpv r17 read chapter-metadata past its array (a crash).
+        await openAndWaitForLoad(player, plainPath);
+        const intro = Chapter(time: Duration.zero, title: 'Intro');
+        await player.setChapters(const [intro]);
+        // mpv drops a marker past the end of the 5 s file. What it keeps
+        // equals its list before, so no change is reported after it.
+        await player.setChapters(const [
+          intro,
+          Chapter(time: Duration(seconds: 20), title: 'Past the end'),
+        ]);
+        expect(await player.getRawProperty('chapters'), '1');
+        expect(player.state.chapters, const [intro]);
+        await player.setChapters(const []);
+      }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });
 }

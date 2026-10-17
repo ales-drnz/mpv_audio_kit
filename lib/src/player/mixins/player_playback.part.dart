@@ -241,6 +241,10 @@ mixin _PlaybackModule on _PlayerBase {
   /// [PlayerStream.duration] event for the track). mpv resets `chapter-list`
   /// to the demuxer's own chapters on each load, so a write issued before the
   /// load settles would be overwritten.
+  ///
+  /// mpv keeps only the markers from 0 up to the end of the file, none when
+  /// the length is unknown (a live stream), and does not sort them: pass
+  /// the list in time order. The state takes the list mpv kept.
   Future<void> setChapters(List<Chapter> chapters) async {
     await _gate();
     final rc = await _setChapterListNode(chapters);
@@ -251,9 +255,16 @@ mixin _PlaybackModule on _PlayerBase {
         message: _errorString(rc),
       );
     }
-    // Reflect optimistically; the `chapter-list` observer confirms with mpv's
-    // normalized view (e.g. clamped or sorted times) on the next event.
-    final list = List<Chapter>.unmodifiable(chapters);
+    // Read back what mpv kept: its observer reports nothing when that
+    // equals its list before the write.
+    final (readRc, node) = await _getAsync(
+      'chapter-list',
+      MpvFormat.mpvFormatNode,
+    );
+    if (_disposed) return;
+    final list = readRc >= 0
+        ? List<Chapter>.unmodifiable(parseChapterListNode(node))
+        : List<Chapter>.unmodifiable(chapters);
     _updateField((s) => s.copyWith(chapters: list), _reactives.chapters, list);
   }
 
