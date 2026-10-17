@@ -425,26 +425,48 @@ class Player extends _PlayerBase
     // All appends go out at once: mpv runs them in order, and the playlist
     // changes they cause fold into a few notifications. Awaited one by
     // one, every append made mpv report the whole playlist again, which
-    // grew with the square of the album size.
+    // grew with the square of the album size. A refused append fails at
+    // once, before the loop below awaits it: marked handled here, so its
+    // error reaches that loop instead of surfacing as unhandled.
     final appends = <Future<int?>>[
       for (var i = 0; i < medias.length; i++)
         _loadfileEntry(switch (_buildLoadfileOptions(medias[i])) {
           '' => ['loadfile', resolved[i].uri, 'append'],
           final opts => ['loadfile', resolved[i].uri, 'append', '-1', opts],
-        }, medias[i]),
+        }, medias[i])..ignore(),
     ];
     final appended = <int>{};
+    // By index, not by id: an accepted append can reply without an id.
+    final refused = <int>[];
     (Object, StackTrace)? failure;
-    for (final append in appends) {
+    for (var i = 0; i < appends.length; i++) {
       try {
-        final id = await append;
+        final id = await appends[i];
         if (id != null) appended.add(id);
       } catch (e, st) {
+        refused.add(i);
         failure ??= (e, st);
       }
     }
     if (appended.isNotEmpty) _remapReported(appended);
-    if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
+    if (failure != null) {
+      // mpv turns an append down only when its reply queue is full. It
+      // never had the refused entries, so nothing reads their sources.
+      for (final i in refused) {
+        await resolved[i].dispose?.call();
+      }
+      // The call fails as a whole: the entries that went in come out
+      // again. `playlist-clear` keeps only the current entry, the track
+      // that still plays (none at the park, removed above). The pause was
+      // not written yet, so only the intent goes back. A later load owns
+      // the playlist instead, and the entries mpv took stay with
+      // [_heldSources] until they leave.
+      if (!load.superseded) {
+        _restoreIntent(load, intent, previousIntent);
+        await _command(['playlist-clear']);
+      }
+      Error.throwWithStackTrace(failure.$1, failure.$2);
+    }
     // From here on mpv has the entries, and may read them again until it
     // leaves them (a previous, a loop, a prefetch): their sources stay with
     // [_heldSources], which releases each one once it left the playlist and

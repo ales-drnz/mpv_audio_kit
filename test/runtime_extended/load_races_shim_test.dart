@@ -204,6 +204,48 @@ void main() {
         expect(released, isEmpty, reason: 'released while mpv plays one');
       });
 
+      // mpv refuses an append only when its reply queue is full. The call
+      // fails as a whole: the entries that went in come out again, the
+      // track that played goes on with its intent, and the refused
+      // entry's source is released.
+      group('an openAll with a refused append', () {
+        test('while a track plays', () async {
+          await player.open(Media(longFixture), play: true);
+          await waitUntil(() => player.state.playing);
+          shim().refuseLoadfile('refused');
+          await expectLater(
+            player.openAll([
+              const Media('test://c0'),
+              const Media('test://refused-c1'),
+              const Media('test://c2'),
+            ], play: false),
+            throwsA(isA<MpvCommandException>()),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          expect(player.state.playlist.items.map((m) => m.uri), [longFixture]);
+          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playing, isTrue);
+          expect(released, contains('test://refused-c1'));
+        });
+
+        test('at the end of the queue', () async {
+          await park();
+          shim().refuseLoadfile('refused');
+          await expectLater(
+            player.openAll([
+              const Media('test://d0'),
+              const Media('test://refused-d1'),
+            ], play: true),
+            throwsA(isA<MpvCommandException>()),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          expect(player.state.playlist.items, isEmpty);
+          expect(player.state.playWhenReady, isFalse);
+          expect(await player.getRawProperty('idle-active'), 'yes');
+          expect(released, contains('test://refused-d1'));
+        });
+      });
+
       // A source mpv never took is released at once, not at dispose.
       group('released when mpv never took the entry', () {
         Future<void> queueOfFour() async {
