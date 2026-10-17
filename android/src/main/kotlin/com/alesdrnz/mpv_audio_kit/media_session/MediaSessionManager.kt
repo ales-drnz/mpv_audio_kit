@@ -243,12 +243,20 @@ internal object MediaSessionManager :
 
     /** A scrub from the OS slider: pin the slider at the drop target
      *  (republish), then forward the absolute seek. The freeze clears in
-     *  [updatePlayback] once the landed position confirms. */
+     *  [updatePlayback] once the landed position confirms, on a new track
+     *  in [updateMetadata], or at the backstop. */
     fun onScrub(positionMs: Long) = runOnMain {
-        scrub.start(positionMs)
+        val generation = scrub.start(positionMs, trackOf(metadata))
         player?.republish()
         eventSink?.success(mapOf("type" to "seekTo", "positionMs" to positionMs))
+        mainHandler.postDelayed({
+            if (scrub.expire(generation) && enabled) publish()
+        }, ScrubFreeze.BACKSTOP_MS)
     }
+
+    /** What tells one track from the next for the scrub freeze: Dart pushes
+     *  the metadata of a new track once it has loaded. */
+    private fun trackOf(m: MetadataSnapshot): Any = Pair(m.title, m.durationMs)
 
     // ── Snapshot mutations ──────────────────────────────────────────────
 
@@ -280,6 +288,8 @@ internal object MediaSessionManager :
 
     private fun updateMetadata(metadata: Map<*, *>) = runOnMain {
         this.metadata = parseMetadata(metadata)
+        // A scrub made on the previous track will never land on this one.
+        scrub.onTrack(trackOf(this.metadata))
         publish()
     }
 
