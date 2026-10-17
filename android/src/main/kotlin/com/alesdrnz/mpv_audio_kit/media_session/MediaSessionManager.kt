@@ -31,7 +31,10 @@ import io.flutter.plugin.common.MethodChannel
  * (enforced Dart-side), so a singleton is the natural fit and lets
  * [MpvMediaSessionService] — which Media3 may create / destroy on its own
  * schedule — always resolve the live session and command target without a
- * Binder handshake.
+ * Binder handshake. Every Flutter engine of the process reaches it through
+ * its own plugin, which passes itself as the engine token: the session and
+ * the command sink belong to the engine that enabled and listened (see
+ * [EngineOwnership]).
  *
  * It is a *stateless renderer*: each `enable` / `update*` replaces a
  * `@Volatile` snapshot and calls [MpvControllerPlayer.invalidateState];
@@ -45,9 +48,7 @@ import io.flutter.plugin.common.MethodChannel
  * correct if the player is ever moved to a dedicated looper.
  */
 @UnstableApi
-internal object MediaSessionManager :
-    MethodChannel.MethodCallHandler,
-    EventChannel.StreamHandler {
+internal object MediaSessionManager {
 
     // ── Snapshots (the single source of truth lives in Dart) ────────────
 
@@ -128,6 +129,10 @@ internal object MediaSessionManager :
     private var session: MediaSession? = null
     private var audioFocus: AudioFocusController? = null
 
+    // Which engine enabled the session and which one listens for commands:
+    // every engine of the process reaches this object through its own plugin.
+    private val engines = EngineOwnership()
+
     // A self-connected controller binds [MpvMediaSessionService] so Media3
     // promotes it to the foreground and posts (and keeps updating) the media
     // notification. `startService` alone runs the service but never engages its
@@ -184,21 +189,23 @@ internal object MediaSessionManager :
         appContext = context.applicationContext
     }
 
-    /** Tear everything down when the engine detaches (defensive — Dart
-     *  normally calls `disable` on dispose first). */
-    fun detach() {
-        eventSink = null
-        if (enabled) disable()
-        appContext = null
+    /** [engine] detaches: tear down what it owns (defensive, Dart normally
+     *  calls `disable` on dispose first). The session and the sink of
+     *  another engine stay, and the application context serves them all. */
+    fun detach(engine: Any) {
+        val teardown = engines.onDetach(engine)
+        if (teardown.sink) eventSink = null
+        if (teardown.session && enabled) disable()
     }
 
-    // ── Method channel (Dart → native) ──────────────────────────────────
+    // ── Method channel (Dart → native), per engine ──────────────────────
 
-    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+    fun onMethodCall(engine: Any, call: MethodCall, result: MethodChannel.Result) {
         try {
             when (call.method) {
                 "enable" -> {
                     val a = call.arguments as Map<*, *>
+                    engines.onEnable(engine)
                     enable(
                         a["config"] as Map<*, *>,
                         a["metadata"] as Map<*, *>,
@@ -216,7 +223,9 @@ internal object MediaSessionManager :
                     updatePlayback(call.arguments as Map<*, *>); result.success(null)
                 }
                 "disable" -> {
-                    disable(); result.success(null)
+                    // Only the owner's: another engine's Player never had it.
+                    if (engines.mayDisable(engine)) disable()
+                    result.success(null)
                 }
                 "debugMediaSessionState" -> result.success(debugState())
                 else -> result.notImplemented()
@@ -226,14 +235,15 @@ internal object MediaSessionManager :
         }
     }
 
-    // ── Event channel (native → Dart) ───────────────────────────────────
+    // ── Event channel (native → Dart), per engine ───────────────────────
 
-    override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+    fun onListen(engine: Any, events: EventChannel.EventSink) {
+        engines.onListen(engine)
         eventSink = events
     }
 
-    override fun onCancel(arguments: Any?) {
-        eventSink = null
+    fun onCancel(engine: Any) {
+        if (engines.onCancel(engine)) eventSink = null
     }
 
     /** Forwards an OS remote command to Dart, on the platform thread. */
@@ -312,6 +322,7 @@ internal object MediaSessionManager :
 
     private fun disable() = runOnMain {
         enabled = false
+        engines.onDisabled()
         audioFocus?.release()
         audioFocus = null
         config = ConfigSnapshot.EMPTY

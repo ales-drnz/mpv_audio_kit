@@ -56,13 +56,24 @@ class MpvAudioKitPlugin : FlutterPlugin {
             flutterPluginBinding.binaryMessenger,
             "mpv_audio_kit/media_session"
         )
-        mediaSessionMethodChannel.setMethodCallHandler(MediaSessionManager)
+        // The manager is one per process: each engine reaches it with its own
+        // plugin as the token, so the detach of another engine (a workmanager
+        // task) leaves alone the session this one enabled.
+        mediaSessionMethodChannel.setMethodCallHandler { call, result ->
+            MediaSessionManager.onMethodCall(this, call, result)
+        }
 
         mediaSessionEventChannel = EventChannel(
             flutterPluginBinding.binaryMessenger,
             "mpv_audio_kit/media_session/commands"
         )
-        mediaSessionEventChannel.setStreamHandler(MediaSessionManager)
+        mediaSessionEventChannel.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink) =
+                MediaSessionManager.onListen(this@MpvAudioKitPlugin, events)
+
+            override fun onCancel(arguments: Any?) =
+                MediaSessionManager.onCancel(this@MpvAudioKitPlugin)
+        })
     }
 
     /**
@@ -73,6 +84,6 @@ class MpvAudioKitPlugin : FlutterPlugin {
         fileDescriptors.detach()
         mediaSessionMethodChannel.setMethodCallHandler(null)
         mediaSessionEventChannel.setStreamHandler(null)
-        MediaSessionManager.detach()
+        MediaSessionManager.detach(this)
     }
 }
