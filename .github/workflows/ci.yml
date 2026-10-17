@@ -57,6 +57,14 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           REPO: ${{ github.repository }}
         run: scripts/ci/changes_gate.sh
+      # The libmpv the jobs will bundle must be there: one error here
+      # instead of each job failing on its own, minutes in.
+      - name: Preflight
+        if: steps.diff.outputs.code == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORK: ${{ github.event.pull_request.head.repo.fork }}
+        run: scripts/ci/preflight.sh
 
   analyze:
     name: Analyze (Flutter ${{ matrix.flutter }})
