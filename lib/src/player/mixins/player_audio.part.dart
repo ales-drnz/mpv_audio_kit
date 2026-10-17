@@ -310,9 +310,11 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// [select] `true` (default) selects the new track immediately; `false`
   /// adds it without switching. [title] and [lang] tag it for the track list.
-  /// Requires a file to be loaded first. Per-[Media] options
-  /// (`httpHeaders`, …) are validated but not applied: `audio-add` has no
-  /// file-local options slot.
+  /// Per-[Media] options (`httpHeaders`, …) are validated but not applied:
+  /// `audio-add` has no file-local options slot.
+  ///
+  /// Throws [MpvCommandException] when mpv refuses the track: a file it
+  /// cannot open, or no file loaded to add it to.
   Future<void> addAudioTrack(
     Media file, {
     bool select = true,
@@ -344,11 +346,18 @@ mixin _AudioModule on _PlayerBase {
     // never closes: held until the file the track joins ends.
     final dispose = resolved.dispose;
     final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
-    var added = false;
+    var rc = -1;
     try {
-      added = await _command(args) >= 0;
+      rc = await _command(args);
     } finally {
-      await settle?.call(added);
+      await settle?.call(rc >= 0);
+    }
+    if (rc < 0) {
+      throw MpvCommandException(
+        name: 'audio-add',
+        code: rc,
+        message: _errorString(rc),
+      );
     }
   }
 
@@ -361,6 +370,9 @@ mixin _AudioModule on _PlayerBase {
   /// takes an optional track id and has no "off" notion, so removing "no
   /// track" is meaningless. Use [setAudioTrack] with [Track.off] to mute the
   /// selection instead.
+  ///
+  /// Throws [MpvCommandException] when mpv refuses: an id with no audio
+  /// track, or no track to remove.
   Future<void> removeAudioTrack(Track track) async {
     _checkNotDisposed();
     if (track is TrackOff) {
@@ -372,7 +384,7 @@ mixin _AudioModule on _PlayerBase {
       );
     }
     await _gate();
-    await _command(
+    await _commandChecked(
       track is TrackId
           ? ['audio-remove', '${track.trackId}']
           : ['audio-remove'],

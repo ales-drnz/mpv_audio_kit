@@ -99,6 +99,45 @@ void main() {
           );
         },
       );
+
+      test('a file mpv refuses to add throws', () async {
+        final tracks = player.state.tracks;
+        await expectLater(
+          player.addAudioTrack(Media('${tmp.path}/missing.wav')),
+          throwsA(
+            isA<MpvCommandException>().having(
+              (e) => e.name,
+              'name',
+              'audio-add',
+            ),
+          ),
+        );
+        expect(player.state.tracks, tracks);
+      });
+
+      test('a track mpv refuses to remove throws', () async {
+        final tracks = player.state.tracks;
+        await expectLater(
+          player.removeAudioTrack(const Track.id(99)),
+          throwsA(
+            isA<MpvCommandException>().having(
+              (e) => e.name,
+              'name',
+              'audio-remove',
+            ),
+          ),
+        );
+        expect(player.state.tracks, tracks);
+      });
+    });
+
+    test('addAudioTrack with no file loaded throws', () async {
+      final idle = await buildPlayer();
+      addTearDown(idle.dispose);
+      await expectLater(
+        idle.addAudioTrack(Media(fx)),
+        throwsA(isA<MpvCommandException>()),
+      );
     });
   });
 }
