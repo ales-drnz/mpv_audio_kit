@@ -283,10 +283,13 @@ void main() {
       await waitUntil(() => p.state.position.inMilliseconds > 500);
       await p.writeResumeConfig();
       // A resume point written by 0.5.1 or earlier also held the chain.
-      _resumeFile(tmp).writeAsStringSync(
-        'af=%${restored.length}%$restored\n',
-        mode: FileMode.append,
-      );
+      final saved = _resumeFile(tmp)
+        ..writeAsStringSync(
+          'af=%${restored.length}%$restored\n',
+          mode: FileMode.append,
+        );
+      // mpv deletes the point once a load used it: kept for the second.
+      final legacy = saved.readAsStringSync();
 
       // The player's chain is empty now: the load must not bring the
       // saved equalizer back behind the state.
@@ -308,7 +311,13 @@ void main() {
       ]);
       final mine = (await p.getRawProperty('af'))!;
       expect(mine, isNot(restored));
+      saved.writeAsStringSync(legacy);
       await openAndWaitForLoad(p, fx);
+      expect(
+        p.state.position.inMilliseconds,
+        greaterThan(400),
+        reason: 'precondition: the resume point applied again',
+      );
       await waitUntil(
         () async => await p.getRawProperty('af') == mine,
         reason: "the state's equalizer plays, not the saved one",
