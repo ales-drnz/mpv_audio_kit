@@ -55,6 +55,9 @@ inside test_app's macOS build output, instantiates a real
 renderer, so each call publishes synchronously; there is no timer or
 seek state machine to spin the run loop for.
 
+CI runs it in the macOS (SwiftPM) build job of `.github/workflows/ci.yml`,
+right after that job's `flutter build macos --debug`.
+
 The suite expects test_app's macOS build artifacts to exist:
 
 ```

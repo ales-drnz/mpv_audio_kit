@@ -201,11 +201,15 @@ jobs:
           - name: Windows
             os: windows-latest
             command: flutter build windows --debug
+          # Then the darwin media session suite, which links the plugin's
+          # Swift against the FlutterMacOS.framework this build leaves in
+          # Build/Products/Debug (test/media_session/darwin/run.sh).
           - name: macOS (SwiftPM)
             os: macos-latest
             command: >-
               flutter build macos --debug &&
-              ../scripts/ci/check_apple_frameworks.sh build/macos/Build/Products/Debug/mpv_audio_kit_test_app.app/Contents/Frameworks
+              ../scripts/ci/check_apple_frameworks.sh build/macos/Build/Products/Debug/mpv_audio_kit_test_app.app/Contents/Frameworks &&
+              bash ../test/media_session/darwin/run.sh
           # CocoaPods builds the plugin as mpv_audio_kit.framework: libmpv
           # must land beside it, not over it.
           - name: macOS (CocoaPods)
