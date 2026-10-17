@@ -163,10 +163,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+      # No Flutter cache off Linux: the macOS and Windows entries weigh 1.5
+      # to 2 GB each and pushed the NDK and Gradle caches out of the 10 GB
+      # the repository gets.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          cache: false
       - uses: ./.github/actions/libmpv-from-run
         with:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
@@ -235,10 +238,11 @@ jobs:
             test_app/android/app/*.gradle*
             test_app/android/gradle/wrapper/gradle-wrapper.properties
             android/*.gradle*
+      # Flutter is cached on Linux only, as in Test (macOS).
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          cache: ${{ runner.os == 'Linux' }}
       # Gradle installs the NDK of the Flutter release and CMake on every
       # run otherwise: the runner image has neither version. They come from
       # the cache or, before Gradle, from sdkmanager with retries, since a
