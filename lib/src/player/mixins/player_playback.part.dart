@@ -212,10 +212,13 @@ mixin _PlaybackModule on _PlayerBase {
 
   /// Jumps to the chapter at [index] in the current file.
   ///
-  /// Indexing is 0-based and matches [PlayerState.chapters]. mpv handles
-  /// out-of-range values (negative or beyond the last chapter) by
-  /// clamping; the optimistic [PlayerState.currentChapter] update reflects
-  /// the requested value and is corrected by the next observer event.
+  /// Indexing is 0-based and matches [PlayerState.chapters]; -1 goes to
+  /// the start of the file. mpv refuses any index outside -1 to
+  /// `chapters.length - 1`, and the call then throws
+  /// [MpvCommandException] with [PlayerState.currentChapter] unchanged:
+  /// check the length for a "next chapter" button. An accepted index
+  /// reaches [PlayerState.currentChapter] at once, and the next observer
+  /// event confirms it.
   Future<void> setChapter(int index) async {
     await _gate();
     await _prop('chapter', index.toString());

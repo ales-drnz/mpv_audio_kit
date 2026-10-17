@@ -123,7 +123,8 @@ abstract interface class PlayerApi {
   /// is none yet. See [Player.revertSeek].
   Future<void> revertSeek();
 
-  /// Jumps to the 0-based chapter [index] in the current file.
+  /// Jumps to the 0-based chapter [index] in the current file; throws
+  /// [MpvCommandException] when [index] is out of range.
   Future<void> setChapter(int index);
 
   /// Replaces the current file's chapter markers with [chapters], an
