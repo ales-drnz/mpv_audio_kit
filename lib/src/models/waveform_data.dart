@@ -69,11 +69,12 @@ final class WaveformData {
   /// Per-bin coverage flag (one byte per bin, length matches [min]): `1`
   /// for a bin that has real data, `0` for one not yet covered.
   ///
-  /// For a fully-analysed (local-file) waveform every bin is `1`. For a
-  /// progressively-grown one (network or transcode streams, filled as
-  /// playback advances) bins ahead of the playhead (or skipped by a seek)
-  /// are `0`, so a renderer can draw them as a baseline instead of a
-  /// misleading flat-zero spike.
+  /// For a fully-analysed (local-file) waveform every bin is `1`, except a
+  /// tail past the end of the audio when the file is shorter than the
+  /// length mpv estimated from its bitrate. For a progressively-grown one
+  /// (network or transcode streams, filled as playback advances) bins
+  /// ahead of the playhead (or skipped by a seek) are `0`, so a renderer
+  /// can draw them as a baseline instead of a misleading flat-zero spike.
   final Uint8List filled;
 
   /// True for a live stream of unknown total length: the envelope is a

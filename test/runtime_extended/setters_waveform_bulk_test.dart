@@ -228,6 +228,29 @@ void main() {
         },
         timeout: const Timeout(Duration(seconds: 10)),
       );
+
+      test('a file shorter than its estimated length keeps its axis', () async {
+        // 6 s of audio that the demuxer estimates at about 18 s.
+        final path =
+            '${Directory.current.path}/test/fixtures/extra/vbr_no_xing.mp3';
+        final player = await buildPlayer();
+        try {
+          final ready = player.stream.waveform
+              .firstWhere((w) => w != null && !w.decoding)
+              .timeout(const Duration(seconds: 10));
+          await openAndWaitForLoad(player, path);
+          final wave = (await ready)!;
+          expect(wave.duration, player.state.duration);
+          // The bins hold the audio where it plays, and the tail past
+          // its end is left unfilled.
+          final end = wave.filled.lastIndexOf(1) + 1;
+          final audioEnd = wave.duration * end ~/ wave.bins;
+          expect(audioEnd.inMilliseconds, closeTo(6030, 60));
+          expect(wave.filled.sublist(end), everyElement(0));
+        } finally {
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 20)));
     });
   });
 }
