@@ -160,7 +160,11 @@ jobs:
     name: Test (macOS)
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: macos-latest
+    # The macOS and Windows images are pinned, so a new Xcode or Visual
+    # Studio arrives with a commit that moves the label, not on its own.
+    # The toolchain each job got is printed, since an image can still
+    # update within its label.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
       # No Flutter cache off Linux: the macOS and Windows entries weigh 1.5
@@ -170,6 +174,12 @@ jobs:
         with:
           channel: stable
           cache: false
+      - name: Toolchain versions
+        continue-on-error: true
+        run: |
+          flutter --version
+          xcodebuild -version
+          swiftc --version
       - uses: ./.github/actions/libmpv-from-run
         with:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
@@ -199,13 +209,13 @@ jobs:
             os: ubuntu-24.04
             command: flutter build linux --debug
           - name: Windows
-            os: windows-latest
+            os: windows-2025-vs2026
             command: flutter build windows --debug
           # Then the darwin media session suite, which links the plugin's
           # Swift against the FlutterMacOS.framework this build leaves in
           # Build/Products/Debug (test/media_session/darwin/run.sh).
           - name: macOS (SwiftPM)
-            os: macos-latest
+            os: macos-26
             command: >-
               flutter build macos --debug &&
               ../scripts/ci/check_apple_frameworks.sh build/macos/Build/Products/Debug/mpv_audio_kit_test_app.app/Contents/Frameworks &&
@@ -213,7 +223,7 @@ jobs:
           # CocoaPods builds the plugin as mpv_audio_kit.framework: libmpv
           # must land beside it, not over it.
           - name: macOS (CocoaPods)
-            os: macos-latest
+            os: macos-26
             swiftpm: 'off'
             command: >-
               flutter build macos --debug &&
@@ -221,14 +231,14 @@ jobs:
           # A device build too, unsigned: the hook takes the xcframework's
           # ios-arm64 slice there, which no simulator build touches.
           - name: iOS (SwiftPM)
-            os: macos-latest
+            os: macos-26
             command: >-
               flutter build ios --simulator --debug &&
               ../scripts/ci/check_apple_frameworks.sh build/ios/iphonesimulator/Runner.app/Frameworks &&
               flutter build ios --debug --no-codesign &&
               ../scripts/ci/check_apple_frameworks.sh build/ios/iphoneos/Runner.app/Frameworks
           - name: iOS (CocoaPods)
-            os: macos-latest
+            os: macos-26
             swiftpm: 'off'
             command: >-
               flutter build ios --simulator --debug &&
@@ -251,6 +261,24 @@ jobs:
         with:
           channel: stable
           cache: ${{ runner.os == 'Linux' }}
+      - name: Toolchain versions
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: |
+          flutter --version
+          xcodebuild -version
+          echo "SDKs: macOS $(xcrun --sdk macosx --show-sdk-version), iOS $(xcrun --sdk iphoneos --show-sdk-version)"
+          swiftc --version
+      - name: Toolchain versions
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          flutter --version
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -property installationPath
+          "Visual Studio $(& $vswhere -latest -property catalog_productDisplayVersion) at $vs"
+          "MSVC $(Get-Content "$vs\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt")"
       # Gradle installs the NDK of the Flutter release and CMake on every
       # run otherwise: the runner image has neither version. They come from
       # the cache or, before Gradle, from sdkmanager with retries, since a
