@@ -117,6 +117,30 @@ void main() {
       expect(player.state.playing, isFalse);
     });
 
+    // openAll at the end of the queue steps through idle, and the intent
+    // reset that idle makes waits for the load. Overtaken by a
+    // clearPlaylist, the load ends with nothing to play: the reset lands
+    // then.
+    test('an openAll at the end overtaken by clearPlaylist leaves the '
+        'intent off', () async {
+      await park();
+      shim().holdReply('loadfile', const Duration(milliseconds: 300));
+      final opening = player.openAll([
+        Media(fixturePath),
+        Media(fixturePath),
+      ], play: true);
+      await waitUntil(
+        () => shim().counter('replies_held') > 0,
+        reason: 'the loadfile reply was never held',
+      );
+      await player.clearPlaylist();
+      await opening;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(await player.getRawProperty('idle-active'), 'yes');
+      expect(player.state.playlist.items, isEmpty);
+      expect(player.state.playWhenReady, isFalse);
+    });
+
     // Each append holds one of the 1000 reply slots mpv keeps per client
     // until the player reads its reply, and mpv refuses a request once they
     // are all taken. With the replies held back, as on a busy device, an

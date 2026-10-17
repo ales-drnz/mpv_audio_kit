@@ -38,8 +38,14 @@ mixin _PlaybackModule on _PlayerBase {
       // the core, which runs it before it serves another request. Still at
       // EOF on a source that cannot seek, it failed. The unpause would only
       // be paused again by keep-open, too fast for a notification, so it
-      // is not written and the intent goes back off.
-      if (await _parkedAtEof() && await getRawProperty('seekable') != 'yes') {
+      // is not written and the intent goes back off. Not while a load is
+      // running: it replaces the parked file (openAll removes it first), so
+      // the reads tell nothing about the source, and the unpause arms the
+      // load.
+      if (_loadsInFlight == 0 &&
+          await _parkedAtEof() &&
+          await getRawProperty('seekable') != 'yes' &&
+          _loadsInFlight == 0) {
         if (intent == _intentEpoch) _writeIntent(false);
         return;
       }

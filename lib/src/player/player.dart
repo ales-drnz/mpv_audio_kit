@@ -497,17 +497,9 @@ class Player extends _PlayerBase
     // entry): entries before it are never loaded or made current.
     await _prop('pause', _intendedPlay(intent, shouldPlay) ? 'no' : 'yes');
     final target = (retainedOld ? 1 : 0) + clampedIndex;
+    // The parked flow went through idle, which does not spend the intent
+    // while this call runs: see the idle-active observer.
     await _commandChecked(['playlist-play-index', target.toString()]);
-
-    // Parked flow traversed idle, and the idle-active observer resets
-    // playWhenReady (its job when content genuinely ends). By FIFO
-    // event delivery that reset has already been applied once the
-    // play-index reply lands, so re-asserting the intent here is the
-    // last word: without this the OS play button would stick on
-    // "paused" while the new album plays.
-    if (parkedAtEof && intent == _intentEpoch) {
-      _writeIntent(shouldPlay);
-    }
 
     // ── Phase 4: drop the retained old entry ──────────────────────────
     // Non-current by now (the jump moved current to the target), so the
@@ -776,8 +768,13 @@ abstract class _PlayerBase {
 
   /// How many open(), openAll() and openPlaylistFile() calls are running.
   /// While one is, an idle core is about to get content, so [Player.play]
-  /// keeps its intent.
+  /// and the idle-active observer keep the intent.
   int _loadsInFlight = 0;
+
+  /// mpv went idle while a load was running (openAll steps through idle
+  /// at the end of the queue), and the intent reset that idle makes waits
+  /// for the loads to end. Cleared when mpv leaves idle.
+  bool _idleResetPending = false;
 
   /// Runs a content-replacing load, counted in [_loadsInFlight].
   Future<void> _trackLoad(Future<void> Function() load) async {
@@ -786,7 +783,23 @@ abstract class _PlayerBase {
       await load();
     } finally {
       _loadsInFlight--;
+      if (_loadsInFlight == 0 && _idleResetPending) await _settleIdleReset();
     }
+  }
+
+  /// The intent reset left to the end of the loads: still idle with no
+  /// load running (one failed, or a later call cleared the playlist),
+  /// nothing will play. Read from the core, since the notification that
+  /// mpv left idle can come after the loads end.
+  Future<void> _settleIdleReset() async {
+    if (_disposed) return;
+    final (rc, idle) = await _getAsync(
+      'idle-active',
+      MpvFormat.mpvFormatString,
+    );
+    if (!_idleResetPending || _loadsInFlight > 0 || _disposed) return;
+    _idleResetPending = false;
+    if (rc >= 0 && idle == 'yes') _writeIntent(false);
   }
 
   /// Bumped by every public call that sets the play-pause intent, so a
@@ -1026,14 +1039,24 @@ abstract class _PlayerBase {
               // natural end of playable content under the shipped
               // `keep-open: yes` does NOT fire idle-active; that path is
               // handled by [_settleEndOfContent] instead. A mid-playlist
-              // advance also doesn't fire idle-active, so this never
-              // flickers.
+              // advance also doesn't fire idle-active. While a load runs
+              // the idle is its own step (openAll at the end of the queue
+              // removes the parked entry before its appends), so the reset
+              // waits for the loads to end ([_settleIdleReset]): made
+              // now, it flickered the OS button and undid a play() called
+              // during the load.
               if (_hasLoadedFile) {
-                _writeIntent(false);
+                if (_loadsInFlight > 0) {
+                  _idleResetPending = true;
+                } else {
+                  _writeIntent(false);
+                }
                 // No file is loaded any more (stop, a cleared playlist, a
                 // failed load): nothing of the last one should linger.
                 _clearFinishedFile();
               }
+            } else {
+              _idleResetPending = false;
             }
           },
           onAudioOutputState: (state) {
