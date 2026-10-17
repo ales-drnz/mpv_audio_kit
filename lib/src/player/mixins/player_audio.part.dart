@@ -194,12 +194,13 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the OS per-app mixer volume in percent (`ao-volume`): the system
   /// volume slider for this app, distinct from the soft [setVolume].
+  /// Throws [RangeError] outside `[0, 100]`.
   ///
   /// Best-effort: when the active audio output doesn't expose system volume
   /// (the null AO, or a backend without per-app volume) the call is silently
   /// ignored: it does NOT throw, and [PlayerState.systemVolume] stays `null`.
   Future<void> setSystemVolume(double volume) async {
-    _checkFinite(volume, 'volume');
+    _checkRange(volume, 0, 100, 'volume');
     await _gate();
     final value = canonicalFloat(volume);
     final rc = await _propRc('ao-volume', value.toString());
@@ -309,9 +310,11 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// [select] `true` (default) selects the new track immediately; `false`
   /// adds it without switching. [title] and [lang] tag it for the track list.
-  /// Requires a file to be loaded first. Per-[Media] options
-  /// (`httpHeaders`, …) are validated but not applied: `audio-add` has no
-  /// file-local options slot.
+  /// Per-[Media] options (`httpHeaders`, …) are validated but not applied:
+  /// `audio-add` has no file-local options slot.
+  ///
+  /// Throws [MpvCommandException] when mpv refuses the track: a file it
+  /// cannot open, or no file loaded to add it to.
   Future<void> addAudioTrack(
     Media file, {
     bool select = true,
@@ -343,11 +346,18 @@ mixin _AudioModule on _PlayerBase {
     // never closes: held until the file the track joins ends.
     final dispose = resolved.dispose;
     final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
-    var added = false;
+    var rc = -1;
     try {
-      added = await _command(args) >= 0;
+      rc = await _command(args);
     } finally {
-      await settle?.call(added);
+      await settle?.call(rc >= 0);
+    }
+    if (rc < 0) {
+      throw MpvCommandException(
+        name: 'audio-add',
+        code: rc,
+        message: _errorString(rc),
+      );
     }
   }
 
@@ -360,6 +370,9 @@ mixin _AudioModule on _PlayerBase {
   /// takes an optional track id and has no "off" notion, so removing "no
   /// track" is meaningless. Use [setAudioTrack] with [Track.off] to mute the
   /// selection instead.
+  ///
+  /// Throws [MpvCommandException] when mpv refuses: an id with no audio
+  /// track, or no track to remove.
   Future<void> removeAudioTrack(Track track) async {
     _checkNotDisposed();
     if (track is TrackOff) {
@@ -371,7 +384,7 @@ mixin _AudioModule on _PlayerBase {
       );
     }
     await _gate();
-    await _command(
+    await _commandChecked(
       track is TrackId
           ? ['audio-remove', '${track.trackId}']
           : ['audio-remove'],
@@ -418,6 +431,23 @@ mixin _AudioModule on _PlayerBase {
   /// disabled by mpv instead, with a message on [PlayerStream.log]. With
   /// no file loaded there is no graph to build yet, so a refused value
   /// surfaces at the next load instead, on [PlayerStream.error].
+  ///
+  /// Throws [ArgumentError], before anything reaches mpv and with the
+  /// state unchanged, when a stage holds a value its filter would take and
+  /// then read or write out of its buffers with, or turn the audio to NaN
+  /// with:
+  /// - chorus lists with different numbers of voices, a negative or NaN
+  ///   delay or depth, or a speed that is not above 0 and at most 100 Hz;
+  /// - aecho delays that are not above 0 and at most 90000 ms, or decays
+  ///   that are not above 0 and at most 1;
+  /// - an anequalizer band value that is NaN or infinite;
+  /// - a pan input channel named UNK, UNSD or AMBI, which pan has no slot
+  ///   for;
+  /// - an mcompand band with an empty attack or decay among an even number
+  ///   of them, or a NaN crossover frequency;
+  /// - compand attacks and decays that both start with no number.
+  ///
+  /// A [RawAudioEffect] is not checked.
   ///
   /// A [RawAudioEffect] carries a lavfi entry written by hand, for
   /// expression-based filters or anything without a typed effect. The
@@ -490,6 +520,8 @@ mixin _AudioModule on _PlayerBase {
   /// the full `af` rewrite, which is always correct.
   Future<void> _applyAudioEffects(List<AudioEffect> requested) {
     final effects = List<AudioEffect>.unmodifiable(requested);
+    // Before the diff, so a refused list reaches neither mpv nor the state.
+    validateAudioEffects(effects);
     final previous = _state.audioEffects;
     final written = _afAccepted != null;
     // No-op writes skip the serialization + FFI round-trip entirely.
@@ -656,8 +688,9 @@ mixin _AudioModule on _PlayerBase {
   /// current list and returns the new one.
   ///
   /// Throws [MpvCommandException] like [setAudioEffects] when mpv refuses
-  /// the result, so a call that is not awaited, typical of a slider, ends
-  /// in an unhandled error then.
+  /// the result, and [ArgumentError] like it for a stage that is not safe
+  /// to run, so a call that is not awaited, typical of a slider, ends in
+  /// an unhandled error then.
   ///
   /// ```dart
   /// // A slider on the second stage (an EqualizerEffect):
@@ -794,8 +827,14 @@ mixin _AudioModule on _PlayerBase {
   /// has finished starting. The pipeline is **lazy**: with no subscriber
   /// to [PlayerStream.fft] or [PlayerStream.pcm] this only stores the
   /// configuration; the poll loop starts on the first subscriber.
+  ///
+  /// Throws [ArgumentError] (a [RangeError] for a bound), with the state
+  /// unchanged, when a field is outside the range its doc gives. The
+  /// constructor's asserts check the same ranges, but a release build
+  /// skips them.
   void setSpectrum(SpectrumSettings settings) {
     _checkNotDisposed();
+    settings.validate();
     assert(
       settings.emitInterval >= SpectrumPipeline.minEmitInterval,
       'emitInterval must be at least 8 ms',

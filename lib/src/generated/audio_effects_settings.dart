@@ -49,6 +49,16 @@ String _wireDouble(double v) {
   return v.toStringAsFixed(6);
 }
 
+/// Wire-format a duration option, in seconds: 3 decimals when that is
+/// exact, 6 when it is not, which holds every microsecond. Never an
+/// exponent: duration options go through av_parse_time, which refuses
+/// one.
+String _wireDuration(Duration d) {
+  final v = d.inMicroseconds / 1e6;
+  final fixed = v.toStringAsFixed(3);
+  return double.parse(fixed) == v ? fixed : v.toStringAsFixed(6);
+}
+
 /// One stage of the audio effects chain: an entry of the ordered list given
 /// to `Player.setAudioEffects`. Stages run in list order, and the same
 /// filter may appear more than once.
@@ -1398,7 +1408,7 @@ final class AdecorrelateEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [all]: Use last set delay for all remaining channels. By default is disabled. This option if enabled changes how option `delays` is interpreted. (range 0..1, default 0)
-/// - [delays]: Set list of delays in milliseconds for each channel separated by '|'. Unused delays will be silently ignored. If number of given delays is smaller than number of channels all remaining channels will not be delayed. If you want to delay exact number of samples, append 'S' to number. If you want instead to delay in seconds, append 's' to number. (range 0..0, default "", runtime-tunable)
+/// - [delays]: Set list of delays in milliseconds for each channel separated by '|'. Unused delays will be silently ignored. If number of given delays is smaller than number of channels all remaining channels will not be delayed. If you want to delay exact number of samples, append 'S' to number. If you want instead to delay in seconds, append 's' to number. (range 0..0, default "")
 final class AdelayEffect extends AudioEffect {
   /// Whether this effect is applied. `false` keeps it in the
   /// list, with its settings, without inserting it in the chain.
@@ -1462,9 +1472,7 @@ final class AdelayEffect extends AudioEffect {
   List<(String, String)>? _runtimeDiff(covariant AdelayEffect prev) {
     final out = <(String, String)>[];
     if (all != prev.all) return null;
-    if (delays != prev.delays) {
-      out.add(('delays', delays));
-    }
+    if (delays != prev.delays) return null;
     return out;
   }
 }
@@ -3042,12 +3050,12 @@ final class AfadeEffect extends AudioEffect {
     final parts = <String>[];
     if (curve != AfadeCurve.tri) parts.add('curve=' + curve.mpvValue);
     if (duration != Duration.zero)
-      parts.add('duration=' + _wireDouble(duration.inMicroseconds / 1e6));
+      parts.add('duration=' + _wireDuration(duration));
     if (nbSamples != 44100) parts.add('nb_samples=' + nbSamples.toString());
     if (silence != 0.0) parts.add('silence=' + _wireDouble(silence));
     if (startSample != 0) parts.add('start_sample=' + startSample.toString());
     if (startTime != Duration.zero)
-      parts.add('start_time=' + _wireDouble(startTime.inMicroseconds / 1e6));
+      parts.add('start_time=' + _wireDuration(startTime));
     if (type != AfadeType.in_) parts.add('type=' + type.mpvValue);
     if (unity != 1.0) parts.add('unity=' + _wireDouble(unity));
     return parts.isEmpty ? 'lavfi-afade' : 'lavfi-afade=' + parts.join(':');
@@ -3063,7 +3071,7 @@ final class AfadeEffect extends AudioEffect {
       out.add(('curve', curve.mpvValue));
     }
     if (duration != prev.duration) {
-      out.add(('duration', _wireDouble(duration.inMicroseconds / 1e6)));
+      out.add(('duration', _wireDuration(duration)));
     }
     if (nbSamples != prev.nbSamples) {
       out.add(('nb_samples', nbSamples.toString()));
@@ -3075,7 +3083,7 @@ final class AfadeEffect extends AudioEffect {
       out.add(('start_sample', startSample.toString()));
     }
     if (startTime != prev.startTime) {
-      out.add(('start_time', _wireDouble(startTime.inMicroseconds / 1e6)));
+      out.add(('start_time', _wireDuration(startTime)));
     }
     if (type != prev.type) {
       out.add(('type', type.mpvValue));
@@ -3659,7 +3667,7 @@ final class AformatEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [level]: Set output gain applied to final output. Allowed range is from 0.0 to 1.0. Default value is 1.0. (range 0.0..1.0, default 1, runtime-tunable)
-/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8, runtime-tunable)
+/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8)
 /// - [shift]: Specify frequency shift. Allowed range is -INT_MAX to INT_MAX. Default value is 0.0. (range -2147483647..2147483647, default 0, runtime-tunable)
 final class AfreqshiftEffect extends AudioEffect {
   /// Default value for [level].
@@ -3776,9 +3784,7 @@ final class AfreqshiftEffect extends AudioEffect {
     if (level != prev.level) {
       out.add(('level', _wireDouble(level)));
     }
-    if (order != prev.order) {
-      out.add(('order', order.toString()));
-    }
+    if (order != prev.order) return null;
     if (shift != prev.shift) {
       out.add(('shift', _wireDouble(shift)));
     }
@@ -4022,9 +4028,9 @@ final class AfwtdnEffect extends AudioEffect {
 /// Shorter signals than the chosen attack time will be left untouched.
 ///
 /// Parameters:
-/// - [attack]: Amount of milliseconds the signal has to rise above the threshold before gain reduction stops. Default is 20 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 20, runtime-tunable)
-/// - [detection]: Choose if exact signal should be taken for detection or an RMS like one. Default is `rms`. Can be `peak` or `rms`. (range 0..1, default 1, runtime-tunable)
-/// - [knee]: Curve the sharp knee around the threshold to enter gain reduction more softly. Default is 2.828427125. Allowed range is from 1 to 8. (range 1..8, default 2.828427125, runtime-tunable)
+/// - [attack]: Amount of milliseconds the signal has to rise above the threshold before gain reduction stops. Default is 20 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 20)
+/// - [detection]: Choose if exact signal should be taken for detection or an RMS like one. Default is `rms`. Can be `peak` or `rms`. (range 0..1, default 1)
+/// - [knee]: Curve the sharp knee around the threshold to enter gain reduction more softly. Default is 2.828427125. Allowed range is from 1 to 8. (range 1..8, default 2.828427125)
 /// - [levelIn]: Set input level before filtering. Default is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
 /// - [levelSc]: set sidechain gain (range 0.015625..64, default 1, runtime-tunable)
 /// - [link]: Choose if the average level between all channels or the louder channel affects the reduction. Default is `average`. Can be `average` or `maximum`. (range 0..1, default 0, runtime-tunable)
@@ -4032,8 +4038,8 @@ final class AfwtdnEffect extends AudioEffect {
 /// - [mode]: Set the mode of operation. Can be `upward` or `downward`. Default is `downward`. If set to `upward` mode, higher parts of signal will be amplified, expanding dynamic range in upward direction. Otherwise, in case of `downward` lower parts of signal will be reduced. (range 0..1, default 0, runtime-tunable)
 /// - [range]: Set the level of gain reduction when the signal is below the threshold. Default is 0.06125. Allowed range is from 0 to 1. Setting this to 0 disables reduction and then filter behaves like expander. (range 0..1, default 0.06125, runtime-tunable)
 /// - [ratio]: Set a ratio by which the signal is reduced. Default is 2. Allowed range is from 1 to 9000. (range 1..9000, default 2, runtime-tunable)
-/// - [release]: Amount of milliseconds the signal has to fall below the threshold before the reduction is increased again. Default is 250 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 250, runtime-tunable)
-/// - [threshold]: If a signal rises above this level the gain reduction is released. Default is 0.125. Allowed range is from 0 to 1. (range 0..1, default 0.125, runtime-tunable)
+/// - [release]: Amount of milliseconds the signal has to fall below the threshold before the reduction is increased again. Default is 250 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 250)
+/// - [threshold]: If a signal rises above this level the gain reduction is released. Default is 0.125. Allowed range is from 0 to 1. (range 0..1, default 0.125)
 final class AgateEffect extends AudioEffect {
   /// Default value for [attack].
   static const double attackDefault = 20.0;
@@ -4297,15 +4303,9 @@ final class AgateEffect extends AudioEffect {
   @override
   List<(String, String)>? _runtimeDiff(covariant AgateEffect prev) {
     final out = <(String, String)>[];
-    if (attack != prev.attack) {
-      out.add(('attack', _wireDouble(attack)));
-    }
-    if (detection != prev.detection) {
-      out.add(('detection', detection.mpvValue));
-    }
-    if (knee != prev.knee) {
-      out.add(('knee', _wireDouble(knee)));
-    }
+    if (attack != prev.attack) return null;
+    if (detection != prev.detection) return null;
+    if (knee != prev.knee) return null;
     if (levelIn != prev.levelIn) {
       out.add(('level_in', _wireDouble(levelIn)));
     }
@@ -4327,12 +4327,8 @@ final class AgateEffect extends AudioEffect {
     if (ratio != prev.ratio) {
       out.add(('ratio', _wireDouble(ratio)));
     }
-    if (release != prev.release) {
-      out.add(('release', _wireDouble(release)));
-    }
-    if (threshold != prev.threshold) {
-      out.add(('threshold', _wireDouble(threshold)));
-    }
+    if (release != prev.release) return null;
+    if (threshold != prev.threshold) return null;
     return out;
   }
 }
@@ -4635,14 +4631,14 @@ final class AintegralEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [asc]: When gain reduction is always needed ASC takes care of releasing to an average reduction level rather than reaching a reduction of 0 in the release time. (range 0..1, default 0, runtime-tunable)
-/// - [ascLevel]: Select how much the release time is affected by ASC, 0 means nearly no changes in release time while 1 produces higher release times. (range 0..1, default 0.5, runtime-tunable)
-/// - [attack]: The limiter will reach its attenuation level in this amount of time in milliseconds. Default is 5 milliseconds. (range 0.1..80, default 5, runtime-tunable)
-/// - [latency]: Compensate the delay introduced by using the lookahead buffer set with attack parameter. Also flush the valid audio data in the lookahead buffer when the stream hits EOF. (range 0..1, default 0, runtime-tunable)
+/// - [ascLevel]: Select how much the release time is affected by ASC, 0 means nearly no changes in release time while 1 produces higher release times. (range 0..1, default 0.5)
+/// - [attack]: The limiter will reach its attenuation level in this amount of time in milliseconds. Default is 5 milliseconds. (range 0.1..80, default 5)
+/// - [latency]: Compensate the delay introduced by using the lookahead buffer set with attack parameter. Also flush the valid audio data in the lookahead buffer when the stream hits EOF. (range 0..1, default 0)
 /// - [level]: Auto level output signal. Default is enabled. This normalizes audio back to 0dB if enabled. (range 0..1, default 1, runtime-tunable)
 /// - [levelIn]: Set input gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
 /// - [levelOut]: Set output gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
 /// - [limit]: Don't let signals above this level pass the limiter. Default is 1. (range 0.0625..1, default 1, runtime-tunable)
-/// - [release]: Come back from limiting to attenuation 1.0 in this amount of milliseconds. Default is 50 milliseconds. (range 1..8000, default 50, runtime-tunable)
+/// - [release]: Come back from limiting to attenuation 1.0 in this amount of milliseconds. Default is 50 milliseconds. (range 1..8000, default 50)
 final class AlimiterEffect extends AudioEffect {
   /// Default value for [ascLevel].
   static const double ascLevelDefault = 0.5;
@@ -4850,15 +4846,9 @@ final class AlimiterEffect extends AudioEffect {
     if (asc != prev.asc) {
       out.add(('asc', (asc ? '1' : '0')));
     }
-    if (ascLevel != prev.ascLevel) {
-      out.add(('asc_level', _wireDouble(ascLevel)));
-    }
-    if (attack != prev.attack) {
-      out.add(('attack', _wireDouble(attack)));
-    }
-    if (latency != prev.latency) {
-      out.add(('latency', (latency ? '1' : '0')));
-    }
+    if (ascLevel != prev.ascLevel) return null;
+    if (attack != prev.attack) return null;
+    if (latency != prev.latency) return null;
     if (level != prev.level) {
       out.add(('level', (level ? '1' : '0')));
     }
@@ -4871,9 +4861,7 @@ final class AlimiterEffect extends AudioEffect {
     if (limit != prev.limit) {
       out.add(('limit', _wireDouble(limit)));
     }
-    if (release != prev.release) {
-      out.add(('release', _wireDouble(release)));
-    }
+    if (release != prev.release) return null;
     return out;
   }
 }
@@ -5367,9 +5355,9 @@ final class AnlmdnEffect extends AudioEffect {
     final parts = <String>[];
     if (output != AnlmdnMode.o) parts.add('output=' + output.mpvValue);
     if (patch != const Duration(microseconds: 2000))
-      parts.add('patch=' + _wireDouble(patch.inMicroseconds / 1e6));
+      parts.add('patch=' + _wireDuration(patch));
     if (research != const Duration(microseconds: 6000))
-      parts.add('research=' + _wireDouble(research.inMicroseconds / 1e6));
+      parts.add('research=' + _wireDuration(research));
     if (smooth != 11.0) parts.add('smooth=' + _wireDouble(smooth));
     if (strength != 0.00001) parts.add('strength=' + _wireDouble(strength));
     return parts.isEmpty ? 'lavfi-anlmdn' : 'lavfi-anlmdn=' + parts.join(':');
@@ -5385,10 +5373,10 @@ final class AnlmdnEffect extends AudioEffect {
       out.add(('output', output.mpvValue));
     }
     if (patch != prev.patch) {
-      out.add(('patch', _wireDouble(patch.inMicroseconds / 1e6)));
+      out.add(('patch', _wireDuration(patch)));
     }
     if (research != prev.research) {
-      out.add(('research', _wireDouble(research.inMicroseconds / 1e6)));
+      out.add(('research', _wireDuration(research)));
     }
     if (smooth != prev.smooth) {
       out.add(('smooth', _wireDouble(smooth)));
@@ -5536,10 +5524,10 @@ final class ApadEffect extends AudioEffect {
     final parts = <String>[];
     if (packetSize != 4096) parts.add('packet_size=' + packetSize.toString());
     if (padDur != const Duration(microseconds: -1))
-      parts.add('pad_dur=' + _wireDouble(padDur.inMicroseconds / 1e6));
+      parts.add('pad_dur=' + _wireDuration(padDur));
     if (padLen != -1) parts.add('pad_len=' + padLen.toString());
     if (wholeDur != const Duration(microseconds: -1))
-      parts.add('whole_dur=' + _wireDouble(wholeDur.inMicroseconds / 1e6));
+      parts.add('whole_dur=' + _wireDuration(wholeDur));
     if (wholeLen != -1) parts.add('whole_len=' + wholeLen.toString());
     return parts.isEmpty ? 'lavfi-apad' : 'lavfi-apad=' + parts.join(':');
   }
@@ -5721,7 +5709,7 @@ final class AphaserEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [level]: Set output gain applied to final output. Allowed range is from 0.0 to 1.0. Default value is 1.0. (range 0.0..1.0, default 1, runtime-tunable)
-/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8, runtime-tunable)
+/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8)
 /// - [shift]: Specify phase shift. Allowed range is from -1.0 to 1.0. Default value is 0.0. (range -1.0..1.0, default 0, runtime-tunable)
 final class AphaseshiftEffect extends AudioEffect {
   /// Default value for [level].
@@ -5838,9 +5826,7 @@ final class AphaseshiftEffect extends AudioEffect {
     if (level != prev.level) {
       out.add(('level', _wireDouble(level)));
     }
-    if (order != prev.order) {
-      out.add(('order', order.toString()));
-    }
+    if (order != prev.order) return null;
     if (shift != prev.shift) {
       out.add(('shift', _wireDouble(shift)));
     }
@@ -14032,36 +14018,28 @@ final class SilenceremoveEffect extends AudioEffect {
     if (detection != SilenceremoveDetection.rms)
       parts.add('detection=' + detection.mpvValue);
     if (startDuration != Duration.zero)
-      parts.add(
-        'start_duration=' + _wireDouble(startDuration.inMicroseconds / 1e6),
-      );
+      parts.add('start_duration=' + _wireDuration(startDuration));
     if (startMode != SilenceremoveMode.any)
       parts.add('start_mode=' + startMode.mpvValue);
     if (startPeriods != 0)
       parts.add('start_periods=' + startPeriods.toString());
     if (startSilence != Duration.zero)
-      parts.add(
-        'start_silence=' + _wireDouble(startSilence.inMicroseconds / 1e6),
-      );
+      parts.add('start_silence=' + _wireDuration(startSilence));
     if (startThreshold != 0.0)
       parts.add('start_threshold=' + _wireDouble(startThreshold));
     if (stopDuration != Duration.zero)
-      parts.add(
-        'stop_duration=' + _wireDouble(stopDuration.inMicroseconds / 1e6),
-      );
+      parts.add('stop_duration=' + _wireDuration(stopDuration));
     if (stopMode != SilenceremoveMode.all)
       parts.add('stop_mode=' + stopMode.mpvValue);
     if (stopPeriods != 0) parts.add('stop_periods=' + stopPeriods.toString());
     if (stopSilence != Duration.zero)
-      parts.add(
-        'stop_silence=' + _wireDouble(stopSilence.inMicroseconds / 1e6),
-      );
+      parts.add('stop_silence=' + _wireDuration(stopSilence));
     if (stopThreshold != 0.0)
       parts.add('stop_threshold=' + _wireDouble(stopThreshold));
     if (timestamp != SilenceremoveTimestamp.write)
       parts.add('timestamp=' + timestamp.mpvValue);
     if (window != const Duration(microseconds: 20000))
-      parts.add('window=' + _wireDouble(window.inMicroseconds / 1e6));
+      parts.add('window=' + _wireDuration(window));
     return parts.isEmpty
         ? 'lavfi-silenceremove'
         : 'lavfi-silenceremove=' + parts.join(':');

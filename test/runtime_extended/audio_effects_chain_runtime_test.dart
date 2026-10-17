@@ -86,5 +86,17 @@ void main() {
         fail(buf.toString());
       }
     }, timeout: const Timeout(Duration(minutes: 3)));
+
+    test('durations under a millisecond reach mpv', () async {
+      // av_parse_time refuses an exponent, which these once carried.
+      const us500 = Duration(microseconds: 500);
+      final errors = await captureChainErrors(player, const [
+        AfadeEffect(startTime: us500, duration: us500),
+        SilenceremoveEffect(window: us500, startDuration: us500),
+        ApadEffect(padDur: us500),
+      ]);
+      await player.setAudioEffects(const []);
+      expect(errors.map((e) => e.text.trim()), isEmpty);
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

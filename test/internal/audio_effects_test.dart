@@ -248,6 +248,67 @@ void main() {
         isEmpty,
       );
     });
+
+    // These filters take any runtime option through the generic command
+    // handler, which only stores the raw value: what the filter derives
+    // from it at setup (alimiter's seconds and asc coefficient, agate's
+    // coefficients and thresholds, the shifters' coefficients) stays as
+    // it was, so a live command plays the wrong thing or nothing.
+    test('an option the filter reads only at setup needs a rebuild', () {
+      const cases = <(String, AudioEffect, AudioEffect)>[
+        ('alimiter attack', AlimiterEffect(), AlimiterEffect(attack: 10)),
+        ('alimiter release', AlimiterEffect(), AlimiterEffect(release: 200)),
+        ('alimiter asc_level', AlimiterEffect(), AlimiterEffect(ascLevel: 1)),
+        ('alimiter latency', AlimiterEffect(), AlimiterEffect(latency: true)),
+        ('agate attack', AgateEffect(), AgateEffect(attack: 40)),
+        ('agate release', AgateEffect(), AgateEffect(release: 500)),
+        ('agate threshold', AgateEffect(), AgateEffect(threshold: 0.5)),
+        ('agate knee', AgateEffect(), AgateEffect(knee: 4)),
+        (
+          'agate detection',
+          AgateEffect(),
+          AgateEffect(detection: AgateDetection.peak),
+        ),
+        ('afreqshift order', AfreqshiftEffect(), AfreqshiftEffect(order: 4)),
+        ('aphaseshift order', AphaseshiftEffect(), AphaseshiftEffect(order: 4)),
+      ];
+      for (final (name, from, to) in cases) {
+        expect(audioEffectsDiff([from], [to]), isNull, reason: name);
+      }
+    });
+
+    test('the options those filters read per sample still update live', () {
+      final cmds = audioEffectsDiff(
+        const [AlimiterEffect(), AgateEffect()],
+        const [AlimiterEffect(limit: 0.5), AgateEffect(ratio: 4)],
+      );
+      expect(cmds?.map((c) => '${c.label} ${c.option}'), [
+        'aek_alimiter_0 limit',
+        'aek_agate_0 ratio',
+      ]);
+    });
+
+    // adelay's command sets absolute delays on lines its setup already
+    // shortened by the common padding, ignores `all`, does nothing on a
+    // filter created without delays, and skips the size check.
+    test('an adelay delays change needs a rebuild', () {
+      const cases = <(AdelayEffect, AdelayEffect)>[
+        (AdelayEffect(delays: '500|500'), AdelayEffect(delays: '600|600')),
+        (AdelayEffect(), AdelayEffect(delays: '500')),
+        (AdelayEffect(delays: '500'), AdelayEffect()),
+        (
+          AdelayEffect(all: true, delays: '500'),
+          AdelayEffect(all: true, delays: '600'),
+        ),
+      ];
+      for (final (from, to) in cases) {
+        expect(
+          audioEffectsDiff([from], [to]),
+          isNull,
+          reason: '${from.delays} to ${to.delays}',
+        );
+      }
+    });
   });
 
   group('Enum.fromMpv non-throwing fallback', () {
@@ -268,6 +329,57 @@ void main() {
       for (final v in RubberbandPitch.values) {
         expect(RubberbandPitch.fromMpv(v.mpvValue), v);
       }
+    });
+  });
+
+  group('durations on the wire', () {
+    // A duration option goes through av_parse_time, which reads digits
+    // with a decimal point but no exponent: '5e-4' is refused.
+    String startTime(int us) => RegExp(r'start_time=([^:]*)')
+        .firstMatch(
+          AfadeEffect(startTime: Duration(microseconds: us)).toFilterString(),
+        )!
+        .group(1)!;
+
+    test('under a millisecond they go out without an exponent', () {
+      expect(startTime(500), '0.000500');
+      expect(startTime(1), '0.000001');
+      expect(startTime(-999), '-0.000999');
+      expect(
+        audioEffectsDiff(
+          const [AfadeEffect()],
+          const [AfadeEffect(duration: Duration(microseconds: 500))],
+        )!.single.value,
+        '0.000500',
+      );
+    });
+
+    test('every other duration goes out as it did before', () {
+      // The format before: 3 decimals when exact, 6 when not, and an
+      // exponent under a millisecond.
+      String before(double v) {
+        final fixed = v.toStringAsFixed(3);
+        if (v == 0 || double.parse(fixed) == v) return fixed;
+        if (v.abs() < 0.001) return v.toStringAsExponential();
+        return v.toStringAsFixed(6);
+      }
+
+      final micros = <int>{
+        for (var us = -3000; us <= 3000; us++) us,
+        for (var us = 3000; us <= 100000000; us += 9973) us,
+        for (var us = 1; us < 1 << 62; us *= 3) ...[us, -us],
+        999999,
+        1000001,
+        86400000000,
+      }..remove(0);
+      var compared = 0;
+      for (final us in micros) {
+        final old = before(us / 1e6);
+        if (old.contains('e')) continue;
+        expect(startTime(us), old, reason: '$us us');
+        compared++;
+      }
+      expect(compared, greaterThan(10000));
     });
   });
 }

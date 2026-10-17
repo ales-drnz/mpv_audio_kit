@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:meta/meta.dart';
+
 import '../enums/window_function.dart';
 
 /// Configuration for the real-time FFT spectrum + raw PCM streams.
@@ -144,6 +146,51 @@ final class SpectrumSettings {
   /// log-spaced bands. Convenience `setSpectrum(SpectrumSettings.defaults)`
   /// to reset.
   static const SpectrumSettings defaults = SpectrumSettings();
+
+  /// Throws [ArgumentError] when a field is out of range. The constructor
+  /// is `const`, so release builds skip its asserts.
+  @internal
+  void validate() {
+    RangeError.checkValueInInterval(fftSize, 256, 4096, 'fftSize');
+    if ((fftSize & (fftSize - 1)) != 0) {
+      throw ArgumentError.value(fftSize, 'fftSize', 'must be a power of two');
+    }
+    if (bandCount <= 0) {
+      throw RangeError.value(bandCount, 'bandCount', 'must be positive');
+    }
+    // Negated so that NaN fails, as it fails the asserts.
+    if (!(bandLowHz > 0)) {
+      throw RangeError.value(bandLowHz, 'bandLowHz', 'must be positive');
+    }
+    if (!(bandHighHz > bandLowHz)) {
+      throw ArgumentError.value(
+        bandHighHz,
+        'bandHighHz',
+        'must be greater than bandLowHz ($bandLowHz)',
+      );
+    }
+    for (final (name, v) in [
+      ('attackSmoothing', attackSmoothing),
+      ('releaseSmoothing', releaseSmoothing),
+    ]) {
+      if (!(v >= 0 && v <= 1)) throw RangeError.range(v, 0, 1, name);
+    }
+    if (!(maxDb > minDb)) {
+      throw ArgumentError.value(
+        maxDb,
+        'maxDb',
+        'must be greater than minDb ($minDb)',
+      );
+    }
+    RangeError.checkValueInInterval(overlapFactor, 1, 16, 'overlapFactor');
+    if ((overlapFactor & (overlapFactor - 1)) != 0) {
+      throw ArgumentError.value(
+        overlapFactor,
+        'overlapFactor',
+        'must be a power of two',
+      );
+    }
+  }
 
   /// Returns a copy with the given fields replaced. Omitted fields keep
   /// their current value.

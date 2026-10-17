@@ -22,6 +22,7 @@ import '../events/mpv_log_entry.dart';
 import '../events/player_error.dart';
 import '../events/player_exception.dart';
 import '../generated/audio_effects_settings.dart';
+import '../internals/audio_effects_validation.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';

@@ -245,8 +245,9 @@ abstract interface class PlayerApi {
   Future<void> setVolumeMax(double limit);
 
   /// Sets the OS per-app mixer volume in percent (`ao-volume`), distinct from
-  /// the soft [setVolume]. Best-effort: silently ignored (no throw) when the
-  /// active audio output doesn't expose system volume.
+  /// the soft [setVolume]. Throws [RangeError] outside `[0, 100]`.
+  /// Best-effort: silently ignored (no throw) when the active audio output
+  /// doesn't expose system volume.
   Future<void> setSystemVolume(double volume);
 
   /// Sets the OS per-app mute (`ao-mute`), distinct from the soft [setMute].

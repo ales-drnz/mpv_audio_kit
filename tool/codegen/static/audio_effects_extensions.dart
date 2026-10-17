@@ -18,11 +18,11 @@ import 'audio_effects_settings.dart';
 /// transient, attenuated by [decay]. Several taps in series produce
 /// the classic multi-tap echo (think spring reverb fingerprint).
 final class AechoTap {
-  /// Delay in milliseconds.
+  /// Delay in milliseconds, above 0 and at most 90000.
   final double delayMs;
 
-  /// Decay factor in `[0, 1]`. `1.0` = no attenuation, `0.5` =
-  /// half-amplitude.
+  /// Decay factor, above 0 and at most 1. `1.0` = no attenuation,
+  /// `0.5` = half-amplitude.
   final double decay;
 
   /// Creates an [AechoTap].
@@ -82,16 +82,17 @@ extension AechoTapsX on AechoEffect {
 /// Each [ChorusVoice] is one of those copies with its own delay,
 /// decay, modulation depth, and modulation rate.
 final class ChorusVoice {
-  /// Delay in milliseconds (typical chorus range: 30..50 ms).
+  /// Delay in milliseconds, 0 or more (typical chorus range: 30..50 ms).
   final double delayMs;
 
   /// Decay factor in `[0, 1]`.
   final double decay;
 
-  /// LFO modulation depth in milliseconds.
+  /// LFO modulation depth in milliseconds, 0 or more.
   final double depthMs;
 
-  /// LFO modulation rate in Hz (typical chorus range: 0.1..1 Hz).
+  /// LFO modulation rate in Hz, above 0 and at most 100 (typical chorus
+  /// range: 0.1..1 Hz).
   final double speedHz;
 
   /// Creates a [ChorusVoice].
@@ -136,9 +137,11 @@ final class ChorusVoice {
 /// Typed access over the four parallel pipe-separated CSVs
 /// (`delays`/`decays`/`depths`/`speeds`) lavfi's `chorus` exposes.
 ///
-/// The four lists are positional: the Nth delay/decay/depth/speed
-/// quartet is one voice. Mismatched lengths collapse to the shortest:
-/// lavfi rejects asymmetric configs at chain-build time.
+/// The four lists are positional: the Nth delay, decay, depth and speed
+/// make one voice. [voices] reads as many voices as the shortest list
+/// holds. lavfi does not check that the lengths match and reads past the
+/// shorter lists, so applying a chain with lists of different lengths
+/// throws an [ArgumentError].
 extension ChorusVoicesX on ChorusEffect {
   /// Decoded list of voices in declaration order.
   List<ChorusVoice> get voices {
@@ -493,9 +496,11 @@ extension AfftdnBandNoiseX on AfftdnEffect {
 /// One logical band of the lavfi `anequalizer` filter.
 ///
 /// On the wire this is repeated once per channel inside the
-/// `params` CSV; the typed model hides that detail. Stereo content
-/// hears the band on both channels by default; surround content past
-/// channel 1 is left to mpv's downmix.
+/// `params` CSV; the typed model hides that detail. By default the band
+/// covers channels 0 and 1. The effects chain runs on the source layout,
+/// before mpv mixes it to the output, so the other channels of a surround
+/// source pass without the band unless [AnequalizerBandsX.withBands] is
+/// given the source's channel count.
 final class AnequalizerBand {
   /// Centre frequency in Hz.
   final double frequency;
@@ -582,9 +587,8 @@ enum AnequalizerBandType {
   };
 }
 
-/// Default channel count covered by [AnequalizerBandsX.withBands]. Two
-/// channels (L+R) is the canonical stereo case; surround content is
-/// left to mpv's automatic downmix.
+/// Default channel count covered by [AnequalizerBandsX.withBands]:
+/// channels 0 and 1, the two of a stereo source.
 const int _anequalizerDefaultChannels = 2;
 
 /// Typed access over the raw `params` CSV held by [AnequalizerEffect].
@@ -595,8 +599,13 @@ extension AnequalizerBandsX on AnequalizerEffect {
   List<AnequalizerBand> get bands => _parseAnequalizerBands(params);
 
   /// Returns a copy whose [params] reflects [bands]. Each band is
-  /// emitted once per channel up to [channels] (defaults to 2, stereo)
-  /// so signals get the band on every channel mpv can downmix to.
+  /// emitted for channels 0 to [channels] - 1 of the filter's input.
+  ///
+  /// The effects chain runs on the source layout, before mpv mixes it to
+  /// the output. With the default 2, the centre, LFE and surround
+  /// channels of a 5.1 or 7.1 source pass without the band and are then
+  /// mixed into the output. For a surround source pass its channel count,
+  /// e.g. `state.audioParams.channelCount`.
   AnequalizerEffect withBands(
     List<AnequalizerBand> bands, {
     int channels = _anequalizerDefaultChannels,
@@ -747,18 +756,20 @@ extension AiirChannelsX on AiirEffect {
   /// the numerator ([AiirChannel.zeros]) and denominator
   /// ([AiirChannel.poles]) of a transfer function, which the defaults do
   /// not read. A format or process set by hand is kept.
+  ///
+  /// Gains and coefficients are written in full, the shortest form that
+  /// reads back as the same double: a narrow or low filter has
+  /// coefficients far below 0.0001.
   AiirEffect withChannels(List<AiirChannel> channels) {
     if (channels.isEmpty) {
       return copyWith(gains: '', zeros: '', poles: '');
     }
     String join(List<double> Function(AiirChannel) get, String inner) =>
-        channels
-            .map((c) => get(c).map((v) => v.toStringAsFixed(4)).join(inner))
-            .join('|');
+        channels.map((c) => get(c).join(inner)).join('|');
     return copyWith(
       format: format == AiirFormat.zp ? AiirFormat.tf : null,
       process: process == AiirProcess.s ? AiirProcess.d : null,
-      gains: channels.map((c) => c.gain.toStringAsFixed(4)).join('|'),
+      gains: channels.map((c) => c.gain).join('|'),
       zeros: join((c) => c.zeros, ' '),
       poles: join((c) => c.poles, ' '),
     );
