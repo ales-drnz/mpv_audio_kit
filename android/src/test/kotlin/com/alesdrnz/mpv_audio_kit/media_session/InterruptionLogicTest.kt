@@ -160,13 +160,23 @@ class InterruptionLogicTest {
     // ── Becoming noisy (headphones unplugged) ───────────────────────────
 
     @Test
-    fun `becoming noisy always pauses and never arms resume`() {
-        // Headphone unplug / BT disconnect pauses under every policy,
-        // including keepPlaying (Apple HIG parity); never arms auto-resume.
-        for (policy in listOf("pauseAndResume", "pauseOnly", "keepPlaying")) {
-            val r = InterruptionLogic.onBecomingNoisy()
-            assertEquals(InterruptionLogic.PAUSE, r.command, "policy=$policy")
-            assertFalse(r.resumeOnFocusGain, "re-plugging must not auto-resume (policy=$policy)")
-        }
+    fun `becoming noisy pauses and clears an armed resume`() {
+        // A call paused playback and armed the resume, then the headphones
+        // come out during the call. The unplug reaction takes no policy (it
+        // is the same under all three), so one sequence covers them.
+        val loss = InterruptionLogic.onFocusChange(
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT, "pauseAndResume", resumeArmed = false,
+        )
+        assertTrue(loss.resumeOnFocusGain, "precondition: the call armed the resume")
+
+        val noisy = InterruptionLogic.onBecomingNoisy()
+        assertEquals(InterruptionLogic.PAUSE, noisy.command)
+        assertFalse(noisy.resumeOnFocusGain, "an unplug must clear the armed resume")
+
+        val gain = InterruptionLogic.onFocusChange(
+            AudioManager.AUDIOFOCUS_GAIN, "pauseAndResume",
+            resumeArmed = noisy.resumeOnFocusGain,
+        )
+        assertNull(gain.command, "the end of the call must not restart into the speaker")
     }
 }
