@@ -93,6 +93,34 @@ void main() {
       );
     }, timeout: const Timeout(Duration(seconds: 30)));
 
+    test('the resume point does not save the effects chain', () async {
+      final tmp = Directory.systemTemp.createTempSync('mak_resume_af_');
+      addTearDown(() {
+        try {
+          tmp.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      final p = await buildPlayer(
+        configuration: PlayerConfiguration(
+          logLevel: LogLevel.off,
+          watchLaterDir: tmp.path,
+        ),
+      );
+      addTearDown(p.dispose);
+      await p.setAudioEffects(const [
+        EqualizerEffect(frequency: 1000, width: 200, gain: 12),
+      ]);
+      await openAndWaitForLoad(p, fx);
+      await p.seek(const Duration(milliseconds: 600));
+      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await p.writeResumeConfig();
+      final saved = _resumeFile(tmp);
+      expect(saved.readAsStringSync(), contains('start='));
+      // The chain belongs to the player's state: saved with the file, it
+      // came back on a later load without the state knowing.
+      expect(saved.readAsStringSync(), isNot(contains('af=')));
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
     test('resumePlayback=false does NOT restore position', () async {
       final tmp = Directory.systemTemp.createTempSync('mak_noresume_');
       addTearDown(() {
@@ -134,3 +162,9 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }
+
+/// The resume file of the one file saved in [dir]: mpv also writes a
+/// redirect entry for each parent directory.
+File _resumeFile(Directory dir) => dir.listSync().whereType<File>().singleWhere(
+  (f) => !f.readAsStringSync().contains('# redirect entry'),
+);

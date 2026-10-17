@@ -837,7 +837,8 @@ await player.setAudioDelay(const Duration(milliseconds: -200));
 For audiobooks and podcasts, the player can save a resume point for the
 current file and restore it the next time that file is opened. Only
 audio-relevant properties are persisted (position, speed, pitch, volume,
-mute, audio delay, the effects chain and the selected track).
+mute, audio delay and the selected track). The effects chain is not: it
+belongs to the app, which can keep one per file if it wants.
 
 `PlayerConfiguration.resumePlayback` (default `true`), set when you
 create the player, restores a saved point when the file is opened again.
