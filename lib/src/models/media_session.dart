@@ -129,7 +129,9 @@ class MediaSession {
 
   /// Display name shown by MPRIS (Linux) and SMTC (Windows) for the
   /// app identity. `null` defers to the executable or bundle name.
-  /// macOS, iOS and Android always use the bundle display name.
+  /// macOS, iOS and Android always use the bundle display name. The MPRIS
+  /// bus name takes it at the first enable: a later change updates the
+  /// shown name only.
   final String? appName;
 
   /// Basename of the installed `.desktop` file (without the `.desktop`
