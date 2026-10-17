@@ -174,12 +174,27 @@ class SlowCoreShim {
     _withString(name, (p) => fn(p, hold.inMicroseconds));
   }
 
+  /// Refuses every `loadfile` whose URL contains [marker] before it
+  /// reaches mpv, with the error of a full reply queue
+  /// ([MpvError.mpvErrorEventQueueFull]), the only way mpv turns down an
+  /// append. An empty [marker] refuses none. `counter('loadfiles_refused')`
+  /// counts them.
+  void refuseLoadfile(String marker) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>),
+          void Function(Pointer<Utf8>)
+        >('mak_shim_refuse_loadfile');
+    _withString(marker, fn);
+  }
+
   /// A probe counter: `hook_adds_entered`, `hook_adds_inflight`,
   /// `inflight_at_destroy` (the most `mpv_hook_add` calls still running at
   /// an `mpv_terminate_destroy`), `late_hook_adds` (calls on a handle
   /// already destroyed, which the shim does not forward), `destroys`,
   /// `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
-  /// before the destroy), `watched_gets` and `replies_held`.
+  /// before the destroy), `watched_gets`, `replies_held` and
+  /// `loadfiles_refused`.
   int counter(String name) {
     final fn = _lib
         .lookupFunction<

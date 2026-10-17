@@ -126,6 +126,11 @@ static int hold_state; // 0 off, 1 waiting for the request, 2 for its reply
 static int hold_event; // the reply's event id: 3 get, 4 set, 5 command
 static uint64_t hold_ud;
 
+// Async loadfile commands whose URL holds this text are refused
+// (mak_shim_refuse_loadfile); empty means none.
+static char refuse_marker[64];
+static atomic_int loadfiles_refused;
+
 // Guards the handle and hook bookkeeping below. mpv_hook_add holds it
 // across the real call, so a destroy cannot free the handle under it.
 static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
@@ -184,6 +189,7 @@ int mak_shim_counter(const char *name) {
   }
   if (strcmp(name, "watched_gets") == 0) return watched_gets;
   if (strcmp(name, "replies_held") == 0) return replies_held;
+  if (strcmp(name, "loadfiles_refused") == 0) return loadfiles_refused;
   fprintf(stderr, "mak_slow_core_shim: unknown counter %s\n", name);
   abort();
 }
@@ -202,7 +208,26 @@ void mak_shim_reset(void) {
   watched_get[0] = 0;
   atomic_store(&replies_held, 0);
   hold_state = 0;
+  refuse_marker[0] = 0;
+  atomic_store(&loadfiles_refused, 0);
   pthread_mutex_unlock(&mu);
+}
+
+// Refuses every async `loadfile` whose URL holds [marker] before it reaches
+// mpv, with the error a full reply queue gives (MPV_ERROR_EVENT_QUEUE_FULL,
+// which mpv_command_async returns when the client has 1000 replies due).
+void mak_shim_refuse_loadfile(const char *marker) {
+  pthread_mutex_lock(&mu);
+  snprintf(refuse_marker, sizeof refuse_marker, "%s", marker);
+  pthread_mutex_unlock(&mu);
+}
+
+static int refused(const char **args) {
+  if (!args[0] || strcmp(args[0], "loadfile") != 0 || !args[1]) return 0;
+  pthread_mutex_lock(&mu);
+  int hit = refuse_marker[0] && strstr(args[1], refuse_marker) != NULL;
+  pthread_mutex_unlock(&mu);
+  return hit;
 }
 
 // Holds the reply to the next async request naming [name] (a command's
@@ -433,6 +458,10 @@ int mpv_get_property_async(void *h, uint64_t ud, const char *n, int fmt) {
 }
 
 int mpv_command_async(void *h, uint64_t ud, const char **args) {
+  if (refused(args)) {
+    atomic_fetch_add(&loadfiles_refused, 1);
+    return -1; // MPV_ERROR_EVENT_QUEUE_FULL
+  }
   note_request(COMMAND_REPLY, ud, args[0]);
   return real_mpv_command_async(h, ud, args);
 }

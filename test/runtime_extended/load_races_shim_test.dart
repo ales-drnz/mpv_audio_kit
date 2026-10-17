@@ -3,9 +3,12 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// Loads that a later call overtakes, driven through the slow-core shim: a
-// reply held back keeps a load in flight for as long as the test needs to
-// call something else meanwhile.
+// Loads that a later call overtakes or that mpv refuses, driven through
+// the slow-core shim: a reply held back keeps a load in flight for as long
+// as the test needs to call something else meanwhile, and a refused
+// loadfile stands in for a full reply queue. A test resolver stands in for
+// a source that holds a platform resource, as an Android `content://`
+// descriptor does, and counts its releases.
 
 @TestOn('mac-os || linux')
 @Timeout(Duration(minutes: 3))
@@ -15,6 +18,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/internals/uri_resolver.dart';
 
 import '../_helpers/setter_test_helpers.dart';
 import '../_helpers/slow_core_shim.dart';
@@ -36,6 +40,7 @@ void main() {
 
     tearDown(() async {
       shim().reset();
+      debugResolveUriOverride = null;
       await player.dispose();
     });
 
@@ -94,6 +99,38 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 300));
         expect(await player.getRawProperty('pause'), 'yes');
         expect(player.state.playWhenReady, isFalse);
+      });
+    });
+
+    group('test seams', () {
+      test('a refused loadfile fails like a full reply queue', () async {
+        shim().refuseLoadfile('mak-refused');
+        await expectLater(
+          player.open(Media('$dir/mak-refused.wav')),
+          throwsA(
+            isA<MpvCommandException>().having(
+              (e) => e.code,
+              'code',
+              MpvError.mpvErrorEventQueueFull,
+            ),
+          ),
+        );
+        expect(shim().counter('loadfiles_refused'), 1);
+        // Other loads go through.
+        await openAndWaitForLoad(player, fixturePath);
+      });
+
+      test('the test resolver stands in for every load', () async {
+        final released = <String>[];
+        debugResolveUriOverride = (uri) async =>
+            ResolvedUri(fixturePath, () async => released.add(uri));
+        await player.open(const Media('test://one'), play: false);
+        await waitUntil(
+          () async => await player.getRawProperty('path') == fixturePath,
+        );
+        expect(released, isEmpty, reason: 'mpv still lists the entry');
+        await player.dispose();
+        expect(released, ['test://one']);
       });
     });
   });
