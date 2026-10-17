@@ -89,8 +89,14 @@ bool _terminal(LoudnessScan? s) =>
         s.state == LoudnessScanState.failed ||
         s.state == LoudnessScanState.unavailable);
 
-bool _complete(WaveformData? w) =>
-    w != null && !w.decoding && !w.live && w.filled.every((b) => b != 0);
+/// Whether [w] is a settled envelope that holds all its audio: the filled
+/// bins run from the start with no hole. A file shorter than the length mpv
+/// estimated ends with an unfilled tail.
+bool _complete(WaveformData? w) {
+  if (w == null || w.decoding || w.live) return false;
+  final tail = w.filled.indexWhere((b) => b == 0);
+  return tail != 0 && (tail < 0 || w.filled.skip(tail).every((b) => b == 0));
+}
 
 /// The native state of the analyzer (`ready`, `decoding`, `progressive`,
 /// `failed`, ...), or `null` when there is none.
@@ -218,34 +224,37 @@ void _expectSame(_Analysis got, _Analysis ref, String log) {
   final r = ref.wave;
   final covered = w.filled.where((b) => b != 0).length;
   expect(
-    covered,
-    w.bins,
+    _complete(w),
+    isTrue,
     reason:
-        'a settled envelope covers every bin, this one $covered of '
-        '${w.bins}\n$log',
+        'a settled envelope covers its bins from the start, with no hole: '
+        'this one $covered of ${w.bins}\n$log',
   );
   expect(w.bins, r.bins, reason: 'bin count\n$log');
   expect(w.duration, r.duration, reason: 'duration\n$log');
-  var minDiffs = 0, maxDiffs = 0, rmsDiffs = 0;
+  var minDiffs = 0, maxDiffs = 0, rmsDiffs = 0, filledDiffs = 0;
   var first = -1;
   for (var i = 0; i < r.bins; i++) {
     final dMin = w.min[i] != r.min[i];
     final dMax = w.max[i] != r.max[i];
     final dRms = r.rms != null && w.rms![i] != r.rms![i];
+    final dFilled = w.filled[i] != r.filled[i];
     if (dMin) minDiffs++;
     if (dMax) maxDiffs++;
     if (dRms) rmsDiffs++;
-    if (first < 0 && (dMin || dMax || dRms)) first = i;
+    if (dFilled) filledDiffs++;
+    if (first < 0 && (dMin || dMax || dRms || dFilled)) first = i;
   }
   final at = math.max(first, 0);
   expect(
-    minDiffs + maxDiffs + rmsDiffs,
+    minDiffs + maxDiffs + rmsDiffs + filledDiffs,
     0,
     reason:
-        'of ${r.bins} bins, $minDiffs min, $maxDiffs max and $rmsDiffs rms '
-        'differ from the reference (first at bin $first: min ${w.min[at]} '
-        'vs ${r.min[at]}, max ${w.max[at]} vs ${r.max[at]}, rms '
-        '${w.rms?[at]} vs ${r.rms?[at]})\n$log',
+        'of ${r.bins} bins, $minDiffs min, $maxDiffs max, $rmsDiffs rms and '
+        '$filledDiffs filled differ from the reference (first at bin '
+        '$first: min ${w.min[at]} vs ${r.min[at]}, max ${w.max[at]} vs '
+        '${r.max[at]}, rms ${w.rms?[at]} vs ${r.rms?[at]}, filled '
+        '${w.filled[at]} vs ${r.filled[at]})\n$log',
   );
   final l = got.loudness;
   final lr = ref.loudness;
