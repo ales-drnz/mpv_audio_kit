@@ -155,6 +155,10 @@ class Player extends _PlayerBase
   /// Cleared on `dispose()` and on `setMediaSession(null)`.
   static Player? _mediaSessionOwner;
 
+  /// The media-session work of every [Player] in this isolate, one call
+  /// after the other. See [_MediaSessionModule._queueMediaSessionSync].
+  static Future<void> _mediaSessionQueue = Future<void>.value();
+
   /// Test-only. The event isolate writes to [wakeupCounterAddress] on
   /// every wakeup: a bogus value corrupts process memory.
   @visibleForTesting
