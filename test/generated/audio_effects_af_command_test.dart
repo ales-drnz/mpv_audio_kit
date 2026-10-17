@@ -520,12 +520,6 @@ void main() {
                 ],
               ),
               (
-                label: 'order=9',
-                apply: (e) => [
-                  (e.single as AfreqshiftEffect).copyWith(order: 9),
-                ],
-              ),
-              (
                 label: 'shift=1.0',
                 apply: (e) => [
                   (e.single as AfreqshiftEffect).copyWith(shift: 1.0),
@@ -574,18 +568,6 @@ void main() {
             bundle: const [AgateEffect()],
             updates: <AfCommandUpdate>[
               (
-                label: 'attack=21.0',
-                apply: (e) => [
-                  (e.single as AgateEffect).copyWith(attack: 21.0),
-                ],
-              ),
-              (
-                label: 'knee=3.82843',
-                apply: (e) => [
-                  (e.single as AgateEffect).copyWith(knee: 3.82843),
-                ],
-              ),
-              (
                 label: 'levelIn=2.0',
                 apply: (e) => [
                   (e.single as AgateEffect).copyWith(levelIn: 2.0),
@@ -611,18 +593,6 @@ void main() {
                 label: 'ratio=3.0',
                 apply: (e) => [(e.single as AgateEffect).copyWith(ratio: 3.0)],
               ),
-              (
-                label: 'release=251.0',
-                apply: (e) => [
-                  (e.single as AgateEffect).copyWith(release: 251.0),
-                ],
-              ),
-              (
-                label: 'threshold=0.5625',
-                apply: (e) => [
-                  (e.single as AgateEffect).copyWith(threshold: 0.5625),
-                ],
-              ),
             ],
           ),
           (
@@ -634,24 +604,6 @@ void main() {
                 label: 'asc=true',
                 apply: (e) => [
                   (e.single as AlimiterEffect).copyWith(asc: true),
-                ],
-              ),
-              (
-                label: 'ascLevel=0.75',
-                apply: (e) => [
-                  (e.single as AlimiterEffect).copyWith(ascLevel: 0.75),
-                ],
-              ),
-              (
-                label: 'attack=6.0',
-                apply: (e) => [
-                  (e.single as AlimiterEffect).copyWith(attack: 6.0),
-                ],
-              ),
-              (
-                label: 'latency=true',
-                apply: (e) => [
-                  (e.single as AlimiterEffect).copyWith(latency: true),
                 ],
               ),
               (
@@ -676,12 +628,6 @@ void main() {
                 label: 'limit=0.53125',
                 apply: (e) => [
                   (e.single as AlimiterEffect).copyWith(limit: 0.53125),
-                ],
-              ),
-              (
-                label: 'release=51.0',
-                apply: (e) => [
-                  (e.single as AlimiterEffect).copyWith(release: 51.0),
                 ],
               ),
             ],
@@ -747,12 +693,6 @@ void main() {
                 label: 'level=0.5',
                 apply: (e) => [
                   (e.single as AphaseshiftEffect).copyWith(level: 0.5),
-                ],
-              ),
-              (
-                label: 'order=9',
-                apply: (e) => [
-                  (e.single as AphaseshiftEffect).copyWith(order: 9),
                 ],
               ),
               (

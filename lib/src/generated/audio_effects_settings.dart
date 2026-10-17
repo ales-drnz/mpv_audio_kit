@@ -3659,7 +3659,7 @@ final class AformatEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [level]: Set output gain applied to final output. Allowed range is from 0.0 to 1.0. Default value is 1.0. (range 0.0..1.0, default 1, runtime-tunable)
-/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8, runtime-tunable)
+/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8)
 /// - [shift]: Specify frequency shift. Allowed range is -INT_MAX to INT_MAX. Default value is 0.0. (range -2147483647..2147483647, default 0, runtime-tunable)
 final class AfreqshiftEffect extends AudioEffect {
   /// Default value for [level].
@@ -3776,9 +3776,7 @@ final class AfreqshiftEffect extends AudioEffect {
     if (level != prev.level) {
       out.add(('level', _wireDouble(level)));
     }
-    if (order != prev.order) {
-      out.add(('order', order.toString()));
-    }
+    if (order != prev.order) return null;
     if (shift != prev.shift) {
       out.add(('shift', _wireDouble(shift)));
     }
@@ -4022,9 +4020,9 @@ final class AfwtdnEffect extends AudioEffect {
 /// Shorter signals than the chosen attack time will be left untouched.
 ///
 /// Parameters:
-/// - [attack]: Amount of milliseconds the signal has to rise above the threshold before gain reduction stops. Default is 20 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 20, runtime-tunable)
-/// - [detection]: Choose if exact signal should be taken for detection or an RMS like one. Default is `rms`. Can be `peak` or `rms`. (range 0..1, default 1, runtime-tunable)
-/// - [knee]: Curve the sharp knee around the threshold to enter gain reduction more softly. Default is 2.828427125. Allowed range is from 1 to 8. (range 1..8, default 2.828427125, runtime-tunable)
+/// - [attack]: Amount of milliseconds the signal has to rise above the threshold before gain reduction stops. Default is 20 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 20)
+/// - [detection]: Choose if exact signal should be taken for detection or an RMS like one. Default is `rms`. Can be `peak` or `rms`. (range 0..1, default 1)
+/// - [knee]: Curve the sharp knee around the threshold to enter gain reduction more softly. Default is 2.828427125. Allowed range is from 1 to 8. (range 1..8, default 2.828427125)
 /// - [levelIn]: Set input level before filtering. Default is 1. Allowed range is from 0.015625 to 64. (range 0.015625..64, default 1, runtime-tunable)
 /// - [levelSc]: set sidechain gain (range 0.015625..64, default 1, runtime-tunable)
 /// - [link]: Choose if the average level between all channels or the louder channel affects the reduction. Default is `average`. Can be `average` or `maximum`. (range 0..1, default 0, runtime-tunable)
@@ -4032,8 +4030,8 @@ final class AfwtdnEffect extends AudioEffect {
 /// - [mode]: Set the mode of operation. Can be `upward` or `downward`. Default is `downward`. If set to `upward` mode, higher parts of signal will be amplified, expanding dynamic range in upward direction. Otherwise, in case of `downward` lower parts of signal will be reduced. (range 0..1, default 0, runtime-tunable)
 /// - [range]: Set the level of gain reduction when the signal is below the threshold. Default is 0.06125. Allowed range is from 0 to 1. Setting this to 0 disables reduction and then filter behaves like expander. (range 0..1, default 0.06125, runtime-tunable)
 /// - [ratio]: Set a ratio by which the signal is reduced. Default is 2. Allowed range is from 1 to 9000. (range 1..9000, default 2, runtime-tunable)
-/// - [release]: Amount of milliseconds the signal has to fall below the threshold before the reduction is increased again. Default is 250 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 250, runtime-tunable)
-/// - [threshold]: If a signal rises above this level the gain reduction is released. Default is 0.125. Allowed range is from 0 to 1. (range 0..1, default 0.125, runtime-tunable)
+/// - [release]: Amount of milliseconds the signal has to fall below the threshold before the reduction is increased again. Default is 250 milliseconds. Allowed range is from 0.01 to 9000. (range 0.01..9000, default 250)
+/// - [threshold]: If a signal rises above this level the gain reduction is released. Default is 0.125. Allowed range is from 0 to 1. (range 0..1, default 0.125)
 final class AgateEffect extends AudioEffect {
   /// Default value for [attack].
   static const double attackDefault = 20.0;
@@ -4297,15 +4295,9 @@ final class AgateEffect extends AudioEffect {
   @override
   List<(String, String)>? _runtimeDiff(covariant AgateEffect prev) {
     final out = <(String, String)>[];
-    if (attack != prev.attack) {
-      out.add(('attack', _wireDouble(attack)));
-    }
-    if (detection != prev.detection) {
-      out.add(('detection', detection.mpvValue));
-    }
-    if (knee != prev.knee) {
-      out.add(('knee', _wireDouble(knee)));
-    }
+    if (attack != prev.attack) return null;
+    if (detection != prev.detection) return null;
+    if (knee != prev.knee) return null;
     if (levelIn != prev.levelIn) {
       out.add(('level_in', _wireDouble(levelIn)));
     }
@@ -4327,12 +4319,8 @@ final class AgateEffect extends AudioEffect {
     if (ratio != prev.ratio) {
       out.add(('ratio', _wireDouble(ratio)));
     }
-    if (release != prev.release) {
-      out.add(('release', _wireDouble(release)));
-    }
-    if (threshold != prev.threshold) {
-      out.add(('threshold', _wireDouble(threshold)));
-    }
+    if (release != prev.release) return null;
+    if (threshold != prev.threshold) return null;
     return out;
   }
 }
@@ -4635,14 +4623,14 @@ final class AintegralEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [asc]: When gain reduction is always needed ASC takes care of releasing to an average reduction level rather than reaching a reduction of 0 in the release time. (range 0..1, default 0, runtime-tunable)
-/// - [ascLevel]: Select how much the release time is affected by ASC, 0 means nearly no changes in release time while 1 produces higher release times. (range 0..1, default 0.5, runtime-tunable)
-/// - [attack]: The limiter will reach its attenuation level in this amount of time in milliseconds. Default is 5 milliseconds. (range 0.1..80, default 5, runtime-tunable)
-/// - [latency]: Compensate the delay introduced by using the lookahead buffer set with attack parameter. Also flush the valid audio data in the lookahead buffer when the stream hits EOF. (range 0..1, default 0, runtime-tunable)
+/// - [ascLevel]: Select how much the release time is affected by ASC, 0 means nearly no changes in release time while 1 produces higher release times. (range 0..1, default 0.5)
+/// - [attack]: The limiter will reach its attenuation level in this amount of time in milliseconds. Default is 5 milliseconds. (range 0.1..80, default 5)
+/// - [latency]: Compensate the delay introduced by using the lookahead buffer set with attack parameter. Also flush the valid audio data in the lookahead buffer when the stream hits EOF. (range 0..1, default 0)
 /// - [level]: Auto level output signal. Default is enabled. This normalizes audio back to 0dB if enabled. (range 0..1, default 1, runtime-tunable)
 /// - [levelIn]: Set input gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
 /// - [levelOut]: Set output gain. Default is 1. (range .015625..64, default 1, runtime-tunable)
 /// - [limit]: Don't let signals above this level pass the limiter. Default is 1. (range 0.0625..1, default 1, runtime-tunable)
-/// - [release]: Come back from limiting to attenuation 1.0 in this amount of milliseconds. Default is 50 milliseconds. (range 1..8000, default 50, runtime-tunable)
+/// - [release]: Come back from limiting to attenuation 1.0 in this amount of milliseconds. Default is 50 milliseconds. (range 1..8000, default 50)
 final class AlimiterEffect extends AudioEffect {
   /// Default value for [ascLevel].
   static const double ascLevelDefault = 0.5;
@@ -4850,15 +4838,9 @@ final class AlimiterEffect extends AudioEffect {
     if (asc != prev.asc) {
       out.add(('asc', (asc ? '1' : '0')));
     }
-    if (ascLevel != prev.ascLevel) {
-      out.add(('asc_level', _wireDouble(ascLevel)));
-    }
-    if (attack != prev.attack) {
-      out.add(('attack', _wireDouble(attack)));
-    }
-    if (latency != prev.latency) {
-      out.add(('latency', (latency ? '1' : '0')));
-    }
+    if (ascLevel != prev.ascLevel) return null;
+    if (attack != prev.attack) return null;
+    if (latency != prev.latency) return null;
     if (level != prev.level) {
       out.add(('level', (level ? '1' : '0')));
     }
@@ -4871,9 +4853,7 @@ final class AlimiterEffect extends AudioEffect {
     if (limit != prev.limit) {
       out.add(('limit', _wireDouble(limit)));
     }
-    if (release != prev.release) {
-      out.add(('release', _wireDouble(release)));
-    }
+    if (release != prev.release) return null;
     return out;
   }
 }
@@ -5721,7 +5701,7 @@ final class AphaserEffect extends AudioEffect {
 ///
 /// Parameters:
 /// - [level]: Set output gain applied to final output. Allowed range is from 0.0 to 1.0. Default value is 1.0. (range 0.0..1.0, default 1, runtime-tunable)
-/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8, runtime-tunable)
+/// - [order]: Set filter order used for filtering. Allowed range is from 1 to 16. Default value is 8. (range 1..16, default 8)
 /// - [shift]: Specify phase shift. Allowed range is from -1.0 to 1.0. Default value is 0.0. (range -1.0..1.0, default 0, runtime-tunable)
 final class AphaseshiftEffect extends AudioEffect {
   /// Default value for [level].
@@ -5838,9 +5818,7 @@ final class AphaseshiftEffect extends AudioEffect {
     if (level != prev.level) {
       out.add(('level', _wireDouble(level)));
     }
-    if (order != prev.order) {
-      out.add(('order', order.toString()));
-    }
+    if (order != prev.order) return null;
     if (shift != prev.shift) {
       out.add(('shift', _wireDouble(shift)));
     }

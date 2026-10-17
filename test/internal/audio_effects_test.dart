@@ -248,6 +248,45 @@ void main() {
         isEmpty,
       );
     });
+
+    // These filters take any runtime option through the generic command
+    // handler, which only stores the raw value: what the filter derives
+    // from it at setup (alimiter's seconds and asc coefficient, agate's
+    // coefficients and thresholds, the shifters' coefficients) stays as
+    // it was, so a live command plays the wrong thing or nothing.
+    test('an option the filter reads only at setup needs a rebuild', () {
+      const cases = <(String, AudioEffect, AudioEffect)>[
+        ('alimiter attack', AlimiterEffect(), AlimiterEffect(attack: 10)),
+        ('alimiter release', AlimiterEffect(), AlimiterEffect(release: 200)),
+        ('alimiter asc_level', AlimiterEffect(), AlimiterEffect(ascLevel: 1)),
+        ('alimiter latency', AlimiterEffect(), AlimiterEffect(latency: true)),
+        ('agate attack', AgateEffect(), AgateEffect(attack: 40)),
+        ('agate release', AgateEffect(), AgateEffect(release: 500)),
+        ('agate threshold', AgateEffect(), AgateEffect(threshold: 0.5)),
+        ('agate knee', AgateEffect(), AgateEffect(knee: 4)),
+        (
+          'agate detection',
+          AgateEffect(),
+          AgateEffect(detection: AgateDetection.peak),
+        ),
+        ('afreqshift order', AfreqshiftEffect(), AfreqshiftEffect(order: 4)),
+        ('aphaseshift order', AphaseshiftEffect(), AphaseshiftEffect(order: 4)),
+      ];
+      for (final (name, from, to) in cases) {
+        expect(audioEffectsDiff([from], [to]), isNull, reason: name);
+      }
+    });
+
+    test('the options those filters read per sample still update live', () {
+      final cmds = audioEffectsDiff(
+        const [AlimiterEffect(), AgateEffect()],
+        const [AlimiterEffect(limit: 0.5), AgateEffect(ratio: 4)],
+      );
+      expect(cmds?.map((c) => '${c.label} ${c.option}'), [
+        'aek_alimiter_0 limit',
+        'aek_agate_0 ratio',
+      ]);
+    });
   });
 
   group('Enum.fromMpv non-throwing fallback', () {

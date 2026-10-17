@@ -299,6 +299,28 @@ void main() {
       );
     }, timeout: const Timeout(Duration(seconds: 40)));
 
+    test('an agate threshold change reaches the running gate', () async {
+      // The fixture peaks at -18 dBFS: a threshold of 1.0 gates it down to
+      // the 24 dB floor, a threshold of 0.001 lets it through.
+      await player.setAudioEffects(const [
+        AgateEffect(threshold: 1),
+        Ebur128Effect(metadata: true),
+      ]);
+      final gated = await settledMomentary();
+      await putEffect(
+        player,
+        effectOf<AgateEffect>(player).copyWith(threshold: 0.001),
+      );
+      final open = await settledMomentary();
+      expect(
+        open,
+        greaterThan(gated + 12),
+        reason:
+            'agate computes its threshold when it is set up, so a live '
+            'command leaves the gate closed (gated $gated, open $open)',
+      );
+    }, timeout: const Timeout(Duration(seconds: 40)));
+
     test('a seek keeps the values set live', () async {
       await player.setAudioEffects(const [
         BassEffect(frequency: 1000),

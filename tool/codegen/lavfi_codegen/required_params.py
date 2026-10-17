@@ -25,6 +25,8 @@ Param keys below are the canonical ffmpeg AVOption names, verified against
 """
 from __future__ import annotations
 
+import sys
+
 # Curated: ffmpeg audio filters whose params are mandatory (init/config
 # fails if unset).
 REQUIRED_PARAMS = {
@@ -153,3 +155,33 @@ def apply_effective_ranges(schema: dict) -> None:
         declared = schema["filters"][fname]["params"]
         for pname, bounds in params.items():
             declared[pname].update(bounds)
+
+
+# ── Options a live command cannot reach ──────────────────────────────────────
+# Runtime options (AV_OPT_FLAG_RUNTIME_PARAM) of filters whose command
+# handler only stores the new value, while the filter derives what it runs
+# on from that value at init or config time. Sent as an af-command they play
+# the wrong thing or nothing until the graph is rebuilt, so the codegen
+# treats them as non-runtime: a change rebuilds the stage.
+NOT_LIVE = {
+    # af_alimiter.c init converts attack and release from ms to s and
+    # asc_level to a coefficient; config_input sizes the attack buffer and
+    # sets up the latency compensation.
+    "alimiter": ["attack", "release", "asc_level", "latency"],
+    # af_agate.c agate_config_input derives the attack and release
+    # coefficients and the threshold and knee bounds, squared for rms
+    # detection.
+    "agate": ["attack", "release", "threshold", "knee", "detection"],
+    # af_afreqshift.c config_input computes the coefficients for the order.
+    "afreqshift": ["order"],
+    "aphaseshift": ["order"],
+}
+
+
+def apply_not_live(schema: dict) -> None:
+    """Drops the runtime flag of the [NOT_LIVE] options in [schema]."""
+    for fname, names in NOT_LIVE.items():
+        declared = schema["filters"][fname]["params"]
+        for pname in names:
+            if not declared[pname].pop("runtime", False):
+                sys.exit(f"NOT_LIVE: {fname}.{pname} is not a runtime option")
