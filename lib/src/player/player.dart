@@ -524,6 +524,16 @@ class Player extends _PlayerBase
     await _prop('pause', playNow ? 'no' : 'yes');
     try {
       await _commandChecked(['loadlist', resolved.uri, 'replace']);
+    } catch (_) {
+      // mpv keeps the playlist it had when the list cannot be read, and the
+      // track there goes on: the intent and the pause written above go back
+      // to what they were, unless a later call took them over. Tolerant
+      // write, so the error the caller sees is the loadlist one.
+      if (_restoreIntent(load, intent, previousIntent) &&
+          playNow != previousIntent) {
+        await _propRc('pause', previousIntent ? 'no' : 'yes');
+      }
+      rethrow;
     } finally {
       // mpv reads the list inside the command; its entries are the
       // playlist, so nothing reads the list itself again.
@@ -744,10 +754,11 @@ abstract class _PlayerBase {
   );
 
   /// Puts back the intent a failed load replaced, unless a later call took
-  /// over the load or the intent.
-  void _restoreIntent(_LoadTicket load, int intent, bool previous) {
-    if (load.superseded || intent != _intentEpoch) return;
+  /// over the load or the intent. Returns whether it did.
+  bool _restoreIntent(_LoadTicket load, int intent, bool previous) {
+    if (load.superseded || intent != _intentEpoch) return false;
     _writeIntent(previous);
+    return true;
   }
 
   // ── Property registry (the bulk of state: one spec per mpv property) ──
