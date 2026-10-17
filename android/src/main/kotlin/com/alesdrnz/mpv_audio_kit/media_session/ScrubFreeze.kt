@@ -5,6 +5,8 @@
  */
 package com.alesdrnz.mpv_audio_kit.media_session
 
+import androidx.media3.common.C
+import androidx.media3.common.Player
 import kotlin.math.abs
 
 /**
@@ -26,6 +28,9 @@ import kotlin.math.abs
  * for the same reason as the manager's snapshots.
  */
 internal class ScrubFreeze {
+
+    /** Where an absolute seek goes, and whether it pins the bar there. */
+    data class Seek(val positionMs: Long, val pin: Boolean)
 
     /** The drop target the bar is pinned at, or `null` when it follows playback. */
     @Volatile var targetMs: Long? = null
@@ -82,5 +87,19 @@ internal class ScrubFreeze {
 
         /** How long a scrub may stay pinned without landing. */
         const val BACKSTOP_MS = 2000L
+
+        /** An absolute seek from Media3 (SEEK_IN_CURRENT_MEDIA_ITEM,
+         *  SEEK_TO_MEDIA_ITEM, SEEK_TO_DEFAULT_POSITION). The default position
+         *  comes as `C.TIME_UNSET`: it is the start of the item, reached
+         *  without a pin. The play button on an ended item sends it before
+         *  play(), and a pin would hold the bar while playback starts over. */
+        fun absoluteSeek(seekCommand: Int, positionMs: Long): Seek =
+            if (seekCommand == Player.COMMAND_SEEK_TO_DEFAULT_POSITION ||
+                positionMs == C.TIME_UNSET
+            ) {
+                Seek(positionMs = 0, pin = false)
+            } else {
+                Seek(positionMs = positionMs.coerceAtLeast(0), pin = true)
+            }
     }
 }

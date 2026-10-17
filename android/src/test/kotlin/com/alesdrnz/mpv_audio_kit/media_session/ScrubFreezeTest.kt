@@ -5,6 +5,8 @@
  */
 package com.alesdrnz.mpv_audio_kit.media_session
 
+import androidx.media3.common.C
+import androidx.media3.common.Player
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -93,6 +95,36 @@ class ScrubFreezeTest {
         f.start(60_000, TRACK_A)
         f.clear()
         assertNull(f.targetMs)
+    }
+
+    // ── Absolute seeks from Media3 ──────────────────────────────────────
+
+    @Test
+    fun `the play button at the end goes to 0 without pinning the bar`() {
+        // Media3 answers Play on an ended item with seekToDefaultPosition()
+        // then play(): the seek carries C.TIME_UNSET.
+        val seek = ScrubFreeze.absoluteSeek(
+            Player.COMMAND_SEEK_TO_DEFAULT_POSITION, C.TIME_UNSET,
+        )
+        assertEquals(ScrubFreeze.Seek(positionMs = 0, pin = false), seek)
+    }
+
+    @Test
+    fun `a seek to an item with no position goes to 0 without pinning the bar`() {
+        val seek = ScrubFreeze.absoluteSeek(Player.COMMAND_SEEK_TO_MEDIA_ITEM, C.TIME_UNSET)
+        assertEquals(ScrubFreeze.Seek(positionMs = 0, pin = false), seek)
+    }
+
+    @Test
+    fun `a scrub pins the bar at its position, never below 0`() {
+        assertEquals(
+            ScrubFreeze.Seek(positionMs = 60_000, pin = true),
+            ScrubFreeze.absoluteSeek(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM, 60_000),
+        )
+        assertEquals(
+            ScrubFreeze.Seek(positionMs = 0, pin = true),
+            ScrubFreeze.absoluteSeek(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM, -500),
+        )
     }
 
     private companion object {
