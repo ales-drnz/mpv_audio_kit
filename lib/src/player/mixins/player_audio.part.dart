@@ -814,8 +814,14 @@ mixin _AudioModule on _PlayerBase {
   /// has finished starting. The pipeline is **lazy**: with no subscriber
   /// to [PlayerStream.fft] or [PlayerStream.pcm] this only stores the
   /// configuration; the poll loop starts on the first subscriber.
+  ///
+  /// Throws [ArgumentError] (a [RangeError] for a bound), with the state
+  /// unchanged, when a field is outside the range its doc gives. The
+  /// constructor's asserts check the same ranges, but a release build
+  /// skips them.
   void setSpectrum(SpectrumSettings settings) {
     _checkNotDisposed();
+    settings.validate();
     assert(
       settings.emitInterval >= SpectrumPipeline.minEmitInterval,
       'emitInterval must be at least 8 ms',

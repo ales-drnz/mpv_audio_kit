@@ -2,8 +2,29 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
+
+/// The `dart` executable of the Flutter SDK running the tests.
+String _dart() {
+  final root = Platform.environment['FLUTTER_ROOT'];
+  if (root != null) {
+    final exe = Platform.isWindows ? 'dart.exe' : 'dart';
+    final path = [
+      root,
+      'bin',
+      'cache',
+      'dart-sdk',
+      'bin',
+      exe,
+    ].join(Platform.pathSeparator);
+    if (File(path).existsSync()) return path;
+  }
+  return 'dart';
+}
 
 void main() {
   group('SpectrumSettings construction asserts', () {
@@ -124,4 +145,32 @@ void main() {
       expect(() => seed.copyWith(fftSize: 4096), returnsNormally);
     });
   });
+
+  // A release build skips the constructor asserts, so out of range settings
+  // reach setSpectrum: an overlapFactor of 0 then threw from every poll of
+  // the FFT stream. setSpectrum validates them first. `flutter test` always
+  // runs asserts, so a `dart` process, which runs none, builds them.
+  group(
+    'validate, in a build without asserts',
+    testOn: 'mac-os || linux || windows',
+    () {
+      test('refuses what the asserts refuse and passes the rest', () async {
+        final result = await Process.run(_dart(), [
+          'test/_helpers/probes/spectrum_settings_probe.dart',
+        ], stdoutEncoding: utf8);
+        expect(result.exitCode, 0, reason: '${result.stderr}');
+        final report =
+            jsonDecode((result.stdout as String).trim().split('\n').last)
+                as Map<String, dynamic>;
+        expect(report['asserts'], isFalse);
+        final cases = report['cases'] as Map<String, dynamic>;
+        expect(cases['defaults'], isNull);
+        expect(cases['edges'], isNull);
+        for (final MapEntry(:key, :value) in cases.entries) {
+          if (key == 'defaults' || key == 'edges') continue;
+          expect(value, anyOf('ArgumentError', 'RangeError'), reason: key);
+        }
+      }, timeout: const Timeout(Duration(minutes: 2)));
+    },
+  );
 }
