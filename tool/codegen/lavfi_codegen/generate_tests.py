@@ -610,8 +610,11 @@ def _emit_param_corners(
     Max}). The runtime test iterates this list and feeds each bundle
     to live mpv, capturing any AVOption-rejection errors.
 
+    A duration param gets one corner instead, 500 us when its range holds
+    it: under a millisecond, where its wire value once took an exponent.
+
     Skips:
-      - Non-numeric params (enums / flags / bools / strings / durations).
+      - Non-numeric params (enums / flags / bools / strings).
       - Params whose corner const isn't emitted by `generate.py` (e.g.
         params with no parsable min — the ffmpeg AVOption uses
         `INT_MAX` / `DBL_MAX` / a C symbol).
@@ -654,9 +657,20 @@ def _emit_param_corners(
         cls = _settings_class_name(fname)
         for pname, p in params.items():
             ptype = p.get("type")
+            dart_pname = _param_dart_name(pname)
+            if ptype == "duration":
+                lo = _try_int(p.get("min"))
+                hi = _try_int(p.get("max"))
+                if (lo is None or lo <= 500) and (hi is None or hi >= 500):
+                    req_extra = _required_args_fragment_except(fname, pname)
+                    pieces.append(
+                        f"  (filter: '{fname}', label: '{pname}=500us', "
+                        f"bundle: const [{cls}({dart_pname}: "
+                        f"Duration(microseconds: 500){req_extra})]),"
+                    )
+                continue
             if ptype not in ("double", "int"):
                 continue
-            dart_pname = _param_dart_name(pname)
             # Each corner uses the codegen's public const so a drift in
             # the const value is automatically reflected here.
             for suffix in ("Min", "Default", "Max"):

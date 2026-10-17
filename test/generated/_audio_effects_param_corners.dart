@@ -977,6 +977,11 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afade',
+    label: 'duration=500us',
+    bundle: const [AfadeEffect(duration: Duration(microseconds: 500))],
+  ),
+  (
+    filter: 'afade',
     label: 'nb_samples=nbSamplesMin',
     bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesMin)],
   ),
@@ -1019,6 +1024,11 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afade',
     label: 'start_sample=startSampleMax',
     bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleMax)],
+  ),
+  (
+    filter: 'afade',
+    label: 'start_time=500us',
+    bundle: const [AfadeEffect(startTime: Duration(microseconds: 500))],
   ),
   (
     filter: 'afade',
@@ -1711,6 +1721,11 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apad',
+    label: 'pad_dur=500us',
+    bundle: const [ApadEffect(padDur: Duration(microseconds: 500))],
+  ),
+  (
+    filter: 'apad',
     label: 'pad_len=padLenMin',
     bundle: const [ApadEffect(padLen: ApadEffect.padLenMin)],
   ),
@@ -1723,6 +1738,11 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apad',
     label: 'pad_len=padLenMax',
     bundle: const [ApadEffect(padLen: ApadEffect.padLenMax)],
+  ),
+  (
+    filter: 'apad',
+    label: 'whole_dur=500us',
+    bundle: const [ApadEffect(wholeDur: Duration(microseconds: 500))],
   ),
   (
     filter: 'apad',
@@ -4457,6 +4477,13 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'silenceremove',
+    label: 'start_duration=500us',
+    bundle: const [
+      SilenceremoveEffect(startDuration: Duration(microseconds: 500)),
+    ],
+  ),
+  (
+    filter: 'silenceremove',
     label: 'start_periods=startPeriodsMin',
     bundle: const [
       SilenceremoveEffect(startPeriods: SilenceremoveEffect.startPeriodsMin),
@@ -4476,6 +4503,13 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'start_periods=startPeriodsMax',
     bundle: const [
       SilenceremoveEffect(startPeriods: SilenceremoveEffect.startPeriodsMax),
+    ],
+  ),
+  (
+    filter: 'silenceremove',
+    label: 'start_silence=500us',
+    bundle: const [
+      SilenceremoveEffect(startSilence: Duration(microseconds: 500)),
     ],
   ),
   (
@@ -4507,6 +4541,13 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'silenceremove',
+    label: 'stop_duration=500us',
+    bundle: const [
+      SilenceremoveEffect(stopDuration: Duration(microseconds: 500)),
+    ],
+  ),
+  (
+    filter: 'silenceremove',
     label: 'stop_periods=stopPeriodsMin',
     bundle: const [
       SilenceremoveEffect(stopPeriods: SilenceremoveEffect.stopPeriodsMin),
@@ -4524,6 +4565,13 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'stop_periods=stopPeriodsMax',
     bundle: const [
       SilenceremoveEffect(stopPeriods: SilenceremoveEffect.stopPeriodsMax),
+    ],
+  ),
+  (
+    filter: 'silenceremove',
+    label: 'stop_silence=500us',
+    bundle: const [
+      SilenceremoveEffect(stopSilence: Duration(microseconds: 500)),
     ],
   ),
   (
@@ -4548,6 +4596,11 @@ const List<ParamCorner> kFilterParamCorners = [
     bundle: const [
       SilenceremoveEffect(stopThreshold: SilenceremoveEffect.stopThresholdMax),
     ],
+  ),
+  (
+    filter: 'silenceremove',
+    label: 'window=500us',
+    bundle: const [SilenceremoveEffect(window: Duration(microseconds: 500))],
   ),
   (
     filter: 'speechnorm',

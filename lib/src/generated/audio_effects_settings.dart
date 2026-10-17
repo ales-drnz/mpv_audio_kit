@@ -49,6 +49,16 @@ String _wireDouble(double v) {
   return v.toStringAsFixed(6);
 }
 
+/// Wire-format a duration option, in seconds: 3 decimals when that is
+/// exact, 6 when it is not, which holds every microsecond. Never an
+/// exponent: duration options go through av_parse_time, which refuses
+/// one.
+String _wireDuration(Duration d) {
+  final v = d.inMicroseconds / 1e6;
+  final fixed = v.toStringAsFixed(3);
+  return double.parse(fixed) == v ? fixed : v.toStringAsFixed(6);
+}
+
 /// One stage of the audio effects chain: an entry of the ordered list given
 /// to `Player.setAudioEffects`. Stages run in list order, and the same
 /// filter may appear more than once.
@@ -3040,12 +3050,12 @@ final class AfadeEffect extends AudioEffect {
     final parts = <String>[];
     if (curve != AfadeCurve.tri) parts.add('curve=' + curve.mpvValue);
     if (duration != Duration.zero)
-      parts.add('duration=' + _wireDouble(duration.inMicroseconds / 1e6));
+      parts.add('duration=' + _wireDuration(duration));
     if (nbSamples != 44100) parts.add('nb_samples=' + nbSamples.toString());
     if (silence != 0.0) parts.add('silence=' + _wireDouble(silence));
     if (startSample != 0) parts.add('start_sample=' + startSample.toString());
     if (startTime != Duration.zero)
-      parts.add('start_time=' + _wireDouble(startTime.inMicroseconds / 1e6));
+      parts.add('start_time=' + _wireDuration(startTime));
     if (type != AfadeType.in_) parts.add('type=' + type.mpvValue);
     if (unity != 1.0) parts.add('unity=' + _wireDouble(unity));
     return parts.isEmpty ? 'lavfi-afade' : 'lavfi-afade=' + parts.join(':');
@@ -3061,7 +3071,7 @@ final class AfadeEffect extends AudioEffect {
       out.add(('curve', curve.mpvValue));
     }
     if (duration != prev.duration) {
-      out.add(('duration', _wireDouble(duration.inMicroseconds / 1e6)));
+      out.add(('duration', _wireDuration(duration)));
     }
     if (nbSamples != prev.nbSamples) {
       out.add(('nb_samples', nbSamples.toString()));
@@ -3073,7 +3083,7 @@ final class AfadeEffect extends AudioEffect {
       out.add(('start_sample', startSample.toString()));
     }
     if (startTime != prev.startTime) {
-      out.add(('start_time', _wireDouble(startTime.inMicroseconds / 1e6)));
+      out.add(('start_time', _wireDuration(startTime)));
     }
     if (type != prev.type) {
       out.add(('type', type.mpvValue));
@@ -5345,9 +5355,9 @@ final class AnlmdnEffect extends AudioEffect {
     final parts = <String>[];
     if (output != AnlmdnMode.o) parts.add('output=' + output.mpvValue);
     if (patch != const Duration(microseconds: 2000))
-      parts.add('patch=' + _wireDouble(patch.inMicroseconds / 1e6));
+      parts.add('patch=' + _wireDuration(patch));
     if (research != const Duration(microseconds: 6000))
-      parts.add('research=' + _wireDouble(research.inMicroseconds / 1e6));
+      parts.add('research=' + _wireDuration(research));
     if (smooth != 11.0) parts.add('smooth=' + _wireDouble(smooth));
     if (strength != 0.00001) parts.add('strength=' + _wireDouble(strength));
     return parts.isEmpty ? 'lavfi-anlmdn' : 'lavfi-anlmdn=' + parts.join(':');
@@ -5363,10 +5373,10 @@ final class AnlmdnEffect extends AudioEffect {
       out.add(('output', output.mpvValue));
     }
     if (patch != prev.patch) {
-      out.add(('patch', _wireDouble(patch.inMicroseconds / 1e6)));
+      out.add(('patch', _wireDuration(patch)));
     }
     if (research != prev.research) {
-      out.add(('research', _wireDouble(research.inMicroseconds / 1e6)));
+      out.add(('research', _wireDuration(research)));
     }
     if (smooth != prev.smooth) {
       out.add(('smooth', _wireDouble(smooth)));
@@ -5514,10 +5524,10 @@ final class ApadEffect extends AudioEffect {
     final parts = <String>[];
     if (packetSize != 4096) parts.add('packet_size=' + packetSize.toString());
     if (padDur != const Duration(microseconds: -1))
-      parts.add('pad_dur=' + _wireDouble(padDur.inMicroseconds / 1e6));
+      parts.add('pad_dur=' + _wireDuration(padDur));
     if (padLen != -1) parts.add('pad_len=' + padLen.toString());
     if (wholeDur != const Duration(microseconds: -1))
-      parts.add('whole_dur=' + _wireDouble(wholeDur.inMicroseconds / 1e6));
+      parts.add('whole_dur=' + _wireDuration(wholeDur));
     if (wholeLen != -1) parts.add('whole_len=' + wholeLen.toString());
     return parts.isEmpty ? 'lavfi-apad' : 'lavfi-apad=' + parts.join(':');
   }
@@ -14008,36 +14018,28 @@ final class SilenceremoveEffect extends AudioEffect {
     if (detection != SilenceremoveDetection.rms)
       parts.add('detection=' + detection.mpvValue);
     if (startDuration != Duration.zero)
-      parts.add(
-        'start_duration=' + _wireDouble(startDuration.inMicroseconds / 1e6),
-      );
+      parts.add('start_duration=' + _wireDuration(startDuration));
     if (startMode != SilenceremoveMode.any)
       parts.add('start_mode=' + startMode.mpvValue);
     if (startPeriods != 0)
       parts.add('start_periods=' + startPeriods.toString());
     if (startSilence != Duration.zero)
-      parts.add(
-        'start_silence=' + _wireDouble(startSilence.inMicroseconds / 1e6),
-      );
+      parts.add('start_silence=' + _wireDuration(startSilence));
     if (startThreshold != 0.0)
       parts.add('start_threshold=' + _wireDouble(startThreshold));
     if (stopDuration != Duration.zero)
-      parts.add(
-        'stop_duration=' + _wireDouble(stopDuration.inMicroseconds / 1e6),
-      );
+      parts.add('stop_duration=' + _wireDuration(stopDuration));
     if (stopMode != SilenceremoveMode.all)
       parts.add('stop_mode=' + stopMode.mpvValue);
     if (stopPeriods != 0) parts.add('stop_periods=' + stopPeriods.toString());
     if (stopSilence != Duration.zero)
-      parts.add(
-        'stop_silence=' + _wireDouble(stopSilence.inMicroseconds / 1e6),
-      );
+      parts.add('stop_silence=' + _wireDuration(stopSilence));
     if (stopThreshold != 0.0)
       parts.add('stop_threshold=' + _wireDouble(stopThreshold));
     if (timestamp != SilenceremoveTimestamp.write)
       parts.add('timestamp=' + timestamp.mpvValue);
     if (window != const Duration(microseconds: 20000))
-      parts.add('window=' + _wireDouble(window.inMicroseconds / 1e6));
+      parts.add('window=' + _wireDuration(window));
     return parts.isEmpty
         ? 'lavfi-silenceremove'
         : 'lavfi-silenceremove=' + parts.join(':');

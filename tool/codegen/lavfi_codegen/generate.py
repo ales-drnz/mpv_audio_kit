@@ -296,7 +296,7 @@ def _format_value_expr(name: str, dart_type: str, nullable: bool) -> str:
     if dart_type == "bool":
         return f"({dn} ? '1' : '0')"
     if dart_type == "duration":
-        return f"_wireDouble({dn}.inMicroseconds / 1e6)"
+        return f"_wireDuration({dn})"
     if dart_type == "enum":
         return f"{dn}.{_WIRE.value_getter}"
     if dart_type == "flags":
@@ -393,7 +393,9 @@ def _emit_enums_header() -> str:
     )
 
 
-def _emit_settings_header(*, needs_set: bool = True, needs_map: bool = True) -> str:
+def _emit_settings_header(
+    *, needs_set: bool = True, needs_map: bool = True, needs_duration: bool = True
+) -> str:
     # `_setEq` / `_mapEq` are emitted only when some field actually uses them
     # (Set / Map params). Audio has both, so its output is unchanged; a flavor
     # with neither (video) omits them rather than tripping `unused_element`.
@@ -458,6 +460,19 @@ def _emit_settings_header(*, needs_set: bool = True, needs_map: bool = True) -> 
         "  return v.toStringAsFixed(6);\n"
         "}\n"
     )
+    if needs_duration:
+        parts.append(
+            "\n"
+            "/// Wire-format a duration option, in seconds: 3 decimals when that is\n"
+            "/// exact, 6 when it is not, which holds every microsecond. Never an\n"
+            "/// exponent: duration options go through av_parse_time, which refuses\n"
+            "/// one.\n"
+            "String _wireDuration(Duration d) {\n"
+            "  final v = d.inMicroseconds / 1e6;\n"
+            "  final fixed = v.toStringAsFixed(3);\n"
+            "  return double.parse(fixed) == v ? fixed : v.toStringAsFixed(6);\n"
+            "}\n"
+        )
     return "".join(parts)
 
 
@@ -1389,13 +1404,15 @@ def run(config: Config) -> int:
     for fname in sorted_names:
         settings_bodies.append(_emit_settings_class(fname, filters[fname]))
     settings_bodies.insert(0, _emit_chain())
-    # The Set/Map equality helpers are emitted only when a field uses them, so a
-    # flavor with neither (video) doesn't trip `unused_element`.
+    # The Set/Map equality helpers and the duration formatter are emitted only
+    # when a field uses them, so a flavor without them (video) doesn't trip
+    # `unused_element`.
     _body = "\n".join(settings_bodies)
     settings_pieces: list[str] = [
         _emit_settings_header(
             needs_set="_setEq(" in _body,
             needs_map="_mapEq(" in _body,
+            needs_duration="_wireDuration(" in _body,
         ),
         *settings_bodies,
     ]

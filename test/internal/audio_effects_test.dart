@@ -331,4 +331,55 @@ void main() {
       }
     });
   });
+
+  group('durations on the wire', () {
+    // A duration option goes through av_parse_time, which reads digits
+    // with a decimal point but no exponent: '5e-4' is refused.
+    String startTime(int us) => RegExp(r'start_time=([^:]*)')
+        .firstMatch(
+          AfadeEffect(startTime: Duration(microseconds: us)).toFilterString(),
+        )!
+        .group(1)!;
+
+    test('under a millisecond they go out without an exponent', () {
+      expect(startTime(500), '0.000500');
+      expect(startTime(1), '0.000001');
+      expect(startTime(-999), '-0.000999');
+      expect(
+        audioEffectsDiff(
+          const [AfadeEffect()],
+          const [AfadeEffect(duration: Duration(microseconds: 500))],
+        )!.single.value,
+        '0.000500',
+      );
+    });
+
+    test('every other duration goes out as it did before', () {
+      // The format before: 3 decimals when exact, 6 when not, and an
+      // exponent under a millisecond.
+      String before(double v) {
+        final fixed = v.toStringAsFixed(3);
+        if (v == 0 || double.parse(fixed) == v) return fixed;
+        if (v.abs() < 0.001) return v.toStringAsExponential();
+        return v.toStringAsFixed(6);
+      }
+
+      final micros = <int>{
+        for (var us = -3000; us <= 3000; us++) us,
+        for (var us = 3000; us <= 100000000; us += 9973) us,
+        for (var us = 1; us < 1 << 62; us *= 3) ...[us, -us],
+        999999,
+        1000001,
+        86400000000,
+      }..remove(0);
+      var compared = 0;
+      for (final us in micros) {
+        final old = before(us / 1e6);
+        if (old.contains('e')) continue;
+        expect(startTime(us), old, reason: '$us us');
+        compared++;
+      }
+      expect(compared, greaterThan(10000));
+    });
+  });
 }
