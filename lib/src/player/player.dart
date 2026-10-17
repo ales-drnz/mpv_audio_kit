@@ -1487,7 +1487,9 @@ abstract class _PlayerBase {
   /// 7. **Close all reactive properties + controllers**. Order within
   ///    this group does not matter for correctness (they tolerate
   ///    `close()` while a listener is attached); grouping by ownership
-  ///    is for auditability.
+  ///    is for auditability. The closes are not awaited: an active
+  ///    listener gets `done` right after dispose completes, a paused one
+  ///    when it resumes.
   ///
   /// Idempotent AND await-safe: every call, including concurrent ones,
   /// returns the same teardown future, so a second `await dispose()`
@@ -1604,25 +1606,29 @@ abstract class _PlayerBase {
 
     // Close registry-backed reactives, then standalone ones, then
     // pure-event controllers. Order is for auditability: close() is
-    // safe with attached listeners.
-    await _registry.closeAll();
-    await Future.wait<void>([
-      _buffering.close(),
-      _completed.close(),
-      _playlist.close(),
-      _loop.close(),
-      _audioDevices.close(),
-      _metadata.close(),
-      _bufferingPercentage.close(),
-      _demuxerCacheState.close(),
-      _mediaSession.close(),
-      // Reactives the player writes itself, outside the registry.
-      _reactives.playWhenReady.close(),
-      _reactives.audioDevice.close(),
-      _reactives.audioEffects.close(),
-      _reactives.tlsCaFile.close(),
-      _reactives.spectrum.close(),
-    ]);
+    // safe with attached listeners. None is awaited: a listener the app
+    // keeps paused takes the done only when it resumes, so waiting would
+    // hold dispose forever. An active listener gets it right after.
+    unawaited(_registry.closeAll());
+    unawaited(
+      Future.wait<void>([
+        _buffering.close(),
+        _completed.close(),
+        _playlist.close(),
+        _loop.close(),
+        _audioDevices.close(),
+        _metadata.close(),
+        _bufferingPercentage.close(),
+        _demuxerCacheState.close(),
+        _mediaSession.close(),
+        // Reactives the player writes itself, outside the registry.
+        _reactives.playWhenReady.close(),
+        _reactives.audioDevice.close(),
+        _reactives.audioEffects.close(),
+        _reactives.tlsCaFile.close(),
+        _reactives.spectrum.close(),
+      ]),
+    );
     // Drop the lazy spectrum bridges before closing their controllers:
     // a dispose with a live fft or pcm listener must not leave the pipeline's
     // poll loop armed against a torn-down handle.
@@ -1630,26 +1636,28 @@ abstract class _PlayerBase {
     _fftPipeSub = null;
     await _pcmPipeSub?.cancel();
     _pcmPipeSub = null;
-    await Future.wait<void>([
-      _endFileCtrl.close(),
-      _errorCtrl.close(),
-      _logCtrl.close(),
-      _internalLogCtrl.close(),
-      _hookCtrl.close(),
-      _seekCompletedCtrl.close(),
-      _coverArtCtrl.close(),
-      _mediaSessionCommandsCtrl.close(),
-      // Player-side DSP controllers: the pipelines close their own
-      // internal streams, which completes the forwarding subscriptions
-      // but does NOT propagate `done` to these: without an explicit
-      // close, a consumer awaiting `stream.fft.first` (etc.) across a
-      // dispose would hang forever.
-      _fftCtrl.close(),
-      _pcmStreamCtrl.close(),
-      _waveformCtrl.close(),
-      _loudnessMeterCtrl.close(),
-      _loudnessScanCtrl.close(),
-    ]);
+    unawaited(
+      Future.wait<void>([
+        _endFileCtrl.close(),
+        _errorCtrl.close(),
+        _logCtrl.close(),
+        _internalLogCtrl.close(),
+        _hookCtrl.close(),
+        _seekCompletedCtrl.close(),
+        _coverArtCtrl.close(),
+        _mediaSessionCommandsCtrl.close(),
+        // Player-side DSP controllers: the pipelines close their own
+        // internal streams, which completes the forwarding subscriptions
+        // but does NOT propagate `done` to these: without an explicit
+        // close, a consumer awaiting `stream.fft.first` (etc.) across a
+        // dispose would hang forever.
+        _fftCtrl.close(),
+        _pcmStreamCtrl.close(),
+        _waveformCtrl.close(),
+        _loudnessMeterCtrl.close(),
+        _loudnessScanCtrl.close(),
+      ]),
+    );
   }
 }
 
