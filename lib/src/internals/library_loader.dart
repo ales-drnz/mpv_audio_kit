@@ -24,6 +24,15 @@ import 'pcm_native.dart';
 /// 0.1 s debug wait-event timeout so the isolate has provably unwound.
 const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
 
+/// The `set` commands that turn off the analysis switches of libmpv. The
+/// loudness scan goes first: turning the waveform off while the scan still
+/// runs would restart the decode pass for the scan alone.
+const List<String> _kAnalysisOff = [
+  'set loudness-scan-enabled no',
+  'set waveform-enabled no',
+  'set analyzer-taps ""',
+];
+
 /// Two-phase teardown for libmpv handles leaked across a Hot-Restart.
 ///
 /// Phase 1 sends `quit` to each handle, which wakes the leaked core so the
@@ -33,21 +42,29 @@ const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
 /// handle (`mpv_terminate_destroy` joins the core thread and releases the
 /// audio output): deferred so the destroy never races an isolate still
 /// inside the syscall (use-after-free).
+///
+/// With [stopAnalysis], phase 1 first turns off the waveform, the loudness
+/// scan and the analyzer taps. libmpv keeps them per process, not per core,
+/// and the previous VM never ran the dispose that turns them off: left on,
+/// every file the new VM opens is decoded for nobody.
 @internal
 Future<void> reapOrphanedHandles(
   MpvLibrary lib,
   List<Pointer<MpvHandle>> references, {
   Duration delay = _kOrphanReapDelay,
+  bool stopAnalysis = true,
 }) async {
   const tag = 'mpv_audio_kit:';
   for (final ref in references) {
-    final cmd = 'quit'.toNativeUtf8();
-    try {
-      lib.mpvCommandString(ref, cmd);
-    } catch (e) {
-      debugLog('$tag Error waking leaked handle: $e');
-    } finally {
-      calloc.free(cmd);
+    for (final command in [if (stopAnalysis) ..._kAnalysisOff, 'quit']) {
+      final cmd = command.toNativeUtf8();
+      try {
+        lib.mpvCommandString(ref, cmd);
+      } catch (e) {
+        debugLog('$tag Error sending "$command" to a leaked handle: $e');
+      } finally {
+        calloc.free(cmd);
+      }
     }
   }
 
@@ -94,9 +111,10 @@ abstract final class MpvAudioKit {
   ///
   /// [hotRestartCleanup] (default: `true`): recovers libmpv handles
   /// leaked across a Flutter Hot-Restart so they don't keep
-  /// exclusive-mode audio devices locked, and releases the live PCM
-  /// sources of the replaced VM (in the root isolate only, see
-  /// [releasesPcmSourcesAtInit]). Pass `false` in test runners, background
+  /// exclusive-mode audio devices locked. In the root isolate only (see
+  /// [releasesPcmSourcesAtInit]), it also releases the live PCM sources of
+  /// the replaced VM and turns off the waveform, loudness scan and filter
+  /// taps its listeners left on. Pass `false` in test runners, background
   /// isolates and other multi-VM scenarios that share a pid; the tracker
   /// would otherwise mis-attribute prior-VM handles as orphans.
   static void ensureInitialized({
@@ -137,7 +155,17 @@ abstract final class MpvAudioKit {
         debugLog('$tag cannot reopen libmpv: ${e.message}');
         return;
       }
-      unawaited(reapOrphanedHandles(lib, references));
+      // The analysis switches are process-wide, like the PCM sources below:
+      // only the root isolate a Hot-Restart replaced turns them off.
+      unawaited(
+        reapOrphanedHandles(
+          lib,
+          references,
+          stopAnalysis: releasesPcmSourcesAtInit(
+            restarted: OrphanHandleTracker.instance.restarted,
+          ),
+        ),
+      );
     });
 
     _libraryPath = libmpv;
@@ -213,6 +241,8 @@ abstract final class MpvAudioKit {
 /// Hot-Restart replaces the root isolate, which alone holds a
 /// `RootIsolateToken`. A second Flutter engine in the process (add-to-app)
 /// has a root isolate of its own: pass `hotRestartCleanup: false` there.
+/// The orphan reap turns off the analysis switches, process-wide too, under
+/// the same guard.
 @internal
 bool releasesPcmSourcesAtInit({required bool restarted}) =>
     restarted && RootIsolateToken.instance != null;
