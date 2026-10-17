@@ -135,7 +135,17 @@ jobs:
       # audio library linked at load time; PipeWire and PulseAudio are
       # opened only if present.
       - name: Install libmpv runtime dependencies
-        run: sudo apt-get update && sudo apt-get install -y libasound2t64
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64 pulseaudio pulseaudio-utils
+      # The runner has no audio device, so every output fell back to
+      # ao=null and the tests that need a real one (the lowLatency start,
+      # the system mixer) skipped. A PulseAudio server with a null sink is
+      # a real output that plays into nothing.
+      - name: PulseAudio null sink
+        run: |
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null
+          pactl set-default-sink ci_null
+          pactl info | grep -E '^(Server Name|Default Sink)'
       - name: Keep core dumps
         run: |
           mkdir -p /tmp/cores
