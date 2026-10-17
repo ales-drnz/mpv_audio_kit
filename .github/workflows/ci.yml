@@ -302,3 +302,9 @@ jobs:
       - name: Build test app
         working-directory: test_app
         run: ${{ matrix.command }}
+      # The plugin's JVM tests (android/src/test), through the test app's
+      # Gradle build, whose wrapper flutter build apk has just written.
+      - name: Kotlin unit tests
+        if: matrix.name == 'Android'
+        working-directory: test_app/android
+        run: ./gradlew :mpv_audio_kit:testDebugUnitTest
