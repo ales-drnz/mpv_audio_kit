@@ -10,6 +10,7 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart' show RootIsolateToken;
 import 'package:meta/meta.dart';
 
+import '../media_session/media_session_channel.dart';
 import '../mpv_bindings.dart';
 import 'debug_log.dart';
 import 'orphan_handle_tracker.dart';
@@ -113,10 +114,11 @@ abstract final class MpvAudioKit {
   /// leaked across a Flutter Hot-Restart so they don't keep
   /// exclusive-mode audio devices locked. In the root isolate only (see
   /// [releasesPcmSourcesAtInit]), it also releases the live PCM sources of
-  /// the replaced VM and turns off the waveform, loudness scan and filter
-  /// taps its listeners left on. Pass `false` in test runners, background
-  /// isolates and other multi-VM scenarios that share a pid; the tracker
-  /// would otherwise mis-attribute prior-VM handles as orphans.
+  /// the replaced VM, turns off the waveform, loudness scan and filter taps
+  /// its listeners left on, and disables its OS media session. Pass `false`
+  /// in test runners, background isolates and other multi-VM scenarios
+  /// that share a pid; the tracker would otherwise mis-attribute prior-VM
+  /// handles as orphans.
   static void ensureInitialized({
     String? libmpv,
     bool hotRestartCleanup = true,
@@ -174,6 +176,7 @@ abstract final class MpvAudioKit {
       restarted: OrphanHandleTracker.instance.restarted,
     )) {
       _releasePcmSources();
+      _disableMediaSession();
     }
   }
 
@@ -187,6 +190,21 @@ abstract final class MpvAudioKit {
       // A custom libmpv without the live PCM input: nothing to release.
       debugLog('mpv_audio_kit: no PCM sources to release: $e');
     }
+  }
+
+  /// Turns off the OS media session of the VM a Hot-Restart replaced. The
+  /// engine and its plugins outlive the VM: the notification, the lock
+  /// screen entry and the audio focus stay, still showing the old track,
+  /// and their buttons reach no listener. Sent before any `enable` of
+  /// this VM, on the same channel, so it lands first.
+  static void _disableMediaSession() {
+    // Needs the services binding (`WidgetsFlutterBinding.ensureInitialized`
+    // first, as the README shows): without it the session stays on.
+    unawaited(
+      MediaSessionChannel().disable().catchError((Object e) {
+        debugLog('mpv_audio_kit: cannot disable the old media session: $e');
+      }),
+    );
   }
 
   /// Sets `LC_NUMERIC=C` process-wide on Linux and macOS: mandated
