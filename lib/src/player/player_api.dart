@@ -109,8 +109,9 @@ abstract interface class PlayerApi {
   Future<void> stop();
 
   /// Seeks within the current file. With [relative] `false` [position] is
-  /// an absolute timestamp; with `true` it is a signed offset from the
-  /// playhead. [exact] forces a sample-accurate (slower) seek.
+  /// an absolute timestamp, a negative one going to the start; with `true`
+  /// it is a signed offset from the playhead. [exact] forces a
+  /// sample-accurate (slower) seek.
   Future<void> seek(Duration position, {bool relative, bool exact});
 
   /// Seeks by percentage of the file duration (0 to 100). See

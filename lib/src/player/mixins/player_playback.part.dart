@@ -143,7 +143,8 @@ mixin _PlaybackModule on _PlayerBase {
   /// Seeks playback to a position in the current file.
   ///
   /// With [relative] = `false` (default), [position] is an absolute
-  /// timestamp from the start of the file (clamped to `[0, duration]`).
+  /// timestamp from the start of the file: a negative one seeks to the
+  /// start, and one past the end ends the file as if it played there.
   /// With [relative] = `true`, [position] is a signed offset from the
   /// current playhead: positive moves forward, negative moves backward.
   ///
@@ -162,7 +163,11 @@ mixin _PlaybackModule on _PlayerBase {
     bool exact = false,
   }) async {
     await _gate();
-    final secs = durationToSeconds(position);
+    // mpv counts a negative absolute time from the end of the file, and
+    // fails it when the length is unknown.
+    final secs = !relative && position.isNegative
+        ? 0.0
+        : durationToSeconds(position);
     final mode = relative ? 'relative' : 'absolute';
     await _commandChecked([
       'seek',
@@ -171,8 +176,9 @@ mixin _PlaybackModule on _PlayerBase {
     ]);
   }
 
-  /// Seeks by percentage of the file duration (0–100). Absolute by default,
-  /// or relative to the current percent position when [relative] is true.
+  /// Seeks by percentage of the file duration (0 to 100; past 100 the file
+  /// ends). Absolute by default, or relative to the current percent position
+  /// when [relative] is true.
   /// [exact] forces a sample-accurate (slower) seek instead of snapping to a
   /// keyframe. Counterpart of [seek] for progress-bar scrubbing.
   Future<void> seekToPercent(
