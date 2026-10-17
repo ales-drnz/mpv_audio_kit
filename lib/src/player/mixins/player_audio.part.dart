@@ -419,6 +419,11 @@ mixin _AudioModule on _PlayerBase {
   /// no file loaded there is no graph to build yet, so a refused value
   /// surfaces at the next load instead, on [PlayerStream.error].
   ///
+  /// Throws [ArgumentError], before anything reaches mpv and with the
+  /// state unchanged, when a stage holds a value its filter would take and
+  /// then read or write out of its buffers with: chorus lists with
+  /// different numbers of voices. A [RawAudioEffect] is not checked.
+  ///
   /// A [RawAudioEffect] carries a lavfi entry written by hand, for
   /// expression-based filters or anything without a typed effect. The
   /// chain is the only writer of mpv's `af` property: raw writes via
@@ -490,6 +495,8 @@ mixin _AudioModule on _PlayerBase {
   /// the full `af` rewrite, which is always correct.
   Future<void> _applyAudioEffects(List<AudioEffect> requested) {
     final effects = List<AudioEffect>.unmodifiable(requested);
+    // Before the diff, so a refused list reaches neither mpv nor the state.
+    validateAudioEffects(effects);
     final previous = _state.audioEffects;
     final written = _afAccepted != null;
     // No-op writes skip the serialization + FFI round-trip entirely.
@@ -656,8 +663,9 @@ mixin _AudioModule on _PlayerBase {
   /// current list and returns the new one.
   ///
   /// Throws [MpvCommandException] like [setAudioEffects] when mpv refuses
-  /// the result, so a call that is not awaited, typical of a slider, ends
-  /// in an unhandled error then.
+  /// the result, and [ArgumentError] like it for a stage that is not safe
+  /// to run, so a call that is not awaited, typical of a slider, ends in
+  /// an unhandled error then.
   ///
   /// ```dart
   /// // A slider on the second stage (an EqualizerEffect):

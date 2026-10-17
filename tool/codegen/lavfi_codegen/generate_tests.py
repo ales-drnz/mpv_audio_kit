@@ -50,7 +50,9 @@ from .generate import (
 )
 from .required_params import (
     ARNNDN_MODEL_FIXTURE,
+    FILE_BACKED_PARAM,
     FILTER_TONE_FIXTURE,
+    PRESETS,
     REQUIRED_PARAMS,
     SAMPLE_VALUES,
     required_for,
@@ -595,7 +597,14 @@ def _emit_enum_group(enum_id: str, members: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _emit_param_corners(filters: dict, sorted_names: list[str]) -> str:
+def _dart_string(s: str) -> str:
+    """`s` as a single-quoted Dart string literal."""
+    return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("$", "\\$") + "'"
+
+
+def _emit_param_corners(
+    filters: dict, sorted_names: list[str]
+) -> tuple[str, int, int]:
     """Emits the runtime corner-case manifest. One `(filter, label,
     bundle)` record per (filter, numeric-param, corner ∈ {Min, Default,
     Max}). The runtime test iterates this list and feeds each bundle
@@ -606,14 +615,23 @@ def _emit_param_corners(filters: dict, sorted_names: list[str]) -> str:
       - Params whose corner const isn't emitted by `generate.py` (e.g.
         params with no parsable min — the ffmpeg AVOption uses
         `INT_MAX` / `DBL_MAX` / a C symbol).
-    """
+
+    A second list, `kFilterSamples`, holds every filter at its defaults
+    (required options from SAMPLE_VALUES) and the curated PRESETS: the
+    values the typed API ships, which the effects validator must accept.
+    File-backed filters (arnndn) are left out, their value being a path.
+
+    Returns (file text, n corners, n samples)."""
     pkg = _CONSUMER_PACKAGE
     pieces: list[str] = [
         "// AUTO-GENERATED: do not edit by hand.",
         "//",
         "// Per-filter param corner-case manifest. See",
         "// test/runtime_extended/audio_effects_param_ranges_test.dart",
-        "// for the test that iterates this list.",
+        "// for the test that iterates this list. kFilterSamples holds every",
+        "// filter at its defaults and the curated presets, which",
+        "// test/internal/audio_effects_validation_test.dart passes through",
+        "// the effects validator with the corners.",
         "",
         "// ignore_for_file: lines_longer_than_80_chars,"
         " unnecessary_const, prefer_const_constructors,"
@@ -660,7 +678,30 @@ def _emit_param_corners(filters: dict, sorted_names: list[str]) -> str:
                     f"bundle: const {bundle_expr}),"
                 )
     pieces.append("];")
-    return "\n".join(pieces) + "\n"
+    n_corners = sum(1 for p in pieces if p.startswith("  (filter: "))
+    pieces.append("")
+    pieces.append("const List<ParamCorner> kFilterSamples = [")
+    n_samples = 0
+    for fname in sorted_names:
+        if fname in FILE_BACKED_PARAM:
+            continue
+        cls = _settings_class_name(fname)
+        req_frag = _required_args_fragment(fname).lstrip(", ")
+        samples = [("defaults", f"{cls}({req_frag})")]
+        for preset, values in PRESETS.get(fname, []):
+            args = ", ".join(
+                f"{_param_dart_name(k)}: {_dart_string(v)}"
+                for k, v in values.items()
+            )
+            samples.append((f"preset {preset}", f"{cls}({args})"))
+        for label, ctor in samples:
+            n_samples += 1
+            pieces.append(
+                f"  (filter: '{fname}', label: {_dart_string(label)}, "
+                f"bundle: const [{ctor}]),"
+            )
+    pieces.append("];")
+    return "\n".join(pieces) + "\n", n_corners, n_samples
 
 
 def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
@@ -1251,7 +1292,10 @@ def run(config: Config) -> int:
 
     corners = config.output.test_param_corners
     corners.parent.mkdir(parents=True, exist_ok=True)
-    corners.write_text(_emit_param_corners(filters, sorted_names))
+    corners_text, corner_count, sample_count = _emit_param_corners(
+        filters, sorted_names
+    )
+    corners.write_text(corners_text)
     try:
         subprocess.run(
             ["dart", "format", str(corners)],
@@ -1261,16 +1305,14 @@ def run(config: Config) -> int:
         )
     except (FileNotFoundError, subprocess.CalledProcessError):
         print(f"WARN: `dart format` failed for {corners}", file=sys.stderr)
-    corner_count = sum(
-        1
-        for line in corners.read_text().splitlines()
-        if line.lstrip().startswith("filter:")
-    )
     try:
         rel = corners.relative_to(config.consumer_root)
     except ValueError:
         rel = corners
-    print(f"Wrote {rel} ({corner_count} corners)", file=sys.stderr)
+    print(
+        f"Wrote {rel} ({corner_count} corners, {sample_count} samples)",
+        file=sys.stderr,
+    )
 
     # Runtime init-coverage test (optional output). Emitted alongside the
     # wire-coverage test so the `tests` stage produces it as part of `all`.

@@ -134,9 +134,11 @@ final class ChorusVoice {
 /// Typed access over the four parallel pipe-separated CSVs
 /// (`delays`/`decays`/`depths`/`speeds`) lavfi's `chorus` exposes.
 ///
-/// The four lists are positional: the Nth delay/decay/depth/speed
-/// quartet is one voice. Mismatched lengths collapse to the shortest:
-/// lavfi rejects asymmetric configs at chain-build time.
+/// The four lists are positional: the Nth delay, decay, depth and speed
+/// make one voice. [voices] reads as many voices as the shortest list
+/// holds. lavfi does not check that the lengths match and reads past the
+/// shorter lists, so applying a chain with lists of different lengths
+/// throws an [ArgumentError].
 extension ChorusVoicesX on ChorusEffect {
   /// Decoded list of voices in declaration order.
   List<ChorusVoice> get voices {

@@ -2,7 +2,10 @@
 //
 // Per-filter param corner-case manifest. See
 // test/runtime_extended/audio_effects_param_ranges_test.dart
-// for the test that iterates this list.
+// for the test that iterates this list. kFilterSamples holds every
+// filter at its defaults and the curated presets, which
+// test/internal/audio_effects_validation_test.dart passes through
+// the effects validator with the corners.
 
 // ignore_for_file: lines_longer_than_80_chars, unnecessary_const, prefer_const_constructors, prefer_const_literals_to_create_immutables
 
@@ -5877,5 +5880,268 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'virtualbass',
     label: 'strength=strengthMax',
     bundle: const [VirtualbassEffect(strength: VirtualbassEffect.strengthMax)],
+  ),
+];
+
+const List<ParamCorner> kFilterSamples = [
+  (
+    filter: 'acompressor',
+    label: 'defaults',
+    bundle: const [AcompressorEffect()],
+  ),
+  (filter: 'acontrast', label: 'defaults', bundle: const [AcontrastEffect()]),
+  (filter: 'acrusher', label: 'defaults', bundle: const [AcrusherEffect()]),
+  (filter: 'adeclick', label: 'defaults', bundle: const [AdeclickEffect()]),
+  (filter: 'adeclip', label: 'defaults', bundle: const [AdeclipEffect()]),
+  (
+    filter: 'adecorrelate',
+    label: 'defaults',
+    bundle: const [AdecorrelateEffect()],
+  ),
+  (filter: 'adelay', label: 'defaults', bundle: const [AdelayEffect()]),
+  (filter: 'adenorm', label: 'defaults', bundle: const [AdenormEffect()]),
+  (
+    filter: 'aderivative',
+    label: 'defaults',
+    bundle: const [AderivativeEffect()],
+  ),
+  (filter: 'adrc', label: 'defaults', bundle: const [AdrcEffect()]),
+  (
+    filter: 'adynamicequalizer',
+    label: 'defaults',
+    bundle: const [AdynamicequalizerEffect()],
+  ),
+  (
+    filter: 'adynamicsmooth',
+    label: 'defaults',
+    bundle: const [AdynamicsmoothEffect()],
+  ),
+  (filter: 'aecho', label: 'defaults', bundle: const [AechoEffect()]),
+  (filter: 'aemphasis', label: 'defaults', bundle: const [AemphasisEffect()]),
+  (
+    filter: 'aeval',
+    label: 'defaults',
+    bundle: const [AevalEffect(exprs: 'val(0)|val(1)')],
+  ),
+  (
+    filter: 'aeval',
+    label: 'preset Passthrough',
+    bundle: const [AevalEffect(exprs: 'val(0)|val(1)')],
+  ),
+  (
+    filter: 'aeval',
+    label: 'preset Mute',
+    bundle: const [AevalEffect(exprs: '0|0')],
+  ),
+  (
+    filter: 'aeval',
+    label: 'preset Mono sum',
+    bundle: const [
+      AevalEffect(exprs: '0.5*val(0)+0.5*val(1)|0.5*val(0)+0.5*val(1)'),
+    ],
+  ),
+  (
+    filter: 'aeval',
+    label: 'preset Invert phase',
+    bundle: const [AevalEffect(exprs: '-val(0)|-val(1)')],
+  ),
+  (filter: 'aexciter', label: 'defaults', bundle: const [AexciterEffect()]),
+  (filter: 'afade', label: 'defaults', bundle: const [AfadeEffect()]),
+  (filter: 'afftdn', label: 'defaults', bundle: const [AfftdnEffect()]),
+  (filter: 'afftfilt', label: 'defaults', bundle: const [AfftfiltEffect()]),
+  (filter: 'aformat', label: 'defaults', bundle: const [AformatEffect()]),
+  (filter: 'afreqshift', label: 'defaults', bundle: const [AfreqshiftEffect()]),
+  (filter: 'afwtdn', label: 'defaults', bundle: const [AfwtdnEffect()]),
+  (filter: 'agate', label: 'defaults', bundle: const [AgateEffect()]),
+  (filter: 'aiir', label: 'defaults', bundle: const [AiirEffect()]),
+  (filter: 'aintegral', label: 'defaults', bundle: const [AintegralEffect()]),
+  (filter: 'alimiter', label: 'defaults', bundle: const [AlimiterEffect()]),
+  (filter: 'allpass', label: 'defaults', bundle: const [AllpassEffect()]),
+  (
+    filter: 'anequalizer',
+    label: 'defaults',
+    bundle: const [AnequalizerEffect()],
+  ),
+  (filter: 'anlmdn', label: 'defaults', bundle: const [AnlmdnEffect()]),
+  (filter: 'apad', label: 'defaults', bundle: const [ApadEffect()]),
+  (filter: 'aphaser', label: 'defaults', bundle: const [AphaserEffect()]),
+  (
+    filter: 'aphaseshift',
+    label: 'defaults',
+    bundle: const [AphaseshiftEffect()],
+  ),
+  (filter: 'apsyclip', label: 'defaults', bundle: const [ApsyclipEffect()]),
+  (filter: 'apulsator', label: 'defaults', bundle: const [ApulsatorEffect()]),
+  (filter: 'aresample', label: 'defaults', bundle: const [AresampleEffect()]),
+  (filter: 'asetrate', label: 'defaults', bundle: const [AsetrateEffect()]),
+  (filter: 'asoftclip', label: 'defaults', bundle: const [AsoftclipEffect()]),
+  (filter: 'asubboost', label: 'defaults', bundle: const [AsubboostEffect()]),
+  (filter: 'asubcut', label: 'defaults', bundle: const [AsubcutEffect()]),
+  (filter: 'asupercut', label: 'defaults', bundle: const [AsupercutEffect()]),
+  (filter: 'asuperpass', label: 'defaults', bundle: const [AsuperpassEffect()]),
+  (filter: 'asuperstop', label: 'defaults', bundle: const [AsuperstopEffect()]),
+  (filter: 'atempo', label: 'defaults', bundle: const [AtempoEffect()]),
+  (filter: 'atilt', label: 'defaults', bundle: const [AtiltEffect()]),
+  (filter: 'bandpass', label: 'defaults', bundle: const [BandpassEffect()]),
+  (filter: 'bandreject', label: 'defaults', bundle: const [BandrejectEffect()]),
+  (filter: 'bass', label: 'defaults', bundle: const [BassEffect()]),
+  (filter: 'biquad', label: 'defaults', bundle: const [BiquadEffect()]),
+  (
+    filter: 'channelmap',
+    label: 'defaults',
+    bundle: const [ChannelmapEffect(map: '0|1')],
+  ),
+  (
+    filter: 'channelmap',
+    label: 'preset Stereo (0|1)',
+    bundle: const [ChannelmapEffect(map: '0|1')],
+  ),
+  (
+    filter: 'channelmap',
+    label: 'preset Swap (1|0)',
+    bundle: const [ChannelmapEffect(map: '1|0')],
+  ),
+  (
+    filter: 'chorus',
+    label: 'defaults',
+    bundle: const [
+      ChorusEffect(
+        delays: '55|60',
+        decays: '0.4|0.32',
+        speeds: '0.25|0.4',
+        depths: '2|1.3',
+      ),
+    ],
+  ),
+  (
+    filter: 'chorus',
+    label: 'preset Subtle',
+    bundle: const [
+      ChorusEffect(
+        delays: '40|50',
+        decays: '0.4|0.3',
+        speeds: '0.25|0.4',
+        depths: '1.5|1.0',
+      ),
+    ],
+  ),
+  (
+    filter: 'chorus',
+    label: 'preset Lush',
+    bundle: const [
+      ChorusEffect(
+        delays: '55|60|70',
+        decays: '0.5|0.4|0.3',
+        speeds: '0.3|0.4|0.5',
+        depths: '3|2.5|2',
+      ),
+    ],
+  ),
+  (
+    filter: 'chorus',
+    label: 'preset Vintage',
+    bundle: const [
+      ChorusEffect(delays: '50', decays: '0.4', speeds: '0.25', depths: '2'),
+    ],
+  ),
+  (filter: 'compand', label: 'defaults', bundle: const [CompandEffect()]),
+  (
+    filter: 'compensationdelay',
+    label: 'defaults',
+    bundle: const [CompensationdelayEffect()],
+  ),
+  (filter: 'crossfeed', label: 'defaults', bundle: const [CrossfeedEffect()]),
+  (
+    filter: 'crystalizer',
+    label: 'defaults',
+    bundle: const [CrystalizerEffect()],
+  ),
+  (filter: 'dcshift', label: 'defaults', bundle: const [DcshiftEffect()]),
+  (filter: 'deesser', label: 'defaults', bundle: const [DeesserEffect()]),
+  (
+    filter: 'dialoguenhance',
+    label: 'defaults',
+    bundle: const [DialoguenhanceEffect()],
+  ),
+  (filter: 'drmeter', label: 'defaults', bundle: const [DrmeterEffect()]),
+  (filter: 'dynaudnorm', label: 'defaults', bundle: const [DynaudnormEffect()]),
+  (filter: 'earwax', label: 'defaults', bundle: const [EarwaxEffect()]),
+  (filter: 'ebur128', label: 'defaults', bundle: const [Ebur128Effect()]),
+  (filter: 'equalizer', label: 'defaults', bundle: const [EqualizerEffect()]),
+  (
+    filter: 'extrastereo',
+    label: 'defaults',
+    bundle: const [ExtrastereoEffect()],
+  ),
+  (
+    filter: 'firequalizer',
+    label: 'defaults',
+    bundle: const [FirequalizerEffect()],
+  ),
+  (filter: 'flanger', label: 'defaults', bundle: const [FlangerEffect()]),
+  (filter: 'haas', label: 'defaults', bundle: const [HaasEffect()]),
+  (filter: 'hdcd', label: 'defaults', bundle: const [HdcdEffect()]),
+  (filter: 'highpass', label: 'defaults', bundle: const [HighpassEffect()]),
+  (filter: 'highshelf', label: 'defaults', bundle: const [HighshelfEffect()]),
+  (filter: 'loudnorm', label: 'defaults', bundle: const [LoudnormEffect()]),
+  (filter: 'lowpass', label: 'defaults', bundle: const [LowpassEffect()]),
+  (filter: 'lowshelf', label: 'defaults', bundle: const [LowshelfEffect()]),
+  (filter: 'mcompand', label: 'defaults', bundle: const [McompandEffect()]),
+  (
+    filter: 'pan',
+    label: 'defaults',
+    bundle: const [PanEffect(args: 'stereo|c0=c0|c1=c1')],
+  ),
+  (
+    filter: 'pan',
+    label: 'preset Passthrough (stereo)',
+    bundle: const [PanEffect(args: 'stereo|c0=c0|c1=c1')],
+  ),
+  (
+    filter: 'pan',
+    label: 'preset Swap L / R',
+    bundle: const [PanEffect(args: 'stereo|c0=c1|c1=c0')],
+  ),
+  (
+    filter: 'pan',
+    label: 'preset Mono to both',
+    bundle: const [PanEffect(args: 'stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1')],
+  ),
+  (
+    filter: 'pan',
+    label: 'preset Karaoke (center cut)',
+    bundle: const [PanEffect(args: 'stereo|c0=c0-c1|c1=c1-c0')],
+  ),
+  (filter: 'rubberband', label: 'defaults', bundle: const [RubberbandEffect()]),
+  (
+    filter: 'silenceremove',
+    label: 'defaults',
+    bundle: const [SilenceremoveEffect()],
+  ),
+  (filter: 'speechnorm', label: 'defaults', bundle: const [SpeechnormEffect()]),
+  (
+    filter: 'stereotools',
+    label: 'defaults',
+    bundle: const [StereotoolsEffect()],
+  ),
+  (
+    filter: 'stereowiden',
+    label: 'defaults',
+    bundle: const [StereowidenEffect()],
+  ),
+  (
+    filter: 'superequalizer',
+    label: 'defaults',
+    bundle: const [SuperequalizerEffect()],
+  ),
+  (filter: 'surround', label: 'defaults', bundle: const [SurroundEffect()]),
+  (filter: 'tiltshelf', label: 'defaults', bundle: const [TiltshelfEffect()]),
+  (filter: 'treble', label: 'defaults', bundle: const [TrebleEffect()]),
+  (filter: 'tremolo', label: 'defaults', bundle: const [TremoloEffect()]),
+  (filter: 'vibrato', label: 'defaults', bundle: const [VibratoEffect()]),
+  (
+    filter: 'virtualbass',
+    label: 'defaults',
+    bundle: const [VirtualbassEffect()],
   ),
 ];
