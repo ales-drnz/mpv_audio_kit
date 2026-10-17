@@ -532,8 +532,8 @@ class Player extends _PlayerBase
   /// autoplay value decides. Replaces any currently loaded file or playlist.
   ///
   /// Per-[Media] options (`httpHeaders`, `demuxerLavfOptions`, `httpChunkSize`,
-  /// `start`) are validated but NOT applied to the playlist fetch: `loadlist`
-  /// has no file-local options slot. Entries parsed out of the playlist inherit the
+  /// `start`, `end`) are validated but NOT applied to the playlist fetch:
+  /// `loadlist` has no file-local options slot. Entries parsed out of the playlist inherit the
   /// global network and demuxer settings.
   @override
   Future<void> openPlaylistFile(Media playlist, {bool? play}) =>

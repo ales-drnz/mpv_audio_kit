@@ -32,7 +32,7 @@ mixin _LoadValidationModule on _PlayerBase {
 }
 
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
-/// `httpHeaders`, `httpChunkSize`, `demuxerLavfOptions` and `start`, and
+/// `httpHeaders`, `httpChunkSize`, `demuxerLavfOptions`, `start` and `end`, and
 /// the raw audio demuxer of a live PCM source. Each value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
 /// inside it: hence the rejection of CR, LF, `,` and NUL in keys and
@@ -41,7 +41,7 @@ mixin _LoadValidationModule on _PlayerBase {
 /// Returns `''` when the media carries none.
 @visibleForTesting
 String loadfileOptions(Media media) {
-  _checkStart(media);
+  _checkPlayRange(media);
   final parts = <String>[];
 
   // A live PCM source: mpv's raw audio demuxer in the source's format.
@@ -104,24 +104,43 @@ String loadfileOptions(Media media) {
   // mpv applies it after a resume point it loads for the file, so it wins.
   final start = media.start;
   if (start != null) parts.add('start=${durationToOption(start)}');
+  final end = media.end;
+  if (end != null) parts.add('end=${durationToOption(end)}');
 
   return parts.join(',');
 }
 
-/// Throws [ArgumentError] for a negative [Media.start], or one on a live
-/// PCM entry, which is not seekable and plays from its first chunk.
-void _checkStart(Media media) {
+/// Throws [ArgumentError] for a negative [Media.start], an [Media.end]
+/// not later than the start (or zero), or either on a live PCM entry,
+/// which is not seekable and plays from its first chunk to its last.
+void _checkPlayRange(Media media) {
   final start = media.start;
-  if (start == null) return;
-  if (start.isNegative) {
+  final end = media.end;
+  if (start != null && start.isNegative) {
     throw ArgumentError.value(start, 'start', 'must not be negative');
   }
-  if (isPcmUri(media.uri)) {
+  if (end != null && end <= (start ?? Duration.zero)) {
     throw ArgumentError.value(
-      start,
-      'start',
-      'a live PcmSource plays from its first chunk',
+      end,
+      'end',
+      start == null ? 'must be later than zero' : 'must be later than start',
     );
+  }
+  if (isPcmUri(media.uri)) {
+    if (start != null) {
+      throw ArgumentError.value(
+        start,
+        'start',
+        'a live PcmSource plays from its first chunk',
+      );
+    }
+    if (end != null) {
+      throw ArgumentError.value(
+        end,
+        'end',
+        'a live PcmSource plays to its last chunk',
+      );
+    }
   }
 }
 
@@ -133,7 +152,7 @@ final RegExp _kForbiddenInHeaderValue = RegExp(r'[\r\n,\x00]');
 /// before any optimistic state write.
 @visibleForTesting
 void validateLoadOptions(Media media) {
-  _checkStart(media);
+  _checkPlayRange(media);
   pcmLoadOptions(media.uri);
   final headers = media.httpHeaders;
   if (headers != null && headers.isNotEmpty) {

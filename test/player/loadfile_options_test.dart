@@ -68,4 +68,81 @@ void main() {
       validateLoadOptions(source.toMedia());
     });
   });
+
+  group('end', () {
+    test('goes out like start, after it', () {
+      expect(
+        loadfileOptions(const Media('a.flac', end: Duration(seconds: 30))),
+        'end=30.000',
+      );
+      expect(
+        loadfileOptions(
+          const Media(
+            'a.flac',
+            start: Duration(minutes: 1),
+            end: Duration(minutes: 1, seconds: 30, microseconds: 5),
+          ),
+        ),
+        'start=60.000,end=90.000005',
+      );
+    });
+
+    test('must be later than start, or than zero', () {
+      Matcher refused() =>
+          throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'end'));
+      expect(
+        () => validateLoadOptions(const Media('a.flac', end: Duration.zero)),
+        refused(),
+      );
+      expect(
+        () => validateLoadOptions(
+          const Media('a.flac', end: Duration(milliseconds: -5)),
+        ),
+        refused(),
+      );
+      expect(
+        () => validateLoadOptions(
+          const Media(
+            'a.flac',
+            start: Duration(seconds: 2),
+            end: Duration(seconds: 2),
+          ),
+        ),
+        refused(),
+      );
+      expect(
+        () => loadfileOptions(
+          const Media(
+            'a.flac',
+            start: Duration(seconds: 3),
+            end: Duration(seconds: 2),
+          ),
+        ),
+        refused(),
+      );
+      // Just after start is fine.
+      validateLoadOptions(
+        const Media(
+          'a.flac',
+          start: Duration(seconds: 2),
+          end: Duration(seconds: 2, microseconds: 1),
+        ),
+      );
+    });
+
+    test('a live PCM entry refuses an end', () {
+      debugPcmNativeOverride = FakePcmNative();
+      addTearDown(() {
+        debugPcmNativeOverride = null;
+        PcmSource.debugReset();
+      });
+      final media = PcmSource.create(
+        const PcmFormat(sampleRate: 1000, channels: 1),
+      ).toMedia().copyWith(end: const Duration(seconds: 1));
+      expect(
+        () => validateLoadOptions(media),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'end')),
+      );
+    });
+  });
 }

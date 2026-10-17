@@ -2,7 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-// Media.start: where an entry starts, as mpv's per-file `start`.
+// Media.start and Media.end: where an entry starts and stops, as mpv's
+// per-file `start` and `end`.
 
 @TestOn('mac-os || linux || windows')
 library;
@@ -142,6 +143,82 @@ void main() {
       await saveAt600();
       await reopen(Media(a));
       expect(p.state.position.inMilliseconds, closeTo(600, 150));
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('end finishes the last entry there, as its end', () async {
+      final completed = player.stream.completed
+          .firstWhere((c) => c)
+          .timeout(const Duration(seconds: 10));
+      await player.open(Media(a, end: const Duration(seconds: 2)), play: true);
+      await completed;
+      expect(
+        player.state.position.inMilliseconds,
+        inInclusiveRange(1800, 2300),
+      );
+      expect(player.state.duration.inMilliseconds, greaterThan(4500));
+      expect(await player.getRawProperty('pause'), 'yes');
+      expect(player.state.playWhenReady, isFalse);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('end moves the playlist on there', () async {
+      final started = DateTime.now();
+      await player.openAll([
+        Media(a, end: const Duration(seconds: 1)),
+        Media(b),
+      ], play: true);
+      await waitUntil(
+        () => player.state.playlist.index == 1,
+        timeout: const Duration(seconds: 4),
+        reason: 'the first entry ends at 1 s, not at 5 s',
+      );
+      expect(DateTime.now().difference(started).inMilliseconds, lessThan(3000));
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('start and end play the section between them', () async {
+      final completed = player.stream.completed
+          .firstWhere((c) => c)
+          .timeout(const Duration(seconds: 10));
+      await restartAfter(
+        () => player.open(
+          Media(
+            a,
+            start: const Duration(seconds: 1),
+            end: const Duration(seconds: 2),
+          ),
+          play: true,
+        ),
+      );
+      expect(player.state.position.inMilliseconds, greaterThanOrEqualTo(900));
+      await completed;
+      expect(
+        player.state.position.inMilliseconds,
+        inInclusiveRange(1800, 2300),
+      );
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('an end not after start is refused before mpv', () async {
+      await restartAfter(
+        () => player.openAll([Media(a), Media(b)], play: false),
+      );
+      final items = player.state.playlist.items;
+      final intent = player.state.playWhenReady;
+      const bad = [Duration.zero, Duration(milliseconds: -1)];
+      for (final end in bad) {
+        final m = Media(b, end: end);
+        await expectLater(player.open(m), throwsArgumentError);
+        await expectLater(player.openAll([Media(a), m]), throwsArgumentError);
+        await expectLater(player.add(m), throwsArgumentError);
+        await expectLater(player.replace(1, m), throwsArgumentError);
+      }
+      final late = Media(
+        b,
+        start: const Duration(seconds: 2),
+        end: const Duration(seconds: 1),
+      );
+      await expectLater(player.open(late, play: true), throwsArgumentError);
+      expect(player.state.playlist.items, items);
+      expect(player.state.playWhenReady, intent);
+      expect(await player.getRawProperty('playlist-count'), '2');
     }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

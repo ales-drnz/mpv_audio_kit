@@ -634,10 +634,19 @@ await player.open(media, play: false); // Load but do not start
 
 // Start 12 minutes in, e.g. where the app saved the position
 await player.open(Media(path, start: const Duration(minutes: 12)));
+
+// A 30 second preview from 1:00: the entry ends at 1:30
+await player.open(Media(
+  url,
+  start: const Duration(minutes: 1),
+  end: const Duration(minutes: 1, seconds: 30),
+));
 ```
 
-`Media.start` works the same way with `openAll`, `add` and `replace`, and
-holds each time the entry loads.
+`Media.start` and `Media.end` work the same way with `openAll`, `add` and
+`replace`, and hold each time the entry loads. An entry with an end
+finishes there as at the end of the file, while `duration` stays the
+length of the whole file.
 
 #### 3.2 Opening multiple tracks
 

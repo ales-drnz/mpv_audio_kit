@@ -94,7 +94,37 @@ void main() {
     });
   });
 
+  group('Media.end copyWith', () {
+    test('omitted keeps the current value', () {
+      const a = Media('a', end: Duration(seconds: 3));
+      expect(a.copyWith(uri: 'b').end, const Duration(seconds: 3));
+    });
+
+    test('set overrides', () {
+      const a = Media('a');
+      expect(
+        a.copyWith(end: const Duration(seconds: 4)).end,
+        const Duration(seconds: 4),
+      );
+    });
+
+    test('explicit null clears', () {
+      const a = Media('a', end: Duration(seconds: 3));
+      expect(a.copyWith(end: null).end, isNull);
+    });
+  });
+
   group('Media equality — 0.1.0 full-field semantics', () {
+    test('end participates in equality', () {
+      const a = Media('a');
+      const b = Media('a', end: Duration(seconds: 2));
+      expect(a, isNot(b));
+      expect(a.hashCode, isNot(b.hashCode));
+      expect(b, const Media('a', end: Duration(seconds: 2)));
+      // Not the same as a start at the same time.
+      expect(b, isNot(const Media('a', start: Duration(seconds: 2))));
+    });
+
     test('start participates in equality', () {
       const a = Media('a');
       const b = Media('a', start: Duration(seconds: 2));
@@ -165,6 +195,13 @@ void main() {
       ).toString();
       expect(out, contains('Authorization'));
       expect(out, isNot(contains('s3cr3t')));
+    });
+
+    test('the end is printed', () {
+      expect(
+        const Media('a.mp3', end: Duration(seconds: 2)).toString(),
+        contains('end: 0:00:02.000000'),
+      );
     });
 
     test('the start is printed', () {

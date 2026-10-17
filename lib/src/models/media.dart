@@ -54,7 +54,7 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 /// ```
 ///
 /// Equality compares every field ([uri], [extras], [httpHeaders],
-/// [httpChunkSize], [demuxerLavfOptions] and [start]), so two instances
+/// [httpChunkSize], [demuxerLavfOptions], [start] and [end]), so two instances
 /// that differ in any of them are not equal: useful when diffing playlists
 /// for re-render decisions. The maps compare by content, their values by
 /// `==`.
@@ -143,9 +143,28 @@ final class Media {
   /// it plays from its first chunk.
   final Duration? start;
 
+  /// Where this entry stops, as a time from the start of the file (mpv's
+  /// per-file `end`). `null` (default) plays the file to its end. For a
+  /// preview, or a section of a long file queued as an entry of its own.
+  ///
+  /// The entry ends there as at the end of the file: the playlist moves
+  /// on, or the last entry parks and [PlayerState.completed] turns true.
+  /// [PlayerState.duration], `timeRemaining` and `percentPos` still
+  /// describe the whole file. [Loop.file] and [Player.play] at the end of
+  /// the queue start the file again from its beginning, and stop at [end]
+  /// again. With [Player.setPrefetchPlaylist] on, an entry with an end is
+  /// opened ahead only from libmpv-r18 on when the playing entry has the
+  /// same options, and the entry after one that ends early only once mpv
+  /// has read its file to the end.
+  ///
+  /// Must be later than [start], or than zero when [start] is null. Like
+  /// [start] it does not apply to [Player.openPlaylistFile], and a live
+  /// [PcmSource] entry refuses it.
+  final Duration? end;
+
   /// Creates an immutable media item for [uri], with optional consumer
   /// [extras], per-request [httpHeaders] and [httpChunkSize], per-entry
-  /// [demuxerLavfOptions], and a [start] position.
+  /// [demuxerLavfOptions], and the [start] and [end] of what it plays.
   const Media(
     this.uri, {
     this.extras,
@@ -153,6 +172,7 @@ final class Media {
     this.httpChunkSize,
     this.demuxerLavfOptions,
     this.start,
+    this.end,
   });
 
   /// Whether this media is a live PCM input made by `PcmSource.toMedia`
@@ -161,8 +181,9 @@ final class Media {
   bool get isPcmStream => uri.startsWith('mak-pcm://');
 
   /// Returns a copy with the given fields replaced. Pass `null` for
-  /// [extras], [httpHeaders], [httpChunkSize], [demuxerLavfOptions] or
-  /// [start] to clear them; omitted fields keep their current value.
+  /// [extras], [httpHeaders], [httpChunkSize], [demuxerLavfOptions],
+  /// [start] or [end] to clear them; omitted fields keep their current
+  /// value.
   Media copyWith({
     String? uri,
     Object? extras = unset,
@@ -170,6 +191,7 @@ final class Media {
     Object? httpChunkSize = unset,
     Object? demuxerLavfOptions = unset,
     Object? start = unset,
+    Object? end = unset,
   }) => Media(
     uri ?? this.uri,
     extras: identical(extras, unset)
@@ -185,6 +207,7 @@ final class Media {
         ? this.demuxerLavfOptions
         : demuxerLavfOptions as Map<String, String>?,
     start: identical(start, unset) ? this.start : start as Duration?,
+    end: identical(end, unset) ? this.end : end as Duration?,
   );
 
   @override
@@ -194,6 +217,7 @@ final class Media {
           other.uri == uri &&
           other.httpChunkSize == httpChunkSize &&
           other.start == start &&
+          other.end == end &&
           _mapEqDyn(extras, other.extras) &&
           _mapEq(httpHeaders, other.httpHeaders) &&
           _mapEq(demuxerLavfOptions, other.demuxerLavfOptions));
@@ -203,6 +227,7 @@ final class Media {
     uri,
     httpChunkSize,
     start,
+    end,
     extras == null
         ? null
         : Object.hashAllUnordered(
@@ -229,6 +254,7 @@ final class Media {
         : '{${httpHeaders!.keys.map((k) => '$k: <redacted>').join(', ')}}';
     return 'Media(uri: $uri, extras: $extras, '
         'httpHeaders: $headers, httpChunkSize: $httpChunkSize, '
-        'demuxerLavfOptions: $demuxerLavfOptions, start: $start)';
+        'demuxerLavfOptions: $demuxerLavfOptions, start: $start, '
+        'end: $end)';
   }
 }
