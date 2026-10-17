@@ -10,6 +10,7 @@ import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/services.dart' show RootIsolateToken;
 import 'package:meta/meta.dart';
 
 import '../dsp/filter_tap_pipeline.dart';

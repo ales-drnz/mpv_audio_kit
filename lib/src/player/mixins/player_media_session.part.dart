@@ -32,10 +32,25 @@ mixin _MediaSessionModule on _PlayerBase {
   /// [session] is `null`. Only one [Player] per process can have an
   /// active session: a non-null [session] on a second [Player] throws
   /// [StateError].
+  ///
+  /// The session needs the root isolate, the one the OS sends its commands
+  /// to: a non-null [session] on a [Player] of another isolate throws
+  /// [StateError].
   Future<void> setMediaSession(MediaSession? session) async {
     _checkNotDisposed();
 
-    // 1. Single-instance guard.
+    // 1. Root isolate only: platform messages reach no other isolate, and
+    //    the channels of a background isolate fail. `null` is allowed
+    //    anywhere, as there is nothing to undo.
+    if (session != null && RootIsolateToken.instance == null) {
+      throw StateError(
+        'setMediaSession needs the root isolate: the OS media session '
+        'sends its commands only there. Publish from a Player created in '
+        'the root isolate.',
+      );
+    }
+
+    // 2. Single-instance guard.
     if (session != null) {
       final owner = Player._mediaSessionOwner;
       if (owner != null && !identical(owner, this)) {
@@ -53,7 +68,7 @@ mixin _MediaSessionModule on _PlayerBase {
       Player._mediaSessionOwner = null;
     }
 
-    // 2. Update state synchronously (optimistic). The controller's
+    // 3. Update state synchronously (optimistic). The controller's
     //    own subscription to `stream.mediaSession` will pick up the
     //    config change and push it to native via `updateConfig`.
     _updateField(
@@ -62,9 +77,27 @@ mixin _MediaSessionModule on _PlayerBase {
       session,
     );
 
-    // 3. Bring the controller in line with the state, in turn with the
+    // 4. Bring the controller in line with the state, in turn with the
     //    other calls: see [_queueMediaSessionSync].
-    await _queueMediaSessionSync();
+    try {
+      await _queueMediaSessionSync();
+    } catch (_) {
+      // The controller could not be created: undo the owner and the state
+      // this call wrote, unless a later call has replaced them.
+      if (session != null &&
+          identical(_state.mediaSession, session) &&
+          _mediaSessionController == null) {
+        if (identical(Player._mediaSessionOwner, this)) {
+          Player._mediaSessionOwner = null;
+        }
+        _updateField(
+          (s) => s.copyWith(mediaSession: null),
+          _mediaSession,
+          null,
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Drops the OS media session without the public checks: called by
