@@ -112,8 +112,10 @@ internal object MediaSessionManager :
     @Volatile var playback: PlaybackSnapshot = PlaybackSnapshot.EMPTY
         private set
 
-    @Volatile var scrubFreezeMs: Long? = null
-        private set
+    private val scrub = ScrubFreeze()
+
+    /** The scrub target the seek bar is pinned at, or `null` (see [ScrubFreeze]). */
+    val scrubFreezeMs: Long? get() = scrub.targetMs
 
     @Volatile var enabled: Boolean = false
         private set
@@ -243,7 +245,7 @@ internal object MediaSessionManager :
      *  (republish), then forward the absolute seek. The freeze clears in
      *  [updatePlayback] once the landed position confirms. */
     fun onScrub(positionMs: Long) = runOnMain {
-        scrubFreezeMs = positionMs
+        scrub.start(positionMs)
         player?.republish()
         eventSink?.success(mapOf("type" to "seekTo", "positionMs" to positionMs))
     }
@@ -254,7 +256,7 @@ internal object MediaSessionManager :
         this.config = parseConfig(config)
         this.metadata = parseMetadata(metadata)
         this.playback = parsePlayback(playback)
-        scrubFreezeMs = null
+        scrub.clear()
         enabled = true
         ensureSessionCreated()
         // A new session starts from a clean audio focus. An enable with no
@@ -284,13 +286,9 @@ internal object MediaSessionManager :
     private fun updatePlayback(playback: Map<*, *>) = runOnMain {
         val pb = parsePlayback(playback)
         this.playback = pb
-        val frozen = scrubFreezeMs
-        // Clear the scrub freeze once Dart confirms the landed position is
-        // within ~1s of the drop target — the slider then tracks playback
-        // again. A stale push mid-seek keeps the slider pinned.
-        if (frozen != null && kotlin.math.abs(pb.positionMs - frozen) <= 1000) {
-            scrubFreezeMs = null
-        }
+        // The slider tracks playback again once Dart confirms the landed
+        // position; a stale push mid-seek keeps it pinned.
+        scrub.onPlayback(pb.positionMs)
         publish()
         // Acquire focus when playback starts (idempotent while held); focus is
         // held across a user pause and released only on disable. On pause, drop
@@ -309,7 +307,7 @@ internal object MediaSessionManager :
         config = ConfigSnapshot.EMPTY
         metadata = MetadataSnapshot.EMPTY
         playback = PlaybackSnapshot.EMPTY
-        scrubFreezeMs = null
+        scrub.clear()
         lastButtons = emptyList()
         // Publish the idle/empty state first so Media3 removes the
         // notification and demotes the foreground service, THEN release.
