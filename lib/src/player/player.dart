@@ -704,6 +704,16 @@ abstract class _PlayerBase {
   // otherwise put mpv in an infinite open-fail-reopen loop.
   bool _resolverRetried = false;
 
+  // From START_FILE to the FILE_LOADED or END_FILE of that load. An
+  // `on_load` outside it is the prefetch of the next entry, which mpv runs
+  // while the current file plays, with no START_FILE.
+  bool _loadingEntry = false;
+
+  // What the resolver gave for the prefetch of the next entry: the URL mpv
+  // was about to open, the one it opened instead, and the load epoch then.
+  // The load of that URL in the same epoch takes it once (F10).
+  (String, String, _LoadTicket)? _prefetchResolved;
+
   PlayerState _state = const PlayerState();
 
   /// Reused `commit` callback for every registry dispatch: tearing off (or

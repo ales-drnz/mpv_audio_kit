@@ -210,6 +210,7 @@ mixin _HooksModule on _PlayerBase {
   }) async {
     await _gate();
     _sourceResolver = resolver;
+    _prefetchResolved = null;
     if (resolver == null) return;
     for (final hook in const [Hook.load, Hook.loadFail]) {
       // The default is 15 s, so a null here was asked for: it lifts the
@@ -264,6 +265,7 @@ mixin _HooksModule on _PlayerBase {
   ) async {
     try {
       final isRetry = hook == Hook.loadFail;
+      final prefetch = !isRetry && !_loadingEntry;
       // One resolver-driven retry per load attempt: see
       // [_resolverRetried] for the loop hazard this caps. The flag is
       // cleared on START_FILE only, NOT on `on_load`: after an
@@ -274,14 +276,34 @@ mixin _HooksModule on _PlayerBase {
       final current = await getRawProperty('stream-open-filename') ?? '';
       if (current.isEmpty || _disposed) return;
       final media = _cachedMedia(current) ?? Media(current);
-      final resolved = await resolver(
-        SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
-      );
-      if (_disposed || resolved == null || resolved.isEmpty) return;
-      // A file:// URL goes to mpv as its path, as the URL of a Media does:
-      // the waveform and loudness scans hand the name to FFmpeg, whose file
-      // protocol does not decode it.
-      final target = fileUrlToPath(resolved) ?? resolved;
+      // The load of an entry the prefetch resolved opens the same URL
+      // without asking again: a resolver that gives a new URL on every call
+      // (a salt, a signed URL) would make mpv drop the prefetch. A retry
+      // asks as before, so an expired URL is still renewed.
+      final kept = _prefetchResolved;
+      if (!isRetry && !prefetch) _prefetchResolved = null;
+      String target;
+      if (!isRetry &&
+          !prefetch &&
+          kept != null &&
+          kept.$1 == current &&
+          !kept.$3.superseded) {
+        target = kept.$2;
+      } else {
+        final resolved = await resolver(
+          SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
+        );
+        if (_disposed) return;
+        // A file:// URL goes to mpv as its path, as the URL of a Media
+        // does: the waveform and loudness scans hand the name to FFmpeg,
+        // whose file protocol does not decode it.
+        target = resolved == null || resolved.isEmpty
+            ? current
+            : fileUrlToPath(resolved) ?? resolved;
+        if (prefetch && pending()) {
+          _prefetchResolved = (current, target, _snapshotLoad());
+        }
+      }
       if (target == current) return;
       // No timer runs between this check and the write below: the write is
       // queued in mpv before control goes back to the event loop.
