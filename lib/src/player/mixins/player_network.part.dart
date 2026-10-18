@@ -74,6 +74,10 @@ mixin _NetworkModule on _PlayerBase {
   }
 
   /// Enables or disables streaming silence when no audio is playing.
+  ///
+  /// On Android the default `audiotrack` driver streams the silence from
+  /// libmpv-r18 on. An older libmpv keeps a core busy instead and lets
+  /// the device run dry.
   Future<void> setAudioStreamSilence(bool enable) async {
     await _gate();
     await _prop('audio-stream-silence', enable ? 'yes' : 'no');

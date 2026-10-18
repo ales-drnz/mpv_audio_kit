@@ -1543,6 +1543,8 @@ await player.setAudioStreamSilence(true);
 
 On iOS the driver then never lets go of the device: after an interruption, such as a phone call or another app's audio, it stays suspended and playback cannot continue.
 
+On Android the default `audiotrack` driver streams the silence from libmpv-r18 on. An older libmpv keeps a core busy instead and lets the device run dry.
+
 #### 6.12 Untimed null output
 
 With the `null` driver, for example to process audio on a machine with no sound device, `setAudioNullUntimed(true)` makes it run as fast as possible instead of at real time. It also applies when mpv falls back to `null` because the device failed to open:
