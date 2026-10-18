@@ -24,6 +24,9 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   HttpServer? server;
   late String badCertUrl;
+  // Requests that got past the handshake: the proof a connection reached
+  // the server, which a missing certificate error alone is not.
+  var requests = 0;
 
   runtimeSuite(() {
     setUpAll(() async {
@@ -40,6 +43,7 @@ void main() {
         ctx,
       );
       server!.listen((req) {
+        requests++;
         // Any request: hand back a tiny non-audio body. With tls-verify off the
         // handshake completes and mpv fails at the DEMUXER (not the TLS layer);
         // with it on, the connection never gets this far.
@@ -98,7 +102,9 @@ void main() {
 
       test('tls-verify on → the self-signed certificate is rejected', () async {
         await player.setTlsVerify(true);
+        final before = requests;
         final certErrors = await openAndCollectCertErrors();
+        expect(requests, before, reason: 'no request gets past the handshake');
         expect(
           certErrors,
           isNotEmpty,
@@ -112,7 +118,13 @@ void main() {
         'tls-verify off → the handshake is not rejected at the TLS layer',
         () async {
           await player.setTlsVerify(false);
+          final before = requests;
           final certErrors = await openAndCollectCertErrors();
+          expect(
+            requests,
+            greaterThan(before),
+            reason: 'the handshake completed and the GET reached the server',
+          );
           expect(
             certErrors,
             isEmpty,
