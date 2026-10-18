@@ -12,7 +12,7 @@
 /// `inMicroseconds`, divide by `1e6`. This preserves sub-millisecond
 /// precision for properties like `audio-delay` (which can be ~5ms) while
 /// staying well within IEEE-754 double precision for the longest values
-/// libmpv accepts (`network-timeout` up to ~1 day).
+/// libmpv accepts.
 library;
 
 /// Converts a fractional-seconds [double] (as emitted by mpv) into a

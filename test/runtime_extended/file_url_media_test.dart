@@ -66,6 +66,25 @@ void main() {
       }
     }, timeout: const Timeout(Duration(seconds: 30)));
 
+    test('a file://localhost URL opens the local file', () async {
+      // The RFC 8089 form, as in the Location of an iTunes library.
+      final url = urls[0].replaceFirst('file://', 'file://localhost');
+      final player = await buildPlayer();
+      try {
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.open(Media(url, extras: {'n': 0}), play: false);
+        await loaded;
+
+        final items = player.state.playlist.items;
+        expect(items.single.uri, url);
+        expect(items.single.extras?['n'], 0);
+      } finally {
+        await player.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
     test(
       'the source resolver receives the extras of a file:// Media',
       () async {

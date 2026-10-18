@@ -678,6 +678,11 @@ abstract class _PlayerBase {
   final _hookTimeouts = <String, Duration>{};
   final _hookTimers = <int, Timer>{};
   final _activeHookIds = <int>{};
+  // mpv gives each event of a hook the id of its registration, so every
+  // `on_load` arrives under the same id. The count of events seen per id
+  // tells a pass that awaited whether the event it was handed is still
+  // the pending one, or mpv has moved on to a later load.
+  final _hookEventCounts = <int, int>{};
   final _registeredHookNames = <String>{};
   // Hook names the CONSUMER registered via [Player.registerHook], a
   // subset of `_registeredHookNames` (the resolver below registers

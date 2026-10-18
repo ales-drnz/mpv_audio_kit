@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -220,6 +221,160 @@ void main() {
         expect(calls, 0);
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
+
+    // Each test builds its own player: the hook deadlines it sets would
+    // otherwise carry over to the shared one above.
+    group('Source resolver and the hook deadline', () {
+      test('a result that arrives after the hook timed out is dropped, not '
+          'written into the next entry', () async {
+        final player = await buildPlayer();
+        final logs = <String>[];
+        final loads = <int>[];
+        var errors = 0;
+        final outcome = Completer<String>();
+        final subs = [
+          player.stream.internalLog.listen((e) => logs.add(e.text)),
+          player.stream.hook.listen((event) {
+            if (event.hook == Hook.load) loads.add(event.id);
+            unawaited(player.continueHook(event.id));
+          }),
+          player.stream.seekCompleted.listen((_) {
+            if (!outcome.isCompleted) outcome.complete('loaded');
+          }),
+          player.stream.endFile.listen((event) {
+            if (event.reason == MpvEndFileReason.error &&
+                ++errors == 2 &&
+                !outcome.isCompleted) {
+              outcome.complete('failed');
+            }
+          }),
+        ];
+        // A's resolver outlives its hook and answers only once B is in its
+        // own on_load, which B's resolver holds well inside B's deadline.
+        final bLoading = Completer<void>();
+        await player.setSourceResolver((request) async {
+          if (request.isRetry) return null;
+          if (request.uri == 'resolve://late-a') {
+            await bLoading.future;
+            return fixturePath;
+          }
+          if (!bLoading.isCompleted) bLoading.complete();
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          return null;
+        }, timeout: const Duration(seconds: 1));
+        await player.registerHook(Hook.load);
+
+        try {
+          await player.openAll(const [
+            Media('resolve://late-a'),
+            Media('resolve://late-b'),
+          ], play: false);
+          expect(
+            await outcome.future.timeout(const Duration(seconds: 15)),
+            'failed',
+            reason:
+                'B opens its own URL and fails; it must not open the file '
+                'A named after its hook was continued',
+          );
+          expect(
+            loads,
+            hasLength(1),
+            reason:
+                'only the on_load of B reaches the stream: the one of A was '
+                'continued by the deadline before its resolver returned',
+          );
+          expect(logs.where((l) => l.contains('timed out')), isNotEmpty);
+          expect(logs.where((l) => l.contains('dropped')), isNotEmpty);
+        } finally {
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await player.setSourceResolver(null);
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('a null timeout clears the deadline an earlier call set', () async {
+        final player = await buildPlayer();
+        final logs = <String>[];
+        final outcome = Completer<String>();
+        final subs = [
+          player.stream.internalLog.listen((e) => logs.add(e.text)),
+          player.stream.seekCompleted.listen((_) {
+            if (!outcome.isCompleted) outcome.complete('loaded');
+          }),
+          player.stream.endFile.listen((event) {
+            if (event.reason == MpvEndFileReason.error &&
+                !outcome.isCompleted) {
+              outcome.complete('failed');
+            }
+          }),
+        ];
+        await player.setSourceResolver(
+          (_) => null,
+          timeout: const Duration(milliseconds: 300),
+        );
+        await player.setSourceResolver((request) async {
+          if (request.isRetry) return null;
+          // Three times the deadline the first call set.
+          await Future<void>.delayed(const Duration(milliseconds: 900));
+          return fixturePath;
+        }, timeout: null);
+
+        try {
+          await player.open(const Media('resolve://slow'), play: false);
+          expect(
+            await outcome.future.timeout(const Duration(seconds: 15)),
+            'loaded',
+            reason: 'the slow resolver gets all the time it needs',
+          );
+          expect(logs.where((l) => l.contains('timed out')), isEmpty);
+        } finally {
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await player.setSourceResolver(null);
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
+
+    test('a file:// URL from the resolver reaches mpv as a path, which the '
+        'waveform scan opens too', () async {
+      // A space in the name: FFmpeg's file protocol does not decode %20.
+      final dir = Directory.systemTemp.createTempSync('mpv audio kit ');
+      final copy = File(fixturePath).copySync('${dir.path}/a b.wav').path;
+      final url = Uri.file(copy).toString();
+      final player = await buildPlayer();
+      final sub = player.stream.waveform.listen((_) {});
+      try {
+        await player.setSourceResolver(
+          (request) => request.uri == 'resolve://cached' ? url : null,
+        );
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.open(const Media('resolve://cached'), play: false);
+        await loaded;
+
+        String? state;
+        await waitUntil(() async {
+          final node = await player.getRawPropertyNode('waveform-data');
+          state = node is Map ? node['state'] as String? : null;
+          return state == 'ready' || state == 'failed';
+        }, timeout: const Duration(seconds: 10));
+        expect(state, 'ready');
+        expect(
+          _slashes(await player.getRawProperty('stream-open-filename') ?? ''),
+          _slashes(copy),
+        );
+      } finally {
+        await sub.cancel();
+        await player.setSourceResolver(null);
+        await player.dispose();
+        dir.deleteSync(recursive: true);
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }
 

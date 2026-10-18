@@ -256,6 +256,7 @@ mixin _DispatchModule on _PlayerBase {
             return;
           }
           _activeHookIds.add(id);
+          _hookEventCounts.update(id, (n) => n + 1, ifAbsent: () => 1);
           final timeout = _hookTimeouts[name];
           if (timeout != null) _startHookTimeout(id, name, timeout);
           // Routed through the hooks module: runs the source resolver

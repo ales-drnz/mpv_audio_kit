@@ -5,9 +5,13 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
+import '../_helpers/range_http_server.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
@@ -34,6 +38,45 @@ void main() {
         await player.setTlsVerify(true);
         expect(player.state.tlsVerify, isTrue);
       }, timeout: const Timeout(Duration(seconds: 15)));
+
+      test('a networkTimeout above the FFmpeg limit is capped, and an http '
+          'URL still opens', () async {
+        final server = await RangeHttpServer.start({
+          'a.wav': File(fixturePath).readAsBytesSync(),
+        });
+        final other = await buildPlayer();
+        final outcome = Completer<String>();
+        final subs = [
+          other.stream.seekCompleted.listen((_) {
+            if (!outcome.isCompleted) outcome.complete('loaded');
+          }),
+          other.stream.endFile.listen((event) {
+            if (event.reason == MpvEndFileReason.error &&
+                !outcome.isCompleted) {
+              outcome.complete('failed');
+            }
+          }),
+        ];
+        try {
+          await other.setNetworkTimeout(const Duration(hours: 1));
+          await other.open(Media(server.url('a.wav')), play: false);
+          expect(
+            await outcome.future.timeout(const Duration(seconds: 10)),
+            'loaded',
+            reason: 'FFmpeg refuses a timeout past INT_MAX microseconds',
+          );
+          // INT_MAX microseconds, in the state and in mpv alike.
+          const cap = Duration(microseconds: 2147483647);
+          expect(other.state.networkTimeout, cap);
+          expect(await other.getRawProperty('network-timeout'), '2147.483647');
+        } finally {
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await other.dispose();
+          await server.close();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('hlsBitrate / cookies / httpProxy round-trip', () async {
         // Subscribed before the setter: the replay only gives a late

@@ -137,12 +137,30 @@ bool isFdUri(String uri) =>
 /// not by the URL it was loaded with. Escapes that are not UTF-8 (a
 /// Latin-1 file name) give `null`: a Dart string cannot carry those bytes,
 /// so the URL goes to mpv as it is and mpv decodes it.
-@visibleForTesting
+///
+/// A host is read as RFC 8089 reads it, where mpv would keep it as the
+/// start of a relative path. `localhost` is dropped. On Windows any other
+/// host names a share, `\\host\share\...`, as `Uri.file` writes one; so
+/// does `localhost` when no drive letter follows it. Elsewhere another host
+/// stays in the path, as in mpv.
 String? fileUrlToPath(String uri, {bool? windows}) {
   if (uri.length < 7 || uri.substring(0, 7).toLowerCase() != 'file://') {
     return null;
   }
-  final src = utf8.encode(uri.substring(7));
+  final isWindows = windows ?? Platform.isWindows;
+  var raw = uri.substring(7);
+  var share = false;
+  final slash = raw.indexOf('/');
+  if (slash > 0) {
+    final local = raw.substring(0, slash).toLowerCase() == 'localhost';
+    final drive = raw.length > slash + 2 && raw[slash + 2] == ':';
+    if (isWindows && !(local && drive)) {
+      share = true;
+    } else if (local) {
+      raw = raw.substring(slash);
+    }
+  }
+  final src = utf8.encode(raw);
   final out = <int>[];
   for (var i = 0; i < src.length;) {
     if (src[i] != 0x25 || i + 2 >= src.length) {
@@ -164,10 +182,8 @@ String? fileUrlToPath(String uri, {bool? windows}) {
   } on FormatException {
     return null;
   }
-  if ((windows ?? Platform.isWindows) &&
-      path.length > 2 &&
-      path[0] == '/' &&
-      path[2] == ':') {
+  if (share) return r'\\' + path.replaceAll('/', r'\');
+  if (isWindows && path.length > 2 && path[0] == '/' && path[2] == ':') {
     path = path.substring(1);
   }
   return path;
@@ -247,17 +263,28 @@ String _assetKey(String uri) {
   return assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
 }
 
+/// The most characters of an asset key a copy's name keeps, from its end.
+const _kAssetNameTail = 64;
+
 /// Where the copy of the asset at [assetPath] goes.
 Future<String> _assetCopyPath(String assetPath) async {
   // Both POSIX (`/`) and Windows (`\`) separators are flattened so the
   // temp filename never contains directory parts. On POSIX
   // `Platform.pathSeparator` is `/` and the second pass is a no-op.
-  final safeName = assetPath
+  final flat = assetPath
       .replaceAll(Platform.pathSeparator, '_')
       .replaceAll('/', '_');
-  // Flattening alone is ambiguous: `a/b.mp3` and `a_b.mp3` collapse to
-  // the same name, and the second extraction would overwrite a file mpv
-  // may still be streaming. A hash of the ORIGINAL path disambiguates.
+  // Only the tail is kept, extension included: a deep key flattened whole
+  // can pass NAME_MAX, and on Windows MAX_PATH, past which mpv cannot
+  // open the copy.
+  final runes = flat.runes;
+  final safeName = runes.length <= _kAssetNameTail
+      ? flat
+      : String.fromCharCodes(runes.skip(runes.length - _kAssetNameTail));
+  // Flattening and cutting are ambiguous: `a/b.mp3` and `a_b.mp3`
+  // collapse to the same name, and the second extraction would overwrite
+  // a file mpv may still be streaming. A hash of the ORIGINAL path
+  // disambiguates.
   final dir = await _assetDirectory();
   return '${dir.path}${Platform.pathSeparator}'
       'mpv_asset_${_fnv1a(assetPath)}_$safeName';

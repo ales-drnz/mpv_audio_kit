@@ -356,7 +356,8 @@ abstract interface class PlayerApi {
   /// true.
   Future<void> setAudioStreamSilence(bool enable);
 
-  /// Sets the network I/O timeout.
+  /// Sets the network I/O timeout, capped at about 36 minutes, the most
+  /// FFmpeg takes.
   Future<void> setNetworkTimeout(Duration timeout);
 
   /// Enables or disables TLS server-certificate verification.
@@ -403,8 +404,9 @@ abstract interface class PlayerApi {
   // ── Hooks ──────────────────────────────────────────────────────────
 
   /// Registers a libmpv hook. Higher [priority] runs earlier; [timeout]
-  /// caps how long mpv waits before auto-continuing. Hook events surface
-  /// on [PlayerStream.hook] and must be released with [continueHook].
+  /// caps how long mpv waits before auto-continuing (without it, an
+  /// earlier deadline for [hook] stays). Hook events surface on
+  /// [PlayerStream.hook] and must be released with [continueHook].
   Future<void> registerHook(Hook hook, {int priority = 0, Duration? timeout});
 
   /// Releases the hook stage identified by [id], letting mpv resume the
