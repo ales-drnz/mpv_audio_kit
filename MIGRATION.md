@@ -211,7 +211,9 @@ Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
   one target and architecture: on Apple it is the binary of one slice,
   thinned to one architecture with `lipo -thin` when the slice is
   universal. `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a
-  library by path at run time.
+  library by path at run time. On Windows your build needs the patches of
+  libmpv-scripts 0.1.7 or later: with an unpatched mpv, every `dispose()`
+  crashes the process, and `previousPlaylist()` can crash it too.
 - On Linux the package no longer falls back to a system `libmpv.so`.
 - The player reports on `stream.internalLog` when the loaded libmpv is
   not the release the package expects.

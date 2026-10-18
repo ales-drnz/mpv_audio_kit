@@ -712,7 +712,9 @@ await player.setShuffle(false);  // Restore original order
 ```
 
 `Loop` sets mpv's `loop-file` and `loop-playlist` as one choice.
-`player.stream.loop` follows it.
+`player.stream.loop` follows it. Turned on once the queue has ended, a
+loop rewinds to the start of the track (`Loop.file`) or of the playlist
+(`Loop.playlist`) and stays paused: call `play()` to start again.
 
 #### 3.6 Chapter navigation
 
@@ -824,12 +826,22 @@ await player.setVolume(80.0);     // 0 to 100 (values above 100 amplify)
 await player.setMute(true);
 await player.setMute(false);
 
-await player.setVolumeMax(150.0); // Raise the software volume ceiling
-await player.setVolumeGain(6.0);  // Decoder-side pre-amp, in dB
+await player.setVolumeGain(6.0);  // Pre-amp on top of the volume, in dB
+```
 
-// Clamp the dB range setVolumeGain accepts (defaults -96 and +12)
-await player.setVolumeGainMin(-60.0);
-await player.setVolumeGainMax(6.0);
+`setVolume` takes 0 to 1000 and `setVolumeGain` -150 to +150 dB, and mpv
+refuses anything past that. mpv's scale is cubic: 130 is about +7 dB, 1000
+is +60 dB. `setVolumeMax` (default 130), `setVolumeGainMin` and
+`setVolumeGainMax` (defaults -96 and +12) do not cap these calls: they bound
+mpv's relative steps, `add` and `cycle` sent with `sendRawCommand`. Clamp a
+slider yourself, for example to `state.volumeMax`:
+
+```dart
+await player.setVolumeMax(150.0);
+
+// A volume slider from 0 to state.volumeMax
+Future<void> onVolumeSlider(double value) =>
+    player.setVolume(value.clamp(0.0, player.state.volumeMax));
 ```
 
 `setSystemVolume` and `setSystemMute` drive the OS per-app mixer (mpv's
@@ -1698,6 +1710,9 @@ if (art != null) {
   each playlist entry, and again when mpv reloads the same file.
 - It emits `null` for a file without an embedded picture, so a UI bound
   to it clears the previous cover.
+- `open`, `openAll` and `openPlaylistFile` also emit `null` when they
+  return, so the new cover follows a `null`, even when it is the same
+  picture.
 - `state.coverArt` holds the last value emitted.
 - The bytes are the image as stored in the file, with no re-encoding.
 
@@ -1805,7 +1820,7 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `buffer` | `Duration` | - | Absolute timestamp the demuxer has buffered up to. |
 | `bufferDuration` | `Duration` | - | Headroom ahead of the playhead (`demuxer-cache-duration`). |
 | `bufferingPercentage` | `double` (0-100) | - | Cache fill as a percentage of `state.cache.secs`, computed by the player. Near 0 with mpv's default `cache-secs` of 1000 hours: for a buffering indicator use `cacheBufferingState`, or `bufferDuration` against your own target. |
-| `volume` | `double` | `setVolume` | 0-100; values above 100 amplify. |
+| `volume` | `double` | `setVolume` | 0 to 1000; 100 is unity, values above it amplify. |
 | `mute` | `bool` | `setMute` |  |
 | `rate` | `double` | `setRate` | Playback speed multiplier. |
 | `pitch` | `double` | `setPitch` | Pitch multiplier. |
@@ -1841,10 +1856,10 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `audioStreamSilence` | `bool` | `setAudioStreamSilence` |  |
 | `audioNullUntimed` | `bool` | `setAudioNullUntimed` |  |
 | `audioSpdif` | `Set<Spdif>` | `setAudioSpdif` |  |
-| `volumeMax` | `double` | `setVolumeMax` |  |
+| `volumeMax` | `double` | `setVolumeMax` | Bounds mpv's relative steps, not `setVolume` |
 | `volumeGain` | `double` | `setVolumeGain` |  |
-| `volumeGainMin` | `double` | `setVolumeGainMin` |  |
-| `volumeGainMax` | `double` | `setVolumeGainMax` |  |
+| `volumeGainMin` | `double` | `setVolumeGainMin` | Bounds mpv's relative steps, not `setVolumeGain` |
+| `volumeGainMax` | `double` | `setVolumeGainMax` | Bounds mpv's relative steps, not `setVolumeGain` |
 | `systemVolume` | `double?` | `setSystemVolume` | `null` when the driver has no per-app mixer |
 | `systemMute` | `bool?` | `setSystemMute` | `null` when the driver has no per-app mixer |
 | `audioSampleRate` | `int` | `setAudioSampleRate` |  |
@@ -2540,9 +2555,12 @@ for (final e in player.state.audioEffects) {
 computed on a worker thread: about 2000 bins, each with its min, max and
 RMS, enough to paint a waveform
 overview or a waveform-style seekbar. There is one waveform per process:
-with several players, the last `open()` wins. It stays on while a player
-of the same isolate listens: another player's cancel or dispose does not
-turn it off.
+with several players, the last `open()` wins, and the stream of every
+player that listens shows that file, even one another player opened.
+While one player listens, the files of the others are decoded too, and
+an envelope that fills from playback takes in the audio of every player.
+It stays on while a player of the same isolate listens: another player's
+cancel or dispose does not turn it off.
 
 Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
@@ -2608,8 +2626,9 @@ player.stream.loudnessScan.listen((scan) {
 The stream emits `null` each time a file loads, so old results clear.
 Sources that can only be decoded as they play (adaptive or live network
 streams) report `LoudnessScanState.unavailable`: use the live meter below
-for those. Like the waveform, the scan stays on while a player of the same
-isolate listens.
+for those. Like the waveform, the scan is one per process, where the last
+`open()` wins, so the example above assumes one player. It stays on while
+a player of the same isolate listens.
 
 #### 13.7 Live loudness meter
 

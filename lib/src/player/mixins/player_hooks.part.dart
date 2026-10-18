@@ -48,9 +48,10 @@ mixin _HooksModule on _PlayerBase {
   /// stall when several events for the same hook are still active at
   /// `quit`: duplicates are collapsed here to avoid that race.
   ///
-  /// See [Hook] for the full set of available phases. Higher
-  /// [priority] values run earlier; the default (0) is fine for most
-  /// uses.
+  /// See [Hook] for the full set of available phases. Lower [priority]
+  /// values run earlier, as in mpv, and the default (0) is fine for most
+  /// uses. The priority orders this handler against other handlers of the
+  /// same hook on the same core, such as another client of it.
   Future<void> registerHook(
     Hook hook, {
     int priority = 0,

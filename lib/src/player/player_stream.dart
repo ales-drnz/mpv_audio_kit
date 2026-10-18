@@ -256,7 +256,7 @@ class PlayerStream {
   /// stream, nothing loaded, or a track still loading.
   final Stream<Duration> duration;
 
-  /// Emits the current volume level (0 to 100+).
+  /// Emits the current soft volume in percent (0 to 1000, 100 is unity).
   final Stream<double> volume;
 
   /// Emits the current playback speed multiplier.
@@ -265,7 +265,10 @@ class PlayerStream {
   /// Emits the current pitch multiplier.
   final Stream<double> pitch;
 
-  /// Emits `true` while buffering data; `false` once playback resumes.
+  /// Emits `true` while a file opens, from start-file to file-loaded, and
+  /// `false` once it is loaded, ends or fails. A network stall during
+  /// playback shows on [pausedForCache], not here; [playbackState] folds
+  /// both into one value.
   final Stream<bool> buffering;
 
   /// Emits the absolute timestamp the demuxer has buffered up to
@@ -327,10 +330,10 @@ class PlayerStream {
   /// Emits the software volume gain in dB.
   final Stream<double> volumeGain;
 
-  /// Emits the lower clamp on [volumeGain] in dB (`volume-gain-min`).
+  /// Emits mpv's `volume-gain-min` in dB. See [PlayerState.volumeGainMin].
   final Stream<double> volumeGainMin;
 
-  /// Emits the upper clamp on [volumeGain] in dB (`volume-gain-max`).
+  /// Emits mpv's `volume-gain-max` in dB. See [PlayerState.volumeGainMax].
   final Stream<double> volumeGainMax;
 
   /// Emits the OS per-app mixer volume (`ao-volume`); `null` when the active
@@ -403,7 +406,7 @@ class PlayerStream {
   /// passthrough disabled.
   final Stream<Set<Spdif>> audioSpdif;
 
-  /// Emits the max volume limit.
+  /// Emits mpv's `volume-max`. See [PlayerState.volumeMax].
   final Stream<double> volumeMax;
 
   /// Emits the target sample rate.
@@ -618,10 +621,13 @@ class PlayerStream {
   /// `Image.memory(raw.bytes)` or run your own pipeline (resize, encode,
   /// cache); the bytes are passed through unchanged.
   ///
-  /// Emits once per file load, including mpv's reloads of the same file:
+  /// Emits when each file loads, including mpv's reloads of the same file:
   /// a [CoverArt] when the new file has embedded artwork, or `null` when
-  /// it does not. Listen for `null` to clear stale artwork on tracks
-  /// without a cover.
+  /// it does not. [Player.open], [Player.openAll] and
+  /// [Player.openPlaylistFile] also emit `null` when they return, so the
+  /// new file's value follows a `null`, and the same cover can arrive
+  /// again as a new object. Listen for `null` to clear stale artwork on
+  /// tracks without a cover.
   final Stream<CoverArt?> coverArt;
 
   /// Real-time FFT frequency spectrum of the audio currently playing
@@ -740,16 +746,20 @@ class PlayerStream {
   /// the same result.
   ///
   /// **Listener-gated**: the native analyzer runs and the pipeline
-  /// polls only while a listener is attached; the cost of a waveform
-  /// nobody is listening to is zero.
+  /// polls only while a listener is attached. With no listener on any
+  /// player, a waveform costs nothing.
   ///
   /// **Single active analysis per process.** The background analyzer is a
   /// process-global singleton: the most recent `open()` wins, so with
   /// multiple [Player]s alive only the last-loaded file's waveform is
-  /// computed. This matches the single-player-per-app usage this package
-  /// targets; don't rely on concurrent waveforms across players. The
-  /// analyzer stays on while a player of this isolate listens: another
-  /// player's cancel or dispose does not turn it off.
+  /// computed, and every listening player's stream shows it, also when
+  /// another player loaded that file. While one player listens, the files
+  /// of a player with no listener are decoded too. An envelope that grows
+  /// from playback takes in the audio of every player. This matches the
+  /// single-player-per-app usage this package targets; don't rely on
+  /// concurrent waveforms across players. The analyzer stays on while a
+  /// player of this isolate listens: another player's cancel or dispose
+  /// does not turn it off.
   final Stream<WaveformData?> waveform;
 
   /// Live EBU R128 loudness measurements ([Loudness]: momentary,
@@ -798,8 +808,13 @@ class PlayerStream {
   /// file loaded again included, so stale results clear.
   ///
   /// **Lazy**: the native scan runs only while a listener is
-  /// attached; an idle stream costs nothing. Like the [waveform]
-  /// analyzer, it stays on while a player of this isolate listens.
+  /// attached; with no listener on any player it costs nothing. Like the
+  /// [waveform] analyzer, it stays on while a player of this isolate
+  /// listens.
+  ///
+  /// **Single active scan per process**, as for [waveform]: with several
+  /// players the last `open()` wins, and every listening player's stream
+  /// shows that file. The gain example above assumes one player.
   final Stream<LoudnessScan?> loudnessScan;
 
   // ── Media session ──────────────────────────────────────────────────
@@ -821,13 +836,16 @@ class PlayerStream {
   /// By default these are auto-applied to the [Player]: play →
   /// [Player.play], pause → [Player.pause], seekTo → [Player.seek],
   /// etc. Subscribing here is for analytics, logging, or intercepting
-  /// edge cases. The stream emits *after* the optimistic state
-  /// update, so observing it from a UI is safe and ordered.
+  /// edge cases. The stream emits as the command is handed to the
+  /// player, before mpv confirms it: `state` may still hold the previous
+  /// value here. To follow the result, observe the matching stream (for
+  /// example [shuffle], [loop] or [rate]).
   ///
   /// For [MediaSessionCommandNext] and [MediaSessionCommandPrevious]:
   /// the package routes them to mpv's `playlist-next` or
-  /// `playlist-prev` when a playlist is loaded; otherwise the command
-  /// arrives here unhandled, for the consumer's queue logic to act
-  /// on.
+  /// `playlist-prev` when the playlist holds more than one entry and
+  /// [MediaSession.autoApplyPlaylistNavigation] is on (the default);
+  /// otherwise the command arrives here unhandled, for the consumer's
+  /// queue logic to act on.
   final Stream<MediaSessionCommand> mediaSessionCommands;
 }

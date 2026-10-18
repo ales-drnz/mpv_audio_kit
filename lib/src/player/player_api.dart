@@ -183,7 +183,9 @@ abstract interface class PlayerApi {
   Future<bool> nextPlaylist();
 
   /// Jumps to the first of the previous entries from a different source
-  /// playlist (`playlist-path`). The reverse of [nextPlaylist].
+  /// playlist (`playlist-path`). The reverse of [nextPlaylist]. On Windows
+  /// it needs a libmpv with the patches of libmpv-scripts 0.1.7 or later:
+  /// see [Player.previousPlaylist].
   Future<bool> previousPlaylist();
 
   /// Jumps to the playlist entry at [index] and plays it. Throws
@@ -208,7 +210,10 @@ abstract interface class PlayerApi {
   /// current one stays and keeps playing. See [Player.clearPlaylist].
   Future<void> clearPlaylist({bool keepCurrent = false});
 
-  /// Sets the loop policy (off, current file, or whole playlist).
+  /// Sets the loop policy (off, current file, or whole playlist). Turned on
+  /// once the queue has ended ([PlayerState.completed]), it rewinds:
+  /// [Loop.file] seeks the track to its start, [Loop.playlist] moves to the
+  /// first entry, and both stay paused. Call [play] to start again.
   Future<void> setLoop(Loop loop);
 
   /// Enables or disables shuffled playlist order.
@@ -220,8 +225,8 @@ abstract interface class PlayerApi {
 
   // ── Audio output ───────────────────────────────────────────────────
 
-  /// Sets the output volume in percent (`100` is unattenuated). mpv applies
-  /// its own `volume-max` ceiling.
+  /// Sets the soft volume in percent (`100` is unattenuated), from 0 to
+  /// 1000. [setVolumeMax] does not cap it: see [Player.setVolume].
   Future<void> setVolume(double volume);
 
   /// Sets the playback rate multiplier (`1.0` is normal speed).
@@ -248,16 +253,21 @@ abstract interface class PlayerApi {
   /// Applies the ReplayGain configuration atomically.
   Future<void> setReplayGain(ReplayGainSettings settings);
 
-  /// Sets the decoder-side gain in dB applied on top of the volume.
+  /// Sets the gain in dB applied on top of the volume, from -150 to +150.
+  /// [setVolumeGainMin] and [setVolumeGainMax] do not cap it.
   Future<void> setVolumeGain(double gainDb);
 
-  /// Sets the lower clamp on the volume gain, in dB (`volume-gain-min`).
+  /// Sets mpv's `volume-gain-min`, in dB: the floor of mpv's relative
+  /// steps on the gain (`add`, `cycle`), not of [setVolumeGain].
   Future<void> setVolumeGainMin(double gainDb);
 
-  /// Sets the upper clamp on the volume gain, in dB (`volume-gain-max`).
+  /// Sets mpv's `volume-gain-max`, in dB: the top of mpv's relative steps
+  /// on the gain (`add`, `cycle`), not of [setVolumeGain].
   Future<void> setVolumeGainMax(double gainDb);
 
-  /// Sets the upper bound the [setVolume] setter accepts, in percent.
+  /// Sets mpv's `volume-max`, in percent: the top of mpv's relative volume
+  /// steps (`add`, `cycle`), and a natural top for a volume slider. It
+  /// does not cap [setVolume].
   Future<void> setVolumeMax(double limit);
 
   /// Sets the OS per-app mixer volume in percent (`ao-volume`), distinct from
@@ -407,7 +417,8 @@ abstract interface class PlayerApi {
 
   // ── Hooks ──────────────────────────────────────────────────────────
 
-  /// Registers a libmpv hook. Higher [priority] runs earlier; [timeout]
+  /// Registers a libmpv hook. Lower [priority] runs earlier, as in mpv,
+  /// and 0 is the neutral default; [timeout]
   /// caps how long mpv waits before auto-continuing (without it, an
   /// earlier deadline for [hook] stays). Hook events surface on
   /// [PlayerStream.hook] and must be released with [continueHook].

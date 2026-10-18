@@ -100,7 +100,10 @@ abstract final class MpvAudioKit {
   /// app is used. Pass an explicit path only when shipping a custom
   /// libmpv build alongside your app; to bundle one in place of the
   /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
-  /// app's pubspec instead.
+  /// app's pubspec instead. On Windows a custom libmpv needs the patches
+  /// of libmpv-scripts 0.1.7 or later: with an unpatched mpv, every
+  /// [Player] dispose crashes the process, and `previousPlaylist` can
+  /// crash it too.
   ///
   /// [hotRestartCleanup] (default: `true`): recovers libmpv handles
   /// leaked across a Flutter Hot-Restart so they don't keep

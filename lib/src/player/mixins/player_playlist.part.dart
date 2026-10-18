@@ -132,6 +132,11 @@ mixin _PlaylistModule on _PlayerBase {
   /// Jumps to the first of the previous entries whose source playlist
   /// (`playlist-path`) differs from the current one. The reverse of
   /// [nextPlaylist], with the same return value.
+  ///
+  /// On Windows it needs the libmpv this package bundles, or one built
+  /// with the patches of libmpv-scripts 0.1.7 or later: an unpatched mpv
+  /// can corrupt its heap in `playlist-prev-playlist` and crash the
+  /// process.
   Future<bool> previousPlaylist() async {
     await _gate();
     // See [next]: in-flight transport writes apply to the old entry.
@@ -326,6 +331,11 @@ mixin _PlaylistModule on _PlayerBase {
   /// Backed by two mpv properties (`loop-file` + `loop-playlist`); if
   /// the second write fails the first is rolled back so the consumer
   /// never observes a half-applied loop mode.
+  ///
+  /// Turned on once the queue has ended ([PlayerState.completed]), a loop
+  /// rewinds: [Loop.file] seeks the track to its start, [Loop.playlist]
+  /// moves to the first entry, and both stay paused, since the play
+  /// intent was spent at the end. Call [Player.play] to start again.
   Future<void> setLoop(Loop loop) async {
     await _gate();
     String loopFile(Loop l) => l == Loop.file ? 'inf' : 'no';

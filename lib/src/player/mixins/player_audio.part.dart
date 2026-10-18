@@ -13,8 +13,13 @@ const afCommandRefusedLog =
 /// Audio setters: volume, mute, output device, format and channel layout,
 /// the effects chain, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
-  /// Sets volume (0–100; values above 100 amplify the signal, up to
-  /// [PlayerState.volumeMax]). Throws [RangeError] when negative.
+  /// Sets the soft volume in percent: 100 plays at unity and values above
+  /// it amplify. mpv's scale is cubic: 130 is about +7 dB, 1000 is +60 dB.
+  ///
+  /// Takes 0 to 1000. Throws [RangeError] when negative, and
+  /// [MpvCommandException] above 1000, which mpv refuses.
+  /// [PlayerState.volumeMax] does not cap this call: it bounds mpv's
+  /// relative steps (`add`, `cycle`) only. Clamp a slider to it yourself.
   Future<void> setVolume(double volume) async {
     _checkRange(volume, 0, double.maxFinite, 'volume');
     await _gate();
@@ -148,10 +153,12 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets volume gain in dB (pre-amplification on top of [setVolume]).
   ///
-  /// Hard range: -150 to +150 dB. The default soft clamp mpv applies is
-  /// -96 to +12 dB, configurable via [setVolumeGainMin] and [setVolumeGainMax].
-  /// 0 dB = unity. Values above ~+6 dB risk clipping unless [setReplayGain]
-  /// or a downstream limiter is in the chain.
+  /// Takes -150 to +150 dB: mpv refuses a value outside it, and the call
+  /// throws [MpvCommandException]. [setVolumeGainMin] and
+  /// [setVolumeGainMax] do not cap this call: they bound mpv's relative
+  /// steps (`add`, `cycle`) only. 0 dB = unity. Values above about +6 dB
+  /// risk clipping unless [setReplayGain] or a downstream limiter is in
+  /// the chain.
   Future<void> setVolumeGain(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
@@ -164,8 +171,11 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the lower clamp applied to [setVolumeGain], in dB
-  /// (mpv's `volume-gain-min`). Range -150 to 0; default -96.
+  /// Sets mpv's `volume-gain-min`, in dB. Range -150 to 0; default -96.
+  ///
+  /// It is the floor of mpv's relative steps on the gain (`add` and
+  /// `cycle` through [Player.sendRawCommand]), not of [setVolumeGain],
+  /// which takes down to -150 whatever this value.
   Future<void> setVolumeGainMin(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
@@ -178,8 +188,11 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the upper clamp applied to [setVolumeGain], in dB
-  /// (mpv's `volume-gain-max`). Range 0 to 150; default +12.
+  /// Sets mpv's `volume-gain-max`, in dB. Range 0 to 150; default +12.
+  ///
+  /// It is the top of mpv's relative steps on the gain (`add` and `cycle`
+  /// through [Player.sendRawCommand]), not of [setVolumeGain], which takes
+  /// up to +150 whatever this value.
   Future<void> setVolumeGainMax(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
@@ -229,12 +242,14 @@ mixin _AudioModule on _PlayerBase {
     }
   }
 
-  /// Sets the upper bound the user-facing volume scale is clamped to.
+  /// Sets mpv's `volume-max`, in percent.
   ///
-  /// Range: 100 to 1000. Default 130 (matches mpv's default and the slider
-  /// range most apps expose). Setting above 100 lets [setVolume] amplify
-  /// past unity; values up to 1000 = +20 dB digital boost. mpv hard-rejects
-  /// values below 100.
+  /// Range: 100 to 1000; default 130, mpv's own. It is the top of mpv's
+  /// relative volume steps (`add` and `cycle` through
+  /// [Player.sendRawCommand]), and a natural top for a volume slider, read
+  /// back from [PlayerState.volumeMax]. It does not cap [setVolume], which
+  /// takes up to 1000 whatever this value. mpv refuses values outside the
+  /// range.
   Future<void> setVolumeMax(double limit) async {
     _checkFinite(limit, 'limit');
     await _gate();

@@ -96,7 +96,8 @@ final class PlayerState {
   /// output buffer before. It stays `false` between playlist entries and
   /// while `loop-file` or `loop-playlist` is on. Resets to `false` when a
   /// new track starts (a fresh [Player.open] or [Player.openAll], or a
-  /// playlist advance) or when you seek back into the track. Drives
+  /// playlist advance), when you seek back into the track, or when a loop
+  /// is turned on: [Player.setLoop] then rewinds, paused. Drives
   /// [MpvPlaybackState.completed].
   final bool completed;
 
@@ -107,7 +108,8 @@ final class PlayerState {
   /// stream, nothing loaded, or a track still loading.
   final Duration duration;
 
-  /// Current volume level, 0 to 100. Values above 100 amplify the signal.
+  /// Current soft volume in percent, 0 to 1000. 100 is unity, and values
+  /// above it amplify the signal.
   final double volume;
 
   /// Playback speed multiplier. 1.0 = normal speed.
@@ -116,7 +118,8 @@ final class PlayerState {
   /// Pitch multiplier. 1.0 = original pitch.
   final double pitch;
 
-  /// Whether the player is currently buffering.
+  /// Whether a file is opening, from start-file to file-loaded. A network
+  /// stall during playback does not set it: see [pausedForCache].
   final bool buffering;
 
   /// Absolute position up to which the demuxer has buffered content.
@@ -186,12 +189,14 @@ final class PlayerState {
   /// Software volume gain in dB.
   final double volumeGain;
 
-  /// Lower clamp mpv applies to [volumeGain], in dB (`volume-gain-min`,
-  /// default -96). Set via [Player.setVolumeGainMin].
+  /// mpv's `volume-gain-min`, in dB (default -96): the floor of mpv's
+  /// relative steps on the gain, not of [Player.setVolumeGain]. Set via
+  /// [Player.setVolumeGainMin].
   final double volumeGainMin;
 
-  /// Upper clamp mpv applies to [volumeGain], in dB (`volume-gain-max`,
-  /// default +12). Set via [Player.setVolumeGainMax].
+  /// mpv's `volume-gain-max`, in dB (default +12): the top of mpv's
+  /// relative steps on the gain, not of [Player.setVolumeGain]. Set via
+  /// [Player.setVolumeGainMax].
   final double volumeGainMax;
 
   /// OS per-app mixer volume in percent (`ao-volume`), distinct from soft
@@ -287,7 +292,9 @@ final class PlayerState {
   /// Apply via [Player.setAudioSpdif].
   final Set<Spdif> audioSpdif;
 
-  /// Max volume limit (up to 1000).
+  /// mpv's `volume-max`, 100 to 1000 (default 130): the top of mpv's
+  /// relative volume steps and a natural top for a volume slider. It does
+  /// not cap [Player.setVolume].
   final double volumeMax;
 
   /// Target sample rate (0 for auto).
@@ -329,8 +336,9 @@ final class PlayerState {
   final SpectrumSettings spectrum;
 
   /// Embedded cover art of the currently loaded track, or `null`
-  /// when the file has no embedded picture. Refreshes on every
-  /// `Player.open()` or playlist transition. Read live via
+  /// when the file has no embedded picture. Refreshes on every file load,
+  /// and goes to `null` first when [Player.open], [Player.openAll] or
+  /// [Player.openPlaylistFile] returns. Read live via
   /// [PlayerStream.coverArt].
   final CoverArt? coverArt;
 

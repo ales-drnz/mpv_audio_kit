@@ -168,10 +168,9 @@ mixin _MediaSessionModule on _PlayerBase {
 
   /// Handles a remote command issued by the OS media session.
   ///
-  /// Auto-applies the command to the [Player] (the optimistic update
-  /// pattern guarantees `state` reflects the new value synchronously),
-  /// then emits on [PlayerStream.mediaSessionCommands] so consumer
-  /// subscribers can observe the resolved order.
+  /// Hands the command to the [Player] without waiting for it, then emits
+  /// on [PlayerStream.mediaSessionCommands]. The setters update `state`
+  /// once mpv confirms, so a subscriber can still read the old value.
   ///
   /// [MediaSessionCommandNext] and [MediaSessionCommandPrevious] use
   /// the smart-default routing: if the active playlist has more than
