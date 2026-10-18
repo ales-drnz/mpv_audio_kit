@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -337,6 +338,43 @@ void main() {
         }
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
+
+    test('a file:// URL from the resolver reaches mpv as a path, which the '
+        'waveform scan opens too', () async {
+      // A space in the name: FFmpeg's file protocol does not decode %20.
+      final dir = Directory.systemTemp.createTempSync('mpv audio kit ');
+      final copy = File(fixturePath).copySync('${dir.path}/a b.wav').path;
+      final url = Uri.file(copy).toString();
+      final player = await buildPlayer();
+      final sub = player.stream.waveform.listen((_) {});
+      try {
+        await player.setSourceResolver(
+          (request) => request.uri == 'resolve://cached' ? url : null,
+        );
+        final loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.open(const Media('resolve://cached'), play: false);
+        await loaded;
+
+        String? state;
+        await waitUntil(() async {
+          final node = await player.getRawPropertyNode('waveform-data');
+          state = node is Map ? node['state'] as String? : null;
+          return state == 'ready' || state == 'failed';
+        }, timeout: const Duration(seconds: 10));
+        expect(state, 'ready');
+        expect(
+          _slashes(await player.getRawProperty('stream-open-filename') ?? ''),
+          _slashes(copy),
+        );
+      } finally {
+        await sub.cancel();
+        await player.setSourceResolver(null);
+        await player.dispose();
+        dir.deleteSync(recursive: true);
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }
 

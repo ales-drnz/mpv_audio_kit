@@ -179,6 +179,8 @@ mixin _HooksModule on _PlayerBase {
   /// the default no-resolver behaviour is unaffected for entries the
   /// resolver doesn't care about. A thrown error is logged on
   /// [PlayerStream.internalLog] and treated as "keep the current URL".
+  /// A `file://` URL goes to mpv as its path, as the URL of a [Media]
+  /// does, so a retry sees that path in [SourceResolveRequest.uri].
   ///
   /// [timeout] is the safety net for a hung resolver (default 15s): if a
   /// resolution pass hasn't finished by then, the library auto-continues
@@ -186,8 +188,8 @@ mixin _HooksModule on _PlayerBase {
   /// to disable the net, also when an earlier call or [registerHook] set
   /// one. The value is stored per hook name, so it also becomes the
   /// deadline of a consumer-registered `Hook.load` or `Hook.loadFail` (the
-  /// most recent registration's timeout wins). A URL
-  /// the resolver returns after the deadline is dropped, with a warning on
+  /// most recent registration's timeout wins). A URL the resolver returns
+  /// after the deadline is dropped, with a warning on
   /// [PlayerStream.internalLog]: mpv has moved on, and the URL would land
   /// on the next entry. A consumer-registered hook does not get that event
   /// either.
@@ -277,12 +279,12 @@ mixin _HooksModule on _PlayerBase {
       final resolved = await resolver(
         SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
       );
-      if (_disposed ||
-          resolved == null ||
-          resolved.isEmpty ||
-          resolved == current) {
-        return;
-      }
+      if (_disposed || resolved == null || resolved.isEmpty) return;
+      // A file:// URL goes to mpv as its path, as the URL of a Media does:
+      // the waveform and loudness scans hand the name to FFmpeg, whose file
+      // protocol does not decode it.
+      final target = fileUrlToPath(resolved) ?? resolved;
+      if (target == current) return;
       // No timer runs between this check and the write below: the write is
       // queued in mpv before control goes back to the event loop.
       if (!pending()) {
@@ -294,11 +296,11 @@ mixin _HooksModule on _PlayerBase {
         return;
       }
       if (isRetry) _resolverRetried = true;
-      await setRawProperty('stream-open-filename', resolved);
+      await setRawProperty('stream-open-filename', target);
       // Keep the original Media reachable under the rewritten URL, so a
       // later `on_load_fail` on this entry (expired token on the resolved
       // URL) still hands the resolver the same Media and extras.
-      _mediaCache[resolved] = media;
+      _mediaCache[target] = media;
     } catch (e, st) {
       _internalLog(
         'Source resolver threw for ${hook.mpvValue}: $e\n$st',

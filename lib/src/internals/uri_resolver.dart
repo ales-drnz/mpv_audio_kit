@@ -143,7 +143,6 @@ bool isFdUri(String uri) =>
 /// host names a share, `\\host\share\...`, as `Uri.file` writes one; so
 /// does `localhost` when no drive letter follows it. Elsewhere another host
 /// stays in the path, as in mpv.
-@visibleForTesting
 String? fileUrlToPath(String uri, {bool? windows}) {
   if (uri.length < 7 || uri.substring(0, 7).toLowerCase() != 'file://') {
     return null;
