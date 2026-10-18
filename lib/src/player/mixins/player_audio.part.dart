@@ -834,6 +834,10 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Sets the target audio sample rate.
+  ///
+  /// The output driver can still change it: [PlayerState.audioOutParams]
+  /// shows the rate the device gets. On Android `audiotrack` plays at most
+  /// at the device's native rate, usually 48 kHz.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
     await _prop('audio-samplerate', rate.toString());
@@ -846,6 +850,13 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the target audio sample format. Use [Format.auto] to
   /// reset to mpv's pick.
+  ///
+  /// The output driver can still change it: [PlayerState.audioOutParams]
+  /// shows the format the device gets. On Android `audiotrack` plays only
+  /// 8-bit, 16-bit and float samples, so other integer formats become
+  /// 16-bit, and `aaudio` takes 32-bit integers from Android 12 (API 31).
+  /// For a source above 16 bits there, [Format.float32] keeps the
+  /// resolution.
   Future<void> setAudioFormat(Format format) async {
     await _gate();
     await _prop('audio-format', format.mpvValue);
@@ -883,6 +894,10 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the audio output driver, e.g. `'coreaudio'` (macOS),
   /// `'wasapi'` (Windows), `'pulse'`, `'alsa'` or `'pipewire'` (Linux).
+  ///
+  /// On Android the automatic choice is `audiotrack`. `aaudio` needs
+  /// Android 8 (API 26): below it mpv falls back to its null output and
+  /// nothing is heard. `opensles` plays stereo only.
   ///
   /// Pass `'auto'` or an empty string to let mpv auto-probe the best
   /// available backend (the default). mpv has no backend literally named

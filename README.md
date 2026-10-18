@@ -1272,6 +1272,12 @@ await player.setAudioDriver('pipewire');  // Linux, also 'pulse' and 'alsa'
 await player.setAudioDriver('auto');      // mpv picks (default)
 ```
 
+On Android `auto` picks `audiotrack`, the right choice for most apps.
+`aaudio` needs Android 8 (API 26): below it mpv falls back to its null
+output, nothing is heard, `state.currentAo` is `'null'` and
+`stream.error` gets a `LogError`. `opensles` plays stereo only, with a
+250 ms buffer.
+
 #### 6.2 Exclusive mode
 
 Asks the driver for exclusive use of the device:
@@ -1326,6 +1332,11 @@ await player.setAudioDevice(devices.first);
 ```
 
 mpv fills the list when the player starts. `name` is mpv's device id and `description` the label to show.
+
+On Android the list holds one entry per driver (`Default (audiotrack)` and
+the like), not the physical devices: the system routes the audio to the
+speaker, headphones or Bluetooth itself, and the list does not change when
+a device is connected.
 
 #### 6.4 Output format
 
@@ -1394,6 +1405,18 @@ await player.setAudioChannels(
 When you force a downmix, for example 5.1 to stereo, set
 `PlayerConfiguration.normalizeDownmix: true` when you create the player,
 so the result is scaled down and cannot clip.
+
+The driver can still change the rate, the format and the channels:
+`state.audioOutParams` shows what the device gets. On Android:
+
+- `audiotrack`, the default, plays only 8-bit, 16-bit and float samples,
+  so other integer formats become 16-bit, and at most at the device's
+  native rate, usually 48 kHz.
+- `aaudio` takes 32-bit integers from Android 12 (API 31).
+- `opensles` plays stereo only.
+
+A 24-bit file decodes to 32-bit integers, which `audiotrack` cuts to
+16 bits. `setAudioFormat(Format.float32)` keeps the resolution.
 
 #### 6.5 SPDIF passthrough
 
@@ -2866,7 +2889,12 @@ On iOS the player's audio does not mix with other apps, and the output
 opens as soon as a file loads, even paused: `open(media, play: false)`
 already stops the audio of another app.
 
-Background playback on iOS also needs the setup in [Permissions](#ios).
+On Android 7 (API 24 and 25) the player keeps playing at full volume
+when another app asks it to duck, such as a navigation prompt: only
+Android 8 and later lower the volume on their own.
+
+Background playback on iOS also needs the setup in [Permissions](#ios),
+and on Android a session: see [Permissions](#android).
 
 #### 14.7 App identity (desktop)
 
@@ -2903,6 +2931,18 @@ The package's own manifest declares `FOREGROUND_SERVICE`,
 [media session](#14-os-media-session). The app does not need to request
 `POST_NOTIFICATIONS` at runtime: Android 13 and later exempt media session
 notifications, so the media controls show without it.
+
+Playback in the background needs the media session: `setMediaSession`
+runs a foreground service of type `mediaPlayback`, which keeps the app
+alive once the user leaves it. Without a session, or after
+`setMediaSession(null)`, Android may freeze or stop the app in the
+background. After 10 minutes in pause the service leaves the foreground,
+and Android may then stop the app as well.
+
+The player takes no wake lock. While audio plays Android keeps the device
+awake, but a network stall pauses the output: with the screen off the
+device may then sleep, and the stream comes back only once something
+wakes it.
 
 ### iOS
 

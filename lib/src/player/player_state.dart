@@ -164,7 +164,8 @@ final class PlayerState {
   /// The currently selected audio output device.
   final Device audioDevice;
 
-  /// All audio output devices detected by mpv.
+  /// All audio output devices detected by mpv. On Android these are the
+  /// drivers, not the physical devices: see [Device].
   final List<Device> audioDevices;
 
   /// Whether the player is muted.
