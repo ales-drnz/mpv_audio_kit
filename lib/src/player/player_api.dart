@@ -295,7 +295,8 @@ abstract interface class PlayerApi {
   Future<void> setAudioMediaRole(bool enable);
 
   /// Sets the set of codecs to pass through as bitstream rather than
-  /// decode.
+  /// decode, from libmpv-r18 on. See [Player.setAudioSpdif] for what
+  /// stops applying to a track in passthrough.
   Future<void> setAudioSpdif(Set<Spdif> codecs);
 
   /// Selects the active audio [track].
@@ -395,6 +396,7 @@ abstract interface class PlayerApi {
   Future<void> setCookies(bool enable);
 
   /// Sets the HTTP proxy URL for network streams; empty string clears it.
+  /// `https://` sources go through it from libmpv-r18 on.
   Future<void> setHttpProxy(String url);
 
   /// Runs the null audio output untimed when [enable] is true.

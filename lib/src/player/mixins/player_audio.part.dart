@@ -325,6 +325,18 @@ mixin _AudioModule on _PlayerBase {
   /// Pass a [Set] of [Spdif] values to enable passthrough for those
   /// codecs (e.g. `{Spdif.ac3, Spdif.dts}`); pass `{}` to disable
   /// passthrough entirely. Order does not matter.
+  ///
+  /// Passthrough works from libmpv-r18 on: an older libmpv lacks FFmpeg's
+  /// spdif muxer, and a track in a listed codec may then not play at all.
+  /// While a track passes through, the receiver decodes it and mpv cannot
+  /// touch the audio: the effects chain, the soft volume and mute,
+  /// ReplayGain, the volume gain, pitch, and the output rate, format and
+  /// channels do not apply, a speed other than 1 drops or repeats parts of
+  /// the stream instead of stretching it, and [PlayerStream.fft],
+  /// [PlayerStream.pcm], the taps and [PlayerStream.loudnessMeter] emit
+  /// nothing. When the output refuses the format, mpv decodes the track
+  /// instead. Changed during playback, the list reopens the decoder, with
+  /// a short gap.
   Future<void> setAudioSpdif(Set<Spdif> codecs) async {
     await _gate();
     await _prop('audio-spdif', Spdif.formatMpvList(codecs));
@@ -837,7 +849,9 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// The output driver can still change it: [PlayerState.audioOutParams]
   /// shows the rate the device gets. On Android `audiotrack` plays at most
-  /// at the device's native rate, usually 48 kHz.
+  /// at the device's native rate, usually 48 kHz. Changed during playback,
+  /// it reopens the output, with a short gap. A track in passthrough
+  /// ([setAudioSpdif]) ignores it.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
     await _prop('audio-samplerate', rate.toString());
@@ -856,7 +870,8 @@ mixin _AudioModule on _PlayerBase {
   /// 8-bit, 16-bit and float samples, so other integer formats become
   /// 16-bit, and `aaudio` takes 32-bit integers from Android 12 (API 31).
   /// For a source above 16 bits there, [Format.float32] keeps the
-  /// resolution.
+  /// resolution. Changed during playback, it reopens the output, with a
+  /// short gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioFormat(Format format) async {
     await _gate();
     await _prop('audio-format', format.mpvValue);
@@ -870,7 +885,8 @@ mixin _AudioModule on _PlayerBase {
   /// Sets the target audio channel layout. Use the named static
   /// constants on [Channels] for common presets, or
   /// [Channels.custom] for any other mpv-recognised layout
-  /// string.
+  /// string. Changed during playback, it reopens the output, with a short
+  /// gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioChannels(Channels channels) async {
     await _gate();
     await _prop('audio-channels', channels.mpvValue);

@@ -178,6 +178,9 @@ mixin _NetworkModule on _PlayerBase {
   ///
   /// Applies to FFmpeg's HTTP stack on the next load; pass an empty string
   /// to clear. Per-request headers go through `Media.httpHeaders` instead.
+  /// `http://` sources go through the proxy, and from libmpv-r18 on
+  /// `https://` sources too, tunnelled with `CONNECT`. With an older
+  /// libmpv an `https://` source fails to open while a proxy is set.
   Future<void> setHttpProxy(String url) async {
     await _gate();
     await _prop('http-proxy', url);

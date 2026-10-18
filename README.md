@@ -1340,7 +1340,7 @@ a device is connected.
 
 #### 6.4 Output format
 
-Force the output sample rate, sample format or channel layout, for example to match what a DAC accepts:
+Force the output sample rate, sample format or channel layout, for example to match what a DAC accepts. A change during playback reopens the output, with a short gap:
 
 ```dart
 // Sample rate
@@ -1421,7 +1421,9 @@ A 24-bit file decodes to 32-bit integers, which `audiotrack` cuts to
 #### 6.5 SPDIF passthrough
 
 `setAudioSpdif` passes compressed audio (AC3, DTS, TrueHD and others)
-through to an AV receiver over SPDIF or HDMI:
+through to an AV receiver over SPDIF or HDMI, from libmpv-r18 on. An older
+libmpv lacks FFmpeg's spdif muxer, and a track in a listed codec may then
+not play at all:
 
 ```dart
 // Dolby and DTS-HD
@@ -1433,6 +1435,21 @@ await player.setAudioSpdif({Spdif.ac3, Spdif.eac3, Spdif.trueHd});
 // Off
 await player.setAudioSpdif({});
 ```
+
+The receiver decodes the stream, so while a track passes through mpv
+cannot touch the audio:
+
+- the effects chain, the soft volume and mute, ReplayGain, the volume
+  gain and pitch do not apply, and a speed other than 1 drops or repeats
+  parts of the stream instead of stretching it;
+- the output rate, format and channels of [6.4](#64-output-format) do not
+  apply;
+- `fft`, `pcm`, the taps and the loudness meter emit nothing.
+
+When the output refuses the format, mpv decodes the track instead. To
+check, read `getRawProperty('audio-out-params/format')`: it starts with
+`spdif-` while a track passes through. Changing the list during playback
+reopens the decoder, with a short gap.
 
 #### 6.6 Audio client name
 
@@ -1611,7 +1628,10 @@ await player.setTlsCaFile('/path/to/corporate-ca.pem');
 
 #### 7.5 Proxy and cookies
 
-Both take effect from the next load:
+Both take effect from the next load. `http://` sources go through the
+proxy, and from libmpv-r18 on `https://` sources too, tunnelled with
+`CONNECT`; with an older libmpv an `https://` source fails to open while a
+proxy is set:
 
 ```dart
 await player.setHttpProxy('http://proxy.example:8080');  // empty string clears it
