@@ -787,7 +787,10 @@ await player.revertSeek();
 
 Loop between two points of the current track, for example to practice
 a passage or replay a sentence. The points belong to that track: when it
-ends or another one loads, they go back to `null`. The count stays.
+ends or another one loads, they go back to `null`. The count stays, and
+`remainingAbLoops` starts from it again at each file. Points set with no
+file loaded apply to every file instead. Keep both points inside the
+file: past its end, the end of the file goes back to A again and again.
 
 ```dart
 // Set the A and B markers (null disables the marker)
@@ -907,6 +910,12 @@ await player.open(Media(path, start: savedPosition));
 Watch later is for when mpv saves the point. When both apply, `start`
 wins over the saved position, and the other saved values (speed, volume
 and so on) still apply. mpv deletes a resume point once a load used it.
+
+A restored value becomes the player's own: it stays for the files that
+follow, until the app sets another. mpv saves only the values that differ
+from the ones it started with. `initialVolume` applies after the start,
+so for the volume the base is 100: a volume of 100 is not saved, and
+reopening the file keeps the current volume.
 
 ```dart
 final player = Player(

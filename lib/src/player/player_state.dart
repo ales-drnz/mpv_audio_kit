@@ -439,8 +439,8 @@ final class PlayerState {
   final String playlistPath;
 
   /// A-B loop start point. `null` when disabled, and again once the file
-  /// it was set on ends. Setter: [Player.setAbLoopA]. Mirrors mpv's
-  /// `ab-loop-a`.
+  /// it was set on ends; a point set with no file loaded stays for every
+  /// file. Setter: [Player.setAbLoopA]. Mirrors mpv's `ab-loop-a`.
   final Duration? abLoopA;
 
   /// A-B loop end point. `null` when disabled, and again once the file it

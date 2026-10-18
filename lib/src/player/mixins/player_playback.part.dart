@@ -85,6 +85,15 @@ mixin _PlaybackModule on _PlayerBase {
   /// [PlayerConfiguration.watchLaterDir]. On mobile, set `watchLaterDir` to a
   /// writable path or the write silently fails.
   ///
+  /// mpv saves only the values that differ from the ones it had at
+  /// startup. [PlayerConfiguration.initialVolume] applies after startup,
+  /// so for the volume that base is 100: a volume of 100 is not saved, and
+  /// reopening the file keeps the volume of the moment.
+  ///
+  /// A restored value becomes the player's own: it stays for the files
+  /// that follow, until the app sets another. To keep a value per file,
+  /// set it again when the next file opens.
+  ///
   /// An Android `content://` source has no resume point: it plays from a
   /// file descriptor, whose number the system gives again to other files.
   /// For it the call writes nothing and says so on
