@@ -141,6 +141,13 @@ Other changes to handle:
 - `stop()`, `setShuffle()`, `reloadAudio()`, `rescanExternalFiles()` and
   `writeResumeConfig()` throw `MpvCommandException` when mpv rejects them,
   like the other methods.
+- `sendRawCommand()` throws `ArgumentError` for a command that writes `af`
+  or `pause`: `af` and `af-command`, `set`, `cycle`, `change-list` and the
+  like, also after `no-osd` and through `options/`, and `loadfile` with
+  `af` or `pause` in its options. An idiom such as
+  `sendRawCommand(['cycle', 'pause'])` now throws: use `play()`, `pause()`
+  and the effects API. `setRawProperty()` also rejects `options/af` and
+  `file-local-options/pause`, not only `af` and `pause`.
 
 ## Renamed types and streams
 

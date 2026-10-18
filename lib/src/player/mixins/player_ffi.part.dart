@@ -397,7 +397,15 @@ mixin _FfiModule on _PlayerBase {
   /// typed playback and playlist methods (`play`, `pause`, `seek`,
   /// `add`, `jump`, …) when they cover your use case.
   ///
-  /// Throws [PlayerDisposedException] if the player has been disposed, or
+  /// The two properties [setRawProperty] reserves stay reserved here:
+  /// `af` and `af-command`, and a command that writes `af` or `pause`
+  /// (`set`, `add`, `multiply`, `cycle`, `cycle-values`, `change-list`),
+  /// also after a prefix such as `no-osd`, through `options/` or
+  /// `file-local-options/`, or in the per-file options of `loadfile`,
+  /// throw [ArgumentError] before anything reaches mpv.
+  ///
+  /// Throws [PlayerDisposedException] if the player has been disposed,
+  /// [ArgumentError] for a reserved command as above, or
   /// [MpvCommandException] if mpv rejects the command (unknown command,
   /// invalid argument, etc.). A successful return guarantees mpv
   /// accepted the command; the actual side-effect on playback state

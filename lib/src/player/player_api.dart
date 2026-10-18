@@ -463,12 +463,15 @@ abstract interface class PlayerApi {
   Future<Object?> getRawPropertyNode(String name);
 
   /// Writes an arbitrary mpv property from a string. Escape hatch for
-  /// properties without a typed setter; writes to `af` and `pause` are
-  /// rejected because they would desync the typed state.
+  /// properties without a typed setter; writes to `af` and `pause`, also
+  /// through `options/` and `file-local-options/`, throw [ArgumentError]
+  /// because they would desync the typed state.
   Future<void> setRawProperty(String name, String value);
 
   /// Sends an arbitrary mpv command with its argument list. Escape hatch
-  /// for commands without a typed wrapper.
+  /// for commands without a typed wrapper. A command that writes `af` or
+  /// `pause`, such as `cycle pause`, throws [ArgumentError]: see
+  /// [Player.sendRawCommand].
   Future<void> sendRawCommand(List<String> args);
 
   /// Sets the minimum severity of log messages mpv emits on
