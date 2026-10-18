@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../_helpers/libmpv_resolver.dart';
 import '../_helpers/setter_test_helpers.dart';
 import '../_helpers/slow_core_shim.dart';
 
@@ -29,6 +30,21 @@ const int _maxGapMs = 350;
 
 void main() {
   slowCoreShimSuite(getDelayUs: _getDelayUs, (shim) {
+    // Each test starts on a busy core, with the counters at zero.
+    setUp(() {
+      shim()
+        ..reset()
+        ..configure(realLibmpvPath: resolveLibmpv()!, getDelayUs: _getDelayUs);
+    });
+
+    // Lifts the stall and disposes [player]: these tests measure the main
+    // isolate, and a dispose under the stall is the last test's. The core
+    // must still be destroyed, not left alive in the process.
+    Future<void> disposeOffStall(Player player) async {
+      shim().configure(realLibmpvPath: resolveLibmpv()!);
+      await player.dispose();
+    }
+
     test('a busy mpv core cannot stall the main isolate through the '
         'file-load window', () async {
       final coverPath =
@@ -100,8 +116,13 @@ void main() {
         expect(cover!.bytes.isNotEmpty, isTrue);
         expect(cover.mimeType, 'image/png');
       } finally {
-        await player.dispose();
+        await disposeOffStall(player);
       }
+      expect(
+        shim().counter('destroys'),
+        1,
+        reason: 'dispose destroyed the core',
+      );
     });
 
     test('a busy mpv core cannot stall the main isolate while a DSP visualizer '
@@ -157,8 +178,13 @@ void main() {
               'mpv read still runs on the main isolate in the poll loop.',
         );
       } finally {
-        await player.dispose();
+        await disposeOffStall(player);
       }
+      expect(
+        shim().counter('destroys'),
+        1,
+        reason: 'dispose destroyed the core',
+      );
     });
 
     // dispose() gives the event isolate 2 s to exit and skips the destroy
