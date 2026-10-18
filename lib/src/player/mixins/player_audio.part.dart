@@ -98,7 +98,8 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Enables or disables gapless playback. See [Gapless] for the
-  /// available variants.
+  /// available variants. During a live [PcmSource] entry, which plays
+  /// without gapless, a new value holds only until that entry ends.
   Future<void> setGapless(Gapless gapless) async {
     await _gate();
     await _prop('gapless-audio', gapless.mpvValue);

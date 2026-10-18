@@ -598,9 +598,10 @@ await source.close();
 ```
 
 - Playback starts up to about 0.2 s after the first chunk, or about 0.1 s
-  with `lowLatency: true`, which halves the output buffer of that entry. It
-  starts sooner when the input arrives faster than real time. A gap in the
-  input adds up to one buffer of delay, which stays.
+  with `lowLatency: true`, which sets the output buffer of that entry to
+  100 ms, whatever `setAudioBuffer` chose. It starts sooner when the input
+  arrives faster than real time. A gap in the input adds up to one buffer
+  of delay, which stays.
 - `add` never blocks. `addStream` pauses its stream while more than
   `maxBuffered` (30 s by default) waits, and `ready` does the same for a
   loop of `add` calls.
@@ -621,6 +622,23 @@ audio received so far. To queue several sources, create them with
 starts when the previous one ends. The player keeps each queued source
 while its entry is in the playlist, so the app need not. Prefetch skips
 live entries: a queued source opens when its entry starts.
+
+- An entry that played, or that a skip passed, stays in the playlist
+  without its source. Going back to it with `previous`, `jump`, a playlist
+  loop or shuffle fails its load, with an `EndFileError` and a `LogError`,
+  and mpv moves on. With `Loop.playlist` and only live entries, the player
+  goes idle instead of parking at the end. Remove the entry once the
+  playlist has moved past it.
+- From libmpv-r18 on, `Loop.file` and the A-B loop do not repeat a live
+  entry: it plays once to its end, past a B point too, with a warning in
+  the log. With an older libmpv, turn them off for a live entry, which
+  would otherwise never end.
+- While a live entry plays, `state.gapless`, `state.cache.pause` and, with
+  `lowLatency`, `state.audioBuffer` show the values it plays with
+  (`Gapless.no`, `false`, 100 ms). `setGapless`, `setCache` and
+  `setAudioBuffer` called meanwhile hold only until the entry ends, when
+  mpv puts back the values from before it: change them outside live
+  entries.
 
 ---
 
@@ -2513,7 +2531,9 @@ await player.openAll(medias);
 `player.stream.fft` and `player.stream.pcm` carry the audio going to the
 output, after the effects chain and the volume: what you hear. Paint
 `bands` in a `CustomPainter`, drive a level meter with `samples`, or run
-your own analysis:
+your own analysis. Their tap is one per process: with several players, the
+streams of each show the audio the last output wrote, also on a player
+that is paused:
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/spectrum_pipeline.png" width="100%" alt="Spectrum pipeline: a block of output samples, the window, the linear FFT bins, the log bands and the smoothing, feeding stream.pcm and stream.fft">
 
@@ -2595,7 +2615,8 @@ The FFT memory is reallocated only when a setting requires it, so
 changing settings from a slider is cheap.
 
 While playback is paused no frames arrive, and the last one stays on
-screen. To fade the bars to zero on pause, animate them yourself.
+screen, unless another player plays. To fade the bars to zero on pause,
+animate them yourself.
 
 #### 13.3 Raw PCM stream
 

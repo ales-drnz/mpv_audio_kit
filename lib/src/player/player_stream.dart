@@ -654,6 +654,10 @@ class PlayerStream {
   /// displayed state until playback resumes. When the stream gets its
   /// first listener while paused, that listener receives the last frame
   /// once.
+  ///
+  /// The tap behind [fft] and [pcm] is one per process: with several
+  /// players, the streams of each show the audio the last output wrote,
+  /// also on a player that is paused or stopped.
   final Stream<FftFrame> fft;
 
   /// Real-time raw PCM samples of the audio currently playing through

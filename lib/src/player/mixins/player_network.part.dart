@@ -17,6 +17,9 @@ mixin _NetworkModule on _PlayerBase {
   /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`, `cache-pause-initial`)
   /// in one shot. Modify a single field via
   /// `await player.setCache(state.cache.copyWith(secs: const Duration(seconds: 30)))`.
+  ///
+  /// During a live [PcmSource] entry, which plays with `cache-pause` off,
+  /// a new `pause` holds only until that entry ends.
   Future<void> setCache(CacheSettings settings) async {
     await _gate();
     final previous = state.cache;
@@ -62,7 +65,9 @@ mixin _NetworkModule on _PlayerBase {
   /// Range: 0 to 10 seconds. Default 200 ms: matches mpv's default and is
   /// a sane trade-off between latency and underrun resistance. Increase
   /// for high-latency wireless outputs (Bluetooth, network speakers);
-  /// decrease for live monitoring or low-latency listening.
+  /// decrease for live monitoring or low-latency listening. During a live
+  /// [PcmSource] entry opened with `lowLatency`, a new value holds only
+  /// until that entry ends.
   Future<void> setAudioBuffer(Duration size) async {
     await _gate();
     await _prop('audio-buffer', durationToSeconds(size).toStringAsFixed(6));

@@ -61,9 +61,9 @@ enum PcmSourceState {
 /// A player holds the source of each entry it loaded while the entry is
 /// in its playlist, so a queued source needs no other reference. Prefetch
 /// skips live entries: a queued source opens when its entry starts, and
-/// what was added meanwhile waits in its buffer. An entry that leaves the
-/// playlist (a skip, a removal, another `open()`, a dispose) ends its
-/// source as [PcmSourceState.stopped], read or not.
+/// what was added meanwhile waits in its buffer. Leaving the entry (a
+/// skip, a removal, another `open()`, a dispose) ends its source as
+/// [PcmSourceState.stopped], read or not.
 ///
 /// Each source is read once: it cannot be played again, and seeking is
 /// not possible (a seek on it does nothing). Its length is not known in
@@ -71,9 +71,28 @@ enum PcmSourceState {
 /// counts it by the start of the last packet, so it can end a few tens
 /// of ms short of the audio fed, and the position can pass it at the end.
 ///
+/// An entry that played, or that a skip passed, stays in the playlist
+/// without its source: going back to it with `previous`, `jump`, a
+/// playlist loop or shuffle fails its load (an `EndFileError` and a
+/// `LogError`) and mpv moves on. With [Loop.playlist] and only live
+/// entries, the player goes idle instead of parking at the end. Remove the
+/// entry with `Player.remove` once the playlist has moved past it.
+///
+/// From libmpv-r18 on, [Loop.file] and the A-B loop do not repeat a live
+/// entry: it plays once to its end, past a B point too, with a warning in
+/// the log. With an older libmpv, turn them off for a live entry, which
+/// would otherwise never end.
+///
+/// While a live entry plays, `state.gapless`, `state.cache.pause` and,
+/// with `lowLatency`, `state.audioBuffer` show the values the entry plays
+/// with (`Gapless.no`, `false`, 100 ms). `setGapless`, `setCache` and
+/// `setAudioBuffer` called meanwhile hold only until the entry ends: mpv
+/// then puts back the values from before it.
+///
 /// Playback starts once the audio output buffer is full: with input at
-/// real time, about that buffer (200 ms, 100 ms with `lowLatency`) less
-/// the first chunk after it arrives, plus the device's own latency.
+/// real time, about that buffer (200 ms by default, always 100 ms with
+/// `lowLatency`) less the first chunk after it arrives, plus the device's
+/// own latency.
 /// Input faster than real time starts sooner. When the input runs dry
 /// the output stops and restarts only with its buffer full again: each
 /// gap adds up to a buffer of delay that stays for the rest of the entry.
@@ -88,9 +107,10 @@ final class PcmSource {
   /// [ready] holds back and [addStream] pauses its stream. [add] never
   /// refuses audio: past it, chunks wait in Dart memory.
   ///
-  /// [lowLatency] halves the audio output buffer for this entry (100 ms in
-  /// place of 200 ms): playback starts about 0.1 s sooner after the first
-  /// chunk, with less margin against a late chunk or a busy device.
+  /// [lowLatency] sets the audio output buffer of this entry to 100 ms,
+  /// whatever `setAudioBuffer` chose (the default is 200 ms): with the
+  /// default, playback starts about 0.1 s sooner after the first chunk,
+  /// with less margin against a late chunk or a busy device.
   ///
   /// Throws [ArgumentError] when [maxBuffered] holds more than 1 GiB of
   /// [format]. Call `MpvAudioKit.ensureInitialized` first, as for a

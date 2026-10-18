@@ -291,7 +291,9 @@ mixin _PlaybackModule on _PlayerBase {
   /// The points belong to the current file: when it ends, or another file
   /// loads, they go back to `null`. Points set with no file loaded apply to
   /// every file instead. Keep both inside the file: past its end, the end
-  /// of the file seeks back to A again and again.
+  /// of the file seeks back to A again and again. A live [PcmSource] entry
+  /// plays on past B from libmpv-r18 on; with an older libmpv it never
+  /// ends while the loop is on.
   Future<void> setAbLoopA(Duration? position) async {
     await _gate();
     await _prop(
