@@ -3,6 +3,11 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
+/// The longest network timeout FFmpeg takes: it keeps `timeout` as an int
+/// of microseconds (tcp.c, libsmb2.c), refuses the option past INT_MAX,
+/// and every network open then fails.
+const _kMaxNetworkTimeout = Duration(microseconds: 2147483647);
+
 /// Network setters: cache configuration, demuxer limits, network
 /// timeouts, TLS verification, and audio-output buffering.
 mixin _NetworkModule on _PlayerBase {
@@ -85,8 +90,14 @@ mixin _NetworkModule on _PlayerBase {
   /// own protocol-specific defaults. Applied to every connection attempt
   /// mpv makes (HTTP, HTTPS, …). Sub-second precision is honoured
   /// down to the microsecond.
+  ///
+  /// The longest timeout is 2147.483647 seconds (about 36 minutes): FFmpeg
+  /// keeps it as a 32-bit count of microseconds, and a longer one would
+  /// fail every network open. A longer [timeout] is capped there, in mpv
+  /// and in [PlayerState.networkTimeout] alike.
   Future<void> setNetworkTimeout(Duration timeout) async {
     await _gate();
+    if (timeout > _kMaxNetworkTimeout) timeout = _kMaxNetworkTimeout;
     // mpv's `network-timeout` accepts a fractional second value (e.g.
     // "0.5"). Truncating with `inSeconds` would collapse any sub-second
     // duration to 0, which mpv interprets as "no timeout".

@@ -356,7 +356,8 @@ abstract interface class PlayerApi {
   /// true.
   Future<void> setAudioStreamSilence(bool enable);
 
-  /// Sets the network I/O timeout.
+  /// Sets the network I/O timeout, capped at about 36 minutes, the most
+  /// FFmpeg takes.
   Future<void> setNetworkTimeout(Duration timeout);
 
   /// Enables or disables TLS server-certificate verification.
