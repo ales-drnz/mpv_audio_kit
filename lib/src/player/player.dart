@@ -120,6 +120,7 @@ part 'mixins/player_dispatch.part.dart';
 part 'mixins/player_ffi.part.dart';
 part 'mixins/player_hooks.part.dart';
 part 'mixins/player_init.part.dart';
+part 'mixins/player_intent.part.dart';
 part 'mixins/player_load_validation.part.dart';
 part 'mixins/player_media_session.part.dart';
 part 'mixins/player_network.part.dart';
@@ -804,64 +805,10 @@ abstract class _PlayerBase {
   /// for the loads to end. Cleared when mpv leaves idle.
   bool _idleResetPending = false;
 
-  /// Runs a content-replacing load, counted in [_loadsInFlight].
-  Future<void> _trackLoad(Future<void> Function() load) async {
-    _loadsInFlight++;
-    try {
-      await load();
-    } finally {
-      _loadsInFlight--;
-      if (_loadsInFlight == 0 && _idleResetPending) await _settleIdleReset();
-    }
-  }
-
-  /// The intent reset left to the end of the loads: still idle with no
-  /// load running (one failed, or a later call cleared the playlist),
-  /// nothing will play. Read from the core, since the notification that
-  /// mpv left idle can come after the loads end.
-  Future<void> _settleIdleReset() async {
-    if (_disposed) return;
-    final (rc, idle) = await _getAsync(
-      'idle-active',
-      MpvFormat.mpvFormatString,
-    );
-    if (!_idleResetPending || _loadsInFlight > 0 || _disposed) return;
-    _idleResetPending = false;
-    if (rc >= 0 && idle == 'yes') _writeIntent(false);
-  }
-
   /// Bumped by every public call that sets the play-pause intent, so a
   /// call that corrects the intent after an await can tell whether a later
   /// call set it meanwhile (and then leaves it alone).
   int _intentEpoch = 0;
-
-  /// Sets the play-pause intent for a public call and returns the epoch
-  /// that call owns.
-  int _claimIntent(bool value) {
-    _writeIntent(value);
-    return ++_intentEpoch;
-  }
-
-  /// Whether a load that claimed [intent] for [shouldPlay] starts playing:
-  /// a play() or pause() called after it, while it resolved, has the last
-  /// word, so its pause write must not undo theirs.
-  bool _intendedPlay(int intent, bool shouldPlay) =>
-      intent == _intentEpoch ? shouldPlay : _state.playWhenReady;
-
-  /// Writes the play-pause intent ([PlayerState.playWhenReady]).
-  void _writeIntent(bool value) => _updateField(
-    (s) => s.copyWith(playWhenReady: value),
-    _reactives.playWhenReady,
-    value,
-  );
-
-  /// Puts back the intent a failed load replaced, unless a later call took
-  /// over the load or the intent. Returns whether it did.
-  bool _restoreIntent(_LoadTicket load, int intent, bool previous) {
-    if (load.superseded || intent != _intentEpoch) return false;
-    _writeIntent(previous);
-    return true;
-  }
 
   // ── Property registry (the bulk of state: one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
