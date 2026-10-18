@@ -220,7 +220,8 @@ abstract interface class PlayerApi {
   Future<void> setShuffle(bool shuffle);
 
   /// Enables or disables prefetching the next playlist entry during
-  /// playback.
+  /// playback. Hooks and the source resolver then also run for the next
+  /// entry while the current one plays: see [Player.setPrefetchPlaylist].
   Future<void> setPrefetchPlaylist(bool enabled);
 
   // ── Audio output ───────────────────────────────────────────────────

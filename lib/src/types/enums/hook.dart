@@ -36,6 +36,11 @@ enum Hook {
   /// rewrite `stream-open-filename` to redirect the URL, or set
   /// `file-local-options/http-header-fields` to attach per-file
   /// HTTP headers.
+  ///
+  /// With `Player.setPrefetchPlaylist` on, it also runs for the next
+  /// entry while the current one plays, and the playing entry gets no
+  /// audio until the hook continues. In that run `file-local-options`
+  /// still belong to the playing entry.
   load('on_load'),
 
   /// After a stream failed to open. Useful for fallback URLs:

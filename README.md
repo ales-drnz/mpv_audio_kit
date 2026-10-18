@@ -574,7 +574,9 @@ final media = Media(
 );
 ```
 
-Keys must not be empty, and values must not contain a comma.
+Keys must not be empty, and values must not contain a comma. With
+`setPrefetchPlaylist(true)`, an entry with demuxer options, and the entry
+after it, open when they start instead of from the prefetch.
 
 #### 2.5 Live PCM input
 
@@ -1614,6 +1616,9 @@ await player.setDemuxer(player.state.demuxer.copyWith(maxBackBytes: 0));
 await player.setNetworkTimeout(const Duration(seconds: 10)); // give up after 10 s without data
 ```
 
+The longest timeout FFmpeg takes is 2147.483647 s, about 36 minutes: a
+longer one is capped there.
+
 #### 7.4 TLS and SSL verification
 
 Certificate verification is off by default, as in mpv. Turn it on for
@@ -2396,7 +2401,11 @@ The hooks mpv offers:
 
 </details>
 
-Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track. Your listener runs once per track either way, and `setRawProperty('stream-open-filename', ...)` works in both cases.
+Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track, and `setRawProperty('stream-open-filename', ...)` works in both cases. With `setPrefetchPlaylist(true)`:
+
+- `on_load` runs twice for an entry opened ahead: once while the previous entry still plays, then again when the entry starts. Give the same URL both times, or mpv drops the prefetch and opens the entry again.
+- Until the first run continues, mpv stops feeding the entry that plays. A listener slower than the output buffer (0.2 s by default) leaves a gap in the music, so keep that work short.
+- In the first run the current file is still the one that plays: a `file-local-options/...` write lands on it, for the rest of it, and the prefetch opens with it. Headers for one entry are safer in `Media.httpHeaders`: from libmpv-r18 on, mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
 
 #### 12.2 Listening and continuing
 
@@ -2433,7 +2442,7 @@ player.stream.hook.listen((event) async {
 
 #### 12.3 HTTP headers via hook
 
-`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`:
+`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`. In an `on_load` run for an entry opened ahead, the current file is the one still playing (see [12.1](#121-registering-a-hook)):
 
 ```dart
 await player.setRawProperty(
@@ -2469,7 +2478,11 @@ The player calls the resolver:
 
 Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error goes to `internalLog` and keeps the current URL.
 
-The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. Pass `null` to remove the resolver.
+The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. A URL it returns after that is dropped, with a warning on `internalLog`, since mpv has moved on. `timeout: null` lifts the deadline, also one an earlier call set. Pass `null` to remove the resolver.
+
+A `file://` URL from the resolver plays as the local path it names, as the URL of a `Media` does.
+
+With `setPrefetchPlaylist(true)` the resolver also runs for the next entry while the current one plays, and mpv stops feeding the playing track until it returns (see [12.1](#121-registering-a-hook)). A resolver slower than the output buffer leaves a gap in the music: keep it fast, for example with URLs fetched ahead of time, or leave the prefetch off.
 
 #### 12.5 Lazy URL resolution
 

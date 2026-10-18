@@ -196,6 +196,12 @@ mixin _HooksModule on _PlayerBase {
   /// on the next entry. A consumer-registered hook does not get that event
   /// either.
   ///
+  /// With [Player.setPrefetchPlaylist] on, the resolver also runs for the
+  /// next entry while the current one plays, and mpv stops feeding the
+  /// playing entry until it returns: a resolver slower than the output
+  /// buffer (0.2 s by default) leaves a gap in the playing track. Keep it
+  /// fast with the prefetch on, for example with URLs fetched ahead.
+  ///
   /// Composes with [registerHook]: when the consumer has registered
   /// `Hook.load` themselves, the resolver runs FIRST, then the event
   /// surfaces on [PlayerStream.hook] with the rewritten URL already in
