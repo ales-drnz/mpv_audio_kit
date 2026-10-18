@@ -9,15 +9,19 @@
 // reload the output.
 //
 // Needs a host that kills audioserver: diag/android_emulator.sh waits for
-// the "[f278] playing" line this test prints, then runs `killall
-// audioserver` with adb root. Skipped off Android, and on a libmpv older
-// than r18.
+// the "[f278] playing" line this test prints, kills audioserver with adb
+// root, checks that a new one came up, and then writes `f278_killed` in the
+// app's cache directory (run-as). Android's own AudioTrack can restore the
+// track by itself on a dead audioserver, and then playback never stops:
+// the test waits for the file, not for a stop. Skipped off Android, and on
+// a libmpv older than r18.
 
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '_helpers/device_probes.dart';
 
@@ -53,36 +57,36 @@ void main() {
           .firstWhere((p) => p > const Duration(milliseconds: 500))
           .timeout(const Duration(seconds: 10));
 
+      final killed = File(
+        '${(await getTemporaryDirectory()).path}/f278_killed',
+      );
+      if (killed.existsSync()) killed.deleteSync();
+      final seen = states.length;
+
       // The cue for the script, which kills audioserver once it reads it.
       // ignore: avoid_print
       print('[f278] playing');
 
-      // The kill shows as the output leaving `active` or the position
-      // standing still while playing.
-      var lastPos = player.state.position;
-      var movedAt = DateTime.now();
-      final seen = states.length;
       final deadline = DateTime.now().add(const Duration(seconds: 90));
-      while (true) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        final pos = player.state.position;
-        if (pos != lastPos) {
-          lastPos = pos;
-          movedAt = DateTime.now();
-        }
-        final left = states.skip(seen).any((s) => s != AudioOutputState.active);
-        final stalled =
-            DateTime.now().difference(movedAt) > const Duration(seconds: 1);
-        if (left || stalled) break;
+      while (!killed.existsSync()) {
         if (DateTime.now().isAfter(deadline)) {
           fail(
             'audioserver was not killed within 90 s: run this test '
             'through diag/android_emulator.sh',
           );
         }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
       }
+      // Reloaded by the output (F278) when the states left active, restored
+      // by Android's AudioTrack when they did not.
+      final reloaded = states
+          .skip(seen)
+          .any((s) => s != AudioOutputState.active);
       // ignore: avoid_print
-      print('[f278] kill seen at ${player.state.position}, states $states');
+      print(
+        '[f278] kill seen at ${player.state.position}, states $states, '
+        '${reloaded ? 'reloaded' : 'no stop yet'}',
+      );
 
       // Back: the output active again, and the position past where it was.
       final stopAt = player.state.position;
