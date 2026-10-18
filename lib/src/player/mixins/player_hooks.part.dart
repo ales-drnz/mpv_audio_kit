@@ -36,7 +36,8 @@ mixin _HooksModule on _PlayerBase {
   /// If [timeout] is provided, the library automatically calls
   /// [continueHook] after the given duration if you haven't called it
   /// yet. Prevents mpv from stalling indefinitely on unhandled
-  /// exceptions in the listener.
+  /// exceptions in the listener. Without [timeout], a deadline an earlier
+  /// call or [Player.setSourceResolver] set for [hook] stays in place.
   ///
   /// Idempotent per [hook]: calling [registerHook] more than once for
   /// the same hook on the same [Player] only updates the optional
@@ -182,9 +183,10 @@ mixin _HooksModule on _PlayerBase {
   /// [timeout] is the safety net for a hung resolver (default 15s): if a
   /// resolution pass hasn't finished by then, the library auto-continues
   /// the underlying hook so mpv never stalls indefinitely. Pass `null`
-  /// to disable the net. The value is stored per hook name, so it also
-  /// becomes the deadline of a consumer-registered `Hook.load` /
-  /// `Hook.loadFail` (the most recent registration's timeout wins). A URL
+  /// to disable the net, also when an earlier call or [registerHook] set
+  /// one. The value is stored per hook name, so it also becomes the
+  /// deadline of a consumer-registered `Hook.load` or `Hook.loadFail` (the
+  /// most recent registration's timeout wins). A URL
   /// the resolver returns after the deadline is dropped, with a warning on
   /// [PlayerStream.internalLog]: mpv has moved on, and the URL would land
   /// on the next entry. A consumer-registered hook does not get that event
@@ -206,8 +208,12 @@ mixin _HooksModule on _PlayerBase {
     await _gate();
     _sourceResolver = resolver;
     if (resolver == null) return;
-    await _ensureHookRegistered(Hook.load, timeout: timeout);
-    await _ensureHookRegistered(Hook.loadFail, timeout: timeout);
+    for (final hook in const [Hook.load, Hook.loadFail]) {
+      // The default is 15 s, so a null here was asked for: it lifts the
+      // deadline, where for registerHook it only means none was given.
+      if (timeout == null) _hookTimeouts.remove(hook.mpvValue);
+      await _ensureHookRegistered(hook, timeout: timeout);
+    }
   }
 
   /// Single entry point for every MPV_EVENT_HOOK, called by the dispatch

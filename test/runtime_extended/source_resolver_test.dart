@@ -292,6 +292,50 @@ void main() {
           await player.dispose();
         }
       }, timeout: const Timeout(Duration(seconds: 30)));
+
+      test('a null timeout clears the deadline an earlier call set', () async {
+        final player = await buildPlayer();
+        final logs = <String>[];
+        final outcome = Completer<String>();
+        final subs = [
+          player.stream.internalLog.listen((e) => logs.add(e.text)),
+          player.stream.seekCompleted.listen((_) {
+            if (!outcome.isCompleted) outcome.complete('loaded');
+          }),
+          player.stream.endFile.listen((event) {
+            if (event.reason == MpvEndFileReason.error &&
+                !outcome.isCompleted) {
+              outcome.complete('failed');
+            }
+          }),
+        ];
+        await player.setSourceResolver(
+          (_) => null,
+          timeout: const Duration(milliseconds: 300),
+        );
+        await player.setSourceResolver((request) async {
+          if (request.isRetry) return null;
+          // Three times the deadline the first call set.
+          await Future<void>.delayed(const Duration(milliseconds: 900));
+          return fixturePath;
+        }, timeout: null);
+
+        try {
+          await player.open(const Media('resolve://slow'), play: false);
+          expect(
+            await outcome.future.timeout(const Duration(seconds: 15)),
+            'loaded',
+            reason: 'the slow resolver gets all the time it needs',
+          );
+          expect(logs.where((l) => l.contains('timed out')), isEmpty);
+        } finally {
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await player.setSourceResolver(null);
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });
 }
