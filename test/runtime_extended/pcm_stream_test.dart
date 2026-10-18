@@ -511,17 +511,46 @@ void main() {
       }, timeout: t);
     }
 
-    test('lowLatency starts sooner and stays with its entry', () async {
+    test('lowLatency sets audio-buffer for its entry only', () async {
+      // audio-buffer is an option of the entry: this holds on the null
+      // output too, so it runs on every host.
+      for (final low in [false, true]) {
+        final player = await buildPlayer();
+        final watch = _Watch(player);
+        final source = await player.openPcmStream(_speech, lowLatency: low);
+        watch.start();
+        final feeding = source.addStream(_feed(_speech, totalMs: 300));
+        await waitUntil(() => watch.started != null, reason: 'playback starts');
+        expect(
+          await player.getRawProperty('audio-buffer'),
+          low ? '0.100000' : '0.200000',
+        );
+        await watch.stop();
+        await feeding;
+        await source.close();
+        // The next file gets the player's own buffer back.
+        await openAndWaitForLoad(player, defaultFixturePath());
+        expect(await player.getRawProperty('audio-buffer'), '0.200000');
+        await player.dispose();
+      }
+    }, timeout: t);
+
+    test('lowLatency starts sooner on a real output', () async {
+      // The null output ignores audio-buffer: the comparison needs a real
+      // one, muted. Asked first, so a host without a device skips before
+      // six players do their work for nothing.
+      final ao = await probeAudioOutput();
+      if (ao == null || ao == 'null') {
+        skipWithoutAudioDevice(
+          'no audio device: the null output has no buffer to cut',
+        );
+        return;
+      }
       final latencies = <bool, List<int>>{false: [], true: []};
-      String? ao;
       for (var round = 0; round < 3; round++) {
         for (final low in [false, true]) {
           final player = await buildPlayer();
-          // The null output ignores audio-buffer: a real one, muted.
-          await player.setRawProperty(
-            'ao',
-            'pipewire,pulse,alsa,coreaudio,wasapi',
-          );
+          await player.setRawProperty('ao', realAudioOutputs);
           await player.setVolume(0);
           final watch = _Watch(player);
           final source = await player.openPcmStream(_speech, lowLatency: low);
@@ -533,28 +562,19 @@ void main() {
             reason: 'playback starts',
           );
           latencies[low]!.add(watch.started!.difference(first).inMilliseconds);
-          ao = await player.getRawProperty('current-ao');
           expect(
-            await player.getRawProperty('audio-buffer'),
-            low ? '0.100000' : '0.200000',
+            await player.getRawProperty('current-ao'),
+            ao,
+            reason: 'every round plays on the output the probe found',
           );
           await watch.stop();
           await feeding;
           await source.close();
-          // The next file gets the player's own buffer back.
-          await openAndWaitForLoad(player, defaultFixturePath());
-          expect(await player.getRawProperty('audio-buffer'), '0.200000');
           await player.dispose();
         }
       }
       int median(List<int> v) => (v.toList()..sort())[v.length ~/ 2];
       _log('lowLatency', {'ao': ao, 'startLatencyMs': latencies});
-      if (ao == null || ao == 'null') {
-        markTestSkipped(
-          'no audio device: the null output has no buffer to cut',
-        );
-        return;
-      }
       expect(
         median(latencies[true]!),
         lessThan(median(latencies[false]!) - 20),
