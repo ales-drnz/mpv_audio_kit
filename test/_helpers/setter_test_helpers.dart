@@ -91,6 +91,28 @@ void runtimeSuite(
   body();
 }
 
+/// Why the tests of a fix that ships in libmpv-r[release] cannot run on the
+/// bundled libmpv, or `null` when they can (or when there is no libmpv,
+/// which [runtimeSuite] reports). Unlike a missing fixture this is no
+/// failure on CI: the package pins an older release until the bump, and
+/// the tests start running with the bump itself.
+String? needsLibmpvRelease(int release) {
+  final lib = resolveLibmpv();
+  if (lib == null) return null;
+  final found = libmpvReleaseOf(lib);
+  if (found != null && found >= release) return null;
+  return 'tests a fix of libmpv-r$release, the bundled libmpv is '
+      '${found == null ? 'not a libmpv-scripts build' : 'r$found'}';
+}
+
+/// A [group] of tests for the patches of libmpv-r[release]: skipped with
+/// the reason of [needsLibmpvRelease] on an older libmpv.
+void libmpvReleaseGroup(
+  int release,
+  String description,
+  void Function() body,
+) => group(description, body, skip: needsLibmpvRelease(release));
+
 /// [runtimeSuite] for a suite that needs this build's analysis properties,
 /// `waveform-data` and `loudness-scan-data`.
 void analysisSuite(

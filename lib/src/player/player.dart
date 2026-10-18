@@ -712,6 +712,16 @@ abstract class _PlayerBase {
   // otherwise put mpv in an infinite open-fail-reopen loop.
   bool _resolverRetried = false;
 
+  // From START_FILE to the FILE_LOADED or END_FILE of that load. An
+  // `on_load` outside it is the prefetch of the next entry, which mpv runs
+  // while the current file plays, with no START_FILE.
+  bool _loadingEntry = false;
+
+  // What the resolver gave for the prefetch of the next entry: the URL mpv
+  // was about to open, the one it opened instead, and the load epoch then.
+  // The load of that URL in the same epoch takes it once (F10).
+  (String, String, _LoadTicket)? _prefetchResolved;
+
   PlayerState _state = const PlayerState();
 
   /// Reused `commit` callback for every registry dispatch: tearing off (or
@@ -1614,11 +1624,11 @@ abstract class _PlayerBase {
       // closing the client resolves every in-flight call, so an
       // `await player.setX(...)` racing dispose never hangs, and turns the
       // continuations that resumes (a setter suspended between writes)
-      // into no-ops, since mpv_terminate_destroy frees the handle on the
-      // next synchronous line.
+      // into no-ops, while the destroy below frees the handle.
       _client.close();
       if (exited && hooksSettled) {
-        _lib.mpvTerminateDestroy(_handle);
+        // Off the main isolate: the destroy waits for the core to shut down.
+        await terminateDestroyOffMain(_handle);
         // mpv is gone: nothing reads the descriptors any more.
         for (final release in _heldSources.takeAll()) {
           await release();

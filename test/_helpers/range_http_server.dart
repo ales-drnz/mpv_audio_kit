@@ -34,7 +34,7 @@ enum ServeMode {
 
 /// One request [RangeHttpServer] received.
 final class ServedRequest {
-  ServedRequest._(this.method, this.path, this.range, this.at);
+  ServedRequest._(this.method, this.path, this.range, this.at, this.headers);
 
   /// `GET`, `HEAD`, ...
   final String method;
@@ -47,6 +47,9 @@ final class ServedRequest {
 
   /// When the request arrived.
   final DateTime at;
+
+  /// The request headers, with lowercase names.
+  final Map<String, String> headers;
 
   /// The status the server answered with.
   int status = 0;
@@ -217,7 +220,13 @@ final class RangeHttpServer {
       }
     }
     final path = Uri.parse(target).path;
-    final req = ServedRequest._(method, path, headers['range'], DateTime.now());
+    final req = ServedRequest._(
+      method,
+      path,
+      headers['range'],
+      DateTime.now(),
+      headers,
+    );
     _requests.add(req);
     final gate = hold;
     if (gate != null) await gate;

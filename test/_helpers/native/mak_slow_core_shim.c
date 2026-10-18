@@ -108,6 +108,7 @@ void mak_shim_configure(const char *real_path, int get_us, int set_us) {
 // mak_shim_counter / mak_shim_set. All process-wide, like the stalls.
 static atomic_int hook_add_delay_us; // sleep before mpv_hook_add
 static atomic_int hide_eof;          // flag reads of eof-reached return 0
+static atomic_int destroy_delay_us;  // sleep before mpv_terminate_destroy
 static atomic_int hook_adds_entered;
 static atomic_int hook_adds_inflight;
 static atomic_int inflight_at_destroy; // most hook_adds running at a destroy
@@ -164,6 +165,8 @@ void mak_shim_set(const char *knob, int value) {
     atomic_store(&hook_add_delay_us, value);
   } else if (strcmp(knob, "hide_eof") == 0) {
     atomic_store(&hide_eof, value);
+  } else if (strcmp(knob, "destroy_delay_us") == 0) {
+    atomic_store(&destroy_delay_us, value);
   } else {
     fprintf(stderr, "mak_slow_core_shim: unknown knob %s\n", knob);
     abort();
@@ -199,6 +202,7 @@ void mak_shim_reset(void) {
   pthread_mutex_lock(&mu);
   atomic_store(&hook_add_delay_us, 0);
   atomic_store(&hide_eof, 0);
+  atomic_store(&destroy_delay_us, 0);
   atomic_store(&hook_adds_entered, 0);
   atomic_store(&inflight_at_destroy, 0);
   atomic_store(&late_hook_adds, 0);
@@ -315,6 +319,9 @@ void mpv_terminate_destroy(void *h) {
   if (n_destroyed < MAX_TRACKED) destroyed[n_destroyed++] = h;
   atomic_fetch_add(&destroys, 1);
   pthread_mutex_unlock(&mu);
+  // A destroy as slow as mp_destroy closing a busy audio output, or
+  // joining a core that still serves requests.
+  stall(atomic_load(&destroy_delay_us));
   real_mpv_terminate_destroy(h);
 }
 void mpv_wakeup(void *h) { real_mpv_wakeup(h); }

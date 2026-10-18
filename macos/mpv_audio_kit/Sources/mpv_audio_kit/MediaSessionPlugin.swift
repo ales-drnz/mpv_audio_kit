@@ -1092,6 +1092,13 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     if let v = info[MPNowPlayingInfoPropertyIsLiveStream] as? NSNumber {
       out["isLiveStream"] = v.boolValue
     }
+    #if os(iOS)
+    // The category and mode of the shared session, which mpv's audio output
+    // sets too (libmpv-r17 set the MoviePlayback mode, F187).
+    let session = AVAudioSession.sharedInstance()
+    out["sessionCategory"] = session.category.rawValue
+    out["sessionMode"] = session.mode.rawValue
+    #endif
     return out
   }
 

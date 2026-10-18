@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart' show RootIsolateToken;
@@ -69,6 +70,29 @@ Future<void> reapOrphanedHandles(
     } catch (e) {
       debugLog('$tag Error terminating leaked handle: $e');
     }
+  }
+}
+
+/// Destroys the core behind [handle] in a throwaway isolate, so the caller
+/// keeps running meanwhile: `mpv_terminate_destroy` sends a synchronous
+/// `quit`, waits for every async reply, joins the core thread and closes
+/// the audio output and the demuxer, which on a busy output takes as long
+/// as its init. From libmpv-r18 the output closes on the core thread
+/// whichever thread destroys (F289). Completes once the core is gone.
+@internal
+Future<void> terminateDestroyOffMain(Pointer<MpvHandle> handle) async {
+  final address = handle.address;
+  final path = MpvAudioKit.libraryPath;
+  try {
+    await Isolate.run(
+      () => MpvLibrary.open(
+        path,
+      ).mpvTerminateDestroy(Pointer<MpvHandle>.fromAddress(address)),
+      debugName: 'mpv_audio_kit destroy',
+    );
+  } catch (e) {
+    // No isolate: the core stays, as on an unconfirmed event-isolate exit.
+    debugLog('mpv_audio_kit: cannot destroy the core off the main isolate: $e');
   }
 }
 

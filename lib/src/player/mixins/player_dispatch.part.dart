@@ -60,6 +60,7 @@ mixin _DispatchModule on _PlayerBase {
           // A new load attempt re-arms the source resolver's single
           // retry allowance; see [_resolverRetried].
           _resolverRetried = false;
+          _loadingEntry = true;
           _heldSources.onStartFile();
           _updateLifecycle(buffering: true, completed: false);
         case MpvEventFileLoaded(
@@ -77,6 +78,7 @@ mixin _DispatchModule on _PlayerBase {
           // follows this event settles it: a short entry can already be
           // parked at its end here.
           _updateLifecycle(buffering: false);
+          _loadingEntry = false;
           // mpv just built the new file's chain from the stored arguments.
           _onAfChainReset();
           _reassertAfChain();
@@ -141,6 +143,7 @@ mixin _DispatchModule on _PlayerBase {
           _dispatchProperty('eof-reached', eof);
           _settleEndOfContent(parked: parked, lastEntry: lastEntry);
         case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
+          _loadingEntry = false;
           _heldSources.onEndFile();
           _releaseSettledSources();
           final typedReason = MpvEndFileReason.fromValue(reason);

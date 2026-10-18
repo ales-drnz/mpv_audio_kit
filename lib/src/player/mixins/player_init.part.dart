@@ -42,9 +42,7 @@ mixin _InitModule on _PlayerBase {
       final lib = MpvLibrary.open(MpvAudioKit.libraryPath);
       final h = Pointer<MpvHandle>.fromAddress(handleAddress);
       _eventIsolate.requestStop(lib, h);
-      if (await _eventIsolate.stop()) {
-        lib.mpvTerminateDestroy(h);
-      }
+      if (await _eventIsolate.stop()) await terminateDestroyOffMain(h);
       return;
     }
 

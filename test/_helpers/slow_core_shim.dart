@@ -138,8 +138,9 @@ class SlowCoreShim {
   }
 
   /// Sets a probe knob: `hook_add_delay_us` (a sleep in front of every
-  /// `mpv_hook_add`) or `hide_eof` (non-zero: synchronous flag reads of
-  /// `eof-reached` answer 0, the reads the event isolate makes).
+  /// `mpv_hook_add`), `destroy_delay_us` (a sleep in front of every
+  /// `mpv_terminate_destroy`) or `hide_eof` (non-zero: synchronous flag
+  /// reads of `eof-reached` answer 0, the reads the event isolate makes).
   void set(String knob, int value) {
     final fn = _lib
         .lookupFunction<

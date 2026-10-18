@@ -133,9 +133,13 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('the state keeps the markers mpv took', () async {
-        // A fresh load: after setChapter(1) above, a shorter list makes
-        // libmpv r17 read chapter-metadata past its array (a crash).
-        await openAndWaitForLoad(player, plainPath);
+        // After setChapter(1) above, a shorter list made libmpv r17 read
+        // chapter-metadata past its array, from the player's own observer
+        // (a crash). There a fresh load avoids it; from r18 the test runs
+        // on the same load and covers the crash.
+        if (needsLibmpvRelease(18) != null) {
+          await openAndWaitForLoad(player, plainPath);
+        }
         const intro = Chapter(time: Duration.zero, title: 'Intro');
         await player.setChapters(const [intro]);
         // mpv drops a marker past the end of the 5 s file. What it keeps
