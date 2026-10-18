@@ -76,7 +76,8 @@ abstract interface class PlayerApi {
 
   /// Loads [medias] as the new playlist, optionally starting at [index]
   /// (clamped to the valid range) and optionally starting playback. The
-  /// multi-item counterpart of [open].
+  /// multi-item counterpart of [open]. It succeeds or fails as a whole:
+  /// see [Player.openAll].
   Future<void> openAll(List<Media> medias, {bool? play, int index = 0});
 
   /// Loads a playlist file or URL (`.m3u`, `.m3u8`, `.pls` or `.cue`) as the

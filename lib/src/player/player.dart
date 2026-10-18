@@ -300,6 +300,12 @@ class Player extends _PlayerBase
   /// transition the outgoing track keeps playing (or stays parked) until
   /// the jump; while entries build up on an idle core the playlist
   /// `index` reports `-1` (see [Playlist.index]).
+  ///
+  /// The call succeeds or fails as a whole. When mpv refuses an entry it
+  /// throws [MpvCommandException], the entries it already added leave the
+  /// playlist, the track that was playing keeps playing (parked at the
+  /// end, the playlist is left empty), and the play intent goes back to
+  /// what it was.
   @override
   Future<void> openAll(List<Media> medias, {bool? play, int index = 0}) =>
       _trackLoad(() => _openAll(medias, play, index));
