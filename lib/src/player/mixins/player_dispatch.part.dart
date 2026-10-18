@@ -137,11 +137,16 @@ mixin _DispatchModule on _PlayerBase {
         case MpvEventPlaybackRestart(:final timePos):
           _applyPolledPosition(timePos);
           _seekCompletedCtrl.add(null);
-        case MpvEventEndOfContent(:final eof, :final parked, :final lastEntry):
+        case MpvEventEndOfContent(
+          :final eof,
+          :final parked,
+          :final lastEntry,
+          :final live,
+        ):
           // The core's value at the read, ahead of a skipped or late
           // `eof-reached` notification.
           _dispatchProperty('eof-reached', eof);
-          _settleEndOfContent(parked: parked, lastEntry: lastEntry);
+          _settleEndOfContent(parked: parked, lastEntry: lastEntry, live: live);
         case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
           _loadingEntry = false;
           _heldSources.onEndFile();
@@ -251,17 +256,14 @@ mixin _DispatchModule on _PlayerBase {
             // phase. Auto-continue so mpv never stalls, log it on the
             // internal channel for diagnostics.
             _internalLog(
-              'Received unknown hook "$name" (id=$id) — auto-continuing. '
+              'Received unknown hook "$name" (id=$id): auto-continuing. '
               'Update the Hook enum if mpv has added a new lifecycle phase.',
               level: LogLevel.warn,
             );
             _lib.mpvHookContinue(_handle, id);
             return;
           }
-          final eventId = ++_lastHookEventId;
-          _activeHooks[eventId] = id;
-          final timeout = _hookTimeouts[name];
-          if (timeout != null) _startHookTimeout(eventId, name, timeout);
+          final eventId = _hooks.add(id, name);
           // Routed through the hooks module: runs the source resolver
           // first when one is installed, then surfaces the event on
           // [PlayerStream.hook] (user-registered hook) or continues it

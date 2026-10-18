@@ -375,7 +375,7 @@ mixin _FfiModule on _PlayerBase {
         name,
         argName,
         'Property `af` is owned by the effects chain. '
-        'Use Player.setAudioEffects / updateAudioEffects, and pass '
+        'Use Player.setAudioEffects or updateAudioEffects, and pass '
         'experimental or expression-based filters as a RawAudioEffect.',
       );
     }
@@ -385,8 +385,8 @@ mixin _FfiModule on _PlayerBase {
         argName,
         'Property `pause` is owned by the transport intent axis and is not '
         'observed, so a raw write would desync state.playWhenReady (and '
-        'the OS play/pause button) from actual playback. '
-        'Use Player.play() / Player.pause() instead.',
+        'the OS play-pause button) from actual playback. '
+        'Use Player.play() or Player.pause() instead.',
       );
     }
   }
@@ -428,7 +428,7 @@ mixin _FfiModule on _PlayerBase {
           command,
           'args',
           'Command `$command` is owned by the effects chain. '
-              'Use Player.setAudioEffects / updateAudioEffects, and pass '
+              'Use Player.setAudioEffects or updateAudioEffects, and pass '
               'experimental or expression-based filters as a RawAudioEffect.',
         );
       }

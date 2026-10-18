@@ -13,6 +13,11 @@
 /// Backed by mpv's `prefetch-state` property, with the same lifecycle
 /// across every demuxer backend: HLS, DASH, raw HTTP range reads,
 /// SMB, local files.
+///
+/// From libmpv-r18 on, [failed] comes as soon as the open fails, while
+/// the current entry plays, and a stop resets the state to [idle]. An
+/// older libmpv reports the failure only when the current entry ends,
+/// and keeps the state after a stop.
 enum PrefetchState {
   /// No background prefetch is active. Default state.
   idle('idle'),
@@ -32,6 +37,8 @@ enum PrefetchState {
   /// state PERSISTS at [used] until the next [loading] (next
   /// `prefetch_next`) or a cancel resets it to [idle], so a subscriber
   /// that arrives after a track transition still sees the success signal.
+  /// An entry the source resolver rewrote gets here too: it opens with
+  /// the URL the resolver gave for the prefetch.
   used('used'),
 
   /// The opener thread failed to create a demuxer for the next playlist
@@ -40,7 +47,8 @@ enum PrefetchState {
   /// rewrite. Distinct from a silent return to [idle] because no
   /// gapless transition is armed: the next track will be re-opened
   /// from scratch when playback reaches it. Persists at [failed] until
-  /// the next [loading]; a cancel does not reset it.
+  /// the next [loading], or a stop from libmpv-r18 on; a cancel does not
+  /// reset it.
   failed('failed');
 
   const PrefetchState(this.mpvValue);

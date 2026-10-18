@@ -394,7 +394,8 @@ mixin _PlaylistModule on _PlayerBase {
   /// than the output buffer leaves a gap in the playing track. A hook of
   /// [Player.registerHook] runs once more when the entry starts, and a
   /// `file-local-options` write in its first run lands on the playing
-  /// entry.
+  /// entry. The source resolver is not asked again then: the entry opens
+  /// with the URL it gave for the prefetch.
   ///
   /// Some entries open when they start, not from the prefetch:
   /// - from libmpv-r18 on, an entry whose [Media] options (headers, chunk

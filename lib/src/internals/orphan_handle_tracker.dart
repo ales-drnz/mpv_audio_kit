@@ -196,7 +196,7 @@ class OrphanHandleTracker {
       debugLog(
         'mpv_audio_kit: OrphanHandleTracker buffer full ($_kBufferSize '
         'handles tracked). Handle ${handle.address} not registered for '
-        'hot-restart cleanup — dispose Player instances before creating '
+        'hot-restart cleanup: dispose Player instances before creating '
         'more.',
       );
     });

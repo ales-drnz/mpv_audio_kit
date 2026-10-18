@@ -28,6 +28,7 @@ import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';
 import '../internals/held_sources.dart';
+import '../internals/hook_table.dart';
 import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
 import '../internals/mpv_client.dart';
@@ -119,6 +120,8 @@ part 'mixins/player_dispatch.part.dart';
 part 'mixins/player_ffi.part.dart';
 part 'mixins/player_hooks.part.dart';
 part 'mixins/player_init.part.dart';
+part 'mixins/player_intent.part.dart';
+part 'mixins/player_lifecycle.part.dart';
 part 'mixins/player_load_validation.part.dart';
 part 'mixins/player_media_session.part.dart';
 part 'mixins/player_network.part.dart';
@@ -147,21 +150,6 @@ class Player extends _PlayerBase
     implements PlayerApi {
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration});
-
-  /// Single-instance guard for the OS media session. A static, so it
-  /// holds per isolate, and so per Flutter engine: the players of two
-  /// engines do not see each other's.
-  /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
-  /// single-instance per process: enabling on a second [Player]
-  /// would silently steal the first one's lockscreen entry. Linux
-  /// MPRIS could support multiple instances via `instance<PID>`
-  /// suffixing, but we ban it universally for cross-OS consistency.
-  /// Cleared on `dispose()` and on `setMediaSession(null)`.
-  static Player? _mediaSessionOwner;
-
-  /// The media-session work of every [Player] in this isolate, one call
-  /// after the other. See [_MediaSessionModule._queueMediaSessionSync].
-  static Future<void> _mediaSessionQueue = Future<void>.value();
 
   /// Test-only. The event isolate writes to [wakeupCounterAddress] on
   /// every wakeup: a bogus value corrupts process memory.
@@ -625,7 +613,15 @@ class Player extends _PlayerBase
     // Before the first await: a hook timer firing during the session
     // release would drop its id without continuing it (it skips the FFI
     // call once disposed), and mpv would wait on that hook at shutdown.
-    _cancelHookTimers();
+    // Every pending hook continues now, so the `quit` that follows finds
+    // no operation held by this client. (The event isolate exits anyway,
+    // on its stop flag, and mpv_terminate_destroy completes the hooks of
+    // the removed client; the continue keeps the core from waiting on them
+    // meanwhile.) An event is pending only once bring-up delivered it, so
+    // the handle exists here.
+    for (final mpvId in _hooks.takeAll()) {
+      _lib.mpvHookContinue(_handle, mpvId);
+    }
     // Before the quit: an ended source wakes a reader blocked on it.
     _endPcmSources();
     // Release the OS media session BEFORE tearing libmpv down. After
@@ -677,27 +673,18 @@ abstract class _PlayerBase {
   // intent doesn't stick true.
   bool _hasLoadedFile = false;
 
-  // `_activeHooks` is authoritative for [Player.continueHook]: it maps
-  // the id of each pending event to mpv's id, and a continue whose event
-  // is gone never reaches FFI. mpv gives every event of a hook the id of
-  // its registration, so the ids handed out are the library's own, one
-  // per event: a continue that comes after the deadline must not release
-  // the next `on_load` of the same hook.
-  // `_registeredHookNames` collapses duplicate registrations per name:
-  // mpv allows multiples, but its shutdown path can stall when several
-  // events for the same hook are still in flight at quit time.
-  final _hookTimeouts = <String, Duration>{};
-  final _hookTimers = <int, Timer>{};
-  final _activeHooks = <int, int>{};
-  int _lastHookEventId = 0;
-  final _registeredHookNames = <String>{};
-  // Hook names the CONSUMER registered via [Player.registerHook], a
-  // subset of `_registeredHookNames` (the resolver below registers
-  // `on_load` and `on_load_fail` internally without adding here). Only
-  // user-registered hooks surface on [PlayerStream.hook] and transfer
-  // the continue obligation to the consumer; internally-registered ones
-  // are continued by the library.
-  final _userHookNames = <String>{};
+  // The registered hooks and the pending hook events, with the ids the
+  // library hands out and the deadlines.
+  late final _hooks = HookTable(
+    onTimeout: (id, name, timeout, mpvId) {
+      _internalLog(
+        'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s, '
+        'auto-continuing to unblock mpv',
+        level: LogLevel.warn,
+      );
+      if (!_disposed) _lib.mpvHookContinue(_handle, mpvId);
+    },
+  );
 
   // The installed [SourceResolver]; null = feature off. Set by
   // [Player.setSourceResolver], consulted by `_routeHookEvent` on every
@@ -819,64 +806,10 @@ abstract class _PlayerBase {
   /// for the loads to end. Cleared when mpv leaves idle.
   bool _idleResetPending = false;
 
-  /// Runs a content-replacing load, counted in [_loadsInFlight].
-  Future<void> _trackLoad(Future<void> Function() load) async {
-    _loadsInFlight++;
-    try {
-      await load();
-    } finally {
-      _loadsInFlight--;
-      if (_loadsInFlight == 0 && _idleResetPending) await _settleIdleReset();
-    }
-  }
-
-  /// The intent reset left to the end of the loads: still idle with no
-  /// load running (one failed, or a later call cleared the playlist),
-  /// nothing will play. Read from the core, since the notification that
-  /// mpv left idle can come after the loads end.
-  Future<void> _settleIdleReset() async {
-    if (_disposed) return;
-    final (rc, idle) = await _getAsync(
-      'idle-active',
-      MpvFormat.mpvFormatString,
-    );
-    if (!_idleResetPending || _loadsInFlight > 0 || _disposed) return;
-    _idleResetPending = false;
-    if (rc >= 0 && idle == 'yes') _writeIntent(false);
-  }
-
   /// Bumped by every public call that sets the play-pause intent, so a
   /// call that corrects the intent after an await can tell whether a later
   /// call set it meanwhile (and then leaves it alone).
   int _intentEpoch = 0;
-
-  /// Sets the play-pause intent for a public call and returns the epoch
-  /// that call owns.
-  int _claimIntent(bool value) {
-    _writeIntent(value);
-    return ++_intentEpoch;
-  }
-
-  /// Whether a load that claimed [intent] for [shouldPlay] starts playing:
-  /// a play() or pause() called after it, while it resolved, has the last
-  /// word, so its pause write must not undo theirs.
-  bool _intendedPlay(int intent, bool shouldPlay) =>
-      intent == _intentEpoch ? shouldPlay : _state.playWhenReady;
-
-  /// Writes the play-pause intent ([PlayerState.playWhenReady]).
-  void _writeIntent(bool value) => _updateField(
-    (s) => s.copyWith(playWhenReady: value),
-    _reactives.playWhenReady,
-    value,
-  );
-
-  /// Puts back the intent a failed load replaced, unless a later call took
-  /// over the load or the intent. Returns whether it did.
-  bool _restoreIntent(_LoadTicket load, int intent, bool previous) {
-    if (load.superseded || intent != _intentEpoch) return false;
-    _writeIntent(previous);
-    return true;
-  }
 
   // ── Property registry (the bulk of state: one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
@@ -1263,42 +1196,6 @@ abstract class _PlayerBase {
   late final StreamController<Loudness> _loudnessMeterCtrl;
   late final StreamController<LoudnessScan?> _loudnessScanCtrl;
 
-  void _startHookTimeout(int id, String name, Duration timeout) {
-    _hookTimers[id] = Timer(timeout, () {
-      _hookTimers.remove(id);
-      // The active map is the source of truth: if a manual continueHook
-      // beat us to it, the id is gone and we skip the redundant FFI call.
-      final mpvId = _activeHooks.remove(id);
-      if (mpvId == null) return;
-      _internalLog(
-        'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s — '
-        'auto-continuing to unblock mpv',
-        level: LogLevel.warn,
-      );
-      if (!_disposed) _lib.mpvHookContinue(_handle, mpvId);
-    });
-  }
-
-  void _cancelHookTimers() {
-    for (final timer in _hookTimers.values) {
-      timer.cancel();
-    }
-    _hookTimers.clear();
-    // Continue every still-active hook on mpv's side BEFORE we drop
-    // them from the active set, so the `quit` that follows finds no
-    // operation held by this client and shuts down cleanly. (The event
-    // isolate exits anyway, on its stop flag, and mpv_terminate_destroy
-    // completes the hooks of the removed client; the continue just keeps
-    // the core from waiting on them meanwhile.) Called from dispose right
-    // after `_disposed` is flipped and before any await, so no hook timer
-    // can fire in between. An id is active only once bring-up delivered
-    // its hook event, so the handle exists here.
-    for (final mpvId in _activeHooks.values) {
-      _lib.mpvHookContinue(_handle, mpvId);
-    }
-    _activeHooks.clear();
-  }
-
   void _checkNotDisposed() {
     if (_disposed) {
       throw const PlayerDisposedException();
@@ -1335,25 +1232,6 @@ abstract class _PlayerBase {
   /// while the main isolate stays free: under a stalled core the FUTURES
   /// queue up, not the UI thread.
   Future<void> _settleWrites() => _client.settleWrites();
-
-  /// Whether mpv reached the end of the current file, parked by
-  /// `keep-open` or about to park, read from the core's own `eof-reached`
-  /// rather than from `state.completed`. That flag comes from the event
-  /// isolate's [MpvEventEndOfContent] reads, which reach the main isolate
-  /// behind the events still queued ahead of them: right after a short
-  /// last entry parks, `completed` can still be false. The calls that
-  /// replace or jump need the core's answer at the call: an unpause
-  /// written while mpv is about to park does not survive the park, so
-  /// they write it again after the load.
-  Future<bool> _parkedAtEof() async =>
-      await getRawProperty('eof-reached') == 'yes';
-
-  /// Whether mpv is parked: at the end of the file and paused, which
-  /// keep-open does only once the output buffer has played out. In the
-  /// last buffer before that, `eof-reached` is already true while the
-  /// audio still plays.
-  Future<bool> _parkedPaused() async =>
-      await _parkedAtEof() && await getRawProperty('pause') == 'yes';
 
   /// Rejects NaN, +Inf and -Inf before they reach `toStringAsFixed`,
   /// which would emit the literal `'NaN'` or `'Infinity'` and have mpv
@@ -1397,99 +1275,6 @@ abstract class _PlayerBase {
   ) {
     if (!reactive.update(value)) return;
     _state = updater(_state);
-  }
-
-  /// Clears the per-track fields a consumer is likely to read
-  /// synchronously on a track-change boundary (the public open()
-  /// path returns before the new file's MPV_EVENT_FILE_LOADED
-  /// fires).
-  ///
-  /// Restricted to fields where mpv re-emits the new value reliably
-  /// after the load. mpv's own observer (see
-  /// `player/client.c::send_client_property_changes`) dedupes on
-  /// `equal_mpv_value(prop->value, val)`, so any property whose new
-  /// value happens to match the previously-observed value (same
-  /// `duration` across two tracks; same `embedded-cover-art-data`
-  /// for same-album files; same `chapter-list`) would NOT fire
-  /// PROPERTY_CHANGE. Wrapper-side reset to defaults on those would
-  /// strand the cell at the default until the next genuinely-new
-  /// value arrives. `position` is safe because `time-pos` re-emits
-  /// at ~30Hz during playback. The remaining fields are handled by
-  /// custom paths that do not depend on mpv's observer dedup.
-  void _clearPerFileState() {
-    final r = _reactives;
-    r.position.update(Duration.zero);
-    r.currentChapter.update(null);
-    r.chapters.update(const <Chapter>[]);
-    _state = _state.copyWith(
-      position: Duration.zero,
-      coverArt: null,
-      currentChapter: null,
-      chapters: const <Chapter>[],
-    );
-    _coverArtCtrl.add(null);
-  }
-
-  /// Clears what [_clearPerFileState] clears plus the file's waveform and
-  /// loudness scan, once mpv is idle with no file loaded: it reports path,
-  /// title and duration unavailable then, and these would otherwise keep
-  /// showing the file that ended. The end of content under `keep-open`
-  /// keeps the file loaded, and its cover with it.
-  void _clearFinishedFile() {
-    if (_disposed) return;
-    _clearPerFileState();
-    _waveformPipeline.clear();
-    _loudnessScanPipeline.clear();
-  }
-
-  /// Updates the lifecycle triple (playing, buffering, completed) and
-  /// emits per-reactive only for fields that actually changed. Used
-  /// for compound transitions (start-file, file-loaded, end-file,
-  /// end of content, shutdown, idle-active). The pure diff lives in
-  /// [computeLifecycle].
-  void _updateLifecycle({bool? playing, bool? buffering, bool? completed}) {
-    final result = computeLifecycle(
-      prev: _state,
-      playing: playing,
-      buffering: buffering,
-      completed: completed,
-    );
-    _state = result.newState;
-    if (result.playingDidChange) _reactives.playing.update(playing!);
-    if (result.bufferingDidChange) _buffering.update(buffering!);
-    if (result.completedDidChange) _completed.update(completed!);
-  }
-
-  /// Settles `completed` from where the core stands against the end of
-  /// content, as the event isolate read it ([MpvEventEndOfContent]): the
-  /// current file is parked at its end ([parked]) and is the last playlist
-  /// entry ([lastEntry]), with no loop that will restart it. `keep-open:
-  /// yes` (shipped pre-init option) makes mpv park paused on the last frame
-  /// there and withhold both MPV_EVENT_END_FILE and idle-active, so the two
-  /// writers that otherwise settle the transport (the END_FILE completed
-  /// flag and the idle-active intent reset) never fire for the last entry.
-  /// The park, not `eof-reached`, is the end: with gapless audio mpv
-  /// reports EOF once the decoder is done, an output buffer before the end
-  /// is heard, and pauses only after that buffer has played.
-  ///
-  /// It is a level, read again at every load, restart, `eof-reached`,
-  /// `pause` and `loop-*` notification, not the observed `eof-reached` edge
-  /// matched against `state.playlist`: mpv samples observed properties once
-  /// per playloop iteration, so an entry that reaches EOF as soon as it
-  /// loads can go from the previous entry's EOF to its own without a change
-  /// being reported, and the state's playlist position can lag or lead the
-  /// entry an edge belonged to. That raised `completed` at a track
-  /// change, cleared by the next load, and missed the real end.
-  void _settleEndOfContent({required bool parked, required bool lastEntry}) {
-    if (!_hasLoadedFile) return;
-    final end = parked && lastEntry && _state.loop == Loop.off;
-    if (end == _state.completed) return;
-    _updateLifecycle(completed: end);
-    // The play-pause intent is spent at the end of content; leaving the
-    // end (a seek back, a new file) keeps it. Only on the edge: a jump or
-    // a replace issued at the park can see one more parked read before
-    // its load starts, and must keep its intent.
-    if (end) _writeIntent(false);
   }
 
   /// The output just opened. With `audio-fallback-to-null` (pre-init
@@ -1546,11 +1331,13 @@ abstract class _PlayerBase {
   ///    running `mpv_hook_add`, and **close the client**, which settles
   ///    every in-flight call.
   /// 6. **`mpvTerminateDestroy(_handle)`** ONLY when the exit and the hook
-  ///    registrations are confirmed, then release the held `content://`
-  ///    descriptors. Destroying the handle while the isolate is still
-  ///    inside `mpv_wait_event` would race the event-loop thread and crash
-  ///    libmpv when the handle is freed mid-syscall; on an unconfirmed exit
-  ///    we skip destroy and let the OS reclaim the handle.
+  ///    registrations are confirmed, in a throwaway isolate and awaited
+  ///    (it waits for the core to shut down and the output to close),
+  ///    then release the held `content://` descriptors. Destroying the
+  ///    handle while the isolate is still inside `mpv_wait_event` would
+  ///    race the event-loop thread and crash libmpv when the handle is
+  ///    freed mid-syscall; on an unconfirmed exit we skip destroy and let
+  ///    the OS reclaim the handle.
   /// 7. **Close all reactive properties + controllers**. Order within
   ///    this group does not matter for correctness (they tolerate
   ///    `close()` while a listener is attached); grouping by ownership

@@ -144,6 +144,20 @@ void main() {
           expect(seekErrors, 0, reason: 'mpv tried to loop a live source');
         }, timeout: const Timeout(Duration(seconds: 30)));
 
+        // The loop stays on for the entries that can repeat, but this one
+        // has ended: the kit read Loop.file as a restart to come and held
+        // `completed` down at the park.
+        test('and completed rises at its park', () async {
+          final completed = player.stream.completed
+              .firstWhere((c) => c)
+              .then((_) => true)
+              .timeout(const Duration(seconds: 6), onTimeout: () => false);
+          await player.open(source.toMedia(), play: true);
+          expect(await completed, isTrue, reason: 'no completed at the park');
+          expect(player.state.loop, Loop.file);
+          expect(player.state.playWhenReady, isFalse);
+        }, timeout: const Timeout(Duration(seconds: 30)));
+
         test('and the next entry follows', () async {
           final next = player.stream.playlist
               .firstWhere((p) => p.index == 1)

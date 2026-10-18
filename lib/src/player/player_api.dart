@@ -62,6 +62,9 @@ abstract interface class PlayerApi {
   /// Tears down the player. Idempotent: every call returns the same
   /// teardown future.
   ///
+  /// mpv shuts down in a background isolate, so the app keeps drawing
+  /// while the audio output closes. The future completes once mpv is gone.
+  ///
   /// On Android a player whose isolate exits without it (the engine was
   /// destroyed while the app's process stays) stops and frees libmpv on
   /// its own.
@@ -447,7 +450,8 @@ abstract interface class PlayerApi {
   /// more after a failed open, with [SourceResolveRequest.isRetry] set),
   /// driven internally by the `on_load` and `on_load_fail` hooks. Return
   /// `null` to keep the current URL; pass `null` to uninstall. [timeout]
-  /// caps a hung resolver (default 15s, `null` disables).
+  /// caps a hung resolver (default 15s, `null` disables). An entry opened
+  /// from the prefetch reuses the URL the resolver gave for it.
   Future<void> setSourceResolver(
     SourceResolver? resolver, {
     Duration? timeout = const Duration(seconds: 15),

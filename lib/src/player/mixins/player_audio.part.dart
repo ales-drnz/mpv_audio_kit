@@ -438,7 +438,7 @@ mixin _AudioModule on _PlayerBase {
       throw ArgumentError.value(
         track,
         'track',
-        'Track.off has no meaning for removeAudioTrack — pass Track.id to '
+        'Track.off has no meaning for removeAudioTrack: pass Track.id to '
             'remove a specific track or Track.auto to remove the current one.',
       );
     }

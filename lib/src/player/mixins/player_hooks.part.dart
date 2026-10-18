@@ -62,7 +62,7 @@ mixin _HooksModule on _PlayerBase {
     // already happened (e.g. the source resolver registered `on_load`
     // internally first): from now on events for this hook surface on
     // [PlayerStream.hook] and the continue obligation is the consumer's.
-    _userHookNames.add(hook.mpvValue);
+    _hooks.user.add(hook.mpvValue);
     await _ensureHookRegistered(hook, priority: priority, timeout: timeout);
   }
 
@@ -75,12 +75,12 @@ mixin _HooksModule on _PlayerBase {
     Duration? timeout,
   }) async {
     final name = hook.mpvValue;
-    if (timeout != null) _hookTimeouts[name] = timeout;
-    if (_registeredHookNames.contains(name)) return;
+    if (timeout != null) _hooks.timeouts[name] = timeout;
+    if (_hooks.registered.contains(name)) return;
     // A dispose that started after the caller's gate frees the handle once
     // the runs it knows of settle: no new one may start against it.
     if (_disposed) return;
-    _registeredHookNames.add(name);
+    _hooks.registered.add(name);
     // `mpv_hook_add` locks the core (it waits for the playloop to reach a
     // dispatch point), so on the main isolate it would stall behind a busy
     // audio-output init. There is no command or async equivalent in the client
@@ -146,16 +146,15 @@ mixin _HooksModule on _PlayerBase {
       );
       return;
     }
-    final mpvId = _activeHooks.remove(id);
+    final mpvId = _hooks.take(id);
     if (mpvId == null) {
       // Already continued (manual + auto-timer race, or caller
       // double-dispatch). Drop silently: the first continue already
       // unblocked mpv.
       return;
     }
-    _hookTimers.remove(id)?.cancel();
     // Safe on the main isolate even though `mpv_hook_continue` locks the
-    // core: a live id in `_activeHooks` means mpv is parked at the hook's
+    // core: a pending event in `_hooks` means mpv is parked at the hook's
     // dispatch point waiting for exactly this call, so the lock is granted
     // immediately: the playloop cannot simultaneously be busy elsewhere.
     _lib.mpvHookContinue(_handle, mpvId);
@@ -200,7 +199,12 @@ mixin _HooksModule on _PlayerBase {
   /// next entry while the current one plays, and mpv stops feeding the
   /// playing entry until it returns: a resolver slower than the output
   /// buffer (0.2 s by default) leaves a gap in the playing track. Keep it
-  /// fast with the prefetch on, for example with URLs fetched ahead.
+  /// fast with the prefetch on, for example with URLs fetched ahead. When
+  /// the entry starts it opens with the URL the resolver gave for the
+  /// prefetch, without a second call, so a URL that changes on every call
+  /// (a salt, a signed URL) keeps the prefetch. A failed open still asks
+  /// again, and a new open, openAll, stop, clearPlaylist or resolver drops
+  /// the kept URL.
   ///
   /// Composes with [registerHook]: when the consumer has registered
   /// `Hook.load` themselves, the resolver runs FIRST, then the event
@@ -222,7 +226,7 @@ mixin _HooksModule on _PlayerBase {
     for (final hook in const [Hook.load, Hook.loadFail]) {
       // The default is 15 s, so a null here was asked for: it lifts the
       // deadline, where for registerHook it only means none was given.
-      if (timeout == null) _hookTimeouts.remove(hook.mpvValue);
+      if (timeout == null) _hooks.timeouts.remove(hook.mpvValue);
       await _ensureHookRegistered(hook, timeout: timeout);
     }
   }
@@ -239,7 +243,7 @@ mixin _HooksModule on _PlayerBase {
   /// microtask as the native event, preserving the pre-resolver timing.
   @override
   Future<void> _routeHookEvent(int id, Hook hook, String name) async {
-    bool pending() => _activeHooks.containsKey(id);
+    bool pending() => _hooks.isPending(id);
     final resolver = _sourceResolver;
     if (resolver != null && (hook == Hook.load || hook == Hook.loadFail)) {
       await _runSourceResolver(resolver, hook, pending);
@@ -247,7 +251,7 @@ mixin _HooksModule on _PlayerBase {
     // The deadline continued the hook while the resolver ran: mpv has moved
     // on, so the event is not handed to the consumer.
     if (_disposed || !pending()) return;
-    if (_userHookNames.contains(name)) {
+    if (_hooks.user.contains(name)) {
       _hookCtrl.add(MpvHookEvent(id, hook));
     } else {
       await continueHook(id);

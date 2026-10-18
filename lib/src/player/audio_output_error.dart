@@ -18,7 +18,7 @@ LogError? buildAudioOutputError(AudioOutputState state) {
     return const LogError(
       prefix: 'mpv_audio_kit',
       level: LogLevel.error,
-      text: 'Audio output failed to initialize — playback is silent',
+      text: 'Audio output failed to initialize: playback is silent',
     );
   }
   return null;
