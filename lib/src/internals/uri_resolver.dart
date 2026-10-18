@@ -137,12 +137,31 @@ bool isFdUri(String uri) =>
 /// not by the URL it was loaded with. Escapes that are not UTF-8 (a
 /// Latin-1 file name) give `null`: a Dart string cannot carry those bytes,
 /// so the URL goes to mpv as it is and mpv decodes it.
+///
+/// A host is read as RFC 8089 reads it, where mpv would keep it as the
+/// start of a relative path. `localhost` is dropped. On Windows any other
+/// host names a share, `\\host\share\...`, as `Uri.file` writes one; so
+/// does `localhost` when no drive letter follows it. Elsewhere another host
+/// stays in the path, as in mpv.
 @visibleForTesting
 String? fileUrlToPath(String uri, {bool? windows}) {
   if (uri.length < 7 || uri.substring(0, 7).toLowerCase() != 'file://') {
     return null;
   }
-  final src = utf8.encode(uri.substring(7));
+  final isWindows = windows ?? Platform.isWindows;
+  var raw = uri.substring(7);
+  var share = false;
+  final slash = raw.indexOf('/');
+  if (slash > 0) {
+    final local = raw.substring(0, slash).toLowerCase() == 'localhost';
+    final drive = raw.length > slash + 2 && raw[slash + 2] == ':';
+    if (isWindows && !(local && drive)) {
+      share = true;
+    } else if (local) {
+      raw = raw.substring(slash);
+    }
+  }
+  final src = utf8.encode(raw);
   final out = <int>[];
   for (var i = 0; i < src.length;) {
     if (src[i] != 0x25 || i + 2 >= src.length) {
@@ -164,10 +183,8 @@ String? fileUrlToPath(String uri, {bool? windows}) {
   } on FormatException {
     return null;
   }
-  if ((windows ?? Platform.isWindows) &&
-      path.length > 2 &&
-      path[0] == '/' &&
-      path[2] == ':') {
+  if (share) return r'\\' + path.replaceAll('/', r'\');
+  if (isWindows && path.length > 2 && path[0] == '/' && path[2] == ':') {
     path = path.substring(1);
   }
   return path;

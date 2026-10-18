@@ -93,6 +93,41 @@ void main() {
       expect(fileUrlToPath('file:///a/b.flac', windows: true), '/a/b.flac');
     });
 
+    test('drops a localhost host', () {
+      expect(
+        fileUrlToPath('file://localhost/a/b.flac', windows: false),
+        '/a/b.flac',
+      );
+      expect(
+        fileUrlToPath('file://LocalHost/a%20b.flac', windows: false),
+        '/a b.flac',
+      );
+      expect(
+        fileUrlToPath('file://localhost/C:/a%20b.flac', windows: true),
+        'C:/a b.flac',
+      );
+    });
+
+    test('names a share on Windows when the URL has a host', () {
+      // Uri.file(r'\\nas\Musica\a b.flac') on Windows.
+      expect(
+        fileUrlToPath('file://nas/Musica/a%20b.flac', windows: true),
+        r'\\nas\Musica\a b.flac',
+      );
+      // Uri.file(r'\\localhost\C$\a.flac'): a share, as there is no drive.
+      expect(
+        fileUrlToPath(r'file://localhost/C$/a.flac', windows: true),
+        r'\\localhost\C$\a.flac',
+      );
+    });
+
+    test('keeps another host in the path elsewhere, as mpv does', () {
+      expect(
+        fileUrlToPath('file://nas/Musica/a.flac', windows: false),
+        'nas/Musica/a.flac',
+      );
+    });
+
     test('returns null for every other URI', () {
       expect(fileUrlToPath('/a/b.flac'), isNull);
       expect(fileUrlToPath('https://x.org/a%20b.mp3'), isNull);
