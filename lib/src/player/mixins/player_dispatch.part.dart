@@ -263,10 +263,7 @@ mixin _DispatchModule on _PlayerBase {
             _lib.mpvHookContinue(_handle, id);
             return;
           }
-          final eventId = ++_lastHookEventId;
-          _activeHooks[eventId] = id;
-          final timeout = _hookTimeouts[name];
-          if (timeout != null) _startHookTimeout(eventId, name, timeout);
+          final eventId = _hooks.add(id, name);
           // Routed through the hooks module: runs the source resolver
           // first when one is installed, then surfaces the event on
           // [PlayerStream.hook] (user-registered hook) or continues it

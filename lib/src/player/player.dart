@@ -28,6 +28,7 @@ import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';
 import '../internals/held_sources.dart';
+import '../internals/hook_table.dart';
 import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
 import '../internals/mpv_client.dart';
@@ -625,7 +626,15 @@ class Player extends _PlayerBase
     // Before the first await: a hook timer firing during the session
     // release would drop its id without continuing it (it skips the FFI
     // call once disposed), and mpv would wait on that hook at shutdown.
-    _cancelHookTimers();
+    // Every pending hook continues now, so the `quit` that follows finds
+    // no operation held by this client. (The event isolate exits anyway,
+    // on its stop flag, and mpv_terminate_destroy completes the hooks of
+    // the removed client; the continue keeps the core from waiting on them
+    // meanwhile.) An event is pending only once bring-up delivered it, so
+    // the handle exists here.
+    for (final mpvId in _hooks.takeAll()) {
+      _lib.mpvHookContinue(_handle, mpvId);
+    }
     // Before the quit: an ended source wakes a reader blocked on it.
     _endPcmSources();
     // Release the OS media session BEFORE tearing libmpv down. After
@@ -677,27 +686,18 @@ abstract class _PlayerBase {
   // intent doesn't stick true.
   bool _hasLoadedFile = false;
 
-  // `_activeHooks` is authoritative for [Player.continueHook]: it maps
-  // the id of each pending event to mpv's id, and a continue whose event
-  // is gone never reaches FFI. mpv gives every event of a hook the id of
-  // its registration, so the ids handed out are the library's own, one
-  // per event: a continue that comes after the deadline must not release
-  // the next `on_load` of the same hook.
-  // `_registeredHookNames` collapses duplicate registrations per name:
-  // mpv allows multiples, but its shutdown path can stall when several
-  // events for the same hook are still in flight at quit time.
-  final _hookTimeouts = <String, Duration>{};
-  final _hookTimers = <int, Timer>{};
-  final _activeHooks = <int, int>{};
-  int _lastHookEventId = 0;
-  final _registeredHookNames = <String>{};
-  // Hook names the CONSUMER registered via [Player.registerHook], a
-  // subset of `_registeredHookNames` (the resolver below registers
-  // `on_load` and `on_load_fail` internally without adding here). Only
-  // user-registered hooks surface on [PlayerStream.hook] and transfer
-  // the continue obligation to the consumer; internally-registered ones
-  // are continued by the library.
-  final _userHookNames = <String>{};
+  // The registered hooks and the pending hook events, with the ids the
+  // library hands out and the deadlines.
+  late final _hooks = HookTable(
+    onTimeout: (id, name, timeout, mpvId) {
+      _internalLog(
+        'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s, '
+        'auto-continuing to unblock mpv',
+        level: LogLevel.warn,
+      );
+      if (!_disposed) _lib.mpvHookContinue(_handle, mpvId);
+    },
+  );
 
   // The installed [SourceResolver]; null = feature off. Set by
   // [Player.setSourceResolver], consulted by `_routeHookEvent` on every
@@ -1262,42 +1262,6 @@ abstract class _PlayerBase {
   LoudnessScan? _lastLoudnessScan;
   late final StreamController<Loudness> _loudnessMeterCtrl;
   late final StreamController<LoudnessScan?> _loudnessScanCtrl;
-
-  void _startHookTimeout(int id, String name, Duration timeout) {
-    _hookTimers[id] = Timer(timeout, () {
-      _hookTimers.remove(id);
-      // The active map is the source of truth: if a manual continueHook
-      // beat us to it, the id is gone and we skip the redundant FFI call.
-      final mpvId = _activeHooks.remove(id);
-      if (mpvId == null) return;
-      _internalLog(
-        'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s, '
-        'auto-continuing to unblock mpv',
-        level: LogLevel.warn,
-      );
-      if (!_disposed) _lib.mpvHookContinue(_handle, mpvId);
-    });
-  }
-
-  void _cancelHookTimers() {
-    for (final timer in _hookTimers.values) {
-      timer.cancel();
-    }
-    _hookTimers.clear();
-    // Continue every still-active hook on mpv's side BEFORE we drop
-    // them from the active set, so the `quit` that follows finds no
-    // operation held by this client and shuts down cleanly. (The event
-    // isolate exits anyway, on its stop flag, and mpv_terminate_destroy
-    // completes the hooks of the removed client; the continue just keeps
-    // the core from waiting on them meanwhile.) Called from dispose right
-    // after `_disposed` is flipped and before any await, so no hook timer
-    // can fire in between. An id is active only once bring-up delivered
-    // its hook event, so the handle exists here.
-    for (final mpvId in _activeHooks.values) {
-      _lib.mpvHookContinue(_handle, mpvId);
-    }
-    _activeHooks.clear();
-  }
 
   void _checkNotDisposed() {
     if (_disposed) {
