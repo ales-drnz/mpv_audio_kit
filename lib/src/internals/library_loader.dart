@@ -14,6 +14,7 @@ import '../media_session/media_session_channel.dart';
 import '../mpv_bindings.dart';
 import 'debug_log.dart';
 import 'orphan_handle_tracker.dart';
+import 'owner_watch.dart';
 import 'pcm_native.dart';
 
 /// How long Hot-Restart cleanup waits, after waking a leaked core with
@@ -24,15 +25,6 @@ import 'pcm_native.dart';
 /// mutex it sleeps on (use-after-free). This comfortably exceeds the
 /// 0.1 s debug wait-event timeout so the isolate has provably unwound.
 const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
-
-/// The `set` commands that turn off the analysis switches of libmpv. The
-/// loudness scan goes first: turning the waveform off while the scan still
-/// runs would restart the decode pass for the scan alone.
-const List<String> _kAnalysisOff = [
-  'set loudness-scan-enabled no',
-  'set waveform-enabled no',
-  'set analyzer-taps ""',
-];
 
 /// Two-phase teardown for libmpv handles leaked across a Hot-Restart.
 ///
@@ -57,7 +49,7 @@ Future<void> reapOrphanedHandles(
 }) async {
   const tag = 'mpv_audio_kit:';
   for (final ref in references) {
-    for (final command in [if (stopAnalysis) ..._kAnalysisOff, 'quit']) {
+    for (final command in [if (stopAnalysis) ...analysisOffCommands, 'quit']) {
       final cmd = command.toNativeUtf8();
       try {
         lib.mpvCommandString(ref, cmd);

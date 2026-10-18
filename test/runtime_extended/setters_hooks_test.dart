@@ -56,7 +56,7 @@ void main() {
           expect(
             event.id,
             greaterThan(0),
-            reason: 'mpv assigns positive ids to hook events',
+            reason: 'hook events carry positive ids',
           );
 
           unawaited(player.continueHook(event.id));
@@ -117,5 +117,62 @@ void main() {
         }
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
+
+    group('Hook ids', () {
+      test('a continueHook that comes after the timeout leaves the next '
+          'event of the hook parked', () async {
+        final player = await buildPlayer();
+        final events = StreamController<MpvHookEvent>();
+        final queue = StreamIterator(events.stream);
+        var loads = 0;
+        final subs = [
+          player.stream.hook.listen(events.add),
+          player.stream.seekCompleted.listen((_) => loads++),
+        ];
+        MpvHookEvent? b;
+        try {
+          await player.registerHook(
+            Hook.load,
+            timeout: const Duration(milliseconds: 300),
+          );
+          // A: the listener sits on it past the deadline, so the library
+          // continues it and the file loads.
+          final aLoaded = player.stream.seekCompleted.first;
+          unawaited(player.open(Media(fixturePath), play: false));
+          expect(await queue.moveNext().timeout(_wait), isTrue);
+          final a = queue.current;
+          await aLoaded.timeout(_wait);
+
+          // B: a deadline far away, so only a continue releases it.
+          await player.registerHook(
+            Hook.load,
+            timeout: const Duration(seconds: 30),
+          );
+          unawaited(player.open(Media(fixturePath), play: false));
+          expect(await queue.moveNext().timeout(_wait), isTrue);
+          b = queue.current;
+
+          // The late continue for A must not release B.
+          await player.continueHook(a.id);
+          await Future<void>.delayed(const Duration(seconds: 1));
+          expect(
+            loads,
+            1,
+            reason: 'B is still in its on_load: only its own id releases it',
+          );
+          await player.continueHook(b.id);
+          await player.stream.seekCompleted.first.timeout(_wait);
+        } finally {
+          if (b != null) await player.continueHook(b.id);
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await queue.cancel();
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
   });
 }
+
+const _wait = Duration(seconds: 5);

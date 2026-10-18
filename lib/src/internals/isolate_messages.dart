@@ -32,6 +32,10 @@ class _InitMessage {
   /// `MPV_EVENT_SHUTDOWN`, so it survives a dropped `quit` or a stalled hook.
   final int stopFlagAddress;
 
+  /// Address of the `Int32` word [OwnerWatch] raises once the isolate that
+  /// started this one exited: the loop then frees mpv itself.
+  final int ownerGoneAddress;
+
   _InitMessage(
     this.toMain, {
     this.libraryPath,
@@ -41,6 +45,7 @@ class _InitMessage {
     this.logLevel,
     this.wakeupCounterAddress,
     required this.stopFlagAddress,
+    required this.ownerGoneAddress,
   });
 }
 

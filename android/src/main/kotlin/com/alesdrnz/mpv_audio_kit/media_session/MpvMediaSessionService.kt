@@ -28,15 +28,14 @@ internal class MpvMediaSessionService : MediaSessionService() {
         MediaSessionManager.currentSession()
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // Playback is in-process and dies with the app, so swiping the app
-        // away should clear the notification rather than linger.
-        val session = MediaSessionManager.currentSession()
-        val stillPlaying = session?.player?.playWhenReady == true &&
-            session.player.mediaItemCount > 0
-        if (!stillPlaying) {
-            stopSelf()
-        }
-        super.onTaskRemoved(rootIntent)
+        // An engine that goes with the task turns the session off on its
+        // detach. One that outlives it keeps playing: the service stays
+        // while the session plays, also through a load (see [TaskRemoval]).
+        val player = MediaSessionManager.currentSession()?.player
+        TaskRemoval.onTaskRemoved(
+            playWhenReady = player?.playWhenReady == true,
+            mediaItemCount = player?.mediaItemCount ?: 0,
+        ) { super.onTaskRemoved(rootIntent) }
     }
 
     override fun onDestroy() {

@@ -474,6 +474,8 @@ All `PlayerConfiguration` fields are optional. Their defaults:
 await player.dispose();
 ```
 
+A player lasts as long as the isolate that created it. On Android the Flutter engine can be destroyed while the app's process stays, for example on Back from the root route or a swipe from the recent apps: the players of that engine then stop and release libmpv on their own, within about a second. To keep playing after the activity closes, keep the engine alive, cached or run by a service.
+
 ---
 
 ### 2. Media sources
