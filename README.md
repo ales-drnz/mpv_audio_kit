@@ -1619,6 +1619,11 @@ await player.setNetworkTimeout(const Duration(seconds: 10)); // give up after 10
 The longest timeout FFmpeg takes is 2147.483647 s, about 36 minutes: a
 longer one is capped there.
 
+For `smb2://` sources, from libmpv-r18 on, a timeout of zero gives the
+connection 30 s, with no limit on the reads after it, and `stop()`, a
+track change or `dispose()` interrupt a connect or a read at once. An
+older libmpv waits for the timeout to run out first.
+
 #### 7.4 TLS and SSL verification
 
 Certificate verification is off by default, as in mpv. Turn it on for

@@ -95,6 +95,11 @@ mixin _NetworkModule on _PlayerBase {
   /// keeps it as a 32-bit count of microseconds, and a longer one would
   /// fail every network open. A longer [timeout] is capped there, in mpv
   /// and in [PlayerState.networkTimeout] alike.
+  ///
+  /// For `smb2://` sources, from libmpv-r18 on: with [Duration.zero] the
+  /// connection gets 30 seconds, with no limit on the reads after it, and
+  /// a stop, a track change or a dispose interrupts a connect or a read at
+  /// once. An older libmpv waits for the timeout to run out first.
   Future<void> setNetworkTimeout(Duration timeout) async {
     await _gate();
     if (timeout > _kMaxNetworkTimeout) timeout = _kMaxNetworkTimeout;
