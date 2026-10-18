@@ -388,12 +388,13 @@ mixin _PlaylistModule on _PlayerBase {
   /// stall on file boundaries. Observe progress via
   /// [PlayerStream.prefetchState].
   ///
-  /// The `on_load` hook, and so the source resolver, runs for the next
-  /// entry while the current one plays, then once more when the entry
-  /// starts. Until that first run continues, mpv stops feeding the
-  /// playing entry: a resolver or hook listener slower than the output
-  /// buffer leaves a gap in the playing track. A `file-local-options`
-  /// write in that run lands on the playing entry.
+  /// The `on_load` hook, and with it the source resolver, runs for the
+  /// next entry while the current one plays. Until it continues, mpv
+  /// stops feeding the playing entry: a resolver or hook listener slower
+  /// than the output buffer leaves a gap in the playing track. A hook of
+  /// [Player.registerHook] runs once more when the entry starts, and a
+  /// `file-local-options` write in its first run lands on the playing
+  /// entry.
   ///
   /// Some entries open when they start, not from the prefetch:
   /// - from libmpv-r18 on, an entry whose [Media] options (headers, chunk
