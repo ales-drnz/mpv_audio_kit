@@ -255,17 +255,17 @@ mixin _DispatchModule on _PlayerBase {
             _lib.mpvHookContinue(_handle, id);
             return;
           }
-          _activeHookIds.add(id);
-          _hookEventCounts.update(id, (n) => n + 1, ifAbsent: () => 1);
+          final eventId = ++_lastHookEventId;
+          _activeHooks[eventId] = id;
           final timeout = _hookTimeouts[name];
-          if (timeout != null) _startHookTimeout(id, name, timeout);
+          if (timeout != null) _startHookTimeout(eventId, name, timeout);
           // Routed through the hooks module: runs the source resolver
           // first when one is installed, then surfaces the event on
           // [PlayerStream.hook] (user-registered hook) or continues it
           // internally (resolver-only registration). With no resolver
           // and a user registration the add() inside is still
           // synchronous: same-microtask emission as before.
-          unawaited(_routeHookEvent(id, hook, name));
+          unawaited(_routeHookEvent(eventId, hook, name));
       }
     } catch (e, st) {
       _internalLog(

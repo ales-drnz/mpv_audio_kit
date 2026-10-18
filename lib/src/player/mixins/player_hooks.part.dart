@@ -120,8 +120,8 @@ mixin _HooksModule on _PlayerBase {
   /// Idempotent on a per-id basis: a second [continueHook] call for the
   /// same id (a buggy double-dispatch in your code, or a manual continue
   /// racing the auto-timeout fallback) is dropped before reaching mpv.
-  /// mpv's behaviour for an already-continued id is undefined across
-  /// versions, so the active set is tracked internally.
+  /// Each event has its own id, so a call that comes after the timeout
+  /// continued its event does not release a later event of the same hook.
   ///
   /// Calling with an invalid [id] (zero or negative, a typo in a dispatch
   /// table) is also a no-op: a warning is logged on
@@ -145,7 +145,8 @@ mixin _HooksModule on _PlayerBase {
       );
       return;
     }
-    if (!_activeHookIds.remove(id)) {
+    final mpvId = _activeHooks.remove(id);
+    if (mpvId == null) {
       // Already continued (manual + auto-timer race, or caller
       // double-dispatch). Drop silently: the first continue already
       // unblocked mpv.
@@ -153,10 +154,10 @@ mixin _HooksModule on _PlayerBase {
     }
     _hookTimers.remove(id)?.cancel();
     // Safe on the main isolate even though `mpv_hook_continue` locks the
-    // core: a live id in `_activeHookIds` means mpv is parked at the hook's
+    // core: a live id in `_activeHooks` means mpv is parked at the hook's
     // dispatch point waiting for exactly this call, so the lock is granted
     // immediately: the playloop cannot simultaneously be busy elsewhere.
-    _lib.mpvHookContinue(_handle, id);
+    _lib.mpvHookContinue(_handle, mpvId);
   }
 
   /// Installs [resolver] as the player's source resolver: the official
@@ -230,10 +231,7 @@ mixin _HooksModule on _PlayerBase {
   /// microtask as the native event, preserving the pre-resolver timing.
   @override
   Future<void> _routeHookEvent(int id, Hook hook, String name) async {
-    // Read before any await: the dispatch counted this event just now.
-    final event = _hookEventCounts[id];
-    bool pending() =>
-        _activeHookIds.contains(id) && _hookEventCounts[id] == event;
+    bool pending() => _activeHooks.containsKey(id);
     final resolver = _sourceResolver;
     if (resolver != null && (hook == Hook.load || hook == Hook.loadFail)) {
       await _runSourceResolver(resolver, hook, pending);

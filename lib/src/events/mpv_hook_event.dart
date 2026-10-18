@@ -30,13 +30,14 @@ import '../types/enums/hook.dart';
 /// });
 /// ```
 class MpvHookEvent {
-  /// Opaque identifier required by [Player.continueHook].
+  /// Opaque identifier required by [Player.continueHook], unique to this
+  /// event.
   final int id;
 
   /// The lifecycle phase mpv is asking you to handle.
   final Hook hook;
 
-  /// Creates a hook event for the given libmpv hook [id] and [hook] phase.
+  /// Creates a hook event with the given [id] for the [hook] phase.
   const MpvHookEvent(this.id, this.hook);
 
   @override

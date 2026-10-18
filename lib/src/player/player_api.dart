@@ -410,8 +410,9 @@ abstract interface class PlayerApi {
   Future<void> registerHook(Hook hook, {int priority = 0, Duration? timeout});
 
   /// Releases the hook stage identified by [id], letting mpv resume the
-  /// gated operation. A no-op after [dispose], which has already released
-  /// every pending hook.
+  /// gated operation. A no-op for an event already released, also by the
+  /// timeout, and after [dispose], which has already released every
+  /// pending hook.
   Future<void> continueHook(int id);
 
   /// Installs a [SourceResolver], the official callback for resolving or

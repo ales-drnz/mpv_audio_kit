@@ -669,20 +669,19 @@ abstract class _PlayerBase {
   // intent doesn't stick true.
   bool _hasLoadedFile = false;
 
-  // `_activeHookIds` is authoritative for [Player.continueHook]: mpv's
-  // behaviour on stale ids is undefined across versions, so duplicate
-  // continues are rejected here before they reach FFI.
+  // `_activeHooks` is authoritative for [Player.continueHook]: it maps
+  // the id of each pending event to mpv's id, and a continue whose event
+  // is gone never reaches FFI. mpv gives every event of a hook the id of
+  // its registration, so the ids handed out are the library's own, one
+  // per event: a continue that comes after the deadline must not release
+  // the next `on_load` of the same hook.
   // `_registeredHookNames` collapses duplicate registrations per name:
   // mpv allows multiples, but its shutdown path can stall when several
   // events for the same hook are still in flight at quit time.
   final _hookTimeouts = <String, Duration>{};
   final _hookTimers = <int, Timer>{};
-  final _activeHookIds = <int>{};
-  // mpv gives each event of a hook the id of its registration, so every
-  // `on_load` arrives under the same id. The count of events seen per id
-  // tells a pass that awaited whether the event it was handed is still
-  // the pending one, or mpv has moved on to a later load.
-  final _hookEventCounts = <int, int>{};
+  final _activeHooks = <int, int>{};
+  int _lastHookEventId = 0;
   final _registeredHookNames = <String>{};
   // Hook names the CONSUMER registered via [Player.registerHook], a
   // subset of `_registeredHookNames` (the resolver below registers
@@ -1249,16 +1248,16 @@ abstract class _PlayerBase {
   void _startHookTimeout(int id, String name, Duration timeout) {
     _hookTimers[id] = Timer(timeout, () {
       _hookTimers.remove(id);
-      // The active-id set is the source of truth: if a manual
-      // continueHook beat us to it, the id is gone and we skip the
-      // redundant FFI call.
-      if (!_activeHookIds.remove(id)) return;
+      // The active map is the source of truth: if a manual continueHook
+      // beat us to it, the id is gone and we skip the redundant FFI call.
+      final mpvId = _activeHooks.remove(id);
+      if (mpvId == null) return;
       _internalLog(
         'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s — '
         'auto-continuing to unblock mpv',
         level: LogLevel.warn,
       );
-      if (!_disposed) _lib.mpvHookContinue(_handle, id);
+      if (!_disposed) _lib.mpvHookContinue(_handle, mpvId);
     });
   }
 
@@ -1276,10 +1275,10 @@ abstract class _PlayerBase {
     // after `_disposed` is flipped and before any await, so no hook timer
     // can fire in between. An id is active only once bring-up delivered
     // its hook event, so the handle exists here.
-    for (final id in _activeHookIds) {
-      _lib.mpvHookContinue(_handle, id);
+    for (final mpvId in _activeHooks.values) {
+      _lib.mpvHookContinue(_handle, mpvId);
     }
-    _activeHookIds.clear();
+    _activeHooks.clear();
   }
 
   void _checkNotDisposed() {
