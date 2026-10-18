@@ -33,7 +33,9 @@ void main() {
         final disposeFuture = player.dispose();
         await Future.wait([setFuture, disposeFuture]);
       }
-      expect(true, isTrue, reason: 'survived 6 setReplayGain-vs-dispose races');
+      // A crash, or a write left waiting on the freed handle, fails this
+      // run. The closed-client guard itself is pinned without timing in
+      // test/internal/mpv_client_test.dart.
     });
 
     test(
