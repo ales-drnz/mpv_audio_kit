@@ -1265,14 +1265,41 @@ await player.setAudioDriver('auto');      // mpv picks (default)
 
 #### 6.2 Exclusive mode
 
-Asks the driver for exclusive use of the device, so the system mixer does not resample the audio or apply its volume. WASAPI (Windows), CoreAudio (macOS), AAudio (Android) and PipeWire (Linux) honor it; other drivers ignore it. On iOS (AudioUnit) it only stops your audio from mixing with other apps:
+Asks the driver for exclusive use of the device:
 
 ```dart
 await player.setAudioExclusive(true);
 await player.setAudioExclusive(false);  // back to shared mode
 ```
 
-While the player holds the device, other apps have no sound. Turn exclusive mode off or call `dispose()` when you are done.
+What it does depends on the driver:
+
+- WASAPI (Windows) and CoreAudio (macOS) take the device and switch it to
+  the track's rate when it supports it, so the system mixer neither
+  resamples the audio nor applies its volume. Other apps have no sound on
+  that device. `setSystemVolume` then moves the device's own volume on
+  Windows (see [4.5](#45-volume-and-mute)), and does nothing on macOS.
+- PipeWire (Linux) keeps other streams off the sink, but the stream still
+  goes through PipeWire: its volume applies, and the audio is resampled
+  when the rate is not one the server allows.
+- On Android the default `audiotrack` driver ignores it. With `aaudio` the
+  stream is exclusive only with mpv's `aaudio-performance-mode` set to
+  `low-latency`, on Android 8.1 (API 27) or later with a device that
+  supports it, and the system decides. Other apps keep playing.
+- On iOS it has no effect: your audio never mixes with other apps, so it
+  can own Now Playing, and changing the value only reopens the output.
+- Other drivers ignore it.
+
+With WASAPI and CoreAudio the player keeps the device while paused and at
+the end of the queue. Call `stop()`, `setAudioExclusive(false)` or
+`dispose()` to give it back to other apps.
+
+```dart
+// Android: ask aaudio for an exclusive low-latency stream
+await player.setAudioDriver('aaudio');
+await player.setRawProperty('aaudio-performance-mode', 'low-latency');
+await player.setAudioExclusive(true);
+```
 
 #### 6.3 Device selection
 
@@ -2824,6 +2851,10 @@ later the system may fade the app out when another app gains focus.
 Unplugging headphones always pauses, even with `keepPlaying`, as Apple's
 guidelines require. macOS, Linux and Windows have no per-app audio
 session, so the policy does nothing there.
+
+On iOS the player's audio does not mix with other apps, and the output
+opens as soon as a file loads, even paused: `open(media, play: false)`
+already stops the audio of another app.
 
 Background playback on iOS also needs the setup in [Permissions](#ios).
 

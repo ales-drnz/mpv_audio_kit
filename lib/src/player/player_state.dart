@@ -263,7 +263,8 @@ final class PlayerState {
   /// string when none is configured. Set via [Player.setHttpProxy].
   final String httpProxy;
 
-  /// Whether audio exclusive mode is enabled.
+  /// Whether audio exclusive mode is requested. What it does depends on
+  /// the driver: see [Player.setAudioExclusive].
   final bool audioExclusive;
 
   /// Whether mpv tags the stream's media role as "music" on the OS audio

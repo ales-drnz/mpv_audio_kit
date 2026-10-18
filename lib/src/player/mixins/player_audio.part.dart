@@ -275,8 +275,25 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Requests exclusive use of the audio device (mpv's `audio-exclusive`).
-  /// WASAPI, CoreAudio, AAudio and PipeWire honor it; on iOS AudioUnit it
-  /// only turns off mixing with other apps, and other drivers ignore it.
+  ///
+  /// - WASAPI (Windows) and CoreAudio (macOS) take the device for the
+  ///   player and switch it to the track's rate when it supports it, so
+  ///   the system mixer neither resamples nor sets the volume. Other apps
+  ///   have no sound on that device. The player keeps it while paused and
+  ///   at the end of the queue, until [Player.stop], a call with `false`
+  ///   or [Player.dispose].
+  /// - PipeWire keeps other streams off the sink, but the stream still
+  ///   goes through PipeWire: its volume applies, and the audio is
+  ///   resampled when the rate is not one the server allows.
+  /// - On Android the default `audiotrack` driver ignores it. `aaudio`
+  ///   gets an exclusive stream only with mpv's `aaudio-performance-mode`
+  ///   set to `low-latency`, on Android 8.1 or later with a device that
+  ///   supports it, and the system has the last word. Other apps keep
+  ///   playing.
+  /// - On iOS it has no effect: the audio never mixes with other apps,
+  ///   and changing the value only reopens the output.
+  ///
+  /// Other drivers ignore it.
   Future<void> setAudioExclusive(bool exclusive) async {
     await _gate();
     await _prop('audio-exclusive', exclusive ? 'yes' : 'no');

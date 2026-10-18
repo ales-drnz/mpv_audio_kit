@@ -283,7 +283,10 @@ abstract interface class PlayerApi {
   /// silently ignored (no throw) when unsupported by the AO.
   Future<void> setSystemMute(bool mute);
 
-  /// Opens the audio device in exclusive mode when [exclusive] is true.
+  /// Opens the audio device in exclusive mode when [exclusive] is true:
+  /// WASAPI and CoreAudio take the device, PipeWire keeps other streams
+  /// off the sink, and iOS and Android's default driver ignore it. See
+  /// [Player.setAudioExclusive].
   Future<void> setAudioExclusive(bool exclusive);
 
   /// Reports a "music" media role to the OS audio server (PulseAudio or
