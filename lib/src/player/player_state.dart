@@ -96,7 +96,8 @@ final class PlayerState {
   /// output buffer before. It stays `false` between playlist entries and
   /// while `loop-file` or `loop-playlist` is on. Resets to `false` when a
   /// new track starts (a fresh [Player.open] or [Player.openAll], or a
-  /// playlist advance) or when you seek back into the track. Drives
+  /// playlist advance), when you seek back into the track, or when a loop
+  /// is turned on: [Player.setLoop] then rewinds, paused. Drives
   /// [MpvPlaybackState.completed].
   final bool completed;
 
@@ -107,7 +108,8 @@ final class PlayerState {
   /// stream, nothing loaded, or a track still loading.
   final Duration duration;
 
-  /// Current volume level, 0 to 100. Values above 100 amplify the signal.
+  /// Current soft volume in percent, 0 to 1000. 100 is unity, and values
+  /// above it amplify the signal.
   final double volume;
 
   /// Playback speed multiplier. 1.0 = normal speed.
@@ -116,7 +118,8 @@ final class PlayerState {
   /// Pitch multiplier. 1.0 = original pitch.
   final double pitch;
 
-  /// Whether the player is currently buffering.
+  /// Whether a file is opening, from start-file to file-loaded. A network
+  /// stall during playback does not set it: see [pausedForCache].
   final bool buffering;
 
   /// Absolute position up to which the demuxer has buffered content.
@@ -161,14 +164,15 @@ final class PlayerState {
   /// The currently selected audio output device.
   final Device audioDevice;
 
-  /// All audio output devices detected by mpv.
+  /// All audio output devices detected by mpv. On Android these are the
+  /// drivers, not the physical devices: see [Device].
   final List<Device> audioDevices;
 
   /// Whether the player is muted.
   final bool mute;
 
-  /// Audio delay applied to the output stream. Positive values delay
-  /// audio relative to video; negative values advance it.
+  /// Audio delay applied to the output stream, against the playback
+  /// clock. Positive values delay the audio; negative values advance it.
   final Duration audioDelay;
 
   /// Whether pitch correction is enabled when changing playback speed.
@@ -186,21 +190,26 @@ final class PlayerState {
   /// Software volume gain in dB.
   final double volumeGain;
 
-  /// Lower clamp mpv applies to [volumeGain], in dB (`volume-gain-min`,
-  /// default -96). Set via [Player.setVolumeGainMin].
+  /// mpv's `volume-gain-min`, in dB (default -96): the floor of mpv's
+  /// relative steps on the gain, not of [Player.setVolumeGain]. Set via
+  /// [Player.setVolumeGainMin].
   final double volumeGainMin;
 
-  /// Upper clamp mpv applies to [volumeGain], in dB (`volume-gain-max`,
-  /// default +12). Set via [Player.setVolumeGainMax].
+  /// mpv's `volume-gain-max`, in dB (default +12): the top of mpv's
+  /// relative steps on the gain, not of [Player.setVolumeGain]. Set via
+  /// [Player.setVolumeGainMax].
   final double volumeGainMax;
 
-  /// OS per-app mixer volume in percent (`ao-volume`), distinct from soft
-  /// [volume]. `null` when the active audio output doesn't expose it. Set via
+  /// The volume the audio driver exposes, in percent (`ao-volume`),
+  /// distinct from soft [volume]: the app's stream on most drivers, the
+  /// whole device with ALSA and WASAPI in exclusive mode. `null` when the
+  /// active audio output doesn't expose it, as on iOS and Android. Set via
   /// [Player.setSystemVolume] (best-effort).
   final double? systemVolume;
 
-  /// OS per-app mute (`ao-mute`), distinct from soft [mute]. `null` when the
-  /// active audio output doesn't expose it. Set via [Player.setSystemMute].
+  /// The mute the audio driver exposes (`ao-mute`), distinct from soft
+  /// [mute]. `null` when the active audio output doesn't expose it. Set via
+  /// [Player.setSystemMute].
   final bool? systemMute;
 
   /// Cache configuration. Set via [Player.setCache].
@@ -255,12 +264,13 @@ final class PlayerState {
   /// string when none is configured. Set via [Player.setHttpProxy].
   final String httpProxy;
 
-  /// Whether audio exclusive mode is enabled.
+  /// Whether audio exclusive mode is requested. What it does depends on
+  /// the driver: see [Player.setAudioExclusive].
   final bool audioExclusive;
 
   /// Whether mpv tags the stream's media role as "music" on the OS audio
-  /// server (`audio-set-media-role`; PulseAudio or PipeWire). Set via
-  /// [Player.setAudioMediaRole].
+  /// server (`audio-set-media-role`): a role on PulseAudio and PipeWire, a
+  /// content type on Android. Set via [Player.setAudioMediaRole].
   final bool audioMediaRole;
 
   /// Audio buffer size.
@@ -287,7 +297,9 @@ final class PlayerState {
   /// Apply via [Player.setAudioSpdif].
   final Set<Spdif> audioSpdif;
 
-  /// Max volume limit (up to 1000).
+  /// mpv's `volume-max`, 100 to 1000 (default 130): the top of mpv's
+  /// relative volume steps and a natural top for a volume slider. It does
+  /// not cap [Player.setVolume].
   final double volumeMax;
 
   /// Target sample rate (0 for auto).
@@ -312,8 +324,8 @@ final class PlayerState {
   /// what `setAudioDriver('auto')` stores.
   final String audioDriver;
 
-  /// Audio output lifecycle (`closed`, `initializing`, `active` or
-  /// `failed`). See [AudioOutputState].
+  /// Audio output lifecycle: in practice `closed`, then `active` or
+  /// `failed`. See [AudioOutputState].
   final AudioOutputState audioOutputState;
 
   /// The DSP effects in mpv's `--af` chain, as an ordered list applied
@@ -329,8 +341,9 @@ final class PlayerState {
   final SpectrumSettings spectrum;
 
   /// Embedded cover art of the currently loaded track, or `null`
-  /// when the file has no embedded picture. Refreshes on every
-  /// `Player.open()` or playlist transition. Read live via
+  /// when the file has no embedded picture. Refreshes on every file load,
+  /// and goes to `null` first when [Player.open], [Player.openAll] or
+  /// [Player.openPlaylistFile] returns. Read live via
   /// [PlayerStream.coverArt].
   final CoverArt? coverArt;
 
@@ -427,8 +440,8 @@ final class PlayerState {
   final String playlistPath;
 
   /// A-B loop start point. `null` when disabled, and again once the file
-  /// it was set on ends. Setter: [Player.setAbLoopA]. Mirrors mpv's
-  /// `ab-loop-a`.
+  /// it was set on ends; a point set with no file loaded stays for every
+  /// file. Setter: [Player.setAbLoopA]. Mirrors mpv's `ab-loop-a`.
   final Duration? abLoopA;
 
   /// A-B loop end point. `null` when disabled, and again once the file it

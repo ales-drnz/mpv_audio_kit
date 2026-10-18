@@ -148,7 +148,9 @@ class Player extends _PlayerBase
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration});
 
-  /// Process-wide single-instance guard for the OS media session.
+  /// Single-instance guard for the OS media session. A static, so it
+  /// holds per isolate, and so per Flutter engine: the players of two
+  /// engines do not see each other's.
   /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
   /// single-instance per process: enabling on a second [Player]
   /// would silently steal the first one's lockscreen entry. Linux
@@ -298,6 +300,12 @@ class Player extends _PlayerBase
   /// transition the outgoing track keeps playing (or stays parked) until
   /// the jump; while entries build up on an idle core the playlist
   /// `index` reports `-1` (see [Playlist.index]).
+  ///
+  /// The call succeeds or fails as a whole. When mpv refuses an entry it
+  /// throws [MpvCommandException], the entries it already added leave the
+  /// playlist, the track that was playing keeps playing (parked at the
+  /// end, the playlist is left empty), and the play intent goes back to
+  /// what it was.
   @override
   Future<void> openAll(List<Media> medias, {bool? play, int index = 0}) =>
       _trackLoad(() => _openAll(medias, play, index));

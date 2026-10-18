@@ -85,6 +85,15 @@ mixin _PlaybackModule on _PlayerBase {
   /// [PlayerConfiguration.watchLaterDir]. On mobile, set `watchLaterDir` to a
   /// writable path or the write silently fails.
   ///
+  /// mpv saves only the values that differ from the ones it had at
+  /// startup. [PlayerConfiguration.initialVolume] applies after startup,
+  /// so for the volume that base is 100: a volume of 100 is not saved, and
+  /// reopening the file keeps the volume of the moment.
+  ///
+  /// A restored value becomes the player's own: it stays for the files
+  /// that follow, until the app sets another. To keep a value per file,
+  /// set it again when the next file opens.
+  ///
   /// An Android `content://` source has no resume point: it plays from a
   /// file descriptor, whose number the system gives again to other files.
   /// For it the call writes nothing and says so on
@@ -236,7 +245,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// YouTube's chapters live in the video description
   /// not in the audio container, so a freshly-loaded stream has an empty
   /// `chapter-list`. This writes the list directly through the stable C API
-  /// (`mpv_set_property` on `chapter-list`), so [PlayerStream.chapters] /
+  /// (`mpv_set_property` on `chapter-list`), so [PlayerStream.chapters] and
   /// [PlayerState.chapters] then reflect them and [setChapter] navigates them
   /// natively: no demuxer chapters required. Pass an empty list to clear.
   ///
@@ -282,7 +291,9 @@ mixin _PlaybackModule on _PlayerBase {
   /// The points belong to the current file: when it ends, or another file
   /// loads, they go back to `null`. Points set with no file loaded apply to
   /// every file instead. Keep both inside the file: past its end, the end
-  /// of the file seeks back to A again and again.
+  /// of the file seeks back to A again and again. A live [PcmSource] entry
+  /// plays on past B from libmpv-r18 on; with an older libmpv it never
+  /// ends while the loop is on.
   Future<void> setAbLoopA(Duration? position) async {
     await _gate();
     await _prop(

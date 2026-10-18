@@ -13,8 +13,13 @@ const afCommandRefusedLog =
 /// Audio setters: volume, mute, output device, format and channel layout,
 /// the effects chain, and the cover-art display options.
 mixin _AudioModule on _PlayerBase {
-  /// Sets volume (0–100; values above 100 amplify the signal, up to
-  /// [PlayerState.volumeMax]). Throws [RangeError] when negative.
+  /// Sets the soft volume in percent: 100 plays at unity and values above
+  /// it amplify. mpv's scale is cubic: 130 is about +7 dB, 1000 is +60 dB.
+  ///
+  /// Takes 0 to 1000. Throws [RangeError] when negative, and
+  /// [MpvCommandException] above 1000, which mpv refuses.
+  /// [PlayerState.volumeMax] does not cap this call: it bounds mpv's
+  /// relative steps (`add`, `cycle`) only. Clamp a slider to it yourself.
   Future<void> setVolume(double volume) async {
     _checkRange(volume, 0, double.maxFinite, 'volume');
     await _gate();
@@ -73,13 +78,13 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the audio delay relative to video (mpv's `audio-delay`).
+  /// Sets the audio delay against the playback clock (mpv's
+  /// `audio-delay`), for example to match a Bluetooth output to a visual.
   ///
-  /// Sign convention: positive values **delay** audio relative to video
-  /// (audio plays later), negative values **advance** it (audio plays
-  /// earlier). This matches mpv's convention but is counterintuitive
-  /// when thought of as "audio offset": positive does NOT mean "audio
-  /// ahead".
+  /// Sign convention: positive values **delay** the audio (it plays
+  /// later), negative values **advance** it (it plays earlier). This
+  /// matches mpv's convention but is counterintuitive when thought of as
+  /// "audio offset": positive does NOT mean "audio ahead".
   ///
   /// Sent to mpv in seconds with six decimals, so microseconds are kept.
   Future<void> setAudioDelay(Duration delay) async {
@@ -93,7 +98,8 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Enables or disables gapless playback. See [Gapless] for the
-  /// available variants.
+  /// available variants. During a live [PcmSource] entry, which plays
+  /// without gapless, a new value holds only until that entry ends.
   Future<void> setGapless(Gapless gapless) async {
     await _gate();
     await _prop('gapless-audio', gapless.mpvValue);
@@ -148,10 +154,12 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets volume gain in dB (pre-amplification on top of [setVolume]).
   ///
-  /// Hard range: -150 to +150 dB. The default soft clamp mpv applies is
-  /// -96 to +12 dB, configurable via [setVolumeGainMin] and [setVolumeGainMax].
-  /// 0 dB = unity. Values above ~+6 dB risk clipping unless [setReplayGain]
-  /// or a downstream limiter is in the chain.
+  /// Takes -150 to +150 dB: mpv refuses a value outside it, and the call
+  /// throws [MpvCommandException]. [setVolumeGainMin] and
+  /// [setVolumeGainMax] do not cap this call: they bound mpv's relative
+  /// steps (`add`, `cycle`) only. 0 dB = unity. Values above about +6 dB
+  /// risk clipping unless [setReplayGain] or a downstream limiter is in
+  /// the chain.
   Future<void> setVolumeGain(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
@@ -164,8 +172,11 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the lower clamp applied to [setVolumeGain], in dB
-  /// (mpv's `volume-gain-min`). Range -150 to 0; default -96.
+  /// Sets mpv's `volume-gain-min`, in dB. Range -150 to 0; default -96.
+  ///
+  /// It is the floor of mpv's relative steps on the gain (`add` and
+  /// `cycle` through [Player.sendRawCommand]), not of [setVolumeGain],
+  /// which takes down to -150 whatever this value.
   Future<void> setVolumeGainMin(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
@@ -178,8 +189,11 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the upper clamp applied to [setVolumeGain], in dB
-  /// (mpv's `volume-gain-max`). Range 0 to 150; default +12.
+  /// Sets mpv's `volume-gain-max`, in dB. Range 0 to 150; default +12.
+  ///
+  /// It is the top of mpv's relative steps on the gain (`add` and `cycle`
+  /// through [Player.sendRawCommand]), not of [setVolumeGain], which takes
+  /// up to +150 whatever this value.
   Future<void> setVolumeGainMax(double gainDb) async {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
@@ -192,13 +206,22 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the OS per-app mixer volume in percent (`ao-volume`): the system
-  /// volume slider for this app, distinct from the soft [setVolume].
-  /// Throws [RangeError] outside `[0, 100]`.
+  /// Sets the volume the audio driver exposes, in percent (mpv's
+  /// `ao-volume`), distinct from the soft [setVolume]. Throws [RangeError]
+  /// outside `[0, 100]`.
   ///
-  /// Best-effort: when the active audio output doesn't expose system volume
-  /// (the null AO, or a backend without per-app volume) the call is silently
-  /// ignored: it does NOT throw, and [PlayerState.systemVolume] stays `null`.
+  /// What it moves depends on the driver:
+  /// - the app's own stream with PulseAudio, PipeWire, WASAPI in shared
+  ///   mode and CoreAudio on macOS;
+  /// - the whole device, for every app, with ALSA (the card's mixer) and
+  ///   with WASAPI in exclusive mode (the device's hardware volume, when it
+  ///   has one). The system keeps that value after [Player.dispose].
+  ///
+  /// Best-effort: where the driver exposes no volume (iOS, Android, macOS
+  /// in exclusive mode, the null AO) the call is silently ignored: it does
+  /// NOT throw, and [PlayerState.systemVolume] stays `null`. On Android the
+  /// app's volume is the system's media volume, which the app sets through
+  /// the platform's AudioManager.
   Future<void> setSystemVolume(double volume) async {
     _checkRange(volume, 0, 100, 'volume');
     await _gate();
@@ -213,10 +236,13 @@ mixin _AudioModule on _PlayerBase {
     }
   }
 
-  /// Sets the OS per-app mute (`ao-mute`), distinct from the soft [setMute].
+  /// Sets the mute the audio driver exposes (`ao-mute`), distinct from the
+  /// soft [setMute]. It reaches as far as [setSystemVolume] does: the
+  /// whole device with ALSA and with WASAPI in exclusive mode.
   ///
   /// Best-effort, like [setSystemVolume]: silently ignored (no throw) when the
-  /// active audio output doesn't expose system mute (e.g. coreaudio on macOS).
+  /// active audio output doesn't expose system mute (coreaudio on macOS,
+  /// iOS, Android).
   Future<void> setSystemMute(bool mute) async {
     await _gate();
     final rc = await _propRc('ao-mute', mute ? 'yes' : 'no');
@@ -229,12 +255,14 @@ mixin _AudioModule on _PlayerBase {
     }
   }
 
-  /// Sets the upper bound the user-facing volume scale is clamped to.
+  /// Sets mpv's `volume-max`, in percent.
   ///
-  /// Range: 100 to 1000. Default 130 (matches mpv's default and the slider
-  /// range most apps expose). Setting above 100 lets [setVolume] amplify
-  /// past unity; values up to 1000 = +20 dB digital boost. mpv hard-rejects
-  /// values below 100.
+  /// Range: 100 to 1000; default 130, mpv's own. It is the top of mpv's
+  /// relative volume steps (`add` and `cycle` through
+  /// [Player.sendRawCommand]), and a natural top for a volume slider, read
+  /// back from [PlayerState.volumeMax]. It does not cap [setVolume], which
+  /// takes up to 1000 whatever this value. mpv refuses values outside the
+  /// range.
   Future<void> setVolumeMax(double limit) async {
     _checkFinite(limit, 'limit');
     await _gate();
@@ -248,8 +276,25 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Requests exclusive use of the audio device (mpv's `audio-exclusive`).
-  /// WASAPI, CoreAudio, AAudio and PipeWire honor it; on iOS AudioUnit it
-  /// only turns off mixing with other apps, and other drivers ignore it.
+  ///
+  /// - WASAPI (Windows) and CoreAudio (macOS) take the device for the
+  ///   player and switch it to the track's rate when it supports it, so
+  ///   the system mixer neither resamples nor sets the volume. Other apps
+  ///   have no sound on that device. The player keeps it while paused and
+  ///   at the end of the queue, until [Player.stop], a call with `false`
+  ///   or [Player.dispose].
+  /// - PipeWire keeps other streams off the sink, but the stream still
+  ///   goes through PipeWire: its volume applies, and the audio is
+  ///   resampled when the rate is not one the server allows.
+  /// - On Android the default `audiotrack` driver ignores it. `aaudio`
+  ///   gets an exclusive stream only with mpv's `aaudio-performance-mode`
+  ///   set to `low-latency`, on Android 8.1 or later with a device that
+  ///   supports it, and the system has the last word. Other apps keep
+  ///   playing.
+  /// - On iOS it has no effect: the audio never mixes with other apps,
+  ///   and changing the value only reopens the output.
+  ///
+  /// Other drivers ignore it.
   Future<void> setAudioExclusive(bool exclusive) async {
     await _gate();
     await _prop('audio-exclusive', exclusive ? 'yes' : 'no');
@@ -262,8 +307,10 @@ mixin _AudioModule on _PlayerBase {
 
   /// Whether mpv reports a "music" media role to the OS audio server
   /// (mpv's `audio-set-media-role`). On PulseAudio and PipeWire (Linux) this
-  /// lets the server apply the right routing and volume profile for music;
-  /// a no-op on backends without a media-role concept.
+  /// lets the server apply the right routing and volume profile for music.
+  /// On Android the `audiotrack` driver, and `aaudio` from API 28, only tag
+  /// the content type as music: the usage stays media, so routing and
+  /// volume do not change. Other drivers ignore it.
   Future<void> setAudioMediaRole(bool enable) async {
     await _gate();
     await _prop('audio-set-media-role', enable ? 'yes' : 'no');
@@ -279,6 +326,18 @@ mixin _AudioModule on _PlayerBase {
   /// Pass a [Set] of [Spdif] values to enable passthrough for those
   /// codecs (e.g. `{Spdif.ac3, Spdif.dts}`); pass `{}` to disable
   /// passthrough entirely. Order does not matter.
+  ///
+  /// Passthrough works from libmpv-r18 on: an older libmpv lacks FFmpeg's
+  /// spdif muxer, and a track in a listed codec may then not play at all.
+  /// While a track passes through, the receiver decodes it and mpv cannot
+  /// touch the audio: the effects chain, the soft volume and mute,
+  /// ReplayGain, the volume gain, pitch, and the output rate, format and
+  /// channels do not apply, a speed other than 1 drops or repeats parts of
+  /// the stream instead of stretching it, and [PlayerStream.fft],
+  /// [PlayerStream.pcm], the taps and [PlayerStream.loudnessMeter] emit
+  /// nothing. When the output refuses the format, mpv decodes the track
+  /// instead. Changed during playback, the list reopens the decoder, with
+  /// a short gap.
   Future<void> setAudioSpdif(Set<Spdif> codecs) async {
     await _gate();
     await _prop('audio-spdif', Spdif.formatMpvList(codecs));
@@ -397,13 +456,15 @@ mixin _AudioModule on _PlayerBase {
     await _commandChecked(['ao-reload']);
   }
 
-  /// Re-scans sidecar external files (auto-loaded audio and cover art) for the
-  /// current file: mpv's `rescan-external-files`. Use after dropping a cover
-  /// or companion audio file next to the playing file so it gets picked up
-  /// without reopening. With [keepSelection] the current track selection is
-  /// preserved; otherwise mpv reselects the default streams. Newly found
-  /// tracks and cover art fold into [PlayerState.tracks] and the cover-art
-  /// stream.
+  /// Re-scans the external files next to the current file: mpv's
+  /// `rescan-external-files`. With [keepSelection] the current track
+  /// selection is preserved; otherwise mpv reselects the default streams.
+  ///
+  /// It loads only what mpv's auto-load options allow, and the player's
+  /// defaults allow none of it: cover images need [setCoverArtAuto], and
+  /// companion audio files need mpv's `audio-file-auto`, set with
+  /// [Player.setRawProperty]. What it finds shows in [PlayerState.tracks]
+  /// only; a cover image does not reach [PlayerStream.coverArt].
   Future<void> rescanExternalFiles({bool keepSelection = false}) async {
     await _gate();
     await _commandChecked([
@@ -447,7 +508,10 @@ mixin _AudioModule on _PlayerBase {
   ///   of them, or a NaN crossover frequency;
   /// - compand attacks and decays that both start with no number.
   ///
-  /// A [RawAudioEffect] is not checked.
+  /// A [RawAudioEffect] is not checked here. From libmpv-r18 on, the
+  /// filters themselves refuse such values, so a raw stage that carries
+  /// one fails as described above for a value a filter refuses, instead
+  /// of reading or writing out of its buffers.
   ///
   /// A [RawAudioEffect] carries a lavfi entry written by hand, for
   /// expression-based filters or anything without a typed effect. The
@@ -786,6 +850,12 @@ mixin _AudioModule on _PlayerBase {
   }
 
   /// Sets the target audio sample rate.
+  ///
+  /// The output driver can still change it: [PlayerState.audioOutParams]
+  /// shows the rate the device gets. On Android `audiotrack` plays at most
+  /// at the device's native rate, usually 48 kHz. Changed during playback,
+  /// it reopens the output, with a short gap. A track in passthrough
+  /// ([setAudioSpdif]) ignores it.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
     await _prop('audio-samplerate', rate.toString());
@@ -798,6 +868,14 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the target audio sample format. Use [Format.auto] to
   /// reset to mpv's pick.
+  ///
+  /// The output driver can still change it: [PlayerState.audioOutParams]
+  /// shows the format the device gets. On Android `audiotrack` plays only
+  /// 8-bit, 16-bit and float samples, so other integer formats become
+  /// 16-bit, and `aaudio` takes 32-bit integers from Android 12 (API 31).
+  /// For a source above 16 bits there, [Format.float32] keeps the
+  /// resolution. Changed during playback, it reopens the output, with a
+  /// short gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioFormat(Format format) async {
     await _gate();
     await _prop('audio-format', format.mpvValue);
@@ -811,7 +889,8 @@ mixin _AudioModule on _PlayerBase {
   /// Sets the target audio channel layout. Use the named static
   /// constants on [Channels] for common presets, or
   /// [Channels.custom] for any other mpv-recognised layout
-  /// string.
+  /// string. Changed during playback, it reopens the output, with a short
+  /// gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioChannels(Channels channels) async {
     await _gate();
     await _prop('audio-channels', channels.mpvValue);
@@ -835,6 +914,10 @@ mixin _AudioModule on _PlayerBase {
 
   /// Sets the audio output driver, e.g. `'coreaudio'` (macOS),
   /// `'wasapi'` (Windows), `'pulse'`, `'alsa'` or `'pipewire'` (Linux).
+  ///
+  /// On Android the automatic choice is `audiotrack`. `aaudio` needs
+  /// Android 8 (API 26): below it mpv falls back to its null output and
+  /// nothing is heard. `opensles` plays stereo only.
   ///
   /// Pass `'auto'` or an empty string to let mpv auto-probe the best
   /// available backend (the default). mpv has no backend literally named

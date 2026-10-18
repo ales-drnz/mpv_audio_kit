@@ -3,6 +3,11 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 /// Represents an audio output device detected by mpv.
+///
+/// On Android mpv lists one entry per driver (`Default (audiotrack)` and
+/// the like), not the physical devices: the system routes the audio to the
+/// speaker, headphones or Bluetooth itself, and the list does not change
+/// when a device is connected.
 final class Device {
   /// Internal mpv device name, used with [Player.setAudioDevice].
   ///

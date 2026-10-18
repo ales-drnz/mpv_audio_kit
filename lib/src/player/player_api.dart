@@ -76,7 +76,8 @@ abstract interface class PlayerApi {
 
   /// Loads [medias] as the new playlist, optionally starting at [index]
   /// (clamped to the valid range) and optionally starting playback. The
-  /// multi-item counterpart of [open].
+  /// multi-item counterpart of [open]. It succeeds or fails as a whole:
+  /// see [Player.openAll].
   Future<void> openAll(List<Media> medias, {bool? play, int index = 0});
 
   /// Loads a playlist file or URL (`.m3u`, `.m3u8`, `.pls` or `.cue`) as the
@@ -183,7 +184,9 @@ abstract interface class PlayerApi {
   Future<bool> nextPlaylist();
 
   /// Jumps to the first of the previous entries from a different source
-  /// playlist (`playlist-path`). The reverse of [nextPlaylist].
+  /// playlist (`playlist-path`). The reverse of [nextPlaylist]. On Windows
+  /// it needs a libmpv with the patches of libmpv-scripts 0.1.7 or later:
+  /// see [Player.previousPlaylist].
   Future<bool> previousPlaylist();
 
   /// Jumps to the playlist entry at [index] and plays it. Throws
@@ -208,20 +211,24 @@ abstract interface class PlayerApi {
   /// current one stays and keeps playing. See [Player.clearPlaylist].
   Future<void> clearPlaylist({bool keepCurrent = false});
 
-  /// Sets the loop policy (off, current file, or whole playlist).
+  /// Sets the loop policy (off, current file, or whole playlist). Turned on
+  /// once the queue has ended ([PlayerState.completed]), it rewinds:
+  /// [Loop.file] seeks the track to its start, [Loop.playlist] moves to the
+  /// first entry, and both stay paused. Call [play] to start again.
   Future<void> setLoop(Loop loop);
 
   /// Enables or disables shuffled playlist order.
   Future<void> setShuffle(bool shuffle);
 
   /// Enables or disables prefetching the next playlist entry during
-  /// playback.
+  /// playback. Hooks and the source resolver then also run for the next
+  /// entry while the current one plays: see [Player.setPrefetchPlaylist].
   Future<void> setPrefetchPlaylist(bool enabled);
 
   // ── Audio output ───────────────────────────────────────────────────
 
-  /// Sets the output volume in percent (`100` is unattenuated). mpv applies
-  /// its own `volume-max` ceiling.
+  /// Sets the soft volume in percent (`100` is unattenuated), from 0 to
+  /// 1000. [setVolumeMax] does not cap it: see [Player.setVolume].
   Future<void> setVolume(double volume);
 
   /// Sets the playback rate multiplier (`1.0` is normal speed).
@@ -248,37 +255,50 @@ abstract interface class PlayerApi {
   /// Applies the ReplayGain configuration atomically.
   Future<void> setReplayGain(ReplayGainSettings settings);
 
-  /// Sets the decoder-side gain in dB applied on top of the volume.
+  /// Sets the gain in dB applied on top of the volume, from -150 to +150.
+  /// [setVolumeGainMin] and [setVolumeGainMax] do not cap it.
   Future<void> setVolumeGain(double gainDb);
 
-  /// Sets the lower clamp on the volume gain, in dB (`volume-gain-min`).
+  /// Sets mpv's `volume-gain-min`, in dB: the floor of mpv's relative
+  /// steps on the gain (`add`, `cycle`), not of [setVolumeGain].
   Future<void> setVolumeGainMin(double gainDb);
 
-  /// Sets the upper clamp on the volume gain, in dB (`volume-gain-max`).
+  /// Sets mpv's `volume-gain-max`, in dB: the top of mpv's relative steps
+  /// on the gain (`add`, `cycle`), not of [setVolumeGain].
   Future<void> setVolumeGainMax(double gainDb);
 
-  /// Sets the upper bound the [setVolume] setter accepts, in percent.
+  /// Sets mpv's `volume-max`, in percent: the top of mpv's relative volume
+  /// steps (`add`, `cycle`), and a natural top for a volume slider. It
+  /// does not cap [setVolume].
   Future<void> setVolumeMax(double limit);
 
-  /// Sets the OS per-app mixer volume in percent (`ao-volume`), distinct from
-  /// the soft [setVolume]. Throws [RangeError] outside `[0, 100]`.
+  /// Sets the volume the audio driver exposes in percent (`ao-volume`),
+  /// distinct from the soft [setVolume]: the app's own stream on most
+  /// drivers, the whole device with ALSA and WASAPI in exclusive mode. See
+  /// [Player.setSystemVolume]. Throws [RangeError] outside `[0, 100]`.
   /// Best-effort: silently ignored (no throw) when the active audio output
-  /// doesn't expose system volume.
+  /// doesn't expose system volume, as on iOS and Android.
   Future<void> setSystemVolume(double volume);
 
-  /// Sets the OS per-app mute (`ao-mute`), distinct from the soft [setMute].
-  /// Best-effort: silently ignored (no throw) when unsupported by the AO.
+  /// Sets the mute the audio driver exposes (`ao-mute`), distinct from the
+  /// soft [setMute], with the reach of [setSystemVolume]. Best-effort:
+  /// silently ignored (no throw) when unsupported by the AO.
   Future<void> setSystemMute(bool mute);
 
-  /// Opens the audio device in exclusive mode when [exclusive] is true.
+  /// Opens the audio device in exclusive mode when [exclusive] is true:
+  /// WASAPI and CoreAudio take the device, PipeWire keeps other streams
+  /// off the sink, and iOS and Android's default driver ignore it. See
+  /// [Player.setAudioExclusive].
   Future<void> setAudioExclusive(bool exclusive);
 
   /// Reports a "music" media role to the OS audio server (PulseAudio or
-  /// PipeWire) when [enable] is true (mpv's `audio-set-media-role`).
+  /// PipeWire) when [enable] is true (mpv's `audio-set-media-role`). On
+  /// Android it only tags the content type: see [Player.setAudioMediaRole].
   Future<void> setAudioMediaRole(bool enable);
 
   /// Sets the set of codecs to pass through as bitstream rather than
-  /// decode.
+  /// decode, from libmpv-r18 on. See [Player.setAudioSpdif] for what
+  /// stops applying to a track in passthrough.
   Future<void> setAudioSpdif(Set<Spdif> codecs);
 
   /// Selects the active audio [track].
@@ -301,9 +321,9 @@ abstract interface class PlayerApi {
   /// keeps running.
   Future<void> reloadAudio();
 
-  /// Re-scans sidecar external files (auto-loaded audio or cover art) for the
-  /// current file (mpv's `rescan-external-files`). See
-  /// [Player.rescanExternalFiles].
+  /// Re-scans the external files next to the current file (mpv's
+  /// `rescan-external-files`), within mpv's auto-load options, which load
+  /// none by default. See [Player.rescanExternalFiles].
   Future<void> rescanExternalFiles({bool keepSelection});
 
   /// Replaces the whole DSP rack atomically with [effects].
@@ -378,6 +398,7 @@ abstract interface class PlayerApi {
   Future<void> setCookies(bool enable);
 
   /// Sets the HTTP proxy URL for network streams; empty string clears it.
+  /// `https://` sources go through it from libmpv-r18 on.
   Future<void> setHttpProxy(String url);
 
   /// Runs the null audio output untimed when [enable] is true.
@@ -393,7 +414,8 @@ abstract interface class PlayerApi {
   /// Pass `null` to disable the session and remove the entry from the
   /// system. Only one [Player] per process can have an active session
   /// at a time; calling this with a non-null [session] on a second
-  /// [Player] throws [StateError].
+  /// [Player] of the same Flutter engine throws [StateError]. Across two
+  /// engines nothing throws, and the OS keeps one of the two sessions.
   ///
   /// Incoming OS commands (play-pause from the lockscreen, next track
   /// from a Bluetooth headset, …) are auto-applied to this [Player]
@@ -407,7 +429,8 @@ abstract interface class PlayerApi {
 
   // ── Hooks ──────────────────────────────────────────────────────────
 
-  /// Registers a libmpv hook. Higher [priority] runs earlier; [timeout]
+  /// Registers a libmpv hook. Lower [priority] runs earlier, as in mpv,
+  /// and 0 is the neutral default; [timeout]
   /// caps how long mpv waits before auto-continuing (without it, an
   /// earlier deadline for [hook] stays). Hook events surface on
   /// [PlayerStream.hook] and must be released with [continueHook].
@@ -442,12 +465,15 @@ abstract interface class PlayerApi {
   Future<Object?> getRawPropertyNode(String name);
 
   /// Writes an arbitrary mpv property from a string. Escape hatch for
-  /// properties without a typed setter; writes to `af` and `pause` are
-  /// rejected because they would desync the typed state.
+  /// properties without a typed setter; writes to `af` and `pause`, also
+  /// through `options/` and `file-local-options/`, throw [ArgumentError]
+  /// because they would desync the typed state.
   Future<void> setRawProperty(String name, String value);
 
   /// Sends an arbitrary mpv command with its argument list. Escape hatch
-  /// for commands without a typed wrapper.
+  /// for commands without a typed wrapper. A command that writes `af` or
+  /// `pause`, such as `cycle pause`, throws [ArgumentError]: see
+  /// [Player.sendRawCommand].
   Future<void> sendRawCommand(List<String> args);
 
   /// Sets the minimum severity of log messages mpv emits on

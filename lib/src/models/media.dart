@@ -90,7 +90,10 @@ final class Media {
   /// If you need headers that depend on runtime state computed at
   /// load time (e.g. a token refreshed asynchronously), register an
   /// `on_load` hook (see `Player.registerHook`) and set
-  /// `file-local-options/http-header-fields` from the handler.
+  /// `file-local-options/http-header-fields` from the handler. With
+  /// [Player.setPrefetchPlaylist] on, that handler also runs for the next
+  /// entry while the current one plays, and a write there lands on the
+  /// playing entry: these headers do not have that problem.
   final Map<String, String>? httpHeaders;
 
   /// Optional per-track options for libmpv's libavformat (`lavf`) demuxer,
@@ -104,6 +107,10 @@ final class Media {
   ///
   /// Values must not contain a comma; keys must be non-empty. `null` (default)
   /// sets nothing.
+  ///
+  /// With [Player.setPrefetchPlaylist] on, this entry and the entry after
+  /// it open when they start, not from the prefetch: the change of these
+  /// options makes mpv drop a prefetched demuxer.
   final Map<String, String>? demuxerLavfOptions;
 
   /// Opt-in maximum size, in bytes, of each HTTP range request for this

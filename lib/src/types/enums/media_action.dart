@@ -35,10 +35,11 @@ enum MediaAction {
   /// the existing play-pause and seek.
   stop,
 
-  /// Skip to the next track. See [MediaSession.actions] for the
-  /// "next" semantics: by default, the package routes this to mpv's
-  /// `playlist-next` when a playlist is loaded, otherwise emits on
-  /// [PlayerStream.mediaSessionCommands] for the consumer to handle.
+  /// Skip to the next track. The package routes this to mpv's
+  /// `playlist-next` when the playlist holds more than one entry and
+  /// [MediaSession.autoApplyPlaylistNavigation] is on (the default);
+  /// otherwise it only emits on [PlayerStream.mediaSessionCommands], for
+  /// the consumer to handle.
   next,
 
   /// Skip to the previous track. Symmetric to [next].

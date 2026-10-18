@@ -5,7 +5,8 @@
 /// Lifecycle of the offline loudness scan observed on
 /// `PlayerStream.loudnessScan`.
 enum LoudnessScanState {
-  /// No scan has run for the current source.
+  /// No scan has run for the current source. `PlayerStream.loudnessScan`
+  /// does not emit it: it emits `null` when a file loads instead.
   idle,
 
   /// The scan is decoding the file.

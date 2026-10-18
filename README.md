@@ -427,6 +427,8 @@ The player lives on your main isolate and talks to libmpv without blocking it: c
 
 Call `MpvAudioKit.ensureInitialized()` once at startup, before you create a `Player`. It sets up the native side and releases the handles a hot restart left behind.
 
+It holds per isolate. To create a `Player` in another isolate, call it there too, with the same `libmpv` path if you passed one and `hotRestartCleanup: false`: in a debug build the cleanup would otherwise destroy the players of the root isolate. In that isolate `asset://` sources do not load (copy the asset to a file and pass its path), a `content://` source needs `BackgroundIsolateBinaryMessenger.ensureInitialized` first, and `setMediaSession` throws, since the OS sends its commands to the root isolate only.
+
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -506,6 +508,22 @@ final content = Media('content://com.android.externalstorage.documents/...');
 | <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/flutter.png" width="32" style="vertical-align: middle" alt="Flutter"> | `asset:///` | Flutter assets bundled in the app |
 | <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/android.png" width="32" style="vertical-align: middle" alt="Android"> | `content://` | Android content provider URIs (file picker, media store) |
 
+A `file://` URL may name a host: `file://localhost/...` is the local path,
+and on Windows `file://server/share/...` opens the network share
+`\\server\share\...`, as `Uri.file` writes it.
+
+On Windows, a local path of 260 characters or more opens only when the app
+declares long path support and the system allows it. Add `longPathAware`
+next to `dpiAwareness` in `windows/runner/runner.exe.manifest`:
+
+```xml
+<longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+```
+
+The system side is `LongPathsEnabled` in the registry, off by default,
+which needs an administrator to turn on. Without both, mpv refuses the
+file with "Invalid argument".
+
 ##### Streaming sources
 
 |  | Scheme | Description |
@@ -574,7 +592,9 @@ final media = Media(
 );
 ```
 
-Keys must not be empty, and values must not contain a comma.
+Keys must not be empty, and values must not contain a comma. With
+`setPrefetchPlaylist(true)`, an entry with demuxer options, and the entry
+after it, open when they start instead of from the prefetch.
 
 #### 2.5 Live PCM input
 
@@ -596,9 +616,10 @@ await source.close();
 ```
 
 - Playback starts up to about 0.2 s after the first chunk, or about 0.1 s
-  with `lowLatency: true`, which halves the output buffer of that entry. It
-  starts sooner when the input arrives faster than real time. A gap in the
-  input adds up to one buffer of delay, which stays.
+  with `lowLatency: true`, which sets the output buffer of that entry to
+  100 ms, whatever `setAudioBuffer` chose. It starts sooner when the input
+  arrives faster than real time. A gap in the input adds up to one buffer
+  of delay, which stays.
 - `add` never blocks. `addStream` pauses its stream while more than
   `maxBuffered` (30 s by default) waits, and `ready` does the same for a
   loop of `add` calls.
@@ -619,6 +640,23 @@ audio received so far. To queue several sources, create them with
 starts when the previous one ends. The player keeps each queued source
 while its entry is in the playlist, so the app need not. Prefetch skips
 live entries: a queued source opens when its entry starts.
+
+- An entry that played, or that a skip passed, stays in the playlist
+  without its source. Going back to it with `previous`, `jump`, a playlist
+  loop or shuffle fails its load, with an `EndFileError` and a `LogError`,
+  and mpv moves on. With `Loop.playlist` and only live entries, the player
+  goes idle instead of parking at the end. Remove the entry once the
+  playlist has moved past it.
+- From libmpv-r18 on, `Loop.file` and the A-B loop do not repeat a live
+  entry: it plays once to its end, past a B point too, with a warning in
+  the log. With an older libmpv, turn them off for a live entry, which
+  would otherwise never end.
+- While a live entry plays, `state.gapless`, `state.cache.pause` and, with
+  `lowLatency`, `state.audioBuffer` show the values it plays with
+  (`Gapless.no`, `false`, 100 ms). `setGapless`, `setCache` and
+  `setAudioBuffer` called meanwhile hold only until the entry ends, when
+  mpv puts back the values from before it: change them outside live
+  entries.
 
 ---
 
@@ -667,6 +705,12 @@ await player.openAll([track1, track2], play: false);
 await player.openPlaylistFile(Media('https://example.com/stations.m3u'));
 ```
 
+mpv loads an `smb2://` entry of a playlist file only when the list itself
+is on `smb2://`. From a local or `https://` list it refuses the entry as
+unsafe, and the entry fails to load. Setting mpv's `load-unsafe-playlists`
+to `yes` with `setRawProperty` lifts that check for every protocol, so use
+it only for lists you trust.
+
 #### 3.3 Modifying the queue at runtime
 
 ```dart
@@ -712,7 +756,9 @@ await player.setShuffle(false);  // Restore original order
 ```
 
 `Loop` sets mpv's `loop-file` and `loop-playlist` as one choice.
-`player.stream.loop` follows it.
+`player.stream.loop` follows it. Turned on once the queue has ended, a
+loop rewinds to the start of the track (`Loop.file`) or of the playlist
+(`Loop.playlist`) and stays paused: call `play()` to start again.
 
 #### 3.6 Chapter navigation
 
@@ -779,7 +825,10 @@ await player.revertSeek();
 
 Loop between two points of the current track, for example to practice
 a passage or replay a sentence. The points belong to that track: when it
-ends or another one loads, they go back to `null`. The count stays.
+ends or another one loads, they go back to `null`. The count stays, and
+`remainingAbLoops` starts from it again at each file. Points set with no
+file loaded apply to every file instead. Keep both points inside the
+file: past its end, the end of the file goes back to A again and again.
 
 ```dart
 // Set the A and B markers (null disables the marker)
@@ -816,7 +865,7 @@ separately (see [5.2](#52-common-effects-quick-examples)).
 #### 4.5 Volume and mute
 
 There are two volume controls: the soft volume, mpv's own gain, and the
-system volume, the OS per-app mixer.
+system volume, the one the audio driver exposes.
 
 ```dart
 // Soft volume and mute, always available
@@ -824,21 +873,41 @@ await player.setVolume(80.0);     // 0 to 100 (values above 100 amplify)
 await player.setMute(true);
 await player.setMute(false);
 
-await player.setVolumeMax(150.0); // Raise the software volume ceiling
-await player.setVolumeGain(6.0);  // Decoder-side pre-amp, in dB
-
-// Clamp the dB range setVolumeGain accepts (defaults -96 and +12)
-await player.setVolumeGainMin(-60.0);
-await player.setVolumeGainMax(6.0);
+await player.setVolumeGain(6.0);  // Pre-amp on top of the volume, in dB
 ```
 
-`setSystemVolume` and `setSystemMute` drive the OS per-app mixer (mpv's
-`ao-volume` and `ao-mute`). When the driver has no such mixer the calls do
-nothing, without throwing, and `state.systemVolume` and `state.systemMute`
-stay `null`.
+`setVolume` takes 0 to 1000 and `setVolumeGain` -150 to +150 dB, and mpv
+refuses anything past that. mpv's scale is cubic: 130 is about +7 dB, 1000
+is +60 dB. `setVolumeMax` (default 130), `setVolumeGainMin` and
+`setVolumeGainMax` (defaults -96 and +12) do not cap these calls: they bound
+mpv's relative steps, `add` and `cycle` sent with `sendRawCommand`. Clamp a
+slider yourself, for example to `state.volumeMax`:
 
 ```dart
-if (player.state.systemVolume != null) {        // the driver has a per-app mixer
+await player.setVolumeMax(150.0);
+
+// A volume slider from 0 to state.volumeMax
+Future<void> onVolumeSlider(double value) =>
+    player.setVolume(value.clamp(0.0, player.state.volumeMax));
+```
+
+`setSystemVolume` and `setSystemMute` drive the volume of the audio driver
+(mpv's `ao-volume` and `ao-mute`). What they move depends on the driver:
+
+- PulseAudio, PipeWire, WASAPI in shared mode and CoreAudio on macOS: the
+  app's own stream only.
+- ALSA, and WASAPI in exclusive mode: the whole device, for every app. The
+  system keeps the value after the player is gone. In exclusive mode
+  WASAPI needs a device with a hardware volume.
+- iOS, Android, macOS in exclusive mode and the null output: nothing. The
+  calls do nothing, without throwing, and `state.systemVolume` and
+  `state.systemMute` stay `null`. On Android the app's volume is the
+  system's media volume (AudioManager).
+
+CoreAudio on macOS has a volume but no mute.
+
+```dart
+if (player.state.systemVolume != null) {        // the driver has a volume
   await player.setSystemVolume(70.0);
   await player.setSystemMute(false);
 }
@@ -879,6 +948,12 @@ await player.open(Media(path, start: savedPosition));
 Watch later is for when mpv saves the point. When both apply, `start`
 wins over the saved position, and the other saved values (speed, volume
 and so on) still apply. mpv deletes a resume point once a load used it.
+
+A restored value becomes the player's own: it stays for the files that
+follow, until the app sets another. mpv saves only the values that differ
+from the ones it started with. `initialVolume` applies after the start,
+so for the volume the base is 100: a volume of 100 is not saved, and
+reopening the file keeps the current volume.
 
 ```dart
 final player = Player(
@@ -1235,16 +1310,49 @@ await player.setAudioDriver('pipewire');  // Linux, also 'pulse' and 'alsa'
 await player.setAudioDriver('auto');      // mpv picks (default)
 ```
 
+On Android `auto` picks `audiotrack`, the right choice for most apps.
+`aaudio` needs Android 8 (API 26): below it mpv falls back to its null
+output, nothing is heard, `state.currentAo` is `'null'` and
+`stream.error` gets a `LogError`. `opensles` plays stereo only, with a
+250 ms buffer.
+
 #### 6.2 Exclusive mode
 
-Asks the driver for exclusive use of the device, so the system mixer does not resample the audio or apply its volume. WASAPI (Windows), CoreAudio (macOS), AAudio (Android) and PipeWire (Linux) honor it; other drivers ignore it. On iOS (AudioUnit) it only stops your audio from mixing with other apps:
+Asks the driver for exclusive use of the device:
 
 ```dart
 await player.setAudioExclusive(true);
 await player.setAudioExclusive(false);  // back to shared mode
 ```
 
-While the player holds the device, other apps have no sound. Turn exclusive mode off or call `dispose()` when you are done.
+What it does depends on the driver:
+
+- WASAPI (Windows) and CoreAudio (macOS) take the device and switch it to
+  the track's rate when it supports it, so the system mixer neither
+  resamples the audio nor applies its volume. Other apps have no sound on
+  that device. `setSystemVolume` then moves the device's own volume on
+  Windows (see [4.5](#45-volume-and-mute)), and does nothing on macOS.
+- PipeWire (Linux) keeps other streams off the sink, but the stream still
+  goes through PipeWire: its volume applies, and the audio is resampled
+  when the rate is not one the server allows.
+- On Android the default `audiotrack` driver ignores it. With `aaudio` the
+  stream is exclusive only with mpv's `aaudio-performance-mode` set to
+  `low-latency`, on Android 8.1 (API 27) or later with a device that
+  supports it, and the system decides. Other apps keep playing.
+- On iOS it has no effect: your audio never mixes with other apps, so it
+  can own Now Playing, and changing the value only reopens the output.
+- Other drivers ignore it.
+
+With WASAPI and CoreAudio the player keeps the device while paused and at
+the end of the queue. Call `stop()`, `setAudioExclusive(false)` or
+`dispose()` to give it back to other apps.
+
+```dart
+// Android: ask aaudio for an exclusive low-latency stream
+await player.setAudioDriver('aaudio');
+await player.setRawProperty('aaudio-performance-mode', 'low-latency');
+await player.setAudioExclusive(true);
+```
 
 #### 6.3 Device selection
 
@@ -1263,9 +1371,14 @@ await player.setAudioDevice(devices.first);
 
 mpv fills the list when the player starts. `name` is mpv's device id and `description` the label to show.
 
+On Android the list holds one entry per driver (`Default (audiotrack)` and
+the like), not the physical devices: the system routes the audio to the
+speaker, headphones or Bluetooth itself, and the list does not change when
+a device is connected.
+
 #### 6.4 Output format
 
-Force the output sample rate, sample format or channel layout, for example to match what a DAC accepts:
+Force the output sample rate, sample format or channel layout, for example to match what a DAC accepts. A change during playback reopens the output, with a short gap:
 
 ```dart
 // Sample rate
@@ -1331,10 +1444,24 @@ When you force a downmix, for example 5.1 to stereo, set
 `PlayerConfiguration.normalizeDownmix: true` when you create the player,
 so the result is scaled down and cannot clip.
 
+The driver can still change the rate, the format and the channels:
+`state.audioOutParams` shows what the device gets. On Android:
+
+- `audiotrack`, the default, plays only 8-bit, 16-bit and float samples,
+  so other integer formats become 16-bit, and at most at the device's
+  native rate, usually 48 kHz.
+- `aaudio` takes 32-bit integers from Android 12 (API 31).
+- `opensles` plays stereo only.
+
+A 24-bit file decodes to 32-bit integers, which `audiotrack` cuts to
+16 bits. `setAudioFormat(Format.float32)` keeps the resolution.
+
 #### 6.5 SPDIF passthrough
 
 `setAudioSpdif` passes compressed audio (AC3, DTS, TrueHD and others)
-through to an AV receiver over SPDIF or HDMI:
+through to an AV receiver over SPDIF or HDMI, from libmpv-r18 on. An older
+libmpv lacks FFmpeg's spdif muxer, and a track in a listed codec may then
+not play at all:
 
 ```dart
 // Dolby and DTS-HD
@@ -1346,6 +1473,21 @@ await player.setAudioSpdif({Spdif.ac3, Spdif.eac3, Spdif.trueHd});
 // Off
 await player.setAudioSpdif({});
 ```
+
+The receiver decodes the stream, so while a track passes through mpv
+cannot touch the audio:
+
+- the effects chain, the soft volume and mute, ReplayGain, the volume
+  gain and pitch do not apply, and a speed other than 1 drops or repeats
+  parts of the stream instead of stretching it;
+- the output rate, format and channels of [6.4](#64-output-format) do not
+  apply;
+- `fft`, `pcm`, the taps and the loudness meter emit nothing.
+
+When the output refuses the format, mpv decodes the track instead. To
+check, read `getRawProperty('audio-out-params/format')`: it starts with
+`spdif-` while a track passes through. Changing the list during playback
+reopens the decoder, with a short gap.
 
 #### 6.6 Audio client name
 
@@ -1387,7 +1529,8 @@ await player.setAudioTrack(Track.off);
 await player.addAudioTrack(Media('commentary.mka'), title: 'Commentary');
 await player.removeAudioTrack(const Track.id(3));
 
-// Look again for audio and cover files next to the current file
+// Look again for files next to the current file, within mpv's auto-load
+// options: covers need setCoverArtAuto, audio files mpv's audio-file-auto
 await player.rescanExternalFiles();
 ```
 
@@ -1408,8 +1551,10 @@ await player.reloadAudio();
 #### 6.9 Media role
 
 `setAudioMediaRole(true)` reports the stream as music. PulseAudio and
-PipeWire use the role for routing and per-role volume, and so do the
-`aaudio` and `audiotrack` drivers on Android. Other drivers ignore it.
+PipeWire use the role for routing and per-role volume. On Android the
+`audiotrack` driver, and `aaudio` from Android 9 (API 28), only tag the
+content type as music: the usage stays media, so routing and volume do not
+change. Other drivers ignore it.
 
 ```dart
 await player.setAudioMediaRole(true);
@@ -1433,6 +1578,8 @@ await player.setAudioStreamSilence(true);
 ```
 
 On iOS the driver then never lets go of the device: after an interruption, such as a phone call or another app's audio, it stays suspended and playback cannot continue.
+
+On Android the default `audiotrack` driver streams the silence from libmpv-r18 on. An older libmpv keeps a core busy instead and lets the device run dry.
 
 #### 6.12 Untimed null output
 
@@ -1507,6 +1654,14 @@ await player.setDemuxer(player.state.demuxer.copyWith(maxBackBytes: 0));
 await player.setNetworkTimeout(const Duration(seconds: 10)); // give up after 10 s without data
 ```
 
+The longest timeout FFmpeg takes is 2147.483647 s, about 36 minutes: a
+longer one is capped there.
+
+For `smb2://` sources, from libmpv-r18 on, a timeout of zero gives the
+connection 30 s, with no limit on the reads after it, and `stop()`, a
+track change or `dispose()` interrupt a connect or a read at once. An
+older libmpv waits for the timeout to run out first.
+
 #### 7.4 TLS and SSL verification
 
 Certificate verification is off by default, as in mpv. Turn it on for
@@ -1521,7 +1676,10 @@ await player.setTlsCaFile('/path/to/corporate-ca.pem');
 
 #### 7.5 Proxy and cookies
 
-Both take effect from the next load:
+Both take effect from the next load. `http://` sources go through the
+proxy, and from libmpv-r18 on `https://` sources too, tunnelled with
+`CONNECT`; with an older libmpv an `https://` source fails to open while a
+proxy is set:
 
 ```dart
 await player.setHttpProxy('http://proxy.example:8080');  // empty string clears it
@@ -1658,7 +1816,7 @@ player.stream.coverArt.listen((art) {
 | Member | Kind | Description |
 | :--- | :--- | :--- |
 | `bytes` | `final Uint8List` | Raw codec bytes |
-| `mimeType` | `final String` | `'image/png'`, `'image/jpeg'`, `'image/webp'`, `'image/bmp'`, `'image/gif'` |
+| `mimeType` | `final String` | `'image/png'`, `'image/jpeg'`, `'image/webp'`, `'image/bmp'`, `'image/gif'`, or `'application/octet-stream'` when mpv does not report the type |
 | `image` | getter `ImageProvider` | Ready to drop into Flutter `Image(image: …)` |
 | `extension` | getter `String` | `'png'`, `'jpg'`, `'webp'`, `'bmp'`, `'gif'` |
 | `isPng`, `isJpeg`, `isWebp`, `isBmp`, `isGif` | getter `bool` | MIME-type predicates |
@@ -1698,6 +1856,9 @@ if (art != null) {
   each playlist entry, and again when mpv reloads the same file.
 - It emits `null` for a file without an embedded picture, so a UI bound
   to it clears the previous cover.
+- `open`, `openAll` and `openPlaylistFile` also emit `null` when they
+  return, so the new cover follows a `null`, even when it is the same
+  picture.
 - `state.coverArt` holds the last value emitted.
 - The bytes are the image as stored in the file, with no re-encoding.
 
@@ -1742,8 +1903,9 @@ In the stream tables below, a dash under Set with marks a read-only stream.
 #### 9.1 Playback state
 
 `player.stream.playbackState` combines `playing`, `buffering`,
-`completed`, `pausedForCache` and `duration` into one `MpvPlaybackState`,
-for a UI that shows a single indicator.
+`completed`, `pausedForCache` and whether a file is loaded into one
+`MpvPlaybackState`, for a UI that shows a single indicator. A paused live
+stream, which has no duration, is `paused`, not `idle`.
 
 ```dart
 player.stream.playbackState.listen((phase) {
@@ -1805,18 +1967,18 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `buffer` | `Duration` | - | Absolute timestamp the demuxer has buffered up to. |
 | `bufferDuration` | `Duration` | - | Headroom ahead of the playhead (`demuxer-cache-duration`). |
 | `bufferingPercentage` | `double` (0-100) | - | Cache fill as a percentage of `state.cache.secs`, computed by the player. Near 0 with mpv's default `cache-secs` of 1000 hours: for a buffering indicator use `cacheBufferingState`, or `bufferDuration` against your own target. |
-| `volume` | `double` | `setVolume` | 0-100; values above 100 amplify. |
+| `volume` | `double` | `setVolume` | 0 to 1000; 100 is unity, values above it amplify. |
 | `mute` | `bool` | `setMute` |  |
 | `rate` | `double` | `setRate` | Playback speed multiplier. |
 | `pitch` | `double` | `setPitch` | Pitch multiplier. |
 | `pitchCorrection` | `bool` | `setPitchCorrection` | Whether mpv keeps the pitch with `scaletempo2` when the rate changes. Default `true`. |
-| `audioDelay` | `Duration` | `setAudioDelay` | Audio offset, rounded to the millisecond. |
+| `audioDelay` | `Duration` | `setAudioDelay` | Audio offset, kept to the microsecond. |
 
 #### 9.4 Playlist and track streams
 
 | Stream | Type | Set with | Notes |
 | :--- | :--- | :--- | :--- |
-| `playlist` | `Playlist` | `open`, `openAll`, `add`, `remove`, `move`, `replace`, `clearPlaylist` |  |
+| `playlist` | `Playlist` | `open`, `openAll`, `add`, `insert`, `remove`, `move`, `replace`, `clearPlaylist` |  |
 | `loop` | `Loop` | `setLoop` |  |
 | `shuffle` | `bool` | `setShuffle` |  |
 | `prefetchPlaylist` | `bool` | `setPrefetchPlaylist` |  |
@@ -1841,17 +2003,17 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `audioStreamSilence` | `bool` | `setAudioStreamSilence` |  |
 | `audioNullUntimed` | `bool` | `setAudioNullUntimed` |  |
 | `audioSpdif` | `Set<Spdif>` | `setAudioSpdif` |  |
-| `volumeMax` | `double` | `setVolumeMax` |  |
+| `volumeMax` | `double` | `setVolumeMax` | Bounds mpv's relative steps, not `setVolume` |
 | `volumeGain` | `double` | `setVolumeGain` |  |
-| `volumeGainMin` | `double` | `setVolumeGainMin` |  |
-| `volumeGainMax` | `double` | `setVolumeGainMax` |  |
-| `systemVolume` | `double?` | `setSystemVolume` | `null` when the driver has no per-app mixer |
-| `systemMute` | `bool?` | `setSystemMute` | `null` when the driver has no per-app mixer |
+| `volumeGainMin` | `double` | `setVolumeGainMin` | Bounds mpv's relative steps, not `setVolumeGain` |
+| `volumeGainMax` | `double` | `setVolumeGainMax` | Bounds mpv's relative steps, not `setVolumeGain` |
+| `systemVolume` | `double?` | `setSystemVolume` | `null` when the driver has no volume, see [4.5](#45-volume-and-mute) |
+| `systemMute` | `bool?` | `setSystemMute` | `null` when the driver has no mute |
 | `audioSampleRate` | `int` | `setAudioSampleRate` |  |
 | `audioFormat` | `Format` | `setAudioFormat` |  |
 | `audioChannels` | `Channels` | `setAudioChannels` |  |
 | `audioClientName` | `String` | `setAudioClientName` |  |
-| `audioMediaRole` | `bool` | `setAudioMediaRole` | Reports a "music" role to PulseAudio and PipeWire |
+| `audioMediaRole` | `bool` | `setAudioMediaRole` | Reports a "music" role to PulseAudio and PipeWire, a content type on Android |
 
 `AudioParams` carries: `format`, `sampleRate`, `channels`,
 `channelCount`, `hrChannels`, `codec`, `codecName`.
@@ -2149,26 +2311,32 @@ player.stream.endFile.listen((event) {
 #### 11.3 Audio output lifecycle
 
 `player.stream.audioOutputState` follows the audio output as it opens,
-plays and fails, for a "Connecting" indicator on slow devices or to
-notice a silent player.
+plays and fails, to notice a silent player.
 
 ```dart
 player.stream.audioOutputState.listen((state) {
   switch (state) {
     case AudioOutputState.closed:        // no audio output open
-    case AudioOutputState.initializing:  // opening the device
+    case AudioOutputState.initializing:  // opening, almost never seen
     case AudioOutputState.active:        // open and playing
-    case AudioOutputState.failed:        // the device could not be opened
+    case AudioOutputState.failed:        // no output could be opened
   }
 });
 ```
+
+The opening blocks mpv's core, so the state goes from `closed` to `active`
+or `failed` in one step, and `initializing` is almost never observed.
 
 When no device can be opened, mpv usually falls back to the null output
 instead: the state turns `active`, the position runs and nothing is heard.
 `player.stream.error` emits a `LogError` once for each such opening, and
 also when the state turns `failed`, so one error listener covers the
 silent cases. A null output the app chose with `setAudioDriver('null')`
-is no error.
+is no error. `failed` only comes when even the null output cannot open,
+or with mpv's `audio-fallback-to-null` turned off. It then stays until the
+next attempt, and a second failure in a row emits nothing new: each file
+that cannot play still ends with an `EndFileError` whose
+`isAudioOutputError` is `true`.
 
 #### 11.4 Log streams
 
@@ -2276,7 +2444,11 @@ The hooks mpv offers:
 
 </details>
 
-Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track. Your listener runs once per track either way, and `setRawProperty('stream-open-filename', ...)` works in both cases.
+Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track, and `setRawProperty('stream-open-filename', ...)` works in both cases. With `setPrefetchPlaylist(true)`:
+
+- `on_load` runs twice for an entry opened ahead: once while the previous entry still plays, then again when the entry starts. Give the same URL both times, or mpv drops the prefetch and opens the entry again.
+- Until the first run continues, mpv stops feeding the entry that plays. A listener slower than the output buffer (0.2 s by default) leaves a gap in the music, so keep that work short.
+- In the first run the current file is still the one that plays: a `file-local-options/...` write lands on it, for the rest of it, and the prefetch opens with it. Headers for one entry are safer in `Media.httpHeaders`: from libmpv-r18 on, mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
 
 #### 12.2 Listening and continuing
 
@@ -2313,7 +2485,7 @@ player.stream.hook.listen((event) async {
 
 #### 12.3 HTTP headers via hook
 
-`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`:
+`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`. In an `on_load` run for an entry opened ahead, the current file is the one still playing (see [12.1](#121-registering-a-hook)):
 
 ```dart
 await player.setRawProperty(
@@ -2349,7 +2521,11 @@ The player calls the resolver:
 
 Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error goes to `internalLog` and keeps the current URL.
 
-The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. Pass `null` to remove the resolver.
+The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. A URL it returns after that is dropped, with a warning on `internalLog`, since mpv has moved on. `timeout: null` lifts the deadline, also one an earlier call set. Pass `null` to remove the resolver.
+
+A `file://` URL from the resolver plays as the local path it names, as the URL of a `Media` does.
+
+With `setPrefetchPlaylist(true)` the resolver also runs for the next entry while the current one plays, and mpv stops feeding the playing track until it returns (see [12.1](#121-registering-a-hook)). A resolver slower than the output buffer leaves a gap in the music: keep it fast, for example with URLs fetched ahead of time, or leave the prefetch off.
 
 #### 12.5 Lazy URL resolution
 
@@ -2373,7 +2549,9 @@ await player.openAll(medias);
 `player.stream.fft` and `player.stream.pcm` carry the audio going to the
 output, after the effects chain and the volume: what you hear. Paint
 `bands` in a `CustomPainter`, drive a level meter with `samples`, or run
-your own analysis:
+your own analysis. Their tap is one per process: with several players, the
+streams of each show the audio the last output wrote, also on a player
+that is paused:
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/spectrum_pipeline.png" width="100%" alt="Spectrum pipeline: a block of output samples, the window, the linear FFT bins, the log bands and the smoothing, feeding stream.pcm and stream.fft">
 
@@ -2455,7 +2633,8 @@ The FFT memory is reallocated only when a setting requires it, so
 changing settings from a slider is cheap.
 
 While playback is paused no frames arrive, and the last one stays on
-screen. To fade the bars to zero on pause, animate them yourself.
+screen, unless another player plays. To fade the bars to zero on pause,
+animate them yourself.
 
 #### 13.3 Raw PCM stream
 
@@ -2540,9 +2719,12 @@ for (final e in player.state.audioEffects) {
 computed on a worker thread: about 2000 bins, each with its min, max and
 RMS, enough to paint a waveform
 overview or a waveform-style seekbar. There is one waveform per process:
-with several players, the last `open()` wins. It stays on while a player
-of the same isolate listens: another player's cancel or dispose does not
-turn it off.
+with several players, the last `open()` wins, and the stream of every
+player that listens shows that file, even one another player opened.
+While one player listens, the files of the others are decoded too, and
+an envelope that fills from playback takes in the audio of every player.
+It stays on while a player of the same isolate listens: another player's
+cancel or dispose does not turn it off.
 
 Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
@@ -2567,6 +2749,11 @@ the analysis opens the source a second time, with the same network
 options as playback (`tls-verify`, `tls-ca-file`, headers, user agent,
 cookies). Either way the result is the same. The loudness scan below
 uses the same decode.
+
+From libmpv-r18 on the analysis decodes the audio track the player plays,
+in a file with several, and reads an Android `content://` source too. With
+an external track selected (`addAudioTrack`) the waveform fills from
+playback, and the loudness scan reports `unavailable`.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="A network file downloaded once: playback and the analysis read the same mpv cache, the waveform fills as it decodes, and the analysis opens the source a second time only when one pass from the start to the end is not possible">
 
@@ -2608,8 +2795,9 @@ player.stream.loudnessScan.listen((scan) {
 The stream emits `null` each time a file loads, so old results clear.
 Sources that can only be decoded as they play (adaptive or live network
 streams) report `LoudnessScanState.unavailable`: use the live meter below
-for those. Like the waveform, the scan stays on while a player of the same
-isolate listens.
+for those. Like the waveform, the scan is one per process, where the last
+`open()` wins, so the example above assumes one player. It stays on while
+a player of the same isolate listens.
 
 #### 13.7 Live loudness meter
 
@@ -2628,6 +2816,14 @@ player.stream.loudnessMeter.listen((l) => meter.paint(l.momentary));
 
 Without the meter in the chain the stream emits nothing.
 
+`momentary` and `shortTerm` sit at the meter's floor, about -120.7 LUFS,
+until their window has filled and during digital silence, so clamp them to
+the bottom of your scale. `integrated` starts at -70 LUFS and `range` at
+0 LU. The meter starts over at every seek, loop wrap, track change and
+output reopen: `integrated` and `range` then cover only the audio played
+since. For the loudness of a whole track use the scan of
+[13.6](#136-loudness).
+
 ---
 
 ### 14. OS media session
@@ -2637,7 +2833,10 @@ Without the meter in the chain the stream emits nothing.
 on Linux, SMTC on Windows, the media notification on Android) and
 receives the commands the OS sends back. Pass `null` to remove the entry. Only one `Player` per process may own the
 session at a time (enabling a second throws `StateError`); `dispose()`
-releases it automatically. The OS sends its commands to the root isolate
+releases it automatically. The check holds within one Flutter engine:
+players of two engines (add-to-app, a second window) do not see each
+other, nothing throws, and the OS keeps one of the two sessions, which one
+depending on the platform. The OS sends its commands to the root isolate
 only, so a `Player` in another isolate cannot publish (it throws
 `StateError` too).
 
@@ -2781,7 +2980,16 @@ Unplugging headphones always pauses, even with `keepPlaying`, as Apple's
 guidelines require. macOS, Linux and Windows have no per-app audio
 session, so the policy does nothing there.
 
-Background playback on iOS also needs the setup in [Permissions](#ios).
+On iOS the player's audio does not mix with other apps, and the output
+opens as soon as a file loads, even paused: `open(media, play: false)`
+already stops the audio of another app.
+
+On Android 7 (API 24 and 25) the player keeps playing at full volume
+when another app asks it to duck, such as a navigation prompt: only
+Android 8 and later lower the volume on their own.
+
+Background playback on iOS also needs the setup in [Permissions](#ios),
+and on Android a session: see [Permissions](#android).
 
 #### 14.7 App identity (desktop)
 
@@ -2818,6 +3026,22 @@ The package's own manifest declares `FOREGROUND_SERVICE`,
 [media session](#14-os-media-session). The app does not need to request
 `POST_NOTIFICATIONS` at runtime: Android 13 and later exempt media session
 notifications, so the media controls show without it.
+
+Playback in the background needs the media session: `setMediaSession`
+runs a foreground service of type `mediaPlayback`, which keeps the app
+alive once the user leaves it. Without a session, or after
+`setMediaSession(null)`, Android may freeze or stop the app in the
+background. After 10 minutes in pause the service leaves the foreground,
+and Android may then stop the app as well.
+
+The player takes no wake lock. While audio plays Android keeps the device
+awake, but a network stall pauses the output: with the screen off the
+device may then sleep, and the stream comes back only once something
+wakes it.
+
+Back from the root route, or a swipe from the recent apps, can destroy the
+Flutter engine while the process stays: the players of that engine then
+stop (see [1.3](#13-disposing-a-player)).
 
 ### iOS
 

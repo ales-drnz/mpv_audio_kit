@@ -100,13 +100,16 @@ final class MpvTrack {
   /// Sample format short name (e.g. `'fltp'`, `'s16'`).
   final String? formatName;
 
-  /// Decoder-side sample rate in Hz. Audio tracks only.
+  /// Sample rate in Hz, as the demuxer reports it (mpv's
+  /// `demux-samplerate`). Audio tracks only.
   final int? sampleRate;
 
-  /// Decoder-side channel layout (e.g. `'stereo'`, `'5.1'`).
+  /// Channel layout as the demuxer reports it (e.g. `'stereo'`, `'5.1'`;
+  /// mpv's `demux-channels`).
   final String? channels;
 
-  /// Decoder-side channel count.
+  /// Channel count as the demuxer reports it (mpv's
+  /// `demux-channel-count`).
   final int? channelCount;
 
   /// Average bitrate as reported by the demuxer, in bits per second.

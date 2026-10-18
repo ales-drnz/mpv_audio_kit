@@ -9,6 +9,11 @@
 /// **Platform reach:** honoured on iOS (`AVAudioSession`) and Android
 /// (audio focus). macOS, Linux and Windows have no per-app audio session,
 /// so the policy is a no-op there; the OS arbitrates routing itself.
+///
+/// Under every policy the player keeps playing when another app asks it
+/// to duck, such as a navigation prompt: Android 8 and later lower the
+/// volume on their own, while on Android 7 (API 24 and 25) the player
+/// stays at full volume.
 enum InterruptionPolicy {
   /// Pause on an interruption and resume afterwards when the OS signals
   /// it is safe (iOS `shouldResume`, Android focus regain). The default.

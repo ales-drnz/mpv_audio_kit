@@ -17,6 +17,9 @@ mixin _NetworkModule on _PlayerBase {
   /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`, `cache-pause-initial`)
   /// in one shot. Modify a single field via
   /// `await player.setCache(state.cache.copyWith(secs: const Duration(seconds: 30)))`.
+  ///
+  /// During a live [PcmSource] entry, which plays with `cache-pause` off,
+  /// a new `pause` holds only until that entry ends.
   Future<void> setCache(CacheSettings settings) async {
     await _gate();
     final previous = state.cache;
@@ -62,7 +65,9 @@ mixin _NetworkModule on _PlayerBase {
   /// Range: 0 to 10 seconds. Default 200 ms: matches mpv's default and is
   /// a sane trade-off between latency and underrun resistance. Increase
   /// for high-latency wireless outputs (Bluetooth, network speakers);
-  /// decrease for live monitoring or low-latency listening.
+  /// decrease for live monitoring or low-latency listening. During a live
+  /// [PcmSource] entry opened with `lowLatency`, a new value holds only
+  /// until that entry ends.
   Future<void> setAudioBuffer(Duration size) async {
     await _gate();
     await _prop('audio-buffer', durationToSeconds(size).toStringAsFixed(6));
@@ -74,6 +79,10 @@ mixin _NetworkModule on _PlayerBase {
   }
 
   /// Enables or disables streaming silence when no audio is playing.
+  ///
+  /// On Android the default `audiotrack` driver streams the silence from
+  /// libmpv-r18 on. An older libmpv keeps a core busy instead and lets
+  /// the device run dry.
   Future<void> setAudioStreamSilence(bool enable) async {
     await _gate();
     await _prop('audio-stream-silence', enable ? 'yes' : 'no');
@@ -95,6 +104,11 @@ mixin _NetworkModule on _PlayerBase {
   /// keeps it as a 32-bit count of microseconds, and a longer one would
   /// fail every network open. A longer [timeout] is capped there, in mpv
   /// and in [PlayerState.networkTimeout] alike.
+  ///
+  /// For `smb2://` sources, from libmpv-r18 on: with [Duration.zero] the
+  /// connection gets 30 seconds, with no limit on the reads after it, and
+  /// a stop, a track change or a dispose interrupts a connect or a read at
+  /// once. An older libmpv waits for the timeout to run out first.
   Future<void> setNetworkTimeout(Duration timeout) async {
     await _gate();
     if (timeout > _kMaxNetworkTimeout) timeout = _kMaxNetworkTimeout;
@@ -178,6 +192,9 @@ mixin _NetworkModule on _PlayerBase {
   ///
   /// Applies to FFmpeg's HTTP stack on the next load; pass an empty string
   /// to clear. Per-request headers go through `Media.httpHeaders` instead.
+  /// `http://` sources go through the proxy, and from libmpv-r18 on
+  /// `https://` sources too, tunnelled with `CONNECT`. With an older
+  /// libmpv an `https://` source fails to open while a proxy is set.
   Future<void> setHttpProxy(String url) async {
     await _gate();
     await _prop('http-proxy', url);

@@ -34,6 +34,8 @@ class PlayerConfiguration {
   /// previously-played file is opened again (mpv's `--resume-playback`).
   /// Default `true` (mpv's default). Resume only happens once a config has
   /// been written via [Player.writeResumeConfig]; until then this is inert.
+  /// The values a resume point restores (speed, volume and the like) stay
+  /// for the files that follow: see [Player.writeResumeConfig].
   final bool resumePlayback;
 
   /// Directory where the "watch later" resume configs are stored

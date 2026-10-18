@@ -48,9 +48,10 @@ mixin _HooksModule on _PlayerBase {
   /// stall when several events for the same hook are still active at
   /// `quit`: duplicates are collapsed here to avoid that race.
   ///
-  /// See [Hook] for the full set of available phases. Higher
-  /// [priority] values run earlier; the default (0) is fine for most
-  /// uses.
+  /// See [Hook] for the full set of available phases. Lower [priority]
+  /// values run earlier, as in mpv, and the default (0) is fine for most
+  /// uses. The priority orders this handler against other handlers of the
+  /// same hook on the same core, such as another client of it.
   Future<void> registerHook(
     Hook hook, {
     int priority = 0,
@@ -194,6 +195,12 @@ mixin _HooksModule on _PlayerBase {
   /// [PlayerStream.internalLog]: mpv has moved on, and the URL would land
   /// on the next entry. A consumer-registered hook does not get that event
   /// either.
+  ///
+  /// With [Player.setPrefetchPlaylist] on, the resolver also runs for the
+  /// next entry while the current one plays, and mpv stops feeding the
+  /// playing entry until it returns: a resolver slower than the output
+  /// buffer (0.2 s by default) leaves a gap in the playing track. Keep it
+  /// fast with the prefetch on, for example with URLs fetched ahead.
   ///
   /// Composes with [registerHook]: when the consumer has registered
   /// `Hook.load` themselves, the resolver runs FIRST, then the event

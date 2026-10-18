@@ -30,7 +30,8 @@ import 'dart:typed_data';
 /// });
 /// ```
 class FftFrame {
-  /// Creates a frame. Only used internally by the spectrum pipeline.
+  /// Creates a frame. The spectrum pipeline and [BandProcessor] build
+  /// them.
   const FftFrame({
     required this.bins,
     required this.bands,
@@ -76,7 +77,8 @@ class FftFrame {
   /// [SpectrumSettings.bandLowHz].
   final double bandLowHz;
 
-  /// Upper edge of the band axis in Hz. Matches
-  /// [SpectrumSettings.bandHighHz].
+  /// Upper edge of the band axis in Hz: [SpectrumSettings.bandHighHz],
+  /// limited to half of [sampleRate], the highest frequency the audio holds.
+  /// Label the axis from this value, not from the settings.
   final double bandHighHz;
 }

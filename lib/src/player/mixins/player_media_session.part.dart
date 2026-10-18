@@ -8,7 +8,7 @@ part of '../player.dart';
 /// (when enabled) integrates with the platform's audio-session
 /// lifecycle for phone-call, Siri and navigation auto-pause.
 ///
-/// Pass `null` to disable. Only one [Player] per process can hold the
+/// Pass `null` to disable. Only one [Player] of an engine can hold the
 /// session; see [Player._mediaSessionOwner]. `dispose()` releases the
 /// session automatically before tearing down libmpv.
 ///
@@ -24,14 +24,18 @@ part of '../player.dart';
 /// Inbound commands are auto-applied to the [Player] (play → play(),
 /// seek → seek(), …) AND emitted on
 /// [PlayerStream.mediaSessionCommands] for analytics or interception.
-/// `next` and `previous` are routed to mpv's playlist when one is
-/// loaded; otherwise they only emit on the consumer stream so the
-/// app's queue logic can react.
+/// `next` and `previous` are routed to mpv's playlist when it holds more
+/// than one entry and [MediaSession.autoApplyPlaylistNavigation] is on;
+/// otherwise they only emit on the consumer stream so the app's queue
+/// logic can react.
 mixin _MediaSessionModule on _PlayerBase {
   /// Publishes the [Player] to the OS media session, or removes it when
   /// [session] is `null`. Only one [Player] per process can have an
   /// active session: a non-null [session] on a second [Player] throws
-  /// [StateError].
+  /// [StateError]. The check holds within one Flutter engine. Players of
+  /// two engines (add-to-app, a second window) do not see each other:
+  /// nothing throws, and the OS keeps one of the two sessions, which one
+  /// depending on the platform.
   ///
   /// The session needs the root isolate, the one the OS sends its commands
   /// to: a non-null [session] on a [Player] of another isolate throws
@@ -168,10 +172,9 @@ mixin _MediaSessionModule on _PlayerBase {
 
   /// Handles a remote command issued by the OS media session.
   ///
-  /// Auto-applies the command to the [Player] (the optimistic update
-  /// pattern guarantees `state` reflects the new value synchronously),
-  /// then emits on [PlayerStream.mediaSessionCommands] so consumer
-  /// subscribers can observe the resolved order.
+  /// Hands the command to the [Player] without waiting for it, then emits
+  /// on [PlayerStream.mediaSessionCommands]. The setters update `state`
+  /// once mpv confirms, so a subscriber can still read the old value.
   ///
   /// [MediaSessionCommandNext] and [MediaSessionCommandPrevious] use
   /// the smart-default routing: if the active playlist has more than

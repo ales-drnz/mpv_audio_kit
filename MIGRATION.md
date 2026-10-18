@@ -141,6 +141,13 @@ Other changes to handle:
 - `stop()`, `setShuffle()`, `reloadAudio()`, `rescanExternalFiles()` and
   `writeResumeConfig()` throw `MpvCommandException` when mpv rejects them,
   like the other methods.
+- `sendRawCommand()` throws `ArgumentError` for a command that writes `af`
+  or `pause`: `af` and `af-command`, `set`, `cycle`, `change-list` and the
+  like, also after `no-osd` and through `options/`, and `loadfile` with
+  `af` or `pause` in its options. An idiom such as
+  `sendRawCommand(['cycle', 'pause'])` now throws: use `play()`, `pause()`
+  and the effects API. `setRawProperty()` also rejects `options/af` and
+  `file-local-options/pause`, not only `af` and `pause`.
 
 ## Renamed types and streams
 
@@ -211,7 +218,9 @@ Gradle, CocoaPods, SwiftPM and CMake. Nothing changes in a normal app, but:
   one target and architecture: on Apple it is the binary of one slice,
   thinned to one architecture with `lipo -thin` when the slice is
   universal. `MpvAudioKit.ensureInitialized(libmpv: path)` still loads a
-  library by path at run time.
+  library by path at run time. On Windows your build needs the patches of
+  libmpv-scripts 0.1.7 or later: with an unpatched mpv, every `dispose()`
+  crashes the process, and `previousPlaylist()` can crash it too.
 - On Linux the package no longer falls back to a system `libmpv.so`.
 - The player reports on `stream.internalLog` when the loaded libmpv is
   not the release the package expects.

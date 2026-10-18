@@ -29,8 +29,10 @@ class CoverArt {
   /// The raw file content (e.g. PNG bytes starting with `\x89PNG`).
   final Uint8List bytes;
 
-  /// MIME type: `image/png`, `image/jpeg`, `image/webp`, `image/bmp`,
-  /// or `image/gif`.
+  /// MIME type: usually `image/png`, `image/jpeg`, `image/webp`,
+  /// `image/bmp` or `image/gif`. `application/octet-stream` when mpv does
+  /// not report the type, and then [extension] is empty and every `is`
+  /// getter is false: decode the [bytes] to know the format.
   final String mimeType;
 
   /// A Flutter [ImageProvider] backed by [bytes]. Pass straight to
