@@ -148,7 +148,9 @@ class Player extends _PlayerBase
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration});
 
-  /// Process-wide single-instance guard for the OS media session.
+  /// Single-instance guard for the OS media session. A static, so it
+  /// holds per isolate, and so per Flutter engine: the players of two
+  /// engines do not see each other's.
   /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
   /// single-instance per process: enabling on a second [Player]
   /// would silently steal the first one's lockscreen entry. Linux

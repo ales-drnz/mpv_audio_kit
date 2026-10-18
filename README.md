@@ -506,6 +506,22 @@ final content = Media('content://com.android.externalstorage.documents/...');
 | <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/flutter.png" width="32" style="vertical-align: middle" alt="Flutter"> | `asset:///` | Flutter assets bundled in the app |
 | <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/android.png" width="32" style="vertical-align: middle" alt="Android"> | `content://` | Android content provider URIs (file picker, media store) |
 
+A `file://` URL may name a host: `file://localhost/...` is the local path,
+and on Windows `file://server/share/...` opens the network share
+`\\server\share\...`, as `Uri.file` writes it.
+
+On Windows, a local path of 260 characters or more opens only when the app
+declares long path support and the system allows it. Add `longPathAware`
+next to `dpiAwareness` in `windows/runner/runner.exe.manifest`:
+
+```xml
+<longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+```
+
+The system side is `LongPathsEnabled` in the registry, off by default,
+which needs an administrator to turn on. Without both, mpv refuses the
+file with "Invalid argument".
+
 ##### Streaming sources
 
 |  | Scheme | Description |
@@ -2815,7 +2831,10 @@ since. For the loudness of a whole track use the scan of
 on Linux, SMTC on Windows, the media notification on Android) and
 receives the commands the OS sends back. Pass `null` to remove the entry. Only one `Player` per process may own the
 session at a time (enabling a second throws `StateError`); `dispose()`
-releases it automatically. The OS sends its commands to the root isolate
+releases it automatically. The check holds within one Flutter engine:
+players of two engines (add-to-app, a second window) do not see each
+other, nothing throws, and the OS keeps one of the two sessions, which one
+depending on the platform. The OS sends its commands to the root isolate
 only, so a `Player` in another isolate cannot publish (it throws
 `StateError` too).
 
@@ -3017,6 +3036,10 @@ The player takes no wake lock. While audio plays Android keeps the device
 awake, but a network stall pauses the output: with the screen off the
 device may then sleep, and the stream comes back only once something
 wakes it.
+
+Back from the root route, or a swipe from the recent apps, can destroy the
+Flutter engine while the process stays: the players of that engine then
+stop (see [1.3](#13-disposing-a-player)).
 
 ### iOS
 

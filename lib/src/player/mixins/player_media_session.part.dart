@@ -8,7 +8,7 @@ part of '../player.dart';
 /// (when enabled) integrates with the platform's audio-session
 /// lifecycle for phone-call, Siri and navigation auto-pause.
 ///
-/// Pass `null` to disable. Only one [Player] per process can hold the
+/// Pass `null` to disable. Only one [Player] of an engine can hold the
 /// session; see [Player._mediaSessionOwner]. `dispose()` releases the
 /// session automatically before tearing down libmpv.
 ///
@@ -31,7 +31,10 @@ mixin _MediaSessionModule on _PlayerBase {
   /// Publishes the [Player] to the OS media session, or removes it when
   /// [session] is `null`. Only one [Player] per process can have an
   /// active session: a non-null [session] on a second [Player] throws
-  /// [StateError].
+  /// [StateError]. The check holds within one Flutter engine. Players of
+  /// two engines (add-to-app, a second window) do not see each other:
+  /// nothing throws, and the OS keeps one of the two sessions, which one
+  /// depending on the platform.
   ///
   /// The session needs the root isolate, the one the OS sends its commands
   /// to: a non-null [session] on a [Player] of another isolate throws

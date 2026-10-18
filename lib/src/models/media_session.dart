@@ -15,7 +15,8 @@ import '../types/sealed/media_session_artwork.dart';
 /// Apply via [Player.setMediaSession]; pass `null` to disable the
 /// session entirely. Only one [Player] instance per process can have
 /// an active media session at a time; attempting to enable a second
-/// throws [StateError].
+/// throws [StateError], within one Flutter engine. Across two engines
+/// nothing throws, and the OS keeps one of the two sessions.
 ///
 /// **Metadata fields** ([title], [artist], [album], [duration]) are
 /// *overrides*: a `null` field falls back to the value derived from
