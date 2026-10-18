@@ -61,7 +61,7 @@ void main() {
         final held = Completer<int>();
         player.stream.hook.listen((event) async {
           final url = await player.getRawProperty('stream-open-filename');
-          if (!held.isCompleted && url == b) {
+          if (!held.isCompleted && _slashes(url ?? '') == _slashes(b)) {
             held.complete(event.id);
           } else {
             await player.continueHook(event.id);
@@ -103,7 +103,10 @@ void main() {
         );
         expect(await player.getRawProperty('seekable'), 'yes');
         expect(await player.getRawProperty('media-title'), 'sine_5s.flac');
-        expect(await player.getRawProperty('path'), b);
+        expect(
+          _slashes(await player.getRawProperty('path') ?? ''),
+          _slashes(b),
+        );
         expect(player.state.duration, const Duration(seconds: 5));
       }, timeout: const Timeout(Duration(seconds: 30)));
 
@@ -191,3 +194,7 @@ void main() {
     });
   });
 }
+
+/// A path with forward slashes only: on Windows mpv reports the paths it
+/// opens with backslashes.
+String _slashes(String path) => path.replaceAll(r'\', '/');
