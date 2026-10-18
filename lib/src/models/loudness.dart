@@ -10,9 +10,16 @@ import '../internals/unset_sentinel.dart';
 /// enabled with its `metadata` option on: the meter runs inside the audio
 /// chain and the player polls its per-frame measurements.
 ///
-/// [momentary] and [shortTerm] are `null` until their window has filled,
-/// and also during digital silence, where the meter reports minus
-/// infinity. [integrated] starts at -70 LUFS and [range] at 0 LU.
+/// [momentary] and [shortTerm] sit at the meter's floor, about
+/// -120.7 LUFS, until their window has filled and during digital silence:
+/// clamp them to the bottom of your scale. [integrated] starts at -70 LUFS
+/// and [range] at 0 LU. The fields are `null` only when the meter did not
+/// report them.
+///
+/// The `ebur128` stage starts over at every seek (a file loop included),
+/// track change, output reopen and rebuild of the stage: [integrated] and
+/// [range] cover only the audio played since then. For the loudness of a
+/// whole track use `PlayerStream.loudnessScan`.
 class Loudness {
   /// Momentary loudness (400 ms window), in LUFS.
   final double? momentary;
@@ -20,10 +27,13 @@ class Loudness {
   /// Short-term loudness (3 s window), in LUFS.
   final double? shortTerm;
 
-  /// Integrated (programme) loudness since the meter started, in LUFS.
+  /// Integrated (programme) loudness since the meter last started, in
+  /// LUFS: it starts over at every seek, loop wrap, track change and
+  /// output reopen.
   final double? integrated;
 
-  /// Loudness range (LRA), in LU.
+  /// Loudness range (LRA), in LU, since the meter last started, like
+  /// [integrated].
   final double? range;
 
   /// Creates a loudness snapshot.

@@ -744,6 +744,11 @@ class PlayerStream {
   /// and a live stream of unknown length emits a rolling window
   /// ([WaveformData.live]).
   ///
+  /// From libmpv-r18 on the analysis decodes the audio track the player
+  /// plays, also a `content://` source on Android. With an external track
+  /// selected ([Player.addAudioTrack]) the envelope grows from playback,
+  /// and the loudness scan reports [LoudnessScanState.unavailable].
+  ///
   /// A remote file is downloaded once: the decode reads the packets mpv
   /// already cached. When one pass from the start to the end is not
   /// possible (playback starting further in, a seek past the cache, a
@@ -787,6 +792,10 @@ class PlayerStream {
   /// listener is attached. While the meter is not in the chain the
   /// stream simply emits nothing. A new listener gets the next reading
   /// (polled every 100 ms), not the last one.
+  ///
+  /// The meter starts over at every seek, loop wrap, track change and
+  /// output reopen, so [Loudness.integrated] and [Loudness.range] cover
+  /// the audio since then. For a whole track use [loudnessScan].
   final Stream<Loudness> loudnessMeter;
 
   /// Offline loudness scan of the loaded source ([LoudnessScan]:
@@ -805,7 +814,8 @@ class PlayerStream {
   /// ```
   ///
   /// Like [waveform], the scan of a remote file reads mpv's cache, and
-  /// opens the source a second time only when that pass is not possible.
+  /// opens the source a second time only when that pass is not possible,
+  /// and it measures the audio track the player plays from libmpv-r18 on.
   ///
   /// While the scan runs it emits `scanning` snapshots with a
   /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track

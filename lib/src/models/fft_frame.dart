@@ -76,7 +76,8 @@ class FftFrame {
   /// [SpectrumSettings.bandLowHz].
   final double bandLowHz;
 
-  /// Upper edge of the band axis in Hz. Matches
-  /// [SpectrumSettings.bandHighHz].
+  /// Upper edge of the band axis in Hz: [SpectrumSettings.bandHighHz],
+  /// limited to half of [sampleRate], the highest frequency the audio holds.
+  /// Label the axis from this value, not from the settings.
   final double bandHighHz;
 }

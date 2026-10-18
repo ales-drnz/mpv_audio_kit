@@ -2732,6 +2732,11 @@ options as playback (`tls-verify`, `tls-ca-file`, headers, user agent,
 cookies). Either way the result is the same. The loudness scan below
 uses the same decode.
 
+From libmpv-r18 on the analysis decodes the audio track the player plays,
+in a file with several, and reads an Android `content://` source too. With
+an external track selected (`addAudioTrack`) the waveform fills from
+playback, and the loudness scan reports `unavailable`.
+
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="A network file downloaded once: playback and the analysis read the same mpv cache, the waveform fills as it decodes, and the analysis opens the source a second time only when one pass from the start to the end is not possible">
 
 ```dart
@@ -2792,6 +2797,14 @@ player.stream.loudnessMeter.listen((l) => meter.paint(l.momentary));
 ```
 
 Without the meter in the chain the stream emits nothing.
+
+`momentary` and `shortTerm` sit at the meter's floor, about -120.7 LUFS,
+until their window has filled and during digital silence, so clamp them to
+the bottom of your scale. `integrated` starts at -70 LUFS and `range` at
+0 LU. The meter starts over at every seek, loop wrap, track change and
+output reopen: `integrated` and `range` then cover only the audio played
+since. For the loudness of a whole track use the scan of
+[13.6](#136-loudness).
 
 ---
 
