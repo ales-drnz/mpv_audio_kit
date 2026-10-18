@@ -9,7 +9,7 @@ part of '../player.dart';
 /// lifecycle for phone-call, Siri and navigation auto-pause.
 ///
 /// Pass `null` to disable. Only one [Player] of an engine can hold the
-/// session; see [Player._mediaSessionOwner]. `dispose()` releases the
+/// session; see [_sessionOwner]. `dispose()` releases the
 /// session automatically before tearing down libmpv.
 ///
 /// Lifecycle:
@@ -29,6 +29,21 @@ part of '../player.dart';
 /// otherwise they only emit on the consumer stream so the app's queue
 /// logic can react.
 mixin _MediaSessionModule on _PlayerBase {
+  /// Single-instance guard for the OS media session. A static, so it
+  /// holds per isolate, and so per Flutter engine: the players of two
+  /// engines do not see each other's.
+  /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
+  /// single-instance per process: enabling on a second [Player]
+  /// would silently steal the first one's lockscreen entry. Linux
+  /// MPRIS could support multiple instances via `instance<PID>`
+  /// suffixing, but we ban it universally for cross-OS consistency.
+  /// Cleared on `dispose()` and on `setMediaSession(null)`.
+  static Player? _sessionOwner;
+
+  /// The media-session work of every [Player] in this isolate, one call
+  /// after the other. See [_queueMediaSessionSync].
+  static Future<void> _sessionQueue = Future<void>.value();
+
   /// Publishes the [Player] to the OS media session, or removes it when
   /// [session] is `null`. Only one [Player] per process can have an
   /// active session: a non-null [session] on a second [Player] throws
@@ -56,7 +71,7 @@ mixin _MediaSessionModule on _PlayerBase {
 
     // 2. Single-instance guard.
     if (session != null) {
-      final owner = Player._mediaSessionOwner;
+      final owner = _sessionOwner;
       if (owner != null && !identical(owner, this)) {
         throw StateError(
           'Another Player instance already owns the OS media session. '
@@ -67,9 +82,9 @@ mixin _MediaSessionModule on _PlayerBase {
           'enabling this one.',
         );
       }
-      Player._mediaSessionOwner = this as Player;
-    } else if (identical(Player._mediaSessionOwner, this)) {
-      Player._mediaSessionOwner = null;
+      _sessionOwner = this as Player;
+    } else if (identical(_sessionOwner, this)) {
+      _sessionOwner = null;
     }
 
     // 3. Update state synchronously (optimistic). The controller's
@@ -91,8 +106,8 @@ mixin _MediaSessionModule on _PlayerBase {
       if (session != null &&
           identical(_state.mediaSession, session) &&
           _mediaSessionController == null) {
-        if (identical(Player._mediaSessionOwner, this)) {
-          Player._mediaSessionOwner = null;
+        if (identical(_sessionOwner, this)) {
+          _sessionOwner = null;
         }
         _updateField(
           (s) => s.copyWith(mediaSession: null),
@@ -109,8 +124,8 @@ mixin _MediaSessionModule on _PlayerBase {
   /// after the calls queued before it, so a controller still being
   /// created is torn down once it exists.
   Future<void> _releaseMediaSession() async {
-    if (identical(Player._mediaSessionOwner, this)) {
-      Player._mediaSessionOwner = null;
+    if (identical(_sessionOwner, this)) {
+      _sessionOwner = null;
     }
     await _queueMediaSessionSync();
   }
@@ -123,10 +138,8 @@ mixin _MediaSessionModule on _PlayerBase {
   /// and its cancel removed the command channel handler the next one
   /// listens on. A failure reaches the caller and does not stop the queue.
   Future<void> _queueMediaSessionSync() {
-    final run = Player._mediaSessionQueue.then(
-      (_) => _syncMediaSessionController(),
-    );
-    Player._mediaSessionQueue = run.then<void>((_) {}, onError: (Object _) {});
+    final run = _sessionQueue.then((_) => _syncMediaSessionController());
+    _sessionQueue = run.then<void>((_) {}, onError: (Object _) {});
     return run;
   }
 
@@ -139,7 +152,7 @@ mixin _MediaSessionModule on _PlayerBase {
     final wanted =
         !_disposed &&
         _state.mediaSession != null &&
-        identical(Player._mediaSessionOwner, this);
+        identical(_sessionOwner, this);
     final current = _mediaSessionController;
     if (wanted && current == null) {
       _mediaSessionController = await MediaSessionController.create(

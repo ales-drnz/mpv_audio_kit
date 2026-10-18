@@ -149,21 +149,6 @@ class Player extends _PlayerBase
   /// Creates a [Player] instance with optional [configuration].
   Player({super.configuration});
 
-  /// Single-instance guard for the OS media session. A static, so it
-  /// holds per isolate, and so per Flutter engine: the players of two
-  /// engines do not see each other's.
-  /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
-  /// single-instance per process: enabling on a second [Player]
-  /// would silently steal the first one's lockscreen entry. Linux
-  /// MPRIS could support multiple instances via `instance<PID>`
-  /// suffixing, but we ban it universally for cross-OS consistency.
-  /// Cleared on `dispose()` and on `setMediaSession(null)`.
-  static Player? _mediaSessionOwner;
-
-  /// The media-session work of every [Player] in this isolate, one call
-  /// after the other. See [_MediaSessionModule._queueMediaSessionSync].
-  static Future<void> _mediaSessionQueue = Future<void>.value();
-
   /// Test-only. The event isolate writes to [wakeupCounterAddress] on
   /// every wakeup: a bogus value corrupts process memory.
   @visibleForTesting
