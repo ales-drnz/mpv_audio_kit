@@ -1606,11 +1606,11 @@ abstract class _PlayerBase {
       // closing the client resolves every in-flight call, so an
       // `await player.setX(...)` racing dispose never hangs, and turns the
       // continuations that resumes (a setter suspended between writes)
-      // into no-ops, since mpv_terminate_destroy frees the handle on the
-      // next synchronous line.
+      // into no-ops, while the destroy below frees the handle.
       _client.close();
       if (exited && hooksSettled) {
-        _lib.mpvTerminateDestroy(_handle);
+        // Off the main isolate: the destroy waits for the core to shut down.
+        await terminateDestroyOffMain(_handle);
         // mpv is gone: nothing reads the descriptors any more.
         for (final release in _heldSources.takeAll()) {
           await release();
