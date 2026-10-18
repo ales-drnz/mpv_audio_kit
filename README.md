@@ -1812,8 +1812,9 @@ In the stream tables below, a dash under Set with marks a read-only stream.
 #### 9.1 Playback state
 
 `player.stream.playbackState` combines `playing`, `buffering`,
-`completed`, `pausedForCache` and `duration` into one `MpvPlaybackState`,
-for a UI that shows a single indicator.
+`completed`, `pausedForCache` and whether a file is loaded into one
+`MpvPlaybackState`, for a UI that shows a single indicator. A paused live
+stream, which has no duration, is `paused`, not `idle`.
 
 ```dart
 player.stream.playbackState.listen((phase) {
@@ -1880,13 +1881,13 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `rate` | `double` | `setRate` | Playback speed multiplier. |
 | `pitch` | `double` | `setPitch` | Pitch multiplier. |
 | `pitchCorrection` | `bool` | `setPitchCorrection` | Whether mpv keeps the pitch with `scaletempo2` when the rate changes. Default `true`. |
-| `audioDelay` | `Duration` | `setAudioDelay` | Audio offset, rounded to the millisecond. |
+| `audioDelay` | `Duration` | `setAudioDelay` | Audio offset, kept to the microsecond. |
 
 #### 9.4 Playlist and track streams
 
 | Stream | Type | Set with | Notes |
 | :--- | :--- | :--- | :--- |
-| `playlist` | `Playlist` | `open`, `openAll`, `add`, `remove`, `move`, `replace`, `clearPlaylist` |  |
+| `playlist` | `Playlist` | `open`, `openAll`, `add`, `insert`, `remove`, `move`, `replace`, `clearPlaylist` |  |
 | `loop` | `Loop` | `setLoop` |  |
 | `shuffle` | `bool` | `setShuffle` |  |
 | `prefetchPlaylist` | `bool` | `setPrefetchPlaylist` |  |
