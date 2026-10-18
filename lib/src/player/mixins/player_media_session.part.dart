@@ -24,9 +24,10 @@ part of '../player.dart';
 /// Inbound commands are auto-applied to the [Player] (play → play(),
 /// seek → seek(), …) AND emitted on
 /// [PlayerStream.mediaSessionCommands] for analytics or interception.
-/// `next` and `previous` are routed to mpv's playlist when one is
-/// loaded; otherwise they only emit on the consumer stream so the
-/// app's queue logic can react.
+/// `next` and `previous` are routed to mpv's playlist when it holds more
+/// than one entry and [MediaSession.autoApplyPlaylistNavigation] is on;
+/// otherwise they only emit on the consumer stream so the app's queue
+/// logic can react.
 mixin _MediaSessionModule on _PlayerBase {
   /// Publishes the [Player] to the OS media session, or removes it when
   /// [session] is `null`. Only one [Player] per process can have an

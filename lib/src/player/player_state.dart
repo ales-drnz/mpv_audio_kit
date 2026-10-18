@@ -171,8 +171,8 @@ final class PlayerState {
   /// Whether the player is muted.
   final bool mute;
 
-  /// Audio delay applied to the output stream. Positive values delay
-  /// audio relative to video; negative values advance it.
+  /// Audio delay applied to the output stream, against the playback
+  /// clock. Positive values delay the audio; negative values advance it.
   final Duration audioDelay;
 
   /// Whether pitch correction is enabled when changing playback speed.

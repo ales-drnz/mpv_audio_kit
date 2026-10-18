@@ -78,13 +78,13 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the audio delay relative to video (mpv's `audio-delay`).
+  /// Sets the audio delay against the playback clock (mpv's
+  /// `audio-delay`), for example to match a Bluetooth output to a visual.
   ///
-  /// Sign convention: positive values **delay** audio relative to video
-  /// (audio plays later), negative values **advance** it (audio plays
-  /// earlier). This matches mpv's convention but is counterintuitive
-  /// when thought of as "audio offset": positive does NOT mean "audio
-  /// ahead".
+  /// Sign convention: positive values **delay** the audio (it plays
+  /// later), negative values **advance** it (it plays earlier). This
+  /// matches mpv's convention but is counterintuitive when thought of as
+  /// "audio offset": positive does NOT mean "audio ahead".
   ///
   /// Sent to mpv in seconds with six decimals, so microseconds are kept.
   Future<void> setAudioDelay(Duration delay) async {

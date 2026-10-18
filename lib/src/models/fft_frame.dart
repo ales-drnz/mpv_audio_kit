@@ -30,7 +30,8 @@ import 'dart:typed_data';
 /// });
 /// ```
 class FftFrame {
-  /// Creates a frame. Only used internally by the spectrum pipeline.
+  /// Creates a frame. The spectrum pipeline and [BandProcessor] build
+  /// them.
   const FftFrame({
     required this.bins,
     required this.bands,

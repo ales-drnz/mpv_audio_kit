@@ -1814,7 +1814,7 @@ player.stream.coverArt.listen((art) {
 | Member | Kind | Description |
 | :--- | :--- | :--- |
 | `bytes` | `final Uint8List` | Raw codec bytes |
-| `mimeType` | `final String` | `'image/png'`, `'image/jpeg'`, `'image/webp'`, `'image/bmp'`, `'image/gif'` |
+| `mimeType` | `final String` | `'image/png'`, `'image/jpeg'`, `'image/webp'`, `'image/bmp'`, `'image/gif'`, or `'application/octet-stream'` when mpv does not report the type |
 | `image` | getter `ImageProvider` | Ready to drop into Flutter `Image(image: …)` |
 | `extension` | getter `String` | `'png'`, `'jpg'`, `'webp'`, `'bmp'`, `'gif'` |
 | `isPng`, `isJpeg`, `isWebp`, `isBmp`, `isGif` | getter `bool` | MIME-type predicates |

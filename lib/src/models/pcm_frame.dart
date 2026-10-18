@@ -36,7 +36,8 @@ import 'dart:typed_data';
 /// });
 /// ```
 class PcmFrame {
-  /// Creates a frame. Only used internally by the spectrum pipeline.
+  /// Creates a frame. The player's pipelines build them, and an app can
+  /// build one to run through a [BandProcessor].
   const PcmFrame({
     required this.samples,
     required this.timestamp,
@@ -55,12 +56,12 @@ class PcmFrame {
   /// boundaries, or background processing without copying.
   final Float32List samples;
 
-  /// Wall-clock timestamp at which the audio output captured this
+  /// Engine-clock timestamp at which the audio output captured this
   /// frame. Process-monotonic: derived from libmpv's internal
   /// `mp_time_ns()`, which counts from the moment the engine
   /// initialised, not from the start of the track. Use it to detect
   /// fresh frames or to align side-effects in real time; for the
-  /// playback PTS of these samples, read [PlayerStream.position] /
+  /// playback PTS of these samples, read [PlayerStream.position] or
   /// [PlayerStream.audioPts] instead. Frames from [PlayerStream.tap] are
   /// the exception: their timestamp is the position in the track of the
   /// last sample.

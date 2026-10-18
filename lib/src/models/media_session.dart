@@ -46,17 +46,19 @@ class MediaSession {
   // ── Metadata override (null = derive from mpv) ─────────────────────
 
   /// Track title shown on the lockscreen or SMTC top line. `null` falls
-  /// back to mpv's `metadata.title` (or `media-title` if absent).
+  /// back to mpv's `metadata.title`, then to the entry's
+  /// `Media.extras['title']`, then to `media-title`.
   final String? title;
 
   /// Artist name shown beneath the title. `null` falls back to mpv's
-  /// `metadata.artist`.
+  /// `metadata.artist` (or `album_artist`), then to the entry's
+  /// `Media.extras['artist']`.
   final String? artist;
 
   /// Album name shown as a third metadata line on lockscreens that
   /// surface it (iOS, macOS, Windows SMTC). Often hidden on Android's
   /// compact notification. `null` falls back to mpv's
-  /// `metadata.album`.
+  /// `metadata.album`, then to the entry's `Media.extras['album']`.
   final String? album;
 
   /// Artwork shown on the OS media session. Defaults to

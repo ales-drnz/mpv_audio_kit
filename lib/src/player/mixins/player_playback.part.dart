@@ -245,7 +245,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// YouTube's chapters live in the video description
   /// not in the audio container, so a freshly-loaded stream has an empty
   /// `chapter-list`. This writes the list directly through the stable C API
-  /// (`mpv_set_property` on `chapter-list`), so [PlayerStream.chapters] /
+  /// (`mpv_set_property` on `chapter-list`), so [PlayerStream.chapters] and
   /// [PlayerState.chapters] then reflect them and [setChapter] navigates them
   /// natively: no demuxer chapters required. Pass an empty list to clear.
   ///
