@@ -115,8 +115,15 @@ void main() {
       );
       addTearDown(p.dispose);
       Future<void> saveAt600() async {
+        // Wait for the landing, not the position: after a start of 2 s the
+        // position is already past 500, and a restart still in flight
+        // would end the next reopen's wait with the old file's event.
+        final landed = p.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
         await p.seek(const Duration(milliseconds: 600));
-        await waitUntil(() => p.state.position.inMilliseconds > 500);
+        await landed;
+        expect(p.state.position.inMilliseconds, closeTo(600, 150));
         await p.writeResumeConfig();
         await waitUntil(() => tmp.listSync().isNotEmpty);
       }
