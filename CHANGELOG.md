@@ -1,3 +1,80 @@
+## [0.5.2] - Unreleased
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): reported that the cleanup of old Hot Restart files failed on iOS ([#24](https://github.com/ales-drnz/mpv_audio_kit/issues/24)).
+
+### Breaking
+A patch release with a few changes of meaning, listed here so nobody meets them by surprise.
+- `PlayerApi` has two new members, `insert` and the `keepCurrent` parameter of `clearPlaylist`: a class that implements it by hand must add them.
+- Some invalid input now throws instead of being ignored or reaching mpv: `setSystemVolume` outside 0 to 100 (`RangeError`, like `setVolume`), invalid `SpectrumSettings` in release builds, an `addAudioTrack` or `removeAudioTrack` that mpv refuses (`MpvCommandException`), and effect values that lavfi would read or write out of bounds (`ArgumentError`, with the state unchanged).
+- `openAll` fails as a whole when mpv refuses an append: the entries it added are removed and the play intent goes back. Before, the other entries stayed queued.
+- The resume point no longer saves the effect chain, and a chain restored from an older resume point gives way to the player's own.
+- A-B loop points apply to the file they were set on and go back to `null` when it ends.
+- `audioDriver` starts as `''`, the automatic choice mpv reports, instead of `'auto'`.
+- A fallback to the null output, when no audio device opens, emits a `LogError` on `stream.error`.
+- On Android, the players of a Flutter engine destroyed while the process stays (Back on the root route, a swipe from the recent apps) stop and release libmpv. Keep the engine alive to play after the activity closes.
+
+### Added
+- `Media.start` opens an entry at a chosen position, for `open`, `openAll`, `add` and `replace`, and wins over a saved resume point.
+- `Media.end` ends an entry at a chosen point of the file, for previews and segments of a long file.
+- `Player.insert` puts a track at any position of the queue, such as right after the current one.
+- `clearPlaylist(keepCurrent: true)` empties the queue and keeps the current track playing.
+
+### Changed
+- `openAll` sends its appends in windows of 512, so a large album no longer fills mpv's reply queue on a busy device. 5000 entries still load in about 0.25 s.
+- `dispose()` no longer waits for the done event of its streams: active listeners get it right after, paused ones when they resume.
+- The Hot Restart cleanup keeps its state in an environment variable of the process instead of `mpv_audio_kit_refs_<pid>.txt` files in the temp directory. Files left there by earlier versions can be deleted.
+- A ready waveform can end with unfilled bins when the audio is shorter than its estimated length.
+- A consumer `Hook.load` or `Hook.loadFail` no longer receives an event that the timeout already continued, and each hook event has its own id.
+- Error and log messages use plain punctuation, and `CacheRange.toString()` reads `CacheRange(start: ..., end: ...)`.
+
+### Fixed
+- A `pause()` right after `play()`, `jump()` or a load at the end of the queue is no longer undone: the last call decides whether the track plays.
+- A failed `openPlaylistFile`, or an `open` that mpv refuses, puts back the previous pause and play intent.
+- `openAll` at the end of the queue no longer flashes `playWhenReady` to false, and a `play()` called during it is kept.
+- Android `content://` descriptors: an `openAll` overtaken by another load no longer closes the ones mpv still lists, and `replace`, `add` and `open` release theirs when mpv never takes the entry.
+- Waveform and loudness scan start again at every file load, so a path with new content, or the last track with the prefetch, no longer keeps an old result.
+- `deleteResumeConfig` takes a `file://` or `asset://` URI as given to `open`, and an Android `content://` source no longer reads or writes a resume point keyed by a reused descriptor number.
+- An absolute seek before the start goes to the start, and `setChapters` keeps in the state the chapters mpv accepted.
+- Live updates of alimiter, agate, afreqshift and aphaseshift options read only at setup, and of adelay delays, rebuild the stage instead of playing a wrong value.
+- `AiirChannelsX.withChannels` writes coefficients at full precision, and effect durations under a millisecond no longer go out with an exponent that mpv refused.
+- Profile builds no longer run the debug Hot Restart support: an idle player wakes once a second as in release.
+- A debug launch that gets the pid of an earlier process no longer crashes at startup, and on iOS the cleanup no longer logs a failed `kill -0` ([#24](https://github.com/ales-drnz/mpv_audio_kit/issues/24)). It also works on armeabi-v7a.
+- After a Hot Restart the analysis and the media session left on by the old run are turned off.
+- Disposing a player while a busy core serves its event reads no longer skips the destroy.
+- `dispose()` completes when the app holds a paused subscription, on a filter tap or on a state or event stream.
+- `stream.tap` emits a new slice on every poll while playing, about 30 Hz instead of 10 Hz with FLAC files, and a listener that subscribes to `stream.fft` or `stream.pcm` while paused gets the current frame.
+- One player no longer silences the filter taps, the waveform or the loudness scan of another player.
+- `PcmSource.abort()` on a queued source removes its entry from the playlist instead of leaving it to fail at its turn.
+- Two `setMediaSession` calls in flight, or a dispose followed by a new player, no longer leave the OS media session off with its commands lost, and `setMediaSession` outside the root isolate throws a `StateError` instead of killing that isolate.
+- Android: a call or an assistant no longer restarts a track the user paused, the notification seek bar no longer stays frozen, opening a file from a cloud provider no longer freezes the app, and a second Flutter engine no longer turns off the media session.
+- iOS and macOS: a second engine no longer clears the Now Playing entry of the one that owns it.
+- Windows: the media controls no longer pile up genres or keep the previous track number. Linux: a new `desktopEntry`, `appName` or rate list reaches MPRIS without a disable.
+- A source resolver that answers after its hook timed out no longer rewrites the URL of the next entry, and `setSourceResolver` with `timeout: null` removes an earlier deadline.
+- A `continueHook` that comes after the hook's timeout no longer releases the next event of the same hook.
+- `file://localhost` URLs open, and on Windows a `file://server/share` URL opens the share. A `file://` URL from the source resolver reaches mpv as a path.
+- `setNetworkTimeout` caps the value at 2147.48 s, the most FFmpeg accepts, instead of making every network open fail.
+- Asset copies get a short file name, so an asset with a deep path opens.
+- `dispose()` no longer blocks the main isolate while mpv shuts down: the core is destroyed in a background isolate, and `dispose()` completes once it is gone.
+- With the prefetch on, a source resolver runs once for an entry the prefetch opened: its load reuses that URL, so a resolver that returns a new URL on every call keeps gapless playback and downloads the entry once.
+
+### Build
+- Updated libmpv to `libmpv-r18` across all platforms.
+- While a source resolver runs for the prefetch, the playing track keeps its duration, metadata, position and track changes, and a `dump-cache` no longer crashes the app. Two players prefetch independently.
+- The prefetch skips an entry whose `httpHeaders`, `httpChunkSize`, `start` or `end` differ from the playing one, so headers never reach the next entry's host. `prefetchState` turns `failed` at once and goes back to `idle` after `stop()`.
+- The waveform and the loudness scan no longer crash on a file with more than 8 channels or on an MP3 that turns from stereo to mono, follow the selected audio track, work on Android `content://` sources, and follow the playback position of a file whose timestamps do not start at zero.
+- Stopping or skipping a file stops its analysis and its download, and a raw AAC over HTTP is analyzed from the cache instead of being downloaded again.
+- `setAudioSpdif` passthrough works, and https sources play through `setHttpProxy`.
+- FFmpeg audio filters refuse values that read or wrote out of their buffers, so a `RawAudioEffect` fails the chain instead of crashing.
+- SMB stop and quit return at once when the server stops answering (about 120 s before), and URLs with a port, an IPv6 host or a bare `%` open correctly.
+- `setChapters` with fewer chapters than the current one no longer crashes, a live PCM source with a loop on plays once instead of spinning and sets `completed` at its end, and the spectrum no longer shows the previous track's samples after the output format changes.
+- Windows: the audio output closes on mpv's core thread when a player is disposed. iOS: the media session's audio mode is no longer replaced by `MoviePlayback`.
+- Android: audiotrack rests while there is nothing to play, reopens after audioserver dies, keeps its audio across a pause, and `setAudioStreamSilence` feeds silence.
+- The Android plugin declares the JUnit Platform launcher for its unit tests.
+
+### Docs
+- README, dartdoc and MIGRATION say what each audio driver does with the volume, exclusive mode and the media role, how hooks, the source resolver and live PCM entries behave with the prefetch and loops, and which behaviors need libmpv-r18.
+
 ## [0.5.1] - 15-10-2026
 
 ### Added
