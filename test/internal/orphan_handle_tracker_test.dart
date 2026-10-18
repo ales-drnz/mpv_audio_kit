@@ -73,6 +73,22 @@ void main() {
     expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
   });
 
+  test('a handle another isolate freed is not reaped again', () async {
+    // The event isolate of a player whose owner exited frees the core
+    // itself (OwnerWatch) and clears its slot, with a tracker of its own
+    // over the same process environment.
+    final env = _FakeEnvironment();
+    final old = OrphanHandleTracker.forTesting(env);
+    bringUp(old);
+    old
+      ..add(h1)
+      ..add(h2);
+    await Future<void>.delayed(Duration.zero);
+
+    OrphanHandleTracker.forTesting(env).forget(h1);
+    expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
+  });
+
   test('a value with the pid of a parent process is not read', () {
     // A child process inherits the environment, with its parent's pid.
     final env = _FakeEnvironment()..values[_name] = '${pid + 1}:4096';

@@ -13,6 +13,7 @@ import 'package:ffi/ffi.dart';
 import '../events/player_exception.dart';
 import '../mpv_bindings.dart' as mpv;
 import 'build_mode.dart';
+import 'owner_watch.dart';
 
 part 'isolate_events.dart';
 part 'isolate_messages.dart';
@@ -170,6 +171,7 @@ void _isolateEntry(SendPort initialReplyPort) {
           ? Pointer<Int64>.fromAddress(message.wakeupCounterAddress!)
           : null;
       final stopFlag = Pointer<Int32>.fromAddress(message.stopFlagAddress);
+      final ownerGone = Pointer<Int32>.fromAddress(message.ownerGoneAddress);
       _isolateStopFlag = stopFlag;
       try {
         // The heavy FFI sequence runs here: off the main isolate so
@@ -224,8 +226,20 @@ void _isolateEntry(SendPort initialReplyPort) {
       }
       // Blocking call: returns when `_runEventLoop` breaks out of
       // its loop: on the stop flag dispose() sets right after its `quit`
-      // command (MpvEventIsolate.requestStop), or on MPV_EVENT_SHUTDOWN.
-      _runEventLoop(lib!, handle!, toMain!, stopFlag, cache, wakeupCounter);
+      // command (MpvEventIsolate.requestStop), on MPV_EVENT_SHUTDOWN, or
+      // once the owner isolate exited without dispose ([OwnerWatch]).
+      _runEventLoop(
+        lib!,
+        handle!,
+        toMain!,
+        stopFlag,
+        ownerGone,
+        cache,
+        wakeupCounter,
+      );
+      if (stopFlag.value == 0 && ownerGone.value != 0) {
+        releaseOrphan(lib!, handle!);
+      }
       // Drop the last live ReceivePort so the VM tears the isolate
       // down naturally: this runs the per-isolate finalizers that
       // release libmpv-side state loaded via `MpvLibrary.open`.
@@ -241,10 +255,11 @@ void _runEventLoop(
   Pointer<mpv.MpvHandle> handle,
   SendPort toMain,
   Pointer<Int32> stopFlag,
+  Pointer<Int32> ownerGone,
   _PropertyCache cache,
   Pointer<Int64>? wakeupCounter,
 ) {
-  while (stopFlag.value == 0) {
+  while (stopFlag.value == 0 && ownerGone.value == 0) {
     // Test-only telemetry; null in production.
     if (wakeupCounter != null) {
       wakeupCounter.value = wakeupCounter.value + 1;
@@ -255,7 +270,7 @@ void _runEventLoop(
     // flag THEN calls `mpv_wakeup`, so a wakeup-driven return lands here with
     // the flag already `1`: this is the lost-wakeup-safe exit edge, and it
     // does not depend on mpv emitting `MPV_EVENT_SHUTDOWN`.
-    if (stopFlag.value != 0) {
+    if (stopFlag.value != 0 || ownerGone.value != 0) {
       break;
     }
 
@@ -1088,6 +1103,7 @@ class MpvEventIsolate {
     int? wakeupCounterAddress,
   }) async {
     if (onEvent != null) _events.stream.listen(onEvent);
+    final ownerGone = await OwnerWatch.wordAddress();
 
     _stopFlag = calloc<Int32>()..value = 0;
 
@@ -1142,6 +1158,7 @@ class MpvEventIsolate {
         logLevel: logLevel,
         wakeupCounterAddress: wakeupCounterAddress,
         stopFlagAddress: _stopFlag!.address,
+        ownerGoneAddress: ownerGone,
       ),
     );
 

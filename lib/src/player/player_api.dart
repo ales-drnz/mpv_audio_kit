@@ -61,6 +61,10 @@ abstract interface class PlayerApi {
 
   /// Tears down the player. Idempotent: every call returns the same
   /// teardown future.
+  ///
+  /// On Android a player whose isolate exits without it (the engine was
+  /// destroyed while the app's process stays) stops and frees libmpv on
+  /// its own.
   Future<void> dispose();
 
   // ── Loading ────────────────────────────────────────────────────────

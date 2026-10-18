@@ -189,8 +189,11 @@ internal object MediaSessionManager {
         appContext = context.applicationContext
     }
 
-    /** [engine] detaches: tear down what it owns (defensive, Dart normally
-     *  calls `disable` on dispose first). The session and the sink of
+    /** [engine] detaches: tear down what it owns. Dart calls `disable` on
+     *  dispose, but an engine destroyed with the process still running
+     *  (Back on the root route, a swipe from the recent apps) never
+     *  disposes: its players stop on their own (`OwnerWatch` on the Dart
+     *  side), and the session goes here. The session and the sink of
      *  another engine stay, and the application context serves them all. */
     fun detach(engine: Any) {
         val teardown = engines.onDetach(engine)

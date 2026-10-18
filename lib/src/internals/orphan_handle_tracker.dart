@@ -28,8 +28,9 @@ import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 /// its parent, and ignores it.
 ///
 /// **Debug only**: guarded by [kHotRestartPossible]. Profile and
-/// release builds have no Hot-Restart: the parent process dies with
-/// the VM and there are no orphans to rescue.
+/// release builds have no Hot-Restart. An engine can still go while the
+/// process stays (Android): the players of an isolate that exits are
+/// stopped by `OwnerWatch`, not here.
 ///
 /// **Single-isolate**: [add] and [remove] are not synchronized across
 /// isolates that share a pid. The test suite disables the tracker
@@ -213,16 +214,30 @@ class OrphanHandleTracker {
       if (buffer == null || handle == nullptr) {
         return;
       }
-      for (int i = 0; i < _kBufferSize; i++) {
-        final cookieRef = buffer + (i * _kSlotStride);
-        final addrRef = buffer + (i * _kSlotStride + 1);
-        if (cookieRef.value == _kCookie && addrRef.value == handle.address) {
-          cookieRef.value = 0;
-          addrRef.value = 0;
-          break;
-        }
-      }
+      _clear(buffer, handle);
     });
+  }
+
+  /// Clears [handle] from the buffer the process published, from any
+  /// isolate and without [ensureInitialized]: the event isolate of a
+  /// player whose owner exited frees the handle itself, and the next VM
+  /// of the process must not free it again.
+  void forget(Pointer<MpvHandle> handle) {
+    if (!_isDebug) return;
+    final buffer = _publishedBuffer();
+    if (buffer != null) _clear(buffer, handle);
+  }
+
+  static void _clear(Pointer<Int64> buffer, Pointer<MpvHandle> handle) {
+    for (int i = 0; i < _kBufferSize; i++) {
+      final cookieRef = buffer + (i * _kSlotStride);
+      final addrRef = buffer + (i * _kSlotStride + 1);
+      if (cookieRef.value == _kCookie && addrRef.value == handle.address) {
+        cookieRef.value = 0;
+        addrRef.value = 0;
+        break;
+      }
+    }
   }
 }
 
