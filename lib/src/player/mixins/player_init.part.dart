@@ -86,6 +86,15 @@ mixin _InitModule on _PlayerBase {
       _waveformCtrl.add(w);
     });
     _loudnessMeterPipeline.stream.listen(_loudnessMeterCtrl.add);
+    // Paused, stopped or parked at the end, the output writes nothing: the
+    // spectrum and tap polls rest until the core plays again.
+    void idle(bool playing) {
+      _spectrumPipeline.setIdle(!playing);
+      _filterTapPipeline.setIdle(!playing);
+    }
+
+    idle(_state.playing);
+    _reactives.playing.changes.listen(idle);
     _loudnessScanPipeline.stream.listen((s) {
       _lastLoudnessScan = s;
       _loudnessScanCtrl.add(s);

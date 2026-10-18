@@ -79,4 +79,65 @@ void main() {
       await p.dispose();
     });
   });
+  group('core idle', () {
+    // F41: paused or stopped, the output writes nothing, so the poll reads
+    // nothing new. It stops while the core is idle and starts again after.
+    test('no read while the core is idle, the poll comes back after', () async {
+      var gets = 0;
+      final p =
+          SpectrumPipeline(
+            asyncGet: (name, format) async {
+              gets++;
+              return (-10, null);
+            },
+          )..setSettings(
+            const SpectrumSettings(emitInterval: Duration(milliseconds: 10)),
+          );
+      final sub = p.fftStream.listen((_) {});
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(gets, greaterThan(2), reason: 'it polls while playing');
+      p.setIdle(true);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      gets = 0;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(gets, 0, reason: 'idle, it read $gets times');
+      p.setIdle(false);
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(gets, greaterThan(2), reason: 'it polls again');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test(
+      'a listener that comes while idle gets the current frame once',
+      () async {
+        var gets = 0;
+        final p =
+            SpectrumPipeline(
+              asyncGet: (name, format) async {
+                gets++;
+                return (
+                  0,
+                  {
+                    'sample_rate': 48000,
+                    'channels': 2,
+                    'pts_ns': 5000000000,
+                    'samples': Uint8List(4096 * 2 * 4),
+                  },
+                );
+              },
+            )..setSettings(
+              const SpectrumSettings(emitInterval: Duration(milliseconds: 10)),
+            );
+        p.setIdle(true);
+        var frames = 0;
+        final sub = p.fftStream.listen((_) => frames++);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(frames, 1);
+        expect(gets, 1, reason: 'one read for the new listener, then none');
+        await sub.cancel();
+        await p.dispose();
+      },
+    );
+  });
 }

@@ -104,6 +104,37 @@ void main() {
     await p.dispose();
   });
 
+  test('no read while the core is idle, the poll comes back after', () async {
+    // F41: paused or stopped, the ring and the playback position stand
+    // still. A new listener still gets one read, the slice held now.
+    var gets = 0;
+    final p = FilterTapPipeline(
+      asyncGet: (name, format) async {
+        gets++;
+        return (-10, null);
+      },
+      asyncSet: (name, value) async => 0,
+      pollInterval: const Duration(milliseconds: 5),
+    )..setIdle(true);
+    final sub = p.tapPost('aek_idle_0').listen((_) {});
+    // The labels are a static of the isolate: a failure must not leave
+    // this one to the tests that follow.
+    addTearDown(() async {
+      await sub.cancel();
+      await p.dispose();
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(gets, 1, reason: 'one read for the new listener, then none');
+    p.setIdle(false);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(gets, greaterThan(3), reason: 'it polls again');
+    p.setIdle(true);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    gets = 0;
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(gets, 0, reason: 'idle, it read $gets times');
+  });
+
   group('two players', () {
     // analyzer-taps is a static of the libmpv process: each player writes
     // it through its own core, and a write replaces the whole list.

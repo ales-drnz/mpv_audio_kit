@@ -40,7 +40,9 @@ const int _kMaxActiveTaps = 8;
 ///      controllers keyed by `(label, side)`.
 ///
 /// Idle cost is exactly zero: the polling timer is unarmed and the
-/// active-list is empty until the first listener attaches.
+/// active-list is empty until the first listener attaches. While the core
+/// is idle ([setIdle]) the timer is unarmed too: a new listener still gets
+/// one read, the slice held now.
 @internal
 class FilterTapPipeline {
   FilterTapPipeline({
@@ -95,6 +97,7 @@ class FilterTapPipeline {
   // Guards against overlapping async polls; see [LoudnessMeterPipeline].
   bool _polling = false;
   bool _disposed = false;
+  bool _idle = false;
 
   /// Returns a broadcast stream of PCM frames captured **before** the
   /// chain stage labelled [label] (e.g. `aek_equalizer_1`, see
@@ -126,10 +129,26 @@ class FilterTapPipeline {
     }).stream;
   }
 
+  /// Stops the poll loop while the core is idle (mpv's `core-idle`) and
+  /// starts it again when it plays: idle, the ring and the playback
+  /// position stand still and every read returns the slices already sent.
+  void setIdle(bool idle) {
+    if (_disposed || idle == _idle) return;
+    _idle = idle;
+    if (idle) {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    } else if (_active.isNotEmpty) {
+      _pollTimer ??= Timer.periodic(_pollInterval, (_) => _poll());
+    }
+  }
+
   void _onListen(_TapKey key) {
     if (_disposed) return;
     if (_active.add(key)) _writeActiveList();
-    if (_pollTimer == null) {
+    if (_idle) {
+      _poll();
+    } else if (_pollTimer == null) {
       _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
       _poll();
     }

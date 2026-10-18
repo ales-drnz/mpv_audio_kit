@@ -21,6 +21,10 @@ import 'dsp_async_io.dart';
 /// configured emit rate. The poll loop is **lazy**: it starts on the
 /// first listener (to either stream) and stops on the last cancel.
 ///
+/// While the core is idle ([setIdle]: paused, stopped, at the end) the
+/// output writes nothing and the loop does not run: a new listener still
+/// gets one read, the frame the output holds.
+///
 /// The pipeline:
 ///   1. Poll the property → MAP_NODE { sample_rate, channels, pts_ns, samples }.
 ///   2. Skip a stream when `pts_ns` matches the frame it got last (no new
@@ -76,6 +80,7 @@ class SpectrumPipeline {
   bool _fftActive = false;
   bool _pcmActive = false;
   bool _disposed = false;
+  bool _idle = false;
   Timer? _pollTimer;
   // Guards against overlapping async polls; see [LoudnessMeterPipeline].
   bool _polling = false;
@@ -105,6 +110,20 @@ class SpectrumPipeline {
     }
   }
 
+  /// Stops the poll loop while the core is idle (mpv's `core-idle`) and
+  /// starts it again when it plays: idle, every read would return the
+  /// frame the streams already have.
+  void setIdle(bool idle) {
+    if (_disposed || idle == _idle) return;
+    _idle = idle;
+    if (idle) {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    } else if (_fftActive || _pcmActive) {
+      _maybeStart();
+    }
+  }
+
   /// The shortest poll period. A shorter [SpectrumSettings.emitInterval]
   /// (a zero one would poll as fast as replies come back) is raised to it.
   static const Duration minEmitInterval = Duration(milliseconds: 8);
@@ -114,7 +133,7 @@ class SpectrumPipeline {
       : _settings.emitInterval;
 
   void _maybeStart() {
-    if (_disposed || _pollTimer != null) return;
+    if (_disposed || _idle || _pollTimer != null) return;
     // [BandProcessor] allocates lazily on first [process], so we don't
     // need to prime anything here: just arm the poll loop.
     _pollTimer = Timer.periodic(_interval, (_) => _poll());
