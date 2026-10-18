@@ -23,6 +23,7 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 ### Changed
 - `openAll` sends its appends in windows of 512, so a large album no longer fills mpv's reply queue on a busy device. 5000 entries still load in about 0.25 s.
 - `dispose()` no longer waits for the done event of its streams: active listeners get it right after, paused ones when they resume.
+- While the player is paused or stopped, `stream.fft`, `stream.pcm` and the filter taps stop polling mpv. A new listener still gets the current frame.
 - The Hot Restart cleanup keeps its state in an environment variable of the process instead of `mpv_audio_kit_refs_<pid>.txt` files in the temp directory. Files left there by earlier versions can be deleted.
 - A ready waveform can end with unfilled bins when the audio is shorter than its estimated length.
 - A consumer `Hook.load` or `Hook.loadFail` no longer receives an event that the timeout already continued, and each hook event has its own id.
