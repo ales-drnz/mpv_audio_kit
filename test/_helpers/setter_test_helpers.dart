@@ -113,6 +113,38 @@ void skipMissing(String reason) {
   markTestSkipped(reason);
 }
 
+/// The real audio outputs of the desktop hosts, for a test that needs a
+/// device: the null output ignores `audio-buffer` and has no volume.
+const realAudioOutputs = 'pipewire,pulse,alsa,coreaudio,wasapi';
+
+/// The output mpv opens on this host for [realAudioOutputs]: `'null'` (or
+/// `null`) when none of them has a device and mpv fell back to null. Plays
+/// the default fixture muted until the output is open.
+Future<String?> probeAudioOutput() async {
+  final player = await buildPlayer();
+  try {
+    await player.setRawProperty('ao', realAudioOutputs);
+    await player.setVolume(0);
+    await player.open(Media(defaultFixturePath()), play: true);
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (true) {
+      final ao = await player.getRawProperty('current-ao');
+      if (ao != null || DateTime.now().isAfter(deadline)) return ao;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+  } finally {
+    await player.dispose();
+  }
+}
+
+/// Skips the running test because the host has no audio device. The Linux
+/// CI job runs a PulseAudio null sink, so there a missing device means the
+/// sink broke, and the test fails. Other runners may have no device.
+void skipWithoutAudioDevice(String reason) {
+  if (Platform.environment['CI'] == 'true' && Platform.isLinux) fail(reason);
+  markTestSkipped(reason);
+}
+
 /// The single stage of type [T] in [player]'s effects chain.
 T effectOf<T extends AudioEffect>(Player player) =>
     player.state.audioEffects.whereType<T>().single;
@@ -168,6 +200,21 @@ Future<Player> buildPlayerWithFixture({String? fixturePath}) async {
     await openAndWaitForLoad(player, fixturePath);
   }
   return player;
+}
+
+/// Reads mpv's own value of [name] and expects [expected], after a setter
+/// that converts units on the way (bytes, a [Duration] in seconds). The
+/// state takes the value the test passed before mpv sees the write, so
+/// only this read catches a conversion that went wrong. An int is matched
+/// exactly; a double, such as seconds, to the 6 decimals mpv prints.
+Future<void> expectMpv(Player player, String name, num expected) async {
+  final raw = await player.getRawProperty(name);
+  final reason = 'mpv holds $name = $raw';
+  if (expected is int) {
+    expect(int.tryParse(raw ?? ''), expected, reason: reason);
+  } else {
+    expect(double.tryParse(raw ?? ''), closeTo(expected, 1e-6), reason: reason);
+  }
 }
 
 /// Polls [condition] every [interval] until it holds, and fails the test

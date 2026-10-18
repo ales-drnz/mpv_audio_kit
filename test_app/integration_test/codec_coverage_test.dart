@@ -4,7 +4,8 @@
 // found in the LICENSE file.
 //
 // On-device codec coverage. Mirrors `test/runtime_extended/codec_coverage_test.dart`
-// against the platform-specific libmpv binary (macOS / iOS / Android).
+// against the platform-specific libmpv binary (macOS, iOS, Android, Windows,
+// Linux).
 // Both suites read from the same `_helpers/codec.dart` matrix; the only
 // platform-dependent piece is how the fixture file is reached — host uses
 // an absolute filesystem path, device materializes from rootBundle.
@@ -42,9 +43,10 @@ void main() {
         final path = await materializeFixture('codec/$filename');
         final result = await verifyCodec(player, path, expected);
 
+        // mpv reports a Windows path with backslashes.
         expect(
-          result.path,
-          path,
+          result.path.replaceAll(r'\', '/'),
+          path.replaceAll(r'\', '/'),
           reason: 'the player must be on the fixture, not the previous one',
         );
         expect(

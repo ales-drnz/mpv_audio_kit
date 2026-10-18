@@ -105,6 +105,24 @@ void main() {
     File(resolved.uri).deleteSync();
   });
 
+  test('an asset packed beside another is copied alone', () async {
+    // rootBundle can answer with a view into a buffer that holds other
+    // assets too: the copy takes this asset's bytes, not the whole buffer.
+    const packedKey = 'assets/fixtures/packed.wav';
+    final packed = Uint8List(80)
+      ..fillRange(0, 40, 0xAA)
+      ..fillRange(40, 80, 0xBB);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMessageHandler(
+          'flutter/assets',
+          (ByteData? message) async => ByteData.sublistView(packed, 40, 80),
+        );
+    final resolved = await resolveUri('asset://$packedKey');
+    final copy = File(resolved.uri);
+    expect(copy.readAsBytesSync(), List.filled(40, 0xBB));
+    copy.deleteSync();
+  });
+
   test('no partial file is left beside the copy', () async {
     final resolved = await resolveUri('asset://$key');
     final leftovers = File(

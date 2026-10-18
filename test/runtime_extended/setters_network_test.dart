@@ -32,6 +32,7 @@ void main() {
       test('networkTimeout / tlsVerify round-trip', () async {
         await player.setNetworkTimeout(const Duration(seconds: 60));
         expect(player.state.networkTimeout, const Duration(seconds: 60));
+        await expectMpv(player, 'network-timeout', 60.0);
 
         await player.setTlsVerify(false);
         expect(player.state.tlsVerify, isFalse);
@@ -118,6 +119,7 @@ void main() {
         () async {
           await player.setAudioBuffer(const Duration(milliseconds: 500));
           expect(player.state.audioBuffer, const Duration(milliseconds: 500));
+          await expectMpv(player, 'audio-buffer', 0.5);
 
           await player.setAudioStreamSilence(true);
           expect(player.state.audioStreamSilence, isTrue);

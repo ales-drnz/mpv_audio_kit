@@ -35,6 +35,9 @@ void main() {
         expect(player.state.demuxer.maxBytes, 100 * 1024 * 1024);
         expect(player.state.demuxer.maxBackBytes, 25 * 1024 * 1024);
         expect(player.state.demuxer.readahead, const Duration(seconds: 10));
+        await expectMpv(player, 'demuxer-max-bytes', 100 * 1024 * 1024);
+        await expectMpv(player, 'demuxer-max-back-bytes', 25 * 1024 * 1024);
+        await expectMpv(player, 'demuxer-readahead-secs', 10.0);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('byte caps preserve sub-MiB precision', () async {
@@ -43,6 +46,9 @@ void main() {
         const bytes = 100 * 1024 * 1024 + 1;
         await player.setDemuxer(player.state.demuxer.copyWith(maxBytes: bytes));
         expect(player.state.demuxer.maxBytes, bytes);
+        // The state holds the value passed in: only mpv tells a cap that
+        // was floored to whole MiB on the way.
+        await expectMpv(player, 'demuxer-max-bytes', bytes);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('readahead preserves sub-second precision', () async {
@@ -58,6 +64,7 @@ void main() {
           player.state.demuxer.readahead,
           const Duration(milliseconds: 1500),
         );
+        await expectMpv(player, 'demuxer-readahead-secs', 1.5);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('a single field can be tweaked via copyWith', () async {
@@ -68,6 +75,8 @@ void main() {
         expect(player.state.demuxer.maxBackBytes, 0);
         expect(player.state.demuxer.maxBytes, before.maxBytes);
         expect(player.state.demuxer.readahead, before.readahead);
+        await expectMpv(player, 'demuxer-max-back-bytes', 0);
+        await expectMpv(player, 'demuxer-max-bytes', before.maxBytes);
       }, timeout: const Timeout(Duration(seconds: 15)));
     });
   });

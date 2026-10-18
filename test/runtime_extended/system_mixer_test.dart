@@ -14,48 +14,70 @@ void main() {
   final fx = defaultFixturePath();
   runtimeSuite(fixturePath: fx, () {
     group('system mixer (ao-volume / ao-mute)', () {
-      test('setSystemVolume round-trips on a backend that exposes it', () async {
-        // Open a REAL (silent) audio output so `ao-volume` becomes available —
-        // `audio-stream-silence` keeps the device open streaming silence, and
-        // play:false means no content is heard. Where the host has no such
-        // backend (headless CI), `audio-fallback-to-null` lands on the null AO
-        // and the test skips.
-        final player = Player(
-          configuration: const PlayerConfiguration(logLevel: LogLevel.off),
-        );
-        addTearDown(player.dispose);
-        await player.setAudioStreamSilence(true);
-        final loaded = player.stream.seekCompleted.first.timeout(
-          const Duration(seconds: 8),
-        );
-        await player.open(Media(fx), play: false);
-        try {
-          await loaded;
-        } catch (_) {}
-        // The AO opens after the load; give it a bounded moment to
-        // expose its volume before deciding the host has none.
-        final aoReady = DateTime.now().add(const Duration(seconds: 3));
-        while (await player.getRawProperty('ao-volume') == null &&
-            DateTime.now().isBefore(aoReady)) {
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-        }
+      test(
+        'setSystemVolume round-trips on a backend that exposes it',
+        () async {
+          // Open a REAL (silent) audio output so `ao-volume` becomes available:
+          // `audio-stream-silence` keeps the device open streaming silence, and
+          // play:false means no content is heard. Where the host has no device,
+          // `audio-fallback-to-null` lands on the null AO and the test skips
+          // (on the Linux CI job, which runs a PulseAudio null sink, it fails).
+          final player = Player(
+            configuration: const PlayerConfiguration(logLevel: LogLevel.off),
+          );
+          addTearDown(player.dispose);
+          await player.setAudioStreamSilence(true);
+          // A load that never completes is a failure, not a missing device.
+          await openAndWaitForLoad(player, fx);
+          // The AO opens after the load; give it a bounded moment to
+          // expose its volume before deciding the host has none.
+          final aoReady = DateTime.now().add(const Duration(seconds: 3));
+          while (await player.getRawProperty('ao-volume') == null &&
+              DateTime.now().isBefore(aoReady)) {
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+          }
 
-        if (await player.getRawProperty('ao-volume') == null) {
-          markTestSkipped('AO does not expose system volume on this host');
-          return;
-        }
+          if (await player.getRawProperty('ao-volume') == null) {
+            skipWithoutAudioDevice(
+              'AO does not expose system volume on this host '
+              '(${await player.getRawProperty('current-ao')})',
+            );
+            return;
+          }
 
-        await player.setSystemVolume(50.0);
-        await waitUntil(
-          () => ((player.state.systemVolume ?? -1) - 50.0).abs() <= 0.5,
-        );
-        expect(
-          player.state.systemVolume,
-          closeTo(50.0, 0.5),
-          reason: 'ao-volume round-trips through the real audio output',
-        );
-        await player.setSystemVolume(100.0);
-      }, timeout: const Timeout(Duration(seconds: 20)));
+          // Read back from the output: the state takes the value as soon as
+          // mpv accepts the write.
+          Future<double?> aoVolume() async =>
+              double.tryParse(await player.getRawProperty('ao-volume') ?? '');
+          await player.setSystemVolume(50.0);
+          await waitUntil(
+            () async => ((await aoVolume() ?? -1) - 50.0).abs() <= 0.5,
+            reason: 'ao-volume round-trips through the real audio output',
+          );
+          expect(player.state.systemVolume, closeTo(50.0, 0.5));
+          await player.setSystemVolume(100.0);
+          await waitUntil(
+            () async => ((await aoVolume() ?? -1) - 100.0).abs() <= 0.5,
+            reason: 'ao-volume goes back to 100',
+          );
+
+          // coreaudio has no per-app mute; PulseAudio and PipeWire do.
+          if (await player.getRawProperty('ao-mute') != null) {
+            await player.setSystemMute(true);
+            await waitUntil(
+              () async => await player.getRawProperty('ao-mute') == 'yes',
+              reason: 'ao-mute round-trips through the real audio output',
+            );
+            expect(player.state.systemMute, isTrue);
+            await player.setSystemMute(false);
+            await waitUntil(
+              () async => await player.getRawProperty('ao-mute') == 'no',
+              reason: 'ao-mute goes back to no',
+            );
+          }
+        },
+        timeout: const Timeout(Duration(seconds: 30)),
+      );
 
       test(
         'setSystemVolume / setSystemMute are best-effort (no throw on null AO)',

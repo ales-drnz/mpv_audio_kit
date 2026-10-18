@@ -161,6 +161,13 @@ void main() {
       final (node, dispose) = _byteArray([0x42, 0x99, 0x00, 0xFF]);
       try {
         final result = decodeMpvNode(node.ref);
+        // mpv frees the node right after: the result must not be a view of
+        // its buffer. Overwrite the buffer instead of freeing it, which
+        // would make the read below a use after free.
+        final data = node.ref.u.ba.ref.data.cast<Uint8>();
+        for (var i = 0; i < 4; i++) {
+          data[i] = 0;
+        }
         expect(result, isA<Uint8List>());
         expect(result, [0x42, 0x99, 0x00, 0xFF]);
       } finally {

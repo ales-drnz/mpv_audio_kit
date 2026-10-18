@@ -236,6 +236,7 @@ void main() {
             player.state.demuxer.copyWith(maxBytes: bytes),
           );
           expect(player.state.demuxer.maxBytes, bytes);
+          await expectMpv(player, 'demuxer-max-bytes', bytes);
 
           // Restore to default so subsequent tests aren't disturbed.
           await player.setDemuxer(
