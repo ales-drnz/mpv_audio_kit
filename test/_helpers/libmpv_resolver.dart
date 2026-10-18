@@ -33,6 +33,27 @@ String? resolveLibmpv() {
 
 List<int>? _libmpvBytes;
 
+/// The libmpv-scripts release of the libmpv at [path], read from the
+/// version string mpv keeps in the binary: `mpv v0.41.0+r17` gives 17.
+/// `null` when the binary carries no release stamp (a build of upstream
+/// mpv). Read while the tests are declared, before any player exists.
+int? libmpvReleaseOf(String path) {
+  final bytes = _libmpvBytes ??= File(path).readAsBytesSync();
+  const prefix = 'mpv v';
+  outer:
+  for (var i = 0; i + prefix.length < bytes.length; i++) {
+    for (var j = 0; j < prefix.length; j++) {
+      if (bytes[i + j] != prefix.codeUnitAt(j)) continue outer;
+    }
+    final end = bytes.indexOf(0, i);
+    if (end < 0 || end - i > 64) continue;
+    final version = String.fromCharCodes(bytes.sublist(i, end));
+    final release = RegExp(r'^mpv v[0-9.]+\+r(\d+)$').firstMatch(version);
+    if (release != null) return int.parse(release.group(1)!);
+  }
+  return null;
+}
+
 /// Whether the libmpv at [path] carries [name] as a NUL-terminated string,
 /// the form mpv's property table keeps its names in. Lets a suite that
 /// needs a property of this build (`waveform-data`) decide its skip while
