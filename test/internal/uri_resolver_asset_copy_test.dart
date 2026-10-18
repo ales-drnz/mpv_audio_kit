@@ -88,6 +88,23 @@ void main() {
     },
   );
 
+  test('a long asset key gets a short copy name that keeps its tail', () async {
+    // 296 characters: flattened whole, the name passes NAME_MAX (255) and,
+    // on Windows, MAX_PATH (260) before the directory is even counted.
+    final long = 'assets/${'nested_folder/' * 20}track.wav';
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMessageHandler('flutter/assets', (ByteData? message) async {
+          return ByteData.sublistView(payload);
+        });
+    final resolved = await resolveUri('asset://$long');
+    final name = resolved.uri.split(Platform.pathSeparator).last;
+    expect(name.length, lessThanOrEqualTo(83));
+    expect(name, endsWith('_nested_folder_track.wav'));
+    expect(File(resolved.uri).readAsBytesSync(), payload);
+    expect(await loadedName('asset://$long'), resolved.uri);
+    File(resolved.uri).deleteSync();
+  });
+
   test('no partial file is left beside the copy', () async {
     final resolved = await resolveUri('asset://$key');
     final leftovers = File(

@@ -263,17 +263,28 @@ String _assetKey(String uri) {
   return assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
 }
 
+/// The most characters of an asset key a copy's name keeps, from its end.
+const _kAssetNameTail = 64;
+
 /// Where the copy of the asset at [assetPath] goes.
 Future<String> _assetCopyPath(String assetPath) async {
   // Both POSIX (`/`) and Windows (`\`) separators are flattened so the
   // temp filename never contains directory parts. On POSIX
   // `Platform.pathSeparator` is `/` and the second pass is a no-op.
-  final safeName = assetPath
+  final flat = assetPath
       .replaceAll(Platform.pathSeparator, '_')
       .replaceAll('/', '_');
-  // Flattening alone is ambiguous: `a/b.mp3` and `a_b.mp3` collapse to
-  // the same name, and the second extraction would overwrite a file mpv
-  // may still be streaming. A hash of the ORIGINAL path disambiguates.
+  // Only the tail is kept, extension included: a deep key flattened whole
+  // can pass NAME_MAX, and on Windows MAX_PATH, past which mpv cannot
+  // open the copy.
+  final runes = flat.runes;
+  final safeName = runes.length <= _kAssetNameTail
+      ? flat
+      : String.fromCharCodes(runes.skip(runes.length - _kAssetNameTail));
+  // Flattening and cutting are ambiguous: `a/b.mp3` and `a_b.mp3`
+  // collapse to the same name, and the second extraction would overwrite
+  // a file mpv may still be streaming. A hash of the ORIGINAL path
+  // disambiguates.
   final dir = await _assetDirectory();
   return '${dir.path}${Platform.pathSeparator}'
       'mpv_asset_${_fnv1a(assetPath)}_$safeName';
