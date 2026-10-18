@@ -91,6 +91,10 @@ abstract final class MpvAudioKit {
   /// Initializes the native backend for `mpv_audio_kit`.
   /// Must be called before creating any [Player] instances.
   ///
+  /// Its settings hold per isolate: a [Player] created in another isolate
+  /// needs a call there too, with the same [libmpv] and
+  /// `hotRestartCleanup: false`.
+  ///
   /// Handles cleanup of orphaned `libmpv` native resources
   /// (e.g., handles that leaked across a Flutter Hot-Restart).
   ///
@@ -112,8 +116,8 @@ abstract final class MpvAudioKit {
   /// the replaced VM, turns off the waveform, loudness scan and filter taps
   /// its listeners left on, and disables its OS media session. Pass `false`
   /// in test runners, background isolates and other multi-VM scenarios
-  /// that share a pid; the tracker would otherwise mis-attribute prior-VM
-  /// handles as orphans.
+  /// that share a pid: in a debug build the tracker would otherwise take
+  /// the live handles of the other isolate for orphans and destroy them.
   static void ensureInitialized({
     String? libmpv,
     bool hotRestartCleanup = true,

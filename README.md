@@ -427,6 +427,8 @@ The player lives on your main isolate and talks to libmpv without blocking it: c
 
 Call `MpvAudioKit.ensureInitialized()` once at startup, before you create a `Player`. It sets up the native side and releases the handles a hot restart left behind.
 
+It holds per isolate. To create a `Player` in another isolate, call it there too, with the same `libmpv` path if you passed one and `hotRestartCleanup: false`: in a debug build the cleanup would otherwise destroy the players of the root isolate. In that isolate `asset://` sources do not load (copy the asset to a file and pass its path), a `content://` source needs `BackgroundIsolateBinaryMessenger.ensureInitialized` first, and `setMediaSession` throws, since the OS sends its commands to the root isolate only.
+
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
