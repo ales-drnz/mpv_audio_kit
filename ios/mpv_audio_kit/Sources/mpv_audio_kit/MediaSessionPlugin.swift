@@ -317,13 +317,15 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   #if os(iOS)
   // ── AVAudioSession (iOS-only) ─────────────────────────────────────
 
-  /// Configures the `.playback` category and registers the interruption /
-  /// route-change observers. Does NOT take the audio route — activation is
-  /// deferred to the first real playback (see `activateSessionIfPlaying`)
-  /// so enabling the session doesn't pre-empt another app's audio before
-  /// this player produces output. Activation is INDEPENDENT of
-  /// `interruptionPolicy` — the policy only governs how we react to an
-  /// interruption. Idempotent; re-applies the policy on every call.
+  /// Configures the `.playback` category and registers the interruption
+  /// and route-change observers. It does not activate the session: this
+  /// plugin does that on the first playing push (see
+  /// `activateSessionIfPlaying`), whatever the `interruptionPolicy`, which
+  /// only governs how we react to an interruption. Enabling the media
+  /// session alone never stops another app's audio. mpv's AudioUnit
+  /// output activates the session on its own when it opens, as soon as a
+  /// file loads, even paused, and that does stop it. Idempotent;
+  /// re-applies the policy on every call.
   private func applyAudioSessionConfig() {
     dispatchPrecondition(condition: .onQueue(.main))
     let session = AVAudioSession.sharedInstance()
@@ -353,7 +355,8 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         object: nil)
       audioSessionWired = true
     }
-    // Declare intent; activation happens lazily on the first playing push.
+    // Declare intent; the plugin activates on the first playing push, and
+    // mpv's output activates on its own when it opens.
     try? session.setCategory(.playback, mode: .default, options: [])
     // `keepPlaying` asks the system not to pre-empt playback for
     // incidental alerts (timers, calendar). A real call / Siri still
@@ -593,9 +596,9 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     let playing = (currentPlayback["playing"] as? Bool) ?? false
     #if os(iOS)
-    // Take the audio route lazily — only once real playing content is
-    // published — so enabling the session at app launch doesn't pre-empt
-    // another app's audio before this player produces any output.
+    // Activate on the first playing push, so enabling the session at app
+    // launch does not stop another app's audio. mpv's output has usually
+    // activated it already: it does so when it opens, even paused.
     activateSessionIfPlaying(playing)
     #endif
     let rate = (currentPlayback["rate"] as? Double) ?? 1.0

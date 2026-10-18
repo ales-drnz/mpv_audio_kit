@@ -6,9 +6,10 @@
        is mandatory on Android 14+ (API 34) for this service type. -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-  <!-- Android 13+ (API 33) runtime permission. Media-session notifications
-       are exempt from the grant for lock-screen / Bluetooth, but the in-shade
-       media player only shows once the consumer app requests it at runtime. -->
+  <!-- A runtime permission from Android 13 (API 33), but media session
+       notifications are exempt: the media controls show in the shade, on
+       the lock screen and over Bluetooth without the grant, so the app
+       need not request it. -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
   <application>

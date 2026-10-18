@@ -1271,7 +1271,7 @@ abstract class _PlayerBase {
       final mpvId = _activeHooks.remove(id);
       if (mpvId == null) return;
       _internalLog(
-        'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s — '
+        'Hook "$name" (id=$id) timed out after ${timeout.inSeconds}s, '
         'auto-continuing to unblock mpv',
         level: LogLevel.warn,
       );

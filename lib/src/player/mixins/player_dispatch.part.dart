@@ -256,7 +256,7 @@ mixin _DispatchModule on _PlayerBase {
             // phase. Auto-continue so mpv never stalls, log it on the
             // internal channel for diagnostics.
             _internalLog(
-              'Received unknown hook "$name" (id=$id) — auto-continuing. '
+              'Received unknown hook "$name" (id=$id): auto-continuing. '
               'Update the Hook enum if mpv has added a new lifecycle phase.',
               level: LogLevel.warn,
             );

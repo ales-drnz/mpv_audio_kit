@@ -24,7 +24,7 @@ final class CacheRange {
   int get hashCode => Object.hash(start, end);
 
   @override
-  String toString() => 'CacheRange($start–$end)';
+  String toString() => 'CacheRange(start: $start, end: $end)';
 }
 
 /// Rich snapshot of mpv's `demuxer-cache-state`: the parts useful to an
