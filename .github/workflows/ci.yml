@@ -139,13 +139,16 @@ jobs:
       # The runner has no audio device, so every output fell back to
       # ao=null and the tests that need a real one (the lowLatency start,
       # the system mixer) skipped. A PulseAudio server with a null sink is
-      # a real output that plays into nothing.
+      # a real output that plays into nothing. norewinds caps the sink's
+      # latency at 50 ms: its default 2 s block hides the output buffer
+      # that lowLatency cuts.
       - name: PulseAudio null sink
         run: |
           pulseaudio --start --exit-idle-time=-1
-          pactl load-module module-null-sink sink_name=ci_null
+          pactl load-module module-null-sink sink_name=ci_null norewinds=1
           pactl set-default-sink ci_null
           pactl info | grep -E '^(Server Name|Default Sink)'
+          pactl list sinks | grep -E '^\s*(Name|Latency):'
       - name: Keep core dumps
         run: |
           mkdir -p /tmp/cores
