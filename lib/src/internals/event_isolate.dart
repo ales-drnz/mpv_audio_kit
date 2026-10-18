@@ -467,6 +467,10 @@ void _sendEndOfContent(
       eof &&
       (_getPropFlag(lib, handle, 'pause') == 1 ||
           _getPropFlag(lib, handle, 'keep-open-pause') == 0);
+  final file = parked
+      ? _getPropString(lib, handle, 'playlist/$pos/filename')
+      : null;
+  final live = file?.startsWith('mak-pcm://') ?? false;
   final count = _getPropInt64(lib, handle, 'playlist-count');
   if (_getPropInt64(lib, handle, 'playlist-pos') != pos ||
       _getPropInt64(lib, handle, 'playlist/$pos/id') != started) {
@@ -477,6 +481,7 @@ void _sendEndOfContent(
       eof: eof,
       parked: parked,
       lastEntry: count != null && pos == count - 1,
+      live: live,
     ),
   );
 }

@@ -137,11 +137,16 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   /// Whether the current file is the last playlist entry.
   final bool lastEntry;
 
-  /// Carries the [eof], [parked] and [lastEntry] reads.
+  /// Whether the current entry is a live PCM source (`mak-pcm://`), which
+  /// libmpv-r18 plays once whatever the loop. Read only when [parked].
+  final bool live;
+
+  /// Carries the [eof], [parked], [lastEntry] and [live] reads.
   MpvEventEndOfContent({
     required this.eof,
     required this.parked,
     required this.lastEntry,
+    this.live = false,
   });
 }
 

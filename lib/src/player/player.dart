@@ -1480,9 +1480,20 @@ abstract class _PlayerBase {
   /// being reported, and the state's playlist position can lag or lead the
   /// entry an edge belonged to. That raised `completed` at a track
   /// change, cleared by the next load, and missed the real end.
-  void _settleEndOfContent({required bool parked, required bool lastEntry}) {
+  ///
+  /// A live PCM entry ([live]) has no restart either: from libmpv-r18 it
+  /// plays once and parks under [Loop.file] too (F225).
+  void _settleEndOfContent({
+    required bool parked,
+    required bool lastEntry,
+    required bool live,
+  }) {
     if (!_hasLoadedFile) return;
-    final end = parked && lastEntry && _state.loop == Loop.off;
+    final loop = _state.loop;
+    final end =
+        parked &&
+        lastEntry &&
+        (loop == Loop.off || (live && loop == Loop.file));
     if (end == _state.completed) return;
     _updateLifecycle(completed: end);
     // The play-pause intent is spent at the end of content; leaving the
