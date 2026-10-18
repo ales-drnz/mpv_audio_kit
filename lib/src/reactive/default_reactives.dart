@@ -118,24 +118,25 @@ class DefaultPropertyReactives {
   /// Decoder-side gain applied on top of [volume] (`volume-gain`), in dB.
   final ReactiveProperty<double> volumeGain = ReactiveProperty<double>(0.0);
 
-  /// Lower clamp mpv applies to [volumeGain] (`volume-gain-min`), in dB.
+  /// Floor of mpv's relative steps on [volumeGain] (`volume-gain-min`), in
+  /// dB.
   final ReactiveProperty<double> volumeGainMin = ReactiveProperty<double>(
     -96.0,
   );
 
-  /// Upper clamp mpv applies to [volumeGain] (`volume-gain-max`), in dB.
+  /// Top of mpv's relative steps on [volumeGain] (`volume-gain-max`), in
+  /// dB.
   final ReactiveProperty<double> volumeGainMax = ReactiveProperty<double>(12.0);
 
-  /// OS per-app mixer volume in percent (`ao-volume`); `null` when the active
-  /// audio output doesn't expose system volume (e.g. the null AO, or a
-  /// backend without per-app volume). Best-effort, distinct from soft
-  /// [volume].
+  /// The volume the audio driver exposes, in percent (`ao-volume`); `null`
+  /// when the active driver has none (the null AO, iOS, Android).
+  /// Best-effort, distinct from soft [volume].
   final ReactiveProperty<double?> systemVolume = ReactiveProperty<double?>(
     null,
   );
 
-  /// OS per-app mute (`ao-mute`); `null` when the active audio output doesn't
-  /// expose system mute. Best-effort, distinct from soft [mute].
+  /// The mute the audio driver exposes (`ao-mute`); `null` when the active
+  /// driver has none. Best-effort, distinct from soft [mute].
   final ReactiveProperty<bool?> systemMute = ReactiveProperty<bool?>(null);
 
   /// Gapless-playback policy across playlist boundaries (`gapless-audio`).
@@ -194,8 +195,8 @@ class DefaultPropertyReactives {
   /// Whether the audio device is opened in exclusive mode (`audio-exclusive`).
   final ReactiveProperty<bool> audioExclusive = ReactiveProperty<bool>(false);
 
-  /// Whether mpv tags the stream's media role as "music" on the audio server
-  /// (`audio-set-media-role`; PulseAudio or PipeWire).
+  /// Whether mpv tags the stream's media role (`audio-set-media-role`):
+  /// a role for PulseAudio and PipeWire, a content type on Android.
   final ReactiveProperty<bool> audioMediaRole = ReactiveProperty<bool>(false);
 
   /// Output device buffer size (`audio-buffer`).

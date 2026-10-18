@@ -205,13 +205,22 @@ mixin _AudioModule on _PlayerBase {
     );
   }
 
-  /// Sets the OS per-app mixer volume in percent (`ao-volume`): the system
-  /// volume slider for this app, distinct from the soft [setVolume].
-  /// Throws [RangeError] outside `[0, 100]`.
+  /// Sets the volume the audio driver exposes, in percent (mpv's
+  /// `ao-volume`), distinct from the soft [setVolume]. Throws [RangeError]
+  /// outside `[0, 100]`.
   ///
-  /// Best-effort: when the active audio output doesn't expose system volume
-  /// (the null AO, or a backend without per-app volume) the call is silently
-  /// ignored: it does NOT throw, and [PlayerState.systemVolume] stays `null`.
+  /// What it moves depends on the driver:
+  /// - the app's own stream with PulseAudio, PipeWire, WASAPI in shared
+  ///   mode and CoreAudio on macOS;
+  /// - the whole device, for every app, with ALSA (the card's mixer) and
+  ///   with WASAPI in exclusive mode (the device's hardware volume, when it
+  ///   has one). The system keeps that value after [Player.dispose].
+  ///
+  /// Best-effort: where the driver exposes no volume (iOS, Android, macOS
+  /// in exclusive mode, the null AO) the call is silently ignored: it does
+  /// NOT throw, and [PlayerState.systemVolume] stays `null`. On Android the
+  /// app's volume is the system's media volume, which the app sets through
+  /// the platform's AudioManager.
   Future<void> setSystemVolume(double volume) async {
     _checkRange(volume, 0, 100, 'volume');
     await _gate();
@@ -226,10 +235,13 @@ mixin _AudioModule on _PlayerBase {
     }
   }
 
-  /// Sets the OS per-app mute (`ao-mute`), distinct from the soft [setMute].
+  /// Sets the mute the audio driver exposes (`ao-mute`), distinct from the
+  /// soft [setMute]. It reaches as far as [setSystemVolume] does: the
+  /// whole device with ALSA and with WASAPI in exclusive mode.
   ///
   /// Best-effort, like [setSystemVolume]: silently ignored (no throw) when the
-  /// active audio output doesn't expose system mute (e.g. coreaudio on macOS).
+  /// active audio output doesn't expose system mute (coreaudio on macOS,
+  /// iOS, Android).
   Future<void> setSystemMute(bool mute) async {
     await _gate();
     final rc = await _propRc('ao-mute', mute ? 'yes' : 'no');
@@ -277,8 +289,10 @@ mixin _AudioModule on _PlayerBase {
 
   /// Whether mpv reports a "music" media role to the OS audio server
   /// (mpv's `audio-set-media-role`). On PulseAudio and PipeWire (Linux) this
-  /// lets the server apply the right routing and volume profile for music;
-  /// a no-op on backends without a media-role concept.
+  /// lets the server apply the right routing and volume profile for music.
+  /// On Android the `audiotrack` driver, and `aaudio` from API 28, only tag
+  /// the content type as music: the usage stays media, so routing and
+  /// volume do not change. Other drivers ignore it.
   Future<void> setAudioMediaRole(bool enable) async {
     await _gate();
     await _prop('audio-set-media-role', enable ? 'yes' : 'no');
@@ -412,13 +426,15 @@ mixin _AudioModule on _PlayerBase {
     await _commandChecked(['ao-reload']);
   }
 
-  /// Re-scans sidecar external files (auto-loaded audio and cover art) for the
-  /// current file: mpv's `rescan-external-files`. Use after dropping a cover
-  /// or companion audio file next to the playing file so it gets picked up
-  /// without reopening. With [keepSelection] the current track selection is
-  /// preserved; otherwise mpv reselects the default streams. Newly found
-  /// tracks and cover art fold into [PlayerState.tracks] and the cover-art
-  /// stream.
+  /// Re-scans the external files next to the current file: mpv's
+  /// `rescan-external-files`. With [keepSelection] the current track
+  /// selection is preserved; otherwise mpv reselects the default streams.
+  ///
+  /// It loads only what mpv's auto-load options allow, and the player's
+  /// defaults allow none of it: cover images need [setCoverArtAuto], and
+  /// companion audio files need mpv's `audio-file-auto`, set with
+  /// [Player.setRawProperty]. What it finds shows in [PlayerState.tracks]
+  /// only; a cover image does not reach [PlayerStream.coverArt].
   Future<void> rescanExternalFiles({bool keepSelection = false}) async {
     await _gate();
     await _commandChecked([

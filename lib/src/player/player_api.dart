@@ -270,21 +270,25 @@ abstract interface class PlayerApi {
   /// does not cap [setVolume].
   Future<void> setVolumeMax(double limit);
 
-  /// Sets the OS per-app mixer volume in percent (`ao-volume`), distinct from
-  /// the soft [setVolume]. Throws [RangeError] outside `[0, 100]`.
+  /// Sets the volume the audio driver exposes in percent (`ao-volume`),
+  /// distinct from the soft [setVolume]: the app's own stream on most
+  /// drivers, the whole device with ALSA and WASAPI in exclusive mode. See
+  /// [Player.setSystemVolume]. Throws [RangeError] outside `[0, 100]`.
   /// Best-effort: silently ignored (no throw) when the active audio output
-  /// doesn't expose system volume.
+  /// doesn't expose system volume, as on iOS and Android.
   Future<void> setSystemVolume(double volume);
 
-  /// Sets the OS per-app mute (`ao-mute`), distinct from the soft [setMute].
-  /// Best-effort: silently ignored (no throw) when unsupported by the AO.
+  /// Sets the mute the audio driver exposes (`ao-mute`), distinct from the
+  /// soft [setMute], with the reach of [setSystemVolume]. Best-effort:
+  /// silently ignored (no throw) when unsupported by the AO.
   Future<void> setSystemMute(bool mute);
 
   /// Opens the audio device in exclusive mode when [exclusive] is true.
   Future<void> setAudioExclusive(bool exclusive);
 
   /// Reports a "music" media role to the OS audio server (PulseAudio or
-  /// PipeWire) when [enable] is true (mpv's `audio-set-media-role`).
+  /// PipeWire) when [enable] is true (mpv's `audio-set-media-role`). On
+  /// Android it only tags the content type: see [Player.setAudioMediaRole].
   Future<void> setAudioMediaRole(bool enable);
 
   /// Sets the set of codecs to pass through as bitstream rather than
@@ -311,9 +315,9 @@ abstract interface class PlayerApi {
   /// keeps running.
   Future<void> reloadAudio();
 
-  /// Re-scans sidecar external files (auto-loaded audio or cover art) for the
-  /// current file (mpv's `rescan-external-files`). See
-  /// [Player.rescanExternalFiles].
+  /// Re-scans the external files next to the current file (mpv's
+  /// `rescan-external-files`), within mpv's auto-load options, which load
+  /// none by default. See [Player.rescanExternalFiles].
   Future<void> rescanExternalFiles({bool keepSelection});
 
   /// Replaces the whole DSP rack atomically with [effects].

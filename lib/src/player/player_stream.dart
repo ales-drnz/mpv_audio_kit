@@ -336,12 +336,13 @@ class PlayerStream {
   /// Emits mpv's `volume-gain-max` in dB. See [PlayerState.volumeGainMax].
   final Stream<double> volumeGainMax;
 
-  /// Emits the OS per-app mixer volume (`ao-volume`); `null` when the active
-  /// audio output doesn't expose it.
+  /// Emits the volume the audio driver exposes (`ao-volume`); `null` when
+  /// the active audio output doesn't expose it. See
+  /// [PlayerState.systemVolume].
   final Stream<double?> systemVolume;
 
-  /// Emits the OS per-app mute (`ao-mute`); `null` when the active audio
-  /// output doesn't expose it.
+  /// Emits the mute the audio driver exposes (`ao-mute`); `null` when the
+  /// active audio output doesn't expose it.
   final Stream<bool?> systemMute;
 
   /// Aggregate cache configuration: emits a fresh [CacheSettings]
@@ -424,10 +425,12 @@ class PlayerStream {
   /// Emits the audio output driver.
   final Stream<String> audioDriver;
 
-  /// Lifecycle of mpv's audio output: `closed → initializing → active`
-  /// in the success path, `→ failed` if `ao_init_best()` returns a
-  /// NULL handle. A typed [LogError] is emitted on [error] the
-  /// moment this stream emits [AudioOutputState.failed].
+  /// Lifecycle of mpv's audio output: in practice `closed`, then `active`,
+  /// or `failed` when no output opens. [AudioOutputState.initializing] is
+  /// set while the output opens, but the opening blocks mpv's core, so it
+  /// is almost never observed. A typed [LogError] is emitted on [error]
+  /// the moment this stream emits [AudioOutputState.failed]; the state then
+  /// stays `failed`, and a second failure in a row emits nothing new.
   ///
   /// When no device can be opened mpv usually opens the null output
   /// instead, and this stream says [AudioOutputState.active] while

@@ -667,6 +667,12 @@ await player.openAll([track1, track2], play: false);
 await player.openPlaylistFile(Media('https://example.com/stations.m3u'));
 ```
 
+mpv loads an `smb2://` entry of a playlist file only when the list itself
+is on `smb2://`. From a local or `https://` list it refuses the entry as
+unsafe, and the entry fails to load. Setting mpv's `load-unsafe-playlists`
+to `yes` with `setRawProperty` lifts that check for every protocol, so use
+it only for lists you trust.
+
 #### 3.3 Modifying the queue at runtime
 
 ```dart
@@ -818,7 +824,7 @@ separately (see [5.2](#52-common-effects-quick-examples)).
 #### 4.5 Volume and mute
 
 There are two volume controls: the soft volume, mpv's own gain, and the
-system volume, the OS per-app mixer.
+system volume, the one the audio driver exposes.
 
 ```dart
 // Soft volume and mute, always available
@@ -844,13 +850,23 @@ Future<void> onVolumeSlider(double value) =>
     player.setVolume(value.clamp(0.0, player.state.volumeMax));
 ```
 
-`setSystemVolume` and `setSystemMute` drive the OS per-app mixer (mpv's
-`ao-volume` and `ao-mute`). When the driver has no such mixer the calls do
-nothing, without throwing, and `state.systemVolume` and `state.systemMute`
-stay `null`.
+`setSystemVolume` and `setSystemMute` drive the volume of the audio driver
+(mpv's `ao-volume` and `ao-mute`). What they move depends on the driver:
+
+- PulseAudio, PipeWire, WASAPI in shared mode and CoreAudio on macOS: the
+  app's own stream only.
+- ALSA, and WASAPI in exclusive mode: the whole device, for every app. The
+  system keeps the value after the player is gone. In exclusive mode
+  WASAPI needs a device with a hardware volume.
+- iOS, Android, macOS in exclusive mode and the null output: nothing. The
+  calls do nothing, without throwing, and `state.systemVolume` and
+  `state.systemMute` stay `null`. On Android the app's volume is the
+  system's media volume (AudioManager).
+
+CoreAudio on macOS has a volume but no mute.
 
 ```dart
-if (player.state.systemVolume != null) {        // the driver has a per-app mixer
+if (player.state.systemVolume != null) {        // the driver has a volume
   await player.setSystemVolume(70.0);
   await player.setSystemMute(false);
 }
@@ -1399,7 +1415,8 @@ await player.setAudioTrack(Track.off);
 await player.addAudioTrack(Media('commentary.mka'), title: 'Commentary');
 await player.removeAudioTrack(const Track.id(3));
 
-// Look again for audio and cover files next to the current file
+// Look again for files next to the current file, within mpv's auto-load
+// options: covers need setCoverArtAuto, audio files mpv's audio-file-auto
 await player.rescanExternalFiles();
 ```
 
@@ -1420,8 +1437,10 @@ await player.reloadAudio();
 #### 6.9 Media role
 
 `setAudioMediaRole(true)` reports the stream as music. PulseAudio and
-PipeWire use the role for routing and per-role volume, and so do the
-`aaudio` and `audiotrack` drivers on Android. Other drivers ignore it.
+PipeWire use the role for routing and per-role volume. On Android the
+`audiotrack` driver, and `aaudio` from Android 9 (API 28), only tag the
+content type as music: the usage stays media, so routing and volume do not
+change. Other drivers ignore it.
 
 ```dart
 await player.setAudioMediaRole(true);
@@ -1860,13 +1879,13 @@ if (i >= 0 && i < s.playlist.items.length) {
 | `volumeGain` | `double` | `setVolumeGain` |  |
 | `volumeGainMin` | `double` | `setVolumeGainMin` | Bounds mpv's relative steps, not `setVolumeGain` |
 | `volumeGainMax` | `double` | `setVolumeGainMax` | Bounds mpv's relative steps, not `setVolumeGain` |
-| `systemVolume` | `double?` | `setSystemVolume` | `null` when the driver has no per-app mixer |
-| `systemMute` | `bool?` | `setSystemMute` | `null` when the driver has no per-app mixer |
+| `systemVolume` | `double?` | `setSystemVolume` | `null` when the driver has no volume, see [4.5](#45-volume-and-mute) |
+| `systemMute` | `bool?` | `setSystemMute` | `null` when the driver has no mute |
 | `audioSampleRate` | `int` | `setAudioSampleRate` |  |
 | `audioFormat` | `Format` | `setAudioFormat` |  |
 | `audioChannels` | `Channels` | `setAudioChannels` |  |
 | `audioClientName` | `String` | `setAudioClientName` |  |
-| `audioMediaRole` | `bool` | `setAudioMediaRole` | Reports a "music" role to PulseAudio and PipeWire |
+| `audioMediaRole` | `bool` | `setAudioMediaRole` | Reports a "music" role to PulseAudio and PipeWire, a content type on Android |
 
 `AudioParams` carries: `format`, `sampleRate`, `channels`,
 `channelCount`, `hrChannels`, `codec`, `codecName`.
@@ -2164,26 +2183,32 @@ player.stream.endFile.listen((event) {
 #### 11.3 Audio output lifecycle
 
 `player.stream.audioOutputState` follows the audio output as it opens,
-plays and fails, for a "Connecting" indicator on slow devices or to
-notice a silent player.
+plays and fails, to notice a silent player.
 
 ```dart
 player.stream.audioOutputState.listen((state) {
   switch (state) {
     case AudioOutputState.closed:        // no audio output open
-    case AudioOutputState.initializing:  // opening the device
+    case AudioOutputState.initializing:  // opening, almost never seen
     case AudioOutputState.active:        // open and playing
-    case AudioOutputState.failed:        // the device could not be opened
+    case AudioOutputState.failed:        // no output could be opened
   }
 });
 ```
+
+The opening blocks mpv's core, so the state goes from `closed` to `active`
+or `failed` in one step, and `initializing` is almost never observed.
 
 When no device can be opened, mpv usually falls back to the null output
 instead: the state turns `active`, the position runs and nothing is heard.
 `player.stream.error` emits a `LogError` once for each such opening, and
 also when the state turns `failed`, so one error listener covers the
 silent cases. A null output the app chose with `setAudioDriver('null')`
-is no error.
+is no error. `failed` only comes when even the null output cannot open,
+or with mpv's `audio-fallback-to-null` turned off. It then stays until the
+next attempt, and a second failure in a row emits nothing new: each file
+that cannot play still ends with an `EndFileError` whose
+`isAudioOutputError` is `true`.
 
 #### 11.4 Log streams
 

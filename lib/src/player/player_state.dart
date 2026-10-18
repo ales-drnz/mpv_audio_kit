@@ -199,13 +199,16 @@ final class PlayerState {
   /// [Player.setVolumeGainMax].
   final double volumeGainMax;
 
-  /// OS per-app mixer volume in percent (`ao-volume`), distinct from soft
-  /// [volume]. `null` when the active audio output doesn't expose it. Set via
+  /// The volume the audio driver exposes, in percent (`ao-volume`),
+  /// distinct from soft [volume]: the app's stream on most drivers, the
+  /// whole device with ALSA and WASAPI in exclusive mode. `null` when the
+  /// active audio output doesn't expose it, as on iOS and Android. Set via
   /// [Player.setSystemVolume] (best-effort).
   final double? systemVolume;
 
-  /// OS per-app mute (`ao-mute`), distinct from soft [mute]. `null` when the
-  /// active audio output doesn't expose it. Set via [Player.setSystemMute].
+  /// The mute the audio driver exposes (`ao-mute`), distinct from soft
+  /// [mute]. `null` when the active audio output doesn't expose it. Set via
+  /// [Player.setSystemMute].
   final bool? systemMute;
 
   /// Cache configuration. Set via [Player.setCache].
@@ -264,8 +267,8 @@ final class PlayerState {
   final bool audioExclusive;
 
   /// Whether mpv tags the stream's media role as "music" on the OS audio
-  /// server (`audio-set-media-role`; PulseAudio or PipeWire). Set via
-  /// [Player.setAudioMediaRole].
+  /// server (`audio-set-media-role`): a role on PulseAudio and PipeWire, a
+  /// content type on Android. Set via [Player.setAudioMediaRole].
   final bool audioMediaRole;
 
   /// Audio buffer size.
@@ -319,8 +322,8 @@ final class PlayerState {
   /// what `setAudioDriver('auto')` stores.
   final String audioDriver;
 
-  /// Audio output lifecycle (`closed`, `initializing`, `active` or
-  /// `failed`). See [AudioOutputState].
+  /// Audio output lifecycle: in practice `closed`, then `active` or
+  /// `failed`. See [AudioOutputState].
   final AudioOutputState audioOutputState;
 
   /// The DSP effects in mpv's `--af` chain, as an ordered list applied
