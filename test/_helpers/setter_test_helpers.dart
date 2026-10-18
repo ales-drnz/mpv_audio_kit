@@ -202,6 +202,21 @@ Future<Player> buildPlayerWithFixture({String? fixturePath}) async {
   return player;
 }
 
+/// Reads mpv's own value of [name] and expects [expected], after a setter
+/// that converts units on the way (bytes, a [Duration] in seconds). The
+/// state takes the value the test passed before mpv sees the write, so
+/// only this read catches a conversion that went wrong. An int is matched
+/// exactly; a double, such as seconds, to the 6 decimals mpv prints.
+Future<void> expectMpv(Player player, String name, num expected) async {
+  final raw = await player.getRawProperty(name);
+  final reason = 'mpv holds $name = $raw';
+  if (expected is int) {
+    expect(int.tryParse(raw ?? ''), expected, reason: reason);
+  } else {
+    expect(double.tryParse(raw ?? ''), closeTo(expected, 1e-6), reason: reason);
+  }
+}
+
 /// Polls [condition] every [interval] until it holds, and fails the test
 /// with [reason] when it still does not after [timeout]. Use it in place
 /// of a fixed delay before asserting a state that mpv reaches
