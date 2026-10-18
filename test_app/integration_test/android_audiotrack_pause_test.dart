@@ -113,9 +113,12 @@ void main() {
       if (await skipBeforeRelease(player, 18)) return;
       await playOnAudiotrack(Media(tone));
       // Paused, the position stands still: what it gained while playing is
-      // what was played, plus what a flush threw away at the pause.
+      // what was played, plus what a flush threw away at the pause. Each
+      // read wakes the core, which computes the position again: two reads
+      // in one pause differ when the paused delay runs down on the clock.
       var played = Duration.zero;
       var advanced = 0.0;
+      var creep = 0.0;
       for (var i = 0; i < 10; i++) {
         final from = await timePos();
         final sw = Stopwatch()..start();
@@ -124,8 +127,16 @@ void main() {
         await player.pause();
         played += sw.elapsed;
         await Future<void>.delayed(const Duration(milliseconds: 250));
-        advanced += await timePos() - from;
+        final at = await timePos();
+        creep = math.max(creep, (await timePos() - at).abs());
+        advanced += at - from;
       }
+      expect(
+        creep,
+        lessThan(0.02),
+        reason:
+            'two reads in one pause differ by ${creep.toStringAsFixed(3)} s',
+      );
       final drift = advanced - played.inMicroseconds / 1e6;
       expect(
         drift.abs(),

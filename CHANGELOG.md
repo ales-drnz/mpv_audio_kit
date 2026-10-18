@@ -70,7 +70,7 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 - SMB stop and quit return at once when the server stops answering (about 120 s before), and URLs with a port, an IPv6 host or a bare `%` open correctly.
 - `setChapters` with fewer chapters than the current one no longer crashes, a live PCM source with a loop on plays once instead of spinning and sets `completed` at its end, and the spectrum no longer shows the previous track's samples after the output format changes.
 - Windows: the audio output closes on mpv's core thread when a player is disposed. iOS: the media session's audio mode is no longer replaced by `MoviePlayback`.
-- Android: audiotrack rests while there is nothing to play, reopens after audioserver dies, keeps its audio across a pause, and `setAudioStreamSilence` feeds silence.
+- Android: audiotrack rests while there is nothing to play, reopens after audioserver dies, keeps its audio and its position across a pause, and `setAudioStreamSilence` feeds silence.
 - The Android plugin declares the JUnit Platform launcher for its unit tests.
 
 ### Docs
