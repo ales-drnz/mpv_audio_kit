@@ -200,7 +200,12 @@ mixin _HooksModule on _PlayerBase {
   /// next entry while the current one plays, and mpv stops feeding the
   /// playing entry until it returns: a resolver slower than the output
   /// buffer (0.2 s by default) leaves a gap in the playing track. Keep it
-  /// fast with the prefetch on, for example with URLs fetched ahead.
+  /// fast with the prefetch on, for example with URLs fetched ahead. When
+  /// the entry starts it opens with the URL the resolver gave for the
+  /// prefetch, without a second call, so a URL that changes on every call
+  /// (a salt, a signed URL) keeps the prefetch. A failed open still asks
+  /// again, and a new open, openAll, stop, clearPlaylist or resolver drops
+  /// the kept URL.
   ///
   /// Composes with [registerHook]: when the consumer has registered
   /// `Hook.load` themselves, the resolver runs FIRST, then the event

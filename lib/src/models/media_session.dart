@@ -12,6 +12,10 @@ import '../types/sealed/media_session_artwork.dart';
 /// buttons, and (on iOS and Android) the AVAudioSession or AudioFocus
 /// integration.
 ///
+/// On iOS the session has the `playback` category and the `default` mode,
+/// which mpv keeps when its output opens from libmpv-r18 on. An older
+/// libmpv sets `moviePlayback` each time the output opens.
+///
 /// Apply via [Player.setMediaSession]; pass `null` to disable the
 /// session entirely. Only one [Player] instance per process can have
 /// an active media session at a time; attempting to enable a second

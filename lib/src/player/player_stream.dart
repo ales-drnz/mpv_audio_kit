@@ -747,7 +747,11 @@ class PlayerStream {
   /// From libmpv-r18 on the analysis decodes the audio track the player
   /// plays, also a `content://` source on Android. With an external track
   /// selected ([Player.addAudioTrack]) the envelope grows from playback,
-  /// and the loudness scan reports [LoudnessScanState.unavailable].
+  /// and the loudness scan reports [LoudnessScanState.unavailable]. It
+  /// also reads a file of more than 8 channels or whose channel count
+  /// changes, which can crash an older libmpv, and puts a file whose
+  /// timestamps do not start at zero on the playback time axis, where an
+  /// older libmpv shifts the envelope or leaves it empty.
   ///
   /// A remote file is downloaded once: the decode reads the packets mpv
   /// already cached. When one pass from the start to the end is not
@@ -814,8 +818,11 @@ class PlayerStream {
   /// ```
   ///
   /// Like [waveform], the scan of a remote file reads mpv's cache, and
-  /// opens the source a second time only when that pass is not possible,
-  /// and it measures the audio track the player plays from libmpv-r18 on.
+  /// opens the source a second time only when that pass is not possible.
+  /// From libmpv-r18 on it reads the same sources as [waveform]: the
+  /// audio track the player plays, `content://`, more than 8 channels
+  /// and timestamps that do not start at zero. An older libmpv can report
+  /// about -70 LUFS for such a file at normal volume.
   ///
   /// While the scan runs it emits `scanning` snapshots with a
   /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track

@@ -1557,11 +1557,13 @@ abstract class _PlayerBase {
   ///    running `mpv_hook_add`, and **close the client**, which settles
   ///    every in-flight call.
   /// 6. **`mpvTerminateDestroy(_handle)`** ONLY when the exit and the hook
-  ///    registrations are confirmed, then release the held `content://`
-  ///    descriptors. Destroying the handle while the isolate is still
-  ///    inside `mpv_wait_event` would race the event-loop thread and crash
-  ///    libmpv when the handle is freed mid-syscall; on an unconfirmed exit
-  ///    we skip destroy and let the OS reclaim the handle.
+  ///    registrations are confirmed, in a throwaway isolate and awaited
+  ///    (it waits for the core to shut down and the output to close),
+  ///    then release the held `content://` descriptors. Destroying the
+  ///    handle while the isolate is still inside `mpv_wait_event` would
+  ///    race the event-loop thread and crash libmpv when the handle is
+  ///    freed mid-syscall; on an unconfirmed exit we skip destroy and let
+  ///    the OS reclaim the handle.
   /// 7. **Close all reactive properties + controllers**. Order within
   ///    this group does not matter for correctness (they tolerate
   ///    `close()` while a listener is attached); grouping by ownership

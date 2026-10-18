@@ -470,7 +470,7 @@ All `PlayerConfiguration` fields are optional. Their defaults:
 
 #### 1.3 Disposing a player
 
-`dispose()` releases libmpv and the media session. Call it when you are done with the player.
+`dispose()` releases libmpv and the media session. Call it when you are done with the player. mpv shuts down in a background isolate, so the UI keeps running while the audio output closes, and the future completes once mpv is gone.
 
 ```dart
 await player.dispose();
@@ -2137,6 +2137,11 @@ player.stream.prefetchState.listen((state) {
 | `used` | Track transitioned via the prefetched stream | Stays until the next `loading` or a cancel |
 | `failed` | Opening the next entry failed | Stays until the next `loading` |
 
+From libmpv-r18 on, `failed` comes as soon as the open fails, while the
+current entry plays, and a stop resets the state to `idle`. An older
+libmpv reports the failure only when the current entry ends, and keeps
+the state after a stop.
+
 For a progress bar, use `player.stream.prefetchCacheDuration`: how much
 of the next entry is cached, as a `Duration`. Divide it by your cache
 target; it is `Duration.zero` while nothing is being prefetched.
@@ -2446,7 +2451,7 @@ The hooks mpv offers:
 
 Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track, and `setRawProperty('stream-open-filename', ...)` works in both cases. With `setPrefetchPlaylist(true)`:
 
-- `on_load` runs twice for an entry opened ahead: once while the previous entry still plays, then again when the entry starts. Give the same URL both times, or mpv drops the prefetch and opens the entry again.
+- `on_load` runs twice for an entry opened ahead: once while the previous entry still plays, then again when the entry starts. Give the same URL both times, or mpv drops the prefetch and opens the entry again. The source resolver of [12.4](#124-the-source-resolver) does this for you.
 - Until the first run continues, mpv stops feeding the entry that plays. A listener slower than the output buffer (0.2 s by default) leaves a gap in the music, so keep that work short.
 - In the first run the current file is still the one that plays: a `file-local-options/...` write lands on it, for the rest of it, and the prefetch opens with it. Headers for one entry are safer in `Media.httpHeaders`: from libmpv-r18 on, mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
 
@@ -2526,6 +2531,8 @@ The resolver works alongside your own hooks. If you also registered `Hook.load`,
 A `file://` URL from the resolver plays as the local path it names, as the URL of a `Media` does.
 
 With `setPrefetchPlaylist(true)` the resolver also runs for the next entry while the current one plays, and mpv stops feeding the playing track until it returns (see [12.1](#121-registering-a-hook)). A resolver slower than the output buffer leaves a gap in the music: keep it fast, for example with URLs fetched ahead of time, or leave the prefetch off.
+
+When that entry starts, it opens with the URL the resolver gave for the prefetch, without asking again, so a URL that changes on every call (a salted or signed URL) keeps the prefetch and the gapless change. A failed open still asks again, and a new `open`, `openAll`, `stop`, `clearPlaylist` or resolver drops the kept URL.
 
 #### 12.5 Lazy URL resolution
 
@@ -2753,7 +2760,11 @@ uses the same decode.
 From libmpv-r18 on the analysis decodes the audio track the player plays,
 in a file with several, and reads an Android `content://` source too. With
 an external track selected (`addAudioTrack`) the waveform fills from
-playback, and the loudness scan reports `unavailable`.
+playback, and the loudness scan reports `unavailable`. It also reads a
+file of more than 8 channels or whose channel count changes, which can
+crash an older libmpv, and follows the playback time of a file whose
+timestamps do not start at zero, where an older libmpv shifts the
+waveform or leaves it empty and measures silence.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="A network file downloaded once: playback and the analysis read the same mpv cache, the waveform fills as it decodes, and the analysis opens the source a second time only when one pass from the start to the end is not possible">
 
@@ -2983,6 +2994,11 @@ session, so the policy does nothing there.
 On iOS the player's audio does not mix with other apps, and the output
 opens as soon as a file loads, even paused: `open(media, play: false)`
 already stops the audio of another app.
+
+On iOS the session has the `playback` category and the `default` mode.
+From libmpv-r18 on mpv keeps that mode when its output opens. An older
+libmpv sets `moviePlayback`, the mode Apple keeps for video, each time
+the output opens.
 
 On Android 7 (API 24 and 25) the player keeps playing at full volume
 when another app asks it to duck, such as a navigation prompt: only
