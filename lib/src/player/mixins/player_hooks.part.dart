@@ -184,7 +184,11 @@ mixin _HooksModule on _PlayerBase {
   /// the underlying hook so mpv never stalls indefinitely. Pass `null`
   /// to disable the net. The value is stored per hook name, so it also
   /// becomes the deadline of a consumer-registered `Hook.load` /
-  /// `Hook.loadFail` (the most recent registration's timeout wins).
+  /// `Hook.loadFail` (the most recent registration's timeout wins). A URL
+  /// the resolver returns after the deadline is dropped, with a warning on
+  /// [PlayerStream.internalLog]: mpv has moved on, and the URL would land
+  /// on the next entry. A consumer-registered hook does not get that event
+  /// either.
   ///
   /// Composes with [registerHook]: when the consumer has registered
   /// `Hook.load` themselves, the resolver runs FIRST, then the event
@@ -210,18 +214,25 @@ mixin _HooksModule on _PlayerBase {
   /// layer. Ordering per event: resolver pass (when installed and the
   /// hook is `on_load` or `on_load_fail`) → consumer delivery on
   /// [PlayerStream.hook] (only when the consumer registered this hook) →
-  /// otherwise internal [continueHook].
+  /// otherwise internal [continueHook]. A hook the deadline continued
+  /// during the resolver pass goes nowhere.
   ///
   /// When no resolver is installed and the hook is consumer-registered,
   /// no await runs before the stream add: delivery stays in the same
   /// microtask as the native event, preserving the pre-resolver timing.
   @override
   Future<void> _routeHookEvent(int id, Hook hook, String name) async {
+    // Read before any await: the dispatch counted this event just now.
+    final event = _hookEventCounts[id];
+    bool pending() =>
+        _activeHookIds.contains(id) && _hookEventCounts[id] == event;
     final resolver = _sourceResolver;
     if (resolver != null && (hook == Hook.load || hook == Hook.loadFail)) {
-      await _runSourceResolver(resolver, hook);
+      await _runSourceResolver(resolver, hook, pending);
     }
-    if (_disposed) return;
+    // The deadline continued the hook while the resolver ran: mpv has moved
+    // on, so the event is not handed to the consumer.
+    if (_disposed || !pending()) return;
     if (_userHookNames.contains(name)) {
       _hookCtrl.add(MpvHookEvent(id, hook));
     } else {
@@ -233,10 +244,18 @@ mixin _HooksModule on _PlayerBase {
   /// original [Media] in the media cache, invoke the consumer callback,
   /// and rewrite `stream-open-filename` when it returns a different URL.
   ///
+  /// A result that comes back once the hook is no longer [pending] (the
+  /// deadline continued it) is dropped: mpv is past that load, and the
+  /// write would land on whatever entry is loading now.
+  ///
   /// Never throws: the hook MUST reach its continue in [_routeHookEvent]
   /// regardless of what the consumer callback does, so failures are
   /// logged on [PlayerStream.internalLog] and resolution is skipped.
-  Future<void> _runSourceResolver(SourceResolver resolver, Hook hook) async {
+  Future<void> _runSourceResolver(
+    SourceResolver resolver,
+    Hook hook,
+    bool Function() pending,
+  ) async {
     try {
       final isRetry = hook == Hook.loadFail;
       // One resolver-driven retry per load attempt: see
@@ -256,6 +275,16 @@ mixin _HooksModule on _PlayerBase {
           resolved == null ||
           resolved.isEmpty ||
           resolved == current) {
+        return;
+      }
+      // No timer runs between this check and the write below: the write is
+      // queued in mpv before control goes back to the event loop.
+      if (!pending()) {
+        _internalLog(
+          'Source resolver for ${hook.mpvValue} returned after its hook '
+          'timed out; the result is dropped',
+          level: LogLevel.warn,
+        );
         return;
       }
       if (isRetry) _resolverRetried = true;

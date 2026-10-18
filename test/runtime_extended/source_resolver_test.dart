@@ -220,6 +220,79 @@ void main() {
         expect(calls, 0);
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
+
+    // Each test builds its own player: the hook deadlines it sets would
+    // otherwise carry over to the shared one above.
+    group('Source resolver and the hook deadline', () {
+      test('a result that arrives after the hook timed out is dropped, not '
+          'written into the next entry', () async {
+        final player = await buildPlayer();
+        final logs = <String>[];
+        final loads = <int>[];
+        var errors = 0;
+        final outcome = Completer<String>();
+        final subs = [
+          player.stream.internalLog.listen((e) => logs.add(e.text)),
+          player.stream.hook.listen((event) {
+            if (event.hook == Hook.load) loads.add(event.id);
+            unawaited(player.continueHook(event.id));
+          }),
+          player.stream.seekCompleted.listen((_) {
+            if (!outcome.isCompleted) outcome.complete('loaded');
+          }),
+          player.stream.endFile.listen((event) {
+            if (event.reason == MpvEndFileReason.error &&
+                ++errors == 2 &&
+                !outcome.isCompleted) {
+              outcome.complete('failed');
+            }
+          }),
+        ];
+        // A's resolver outlives its hook and answers only once B is in its
+        // own on_load, which B's resolver holds well inside B's deadline.
+        final bLoading = Completer<void>();
+        await player.setSourceResolver((request) async {
+          if (request.isRetry) return null;
+          if (request.uri == 'resolve://late-a') {
+            await bLoading.future;
+            return fixturePath;
+          }
+          if (!bLoading.isCompleted) bLoading.complete();
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          return null;
+        }, timeout: const Duration(seconds: 1));
+        await player.registerHook(Hook.load);
+
+        try {
+          await player.openAll(const [
+            Media('resolve://late-a'),
+            Media('resolve://late-b'),
+          ], play: false);
+          expect(
+            await outcome.future.timeout(const Duration(seconds: 15)),
+            'failed',
+            reason:
+                'B opens its own URL and fails; it must not open the file '
+                'A named after its hook was continued',
+          );
+          expect(
+            loads,
+            hasLength(1),
+            reason:
+                'only the on_load of B reaches the stream: the one of A was '
+                'continued by the deadline before its resolver returned',
+          );
+          expect(logs.where((l) => l.contains('timed out')), isNotEmpty);
+          expect(logs.where((l) => l.contains('dropped')), isNotEmpty);
+        } finally {
+          for (final sub in subs) {
+            await sub.cancel();
+          }
+          await player.setSourceResolver(null);
+          await player.dispose();
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
   });
 }
 
