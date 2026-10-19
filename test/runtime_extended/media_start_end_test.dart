@@ -167,6 +167,34 @@ void main() {
       expect(player.state.playWhenReady, isFalse);
     }, timeout: const Timeout(Duration(seconds: 30)));
 
+    test(
+      'at completed the position is the end, not a read from before it',
+      () async {
+        // mpv notifies time-pos only when its loop runs, and while the output
+        // plays out its buffer at the end nothing runs it: the last position
+        // sent is from before the end. completed must come with the end. A
+        // 1 s buffer of the null output (0.2 s by default) makes that
+        // play-out long; a busy macOS runner showed it with the default.
+        await player.setRawProperty('ao-null-buffer', '1');
+        addTearDown(() => player.setRawProperty('ao-null-buffer', '0.2'));
+        final at = player.stream.completed
+            .firstWhere((c) => c)
+            .then((_) => player.state.position)
+            .timeout(const Duration(seconds: 10));
+        await player.open(
+          Media(a, end: const Duration(seconds: 2)),
+          play: true,
+        );
+        final pos = await at;
+        expect(
+          pos.inMilliseconds,
+          closeTo(2000, 60),
+          reason: 'at completed: $pos',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
+
     test('end moves the playlist on there', () async {
       final started = DateTime.now();
       await player.openAll([

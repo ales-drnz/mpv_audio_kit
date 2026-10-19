@@ -142,7 +142,10 @@ mixin _DispatchModule on _PlayerBase {
           :final parked,
           :final lastEntry,
           :final live,
+          :final timePos,
         ):
+          // Parked: the position where the file ended, before completed.
+          if (parked) _applyPolledPosition(timePos);
           // The core's value at the read, ahead of a skipped or late
           // `eof-reached` notification.
           _dispatchProperty('eof-reached', eof);

@@ -141,12 +141,19 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   /// libmpv-r18 plays once whatever the loop. Read only when [parked].
   final bool live;
 
-  /// Carries the [eof], [parked], [lastEntry] and [live] reads.
+  /// `time-pos` read at the park, the position where the file ended. It
+  /// rides the event, as on [MpvEventPlaybackRestart], so `completed`
+  /// never comes with a throttled position from before the end. Read only
+  /// when [parked].
+  final double? timePos;
+
+  /// Carries the [eof], [parked], [lastEntry], [live] and [timePos] reads.
   MpvEventEndOfContent({
     required this.eof,
     required this.parked,
     required this.lastEntry,
     this.live = false,
+    this.timePos,
   });
 }
 

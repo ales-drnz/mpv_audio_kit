@@ -60,17 +60,22 @@ void _sendEndOfContent(
       ? _getPropString(lib, handle, 'playlist/$pos/filename')
       : null;
   final live = file?.startsWith('mak-pcm://') ?? false;
+  final timePos = parked ? _getPropDouble(lib, handle, 'time-pos') : null;
   final count = _getPropInt64(lib, handle, 'playlist-count');
   if (_getPropInt64(lib, handle, 'playlist-pos') != pos ||
       _getPropInt64(lib, handle, 'playlist/$pos/id') != started) {
     return;
   }
+  // The park position supersedes a throttled time-pos still held back,
+  // which would land after the event, as at PLAYBACK_RESTART.
+  if (parked) cache.trailing.remove('time-pos');
   toMain.send(
     MpvEventEndOfContent(
       eof: eof,
       parked: parked,
       lastEntry: count != null && pos == count - 1,
       live: live,
+      timePos: timePos,
     ),
   );
 }
