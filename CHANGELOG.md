@@ -13,6 +13,9 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 - `audioDriver` starts as `''`, the automatic choice mpv reports, instead of `'auto'`.
 - A fallback to the null output, when no audio device opens, emits a `LogError` on `stream.error`.
 - On Android, the players of a Flutter engine destroyed while the process stays (Back on the root route, a swipe from the recent apps) stop and release libmpv. Keep the engine alive to play after the activity closes.
+- `dispose()` no longer waits for the done event of its streams: active listeners get it right after, paused ones when they resume.
+- `setMediaSession` outside the root isolate throws a `StateError` instead of killing that isolate.
+- Each hook event has its own id, and a consumer `Hook.load` or `Hook.loadFail` no longer receives an event that the timeout already continued.
 
 ### Added
 - `Media.start` opens an entry at a chosen position, for `open`, `openAll`, `add` and `replace`, and wins over a saved resume point.
@@ -22,11 +25,9 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 
 ### Changed
 - `openAll` sends its appends in windows of 512, so a large album no longer fills mpv's reply queue on a busy device. 5000 entries still load in about 0.25 s.
-- `dispose()` no longer waits for the done event of its streams: active listeners get it right after, paused ones when they resume.
-- While the player is paused or stopped, `stream.fft`, `stream.pcm` and the filter taps stop polling mpv. A new listener still gets the current frame.
+- While the player is paused or stopped, `stream.fft`, `stream.pcm` and the filter taps stop polling mpv. A new listener still gets the current frame, however long the pause.
 - The Hot Restart cleanup keeps its state in an environment variable of the process instead of `mpv_audio_kit_refs_<pid>.txt` files in the temp directory. Files left there by earlier versions can be deleted.
 - A ready waveform can end with unfilled bins when the audio is shorter than its estimated length.
-- A consumer `Hook.load` or `Hook.loadFail` no longer receives an event that the timeout already continued, and each hook event has its own id.
 - Error and log messages use plain punctuation, and `CacheRange.toString()` reads `CacheRange(start: ..., end: ...)`.
 
 ### Fixed
@@ -44,10 +45,12 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 - After a Hot Restart the analysis and the media session left on by the old run are turned off.
 - Disposing a player while a busy core serves its event reads no longer skips the destroy.
 - `dispose()` completes when the app holds a paused subscription, on a filter tap or on a state or event stream.
+- On Windows, `file://C:/...` opens the drive path again instead of a share, as in 0.5.1.
+- `abort()` of a queued `PcmSource` removes its own entry even when the app removes or inserts another one at the same moment.
 - `stream.tap` emits a new slice on every poll while playing, about 30 Hz instead of 10 Hz with FLAC files, and a listener that subscribes to `stream.fft` or `stream.pcm` while paused gets the current frame.
 - One player no longer silences the filter taps, the waveform or the loudness scan of another player.
 - `PcmSource.abort()` on a queued source removes its entry from the playlist instead of leaving it to fail at its turn.
-- Two `setMediaSession` calls in flight, or a dispose followed by a new player, no longer leave the OS media session off with its commands lost, and `setMediaSession` outside the root isolate throws a `StateError` instead of killing that isolate.
+- Two `setMediaSession` calls in flight, or a dispose followed by a new player, no longer leave the OS media session off with its commands lost.
 - Android: a call or an assistant no longer restarts a track the user paused, the notification seek bar no longer stays frozen, opening a file from a cloud provider no longer freezes the app, and a second Flutter engine no longer turns off the media session.
 - iOS and macOS: a second engine no longer clears the Now Playing entry of the one that owns it.
 - Windows: the media controls no longer pile up genres or keep the previous track number. Linux: a new `desktopEntry`, `appName` or rate list reaches MPRIS without a disable.
