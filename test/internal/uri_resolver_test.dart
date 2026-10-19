@@ -108,6 +108,19 @@ void main() {
       );
     });
 
+    test('a drive right after file:// is a drive, not a host', () {
+      // 'file://' joined to a Windows path with forward slashes: 0.5.1 and
+      // mpv open it as the drive path. A host is never one letter and ':'.
+      expect(
+        fileUrlToPath('file://C:/Music/a%20b.flac', windows: true),
+        'C:/Music/a b.flac',
+      );
+      expect(
+        fileUrlToPath('file://c:/Music/a.flac', windows: false),
+        'c:/Music/a.flac',
+      );
+    });
+
     test('names a share on Windows when the URL has a host', () {
       // Uri.file(r'\\nas\Musica\a b.flac') on Windows.
       expect(

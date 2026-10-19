@@ -142,7 +142,8 @@ bool isFdUri(String uri) =>
 /// start of a relative path. `localhost` is dropped. On Windows any other
 /// host names a share, `\\host\share\...`, as `Uri.file` writes one; so
 /// does `localhost` when no drive letter follows it. Elsewhere another host
-/// stays in the path, as in mpv.
+/// stays in the path, as in mpv. A drive right after the scheme
+/// (`file://C:/...`) is a drive, not a host: mpv opens it as `C:/...`.
 String? fileUrlToPath(String uri, {bool? windows}) {
   if (uri.length < 7 || uri.substring(0, 7).toLowerCase() != 'file://') {
     return null;
@@ -151,7 +152,7 @@ String? fileUrlToPath(String uri, {bool? windows}) {
   var raw = uri.substring(7);
   var share = false;
   final slash = raw.indexOf('/');
-  if (slash > 0) {
+  if (slash > 0 && !_isDrive(raw.substring(0, slash))) {
     final local = raw.substring(0, slash).toLowerCase() == 'localhost';
     final drive = raw.length > slash + 2 && raw[slash + 2] == ':';
     if (isWindows && !(local && drive)) {
@@ -188,6 +189,12 @@ String? fileUrlToPath(String uri, {bool? windows}) {
   }
   return path;
 }
+
+// A drive letter and ':', as in `C:`: no host is written that way.
+bool _isDrive(String s) =>
+    s.length == 2 &&
+    s[1] == ':' &&
+    ((s.codeUnitAt(0) | 0x20) >= 0x61 && (s.codeUnitAt(0) | 0x20) <= 0x7a);
 
 int _hexDigit(int c) {
   if (c >= 0x30 && c <= 0x39) return c - 0x30;
