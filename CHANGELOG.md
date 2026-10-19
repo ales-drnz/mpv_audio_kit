@@ -46,6 +46,7 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 - Disposing a player while a busy core serves its event reads no longer skips the destroy.
 - `dispose()` completes when the app holds a paused subscription, on a filter tap or on a state or event stream.
 - On Windows, `file://C:/...` opens the drive path again instead of a share, as in 0.5.1.
+- When `completed` turns true, `state.position` is where the file ended, not a value from just before.
 - `abort()` of a queued `PcmSource` removes its own entry even when the app removes or inserts another one at the same moment.
 - `stream.tap` emits a new slice on every poll while playing, about 30 Hz instead of 10 Hz with FLAC files, and a listener that subscribes to `stream.fft` or `stream.pcm` while paused gets the current frame.
 - One player no longer silences the filter taps, the waveform or the loudness scan of another player.
