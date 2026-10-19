@@ -39,7 +39,10 @@ void main() {
 
     test('a debug build polls at 0.1 s and tracks handles', () async {
       final report = await probe(const []);
-      expect(report['wakeups'], greaterThanOrEqualTo(10), reason: '$report');
+      // About 20 in the 2 s window at 0.1 s, 2 at release's 1 s. A busy
+      // host loses ticks (9 on a macOS runner): more than the 5 a profile
+      // build may reach still tells the two apart.
+      expect(report['wakeups'], greaterThan(5), reason: '$report');
       expect(report['orphans'], [0x5a5a0], reason: '$report');
     });
 
