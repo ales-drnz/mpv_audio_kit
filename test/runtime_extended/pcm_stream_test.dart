@@ -433,6 +433,42 @@ void main() {
       await player.dispose();
     }, timeout: t);
 
+    test(
+      'abort removes its entry when the app removes another meanwhile',
+      () async {
+        // mpv removes by index: an entry the app takes out between the cut's
+        // read of the playlist and its removal moves the source up by one,
+        // and the index read before names the entry after it.
+        final player = await buildPlayer();
+        final fixtures = '${Directory.current.path}/test/fixtures';
+        final playing = '$fixtures/sine_5s.flac';
+        final other = '$fixtures/sine_stereo_1s.flac';
+        final last = '$fixtures/sine_440hz_1s.wav';
+        final source = PcmSource.create(_speech);
+        source.add(_tone(_speech, 0, 1000));
+        await player.openAll([
+          Media(playing),
+          Media(other),
+          source.toMedia(),
+          Media(last),
+        ], play: true);
+        await waitUntil(() => player.state.playing, reason: 'the file plays');
+        expect(player.state.playlist.items, hasLength(4));
+        player.debugBeforePcmCutRemove = () async {
+          player.debugBeforePcmCutRemove = null;
+          await player.sendRawCommand(['playlist-remove', '1']);
+        };
+        source.abort();
+        await waitUntil(
+          () => player.state.playlist.items.length == 2,
+          timeout: const Duration(seconds: 2),
+          reason: 'the aborted entry and the removed one are still queued',
+        );
+        expect(player.state.playlist.items.map((m) => m.uri), [playing, last]);
+        await player.dispose();
+      },
+    );
+
     test('abort of a queued source removes its entry', () async {
       final player = await buildPlayer();
       final errors = <PlayerError>[];

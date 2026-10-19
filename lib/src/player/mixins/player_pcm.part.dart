@@ -168,6 +168,12 @@ mixin _PcmModule on _PlayerBase {
     }
   }
 
+  /// Test only: awaited by the cut of an aborted source between its read
+  /// of the playlist and the removal of a queued entry, so a test can put
+  /// another playlist change in that window.
+  @visibleForTesting
+  Future<void> Function()? debugBeforePcmCutRemove;
+
   /// Takes the entries of [source], which is being aborted, out of
   /// playback. The entry mpv plays is left: the next entry starts, or
   /// playback stops at the last one (wraps to the first with
@@ -175,9 +181,10 @@ mixin _PcmModule on _PlayerBase {
   /// holds. A queued entry leaves the playlist: loaded later, it would
   /// fail. Asks mpv for the playlist, since the one in the state can lag
   /// it, and again before each removal, since mpv removes by index and an
-  /// index read earlier can be stale. Not behind the playlist calls: abort
-  /// waits for the cut 1 s at most. `null` when this player holds no entry
-  /// of [source].
+  /// index read earlier can be stale: until no command that moves the
+  /// indices went out between the read and the removal. Not behind the
+  /// playlist calls: abort waits for the cut 1 s at most. `null` when this
+  /// player holds no entry of [source].
   Future<void>? _cutPcm(PcmSource source) {
     if (_disposed) return null;
     // Taken now: the abort completes `done`, which drops the entries.
@@ -206,12 +213,22 @@ mixin _PcmModule on _PlayerBase {
       }
       if (playing) await _command(['playlist-next', 'force']);
       for (final id in queued) {
-        final now = await playlist();
-        if (now == null) return;
-        final at = now.indexWhere((e) => e is Map && e['id'] == id);
-        // Gone already, or taken by a later call. One that became the
-        // current entry meanwhile is cut by the removal too.
-        if (at >= 0) await _command(['playlist-remove', '$at']);
+        // A command that moved the indices after the read (a remove or an
+        // insert of the app) makes the read stale: read again. The removal
+        // then goes out with nothing between, so mpv takes it in order.
+        // Bounded: the abort waits for the cut 1 s at most anyway.
+        for (var tries = 0; tries < 8; tries++) {
+          final shifts = _playlistShifts;
+          final now = await playlist();
+          if (now == null) return;
+          await debugBeforePcmCutRemove?.call();
+          if (shifts != _playlistShifts) continue;
+          final at = now.indexWhere((e) => e is Map && e['id'] == id);
+          // Gone already, or taken by a later call. One that became the
+          // current entry meanwhile is cut by the removal too.
+          if (at >= 0) await _command(['playlist-remove', '$at']);
+          break;
+        }
       }
     }();
   }

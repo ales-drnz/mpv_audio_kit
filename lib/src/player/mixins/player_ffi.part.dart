@@ -5,6 +5,17 @@
 part of '../player.dart';
 
 /// mpv's input command prefixes, which may precede the command name.
+// The commands that move the indices of the playlist entries, besides
+// loadfile and loadlist without append (see [_FfiModule._shiftsPlaylist]).
+const _kPlaylistShiftCommands = {
+  'playlist-remove',
+  'playlist-move',
+  'playlist-clear',
+  'playlist-shuffle',
+  'playlist-unshuffle',
+  'stop',
+};
+
 const _kCommandPrefixes = {
   'no-osd',
   'osd-auto',
@@ -108,8 +119,27 @@ mixin _FfiModule on _PlayerBase {
       _commandResult(args).then((reply) => reply.$1);
 
   /// [_command] that also returns the command's decoded result node.
-  Future<(int, Object?)> _commandResult(List<String> args) =>
-      _client.command(args);
+  Future<(int, Object?)> _commandResult(List<String> args) {
+    if (_shiftsPlaylist(args)) _playlistShifts++;
+    return _client.command(args);
+  }
+
+  /// Whether [args] can move the indices of the playlist entries: every
+  /// command that removes, moves, inserts or reorders them, and a load
+  /// that does not append.
+  static bool _shiftsPlaylist(List<String> args) {
+    var i = 0;
+    while (i < args.length && _kCommandPrefixes.contains(args[i])) {
+      i++;
+    }
+    if (i >= args.length) return false;
+    final command = args[i].replaceAll('_', '-');
+    if (command == 'loadfile' || command == 'loadlist') {
+      final flags = i + 2 < args.length ? args[i + 2] : 'replace';
+      return !flags.startsWith('append');
+    }
+    return _kPlaylistShiftCommands.contains(command);
+  }
 
   /// Applies a settings bundle backed by several mpv properties: [writes]
   /// holds `(property, value, prior value)`. The state takes [next] first,

@@ -704,6 +704,12 @@ abstract class _PlayerBase {
   // while the current file plays, with no START_FILE.
   bool _loadingEntry = false;
 
+  // Counts the commands sent that move playlist indices (removes, moves,
+  // inserts, replacing loads, clears, shuffles, stop): mpv removes by
+  // index, so a read of the playlist names the right entry only if none
+  // went out after it (see [_PcmModule._cutPcm]).
+  int _playlistShifts = 0;
+
   // What the resolver gave for the prefetch of the next entry: the URL mpv
   // was about to open, the one it opened instead, and the load epoch then.
   // The load of that URL in the same epoch takes it once (F10).
