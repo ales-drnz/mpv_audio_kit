@@ -64,7 +64,6 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 - With the prefetch on, a source resolver runs once for an entry the prefetch opened: its load reuses that URL, so a resolver that returns a new URL on every call keeps gapless playback and downloads the entry once.
 
 ### Build
-- Updated libmpv to `libmpv-r18` across all platforms.
 - While a source resolver runs for the prefetch, the playing track keeps its duration, metadata, position and track changes, and a `dump-cache` no longer crashes the app. Two players prefetch independently.
 - The prefetch skips an entry whose `httpHeaders`, `httpChunkSize`, `start` or `end` differ from the playing one, so headers never reach the next entry's host: that entry opens when it starts, after a short pause. `prefetchState` turns `failed` at once and goes back to `idle` after `stop()`.
 - The waveform and the loudness scan no longer crash on a file with more than 8 channels or on an MP3 that turns from stereo to mono, follow the selected audio track, work on Android `content://` sources, and follow the playback position of a file whose timestamps do not start at zero.
@@ -72,10 +71,11 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 - `setAudioSpdif` passthrough works, and https sources play through `setHttpProxy`.
 - FFmpeg audio filters refuse values that read or wrote out of their buffers, so a `RawAudioEffect` fails the chain instead of crashing.
 - SMB stop and quit return at once when the server stops answering (about 120 s before), and URLs with a port, an IPv6 host or a bare `%` open correctly.
-- `setChapters` with fewer chapters than the current one no longer crashes, a live PCM source with a loop on plays once instead of spinning and sets `completed` at its end, and the spectrum no longer shows the previous track's samples after the output format changes.
+- `setChapters` with fewer chapters than the current one no longer crashes, a live PCM source with a loop on plays once instead of spinning and sets `completed` at its end, and the spectrum no longer shows the previous track's samples after the output format changes, or nothing to a listener that comes during a long pause.
 - Windows: the audio output closes on mpv's core thread when a player is disposed. iOS: the media session's audio mode is no longer replaced by `MoviePlayback`.
 - Android: audiotrack rests while there is nothing to play, reopens after audioserver dies, keeps its audio and its position across a pause, and `setAudioStreamSilence` feeds silence.
 - The Android plugin declares the JUnit Platform launcher for its unit tests.
+- Updated libmpv to `libmpv-r18` across all platforms.
 
 ### Docs
 - README, dartdoc and MIGRATION say what each audio driver does with the volume, exclusive mode and the media role, how hooks, the source resolver and live PCM entries behave with the prefetch and loops, and which behaviors need libmpv-r18.
