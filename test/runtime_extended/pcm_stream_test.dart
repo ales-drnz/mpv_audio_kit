@@ -12,6 +12,8 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/player/player.dart'
+    show debugBeforePcmCutRemove;
 import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';
@@ -454,8 +456,8 @@ void main() {
         ], play: true);
         await waitUntil(() => player.state.playing, reason: 'the file plays');
         expect(player.state.playlist.items, hasLength(4));
-        player.debugBeforePcmCutRemove = () async {
-          player.debugBeforePcmCutRemove = null;
+        debugBeforePcmCutRemove = () async {
+          debugBeforePcmCutRemove = null;
           await player.sendRawCommand(['playlist-remove', '1']);
         };
         source.abort();

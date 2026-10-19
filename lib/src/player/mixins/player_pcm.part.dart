@@ -8,6 +8,13 @@ part of '../player.dart';
 /// its playlist, so a source the app no longer references still plays,
 /// and ends a source as stopped when its entry leaves the playlist unread
 /// or the player is disposed.
+/// Test only: awaited by the cut of an aborted source between its read of
+/// the playlist and the removal of a queued entry, so a test can put
+/// another playlist change in that window. Not exported: the library shows
+/// only [Player].
+@visibleForTesting
+Future<void> Function()? debugBeforePcmCutRemove;
+
 mixin _PcmModule on _PlayerBase {
   /// Creates a live [PcmSource] of [format] and opens it as the sole
   /// playlist entry, like [Player.open] with its [PcmSource.toMedia].
@@ -167,12 +174,6 @@ mixin _PcmModule on _PlayerBase {
       if (!_pcmByEntry.containsValue(source)) source.endUnread();
     }
   }
-
-  /// Test only: awaited by the cut of an aborted source between its read
-  /// of the playlist and the removal of a queued entry, so a test can put
-  /// another playlist change in that window.
-  @visibleForTesting
-  Future<void> Function()? debugBeforePcmCutRemove;
 
   /// Takes the entries of [source], which is being aborted, out of
   /// playback. The entry mpv plays is left: the next entry starts, or
