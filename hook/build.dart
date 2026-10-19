@@ -29,30 +29,30 @@ import 'package:hooks/hooks.dart';
 
 import 'package:mpv_audio_kit/src/internals/hook_download.dart';
 
-const _release = 'libmpv-r17';
+const _release = 'libmpv-r18';
 const _baseUrl =
     'https://github.com/ales-drnz/mpv_audio_kit/releases/download/$_release';
 
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      '34cde4b362d19af93e83e86358ae37c9939f39a6d8ae69e871f686d1d40953d9',
+      'ea7df1da72359edbc73768f89285e31f0c40ce5fb3a8794d9cbe1363a4feb9cf',
   'libmpv_android-armeabi-v7a.so':
-      '1eaa0d500137aa63a6b32a4696968909e110b4285be816e4c1deeb2c495b44be',
+      '6fdd1079bfd4c290578ab25126e164548530063bb4109c7de6cafb3286a2776e',
   'libmpv_android-x86_64.so':
-      '3a22caa584908780ba6eb3f6984e29c824c256e87c8c58e469fb031642f83c53',
+      '0bd9bfc6f3ca78eb66c1da252ee420a00623c385a3ea6e120a34604afeea5bbf',
   'libmpv_ios.xcframework.zip':
-      'b8062f1118ae5ad6d8599fd9eea812ea8b40ba9b4ac92fa0a64642d3a39a7b22',
+      '4e55ab39f3f6bb688f360221c6c90cb9c306ce456fa2abd6ede28ecf9ef325b6',
   'libmpv_linux-aarch64.so':
-      '0408e3283bcb574071f2d209567fcef919a672dba7b845edd3422b567f0aaea5',
+      '1aec47d21b4969284f2d8d9a8d399c67e90c87fa17ccb2e6f41c651a1c386ab0',
   'libmpv_linux-x86_64.so':
-      'e23bae27d1b39f89c60fceda34aae50e8e9cf87c9b586ad3b1563c036db3bc9c',
+      '85e5078a4c7883f141cf07bed2d6523a5668585ed325ee3b7c5f34e5176c19ba',
   'libmpv_macos.xcframework.zip':
-      '9583503db8c6afb3b46fdafa3d7d82e83a87a3d0269ce4ccfba708ac8853cac6',
+      '0e695d989789b46a634cc2fe48c6c5fb48b5d44c652728b9ec7d1a6955ab9854',
   'libmpv_windows-arm64.dll':
-      '17641c30a02b2f3eafa542d90ffa9f2a28f1d0d298893b0f2cc0fa30c755ffa8',
+      '400ab9c4f143b3e8e780e3e0ef8d649583dc88ecad3ae47ac504e21999dad915',
   'libmpv_windows-x86_64.dll':
-      '4f4d785e85a0fced6f15bd3a29c013f3558933869fd129a94937b3d40401349c',
+      'd88fc7d49758661f42c6b6d35e9e07a09995b440efc7c114477f4a10cceddac1',
 };
 
 void main(List<String> args) async {

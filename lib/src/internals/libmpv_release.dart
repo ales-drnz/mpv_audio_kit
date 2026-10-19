@@ -5,4 +5,4 @@
 /// The libmpv-scripts release the build hook bundles (hook/build.dart), as
 /// stamped into mpv's version string: `mpv v0.41.0+r17`. Kept in step with
 /// the hook by scripts/update_libmpv.sh.
-const String libmpvRelease = 'r17';
+const String libmpvRelease = 'r18';
