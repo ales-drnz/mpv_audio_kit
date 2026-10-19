@@ -66,7 +66,7 @@ A patch release with a few changes of meaning, listed here so nobody meets them 
 ### Build
 - Updated libmpv to `libmpv-r18` across all platforms.
 - While a source resolver runs for the prefetch, the playing track keeps its duration, metadata, position and track changes, and a `dump-cache` no longer crashes the app. Two players prefetch independently.
-- The prefetch skips an entry whose `httpHeaders`, `httpChunkSize`, `start` or `end` differ from the playing one, so headers never reach the next entry's host. `prefetchState` turns `failed` at once and goes back to `idle` after `stop()`.
+- The prefetch skips an entry whose `httpHeaders`, `httpChunkSize`, `start` or `end` differ from the playing one, so headers never reach the next entry's host: that entry opens when it starts, after a short pause. `prefetchState` turns `failed` at once and goes back to `idle` after `stop()`.
 - The waveform and the loudness scan no longer crash on a file with more than 8 channels or on an MP3 that turns from stereo to mono, follow the selected audio track, work on Android `content://` sources, and follow the playback position of a file whose timestamps do not start at zero.
 - Stopping or skipping a file stops its analysis and its download, and a raw AAC over HTTP is analyzed from the cache instead of being downloaded again.
 - `setAudioSpdif` passthrough works, and https sources play through `setHttpProxy`.
