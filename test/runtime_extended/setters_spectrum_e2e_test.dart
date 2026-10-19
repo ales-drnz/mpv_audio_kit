@@ -122,8 +122,11 @@ void main() {
           await player.play();
           await played.future.timeout(const Duration(seconds: 3));
           await player.pause();
-          await Future<void>.delayed(const Duration(milliseconds: 300));
           await sub.cancel();
+          // Longer than the 2 s after which libmpv-r18 stops copying into
+          // the tap of a reader that went away: paused, the poll rests, and
+          // the frame must still be there when a listener comes back.
+          await Future<void>.delayed(const Duration(milliseconds: 2500));
 
           // Back on the page while paused: the frame the output holds.
           var fft = Completer<void>();
@@ -150,7 +153,7 @@ void main() {
             await pcmSub.cancel();
           }
         },
-        timeout: const Timeout(Duration(seconds: 10)),
+        timeout: const Timeout(Duration(seconds: 15)),
       );
     });
   });
