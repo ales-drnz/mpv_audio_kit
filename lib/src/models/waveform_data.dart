@@ -94,9 +94,8 @@ final class WaveformData {
   /// downloads. The bins are safe to draw: [filled] `== 1` marks the regions
   /// decoded so far (a local file is decoded in several regions in parallel,
   /// so coverage is not strictly left-to-right); `0` bins render as a
-  /// baseline. Use [decodeFraction] for a progress indicator. Never set
-  /// together with [live]. An envelope that grows from playback is never
-  /// [decoding]: it has no end to wait for.
+  /// baseline. Use [decodeFraction] for a progress indicator. Never set for
+  /// an envelope that grows from playback, nor together with [live].
   final bool decoding;
 
   /// Number of bins decoded ("sealed") so far, across all worker regions, or

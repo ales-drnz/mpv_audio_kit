@@ -739,8 +739,7 @@ class PlayerStream {
   /// included (so renderers can clear stale data), then the envelope. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
   /// the final one. An HTTP file that plays from its start is decoded from
-  /// mpv's cache as it downloads, the same way (a libmpv older than
-  /// libmpv-r19 emits its partials with `decoding` false). Adaptive,
+  /// mpv's cache as it downloads, the same way from libmpv-r19 on. Adaptive,
   /// non-seekable or transcoded network streams grow the envelope from
   /// playback instead, and a live stream of unknown length emits a rolling
   /// window ([WaveformData.live]).
