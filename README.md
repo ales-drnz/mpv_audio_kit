@@ -1935,7 +1935,7 @@ print(s.replayGain.preamp);                      // double
 print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
 print(s.chapters);                               // List<Chapter>
 print(s.audioOutputState);                       // AudioOutputState
-print(s.mpvVersion);                             // e.g. 'mpv v0.41.0+r18'
+print(s.mpvVersion);                             // e.g. 'mpv v0.41.0+r19'
 print(s.ffmpegVersion);                          // e.g. '8.1.1'
 
 // index is -1 while openAll is still building the queue.
