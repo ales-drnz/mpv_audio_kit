@@ -553,6 +553,48 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 60)));
     });
 
+    libmpvReleaseGroup(19, 'the partials of a clean pass', () {
+      test('read as decoding until the final envelope (#28)', () async {
+        // Throttled, so the pass follows the download over a few seconds
+        // and the stream emits several partials before the final one.
+        server.bytesPerSecond = 1024 * 1024;
+        await player!.open(Media(server.url(wavName)), play: true);
+        final a = (await watch!.settle(log))!;
+        expect(
+          _fromStart(server, '/$wavName'),
+          hasLength(1),
+          reason: 'a clean pass must not open the URL a second time\n${log()}',
+        );
+        _expectSame(a, wavRef, log());
+
+        final waves = watch!.waves.whereType<WaveformData>().toList();
+        final last = waves.lastIndexWhere((w) => !w.decoding);
+        expect(last, waves.length - 1, reason: 'the final envelope is last');
+        final partials = waves.sublist(0, last);
+        expect(
+          partials.where((w) => !w.decoding),
+          isEmpty,
+          reason: 'every envelope before the final one reads as decoding',
+        );
+        final growing = partials.where(
+          (w) => w.coverageBins! > 0 && w.coverageBins! < w.totalBins!,
+        );
+        expect(
+          growing.length,
+          greaterThanOrEqualTo(2),
+          reason: 'partials while the file downloads (${partials.length})',
+        );
+        var before = 0;
+        for (final w in partials) {
+          final filled = w.filled.where((b) => b != 0).length;
+          expect(w.coverageBins, filled, reason: 'coverage is the bins filled');
+          expect(w.coverageBins, greaterThanOrEqualTo(before));
+          expect(w.decodeFraction, w.coverageBins! / w.totalBins!);
+          before = w.coverageBins!;
+        }
+      }, timeout: const Timeout(Duration(seconds: 60)));
+    });
+
     group('no clean pass, the URL is opened again', () {
       test('a seek past the cache during the download', () async {
         // 3.8 MB at 600 kB/s: about 6 s of download, so a seek to 15 s

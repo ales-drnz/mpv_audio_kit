@@ -9,9 +9,11 @@ import 'dart:typed_data';
 /// Emitted on [PlayerStream.waveform] for the loaded track. The track is
 /// mixed down to mono and binned into a fixed ~2000-entry envelope. A
 /// local file is decoded in the background: partial envelopes
-/// ([decoding] true) come first, then the final one. A network file
-/// grows with playback (unfilled bins in [filled]), and a [live] stream
-/// is a sliding window of up to 131072 bins.
+/// ([decoding] true) come first, then the final one. An HTTP file that
+/// plays from its start is decoded from mpv's cache as it downloads, the
+/// same way from libmpv-r19 on. Other network sources grow with playback
+/// (unfilled bins in [filled]), and a [live] stream is a sliding window of
+/// up to 131072 bins.
 ///
 /// Bin `i` spans the time slice
 /// `[start + i / bins * duration, start + (i + 1) / bins * duration)`.
@@ -85,16 +87,19 @@ final class WaveformData {
   /// `[start, start + duration]`.
   final bool live;
 
-  /// True while the local-file analyzer is still decoding: this envelope is a
+  /// True while the analyzer is still decoding the file: this envelope is a
   /// *partial* snapshot that grows on every poll until the final one arrives
-  /// (a last emission with `decoding == false`). The bins are safe to draw:
-  /// [filled] `== 1` marks the regions decoded so far (the analyzer fills
-  /// several regions in parallel, so coverage is not strictly left-to-right);
-  /// `0` bins render as a baseline. Use [decodeFraction] for a progress
-  /// indicator. Never set together with [live].
+  /// (a last emission with `decoding == false`). Set for a local file, and
+  /// from libmpv-r19 on for an HTTP file decoded from mpv's cache as it
+  /// downloads. The bins are safe to draw: [filled] `== 1` marks the regions
+  /// decoded so far (a local file is decoded in several regions in parallel,
+  /// so coverage is not strictly left-to-right); `0` bins render as a
+  /// baseline. Use [decodeFraction] for a progress indicator. Never set
+  /// together with [live]. An envelope that grows from playback is never
+  /// [decoding]: it has no end to wait for.
   final bool decoding;
 
-  /// Number of bins decoded ("sealed") so far across all worker regions, or
+  /// Number of bins decoded ("sealed") so far, across all worker regions, or
   /// `null` when not [decoding]. Together with [totalBins] this is the decode
   /// progress; see [decodeFraction].
   final int? coverageBins;

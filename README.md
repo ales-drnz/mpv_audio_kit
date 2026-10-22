@@ -2737,8 +2737,10 @@ Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
 plays from its start, such as a direct-play file, is decoded from mpv's
 own cache as it downloads, so the envelope fills at the pace of the
-download. Streams that cannot be decoded
-ahead of time (adaptive, non-seekable or transcoded network sources)
+download. From libmpv-r19 on its partial envelopes are marked
+`wave.decoding` too, so a listener tells them from the final one; an
+older libmpv emits them all with `decoding` false. Streams that cannot
+be decoded ahead of time (adaptive, non-seekable or transcoded network sources)
 fill in as playback advances, and a live stream of unknown length keeps
 a rolling window (`wave.live`). `wave.filled` has one byte per bin, `1`
 once the bin holds data, so you can draw the rest as a flat baseline.

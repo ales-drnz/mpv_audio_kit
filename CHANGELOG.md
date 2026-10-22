@@ -1,3 +1,11 @@
+## [0.5.3] - Unreleased
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): reported and fixed that the waveform of an HTTP file decoded from the cache was not marked as partial ([#28](https://github.com/ales-drnz/mpv_audio_kit/issues/28)).
+
+### Build
+- The waveform of an HTTP file decoded from mpv's cache emits its partial envelopes with `decoding`, `coverageBins` and `decodeFraction` set, then the final one, like a local file ([#28](https://github.com/ales-drnz/mpv_audio_kit/issues/28)). An envelope that grows from playback keeps `decoding` false.
+
 ## [0.5.2] - 19-10-2026
 
 ### Contributions
