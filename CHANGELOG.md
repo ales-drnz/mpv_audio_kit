@@ -1,4 +1,4 @@
-## [0.5.3] - Unreleased
+## [0.5.3] - 22-10-2026
 
 ### Contributions
 - [@erikjara](https://github.com/erikjara): reported and fixed that the waveform of an HTTP file decoded from the cache was not marked as partial ([#28](https://github.com/ales-drnz/mpv_audio_kit/issues/28), [libmpv-scripts#1](https://github.com/ales-drnz/libmpv-scripts/pull/1)).
