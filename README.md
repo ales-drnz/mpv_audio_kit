@@ -647,10 +647,8 @@ live entries: a queued source opens when its entry starts.
   and mpv moves on. With `Loop.playlist` and only live entries, the player
   goes idle instead of parking at the end. Remove the entry once the
   playlist has moved past it.
-- From libmpv-r18 on, `Loop.file` and the A-B loop do not repeat a live
-  entry: it plays once to its end, past a B point too, with a warning in
-  the log. With an older libmpv, turn them off for a live entry, which
-  would otherwise never end.
+- `Loop.file` and the A-B loop do not repeat a live entry: it plays once
+  to its end, past a B point too, with a warning in the log.
 - While a live entry plays, `state.gapless`, `state.cache.pause` and, with
   `lowLatency`, `state.audioBuffer` show the values it plays with
   (`Gapless.no`, `false`, 100 ms). `setGapless`, `setCache` and
@@ -979,7 +977,7 @@ a new login, gets a new key each time; with a source resolver
 stays the same. On Android a `content://` source has no resume point: it
 plays from a file descriptor, whose number the system gives to other files
 later. `writeResumeConfig()` writes nothing for it, and a point saved under
-that number by an older version is deleted before the load.
+that number is deleted before the load.
 
 ---
 
@@ -1459,9 +1457,7 @@ A 24-bit file decodes to 32-bit integers, which `audiotrack` cuts to
 #### 6.5 SPDIF passthrough
 
 `setAudioSpdif` passes compressed audio (AC3, DTS, TrueHD and others)
-through to an AV receiver over SPDIF or HDMI, from libmpv-r18 on. An older
-libmpv lacks FFmpeg's spdif muxer, and a track in a listed codec may then
-not play at all:
+through to an AV receiver over SPDIF or HDMI:
 
 ```dart
 // Dolby and DTS-HD
@@ -1579,7 +1575,7 @@ await player.setAudioStreamSilence(true);
 
 On iOS the driver then never lets go of the device: after an interruption, such as a phone call or another app's audio, it stays suspended and playback cannot continue.
 
-On Android the default `audiotrack` driver streams the silence from libmpv-r18 on. An older libmpv keeps a core busy instead and lets the device run dry.
+On Android the default `audiotrack` driver streams the silence.
 
 #### 6.12 Untimed null output
 
@@ -1657,10 +1653,9 @@ await player.setNetworkTimeout(const Duration(seconds: 10)); // give up after 10
 The longest timeout FFmpeg takes is 2147.483647 s, about 36 minutes: a
 longer one is capped there.
 
-For `smb2://` sources, from libmpv-r18 on, a timeout of zero gives the
-connection 30 s, with no limit on the reads after it, and `stop()`, a
-track change or `dispose()` interrupt a connect or a read at once. An
-older libmpv waits for the timeout to run out first.
+For `smb2://` sources a timeout of zero gives the connection 30 s, with
+no limit on the reads after it, and `stop()`, a track change or
+`dispose()` interrupt a connect or a read at once.
 
 #### 7.4 TLS and SSL verification
 
@@ -1676,10 +1671,8 @@ await player.setTlsCaFile('/path/to/corporate-ca.pem');
 
 #### 7.5 Proxy and cookies
 
-Both take effect from the next load. `http://` sources go through the
-proxy, and from libmpv-r18 on `https://` sources too, tunnelled with
-`CONNECT`; with an older libmpv an `https://` source fails to open while a
-proxy is set:
+Both take effect from the next load. `http://` and `https://` sources go
+through the proxy, `https://` ones tunnelled with `CONNECT`:
 
 ```dart
 await player.setHttpProxy('http://proxy.example:8080');  // empty string clears it
@@ -1942,7 +1935,7 @@ print(s.replayGain.preamp);                      // double
 print(s.tracks.where((t) => t.type == 'audio')); // Iterable<MpvTrack>
 print(s.chapters);                               // List<Chapter>
 print(s.audioOutputState);                       // AudioOutputState
-print(s.mpvVersion);                             // e.g. 'mpv v0.41.0+r17'
+print(s.mpvVersion);                             // e.g. 'mpv v0.41.0+r18'
 print(s.ffmpegVersion);                          // e.g. '8.1.1'
 
 // index is -1 while openAll is still building the queue.
@@ -2137,10 +2130,8 @@ player.stream.prefetchState.listen((state) {
 | `used` | Track transitioned via the prefetched stream | Stays until the next `loading` or a cancel |
 | `failed` | Opening the next entry failed | Stays until the next `loading` |
 
-From libmpv-r18 on, `failed` comes as soon as the open fails, while the
-current entry plays, and a stop resets the state to `idle`. An older
-libmpv reports the failure only when the current entry ends, and keeps
-the state after a stop.
+`failed` comes as soon as the open fails, while the current entry plays,
+and a stop resets the state to `idle`.
 
 For a progress bar, use `player.stream.prefetchCacheDuration`: how much
 of the next entry is cached, as a `Duration`. Divide it by your cache
@@ -2453,7 +2444,7 @@ Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_lo
 
 - `on_load` runs twice for an entry opened ahead: once while the previous entry still plays, then again when the entry starts. Give the same URL both times, or mpv drops the prefetch and opens the entry again. The source resolver of [12.4](#124-the-source-resolver) does this for you.
 - Until the first run continues, mpv stops feeding the entry that plays. A listener slower than the output buffer (0.2 s by default) leaves a gap in the music, so keep that work short.
-- In the first run the current file is still the one that plays: a `file-local-options/...` write lands on it, for the rest of it, and the prefetch opens with it. Headers for one entry are safer in `Media.httpHeaders`: from libmpv-r18 on, mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
+- In the first run the current file is still the one that plays: a `file-local-options/...` write lands on it, for the rest of it, and the prefetch opens with it. Headers for one entry are safer in `Media.httpHeaders`: mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
 
 #### 12.2 Listening and continuing
 
@@ -2735,10 +2726,9 @@ cancel or dispose does not turn it off.
 
 Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
-plays from its start, such as a direct-play file, is decoded from mpv's
-own cache as it downloads, so the envelope fills at the pace of the
-download. From libmpv-r19 on, its partial envelopes have
-`wave.decoding` set too. Streams that cannot be decoded
+plays from its start, such as a direct-play file, is decoded the same way
+from mpv's own cache as it downloads, so the envelope fills at the pace
+of the download. Streams that cannot be decoded
 ahead of time (adaptive, non-seekable or transcoded network sources)
 fill in as playback advances, and a live stream of unknown length keeps
 a rolling window (`wave.live`). `wave.filled` has one byte per bin, `1`
@@ -2747,7 +2737,7 @@ once the bin holds data, so you can draw the rest as a flat baseline.
 On loud, heavily limited masters the peaks sit near full scale for most
 of the track. Drawing `wave.rms` as the body of the waveform, with the
 min and max as a lighter outline, keeps verses, choruses and drops
-readable. `wave.rms` is `null` with a libmpv older than `libmpv-r14`.
+readable.
 
 Such a file is downloaded once: the analysis reads the packets mpv
 already cached. When one pass from the start to the end is not possible
@@ -2758,14 +2748,12 @@ options as playback (`tls-verify`, `tls-ca-file`, headers, user agent,
 cookies). Either way the result is the same. The loudness scan below
 uses the same decode.
 
-From libmpv-r18 on the analysis decodes the audio track the player plays,
-in a file with several, and reads an Android `content://` source too. With
-an external track selected (`addAudioTrack`) the waveform fills from
-playback, and the loudness scan reports `unavailable`. It also reads a
-file of more than 8 channels or whose channel count changes, which can
-crash an older libmpv, and follows the playback time of a file whose
-timestamps do not start at zero, where an older libmpv shifts the
-waveform or leaves it empty and measures silence.
+The analysis decodes the audio track the player plays, in a file with
+several, and reads an Android `content://` source too. With an external
+track selected (`addAudioTrack`) the waveform fills from playback, and
+the loudness scan reports `unavailable`. It also reads a file of more
+than 8 channels or whose channel count changes, and follows the playback
+time of a file whose timestamps do not start at zero.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/analysis_cache_feed.png" width="100%" alt="A network file downloaded once: playback and the analysis read the same mpv cache, the waveform fills as it decodes, and the analysis opens the source a second time only when one pass from the start to the end is not possible">
 
@@ -2996,10 +2984,8 @@ On iOS the player's audio does not mix with other apps, and the output
 opens as soon as a file loads, even paused: `open(media, play: false)`
 already stops the audio of another app.
 
-On iOS the session has the `playback` category and the `default` mode.
-From libmpv-r18 on mpv keeps that mode when its output opens. An older
-libmpv sets `moviePlayback`, the mode Apple keeps for video, each time
-the output opens.
+On iOS the session has the `playback` category and the `default` mode,
+which mpv keeps when its output opens.
 
 On Android 7 (API 24 and 25) the player keeps playing at full volume
 when another app asks it to duck, such as a navigation prompt: only

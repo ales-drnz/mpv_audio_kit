@@ -14,10 +14,8 @@
 /// across every demuxer backend: HLS, DASH, raw HTTP range reads,
 /// SMB, local files.
 ///
-/// From libmpv-r18 on, [failed] comes as soon as the open fails, while
-/// the current entry plays, and a stop resets the state to [idle]. An
-/// older libmpv reports the failure only when the current entry ends,
-/// and keeps the state after a stop.
+/// [failed] comes as soon as the open fails, while the current entry
+/// plays, and a stop resets the state to [idle].
 enum PrefetchState {
   /// No background prefetch is active. Default state.
   idle('idle'),
@@ -47,8 +45,7 @@ enum PrefetchState {
   /// rewrite. Distinct from a silent return to [idle] because no
   /// gapless transition is armed: the next track will be re-opened
   /// from scratch when playback reaches it. Persists at [failed] until
-  /// the next [loading], or a stop from libmpv-r18 on; a cancel does not
-  /// reset it.
+  /// the next [loading] or a stop; a cancel does not reset it.
   failed('failed');
 
   const PrefetchState(this.mpvValue);

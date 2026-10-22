@@ -80,9 +80,7 @@ mixin _NetworkModule on _PlayerBase {
 
   /// Enables or disables streaming silence when no audio is playing.
   ///
-  /// On Android the default `audiotrack` driver streams the silence from
-  /// libmpv-r18 on. An older libmpv keeps a core busy instead and lets
-  /// the device run dry.
+  /// On Android the default `audiotrack` driver streams the silence.
   Future<void> setAudioStreamSilence(bool enable) async {
     await _gate();
     await _prop('audio-stream-silence', enable ? 'yes' : 'no');
@@ -105,10 +103,9 @@ mixin _NetworkModule on _PlayerBase {
   /// fail every network open. A longer [timeout] is capped there, in mpv
   /// and in [PlayerState.networkTimeout] alike.
   ///
-  /// For `smb2://` sources, from libmpv-r18 on: with [Duration.zero] the
-  /// connection gets 30 seconds, with no limit on the reads after it, and
-  /// a stop, a track change or a dispose interrupts a connect or a read at
-  /// once. An older libmpv waits for the timeout to run out first.
+  /// For `smb2://` sources, with [Duration.zero] the connection gets 30
+  /// seconds, with no limit on the reads after it, and a stop, a track
+  /// change or a dispose interrupts a connect or a read at once.
   Future<void> setNetworkTimeout(Duration timeout) async {
     await _gate();
     if (timeout > _kMaxNetworkTimeout) timeout = _kMaxNetworkTimeout;
@@ -192,9 +189,8 @@ mixin _NetworkModule on _PlayerBase {
   ///
   /// Applies to FFmpeg's HTTP stack on the next load; pass an empty string
   /// to clear. Per-request headers go through `Media.httpHeaders` instead.
-  /// `http://` sources go through the proxy, and from libmpv-r18 on
-  /// `https://` sources too, tunnelled with `CONNECT`. With an older
-  /// libmpv an `https://` source fails to open while a proxy is set.
+  /// `http://` and `https://` sources go through the proxy, `https://`
+  /// ones tunnelled with `CONNECT`.
   Future<void> setHttpProxy(String url) async {
     await _gate();
     await _prop('http-proxy', url);

@@ -142,7 +142,7 @@ final class Media {
   /// on) still apply, and the load uses that point up as any resume does.
   /// With [Player.setPrefetchPlaylist] on, an entry whose
   /// options differ from the playing entry's, a start included, is not
-  /// opened ahead from libmpv-r18 on, so the change to it is not gapless.
+  /// opened ahead, so the change to it is not gapless.
   ///
   /// Must not be negative. Past the end of the file the entry ends at
   /// once. Like the other per-entry options it does not apply to
@@ -160,8 +160,7 @@ final class Media {
   /// describe the whole file. [Loop.file] and [Player.play] at the end of
   /// the queue start the file again from its beginning, and stop at [end]
   /// again. With [Player.setPrefetchPlaylist] on, an entry with an end is
-  /// opened ahead only from libmpv-r18 on when the playing entry has the
-  /// same options, and the entry after one that ends early only once mpv
+  /// opened ahead only when the playing entry has the same options, and the entry after one that ends early only once mpv
   /// has read its file to the end.
   ///
   /// Must be later than [start], or than zero when [start] is null. Like

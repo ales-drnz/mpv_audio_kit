@@ -138,7 +138,7 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   final bool lastEntry;
 
   /// Whether the current entry is a live PCM source (`mak-pcm://`), which
-  /// libmpv-r18 plays once whatever the loop. Read only when [parked].
+  /// mpv plays once whatever the loop. Read only when [parked].
   final bool live;
 
   /// `time-pos` read at the park, the position where the file ended. It

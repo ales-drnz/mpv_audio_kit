@@ -17,8 +17,7 @@ enum Loop {
   off,
 
   /// Loop the currently playing file: `loop-file=inf`,
-  /// `loop-playlist=no`. A live `PcmSource` entry plays once all the same
-  /// from libmpv-r18 on; with an older libmpv it never ends.
+  /// `loop-playlist=no`. A live `PcmSource` entry plays once all the same.
   file,
 
   /// Loop the entire playlist: `loop-file=no`, `loop-playlist=inf`.

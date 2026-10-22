@@ -738,20 +738,18 @@ class PlayerStream {
   /// Emits `null` each time a file loads, the same file loaded again
   /// included (so renderers can clear stale data), then the envelope. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
-  /// the final one. An HTTP file that plays from its start is decoded from
-  /// mpv's cache as it downloads, the same way from libmpv-r19 on. Adaptive,
-  /// non-seekable or transcoded network streams grow the envelope from
+  /// the final one. An HTTP file that plays from its start is decoded the
+  /// same way from mpv's cache as it downloads. Adaptive, non-seekable or transcoded network streams grow the envelope from
   /// playback instead, and a live stream of unknown length emits a rolling
   /// window ([WaveformData.live]).
   ///
-  /// From libmpv-r18 on the analysis decodes the audio track the player
-  /// plays, also a `content://` source on Android. With an external track
-  /// selected ([Player.addAudioTrack]) the envelope grows from playback,
-  /// and the loudness scan reports [LoudnessScanState.unavailable]. It
-  /// also reads a file of more than 8 channels or whose channel count
-  /// changes, which can crash an older libmpv, and puts a file whose
-  /// timestamps do not start at zero on the playback time axis, where an
-  /// older libmpv shifts the envelope or leaves it empty.
+  /// The analysis decodes the audio track the player plays, also a
+  /// `content://` source on Android. With an external track selected
+  /// ([Player.addAudioTrack]) the envelope grows from playback, and the
+  /// loudness scan reports [LoudnessScanState.unavailable]. It also reads
+  /// a file of more than 8 channels or whose channel count changes, and
+  /// puts a file whose timestamps do not start at zero on the playback
+  /// time axis.
   ///
   /// A remote file is downloaded once: the decode reads the packets mpv
   /// already cached. When one pass from the start to the end is not
@@ -819,10 +817,9 @@ class PlayerStream {
   ///
   /// Like [waveform], the scan of a remote file reads mpv's cache, and
   /// opens the source a second time only when that pass is not possible.
-  /// From libmpv-r18 on it reads the same sources as [waveform]: the
-  /// audio track the player plays, `content://`, more than 8 channels
-  /// and timestamps that do not start at zero. An older libmpv can report
-  /// about -70 LUFS for such a file at normal volume.
+  /// It reads the same sources as [waveform]: the audio track the player
+  /// plays, `content://`, more than 8 channels and timestamps that do not
+  /// start at zero.
   ///
   /// While the scan runs it emits `scanning` snapshots with a
   /// [LoudnessScan.progress]. Then one terminal [LoudnessScan] per track

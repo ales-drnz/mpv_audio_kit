@@ -78,10 +78,8 @@ enum PcmSourceState {
 /// entries, the player goes idle instead of parking at the end. Remove the
 /// entry with `Player.remove` once the playlist has moved past it.
 ///
-/// From libmpv-r18 on, [Loop.file] and the A-B loop do not repeat a live
-/// entry: it plays once to its end, past a B point too, with a warning in
-/// the log. With an older libmpv, turn them off for a live entry, which
-/// would otherwise never end.
+/// [Loop.file] and the A-B loop do not repeat a live entry: it plays once
+/// to its end, past a B point too, with a warning in the log.
 ///
 /// While a live entry plays, `state.gapless`, `state.cache.pause` and,
 /// with `lowLatency`, `state.audioBuffer` show the values the entry plays

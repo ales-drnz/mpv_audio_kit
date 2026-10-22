@@ -109,8 +109,8 @@ extension _Lifecycle on _PlayerBase {
   /// entry an edge belonged to. That raised `completed` at a track
   /// change, cleared by the next load, and missed the real end.
   ///
-  /// A live PCM entry ([live]) has no restart either: from libmpv-r18 it
-  /// plays once and parks under [Loop.file] too (F225).
+  /// A live PCM entry ([live]) has no restart either: it plays once and
+  /// parks under [Loop.file] too (F225).
   void _settleEndOfContent({
     required bool parked,
     required bool lastEntry,

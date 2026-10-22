@@ -327,8 +327,6 @@ mixin _AudioModule on _PlayerBase {
   /// codecs (e.g. `{Spdif.ac3, Spdif.dts}`); pass `{}` to disable
   /// passthrough entirely. Order does not matter.
   ///
-  /// Passthrough works from libmpv-r18 on: an older libmpv lacks FFmpeg's
-  /// spdif muxer, and a track in a listed codec may then not play at all.
   /// While a track passes through, the receiver decodes it and mpv cannot
   /// touch the audio: the effects chain, the soft volume and mute,
   /// ReplayGain, the volume gain, pitch, and the output rate, format and
@@ -508,8 +506,8 @@ mixin _AudioModule on _PlayerBase {
   ///   of them, or a NaN crossover frequency;
   /// - compand attacks and decays that both start with no number.
   ///
-  /// A [RawAudioEffect] is not checked here. From libmpv-r18 on, the
-  /// filters themselves refuse such values, so a raw stage that carries
+  /// A [RawAudioEffect] is not checked here. The filters themselves
+  /// refuse such values, so a raw stage that carries
   /// one fails as described above for a value a filter refuses, instead
   /// of reading or writing out of its buffers.
   ///
