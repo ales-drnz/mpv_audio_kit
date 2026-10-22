@@ -118,11 +118,12 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
       return;
     }
 
-    // DECODING (local-file bulk analysis in flight): a partial envelope that
-    // grows on every poll. The full axis is emitted with [filled] marking the
-    // regions decoded so far. Never cache it and never stop the timer: the
-    // final `ready` emission below supersedes it. De-dup on coverage so an
-    // unchanged snapshot does not churn the UI.
+    // DECODING (a decode apart from playback in flight: a local file, or a
+    // remote one read from mpv's cache or opened again): a partial envelope
+    // that grows on every poll. The full axis is emitted with [filled]
+    // marking the regions decoded so far. Never cache it and never stop the
+    // timer: the final `ready` emission below supersedes it. De-dup on
+    // coverage so an unchanged snapshot does not churn the UI.
     if (decoding && durationUs > 0 && haveBins) {
       if (coverageBins == null || coverageBins != _lastDecodeCoverage) {
         _lastDecodeCoverage = coverageBins;
@@ -155,8 +156,9 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
         finish(_padded(data, totalBins));
         return;
       }
-      // Progressive (network) envelope grows: keep the timer running so
-      // each poll drives the native fold and emits the grown envelope.
+      // Progressive envelope (grown from playback) grows: keep the timer
+      // running so each poll drives the native fold and emits the grown
+      // envelope.
       _emitGrowing(data);
       return;
     }

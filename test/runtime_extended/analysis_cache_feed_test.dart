@@ -576,6 +576,10 @@ void main() {
           isEmpty,
           reason: 'every envelope before the final one reads as decoding',
         );
+        for (final w in partials) {
+          expect(w.coverageBins, isNotNull, reason: 'coverage of a partial');
+          expect(w.totalBins, isNotNull, reason: 'axis of a partial');
+        }
         final growing = partials.where(
           (w) => w.coverageBins! > 0 && w.coverageBins! < w.totalBins!,
         );

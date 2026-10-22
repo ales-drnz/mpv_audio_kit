@@ -65,7 +65,7 @@ final class WaveformData {
 
   /// Per-bin RMS of the mono signal, range `[0.0, 1.0]`, same length as
   /// [min]. It follows the loudness of each bin even where the peaks stay
-  /// flat at full scale.
+  /// flat at full scale. `null` when mpv does not report it.
   final Float32List? rms;
 
   /// Per-bin coverage flag (one byte per bin, length matches [min]): `1`
@@ -89,10 +89,13 @@ final class WaveformData {
 
   /// True while the analyzer is still decoding the file: this envelope is a
   /// *partial* snapshot that grows on every poll until the final one arrives
-  /// (a last emission with `decoding == false`). Set for a local file, and
-  /// for an HTTP file decoded from mpv's cache as it downloads. The bins are safe to draw: [filled] `== 1` marks the regions
-  /// decoded so far (a local file is decoded in several regions in parallel,
-  /// so coverage is not strictly left-to-right); `0` bins render as a
+  /// (a last emission with `decoding == false`). Set while a file is decoded
+  /// apart from playback: a local file, or a remote one read from mpv's
+  /// cache as it downloads or opened a second time. When a pass from the
+  /// cache hands over to a second open, the coverage starts again from 0.
+  /// The bins are safe to draw: [filled] `== 1` marks the regions decoded
+  /// so far (a local file is decoded in several regions in parallel, so
+  /// coverage is not strictly left-to-right); `0` bins render as a
   /// baseline. Use [decodeFraction] for a progress indicator. Never set for
   /// an envelope that grows from playback, nor together with [live].
   final bool decoding;

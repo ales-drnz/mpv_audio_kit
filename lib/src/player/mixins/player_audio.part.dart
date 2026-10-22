@@ -506,10 +506,10 @@ mixin _AudioModule on _PlayerBase {
   ///   of them, or a NaN crossover frequency;
   /// - compand attacks and decays that both start with no number.
   ///
-  /// A [RawAudioEffect] is not checked here. The filters themselves
-  /// refuse such values, so a raw stage that carries
-  /// one fails as described above for a value a filter refuses, instead
-  /// of reading or writing out of its buffers.
+  /// A [RawAudioEffect] is not checked here. The filters themselves refuse
+  /// such values, so a raw stage that carries one fails as described above
+  /// for a value a filter refuses, instead of reading or writing out of its
+  /// buffers.
   ///
   /// A [RawAudioEffect] carries a lavfi entry written by hand, for
   /// expression-based filters or anything without a typed effect. The

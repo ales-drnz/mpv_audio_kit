@@ -95,9 +95,10 @@ final class PlayerState {
   /// turns `true` earlier, as soon as the decoder is done, about one
   /// output buffer before. It stays `false` between playlist entries and
   /// while `loop-file` or `loop-playlist` is on, except at the end of a
-  /// live `PcmSource` entry, which [Loop.file] does not repeat. Resets to `false` when a new track starts (a fresh
-  /// [Player.open] or [Player.openAll], or a playlist advance), when you
-  /// seek back into the track, or when a loop is turned on:
+  /// live `PcmSource` entry, which [Loop.file] does not repeat. Resets to
+  /// `false` when a new track starts (a fresh [Player.open] or
+  /// [Player.openAll], or a playlist advance), when you seek back into the
+  /// track, or when a loop is turned on:
   /// [Player.setLoop] then rewinds, paused. Drives
   /// [MpvPlaybackState.completed].
   final bool completed;

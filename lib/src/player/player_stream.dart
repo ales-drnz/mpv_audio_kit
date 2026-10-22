@@ -739,9 +739,10 @@ class PlayerStream {
   /// included (so renderers can clear stale data), then the envelope. A local file is decoded in the
   /// background: partial envelopes with [WaveformData.decoding] set, then
   /// the final one. An HTTP file that plays from its start is decoded the
-  /// same way from mpv's cache as it downloads. Adaptive, non-seekable or transcoded network streams grow the envelope from
-  /// playback instead, and a live stream of unknown length emits a rolling
-  /// window ([WaveformData.live]).
+  /// same way from mpv's cache as it downloads. Adaptive, non-seekable or
+  /// transcoded network streams grow the envelope from playback instead,
+  /// and a live stream of unknown length emits a rolling window
+  /// ([WaveformData.live]).
   ///
   /// The analysis decodes the audio track the player plays, also a
   /// `content://` source on Android. With an external track selected

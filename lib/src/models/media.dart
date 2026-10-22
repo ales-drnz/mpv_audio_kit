@@ -160,8 +160,9 @@ final class Media {
   /// describe the whole file. [Loop.file] and [Player.play] at the end of
   /// the queue start the file again from its beginning, and stop at [end]
   /// again. With [Player.setPrefetchPlaylist] on, an entry with an end is
-  /// opened ahead only when the playing entry has the same options, and the entry after one that ends early only once mpv
-  /// has read its file to the end.
+  /// opened ahead only when the playing entry has the same options, and
+  /// the entry after one that ends early only once mpv has read its file
+  /// to the end.
   ///
   /// Must be later than [start], or than zero when [start] is null. Like
   /// [start] it does not apply to [Player.openPlaylistFile], and a live
