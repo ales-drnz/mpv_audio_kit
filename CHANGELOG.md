@@ -5,6 +5,10 @@
 
 ### Build
 - The waveform of an HTTP file decoded from mpv's cache emits its partial envelopes with `decoding`, `coverageBins` and `decodeFraction` set, then the final one, like a local file ([#28](https://github.com/ales-drnz/mpv_audio_kit/issues/28)). An envelope that grows from playback keeps `decoding` false.
+- Updated libmpv to `libmpv-r19` across all platforms.
+
+### Docs
+- README and dartdoc describe the libmpv the package bundles, without notes on what older releases did.
 
 ## [0.5.2] - 19-10-2026
 
