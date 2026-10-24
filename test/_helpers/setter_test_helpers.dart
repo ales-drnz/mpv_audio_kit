@@ -13,8 +13,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+import 'package:mpv_audio_kit/src/internals/libmpv_release.dart';
 
 import 'libmpv_resolver.dart';
+import 'release_gate.dart';
 
 /// Default 1-second sine fixture used by the setter suites.
 String defaultFixturePath() =>
@@ -91,27 +93,64 @@ void runtimeSuite(
   body();
 }
 
-/// Why the tests of a fix that ships in libmpv-r[release] cannot run on the
-/// bundled libmpv, or `null` when they can (or when there is no libmpv,
-/// which [runtimeSuite] reports). Unlike a missing fixture this is no
-/// failure on CI: the package pins an older release until the bump, and
-/// the tests start running with the bump itself.
-String? needsLibmpvRelease(int release) {
-  final lib = resolveLibmpv();
-  if (lib == null) return null;
-  final found = libmpvReleaseOf(lib);
-  if (found != null && found >= release) return null;
-  return 'tests a fix of libmpv-r$release, the bundled libmpv is '
-      '${found == null ? 'not a libmpv-scripts build' : 'r$found'}';
+/// The libmpv-scripts release this run tests: MAK_LIBMPV_RELEASE, which CI
+/// sets from the manifest of the libmpv-scripts run it took the binary
+/// from, or else the pinned [libmpvRelease].
+int expectedLibmpvRelease() {
+  final name = Platform.environment['MAK_LIBMPV_RELEASE'] ?? libmpvRelease;
+  return releaseNumber(name) ??
+      (throw StateError('MAK_LIBMPV_RELEASE is not a release: $name'));
 }
 
-/// A [group] of tests for the patches of libmpv-r[release]: skipped with
-/// the reason of [needsLibmpvRelease] on an older libmpv.
-void libmpvReleaseGroup(
-  int release,
-  String description,
-  void Function() body,
-) => group(description, body, skip: needsLibmpvRelease(release));
+/// Whether a test of a release the bundled libmpv lacks fails instead of
+/// skipping: on CI, unless MAK_ALLOW_OLDER_LIBMPV=1 says the older binary
+/// is meant.
+bool get strictLibmpvRelease =>
+    Platform.environment['CI'] == 'true' &&
+    Platform.environment['MAK_ALLOW_OLDER_LIBMPV'] != '1';
+
+/// The [releaseGate] of a test of libmpv-r[release] on the bundled libmpv,
+/// with the reason of a skip or a failure. Runs when there is no libmpv,
+/// which [runtimeSuite] reports.
+(ReleaseGate, String?) _libmpvReleaseGate(int release) {
+  final lib = resolveLibmpv();
+  if (lib == null) return (ReleaseGate.run, null);
+  final found = libmpvReleaseOf(lib);
+  final expected = expectedLibmpvRelease();
+  final gate = releaseGate(release, found, expected, strictLibmpvRelease);
+  final bundled = found == null ? 'not a libmpv-scripts build' : 'r$found';
+  return (
+    gate,
+    switch (gate) {
+      ReleaseGate.run => null,
+      ReleaseGate.skip =>
+        'tests a fix of libmpv-r$release, the bundled libmpv is $bundled',
+      ReleaseGate.fail =>
+        'tests a fix of libmpv-r$release, which this run expects with '
+            'libmpv-r$expected, but the bundled libmpv is $bundled '
+            '(MAK_ALLOW_OLDER_LIBMPV=1 skips it instead)',
+    },
+  );
+}
+
+/// Why the tests of a fix that ships in libmpv-r[release] cannot run on the
+/// bundled libmpv, or `null` when they can (or when there is no libmpv,
+/// which [runtimeSuite] reports).
+String? needsLibmpvRelease(int release) => _libmpvReleaseGate(release).$2;
+
+/// A [group] of tests for the patches of libmpv-r[release]. On an older
+/// libmpv it is skipped with the reason of [needsLibmpvRelease], except on
+/// CI for a release up to the one the run expects: there the binary is not
+/// the one meant, and a failing test takes the group's place, as in
+/// [runtimeSuite].
+void libmpvReleaseGroup(int release, String description, void Function() body) {
+  final (gate, reason) = _libmpvReleaseGate(release);
+  if (gate == ReleaseGate.fail) {
+    test(description, () => fail(reason!));
+    return;
+  }
+  group(description, body, skip: reason);
+}
 
 /// [runtimeSuite] for a suite that needs this build's analysis properties,
 /// `waveform-data` and `loudness-scan-data`.
