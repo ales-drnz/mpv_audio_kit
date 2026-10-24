@@ -90,10 +90,8 @@ void main() {
 
       test('McompandBandsX — three-band compander accepted by mpv', () async {
         // mcompand asserts every crossover < Nyquist of the input
-        // sample rate. The fixture is 22.05 kHz (Nyquist 11.025 kHz),
-        // so the top band's crossover lives well below that. Real-world
-        // 44.1/48 kHz content can use the full 20 kHz range — the test
-        // fixture is the constraint here, not the typed extension.
+        // sample rate. The fixture is 48 kHz (Nyquist 24 kHz), well above
+        // the top band's 8 kHz crossover.
         final errors = await tryEffects(() async {
           await player.setAudioEffects([
             const McompandEffect().withBands([

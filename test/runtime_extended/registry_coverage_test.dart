@@ -269,20 +269,17 @@ void main() {
           }
         });
 
-        // Filters that don't accept a no-arg lavfi instantiation. Each
-        // entry is the minimum arg that satisfies libavfilter's
-        // required-options check.
+        // Filters of kFiltersNeedingParams that don't accept a no-arg
+        // lavfi instantiation. Each entry is the minimum arg that
+        // satisfies libavfilter's required-options check.
         const argDefaults = <String, String>{
           'channelmap': 'map=0|1',
           'pan': 'stereo|c0=c0|c1=c1',
-          'aresample': '44100',
-          'aformat': 'sample_fmts=s16',
-          'aiir': 'zeros=0:poles=1',
-          'arnndn': 'model=test.rnnn',
         };
 
-        // Filters that need an external resource (model files, etc.) we
-        // don't ship — we only verify they're registered.
+        // Filters that need an external resource are left out here: the
+        // generated audio_effects_runtime_coverage_test builds them with
+        // the model file of test/fixtures.
         const registrationOnly = <String>{
           'arnndn', // requires a .rnnn model file
         };

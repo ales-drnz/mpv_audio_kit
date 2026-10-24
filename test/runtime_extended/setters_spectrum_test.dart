@@ -12,11 +12,10 @@ import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';
 
-/// API-surface tests for the spectrum / PCM streams. End-to-end FFT
-/// data assertions live in the integration suite, which exercises the
-/// `pcm-tap-frame` mpv property; on a libmpv build without that
-/// property the streams are silent and the host suite skips those
-/// assertions. This file therefore covers:
+/// API-surface tests for the spectrum / PCM streams. The end-to-end FFT
+/// and PCM data assertions are in setters_spectrum_e2e_test, which
+/// plays a fixture through the `pcm-tap-frame` mpv property. This file
+/// covers:
 ///
 ///   1. SpectrumSettings round-trip via setSpectrum / updateSpectrum.
 ///   2. spectrumSettings getter reflects the latest call.

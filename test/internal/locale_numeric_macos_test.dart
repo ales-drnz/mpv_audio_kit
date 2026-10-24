@@ -26,10 +26,9 @@ void main() {
   // So `setlocale(1, "C")` does the right thing only on glibc; on Apple
   // platforms it silently sets LC_COLLATE and leaves LC_NUMERIC alone.
   //
-  // The sibling `locale_invariant_test.dart` cannot catch this: it uses
-  // category 1 for BOTH the perturbation and the read-back, so on macOS
-  // it self-consistently exercises LC_COLLATE and passes regardless.
-  // This file uses the platform-correct constant (4) end-to-end.
+  // The sibling `locale_invariant_test.dart` picks the constant by
+  // platform too. This file keeps the macOS case on its own, with the
+  // platform-correct constant (4) end-to-end.
   //
   // Keep this file single-test and standalone: `ensureInitialized`
   // short-circuits on the second call within an isolate, and
