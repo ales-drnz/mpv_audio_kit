@@ -86,17 +86,34 @@ void _watch((SendPort, int) args) {
   ready.send(port.sendPort);
 }
 
+/// Sends [commands] to the core behind [handle], one synchronous
+/// `mpv_command_string` each, best effort: a command that fails is logged
+/// and the next one still goes. The core teardowns that run without a
+/// player (the Hot Restart reap and [releaseOrphan]) share it.
+@internal
+void sendCoreCommands(
+  MpvLibrary lib,
+  Pointer<MpvHandle> handle,
+  List<String> commands,
+) {
+  using((arena) {
+    for (final command in commands) {
+      try {
+        lib.mpvCommandString(handle, command.toNativeUtf8(allocator: arena));
+      } catch (e) {
+        debugLog('mpv_audio_kit: cannot send "$command" to a core: $e');
+      }
+    }
+  });
+}
+
 /// Frees the core of a player whose owner isolate exited without dispose,
 /// from its event isolate once the loop has left `mpv_wait_event`: nobody
 /// else will. The analysis switches go off too: libmpv keeps them per
 /// process, and the listeners that armed them are gone.
 @internal
 void releaseOrphan(MpvLibrary lib, Pointer<MpvHandle> handle) {
-  for (final command in analysisOffCommands) {
-    using((arena) {
-      lib.mpvCommandString(handle, command.toNativeUtf8(allocator: arena));
-    });
-  }
+  sendCoreCommands(lib, handle, analysisOffCommands);
   // A debug build lists the handle for Hot Restart cleanup: the next VM
   // of the process must not free it again.
   OrphanHandleTracker.instance.forget(handle);

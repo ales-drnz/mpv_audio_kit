@@ -37,6 +37,7 @@ void main() {
           [h1, h2],
           delay: Duration.zero,
           stopAnalysis: false,
+          destroy: spy.destroy,
         );
 
         // Phase 1 quits both, THEN phase 2 destroys both — proves the fix
@@ -60,6 +61,7 @@ void main() {
         [h],
         delay: const Duration(milliseconds: 50),
         stopAnalysis: false,
+        destroy: spy.destroy,
       );
 
       // The quit ran synchronously up to the first await; the destroy is
@@ -87,7 +89,12 @@ void main() {
       final h1 = Pointer<MpvHandle>.fromAddress(0x11);
       final h2 = Pointer<MpvHandle>.fromAddress(0x22);
 
-      await reapOrphanedHandles(spy, [h1, h2], delay: Duration.zero);
+      await reapOrphanedHandles(
+        spy,
+        [h1, h2],
+        delay: Duration.zero,
+        destroy: spy.destroy,
+      );
 
       // Every command was attempted (best-effort, swallowed), and both
       // handles were still destroyed.
@@ -106,10 +113,12 @@ void main() {
         final h1 = Pointer<MpvHandle>.fromAddress(0x31);
         final h2 = Pointer<MpvHandle>.fromAddress(0x32);
 
-        final reaping = reapOrphanedHandles(spy, [
-          h1,
-          h2,
-        ], delay: const Duration(milliseconds: 50));
+        final reaping = reapOrphanedHandles(
+          spy,
+          [h1, h2],
+          delay: const Duration(milliseconds: 50),
+          destroy: spy.destroy,
+        );
         // All of it runs before the first await, so before the new VM's
         // first player can exist.
         List<String> phase1(Pointer<MpvHandle> h) => [
@@ -136,13 +145,19 @@ void main() {
         [h],
         delay: Duration.zero,
         stopAnalysis: false,
+        destroy: spy.destroy,
       );
       expect(spy.events, ['quit:${h.address}', 'terminate:${h.address}']);
     });
 
     test('empty reference list is a no-op', () async {
       final spy = _SpyMpvLibrary();
-      await reapOrphanedHandles(spy, [], delay: Duration.zero);
+      await reapOrphanedHandles(
+        spy,
+        [],
+        delay: Duration.zero,
+        destroy: spy.destroy,
+      );
       expect(spy.events, isEmpty);
     });
   });
@@ -150,7 +165,9 @@ void main() {
 
 /// Stub [MpvLibrary] recording the ordered sequence of the two FFI calls
 /// the reaper makes. Built via [MpvLibrary.uninitializedForTest] so any
-/// stray call to another binding trips a [LateInitializationError].
+/// stray call to another binding trips a [LateInitializationError]. The
+/// reap destroys through [destroy], in place of its default that destroys
+/// a real core in another isolate.
 class _SpyMpvLibrary extends MpvLibrary {
   _SpyMpvLibrary() : super.uninitializedForTest() {
     mpvCommandString = (handle, cmd) {
@@ -167,6 +184,10 @@ class _SpyMpvLibrary extends MpvLibrary {
       events.add('terminate:${handle.address}');
     };
   }
+
+  /// The destroy the reap is given.
+  Future<void> destroy(Pointer<MpvHandle> handle) async =>
+      mpvTerminateDestroy(handle);
 
   final List<String> events = [];
   int commandStringCalls = 0;

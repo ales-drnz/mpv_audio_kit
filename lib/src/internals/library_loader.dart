@@ -33,9 +33,11 @@ const Duration _kOrphanReapDelay = Duration(milliseconds: 500);
 /// previous VM's event isolate returns from `mpv_wait_event`, sees
 /// MPV_EVENT_SHUTDOWN and is reaped. `quit` alone does NOT free the core's
 /// worker threads or audio output. Phase 2, after [delay], destroys each
-/// handle (`mpv_terminate_destroy` joins the core thread and releases the
-/// audio output): deferred so the destroy never races an isolate still
-/// inside the syscall (use-after-free).
+/// handle with [destroy] (`mpv_terminate_destroy` joins the core thread and
+/// releases the audio output): deferred so the destroy never races an
+/// isolate still inside the syscall (use-after-free). The default destroys
+/// off the main isolate, which keeps running the new VM meanwhile.
+/// Completes once every handle is destroyed.
 ///
 /// With [stopAnalysis], phase 1 first turns off the waveform, the loudness
 /// scan and the analyzer taps. libmpv keeps them per process, not per core,
@@ -47,31 +49,34 @@ Future<void> reapOrphanedHandles(
   List<Pointer<MpvHandle>> references, {
   Duration delay = _kOrphanReapDelay,
   bool stopAnalysis = true,
+  Future<void> Function(Pointer<MpvHandle> handle) destroy =
+      terminateDestroyOffMain,
 }) async {
-  const tag = 'mpv_audio_kit:';
   for (final ref in references) {
-    for (final command in [if (stopAnalysis) ...analysisOffCommands, 'quit']) {
-      final cmd = command.toNativeUtf8();
-      try {
-        lib.mpvCommandString(ref, cmd);
-      } catch (e) {
-        debugLog('$tag Error sending "$command" to a leaked handle: $e');
-      } finally {
-        calloc.free(cmd);
-      }
-    }
+    sendCoreCommands(lib, ref, [
+      if (stopAnalysis) ...analysisOffCommands,
+      'quit',
+    ]);
   }
 
   await Future<void>.delayed(delay);
 
   for (final ref in references) {
     try {
-      lib.mpvTerminateDestroy(ref);
+      await destroy(ref);
     } catch (e) {
-      debugLog('$tag Error terminating leaked handle: $e');
+      debugLog('mpv_audio_kit: Error terminating leaked handle: $e');
     }
   }
 }
+
+/// The Hot Restart reap of the cores the replaced VM leaked, started by
+/// [MpvAudioKit.ensureInitialized], which completes once they are
+/// destroyed; `null` when there was none. A player's bring-up waits for it:
+/// until the destroy, an orphan holds its audio output (F220).
+@internal
+Future<void>? get orphansReleased => _orphansReleased;
+Future<void>? _orphansReleased;
 
 /// Destroys the core behind [handle] in a throwaway isolate, so the caller
 /// keeps running meanwhile: `mpv_terminate_destroy` sends a synchronous
@@ -79,10 +84,16 @@ Future<void> reapOrphanedHandles(
 /// the audio output and the demuxer, which on a busy output takes as long
 /// as its init. The output closes on the core thread whichever thread
 /// destroys (F289). Completes once the core is gone.
+///
+/// The library is the one at [libraryPath], or else at
+/// [MpvAudioKit.libraryPath].
 @internal
-Future<void> terminateDestroyOffMain(Pointer<MpvHandle> handle) async {
+Future<void> terminateDestroyOffMain(
+  Pointer<MpvHandle> handle, {
+  String? libraryPath,
+}) async {
   final address = handle.address;
-  final path = MpvAudioKit.libraryPath;
+  final path = libraryPath ?? MpvAudioKit.libraryPath;
   try {
     await Isolate.run(
       () => MpvLibrary.open(
@@ -182,14 +193,14 @@ abstract final class MpvAudioKit {
       }
       // The analysis switches are process-wide, like the PCM sources below:
       // only the root isolate a Hot-Restart replaced turns them off.
-      unawaited(
-        reapOrphanedHandles(
-          lib,
-          references,
-          stopAnalysis: releasesPcmSourcesAtInit(
-            restarted: OrphanHandleTracker.instance.restarted,
-          ),
+      _orphansReleased = reapOrphanedHandles(
+        lib,
+        references,
+        stopAnalysis: releasesPcmSourcesAtInit(
+          restarted: OrphanHandleTracker.instance.restarted,
         ),
+        destroy: (handle) =>
+            terminateDestroyOffMain(handle, libraryPath: libmpv),
       );
     });
 

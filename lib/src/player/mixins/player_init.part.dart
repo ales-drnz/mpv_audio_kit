@@ -20,6 +20,19 @@ mixin _InitModule on _PlayerBase {
         ? null
         : configuration.logLevel.mpvValue;
 
+    // After a Hot Restart the cores of the replaced VM hold their audio
+    // output until the reap destroys them: an exclusive output opened
+    // meanwhile fails (F220). Bounded, so a destroy that hangs does not
+    // hold the player.
+    final orphans = orphansReleased;
+    if (orphans != null) {
+      try {
+        await orphans.timeout(const Duration(seconds: 2));
+      } on TimeoutException {
+        debugLog('mpv_audio_kit: the Hot Restart reap is still running');
+      }
+    }
+
     final handleAddress = await _eventIsolate.start(
       libraryPath: MpvAudioKit.libraryPath,
       onEvent: _handleEvent,

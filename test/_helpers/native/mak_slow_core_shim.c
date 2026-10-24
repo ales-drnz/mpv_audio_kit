@@ -114,6 +114,8 @@ static atomic_int hook_adds_inflight;
 static atomic_int inflight_at_destroy; // most hook_adds running at a destroy
 static atomic_int late_hook_adds;      // hook_adds on an already freed handle
 static atomic_int destroys;
+static atomic_int destroys_done;           // destroys that returned
+static atomic_int destroys_done_at_create; // destroys_done at the last create
 static atomic_int hooks_pending_at_destroy;
 static atomic_int watched_gets;
 static char watched_get[64];
@@ -187,6 +189,9 @@ int mak_shim_counter(const char *name) {
   if (strcmp(name, "inflight_at_destroy") == 0) return inflight_at_destroy;
   if (strcmp(name, "late_hook_adds") == 0) return late_hook_adds;
   if (strcmp(name, "destroys") == 0) return destroys;
+  if (strcmp(name, "destroys_done_at_create") == 0) {
+    return destroys_done_at_create;
+  }
   if (strcmp(name, "hooks_pending_at_destroy") == 0) {
     return hooks_pending_at_destroy;
   }
@@ -207,6 +212,8 @@ void mak_shim_reset(void) {
   atomic_store(&inflight_at_destroy, 0);
   atomic_store(&late_hook_adds, 0);
   atomic_store(&destroys, 0);
+  atomic_store(&destroys_done, 0);
+  atomic_store(&destroys_done_at_create, 0);
   atomic_store(&hooks_pending_at_destroy, 0);
   atomic_store(&watched_gets, 0);
   watched_get[0] = 0;
@@ -288,6 +295,7 @@ static void trace_get(const char *fn, const char *name) {
 }
 
 void *mpv_create(void) {
+  atomic_store(&destroys_done_at_create, atomic_load(&destroys_done));
   void *h = real_mpv_create();
   // A new handle can reuse a freed one's address.
   pthread_mutex_lock(&mu);
@@ -323,6 +331,7 @@ void mpv_terminate_destroy(void *h) {
   // joining a core that still serves requests.
   stall(atomic_load(&destroy_delay_us));
   real_mpv_terminate_destroy(h);
+  atomic_fetch_add(&destroys_done, 1);
 }
 void mpv_wakeup(void *h) { real_mpv_wakeup(h); }
 

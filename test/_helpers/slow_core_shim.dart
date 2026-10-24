@@ -35,13 +35,16 @@ String? shimSkipReason() {
 /// Declares a suite that runs [body] against libmpv behind the shim.
 /// [shim] is set before [body]'s own setup runs. Without libmpv, a
 /// fixture or a C compiler, the tests are skipped, and on CI they fail:
-/// there all of them are always there.
+/// there all of them are always there. With `initialize: false` the suite
+/// leaves `MpvAudioKit.ensureInitialized` to [body], which passes it
+/// `libmpv: shim().path`.
 void slowCoreShimSuite(
   void Function(SlowCoreShim Function() shim) body, {
   int getDelayUs = 0,
   int setDelayUs = 0,
   String? fixturePath,
   List<String> extraFixtures = const [],
+  bool initialize = true,
 }) {
   final noCc = shimSkipReason();
   if (noCc != null) {
@@ -71,10 +74,12 @@ void slowCoreShimSuite(
           getDelayUs: getDelayUs,
           setDelayUs: setDelayUs,
         );
-        MpvAudioKit.ensureInitialized(
-          libmpv: shim.path,
-          hotRestartCleanup: false,
-        );
+        if (initialize) {
+          MpvAudioKit.ensureInitialized(
+            libmpv: shim.path,
+            hotRestartCleanup: false,
+          );
+        }
         built = shim;
       });
       body(() => built!);
@@ -193,7 +198,8 @@ class SlowCoreShim {
   /// `inflight_at_destroy` (the most `mpv_hook_add` calls still running at
   /// an `mpv_terminate_destroy`), `late_hook_adds` (calls on a handle
   /// already destroyed, which the shim does not forward), `destroys`,
-  /// `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
+  /// `destroys_done_at_create` (the destroys that had returned when the
+  /// last `mpv_create` began), `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
   /// before the destroy), `watched_gets`, `replies_held` and
   /// `loadfiles_refused`.
   int counter(String name) {
