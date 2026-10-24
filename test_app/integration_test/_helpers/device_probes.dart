@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'release_gate.dart';
+
 /// The thread of mpv's Android audio output (ao_audiotrack.c).
 const audiotrackThread = 'ao/audiotrack';
 
@@ -99,14 +101,31 @@ Future<int?> libmpvRelease(Player player) async {
 }
 
 /// Skips the running test when [player] runs on a libmpv older than
-/// [release], which does not have the fix the test checks. Returns whether
-/// it skipped.
+/// [release], which does not have the fix the test checks, and returns
+/// whether it skipped. The device jobs of CI pass `--dart-define=MAK_CI=true`
+/// and `MAK_LIBMPV_RELEASE`, the release of the binary they test: there a
+/// release up to that one fails the test instead (see [releaseGate]).
 Future<bool> skipBeforeRelease(Player player, int release) async {
+  const ci = bool.fromEnvironment('MAK_CI');
+  const name = String.fromEnvironment('MAK_LIBMPV_RELEASE');
+  final expected = releaseNumber(name);
+  if (ci && expected == null) {
+    fail('MAK_CI without a release in MAK_LIBMPV_RELEASE ("$name")');
+  }
   final found = await libmpvRelease(player);
-  if (found != null && found >= release) return false;
-  markTestSkipped(
-    'tests a fix of libmpv-r$release, this libmpv is '
-    '${found == null ? 'not a libmpv-scripts build' : 'r$found'}',
-  );
-  return true;
+  final bundled = found == null ? 'not a libmpv-scripts build' : 'r$found';
+  switch (releaseGate(release, found, expected ?? 0, ci)) {
+    case ReleaseGate.run:
+      return false;
+    case ReleaseGate.fail:
+      fail(
+        'tests a fix of libmpv-r$release, which this run expects with '
+        '$name, but this libmpv is $bundled',
+      );
+    case ReleaseGate.skip:
+      markTestSkipped(
+        'tests a fix of libmpv-r$release, this libmpv is $bundled',
+      );
+      return true;
+  }
 }

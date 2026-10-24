@@ -36,10 +36,13 @@ void _ffmpegPatchGroup(
   String description,
   void Function() body,
 ) {
-  final older = needsLibmpvRelease(18);
+  if (needsLibmpvRelease(18) != null) {
+    libmpvReleaseGroup(18, description, body);
+    return;
+  }
   final lib = resolveLibmpv();
-  String? reason = older;
-  if (older == null && lib != null && !libmpvNamesProperty(lib, message)) {
+  String? reason;
+  if (lib != null && !libmpvNamesProperty(lib, message)) {
     reason =
         'this libmpv has no FFmpeg patch of libmpv-scripts (a build '
         'against a system FFmpeg)';
