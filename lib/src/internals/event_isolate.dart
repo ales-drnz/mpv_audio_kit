@@ -184,11 +184,10 @@ void _isolateEntry(SendPort initialReplyPort) {
       if (stopFlag.value == 0 && ownerGone.value != 0) {
         releaseOrphan(lib!, handle!);
       }
-      // Drop the last live ReceivePort so the VM tears the isolate
-      // down naturally: this runs the per-isolate finalizers that
-      // release libmpv-side state loaded via `MpvLibrary.open`.
-      // `Isolate.exit()` would skip those finalizers and leave
-      // subsequent Player creations observing degraded process state.
+      // Drop the last live ReceivePort so the isolate ends on its own: the
+      // exit listener armed in [MpvEventIsolate.start] then fires, and
+      // [MpvEventIsolate.stop] awaits it before it frees the stop flag.
+      // The core and the stop flag have their own explicit release.
       fromMain.close();
     }
   });
