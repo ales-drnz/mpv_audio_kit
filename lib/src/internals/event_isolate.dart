@@ -262,11 +262,12 @@ void _dispatchEvent(
       // A clock value held from the previous file must not land after the
       // new one starts.
       cache.trailing.clear();
-      cache.startedEntryId = event.ref.data
+      final started = event.ref.data
           .cast<mpv.MpvEventStartFileData>()
           .ref
           .playlistEntryId;
-      toMain.send(MpvEventStartFile());
+      cache.startedEntryId = started;
+      toMain.send(MpvEventStartFile(started));
 
     case mpv.MpvEventId.mpvEventFileLoaded:
       // The payload reads run HERE, not on the main isolate: each one is a

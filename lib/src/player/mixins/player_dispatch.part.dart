@@ -47,7 +47,7 @@ mixin _DispatchModule on _PlayerBase {
     // and log it; one bad event is dropped, the stream keeps delivering.
     try {
       switch (event) {
-        case MpvEventStartFile():
+        case MpvEventStartFile(:final entryId):
           // Latch "a file load has been attempted" HERE, not on FILE_LOADED:
           // START_FILE fires for every load attempt, including one that will
           // fail to open, so a failed first open() still arms the
@@ -60,7 +60,7 @@ mixin _DispatchModule on _PlayerBase {
           // A new load attempt re-arms the source resolver's single
           // retry allowance; see [_resolverRetried].
           _resolverRetried = false;
-          _loadingEntry = true;
+          _loadingEntry = entryId;
           _heldSources.onStartFile();
           _updateLifecycle(buffering: true, completed: false);
         case MpvEventFileLoaded(
@@ -78,7 +78,7 @@ mixin _DispatchModule on _PlayerBase {
           // follows this event settles it: a short entry can already be
           // parked at its end here.
           _updateLifecycle(buffering: false);
-          _loadingEntry = false;
+          _loadingEntry = null;
           // mpv just built the new file's chain from the stored arguments.
           _onAfChainReset();
           _reassertAfChain();
@@ -151,7 +151,7 @@ mixin _DispatchModule on _PlayerBase {
           _dispatchProperty('eof-reached', eof);
           _settleEndOfContent(parked: parked, lastEntry: lastEntry, live: live);
         case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
-          _loadingEntry = false;
+          _loadingEntry = null;
           _heldSources.onEndFile();
           _releaseSettledSources();
           final typedReason = MpvEndFileReason.fromValue(reason);

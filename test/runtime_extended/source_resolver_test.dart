@@ -339,6 +339,39 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
 
+    // Two entries with the same URL and their own extras: the resolver gets
+    // the Media of the entry that loads, not the last one queued under that
+    // URL (F14). The prefetch is off, so every call is a load.
+    test('entries with the same URL reach the resolver with their own '
+        'extras', () async {
+      final player = await buildPlayer();
+      final seen = <Object?>[];
+      try {
+        await player.setPrefetchPlaylist(false);
+        await player.setSourceResolver((request) {
+          if (!request.isRetry) seen.add(request.media.extras?['entry']);
+          return fixturePath;
+        });
+        var loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        await player.openAll(const [
+          Media('resolve://same', extras: {'entry': 'first'}),
+          Media('resolve://same', extras: {'entry': 'second'}),
+        ], play: false);
+        await loaded;
+        loaded = player.stream.seekCompleted.first.timeout(
+          const Duration(seconds: 10),
+        );
+        expect(await player.next(), isTrue);
+        await loaded;
+        expect(seen, ['first', 'second']);
+      } finally {
+        await player.setSourceResolver(null);
+        await player.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
     test('a file:// URL from the resolver reaches mpv as a path, which the '
         'waveform scan opens too', () async {
       // A space in the name: FFmpeg's file protocol does not decode %20.

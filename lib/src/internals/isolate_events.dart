@@ -12,7 +12,13 @@ sealed class MpvIsolateEvent {}
 
 /// mpv fired MPV_EVENT_START_FILE: a `loadfile` began opening the
 /// next entry (fires even if the open ultimately fails).
-class MpvEventStartFile extends MpvIsolateEvent {}
+class MpvEventStartFile extends MpvIsolateEvent {
+  /// The `playlist_entry_id` of the entry mpv opens.
+  final int entryId;
+
+  /// Carries the [entryId] of the entry being opened.
+  MpvEventStartFile(this.entryId);
+}
 
 /// mpv fired MPV_EVENT_FILE_LOADED: the current file is open and its
 /// metadata and track list are available.

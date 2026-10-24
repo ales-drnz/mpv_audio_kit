@@ -279,7 +279,9 @@ mixin _HooksModule on _PlayerBase {
   ) async {
     try {
       final isRetry = hook == Hook.loadFail;
-      final prefetch = !isRetry && !_loadingEntry;
+      // The entry mpv is loading, `null` for the prefetch of the next one.
+      final loading = _loadingEntry;
+      final prefetch = !isRetry && loading == null;
       // One resolver-driven retry per load attempt: see
       // [_resolverRetried] for the loop hazard this caps. The flag is
       // cleared on START_FILE only, NOT on `on_load`: after an
@@ -289,7 +291,12 @@ mixin _HooksModule on _PlayerBase {
       if (isRetry && _resolverRetried) return;
       final current = await getRawProperty('stream-open-filename') ?? '';
       if (current.isEmpty || _disposed) return;
-      final media = _cachedMedia(current) ?? Media(current);
+      // A load gets the Media of its own entry, which another entry with the
+      // same URL does not share (F14). The prefetch knows only the URL.
+      final media =
+          (prefetch ? null : _mediaByEntry[loading]) ??
+          _cachedMedia(current) ??
+          Media(current);
       // The load of an entry the prefetch resolved opens the same URL
       // without asking again: a resolver that gives a new URL on every call
       // (a salt, a signed URL) would make mpv drop the prefetch. A retry
