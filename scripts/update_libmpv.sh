@@ -7,10 +7,10 @@
 # update_libmpv.sh
 #
 # Points the build hook at a libmpv release: reads the release's manifest.json
-# (written by libmpv-scripts' write_manifest.sh) and rewrites `_release` and
-# the `_sha256` table in hook/build.dart, the only place the package pins
-# its binaries, plus the release the player expects to find in mpv's
-# version string (lib/src/internals/libmpv_release.dart), and copies the
+# (written by libmpv-scripts' write_manifest.sh), rewrites the release in
+# lib/src/internals/libmpv_release.dart, the one place the package names it
+# (the hook downloads it, the player expects it in mpv's version string),
+# and the `_sha256` table of its assets in hook/build.dart, and copies the
 # manifest to tool/codegen, whose filter list the effects API follows.
 #
 # Usage (from the package root):
@@ -42,10 +42,6 @@ if f"libmpv-{manifest['release']}" != tag:
     sys.exit(f"manifest is for libmpv-{manifest['release']}, not {tag}")
 
 hook = open(hook_path).read()
-hook, n = re.subn(r"const _release = '[^']*';", f"const _release = '{tag}';", hook)
-if n != 1:
-    sys.exit("hook/build.dart: _release not found")
-
 table = re.search(r"const _sha256 = <String, String>\{\n(.*?)\n\};", hook, re.S)
 if not table:
     sys.exit("hook/build.dart: _sha256 table not found")

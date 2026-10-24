@@ -3,20 +3,22 @@
 # All rights reserved.
 # Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 #
-# Tests scripts/ci/preflight.sh on a copy of the real hook/build.dart
-# pinned to libmpv-r99, with the fake gh of test/ci/bin serving the
-# release and the libmpv-scripts runs.
+# Tests scripts/ci/preflight.sh on copies of the real hook/build.dart and
+# lib/src/internals/libmpv_release.dart, pinned to libmpv-r99, with the
+# fake gh of test/ci/bin serving the release and the libmpv-scripts runs.
 #
 #   bash test/ci/preflight_test.sh
 set -euo pipefail
 source "$(dirname "$0")/harness.sh"
 preflight="$repo_root/scripts/ci/preflight.sh"
 
-mkdir -p "$scratch/kit/hook"
+mkdir -p "$scratch/kit/hook" "$scratch/kit/lib/src/internals"
 cd "$scratch/kit"
-sed "s/^const _release = '[^']*';/const _release = 'libmpv-r99';/" \
-  "$repo_root/hook/build.dart" > hook/build.dart
-grep -q "^const _release = 'libmpv-r99';" hook/build.dart
+cp "$repo_root/hook/build.dart" hook/build.dart
+sed "s/^const String libmpvRelease = '[^']*';/const String libmpvRelease = 'r99';/" \
+  "$repo_root/lib/src/internals/libmpv_release.dart" \
+  > lib/src/internals/libmpv_release.dart
+grep -q "^const String libmpvRelease = 'r99';" lib/src/internals/libmpv_release.dart
 mapfile -t assets < <(grep -oE "^  'libmpv_[^']+':" hook/build.dart | tr -d "':" | tr -d ' ')
 (( ${#assets[@]} >= 9 ))
 

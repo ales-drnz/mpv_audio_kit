@@ -13,9 +13,9 @@
 # set, still valid (a fine-grained token expires, and GitHub then answers
 # 401) and able to read the run, and the run must be green. A pull request
 # from a fork gets no secrets and falls back to the pinned release, like
-# the action does. Otherwise the release pinned in hook/build.dart must be
-# published with every asset its checksum table names. A lookup that fails
-# for want of GitHub only warns: the jobs will try again.
+# the action does. Otherwise the release pinned in libmpv_release.dart must
+# be published with every asset the hook's checksum table names. A lookup
+# that fails for want of GitHub only warns: the jobs will try again.
 #
 # Reads from the environment:
 #   LIBMPV_SCRIPTS_RUN    the repository variable, empty when unset
@@ -23,12 +23,15 @@
 #   FORK                  "true" on a pull request from a fork
 #   GH_TOKEN              the workflow's token, for this repository's releases
 #   HOOK                  the build hook, hook/build.dart by default
+#   RELEASE_FILE          the pin, lib/src/internals/libmpv_release.dart by
+#                         default
 #
 #   scripts/ci/preflight.sh
 set -euo pipefail
 
 scripts_repo=ales-drnz/libmpv-scripts
 hook="${HOOK:-hook/build.dart}"
+release_file="${RELEASE_FILE:-lib/src/internals/libmpv_release.dart}"
 err="$(mktemp)"
 trap 'rm -f "$err"' EXIT
 
@@ -38,10 +41,10 @@ http_status() { sed -n 's/.*(HTTP \([0-9]*\)).*/\1/p' "$err" | tail -n 1; }
 
 check_release() {
   local tag repo names missing=()
-  tag="$(sed -n "s/^const _release = '\([^']*\)';/\1/p" "$hook")"
+  tag="$(sed -n "s/^const String libmpvRelease = '\([^']*\)';/libmpv-\1/p" "$release_file")"
   repo="$(sed -n 's#.*https://github\.com/\([^/]*/[^/]*\)/releases/download/.*#\1#p' "$hook" | head -n 1)"
   if [[ -z "$tag" || -z "$repo" ]]; then
-    echo "::error::$hook has no _release or no release URL."
+    echo "::error::$release_file has no libmpvRelease or $hook no release URL."
     exit 1
   fi
   if ! names="$(gh api "repos/$repo/releases/tags/$tag" --jq '.assets[].name' 2>"$err")"; then

@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 /// The libmpv-scripts release the build hook bundles (hook/build.dart), as
-/// stamped into mpv's version string: `mpv v0.41.0+r19`. Kept in step with
-/// the hook by scripts/update_libmpv.sh.
+/// stamped into mpv's version string: `mpv v0.41.0+r19`. The one place the
+/// package names it: the hook downloads `libmpv-<release>` from it, and
+/// scripts/update_libmpv.sh rewrites it.
 const String libmpvRelease = 'r19';

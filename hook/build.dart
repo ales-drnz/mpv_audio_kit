@@ -28,8 +28,9 @@ import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
 import 'package:mpv_audio_kit/src/internals/hook_download.dart';
+import 'package:mpv_audio_kit/src/internals/libmpv_release.dart';
 
-const _release = 'libmpv-r19';
+const _release = 'libmpv-$libmpvRelease';
 const _baseUrl =
     'https://github.com/ales-drnz/mpv_audio_kit/releases/download/$_release';
 
