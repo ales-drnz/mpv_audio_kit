@@ -392,35 +392,37 @@ mixin _AudioModule on _PlayerBase {
     // that is no longer playing (see [Player.open]).
     final load = _snapshotLoad();
     await _gate();
-    final resolved = await resolveUri(file.uri);
-    if (load.superseded) {
-      await resolved.dispose?.call();
-      return;
-    }
-    final args = <String>[
-      'audio-add',
-      resolved.uri,
-      select ? 'select' : 'auto',
-    ];
-    // mpv's args are positional: to pass `lang` you must also pass `title`.
-    if (title != null || lang != null) args.add(title ?? '');
-    if (lang != null) args.add(lang);
-    // An Android content:// URI arrives as an fd:// descriptor that mpv
-    // never closes: held until the file the track joins ends.
-    final dispose = resolved.dispose;
-    final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
-    var rc = -1;
+    final source = OwnedSource(await resolveUri(file.uri));
+    // The call's to release until the track takes it over.
     try {
-      rc = await _calls.command(args);
+      if (load.superseded) return;
+      final args = <String>[
+        'audio-add',
+        source.uri,
+        select ? 'select' : 'auto',
+      ];
+      // mpv's args are positional: to pass `lang` you must also pass `title`.
+      if (title != null || lang != null) args.add(title ?? '');
+      if (lang != null) args.add(lang);
+      // An Android content:// URI arrives as an fd:// descriptor that mpv
+      // never closes: held until the file the track joins ends.
+      final dispose = source.handOver();
+      final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
+      var rc = -1;
+      try {
+        rc = await _calls.command(args);
+      } finally {
+        await settle?.call(rc >= 0);
+      }
+      if (rc < 0) {
+        throw MpvCommandException(
+          name: 'audio-add',
+          code: rc,
+          message: _calls.errorString(rc),
+        );
+      }
     } finally {
-      await settle?.call(rc >= 0);
-    }
-    if (rc < 0) {
-      throw MpvCommandException(
-        name: 'audio-add',
-        code: rc,
-        message: _calls.errorString(rc),
-      );
+      await source.release();
     }
   }
 

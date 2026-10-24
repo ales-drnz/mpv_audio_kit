@@ -55,19 +55,33 @@ const _kPropertyCommands = {
 mixin _FfiModule on _PlayerBase {
   /// Runs a `loadfile` [args] for [media] and records the new playlist
   /// entry's id, so the playlist maps that entry back to [media] even when
-  /// another entry has the same URI. Throws like [CoreCalls.commandChecked].
+  /// another entry has the same URI. Hands [source] over to mpv as the
+  /// command goes out. Throws like [CoreCalls.commandChecked].
   @override
-  Future<void> _loadfile(List<String> args, Media media) async {
-    final id = await _loadfileEntry(args, media);
+  Future<void> _loadfile(
+    List<String> args,
+    Media media,
+    OwnedSource source,
+  ) async {
+    final id = await _loadfileEntry(args, media, source);
     if (id != null) _remapReported({id});
   }
 
   /// The part of [_loadfile] before the remap: runs the command and
   /// records the entry, returning its id. A batch of appends remaps once,
   /// after the last reply, instead of once per entry.
-  Future<int?> _loadfileEntry(List<String> args, Media media) async {
-    final (rc, result) = await _calls.commandResult(args);
+  Future<int?> _loadfileEntry(
+    List<String> args,
+    Media media,
+    OwnedSource source,
+  ) async {
+    final reply = _calls.commandResult(args);
+    // Sent: mpv has the entry from now on, even if a later load supersedes
+    // this one before the reply (F6). Only a refusal gives the source back.
+    source.handOver();
+    final (rc, result) = await reply;
     if (rc < 0) {
+      source.revoke();
       throw MpvCommandException(
         name: args.first,
         code: rc,

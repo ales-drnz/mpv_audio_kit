@@ -60,27 +60,28 @@ mixin _PlaylistModule on _PlayerBase {
   /// appends in mpv.
   Future<void> _addEntry(Media media, _LoadTicket load, {int? at}) async {
     _mediaCache[media.uri] = media;
-    final resolved = _hold(await resolveUri(media.uri));
-    if (load.superseded) {
-      await resolved.dispose?.call();
-      return;
-    }
-    _mediaCache[resolved.uri] = media;
-    await _forgetFdResume(resolved);
-    final opts = _buildLoadfileOptions(media);
+    final source = _hold(await resolveUri(media.uri));
+    // Released on every way out unless mpv took the entry: a later load,
+    // or a refusal, after which nothing will ever read the source.
     try {
-      await _loadfile([
-        'loadfile',
-        resolved.uri,
-        if (at == null) 'append' else 'insert-at',
-        // The options need the index argument (mpv 0.38+), -1 to append.
-        if (at != null) '$at' else if (opts.isNotEmpty) '-1',
-        if (opts.isNotEmpty) opts,
-      ], media);
-    } catch (_) {
-      // mpv refused the entry: nothing will ever read the source.
-      await resolved.dispose?.call();
-      rethrow;
+      if (load.superseded) return;
+      _mediaCache[source.uri] = media;
+      await _forgetFdResume(source.uri);
+      final opts = _buildLoadfileOptions(media);
+      await _loadfile(
+        [
+          'loadfile',
+          source.uri,
+          if (at == null) 'append' else 'insert-at',
+          // The options need the index argument (mpv 0.38+), -1 to append.
+          if (at != null) '$at' else if (opts.isNotEmpty) '-1',
+          if (opts.isNotEmpty) opts,
+        ],
+        media,
+        source,
+      );
+    } finally {
+      await source.release();
     }
   }
 
@@ -118,7 +119,8 @@ mixin _PlaylistModule on _PlayerBase {
   Future<bool> next({bool force = false}) async {
     await _gate();
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
-    // the track change, so they apply to the OLD entry; see [CoreCalls.settleWrites].
+    // the track change, so they apply to the OLD entry; see
+    // [CoreCalls.settleWrites].
     await _calls.settleWrites();
     return _calls.navigate(['playlist-next', force ? 'force' : 'weak']);
   }
@@ -240,15 +242,14 @@ mixin _PlaylistModule on _PlayerBase {
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
     _mediaCache[media.uri] = media;
-    final resolved = _hold(await resolveUri(media.uri));
+    final source = _hold(await resolveUri(media.uri));
     // Until mpv takes the entry its source is this call's to release, on
     // every way out: a later load, a command that fails. Once taken, it
     // stays with the held sources while mpv lists it.
-    var inserted = false;
     try {
       if (load.superseded) return;
-      _mediaCache[resolved.uri] = media;
-      await _forgetFdResume(resolved);
+      _mediaCache[source.uri] = media;
+      await _forgetFdResume(source.uri);
       // Execute in-flight transport writes before the playlist surgery:
       // see [CoreCalls.settleWrites].
       await _calls.settleWrites();
@@ -264,21 +265,18 @@ mixin _PlaylistModule on _PlayerBase {
       final opts = _buildLoadfileOptions(media);
       Future<void> insertAt(int at) {
         if (opts.isEmpty) {
-          return _loadfile([
-            'loadfile',
-            resolved.uri,
-            'insert-at',
-            at.toString(),
-          ], media);
+          return _loadfile(
+            ['loadfile', source.uri, 'insert-at', at.toString()],
+            media,
+            source,
+          );
         }
         // 4th-arg options require an explicit index argument (mpv 0.38+).
-        return _loadfile([
-          'loadfile',
-          resolved.uri,
-          'insert-at',
-          at.toString(),
-          opts,
-        ], media);
+        return _loadfile(
+          ['loadfile', source.uri, 'insert-at', at.toString(), opts],
+          media,
+          source,
+        );
       }
 
       // Re-check the epoch between each of the multi-command surgeries
@@ -296,7 +294,6 @@ mixin _PlaylistModule on _PlayerBase {
         // switch is gapless for typical music files. Finally drop the
         // original.
         await insertAt(index + 1);
-        inserted = true;
         if (load.superseded) return;
         await _calls.commandChecked(['playlist-next', 'force']);
         if (load.superseded) return;
@@ -305,10 +302,9 @@ mixin _PlaylistModule on _PlayerBase {
         await _calls.commandChecked(['playlist-remove', index.toString()]);
         if (load.superseded) return;
         await insertAt(index);
-        inserted = true;
       }
     } finally {
-      if (!inserted) await resolved.dispose?.call();
+      await source.release();
     }
   }
 
