@@ -10,12 +10,12 @@ import 'package:flutter/foundation.dart';
 
 import '../models/cover_art.dart';
 
-/// Downloads a remote artwork URL into a [CoverArt], trusting the extra
-/// CA bundle `caFile` (the player's `tls-ca-file`, empty for none) on top
-/// of the system roots; `null` on any failure.
+/// Loads an artwork URL into a [CoverArt], trusting the extra CA bundle
+/// `caFile` (the player's `tls-ca-file`, empty for none) on top of the
+/// system roots; `null` on any failure.
 typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri, String caFile);
 
-/// Upper bound on a downloaded cover. Real covers are a few MB at most;
+/// Upper bound on a loaded cover. Real covers are a few MB at most;
 /// anything larger is not an image worth putting on the media session.
 const int _maxArtworkBytes = 20 * 1024 * 1024;
 
@@ -27,18 +27,27 @@ const int _maxRedirects = 5;
 /// Whether the media session downloads remote artwork in Dart on
 /// [platform], handing the native side bytes instead of the URL. Remote
 /// cover URLs often carry credentials in the query (Subsonic `u`, `t` and
-/// `s`, Jellyfin `api_key`, Plex `X-Plex-Token`), and these platforms would
-/// publish them: MPRIS `mpris:artUrl` on the session bus (Linux), the
-/// session metadata other apps with notification access read (Android),
-/// the thumbnail source SMTC is given (Windows). The Apple plugin fetches
-/// the image itself and publishes only its bytes.
+/// `s`, Jellyfin `api_key`, Plex `X-Plex-Token`), and the OS would publish
+/// them: MPRIS `mpris:artUrl` on the session bus (Linux), the session
+/// metadata other apps with notification access read (Android), the
+/// thumbnail source SMTC is given (Windows). Apple's Now Playing takes an
+/// image, never a URL, so its plugin publishes the bytes it is sent.
 @internal
 bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   TargetPlatform.linux ||
   TargetPlatform.android ||
-  TargetPlatform.windows => true,
+  TargetPlatform.windows ||
+  TargetPlatform.iOS ||
+  TargetPlatform.macOS => true,
   _ => false,
 };
+
+/// Whether the media session also reads `file://` artwork in Dart on
+/// [platform]: on Apple, whose plugin takes bytes only. Elsewhere the
+/// native side opens the file.
+@internal
+bool readsArtworkFilesOn(TargetPlatform platform) =>
+    platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
 
 /// Default [ArtworkFetcher] where [downloadsArtworkOn] holds. It always
 /// verifies the certificate, whatever the player's `tls-verify`: that
@@ -48,8 +57,12 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
 /// followed by hand, so one from `https` to plain `http` is refused before
 /// anything is sent over it. A response that announces more than 20 MB is
 /// dropped before its body is read.
+///
+/// A `file://` URL is read from disk instead, with the same 20 MB limit,
+/// and its MIME type comes from the extension.
 @internal
 Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
+  if (uri.scheme == 'file') return _readArtworkFile(uri);
   HttpClient? client;
   try {
     client = caFile.isEmpty
@@ -96,4 +109,31 @@ Future<HttpClientResponse> _get(HttpClient client, Uri uri) async {
   final request = await client.getUrl(uri).timeout(_timeout);
   request.followRedirects = false;
   return request.close().timeout(_timeout);
+}
+
+Future<CoverArt?> _readArtworkFile(Uri uri) async {
+  try {
+    final file = File.fromUri(uri);
+    final length = await file.length();
+    if (length == 0 || length > _maxArtworkBytes) return null;
+    final bytes = await file.readAsBytes();
+    // The file may have changed since its length was read.
+    if (bytes.isEmpty || bytes.length > _maxArtworkBytes) return null;
+    return CoverArt(bytes: bytes, mimeType: _mimeTypeOf(uri.path));
+  } catch (_) {
+    return null;
+  }
+}
+
+String _mimeTypeOf(String path) {
+  final name = path.substring(path.lastIndexOf('/') + 1);
+  final dot = name.lastIndexOf('.');
+  return switch (dot < 0 ? '' : name.substring(dot + 1).toLowerCase()) {
+    'png' => 'image/png',
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'webp' => 'image/webp',
+    'bmp' => 'image/bmp',
+    'gif' => 'image/gif',
+    _ => '',
+  };
 }

@@ -44,13 +44,9 @@ echo ""
 sedi "s|^version: .*|version: $LIB_VERSION|" "$ROOT/pubspec.yaml"
 echo "  pubspec.yaml              -> $LIB_VERSION"
 
-# macOS podspec
-sedi "s|s\.version *= *'[^']*'|s.version          = '$LIB_VERSION'|" "$ROOT/macos/mpv_audio_kit.podspec"
-echo "  macos/mpv_audio_kit.podspec -> $LIB_VERSION"
-
-# iOS podspec
-sedi "s|s\.version *= *'[^']*'|s.version          = '$LIB_VERSION'|" "$ROOT/ios/mpv_audio_kit.podspec"
-echo "  ios/mpv_audio_kit.podspec   -> $LIB_VERSION"
+# iOS and macOS podspec
+sedi "s|s\.version *= *'[^']*'|s.version          = '$LIB_VERSION'|" "$ROOT/darwin/mpv_audio_kit.podspec"
+echo "  darwin/mpv_audio_kit.podspec -> $LIB_VERSION"
 
 # Android build.gradle.kts
 sedi "s|^version = \"[^\"]*\"|version = \"$LIB_VERSION\"|" "$ROOT/android/build.gradle.kts"

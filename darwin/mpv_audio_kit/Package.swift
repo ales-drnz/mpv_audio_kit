@@ -5,13 +5,17 @@
 //
 // libmpv is not part of this package: the build hook (hook/build.dart)
 // downloads it and Flutter bundles it with the app as a code asset.
+//
+// One package for iOS and macOS: pubspec.yaml sets sharedDarwinSource, so
+// Flutter reads the plugin from darwin/ on both.
 
 import PackageDescription
 
 let package = Package(
     name: "mpv_audio_kit",
     platforms: [
-        .iOS("15.0")
+        .iOS("15.0"),
+        .macOS("12.0"),
     ],
     products: [
         .library(name: "mpv-audio-kit", targets: ["mpv_audio_kit"])
@@ -25,27 +29,20 @@ let package = Package(
             dependencies: [
                 .product(name: "FlutterFramework", package: "FlutterFramework"),
             ],
-            // The Swift here is real-file copies, intentionally NOT
-            // symlinks: `dart pub publish` flattens symlinks into regular
-            // files whose body is the link-target path, which then fails to
-            // compile in the consumer's Xcode. (SwiftPM also rejects a
-            // `path:` that escapes the package root, ruling out one shared
-            // dir.)
             path: "Sources/mpv_audio_kit",
-            // Apple privacy manifest, embedded into the built bundle —
-            // required for App Store submission. A real per-platform file;
-            // keep the iOS/macOS copies in sync by hand. .process places it
-            // at the bundle root.
+            // Apple privacy manifest, embedded into the built bundle:
+            // required for App Store submission. .process places it at the
+            // bundle root.
             resources: [
                 .process("PrivacyInfo.xcprivacy"),
             ],
             linkerSettings: [
-                // MediaPlayer hosts MPNowPlayingInfoCenter +
-                // MPRemoteCommandCenter (lockscreen / Control Center
-                // Now Playing entry). AVFoundation is needed for
+                // MediaPlayer hosts MPNowPlayingInfoCenter and
+                // MPRemoteCommandCenter, the lockscreen and Control Center
+                // Now Playing entry. AVFoundation is needed on iOS for
                 // AVAudioSession (interruption handling).
                 .linkedFramework("MediaPlayer"),
-                .linkedFramework("AVFoundation"),
+                .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
             ]
         ),
     ]

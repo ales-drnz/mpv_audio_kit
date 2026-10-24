@@ -17,6 +17,7 @@
 // platform channel.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -875,10 +876,10 @@ void main() {
     });
 
     test(
-      'uri override and extras[art] fallback resolve to artworkUri',
+      'uri override and extras[art] fallback arrive as bytes on Apple',
       () async {
-        // Apple passes artwork URLs through; the platforms that would
-        // publish them download in Dart instead (see the privacy group).
+        // The Apple plugin publishes bytes only: the package downloads the
+        // URL, as on the other platforms (see the privacy group).
         debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
         addTearDown(() => debugDefaultTargetPlatformOverride = null);
         final rig = _Rig();
@@ -890,12 +891,30 @@ void main() {
           bytes: Uint8List.fromList(const [1, 2, 3]),
           mimeType: 'image/png',
         );
+        final covers = {
+          'https://art/1.jpg': CoverArt(
+            bytes: Uint8List.fromList(const [1]),
+            mimeType: 'image/jpeg',
+          ),
+          'https://art/2.png': CoverArt(
+            bytes: Uint8List.fromList(const [2]),
+            mimeType: 'image/png',
+          ),
+        };
+        final fetched = <String>[];
 
-        final controller = await _buildController(rig: rig, channel: ch);
+        final controller = await _buildController(
+          rig: rig,
+          channel: ch,
+          artworkFetcher: (uri, _) async {
+            fetched.add('$uri');
+            return covers['$uri'];
+          },
+        );
         addTearDown(controller.dispose);
         ch.calls.clear();
 
-        // Explicit uri override → artworkUri, no bytes on the wire.
+        // Explicit uri override → its bytes, no URL on the wire.
         rig.state = PlayerState(
           mediaSession: MediaSession(
             artwork: MediaSessionArtwork.uri(Uri.parse('https://art/1.jpg')),
@@ -907,8 +926,8 @@ void main() {
         var snap =
             ch.callsOfType('updateMetadata').last.args['metadata']
                 as MediaSessionMetadataSnapshot;
-        expect(snap.artwork, isNull);
-        expect(snap.artworkUri, 'https://art/1.jpg');
+        expect(snap.artwork, covers['https://art/1.jpg']);
+        expect(snap.artworkUri, isNull);
 
         // Default (embedded) with no embedded cover → fall back to the queue
         // item's extras['art'] (the transcoded-stream case).
@@ -927,12 +946,12 @@ void main() {
         snap =
             ch.callsOfType('updateMetadata').last.args['metadata']
                 as MediaSessionMetadataSnapshot;
-        expect(snap.artwork, isNull);
         expect(
-          snap.artworkUri,
-          'https://art/2.png',
+          snap.artwork,
+          covers['https://art/2.png'],
           reason: 'no embedded cover falls back to extras[art]',
         );
+        expect(snap.artworkUri, isNull);
 
         // An embedded cover still wins over extras['art'].
         rig.state = PlayerState(
@@ -953,6 +972,7 @@ void main() {
                 as MediaSessionMetadataSnapshot;
         expect(snap.artwork, embedded);
         expect(snap.artworkUri, isNull, reason: 'embedded cover wins');
+        expect(fetched, ['https://art/1.jpg', 'https://art/2.png']);
       },
     );
 
@@ -1234,6 +1254,132 @@ void main() {
         expect(caFiles, ['/etc/ssl/home-ca.pem']);
       },
     );
+
+    test('on Apple a file:// cover is read by the fetcher', () async {
+      for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+        debugDefaultTargetPlatformOverride = platform;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        final rig = _Rig();
+        final ch = _RecordingChannel();
+        addTearDown(rig.dispose);
+        addTearDown(ch.close);
+
+        final cover = CoverArt(
+          bytes: Uint8List.fromList(const [3, 3]),
+          mimeType: 'image/jpeg',
+        );
+        final fetched = <Uri>[];
+        final controller = await _buildController(
+          rig: rig,
+          channel: ch,
+          artworkFetcher: (uri, _) async {
+            fetched.add(uri);
+            return cover;
+          },
+        );
+        addTearDown(controller.dispose);
+
+        final art = Uri.parse('file:///covers/a.jpg');
+        rig.state = PlayerState(
+          mediaSession: MediaSession(artwork: MediaSessionArtwork.uri(art)),
+          metadata: const {'title': 'Song'},
+        );
+        rig.metadata.add(const {'title': 'Song'});
+        await _settle();
+        expect(fetched, [art], reason: '$platform');
+        expect(lastSnap(ch).artwork, cover, reason: '$platform');
+        for (final call in ch.callsOfType('updateMetadata')) {
+          final snap = call.args['metadata'] as MediaSessionMetadataSnapshot;
+          expect(snap.artworkUri, isNull, reason: '$platform');
+        }
+      }
+    });
+
+    test('elsewhere a file:// cover still goes to the native side', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+
+      final fetched = <Uri>[];
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkFetcher: (uri, _) async {
+          fetched.add(uri);
+          return null;
+        },
+      );
+      addTearDown(controller.dispose);
+
+      rig.state = const PlayerState(
+        mediaSession: MediaSession(),
+        metadata: {'title': 'Song'},
+        playlist: Playlist([
+          Media('/music/song.flac', extras: {'art': 'file:///covers/a.jpg'}),
+        ]),
+      );
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(fetched, isEmpty);
+      expect(lastSnap(ch).artworkUri, 'file:///covers/a.jpg');
+    });
+
+    test(
+      'on Apple the package downloads the cover, no URL reaches the plugin',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        // The test binding answers every HTTP request with a 400: the real
+        // client is needed against the loopback server.
+        final overrides = HttpOverrides.current;
+        HttpOverrides.global = null;
+        addTearDown(() => HttpOverrides.global = overrides);
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+        server.listen((request) {
+          request.response
+            ..headers.contentType = ContentType('image', 'png')
+            ..add(const [4, 2])
+            ..close();
+        });
+        final rig = _Rig();
+        final ch = _RecordingChannel();
+        addTearDown(rig.dispose);
+        addTearDown(ch.close);
+
+        // No fetcher given: the default one of the platform.
+        final controller = await _buildController(rig: rig, channel: ch);
+        addTearDown(controller.dispose);
+
+        rig.state = PlayerState(
+          mediaSession: const MediaSession(),
+          metadata: const {'title': 'Song'},
+          playlist: Playlist([
+            Media(
+              'https://nd.example/rest/stream.view?id=1',
+              extras: {
+                'art': 'http://127.0.0.1:${server.port}/cover.view?t=tok',
+              },
+            ),
+          ]),
+        );
+        rig.metadata.add(const {'title': 'Song'});
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (ch.callsOfType('updateMetadata').isEmpty ||
+            lastSnap(ch).artwork == null) {
+          if (DateTime.now().isAfter(deadline)) break;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          await _settle();
+        }
+        expect(lastSnap(ch).artwork?.bytes, [4, 2]);
+        expect(lastSnap(ch).artwork?.mimeType, 'image/png');
+        for (final call in ch.callsOfType('updateMetadata')) {
+          final snap = call.args['metadata'] as MediaSessionMetadataSnapshot;
+          expect(snap.artworkUri, isNull);
+        }
+      },
+    );
   });
   group('MediaSessionController — audio output resets', () {
     test('a reset from the OS reaches the player until dispose', () async {
@@ -1258,11 +1404,11 @@ void main() {
       expect(resets, 1, reason: 'no callback after dispose');
     });
   });
-  test('artwork is downloaded in Dart wherever the OS would publish URLs', () {
+  test('artwork is downloaded in Dart on every platform', () {
     expect(downloadsArtworkOn(TargetPlatform.android), isTrue);
     expect(downloadsArtworkOn(TargetPlatform.linux), isTrue);
     expect(downloadsArtworkOn(TargetPlatform.windows), isTrue);
-    expect(downloadsArtworkOn(TargetPlatform.iOS), isFalse);
-    expect(downloadsArtworkOn(TargetPlatform.macOS), isFalse);
+    expect(downloadsArtworkOn(TargetPlatform.iOS), isTrue);
+    expect(downloadsArtworkOn(TargetPlatform.macOS), isTrue);
   });
 }

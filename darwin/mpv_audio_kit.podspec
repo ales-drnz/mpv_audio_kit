@@ -1,5 +1,5 @@
 #
-# mpv_audio_kit macOS podspec.
+# mpv_audio_kit podspec, for iOS and macOS.
 #
 # Copyright © 2026 & onwards, Alessandro Di Ronza <ales.drnz@gmail.com>.
 # All rights reserved.
@@ -9,9 +9,10 @@
 # (hook/build.dart) downloads it and Flutter bundles it with the app as
 # libmpv_audio_kit.framework, a code asset the Dart side binds with @Native.
 #
-# A Flutter plugin ships both dependency-manager manifests — this podspec
-# (CocoaPods) and Package.swift (Swift Package Manager) — and the consuming
-# app's setup decides which one Flutter uses.
+# A Flutter plugin ships both dependency-manager manifests, this podspec
+# (CocoaPods) and mpv_audio_kit/Package.swift (Swift Package Manager), and
+# the consuming app's setup decides which one Flutter uses. pubspec.yaml
+# sets sharedDarwinSource, so both platforms read them from darwin/.
 #
 
 Pod::Spec.new do |s|
@@ -26,29 +27,28 @@ Pod::Spec.new do |s|
   s.author           = { 'mpv_audio_kit' => 'ales.drnz@gmail.com' }
 
   s.source           = { :path => '.' }
-  # These Swift files are real copies, intentionally NOT symlinks:
-  # `dart pub publish` flattens symlinks into regular files whose body is
-  # the link-target path, which then fails to compile in the consumer's
-  # Xcode. (SwiftPM, this plugin's other build channel, also rejects a
-  # `path:` that escapes the package root, ruling out one shared dir.)
+  # The same Swift sources as the Swift package.
   s.source_files     = 'mpv_audio_kit/Sources/mpv_audio_kit/**/*.swift'
   # Apple privacy manifest. Shipped as a CocoaPods resource bundle so it is
-  # embedded (and codesigned) into the built framework — required for App
-  # Store submission. Kept out of `source_files` (which is `*.swift`) so it
-  # isn't double-referenced.
+  # embedded (and codesigned) into the built framework, which App Store
+  # submission requires. Kept out of `source_files` (which is `*.swift`) so
+  # it isn't double-referenced.
   s.resource_bundles = {
     'mpv_audio_kit_privacy' => ['mpv_audio_kit/Sources/mpv_audio_kit/PrivacyInfo.xcprivacy'],
   }
 
-  s.dependency 'FlutterMacOS'
+  s.ios.dependency 'Flutter'
+  s.osx.dependency 'FlutterMacOS'
 
-  # MediaPlayer is the system framework that hosts MPNowPlayingInfoCenter
-  # and MPRemoteCommandCenter — the macOS lockscreen / Control Center /
-  # menu-bar Now Playing entry and the play/pause/seek targets that
-  # respond to Bluetooth headsets, the keyboard media keys, and Siri.
-  s.frameworks = 'MediaPlayer'
+  s.ios.deployment_target = '15.0'
+  s.osx.deployment_target = '12.0'
 
-  s.platform              = :osx, '12.0'
+  # MediaPlayer hosts MPNowPlayingInfoCenter and MPRemoteCommandCenter, the
+  # lockscreen, Control Center and CarPlay Now Playing entry. AVFoundation
+  # is needed on iOS for AVAudioSession (audio interruption handling).
+  s.ios.frameworks = 'MediaPlayer', 'AVFoundation'
+  s.osx.frameworks = 'MediaPlayer'
+
   s.swift_version         = '5.0'
   s.pod_target_xcconfig   = { 'DEFINES_MODULE' => 'YES' }
 end

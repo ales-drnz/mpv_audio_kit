@@ -53,12 +53,14 @@ flutter:
       ios:
         pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
+        sharedDarwinSource: true
       linux:
         pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
       macos:
         pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
+        sharedDarwinSource: true
       windows:
         pluginClass: MpvAudioKitPluginCApi
         ffiPlugin: true
