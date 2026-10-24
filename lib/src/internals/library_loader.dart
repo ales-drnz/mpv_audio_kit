@@ -13,10 +13,10 @@ import 'package:meta/meta.dart';
 
 import '../media_session/media_session_channel.dart';
 import '../mpv_bindings.dart';
+import '../pcm/pcm_native.dart';
 import 'debug_log.dart';
 import 'orphan_handle_tracker.dart';
 import 'owner_watch.dart';
-import 'pcm_native.dart';
 
 /// How long Hot-Restart cleanup waits, after waking a leaked core with
 /// `quit`, before destroying its handle. The previous VM's event isolate

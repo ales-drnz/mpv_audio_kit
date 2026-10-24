@@ -7,7 +7,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:mpv_audio_kit/src/internals/pcm_native.dart';
+import 'package:mpv_audio_kit/src/pcm/pcm_native.dart';
 import 'package:mpv_audio_kit/src/pcm/pcm_source.dart' show pcmLoadOptions;
 
 import 'fake_pcm_native.dart';

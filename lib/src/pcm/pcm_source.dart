@@ -10,9 +10,9 @@ import 'dart:typed_data';
 import 'package:meta/meta.dart';
 
 import '../internals/debug_log.dart';
-import '../internals/pcm_native.dart';
 import '../models/media.dart';
 import 'pcm_format.dart';
+import 'pcm_native.dart';
 
 /// Where a [PcmSource] is in its life.
 enum PcmSourceState {

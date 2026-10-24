@@ -9,7 +9,7 @@ library;
 import 'dart:typed_data';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:mpv_audio_kit/src/internals/pcm_native.dart';
+import 'package:mpv_audio_kit/src/pcm/pcm_native.dart';
 import 'package:test/test.dart';
 
 import '../_helpers/setter_test_helpers.dart';

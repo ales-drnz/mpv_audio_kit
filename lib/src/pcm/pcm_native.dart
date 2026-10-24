@@ -14,7 +14,7 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 
-import 'library_loader.dart';
+import '../internals/library_loader.dart';
 
 /// The native side of a `PcmSource`: one byte FIFO per id, read by mpv
 /// through `mak-pcm://<id>`. Negative returns are the codes below.

@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mpv_audio_kit/src/internals/pcm_native.dart';
+import 'package:mpv_audio_kit/src/pcm/pcm_native.dart';
 import 'package:mpv_audio_kit/src/player/player.dart';
 
 import '../pcm/fake_pcm_native.dart';

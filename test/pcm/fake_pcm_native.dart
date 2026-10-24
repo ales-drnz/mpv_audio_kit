@@ -4,7 +4,7 @@
 
 import 'dart:typed_data';
 
-import 'package:mpv_audio_kit/src/internals/pcm_native.dart';
+import 'package:mpv_audio_kit/src/pcm/pcm_native.dart';
 
 /// One source of [FakePcmNative]: a byte FIFO and the native state.
 final class FakeSource {
