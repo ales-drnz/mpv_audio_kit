@@ -180,6 +180,18 @@ class SlowCoreShim {
     _withString(name, (p) => fn(p, hold.inMicroseconds));
   }
 
+  /// Answers every synchronous node read of the property [name] from now
+  /// on with a byte array of `SIZE_MAX` bytes, which the client cannot
+  /// decode. `counter('broken_gets')` counts them.
+  void breakNodeGet(String name) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>),
+          void Function(Pointer<Utf8>)
+        >('mak_shim_break_node_get');
+    _withString(name, fn);
+  }
+
   /// Refuses every `loadfile` whose URL contains [marker] before it
   /// reaches mpv, with the error of a full reply queue
   /// ([MpvError.mpvErrorEventQueueFull]), the only way mpv turns down an
@@ -200,7 +212,7 @@ class SlowCoreShim {
   /// already destroyed, which the shim does not forward), `destroys`,
   /// `destroys_done_at_create` (the destroys that had returned when the
   /// last `mpv_create` began), `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
-  /// before the destroy), `watched_gets`, `replies_held` and
+  /// before the destroy), `watched_gets`, `broken_gets`, `replies_held` and
   /// `loadfiles_refused`.
   int counter(String name) {
     final fn = _lib

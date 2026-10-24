@@ -277,9 +277,7 @@ void _rereadUnavailable(
       };
       if (value != null) _forwardValue(toMain, name, format, value, cache);
     } catch (e) {
-      toMain.send(
-        MpvEventLog('event-isolate', 'warn', 're-reading $name failed: $e'),
-      );
+      toMain.send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
     }
   }
 }

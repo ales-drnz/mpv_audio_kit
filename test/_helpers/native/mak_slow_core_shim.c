@@ -119,6 +119,26 @@ static atomic_int destroys_done_at_create; // destroys_done at the last create
 static atomic_int hooks_pending_at_destroy;
 static atomic_int watched_gets;
 static char watched_get[64];
+
+// Synchronous node reads of this property answer a node the client cannot
+// decode (mak_shim_break_node_get): a byte array of SIZE_MAX bytes. Empty
+// means none. The fake node never reaches the real mpv_free_node_contents.
+static char broken_get[64];
+static atomic_int broken_gets;
+struct shim_byte_array {
+  void *data;
+  size_t size;
+};
+struct shim_node {
+  union {
+    void *ptr;
+    int64_t i;
+    double d;
+  } u;
+  int format;
+};
+static char broken_byte;
+static struct shim_byte_array broken_ba = {&broken_byte, (size_t)-1};
 static atomic_int replies_held;
 
 // One reply held back in mpv_wait_event (mak_shim_hold_reply): the request
@@ -196,6 +216,7 @@ int mak_shim_counter(const char *name) {
     return hooks_pending_at_destroy;
   }
   if (strcmp(name, "watched_gets") == 0) return watched_gets;
+  if (strcmp(name, "broken_gets") == 0) return broken_gets;
   if (strcmp(name, "replies_held") == 0) return replies_held;
   if (strcmp(name, "loadfiles_refused") == 0) return loadfiles_refused;
   fprintf(stderr, "mak_slow_core_shim: unknown counter %s\n", name);
@@ -217,10 +238,20 @@ void mak_shim_reset(void) {
   atomic_store(&hooks_pending_at_destroy, 0);
   atomic_store(&watched_gets, 0);
   watched_get[0] = 0;
+  atomic_store(&broken_gets, 0);
+  broken_get[0] = 0;
   atomic_store(&replies_held, 0);
   hold_state = 0;
   refuse_marker[0] = 0;
   atomic_store(&loadfiles_refused, 0);
+  pthread_mutex_unlock(&mu);
+}
+
+// From now on, synchronous MPV_FORMAT_NODE reads of [name] answer a byte
+// array the client cannot decode, in place of the real value.
+void mak_shim_break_node_get(const char *name) {
+  pthread_mutex_lock(&mu);
+  snprintf(broken_get, sizeof broken_get, "%s", name);
   pthread_mutex_unlock(&mu);
 }
 
@@ -355,6 +386,17 @@ int mpv_get_property(void *h, const char *n, int fmt, void *out) {
   trace_get("mpv_get_property", n);
   count_get(n);
   stall(get_delay_us);
+  // MPV_FORMAT_NODE is 6, MPV_FORMAT_BYTE_ARRAY 9.
+  pthread_mutex_lock(&mu);
+  int broken = fmt == 6 && broken_get[0] && strcmp(n, broken_get) == 0;
+  pthread_mutex_unlock(&mu);
+  if (broken) {
+    struct shim_node *node = out;
+    node->u.ptr = &broken_ba;
+    node->format = 9;
+    atomic_fetch_add(&broken_gets, 1);
+    return 0;
+  }
   int rc = real_mpv_get_property(h, n, fmt, out);
   // MPV_FORMAT_FLAG is 3.
   if (rc >= 0 && fmt == 3 && atomic_load(&hide_eof) &&
@@ -425,7 +467,14 @@ int mpv_observe_property(void *h, uint64_t ud, const char *n, int fmt) {
 }
 
 void mpv_free(void *p) { real_mpv_free(p); }
-void mpv_free_node_contents(void *p) { real_mpv_free_node_contents(p); }
+void mpv_free_node_contents(void *p) {
+  struct shim_node *node = p;
+  if (node->format == 9 && node->u.ptr == &broken_ba) {
+    node->format = 0;
+    return;
+  }
+  real_mpv_free_node_contents(p);
+}
 const char *mpv_error_string(int e) { return real_mpv_error_string(e); }
 
 int mpv_request_log_messages(void *h, const char *level) {

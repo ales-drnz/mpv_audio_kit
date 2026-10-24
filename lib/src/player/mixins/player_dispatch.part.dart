@@ -252,6 +252,8 @@ mixin _DispatchModule on _PlayerBase {
               LogError(prefix: prefix, level: typedLevel, text: text),
             );
           }
+        case MpvEventInternalLog(:final level, :final text):
+          _internalLog('event isolate: $text', level: LogLevel.fromMpv(level));
         case MpvEventHookFired(:final id, :final name):
           final hook = Hook.fromMpv(name);
           if (hook == null) {

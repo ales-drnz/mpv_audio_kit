@@ -236,7 +236,7 @@ void _runEventLoop(
       _flushTrailing(toMain, cache);
     } catch (e, st) {
       toMain.send(
-        MpvEventLog('event-isolate', 'error', 'event dispatch failed: $e\n$st'),
+        MpvEventInternalLog('error', 'event dispatch failed: $e\n$st'),
       );
     }
 
@@ -281,8 +281,7 @@ void _dispatchEvent(
         loaded = _readFileLoadedEvent(lib, handle);
       } catch (e, st) {
         toMain.send(
-          MpvEventLog(
-            'event-isolate',
+          MpvEventInternalLog(
             'warn',
             'file-loaded payload read failed: $e\n$st',
           ),

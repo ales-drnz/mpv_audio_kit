@@ -254,6 +254,20 @@ class MpvEventLog extends MpvIsolateEvent {
   MpvEventLog(this.prefix, this.level, this.text);
 }
 
+/// A diagnostic of the event isolate itself: an event it could not decode,
+/// a read that failed. Library-side, so the player puts it on
+/// `internalLog`, never on the engine's `log` or `error`.
+class MpvEventInternalLog extends MpvIsolateEvent {
+  /// The level, as mpv names it (`error`, `warn`).
+  final String level;
+
+  /// The message text.
+  final String text;
+
+  /// Carries one diagnostic's [level] and [text].
+  MpvEventInternalLog(this.level, this.text);
+}
+
 /// Outcome of an async property write or command
 /// (MPV_EVENT_SET_PROPERTY_REPLY, MPV_EVENT_COMMAND_REPLY). The main
 /// isolate matches [userdata] against its pending-reply map and completes
