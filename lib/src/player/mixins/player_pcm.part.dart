@@ -141,7 +141,10 @@ mixin _PcmModule on _PlayerBase {
     final held = _pcmByEntry.keys.toSet();
     unawaited(() async {
       try {
-        final (rc, node) = await _getAsync('playlist', MpvFormat.mpvFormatNode);
+        final (rc, node) = await _calls.get(
+          'playlist',
+          MpvFormat.mpvFormatNode,
+        );
         if (rc < 0 || node is! List || _disposed) return;
         final live = {
           for (final entry in node)
@@ -195,7 +198,7 @@ mixin _PcmModule on _PlayerBase {
     };
     if (ids.isEmpty) return null;
     Future<List<Object?>?> playlist() async {
-      final (rc, node) = await _getAsync('playlist', MpvFormat.mpvFormatNode);
+      final (rc, node) = await _calls.get('playlist', MpvFormat.mpvFormatNode);
       return rc < 0 || node is! List || _disposed ? null : node;
     }
 
@@ -212,22 +215,22 @@ mixin _PcmModule on _PlayerBase {
           queued.add(entry['id']);
         }
       }
-      if (playing) await _command(['playlist-next', 'force']);
+      if (playing) await _calls.command(['playlist-next', 'force']);
       for (final id in queued) {
         // A command that moved the indices after the read (a remove or an
         // insert of the app) makes the read stale: read again. The removal
         // then goes out with nothing between, so mpv takes it in order.
         // Bounded: the abort waits for the cut 1 s at most anyway.
         for (var tries = 0; tries < 8; tries++) {
-          final shifts = _playlistShifts;
+          final shifts = _calls.playlistShifts;
           final now = await playlist();
           if (now == null) return;
           await debugBeforePcmCutRemove?.call();
-          if (shifts != _playlistShifts) continue;
+          if (shifts != _calls.playlistShifts) continue;
           final at = now.indexWhere((e) => e is Map && e['id'] == id);
           // Gone already, or taken by a later call. One that became the
           // current entry meanwhile is cut by the removal too.
-          if (at >= 0) await _command(['playlist-remove', '$at']);
+          if (at >= 0) await _calls.command(['playlist-remove', '$at']);
           break;
         }
       }

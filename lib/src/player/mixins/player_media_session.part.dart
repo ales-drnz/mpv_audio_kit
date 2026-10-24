@@ -264,14 +264,15 @@ mixin _MediaSessionModule on _PlayerBase {
   /// AudioUnit the system stopped for an interruption or a media services
   /// reset stays silent, while mpv keeps reporting playback.
   void _reloadAudioOutput() {
-    _applySessionCommand(_commandChecked(const ['ao-reload']));
+    _applySessionCommand(_calls.commandChecked(const ['ao-reload']));
   }
 
   /// Fires an inbound-command action without awaiting it (the command-stream
   /// callback is synchronous and the typed setters are optimistic), but
   /// catches a late rejection. A command mpv rejects, for example a
   /// lockscreen seek arriving with nothing loaded ([Player.seek] throws via
-  /// `_commandChecked`), would otherwise escape as an unhandled async error.
+  /// [CoreCalls.commandChecked]), would otherwise escape as an unhandled
+  /// async error.
   /// [runSessionCommand] also takes the `Future<bool>` of `next` and
   /// `previous`.
   void _applySessionCommand(Future<Object?> action) {

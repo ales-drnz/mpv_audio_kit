@@ -41,7 +41,7 @@ mixin _PlaylistModule on _PlayerBase {
     final load = _snapshotLoad();
     await _gate();
     // mpv's own count, as in [move]: the state can lag an add in flight.
-    final (rc, count) = await _getAsync(
+    final (rc, count) = await _calls.get(
       'playlist-count',
       MpvFormat.mpvFormatInt64,
     );
@@ -84,6 +84,23 @@ mixin _PlaylistModule on _PlayerBase {
     }
   }
 
+  /// Throws [RangeError] unless [index] is a valid playlist position, per
+  /// mpv's own `playlist-count` (the Dart state can lag behind an `add`
+  /// still in flight). Returns the count, or `null` when a dispose landed
+  /// meanwhile: it drained the read as failed, and the call then ends
+  /// without effect, like any call under way at dispose, instead of
+  /// reporting an index out of an empty playlist.
+  Future<int?> _checkPlaylistIndex(int index, String name) async {
+    final (rc, value) = await _calls.get(
+      'playlist-count',
+      MpvFormat.mpvFormatInt64,
+    );
+    if (_disposed) return null;
+    final count = rc < 0 ? 0 : value as int;
+    RangeError.checkValidIndex(index, null, name, count);
+    return count;
+  }
+
   /// Removes the track at [index] from the playlist.
   ///
   /// Throws [RangeError] if [index] is out of range.
@@ -91,7 +108,7 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkNotNegative(index, 'index');
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
-    await _commandChecked(['playlist-remove', index.toString()]);
+    await _calls.commandChecked(['playlist-remove', index.toString()]);
   }
 
   /// Skips to the next track and returns `true`, or `false` when there is
@@ -101,9 +118,9 @@ mixin _PlaylistModule on _PlayerBase {
   Future<bool> next({bool force = false}) async {
     await _gate();
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
-    // the track change, so they apply to the OLD entry; see [_settleWrites].
-    await _settleWrites();
-    return _navigate(['playlist-next', force ? 'force' : 'weak']);
+    // the track change, so they apply to the OLD entry; see [CoreCalls.settleWrites].
+    await _calls.settleWrites();
+    return _calls.navigate(['playlist-next', force ? 'force' : 'weak']);
   }
 
   /// Skips to the previous track and returns `true`, or `false` when there
@@ -113,8 +130,8 @@ mixin _PlaylistModule on _PlayerBase {
   Future<bool> previous({bool force = false}) async {
     await _gate();
     // See [next]: in-flight transport writes apply to the old entry.
-    await _settleWrites();
-    return _navigate(['playlist-prev', force ? 'force' : 'weak']);
+    await _calls.settleWrites();
+    return _calls.navigate(['playlist-prev', force ? 'force' : 'weak']);
   }
 
   /// Jumps to the next entry whose source playlist (`playlist-path`) differs
@@ -125,8 +142,8 @@ mixin _PlaylistModule on _PlayerBase {
   Future<bool> nextPlaylist() async {
     await _gate();
     // See [next]: in-flight transport writes apply to the old entry.
-    await _settleWrites();
-    return _navigate(['playlist-next-playlist']);
+    await _calls.settleWrites();
+    return _calls.navigate(['playlist-next-playlist']);
   }
 
   /// Jumps to the first of the previous entries whose source playlist
@@ -140,8 +157,8 @@ mixin _PlaylistModule on _PlayerBase {
   Future<bool> previousPlaylist() async {
     await _gate();
     // See [next]: in-flight transport writes apply to the old entry.
-    await _settleWrites();
-    return _navigate(['playlist-prev-playlist']);
+    await _calls.settleWrites();
+    return _calls.navigate(['playlist-prev-playlist']);
   }
 
   /// Jumps to the track at [index] in the playlist and starts playback.
@@ -171,15 +188,15 @@ mixin _PlaylistModule on _PlayerBase {
       rethrow;
     }
     // See [next]: in-flight transport writes apply to the old entry.
-    await _settleWrites();
+    await _calls.settleWrites();
     // See [Player.open]: parked at EOF (`keep-open`) the unpause below
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
     final parkedAtEof = await _parkedAtEof();
-    await _prop('pause', _intendedPlay(intent, true) ? 'no' : 'yes');
-    await _commandChecked(['playlist-play-index', index.toString()]);
+    await _calls.prop('pause', _intendedPlay(intent, true) ? 'no' : 'yes');
+    await _calls.commandChecked(['playlist-play-index', index.toString()]);
     if (parkedAtEof && _intendedPlay(intent, true)) {
-      await _prop('pause', 'no');
+      await _calls.prop('pause', 'no');
     }
     // A park read on its way when this call began clears the intent on
     // arrival, as in [play]: set again while this call still owns it.
@@ -197,7 +214,11 @@ mixin _PlaylistModule on _PlayerBase {
     final count = await _checkPlaylistIndex(from, 'from');
     if (count == null) return;
     RangeError.checkValueInInterval(to, 0, count, 'to');
-    await _commandChecked(['playlist-move', from.toString(), to.toString()]);
+    await _calls.commandChecked([
+      'playlist-move',
+      from.toString(),
+      to.toString(),
+    ]);
   }
 
   /// Replaces the track at [index] with a new [media] item.
@@ -229,10 +250,10 @@ mixin _PlaylistModule on _PlayerBase {
       _mediaCache[resolved.uri] = media;
       await _forgetFdResume(resolved);
       // Execute in-flight transport writes before the playlist surgery:
-      // see [_settleWrites].
-      await _settleWrites();
+      // see [CoreCalls.settleWrites].
+      await _calls.settleWrites();
       if (load.superseded) return;
-      final (posErr, posValue) = await _getAsync(
+      final (posErr, posValue) = await _calls.get(
         'playlist-pos',
         MpvFormat.mpvFormatString,
       );
@@ -277,11 +298,11 @@ mixin _PlaylistModule on _PlayerBase {
         await insertAt(index + 1);
         inserted = true;
         if (load.superseded) return;
-        await _commandChecked(['playlist-next', 'force']);
+        await _calls.commandChecked(['playlist-next', 'force']);
         if (load.superseded) return;
-        await _commandChecked(['playlist-remove', index.toString()]);
+        await _calls.commandChecked(['playlist-remove', index.toString()]);
       } else {
-        await _commandChecked(['playlist-remove', index.toString()]);
+        await _calls.commandChecked(['playlist-remove', index.toString()]);
         if (load.superseded) return;
         await insertAt(index);
         inserted = true;
@@ -314,16 +335,16 @@ mixin _PlaylistModule on _PlayerBase {
         ? playlist.items.elementAtOrNull(playlist.index)
         : null;
     _mediaCache.removeWhere((_, media) => current == null || media != current);
-    // Execute in-flight transport writes first; see [_settleWrites].
-    await _settleWrites();
+    // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
+    await _calls.settleWrites();
     if (load.superseded) return;
     // mpv's `playlist-clear` alone keeps the active entry; the
     // explicit `playlist-remove current` makes the call match the
     // method name.
-    await _commandChecked(['playlist-clear']);
+    await _calls.commandChecked(['playlist-clear']);
     if (load.superseded || keepCurrent) return;
     // Fails when nothing is current (an idle player): nothing to clear then.
-    await _command(['playlist-remove', 'current']);
+    await _calls.command(['playlist-remove', 'current']);
   }
 
   /// Sets the playlist repeat mode.
@@ -351,12 +372,12 @@ mixin _PlaylistModule on _PlayerBase {
     final done = <(String, String, String)>[];
     try {
       for (final w in writes) {
-        await _prop(w.$1, w.$2);
+        await _calls.prop(w.$1, w.$2);
         done.add(w);
       }
     } catch (_) {
       for (final (name, _, prior) in done.reversed) {
-        await _propRc(name, prior);
+        await _calls.propRc(name, prior);
       }
       rethrow;
     }
@@ -368,11 +389,11 @@ mixin _PlaylistModule on _PlayerBase {
   /// Enables or disables shuffle mode.
   Future<void> setShuffle(bool shuffle) async {
     await _gate();
-    await _prop('shuffle', shuffle ? 'yes' : 'no');
+    await _calls.prop('shuffle', shuffle ? 'yes' : 'no');
     if (shuffle) {
-      await _commandChecked(['playlist-shuffle']);
+      await _calls.commandChecked(['playlist-shuffle']);
     } else {
-      await _commandChecked(['playlist-unshuffle']);
+      await _calls.commandChecked(['playlist-unshuffle']);
     }
     _updateField(
       (s) => s.copyWith(shuffle: shuffle),
@@ -404,7 +425,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// - a live [PcmSource] entry, and the entry after it.
   Future<void> setPrefetchPlaylist(bool enabled) async {
     await _gate();
-    await _prop('prefetch-playlist', enabled ? 'yes' : 'no');
+    await _calls.prop('prefetch-playlist', enabled ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(prefetchPlaylist: enabled),
       _reactives.prefetchPlaylist,

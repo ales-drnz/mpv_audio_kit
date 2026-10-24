@@ -65,12 +65,13 @@ mixin _InitModule on _PlayerBase {
     _lib = MpvLibrary.open(MpvAudioKit.libraryPath);
     _handle = Pointer<MpvHandle>.fromAddress(handleAddress);
     _client = MpvClient(_lib, _handle);
+    _calls = CoreCalls(_client);
     // Every DSP pipeline polls mpv through the async-get path (decoded in
     // the event isolate, reply-correlated) rather than a blocking FFI read,
     // so a visualizer's poll loop can never stall the main isolate while the
-    // core is busy initializing an audio output. `_getAsync` and `_propRc` are
-    // the same async client-API calls the typed setters use.
-    _spectrumPipeline = SpectrumPipeline(asyncGet: _getAsync);
+    // core is busy initializing an audio output. [CoreCalls.get] and
+    // [CoreCalls.propRc] are the same async calls the typed setters use.
+    _spectrumPipeline = SpectrumPipeline(asyncGet: _calls.get);
     // fft and pcm are NOT bridged here: the pipeline's poll loop arms on its
     // streams' first listener, so the bridges are created lazily by the
     // public controllers' onListen (and reconciled below for subscribers
@@ -78,21 +79,21 @@ mixin _InitModule on _PlayerBase {
     // setSpectrum may have put them before bring-up.
     _spectrumPipeline.setSettings(_state.spectrum);
     _waveformPipeline = WaveformPipeline(
-      asyncGet: _getAsync,
-      asyncSet: _propRc,
+      asyncGet: _calls.get,
+      asyncSet: _calls.propRc,
     );
     _filterTapPipeline = FilterTapPipeline(
-      asyncGet: _getAsync,
-      asyncSet: _propRc,
+      asyncGet: _calls.get,
+      asyncSet: _calls.propRc,
       warn: (message) => _internalLog(message, level: LogLevel.warn),
     );
     _loudnessMeterPipeline = LoudnessMeterPipeline(
-      asyncGet: _getAsync,
+      asyncGet: _calls.get,
       label: () => _meterLabel(_state.audioEffects),
     );
     _loudnessScanPipeline = LoudnessScanPipeline(
-      asyncGet: _getAsync,
-      asyncSet: _propRc,
+      asyncGet: _calls.get,
+      asyncSet: _calls.propRc,
     );
     _waveformPipeline.stream.listen((w) {
       _lastWaveform = w;
@@ -119,7 +120,7 @@ mixin _InitModule on _PlayerBase {
 
     // A setLogLevel call that came before bring-up finished.
     final pendingLevel = _pendingLogLevel;
-    if (pendingLevel != null) _applyLogLevel(pendingLevel);
+    if (pendingLevel != null) _calls.requestLogMessages(pendingLevel);
 
     // A DSP subscriber that landed before bring-up finished missed the
     // `onListen` enable: reconcile it now.

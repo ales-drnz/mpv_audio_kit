@@ -4,33 +4,6 @@
 
 part of '../player.dart';
 
-/// mpv's input command prefixes, which may precede the command name.
-// The commands that move the indices of the playlist entries, besides
-// loadfile and loadlist without append (see [_FfiModule._shiftsPlaylist]).
-const _kPlaylistShiftCommands = {
-  'playlist-remove',
-  'playlist-move',
-  'playlist-clear',
-  'playlist-shuffle',
-  'playlist-unshuffle',
-  'stop',
-};
-
-const _kCommandPrefixes = {
-  'no-osd',
-  'osd-auto',
-  'osd-bar',
-  'osd-msg',
-  'osd-msg-bar',
-  'raw',
-  'expand-properties',
-  'repeatable',
-  'nonrepeatable',
-  'nonscalable',
-  'async',
-  'sync',
-};
-
 // The `%n%` length prefix and the list actions of an option name.
 final _kCountedPrefix = RegExp(r'^%\d+%');
 final _kListAction = RegExp(
@@ -75,137 +48,14 @@ const _kPropertyCommands = {
   'change-list',
 };
 
-/// Low-level native bridge: the raw property and command calls every typed
-/// setter funnels through, the `chapter-list` NODE writer, and the mpv
-/// error-string lookup. Declared `on _PlayerBase` so the constructor,
-/// `dispose`, and the domain mixins can reach these across part boundaries
-/// (their abstract signatures live on `_PlayerBase`).
-///
-/// Every write and read here goes through the ASYNC client API: the FFI call
-/// only enqueues the request (libmpv deep-copies the arguments) and the
-/// future completes when the event isolate forwards the matching reply.
-/// The synchronous client API waits for the core's playloop to serve the
-/// request, and the playloop can be stuck for seconds inside audio-output
-/// init (a Bluetooth or AirPlay device waking up): on the main isolate that
-/// wait is the macOS beachball. Never reintroduce a synchronous
-/// set, get or command on the main isolate.
+/// The `loadfile` of a [Media] with its entry bookkeeping, and the public
+/// raw escape hatches (property reads and writes, commands, log level).
+/// The calls themselves go through [_PlayerBase._calls] ([CoreCalls]), on
+/// the async client API.
 mixin _FfiModule on _PlayerBase {
-  /// Writes a property and throws [MpvCommandException] on rejection.
-  ///
-  /// The typed setters (setVolume, setRate, …) flow through this method;
-  /// the effects chain goes through the `af set` command instead. Errors
-  /// are surfaced rather than swallowed so the caller can react
-  /// (out-of-range value, unknown name, etc.). `_propRc` is the
-  /// rc-returning variant for the few call sites that need to tolerate
-  /// failures explicitly.
-  @override
-  Future<void> _prop(String name, String value) async {
-    final rc = await _propRc(name, value);
-    if (rc < 0) {
-      throw MpvCommandException(
-        name: name,
-        code: rc,
-        message: _errorString(rc),
-      );
-    }
-  }
-
-  @override
-  Future<int> _propRc(String name, String value) =>
-      _client.setProperty(name, value);
-
-  @override
-  Future<int> _command(List<String> args) =>
-      _commandResult(args).then((reply) => reply.$1);
-
-  /// [_command] that also returns the command's decoded result node.
-  Future<(int, Object?)> _commandResult(List<String> args) {
-    if (_shiftsPlaylist(args)) _playlistShifts++;
-    return _client.command(args);
-  }
-
-  /// Whether [args] can move the indices of the playlist entries: every
-  /// command that removes, moves, inserts or reorders them, and a load
-  /// that does not append.
-  static bool _shiftsPlaylist(List<String> args) {
-    var i = 0;
-    while (i < args.length && _kCommandPrefixes.contains(args[i])) {
-      i++;
-    }
-    if (i >= args.length) return false;
-    final command = args[i].replaceAll('_', '-');
-    if (command == 'loadfile' || command == 'loadlist') {
-      final flags = i + 2 < args.length ? args[i + 2] : 'replace';
-      return !flags.startsWith('append');
-    }
-    return _kPlaylistShiftCommands.contains(command);
-  }
-
-  /// Applies a settings bundle backed by several mpv properties: [writes]
-  /// holds `(property, value, prior value)`. The state takes [next] first,
-  /// so mpv's echo of each write matches it instead of emitting a
-  /// half-applied bundle. If a write fails, the written properties and
-  /// the state go back to [previous] before the error is rethrown.
-  @override
-  Future<void> _writeBundle<T>(
-    List<(String, String, String)> writes,
-    ReactiveProperty<T> reactive,
-    PlayerState Function(PlayerState state, T value) put,
-    T next,
-    T previous,
-  ) async {
-    _updateField((s) => put(s, next), reactive, next);
-    final committed = <(String, String)>[];
-    try {
-      for (final (name, value, prior) in writes) {
-        await _prop(name, value);
-        committed.add((name, prior));
-      }
-    } catch (_) {
-      for (final (name, prior) in committed.reversed) {
-        await _propRc(name, prior);
-      }
-      _updateField((s) => put(s, previous), reactive, previous);
-      rethrow;
-    }
-  }
-
-  /// Runs a playlist navigation command and returns whether it moved:
-  /// mpv answers [MpvError.mpvErrorCommand] when there is nowhere to go,
-  /// which is a normal outcome, not an error.
-  @override
-  Future<bool> _navigate(List<String> args) async {
-    final rc = await _command(args);
-    if (rc >= 0) return true;
-    if (rc == MpvError.mpvErrorCommand) return false;
-    throw MpvCommandException(
-      name: args.first,
-      code: rc,
-      message: _errorString(rc),
-    );
-  }
-
-  /// Throws [RangeError] unless [index] is a valid playlist position, per
-  /// mpv's own `playlist-count` (the Dart state can lag behind an `add`
-  /// still in flight). Returns the count, or `null` when a dispose landed
-  /// meanwhile: it drained the read as failed, and the call then ends
-  /// without effect, like any call under way at dispose, instead of
-  /// reporting an index out of an empty playlist.
-  @override
-  Future<int?> _checkPlaylistIndex(int index, String name) async {
-    final (rc, value) = await _getAsync(
-      'playlist-count',
-      MpvFormat.mpvFormatInt64,
-    );
-    if (_disposed) return null;
-    final count = rc < 0 ? 0 : value as int;
-    RangeError.checkValidIndex(index, null, name, count);
-    return count;
-  }
-
   /// Runs a `loadfile` [args] for [media] and records the new playlist
   /// entry's id, so the playlist maps that entry back to [media] even when
-  /// another entry has the same URI. Throws like [_commandChecked].
+  /// another entry has the same URI. Throws like [CoreCalls.commandChecked].
   @override
   Future<void> _loadfile(List<String> args, Media media) async {
     final id = await _loadfileEntry(args, media);
@@ -216,12 +66,12 @@ mixin _FfiModule on _PlayerBase {
   /// records the entry, returning its id. A batch of appends remaps once,
   /// after the last reply, instead of once per entry.
   Future<int?> _loadfileEntry(List<String> args, Media media) async {
-    final (rc, result) = await _commandResult(args);
+    final (rc, result) = await _calls.commandResult(args);
     if (rc < 0) {
       throw MpvCommandException(
         name: args.first,
         code: rc,
-        message: _errorString(rc),
+        message: _calls.errorString(rc),
       );
     }
     final id = result is Map ? result['playlist_entry_id'] : null;
@@ -243,85 +93,6 @@ mixin _FfiModule on _PlayerBase {
     }
   }
 
-  /// [_command] that throws [MpvCommandException] on rejection: the command
-  /// counterpart of [_prop], used by the typed methods whose failure is
-  /// a caller-visible error (seek with nothing loaded, loadfile with
-  /// malformed options). Call sites where a non-zero rc is an expected
-  /// outcome use [_navigate] (`playlist-next weak` at the last entry) or
-  /// keep the raw rc-returning variant (`playlist-remove current` on an
-  /// empty playlist, the internal steps of `openAll`).
-  @override
-  Future<void> _commandChecked(List<String> args) async {
-    final rc = await _command(args);
-    if (rc < 0) {
-      throw MpvCommandException(
-        name: args.isEmpty ? '<empty>' : args.first,
-        code: rc,
-        message: _errorString(rc),
-      );
-    }
-  }
-
-  @override
-  Future<(int, dynamic)> _getAsync(String name, int format) =>
-      _client.getProperty(name, format);
-
-  /// Writes [chapters] to mpv's `chapter-list` (a NODE-array property)
-  /// via `mpv_set_property_async`, resolving with the raw mpv rc.
-  ///
-  /// `chapter-list` is an array of maps `{title: string, time: double secs}`.
-  /// The whole node tree is built in an [Arena]; the async setter deep-copies
-  /// it before returning (`m_option_copy` on the NODE option type), so every
-  /// allocation is freed on return. An empty list writes an empty array
-  /// (clears the chapters).
-  @override
-  Future<int> _setChapterListNode(List<Chapter> chapters) =>
-      _client.setNodeProperty('chapter-list', (arena) {
-        final n = chapters.length;
-        final arrayList = arena<MpvNodeList>();
-        arrayList.ref.num = n;
-        // Arrays carry no keys (maps do); leave them null.
-        arrayList.ref.keys = nullptr;
-        if (n > 0) {
-          final elements = arena<MpvNode>(n);
-          for (var i = 0; i < n; i++) {
-            final ch = chapters[i];
-            // Two map entries per chapter: title (string) + time (double secs).
-            final entryValues = arena<MpvNode>(2);
-            final entryKeys = arena<Pointer<Utf8>>(2);
-
-            entryKeys[0] = 'title'.toNativeUtf8(allocator: arena);
-            entryValues[0].format = MpvFormat.mpvFormatString;
-            entryValues[0].u.string = (ch.title ?? '').toNativeUtf8(
-              allocator: arena,
-            );
-
-            entryKeys[1] = 'time'.toNativeUtf8(allocator: arena);
-            entryValues[1].format = MpvFormat.mpvFormatDouble;
-            entryValues[1].u.double_ = ch.time.inMicroseconds / 1e6;
-
-            final map = arena<MpvNodeList>();
-            map.ref.num = 2;
-            map.ref.values = entryValues;
-            map.ref.keys = entryKeys;
-
-            elements[i].format = MpvFormat.mpvFormatNodeMap;
-            elements[i].u.list = map;
-          }
-          arrayList.ref.values = elements;
-        } else {
-          arrayList.ref.values = nullptr;
-        }
-
-        final root = arena<MpvNode>();
-        root.ref.format = MpvFormat.mpvFormatNodeArray;
-        root.ref.u.list = arrayList;
-        return root;
-      });
-
-  @override
-  String _errorString(int code) => _client.errorString(code);
-
   // ── Public raw escape hatches ────────────────────────────────────────────
 
   /// Reads any mpv property as a string.
@@ -336,7 +107,7 @@ mixin _FfiModule on _PlayerBase {
   @override
   Future<String?> getRawProperty(String name) async {
     await _gate();
-    final (error, value) = await _getAsync(name, MpvFormat.mpvFormatString);
+    final (error, value) = await _calls.get(name, MpvFormat.mpvFormatString);
     return error < 0 ? null : value as String?;
   }
 
@@ -352,7 +123,7 @@ mixin _FfiModule on _PlayerBase {
   /// unavailable. Throws [PlayerDisposedException] if the player has been disposed.
   Future<Object?> getRawPropertyNode(String name) async {
     await _gate();
-    final (error, value) = await _getAsync(name, MpvFormat.mpvFormatNode);
+    final (error, value) = await _calls.get(name, MpvFormat.mpvFormatNode);
     return error < 0 ? null : value;
   }
 
@@ -386,7 +157,7 @@ mixin _FfiModule on _PlayerBase {
   Future<void> setRawProperty(String name, String value) async {
     _checkNotOwned(name, 'name');
     await _gate();
-    await _prop(name, value);
+    await _calls.prop(name, value);
   }
 
   /// Throws [ArgumentError] when [name] is a property the player owns:
@@ -446,10 +217,7 @@ mixin _FfiModule on _PlayerBase {
     // and `set`, `change-list`, `cycle` and the like write any property,
     // `af` and `pause` included. Skip the command prefixes (`no-osd`, …)
     // before looking.
-    var i = 0;
-    while (i < args.length && _kCommandPrefixes.contains(args[i])) {
-      i++;
-    }
+    final i = commandStart(args);
     if (i < args.length) {
       // mpv reads `_` in a command name as `-` (`change_list`).
       final command = args[i].replaceAll('_', '-');
@@ -479,12 +247,12 @@ mixin _FfiModule on _PlayerBase {
       }
     }
     await _gate();
-    final rc = await _command(args);
+    final rc = await _calls.command(args);
     if (rc < 0) {
       throw MpvCommandException(
         name: args.isEmpty ? '<empty>' : args.first,
         code: rc,
-        message: _errorString(rc),
+        message: _calls.errorString(rc),
       );
     }
   }
@@ -495,21 +263,6 @@ mixin _FfiModule on _PlayerBase {
   void setLogLevel(LogLevel level) {
     _checkNotDisposed();
     _pendingLogLevel = level;
-    if (_bringUpCompleted) _applyLogLevel(level);
-  }
-
-  @override
-  void _applyLogLevel(LogLevel level) {
-    if (_client.isClosed) return;
-    // `mpv_request_log_messages` is thread-safe and operates on the shared
-    // client handle the same way the main-thread getRawProperty path does,
-    // so there's no need to round-trip through the event isolate.
-    // [LogLevel.off] already maps to mpv's `no`.
-    using(
-      (arena) => _lib.mpvRequestLogMessages(
-        _handle,
-        level.mpvValue.toNativeUtf8(allocator: arena),
-      ),
-    );
+    if (_bringUpCompleted) _calls.requestLogMessages(level);
   }
 }

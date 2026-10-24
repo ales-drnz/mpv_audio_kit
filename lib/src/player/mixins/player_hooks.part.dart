@@ -157,7 +157,7 @@ mixin _HooksModule on _PlayerBase {
     // core: a pending event in `_hooks` means mpv is parked at the hook's
     // dispatch point waiting for exactly this call, so the lock is granted
     // immediately: the playloop cannot simultaneously be busy elsewhere.
-    _lib.mpvHookContinue(_handle, mpvId);
+    _calls.hookContinue(mpvId);
   }
 
   /// Installs [resolver] as the player's source resolver: the official

@@ -24,6 +24,7 @@ import '../events/player_error.dart';
 import '../events/player_exception.dart';
 import '../generated/audio_effects_settings.dart';
 import '../internals/audio_effects_validation.dart';
+import '../internals/core_calls.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/event_isolate.dart';
@@ -207,8 +208,8 @@ class Player extends _PlayerBase
     _mediaCache[resolved.uri] = media;
     await _forgetFdResume(resolved);
     // Execute in-flight transport writes (e.g. an un-awaited seek) before
-    // the replace below, so they apply to the OLD file; see [_settleWrites].
-    await _settleWrites();
+    // the replace below, so they apply to the OLD file; see [CoreCalls.settleWrites].
+    await _calls.settleWrites();
     if (load.superseded) {
       await resolved.dispose?.call();
       return;
@@ -225,7 +226,7 @@ class Player extends _PlayerBase
       return;
     }
     final playNow = _intendedPlay(intent, shouldPlay);
-    await _prop('pause', playNow ? 'no' : 'yes');
+    await _calls.prop('pause', playNow ? 'no' : 'yes');
     final opts = _buildLoadfileOptions(media);
     try {
       if (opts.isEmpty) {
@@ -251,14 +252,14 @@ class Player extends _PlayerBase
       await resolved.dispose?.call();
       if (_restoreIntent(load, intent, previousIntent) &&
           playNow != previousIntent) {
-        await _propRc('pause', previousIntent ? 'no' : 'yes');
+        await _calls.propRc('pause', previousIntent ? 'no' : 'yes');
       }
       rethrow;
     }
     // Asked again, not reused: a pause() called while the loadfile was in
     // flight has the last word.
     if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
-      await _prop('pause', 'no');
+      await _calls.prop('pause', 'no');
     }
     // Drop visible per-track state (cover art, chapter list and current
     // chapter index) so a UI that reads the state immediately after
@@ -359,8 +360,8 @@ class Player extends _PlayerBase
       rethrow;
     }
     // Execute in-flight transport writes before the replace: see
-    // [_settleWrites].
-    await _settleWrites();
+    // [CoreCalls.settleWrites].
+    await _calls.settleWrites();
     if (load.superseded) {
       for (final prior in resolved) {
         await prior.dispose?.call();
@@ -381,7 +382,7 @@ class Player extends _PlayerBase
       }
     }
 
-    await _command(['playlist-clear']);
+    await _calls.command(['playlist-clear']);
     if (load.superseded) return bailDisposing();
     final retainedCount =
         int.tryParse(await getRawProperty('playlist-count') ?? '') ?? 0;
@@ -399,7 +400,7 @@ class Player extends _PlayerBase
       parkedAtEof = await _parkedAtEof();
       if (load.superseded) return bailDisposing();
       if (parkedAtEof) {
-        await _command(['playlist-remove', '0']);
+        await _calls.command(['playlist-remove', '0']);
         if (load.superseded) return bailDisposing();
         // Barrier: wait for the core to actually reach idle before any
         // append. The remove's playback teardown runs asynchronously on
@@ -483,7 +484,7 @@ class Player extends _PlayerBase
       // [_heldSources] until they leave.
       if (!load.superseded) {
         _restoreIntent(load, intent, previousIntent);
-        await _command(['playlist-clear']);
+        await _calls.command(['playlist-clear']);
       }
       Error.throwWithStackTrace(failure.$1, failure.$2);
     }
@@ -500,21 +501,24 @@ class Player extends _PlayerBase
     // playing flow is mid-track. `playlist-play-index` sets
     // playlist->current straight to the target entry (mp_set_playlist_
     // entry): entries before it are never loaded or made current.
-    await _prop('pause', _intendedPlay(intent, shouldPlay) ? 'no' : 'yes');
+    await _calls.prop(
+      'pause',
+      _intendedPlay(intent, shouldPlay) ? 'no' : 'yes',
+    );
     final target = (retainedOld ? 1 : 0) + clampedIndex;
     // The parked flow went through idle, which does not spend the intent
     // while this call runs: see the idle-active observer.
-    await _commandChecked(['playlist-play-index', target.toString()]);
+    await _calls.commandChecked(['playlist-play-index', target.toString()]);
 
     // ── Phase 4: drop the retained old entry ──────────────────────────
     // Non-current by now (the jump moved current to the target), so the
     // removal is pure bookkeeping; indices shift down to their final
-    // positions. Tolerant `_command`: a concurrent surgery that already
-    // emptied position 0 must not surface as an openAll error.
+    // positions. Tolerant [CoreCalls.command]: a concurrent surgery that
+    // already emptied position 0 must not surface as an openAll error.
     if (retainedOld) {
       // The target plays from its source now: see the check after phase 2.
       if (load.superseded) return;
-      await _command(['playlist-remove', '0']);
+      await _calls.command(['playlist-remove', '0']);
     }
     // Clear per-track state AFTER the jump's reply; see [open] for why
     // the placement (post-reply) is what makes the clear the last word
@@ -565,8 +569,8 @@ class Player extends _PlayerBase
       return;
     }
     // Execute in-flight transport writes before the replace: see
-    // [_settleWrites].
-    await _settleWrites();
+    // [CoreCalls.settleWrites].
+    await _calls.settleWrites();
     if (load.superseded) {
       await resolved.dispose?.call();
       return;
@@ -579,9 +583,9 @@ class Player extends _PlayerBase
       return;
     }
     final playNow = _intendedPlay(intent, shouldPlay);
-    await _prop('pause', playNow ? 'no' : 'yes');
+    await _calls.prop('pause', playNow ? 'no' : 'yes');
     try {
-      await _commandChecked(['loadlist', resolved.uri, 'replace']);
+      await _calls.commandChecked(['loadlist', resolved.uri, 'replace']);
     } catch (_) {
       // mpv keeps the playlist it had when the list cannot be read, and the
       // track there goes on: the intent and the pause written above go back
@@ -589,7 +593,7 @@ class Player extends _PlayerBase
       // write, so the error the caller sees is the loadlist one.
       if (_restoreIntent(load, intent, previousIntent) &&
           playNow != previousIntent) {
-        await _propRc('pause', previousIntent ? 'no' : 'yes');
+        await _calls.propRc('pause', previousIntent ? 'no' : 'yes');
       }
       rethrow;
     } finally {
@@ -599,7 +603,7 @@ class Player extends _PlayerBase
     }
     // See [open]: asked again, a pause() during the loadlist wins.
     if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
-      await _prop('pause', 'no');
+      await _calls.prop('pause', 'no');
     }
     // Clear per-track state AFTER the replace's reply; see [open].
     _clearPerFileState();
@@ -620,7 +624,7 @@ class Player extends _PlayerBase
     // meanwhile.) An event is pending only once bring-up delivered it, so
     // the handle exists here.
     for (final mpvId in _hooks.takeAll()) {
-      _lib.mpvHookContinue(_handle, mpvId);
+      _calls.hookContinue(mpvId);
     }
     // Before the quit: an ended source wakes a reader blocked on it.
     _endPcmSources();
@@ -682,7 +686,7 @@ abstract class _PlayerBase {
         'auto-continuing to unblock mpv',
         level: LogLevel.warn,
       );
-      if (!_disposed) _lib.mpvHookContinue(_handle, mpvId);
+      if (!_disposed) _calls.hookContinue(mpvId);
     },
   );
 
@@ -703,12 +707,6 @@ abstract class _PlayerBase {
   // `on_load` outside it is the prefetch of the next entry, which mpv runs
   // while the current file plays, with no START_FILE.
   bool _loadingEntry = false;
-
-  // Counts the commands sent that move playlist indices (removes, moves,
-  // inserts, replacing loads, clears, shuffles, stop): mpv removes by
-  // index, so a read of the playlist names the right entry only if none
-  // went out after it (see [_PcmModule._cutPcm]).
-  int _playlistShifts = 0;
 
   // What the resolver gave for the prefetch of the next entry: the URL mpv
   // was about to open, the one it opened instead, and the load epoch then.
@@ -769,7 +767,7 @@ abstract class _PlayerBase {
   /// it off for one entry.
   Future<void> _forgetFdResume(ResolvedUri resolved) async {
     if (!isFdUri(resolved.uri)) return;
-    await _command(['delete-watch-later-config', resolved.uri]);
+    await _calls.command(['delete-watch-later-config', resolved.uri]);
   }
 
   /// Releases the held resources mpv has stopped reading.
@@ -922,40 +920,22 @@ abstract class _PlayerBase {
   // domain mixins can call across part boundaries: `on _PlayerBase` only
   // exposes what `_PlayerBase` itself declares.
 
-  /// See `_FfiModule` (player_ffi.part.dart). All writes ride the async
-  /// client API (`mpv_*_async`): the call enqueues on the core's dispatch
-  /// and the returned future completes when the event isolate forwards the
-  /// reply, so the main isolate never waits for the playloop (which can be
-  /// stalled for seconds inside audio-output init). Most setters update the
-  /// state once that reply confirms the write; the play-pause intent and
-  /// the settings bundles ([_writeBundle]) update it before the write.
-  Future<void> _prop(String name, String value);
-  Future<int> _propRc(String name, String value);
-  Future<int> _command(List<String> args);
+  /// See `_FfiModule` (player_ffi.part.dart).
   Future<void> _loadfile(List<String> args, Media media);
-  void _updatePlaylistFromNode(dynamic raw);
-  Future<void> _commandChecked(List<String> args);
-  Future<bool> _navigate(List<String> args);
-  void _applyLogLevel(LogLevel level);
-  Future<void> _writeBundle<T>(
-    List<(String, String, String)> writes,
-    ReactiveProperty<T> reactive,
-    PlayerState Function(PlayerState state, T value) put,
-    T next,
-    T previous,
-  );
-  Future<int?> _checkPlaylistIndex(int index, String name);
-  Future<int> _setChapterListNode(List<Chapter> chapters);
 
-  /// Async property read (see `_FfiModule`): enqueues
-  /// `mpv_get_property_async` and resolves with `(error, decodedValue)`
-  /// once the event isolate forwards the reply.
-  Future<(int, dynamic)> _getAsync(String name, int format);
-  String _errorString(int code);
+  /// See `_DispatchModule` (player_dispatch.part.dart).
+  void _updatePlaylistFromNode(dynamic raw);
 
   /// The async request and reply channel to libmpv, created at bring-up
   /// together with [_lib] and [_handle].
   late final MpvClient _client;
+
+  /// Every call to libmpv once the player runs, on top of [_client]. All
+  /// of them ride the async client API (`mpv_*_async`): the main isolate
+  /// never waits for the playloop. Most setters update the state once the
+  /// reply confirms the write; the play-pause intent and the settings
+  /// bundles ([CoreCalls.writeBundle]) update it before the write.
+  late final CoreCalls _calls;
 
   /// In-flight `registerHook` runs. `mpv_hook_add` locks the core and has no
   /// async variant, so it executes in a throwaway `Isolate.run` against the
@@ -1223,22 +1203,6 @@ abstract class _PlayerBase {
     }
   }
 
-  /// Completes when every write currently on the wire has been executed
-  /// (its reply forwarded, or settled by the dispose drain). Snapshot
-  /// semantics: writes enqueued after this call are not waited on.
-  ///
-  /// The synchronous client API implicitly guaranteed "previous request
-  /// EXECUTED before the next public call's request is issued"; with the
-  /// async API two requests can coalesce into one core dispatch drain and
-  /// interact: e.g. an un-awaited `seek` surviving a replace `loadfile`
-  /// (its `queue_seek` entry rides into the NEW file) instead of being
-  /// aborted by it. Content-replacing and playlist-navigation methods call
-  /// this right before their first write so earlier in-flight transport
-  /// commands are executed first, restoring the old inter-call semantics
-  /// while the main isolate stays free: under a stalled core the FUTURES
-  /// queue up, not the UI thread.
-  Future<void> _settleWrites() => _client.settleWrites();
-
   /// Rejects NaN, +Inf and -Inf before they reach `toStringAsFixed`,
   /// which would emit the literal `'NaN'` or `'Infinity'` and have mpv
   /// reject the property write at the FFI boundary. Catching it on the
@@ -1291,12 +1255,12 @@ abstract class _PlayerBase {
   /// `current-ao` is reported after `audio-output-state`.
   Future<void> _reportNullFallback() async {
     if (!_bringUpCompleted || _disposed) return;
-    final (rc, current) = await _getAsync(
+    final (rc, current) = await _calls.get(
       'current-ao',
       MpvFormat.mpvFormatString,
     );
     if (rc < 0 || current != 'null' || _disposed) return;
-    final (aoRc, ao) = await _getAsync('ao', MpvFormat.mpvFormatString);
+    final (aoRc, ao) = await _calls.get('ao', MpvFormat.mpvFormatString);
     if (aoRc < 0 || ao is! String || aoListHasNull(ao) || _disposed) return;
     _errorCtrl.add(nullOutputError);
   }
@@ -1386,7 +1350,7 @@ abstract class _PlayerBase {
       // confirmed exit below: destroying mid-syscall would crash libmpv.
       // Fire-and-forget: quit's reply may never be forwarded (the isolate is
       // about to stop): the drain below settles the dangling future.
-      unawaited(_command(['quit']));
+      unawaited(_calls.command(['quit']));
       _eventIsolate.requestStop(_lib, _handle);
       // The taps after the quit: their streams are the app's own, and
       // nothing a listener does may keep mpv alive. The analyzer-taps write

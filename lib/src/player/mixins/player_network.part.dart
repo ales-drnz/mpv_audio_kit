@@ -51,10 +51,9 @@ mixin _NetworkModule on _PlayerBase {
         previous.pauseInitial ? 'yes' : 'no',
       ),
     ];
-    await _writeBundle(
+    await _calls.writeBundle(
       writes,
-      _reactives.cache,
-      (s, v) => s.copyWith(cache: v),
+      (v) => _updateField((s) => s.copyWith(cache: v), _reactives.cache, v),
       settings,
       previous,
     );
@@ -70,7 +69,10 @@ mixin _NetworkModule on _PlayerBase {
   /// until that entry ends.
   Future<void> setAudioBuffer(Duration size) async {
     await _gate();
-    await _prop('audio-buffer', durationToSeconds(size).toStringAsFixed(6));
+    await _calls.prop(
+      'audio-buffer',
+      durationToSeconds(size).toStringAsFixed(6),
+    );
     _updateField(
       (s) => s.copyWith(audioBuffer: size),
       _reactives.audioBuffer,
@@ -83,7 +85,7 @@ mixin _NetworkModule on _PlayerBase {
   /// On Android the default `audiotrack` driver streams the silence.
   Future<void> setAudioStreamSilence(bool enable) async {
     await _gate();
-    await _prop('audio-stream-silence', enable ? 'yes' : 'no');
+    await _calls.prop('audio-stream-silence', enable ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(audioStreamSilence: enable),
       _reactives.audioStreamSilence,
@@ -112,7 +114,7 @@ mixin _NetworkModule on _PlayerBase {
     // mpv's `network-timeout` accepts a fractional second value (e.g.
     // "0.5"). Truncating with `inSeconds` would collapse any sub-second
     // duration to 0, which mpv interprets as "no timeout".
-    await _prop(
+    await _calls.prop(
       'network-timeout',
       durationToSeconds(timeout).toStringAsFixed(6),
     );
@@ -126,7 +128,7 @@ mixin _NetworkModule on _PlayerBase {
   /// Whether to verify TLS (SSL) certificates for network streams.
   Future<void> setTlsVerify(bool enable) async {
     await _gate();
-    await _prop('tls-verify', enable ? 'yes' : 'no');
+    await _calls.prop('tls-verify', enable ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(tlsVerify: enable),
       _reactives.tlsVerify,
@@ -148,7 +150,7 @@ mixin _NetworkModule on _PlayerBase {
   /// them, and always verify the certificate, whatever [setTlsVerify].
   Future<void> setTlsCaFile(String path) async {
     await _gate();
-    await _prop('tls-ca-file', path);
+    await _calls.prop('tls-ca-file', path);
     _updateField(
       (s) => s.copyWith(tlsCaFile: path),
       _reactives.tlsCaFile,
@@ -164,7 +166,7 @@ mixin _NetworkModule on _PlayerBase {
   /// `PlayerConfiguration.hlsBitrate`.
   Future<void> setHlsBitrate(HlsBitrate hlsBitrate) async {
     await _gate();
-    await _prop('hls-bitrate', hlsBitrate.mpvValue);
+    await _calls.prop('hls-bitrate', hlsBitrate.mpvValue);
     _updateField(
       (s) => s.copyWith(hlsBitrate: hlsBitrate),
       _reactives.hlsBitrate,
@@ -177,7 +179,7 @@ mixin _NetworkModule on _PlayerBase {
   /// Takes effect on the next load. Default `false`.
   Future<void> setCookies(bool enable) async {
     await _gate();
-    await _prop('cookies', enable ? 'yes' : 'no');
+    await _calls.prop('cookies', enable ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(cookies: enable),
       _reactives.cookies,
@@ -193,7 +195,7 @@ mixin _NetworkModule on _PlayerBase {
   /// ones tunnelled with `CONNECT`.
   Future<void> setHttpProxy(String url) async {
     await _gate();
-    await _prop('http-proxy', url);
+    await _calls.prop('http-proxy', url);
     _updateField((s) => s.copyWith(httpProxy: url), _reactives.httpProxy, url);
   }
 
@@ -225,10 +227,9 @@ mixin _NetworkModule on _PlayerBase {
         durationToSeconds(previous.readahead).toStringAsFixed(6),
       ),
     ];
-    await _writeBundle(
+    await _calls.writeBundle(
       writes,
-      _reactives.demuxer,
-      (s, v) => s.copyWith(demuxer: v),
+      (v) => _updateField((s) => s.copyWith(demuxer: v), _reactives.demuxer, v),
       settings,
       previous,
     );
@@ -240,7 +241,7 @@ mixin _NetworkModule on _PlayerBase {
   /// open.
   Future<void> setAudioNullUntimed(bool enable) async {
     await _gate();
-    await _prop('ao-null-untimed', enable ? 'yes' : 'no');
+    await _calls.prop('ao-null-untimed', enable ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(audioNullUntimed: enable),
       _reactives.audioNullUntimed,

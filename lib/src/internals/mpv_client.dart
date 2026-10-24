@@ -7,6 +7,7 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
 import '../mpv_bindings.dart';
+import 'mpv_requests.dart';
 import 'reply_tracker.dart';
 
 /// The player's asynchronous channel to libmpv: property writes, commands
@@ -16,7 +17,7 @@ import 'reply_tracker.dart';
 /// No call waits on the playloop, so the main isolate never blocks on a
 /// busy core. After [close] no call reaches libmpv: the handle is about to
 /// be freed, and a continuation resumed by the drain must not touch it.
-final class MpvClient {
+final class MpvClient implements MpvRequests {
   /// Creates a client for [handle], bound through [lib].
   MpvClient(this._lib, this._handle);
 
@@ -35,9 +36,10 @@ final class MpvClient {
   bool _closed = false;
 
   /// Whether [close] was called.
+  @override
   bool get isClosed => _closed;
 
-  /// Writes property [name] as a string. Resolves with mpv's rc.
+  @override
   Future<int> setProperty(String name, String value) {
     if (_closed) return Future.value(MpvError.mpvErrorSuccess);
     return _send(
@@ -56,29 +58,30 @@ final class MpvClient {
     ).then((reply) => reply.$1);
   }
 
-  /// Writes property [name] as the node [build] allocates in the arena;
-  /// mpv deep-copies it before the call returns. Resolves with mpv's rc.
-  Future<int> setNodeProperty(
-    String name,
-    Pointer<MpvNode> Function(Arena arena) build,
-  ) {
+  /// The node tree is built in an [Arena], and mpv deep-copies it before
+  /// the call returns (`m_option_copy` on the NODE option type), so every
+  /// allocation is freed on return. A value outside the shapes of
+  /// [MpvRequests.setNodeProperty] throws [ArgumentError].
+  @override
+  Future<int> setNodeProperty(String name, Object? value) {
     if (_closed) return Future.value(MpvError.mpvErrorSuccess);
     return _send(
       _writes,
-      (id) => using(
-        (arena) => _lib.mpvSetPropertyAsync(
+      (id) => using((arena) {
+        final node = arena<MpvNode>();
+        _fillNode(node, value, arena);
+        return _lib.mpvSetPropertyAsync(
           _handle,
           id,
           name.toNativeUtf8(allocator: arena),
           MpvFormat.mpvFormatNode,
-          build(arena).cast(),
-        ),
-      ),
+          node.cast(),
+        );
+      }),
     ).then((reply) => reply.$1);
   }
 
-  /// Runs command [args]. Resolves with mpv's rc and the command's decoded
-  /// result node (`loadfile` returns its `playlist_entry_id` there).
+  @override
   Future<(int, Object?)> command(List<String> args) {
     if (_closed) return Future.value((MpvError.mpvErrorSuccess, null));
     return _send(
@@ -94,8 +97,7 @@ final class MpvClient {
     );
   }
 
-  /// Reads property [name] in [format]. Resolves with mpv's rc and the
-  /// decoded value.
+  @override
   Future<(int, Object?)> getProperty(String name, int format) {
     if (_closed) return Future.value((MpvError.mpvErrorGeneric, null));
     return _send(
@@ -119,8 +121,7 @@ final class MpvClient {
   void onGetReply(int id, int error, Object? value) =>
       _reads.complete(id, error, value);
 
-  /// Completes when every write and command in flight now has executed.
-  /// Reads and later requests are not waited on.
+  @override
   Future<void> settleWrites() => _writes.settle();
 
   /// Stops every further call from reaching libmpv and resolves the
@@ -132,10 +133,29 @@ final class MpvClient {
     _reads.drain();
   }
 
-  /// mpv's description of error [code].
+  @override
   String errorString(int code) {
     final p = _lib.mpvErrorString(code);
     return p == nullptr ? 'error $code' : p.cast<Utf8>().toDartString();
+  }
+
+  @override
+  void hookContinue(int id) {
+    if (_closed) return;
+    _lib.mpvHookContinue(_handle, id);
+  }
+
+  /// `mpv_request_log_messages` is thread-safe and works on the shared
+  /// client handle, so it needs no round trip through the event isolate.
+  @override
+  void requestLogMessages(String level) {
+    if (_closed) return;
+    using(
+      (arena) => _lib.mpvRequestLogMessages(
+        _handle,
+        level.toNativeUtf8(allocator: arena),
+      ),
+    );
   }
 
   Future<(int, Object?)> _send(
@@ -156,4 +176,53 @@ final class MpvClient {
     if (rc < 0) tracker.reject(id, rc);
     return reply;
   }
+}
+
+/// Writes [value] into [node], allocating what it points to in [arena].
+void _fillNode(Pointer<MpvNode> node, Object? value, Arena arena) {
+  final n = node.ref;
+  switch (value) {
+    case null:
+      n.format = MpvFormat.mpvFormatNone;
+    case final bool b:
+      n.format = MpvFormat.mpvFormatFlag;
+      n.u.flag = b ? 1 : 0;
+    case final int i:
+      n.format = MpvFormat.mpvFormatInt64;
+      n.u.int64 = i;
+    case final double d:
+      n.format = MpvFormat.mpvFormatDouble;
+      n.u.double_ = d;
+    case final String s:
+      n.format = MpvFormat.mpvFormatString;
+      n.u.string = s.toNativeUtf8(allocator: arena);
+    case final List<Object?> list:
+      n.format = MpvFormat.mpvFormatNodeArray;
+      n.u.list = _nodeList(list, null, arena);
+    case final Map<String, Object?> map:
+      n.format = MpvFormat.mpvFormatNodeMap;
+      n.u.list = _nodeList(map.values.toList(), map.keys.toList(), arena);
+    default:
+      throw ArgumentError.value(value, 'value', 'not an mpv node value');
+  }
+}
+
+/// The node list of [values], with [keys] for a map (an array has none).
+/// An empty list points to no values.
+Pointer<MpvNodeList> _nodeList(
+  List<Object?> values,
+  List<String>? keys,
+  Arena arena,
+) {
+  final list = arena<MpvNodeList>();
+  list.ref.num = values.length;
+  list.ref.values = values.isEmpty ? nullptr : arena<MpvNode>(values.length);
+  list.ref.keys = keys == null || keys.isEmpty
+      ? nullptr
+      : arena<Pointer<Utf8>>(keys.length);
+  for (var i = 0; i < values.length; i++) {
+    _fillNode(list.ref.values + i, values[i], arena);
+    if (keys != null) list.ref.keys[i] = keys[i].toNativeUtf8(allocator: arena);
+  }
+  return list;
 }

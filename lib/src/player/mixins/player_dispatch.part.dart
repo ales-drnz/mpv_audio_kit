@@ -163,7 +163,7 @@ mixin _DispatchModule on _PlayerBase {
               EndFileError(
                 reason: typedReason,
                 code: error,
-                message: _errorString(error),
+                message: _calls.errorString(error),
               ),
             );
             // A terminal load failure parks mpv idle, but the idle-active
@@ -265,7 +265,7 @@ mixin _DispatchModule on _PlayerBase {
               'Update the Hook enum if mpv has added a new lifecycle phase.',
               level: LogLevel.warn,
             );
-            _lib.mpvHookContinue(_handle, id);
+            _calls.hookContinue(id);
             return;
           }
           final eventId = _hooks.add(id, name);
