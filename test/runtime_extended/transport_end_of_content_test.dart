@@ -85,8 +85,17 @@ void main() {
             Media(fixturePath),
             Media(fixturePath),
           ], play: true);
-          // Sample across the track1->track2 boundary but BEFORE track2 ends.
-          await Future<void>.delayed(const Duration(milliseconds: 1400));
+          // Sample across the track1->track2 boundary but BEFORE track2
+          // ends: until the second entry has played a little. A fixed time
+          // could close before the boundary on a slow start (F128). The
+          // upper bound keeps the first entry's last position out.
+          await waitUntil(
+            () =>
+                player.state.playlist.index == 1 &&
+                player.state.position > const Duration(milliseconds: 200) &&
+                player.state.position < const Duration(milliseconds: 800),
+            reason: 'playback never got into the second entry',
+          );
           await sub.cancel();
 
           expect(

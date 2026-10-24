@@ -119,48 +119,48 @@ void main() {
         timeout: const Timeout(Duration(seconds: 30)),
       );
 
-      test(
-        'prefetchCacheDuration stream is wired and never negative',
-        () async {
-          // `prefetch-cache-duration` reports how much of the next item the
-          // background prefetch has buffered ahead (pairs with prefetch-state
-          // for a determinate progress bar). Instant local-file prefetch
-          // can't be forced to a deterministic positive value, so we assert
-          // the weaker but still meaningful contract: the stream is
-          // subscribable and every emission that arrives is a valid,
-          // non-negative Duration — i.e. the double → Duration FFI path is
-          // wired end-to-end. Zero emissions is tolerated (a fast prefetch
-          // may never move the value off zero).
-          final seen = <Duration>[];
-          final sub = player.stream.prefetchCacheDuration.listen(seen.add);
+      test('prefetchCacheDuration stream reports the prefetch and is never '
+          'negative', () async {
+        // `prefetch-cache-duration` reports how much of the next item the
+        // background prefetch has buffered ahead (pairs with prefetch-state
+        // for a determinate progress bar). A local file is prefetched
+        // whole while the first entry plays, so mpv reports a positive
+        // value before the transition: without one the property never
+        // reached the stream (F131). The initial zero the stream replays
+        // on subscribe proves nothing.
+        final seen = <Duration>[];
+        final sub = player.stream.prefetchCacheDuration.listen(seen.add);
 
-          await player.setPrefetchPlaylist(true);
-          await player.openAll([
-            Media(fixturePath),
-            Media(fixturePath),
-          ], play: true);
-          // The prefetch of the second entry runs while the first plays.
-          await waitUntil(
-            () => player.state.playlist.index == 1,
-            timeout: const Duration(seconds: 10),
+        await player.setPrefetchPlaylist(true);
+        await player.openAll([
+          Media(fixturePath),
+          Media(fixturePath),
+        ], play: true);
+        // The prefetch of the second entry runs while the first plays.
+        await waitUntil(
+          () => player.state.playlist.index == 1,
+          timeout: const Duration(seconds: 10),
+        );
+
+        await sub.cancel();
+        await player.setPrefetchPlaylist(false);
+        await player.stop();
+
+        expect(
+          seen,
+          anyElement(greaterThan(Duration.zero)),
+          reason: 'the prefetched entry was never reported as buffered',
+        );
+        for (final d in seen) {
+          expect(
+            d,
+            greaterThanOrEqualTo(Duration.zero),
+            reason:
+                'prefetch-cache-duration must never report a negative '
+                'buffered-ahead duration',
           );
-
-          await sub.cancel();
-          await player.setPrefetchPlaylist(false);
-          await player.stop();
-
-          for (final d in seen) {
-            expect(
-              d,
-              greaterThanOrEqualTo(Duration.zero),
-              reason:
-                  'prefetch-cache-duration must never report a negative '
-                  'buffered-ahead duration',
-            );
-          }
-        },
-        timeout: const Timeout(Duration(seconds: 30)),
-      );
+        }
+      }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });
 }

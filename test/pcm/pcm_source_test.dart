@@ -499,9 +499,20 @@ void main() {
         return (s.toMedia(), WeakReference(s));
       }
 
+      // F206: the control, the same source whose media is dropped too. The
+      // churn must collect it, or the check below passes without a GC.
+      WeakReference<PcmSource> makeDropped() {
+        final s = PcmSource.create(_mono);
+        s.add(_ramp(0, 10));
+        s.toMedia();
+        return WeakReference(s);
+      }
+
       final (media, weak) = make();
+      final dropped = makeDropped();
       PcmSource.debugPoll();
-      await _churn(() => weak.target == null);
+      await _churn(() => dropped.target == null);
+      expect(dropped.target, isNull, reason: 'no GC ran during the churn');
       expect(weak.target, isNotNull, reason: 'the media still names it');
       expect(pcmLoadOptions(media.uri), isNotNull);
     });
