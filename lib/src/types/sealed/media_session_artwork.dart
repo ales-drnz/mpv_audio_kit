@@ -14,7 +14,8 @@ import '../../models/cover_art.dart';
 /// - [MediaSessionArtwork.uri]: an image at a URL, for streams whose file
 ///   carries no embedded cover (for example a transcoded server track).
 ///   An `http(s)://` URL is downloaded and only the image reaches the OS;
-///   a `file://` URL is opened by the native side.
+///   a `file://` URL is read by the package on iOS and macOS and opened by
+///   the native side elsewhere.
 /// - [MediaSessionArtwork.none]: no artwork. The OS shows its own
 ///   placeholder (typically the app icon).
 sealed class MediaSessionArtwork {
@@ -32,10 +33,10 @@ sealed class MediaSessionArtwork {
 
   /// Show the image at [uri], ignoring any embedded cover. An `http(s)://`
   /// URL never reaches the OS, since cover URLs often carry credentials:
-  /// on Android, Windows and Linux the package downloads it and hands the
-  /// native side the bytes, and the Apple plugin loads it with
-  /// `URLSession` and publishes only the image. A `file://` URL is passed
-  /// to the native side, which reads the file.
+  /// the package downloads it and hands the native side the bytes. A
+  /// `file://` URL is read by the package on iOS and macOS, whose Now
+  /// Playing takes an image, and passed to the native side elsewhere,
+  /// which reads the file. The package skips an image over 20 MB.
   ///
   /// [uri] must load without custom headers: an `http(s)://` URL (a
   /// tokenised query string is fine) or a `file://` path. For art behind

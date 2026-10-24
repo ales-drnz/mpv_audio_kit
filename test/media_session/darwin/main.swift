@@ -452,6 +452,35 @@ func runDetachRetiresTheOwnersEntry() {
   }
 }
 
+/// Artwork arrives as bytes only: Dart downloads a remote cover and reads
+/// a file:// one. The bytes publish it, metadata without them retires it,
+/// and a URL on its own publishes nothing.
+func runArtworkFromBytesOnly() {
+  scenario("artwork bytes publish the cover, their absence removes it") {
+    let h = Harness(); defer { h.reset() }
+    // A 1x1 PNG.
+    let png = Data(base64Encoded:
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")!
+    func artwork() -> Any? {
+      MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork]
+    }
+
+    var withArt = makeMetadata()
+    withArt["artworkBytes"] = FlutterStandardTypedData(bytes: png)
+    withArt["artworkMime"] = "image/png"
+    enable(h, metadata: withArt)
+    check(artwork() is MPMediaItemArtwork, "the bytes must publish the artwork")
+
+    h.call("updateMetadata", args: makeMetadata())
+    check(artwork() == nil, "metadata without bytes must remove the artwork")
+
+    var withUrl = makeMetadata()
+    withUrl["artworkUri"] = "file:///covers/a.png"
+    h.call("updateMetadata", args: withUrl)
+    check(artwork() == nil, "a URL alone must not publish artwork")
+  }
+}
+
 // ── Entry point ──────────────────────────────────────────────────────────
 
 print("=== MediaSessionPlugin renderer tests ===\n")
@@ -470,6 +499,7 @@ runDisableClearsNowPlaying()
 runNoTitlePoisonGuard()
 runNonOwnerDisableKeepsOwnerEntry()
 runDetachRetiresTheOwnersEntry()
+runArtworkFromBytesOnly()
 
 print("=== Summary ===")
 if failures.isEmpty {

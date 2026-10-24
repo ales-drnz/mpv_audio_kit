@@ -85,10 +85,6 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   // retaining a second copy of the bitmap.
   internal var artworkCacheKey: Data?
   internal var artworkCacheObject: MPMediaItemArtwork?
-  // The remote artwork URL currently resolved (or being fetched). Keys the
-  // async URLSession path so per-second playback pushes don't re-download,
-  // and lets a late fetch detect that the track moved on (stale → drop).
-  internal var artworkUrlKey: String?
 
   // Last published dict + state, for the dedup check in `publishNowPlaying`.
   internal var lastPublishedInfo: [String: Any]?
@@ -307,7 +303,6 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     currentPlayback = [:]
     frozenElapsed = nil
     artworkCacheKey = nil
-    artworkUrlKey = nil
     artworkCacheObject = nil
     lastPublishedInfo = nil
     lastPublishedPlaybackState = .unknown
@@ -694,68 +689,34 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       shuffleOn ? .items : .off
   }
 
+  /// The artwork from the image bytes Dart sends. Dart downloads a remote
+  /// cover and reads a `file://` one itself (artwork_fetcher.dart), so no
+  /// URL is loaded here.
   private func resolveArtwork() -> MPMediaItemArtwork? {
-    if let bytes = currentMetadata["artworkBytes"] as? FlutterStandardTypedData {
-      artworkUrlKey = nil  // leaving the URL path
-
-      // Cache by byte identity. The wrapper's bounds are declared at the
-      // image's true aspect ratio (longest edge capped at `artworkBoundsSide`)
-      // so the OS requests proportional sizes and non-square art isn't
-      // stretched; the closure downscales on demand and retains the decoded
-      // image, so the system can request lockscreen / Control Center /
-      // CarPlay / Watch sizes without a second copy of the bitmap.
-      if artworkCacheKey != bytes.data,
-         let image = PlatformImage(data: bytes.data)
-      {
-        artworkCacheKey = bytes.data
-        artworkCacheObject =
-          MPMediaItemArtwork(boundsSize: Self.boundsSize(for: image)) { size in
-            Self.resizedArtwork(image, to: size)
-          }
-      }
-      return artworkCacheObject
+    guard let bytes =
+            currentMetadata["artworkBytes"] as? FlutterStandardTypedData
+    else {
+      artworkCacheKey = nil
+      artworkCacheObject = nil
+      return nil
     }
 
-    // A URL the OS can't decode for us (unlike Android / Windows / Linux,
-    // MPNowPlayingInfoCenter needs a concrete image), so fetch it once via
-    // URLSession off the main thread and re-publish when it lands. Keyed by
-    // the URL string so the per-second playback pushes don't re-fetch.
-    if let urlString = currentMetadata["artworkUri"] as? String,
-       !urlString.isEmpty,
-       let url = URL(string: urlString)
+    // Cache by byte identity. The wrapper's bounds are declared at the
+    // image's true aspect ratio (longest edge capped at `artworkBoundsSide`)
+    // so the OS requests proportional sizes and non-square art isn't
+    // stretched; the closure downscales on demand and retains the decoded
+    // image, so the system can request lockscreen / Control Center /
+    // CarPlay / Watch sizes without a second copy of the bitmap.
+    if artworkCacheKey != bytes.data,
+       let image = PlatformImage(data: bytes.data)
     {
-      if artworkUrlKey != urlString {
-        artworkUrlKey = urlString
-        artworkCacheKey = nil
-        artworkCacheObject = nil  // until the fetch lands
-        fetchArtwork(from: url, key: urlString)
-      }
-      return artworkCacheObject
+      artworkCacheKey = bytes.data
+      artworkCacheObject =
+        MPMediaItemArtwork(boundsSize: Self.boundsSize(for: image)) { size in
+          Self.resizedArtwork(image, to: size)
+        }
     }
-
-    artworkCacheKey = nil
-    artworkUrlKey = nil
-    artworkCacheObject = nil
-    return nil
-  }
-
-  /// Downloads remote [url] artwork and, if the track hasn't changed by the
-  /// time it lands ([key] still current), caches the wrapper and re-publishes
-  /// so the lockscreen picks it up.
-  private func fetchArtwork(from url: URL, key: String) {
-    URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-      guard let data = data, let image = PlatformImage(data: data) else {
-        return
-      }
-      DispatchQueue.main.async {
-        guard let self = self, self.artworkUrlKey == key else { return }
-        self.artworkCacheObject =
-          MPMediaItemArtwork(boundsSize: Self.boundsSize(for: image)) { size in
-            Self.resizedArtwork(image, to: size)
-          }
-        if self.enabled { self.publishNowPlaying() }
-      }
-    }.resume()
+    return artworkCacheObject
   }
 
   /// The artwork's natural size scaled so its longest edge is at most

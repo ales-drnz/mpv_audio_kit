@@ -53,10 +53,13 @@ class MediaSessionController {
   final MediaSessionChannel _channel;
 
   /// Downloads `http(s)://` artwork so the OS gets the image bytes, not the
-  /// URL (Android, Windows and Linux, see [downloadsArtworkOn]); `null`
-  /// passes artwork URLs through to native, where the Apple plugin loads
-  /// them privately.
+  /// URL (see [downloadsArtworkOn]); `null` passes artwork URLs through to
+  /// native.
   final ArtworkFetcher? _artworkFetcher;
+
+  /// Whether `file://` artwork goes through [_artworkFetcher] too: on
+  /// Apple, whose plugin takes bytes only (see [readsArtworkFilesOn]).
+  final bool _fetchesFileArtwork;
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   StreamSubscription<MediaSessionCommand>? _commandSub;
@@ -74,7 +77,7 @@ class MediaSessionController {
   bool _flushScheduled = false;
   MediaSessionMetadataSnapshot? _lastMetadata;
 
-  // ── Remote artwork download (only with an [_artworkFetcher]) ────────
+  // ── Artwork download (only with an [_artworkFetcher]) ───────────────
   // The last downloaded URL and its result (`null` on failure), plus the
   // URL whose download is in flight. One cover at a time: a track change
   // simply supersedes the pending one.
@@ -103,6 +106,7 @@ class MediaSessionController {
     void Function()? onAudioOutputReset,
     MediaSessionChannel? channel,
     ArtworkFetcher? artworkFetcher,
+    bool fetchesFileArtwork = false,
     Duration artworkRetryAfter = const Duration(seconds: 30),
   }) : _artworkRetryAfter = artworkRetryAfter,
        _stateSnapshot = stateSnapshot,
@@ -110,7 +114,8 @@ class MediaSessionController {
        _onCommand = onCommand,
        _onAudioOutputReset = onAudioOutputReset,
        _channel = channel ?? MediaSessionChannel(),
-       _artworkFetcher = artworkFetcher;
+       _artworkFetcher = artworkFetcher,
+       _fetchesFileArtwork = fetchesFileArtwork;
 
   /// Wires the controller up and pushes the initial full state to the
   /// native side. Returns once the initial `enable` call has been
@@ -123,9 +128,9 @@ class MediaSessionController {
   /// [MediaSessionInputs] from raw [StreamController]s and drive
   /// arbitrary event sequences.
   ///
-  /// [artworkFetcher] defaults to [downloadArtwork] where the OS would
-  /// otherwise publish the artwork URL (see [downloadsArtworkOn]), and to
-  /// none on Apple, where the native side fetches it privately.
+  /// [artworkFetcher] defaults to [downloadArtwork] (see
+  /// [downloadsArtworkOn]). It gets `http(s)://` artwork everywhere, and
+  /// `file://` artwork on Apple (see [readsArtworkFilesOn]).
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
@@ -144,6 +149,7 @@ class MediaSessionController {
       artworkFetcher:
           artworkFetcher ??
           (downloadsArtworkOn(defaultTargetPlatform) ? downloadArtwork : null),
+      fetchesFileArtwork: readsArtworkFilesOn(defaultTargetPlatform),
       artworkRetryAfter: artworkRetryAfter,
     );
     try {
@@ -379,7 +385,7 @@ class MediaSessionController {
     final url = remote ? null : item?.uri;
 
     var artwork = _resolveArtwork(override, state.coverArt, extras);
-    if (_artworkFetcher != null && _isHttpUri(artwork.uri)) {
+    if (_artworkFetcher != null && _fetches(artwork.uri)) {
       artwork = (bytes: _downloadedArtwork(artwork.uri!), uri: null);
     }
 
@@ -414,10 +420,14 @@ class MediaSessionController {
     return scheme.isEmpty || scheme == 'file' || scheme.length == 1;
   }
 
-  static bool _isHttpUri(String? uri) {
+  /// Whether the artwork [uri] goes through [_artworkFetcher]: an
+  /// `http(s)://` URL everywhere, a `file://` one on Apple.
+  bool _fetches(String? uri) {
     if (uri == null) return false;
     final scheme = Uri.tryParse(uri)?.scheme.toLowerCase();
-    return scheme == 'http' || scheme == 'https';
+    return scheme == 'http' ||
+        scheme == 'https' ||
+        (scheme == 'file' && _fetchesFileArtwork);
   }
 
   /// Removes what could be credentials from a title mpv derived from a URL:
@@ -437,9 +447,9 @@ class MediaSessionController {
     return t.isEmpty ? null : t;
   }
 
-  /// The downloaded cover for the remote artwork [uri], or `null` while the
-  /// download is in flight or after it failed. Starts the download on first
-  /// sight of [uri]; its completion re-pushes metadata.
+  /// The cover loaded from the artwork [uri], or `null` while the load is
+  /// in flight or after it failed. Starts the load on first sight of [uri];
+  /// its completion re-pushes metadata.
   CoverArt? _downloadedArtwork(String uri) {
     if (uri == _fetchedArtUri) return _fetchedArt;
     if (uri != _pendingArtUri) {
@@ -482,8 +492,8 @@ class MediaSessionController {
   }
 
   /// Resolves the effective artwork into the two mutually-exclusive shapes the
-  /// snapshot carries: decoded [bytes] (embedded or custom) or a [uri] the
-  /// native side fetches itself.
+  /// snapshot carries: decoded [bytes] (embedded or custom) or a [uri], which
+  /// the fetcher loads or the native side opens.
   ///
   /// For the default [MediaSessionArtwork.embedded] the file's embedded cover
   /// wins; when it has none (the common case for a transcoded stream) we

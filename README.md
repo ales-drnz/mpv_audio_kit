@@ -2886,11 +2886,15 @@ MediaSessionArtwork.none                // no artwork
 Network URLs never reach the OS media session as text, since they often
 carry credentials in the query (Subsonic, Jellyfin, Plex). MPRIS on Linux
 gets `xesam:url` only for local files. A remote cover reaches the OS as an
-image. On Linux, Android and Windows the package downloads it in Dart: the
-download always verifies the server certificate, even when `tls-verify` is
-off for playback, trusts `tls-ca-file` on top of the system roots, refuses
-a redirect from `https` to plain `http`, and is tried at most 3 times. On iOS and macOS the system downloads it, with the
-system roots only.
+image, downloaded by the package in Dart on every platform. The download
+always verifies the server certificate, even when `tls-verify` is off for
+playback, trusts `tls-ca-file` on top of the system roots, refuses a
+redirect from `https` to plain `http`, skips an image over 20 MB, and is
+tried at most 3 times. On iOS and macOS it does not go through App
+Transport Security, so a plain `http` cover loads as on the other
+platforms. A `file://` cover is read by the package on iOS and macOS, with
+the same 20 MB limit, and opened by the native side on the other
+platforms.
 
 #### 14.4 Reacting to OS commands
 
