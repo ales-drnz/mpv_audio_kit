@@ -213,7 +213,8 @@ class MpvEventPropertyUnavailable extends MpvIsolateEvent {
 /// recursively-decoded tree: `Map<String, dynamic>` for `MPV_FORMAT_NODE_MAP`,
 /// `List<dynamic>` for `MPV_FORMAT_NODE_ARRAY`, a primitive (`String`, `int`,
 /// `double`, `bool`), `Uint8List` for `MPV_FORMAT_BYTE_ARRAY`, or `null` for
-/// `MPV_FORMAT_NONE`.
+/// an `MPV_FORMAT_NONE` node inside the tree. A property that is NONE
+/// itself arrives as [MpvEventPropertyUnavailable].
 class MpvEventPropertyNode extends MpvIsolateEvent {
   /// The mpv property name that changed.
   final String name;

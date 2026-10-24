@@ -5,11 +5,13 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
+
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
-import 'package:mpv_audio_kit/src/internals/build_mode.dart';
-import 'package:mpv_audio_kit/src/internals/debug_log.dart';
-import 'package:mpv_audio_kit/src/mpv_bindings.dart';
+
+import '../mpv_bindings.dart';
+import 'build_mode.dart';
+import 'debug_log.dart';
 
 /// Recovers libmpv handles leaked across a Flutter Hot-Restart.
 ///

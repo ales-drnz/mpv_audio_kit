@@ -24,7 +24,7 @@ mixin _AudioModule on _PlayerBase {
     _checkRange(volume, 0, double.maxFinite, 'volume');
     await _gate();
     final value = canonicalFloat(volume);
-    await _prop('volume', value.toString());
+    await _calls.prop('volume', value.toString());
     _updateField((s) => s.copyWith(volume: value), _reactives.volume, value);
   }
 
@@ -33,7 +33,7 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setRate(double rate) async {
     _checkRange(rate, 0.01, 100, 'rate');
     await _gate();
-    await _prop('speed', rate.toString());
+    await _calls.prop('speed', rate.toString());
     _updateField((s) => s.copyWith(rate: rate), _reactives.rate, rate);
   }
 
@@ -42,14 +42,14 @@ mixin _AudioModule on _PlayerBase {
   Future<void> setPitch(double pitch) async {
     _checkRange(pitch, 0.01, 100, 'pitch');
     await _gate();
-    await _prop('pitch', pitch.toString());
+    await _calls.prop('pitch', pitch.toString());
     _updateField((s) => s.copyWith(pitch: pitch), _reactives.pitch, pitch);
   }
 
   /// Mutes or unmutes audio output.
   Future<void> setMute(bool mute) async {
     await _gate();
-    await _prop('mute', mute ? 'yes' : 'no');
+    await _calls.prop('mute', mute ? 'yes' : 'no');
     _updateField((s) => s.copyWith(mute: mute), _reactives.mute, mute);
   }
 
@@ -61,7 +61,7 @@ mixin _AudioModule on _PlayerBase {
   /// the `name` only.
   Future<void> setAudioDevice(Device device) async {
     await _gate();
-    await _prop('audio-device', device.name);
+    await _calls.prop('audio-device', device.name);
     _updateActiveAudioDevice(device.name);
   }
 
@@ -70,7 +70,7 @@ mixin _AudioModule on _PlayerBase {
   /// default. When disabled, raising the rate also raises the pitch.
   Future<void> setPitchCorrection(bool enable) async {
     await _gate();
-    await _prop('audio-pitch-correction', enable ? 'yes' : 'no');
+    await _calls.prop('audio-pitch-correction', enable ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(pitchCorrection: enable),
       _reactives.pitchCorrection,
@@ -89,7 +89,10 @@ mixin _AudioModule on _PlayerBase {
   /// Sent to mpv in seconds with six decimals, so microseconds are kept.
   Future<void> setAudioDelay(Duration delay) async {
     await _gate();
-    await _prop('audio-delay', durationToSeconds(delay).toStringAsFixed(6));
+    await _calls.prop(
+      'audio-delay',
+      durationToSeconds(delay).toStringAsFixed(6),
+    );
     _updateField(
       (s) => s.copyWith(audioDelay: delay),
       _reactives.audioDelay,
@@ -102,7 +105,7 @@ mixin _AudioModule on _PlayerBase {
   /// without gapless, a new value holds only until that entry ends.
   Future<void> setGapless(Gapless gapless) async {
     await _gate();
-    await _prop('gapless-audio', gapless.mpvValue);
+    await _calls.prop('gapless-audio', gapless.mpvValue);
     _updateField(
       (s) => s.copyWith(gapless: gapless),
       _reactives.gapless,
@@ -143,10 +146,13 @@ mixin _AudioModule on _PlayerBase {
         previous.fallback.toString(),
       ),
     ];
-    await _writeBundle(
+    await _calls.writeBundle(
       writes,
-      _reactives.replayGain,
-      (s, v) => s.copyWith(replayGain: v),
+      (v) => _updateField(
+        (s) => s.copyWith(replayGain: v),
+        _reactives.replayGain,
+        v,
+      ),
       settings,
       previous,
     );
@@ -164,7 +170,7 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
     final value = canonicalFloat(gainDb);
-    await _prop('volume-gain', value.toString());
+    await _calls.prop('volume-gain', value.toString());
     _updateField(
       (s) => s.copyWith(volumeGain: value),
       _reactives.volumeGain,
@@ -181,7 +187,7 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
     final value = canonicalFloat(gainDb);
-    await _prop('volume-gain-min', value.toString());
+    await _calls.prop('volume-gain-min', value.toString());
     _updateField(
       (s) => s.copyWith(volumeGainMin: value),
       _reactives.volumeGainMin,
@@ -198,7 +204,7 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(gainDb, 'gainDb');
     await _gate();
     final value = canonicalFloat(gainDb);
-    await _prop('volume-gain-max', value.toString());
+    await _calls.prop('volume-gain-max', value.toString());
     _updateField(
       (s) => s.copyWith(volumeGainMax: value),
       _reactives.volumeGainMax,
@@ -226,7 +232,7 @@ mixin _AudioModule on _PlayerBase {
     _checkRange(volume, 0, 100, 'volume');
     await _gate();
     final value = canonicalFloat(volume);
-    final rc = await _propRc('ao-volume', value.toString());
+    final rc = await _calls.propRc('ao-volume', value.toString());
     if (rc >= 0) {
       _updateField(
         (s) => s.copyWith(systemVolume: value),
@@ -245,7 +251,7 @@ mixin _AudioModule on _PlayerBase {
   /// iOS, Android).
   Future<void> setSystemMute(bool mute) async {
     await _gate();
-    final rc = await _propRc('ao-mute', mute ? 'yes' : 'no');
+    final rc = await _calls.propRc('ao-mute', mute ? 'yes' : 'no');
     if (rc >= 0) {
       _updateField(
         (s) => s.copyWith(systemMute: mute),
@@ -267,7 +273,7 @@ mixin _AudioModule on _PlayerBase {
     _checkFinite(limit, 'limit');
     await _gate();
     final value = canonicalFloat(limit);
-    await _prop('volume-max', value.toString());
+    await _calls.prop('volume-max', value.toString());
     _updateField(
       (s) => s.copyWith(volumeMax: value),
       _reactives.volumeMax,
@@ -297,7 +303,7 @@ mixin _AudioModule on _PlayerBase {
   /// Other drivers ignore it.
   Future<void> setAudioExclusive(bool exclusive) async {
     await _gate();
-    await _prop('audio-exclusive', exclusive ? 'yes' : 'no');
+    await _calls.prop('audio-exclusive', exclusive ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(audioExclusive: exclusive),
       _reactives.audioExclusive,
@@ -313,7 +319,7 @@ mixin _AudioModule on _PlayerBase {
   /// volume do not change. Other drivers ignore it.
   Future<void> setAudioMediaRole(bool enable) async {
     await _gate();
-    await _prop('audio-set-media-role', enable ? 'yes' : 'no');
+    await _calls.prop('audio-set-media-role', enable ? 'yes' : 'no');
     _updateField(
       (s) => s.copyWith(audioMediaRole: enable),
       _reactives.audioMediaRole,
@@ -338,7 +344,7 @@ mixin _AudioModule on _PlayerBase {
   /// a short gap.
   Future<void> setAudioSpdif(Set<Spdif> codecs) async {
     await _gate();
-    await _prop('audio-spdif', Spdif.formatMpvList(codecs));
+    await _calls.prop('audio-spdif', Spdif.formatMpvList(codecs));
     _updateField(
       (s) => s.copyWith(audioSpdif: codecs),
       _reactives.audioSpdif,
@@ -357,7 +363,7 @@ mixin _AudioModule on _PlayerBase {
   /// (no optimistic update: mpv may reject an unknown id).
   Future<void> setAudioTrack(Track track) async {
     await _gate();
-    await _prop('aid', track.mpvValue);
+    await _calls.prop('aid', track.mpvValue);
   }
 
   /// Loads an external audio file as an additional selectable track on the
@@ -386,35 +392,37 @@ mixin _AudioModule on _PlayerBase {
     // that is no longer playing (see [Player.open]).
     final load = _snapshotLoad();
     await _gate();
-    final resolved = await resolveUri(file.uri);
-    if (load.superseded) {
-      await resolved.dispose?.call();
-      return;
-    }
-    final args = <String>[
-      'audio-add',
-      resolved.uri,
-      select ? 'select' : 'auto',
-    ];
-    // mpv's args are positional: to pass `lang` you must also pass `title`.
-    if (title != null || lang != null) args.add(title ?? '');
-    if (lang != null) args.add(lang);
-    // An Android content:// URI arrives as an fd:// descriptor that mpv
-    // never closes: held until the file the track joins ends.
-    final dispose = resolved.dispose;
-    final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
-    var rc = -1;
+    final source = OwnedSource(await resolveUri(file.uri));
+    // The call's to release until the track takes it over.
     try {
-      rc = await _command(args);
+      if (load.superseded) return;
+      final args = <String>[
+        'audio-add',
+        source.uri,
+        select ? 'select' : 'auto',
+      ];
+      // mpv's args are positional: to pass `lang` you must also pass `title`.
+      if (title != null || lang != null) args.add(title ?? '');
+      if (lang != null) args.add(lang);
+      // An Android content:// URI arrives as an fd:// descriptor that mpv
+      // never closes: held until the file the track joins ends.
+      final dispose = source.handOver();
+      final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
+      var rc = -1;
+      try {
+        rc = await _calls.command(args);
+      } finally {
+        await settle?.call(rc >= 0);
+      }
+      if (rc < 0) {
+        throw MpvCommandException(
+          name: 'audio-add',
+          code: rc,
+          message: _calls.errorString(rc),
+        );
+      }
     } finally {
-      await settle?.call(rc >= 0);
-    }
-    if (rc < 0) {
-      throw MpvCommandException(
-        name: 'audio-add',
-        code: rc,
-        message: _errorString(rc),
-      );
+      await source.release();
     }
   }
 
@@ -441,7 +449,7 @@ mixin _AudioModule on _PlayerBase {
       );
     }
     await _gate();
-    await _commandChecked(
+    await _calls.commandChecked(
       track is TrackId
           ? ['audio-remove', '${track.trackId}']
           : ['audio-remove'],
@@ -451,7 +459,7 @@ mixin _AudioModule on _PlayerBase {
   /// Forcibly reloads the audio output.
   Future<void> reloadAudio() async {
     await _gate();
-    await _commandChecked(['ao-reload']);
+    await _calls.commandChecked(['ao-reload']);
   }
 
   /// Re-scans the external files next to the current file: mpv's
@@ -465,7 +473,7 @@ mixin _AudioModule on _PlayerBase {
   /// only; a cover image does not reach [PlayerStream.coverArt].
   Future<void> rescanExternalFiles({bool keepSelection = false}) async {
     await _gate();
-    await _commandChecked([
+    await _calls.commandChecked([
       'rescan-external-files',
       keepSelection ? 'keep-selection' : 'reselect',
     ]);
@@ -606,7 +614,13 @@ mixin _AudioModule on _PlayerBase {
       // the replies land.
       final rcs = <Future<int>>[
         for (final c in cmds)
-          _command(['af-command', c.label, c.option, c.value, c.filterName]),
+          _calls.command([
+            'af-command',
+            c.label,
+            c.option,
+            c.value,
+            c.filterName,
+          ]),
       ];
       if (cmds.isNotEmpty) _afDiffsSent++;
       settled = _settleAfCommands(_afSettled, rcs, effects, previous);
@@ -634,14 +648,14 @@ mixin _AudioModule on _PlayerBase {
   /// property instead succeeds once the string parses and drops a failed
   /// rebuild silently. Resolves with mpv's rc.
   Future<int> _setAfChain(String chain) {
-    final reply = _command(['af', 'set', chain]);
+    final reply = _calls.command(['af', 'set', chain]);
     _afWritesInFlight++;
     // Queued right behind the write: mpv runs the two in order, so the
     // read sees the chain the write left, refused or not, unless a file
     // started in between and its resume point set `af`.
     final starts = _fileStarts;
     unawaited(
-      _getAsync('af', MpvFormat.mpvFormatString).then((r) {
+      _calls.get('af', MpvFormat.mpvFormatString).then((r) {
         final (rc, af) = r;
         _afHeld = rc >= 0 && af is String && starts == _fileStarts ? af : null;
       }),
@@ -669,7 +683,7 @@ mixin _AudioModule on _PlayerBase {
   }
 
   Future<void> _reassertAfChainFor(int starts) async {
-    final (rc, af) = await _getAsync('af', MpvFormat.mpvFormatString);
+    final (rc, af) = await _calls.get('af', MpvFormat.mpvFormatString);
     // A newer load checks for itself.
     if (rc < 0 || _disposed || starts != _fileStarts || af == _afHeld) return;
     final sent = _afDiffsSent;
@@ -678,7 +692,7 @@ mixin _AudioModule on _PlayerBase {
     if (setRc < 0) {
       _internalLog(
         'Restoring the effects chain over a resume point failed: '
-        '${_errorString(setRc)}',
+        '${_calls.errorString(setRc)}',
         level: LogLevel.debug,
       );
       return;
@@ -704,7 +718,7 @@ mixin _AudioModule on _PlayerBase {
         if (rc < 0) {
           _internalLog(
             'Rewriting the effects chain after a reset failed: '
-            '${_errorString(rc)}',
+            '${_calls.errorString(rc)}',
             level: LogLevel.debug,
           );
           return;
@@ -729,7 +743,11 @@ mixin _AudioModule on _PlayerBase {
       );
       _resyncStaleAfChain();
     }
-    throw MpvCommandException(name: 'af', code: rc, message: _errorString(rc));
+    throw MpvCommandException(
+      name: 'af',
+      code: rc,
+      message: _calls.errorString(rc),
+    );
   }
 
   /// Awaits the diff's replies. The diff was computed against [previous]:
@@ -839,7 +857,7 @@ mixin _AudioModule on _PlayerBase {
   /// cover bytes, whatever this setting.
   Future<void> setCoverArtAuto(Cover cover) async {
     await _gate();
-    await _prop('cover-art-auto', cover.mpvValue);
+    await _calls.prop('cover-art-auto', cover.mpvValue);
     _updateField(
       (s) => s.copyWith(coverArtAuto: cover),
       _reactives.coverArtAuto,
@@ -856,7 +874,7 @@ mixin _AudioModule on _PlayerBase {
   /// ([setAudioSpdif]) ignores it.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
-    await _prop('audio-samplerate', rate.toString());
+    await _calls.prop('audio-samplerate', rate.toString());
     _updateField(
       (s) => s.copyWith(audioSampleRate: rate),
       _reactives.audioSampleRate,
@@ -876,7 +894,7 @@ mixin _AudioModule on _PlayerBase {
   /// short gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioFormat(Format format) async {
     await _gate();
-    await _prop('audio-format', format.mpvValue);
+    await _calls.prop('audio-format', format.mpvValue);
     _updateField(
       (s) => s.copyWith(audioFormat: format),
       _reactives.audioFormat,
@@ -891,7 +909,7 @@ mixin _AudioModule on _PlayerBase {
   /// gap. A track in passthrough ([setAudioSpdif]) ignores it.
   Future<void> setAudioChannels(Channels channels) async {
     await _gate();
-    await _prop('audio-channels', channels.mpvValue);
+    await _calls.prop('audio-channels', channels.mpvValue);
     _updateField(
       (s) => s.copyWith(audioChannels: channels),
       _reactives.audioChannels,
@@ -902,7 +920,7 @@ mixin _AudioModule on _PlayerBase {
   /// Sets the audio client name.
   Future<void> setAudioClientName(String name) async {
     await _gate();
-    await _prop('audio-client-name', name);
+    await _calls.prop('audio-client-name', name);
     _updateField(
       (s) => s.copyWith(audioClientName: name),
       _reactives.audioClientName,
@@ -926,7 +944,7 @@ mixin _AudioModule on _PlayerBase {
     // 'auto' is a convenience alias for mpv's empty-string auto-probe;
     // the literal string 'auto' is not a valid AO backend.
     final ao = driver == 'auto' ? '' : driver;
-    await _prop('ao', ao);
+    await _calls.prop('ao', ao);
     _updateField(
       (s) => s.copyWith(audioDriver: ao),
       _reactives.audioDriver,

@@ -33,7 +33,7 @@ mixin _PlaybackModule on _PlayerBase {
     // is already out, and an unpause written now would undo it.
     if (intent != _intentEpoch) return;
     if (parked) {
-      await _command(['seek', '0', 'absolute']);
+      await _calls.command(['seek', '0', 'absolute']);
       // A seek that landed has left EOF by the next read: the seek wakes
       // the core, which runs it before it serves another request. Still at
       // EOF on a source that cannot seek, it failed. The unpause would only
@@ -50,14 +50,14 @@ mixin _PlaybackModule on _PlayerBase {
         return;
       }
       if (intent != _intentEpoch) return;
-      await _prop('pause', 'no');
+      await _calls.prop('pause', 'no');
       // A park read still on its way when this call began (the park had
       // just happened) clears the intent on arrival; by now it has
       // arrived, so the intent of this call is set again.
       if (intent == _intentEpoch) _writeIntent(true);
       return;
     }
-    await _prop('pause', 'no');
+    await _calls.prop('pause', 'no');
     // Idle with nothing to play (before any open, after stop or a failed
     // load): the unpause only arms the next load, nothing plays now. Not
     // while a load is running, which is about to give the core content.
@@ -74,7 +74,7 @@ mixin _PlaybackModule on _PlayerBase {
   Future<void> pause() async {
     await _gate();
     _claimIntent(false);
-    await _prop('pause', 'yes');
+    await _calls.prop('pause', 'yes');
   }
 
   /// Writes mpv's "watch later" resume config for the current file, saving the
@@ -100,7 +100,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// [PlayerStream.internalLog].
   Future<void> writeResumeConfig() async {
     await _gate();
-    final (rc, path) = await _getAsync('path', MpvFormat.mpvFormatString);
+    final (rc, path) = await _calls.get('path', MpvFormat.mpvFormatString);
     if (rc >= 0 && path is String && isFdUri(path)) {
       _internalLog(
         'No resume point for $path: a descriptor number names another '
@@ -108,7 +108,7 @@ mixin _PlaybackModule on _PlayerBase {
       );
       return;
     }
-    await _commandChecked(['write-watch-later-config']);
+    await _calls.commandChecked(['write-watch-later-config']);
   }
 
   /// Deletes the "watch later" resume config for the current file, or for
@@ -119,7 +119,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// which keys the resume point.
   Future<void> deleteResumeConfig({String? filename}) async {
     await _gate();
-    await _command(
+    await _calls.command(
       filename == null
           ? ['delete-watch-later-config']
           : ['delete-watch-later-config', await loadedName(filename)],
@@ -139,13 +139,13 @@ mixin _PlaybackModule on _PlayerBase {
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.
     _claimIntent(false);
-    // Execute in-flight transport writes first; see [_settleWrites].
-    await _settleWrites();
-    await _commandChecked(['stop']);
+    // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
+    await _calls.settleWrites();
+    await _calls.commandChecked(['stop']);
     // mpv clears its playlist on stop but reports the change only when a
     // file was playing. Idle (after a failed load) it stays silent, so the
     // state would keep the old entries and the live sources they hold.
-    final (rc, node) = await _getAsync('playlist', MpvFormat.mpvFormatNode);
+    final (rc, node) = await _calls.get('playlist', MpvFormat.mpvFormatNode);
     if (rc >= 0 && node is List && !_disposed) _updatePlaylistFromNode(node);
   }
 
@@ -178,7 +178,7 @@ mixin _PlaybackModule on _PlayerBase {
         ? 0.0
         : durationToSeconds(position);
     final mode = relative ? 'relative' : 'absolute';
-    await _commandChecked([
+    await _calls.commandChecked([
       'seek',
       secs.toStringAsFixed(6),
       exact ? '$mode+exact' : mode,
@@ -198,7 +198,7 @@ mixin _PlaybackModule on _PlayerBase {
     _checkFinite(percent, 'percent');
     await _gate();
     final mode = relative ? 'relative-percent' : 'absolute-percent';
-    await _commandChecked([
+    await _calls.commandChecked([
       'seek',
       percent.toStringAsFixed(4),
       exact ? '$mode+exact' : mode,
@@ -216,7 +216,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// undo yet, for example right after it loaded.
   Future<void> revertSeek() async {
     await _gate();
-    await _commandChecked(['revert-seek']);
+    await _calls.commandChecked(['revert-seek']);
   }
 
   /// Jumps to the chapter at [index] in the current file.
@@ -230,7 +230,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// event confirms it.
   Future<void> setChapter(int index) async {
     await _gate();
-    await _prop('chapter', index.toString());
+    await _calls.prop('chapter', index.toString());
     _updateField(
       (s) => s.copyWith(currentChapter: index),
       _reactives.currentChapter,
@@ -259,17 +259,17 @@ mixin _PlaybackModule on _PlayerBase {
   /// the list in time order. The state takes the list mpv kept.
   Future<void> setChapters(List<Chapter> chapters) async {
     await _gate();
-    final rc = await _setChapterListNode(chapters);
+    final rc = await _calls.setChapterList(chapters);
     if (rc < 0) {
       throw MpvCommandException(
         name: 'chapter-list',
         code: rc,
-        message: _errorString(rc),
+        message: _calls.errorString(rc),
       );
     }
     // Read back what mpv kept: its observer reports nothing when that
     // equals its list before the write.
-    final (readRc, node) = await _getAsync(
+    final (readRc, node) = await _calls.get(
       'chapter-list',
       MpvFormat.mpvFormatNode,
     );
@@ -295,7 +295,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// plays on past B.
   Future<void> setAbLoopA(Duration? position) async {
     await _gate();
-    await _prop(
+    await _calls.prop(
       'ab-loop-a',
       position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
     );
@@ -310,7 +310,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// belongs to the current file. See [setAbLoopA].
   Future<void> setAbLoopB(Duration? position) async {
     await _gate();
-    await _prop(
+    await _calls.prop(
       'ab-loop-b',
       position == null ? 'no' : durationToSeconds(position).toStringAsFixed(6),
     );
@@ -331,7 +331,10 @@ mixin _PlaybackModule on _PlayerBase {
       throw ArgumentError.value(count, 'count', 'must be null (= inf) or >= 0');
     }
     await _gate();
-    await _prop('ab-loop-count', count == null ? 'inf' : count.toString());
+    await _calls.prop(
+      'ab-loop-count',
+      count == null ? 'inf' : count.toString(),
+    );
     _updateField(
       (s) => s.copyWith(abLoopCount: count),
       _reactives.abLoopCount,

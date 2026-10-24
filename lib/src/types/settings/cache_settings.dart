@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:mpv_audio_kit/src/types/enums/cache.dart';
+import '../enums/cache.dart';
 
 /// Aggregate of mpv's six cache properties (`cache`, `cache-secs`,
 /// `cache-on-disk`, `cache-pause`, `cache-pause-wait`, `cache-pause-initial`).

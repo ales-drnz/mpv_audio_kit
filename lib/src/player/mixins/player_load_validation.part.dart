@@ -35,9 +35,10 @@ mixin _LoadValidationModule on _PlayerBase {
 /// `httpHeaders`, `httpChunkSize`, `demuxerLavfOptions`, `start` and `end`, and
 /// the raw audio demuxer of a live PCM source. Each value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
-/// inside it: hence the rejection of CR, LF, `,` and NUL in keys and
-/// values (and `:` in keys) by [_validateHeaderKey] and
-/// [_validateHeaderValue].
+/// inside it. The headers still refuse some characters
+/// ([_validateHeaderKey], [_validateHeaderValue]): `,`, since
+/// `http-header-fields` is itself a comma-separated list; CR, LF and NUL,
+/// which would inject into the HTTP request; and `:` in keys.
 /// Returns `''` when the media carries none.
 @visibleForTesting
 String loadfileOptions(Media media) {

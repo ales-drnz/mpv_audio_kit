@@ -16,7 +16,7 @@ import 'dsp_async_io.dart';
 /// Real-time FFT + raw PCM pipeline backed by the mpv `pcm-tap-frame`
 /// property.
 ///
-/// Owns two broadcast streams ([spectrumStream], [pcmStream]) and a
+/// Owns two broadcast streams ([fftStream], [pcmStream]) and a
 /// poll loop that reads `pcm-tap-frame` with an async get at the
 /// configured emit rate. The poll loop is **lazy**: it starts on the
 /// first listener (to either stream) and stops on the last cancel.

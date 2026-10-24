@@ -8,7 +8,8 @@
 import 'dart:async';
 import 'dart:io';
 
-/// An answer that another attempt cannot change (a 404, a 403).
+/// An HTTP answer that ends the download: a status other than 200 below
+/// 500 (a 404, a 403), or a 5xx still failing after the last attempt.
 class DownloadRefused implements Exception {
   /// The refusal of [url] with [statusCode].
   DownloadRefused(this.statusCode, this.url);
@@ -31,7 +32,8 @@ class DownloadRefused implements Exception {
 /// [connectTimeout], or a body that sends nothing for [idleTimeout], counts
 /// as a network failure, and a network failure (or a 5xx answer) is tried
 /// again, up to [attempts] times in all, waiting [backoff] and then twice
-/// as long. Any other HTTP status fails at once with [DownloadRefused].
+/// as long. A 5xx after the last attempt throws [DownloadRefused], and any
+/// other HTTP status throws it at once.
 Future<void> download(
   String url,
   File target, {

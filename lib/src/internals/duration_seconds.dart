@@ -21,7 +21,7 @@ Duration secondsToDuration(double seconds) =>
     Duration(microseconds: (seconds * 1e6).round());
 
 /// Converts a [Duration] back into fractional seconds for mpv property
-/// strings. Returns a [double] suitable for `toStringAsFixed(3)` etc.
+/// strings. Returns a [double] suitable for `toStringAsFixed(6)`.
 double durationToSeconds(Duration d) => d.inMicroseconds / 1e6;
 
 /// [d] in seconds for an mpv option string: 3 decimals when that is exact,

@@ -28,7 +28,7 @@ extension _IntentAxis on _PlayerBase {
   /// mpv left idle can come after the loads end.
   Future<void> _settleIdleReset() async {
     if (_disposed) return;
-    final (rc, idle) = await _getAsync(
+    final (rc, idle) = await _calls.get(
       'idle-active',
       MpvFormat.mpvFormatString,
     );

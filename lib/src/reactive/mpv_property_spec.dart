@@ -122,10 +122,9 @@ class MpvPropertySpec<T> {
   /// passed to [parse] is a Dart-native tree (`Map<String, dynamic>`,
   /// `List<dynamic>`, scalar, or `null`) decoded by the event isolate from
   /// mpv's `mpv_node` recursive struct. Use this for properties mpv exposes
-  /// natively as structured data (`playlist`, `metadata`,
-  /// `audio-device-list`, `audio-params`, `audio-out-params`,
-  /// `demuxer-cache-state`, `track-list`) instead of observing them as
-  /// strings and parsing JSON in Dart.
+  /// natively as structured data (`audio-params`, `audio-out-params`,
+  /// `track-list`, `chapter-list`) instead of observing them as strings and
+  /// parsing JSON in Dart.
   factory MpvPropertySpec.node({
     required String name,
     required ReactiveProperty<T> reactive,
@@ -143,8 +142,7 @@ class MpvPropertySpec<T> {
     unavailable: unavailable,
   );
 
-  /// The mpv property name passed to `mpv_observe_property` and
-  /// `mpv_set_property`.
+  /// The mpv property name passed to `mpv_observe_property`.
   final String name;
 
   /// One of the [MpvFormat] integer constants. Selects the wire format used
