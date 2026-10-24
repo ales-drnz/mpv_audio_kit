@@ -6,7 +6,7 @@
 # Native test runner for the Apple (macOS + iOS) MediaSessionPlugin.
 #
 # What it does:
-#   1. Compiles `darwin/Sources/mpv_audio_kit/MediaSessionPlugin.swift`
+#   1. Compiles `darwin/mpv_audio_kit/Sources/mpv_audio_kit/MediaSessionPlugin.swift`
 #      together with `test/media_session/darwin/main.swift` into a
 #      single Mach-O executable.
 #   2. Links against `FlutterMacOS.framework` (materialized by a
@@ -26,11 +26,10 @@
 # Usage:
 #   bash test/media_session/darwin/run.sh
 #
-# Why this lives next to the platform-shared darwin/ Swift source
-# rather than inside `darwin/Sources/`: SwiftPM rejects test targets
-# that share a folder with a library target, and shipping these as
-# part of the published package would bloat pub.dev. They are pure
-# internal tooling for the maintainer.
+# Why this lives here rather than inside the darwin/ Swift package:
+# SwiftPM rejects test targets that share a folder with a library
+# target, and shipping these as part of the published package would
+# bloat pub.dev. They are pure internal tooling for the maintainer.
 set -euo pipefail
 
 OS=$(uname -s)
@@ -62,7 +61,7 @@ swiftc \
   -framework AppKit \
   -Xlinker -rpath -Xlinker "$FLUTTER_FW_DIR" \
   -o "$BIN" \
-  "$REPO_ROOT/darwin/Sources/mpv_audio_kit/MediaSessionPlugin.swift" \
+  "$REPO_ROOT/darwin/mpv_audio_kit/Sources/mpv_audio_kit/MediaSessionPlugin.swift" \
   "$REPO_ROOT/test/media_session/darwin/main.swift"
 
 echo

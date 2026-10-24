@@ -32,13 +32,6 @@ graphify-out/
 /test/
 /test_app/
 
-# Shared-source plumbing (maintainer-only). `darwin/Sources/` is the single
-# source of truth for the Apple Swift the iOS/macOS plugins share; it is
-# copied into each platform's Sources/ by scripts/sync_apple_sources.sh
-# (scripts/ is already excluded above), so the published package needs only
-# those real copies, not the shared tree.
-/darwin/
-
 # Assets — whitelist only the screenshots referenced by pubspec.yaml
 /imgs/*
 !/imgs/mpv_audio_kit.png
