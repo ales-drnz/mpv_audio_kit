@@ -22,6 +22,40 @@ extension _IntentAxis on _PlayerBase {
     }
   }
 
+  /// mpv entered its idle loop ([idle]) or left it.
+  void _onIdleActive(bool idle) {
+    if (idle) {
+      _updateLifecycle(playing: false, buffering: false);
+      // mpv has entered its idle loop (nothing loaded) → the
+      // play-pause intent is spent; settle the OS button on "play".
+      // Gated on [_hasLoadedFile] so the startup idle-active burst
+      // can't clear a fresh open(play: true) intent. mpv reaches idle
+      // after a `stop`, or after a load that ends with no next entry
+      // and is NOT held by keep-open (e.g. a failed first open). The
+      // natural end of playable content under the shipped
+      // `keep-open: yes` does NOT fire idle-active; that path is
+      // handled by [_settleEndOfContent] instead. A mid-playlist
+      // advance also doesn't fire idle-active. While a load runs
+      // the idle is its own step (openAll at the end of the queue
+      // removes the parked entry before its appends), so the reset
+      // waits for the loads to end ([_settleIdleReset]): made
+      // now, it flickered the OS button and undid a play() called
+      // during the load.
+      if (_hasLoadedFile) {
+        if (_loadsInFlight > 0) {
+          _idleResetPending = true;
+        } else {
+          _writeIntent(false);
+        }
+        // No file is loaded any more (stop, a cleared playlist, a
+        // failed load): nothing of the last one should linger.
+        _clearFinishedFile();
+      }
+    } else {
+      _idleResetPending = false;
+    }
+  }
+
   /// The intent reset left to the end of the loads: still idle with no
   /// load running (one failed, or a later call cleared the playlist),
   /// nothing will play. Read from the core, since the notification that

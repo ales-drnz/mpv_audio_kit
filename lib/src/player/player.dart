@@ -320,104 +320,11 @@ class Player extends _PlayerBase
       await _calls.settleWrites();
       if (load.superseded) return;
       // ── Phase 1: clear the outgoing playlist ──────────────────────────
-      // `playlist-clear` keeps ONLY the current entry (mpv's
-      // playlist_clear_except_current), so the outgoing track keeps
-      // playing while the new entries build up: no idle gap, no silence.
-      // The flow is decided from mpv's own properties AFTER the clear
-      // (`playlist-count`, `eof-reached`), not from the Dart-side state
-      // snapshot: state can lag the core by an event round-trip, and a
-      // wrong guess here would offset every append target below.
-      await _calls.command(['playlist-clear']);
-      if (load.superseded) return;
-      final retainedCount =
-          int.tryParse(await getRawProperty('playlist-count') ?? '') ?? 0;
-      if (load.superseded) return;
-      var parkedAtEof = false;
-      if (retainedCount > 0) {
-        // A retained entry parked at EOF cannot survive the appends:
-        // `keep-open` holds the park only while no next entry exists (mpv's
-        // handle_keep_open), so the first append would create a "next" and
-        // mpv would auto-advance into the new album's entry 0,
-        // resurrecting the exact transient this flow eliminates. Remove it
-        // NOW instead: the playlist is single-entry after the clear, so
-        // PT_NEXT_ENTRY finds nothing and the core goes idle, where
-        // appends provably never autostart.
-        parkedAtEof = await _parkedAtEof();
-        if (load.superseded) return;
-        if (parkedAtEof) {
-          await _calls.command(['playlist-remove', '0']);
-          if (load.superseded) return;
-          // Barrier: wait for the core to actually reach idle before any
-          // append. The remove's playback teardown runs asynchronously on
-          // the playloop, and an append landing before it completes gets
-          // picked up by the end-of-file advancement (playlist_get_next
-          // from a NULL current with the playlist not started returns
-          // entry 0), which would start the incoming album's first track:
-          // the exact transient this flow eliminates. Idle lands within a
-          // playloop iteration; the bound only guards a wedged core.
-          for (var i = 0; i < 100; i++) {
-            if (await getRawProperty('idle-active') == 'yes') break;
-            if (load.superseded) return;
-            await Future<void>.delayed(const Duration(milliseconds: 5));
-          }
-          if (load.superseded) return;
-        }
-      }
-      // Whether an old entry is still occupying position 0 (the playing
-      // flow): the append targets shift by one until the post-jump remove
-      // drops it.
-      final retainedOld = retainedCount > 0 && !parkedAtEof;
+      final retainedOld = await _openAllClear(load);
+      if (retainedOld == null) return;
 
       // ── Phase 2: append every entry; playback never starts here ──────
-      // mpv's `loadfile append` is play=false unconditionally (unlike
-      // append-play), even on an idle core. Per-Media `httpHeaders` ride
-      // along as the 4th `loadfile` arg, so mpv scopes them as file-local
-      // without ever writing the global `http-header-fields` option.
-      // The appends go out in windows of [_kAppendWindow], each sent at once:
-      // mpv runs them in order, and the playlist changes they cause fold into
-      // a few notifications. Awaited one by one, every append made mpv report
-      // the whole playlist again, which grew with the square of the album
-      // size. Each append holds one of the 1000 reply slots mpv keeps per
-      // client until its reply is read, and a full queue refuses the next
-      // request: a window waits for its replies before the next goes out.
-      final appended = <int>{};
-      (Object, StackTrace)? failure;
-      var sent = 0;
-      while (sent < medias.length && failure == null && !load.superseded) {
-        final end = sent + _kAppendWindow < medias.length
-            ? sent + _kAppendWindow
-            : medias.length;
-        // A refused append fails at once, before the loop below awaits it:
-        // marked handled here, so its error reaches that loop instead of
-        // surfacing as unhandled.
-        final window = <Future<int?>>[
-          for (var i = sent; i < end; i++)
-            _loadfileEntry(
-              switch (_buildLoadfileOptions(medias[i])) {
-                '' => ['loadfile', sources[i].uri, 'append'],
-                final opts => [
-                  'loadfile',
-                  sources[i].uri,
-                  'append',
-                  '-1',
-                  opts,
-                ],
-              },
-              medias[i],
-              sources[i],
-            )..ignore(),
-        ];
-        for (var j = 0; j < window.length; j++) {
-          try {
-            final id = await window[j];
-            if (id != null) appended.add(id);
-          } catch (e, st) {
-            failure ??= (e, st);
-          }
-        }
-        sent = end;
-      }
-      if (appended.isNotEmpty) _remapReported(appended);
+      final failure = await _openAllAppend(medias, sources, load);
       // mpv never had the refused entries, nor the ones not sent after a
       // refusal or a later load: their sources are released on the way out.
       if (failure != null) {
@@ -475,6 +382,111 @@ class Player extends _PlayerBase
         await source.release();
       }
     }
+  }
+
+  /// Phase 1 of [openAll]: clears the outgoing playlist. Returns whether an
+  /// old entry still occupies position 0 (the playing flow): the append
+  /// targets shift by one until the post-jump remove drops it. `null` once
+  /// a later load took over.
+  Future<bool?> _openAllClear(_LoadTicket load) async {
+    // `playlist-clear` keeps ONLY the current entry (mpv's
+    // playlist_clear_except_current), so the outgoing track keeps
+    // playing while the new entries build up: no idle gap, no silence.
+    // The flow is decided from mpv's own properties AFTER the clear
+    // (`playlist-count`, `eof-reached`), not from the Dart-side state
+    // snapshot: state can lag the core by an event round-trip, and a
+    // wrong guess here would offset every append target below.
+    await _calls.command(['playlist-clear']);
+    if (load.superseded) return null;
+    final retainedCount =
+        int.tryParse(await getRawProperty('playlist-count') ?? '') ?? 0;
+    if (load.superseded) return null;
+    var parkedAtEof = false;
+    if (retainedCount > 0) {
+      // A retained entry parked at EOF cannot survive the appends:
+      // `keep-open` holds the park only while no next entry exists (mpv's
+      // handle_keep_open), so the first append would create a "next" and
+      // mpv would auto-advance into the new album's entry 0,
+      // resurrecting the exact transient this flow eliminates. Remove it
+      // NOW instead: the playlist is single-entry after the clear, so
+      // PT_NEXT_ENTRY finds nothing and the core goes idle, where
+      // appends provably never autostart.
+      parkedAtEof = await _parkedAtEof();
+      if (load.superseded) return null;
+      if (parkedAtEof) {
+        await _calls.command(['playlist-remove', '0']);
+        if (load.superseded) return null;
+        // Barrier: wait for the core to actually reach idle before any
+        // append. The remove's playback teardown runs asynchronously on
+        // the playloop, and an append landing before it completes gets
+        // picked up by the end-of-file advancement (playlist_get_next
+        // from a NULL current with the playlist not started returns
+        // entry 0), which would start the incoming album's first track:
+        // the exact transient this flow eliminates. Idle lands within a
+        // playloop iteration; the bound only guards a wedged core.
+        for (var i = 0; i < 100; i++) {
+          if (await getRawProperty('idle-active') == 'yes') break;
+          if (load.superseded) return null;
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        if (load.superseded) return null;
+      }
+    }
+    return retainedCount > 0 && !parkedAtEof;
+  }
+
+  /// Phase 2 of [openAll]: appends [medias] from their [sources]. Returns
+  /// the first refusal, `null` when mpv took every entry sent; sending
+  /// stops at a refusal or once a later load took over.
+  Future<(Object, StackTrace)?> _openAllAppend(
+    List<Media> medias,
+    List<OwnedSource> sources,
+    _LoadTicket load,
+  ) async {
+    // mpv's `loadfile append` is play=false unconditionally (unlike
+    // append-play), even on an idle core. Per-Media `httpHeaders` ride
+    // along as the 4th `loadfile` arg, so mpv scopes them as file-local
+    // without ever writing the global `http-header-fields` option.
+    // The appends go out in windows of [_kAppendWindow], each sent at once:
+    // mpv runs them in order, and the playlist changes they cause fold into
+    // a few notifications. Awaited one by one, every append made mpv report
+    // the whole playlist again, which grew with the square of the album
+    // size. Each append holds one of the 1000 reply slots mpv keeps per
+    // client until its reply is read, and a full queue refuses the next
+    // request: a window waits for its replies before the next goes out.
+    final appended = <int>{};
+    (Object, StackTrace)? failure;
+    var sent = 0;
+    while (sent < medias.length && failure == null && !load.superseded) {
+      final end = sent + _kAppendWindow < medias.length
+          ? sent + _kAppendWindow
+          : medias.length;
+      // A refused append fails at once, before the loop below awaits it:
+      // marked handled here, so its error reaches that loop instead of
+      // surfacing as unhandled.
+      final window = <Future<int?>>[
+        for (var i = sent; i < end; i++)
+          _loadfileEntry(
+            switch (_buildLoadfileOptions(medias[i])) {
+              '' => ['loadfile', sources[i].uri, 'append'],
+              final opts => ['loadfile', sources[i].uri, 'append', '-1', opts],
+            },
+            medias[i],
+            sources[i],
+          )..ignore(),
+      ];
+      for (var j = 0; j < window.length; j++) {
+        try {
+          final id = await window[j];
+          if (id != null) appended.add(id);
+        } catch (e, st) {
+          failure ??= (e, st);
+        }
+      }
+      sent = end;
+    }
+    if (appended.isNotEmpty) _remapReported(appended);
+    return failure;
   }
 
   /// Loads a playlist FILE or URL (`.m3u`, `.m3u8`, `.pls` or `.cue`) and
@@ -905,52 +917,64 @@ abstract class _PlayerBase {
       ..registerAll(
         buildDefaultSpecs(
           _reactives,
-          onIdleActive: (idle) {
-            if (idle) {
-              _updateLifecycle(playing: false, buffering: false);
-              // mpv has entered its idle loop (nothing loaded) → the
-              // play-pause intent is spent; settle the OS button on "play".
-              // Gated on [_hasLoadedFile] so the startup idle-active burst
-              // can't clear a fresh open(play: true) intent. mpv reaches idle
-              // after a `stop`, or after a load that ends with no next entry
-              // and is NOT held by keep-open (e.g. a failed first open). The
-              // natural end of playable content under the shipped
-              // `keep-open: yes` does NOT fire idle-active; that path is
-              // handled by [_settleEndOfContent] instead. A mid-playlist
-              // advance also doesn't fire idle-active. While a load runs
-              // the idle is its own step (openAll at the end of the queue
-              // removes the parked entry before its appends), so the reset
-              // waits for the loads to end ([_settleIdleReset]): made
-              // now, it flickered the OS button and undid a play() called
-              // during the load.
-              if (_hasLoadedFile) {
-                if (_loadsInFlight > 0) {
-                  _idleResetPending = true;
-                } else {
-                  _writeIntent(false);
-                }
-                // No file is loaded any more (stop, a cleared playlist, a
-                // failed load): nothing of the last one should linger.
-                _clearFinishedFile();
-              }
-            } else {
-              _idleResetPending = false;
-            }
-          },
-          onAudioOutputState: (state) {
-            final err = buildAudioOutputError(state);
-            if (err != null) _errorCtrl.add(err);
-            if (state == AudioOutputState.active) {
-              unawaited(_reportNullFallback());
-            }
-          },
+          onIdleActive: _onIdleActive,
+          onAudioOutputState: _onAudioOutputState,
         ),
       );
 
     // Streams that don't need _lib or _handle can be wired immediately:
     // a consumer subscribing right after `Player()` sees no events
     // until init completes, which is the correct semantics.
-    //
+    _wireAnalysisControllers();
+    stream = PlayerStream.fromInternals(
+      reactives: _reactives,
+      buffering: _buffering,
+      completed: _completed,
+      playlist: _playlist,
+      loop: _loop,
+      audioDevices: _audioDevices,
+      metadata: _metadata,
+      bufferingPercentage: _bufferingPercentage,
+      demuxerCacheState: _demuxerCacheState,
+      audioEffects: _reactives.audioEffects,
+      mediaSession: _mediaSession,
+      endFile: _endFileCtrl.stream,
+      error: _errorCtrl.stream,
+      log: _logCtrl.stream,
+      internalLog: _internalLogCtrl.stream,
+      hook: _hookCtrl.stream,
+      seekCompleted: _seekCompletedCtrl.stream,
+      coverArt: replayStream(() => _state.coverArt, _coverArtCtrl.stream),
+      fft: _fftCtrl.stream,
+      pcm: _pcmStreamCtrl.stream,
+      spectrum: _reactives.spectrum.stream,
+      waveform: replayStream(() => _lastWaveform, _waveformCtrl.stream),
+      loudnessMeter: _loudnessMeterCtrl.stream,
+      loudnessScan: replayStream(
+        () => _lastLoudnessScan,
+        _loudnessScanCtrl.stream,
+      ),
+      tap: (filter, {instance = 0, required side}) => switch (side) {
+        TapSide.pre => _filterTapPipeline.tapPre(
+          audioEffectLabel(filter.filterName, instance),
+        ),
+        TapSide.post => _filterTapPipeline.tapPost(
+          audioEffectLabel(filter.filterName, instance),
+        ),
+      },
+      mediaSessionCommands: _mediaSessionCommandsCtrl.stream,
+    );
+
+    // Build the recipe and hand it to the event isolate. All heavy
+    // FFI runs there; the main isolate stays free. A failed init reaches
+    // every call that awaits it; a player nobody uses yet must not report
+    // it as an unhandled error.
+    _ready = _bringUpInIsolate()..ignore();
+  }
+
+  /// The controllers of the analysis streams (fft, pcm, waveform, loudness
+  /// meter and scan), whose listeners arm the pipelines built at bring-up.
+  void _wireAnalysisControllers() {
     // The fft and pcm bridges into the spectrum pipeline are listener-gated:
     // the pipeline arms its 30fps `pcm-tap-frame` poll as soon as its own
     // streams have a listener, so bridging unconditionally would keep the
@@ -1016,50 +1040,6 @@ abstract class _PlayerBase {
         if (_bringUpCompleted) _loudnessScanPipeline.setEnabled(false);
       },
     );
-    stream = PlayerStream.fromInternals(
-      reactives: _reactives,
-      buffering: _buffering,
-      completed: _completed,
-      playlist: _playlist,
-      loop: _loop,
-      audioDevices: _audioDevices,
-      metadata: _metadata,
-      bufferingPercentage: _bufferingPercentage,
-      demuxerCacheState: _demuxerCacheState,
-      audioEffects: _reactives.audioEffects,
-      mediaSession: _mediaSession,
-      endFile: _endFileCtrl.stream,
-      error: _errorCtrl.stream,
-      log: _logCtrl.stream,
-      internalLog: _internalLogCtrl.stream,
-      hook: _hookCtrl.stream,
-      seekCompleted: _seekCompletedCtrl.stream,
-      coverArt: replayStream(() => _state.coverArt, _coverArtCtrl.stream),
-      fft: _fftCtrl.stream,
-      pcm: _pcmStreamCtrl.stream,
-      spectrum: _reactives.spectrum.stream,
-      waveform: replayStream(() => _lastWaveform, _waveformCtrl.stream),
-      loudnessMeter: _loudnessMeterCtrl.stream,
-      loudnessScan: replayStream(
-        () => _lastLoudnessScan,
-        _loudnessScanCtrl.stream,
-      ),
-      tap: (filter, {instance = 0, required side}) => switch (side) {
-        TapSide.pre => _filterTapPipeline.tapPre(
-          audioEffectLabel(filter.filterName, instance),
-        ),
-        TapSide.post => _filterTapPipeline.tapPost(
-          audioEffectLabel(filter.filterName, instance),
-        ),
-      },
-      mediaSessionCommands: _mediaSessionCommandsCtrl.stream,
-    );
-
-    // Build the recipe and hand it to the event isolate. All heavy
-    // FFI runs there; the main isolate stays free. A failed init reaches
-    // every call that awaits it; a player nobody uses yet must not report
-    // it as an unhandled error.
-    _ready = _bringUpInIsolate()..ignore();
   }
 
   /// Test-only: allows tests to await the post-`Player()` init that
@@ -1153,6 +1133,16 @@ abstract class _PlayerBase {
   ) {
     if (!reactive.update(value)) return;
     _state = updater(_state);
+  }
+
+  /// mpv reported the output [state]: an output that failed is an error on
+  /// [PlayerStream.error], and one that opened may be the null driver.
+  void _onAudioOutputState(AudioOutputState state) {
+    final err = buildAudioOutputError(state);
+    if (err != null) _errorCtrl.add(err);
+    if (state == AudioOutputState.active) {
+      unawaited(_reportNullFallback());
+    }
   }
 
   /// The output just opened. With `audio-fallback-to-null` (pre-init
@@ -1336,6 +1326,12 @@ abstract class _PlayerBase {
       }
     }
 
+    await _closeStreams();
+  }
+
+  /// The last step of [dispose]: closes every reactive property and stream
+  /// controller, so each stream of [stream] ends.
+  Future<void> _closeStreams() async {
     // Close registry-backed reactives, then standalone ones, then
     // pure-event controllers. Order is for auditability: close() is
     // safe with attached listeners. None is awaited: a listener the app

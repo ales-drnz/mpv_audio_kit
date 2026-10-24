@@ -48,84 +48,9 @@ mixin _DispatchModule on _PlayerBase {
     try {
       switch (event) {
         case MpvEventStartFile(:final entryId):
-          // Latch "a file load has been attempted" HERE, not on FILE_LOADED:
-          // START_FILE fires for every load attempt, including one that will
-          // fail to open, so a failed first open() still arms the
-          // idle-active intent reset (otherwise its intent would stick true
-          // forever). START_FILE is always delivered AFTER the cold-start
-          // idle-active burst (FIFO), so the latch still can't be tripped by
-          // the startup burst.
-          _hasLoadedFile = true;
-          _fileStarts++;
-          // A new load attempt re-arms the source resolver's single
-          // retry allowance; see [_resolverRetried].
-          _resolverRetried = false;
-          _entries.onStartFile(entryId);
-          _updateLifecycle(buffering: true, completed: false);
-        case MpvEventFileLoaded(
-          :final path,
-          :final playlist,
-          :final timePos,
-          :final chapterIndex,
-          :final chapterList,
-          :final coverData,
-          :final coverMime,
-        ):
-          // `state.playing` is driven by the `core-idle` observer; here we
-          // only clear buffering and apply the load payload. `completed`
-          // was cleared at START_FILE, and the end-of-content read that
-          // follows this event settles it: a short entry can already be
-          // parked at its end here.
-          _updateLifecycle(buffering: false);
-          _entries.onFileLoaded();
-          // mpv just built the new file's chain from the stored arguments.
-          _onAfChainReset();
-          _reassertAfChain();
-          _applyPolledPosition(timePos);
-          // mpv exposes -1, -2 etc. as "no chapter active"; surface as
-          // null. A failed read (chapterIndex == null) applies nothing.
-          if (chapterIndex != null) {
-            final idx = chapterIndex < 0 ? null : chapterIndex;
-            _updateField(
-              (s) => s.copyWith(currentChapter: idx),
-              _reactives.currentChapter,
-              idx,
-            );
-          }
-          // Freshly read on every load (see the payload doc for why the
-          // observer's structural dedup makes this necessary); dispatch
-          // through the registry so it reuses the chapter-list parser.
-          if (chapterList != null) {
-            _dispatchProperty('chapter-list', chapterList);
-          }
-          // The new entry reaches the state snapshot before the cover,
-          // waveform and loudness resets below, so a listener pairing them
-          // with `state.playlist` or `state.path` sees the new track. The
-          // `playlist` and `path` streams still emit with the observed
-          // changes that follow this event, as before.
-          _applyLoadedEntry(path, playlist);
-          _releaseSettled();
-          // Emit unconditionally: `null` signals "no cover on the new
-          // file" so subscribers can clear stale artwork on track changes.
-          final cover = coverData == null
-              ? null
-              : CoverArt(
-                  bytes: coverData.materialize().asUint8List(),
-                  mimeType: coverMime ?? 'application/octet-stream',
-                );
-          _state = _state.copyWith(coverArt: cover);
-          _coverArtCtrl.add(cover);
-          // Re-arm the waveform and the loudness scan on every load, the
-          // same file loaded again included: mpv emits FILE_LOADED once per
-          // load and starts a new analysis on each one, so a result kept
-          // across it may belong to other content, or to a pass that
-          // failed. The path is no key for it: with the prefetch it can name
-          // the next entry.
-          if (_bringUpCompleted) {
-            _waveformPipeline.reset();
-            // The offline loudness scan rides the same native decode pass.
-            _loudnessScanPipeline.reset();
-          }
+          _onStartFile(entryId);
+        case final MpvEventFileLoaded loaded:
+          _onFileLoaded(loaded);
         case MpvEventPlaybackSeek():
           // A seek's landing is observed via PLAYBACK_RESTART
           // (`seekCompleted`). The seek itself resets the filters, which
@@ -149,50 +74,8 @@ mixin _DispatchModule on _PlayerBase {
           // `eof-reached` notification.
           _dispatchProperty('eof-reached', eof);
           _settleEndOfContent(parked: parked, lastEntry: lastEntry, live: live);
-        case MpvEventEndFile(:final reason, :final error, :final lastEntry):
-          _entries.onEndFile();
-          _releaseSettled();
-          final typedReason = MpvEndFileReason.fromValue(reason);
-          _endFileCtrl.add(
-            MpvFileEndedEvent(reason: typedReason, error: error),
-          );
-          if (error < 0) {
-            _errorCtrl.add(
-              EndFileError(
-                reason: typedReason,
-                code: error,
-                message: _calls.errorString(error),
-              ),
-            );
-            // A terminal load failure parks mpv idle, but the idle-active
-            // false→true round-trip can coalesce inside one playloop
-            // iteration: mpv's observer then emits NO property change at
-            // all, so the idle-active intent reset never fires and the
-            // play-pause button sticks on "playing". Settle the intent off
-            // this discrete event instead, gated on the failed entry being
-            // the last one so a mid-playlist failure that auto-advances
-            // doesn't flicker the button.
-            if (lastEntry && _state.loop == Loop.off) {
-              _updateField(
-                (s) => s.copyWith(playWhenReady: false),
-                _reactives.playWhenReady,
-                false,
-              );
-            }
-          }
-          // mpv emits END_FILE(EOF) for EVERY finished entry, including a
-          // gapless mid-playlist advance. Under the shipped `keep-open` the
-          // last entry parks instead (see [_settleEndOfContent]); this
-          // covers a last entry that ends without the park. Gated on the
-          // ended entry being the last one, read by entry id in the event
-          // isolate: the state's playlist position may already be on the
-          // next entry, which raised `completed` between tracks.
-          final isEof = reason == MpvEndFileReason.eof.value;
-          _updateLifecycle(
-            playing: false,
-            buffering: false,
-            completed: isEof && lastEntry && _state.loop == Loop.off,
-          );
+        case final MpvEventEndFile ended:
+          _onEndFile(ended);
         case MpvEventReply():
         case MpvEventGetReply():
           // Completed before the dispose fence above; never reaches here.
@@ -210,33 +93,7 @@ mixin _DispatchModule on _PlayerBase {
         case MpvEventPropertyUnavailable(:final name):
           _dispatchUnavailable(name);
         case MpvEventPropertyGroup(:final events):
-          _registry.dispatchGroup(
-            [
-              for (final e in events)
-                switch (e) {
-                  MpvEventPropertyNode(:final name, :final value) => (
-                    name,
-                    value,
-                  ),
-                  MpvEventPropertyString(:final name, :final value) => (
-                    name,
-                    value,
-                  ),
-                  MpvEventPropertyDouble(:final name, :final value) => (
-                    name,
-                    value,
-                  ),
-                  MpvEventPropertyInt(:final name, :final value) => (
-                    name,
-                    value,
-                  ),
-                  MpvEventPropertyUnavailable(:final name) => (name, null),
-                  _ => throw StateError('not a property change: $e'),
-                },
-            ],
-            _state,
-            commit: _commitState,
-          );
+          _dispatchGroup(events);
         case MpvEventLog(:final prefix, :final level, :final text):
           final typedLevel = LogLevel.fromMpv(level);
           final entry = MpvLogEntry(
@@ -253,27 +110,7 @@ mixin _DispatchModule on _PlayerBase {
         case MpvEventInternalLog(:final level, :final text):
           _internalLog('event isolate: $text', level: LogLevel.fromMpv(level));
         case MpvEventHookFired(:final id, :final name):
-          final hook = Hook.fromMpv(name);
-          if (hook == null) {
-            // Unknown hook name: likely a future mpv build added a new
-            // phase. Auto-continue so mpv never stalls, log it on the
-            // internal channel for diagnostics.
-            _internalLog(
-              'Received unknown hook "$name" (id=$id): auto-continuing. '
-              'Update the Hook enum if mpv has added a new lifecycle phase.',
-              level: LogLevel.warn,
-            );
-            _calls.hookContinue(id);
-            return;
-          }
-          final eventId = _hooks.add(id, name);
-          // Routed through the hooks module: runs the source resolver
-          // first when one is installed, then surfaces the event on
-          // [PlayerStream.hook] (user-registered hook) or continues it
-          // internally (resolver-only registration). With no resolver
-          // and a user registration the add() inside is still
-          // synchronous: same-microtask emission as before.
-          unawaited(_routeHookEvent(eventId, hook, name));
+          _onHookFired(id, name);
       }
     } catch (e, st) {
       _internalLog(
@@ -281,6 +118,184 @@ mixin _DispatchModule on _PlayerBase {
         level: LogLevel.warn,
       );
     }
+  }
+
+  /// MPV_EVENT_START_FILE of entry [entryId].
+  void _onStartFile(int entryId) {
+    // Latch "a file load has been attempted" HERE, not on FILE_LOADED:
+    // START_FILE fires for every load attempt, including one that will
+    // fail to open, so a failed first open() still arms the
+    // idle-active intent reset (otherwise its intent would stick true
+    // forever). START_FILE is always delivered AFTER the cold-start
+    // idle-active burst (FIFO), so the latch still can't be tripped by
+    // the startup burst.
+    _hasLoadedFile = true;
+    _fileStarts++;
+    // A new load attempt re-arms the source resolver's single
+    // retry allowance; see [_resolverRetried].
+    _resolverRetried = false;
+    _entries.onStartFile(entryId);
+    _updateLifecycle(buffering: true, completed: false);
+  }
+
+  /// MPV_EVENT_FILE_LOADED with its payload, applied in this order.
+  void _onFileLoaded(MpvEventFileLoaded loaded) {
+    final MpvEventFileLoaded(
+      :path,
+      :playlist,
+      :timePos,
+      :chapterIndex,
+      :chapterList,
+      :coverData,
+      :coverMime,
+    ) = loaded;
+    // `state.playing` is driven by the `core-idle` observer; here we
+    // only clear buffering and apply the load payload. `completed`
+    // was cleared at START_FILE, and the end-of-content read that
+    // follows this event settles it: a short entry can already be
+    // parked at its end here.
+    _updateLifecycle(buffering: false);
+    _entries.onFileLoaded();
+    // mpv just built the new file's chain from the stored arguments.
+    _onAfChainReset();
+    _reassertAfChain();
+    _applyPolledPosition(timePos);
+    // mpv exposes -1, -2 etc. as "no chapter active"; surface as
+    // null. A failed read (chapterIndex == null) applies nothing.
+    if (chapterIndex != null) {
+      final idx = chapterIndex < 0 ? null : chapterIndex;
+      _updateField(
+        (s) => s.copyWith(currentChapter: idx),
+        _reactives.currentChapter,
+        idx,
+      );
+    }
+    // Freshly read on every load (see the payload doc for why the
+    // observer's structural dedup makes this necessary); dispatch
+    // through the registry so it reuses the chapter-list parser.
+    if (chapterList != null) {
+      _dispatchProperty('chapter-list', chapterList);
+    }
+    // The new entry reaches the state snapshot before the cover,
+    // waveform and loudness resets below, so a listener pairing them
+    // with `state.playlist` or `state.path` sees the new track. The
+    // `playlist` and `path` streams still emit with the observed
+    // changes that follow this event, as before.
+    _applyLoadedEntry(path, playlist);
+    _releaseSettled();
+    // Emit unconditionally: `null` signals "no cover on the new
+    // file" so subscribers can clear stale artwork on track changes.
+    final cover = coverData == null
+        ? null
+        : CoverArt(
+            bytes: coverData.materialize().asUint8List(),
+            mimeType: coverMime ?? 'application/octet-stream',
+          );
+    _state = _state.copyWith(coverArt: cover);
+    _coverArtCtrl.add(cover);
+    // Re-arm the waveform and the loudness scan on every load, the
+    // same file loaded again included: mpv emits FILE_LOADED once per
+    // load and starts a new analysis on each one, so a result kept
+    // across it may belong to other content, or to a pass that
+    // failed. The path is no key for it: with the prefetch it can name
+    // the next entry.
+    if (_bringUpCompleted) {
+      _waveformPipeline.reset();
+      // The offline loudness scan rides the same native decode pass.
+      _loudnessScanPipeline.reset();
+    }
+  }
+
+  /// MPV_EVENT_END_FILE: the entry ended, finished, stopped or failed.
+  void _onEndFile(MpvEventEndFile ended) {
+    final MpvEventEndFile(:reason, :error, :lastEntry) = ended;
+    _entries.onEndFile();
+    _releaseSettled();
+    final typedReason = MpvEndFileReason.fromValue(reason);
+    _endFileCtrl.add(MpvFileEndedEvent(reason: typedReason, error: error));
+    if (error < 0) {
+      _errorCtrl.add(
+        EndFileError(
+          reason: typedReason,
+          code: error,
+          message: _calls.errorString(error),
+        ),
+      );
+      // A terminal load failure parks mpv idle, but the idle-active
+      // false→true round-trip can coalesce inside one playloop
+      // iteration: mpv's observer then emits NO property change at
+      // all, so the idle-active intent reset never fires and the
+      // play-pause button sticks on "playing". Settle the intent off
+      // this discrete event instead, gated on the failed entry being
+      // the last one so a mid-playlist failure that auto-advances
+      // doesn't flicker the button.
+      if (lastEntry && _state.loop == Loop.off) {
+        _updateField(
+          (s) => s.copyWith(playWhenReady: false),
+          _reactives.playWhenReady,
+          false,
+        );
+      }
+    }
+    // mpv emits END_FILE(EOF) for EVERY finished entry, including a
+    // gapless mid-playlist advance. Under the shipped `keep-open` the
+    // last entry parks instead (see [_settleEndOfContent]); this
+    // covers a last entry that ends without the park. Gated on the
+    // ended entry being the last one, read by entry id in the event
+    // isolate: the state's playlist position may already be on the
+    // next entry, which raised `completed` between tracks.
+    final isEof = reason == MpvEndFileReason.eof.value;
+    _updateLifecycle(
+      playing: false,
+      buffering: false,
+      completed: isEof && lastEntry && _state.loop == Loop.off,
+    );
+  }
+
+  /// Changes of several properties that back one state cell, held together
+  /// by the event isolate: the registry applies them in order, and the cell
+  /// moves once.
+  void _dispatchGroup(List<MpvIsolateEvent> events) {
+    _registry.dispatchGroup(
+      [
+        for (final e in events)
+          switch (e) {
+            MpvEventPropertyNode(:final name, :final value) => (name, value),
+            MpvEventPropertyString(:final name, :final value) => (name, value),
+            MpvEventPropertyDouble(:final name, :final value) => (name, value),
+            MpvEventPropertyInt(:final name, :final value) => (name, value),
+            MpvEventPropertyUnavailable(:final name) => (name, null),
+            _ => throw StateError('not a property change: $e'),
+          },
+      ],
+      _state,
+      commit: _commitState,
+    );
+  }
+
+  /// MPV_EVENT_HOOK [name], numbered [id] by mpv.
+  void _onHookFired(int id, String name) {
+    final hook = Hook.fromMpv(name);
+    if (hook == null) {
+      // Unknown hook name: likely a future mpv build added a new
+      // phase. Auto-continue so mpv never stalls, log it on the
+      // internal channel for diagnostics.
+      _internalLog(
+        'Received unknown hook "$name" (id=$id): auto-continuing. '
+        'Update the Hook enum if mpv has added a new lifecycle phase.',
+        level: LogLevel.warn,
+      );
+      _calls.hookContinue(id);
+      return;
+    }
+    final eventId = _hooks.add(id, name);
+    // Routed through the hooks module: runs the source resolver
+    // first when one is installed, then surfaces the event on
+    // [PlayerStream.hook] (user-registered hook) or continues it
+    // internally (resolver-only registration). With no resolver
+    // and a user registration the add() inside is still
+    // synchronous: same-microtask emission as before.
+    unawaited(_routeHookEvent(eventId, hook, name));
   }
 
   /// Test-only entry point that exercises the same dispatch pipeline as
