@@ -407,7 +407,7 @@ mixin _AudioModule on _PlayerBase {
       // An Android content:// URI arrives as an fd:// descriptor that mpv
       // never closes: held until the file the track joins ends.
       final dispose = source.handOver();
-      final settle = dispose == null ? null : _heldSources.holdTrack(dispose);
+      final settle = dispose == null ? null : _entries.holdTrack(dispose);
       var rc = -1;
       try {
         rc = await _calls.command(args);

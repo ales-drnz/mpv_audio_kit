@@ -304,7 +304,8 @@ void _dispatchEvent(
           ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
           ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonError;
       toMain.send(
-        MpvEndFileEvent(
+        MpvEventEndFile(
+          ef.playlistEntryId,
           ef.reason,
           ef.error,
           lastEntry: ended && _isLastEntry(lib, handle, ef.playlistEntryId),

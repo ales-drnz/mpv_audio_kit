@@ -280,7 +280,7 @@ mixin _HooksModule on _PlayerBase {
     try {
       final isRetry = hook == Hook.loadFail;
       // The entry mpv is loading, `null` for the prefetch of the next one.
-      final loading = _loadingEntry;
+      final loading = _entries.loading;
       final prefetch = !isRetry && loading == null;
       // One resolver-driven retry per load attempt: see
       // [_resolverRetried] for the loop hazard this caps. The flag is
@@ -294,7 +294,7 @@ mixin _HooksModule on _PlayerBase {
       // A load gets the Media of its own entry, which another entry with the
       // same URL does not share (F14). The prefetch knows only the URL.
       final media =
-          (prefetch ? null : _mediaByEntry[loading]) ??
+          (prefetch ? null : _entries.mediaOf(loading)) ??
           _cachedMedia(current) ??
           Media(current);
       // The load of an entry the prefetch resolved opens the same URL

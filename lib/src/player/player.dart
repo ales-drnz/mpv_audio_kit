@@ -27,8 +27,8 @@ import '../internals/audio_effects_validation.dart';
 import '../internals/core_calls.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
+import '../internals/entry_table.dart';
 import '../internals/event_isolate.dart';
-import '../internals/held_sources.dart';
 import '../internals/hook_table.dart';
 import '../internals/libmpv_release.dart';
 import '../internals/library_loader.dart';
@@ -52,7 +52,7 @@ import '../models/pcm_frame.dart';
 import '../models/playlist.dart';
 import '../models/source_resolve_request.dart';
 import '../models/waveform_data.dart';
-import '../mpv_bindings.dart' hide MpvEndFileReason;
+import '../mpv_bindings.dart' hide MpvEndFileReason, MpvEventEndFile;
 import '../pcm/pcm_format.dart';
 import '../pcm/pcm_source.dart';
 import '../reactive/default_reactives.dart';
@@ -164,7 +164,7 @@ class Player extends _PlayerBase
     _mediaCache[media.uri] = media;
     final OwnedSource source;
     try {
-      source = _hold(await resolveUri(media.uri));
+      source = OwnedSource(await resolveUri(media.uri));
     } catch (_) {
       // Nothing was loaded: the intent goes back to what still plays.
       _restoreIntent(load, intent, previousIntent);
@@ -303,7 +303,7 @@ class Player extends _PlayerBase
       try {
         for (final m in medias) {
           _mediaCache[m.uri] = m;
-          final source = _hold(await resolveUri(m.uri));
+          final source = OwnedSource(await resolveUri(m.uri));
           sources.add(source);
           if (load.superseded) return;
           _mediaCache[source.uri] = m;
@@ -427,7 +427,7 @@ class Player extends _PlayerBase
         // that still plays (none at the park, removed above). The pause was
         // not written yet, so only the intent goes back. A later load owns
         // the playlist instead, and the entries mpv took stay with
-        // [_heldSources] until they leave.
+        // [_entries] until they leave.
         if (!load.superseded) {
           _restoreIntent(load, intent, previousIntent);
           await _calls.command(['playlist-clear']);
@@ -436,7 +436,7 @@ class Player extends _PlayerBase
       }
       // From here on mpv has the entries, and may read them again until it
       // leaves them (a previous, a loop, a prefetch): their sources stay with
-      // [_heldSources], which releases each one once it left the playlist and
+      // [_entries], which releases each one once it left the playlist and
       // mpv moved on. Released now, an Android descriptor would go to the
       // next file the app opens while mpv still lists its number.
       if (load.superseded) return;
@@ -572,7 +572,7 @@ class Player extends _PlayerBase
       _calls.hookContinue(mpvId);
     }
     // Before the quit: an ended source wakes a reader blocked on it.
-    _endPcmSources();
+    _entries.endLive();
     // Release the OS media session BEFORE tearing libmpv down. After
     // the base teardown the FFI handle is gone: leaving the native
     // session published would surface a stale lockscreen entry
@@ -648,12 +648,6 @@ abstract class _PlayerBase {
   // otherwise put mpv in an infinite open-fail-reopen loop.
   bool _resolverRetried = false;
 
-  // The entry mpv is loading: from its START_FILE to the FILE_LOADED or
-  // END_FILE of that load. An `on_load` outside it is the prefetch of the
-  // next entry, which mpv runs while the current file plays, with no
-  // START_FILE.
-  int? _loadingEntry;
-
   // What the resolver gave for the prefetch of the next entry: the URL mpv
   // was about to open, the one it opened instead, and the load epoch then.
   // The load of that URL in the same epoch takes it once (F10).
@@ -670,40 +664,18 @@ abstract class _PlayerBase {
 
   final Map<String, Media> _mediaCache = {};
 
-  /// The live PCM source of each playlist entry that plays one, by mpv's
-  /// `playlist_entry_id`: held while the entry is in the playlist and the
-  /// source not done, so the app need not keep a reference.
-  final Map<int, PcmSource> _pcmByEntry = {};
+  /// The playlist entries this player loaded, by mpv's `playlist_entry_id`:
+  /// their [Media] (unlike [_mediaCache], two entries with the same URI keep
+  /// their own `extras`), and the live PCM sources and `fd://` descriptors
+  /// they hold until mpv can no longer read them, so the app need not keep
+  /// a reference.
+  late final EntryTable _entries = EntryTable(readPlaylist: _readPlaylist);
 
-  /// The entries of [_pcmByEntry] a playlist node has shown.
-  final Set<int> _pcmSeen = {};
-
-  /// See `_PcmModule` (player_pcm.part.dart).
-  void _holdPcm(int? entryId, Media media);
-  void _prunePcm(Set<int> live);
-
-  /// The [Media] of each playlist entry this player loaded, by mpv's
-  /// `playlist_entry_id`. Unlike [_mediaCache], two entries with the same
-  /// URI keep their own `extras`. Pruned to the live entries on every
-  /// playlist change.
-  final Map<int, Media> _mediaByEntry = {};
-
-  /// The highest entry id a playlist node has listed so far.
-  int _maxListedEntryId = -1;
-
-  /// The descriptors behind the `fd://` entries (Android `content://`),
-  /// released once mpv can no longer read them.
-  final HeldSources _heldSources = HeldSources();
-
-  /// Hands the platform resource of [resolved] to [_heldSources], and the
-  /// source to the load call, which owns it until mpv takes the entry: a
-  /// release before that runs at once and drops the hold.
-  OwnedSource _hold(ResolvedUri resolved) {
-    final dispose = resolved.dispose;
-    if (dispose == null) return OwnedSource(resolved);
-    return OwnedSource(
-      ResolvedUri(resolved.uri, _heldSources.hold(resolved.uri, dispose)),
-    );
+  /// mpv's playlist, read now; `null` when the read failed or the player
+  /// was disposed meanwhile.
+  Future<List<Object?>?> _readPlaylist() async {
+    final (rc, node) = await _calls.get('playlist', MpvFormat.mpvFormatNode);
+    return rc < 0 || node is! List || _disposed ? null : node;
   }
 
   /// Deletes a resume point saved under the descriptor number of an
@@ -717,18 +689,6 @@ abstract class _PlayerBase {
     if (!isFdUri(uri)) return;
     await _calls.command(['delete-watch-later-config', uri]);
   }
-
-  /// Releases the held resources mpv has stopped reading.
-  void _releaseSettledSources() {
-    if (_heldSources.isEmpty) return;
-    for (final release in _heldSources.takeSettled()) {
-      unawaited(release());
-    }
-  }
-
-  /// The last `playlist` node, parsed again when a `loadfile` reply
-  /// registers an entry id after mpv already reported the entry.
-  Object? _lastPlaylistNode;
 
   // Monotonic generation counter for content-replacing transport calls.
   // Bumped synchronously at the head of open(), openAll(),
@@ -1335,7 +1295,7 @@ abstract class _PlayerBase {
         // Off the main isolate: the destroy waits for the core to shut down.
         await terminateDestroyOffMain(_handle);
         // mpv is gone: nothing reads the descriptors any more.
-        for (final release in _heldSources.takeAll()) {
+        for (final release in _entries.takeAll()) {
           await release();
         }
       } else {

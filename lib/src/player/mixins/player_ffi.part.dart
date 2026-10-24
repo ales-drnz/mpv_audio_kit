@@ -48,15 +48,23 @@ const _kPropertyCommands = {
   'change-list',
 };
 
-/// The `loadfile` of a [Media] with its entry bookkeeping, and the public
-/// raw escape hatches (property reads and writes, commands, log level).
-/// The calls themselves go through [_PlayerBase._calls] ([CoreCalls]), on
-/// the async client API.
+/// Test only: awaited by the cut of an aborted source between its read of
+/// the playlist and the removal of a queued entry, so a test can put
+/// another playlist change in that window. Not exported: the library shows
+/// only [Player].
+@visibleForTesting
+Future<void> Function()? debugBeforePcmCutRemove;
+
+/// The `loadfile` of a [Media] with its entry bookkeeping (the entry in
+/// [_PlayerBase._entries], the cut of an aborted live source), and the
+/// public raw escape hatches (property reads and writes, commands, log
+/// level). The calls themselves go through [_PlayerBase._calls]
+/// ([CoreCalls]), on the async client API.
 mixin _FfiModule on _PlayerBase {
   /// Runs a `loadfile` [args] for [media] and records the new playlist
   /// entry's id, so the playlist maps that entry back to [media] even when
-  /// another entry has the same URI. Hands [source] over to mpv as the
-  /// command goes out. Throws like [CoreCalls.commandChecked].
+  /// another entry has the same URI. Hands [source] over to the entry as
+  /// the command goes out. Throws like [CoreCalls.commandChecked].
   @override
   Future<void> _loadfile(
     List<String> args,
@@ -78,10 +86,11 @@ mixin _FfiModule on _PlayerBase {
     final reply = _calls.commandResult(args);
     // Sent: mpv has the entry from now on, even if a later load supersedes
     // this one before the reply (F6). Only a refusal gives the source back.
-    source.handOver();
+    final entry = _entries.pending(args[1], media, source.handOver());
     final (rc, result) = await reply;
     if (rc < 0) {
       source.revoke();
+      _entries.drop(entry);
       throw MpvCommandException(
         name: args.first,
         code: rc,
@@ -89,22 +98,82 @@ mixin _FfiModule on _PlayerBase {
       );
     }
     final id = result is Map ? result['playlist_entry_id'] : null;
-    if (media.isPcmStream) _holdPcm(id is int ? id : null, media);
-    if (id is! int) return null;
-    _mediaByEntry[id] = media;
-    _heldSources.onAdded(args[1], id);
-    return id;
+    final entryId = id is int ? id : null;
+    _entries.onAdded(entry, entryId, live: _liveSource(media));
+    return entryId;
   }
 
   /// mpv may report the playlist before the `loadfile` replies: when the
   /// last playlist node already lists one of [ids], parse it again so the
   /// entries map to their [Media].
   void _remapReported(Set<int> ids) {
-    final node = _lastPlaylistNode;
+    final node = _entries.lastNode;
     if (node is List &&
         node.any((entry) => entry is Map && ids.contains(entry['id']))) {
       _updatePlaylistFromNode(node);
     }
+  }
+
+  /// The live PCM source [media] plays, when it is not done: its entry
+  /// holds it while it is in the playlist, and an abort of the source
+  /// takes the entry out first ([_cutPcm]).
+  LiveSource? _liveSource(Media media) {
+    if (!media.isPcmStream) return null;
+    final source = pcmSourceFor(media.uri);
+    if (source == null || source.isDone) return null;
+    source.addCutter(_cutPcm);
+    return (key: source, done: source.done, end: source.endUnread);
+  }
+
+  /// Takes the entries of [source], which is being aborted, out of
+  /// playback. The entry mpv plays is left: the next entry starts, or
+  /// playback stops at the last one (wraps to the first with
+  /// `loop-playlist` on), without the audio output playing out what it
+  /// holds. A queued entry leaves the playlist: loaded later, it would
+  /// fail. Asks mpv for the playlist, since the one in the state can lag
+  /// it, and again before each removal, since mpv removes by index and an
+  /// index read earlier can be stale: until no command that moves the
+  /// indices went out between the read and the removal. Not behind the
+  /// playlist calls: abort waits for the cut 1 s at most. `null` when this
+  /// player holds no entry of [source].
+  Future<void>? _cutPcm(PcmSource source) {
+    if (_disposed) return null;
+    // Taken now: the abort completes `done`, which drops the entries.
+    final ids = _entries.liveIds(source);
+    if (ids.isEmpty) return null;
+    return () async {
+      final node = await _readPlaylist();
+      if (node == null) return;
+      final queued = <Object?>[];
+      var playing = false;
+      for (final entry in node) {
+        if (entry is! Map || !ids.contains(entry['id'])) continue;
+        if (entry['playing'] == true) {
+          playing = true;
+        } else {
+          queued.add(entry['id']);
+        }
+      }
+      if (playing) await _calls.command(['playlist-next', 'force']);
+      for (final id in queued) {
+        // A command that moved the indices after the read (a remove or an
+        // insert of the app) makes the read stale: read again. The removal
+        // then goes out with nothing between, so mpv takes it in order.
+        // Bounded: the abort waits for the cut 1 s at most anyway.
+        for (var tries = 0; tries < 8; tries++) {
+          final shifts = _calls.playlistShifts;
+          final now = await _readPlaylist();
+          if (now == null) return;
+          await debugBeforePcmCutRemove?.call();
+          if (shifts != _calls.playlistShifts) continue;
+          final at = now.indexWhere((e) => e is Map && e['id'] == id);
+          // Gone already, or taken by a later call. One that became the
+          // current entry meanwhile is cut by the removal too.
+          if (at >= 0) await _calls.command(['playlist-remove', '$at']);
+          break;
+        }
+      }
+    }();
   }
 
   // ── Public raw escape hatches ────────────────────────────────────────────

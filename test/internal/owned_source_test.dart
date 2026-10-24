@@ -44,6 +44,19 @@ void main() {
     expect(releases, 1);
   });
 
+  // The keeper (a playlist entry) may still hold the release when mpv's
+  // refusal gives the source back: between them it runs once.
+  test(
+    'refused after the hand-over, the keeper does not release it again',
+    () async {
+      final keeper = source.handOver();
+      source.revoke();
+      await source.release();
+      await keeper!();
+      expect(releases, 1);
+    },
+  );
+
   test('a source with nothing to release', () async {
     final plain = OwnedSource(const ResolvedUri('/music/a.flac'));
     expect(plain.uri, '/music/a.flac');

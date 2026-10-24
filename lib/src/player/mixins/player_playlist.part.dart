@@ -60,7 +60,7 @@ mixin _PlaylistModule on _PlayerBase {
   /// appends in mpv.
   Future<void> _addEntry(Media media, _LoadTicket load, {int? at}) async {
     _mediaCache[media.uri] = media;
-    final source = _hold(await resolveUri(media.uri));
+    final source = OwnedSource(await resolveUri(media.uri));
     // Released on every way out unless mpv took the entry: a later load,
     // or a refusal, after which nothing will ever read the source.
     try {
@@ -242,10 +242,10 @@ mixin _PlaylistModule on _PlayerBase {
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
     _mediaCache[media.uri] = media;
-    final source = _hold(await resolveUri(media.uri));
+    final source = OwnedSource(await resolveUri(media.uri));
     // Until mpv takes the entry its source is this call's to release, on
     // every way out: a later load, a command that fails. Once taken, it
-    // stays with the held sources while mpv lists it.
+    // stays with [_entries] while mpv lists it.
     try {
       if (load.superseded) return;
       _mediaCache[source.uri] = media;

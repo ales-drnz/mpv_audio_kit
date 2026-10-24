@@ -72,7 +72,7 @@ final class CoreCalls {
   /// How many commands that move playlist indices went out (removes,
   /// moves, inserts, replacing loads, clears, shuffles, stop): mpv removes
   /// by index, so a read of the playlist names the right entry only if
-  /// none went out after it (see `_PcmModule._cutPcm`).
+  /// none went out after it (see `_FfiModule._cutPcm`).
   int get playlistShifts => _playlistShifts;
 
   /// Writes a property and throws [MpvCommandException] on rejection.

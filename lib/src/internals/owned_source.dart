@@ -28,11 +28,13 @@ final class OwnedSource {
   String get uri => _resolved.uri;
 
   /// The source went to mpv: [release] does nothing from now on. Returns
-  /// the release of the resource, for the keeper that takes it over (an
-  /// `audio-add` track), `null` when the resolution allocated nothing.
+  /// the release of the resource, for the keeper that takes it over (the
+  /// playlist entry, an `audio-add` track), `null` when the resolution
+  /// allocated nothing. The keeper's release and this one run the resource
+  /// release once between them.
   Future<void> Function()? handOver() {
     _handedOver = true;
-    return _resolved.dispose;
+    return _resolved.dispose == null ? null : _releaseOnce;
   }
 
   /// mpv refused the source: it is the call's again.
@@ -40,7 +42,12 @@ final class OwnedSource {
 
   /// Releases the resource, once, unless the source was handed over.
   Future<void> release() async {
-    if (_handedOver || _released) return;
+    if (_handedOver) return;
+    await _releaseOnce();
+  }
+
+  Future<void> _releaseOnce() async {
+    if (_released) return;
     _released = true;
     await _resolved.dispose?.call();
   }

@@ -60,8 +60,7 @@ mixin _DispatchModule on _PlayerBase {
           // A new load attempt re-arms the source resolver's single
           // retry allowance; see [_resolverRetried].
           _resolverRetried = false;
-          _loadingEntry = entryId;
-          _heldSources.onStartFile();
+          _entries.onStartFile(entryId);
           _updateLifecycle(buffering: true, completed: false);
         case MpvEventFileLoaded(
           :final path,
@@ -78,7 +77,7 @@ mixin _DispatchModule on _PlayerBase {
           // follows this event settles it: a short entry can already be
           // parked at its end here.
           _updateLifecycle(buffering: false);
-          _loadingEntry = null;
+          _entries.onFileLoaded();
           // mpv just built the new file's chain from the stored arguments.
           _onAfChainReset();
           _reassertAfChain();
@@ -105,7 +104,7 @@ mixin _DispatchModule on _PlayerBase {
           // `playlist` and `path` streams still emit with the observed
           // changes that follow this event, as before.
           _applyLoadedEntry(path, playlist);
-          _releaseSettledSources();
+          _releaseSettled();
           // Emit unconditionally: `null` signals "no cover on the new
           // file" so subscribers can clear stale artwork on track changes.
           final cover = coverData == null
@@ -150,10 +149,9 @@ mixin _DispatchModule on _PlayerBase {
           // `eof-reached` notification.
           _dispatchProperty('eof-reached', eof);
           _settleEndOfContent(parked: parked, lastEntry: lastEntry, live: live);
-        case MpvEndFileEvent(:final reason, :final error, :final lastEntry):
-          _loadingEntry = null;
-          _heldSources.onEndFile();
-          _releaseSettledSources();
+        case MpvEventEndFile(:final reason, :final error, :final lastEntry):
+          _entries.onEndFile();
+          _releaseSettled();
           final typedReason = MpvEndFileReason.fromValue(reason);
           _endFileCtrl.add(
             MpvFileEndedEvent(reason: typedReason, error: error),
@@ -372,7 +370,7 @@ mixin _DispatchModule on _PlayerBase {
         playlist = parsePlaylistNode(
           raw: playlistNode,
           mediaCache: _mediaCache,
-          mediaByEntry: _mediaByEntry,
+          mediaByEntry: _entries.media,
           previous: _state.playlist,
         );
       } catch (e) {
@@ -391,37 +389,16 @@ mixin _DispatchModule on _PlayerBase {
 
   @override
   void _updatePlaylistFromNode(dynamic raw) {
-    _lastPlaylistNode = raw;
     try {
       // Forget the entries mpv no longer has. mpv numbers entries in
       // order, so one newer than every entry a node has listed was
       // appended after this node was taken (a batch of appends replies
       // ahead of the playlist notifications): it stays.
-      if (raw is List) {
-        final live = <int>{};
-        for (final entry in raw) {
-          if (entry is Map && entry['id'] is int) {
-            final id = entry['id'] as int;
-            live.add(id);
-            if (id > _maxListedEntryId) _maxListedEntryId = id;
-          }
-        }
-        if (!_heldSources.isEmpty) {
-          _heldSources.onPlaylist([
-            for (final entry in raw)
-              if (entry is Map && entry['filename'] is String)
-                entry['filename'] as String,
-          ], newestId: _maxListedEntryId);
-        }
-        _mediaByEntry.removeWhere(
-          (id, _) => id <= _maxListedEntryId && !live.contains(id),
-        );
-        _prunePcm(live);
-      }
+      _entries.onPlaylist(raw);
       final playlist = parsePlaylistNode(
         raw: raw,
         mediaCache: _mediaCache,
-        mediaByEntry: _mediaByEntry,
+        mediaByEntry: _entries.media,
         previous: _state.playlist,
       );
       _updateField((s) => s.copyWith(playlist: playlist), _playlist, playlist);
@@ -495,6 +472,13 @@ mixin _DispatchModule on _PlayerBase {
   }
 
   // --- Misc helpers ---
+
+  /// Releases the held resources mpv has stopped reading.
+  void _releaseSettled() {
+    for (final release in _entries.takeSettled()) {
+      unawaited(release());
+    }
+  }
 
   /// Applies a `time-pos` value carried on an event payload (seconds, read
   /// by the event isolate at dispatch time). `null` means the read failed

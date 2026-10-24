@@ -104,7 +104,11 @@ class MpvEventPlaybackRestart extends MpvIsolateEvent {
 }
 
 /// mpv fired MPV_EVENT_END_FILE: playback of the current entry ended.
-class MpvEndFileEvent extends MpvIsolateEvent {
+class MpvEventEndFile extends MpvIsolateEvent {
+  /// The `playlist_entry_id` of the entry that ended, the one its
+  /// [MpvEventStartFile] named.
+  final int entryId;
+
   /// The `MPV_END_FILE_REASON_*` code (EOF, stop, error, redirect, …).
   final int reason;
 
@@ -117,8 +121,13 @@ class MpvEndFileEvent extends MpvIsolateEvent {
   /// error reasons, `false` for the others.
   final bool lastEntry;
 
-  /// Carries the end-of-file [reason] and [error] codes.
-  MpvEndFileEvent(this.reason, this.error, {this.lastEntry = false});
+  /// Carries the end-of-file [reason] and [error] codes of entry [entryId].
+  MpvEventEndFile(
+    this.entryId,
+    this.reason,
+    this.error, {
+    this.lastEntry = false,
+  });
 }
 
 /// Where the core stands against the end of content, read by the event
