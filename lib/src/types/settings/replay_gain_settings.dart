@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:mpv_audio_kit/src/types/enums/replay_gain.dart';
+import '../enums/replay_gain.dart';
 
 /// Aggregate of mpv's four ReplayGain properties (`replaygain`,
 /// `replaygain-preamp`, `replaygain-clip`, `replaygain-fallback`).

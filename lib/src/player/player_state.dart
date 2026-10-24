@@ -3,28 +3,29 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'package:flutter/foundation.dart' show listEquals;
-import 'package:mpv_audio_kit/src/generated/audio_effects_settings.dart';
-import 'package:mpv_audio_kit/src/internals/unset_sentinel.dart';
-import 'package:mpv_audio_kit/src/models/audio_params.dart';
-import 'package:mpv_audio_kit/src/models/chapter.dart';
-import 'package:mpv_audio_kit/src/models/cover_art.dart';
-import 'package:mpv_audio_kit/src/models/demuxer_cache_state.dart';
-import 'package:mpv_audio_kit/src/models/device.dart';
-import 'package:mpv_audio_kit/src/models/media_session.dart';
-import 'package:mpv_audio_kit/src/models/mpv_track.dart';
-import 'package:mpv_audio_kit/src/models/playlist.dart';
-import 'package:mpv_audio_kit/src/types/enums/cover.dart';
-import 'package:mpv_audio_kit/src/types/enums/format.dart';
-import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
-import 'package:mpv_audio_kit/src/types/enums/hls_bitrate.dart';
-import 'package:mpv_audio_kit/src/types/enums/loop.dart';
-import 'package:mpv_audio_kit/src/types/enums/spdif.dart';
-import 'package:mpv_audio_kit/src/types/sealed/channels.dart';
-import 'package:mpv_audio_kit/src/types/settings/cache_settings.dart';
-import 'package:mpv_audio_kit/src/types/settings/demuxer_settings.dart';
-import 'package:mpv_audio_kit/src/types/settings/replay_gain_settings.dart';
-import 'package:mpv_audio_kit/src/types/settings/spectrum_settings.dart';
-import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
+
+import '../generated/audio_effects_settings.dart';
+import '../internals/unset_sentinel.dart';
+import '../models/audio_params.dart';
+import '../models/chapter.dart';
+import '../models/cover_art.dart';
+import '../models/demuxer_cache_state.dart';
+import '../models/device.dart';
+import '../models/media_session.dart';
+import '../models/mpv_track.dart';
+import '../models/playlist.dart';
+import '../types/enums/cover.dart';
+import '../types/enums/format.dart';
+import '../types/enums/gapless.dart';
+import '../types/enums/hls_bitrate.dart';
+import '../types/enums/loop.dart';
+import '../types/enums/spdif.dart';
+import '../types/sealed/channels.dart';
+import '../types/settings/cache_settings.dart';
+import '../types/settings/demuxer_settings.dart';
+import '../types/settings/replay_gain_settings.dart';
+import '../types/settings/spectrum_settings.dart';
+import '../types/state/audio_output_state.dart';
 
 const _kEmptyPlaylist = Playlist.empty;
 const _kAutoDevice = Device(name: 'auto', description: 'Auto');
