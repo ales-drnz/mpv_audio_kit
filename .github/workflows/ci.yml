@@ -27,6 +27,12 @@ permissions:
 # the release is out: the run's artifacts expire after 90 days, and main
 # would keep testing them instead of the release.
 #
+# The tests of a fix in libmpv-rN fail here, instead of skipping, on a
+# binary without it when rN is the release the run expects (the run's, or
+# the pin without one), and test/packaging/libmpv_release_test fails when
+# the tests need a release past it. So the tests of rN go in once
+# LIBMPV_SCRIPTS_RUN points at the Build of rN.
+#
 # Before setting it, check that the secret LIBMPV_SCRIPTS_TOKEN exists and
 # has not expired: a fine-grained token with Actions read access on
 # ales-drnz/libmpv-scripts only, renewed before the expiry date chosen when

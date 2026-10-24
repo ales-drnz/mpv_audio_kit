@@ -1,8 +1,10 @@
 name: libmpv from a libmpv-scripts run
 description: >-
   Bundles the libraries of a libmpv-scripts CI run instead of the pinned
-  release, through the build hook's libmpv user define. For testing a
-  libmpv build before its release exists. Does nothing without a run id.
+  release, through the build hook's libmpv user define, and sets
+  MAK_LIBMPV_RELEASE to the run's release, the one the release-gated tests
+  then expect. For testing a libmpv build before its release exists. Does
+  nothing without a run id.
 inputs:
   run-id:
     description: The libmpv-scripts workflow run whose libmpv-release artifact to use.
@@ -60,11 +62,19 @@ runs:
     - if: steps.check.outputs.use == 'true'
       shell: bash
       run: |
+        manifest="$RUNNER_TEMP/libmpv/manifest.json"
+        # The tests of a release expect the run's (expectedLibmpvRelease in
+        # test/_helpers/setter_test_helpers.dart): on CI one the binary
+        # lacks fails instead of skipping. jq.exe on Windows ends its lines
+        # with CRLF.
+        release=$(jq -r .release "$manifest" | tr -d '\r')
+        echo "Manifest of the run: $(jq -c '{release, source}' "$manifest" | tr -d '\r')"
+        echo "MAK_LIBMPV_RELEASE=$release" >> "$GITHUB_ENV"
         # The user define skips the hook's checksums, so a table that does
         # not match these binaries would stay green until the release.
         hook="$GITHUB_WORKSPACE/hook/build.dart"
         jq -r '.assets | to_entries[] | "\(.key) \(.value)"' \
-          "$RUNNER_TEMP/libmpv/manifest.json" |
+          "$manifest" |
           while read -r asset sha; do
             # jq.exe on Windows ends its lines with CRLF.
             sha="${sha%$'\r'}"
