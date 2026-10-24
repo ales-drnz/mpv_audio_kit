@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 // `mpv_bindings.dart` defines its own integer-typed `MpvEndFileReason`
-// (auto-generated FFI). The enum below shadows that name, so we hide
+// (hand-written FFI bindings). The enum below shadows that name, so we hide
 // the bindings symbol to keep the import free of name conflicts.
 import '../mpv_bindings.dart' hide MpvEndFileReason;
 import '../types/enums/log_level.dart';

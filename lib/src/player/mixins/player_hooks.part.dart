@@ -14,15 +14,18 @@ part of '../player.dart';
 /// ```dart
 /// player.registerHook(Hook.load);
 /// player.stream.hook.listen((event) async {
-///   if (event.hook == Hook.load) {
-///     final url = await player.getRawProperty('stream-open-filename') ?? '';
-///     // Optionally redirect the URL:
-///     await player.setRawProperty('stream-open-filename', newUrl);
-///     // Optionally set per-file HTTP headers:
-///     await player.setRawProperty(
-///         'file-local-options/http-header-fields', 'X-Token: abc');
+///   try {
+///     if (event.hook == Hook.load) {
+///       final url = await player.getRawProperty('stream-open-filename');
+///       // Optionally redirect the URL:
+///       await player.setRawProperty('stream-open-filename', newUrl);
+///       // Optionally set per-file HTTP headers:
+///       await player.setRawProperty(
+///           'file-local-options/http-header-fields', 'X-Token: abc');
+///     }
+///   } finally {
+///     player.continueHook(event.id); // must always be called
 ///   }
-///   player.continueHook(event.id); // must always be called
 /// });
 /// ```
 mixin _HooksModule on _PlayerBase {

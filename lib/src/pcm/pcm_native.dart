@@ -32,7 +32,9 @@ abstract interface class PcmNative {
   /// Out of memory.
   static const int errNoMemory = -4;
 
-  /// Native state codes of [state].
+  // Native state codes of [state].
+
+  /// The source is open and no reader has opened it yet.
   static const int stateOpen = 0;
 
   /// A reader opened the source.

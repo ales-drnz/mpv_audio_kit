@@ -193,8 +193,9 @@ class BandProcessor {
     final fft = _fft!;
 
     // Read the ring in time order: oldest sample is at [_ringWrite],
-    // newest is at [(_ringWrite − 1) mod fftSize]. Apply Hann while
-    // copying so the next loop is one mul + one store per sample.
+    // newest is at [(_ringWrite − 1) mod fftSize]. Apply the configured
+    // window while copying so the next loop is one mul + one store per
+    // sample.
     final start = _ringWrite;
     for (var i = 0; i < fftSize; i++) {
       final src = (start + i) % fftSize;

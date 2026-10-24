@@ -283,8 +283,9 @@ final class MpvEventProperty extends Struct {
   @Int32()
   external int format;
 
-  // 4 bytes of implicit padding before the next 8-byte pointer (C ABI).
-  // Dart FFI calculates struct layout automatically via @Int32 + Pointer alignment.
+  // On 64-bit targets the C ABI puts 4 bytes of padding before the next
+  // pointer; on 32-bit ones (armeabi-v7a) there is none. Dart FFI computes
+  // the layout for each ABI.
 
   /// Pointer to the new property value, decoded according to [format].
   external Pointer<Void> data;
