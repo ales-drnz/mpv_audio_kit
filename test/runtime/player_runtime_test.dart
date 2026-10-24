@@ -7,6 +7,7 @@ library;
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
@@ -309,7 +310,30 @@ void main() {
 
         final mime = await player.getRawProperty('embedded-cover-art-mime');
         expect(mime, 'image/png', reason: 'fixture was muxed with a PNG cover');
+        // The same bytes as the PNG muxed into the fixture: from its
+        // signature to the end of its IEND chunk.
+        final file = File(coverFixturePath).readAsBytesSync();
+        final start = _indexOf(file, _pngSignature);
+        final end = _indexOf(file, 'IEND'.codeUnits, start) + 8;
+        expect(start, greaterThan(0), reason: 'no PNG in the fixture');
+        final data = await player.getRawPropertyNode('embedded-cover-art-data');
+        expect(data, isA<Uint8List>());
+        expect(data, file.sublist(start, end));
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });
+}
+
+const _pngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+/// The index of the first [pattern] in [bytes] at or after [from], or -1.
+int _indexOf(List<int> bytes, List<int> pattern, [int from = 0]) {
+  outer:
+  for (var i = from; i + pattern.length <= bytes.length; i++) {
+    for (var j = 0; j < pattern.length; j++) {
+      if (bytes[i + j] != pattern[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
 }

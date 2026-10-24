@@ -34,8 +34,10 @@ void main() {
       // wrapper / mpv versions.
       expect(PrefetchState.fromMpv('totally-bogus'), PrefetchState.idle);
       expect(PrefetchState.fromMpv(''), PrefetchState.idle);
+      // Not 'IDLE': its expected value is the fallback too, so a parse
+      // that ignored the case would pass it.
       expect(
-        PrefetchState.fromMpv('IDLE'),
+        PrefetchState.fromMpv('READY'),
         PrefetchState.idle,
         reason: 'parse is case-sensitive (mpv emits lowercase)',
       );

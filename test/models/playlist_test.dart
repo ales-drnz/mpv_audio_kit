@@ -28,13 +28,16 @@ void main() {
   });
 
   group('Playlist equality', () {
-    test('the const Playlist.empty singleton is == to itself', () {
-      // Freezed generates structural `==` on (items, index); the
-      // singleton is the canonical empty playlist used as the default
+    test('Playlist.empty equals any other empty playlist', () {
+      // The singleton is the canonical empty playlist used as the default
       // seed for `state.playlist` and the `previous` fallback in
-      // `parsePlaylistNode`.
-      expect(Playlist.empty, Playlist.empty);
-      expect(Playlist.empty.hashCode, Playlist.empty.hashCode);
+      // `parsePlaylistNode`: a parsed empty list must compare equal to it,
+      // or the reactive would emit an empty playlist twice. A list built
+      // at run time, so the two are not the same const instance.
+      final parsed = Playlist(List<Media>.of(const []));
+      expect(identical(parsed, Playlist.empty), isFalse);
+      expect(parsed, Playlist.empty);
+      expect(parsed.hashCode, Playlist.empty.hashCode);
     });
 
     test('same medias same index = equal', () {
@@ -73,12 +76,6 @@ void main() {
         Media('track://1', extras: {'artBytes': 'something'}),
       ]);
       expect(before, isNot(after));
-    });
-
-    test('identity equality short-circuits', () {
-      const playlist = Playlist([Media('a'), Media('b')]);
-      expect(identical(playlist, playlist), isTrue);
-      expect(playlist == playlist, isTrue);
     });
 
     test('hashCode follows == for non-identical equal medias lists', () {

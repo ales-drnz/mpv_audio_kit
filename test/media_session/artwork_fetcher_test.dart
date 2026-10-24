@@ -13,11 +13,14 @@ import 'package:mpv_audio_kit/src/media_session/artwork_fetcher.dart';
 void main() {
   late HttpServer server;
   late Uri base;
+  // The paths of the plain server's requests, in arrival order.
+  final served = <String>[];
 
   setUpAll(() async {
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     base = Uri.parse('http://127.0.0.1:${server.port}');
     server.listen((request) {
+      served.add(request.uri.toString());
       final response = request.response;
       if (request.uri.path == '/cover') {
         response.headers.contentType = ContentType('image', 'png');
@@ -113,8 +116,22 @@ void main() {
       expect(art?.bytes, [9, 8, 7]);
     }, skip: Platform.isMacOS ? 'see above' : false);
 
+    // Against this server the system roots refuse too, so the case
+    // proves nothing on its own: the one below does.
     test('is refused when the CA bundle cannot be read', () async {
       expect(await downloadArtwork(cover, '/nonexistent/ca.pem'), isNull);
     });
+  });
+
+  // F208: an unreadable CA bundle fails closed. A fetcher that ignored it
+  // and fell back to the system roots would fetch a plain http cover, which
+  // needs no CA at all.
+  test('an unreadable CA bundle refuses even a plain http cover', () async {
+    const path = '/cover?ca=unreadable';
+    expect(
+      await downloadArtwork(base.resolve(path), '/nonexistent/ca.pem'),
+      isNull,
+    );
+    expect(served, isNot(contains(path)), reason: 'nothing is requested');
   });
 }
