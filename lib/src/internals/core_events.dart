@@ -2,12 +2,16 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-part of 'event_isolate.dart';
+// The events the event pump hands the player, one per mpv event it consumes,
+// and the observe specs of bring-up. Plain Dart: the native pump (an isolate
+// over FFI) and the web pump (the main thread over js_interop) produce the
+// same events.
 
-// ── Events: isolate → main ───────────────────────────────────────────────────
+import 'dart:typed_data';
 
-/// Base type for every message the event isolate forwards to the main
-/// isolate after init: one subclass per mpv event the player consumes.
+/// Base type for every message the event pump forwards to the player after
+/// init: one subclass per mpv event the player consumes. The name comes
+/// from the native pump, which runs in an isolate of its own.
 sealed class MpvIsolateEvent {}
 
 /// mpv fired MPV_EVENT_START_FILE: a `loadfile` began opening the
@@ -24,11 +28,13 @@ class MpvEventStartFile extends MpvIsolateEvent {
 /// metadata and track list are available.
 ///
 /// Carries every value the player needs at the file-load boundary, read by
-/// the event isolate right after the event is dequeued. The libmpv client
-/// API is synchronous: a property read queues on the core's dispatch and
-/// waits for the playloop to serve it, which can take seconds while an
-/// audio output initializes (e.g. CoreAudio waking a Bluetooth or AirPlay
-/// device). Riding the payload keeps that wait off the main isolate.
+/// the event pump right after the event is dequeued. A synchronous property
+/// read queues on the core's dispatch and waits for the playloop to serve
+/// it, which can take seconds while an audio output initializes (e.g.
+/// CoreAudio waking a Bluetooth or AirPlay device). Riding the payload
+/// keeps that wait off the main isolate: the native pump waits in its own
+/// isolate, the web pump reads asynchronously and holds the later events
+/// meanwhile.
 class MpvEventFileLoaded extends MpvIsolateEvent {
   /// The playlist entry `path`, applied to the state before the cover and
   /// waveform resets go out. `null` when the read failed.
@@ -57,11 +63,10 @@ class MpvEventFileLoaded extends MpvIsolateEvent {
   /// the read failed.
   final dynamic chapterList;
 
-  /// Embedded cover art bytes, copied out of mpv-owned memory into a
-  /// transferable buffer (zero-copy to materialize on the main isolate).
-  /// `null` when the file has no embedded cover or the read failed:
-  /// the player emits `null` so consumers clear stale artwork.
-  final TransferableTypedData? coverData;
+  /// Embedded cover art bytes, copied out of mpv-owned memory. `null` when
+  /// the file has no embedded cover or the read failed: the player emits
+  /// `null` so consumers clear stale artwork.
+  final Uint8List? coverData;
 
   /// MIME type of [coverData]; `null` iff [coverData] is `null`.
   final String? coverMime;
@@ -92,7 +97,7 @@ class MpvEventAudioReconfig extends MpvIsolateEvent {}
 /// This is the authoritative "seek request is finished" signal.
 class MpvEventPlaybackRestart extends MpvIsolateEvent {
   /// `time-pos` in seconds where playback restarted, read by the event
-  /// isolate at dispatch time so the landing position reaches the stream
+  /// pump at dispatch time so the landing position reaches the stream
   /// ahead of any throttled `time-pos` observer event: without a
   /// synchronous read on the main isolate (which would stall behind a
   /// busy playloop, e.g. during audio-output init). `null` when
@@ -116,7 +121,7 @@ class MpvEventEndFile extends MpvIsolateEvent {
   final int error;
 
   /// Whether the entry that ended is the last one of the playlist, read by
-  /// the event isolate from mpv's playlist (by entry id, so a playlist
+  /// the event pump from mpv's playlist (by entry id, so a playlist
   /// that already moved on cannot mislead it). Only read for the EOF and
   /// error reasons, `false` for the others.
   final bool lastEntry;
@@ -131,7 +136,7 @@ class MpvEventEndFile extends MpvIsolateEvent {
 }
 
 /// Where the core stands against the end of content, read by the event
-/// isolate in one go: whether the current file reached EOF
+/// pump in one go: whether the current file reached EOF
 /// (`eof-reached`), whether mpv parked on it, and whether it is the last
 /// playlist entry. Sent after
 /// FILE_LOADED and PLAYBACK_RESTART, and on every `eof-reached`, `pause`
@@ -243,7 +248,7 @@ class MpvEventPropertyNode extends MpvIsolateEvent {
 }
 
 /// Changes of several properties that back one state cell, held together
-/// by the event isolate so the cell moves once: each of [events] is an
+/// by the event pump so the cell moves once: each of [events] is an
 /// [MpvEventPropertyNode], [MpvEventPropertyString] or
 /// [MpvEventPropertyUnavailable], applied in order.
 class MpvEventPropertyGroup extends MpvIsolateEvent {
@@ -270,7 +275,7 @@ class MpvEventLog extends MpvIsolateEvent {
   MpvEventLog(this.prefix, this.level, this.text);
 }
 
-/// A diagnostic of the event isolate itself: an event it could not decode,
+/// A diagnostic of the event pump itself: an event it could not decode,
 /// a read that failed. Library-side, so the player puts it on
 /// `internalLog`, never on the engine's `log` or `error`.
 class MpvEventInternalLog extends MpvIsolateEvent {
@@ -304,7 +309,7 @@ class MpvEventReply extends MpvIsolateEvent {
 }
 
 /// Outcome of an async property read (MPV_EVENT_GET_PROPERTY_REPLY),
-/// with the value already decoded by the event isolate.
+/// with the value already decoded by the event pump.
 class MpvEventGetReply extends MpvIsolateEvent {
   /// The `reply_userdata` the request was tagged with.
   final int userdata;
@@ -334,24 +339,20 @@ class MpvEventHookFired extends MpvIsolateEvent {
   MpvEventHookFired(this.id, this.name);
 }
 
-/// Turns the [TransferableTypedData] byte arrays of a get reply back into
-/// [Uint8List]s, in place, on the receiving isolate. Maps and lists are
-/// walked; other values are returned as they are.
-Object? materializeBytes(Object? value) {
-  switch (value) {
-    case TransferableTypedData():
-      return value.materialize().asUint8List();
-    case Map<String, dynamic>():
-      for (final entry in value.entries.toList(growable: false)) {
-        value[entry.key] = materializeBytes(entry.value);
-      }
-      return value;
-    case List<dynamic>():
-      for (var i = 0; i < value.length; i++) {
-        value[i] = materializeBytes(value[i]);
-      }
-      return value;
-    default:
-      return value;
-  }
+/// Single property to register via `mpv_observe_property` at bring-up.
+/// [replyId] is opaque user data; the dispatcher matches by name on the
+/// receive side.
+class MpvObserveSpec {
+  /// mpv property name to observe (e.g. `time-pos`, `pause`).
+  final String name;
+
+  /// The `MPV_FORMAT_*` constant the property's value is delivered in.
+  final int format;
+
+  /// Opaque user-data tag echoed back on each property change; the
+  /// main-side dispatcher matches incoming changes by [name], not this.
+  final int replyId;
+
+  /// Describes a single property to register via `mpv_observe_property`.
+  const MpvObserveSpec(this.name, this.format, this.replyId);
 }

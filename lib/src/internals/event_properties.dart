@@ -2,12 +2,12 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-part of 'event_isolate.dart';
+part of 'event_logic.dart';
 
-// The observed properties on their way to the main isolate: the event
-// isolate's cache of them ([_PropertyCache]), the dedup, the throttle of
-// the clock values, the group of the audio parameters, and the re-read of
-// the values mpv reported unavailable.
+// The observed properties on their way to the player: the event pump's
+// cache of them ([_PropertyCache]), the dedup, the throttle of the clock
+// values, the group of the audio parameters, and the re-read of the values
+// mpv reported unavailable.
 
 /// Throttle window for the playback-clock properties. mpv emits one update
 /// per playloop iteration whose cadence is the audio output's buffer tick:
@@ -47,10 +47,10 @@ const Set<String> _kGroupedProps = {
 /// How long a held [_kGroupedProps] change waits for the rest of its group.
 const int _kGroupWindowMs = 33;
 
-/// Per-isolate monotonic clock for the property throttle.
+/// Monotonic clock for the property throttle.
 final Stopwatch _throttleClock = Stopwatch()..start();
 
-/// The event isolate's view of the observed properties: the observe
+/// The event pump's view of the observed properties: the observe
 /// format of each, the last value forwarded (for dedup), the last forward
 /// time of the throttled ones, and the properties mpv reported unavailable
 /// after they had a value.
@@ -70,16 +70,16 @@ class _PropertyCache {
   /// When the first change in [group] was held.
   int groupSince = 0;
 
-  /// The `playlist_entry_id` of the last START_FILE forwarded to the main
-  /// isolate: [_sendEndOfContent] reads count only for that entry.
+  /// The `playlist_entry_id` of the last START_FILE forwarded to the
+  /// player: [_sendEndOfContent] reads count only for that entry.
   int? startedEntryId;
 }
 
-/// The `mpv_wait_event` timeout: [_kWaitEventTimeoutSeconds], shortened to
-/// the end of the earliest throttle window while a value is held back.
-double _waitTimeoutSeconds(_PropertyCache cache) {
+/// How long the pump may wait for the next event: [cap], shortened to the
+/// end of the earliest throttle window while a value is held back.
+double _waitSeconds(_PropertyCache cache, double cap) {
   if (cache.trailing.isEmpty && cache.group.isEmpty) {
-    return _kWaitEventTimeoutSeconds;
+    return cap;
   }
   final now = _throttleClock.elapsedMilliseconds;
   var remaining = _kClockThrottleMs;
@@ -93,64 +93,50 @@ double _waitTimeoutSeconds(_PropertyCache cache) {
   }
   if (remaining <= 0) return 0;
   final seconds = remaining / 1000;
-  return seconds < _kWaitEventTimeoutSeconds
-      ? seconds
-      : _kWaitEventTimeoutSeconds;
+  return seconds < cap ? seconds : cap;
 }
 
 /// Sends the held-back values whose throttle window has closed, so the
 /// last clock value before mpv goes quiet (a pause) still arrives, and
 /// the held group once its window has closed.
-void _flushTrailing(SendPort toMain, _PropertyCache cache) {
+void _flushTrailing(_Send send, _PropertyCache cache) {
   if (cache.trailing.isEmpty && cache.group.isEmpty) return;
   final now = _throttleClock.elapsedMilliseconds;
   if (cache.group.isNotEmpty && now - cache.groupSince >= _kGroupWindowMs) {
-    _flushGroup(toMain, cache);
+    _flushGroup(send, cache);
   }
   for (final name in cache.trailing.keys.toList(growable: false)) {
     final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
     if (now - last < _kClockThrottleMs) continue;
     final value = cache.trailing.remove(name)!;
-    _forwardValue(toMain, name, mpv.MpvFormat.mpvFormatDouble, value, cache);
+    _forwardValue(send, name, mpv.MpvFormat.mpvFormatDouble, value, cache);
   }
 }
 
+/// A property change of [name] in [format], whose [value] the transport
+/// decoded ([kPropertyUnavailable] when mpv sent no data,
+/// [kPropertyUnobserved] for a format the player does not observe).
 void _dispatchProperty(
-  SendPort toMain,
-  mpv.MpvEventProperty prop,
+  _Send send,
+  String name,
+  int format,
+  Object? value,
   _PropertyCache cache,
 ) {
-  final name = decodeMpvString(prop.name.cast());
-
-  if (prop.format == mpv.MpvFormat.mpvFormatNone || prop.data == nullptr) {
-    _forwardUnavailable(toMain, name, cache);
+  if (identical(value, kPropertyUnavailable)) {
+    _forwardUnavailable(send, name, cache);
     return;
   }
-
-  final value = switch (prop.format) {
-    mpv.MpvFormat.mpvFormatDouble => prop.data.cast<Double>().value,
-    mpv.MpvFormat.mpvFormatFlag => prop.data.cast<Int32>().value,
-    mpv.MpvFormat.mpvFormatInt64 => prop.data.cast<Int64>().value,
-    mpv.MpvFormat.mpvFormatString => decodeMpvString(
-      prop.data.cast<Pointer<Utf8>>().value,
-    ),
-    mpv.MpvFormat.mpvFormatNode => decodeMpvNode(
-      prop.data.cast<mpv.MpvNode>().ref,
-    ),
-    // An unobserved format (OSD_STRING, top-level BYTE_ARRAY): drop it.
-    _ => _unobserved,
-  };
-  if (identical(value, _unobserved)) return;
-  _forwardValue(toMain, name, prop.format, value, cache);
+  // An unobserved format (OSD_STRING, top-level BYTE_ARRAY): drop it.
+  if (identical(value, kPropertyUnobserved)) return;
+  _forwardValue(send, name, format, value, cache);
 }
-
-const Object _unobserved = Object();
 
 /// Forwards [value] of property [name] to the main isolate unless it equals
 /// the last one forwarded, or it is a clock-driven property inside its
 /// throttle window.
 void _forwardValue(
-  SendPort toMain,
+  _Send send,
   String name,
   int format,
   dynamic value,
@@ -190,7 +176,7 @@ void _forwardValue(
   }
   lastValues[name] = value;
 
-  _sendProperty(toMain, cache, name, switch (format) {
+  _sendProperty(send, cache, name, switch (format) {
     mpv.MpvFormat.mpvFormatDouble => MpvEventPropertyDouble(
       name,
       value as double,
@@ -210,25 +196,25 @@ void _forwardValue(
 /// not always notify when such a property comes back (a change notified
 /// while it was still unavailable is not repeated), so it is also marked
 /// for [_rereadUnavailable].
-void _forwardUnavailable(SendPort toMain, String name, _PropertyCache cache) {
+void _forwardUnavailable(_Send send, String name, _PropertyCache cache) {
   cache.lastTimestamps.remove(name);
   cache.trailing.remove(name);
   if (!cache.lastValues.containsKey(name)) return;
   cache.lastValues.remove(name);
   cache.unavailable.add(name);
-  _sendProperty(toMain, cache, name, MpvEventPropertyUnavailable(name));
+  _sendProperty(send, cache, name, MpvEventPropertyUnavailable(name));
 }
 
 /// Sends a property change, or holds it in the group when [name] is one of
 /// [_kGroupedProps].
 void _sendProperty(
-  SendPort toMain,
+  _Send send,
   _PropertyCache cache,
   String name,
   MpvIsolateEvent event,
 ) {
   if (!_kGroupedProps.contains(name)) {
-    toMain.send(event);
+    send(event);
     return;
   }
   if (cache.group.isEmpty) {
@@ -238,15 +224,13 @@ void _sendProperty(
   cache.group
     ..remove(name)
     ..[name] = event;
-  if (cache.group.length == _kGroupedProps.length) _flushGroup(toMain, cache);
+  if (cache.group.length == _kGroupedProps.length) _flushGroup(send, cache);
 }
 
 /// Sends the held group changes as one [MpvEventPropertyGroup].
-void _flushGroup(SendPort toMain, _PropertyCache cache) {
+void _flushGroup(_Send send, _PropertyCache cache) {
   if (cache.group.isEmpty) return;
-  toMain.send(
-    MpvEventPropertyGroup(cache.group.values.toList(growable: false)),
-  );
+  send(MpvEventPropertyGroup(cache.group.values.toList(growable: false)));
   cache.group.clear();
 }
 
@@ -254,12 +238,11 @@ void _flushGroup(SendPort toMain, _PropertyCache cache) {
 /// value, and forwards those that are back. Runs at the points where a
 /// new file's values settle (file loaded, audio reconfigured, playback
 /// restarted), since mpv may not send them itself.
-void _rereadUnavailable(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  SendPort toMain,
+Future<void> _rereadUnavailable(
+  CoreReader reader,
+  _Send send,
   _PropertyCache cache,
-) {
+) async {
   if (cache.unavailable.isEmpty) return;
   for (final name in cache.unavailable.toList(growable: false)) {
     final format = cache.formats[name];
@@ -268,16 +251,16 @@ void _rereadUnavailable(
     // or the event (FILE_LOADED, AUDIO_RECONFIG) the caller sends next.
     try {
       final value = switch (format) {
-        mpv.MpvFormat.mpvFormatDouble => _getPropDouble(lib, handle, name),
-        mpv.MpvFormat.mpvFormatFlag => _getPropFlag(lib, handle, name),
-        mpv.MpvFormat.mpvFormatInt64 => _getPropInt64(lib, handle, name),
-        mpv.MpvFormat.mpvFormatString => _getPropString(lib, handle, name),
-        mpv.MpvFormat.mpvFormatNode => _getPropNode(lib, handle, name),
+        mpv.MpvFormat.mpvFormatDouble => await reader.float(name),
+        mpv.MpvFormat.mpvFormatFlag => await reader.flag(name),
+        mpv.MpvFormat.mpvFormatInt64 => await reader.int64(name),
+        mpv.MpvFormat.mpvFormatString => await reader.string(name),
+        mpv.MpvFormat.mpvFormatNode => await reader.node(name),
         _ => null,
       };
-      if (value != null) _forwardValue(toMain, name, format, value, cache);
+      if (value != null) _forwardValue(send, name, format, value, cache);
     } catch (e) {
-      toMain.send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
+      send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
     }
   }
 }

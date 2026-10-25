@@ -187,7 +187,7 @@ mixin _DispatchModule on _PlayerBase {
     final cover = coverData == null
         ? null
         : CoverArt(
-            bytes: coverData.materialize().asUint8List(),
+            bytes: coverData,
             mimeType: coverMime ?? 'application/octet-stream',
           );
     _state = _state.copyWith(coverArt: cover);
