@@ -143,12 +143,12 @@ class Player extends _PlayerBase
   /// in program order wins, regardless of per-URI resolve latency.
   @override
   Future<void> open(Media media, {bool? play}) =>
-      _trackLoad(() => _open(media, play));
+      _transport.trackLoad(() => _open(media, play));
 
   Future<void> _open(Media media, bool? play) async {
     _checkNotDisposed();
     _validateLoadOptions(media);
-    final load = _claimLoad();
+    final load = _transport.claimLoad();
     await _gate();
     if (load.superseded) return;
     final shouldPlay = play ?? configuration.autoPlay;
@@ -159,7 +159,7 @@ class Player extends _PlayerBase
     // `pause` at `no` and fires no PROPERTY_CHANGE on the first autoplay
     // load, so the observer alone would never surface this intent.
     final previousIntent = _state.playWhenReady;
-    final intent = _claimIntent(shouldPlay);
+    final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
     _mediaCache[media.uri] = media;
     final OwnedSource source;
@@ -167,7 +167,7 @@ class Player extends _PlayerBase
       source = OwnedSource(await resolveUri(media.uri));
     } catch (_) {
       // Nothing was loaded: the intent goes back to what still plays.
-      _restoreIntent(load, intent, previousIntent);
+      _transport.restoreIntent(load, intent, previousIntent);
       rethrow;
     }
     // Released on every way out unless mpv took the entry: a later load,
@@ -189,7 +189,7 @@ class Player extends _PlayerBase
       // corrective write after the replace is what actually sticks.
       final parkedAtEof = await _parkedAtEof();
       if (load.superseded) return;
-      final playNow = _intendedPlay(intent, shouldPlay);
+      final playNow = _transport.intendedPlay(intent, shouldPlay);
       await _calls.prop('pause', playNow ? 'no' : 'yes');
       final opts = _buildLoadfileOptions(media);
       try {
@@ -211,7 +211,7 @@ class Player extends _PlayerBase
         // mpv refused the entry and kept what it had: nothing will ever read
         // the source, and the track there goes on with its own intent and
         // pause, as after a failed [openPlaylistFile].
-        if (_restoreIntent(load, intent, previousIntent) &&
+        if (_transport.restoreIntent(load, intent, previousIntent) &&
             playNow != previousIntent) {
           await _calls.propRc('pause', previousIntent ? 'no' : 'yes');
         }
@@ -219,7 +219,7 @@ class Player extends _PlayerBase
       }
       // Asked again, not reused: a pause() called while the loadfile was in
       // flight has the last word.
-      if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
+      if (parkedAtEof && _transport.intendedPlay(intent, shouldPlay)) {
         await _calls.prop('pause', 'no');
       }
       // Drop visible per-track state (cover art, chapter list and current
@@ -261,7 +261,7 @@ class Player extends _PlayerBase
   /// what it was.
   @override
   Future<void> openAll(List<Media> medias, {bool? play, int index = 0}) =>
-      _trackLoad(() => _openAll(medias, play, index));
+      _transport.trackLoad(() => _openAll(medias, play, index));
 
   Future<void> _openAll(List<Media> medias, bool? play, int index) async {
     _checkNotDisposed();
@@ -274,7 +274,7 @@ class Player extends _PlayerBase
       _validateLoadOptions(m);
     }
     // Claim the load epoch synchronously; see [open].
-    final load = _claimLoad();
+    final load = _transport.claimLoad();
     await _gate();
     if (load.superseded) return;
     final clampedIndex = index.clamp(0, medias.length - 1);
@@ -282,7 +282,7 @@ class Player extends _PlayerBase
     // Optimistic intent written at the call point, before the resolve and tls
     // awaits below; see [open] for the rationale.
     final previousIntent = _state.playWhenReady;
-    final intent = _claimIntent(shouldPlay);
+    final intent = _transport.claimIntent(shouldPlay);
     // Snapshot the outgoing current entry's Media so it keeps its
     // metadata while still visible in playlist events during the
     // transition (retained until the post-jump remove below).
@@ -312,7 +312,7 @@ class Player extends _PlayerBase
       } catch (_) {
         // Mid-loop failure: the caller observes the original error, and the
         // sources resolved so far are released on the way out.
-        _restoreIntent(load, intent, previousIntent);
+        _transport.restoreIntent(load, intent, previousIntent);
         rethrow;
       }
       // Execute in-flight transport writes before the replace: see
@@ -336,7 +336,7 @@ class Player extends _PlayerBase
         // the playlist instead, and the entries mpv took stay with
         // [_entries] until they leave.
         if (!load.superseded) {
-          _restoreIntent(load, intent, previousIntent);
+          _transport.restoreIntent(load, intent, previousIntent);
           await _calls.command(['playlist-clear']);
         }
         Error.throwWithStackTrace(failure.$1, failure.$2);
@@ -356,7 +356,7 @@ class Player extends _PlayerBase
       // entry): entries before it are never loaded or made current.
       await _calls.prop(
         'pause',
-        _intendedPlay(intent, shouldPlay) ? 'no' : 'yes',
+        _transport.intendedPlay(intent, shouldPlay) ? 'no' : 'yes',
       );
       final target = (retainedOld ? 1 : 0) + clampedIndex;
       // The parked flow went through idle, which does not spend the intent
@@ -505,26 +505,26 @@ class Player extends _PlayerBase
   /// global network and demuxer settings.
   @override
   Future<void> openPlaylistFile(Media playlist, {bool? play}) =>
-      _trackLoad(() => _openPlaylistFile(playlist, play));
+      _transport.trackLoad(() => _openPlaylistFile(playlist, play));
 
   Future<void> _openPlaylistFile(Media playlist, bool? play) async {
     _checkNotDisposed();
     _rejectPcm(playlist, 'playlist');
     _validateLoadOptions(playlist);
     // Claim the load epoch synchronously; see [open].
-    final load = _claimLoad();
+    final load = _transport.claimLoad();
     await _gate();
     if (load.superseded) return;
     final shouldPlay = play ?? configuration.autoPlay;
     // Optimistic intent written at the call point: same rationale as [open].
     final previousIntent = _state.playWhenReady;
-    final intent = _claimIntent(shouldPlay);
+    final intent = _transport.claimIntent(shouldPlay);
     _mediaCache.clear();
     final OwnedSource source;
     try {
       source = OwnedSource(await resolveUri(playlist.uri));
     } catch (_) {
-      _restoreIntent(load, intent, previousIntent);
+      _transport.restoreIntent(load, intent, previousIntent);
       rethrow;
     }
     // Never handed over: mpv reads the list inside the command, and its
@@ -540,7 +540,7 @@ class Player extends _PlayerBase
       // mpv's keep-open re-pause; a corrective write after the replace does.
       final parkedAtEof = await _parkedAtEof();
       if (load.superseded) return;
-      final playNow = _intendedPlay(intent, shouldPlay);
+      final playNow = _transport.intendedPlay(intent, shouldPlay);
       await _calls.prop('pause', playNow ? 'no' : 'yes');
       try {
         await _calls.commandChecked(['loadlist', source.uri, 'replace']);
@@ -549,14 +549,14 @@ class Player extends _PlayerBase
         // the track there goes on: the intent and the pause written above
         // go back to what they were, unless a later call took them over.
         // Tolerant write, so the error the caller sees is the loadlist one.
-        if (_restoreIntent(load, intent, previousIntent) &&
+        if (_transport.restoreIntent(load, intent, previousIntent) &&
             playNow != previousIntent) {
           await _calls.propRc('pause', previousIntent ? 'no' : 'yes');
         }
         rethrow;
       }
       // See [open]: asked again, a pause() during the loadlist wins.
-      if (parkedAtEof && _intendedPlay(intent, shouldPlay)) {
+      if (parkedAtEof && _transport.intendedPlay(intent, shouldPlay)) {
         await _calls.prop('pause', 'no');
       }
       // Clear per-track state AFTER the replace's reply; see [open].
@@ -622,17 +622,9 @@ abstract class _PlayerBase {
   final MpvEventIsolate _eventIsolate = MpvEventIsolate();
   bool _disposed = false;
 
-  // Latched true on the first MPV_EVENT_START_FILE. Gates the idle-active
-  // intent reset and [_settleEndOfContent]: the initial observe burst
-  // delivers `idle-active=true` (the player starts idle) BEFORE any file
-  // load is attempted, and that stale value must not clear a
-  // `playWhenReady` intent set by an open(play: true) that is still
-  // settling. Port delivery is FIFO, so the
-  // startup idle-active always precedes the first START_FILE. Latching on
-  // START_FILE (which fires even for a load that fails to open) rather than
-  // FILE_LOADED means a failed first open() still arms the reset, so its
-  // intent doesn't stick true.
-  bool _hasLoadedFile = false;
+  /// The transport axis: the load epoch, the loads in flight, the
+  /// play-pause intent and the file starts.
+  late final _Transport _transport = _Transport(this);
 
   // The registered hooks and the pending hook events, with the ids the
   // library hands out and the deadlines.
@@ -701,39 +693,6 @@ abstract class _PlayerBase {
     if (!isFdUri(uri)) return;
     await _calls.command(['delete-watch-later-config', uri]);
   }
-
-  // Monotonic generation counter for content-replacing transport calls.
-  // Bumped synchronously at the head of open(), openAll(),
-  // openPlaylistFile(), stop() and clearPlaylist(); every load path
-  // re-checks it after each await and aborts when stale. Without it,
-  // per-scheme resolve latencies (asset:// does real I/O, a plain path
-  // resolves in one microtask) let an EARLIER call issue its loadfile
-  // AFTER a later one: the superseded media would win, and an in-flight
-  // open() could resume past a stop() and restart playback.
-  int _loadEpoch = 0;
-
-  /// Claims the load epoch for a content-replacing call: every earlier
-  /// load in flight is superseded from now on.
-  _LoadTicket _claimLoad() => _LoadTicket(this, ++_loadEpoch);
-
-  /// Snapshots the load epoch for a call that adds to the content (an
-  /// append): superseded if a content-replacing call lands meanwhile.
-  _LoadTicket _snapshotLoad() => _LoadTicket(this, _loadEpoch);
-
-  /// How many open(), openAll() and openPlaylistFile() calls are running.
-  /// While one is, an idle core is about to get content, so [Player.play]
-  /// and the idle-active observer keep the intent.
-  int _loadsInFlight = 0;
-
-  /// mpv went idle while a load was running (openAll steps through idle
-  /// at the end of the queue), and the intent reset that idle makes waits
-  /// for the loads to end. Cleared when mpv leaves idle.
-  bool _idleResetPending = false;
-
-  /// Bumped by every public call that sets the play-pause intent, so a
-  /// call that corrects the intent after an await can tell whether a later
-  /// call set it meanwhile (and then leaves it alone).
-  int _intentEpoch = 0;
 
   // ── Property registry (the bulk of state: one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
@@ -889,10 +848,6 @@ abstract class _PlayerBase {
   /// `_AudioModule`.
   void _reassertAfChain();
 
-  /// The MPV_EVENT_START_FILE events seen so far. A reply that arrives
-  /// after a newer one may describe the file that load opened.
-  int _fileStarts = 0;
-
   /// mpv sent AUDIO_RECONFIG: see `_AudioModule`.
   void _onAudioReconfig();
 
@@ -917,7 +872,7 @@ abstract class _PlayerBase {
       ..registerAll(
         buildDefaultSpecs(
           _reactives,
-          onIdleActive: _onIdleActive,
+          onIdleActive: _transport.onIdle,
           onAudioOutputState: _onAudioOutputState,
         ),
       );
@@ -1387,19 +1342,6 @@ abstract class _PlayerBase {
       ]),
     );
   }
-}
-
-/// A load-path call's view of the load epoch, taken with
-/// [_PlayerBase._claimLoad] or [_PlayerBase._snapshotLoad].
-final class _LoadTicket {
-  _LoadTicket(this._player, this._epoch);
-
-  final _PlayerBase _player;
-  final int _epoch;
-
-  /// Whether the player was disposed, or a later content-replacing call
-  /// took over, since the ticket was taken. Re-check after every await.
-  bool get superseded => _player._disposed || _player._loadEpoch != _epoch;
 }
 
 /// How many `loadfile append` requests [Player.openAll] has in flight at

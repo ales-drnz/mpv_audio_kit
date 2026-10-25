@@ -20,7 +20,7 @@ mixin _PlaylistModule on _PlayerBase {
     // epoch: if a content-replacing call (open, stop, clearPlaylist)
     // lands while this append is still resolving its URI, the append is
     // stale and must not graft the old queue's entry onto the new one.
-    final load = _snapshotLoad();
+    final load = _transport.snapshotLoad();
     await _gate();
     await _addEntry(media, load);
   }
@@ -38,7 +38,7 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkNotNegative(index, 'index');
     _validateLoadOptions(media);
     // The same staleness rule as [add].
-    final load = _snapshotLoad();
+    final load = _transport.snapshotLoad();
     await _gate();
     // mpv's own count, as in [move]: the state can lag an add in flight.
     final (rc, count) = await _calls.get(
@@ -181,12 +181,12 @@ mixin _PlaylistModule on _PlayerBase {
     // `state.playWhenReady` (and the OS play-pause button bound to it)
     // stuck on "paused" while audio is audibly playing.
     final previous = _state.playWhenReady;
-    final intent = _claimIntent(true);
+    final intent = _transport.claimIntent(true);
     try {
       if (await _checkPlaylistIndex(index, 'index') == null) return;
     } catch (_) {
       // Out of range: nothing moved, so the intent goes back.
-      if (intent == _intentEpoch) _writeIntent(previous);
+      if (_transport.owns(intent)) _transport.writeIntent(previous);
       rethrow;
     }
     // See [next]: in-flight transport writes apply to the old entry.
@@ -195,14 +195,17 @@ mixin _PlaylistModule on _PlayerBase {
     // doesn't survive: the playloop hits EOF again and re-pauses before
     // the jump command is processed. The corrective write after it sticks.
     final parkedAtEof = await _parkedAtEof();
-    await _calls.prop('pause', _intendedPlay(intent, true) ? 'no' : 'yes');
+    await _calls.prop(
+      'pause',
+      _transport.intendedPlay(intent, true) ? 'no' : 'yes',
+    );
     await _calls.commandChecked(['playlist-play-index', index.toString()]);
-    if (parkedAtEof && _intendedPlay(intent, true)) {
+    if (parkedAtEof && _transport.intendedPlay(intent, true)) {
       await _calls.prop('pause', 'no');
     }
     // A park read on its way when this call began clears the intent on
     // arrival, as in [play]: set again while this call still owns it.
-    if (intent == _intentEpoch) _writeIntent(true);
+    if (_transport.owns(intent)) _transport.writeIntent(true);
   }
 
   /// Moves the track at [from] to position [to].
@@ -238,7 +241,7 @@ mixin _PlaylistModule on _PlayerBase {
     RangeError.checkNotNegative(index, 'index');
     _validateLoadOptions(media);
     // Snapshot the load epoch: same staleness rule as [add].
-    final load = _snapshotLoad();
+    final load = _transport.snapshotLoad();
     await _gate();
     if (await _checkPlaylistIndex(index, 'index') == null) return;
     _mediaCache[media.uri] = media;
@@ -282,7 +285,7 @@ mixin _PlaylistModule on _PlayerBase {
       // Re-check the epoch between each of the multi-command surgeries
       // below: every await now spans an event-isolate reply round-trip,
       // during which a concurrent content-replacing call (stop, open,
-      // clearPlaylist) can bump _loadEpoch and own the queue. Without the
+      // clearPlaylist) can claim the load epoch and own the queue. Without the
       // guard, `playlist-next force` would RESTART playback a concurrent
       // stop() meant to halt, and `playlist-remove` would delete a now-stale
       // index. Bail and let the later call own the surgery, matching the
@@ -321,7 +324,7 @@ mixin _PlaylistModule on _PlayerBase {
     _checkNotDisposed();
     // Claim the load epoch synchronously so an in-flight open()/add()
     // can't repopulate the queue this call is clearing (see [Player.open]).
-    final load = _claimLoad();
+    final load = _transport.claimLoad();
     await _gate();
     // The kept entry keeps its Media, under every URI it is cached by: the
     // source resolver looks it up there when the entry loads again (a

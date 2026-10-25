@@ -116,7 +116,7 @@ extension _Lifecycle on _PlayerBase {
     required bool lastEntry,
     required bool live,
   }) {
-    if (!_hasLoadedFile) return;
+    if (!_transport.hasLoadedFile) return;
     final loop = _state.loop;
     final end =
         parked &&
@@ -128,6 +128,6 @@ extension _Lifecycle on _PlayerBase {
     // end (a seek back, a new file) keeps it. Only on the edge: a jump or
     // a replace issued at the park can see one more parked read before
     // its load starts, and must keep its intent.
-    if (end) _writeIntent(false);
+    if (end) _transport.writeIntent(false);
   }
 }

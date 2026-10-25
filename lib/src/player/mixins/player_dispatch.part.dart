@@ -129,8 +129,7 @@ mixin _DispatchModule on _PlayerBase {
     // forever). START_FILE is always delivered AFTER the cold-start
     // idle-active burst (FIFO), so the latch still can't be tripped by
     // the startup burst.
-    _hasLoadedFile = true;
-    _fileStarts++;
+    _transport.onStartFile();
     // A new load attempt re-arms the source resolver's single
     // retry allowance; see [_resolverRetried].
     _resolverRetried = false;

@@ -322,7 +322,7 @@ mixin _HooksModule on _PlayerBase {
             ? current
             : fileUrlToPath(resolved) ?? resolved;
         if (prefetch && pending()) {
-          _prefetchResolved = (current, target, _snapshotLoad());
+          _prefetchResolved = (current, target, _transport.snapshotLoad());
         }
       }
       if (target == current) return;

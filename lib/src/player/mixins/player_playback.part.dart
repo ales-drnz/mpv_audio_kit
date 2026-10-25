@@ -22,7 +22,7 @@ mixin _PlaybackModule on _PlayerBase {
     // Optimistic intent: `pause` is silent on the first load → playing
     // transition, so set the intent axis here rather than relying on the
     // observer. See [PlayerState.playWhenReady].
-    final intent = _claimIntent(true);
+    final intent = _transport.claimIntent(true);
     // Parked at the end (`keep-open`), an unpause alone is undone by the
     // playloop hitting EOF again, and the intent would show playing over
     // silence. Seek back first; the unpause after it sticks, as in [jump].
@@ -31,7 +31,7 @@ mixin _PlaybackModule on _PlayerBase {
     final parked = await _parkedPaused();
     // A later call claimed the transport during the reads: its pause write
     // is already out, and an unpause written now would undo it.
-    if (intent != _intentEpoch) return;
+    if (!_transport.owns(intent)) return;
     if (parked) {
       await _calls.command(['seek', '0', 'absolute']);
       // A seek that landed has left EOF by the next read: the seek wakes
@@ -42,30 +42,30 @@ mixin _PlaybackModule on _PlayerBase {
       // running: it replaces the parked file (openAll removes it first), so
       // the reads tell nothing about the source, and the unpause arms the
       // load.
-      if (_loadsInFlight == 0 &&
+      if (_transport.loadsInFlight == 0 &&
           await _parkedAtEof() &&
           await getRawProperty('seekable') != 'yes' &&
-          _loadsInFlight == 0) {
-        if (intent == _intentEpoch) _writeIntent(false);
+          _transport.loadsInFlight == 0) {
+        if (_transport.owns(intent)) _transport.writeIntent(false);
         return;
       }
-      if (intent != _intentEpoch) return;
+      if (!_transport.owns(intent)) return;
       await _calls.prop('pause', 'no');
       // A park read still on its way when this call began (the park had
       // just happened) clears the intent on arrival; by now it has
       // arrived, so the intent of this call is set again.
-      if (intent == _intentEpoch) _writeIntent(true);
+      if (_transport.owns(intent)) _transport.writeIntent(true);
       return;
     }
     await _calls.prop('pause', 'no');
     // Idle with nothing to play (before any open, after stop or a failed
     // load): the unpause only arms the next load, nothing plays now. Not
     // while a load is running, which is about to give the core content.
-    if (_loadsInFlight == 0 &&
+    if (_transport.loadsInFlight == 0 &&
         await getRawProperty('idle-active') == 'yes' &&
-        _loadsInFlight == 0 &&
-        intent == _intentEpoch) {
-      _writeIntent(false);
+        _transport.loadsInFlight == 0 &&
+        _transport.owns(intent)) {
+      _transport.writeIntent(false);
     }
   }
 
@@ -73,7 +73,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// is preserved: call [play] to resume from the same offset.
   Future<void> pause() async {
     await _gate();
-    _claimIntent(false);
+    _transport.claimIntent(false);
     await _calls.prop('pause', 'yes');
   }
 
@@ -134,11 +134,11 @@ mixin _PlaybackModule on _PlayerBase {
     // Claim the load epoch synchronously so an in-flight open() that is
     // still resolving its URI aborts instead of resuming after this call
     // and restarting playback (see [Player.open]).
-    _claimLoad();
+    _transport.claimLoad();
     await _gate();
     // Stop unloads the file; intent returns to "not playing" so the OS
     // button settles on play. mpv may not emit `pause` here, so set it.
-    _claimIntent(false);
+    _transport.claimIntent(false);
     // Execute in-flight transport writes first; see [CoreCalls.settleWrites].
     await _calls.settleWrites();
     await _calls.commandChecked(['stop']);

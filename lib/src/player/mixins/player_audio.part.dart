@@ -390,7 +390,7 @@ mixin _AudioModule on _PlayerBase {
     // Snapshot the load epoch: a content-replacing call landing while the
     // URI resolves makes this add stale: the track belongs to the file
     // that is no longer playing (see [Player.open]).
-    final load = _snapshotLoad();
+    final load = _transport.snapshotLoad();
     await _gate();
     final source = OwnedSource(await resolveUri(file.uri));
     // The call's to release until the track takes it over.
@@ -653,11 +653,13 @@ mixin _AudioModule on _PlayerBase {
     // Queued right behind the write: mpv runs the two in order, so the
     // read sees the chain the write left, refused or not, unless a file
     // started in between and its resume point set `af`.
-    final starts = _fileStarts;
+    final starts = _transport.fileStarts;
     unawaited(
       _calls.get('af', MpvFormat.mpvFormatString).then((r) {
         final (rc, af) = r;
-        _afHeld = rc >= 0 && af is String && starts == _fileStarts ? af : null;
+        _afHeld = rc >= 0 && af is String && starts == _transport.fileStarts
+            ? af
+            : null;
       }),
     );
     return reply.whenComplete(() => _afWritesInFlight--);
@@ -679,13 +681,20 @@ mixin _AudioModule on _PlayerBase {
   /// [setAudioEffects].
   @override
   void _reassertAfChain() {
-    if (_afAccepted != null) unawaited(_reassertAfChainFor(_fileStarts));
+    if (_afAccepted != null) {
+      unawaited(_reassertAfChainFor(_transport.fileStarts));
+    }
   }
 
   Future<void> _reassertAfChainFor(int starts) async {
     final (rc, af) = await _calls.get('af', MpvFormat.mpvFormatString);
     // A newer load checks for itself.
-    if (rc < 0 || _disposed || starts != _fileStarts || af == _afHeld) return;
+    if (rc < 0 ||
+        _disposed ||
+        starts != _transport.fileStarts ||
+        af == _afHeld) {
+      return;
+    }
     final sent = _afDiffsSent;
     final effects = _state.audioEffects;
     final setRc = await _setAfChain(audioEffectsChain(effects));
