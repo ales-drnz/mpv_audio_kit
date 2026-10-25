@@ -11,10 +11,13 @@
 // The trace holds what the event pump orders, not the timing of the core:
 // - the milestones, one merged list: start (buffering on, START_FILE),
 //   loaded (buffering off, FILE_LOADED, with the entry and the cover the
-//   state then holds), restart (PLAYBACK_RESTART), end (END_FILE),
-//   completed (the end of content);
-// - per stream, the distinct values of duration and audio params, whose
-//   order against the milestones depends on when mpv samples them.
+//   state then holds), restart (PLAYBACK_RESTART), end (END_FILE, with the
+//   entry and the duration it carries), completed (the end of content);
+// - per stream, the distinct values of duration and audio params that
+//   mpv reported available, whose order against the milestones depends on
+//   when mpv samples them. The unavailable value between two files is left
+//   out: mpv can coalesce it away when the pump is busy at the change,
+//   natively as on the web.
 
 import 'dart:async';
 
@@ -67,6 +70,9 @@ Future<T> _step<T>(String step, Future<T> call) {
   );
 }
 
+String _seconds(Duration? d) =>
+    d == null ? 'none' : (d.inMilliseconds / 1000).toStringAsFixed(1);
+
 /// Waits until [condition] holds, polling.
 Future<void> waitUntil(
   bool Function() condition, {
@@ -96,6 +102,7 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
   final durations = <String>[];
   final params = <String>[];
   var af = '';
+  var positionsInBounds = true;
   final subs = <StreamSubscription<Object?>>[];
   void distinct(List<String> list, String value) {
     if (list.isEmpty || list.last != value) list.add(value);
@@ -126,40 +133,59 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
         player.stream.completed.listen((c) => milestones.add('completed $c')),
       )
       ..add(
-        player.stream.endFile.listen(
-          (e) => milestones.add('end ${e.reason.name}'),
-        ),
+        player.stream.endFile.listen((e) {
+          // The entry that ended and its duration, as mpv reported them;
+          // the position depends on the output buffer, so it is checked in
+          // bounds, not traced.
+          final position = e.position;
+          final duration = e.duration;
+          if (position != null && duration != null) {
+            positionsInBounds &=
+                position >= Duration.zero &&
+                position <= duration + const Duration(milliseconds: 200);
+          }
+          milestones.add(
+            'end ${e.reason.name} ${f._label(e.media?.uri)} '
+            'duration=${_seconds(duration)} '
+            'position=${position == null ? 'none' : 'set'}',
+          );
+        }),
       )
       ..add(
-        player.stream.seekCompleted.listen((_) => milestones.add('restart')),
+        // `core-idle` is read again and forwarded ahead of each restart, so
+        // the state has `playing` for the file that restarts.
+        player.stream.seekCompleted.listen(
+          (_) => milestones.add('restart playing=${player.state.playing}'),
+        ),
       )
       ..add(player.stream.playing.listen((p) => playing.add('$p')))
       ..add(
-        player.stream.duration.listen(
-          (d) =>
-              distinct(durations, (d.inMilliseconds / 1000).toStringAsFixed(1)),
-        ),
+        player.stream.duration.listen((d) {
+          if (d == Duration.zero) return;
+          distinct(durations, (d.inMilliseconds / 1000).toStringAsFixed(1));
+        }),
       )
       ..add(
-        player.stream.audioParams.listen(
-          (a) => distinct(params, '${a.sampleRate}/${a.channels}'),
-        ),
+        player.stream.audioParams.listen((a) {
+          if (a.sampleRate == null) return;
+          distinct(params, '${a.sampleRate}/${a.channels}');
+        }),
       );
 
     // A file opened paused, then played, sought and paused.
     await _step('open long', player.open(Media(f.long), play: false));
     await waitUntil(
       () =>
-          milestones.contains('restart') &&
+          milestones.any((m) => m.startsWith('restart')) &&
           player.state.duration > Duration.zero,
       what: 'the long file loaded',
     );
     await _step('play', player.play());
     await waitUntil(() => player.state.playing, what: 'playing');
-    final restarts = milestones.where((m) => m == 'restart').length;
+    final restarts = milestones.where((m) => m.startsWith('restart')).length;
     await _step('seek', player.seek(const Duration(seconds: 2)));
     await waitUntil(
-      () => milestones.where((m) => m == 'restart').length > restarts,
+      () => milestones.where((m) => m.startsWith('restart')).length > restarts,
       what: 'the seek landed',
     );
     expect(player.state.position.inMilliseconds, inInclusiveRange(1900, 2600));
@@ -203,6 +229,7 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
       what: 'the resolved file loaded',
     );
     expect(requests, ['mak-test://cover {k: v}']);
+    expect(positionsInBounds, isTrue, reason: 'an end position past its file');
     await _step('no resolver', player.setSourceResolver(null));
   } finally {
     for (final sub in subs) {

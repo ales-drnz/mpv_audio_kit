@@ -254,6 +254,19 @@ void main() {
     },
   );
 
+  test(
+    'PLAYBACK_RESTART forwards core-idle past the dedup, before itself',
+    () async {
+      final out = <String>[];
+      final reader = _Reader(_parkedFirstOfTwo()..['core-idle'] = 0);
+      final logic = EventLogic(reader, (e) => out.add(_describe(e)));
+      await logic.property('core-idle', MpvFormat.mpvFormatFlag, 0);
+      await logic.dispatch(MpvEventPlaybackRestart());
+      expect(out, ['core-idle=0', 'core-idle=0', 'restart 1.0']);
+      expect(reader.reads.take(2), ['core-idle', 'time-pos']);
+    },
+  );
+
   test('the audio params group crosses once', () async {
     final out = <String>[];
     final logic = EventLogic(_Reader({}), (e) => out.add(_describe(e)));

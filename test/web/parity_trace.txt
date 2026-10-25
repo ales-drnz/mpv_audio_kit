@@ -2,37 +2,26 @@ milestone loaded ? 0/0 cover=none
 milestone completed false
 milestone start
 milestone loaded long 0/1 cover=none
-milestone restart
-milestone restart
-milestone end stop
+milestone restart playing=false
+milestone restart playing=true
+milestone end stop long duration=5.0 position=set
 milestone start
 milestone loaded first 0/2 cover=none
-milestone restart
-milestone end eof
+milestone restart playing=true
+milestone end eof first duration=1.0 position=set
 milestone start
 milestone loaded second 1/2 cover=none
-milestone restart
+milestone restart playing=true
 milestone completed true
-milestone end stop
+milestone end stop second duration=1.0 position=set
 milestone completed false
 milestone start
 milestone loaded resolved 0/1 cover=image/png
-milestone restart
+milestone restart playing=false
 af @aek_equalizer_0:lavfi-equalizer=frequency=%8%1000.000:gain=%5%3.000
 playing false to false
-duration 0.0
 duration 5.0
-duration 0.0
 duration 1.0
-duration 0.0
-duration 1.0
-duration 0.0
-duration 1.0
-params null/null
 params 44100/Channels.mono
-params null/null
 params 48000/Channels.stereo
-params null/null
-params 22050/Channels.mono
-params null/null
 params 22050/Channels.mono
