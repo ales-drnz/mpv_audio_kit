@@ -26,6 +26,7 @@ Directory _packageCopy(String root) {
   final dir = Directory.systemTemp.createTempSync('mak_web_pkg');
   for (final path in [
     'scripts/update_libmpv.sh',
+    'scripts/web_module.py',
     'hook/build.dart',
     'lib/src/internals/libmpv_release.dart',
     'tool/codegen/libmpv_manifest.json',

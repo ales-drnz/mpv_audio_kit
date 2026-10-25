@@ -17,9 +17,9 @@
 # The web module is the release's libmpv_web.zip: its SHA-256 is checked
 # against the manifest, its ABI against webModuleAbi in libmpv_release.dart,
 # and each file the manifest lists under web.files against its own SHA-256
-# before it lands in web/, which pubspec.yaml ships as web assets. Nothing
-# is written unless every check passes. The files stay out of git and go
-# into the published package.
+# (scripts/web_module.py) before it lands in web/, which pubspec.yaml ships
+# as web assets. Nothing is written unless every check passes. The files
+# stay out of git and go into the published package.
 #
 # Usage (from the package root):
 #   scripts/update_libmpv.sh r20                       # published release
@@ -49,15 +49,16 @@ else
 fi
 
 python3 - "$MANIFEST" "$WEB_ZIP" "$ROOT" "$TAG" <<'PY'
-import hashlib, json, os, re, sys, zipfile
+import json, re, sys
 
 manifest_path, zip_path, root, tag = sys.argv[1:]
+sys.dont_write_bytecode = True
+sys.path.insert(0, f"{root}/scripts")
+import web_module
+
 manifest = json.load(open(manifest_path))
 if f"libmpv-{manifest['release']}" != tag:
     sys.exit(f"manifest is for libmpv-{manifest['release']}, not {tag}")
-
-def sha256(data):
-    return hashlib.sha256(data).hexdigest()
 
 # Native assets: the hook's table, rewritten from the manifest.
 hook_path = f"{root}/hook/build.dart"
@@ -79,49 +80,16 @@ release, n = re.subn(r"const String libmpvRelease = '[^']*';",
 if n != 1:
     sys.exit("libmpv_release.dart: libmpvRelease not found")
 
-# The web module: the zip, its ABI and each file, all checked first.
-web = manifest.get("web")
-if not web:
-    sys.exit(f"{tag} has no web module (its manifest names no \"web\"); "
-             "this package ships one, from libmpv-r20 on")
-abi = re.search(r"const int webModuleAbi = (\d+);", release)
-if not abi:
-    sys.exit("libmpv_release.dart: webModuleAbi not found")
-if web["abi"] != int(abi.group(1)):
-    sys.exit(f"the web module of {tag} has ABI {web['abi']}, and the package "
-             f"drives ABI {abi.group(1)}: update lib/src/backend/web first")
-asset = web["asset"]
-if not os.path.isfile(zip_path):
-    sys.exit(f"{zip_path} not found: {asset} goes beside the manifest")
-zip_bytes = open(zip_path, "rb").read()
-if sha256(zip_bytes) != manifest["assets"].get(asset):
-    sys.exit(f"{zip_path}: SHA-256 {sha256(zip_bytes)} is not the "
-             f"{manifest['assets'].get(asset)} of the manifest")
-files = {}
-with zipfile.ZipFile(zip_path) as z:
-    for name, digest in web["files"].items():
-        if os.path.basename(name) != name or name.startswith("."):
-            sys.exit(f"web.files: {name!r} is not a plain file name")
-        try:
-            data = z.read(name)
-        except KeyError:
-            sys.exit(f"{asset} has no {name}")
-        if sha256(data) != digest:
-            sys.exit(f"{asset}: {name} has SHA-256 {sha256(data)}, "
-                     f"the manifest says {digest}")
-        files[name] = data
+# The web module: the zip, its ABI and each file (scripts/web_module.py).
+files = web_module.check(manifest, zip_path, web_module.package_abi(root))
 
 # Every check passed: write.
 open(hook_path, "w").write(hook)
 open(release_path, "w").write(release)
-web_dir = f"{root}/web"
-os.makedirs(web_dir, exist_ok=True)
-for name, data in files.items():
-    tmp = f"{web_dir}/.{name}.tmp"
-    open(tmp, "wb").write(data)
-    os.replace(tmp, f"{web_dir}/{name}")
+web_module.install(files, f"{root}/web")
+web = manifest["web"]
 print(f"hook/build.dart -> {tag} (mpv {manifest['mpv']}, FFmpeg {manifest['ffmpeg']}, "
-      f"{len(pinned)} assets); web/ <- {asset} (ABI {web['abi']}, {len(files)} files)")
+      f"{len(pinned)} assets); web/ <- {web['asset']} (ABI {web['abi']}, {len(files)} files)")
 PY
 
 dart format "$ROOT/hook/build.dart" >/dev/null
