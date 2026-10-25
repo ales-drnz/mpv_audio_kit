@@ -30,3 +30,6 @@ graphify-out/
 /tool/codegen/.ffmpeg-src/
 /tool/codegen/.build/
 __pycache__/
+
+# The web module the browser tests load (test/web/fetch_module.sh)
+/test/web/module/

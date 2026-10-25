@@ -6,22 +6,58 @@ import 'package:meta/meta.dart';
 
 import '../pcm/pcm_native.dart';
 import 'mpv_session.dart';
+import 'web/mpv_module.dart';
+import 'web/web_pcm.dart';
+import 'web/web_session.dart';
 
-/// Not available yet on the web: the backend over the module in
-/// WebAssembly lands next.
+/// Where the module (libmpv.mjs, with libmpv.wasm beside it) is loaded
+/// from when `MpvAudioKit.ensureInitialized` names none: the package's
+/// web assets as Flutter serves them. Their delivery belongs to W4b.
 @internal
-MpvSession createMpvSession({int? wakeupCounterAddress}) =>
-    throw UnsupportedError('mpv_audio_kit: no web backend yet');
+const String kDefaultWebModuleUrl =
+    'assets/packages/mpv_audio_kit/web/libmpv.mjs';
 
-/// No step on the web yet.
+String? _url;
+Future<MpvModule>? _loading;
+MpvModule? _loaded;
+
+/// Test-only: the module every session uses, in place of loading the one
+/// at the URL `MpvAudioKit.ensureInitialized` got.
+@visibleForTesting
+Future<MpvModule>? debugWebModule;
+
+/// The module the sessions use, loaded once.
+Future<MpvModule> _module() async => _loaded =
+    await (debugWebModule ??
+        (_loading ??= loadMpvModule(_url ?? kDefaultWebModuleUrl)));
+
+/// A session over the module in WebAssembly, on the main thread.
+/// [wakeupCounterAddress] is a native test hook and has no meaning here.
 @internal
-void startBackend({String? libmpv, required bool hotRestartCleanup}) {}
+MpvSession createMpvSession({int? wakeupCounterAddress}) => WebSession(_module);
 
-/// No step on the web yet.
+/// Starts loading the module: from [libmpv], a URL, or else from
+/// [kDefaultWebModuleUrl]. A failure reaches the first player's bring-up.
+@internal
+void startBackend({String? libmpv, required bool hotRestartCleanup}) {
+  _url = libmpv;
+  _module().ignore();
+}
+
+/// The Hot Restart registry of the web (DESIGN 11, W4b) starts here.
 @internal
 void backendInitialized() {}
 
-/// Not available yet on the web.
+/// The live PCM input of the module. The module loads asynchronously:
+/// until it has, there is none.
 @internal
-PcmNative openPcmNative(String? path) =>
-    throw UnsupportedError('mpv_audio_kit: no web backend yet');
+PcmNative openPcmNative(String? path) {
+  final module = _loaded;
+  if (module == null) {
+    throw StateError(
+      'mpv_audio_kit: the web module has not loaded yet; '
+      'create a PcmSource once a Player is ready',
+    );
+  }
+  return WebPcmNative(module);
+}
