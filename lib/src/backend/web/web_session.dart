@@ -15,6 +15,11 @@ import '../mpv_session.dart';
 import 'mpv_module.dart';
 import 'web_client.dart';
 
+/// Test-only: gets a line for each event the pump takes, each read it
+/// sends and gets back, and each call that locks the core.
+@visibleForTesting
+void Function(String line)? debugWebSessionTrace;
+
 /// Reply id of the pump's own `pause` observer: 2^40, above every id the
 /// player hands out and exact in a JavaScript number.
 const int _kPauseObserverReplyId = 1099511627776;
@@ -180,6 +185,7 @@ final class WebSession implements MpvSession {
     }
     final id = _m.i32(e);
     if (id == MpvEventId.mpvEventNone) return (false, null, false);
+    debugWebSessionTrace?.call('take $id');
     return (true, _dispatch(e, id), id == MpvEventId.mpvEventShutdown);
   }
 
@@ -265,6 +271,7 @@ final class WebSession implements MpvSession {
   Future<Object?> _read(String name, int format) {
     if (_stopped) return Future.value();
     final id = _nextRead++;
+    debugWebSessionTrace?.call('read $id $name');
     final reply = Completer<Object?>();
     _pendingReads[id] = reply;
     final rc = _m.withStrings([
@@ -293,6 +300,7 @@ final class WebSession implements MpvSession {
         // A read that cannot be decoded fails like a read mpv refused.
         _send(MpvEventInternalLog('warn', 'decoding a read failed: $error'));
       }
+      debugWebSessionTrace?.call('read back ${_m.i64(e + 8)}');
       reply.complete(value);
     }
   }

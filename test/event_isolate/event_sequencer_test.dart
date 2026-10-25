@@ -22,7 +22,9 @@ final class _Queue {
   double? holdSeconds;
   Object? throwOn;
 
-  late final EventSequencer sequencer = EventSequencer(
+  EventSequencer? sequencerOverride;
+  EventSequencer get sequencer => sequencerOverride ?? _sequencer;
+  late final EventSequencer _sequencer = EventSequencer(
     take: take,
     flushTrailing: () => log.add('flush'),
     waitSeconds: () => holdSeconds,
@@ -132,6 +134,38 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 60));
     // The timer pumped again: the queue was empty, so it flushed.
     expect(q.log, ['take a', 'flush', 'flush', 'flush']);
+  });
+
+  test('a wakeup during take is served by the same loop, never nested', () {
+    final q = _Queue();
+    var depth = 0;
+    var deepest = 0;
+    final sequencer = EventSequencer(
+      take: () {
+        depth++;
+        if (depth > deepest) deepest = depth;
+        try {
+          final taken = q.take();
+          // The web module can run a posted wakeup in the middle of a call:
+          // here, one that announces an event queued meanwhile.
+          if (q.log.length == 1) {
+            q.events.add(('late', null));
+            q.sequencer.pump();
+          }
+          return taken;
+        } finally {
+          depth--;
+        }
+      },
+      flushTrailing: () => q.log.add('flush'),
+      waitSeconds: () => null,
+      onError: (e, _) => q.log.add('error $e'),
+    );
+    q.sequencerOverride = sequencer;
+    q.events.add(('first', null));
+    sequencer.pump();
+    expect(deepest, 1);
+    expect(q.log, ['take first', 'flush', 'take late', 'flush', 'flush']);
   });
 
   test('no timer while nothing is held', () async {

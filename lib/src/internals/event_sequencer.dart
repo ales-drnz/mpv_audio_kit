@@ -49,6 +49,8 @@ final class EventSequencer {
 
   bool _stepping = false;
   bool _stopped = false;
+  bool _pumping = false;
+  bool _again = false;
   Timer? _flush;
 
   /// Whether the reads of an event are in flight: nothing is taken until
@@ -64,9 +66,27 @@ final class EventSequencer {
   /// takes the next events itself when they complete.
   void pump() {
     if (_stepping) return;
+    // A wakeup that comes while [take] runs (the web pump's calls can run
+    // the module's posted work) takes its events in the loop below, never
+    // in a nested one.
+    if (_pumping) {
+      _again = true;
+      return;
+    }
+    _pumping = true;
+    try {
+      _pumpLoop();
+    } finally {
+      _pumping = false;
+    }
+  }
+
+  void _pumpLoop() {
     _flush?.cancel();
     _flush = null;
-    while (!_stopped) {
+    while (!_stopped && !_stepping) {
+      // A wakeup from here on asks for another take, which this one is.
+      _again = false;
       final TakenEvent next;
       try {
         next = take();
@@ -80,7 +100,9 @@ final class EventSequencer {
         // The queue is empty: the native pump's wait would end here with
         // no event, after which it flushes.
         flushTrailing();
-        break;
+        // A wakeup during that take: its event may have come after it.
+        if (!_again) break;
+        continue;
       }
       if (last) _stopped = true;
       if (reads == null) {

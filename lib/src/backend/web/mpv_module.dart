@@ -8,6 +8,7 @@
 // offsets. Pointers are wasm32 addresses, plain ints; the 64-bit arguments
 // (reply ids, hook ids, PCM ids) cross as JavaScript BigInts.
 
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
@@ -37,10 +38,15 @@ int bigIntValue(JSBigInt value) => _number(value).toDartInt;
 @visibleForTesting
 final Map<String, int> webCallMaxMicros = {};
 
+/// Test-only: gets the name of each call of [timedCall] before it runs.
+@visibleForTesting
+void Function(String name)? debugWebCallTrace;
+
 /// Runs [body], the call [name] of the module, and records its length in
 /// [webCallMaxMicros].
 @internal
 T timedCall<T>(String name, T Function() body) {
+  debugWebCallTrace?.call(name);
   final clock = Stopwatch()..start();
   try {
     return body();
@@ -178,13 +184,24 @@ final class MpvModule {
     _checkLayout();
     // One callback per module: mak_web.c posts it to the main thread, at
     // most once per handle until it runs, whenever mpv wakes that client.
+    // Emscripten also runs that posted work while the main thread waits for
+    // a lock inside a call of the module (a busy wait that "assists" the
+    // other threads), so the callback can come in the middle of a drain or
+    // a read. It only schedules the work, which runs once the call that was
+    // waiting has returned.
     _m['onMpvWakeup'] = ((JSNumber handle) {
-      _wakeups[handle.toDartInt]?.call();
+      final h = handle.toDartInt;
+      if (!_wakeups.containsKey(h) || !_scheduled.add(h)) return;
+      scheduleMicrotask(() {
+        _scheduled.remove(h);
+        _wakeups[h]?.call();
+      });
     }).toJS;
   }
 
   final MpvExports _m;
   final Map<int, void Function()> _wakeups = {};
+  final Set<int> _scheduled = {};
 
   /// The exported C functions.
   MpvExports get c => _m;
