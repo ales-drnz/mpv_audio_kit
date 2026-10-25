@@ -60,7 +60,7 @@ dependencies:
 | Windows | 10 | arm64, x86_64 | 8.1, 9.1 MB | Yes | - |
 | Linux | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.8, 8.6 MB | Yes | - |
 
-The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire (0.3.57 or later) or PulseAudio when installed.
+The package needs Dart 3.10 and Flutter 3.41, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire (0.3.57 or later) or PulseAudio when installed.
 
 ---
 

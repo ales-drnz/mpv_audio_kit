@@ -25,7 +25,7 @@ screenshots:
 
 environment:
   sdk: ^3.10.0
-  flutter: '>=3.38.0'
+  flutter: '>=3.41.0'
 
 dependencies:
   code_assets: '>=1.1.0 <3.0.0'
@@ -44,6 +44,13 @@ dev_dependencies:
   test: ^1.25.0
 
 flutter:
+  # The web module (libmpv.mjs, libmpv.wasm, mak_webaudio_processor.js),
+  # installed in web/ by scripts/update_libmpv.sh and kept out of git. A
+  # folder, not the three files: `flutter test` bundles every listed asset,
+  # whatever its platforms, and fails on a missing one.
+  assets:
+    - path: web/
+      platforms: [web]
   plugin:
     platforms:
       android:
