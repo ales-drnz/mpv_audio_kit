@@ -13,6 +13,8 @@
 //                       Range from past the start) gets 503 with an empty
 //                       body: a file cut short whose resume is refused.
 //   GET /file/<fixture> the fixture in full, with Range support.
+//   GET /nocors/<fixture> the same without CORS: a page of another origin
+//                       cannot read it.
 //
 // Prints `MAK_WEB_NET=<base URL>` once it listens, then serves until killed.
 
@@ -80,12 +82,12 @@ Future<void> _serve(Socket client, Directory fixtures) async {
       await _head(client, 503, {'Content-Length': '0'});
       return;
     }
-    if (path[0] != 'cut' && path[0] != 'file') {
+    if (!const ['cut', 'file', 'nocors'].contains(path[0])) {
       await _head(client, 404, {'Content-Length': '0'});
       return;
     }
     final start = from.clamp(0, bytes.length);
-    await _head(client, range == null ? 200 : 206, {
+    await _head(client, range == null ? 200 : 206, cors: path[0] != 'nocors', {
       'Content-Type': 'application/octet-stream',
       'Accept-Ranges': 'bytes',
       'Content-Length': '${bytes.length - start}',
@@ -102,7 +104,12 @@ Future<void> _serve(Socket client, Directory fixtures) async {
   }
 }
 
-Future<void> _head(Socket client, int status, Map<String, String> headers) {
+Future<void> _head(
+  Socket client,
+  int status,
+  Map<String, String> headers, {
+  bool cors = true,
+}) {
   final reason = switch (status) {
     200 => 'OK',
     204 => 'No Content',
@@ -111,7 +118,7 @@ Future<void> _head(Socket client, int status, Map<String, String> headers) {
     _ => 'Service Unavailable',
   };
   final out = StringBuffer('HTTP/1.1 $status $reason\r\n')
-    ..write('Access-Control-Allow-Origin: *\r\n')
+    ..write(cors ? 'Access-Control-Allow-Origin: *\r\n' : '')
     ..write('Connection: close\r\n');
   headers.forEach((k, v) => out.write('$k: $v\r\n'));
   out.write('\r\n');

@@ -60,8 +60,9 @@ mixin _MediaSessionModule on _PlayerBase {
 
     // 1. Root isolate only: platform messages reach no other isolate, and
     //    the channels of a background isolate fail. `null` is allowed
-    //    anywhere, as there is nothing to undo.
-    if (session != null && RootIsolateToken.instance == null) {
+    //    anywhere, as there is nothing to undo. A web page runs one
+    //    isolate, and has no root isolate token to ask.
+    if (session != null && !kIsWeb && RootIsolateToken.instance == null) {
       throw StateError(
         'setMediaSession needs the root isolate: the OS media session '
         'sends its commands only there. Publish from a Player created in '

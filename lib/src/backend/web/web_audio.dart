@@ -22,6 +22,10 @@ external JSObject _createElement(String tag);
 /// page's state listener.
 const String _kStateListener = '__makStateListenerOff';
 
+/// The property of the module instance that holds the `<audio>` element
+/// of the page's media session.
+const String _kElement = '__makElement';
+
 /// The page's audio output: the AudioContext of `Module.makWebAudio`, which
 /// mpv's webaudio output plays into, shared by every player of the page.
 ///
@@ -62,6 +66,12 @@ final class WebAudioOutput {
     instance[_kStateListener] = output._audio.onStateChange(
       output._onState.toJS,
     );
+    // And the <audio> element of its media session, still playing.
+    final element = instance[_kElement];
+    if (element.isA<JSObject>()) {
+      (element as JSObject).callMethod('pause'.toJS);
+      element['srcObject'] = null;
+    }
     await output._init();
     return output;
   }
@@ -133,6 +143,7 @@ final class WebAudioOutput {
     node.callMethod('connect'.toJS, destination);
     _stream = destination['stream'] as JSObject;
     final element = _element ??= _createElement('audio');
+    _module.instance[_kElement] = element;
     element['srcObject'] = _stream;
     _playElement();
   }

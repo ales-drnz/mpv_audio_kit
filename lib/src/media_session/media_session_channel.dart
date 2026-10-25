@@ -39,6 +39,11 @@ class MediaSessionMetadataSnapshot {
   /// Source URI of the current item (MPRIS `xesam:url`).
   final String? url;
 
+  /// On the web only: an artwork URL the package could not load (no CORS
+  /// on the server), which the browser loads as an image itself. `null`
+  /// on the other platforms, where no URL ever reaches the native side.
+  final String? artworkUrl;
+
   const MediaSessionMetadataSnapshot({
     this.title,
     this.artist,
@@ -50,6 +55,7 @@ class MediaSessionMetadataSnapshot {
     this.albumArtist,
     this.genre,
     this.url,
+    this.artworkUrl,
   });
 
   // Value equality so the controller can dedup unchanged snapshots before
@@ -68,7 +74,8 @@ class MediaSessionMetadataSnapshot {
       other.discNumber == discNumber &&
       other.albumArtist == albumArtist &&
       other.genre == genre &&
-      other.url == url;
+      other.url == url &&
+      other.artworkUrl == artworkUrl;
 
   @override
   int get hashCode => Object.hash(
@@ -82,6 +89,7 @@ class MediaSessionMetadataSnapshot {
     albumArtist,
     genre,
     url,
+    artworkUrl,
   );
 }
 
@@ -279,6 +287,7 @@ class MediaSessionChannel {
         'albumArtist': m.albumArtist,
         'genre': m.genre,
         'url': m.url,
+        if (m.artworkUrl != null) 'artworkUrl': m.artworkUrl,
       };
 
   Map<String, Object?> _encodePlayback(MediaSessionPlaybackSnapshot p) =>
