@@ -5,6 +5,7 @@
 import 'package:meta/meta.dart';
 
 import '../backend/backend.dart' as backend;
+import '../player/player.dart' show Player;
 
 /// One-time initialization for `mpv_audio_kit`. Owns the choice of the
 /// libmpv the players use and the cleanup of the cores that leaked across
@@ -21,6 +22,22 @@ abstract final class MpvAudioKit {
 
   /// Returns the path used to initialize the library, if provided.
   static String? get libraryPath => _libraryPath;
+
+  /// Whether the browser holds the sound of every player until the user
+  /// interacts with the page: its autoplay policy starts the page's audio
+  /// output suspended. Meanwhile a playing player stays at its position
+  /// and nothing is heard. The first click, tap or key press resumes it,
+  /// and so does [Player.play] called from one. Always `false` outside the
+  /// web.
+  ///
+  /// An app that starts playback on its own (a restored session) can show
+  /// a prompt while this is `true`.
+  static bool get needsUserGesture => backend.outputNeedsGesture;
+
+  /// [needsUserGesture] at each change, from the moment the web module has
+  /// loaded. Never emits outside the web.
+  static Stream<bool> get needsUserGestureStream =>
+      backend.outputNeedsGestureChanges;
 
   /// Initializes the native backend for `mpv_audio_kit`.
   /// Must be called before creating any [Player] instances.

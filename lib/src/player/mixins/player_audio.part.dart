@@ -228,11 +228,21 @@ mixin _AudioModule on _PlayerBase {
   /// NOT throw, and [PlayerState.systemVolume] stays `null`. On Android the
   /// app's volume is the system's media volume, which the app sets through
   /// the platform's AudioManager.
+  ///
+  /// On the web it is the gain of the page's audio output, after the
+  /// effects and the PCM taps, for this player only. It holds across
+  /// files, and set before the first file it applies once that one plays.
   Future<void> setSystemVolume(double volume) async {
     _checkRange(volume, 0, 100, 'volume');
     await _gate();
     final value = canonicalFloat(volume);
-    final rc = await _calls.propRc('ao-volume', value.toString());
+    var rc = await _calls.propRc('ao-volume', value.toString());
+    // No output open yet: the option the next one starts from, where the
+    // driver has one (the web).
+    const option = kOutputVolumeOption;
+    if (rc < 0 && option != null) {
+      rc = await _calls.propRc(option, value.toString());
+    }
     if (rc >= 0) {
       _updateField(
         (s) => s.copyWith(systemVolume: value),
@@ -248,10 +258,15 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// Best-effort, like [setSystemVolume]: silently ignored (no throw) when the
   /// active audio output doesn't expose system mute (coreaudio on macOS,
-  /// iOS, Android).
+  /// iOS, Android). On the web it mutes the page's output for this player,
+  /// as [setSystemVolume] sets its gain.
   Future<void> setSystemMute(bool mute) async {
     await _gate();
-    final rc = await _calls.propRc('ao-mute', mute ? 'yes' : 'no');
+    var rc = await _calls.propRc('ao-mute', mute ? 'yes' : 'no');
+    const option = kOutputMuteOption;
+    if (rc < 0 && option != null) {
+      rc = await _calls.propRc(option, mute ? 'yes' : 'no');
+    }
     if (rc >= 0) {
       _updateField(
         (s) => s.copyWith(systemMute: mute),
@@ -881,9 +896,15 @@ mixin _AudioModule on _PlayerBase {
   /// at the device's native rate, usually 48 kHz. Changed during playback,
   /// it reopens the output, with a short gap. A track in passthrough
   /// ([setAudioSpdif]) ignores it.
+  ///
+  /// On the web the page's audio output is remade at [rate] (`0` for the
+  /// device's), so the browser does not resample: every player of the
+  /// page plays at that rate.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
     await _calls.prop('audio-samplerate', rate.toString());
+    final output = setOutputSampleRate(rate);
+    if (output != null) await output;
     _updateField(
       (s) => s.copyWith(audioSampleRate: rate),
       _reactives.audioSampleRate,
