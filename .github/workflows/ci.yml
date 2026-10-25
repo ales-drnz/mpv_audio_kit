@@ -216,7 +216,10 @@ jobs:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: pubspec.yaml
-      - run: flutter test -x network
+      # The files whose result can depend on the host: the Dart-only ones
+      # give here what they give on Linux, which runs them all.
+      - name: flutter test -x network (files that touch the host)
+        run: flutter test -x network $(scripts/ci/platform_tests.sh)
 
   build:
     name: Build ${{ matrix.name }}
