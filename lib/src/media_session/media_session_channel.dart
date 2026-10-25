@@ -153,7 +153,9 @@ class MediaSessionPlaybackSnapshot {
 /// Dart → native: `enable`, `update*` and `disable`) and an event channel
 /// (`.../commands`, native → Dart: the OS remote commands). Method calls
 /// swallow [MissingPluginException] and [PlatformException] so an unwired
-/// platform is a no-op, not a crash; Dart-side state stays correct.
+/// platform is a no-op, not a crash; Dart-side state stays correct. The
+/// one exception is an `enable` refused because another Flutter engine of
+/// the process owns the session: it throws [StateError].
 @internal
 class MediaSessionChannel {
   static const String _methodName = 'mpv_audio_kit/media_session';
@@ -224,13 +226,26 @@ class MediaSessionChannel {
   /// `setMediaSession(null)` and on `Player.dispose()`.
   Future<void> disable() => _invoke('disable', null);
 
+  /// The error code of an `enable` the native side refuses: the session
+  /// is one per process, and the first engine to enable keeps it until it
+  /// disables or detaches.
+  static const String _alreadyOwned = 'already_owned';
+
   Future<void> _invoke(String method, Object? args) async {
     try {
       await _method.invokeMethod<void>(method, args);
     } on MissingPluginException {
       // Native side not yet wired on this platform; Dart-side state
       // is still consistent, only the OS lockscreen entry is absent.
-    } on PlatformException {
+    } on PlatformException catch (e) {
+      if (e.code == _alreadyOwned) {
+        throw StateError(
+          'Another Flutter engine of this process owns the OS media '
+          'session. It is one per process: it stays with the engine that '
+          'enabled it until that engine sets it to null, disposes its '
+          'Player or is destroyed.',
+        );
+      }
       // Native side reported a failure: swallow so a misbehaving
       // platform implementation can't take down the Dart isolate. The
       // next state-change push re-syncs: pushes are event-driven, so a
