@@ -144,6 +144,10 @@ jobs:
         with:
           channel: stable
           cache: true
+      # The multi engine rule of the Windows and Linux plugins, the header
+      # they share (native_common/engine_ownership.h), built with g++.
+      - name: Engine ownership table (C++)
+        run: bash test/media_session/cpp/run.sh
       - uses: ./.github/actions/libmpv-from-run
         with:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
