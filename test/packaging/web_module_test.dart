@@ -8,7 +8,8 @@
 // package, and scripts/update_libmpv.sh installs them from the release's
 // libmpv_web.zip only once the zip, the ABI and every file match the
 // manifest. The script runs offline on a copy of the files it touches,
-// against a release made here.
+// against a release made here. From libmpv-r20 on the pinned manifest
+// names the module, which CI's browser tests take.
 
 import 'dart:convert';
 import 'dart:io';
@@ -16,6 +17,8 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:mpv_audio_kit/src/internals/libmpv_release.dart';
 import 'package:test/test.dart';
+
+import '../_helpers/release_gate.dart' show releaseNumber;
 
 const _webFiles = ['libmpv.mjs', 'libmpv.wasm', 'mak_webaudio_processor.js'];
 
@@ -122,6 +125,36 @@ void main() {
     );
     expect(File('$root/web/.gitignore').existsSync(), isFalse);
     expect(File('$root/web/.pubignore').existsSync(), isFalse);
+  });
+
+  // CI skips the browser tests only on a libmpv before the first release
+  // with a web module (scripts/ci/web_module.sh), so a pin from that
+  // release on must come with its module.
+  test('the pinned manifest is the one of libmpvRelease, with the web '
+      'module from libmpv-r20 on', () {
+    final manifest =
+        jsonDecode(
+              File(
+                '$root/tool/codegen/libmpv_manifest.json',
+              ).readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    expect(manifest['release'], libmpvRelease);
+    final script = File('$root/scripts/ci/web_module.sh').readAsStringSync();
+    final first = RegExp(
+      r'^first_web_release=(\d+)$',
+      multiLine: true,
+    ).firstMatch(script)?.group(1);
+    expect(first, '20');
+    if (releaseNumber(libmpvRelease)! >= int.parse(first!)) {
+      expect(
+        manifest['web'],
+        isNotNull,
+        reason:
+            'libmpv-$libmpvRelease is pinned without its web module, and '
+            'CI would not run the browser tests',
+      );
+    }
   });
 
   test('the web files in web/, when there, are those of the pinned '
