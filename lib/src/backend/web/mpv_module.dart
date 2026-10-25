@@ -16,6 +16,7 @@ import 'dart:typed_data';
 import 'package:meta/meta.dart';
 
 import '../../mpv_constants.dart';
+import 'web_layout.dart';
 
 @JS('BigInt')
 external JSBigInt _bigInt(JSNumber value);
@@ -57,23 +58,6 @@ T timedCall<T>(String name, T Function() body) {
     }
   }
 }
-
-/// The `struct` offsets of the client API on wasm32, in the order of
-/// `mak_web_layout()` (scripts/web/mak_web.c of libmpv-scripts): sizeof and
-/// offsetof of mpv_node, mpv_node_list, mpv_byte_array, mpv_event,
-/// mpv_event_property, mpv_event_log_message, mpv_event_end_file and
-/// mpv_event_hook. The decoders below use these numbers; the module's own
-/// table is compared with it when the module loads.
-const List<int> _kLayout = [
-  16, 8, // mpv_node: size, format
-  12, 4, 8, // mpv_node_list: size, values, keys
-  8, 4, // mpv_byte_array: size, size field
-  24, 4, 8, 16, // mpv_event: size, error, reply_userdata, data
-  12, 4, 8, // mpv_event_property: size, format, data
-  16, 8, 12, // mpv_event_log_message: size, text, log_level
-  32, 4, 8, 16, 24, // mpv_event_end_file
-  16, 8, // mpv_event_hook: size, id
-];
 
 @JS('DataView')
 extension type _View._(JSObject _) implements JSObject {
@@ -143,6 +127,8 @@ extension type MpvExports._(JSObject _) implements JSObject {
   external int wakeupAttach(int ctx);
   @JS('_mak_web_wakeup_detach')
   external void wakeupDetach(int bridge);
+  @JS('_mak_web_abi_version')
+  external int abiVersion();
   @JS('_mak_web_layout')
   external int layout();
   @JS('_malloc')
@@ -179,9 +165,11 @@ extension type MpvExports._(JSObject _) implements JSObject {
 @internal
 final class MpvModule {
   /// Wraps the instance [module] the module factory resolved with, after
-  /// checking its struct layout against the one the decoders assume.
+  /// checking its ABI version and its struct layout against the ones the
+  /// decoders assume, before any other call into it.
   MpvModule(JSObject module) : _m = MpvExports._(module) {
-    _checkLayout();
+    checkWebModuleAbi(_m.has('_mak_web_abi_version') ? _m.abiVersion() : null);
+    endFile = checkWebLayout(_layoutTable());
     // One callback per module: mak_web.c posts it to the main thread, at
     // most once per handle until it runs, whenever mpv wakes that client.
     // Emscripten also runs that posted work while the main thread waits for
@@ -206,23 +194,21 @@ final class MpvModule {
   /// The exported C functions.
   MpvExports get c => _m;
 
-  void _checkLayout() {
+  /// Where `mpv_event_end_file` keeps the read error fields of the
+  /// read_error patch, `0` and `0` in a module without it.
+  late final EndFileFields endFile;
+
+  /// The module's `mak_web_layout()`, up to its `-1` end.
+  List<int> _layoutTable() {
     final table = _m.layout();
     final view = _view();
-    final got = <int>[];
+    final values = <int>[];
     for (var i = 0; i < 64; i++) {
       final v = view.getInt32(table + 4 * i, true);
       if (v < 0) break;
-      got.add(v);
+      values.add(v);
     }
-    if (got.length != _kLayout.length) {
-      throw StateError('mpv_audio_kit: the web module has another layout');
-    }
-    for (var i = 0; i < got.length; i++) {
-      if (got[i] != _kLayout[i]) {
-        throw StateError('mpv_audio_kit: the web module has another layout');
-      }
-    }
+    return values;
   }
 
   /// Calls [onWakeup] on the main thread whenever mpv wakes client
