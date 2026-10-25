@@ -257,7 +257,9 @@ mixin _DispatchModule on _PlayerBase {
     // covers a last entry that ends without the park. Gated on the
     // ended entry being the last one, read by entry id in the event
     // isolate: the state's playlist position may already be on the
-    // next entry, which raised `completed` between tracks.
+    // next entry, which raised `completed` between tracks. `playing`
+    // comes back at the next file's restart, where the event isolate
+    // reads `core-idle` again: mpv may report no change for it.
     final isEof = reason == MpvEndFileReason.eof.value;
     _updateLifecycle(
       playing: false,
