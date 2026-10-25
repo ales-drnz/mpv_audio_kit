@@ -384,21 +384,24 @@ jobs:
         if: matrix.name == 'Linux'
         timeout-minutes: 20
         working-directory: test_app
-        run: >-
-          xvfb-run -a dbus-run-session --
-          flutter test -d linux -r expanded
-          integration_test/media_session_test.dart
-          integration_test/linux_mpris_test.dart
+        # One flutter test per file: a second file in the same run fails to
+        # start the app on the desktop ("Unable to start the app").
+        run: |
+          for f in media_session_test linux_mpris_test; do
+            xvfb-run -a dbus-run-session -- \
+              flutter test -d linux -r expanded "integration_test/$f.dart"
+          done
       # media_session_test reads the plugin's probe, windows_smtc_test what
       # the SystemMediaTransportControls themselves hold.
       - name: Media session integration tests
         if: matrix.name == 'Windows'
         timeout-minutes: 20
         working-directory: test_app
-        run: >-
-          flutter test -d windows -r expanded
-          integration_test/media_session_test.dart
-          integration_test/windows_smtc_test.dart
+        shell: bash
+        run: |
+          for f in media_session_test windows_smtc_test; do
+            flutter test -d windows -r expanded "integration_test/$f.dart"
+          done
       # Spike: whether this runner shows the session to the API the Windows
       # media flyout reads (GlobalSystemMediaTransportControlsSessionManager).
       # It does not gate the build: its log answers the question, then it

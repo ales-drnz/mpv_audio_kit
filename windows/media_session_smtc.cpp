@@ -449,17 +449,22 @@ flutter::EncodableValue SmtcController::DebugState() const {
   // ones are read back from the transport controls, what the OS was given.
   if (created_) {
     auto du = smtc_.DisplayUpdater();
-    auto mp = du.MusicProperties();
     m[flutter::EncodableValue("smtcEnabled")] =
         flutter::EncodableValue(smtc_.IsEnabled());
     m[flutter::EncodableValue("smtcStatus")] =
         flutter::EncodableValue(StatusName(smtc_.PlaybackStatus()));
-    m[flutter::EncodableValue("smtcTitle")] =
-        flutter::EncodableValue(winrt::to_string(mp.Title()));
-    m[flutter::EncodableValue("smtcArtist")] =
-        flutter::EncodableValue(winrt::to_string(mp.Artist()));
-    m[flutter::EncodableValue("smtcAlbum")] =
-        flutter::EncodableValue(winrt::to_string(mp.AlbumTitle()));
+    // ClearAll (disable) puts the type back to Unknown, and MusicProperties
+    // throws for any type but Music: an empty entry then.
+    std::string title, artist, album;
+    if (du.Type() == wm::MediaPlaybackType::Music) {
+      auto mp = du.MusicProperties();
+      title = winrt::to_string(mp.Title());
+      artist = winrt::to_string(mp.Artist());
+      album = winrt::to_string(mp.AlbumTitle());
+    }
+    m[flutter::EncodableValue("smtcTitle")] = flutter::EncodableValue(title);
+    m[flutter::EncodableValue("smtcArtist")] = flutter::EncodableValue(artist);
+    m[flutter::EncodableValue("smtcAlbum")] = flutter::EncodableValue(album);
     m[flutter::EncodableValue("smtcThumbnail")] =
         flutter::EncodableValue(static_cast<bool>(du.Thumbnail()));
   }
