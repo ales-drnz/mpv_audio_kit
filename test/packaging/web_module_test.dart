@@ -175,26 +175,42 @@ void main() {
     Map<String, dynamic> files(Map<String, dynamic> m) =>
         web(m)['files'] as Map<String, dynamic>;
 
-    final refusals = <String, Future<File> Function()>{
-      'a release without a web module': () =>
-          _release(root, edit: (m) => m.remove('web')),
-      'a web module of another ABI': () =>
-          _release(root, edit: (m) => web(m)['abi'] = webModuleAbi + 1),
-      'a zip that is not the one of the manifest': () => _release(
-        root,
-        edit: (m) =>
-            (m['assets'] as Map<String, dynamic>)['libmpv_web.zip'] = '0' * 64,
+    // Each release, and what the refusal says about it.
+    final refusals = <String, (Future<File> Function(), String)>{
+      'a release without a web module': (
+        () => _release(root, edit: (m) => m.remove('web')),
+        'libmpv-r99 has no web module',
       ),
-      'a file that is not the one of the manifest': () =>
-          _release(root, edit: (m) => files(m)['libmpv.wasm'] = '0' * 64),
-      'a zip without a listed file': () => _release(
-        root,
-        zipNames: {'mak_webaudio_processor.js': 'processor.js'},
+      'a web module of another ABI': (
+        () => _release(root, edit: (m) => web(m)['abi'] = webModuleAbi + 1),
+        'has ABI ${webModuleAbi + 1}, and the package drives ABI $webModuleAbi',
       ),
-      'a listed name outside web/': () =>
-          _release(root, edit: (m) => files(m)['../libmpv.mjs'] = '0' * 64),
+      'a zip that is not the one of the manifest': (
+        () => _release(
+          root,
+          edit: (m) => (m['assets'] as Map<String, dynamic>)['libmpv_web.zip'] =
+              '0' * 64,
+        ),
+        'is not the ${'0' * 64} of the manifest',
+      ),
+      'a file that is not the one of the manifest': (
+        () => _release(root, edit: (m) => files(m)['libmpv.wasm'] = '0' * 64),
+        'libmpv.wasm has SHA-256',
+      ),
+      'a zip without a listed file': (
+        () => _release(
+          root,
+          zipNames: {'mak_webaudio_processor.js': 'processor.js'},
+        ),
+        'libmpv_web.zip has no mak_webaudio_processor.js',
+      ),
+      'a listed name outside web/': (
+        () => _release(root, edit: (m) => files(m)['../libmpv.mjs'] = '0' * 64),
+        "'../libmpv.mjs' is not a plain file name",
+      ),
     };
-    for (final MapEntry(key: what, value: release) in refusals.entries) {
+    for (final MapEntry(key: what, value: (release, reason))
+        in refusals.entries) {
       test('refuses $what and writes nothing', () async {
         final before = {
           for (final path in [
@@ -205,7 +221,7 @@ void main() {
         };
         final run = await _update(package, await release());
         expect(run.exitCode, isNot(0), reason: '${run.stdout}');
-        expect((run.stderr as String).trim(), isNotEmpty);
+        expect(run.stderr, contains(reason));
         for (final MapEntry(:key, :value) in before.entries) {
           expect(read(key), value, reason: key);
         }
