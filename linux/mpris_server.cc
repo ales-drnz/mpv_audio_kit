@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <utility>
 
 #include "mpris_introspection.h"
 
@@ -81,8 +82,8 @@ std::string SanitizeBusSuffix(const std::string& in) {
 
 }  // namespace
 
-MprisServer::MprisServer(FlEventChannel* event_channel)
-    : event_channel_(event_channel) {
+MprisServer::MprisServer(std::function<FlEventChannel*()> command_channel)
+    : command_channel_(std::move(command_channel)) {
   node_info_ = g_dbus_node_info_new_for_xml(kMprisIntrospectionXml, nullptr);
   changed_props_ =
       g_hash_table_new_full(g_str_hash, g_str_equal, g_free, nullptr);
@@ -103,10 +104,6 @@ MprisServer::~MprisServer() {
     g_dbus_node_info_unref(node_info_);
     node_info_ = nullptr;
   }
-  if (event_channel_) {
-    g_object_unref(event_channel_);
-    event_channel_ = nullptr;
-  }
 }
 
 // ── Bus ownership ───────────────────────────────────────────────────────────
@@ -120,9 +117,11 @@ void MprisServer::EnsureOwned() {
   // its media controls. Clients match on the part before ".instance".
   std::string bus = "org.mpris.MediaPlayer2." + suffix + ".instance" +
                     std::to_string(getpid());
+  // Not queued: a name that cannot be taken is lost at once (OnNameLost),
+  // and the next Enable asks for it again.
   owner_id_ = g_bus_own_name(G_BUS_TYPE_SESSION, bus.c_str(),
-                             G_BUS_NAME_OWNER_FLAGS_NONE, OnBusAcquired, nullptr,
-                             OnNameLost, this, nullptr);
+                             G_BUS_NAME_OWNER_FLAGS_DO_NOT_QUEUE, OnBusAcquired,
+                             nullptr, OnNameLost, this, nullptr);
 }
 
 void MprisServer::ReleaseBus() {
@@ -187,6 +186,12 @@ void MprisServer::OnNameLost(GDBusConnection* connection, const gchar*,
   self->connection_ = nullptr;
   self->root_reg_id_ = 0;
   self->player_reg_id_ = 0;
+  // Stop asking for the name, so EnsureOwned asks again on the next Enable
+  // instead of keeping a request that never comes back.
+  if (self->owner_id_) {
+    g_bus_unown_name(self->owner_id_);
+    self->owner_id_ = 0;
+  }
 }
 
 // ── Root interface ──────────────────────────────────────────────────────────
@@ -499,9 +504,8 @@ void MprisServer::Emit(const gchar* type) {
 }
 
 void MprisServer::EmitWith(FlValue* command) {
-  if (event_channel_) {
-    fl_event_channel_send(event_channel_, command, nullptr, nullptr);
-  }
+  FlEventChannel* channel = command_channel_ ? command_channel_() : nullptr;
+  if (channel) fl_event_channel_send(channel, command, nullptr, nullptr);
   fl_value_unref(command);
 }
 

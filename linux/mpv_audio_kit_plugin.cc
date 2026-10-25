@@ -8,6 +8,7 @@
 
 #include <cstring>
 
+#include "engine_ownership.h"
 #include "mpris_server.h"
 
 /**
@@ -20,13 +21,31 @@
   (G_TYPE_CHECK_INSTANCE_CAST((obj), mpv_audio_kit_plugin_get_type(), \
                                MpvAudioKitPlugin))
 
-// Private struct for the plugin instance.
+// Private struct for the plugin instance, one per engine.
 struct _MpvAudioKitPlugin {
   GObject parent_instance;
-  // Owns the MPRIS2 D-Bus server for the OS media session. Created in
-  // register_with_registrar, freed in dispose.
-  mpv_audio_kit::MprisServer* mpris;
+  // This engine's end of `mpv_audio_kit/media_session/commands` (one ref).
+  FlEventChannel* media_session_events;
+  // Counted in the hub until dispose.
+  bool in_hub;
 };
+
+namespace {
+
+// The OS media session of the process: one MPRIS server, as the bus name it
+// owns, shared by the plugin of every engine. The first engine to enable owns
+// it until it disables or detaches (engine_ownership.h), and the server sends
+// the commands to that engine's event channel. Created with the first
+// plugin, deleted with the last.
+struct MprisHub {
+  mpv_audio_kit::EngineOwnership<FlEventChannel*> engines;
+  mpv_audio_kit::MprisServer server{[this] { return engines.CommandSink(); }};
+  int plugins = 0;
+};
+
+MprisHub* hub = nullptr;
+
+}  // namespace
 
 // Define the GType for the plugin.
 G_DEFINE_TYPE(MpvAudioKitPlugin, mpv_audio_kit_plugin, g_object_get_type())
@@ -55,13 +74,15 @@ static void mpv_audio_kit_plugin_handle_method_call(
  * @brief Handler for the OS media-session method channel.
  *
  * Routes `enable` / `updateConfig` / `updateMetadata` / `updatePlayback` /
- * `disable` / `debugMediaSessionState` to the plugin's MprisServer.
+ * `disable` / `debugMediaSessionState` to the process's MprisServer. Only
+ * the owner engine's calls change it: another engine's enable answers
+ * `already_owned`, its updates and disable are dropped.
  */
 static void media_session_method_call_cb(FlMethodChannel* channel,
                                          FlMethodCall* method_call,
                                          gpointer user_data) {
   MpvAudioKitPlugin* plugin = MPV_AUDIO_KIT_PLUGIN(user_data);
-  mpv_audio_kit::MprisServer* mpris = plugin->mpris;
+  mpv_audio_kit::MprisServer* mpris = hub != nullptr ? &hub->server : nullptr;
   const gchar* method = fl_method_call_get_name(method_call);
   FlValue* args = fl_method_call_get_args(method_call);
   g_autoptr(FlMethodResponse) response = nullptr;
@@ -82,21 +103,32 @@ static void media_session_method_call_cb(FlMethodChannel* channel,
   if (mpris == nullptr) {
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else if (strcmp(method, "enable") == 0) {
-    mpris->Enable(fl_value_lookup_string(args, "config"),
-                  fl_value_lookup_string(args, "metadata"),
-                  fl_value_lookup_string(args, "playback"));
-    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    if (hub->engines.TryEnable(plugin)) {
+      mpris->Enable(fl_value_lookup_string(args, "config"),
+                    fl_value_lookup_string(args, "metadata"),
+                    fl_value_lookup_string(args, "playback"));
+      response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    } else {
+      // Dart throws a StateError and leaves its state off.
+      response = FL_METHOD_RESPONSE(fl_method_error_response_new(
+          "already_owned",
+          "Another Flutter engine of this process owns the media session.",
+          nullptr));
+    }
   } else if (strcmp(method, "updateConfig") == 0) {
-    mpris->UpdateConfig(args);
+    if (hub->engines.MayUpdate(plugin)) mpris->UpdateConfig(args);
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else if (strcmp(method, "updateMetadata") == 0) {
-    mpris->UpdateMetadata(args);
+    if (hub->engines.MayUpdate(plugin)) mpris->UpdateMetadata(args);
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else if (strcmp(method, "updatePlayback") == 0) {
-    mpris->UpdatePlayback(args);
+    if (hub->engines.MayUpdate(plugin)) mpris->UpdatePlayback(args);
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else if (strcmp(method, "disable") == 0) {
-    mpris->Disable();
+    if (hub->engines.MayDisable(plugin)) {
+      mpris->Disable();
+      hub->engines.OnDisabled();
+    }
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else if (strcmp(method, "debugMediaSessionState") == 0) {
     g_autoptr(FlValue) state = mpris->DebugState();
@@ -107,16 +139,18 @@ static void media_session_method_call_cb(FlMethodChannel* channel,
   fl_method_call_respond(method_call, response, nullptr);
 }
 
-// Event-channel handlers for `mpv_audio_kit/media_session/commands`. The
-// MprisServer sends commands through this channel; the listen/cancel hooks
-// just satisfy the Flutter stream-handler contract.
+// Event-channel handlers for `mpv_audio_kit/media_session/commands`: the
+// MprisServer sends the commands to the owner engine's channel while its
+// Dart listens. user_data is the plugin.
 static FlMethodErrorResponse* media_session_events_listen_cb(
     FlEventChannel* channel, FlValue* args, gpointer user_data) {
+  if (hub != nullptr) hub->engines.OnListen(user_data, channel);
   return nullptr;
 }
 
 static FlMethodErrorResponse* media_session_events_cancel_cb(
     FlEventChannel* channel, FlValue* args, gpointer user_data) {
+  if (hub != nullptr) hub->engines.OnCancel(user_data);
   return nullptr;
 }
 
@@ -125,9 +159,22 @@ static FlMethodErrorResponse* media_session_events_cancel_cb(
  */
 static void mpv_audio_kit_plugin_dispose(GObject* object) {
   MpvAudioKitPlugin* self = MPV_AUDIO_KIT_PLUGIN(object);
-  if (self->mpris != nullptr) {
-    delete self->mpris;
-    self->mpris = nullptr;
+  if (self->media_session_events != nullptr) {
+    // No listen or cancel may reach the plugin once it is gone.
+    fl_event_channel_set_stream_handlers(self->media_session_events, nullptr,
+                                         nullptr, nullptr, nullptr);
+    g_clear_object(&self->media_session_events);
+  }
+  if (self->in_hub) {
+    self->in_hub = false;
+    // The engine is going, and its Dart may never have disabled (an engine
+    // destroyed while it plays): the session goes with its owner. Another
+    // engine's stays.
+    if (hub->engines.OnDetach(self)) hub->server.Disable();
+    if (--hub->plugins == 0) {
+      delete hub;
+      hub = nullptr;
+    }
   }
   G_OBJECT_CLASS(mpv_audio_kit_plugin_parent_class)->dispose(object);
 }
@@ -143,7 +190,8 @@ static void mpv_audio_kit_plugin_class_init(MpvAudioKitPluginClass* klass) {
  * @brief Initializes the plugin instance.
  */
 static void mpv_audio_kit_plugin_init(MpvAudioKitPlugin* self) {
-  self->mpris = nullptr;
+  self->media_session_events = nullptr;
+  self->in_hub = false;
 }
 
 /**
@@ -173,22 +221,25 @@ void mpv_audio_kit_plugin_register_with_registrar(FlPluginRegistrar* registrar) 
                                             g_object_unref);
 
   // ── OS media session via MPRIS2 (GLib/GDBus) ────────────────────────
-  // The event channel is created first and handed to the MprisServer
-  // (which takes ownership of one ref) so incoming D-Bus commands can be
-  // forwarded to Dart. The method channel then routes enable/update*/
-  // disable to the server. Both channel objects are leaked for the
+  // One MprisServer for the process (MprisHub), shared by every engine.
+  // The plugin keeps its event channel, where the server forwards the
+  // D-Bus commands while this engine owns the session. The method channel
+  // routes enable/update*/disable to the server and is leaked for the
   // plugin lifetime (matching the channel-ownership pattern Flutter uses).
+  if (hub == nullptr) hub = new MprisHub();
+  hub->plugins++;
+  plugin->in_hub = true;
   g_autoptr(FlStandardMethodCodec) ms_event_codec =
       fl_standard_method_codec_new();
-  FlEventChannel* ms_event_channel = fl_event_channel_new(
+  plugin->media_session_events = fl_event_channel_new(
       fl_plugin_registrar_get_messenger(registrar),
       "mpv_audio_kit/media_session/commands",
       FL_METHOD_CODEC(ms_event_codec));
-  fl_event_channel_set_stream_handlers(ms_event_channel,
+  // No ref for the handlers: dispose clears them before the plugin goes.
+  fl_event_channel_set_stream_handlers(plugin->media_session_events,
                                        media_session_events_listen_cb,
                                        media_session_events_cancel_cb,
-                                       nullptr, nullptr);
-  plugin->mpris = new mpv_audio_kit::MprisServer(ms_event_channel);
+                                       plugin, nullptr);
 
   g_autoptr(FlStandardMethodCodec) ms_method_codec =
       fl_standard_method_codec_new();

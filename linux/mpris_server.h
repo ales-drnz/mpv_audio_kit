@@ -8,6 +8,7 @@
 #include <gio/gio.h>
 
 #include <cstdint>
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -18,13 +19,16 @@ namespace mpv_audio_kit {
 // media-session state to org.mpris.MediaPlayer2[.Player] and forwards incoming
 // OS commands to Dart via the event channel.
 //
+// One per process, as the bus name it owns: the plugin of every engine shares
+// it (MprisHub in mpv_audio_kit_plugin.cc). [command_channel] returns the
+// event channel of the engine that owns the session, or null.
+//
 // Constructed on the Flutter platform thread (during plugin registration); all
 // GDBus callbacks are delivered on that thread's GMainContext — the same loop
 // as the Flutter channels — so there is no extra thread/loop and no locking.
-// Takes ownership of one ref on the supplied FlEventChannel.
 class MprisServer {
  public:
-  explicit MprisServer(FlEventChannel* event_channel);
+  explicit MprisServer(std::function<FlEventChannel*()> command_channel);
   ~MprisServer();
 
   MprisServer(const MprisServer&) = delete;
@@ -82,7 +86,7 @@ class MprisServer {
   int64_t ExtrapolatedPositionUs() const;
   void AnchorPosition();
 
-  FlEventChannel* event_channel_;  // owned (one ref)
+  std::function<FlEventChannel*()> command_channel_;
 
   guint owner_id_ = 0;
   GDBusConnection* connection_ = nullptr;  // borrowed (from OnBusAcquired)
