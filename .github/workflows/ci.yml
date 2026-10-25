@@ -23,9 +23,10 @@ permissions:
 # Until a libmpv release is published, set the repository variable
 # LIBMPV_SCRIPTS_RUN to the libmpv-scripts run that built it: the jobs that
 # bundle libmpv then take that run's libraries instead of the pinned
-# release (see .github/actions/libmpv-from-run). Unset the variable once
-# the release is out: the run's artifacts expire after 90 days, and main
-# would keep testing them instead of the release.
+# release (see .github/actions/libmpv-from-run), and Test (Web) its web
+# module. Unset the variable once the release is out: the run's artifacts
+# expire after 90 days, and main would keep testing them instead of the
+# release.
 #
 # The tests of a fix in libmpv-rN fail here, instead of skipping, on a
 # binary without it when rN is the release the run expects (the run's, or
@@ -224,6 +225,94 @@ jobs:
       # give here what they give on Linux, which runs them all.
       - name: flutter test -x network (files that touch the host)
         run: flutter test -x network $(scripts/ci/platform_tests.sh)
+
+  # The web backend in Chrome, on libmpv built as WebAssembly. The module
+  # is the web build of the libmpv the other jobs bundle, the run's with
+  # LIBMPV_SCRIPTS_RUN and the pinned release's without, checked against
+  # its manifest. A libmpv before r20 has none: the tests then do not run,
+  # with a notice (scripts/ci/web_module.sh). test/web/README.md describes
+  # the three runs.
+  test-web:
+    name: Test (Web)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        # bash -eo pipefail: a flutter test piped into tee still fails.
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: run
+        uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+      - name: Web module
+        id: module
+        env:
+          RUN_DIR: ${{ steps.run.outputs.dir }}
+        run: scripts/ci/web_module.sh
+      - if: steps.module.outputs.ready == 'true'
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          cache: true
+      # A compile error in a browser test leaves flutter test waiting on
+      # the page instead of failing: the analyzer reports it first.
+      - name: Analyze
+        if: steps.module.outputs.ready == 'true'
+        run: |
+          flutter pub get
+          mkdir -p build/web-test-logs
+          dart analyze lib test 2>&1 | tee build/web-test-logs/analyze.txt
+      # The runner's Chrome, playing into a PulseAudio null sink as libmpv
+      # does in Test (Linux): an output that takes the sound in real time.
+      - name: Chrome and an audio output
+        if: steps.module.outputs.ready == 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y pulseaudio pulseaudio-utils
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null
+          pactl set-default-sink ci_null
+          chrome="$(command -v google-chrome)" || { echo "::error::No google-chrome on the runner."; exit 1; }
+          "$chrome" --version
+          echo "CHROME_EXECUTABLE=$chrome" >> "$GITHUB_ENV"
+      # dart2wasm and the skwasm renderer, on a page flutter test serves
+      # cross-origin isolated: libmpv's threads need SharedArrayBuffer. The
+      # network server of the tests runs beside it. The autoplay policy
+      # holds the page's sound, as before a user gesture.
+      - name: flutter test --platform chrome --wasm
+        if: steps.module.outputs.ready == 'true'
+        timeout-minutes: 20
+        run: |
+          test/web/with_net_server.sh --platform chrome --wasm \
+            --cross-origin-isolation test/web 2>&1 | tee build/web-test-logs/wasm.txt
+      # The sound running, as after a gesture: Chrome without the autoplay
+      # policy (chrome_autoplay.sh) for the file that plays it.
+      - name: flutter test --platform chrome --wasm, sound running
+        if: steps.module.outputs.ready == 'true'
+        timeout-minutes: 10
+        run: |
+          MAK_CHROME="$CHROME_EXECUTABLE" CHROME_EXECUTABLE="$PWD/test/web/chrome_autoplay.sh" \
+            test/web/with_net_server.sh --platform chrome --wasm \
+            --cross-origin-isolation --dart-define=MAK_WEB_AUTOPLAY=true \
+            test/web/web_audio_test.dart 2>&1 | tee build/web-test-logs/autoplay.txt
+      # DDC, the default web compiler, cannot isolate the page and so runs
+      # no core: the package has to compile through it.
+      - name: flutter test --platform chrome (DDC)
+        if: steps.module.outputs.ready == 'true'
+        timeout-minutes: 10
+        run: |
+          flutter test --platform chrome test/web/web_compile_test.dart 2>&1 |
+            tee build/web-test-logs/ddc.txt
+      - if: failure() && steps.module.outputs.ready == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-test-logs
+          path: build/web-test-logs/
+          if-no-files-found: ignore
 
   build:
     name: Build ${{ matrix.name }}
