@@ -11,18 +11,11 @@ import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 
 import '../mpv_bindings.dart';
+import 'analysis_commands.dart';
 import 'debug_log.dart';
 import 'orphan_handle_tracker.dart';
 
-/// The `set` commands that turn off the analysis switches of libmpv. The
-/// loudness scan goes first: turning the waveform off while the scan still
-/// runs would restart the decode pass for the scan alone.
-@internal
-const List<String> analysisOffCommands = [
-  'set loudness-scan-enabled no',
-  'set waveform-enabled no',
-  'set analyzer-taps ""',
-];
+export 'analysis_commands.dart';
 
 /// Stops the players of an isolate that exits without disposing them.
 ///

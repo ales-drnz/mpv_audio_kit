@@ -89,6 +89,10 @@ Future<MpvModule> loadTestModule() {
       text.replaceAll(from, 'new URL(import.meta.url)').toJS,
       'text/javascript',
     );
-    return loadMpvModule(blob, wasmUrl: testUrl('web/module/libmpv.wasm'));
+    return loadMpvModule(
+      blob,
+      wasmUrl: testUrl('web/module/libmpv.wasm'),
+      processorUrl: testUrl('web/module/mak_webaudio_processor.js'),
+    );
   }();
 }

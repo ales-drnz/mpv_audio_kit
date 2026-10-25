@@ -41,6 +41,34 @@ void backendInitialized() => nativeBackendInitialized();
 @internal
 PcmNative openPcmNative(String? path) => openNativePcm(path);
 
+/// The library loads with the first call into it: nothing to wait for.
+@internal
+Future<void>? backendReady() => null;
+
+/// The audio drivers start on their own: nothing to resume.
+@internal
+void resumeOutput() {}
+
+/// The output follows `audio-samplerate` alone.
+@internal
+Future<void>? setOutputSampleRate(int rate) => null;
+
+/// No autoplay policy holds the sound.
+@internal
+bool get outputNeedsGesture => false;
+
+/// [outputNeedsGesture] never changes.
+@internal
+Stream<bool> get outputNeedsGestureChanges => const Stream<bool>.empty();
+
+/// No driver option stands in for `ao-volume` before an output is open.
+@internal
+const String? kOutputVolumeOption = null;
+
+/// No driver option stands in for `ao-mute` before an output is open.
+@internal
+const String? kOutputMuteOption = null;
+
 final class _NativeSession implements MpvSession {
   _NativeSession(this._wakeupCounterAddress);
 

@@ -16,6 +16,7 @@ import 'dart:typed_data';
 import 'package:meta/meta.dart';
 
 import '../../mpv_constants.dart';
+import 'web_layout.dart';
 
 @JS('BigInt')
 external JSBigInt _bigInt(JSNumber value);
@@ -57,23 +58,6 @@ T timedCall<T>(String name, T Function() body) {
     }
   }
 }
-
-/// The `struct` offsets of the client API on wasm32, in the order of
-/// `mak_web_layout()` (scripts/web/mak_web.c of libmpv-scripts): sizeof and
-/// offsetof of mpv_node, mpv_node_list, mpv_byte_array, mpv_event,
-/// mpv_event_property, mpv_event_log_message, mpv_event_end_file and
-/// mpv_event_hook. The decoders below use these numbers; the module's own
-/// table is compared with it when the module loads.
-const List<int> _kLayout = [
-  16, 8, // mpv_node: size, format
-  12, 4, 8, // mpv_node_list: size, values, keys
-  8, 4, // mpv_byte_array: size, size field
-  24, 4, 8, 16, // mpv_event: size, error, reply_userdata, data
-  12, 4, 8, // mpv_event_property: size, format, data
-  16, 8, 12, // mpv_event_log_message: size, text, log_level
-  32, 4, 8, 16, 24, // mpv_event_end_file
-  16, 8, // mpv_event_hook: size, id
-];
 
 @JS('DataView')
 extension type _View._(JSObject _) implements JSObject {
@@ -143,6 +127,8 @@ extension type MpvExports._(JSObject _) implements JSObject {
   external int wakeupAttach(int ctx);
   @JS('_mak_web_wakeup_detach')
   external void wakeupDetach(int bridge);
+  @JS('_mak_web_abi_version')
+  external int abiVersion();
   @JS('_mak_web_layout')
   external int layout();
   @JS('_malloc')
@@ -167,11 +153,45 @@ extension type MpvExports._(JSObject _) implements JSObject {
   external int pcmRelease(JSBigInt id);
   @JS('_mak_pcm_release_all')
   external void pcmReleaseAll();
+  @JS('_mpv_command_string')
+  external int mpvCommandString(int ctx, int args);
+  @JS('_mak_webio_live_streams')
+  external int webioLiveStreams();
   @JS('UTF8ToString')
   external JSString utf8ToString(int pointer);
   @JS('stringToNewUTF8')
   external int stringToNewUtf8(JSString value);
   external JSObject get wasmMemory;
+  external MakWebAudio get makWebAudio;
+}
+
+/// `Module.makWebAudio` of the module (scripts/web/mak_webaudio.js of
+/// libmpv-scripts): the AudioContext the webaudio output plays into, its
+/// AudioWorklet, and the resume at the first user gesture.
+@internal
+extension type MakWebAudio._(JSObject _) implements JSObject {
+  /// Makes the AudioContext and loads the worklet; a second call replaces
+  /// the context, and every open output reopens on the new one.
+  external JSPromise<JSObject> init([JSObject? options]);
+
+  /// Resumes the context, which the autoplay policy starts suspended.
+  external JSPromise<JSAny?> resume();
+
+  /// Closes the context: open outputs fail until the next [init].
+  external JSPromise<JSAny?> close();
+
+  /// Calls [listener] with the context's state at each change; returns the
+  /// function that removes it.
+  external JSFunction onStateChange(JSFunction listener);
+
+  /// `none` before [init], then the AudioContext's state.
+  external String get state;
+
+  /// The AudioWorkletNode of output [id], made on first use.
+  external JSObject output([int id]);
+
+  /// The AudioContext, `null` before [init].
+  external JSObject? get context;
 }
 
 /// One instance of the libmpv module: its exports, its memory, and the
@@ -179,9 +199,14 @@ extension type MpvExports._(JSObject _) implements JSObject {
 @internal
 final class MpvModule {
   /// Wraps the instance [module] the module factory resolved with, after
-  /// checking its struct layout against the one the decoders assume.
-  MpvModule(JSObject module) : _m = MpvExports._(module) {
-    _checkLayout();
+  /// checking its ABI version and its struct layout against the ones the
+  /// decoders assume, before any other call into it. [processorUrl] is
+  /// where the webaudio output's worklet is, when not beside the module.
+  MpvModule(JSObject module, {this.processorUrl})
+    : instance = module,
+      _m = MpvExports._(module) {
+    checkWebModuleAbi(_m.has('_mak_web_abi_version') ? _m.abiVersion() : null);
+    endFile = checkWebLayout(_layoutTable());
     // One callback per module: mak_web.c posts it to the main thread, at
     // most once per handle until it runs, whenever mpv wakes that client.
     // Emscripten also runs that posted work while the main thread waits for
@@ -199,6 +224,12 @@ final class MpvModule {
     }).toJS;
   }
 
+  /// The module instance, as the factory resolved it.
+  final JSObject instance;
+
+  /// Where mak_webaudio_processor.js is, when not beside libmpv.mjs.
+  final String? processorUrl;
+
   final MpvExports _m;
   final Map<int, void Function()> _wakeups = {};
   final Set<int> _scheduled = {};
@@ -206,23 +237,21 @@ final class MpvModule {
   /// The exported C functions.
   MpvExports get c => _m;
 
-  void _checkLayout() {
+  /// Where `mpv_event_end_file` keeps the read error fields of the
+  /// read_error patch, `0` and `0` in a module without it.
+  late final EndFileFields endFile;
+
+  /// The module's `mak_web_layout()`, up to its `-1` end.
+  List<int> _layoutTable() {
     final table = _m.layout();
     final view = _view();
-    final got = <int>[];
+    final values = <int>[];
     for (var i = 0; i < 64; i++) {
       final v = view.getInt32(table + 4 * i, true);
       if (v < 0) break;
-      got.add(v);
+      values.add(v);
     }
-    if (got.length != _kLayout.length) {
-      throw StateError('mpv_audio_kit: the web module has another layout');
-    }
-    for (var i = 0; i < got.length; i++) {
-      if (got[i] != _kLayout[i]) {
-        throw StateError('mpv_audio_kit: the web module has another layout');
-      }
-    }
+    return values;
   }
 
   /// Calls [onWakeup] on the main thread whenever mpv wakes client
@@ -361,9 +390,14 @@ final class MpvModule {
 }
 
 /// Imports the module at [url] (libmpv.mjs) and instantiates it. [wasmUrl]
-/// is where libmpv.wasm is, when not beside [url].
+/// is where libmpv.wasm is, and [processorUrl] where
+/// mak_webaudio_processor.js is, when not beside [url].
 @internal
-Future<MpvModule> loadMpvModule(String url, {String? wasmUrl}) async {
+Future<MpvModule> loadMpvModule(
+  String url, {
+  String? wasmUrl,
+  String? processorUrl,
+}) async {
   final namespace = await importModule(url.toJS).toDart;
   final factory = namespace['default'] as JSFunction;
   final options = JSObject();
@@ -372,5 +406,5 @@ Future<MpvModule> loadMpvModule(String url, {String? wasmUrl}) async {
   }
   final instance =
       await (factory.callAsFunction(null, options) as JSPromise).toDart;
-  return MpvModule(instance as JSObject);
+  return MpvModule(instance as JSObject, processorUrl: processorUrl);
 }

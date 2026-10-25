@@ -17,7 +17,14 @@ mixin _PlaybackModule on _PlayerBase {
   /// playback itself is observable via [PlayerStream.playing]. A [pause],
   /// [stop] or load called after it has the last word: then it writes
   /// nothing.
+  ///
+  /// On the web it also resumes the page's audio output when the
+  /// browser's autoplay policy holds it (see
+  /// [MpvAudioKit.needsUserGesture]): called from a user gesture, as from
+  /// a play button, the sound starts.
   Future<void> play() async {
+    // Before any await: still inside the gesture that called it.
+    resumeOutput();
     await _gate();
     // Optimistic intent: `pause` is silent on the first load → playing
     // transition, so set the intent axis here rather than relying on the

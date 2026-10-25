@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import '../internals/unset_sentinel.dart';
+import 'media_blob_io.dart' if (dart.library.js_interop) 'media_blob_web.dart';
 
 bool _mapEqDyn(Map<String, Object?>? a, Map<String, Object?>? b) {
   if (identical(a, b)) return true;
@@ -222,6 +223,35 @@ final class Media {
     this.start,
     this.end,
   });
+
+  /// A media item for a file the user picked in the browser: [blob], a
+  /// `File` or `Blob` of the page, as an `<input type="file">`, a drop or
+  /// `showDirectoryPicker` give it. The file can sit on a network share
+  /// the system has mounted (an SMB or NFS folder): the browser reads it
+  /// through the system, on demand, as it plays and seeks.
+  ///
+  /// The media plays a `blob:` URL the page makes for the file, valid
+  /// until the page closes; a `File` from disk stays on disk meanwhile.
+  /// [extras] gets the file's name as `title` unless it has one, for the
+  /// media session and the playlist UI. [start] and [end] are those of
+  /// [Media.new].
+  ///
+  /// On the web only: elsewhere it throws [UnsupportedError], and a file
+  /// opens by its path. Throws [ArgumentError] when [blob] is not a `File`
+  /// or `Blob`. A `blob:` URL the app already has (the `path` of an
+  /// `XFile` of file_selector on the web) plays as `Media(url)` too.
+  factory Media.fromBlob(
+    Object blob, {
+    Map<String, Object?>? extras,
+    Duration? start,
+    Duration? end,
+  }) {
+    final (url, name) = blobUrl(blob);
+    final titled = name == null || (extras?.containsKey('title') ?? false)
+        ? extras
+        : {'title': name, ...?extras};
+    return Media(url, extras: titled, start: start, end: end);
+  }
 
   /// Whether this media is a live PCM input made by `PcmSource.toMedia`
   /// (a `mak-pcm://` URI): read once, not seekable, of a length not known

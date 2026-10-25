@@ -385,6 +385,11 @@ class MediaSessionController {
         : _artworkFetcher != null && _fetches(uri)
         ? _downloadedArtwork(uri)
         : null;
+    // In the browser a URL the fetch cannot read (no CORS) still shows: the
+    // browser loads it as an image and hands the OS the picture.
+    final artworkUrl = passesArtworkUrl && cover == null && _isHttp(uri)
+        ? uri
+        : null;
 
     return MediaSessionMetadataSnapshot(
       title: title,
@@ -397,6 +402,7 @@ class MediaSessionController {
       albumArtist: albumArtist,
       genre: genre,
       url: url,
+      artworkUrl: artworkUrl,
     );
   }
 
@@ -430,6 +436,13 @@ class MediaSessionController {
     } on ArgumentError {
       return null;
     }
+  }
+
+  /// Whether [uri] is an `http(s)://` URL.
+  static bool _isHttp(String? uri) {
+    if (uri == null) return false;
+    final scheme = Uri.tryParse(uri)?.scheme.toLowerCase();
+    return scheme == 'http' || scheme == 'https';
   }
 
   /// Whether the artwork [uri] goes through [_artworkFetcher]: an

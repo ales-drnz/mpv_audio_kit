@@ -22,6 +22,9 @@ typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri, String caFile);
 /// `mpris:artUrl` on the session bus (Linux), the session metadata other
 /// apps with notification access read (Android), the thumbnail source SMTC
 /// is given (Windows). Apple's Now Playing takes an image, never a URL.
+///
+/// In the browser [defaultTargetPlatform] is the one of the device, so the
+/// fetch runs there too, with CORS (artwork_download_web.dart).
 @internal
 bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   TargetPlatform.linux ||
@@ -31,3 +34,9 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   TargetPlatform.macOS => true,
   _ => false,
 };
+
+/// Whether an artwork URL the fetcher could not load goes to the media
+/// session as it is: in the browser only, which loads it as an image and
+/// hands the OS the picture.
+@internal
+const bool passesArtworkUrl = kIsWeb;

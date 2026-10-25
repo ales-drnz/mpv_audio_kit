@@ -85,7 +85,7 @@ jobs:
       fail-fast: false
       matrix:
         # The declared floor and the current stable.
-        flutter: ['3.38.x', 'any']
+        flutter: ['3.41.x', 'any']
     steps:
       - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2

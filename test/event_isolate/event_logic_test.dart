@@ -236,6 +236,44 @@ void main() {
     expect(reader.reads, ['playlist-count', 'playlist/1/id']);
   });
 
+  test('END_FILE keeps the read error and the skipped segments', () async {
+    final out = <MpvEventEndFile>[];
+    final logic = EventLogic(_Reader(_parkedFirstOfTwo()), (e) {
+      if (e is MpvEventEndFile) out.add(e);
+    });
+    await logic.dispatch(
+      MpvEventEndFile(
+        7,
+        MpvEndFileReason.mpvEndFileReasonEof,
+        0,
+        readError: true,
+        skippedSegments: 2,
+      ),
+    );
+    // A stop takes no reads: sent at once.
+    expect(
+      logic.dispatch(
+        MpvEventEndFile(
+          8,
+          MpvEndFileReason.mpvEndFileReasonStop,
+          0,
+          readError: false,
+        ),
+      ),
+      isNull,
+    );
+    expect(
+      logic.dispatch(
+        MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonStop, 0),
+      ),
+      isNull,
+    );
+    expect(
+      [for (final e in out) (e.entryId, e.readError, e.skippedSegments)],
+      [(7, true, 2), (8, false, 0), (8, null, 0)],
+    );
+  });
+
   test(
     'PLAYBACK_RESTART drops a held time-pos and sends the landing',
     () async {

@@ -10,6 +10,11 @@
 //   void startBackend({String? libmpv, required bool hotRestartCleanup})
 //   void backendInitialized()
 //   PcmNative openPcmNative(String? path)
+//   Future<void>? backendReady()
+//   void resumeOutput()
+//   Future<void>? setOutputSampleRate(int rate)
+//   bool get outputNeedsGesture, Stream<bool> get outputNeedsGestureChanges
+//   String? kOutputVolumeOption, kOutputMuteOption
 //
 // The rest of the package imports this file only, so dart:ffi, dart:io and
 // dart:isolate never reach a web build.

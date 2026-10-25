@@ -114,7 +114,9 @@ final class PcmSource {
   /// [format]. Call `MpvAudioKit.ensureInitialized` first, as for a
   /// [Player]: throws [StateError] otherwise, and [UnsupportedError] when
   /// the loaded libmpv has no live PCM input (a custom build without the
-  /// mpv_audio_kit patches).
+  /// mpv_audio_kit patches). On the web the libmpv module loads in the
+  /// background: until a [Player] is ready it is not there, and this
+  /// throws [StateError]; `Player.openPcmStream` waits for it.
   static PcmSource create(
     PcmFormat format, {
     Duration maxBuffered = const Duration(seconds: 30),

@@ -40,3 +40,6 @@ graphify-out/
 /tool/
 /dart_test.yaml
 /android/src/test/
+
+# web/ holds the web module, published; its placeholder is not
+/web/.gitkeep

@@ -6,6 +6,10 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('Media.fromBlob is for the browser: elsewhere it throws', () {
+    expect(() => Media.fromBlob(Object()), throwsUnsupportedError);
+  });
+
   group('Media construction', () {
     test('positional uri only', () {
       const media = Media('https://example.com/a.mp3');

@@ -33,3 +33,8 @@ __pycache__/
 
 # The web module the browser tests load (test/web/fetch_module.sh)
 /test/web/module/
+
+# The web module the package ships (scripts/update_libmpv.sh)
+/web/libmpv.mjs
+/web/libmpv.wasm
+/web/mak_webaudio_processor.js

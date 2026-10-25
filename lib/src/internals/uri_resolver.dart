@@ -16,7 +16,10 @@
 // `file://` URIs become the path mpv itself would store for them, so the
 // playlist entries mpv reports match the Media cache keys. All other URIs
 // (`http(s)://`, `smb2://`, plain filesystem paths, …) pass through
-// unchanged.
+// unchanged. In the browser (uri_resolver_web.dart):
+//
+//   blob:<url of the page>      → makblob://<url of the page>
+//   asset://path/inside/bundle  → the asset's absolute URL on the page's origin
 
 import 'dart:convert';
 
