@@ -67,6 +67,10 @@ final class EntryTable {
   Object? _lastNode;
   int _newestListed = -1;
   int? _loading;
+  // The entry of the last START_FILE, with its Media then: its END_FILE
+  // reports it even after a report took it out of the playlist (a stop, a
+  // replace).
+  (int, Media?)? _started;
   int _starts = 0;
   int _ends = 0;
   // A playlist read for the live sources is under way, and whether another
@@ -170,15 +174,22 @@ final class EntryTable {
   void onStartFile(int id) {
     _starts++;
     _loading = id;
+    _started = (id, mediaOf(id));
   }
 
   /// mpv loaded the file it started (FILE_LOADED), before [takeSettled].
   void onFileLoaded() => _loading = null;
 
-  /// mpv ended a file (END_FILE), before [takeSettled].
-  void onEndFile() {
+  /// mpv ended the file of entry [id] (END_FILE), before [takeSettled].
+  /// Returns the [Media] the entry was loaded with, as [mediaOf] gave it
+  /// at its START_FILE.
+  Media? onEndFile(int id) {
     _ends++;
     _loading = null;
+    final started = _started;
+    _started = null;
+    if (started != null && started.$1 == id) return started.$2 ?? mediaOf(id);
+    return mediaOf(id);
   }
 
   /// Holds [release] for an external track about to be added to the

@@ -33,7 +33,7 @@ const int _kPauseObserverReplyId = 1 << 62;
 /// a read sent ahead of them would raise `completed` for the player to
 /// clear again on those events. So a read counts only for the entry whose
 /// START_FILE this isolate already forwarded
-/// ([_PropertyCache.startedEntryId]); the newer entry's own FILE_LOADED and
+/// ([_PropertyCache.started]); the newer entry's own FILE_LOADED and
 /// PLAYBACK_RESTART read again. The current entry is read before and after
 /// `eof-reached` and `pause`, so both belong to it.
 void _sendEndOfContent(
@@ -42,11 +42,11 @@ void _sendEndOfContent(
   SendPort toMain,
   _PropertyCache cache,
 ) {
-  final started = cache.startedEntryId;
+  final started = cache.started;
   if (started == null) return;
   final pos = _getPropInt64(lib, handle, 'playlist-pos');
   if (pos == null || pos < 0) return;
-  if (_getPropInt64(lib, handle, 'playlist/$pos/id') != started) return;
+  if (_getPropInt64(lib, handle, 'playlist/$pos/id') != started.id) return;
   final eof = _getPropFlag(lib, handle, 'eof-reached') == 1;
   // With gapless audio mpv reports EOF once the decoder is done, while the
   // output buffer still plays; keep-open pauses the core only after it has
@@ -63,12 +63,14 @@ void _sendEndOfContent(
   final timePos = parked ? _getPropDouble(lib, handle, 'time-pos') : null;
   final count = _getPropInt64(lib, handle, 'playlist-count');
   if (_getPropInt64(lib, handle, 'playlist-pos') != pos ||
-      _getPropInt64(lib, handle, 'playlist/$pos/id') != started) {
+      _getPropInt64(lib, handle, 'playlist/$pos/id') != started.id) {
     return;
   }
   // The park position supersedes a throttled time-pos still held back,
-  // which would land after the event, as at PLAYBACK_RESTART.
+  // which would land after the event, as at PLAYBACK_RESTART. It is also
+  // where the entry ended, for its END_FILE.
   if (parked) cache.trailing.remove('time-pos');
+  if (timePos != null) started.position = timePos;
   toMain.send(
     MpvEventEndOfContent(
       eof: eof,

@@ -2177,7 +2177,7 @@ These deliver only what happens after `listen()`.
 | Stream | Type | Notes |
 | :--- | :--- | :--- |
 | `seekCompleted` | `void` | After each load or seek, once mpv is ready to play. |
-| `endFile` | `MpvFileEndedEvent` | Every file end, with its reason. See [11.2](#112-end-file-stream). |
+| `endFile` | `MpvFileEndedEvent` | Every file end, with its reason and the entry that ended. See [11.2](#112-end-file-stream). |
 | `error` | `PlayerError` | Load failures and mpv errors. See [11.1](#111-typed-error-stream). |
 | `log`, `internalLog` | `MpvLogEntry` | mpv's log and the library's. See [11.4](#114-log-streams). |
 | `hook` | `MpvHookEvent` | Hooks you registered. See [12.2](#122-listening-and-continuing). |
@@ -2286,23 +2286,35 @@ player.stream.error.listen((error) {
 
 #### 11.2 End file stream
 
-`player.stream.endFile` emits an `MpvFileEndedEvent` every time a file ends, not only on errors. mpv can report a dropped network connection as a normal end of file (`reason: eof`, no error code), so compare the position with the duration to tell them apart:
+`player.stream.endFile` emits an `MpvFileEndedEvent` every time a file ends, not only on errors. The event carries the entry that ended: the `Media` it was loaded with, the last position mpv reported for it and its duration. Read them from the event, not from `player.state`: when the event arrives the state can already describe the next entry, or a stopped player at position zero.
+
+mpv reports a stream cut short as a normal end of file (`reason: eof`, no error code), a dropped HTTP connection for example. The position against the duration tells most of them apart:
 
 ```dart
 player.stream.endFile.listen((event) {
-  if (event.reason == MpvEndFileReason.eof) {
-    final pos = player.state.position;
-    final dur = player.state.duration;
-    if (dur > Duration.zero && (dur - pos).inSeconds > 5) {
-      print('Ended early, probably a network drop');
-    }
+  final position = event.position;
+  final duration = event.duration;
+  if (event.reason == MpvEndFileReason.eof &&
+      position != null &&
+      duration != null &&
+      duration - position > const Duration(seconds: 5)) {
+    print('${event.media?.uri} ended ${duration - position} early');
   }
 });
 ```
 
+What to keep in mind when you compare them:
+- With gapless playback (the default), mpv ends an entry once its decoder is done, while the output still plays what it buffered. The position then trails the end by about that buffer: the audio buffer of [6.10](#610-audio-buffer) (0.2 s by default) plus the audio output's own. Leave a margin larger than that.
+- The last entry of the playlist does not end at its end. The player keeps it open on its last frame: `state.completed` turns true and `state.position` holds where it ended. Its event comes when it is stopped or replaced, with `reason: stop` and that position.
+- The duration can be an estimate. For an MP3 without a Xing or VBRI header, and for some HLS streams, mpv derives it from the bitrate, and a file that played to its end can stop seconds away from it.
+- For an HTTP file whose length the server announced, FFmpeg logs the cut on `stream.log`, and so on `stream.error` as a `LogError`: prefix `ffmpeg`, level `error`, text `http: Stream ends prematurely at <bytes read>, should be <length>`. On a server that accepts range requests it then reconnects where it stopped, with a `Will reconnect at ...` warning for each attempt, and the entry plays on when one of them works.
+
 `MpvFileEndedEvent` fields:
 - `reason`: a `MpvEndFileReason` enum value
 - `error`: mpv's error code, non-zero only when `reason` is `MpvEndFileReason.error`
+- `media`: the `Media` the entry was loaded with, `null` for an entry of a playlist file or a raw command
+- `position`: the last position mpv reported for the entry, `null` when none came (a file that failed to open)
+- `duration`: the duration of the entry as mpv knew it, `null` when it knew none (a live stream)
 
 #### 11.3 Audio output lifecycle
 

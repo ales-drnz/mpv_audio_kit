@@ -265,7 +265,7 @@ void _dispatchEvent(
           .cast<mpv.MpvEventStartFileData>()
           .ref
           .playlistEntryId;
-      cache.startedEntryId = started;
+      cache.started = _StartedEntry(started);
       toMain.send(MpvEventStartFile(started));
 
     case mpv.MpvEventId.mpvEventFileLoaded:
@@ -299,17 +299,7 @@ void _dispatchEvent(
 
     case mpv.MpvEventId.mpvEventEndFile:
       final ef = event.ref.data.cast<mpv.MpvEventEndFile>().ref;
-      final ended =
-          ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
-          ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonError;
-      toMain.send(
-        MpvEventEndFile(
-          ef.playlistEntryId,
-          ef.reason,
-          ef.error,
-          lastEntry: ended && _isLastEntry(lib, handle, ef.playlistEntryId),
-        ),
-      );
+      toMain.send(_endFileEvent(lib, handle, ef, cache));
 
     case mpv.MpvEventId.mpvEventPropertyChange:
       final prop = event.ref.data.cast<mpv.MpvEventProperty>().ref;
@@ -378,6 +368,30 @@ void _dispatchEvent(
       _rereadUnavailable(lib, handle, toMain, cache);
       _sendEndOfContent(lib, handle, toMain, cache);
   }
+}
+
+/// The END_FILE [ef] as [MpvEventEndFile]. mpv has unloaded the file by
+/// now: what it reported of the entry comes from the START_FILE that named
+/// it ([_PropertyCache.started]).
+MpvEventEndFile _endFileEvent(
+  mpv.MpvLibrary lib,
+  Pointer<mpv.MpvHandle> handle,
+  mpv.MpvEventEndFile ef,
+  _PropertyCache cache,
+) {
+  final ended =
+      ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
+      ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonError;
+  final started = cache.started;
+  final entry = started?.id == ef.playlistEntryId ? started : null;
+  return MpvEventEndFile(
+    ef.playlistEntryId,
+    ef.reason,
+    ef.error,
+    lastEntry: ended && _isLastEntry(lib, handle, ef.playlistEntryId),
+    position: entry?.position,
+    duration: entry?.duration,
+  );
 }
 
 /// Reads the file-load payload (path, playlist, position, chapters,

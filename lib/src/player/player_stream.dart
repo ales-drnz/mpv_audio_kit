@@ -450,11 +450,16 @@ class PlayerStream {
   final Stream<Cover> coverArtAuto;
 
   /// Emits for **every** file-end event: clean completions, stops, errors,
-  /// and premature EOFs alike.
+  /// and premature EOFs alike, with the `Media`, position and duration of
+  /// the entry that ended.
   ///
   /// [MpvFileEndedEventX.reachedNaturalEnd] is `true` for any EOF, and mpv
   /// also reports EOF when a network stream drops. To tell the two apart,
-  /// compare [PlayerState.position] with [PlayerState.duration].
+  /// compare [MpvFileEndedEvent.position] with
+  /// [MpvFileEndedEvent.duration], not the state: when the event arrives
+  /// the state can already describe the next entry. The last entry parks
+  /// on its end instead ([PlayerState.completed]) and emits here only
+  /// when it is stopped or replaced.
   final Stream<MpvFileEndedEvent> endFile;
 
   /// Emits typed error events from the mpv engine.
