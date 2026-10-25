@@ -9,10 +9,12 @@
 # language; this script delegates to whichever ones the host can run.
 #
 # Platforms:
-#   • darwin  — macOS + iOS (Swift; runs on macOS host).
-#   • linux   — C++/GLib MPRIS suite not yet ported.
-#   • windows — C++ SMTC suite not yet ported.
-#   • android — Kotlin/JVM MediaSession suite not yet ported.
+#   darwin   macOS and iOS (Swift), on a macOS host.
+#   linux    no native suite: MPRIS runs through test_app
+#            (integration_test/linux_mpris_test.dart).
+#   windows  no native suite: SMTC runs through test_app
+#            (integration_test/windows_smtc_test.dart).
+#   android  the plugin's JVM tests (android/src/test), through Gradle.
 #
 # Usage (from anywhere in the repo):
 #   bash test/media_session/run.sh
@@ -51,16 +53,16 @@ case "$OS" in
     ;;
   Linux)
     if [ -x "$HERE/linux/run.sh" ]; then
-      run_suite "linux (TBD)" "$HERE/linux/run.sh"
+      run_suite "linux" "$HERE/linux/run.sh"
     else
-      echo "(no Linux media-session implementation yet)"
+      echo "(no native Linux suite: MPRIS runs in test_app, integration_test/linux_mpris_test.dart)"
     fi
     ;;
   MINGW*|CYGWIN*|MSYS*)
     if [ -x "$HERE/windows/run.sh" ]; then
-      run_suite "windows (TBD)" "$HERE/windows/run.sh"
+      run_suite "windows" "$HERE/windows/run.sh"
     else
-      echo "(no Windows media-session implementation yet)"
+      echo "(no native Windows suite: SMTC runs in test_app, integration_test/windows_smtc_test.dart)"
     fi
     ;;
   *)

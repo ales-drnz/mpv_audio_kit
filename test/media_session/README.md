@@ -1,108 +1,103 @@
-# Media-session tests
+# Media session tests
 
-This directory holds **native, per-platform** tests for the OS
-media-session bridge implementations. The Dart-side wrapper logic
-(`MediaSessionController` + `MediaSessionChannel`) is exercised by
-`*_test.dart` files **at this level** that run under `flutter test`
-like any other Dart unit test; the native subdirectories below
-build and run the platform-native plugin code directly so we can
-assert on what `MPNowPlayingInfoCenter` / `SMTC` / `MPRIS` / Android
-`MediaSession` actually publish under specific event sequences.
+The OS media session has three layers of tests:
+
+1. The Dart side (`MediaSessionController`, `MediaSessionChannel`, the
+   artwork fetcher), in the `*_test.dart` files of this directory.
+2. The native plugins on their own: the Swift suite in `darwin/` and the
+   plugin's JVM tests in `android/src/test`.
+3. The whole path through a running app, from `Player` to what the OS
+   holds, in `test_app/integration_test/`.
 
 ## Layout
 
 ```
 test/media_session/
-├── README.md                    — this file
-├── run.sh                       — OS-aware orchestrator, runs every
-│                                  native suite available on the host
-├── controller_test.dart         — Dart unit tests for
-│                                  MediaSessionController (any host)
-├── darwin/                      — macOS + iOS (Swift)
-│   ├── main.swift               — test scenarios
-│   └── run.sh                   — compiles + executes the Swift suite
-│                                  (macOS host only)
-└── (future)
-    ├── linux/                   — MPRIS (likely C++/GLib)
-    ├── windows/                 — SMTC (likely C++/WinRT)
-    └── android/                 — MediaSession (likely Kotlin via Gradle)
+├── README.md                  this file
+├── run.sh                     runs the native suites this host can run
+├── *_test.dart                the Dart side, under flutter test
+└── darwin/                    macOS and iOS (Swift)
+    ├── main.swift             the scenarios
+    └── run.sh                 compiles and runs them (macOS host only)
+
+test_app/integration_test/
+├── media_session_test.dart    every platform, through the plugin's probe
+├── linux_mpris_test.dart      Linux, read from the session bus with gdbus
+├── windows_smtc_test.dart     Windows, read back from the SMTC
+└── windows_gsmtc_spike_test.dart
+                               Windows, through the API of the media
+                               flyout (a spike that does not gate)
 ```
 
 ## What runs where
 
-| Host    | Suite                                  |
-|---------|----------------------------------------|
-| macOS   | `flutter test` + `darwin/run.sh`       |
-| Linux   | `flutter test` + (future) `linux/`     |
-| Windows | `flutter test` + (future) `windows/`   |
-| Android | Cannot run native suites from a host — covered by `test_app/integration_test/` on an emulator/device. |
+| Platform | Dart side | Native suite | Through the app |
+|----------|-----------|--------------|-----------------|
+| Linux | Test (Linux) | none | Build Linux: media_session_test and linux_mpris_test, under xvfb-run and dbus-run-session |
+| Windows | Windows per file (check) | none | Build Windows: media_session_test and windows_smtc_test |
+| macOS | Test (macOS) | Build macOS (SwiftPM): `darwin/run.sh` | none |
+| iOS | | the Swift of `darwin/` is shared | the simulator job of the check |
+| Android | | Build Android: the JVM tests | the emulator jobs of the check |
 
-The Dart `*_test.dart` files run on every host because they only
-exercise the Dart-side controller. They do **not** depend on a real
-mpv or platform channel — they stub `MediaSessionChannel` and drive
-the controller's input streams directly.
+The Test and Build jobs are in `.github/workflows/ci.yml`. The check is
+`check-mpv-audio-kit.yml` in libmpv-scripts.
 
-## How the Swift (darwin) suite works
+## The Dart side
 
-`darwin/main.swift` is a `swiftc`-compiled executable, not an
-XCTest bundle. It links against the `FlutterMacOS.framework` shipped
-inside test_app's macOS build output, instantiates a real
-`MediaSessionPlugin`, drives it through the method channel
-(`enable` / `updatePlayback` / `disable`) plus the scrub entry point
-(`handleScrub`), and asserts against the real
-`MPNowPlayingInfoCenter.default()` and `MPRemoteCommandCenter.shared()`
-— the same process singletons the OS reads. The plugin is a stateless
-renderer, so each call publishes synchronously; there is no timer or
-seek state machine to spin the run loop for.
+Most files build a `MediaSessionController` against a fake channel and
+fake input streams, and run on any host. They pin what lives in Dart.
+The published play state follows the `playWhenReady` intent, so a seek
+never shows a pause. `playing` only drives `actualPlaying`, which tells
+the native side when to advance the position. A seek landing syncs the
+position. A cover from a URL is downloaded in Dart and sent as bytes.
 
-CI runs it in the macOS (SwiftPM) build job of `.github/workflows/ci.yml`,
-right after that job's `flutter build macos --debug`.
-
-The suite expects test_app's macOS build artifacts to exist:
-
-```
-(cd test_app && flutter build macos --debug)
-```
-
-Then:
-
-```
-bash test/media_session/darwin/run.sh
-# or
-bash test/media_session/run.sh   # auto-detects host OS
-```
-
-## How the Dart controller tests work
-
-The Dart tests in `test/media_session/*_test.dart` construct a
-`MediaSessionController` against a fake channel and fake input
-streams, then assert the one behaviour that lives purely in Dart:
-suppressing the transient `playing=false` that mpv emits while
-seeking (core-idle flips), so the OS never shows a spurious pause
-frame mid-scrub. The forced `seekCompleted` push republishes the
-held play intent rather than that transient.
-
-Run with the rest of the package tests:
+`media_session_root_isolate_test` and `set_media_session_race_test`
+create real players, so they need the bundled libmpv.
 
 ```
 flutter test test/media_session/
 ```
 
-## Adding a new platform suite
+## The Swift suite (darwin)
 
-When a new OS gains a media-session implementation:
+`darwin/main.swift` is a `swiftc` executable, not an XCTest bundle. It
+links against the `FlutterMacOS.framework` of test_app's macOS build,
+creates a real `MediaSessionPlugin`, drives it through the method channel
+and the scrub entry point, and asserts against
+`MPNowPlayingInfoCenter.default()` and `MPRemoteCommandCenter.shared()`,
+the objects the OS reads. The plugin publishes each call synchronously.
 
-1. Add a new subdir `test/media_session/<os>/`.
-2. Add an `<os>/main.<ext>` source that mirrors the scenarios in
-   `darwin/main.swift`.
-3. Add `<os>/run.sh` that compiles + runs the suite. It must
-   guard `uname -s` (or equivalent) and exit `2` with a clear
-   message when invoked on the wrong host.
-4. The top-level `run.sh` already routes `uname -s` to the right
-   subdir — extend the `case` if you need additional mapping.
-5. Update this README's "What runs where" table.
+It needs test_app's macOS build first:
 
-Keep the scenarios in lockstep across platforms: each new
-scenario added to `darwin/main.swift` should be added to its
-counterparts in every other native suite, so the OS bridges stay
-behaviorally identical.
+```
+(cd test_app && flutter build macos --debug)
+bash test/media_session/darwin/run.sh
+```
+
+## Through the app
+
+The integration tests open a real file in a real `Player`, publish it,
+and read back what the platform holds.
+
+- `media_session_test` reads the plugin's probe: `debugNowPlayingInfo` on
+  Apple, `debugMediaSessionState` on Android, Windows and Linux.
+- `linux_mpris_test` reads `org.mpris.MediaPlayer2.<app>.instance<pid>`
+  with gdbus, as a desktop shell does, and sends Play, Pause, Seek and
+  SetPosition back through the bus to the player.
+- `windows_smtc_test` reads the values back from the
+  SystemMediaTransportControls of the process.
+
+On Linux they need a session bus and gdbus:
+
+```
+cd test_app
+dbus-run-session -- flutter test -d linux integration_test/linux_mpris_test.dart
+```
+
+## Adding a native suite
+
+A suite for another platform goes in `test/media_session/<os>/`, with the
+scenarios of `darwin/main.swift` and a `run.sh` that builds and runs
+them. That `run.sh` exits 2 with a message on the wrong host. The
+top-level `run.sh` already calls `linux/run.sh` and `windows/run.sh` when
+they exist.

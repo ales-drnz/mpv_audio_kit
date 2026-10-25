@@ -4,11 +4,12 @@
 //
 // Dart-side unit tests for `MediaSessionController`. The OS play/pause
 // state is driven by the `playWhenReady` (user intent) axis, which is
-// stable across seeks — so no seek-transient masking is needed and the
+// stable across seeks, so no seek-transient masking is needed and the
 // scrub-bar button never flickers. These tests pin that wiring: intent
 // changes propagate, seek landings re-sync position, and a `core-idle`
-// transient (which the controller does not observe) cannot reach the
-// OS.
+// transient cannot reach the OS play state. The controller observes
+// `playing` (core-idle inverted) only for `actualPlaying`, which gates
+// the native side's position extrapolation.
 //
 // The native publish (composing `MPNowPlayingInfoCenter`) is covered by
 // the real-framework suite under `test/media_session/darwin/`, and the
@@ -212,11 +213,12 @@ void main() {
     test(
       'the published play state tracks playWhenReady, NOT core-idle',
       () async {
-        // The whole point: while seeking, mpv flips core-idle (→
-        // state.playing) but leaves intent (playWhenReady) alone. The
-        // controller doesn't observe `playing` at all, so even a state
-        // where playing=false but the user intends play publishes
-        // playing=true. This is what keeps the OS button from flickering.
+        // The whole point: while seeking, mpv flips core-idle (state.playing)
+        // but leaves intent (playWhenReady) alone. The published `playing`
+        // comes from the intent; `playing` reaches only `actualPlaying`.
+        // So a state where playing=false but the user intends play
+        // publishes playing=true, which keeps the OS button from
+        // flickering.
         final rig = _Rig();
         final ch = _RecordingChannel();
         addTearDown(rig.dispose);
