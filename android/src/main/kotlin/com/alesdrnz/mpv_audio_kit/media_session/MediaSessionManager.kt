@@ -9,6 +9,7 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -119,6 +120,16 @@ internal object MediaSessionManager {
     val scrubFreezeMs: Long? get() = scrub.targetMs
 
     @Volatile var enabled: Boolean = false
+        private set
+
+    /** A transient focus loss paused the player and the next gain resumes
+     *  it: the session publishes it as suppressed (see [PublishedIntent]). */
+    val resumeArmed: Boolean get() = audioFocus?.resumeArmed == true
+
+    /** The foreground timeout the next [MpvMediaSessionService] gets, set
+     *  in debug builds only by the emulator test of F172, which cannot wait
+     *  the 10 minutes of Media3's default. `null` keeps the default. */
+    @Volatile var debugForegroundServiceTimeoutMs: Long? = null
         private set
 
     // ── Wiring (set by the plugin) ──────────────────────────────────────
@@ -241,6 +252,15 @@ internal object MediaSessionManager {
                     result.success(null)
                 }
                 "debugMediaSessionState" -> result.success(debugState())
+                "debugForegroundServiceTimeoutMs" -> {
+                    val debuggable = appContext?.applicationInfo?.flags?.let {
+                        it and ApplicationInfo.FLAG_DEBUGGABLE != 0
+                    } == true
+                    if (debuggable) {
+                        debugForegroundServiceTimeoutMs = (call.arguments as Number).toLong()
+                    }
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         } catch (e: Exception) {
@@ -394,6 +414,7 @@ internal object MediaSessionManager {
                 mainHandler = mainHandler,
                 policy = { config.interruptionPolicy },
                 emit = { cmd -> forwardCommand(cmd) },
+                onResumeArmedChanged = { if (enabled) player?.republish() },
             )
         }
     }
@@ -472,6 +493,7 @@ internal object MediaSessionManager {
                 "loop" to "off",
                 "shuffle" to false,
                 "frozen" to false,
+                "suppressed" to false,
             )
         }
         return p.debugProbe(publishCount)

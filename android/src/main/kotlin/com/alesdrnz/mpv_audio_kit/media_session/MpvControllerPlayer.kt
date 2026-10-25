@@ -60,13 +60,17 @@ internal class MpvControllerPlayer(looper: Looper) : SimpleBasePlayer(looper) {
         val pb = mgr.playback
 
         val title = meta.title?.takeIf { it.isNotEmpty() }
+        // Paused by a transient focus loss with the resume armed, the
+        // session stays playWhenReady with a suppression reason, so the
+        // service keeps the foreground through the call (F172).
+        val intent = PublishedIntent.of(pb.playing, mgr.resumeArmed)
         // No content yet → stay idle so the foreground service / notification
         // doesn't surface a blank entry (parity with the Apple "no
         // content-less publish" guard). Audio that is playing or loading is
         // content even without a title: going idle then would drop the
         // notification and with it the foreground service keeping playback
         // alive in the background.
-        if (title == null && !pb.playing && !pb.buffering) {
+        if (title == null && !intent.playWhenReady && !pb.buffering) {
             return idleState(playWhenReady = false)
         }
 
@@ -107,12 +111,14 @@ internal class MpvControllerPlayer(looper: Looper) : SimpleBasePlayer(looper) {
                 },
             )
             // The INTENT axis: playWhenReady binds to `playing`
-            // (playWhenReady Dart-side), which is stable across seeks.
+            // (playWhenReady Dart-side), which is stable across seeks, or
+            // to the focus latch while a transient loss suppresses it.
             // Never re-derive it from anything else.
             .setPlayWhenReady(
-                pb.playing,
+                intent.playWhenReady,
                 Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST,
             )
+            .setPlaybackSuppressionReason(intent.suppressionReason)
             // Speed drives the OS position extrapolation while playing;
             // clamp away from zero (mpv reports the configured speed even
             // when paused, but a 0 speed is invalid here).
@@ -228,6 +234,8 @@ internal class MpvControllerPlayer(looper: Looper) : SimpleBasePlayer(looper) {
             "loop" to MediaSessionMappers.repeatModeToLoop(st.repeatMode),
             "shuffle" to st.shuffleModeEnabled,
             "frozen" to (mgr.scrubFreezeMs != null),
+            "suppressed" to
+                (st.playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE),
         )
     }
 

@@ -3089,7 +3089,12 @@ runs a foreground service of type `mediaPlayback`, which keeps the app
 alive once the user leaves it. Without a session, or after
 `setMediaSession(null)`, Android may freeze or stop the app in the
 background. After 10 minutes in pause the service leaves the foreground,
-and Android may then stop the app as well.
+and Android may then stop the app as well. A call that pauses the player
+under `pauseAndResume` does not count: the session shows the playback as
+suspended, and the service keeps the foreground until the player resumes
+at the end of the call. If Android refuses the foreground to a play that
+starts in the background, the player pauses instead of playing without
+it.
 
 The player takes no wake lock. While audio plays Android keeps the device
 awake, but a network stall pauses the output: with the screen off the

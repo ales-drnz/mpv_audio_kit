@@ -34,13 +34,21 @@ internal class AudioFocusController(
     private val mainHandler: Handler,
     private val policy: () -> String,
     private val emit: (Map<String, Any?>) -> Unit,
+    private val onResumeArmedChanged: () -> Unit = {},
 ) {
     private val audioManager =
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private var focusRequest: AudioFocusRequest? = null
     private var hasFocus = false
+    // The session publishes this latch (see [PublishedIntent]), so a change
+    // calls [onResumeArmedChanged].
     private var resumeOnFocusGain = false
+        set(value) {
+            if (field == value) return
+            field = value
+            onResumeArmedChanged()
+        }
     private var noisyRegistered = false
     // The play intent, as the last onPlaybackActive or onPlaybackInactive
     // set it: a focus loss arms the resume only when it was true.
@@ -48,6 +56,9 @@ internal class AudioFocusController(
 
     private val focusListener =
         AudioManager.OnAudioFocusChangeListener { change -> onFocusChange(change) }
+
+    /** A transient loss paused the player, and the next gain resumes it. */
+    val resumeArmed: Boolean get() = resumeOnFocusGain
 
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {

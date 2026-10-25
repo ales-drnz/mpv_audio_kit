@@ -6,6 +6,7 @@
 package com.alesdrnz.mpv_audio_kit.media_session
 
 import android.content.Intent
+import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -23,6 +24,23 @@ import androidx.media3.session.MediaSessionService
  */
 @UnstableApi
 internal class MpvMediaSessionService : MediaSessionService() {
+
+    override fun onCreate() {
+        super.onCreate()
+        // A play started from the background, the end of a long call on
+        // Android 12 and later, may not bring the service back to the
+        // foreground. Pause then, instead of playing in a process Android
+        // may freeze or kill.
+        setListener(object : Listener {
+            override fun onForegroundServiceStartNotAllowedException() {
+                Log.w(TAG, "The media session cannot enter the foreground: pausing.")
+                MediaSessionManager.forwardCommand(mapOf("type" to "pause"))
+            }
+        })
+        MediaSessionManager.debugForegroundServiceTimeoutMs?.let {
+            setForegroundServiceTimeoutMs(it)
+        }
+    }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         MediaSessionManager.currentSession()
@@ -42,6 +60,11 @@ internal class MpvMediaSessionService : MediaSessionService() {
         // The manager owns the session — it releases it in `disable`. The
         // service only drops its reference by being destroyed; it must not
         // double-release.
+        clearListener()
         super.onDestroy()
+    }
+
+    private companion object {
+        const val TAG = "mpv_audio_kit"
     }
 }
