@@ -31,7 +31,9 @@ part of '../player.dart';
 mixin _MediaSessionModule on _PlayerBase {
   /// Single-instance guard for the OS media session. A static, so it
   /// holds per isolate, and so per Flutter engine: the players of two
-  /// engines do not see each other's.
+  /// engines do not see each other's. Across engines the native side
+  /// refuses the second enable, which [MediaSessionChannel] throws as the
+  /// same [StateError].
   /// SMTC (Windows) and MPNowPlayingInfoCenter (Apple) are
   /// single-instance per process: enabling on a second [Player]
   /// would silently steal the first one's lockscreen entry. Linux
@@ -47,10 +49,9 @@ mixin _MediaSessionModule on _PlayerBase {
   /// Publishes the [Player] to the OS media session, or removes it when
   /// [session] is `null`. Only one [Player] per process can have an
   /// active session: a non-null [session] on a second [Player] throws
-  /// [StateError]. The check holds within one Flutter engine. Players of
-  /// two engines (add-to-app, a second window) do not see each other:
-  /// nothing throws, and the OS keeps one of the two sessions, which one
-  /// depending on the platform.
+  /// [StateError], also from another Flutter engine of the process
+  /// (add-to-app, a second window): the native side, one per process,
+  /// refuses that enable and the state goes back to `null`.
   ///
   /// The session needs the root isolate, the one the OS sends its commands
   /// to: a non-null [session] on a [Player] of another isolate throws

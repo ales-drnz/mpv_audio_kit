@@ -416,9 +416,11 @@ abstract interface class PlayerApi {
   ///
   /// Pass `null` to disable the session and remove the entry from the
   /// system. Only one [Player] per process can have an active session
-  /// at a time; calling this with a non-null [session] on a second
-  /// [Player] of the same Flutter engine throws [StateError]. Across two
-  /// engines nothing throws, and the OS keeps one of the two sessions.
+  /// at a time: calling this with a non-null [session] on a second
+  /// [Player] throws [StateError], also when that [Player] belongs to
+  /// another Flutter engine of the process. The session stays with the
+  /// first until it is set to `null`, its [Player] is disposed or its
+  /// engine is destroyed.
   ///
   /// Incoming OS commands (play-pause from the lockscreen, next track
   /// from a Bluetooth headset, …) are auto-applied to this [Player]

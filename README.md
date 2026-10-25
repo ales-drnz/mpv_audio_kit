@@ -2882,13 +2882,12 @@ since. For the loudness of a whole track use the scan of
 (Now Playing, Control Center and the lock screen on iOS and macOS, MPRIS
 on Linux, SMTC on Windows, the media notification on Android) and
 receives the commands the OS sends back. Pass `null` to remove the entry. Only one `Player` per process may own the
-session at a time (enabling a second throws `StateError`); `dispose()`
-releases it automatically. The check holds within one Flutter engine:
-players of two engines (add-to-app, a second window) do not see each
-other, nothing throws, and the OS keeps one of the two sessions, which one
-depending on the platform. The OS sends its commands to the root isolate
-only, so a `Player` in another isolate cannot publish (it throws
-`StateError` too).
+session at a time. Enabling a second throws `StateError`, also when it
+belongs to another Flutter engine of the process (add-to-app, a second
+window, a background task): the session stays with the first until it
+passes `null`, is disposed or loses its engine. `dispose()` releases it
+automatically. The OS sends its commands to the root isolate only, so a
+`Player` in another isolate cannot publish (it throws `StateError` too).
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/media_session_flow.png" width="100%" alt="The media session publishes the player to the iOS lock screen, the macOS Control Center, the Android notification, the Windows flyout and the Linux MPRIS applet, and sends their commands back">
 
