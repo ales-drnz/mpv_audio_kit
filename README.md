@@ -2879,7 +2879,7 @@ URL with the query removed. Setting `MediaSession.title` is still better.
 ```dart
 MediaSessionArtwork.embedded            // default, the file's embedded cover
 MediaSessionArtwork.custom(myCoverArt)  // your own image, ignoring the file cover
-MediaSessionArtwork.uri(myArtUrl)       // a remote image, downloaded before it reaches the OS
+MediaSessionArtwork.uri(myArtUrl)       // an http(s):// or file:// image, loaded by the package
 MediaSessionArtwork.none                // no artwork
 ```
 
@@ -2892,9 +2892,10 @@ playback, trusts `tls-ca-file` on top of the system roots, refuses a
 redirect from `https` to plain `http`, skips an image over 20 MB, and is
 tried at most 3 times. On iOS and macOS it does not go through App
 Transport Security, so a plain `http` cover loads as on the other
-platforms. A `file://` cover is read by the package on iOS and macOS, with
-the same 20 MB limit, and opened by the native side on the other
-platforms.
+platforms. A `file://` cover is read by the package on every platform,
+with the same 20 MB limit, and reaches the OS as an image too: on Linux,
+`mpris:artUrl` names a copy in the runtime directory, not your file. A
+cover URL with any other scheme shows no artwork.
 
 #### 14.4 Reacting to OS commands
 

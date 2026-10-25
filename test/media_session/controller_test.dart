@@ -929,7 +929,6 @@ void main() {
             ch.callsOfType('updateMetadata').last.args['metadata']
                 as MediaSessionMetadataSnapshot;
         expect(snap.artwork, covers['https://art/1.jpg']);
-        expect(snap.artworkUri, isNull);
 
         // Default (embedded) with no embedded cover → fall back to the queue
         // item's extras['art'] (the transcoded-stream case).
@@ -953,7 +952,6 @@ void main() {
           covers['https://art/2.png'],
           reason: 'no embedded cover falls back to extras[art]',
         );
-        expect(snap.artworkUri, isNull);
 
         // An embedded cover still wins over extras['art'].
         rig.state = PlayerState(
@@ -973,7 +971,6 @@ void main() {
             ch.callsOfType('updateMetadata').last.args['metadata']
                 as MediaSessionMetadataSnapshot;
         expect(snap.artwork, embedded);
-        expect(snap.artworkUri, isNull, reason: 'embedded cover wins');
         expect(fetched, ['https://art/1.jpg', 'https://art/2.png']);
       },
     );
@@ -1148,14 +1145,12 @@ void main() {
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
         var snap = lastSnap(ch);
-        expect(snap.artworkUri, isNull);
         expect(snap.artwork, isNull, reason: 'no art while downloading');
         expect(fetched, [Uri.parse(artUrl)]);
 
         pending.complete(cover);
         await _settle();
         snap = lastSnap(ch);
-        expect(snap.artworkUri, isNull);
         expect(snap.artwork, cover);
 
         // Another metadata tick reuses the download.
@@ -1257,8 +1252,14 @@ void main() {
       },
     );
 
-    test('on Apple a file:// cover is read by the fetcher', () async {
-      for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+    test('a file:// cover is read by the fetcher on every platform', () async {
+      for (final platform in [
+        TargetPlatform.android,
+        TargetPlatform.linux,
+        TargetPlatform.windows,
+        TargetPlatform.iOS,
+        TargetPlatform.macOS,
+      ]) {
         debugDefaultTargetPlatformOverride = platform;
         addTearDown(() => debugDefaultTargetPlatformOverride = null);
         final rig = _Rig();
@@ -1281,7 +1282,8 @@ void main() {
         );
         addTearDown(controller.dispose);
 
-        final art = Uri.parse('file:///covers/a.jpg');
+        // From the override, a path that is not ASCII.
+        final art = Uri.parse('file:///covers/Citt%C3%A0.jpg');
         rig.state = PlayerState(
           mediaSession: MediaSession(artwork: MediaSessionArtwork.uri(art)),
           metadata: const {'title': 'Song'},
@@ -1290,41 +1292,78 @@ void main() {
         await _settle();
         expect(fetched, [art], reason: '$platform');
         expect(lastSnap(ch).artwork, cover, reason: '$platform');
-        for (final call in ch.callsOfType('updateMetadata')) {
-          final snap = call.args['metadata'] as MediaSessionMetadataSnapshot;
-          expect(snap.artworkUri, isNull, reason: '$platform');
-        }
+
+        // From the extras['art'] of the queue item.
+        rig.state = const PlayerState(
+          mediaSession: MediaSession(),
+          metadata: {'title': 'Song 2'},
+          playlist: Playlist([
+            Media('/music/song.flac', extras: {'art': 'file:///covers/b.jpg'}),
+          ]),
+        );
+        rig.metadata.add(const {'title': 'Song 2'});
+        await _settle();
+        expect(fetched.last, Uri.parse('file:///covers/b.jpg'));
       }
     });
 
-    test('elsewhere a file:// cover still goes to the native side', () async {
+    test('the channel carries a cover as bytes only, never a URI', () async {
+      // The real channel, its calls caught as the plugins receive them.
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      const method = MethodChannel('mpv_audio_kit/media_session');
+      const events = MethodChannel('mpv_audio_kit/media_session/commands');
+      final calls = <MethodCall>[];
+      addTearDown(() {
+        messenger.setMockMethodCallHandler(method, (call) async => null);
+        messenger.setMockMethodCallHandler(events, null);
+      });
+      messenger.setMockMethodCallHandler(method, (call) async {
+        calls.add(call);
+        return null;
+      });
+      messenger.setMockMethodCallHandler(events, (call) async => null);
       final rig = _Rig();
-      final ch = _RecordingChannel();
       addTearDown(rig.dispose);
-      addTearDown(ch.close);
 
       final fetched = <Uri>[];
-      final controller = await _buildController(
-        rig: rig,
-        channel: ch,
+      final controller = await MediaSessionController.create(
+        stateSnapshot: () => rig.state,
+        inputs: rig.inputs,
+        onCommand: (_) {},
         artworkFetcher: (uri, _) async {
           fetched.add(uri);
-          return null;
+          return CoverArt(
+            bytes: Uint8List.fromList(const [9]),
+            mimeType: 'image/png',
+          );
         },
       );
       addTearDown(controller.dispose);
 
-      rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'Song'},
-        playlist: Playlist([
-          Media('/music/song.flac', extras: {'art': 'file:///covers/a.jpg'}),
-        ]),
-      );
-      rig.metadata.add(const {'title': 'Song'});
-      await _settle();
-      expect(fetched, isEmpty);
-      expect(lastSnap(ch).artworkUri, 'file:///covers/a.jpg');
+      Future<Map<Object?, Object?>> publish(String art) async {
+        rig.state = PlayerState(
+          mediaSession: const MediaSession(),
+          metadata: {'title': art},
+          playlist: Playlist([
+            Media('/music/song.flac', extras: {'art': art}),
+          ]),
+        );
+        rig.metadata.add({'title': art});
+        await _settle();
+        return calls.lastWhere((c) => c.method == 'updateMetadata').arguments
+            as Map<Object?, Object?>;
+      }
+
+      var wire = await publish('file:///covers/a.jpg');
+      expect(wire.containsKey('artworkUri'), isFalse, reason: '$wire');
+      expect(wire['artworkBytes'], [9]);
+
+      // Another scheme loads nowhere: neither read nor passed on.
+      wire = await publish('content://media/external/images/1');
+      expect(wire.containsKey('artworkUri'), isFalse, reason: '$wire');
+      expect(wire['artworkBytes'], isNull);
+      expect(fetched, [Uri.parse('file:///covers/a.jpg')]);
     });
 
     test(
@@ -1376,10 +1415,6 @@ void main() {
         }
         expect(lastSnap(ch).artwork?.bytes, [4, 2]);
         expect(lastSnap(ch).artwork?.mimeType, 'image/png');
-        for (final call in ch.callsOfType('updateMetadata')) {
-          final snap = call.args['metadata'] as MediaSessionMetadataSnapshot;
-          expect(snap.artworkUri, isNull);
-        }
       },
     );
   });

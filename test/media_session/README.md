@@ -49,7 +49,8 @@ fake input streams, and run on any host. They pin what lives in Dart.
 The published play state follows the `playWhenReady` intent, so a seek
 never shows a pause. `playing` only drives `actualPlaying`, which tells
 the native side when to advance the position. A seek landing syncs the
-position. A cover from a URL is downloaded in Dart and sent as bytes.
+position. A cover URL is downloaded or read in Dart and sent as bytes:
+no URL reaches a plugin.
 
 `media_session_root_isolate_test` and `set_media_session_race_test`
 create real players, so they need the bundled libmpv.

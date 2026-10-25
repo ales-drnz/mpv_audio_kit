@@ -21,19 +21,10 @@ import 'package:integration_test/integration_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '_helpers/asset_fixture.dart';
+import '_helpers/cover_file.dart';
 import '_helpers/mpris_bus.dart';
 
 const _appName = 'Mak CI';
-
-/// A 1x1 PNG, the cover the local server hands out.
-const _png = <int>[
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, //
-  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00,
-  0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0xf0,
-  0x1f, 0x00, 0x05, 0x00, 0x01, 0xff, 0x89, 0x99, 0x3d, 0x1d, 0x00, 0x00,
-  0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
-];
 
 /// Reads the bus with [read] until [ok] holds, and returns that value.
 /// A read that fails (the name not owned yet) counts as not ok.
@@ -134,7 +125,7 @@ void main() {
           ..headers.contentType = cover
               ? ContentType('image', 'png')
               : ContentType('audio', 'x-matroska')
-          ..add(cover ? _png : song);
+          ..add(cover ? onePixelPng : song);
         unawaited(request.response.close());
       });
       final base = 'http://127.0.0.1:${srv.port}';
@@ -157,6 +148,23 @@ void main() {
       expect(Uri.parse(meta['mpris:artUrl'] as String).scheme, 'file');
       expect(meta.containsKey('xesam:url'), isFalse, reason: '$meta');
       expect('$meta', isNot(contains('secret')));
+    }, skip: !Platform.isLinux);
+
+    testWidgets('a file:// cover is published from a copy of its own', (
+      _,
+    ) async {
+      final fixture = await materializeFixture('with_chapters.mka');
+      final cover = await coverFileUrl();
+      await player.setMediaSession(session);
+      await player.open(Media(fixture, extras: {'art': cover}), play: false);
+
+      // Read by the package and written to the runtime directory, as an
+      // embedded cover is: the bus never names the user's file.
+      final meta = await metadataWhere((m) => m['mpris:artUrl'] != null);
+      final art = Uri.parse(meta['mpris:artUrl'] as String);
+      expect(art.toString(), isNot(cover));
+      expect(art.path, contains('/mpv_audio_kit/$pid/art-'));
+      expect(File.fromUri(art).readAsBytesSync(), onePixelPng);
     }, skip: !Platform.isLinux);
 
     testWidgets('Play and Pause from the bus reach the player', (_) async {

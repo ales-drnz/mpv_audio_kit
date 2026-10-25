@@ -18,9 +18,10 @@
 //    the SMTC renderer and the MPRIS server. linux_mpris_test and
 //    windows_smtc_test read what the OS itself holds.
 //
-// Cover art is intentionally NOT asserted — title / artist / album /
-// duration / state come from standard mpv properties and work everywhere,
-// while embedded cover art depends on the platform's libmpv build.
+// Embedded cover art is not asserted (except on macOS): it depends on the
+// platform's libmpv build, while title, artist, album, duration and state
+// come from standard mpv properties. The file:// cover of extras['art'] is
+// asserted on Android, Windows and Linux.
 
 import 'dart:io';
 
@@ -29,6 +30,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '_helpers/asset_fixture.dart';
+import '_helpers/cover_file.dart';
 import '_helpers/session_probe.dart';
 
 void main() {
@@ -372,6 +374,20 @@ void main() {
             'seek must not leave the session paused, '
             'got ${np['playbackState']}',
       );
+    }, skip: !isProbePlatform);
+
+    testWidgets('a file:// cover whose path is not ASCII reaches the session', (
+      _,
+    ) async {
+      // with_chapters.mka has no cover of its own: the one shown is the
+      // file of extras['art'], read by the package and sent as bytes.
+      final fixture = await materializeFixture('with_chapters.mka');
+      await player.setMediaSession(const MediaSession());
+      await player.open(
+        Media(fixture, extras: {'art': await coverFileUrl()}),
+        play: false,
+      );
+      await pumpUntil((s) => s['hasArtwork'] == true, reader: readMediaSession);
     }, skip: !isProbePlatform);
 
     testWidgets('disable clears the session entry', (_) async {

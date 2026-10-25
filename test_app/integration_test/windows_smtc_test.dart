@@ -16,6 +16,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '_helpers/asset_fixture.dart';
+import '_helpers/cover_file.dart';
 import '_helpers/session_probe.dart';
 
 void main() {
@@ -76,6 +77,23 @@ void main() {
       await player.pause();
       await pumpUntil(
         (s) => s['smtcStatus'] == 'paused',
+        reader: readMediaSession,
+      );
+    }, skip: !Platform.isWindows);
+
+    testWidgets('a file:// cover whose path is not ASCII is the thumbnail', (
+      _,
+    ) async {
+      // F176: the plugin decoded the URL with PathCreateFromUrlW into a
+      // MAX_PATH buffer. The package reads the file now and sends bytes.
+      final fixture = await materializeFixture('with_chapters.mka');
+      await player.setMediaSession(const MediaSession(title: 'Cover'));
+      await player.open(
+        Media(fixture, extras: {'art': await coverFileUrl()}),
+        play: false,
+      );
+      await pumpUntil(
+        (s) => s['smtcThumbnail'] == true,
         reader: readMediaSession,
       );
     }, skip: !Platform.isWindows);

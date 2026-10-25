@@ -24,14 +24,14 @@ const Duration _timeout = Duration(seconds: 15);
 /// Redirects followed before giving up, as many as [HttpClient] follows.
 const int _maxRedirects = 5;
 
-/// Whether the media session downloads remote artwork in Dart on
-/// [platform], handing the native side bytes instead of the URL. Remote
-/// cover URLs often carry credentials in the query (Subsonic `u`, `t` and
-/// `s`, Jellyfin `api_key`, Plex `X-Plex-Token`), and the OS would publish
-/// them: MPRIS `mpris:artUrl` on the session bus (Linux), the session
-/// metadata other apps with notification access read (Android), the
-/// thumbnail source SMTC is given (Windows). Apple's Now Playing takes an
-/// image, never a URL, so its plugin publishes the bytes it is sent.
+/// Whether the media session loads artwork URLs in Dart on [platform]:
+/// it downloads an `http(s)://` one and reads a `file://` one, and the
+/// native side only ever gets bytes. Remote cover URLs often carry
+/// credentials in the query (Subsonic `u`, `t` and `s`, Jellyfin
+/// `api_key`, Plex `X-Plex-Token`), and the OS would publish them: MPRIS
+/// `mpris:artUrl` on the session bus (Linux), the session metadata other
+/// apps with notification access read (Android), the thumbnail source SMTC
+/// is given (Windows). Apple's Now Playing takes an image, never a URL.
 @internal
 bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   TargetPlatform.linux ||
@@ -41,13 +41,6 @@ bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
   TargetPlatform.macOS => true,
   _ => false,
 };
-
-/// Whether the media session also reads `file://` artwork in Dart on
-/// [platform]: on Apple, whose plugin takes bytes only. Elsewhere the
-/// native side opens the file.
-@internal
-bool readsArtworkFilesOn(TargetPlatform platform) =>
-    platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
 
 /// Default [ArtworkFetcher] where [downloadsArtworkOn] holds. It always
 /// verifies the certificate, whatever the player's `tls-verify`: that

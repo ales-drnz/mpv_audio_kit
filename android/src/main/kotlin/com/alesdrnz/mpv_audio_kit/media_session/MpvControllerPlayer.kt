@@ -222,8 +222,7 @@ internal class MpvControllerPlayer(looper: Looper) : SimpleBasePlayer(looper) {
             "durationMs" to mgr.metadata.durationMs,
             "positionMs" to (mgr.scrubFreezeMs ?: mgr.playback.positionMs),
             "rate" to st.playbackParameters.speed.toDouble(),
-            "hasArtwork" to
-                (mgr.metadata.artworkBytes != null || mgr.metadata.artworkUri != null),
+            "hasArtwork" to (mgr.metadata.artworkBytes != null),
             "seekable" to st.availableCommands
                 .contains(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM),
             "loop" to MediaSessionMappers.repeatModeToLoop(st.repeatMode),

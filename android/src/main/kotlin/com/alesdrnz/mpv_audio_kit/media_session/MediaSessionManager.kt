@@ -71,7 +71,6 @@ internal object MediaSessionManager {
         val artist: String?,
         val album: String?,
         val artworkBytes: ByteArray?,
-        val artworkUri: String?,
         val durationMs: Long?,
         val trackNumber: Int?,
         val discNumber: Int?,
@@ -80,7 +79,7 @@ internal object MediaSessionManager {
     ) {
         companion object {
             val EMPTY =
-                MetadataSnapshot(null, null, null, null, null, null, null, null, null, null)
+                MetadataSnapshot(null, null, null, null, null, null, null, null, null)
         }
     }
 
@@ -485,7 +484,6 @@ internal object MediaSessionManager {
         artist = map["artist"] as? String,
         album = map["album"] as? String,
         artworkBytes = map["artworkBytes"] as? ByteArray,
-        artworkUri = map["artworkUri"] as? String,
         durationMs = (map["durationMs"] as? Number)?.toLong(),
         trackNumber = (map["trackNumber"] as? Number)?.toInt(),
         discNumber = (map["discNumber"] as? Number)?.toInt(),
