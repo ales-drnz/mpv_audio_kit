@@ -8,7 +8,7 @@ import 'package:meta/meta.dart';
 
 import '../models/fft_frame.dart';
 import '../models/pcm_frame.dart';
-import '../mpv_bindings.dart';
+import '../mpv_constants.dart';
 import '../types/settings/spectrum_settings.dart';
 import 'band_processor.dart';
 import 'dsp_async_io.dart';

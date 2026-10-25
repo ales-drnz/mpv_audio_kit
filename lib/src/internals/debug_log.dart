@@ -2,18 +2,6 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'dart:io';
-
-import 'package:meta/meta.dart';
-
-/// Minimal Flutter-free replacement for `debugPrint` from
-/// `package:flutter/foundation.dart`.
-///
-/// Writes a single line to `stderr`. Behaviour parity with `debugPrint`
-/// is intentionally minimal: used only for one-shot diagnostic
-/// warnings (orphan-handle cleanup, locale init failure). Throughput
-/// protection isn't relevant.
-@internal
-void debugLog(String message) {
-  stderr.writeln(message);
-}
+// One-shot diagnostic lines: stderr on dart:io platforms, the console in
+// the browser.
+export 'debug_log_io.dart' if (dart.library.js_interop) 'debug_log_web.dart';

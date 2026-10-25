@@ -51,7 +51,7 @@ export 'src/generated/audio_effects_settings.dart'
         audioEffectLabels,
         audioEffectsChain,
         audioEffectsDiff;
-export 'src/internals/library_loader.dart' show MpvAudioKit;
+export 'src/internals/mpv_audio_kit.dart' show MpvAudioKit;
 export 'src/models/audio_params.dart' show AudioParams;
 export 'src/models/chapter.dart' show Chapter;
 export 'src/models/cover_art.dart' show CoverArt;
@@ -68,7 +68,7 @@ export 'src/models/playlist.dart' show Playlist;
 export 'src/models/source_resolve_request.dart'
     show SourceResolveRequest, SourceResolver;
 export 'src/models/waveform_data.dart' show WaveformData;
-export 'src/mpv_bindings.dart' show MpvError;
+export 'src/mpv_constants.dart' show MpvError;
 export 'src/pcm/pcm_format.dart' show PcmEncoding, PcmFormat;
 export 'src/pcm/pcm_source.dart' show PcmSource, PcmSourceState;
 export 'src/player/player.dart' show Player;

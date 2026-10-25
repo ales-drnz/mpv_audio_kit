@@ -24,10 +24,10 @@ mixin _DispatchModule on _PlayerBase {
     // protects controller add()s).
     switch (event) {
       case MpvEventReply(:final userdata, :final error, :final result):
-        _client.onReply(userdata, error, result);
+        _session.onReply(userdata, error, result);
         return;
       case MpvEventGetReply(:final userdata, :final error, :final value):
-        _client.onGetReply(userdata, error, materializeBytes(value));
+        _session.onGetReply(userdata, error, value);
         return;
       default:
         break;
@@ -187,7 +187,7 @@ mixin _DispatchModule on _PlayerBase {
     final cover = coverData == null
         ? null
         : CoverArt(
-            bytes: coverData.materialize().asUint8List(),
+            bytes: coverData,
             mimeType: coverMime ?? 'application/octet-stream',
           );
     _state = _state.copyWith(coverArt: cover);

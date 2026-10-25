@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import '../mpv_bindings.dart';
+import '../mpv_constants.dart';
 import '../player/player_state.dart';
 import 'reactive_property.dart';
 

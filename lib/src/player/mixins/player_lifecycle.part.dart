@@ -24,8 +24,14 @@ extension _Lifecycle on _PlayerBase {
   /// keep-open does only once the output buffer has played out. In the
   /// last buffer before that, `eof-reached` is already true while the
   /// audio still plays.
-  Future<bool> _parkedPaused() async =>
-      await _parkedAtEof() && await getRawProperty('pause') == 'yes';
+  ///
+  /// The second read is a statement, not the right side of `&&`: compiled
+  /// to WebAssembly, an await there traps once the left side is false
+  /// (see `_sendEndOfContent`).
+  Future<bool> _parkedPaused() async {
+    if (!await _parkedAtEof()) return false;
+    return await getRawProperty('pause') == 'yes';
+  }
 
   /// Clears the per-track fields a consumer is likely to read
   /// synchronously on a track-change boundary (the public open()
