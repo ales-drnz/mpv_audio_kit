@@ -197,6 +197,8 @@ final class EventLogic {
   Future<void> _playbackRestart() async {
     _cache.trailing.remove('time-pos');
     _flushGroup(_send, _cache);
+    // Ahead of the event, so a listener of the restart sees `playing`.
+    await _forwardCoreIdle(_reader, _send, _cache);
     _send(MpvEventPlaybackRestart(timePos: await _reader.float('time-pos')));
     await _rereadUnavailable(_reader, _send, _cache);
     await _sendEndOfContent(_reader, _send, _cache);

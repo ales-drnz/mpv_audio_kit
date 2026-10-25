@@ -295,6 +295,27 @@ Future<void> _rereadUnavailable(
   }
 }
 
+/// Reads `core-idle` and forwards it even when it equals the last value
+/// forwarded. Runs at PLAYBACK_RESTART, where mpv sets it for the file that
+/// starts. The player clears `playing` at every END_FILE and at idle, and
+/// only a `core-idle` value sets it again. mpv samples the observed
+/// properties once per playloop iteration, and the pump reads them when it
+/// gets to them: a file that starts in the iteration the previous one
+/// ended (a prefetched gapless advance), or while the pump is still on the
+/// previous file's events, leaves no idle value in between. The next
+/// value then equals the last one forwarded, and `playing` stayed false
+/// for the whole file.
+Future<void> _forwardCoreIdle(
+  CoreReader reader,
+  _Send send,
+  _PropertyCache cache,
+) async {
+  final idle = await reader.flag('core-idle');
+  if (idle == null) return;
+  cache.lastValues.remove('core-idle');
+  _forwardValue(send, 'core-idle', mpv.MpvFormat.mpvFormatFlag, idle, cache);
+}
+
 /// Structural equality over decoded `mpv_node` trees
 /// (`Map<String, dynamic>`, `List`, scalars or [Uint8List]).
 bool _deepNodeEquals(dynamic a, dynamic b) {
