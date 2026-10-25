@@ -614,6 +614,21 @@ def _ctor_field_spec(pname: str, p: dict) -> tuple[str, str, bool]:
     return f"{field_type}?", "", True
 
 
+def _js_safe_int_literal(lit: str) -> str:
+    """An int bound that also compiles to JavaScript, where an integer
+    literal beyond 2^53 is an error: such a bound (the int64 limits of
+    libavfilter, 2^63 - 1) is written as `<hi> * 1024 + <lo>`, the same
+    value natively and the nearest double in JavaScript."""
+    try:
+        value = int(lit)
+    except ValueError:
+        return lit
+    if abs(value) <= 2**53:
+        return lit
+    hi, lo = divmod(value, 1024)
+    return f"{hi} * 1024 + {lo}"
+
+
 def _emit_param_constants(params: dict) -> list[str]:
     """For every numeric parameter (`double` / `int`) with a `min`,
     `max`, or `default` declared by ffmpeg, emit a public
@@ -651,6 +666,8 @@ def _emit_param_constants(params: dict) -> list[str]:
                 lit = _dart_default_literal(type_name, str(raw))
             except Exception:
                 continue
+            if type_name == "int":
+                lit = _js_safe_int_literal(lit)
             out.append(f"  /// {const_doc[suffix]} value for [{dart_name}].")
             out.append(
                 f"  static const {type_name} {dart_name}{suffix} = {lit};"
