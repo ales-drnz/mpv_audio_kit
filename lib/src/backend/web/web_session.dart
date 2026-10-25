@@ -14,6 +14,7 @@ import '../../mpv_constants.dart';
 import '../mpv_session.dart';
 import 'mpv_module.dart';
 import 'web_client.dart';
+import 'web_registry.dart';
 
 /// Test-only: gets a line for each event the pump takes, each read it
 /// sends and gets back, and each call that locks the core.
@@ -90,7 +91,11 @@ final class WebSession implements MpvSession {
     void Function(MpvIsolateEvent event) onEvent,
   ) async {
     _events.stream.listen(onEvent);
-    _m = await _module();
+    try {
+      _m = await _module();
+    } catch (e) {
+      throw PlayerInitException('$e');
+    }
     final c = _m.c;
     final h = timedCall('mpv_create', () => c.mpvCreate());
     if (h == 0) throw const PlayerInitException('mpv_create() returned NULL');
@@ -340,13 +345,18 @@ final class WebSession implements MpvSession {
   @override
   Future<bool> settleHookAdds(Duration bound) async => true;
 
-  // The Hot Restart registry of the web (a record on globalThis that the
-  // next start of the page reads, DESIGN 11) hooks in here.
+  // The Hot Restart registry of the web: a record on globalThis that the
+  // program after a Hot Restart reads, and destroys the cores it names.
   @override
-  void track() {}
+  void track() => trackCore(
+    handle: _handle,
+    reads: _reads,
+    handleBridge: _handleBridge,
+    readsBridge: _readsBridge,
+  );
 
   @override
-  void untrack() {}
+  void untrack() => untrackCore(_handle);
 
   @override
   void requestStop() {

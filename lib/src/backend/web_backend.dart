@@ -2,62 +2,175 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'dart:async';
+import 'dart:js_interop';
+import 'dart:ui_web' as ui_web;
+
 import 'package:meta/meta.dart';
 
 import '../pcm/pcm_native.dart';
 import 'mpv_session.dart';
 import 'web/mpv_module.dart';
+import 'web/web_audio.dart';
 import 'web/web_pcm.dart';
+import 'web/web_registry.dart';
 import 'web/web_session.dart';
 
-/// Where the module (libmpv.mjs, with libmpv.wasm beside it) is loaded
-/// from when `MpvAudioKit.ensureInitialized` names none: the package's
-/// web assets as Flutter serves them. Their delivery belongs to W4b.
+/// The module (libmpv.mjs, with libmpv.wasm and mak_webaudio_processor.js
+/// beside it) as a web asset of the package, which Flutter serves at
+/// `assets/packages/mpv_audio_kit/web/libmpv.mjs`: loaded when
+/// `MpvAudioKit.ensureInitialized` names no other.
 @internal
-const String kDefaultWebModuleUrl =
-    'assets/packages/mpv_audio_kit/web/libmpv.mjs';
+const String kWebModuleAsset = 'packages/mpv_audio_kit/web/libmpv.mjs';
+
+/// The gain options of the webaudio output, which `ao-volume` and
+/// `ao-mute` set while an output is open and which a new output starts
+/// from: `setSystemVolume` and `setSystemMute` write them before one is.
+@internal
+const String kOutputVolumeOption = 'webaudio-volume';
+
+/// See [kOutputVolumeOption].
+@internal
+const String kOutputMuteOption = 'webaudio-mute';
+
+@JS('URL')
+extension type _Url._(JSObject _) implements JSObject {
+  external _Url(String url, String base);
+  external String get href;
+}
+
+@JS('document.baseURI')
+external String get _baseUri;
+
+/// [url] made absolute against the page: the module's workers resolve a
+/// relative URL against their own script, not the page.
+String _absolute(String url) => _Url(url, _baseUri).href;
+
+/// The module and the page's output, once loaded.
+final class _Loaded {
+  _Loaded(this.module, this.output);
+  final MpvModule module;
+  final WebAudioOutput output;
+}
 
 String? _url;
-Future<MpvModule>? _loading;
-MpvModule? _loaded;
+bool _reap = false;
+Future<_Loaded>? _loading;
+_Loaded? _loaded;
+Object? _failure;
+final StreamController<bool> _gestureChanges =
+    StreamController<bool>.broadcast();
 
 /// Test-only: the module every session uses, in place of loading the one
 /// at the URL `MpvAudioKit.ensureInitialized` got.
 @visibleForTesting
 Future<MpvModule>? debugWebModule;
 
-/// The module the sessions use, loaded once.
-Future<MpvModule> _module() async => _loaded =
-    await (debugWebModule ??
-        (_loading ??= loadMpvModule(_url ?? kDefaultWebModuleUrl)));
+Future<_Loaded> _load() => _loading ??= _start();
+
+Future<_Loaded> _start() async {
+  final url = _absolute(
+    _url ?? ui_web.assetManager.getAssetUrl(kWebModuleAsset),
+  );
+  try {
+    final MpvModule module;
+    final debug = debugWebModule;
+    final previous = registeredModule(url);
+    if (debug != null) {
+      module = await debug;
+    } else if (previous != null) {
+      // A Hot Restart: the page has the module already.
+      module = MpvModule(previous);
+    } else {
+      module = await _import(url);
+    }
+    registerModule(url, module, reap: _reap);
+    final output = await WebAudioOutput.start(module);
+    output.needsGestureChanges.listen(_gestureChanges.add);
+    if (output.needsGesture) _gestureChanges.add(true);
+    return _loaded = _Loaded(module, output);
+  } catch (e) {
+    _failure = e;
+    rethrow;
+  }
+}
+
+Future<MpvModule> _import(String url) async {
+  try {
+    return await loadMpvModule(url);
+  } on StateError {
+    rethrow;
+  } catch (e) {
+    throw StateError(
+      'mpv_audio_kit: the web module did not load from $url ($e). The '
+      'package from pub.dev ships it; a checkout from git gets it with '
+      'scripts/update_libmpv.sh. The page must be cross-origin isolated '
+      '(COOP and COEP) for its threads.',
+    );
+  }
+}
 
 /// A session over the module in WebAssembly, on the main thread.
 /// [wakeupCounterAddress] is a native test hook and has no meaning here.
 @internal
-MpvSession createMpvSession({int? wakeupCounterAddress}) => WebSession(_module);
+MpvSession createMpvSession({int? wakeupCounterAddress}) =>
+    WebSession(() async => (await _load()).module);
 
-/// Starts loading the module: from [libmpv], a URL, or else from
-/// [kDefaultWebModuleUrl]. A failure reaches the first player's bring-up.
+/// Starts loading the module: from [libmpv], a URL, or else from the
+/// package's web assets ([kWebModuleAsset]); then the page's output. With
+/// [hotRestartCleanup], what a program a Hot Restart replaced left in the
+/// page is torn down first. A failure reaches the first player's bring-up.
 @internal
 void startBackend({String? libmpv, required bool hotRestartCleanup}) {
   _url = libmpv;
-  _module().ignore();
+  _reap = hotRestartCleanup;
+  _load().ignore();
 }
 
-/// The Hot Restart registry of the web (DESIGN 11, W4b) starts here.
+/// The Hot Restart cleanup of the web runs with the module load, in
+/// [startBackend].
 @internal
 void backendInitialized() {}
+
+/// Completes once the module has loaded, `null` when it has: until then no
+/// PCM source can be created.
+@internal
+Future<void>? backendReady() => _loaded == null ? _load() : null;
+
+/// Resumes the page's output if the autoplay policy holds it (at a play).
+@internal
+void resumeOutput() => _loaded?.output.resume();
+
+/// Makes the page's output run at [rate] Hz, `0` for the device's rate.
+@internal
+Future<void>? setOutputSampleRate(int rate) async =>
+    (await _load()).output.setSampleRate(rate);
+
+/// Whether the browser holds the page's sound until a user gesture.
+@internal
+bool get outputNeedsGesture => _loaded?.output.needsGesture ?? false;
+
+/// [outputNeedsGesture] at each change.
+@internal
+Stream<bool> get outputNeedsGestureChanges => _gestureChanges.stream;
+
+/// The page's output, for the media session's `<audio>` route.
+@internal
+Future<WebAudioOutput> webAudioOutput() async => (await _load()).output;
 
 /// The live PCM input of the module. The module loads asynchronously:
 /// until it has, there is none.
 @internal
 PcmNative openPcmNative(String? path) {
-  final module = _loaded;
-  if (module == null) {
+  final loaded = _loaded;
+  if (loaded == null) {
     throw StateError(
-      'mpv_audio_kit: the web module has not loaded yet; '
-      'create a PcmSource once a Player is ready',
+      _failure != null
+          ? 'mpv_audio_kit: the web module failed to load: $_failure'
+          : 'mpv_audio_kit: the web module is still loading. Create a '
+                'PcmSource once a Player is ready (await player.ready), or '
+                'with Player.openPcmStream, which waits for it.',
     );
   }
-  return WebPcmNative(module);
+  return WebPcmNative(loaded.module);
 }

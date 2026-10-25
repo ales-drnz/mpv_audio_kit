@@ -153,11 +153,45 @@ extension type MpvExports._(JSObject _) implements JSObject {
   external int pcmRelease(JSBigInt id);
   @JS('_mak_pcm_release_all')
   external void pcmReleaseAll();
+  @JS('_mpv_command_string')
+  external int mpvCommandString(int ctx, int args);
+  @JS('_mak_webio_live_streams')
+  external int webioLiveStreams();
   @JS('UTF8ToString')
   external JSString utf8ToString(int pointer);
   @JS('stringToNewUTF8')
   external int stringToNewUtf8(JSString value);
   external JSObject get wasmMemory;
+  external MakWebAudio get makWebAudio;
+}
+
+/// `Module.makWebAudio` of the module (scripts/web/mak_webaudio.js of
+/// libmpv-scripts): the AudioContext the webaudio output plays into, its
+/// AudioWorklet, and the resume at the first user gesture.
+@internal
+extension type MakWebAudio._(JSObject _) implements JSObject {
+  /// Makes the AudioContext and loads the worklet; a second call replaces
+  /// the context, and every open output reopens on the new one.
+  external JSPromise<JSObject> init([JSObject? options]);
+
+  /// Resumes the context, which the autoplay policy starts suspended.
+  external JSPromise<JSAny?> resume();
+
+  /// Closes the context: open outputs fail until the next [init].
+  external JSPromise<JSAny?> close();
+
+  /// Calls [listener] with the context's state at each change; returns the
+  /// function that removes it.
+  external JSFunction onStateChange(JSFunction listener);
+
+  /// `none` before [init], then the AudioContext's state.
+  external String get state;
+
+  /// The AudioWorkletNode of output [id], made on first use.
+  external JSObject output([int id]);
+
+  /// The AudioContext, `null` before [init].
+  external JSObject? get context;
 }
 
 /// One instance of the libmpv module: its exports, its memory, and the
@@ -166,8 +200,11 @@ extension type MpvExports._(JSObject _) implements JSObject {
 final class MpvModule {
   /// Wraps the instance [module] the module factory resolved with, after
   /// checking its ABI version and its struct layout against the ones the
-  /// decoders assume, before any other call into it.
-  MpvModule(JSObject module) : _m = MpvExports._(module) {
+  /// decoders assume, before any other call into it. [processorUrl] is
+  /// where the webaudio output's worklet is, when not beside the module.
+  MpvModule(JSObject module, {this.processorUrl})
+    : instance = module,
+      _m = MpvExports._(module) {
     checkWebModuleAbi(_m.has('_mak_web_abi_version') ? _m.abiVersion() : null);
     endFile = checkWebLayout(_layoutTable());
     // One callback per module: mak_web.c posts it to the main thread, at
@@ -186,6 +223,12 @@ final class MpvModule {
       });
     }).toJS;
   }
+
+  /// The module instance, as the factory resolved it.
+  final JSObject instance;
+
+  /// Where mak_webaudio_processor.js is, when not beside libmpv.mjs.
+  final String? processorUrl;
 
   final MpvExports _m;
   final Map<int, void Function()> _wakeups = {};
@@ -347,9 +390,14 @@ final class MpvModule {
 }
 
 /// Imports the module at [url] (libmpv.mjs) and instantiates it. [wasmUrl]
-/// is where libmpv.wasm is, when not beside [url].
+/// is where libmpv.wasm is, and [processorUrl] where
+/// mak_webaudio_processor.js is, when not beside [url].
 @internal
-Future<MpvModule> loadMpvModule(String url, {String? wasmUrl}) async {
+Future<MpvModule> loadMpvModule(
+  String url, {
+  String? wasmUrl,
+  String? processorUrl,
+}) async {
   final namespace = await importModule(url.toJS).toDart;
   final factory = namespace['default'] as JSFunction;
   final options = JSObject();
@@ -358,5 +406,5 @@ Future<MpvModule> loadMpvModule(String url, {String? wasmUrl}) async {
   }
   final instance =
       await (factory.callAsFunction(null, options) as JSPromise).toDart;
-  return MpvModule(instance as JSObject);
+  return MpvModule(instance as JSObject, processorUrl: processorUrl);
 }

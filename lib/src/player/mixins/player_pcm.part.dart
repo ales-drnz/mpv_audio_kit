@@ -24,6 +24,9 @@ mixin _PcmModule on _PlayerBase {
   /// back to back, create them with [PcmSource.create] and pass their
   /// media to [Player.openAll] or [Player.add].
   ///
+  /// On the web it waits for the libmpv module to load, which
+  /// [PcmSource.create] cannot do.
+  ///
   /// ```dart
   /// final source = await player.openPcmStream(
   ///   const PcmFormat(sampleRate: 24000, channels: 1),
@@ -41,6 +44,9 @@ mixin _PcmModule on _PlayerBase {
     Map<String, Object?>? extras,
   }) async {
     _checkNotDisposed();
+    // Statements, not `?.` with an await: see [play].
+    final loading = backendReady();
+    if (loading != null) await loading;
     final source = PcmSource.create(
       format,
       maxBuffered: maxBuffered,
