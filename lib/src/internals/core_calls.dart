@@ -6,7 +6,7 @@ import 'package:meta/meta.dart';
 
 import '../events/player_exception.dart';
 import '../models/chapter.dart';
-import '../mpv_bindings.dart' show MpvError;
+import '../mpv_constants.dart' show MpvError;
 import '../types/enums/log_level.dart';
 import 'mpv_requests.dart';
 

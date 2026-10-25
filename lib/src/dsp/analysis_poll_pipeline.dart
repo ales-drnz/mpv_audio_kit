@@ -6,7 +6,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 
-import '../mpv_bindings.dart';
+import '../mpv_constants.dart';
 import 'dsp_async_io.dart';
 import 'shared_property_writer.dart';
 

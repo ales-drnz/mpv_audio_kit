@@ -7,7 +7,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 
 import '../models/loudness.dart';
-import '../mpv_bindings.dart';
+import '../mpv_constants.dart';
 import 'dsp_async_io.dart';
 
 /// Live EBU R128 loudness meter pipeline.
