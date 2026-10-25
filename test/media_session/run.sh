@@ -15,6 +15,8 @@
 #   windows  no native suite: SMTC runs through test_app
 #            (integration_test/windows_smtc_test.dart).
 #   android  the plugin's JVM tests (android/src/test), through Gradle.
+#   cpp      the multi engine table of the Windows and Linux plugins
+#            (native_common/engine_ownership.h), on any host with g++.
 #
 # Usage (from anywhere in the repo):
 #   bash test/media_session/run.sh
@@ -46,6 +48,10 @@ run_suite() {
     echo
   fi
 }
+
+if command -v "${CXX:-g++}" >/dev/null 2>&1; then
+  run_suite "cpp (engine ownership of Windows and Linux)" "$HERE/cpp/run.sh"
+fi
 
 case "$OS" in
   Darwin)

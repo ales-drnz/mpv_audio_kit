@@ -4,8 +4,9 @@ The OS media session has three layers of tests:
 
 1. The Dart side (`MediaSessionController`, `MediaSessionChannel`, the
    artwork fetcher), in the `*_test.dart` files of this directory.
-2. The native plugins on their own: the Swift suite in `darwin/` and the
-   plugin's JVM tests in `android/src/test`.
+2. The native plugins on their own: the Swift suite in `darwin/`, the
+   plugin's JVM tests in `android/src/test`, and the multi engine table
+   of the Windows and Linux plugins in `cpp/`.
 3. The whole path through a running app, from `Player` to what the OS
    holds, in `test_app/integration_test/`.
 
@@ -16,6 +17,11 @@ test/media_session/
 ├── README.md                  this file
 ├── run.sh                     runs the native suites this host can run
 ├── *_test.dart                the Dart side, under flutter test
+├── cpp/                       Windows and Linux (C++)
+│   ├── engine_ownership_test.cc
+│   │                          the multi engine table of
+│   │                          native_common/engine_ownership.h
+│   └── run.sh                 builds and runs it with g++ (any host)
 └── darwin/                    macOS and iOS (Swift)
     ├── main.swift             the scenarios
     └── run.sh                 compiles and runs them (macOS host only)
@@ -24,17 +30,23 @@ test_app/integration_test/
 ├── media_session_test.dart    every platform, through the plugin's probe
 ├── linux_mpris_test.dart      Linux, read from the session bus with gdbus
 ├── windows_smtc_test.dart     Windows, read back from the SMTC
-└── windows_gsmtc_spike_test.dart
-                               Windows, through the API of the media
-                               flyout (a spike that does not gate)
+├── windows_gsmtc_spike_test.dart
+│                              Windows, through the API of the media
+│                              flyout (a spike that does not gate)
+├── android_engine_exit_test.dart
+│                              Android, a second engine: refused while
+│                              the first owns the session
+└── android_focus_foreground_test.dart
+                               Android, a call keeps the service in the
+                               foreground
 ```
 
 ## What runs where
 
 | Platform | Dart side | Native suite | Through the app |
 |----------|-----------|--------------|-----------------|
-| Linux | Test (Linux) | none | Build Linux: media_session_test and linux_mpris_test, under xvfb-run and dbus-run-session |
-| Windows | Windows per file (check) | none | Build Windows: media_session_test and windows_smtc_test |
+| Linux | Test (Linux) | Test (Linux): `cpp/run.sh` | Build Linux: media_session_test and linux_mpris_test, under xvfb-run and dbus-run-session |
+| Windows | Windows per file (check) | the header of `cpp/`, run on Linux | Build Windows: media_session_test and windows_smtc_test |
 | macOS | Test (macOS) | Build macOS (SwiftPM): `darwin/run.sh` | none |
 | iOS | | the Swift of `darwin/` is shared | the simulator job of the check |
 | Android | | Build Android: the JVM tests | the emulator jobs of the check |
@@ -87,6 +99,11 @@ and read back what the platform holds.
   SetPosition back through the bus to the player.
 - `windows_smtc_test` reads the values back from the
   SystemMediaTransportControls of the process.
+- `android_engine_exit_test` starts a second Flutter engine, whose
+  `setMediaSession` must throw while the test's engine owns the session.
+- `android_focus_foreground_test` takes the audio focus for a call and
+  checks that the service stays in the foreground, with Media3's timeout
+  cut to 3 s in the debug build.
 
 On Linux they need a session bus and gdbus:
 
@@ -101,4 +118,4 @@ A suite for another platform goes in `test/media_session/<os>/`, with the
 scenarios of `darwin/main.swift` and a `run.sh` that builds and runs
 them. That `run.sh` exits 2 with a message on the wrong host. The
 top-level `run.sh` already calls `linux/run.sh` and `windows/run.sh` when
-they exist.
+they exist, and `cpp/run.sh` on every host with a C++ compiler.
