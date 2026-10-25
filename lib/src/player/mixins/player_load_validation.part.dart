@@ -31,48 +31,10 @@ mixin _LoadValidationModule on _PlayerBase {
   }
 }
 
-/// The `stream-lavf-o` entries of every `http://` and `https://` entry,
-/// below what [Media.httpChunkSize] and [Media.streamLavfOptions] set
-/// (verified against FFmpeg 8.1.1 and mpv 0.41):
-/// - `reconnect` and `reconnect_delay_max` are mpv's own values for a
-///   progressive stream (stream_lavf.c), which it does not pass to the
-///   segments of an HLS or DASH stream. Through `stream-lavf-o` they reach
-///   them: demux_lavf.c hands the network options to every nested open.
-///   FFmpeg then requests a body cut short again from where it stopped, on
-///   a server that accepts ranges (http.c, http_read_stream), after 0, 1,
-///   3 and 7 s.
-/// - `reconnect_on_network_error` tries a connection that fails to open
-///   (refused, reset, DNS, TLS) again on the same schedule (http.c,
-///   http_open_cnx), for the open and for each of those reconnects.
-/// - `seg_max_retry` is an option of the HLS demuxer, which takes the
-///   network options as its own (demux_lavf.c sets them on a demuxer that
-///   opens its URL itself). With FFmpeg's 0 a segment that fails to open is
-///   skipped at once (hls.c, read_data_continuous). 4 gives it as many
-///   retries as a progressive stream gets reconnects. Through
-///   `demuxer-lavf-o` it would also drop the prefetch of the entry: that
-///   option rebuilds the demuxer when it changes.
-/// `reconnect_streamed` is not among them: on a server without range
-/// support FFmpeg reconnects from the first byte, so a file cut short
-/// plays again from its start, and one sent with no length plays over and
-/// over. A live stream asks for it with [Media.streamLavfOptions].
-const Map<String, String> _kHttpStreamOptions = {
-  'reconnect': '1',
-  'reconnect_delay_max': '7',
-  'reconnect_on_network_error': '1',
-  'seg_max_retry': '4',
-};
-
-/// Whether [uri] is an `http://` or `https://` URL.
-bool _isHttp(String uri) {
-  final head = (uri.length < 8 ? uri : uri.substring(0, 8)).toLowerCase();
-  return head.startsWith('http://') || head.startsWith('https://');
-}
-
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
 /// `httpHeaders`, `httpChunkSize`, `streamLavfOptions`, `demuxerLavfOptions`,
-/// `start` and `end`, the stream options of an `http://` or `https://`
-/// entry ([_kHttpStreamOptions]), and the raw audio demuxer of a live PCM
-/// source. Each value is length-prefixed
+/// `start` and `end`, and the raw audio demuxer of a live PCM source. Each
+/// value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
 /// inside it. The headers still refuse some characters
 /// ([_validateHeaderKey], [_validateHeaderValue]): `,`, since
@@ -98,8 +60,12 @@ String loadfileOptions(Media media) {
     parts.add('http-header-fields=%${utf8.encode(joined).length}%$joined');
   }
 
+  // Added to the global `stream-lavf-o` (the reconnect defaults of
+  // [_kStreamLavfDefaults], or what the app set) for this entry only.
   final stream = _streamOptions(media);
-  if (stream.isNotEmpty) parts.add(_keyValueOption('stream-lavf-o', stream));
+  if (stream.isNotEmpty) {
+    parts.add(_keyValueOption('stream-lavf-o-add', stream));
+  }
 
   final lavf = media.demuxerLavfOptions;
   if (lavf != null && lavf.isNotEmpty) {
@@ -120,13 +86,11 @@ String loadfileOptions(Media media) {
   return parts.join(',');
 }
 
-/// The `stream-lavf-o` entries of [media], each key once: the defaults of
-/// an `http://` or `https://` entry, then those of its chunk size, then its
-/// own options, a later value replacing an earlier one.
+/// The `stream-lavf-o` entries of [media], each key once: those of its
+/// chunk size, then its own options, a later value replacing an earlier
+/// one.
 Map<String, String> _streamOptions(Media media) {
-  final stream = <String, String>{
-    if (_isHttp(media.uri)) ..._kHttpStreamOptions,
-  };
+  final stream = <String, String>{};
   final chunk = media.httpChunkSize;
   if (chunk != null) {
     if (chunk <= 0) {

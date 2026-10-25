@@ -96,12 +96,12 @@ final class Media {
   /// playing entry: these headers do not have that problem.
   final Map<String, String>? httpHeaders;
 
-  /// Optional per-track options for FFmpeg's network protocols, applied as
-  /// the file-local `stream-lavf-o`, the stream-side twin of
-  /// [demuxerLavfOptions]. Each `key: value` becomes one `key=value` entry,
-  /// scoped to this exact playlist entry.
+  /// Optional per-track options for FFmpeg's network protocols, added to
+  /// mpv's global `stream-lavf-o` for this exact playlist entry
+  /// (`stream-lavf-o-add`), the stream-side twin of [demuxerLavfOptions].
+  /// Each `key: value` becomes one `key=value` entry.
   ///
-  /// An `http://` or `https://` entry already carries these, so a dropped
+  /// The player sets the global value when it starts, so a dropped
   /// connection is retried instead of ending the track early:
   /// - `reconnect=1` and `reconnect_delay_max=7`, mpv's own values for a
   ///   file, also for the segments of an HLS stream: a body cut short is
@@ -128,14 +128,11 @@ final class Media {
   /// over.
   ///
   /// Values must not contain a comma; keys must be non-empty. `null`
-  /// (default) adds nothing to the defaults above. These options replace a
-  /// global `stream-lavf-o` set with `Player.setRawProperty` for this
-  /// entry. An entry whose URI a hook or the source resolver turns into an
-  /// `http://` URL does not get the defaults: set the ones it needs here.
-  ///
-  /// With [Player.setPrefetchPlaylist] on, an `http://` entry next to an
-  /// entry of another kind opens when it starts, not from the prefetch:
-  /// their options differ.
+  /// (default) adds nothing. A global `stream-lavf-o` the app sets with
+  /// `Player.setRawProperty` replaces the defaults above, and these
+  /// options add to it. With [Player.setPrefetchPlaylist] on, an entry
+  /// with these options opens ahead only after an entry with the same
+  /// ones.
   final Map<String, String>? streamLavfOptions;
 
   /// Optional per-track options for libmpv's libavformat (`lavf`) demuxer,

@@ -1766,12 +1766,18 @@ player.stream.demuxerViaNetwork.listen((isNetwork) {
 
 #### 7.9 Dropped connections
 
-Every `http://` and `https://` entry asks FFmpeg to recover from a dropped connection instead of ending the track early:
-- A body cut short is requested again from where it stopped, after 0, 1, 3 and 7 s, on a server that accepts range requests. mpv does this for a file; the entry also asks it for the segments of an HLS stream.
+The player sets mpv's global `stream-lavf-o`, the options of every stream FFmpeg opens, so a dropped connection is retried instead of ending the track early:
+- A body cut short is requested again from where it stopped, after 0, 1, 3 and 7 s, on a server that accepts range requests. mpv does this for a file; the option also asks it for the segments of an HLS stream.
 - A connection that fails to open (refused, reset, a name that does not resolve, a TLS error) is tried again on the same schedule. A server that stays unreachable fails the entry after about 11 s.
 - The HLS demuxer requests a segment that fails to open four more times before it skips it.
 
-`Media.streamLavfOptions` passes options to FFmpeg's network protocols for that entry only (mpv's `stream-lavf-o`), and a key set there wins over these defaults:
+A protocol that does not speak HTTP, such as `smb2://`, ignores them. The value is `reconnect=1,reconnect_delay_max=7,reconnect_on_network_error=1,seg_max_retry=4`. Setting `stream-lavf-o` with `setRawProperty` replaces it, as for any mpv option. To add a key and keep the defaults, use `change-list`:
+
+```dart
+await player.sendRawCommand(['change-list', 'stream-lavf-o', 'add', 'timeout=5000000']);
+```
+
+`Media.streamLavfOptions` adds options for that entry only, and a key set there wins over the global one:
 
 ```dart
 // Fail at once on an unreachable server
@@ -1789,7 +1795,7 @@ await player.open(Media(
 
 Keep it for live streams. FFmpeg opens such a stream again from its first byte, so a file sent by a server without range support plays again from its start after a cut, and a file sent with no length plays over and over.
 
-The options of the entry replace a global `stream-lavf-o` set with `setRawProperty`. An entry whose URI a hook or the source resolver turns into an `http://` URL does not get the defaults: give its `Media` the options it needs. With `setPrefetchPlaylist(true)`, an `http://` entry next to an entry of another kind (a local file) opens when it starts instead of from the prefetch, since their options differ.
+With `setPrefetchPlaylist(true)`, an entry with stream options opens ahead only after an entry with the same ones, as for the other per-entry options.
 
 ---
 

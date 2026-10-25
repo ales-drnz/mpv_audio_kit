@@ -202,6 +202,7 @@ mixin _InitModule on _PlayerBase {
     'load-scripts': 'no',
     'input-builtin-bindings': 'no',
     'audio-client-name': 'mpv_audio_kit',
+    'stream-lavf-o': _kStreamLavfDefaults,
   };
 
   Map<String, String> _buildPostInitOptions() => {
@@ -235,3 +236,35 @@ mixin _InitModule on _PlayerBase {
     return specs;
   }
 }
+
+/// mpv's global `stream-lavf-o`, the options of every stream FFmpeg opens,
+/// so a dropped connection does not end a track early (verified against
+/// FFmpeg 8.1.1 and mpv 0.41). A protocol takes the ones it knows and
+/// leaves the others, as `smb2` already does with mpv's own `reconnect`:
+/// mpv lists the leftovers at verbose level only (stream_lavf.c). An entry
+/// with `Media.streamLavfOptions` or `Media.httpChunkSize` adds to them
+/// (`stream-lavf-o-add`); the app's own global value replaces them.
+/// - `reconnect` and `reconnect_delay_max` are mpv's own values for a
+///   progressive stream (stream_lavf.c), which it does not pass to the
+///   segments of an HLS or DASH stream. Through `stream-lavf-o` they reach
+///   them: demux_lavf.c hands the network options to every nested open.
+///   FFmpeg then requests a body cut short again from where it stopped, on
+///   a server that accepts ranges (http.c, http_read_stream), after 0, 1,
+///   3 and 7 s.
+/// - `reconnect_on_network_error` tries a connection that fails to open
+///   (refused, reset, DNS, TLS) again on the same schedule (http.c,
+///   http_open_cnx), for the open and for each of those reconnects.
+/// - `seg_max_retry` is an option of the HLS demuxer, which takes the
+///   network options as its own (demux_lavf.c sets them on a demuxer that
+///   opens its URL itself). With FFmpeg's 0 a segment that fails to open
+///   is skipped at once (hls.c, read_data_continuous). 4 gives it as many
+///   retries as a progressive stream gets reconnects. In `demuxer-lavf-o`
+///   it would rebuild the demuxer of every entry that sets it, and drop
+///   its prefetch.
+/// `reconnect_streamed` is not among them: on a server without range
+/// support FFmpeg reconnects from the first byte, so a file cut short
+/// plays again from its start, and one sent with no length plays over and
+/// over. A live stream asks for it with `Media.streamLavfOptions`.
+const String _kStreamLavfDefaults =
+    'reconnect=1,reconnect_delay_max=7,'
+    'reconnect_on_network_error=1,seg_max_retry=4';

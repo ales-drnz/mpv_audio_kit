@@ -148,16 +148,12 @@ void main() {
       );
     });
   });
-  group('stream-lavf-o', () {
-    const defaults =
-        'reconnect=1,reconnect_delay_max=7,'
-        'reconnect_on_network_error=1,seg_max_retry=4';
-
-    /// The `stream-lavf-o` value [media] gives, its length prefix checked;
-    /// `null` when it gives none.
+  group('stream-lavf-o-add', () {
+    /// The `stream-lavf-o-add` value [media] gives, its length prefix
+    /// checked; `null` when it gives none.
     String? streamOptions(Media media) {
       final opts = loadfileOptions(media);
-      final m = RegExp(r'stream-lavf-o=%(\d+)%').firstMatch(opts);
+      final m = RegExp(r'stream-lavf-o-add=%(\d+)%').firstMatch(opts);
       if (m == null) return null;
       final length = int.parse(m.group(1)!);
       final value = opts.substring(m.end, m.end + length);
@@ -165,26 +161,19 @@ void main() {
       return value;
     }
 
-    test('an http or https entry gets the reconnect defaults', () {
-      expect(streamOptions(const Media('http://h/a.mp3')), defaults);
-      expect(streamOptions(const Media('https://h/a.m3u8')), defaults);
-      expect(streamOptions(const Media('HTTPS://h/a.mp3')), defaults);
-    });
-
-    test('other entries get none', () {
-      expect(loadfileOptions(const Media('a.flac')), '');
-      expect(loadfileOptions(const Media('file:///m/a.flac')), '');
-      expect(loadfileOptions(const Media('asset:///assets/a.mp3')), '');
-      expect(loadfileOptions(const Media('rtsp://h/live')), '');
+    test('an entry without stream options gets none: the defaults are '
+        'global', () {
+      expect(loadfileOptions(const Media('https://h/a.mp3')), '');
+      expect(loadfileOptions(const Media('http://h/a.m3u8')), '');
       expect(loadfileOptions(const Media('smb2://h/share/a.flac')), '');
-      expect(loadfileOptions(const Media('fd://7')), '');
+      expect(loadfileOptions(const Media('a.flac')), '');
     });
 
-    test('httpChunkSize joins them, each key once', () {
+    test('httpChunkSize adds its keys', () {
       expect(
         streamOptions(const Media('https://h/a.mp3', httpChunkSize: 1024)),
-        '$defaults,initial_request_size=1024,request_size=1024,'
-        'reconnect_streamed=1',
+        'initial_request_size=1024,request_size=1024,'
+        'reconnect_streamed=1,reconnect_on_network_error=1',
       );
     });
 
@@ -201,18 +190,17 @@ void main() {
             },
           ),
         ),
-        'reconnect=1,reconnect_delay_max=7,reconnect_on_network_error=0,'
-        'seg_max_retry=4,initial_request_size=1024,request_size=1024,'
-        'reconnect_streamed=0,timeout=5000000',
+        'initial_request_size=1024,request_size=1024,reconnect_streamed=0,'
+        'reconnect_on_network_error=0,timeout=5000000',
       );
     });
 
-    test('streamLavfOptions alone on any other entry', () {
+    test('streamLavfOptions on any entry', () {
       expect(
         loadfileOptions(
           const Media('rtsp://h/live', streamLavfOptions: {'timeout': '5'}),
         ),
-        'stream-lavf-o=%9%timeout=5',
+        'stream-lavf-o-add=%9%timeout=5',
       );
     });
 
@@ -221,13 +209,14 @@ void main() {
         const Media(
           'https://h/a.mp3',
           httpHeaders: {'X-Token': 'abc'},
+          streamLavfOptions: {'timeout': '5'},
           demuxerLavfOptions: {'k': 'v'},
           start: Duration(seconds: 1),
         ),
       );
       expect(opts.indexOf('http-header-fields='), 0);
       expect(
-        opts.indexOf('stream-lavf-o='),
+        opts.indexOf('stream-lavf-o-add='),
         lessThan(opts.indexOf('demuxer-lavf-o=')),
       );
       expect(opts, endsWith(',start=1.000'));
