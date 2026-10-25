@@ -4,9 +4,11 @@
 // found in the LICENSE file.
 //
 // The Dart side of the second engine of android_engine_exit_test, started
-// by MainActivity on the channel `mpv_audio_kit_test_app/engine`. It plays
-// the fixture the test hands over on [engineExitPortName], tells the test,
-// and keeps playing until the test destroys the engine.
+// by MainActivity on the channel `mpv_audio_kit_test_app/engine`.
+// [engineExitMain] plays the fixture the test hands over on
+// [engineExitPortName], tells the test, and keeps playing until the test
+// destroys the engine. [engineSessionMain] asks for the OS media session
+// the test's engine may own, each time the test says so.
 
 import 'dart:isolate';
 import 'dart:ui';
@@ -43,4 +45,34 @@ Future<void> engineExitMain() async {
     test.send('failed: $e');
   }
   // The player is never disposed: the engine goes away under it.
+}
+
+/// The name the media session test registers its port under.
+const engineSessionPortName = 'mpv_audio_kit_test_app/engine_session';
+
+/// The entrypoint of the second engine of the media session test. On each
+/// 'enable' from the test it calls setMediaSession and answers 'accepted',
+/// 'refused' (a StateError, with the state left off) or what went wrong.
+@pragma('vm:entry-point')
+Future<void> engineSessionMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final test = IsolateNameServer.lookupPortByName(engineSessionPortName);
+  if (test == null) return;
+  final inbox = ReceivePort();
+  test.send(inbox.sendPort);
+  MpvAudioKit.ensureInitialized(hotRestartCleanup: false);
+  final player = Player();
+  await for (final message in inbox) {
+    if (message != 'enable') continue;
+    try {
+      await player.setMediaSession(const MediaSession(title: 'Second engine'));
+      test.send('accepted');
+    } on StateError {
+      test.send(
+        player.state.mediaSession == null ? 'refused' : 'refused, state kept',
+      );
+    } catch (e) {
+      test.send('failed: $e');
+    }
+  }
 }
