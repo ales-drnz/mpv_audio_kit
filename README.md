@@ -59,8 +59,9 @@ dependencies:
 | macOS | 12.0 | arm64, x86_64 | 7.5, 8.0 MB | Yes | - |
 | Windows | 10 | arm64, x86_64 | 8.1, 9.1 MB | Yes | - |
 | Linux | glibc 2.31 (Ubuntu 20.04, Debian 11) | aarch64, x86_64 | 8.8, 8.6 MB | Yes | - |
+| Web | a cross-origin isolated page | wasm32 | 4.6 MB (1.9 MB with brotli) | - | - |
 
-The package needs Dart 3.10 and Flutter 3.41, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire (0.3.57 or later) or PulseAudio when installed.
+The package needs Dart 3.10 and Flutter 3.41, and Flutter 3.47.4 or later to build for iOS: older releases mark the bundled framework for an iOS version below the library's 15.0, which App Store validation rejects. On Linux, libmpv needs ALSA (`libasound.so.2`) and uses PipeWire (0.3.57 or later) or PulseAudio when installed. On the web, libmpv runs as WebAssembly with threads, which needs a cross-origin isolated page and a browser with SharedArrayBuffer and AudioWorklet there (Chrome and Edge 92, Firefox 79, Safari 15.2): see [15. Web](#15-web).
 
 ---
 
@@ -243,6 +244,17 @@ The package needs Dart 3.10 and Flutter 3.41, and Flutter 3.47.4 or later to bui
     * [14.5 Capabilities, intervals and speeds](#145-capabilities-intervals-and-speeds)
     * [14.6 Audio interruptions](#146-audio-interruptions)
     * [14.7 App identity (desktop)](#147-app-identity-desktop)
+
+    </details>
+
+    <details>
+    <summary><a href="#15-web"><b>15. Web</b></a></summary>
+
+    * [15.1 Serving the page](#151-serving-the-page)
+    * [15.2 Sound and the autoplay policy](#152-sound-and-the-autoplay-policy)
+    * [15.3 Files the user picks](#153-files-the-user-picks)
+    * [15.4 Network](#154-network)
+    * [15.5 What differs on the web](#155-what-differs-on-the-web)
 
     </details>
 *   [Permissions](#permissions)
@@ -508,6 +520,7 @@ final content = Media('content://com.android.externalstorage.documents/...');
 | <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/file.png" width="32" style="vertical-align: middle" alt="File"> | `file://` | Local files, by absolute path |
 | <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/flutter.png" width="32" style="vertical-align: middle" alt="Flutter"> | `asset:///` | Flutter assets bundled in the app |
 | <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/android.png" width="32" style="vertical-align: middle" alt="Android"> | `content://` | Android content provider URIs (file picker, media store) |
+|  | `blob:` | On the web, files the user picked ([15.3](#153-files-the-user-picks)) |
 
 A `file://` URL may name a host: `file://localhost/...` is the local path,
 and on Windows `file://server/share/...` opens the network share
@@ -3066,6 +3079,124 @@ const MediaSession(
 in `/usr/share/applications/`. The Linux desktop uses it to find the icon
 shown beside the controls; with `null` it shows a generic icon. On Windows the icon comes from
 the executable, so only `appName` applies there.
+
+### 15. Web
+
+The same `Player` runs on Flutter Web with the same libmpv, built as
+WebAssembly: effects, taps, waveform, loudness, hooks, playlists and live
+PCM input work as on the other platforms. The app code stays the same.
+
+#### 15.1 Serving the page
+
+The package ships libmpv as web assets (`libmpv.mjs`, `libmpv.wasm` and
+`mak_webaudio_processor.js`), which Flutter serves at
+`assets/packages/mpv_audio_kit/web/`. libmpv runs on threads, so the page
+must be cross-origin isolated: every response, the three files included,
+needs these headers.
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: credentialless
+```
+
+Safari supports only `require-corp` for the second one, which asks every
+resource of another origin loaded without CORS (an image, a font) for a
+`Cross-Origin-Resource-Policy` header.
+
+- Development: `flutter run -d chrome --cross-origin-isolation`.
+- Cloudflare Pages and Netlify: a `web/_headers` file with the two headers
+  under `/*`.
+- GitHub Pages sets no headers: a service worker such as coi-serviceworker
+  adds them, and reloads the page on the first visit.
+
+`MpvAudioKit.ensureInitialized(libmpv: url)` loads another build of the
+module, from the URL of its `libmpv.mjs`, with the other two files beside
+it on the same origin. The module loads in the background from
+`ensureInitialized` on; the first `Player` waits for it.
+
+The package from pub.dev contains the three files. A checkout from git
+gets them with `scripts/update_libmpv.sh`.
+
+#### 15.2 Sound and the autoplay policy
+
+Browsers hold a page's sound until the user interacts with it. The players
+play into the page's audio output, which the first click, tap or key press
+starts, as does `Player.play()` called from one. Until then a playing
+player waits at its position, and `MpvAudioKit.needsUserGesture` is true:
+
+```dart
+StreamBuilder<bool>(
+  stream: MpvAudioKit.needsUserGestureStream,
+  initialData: MpvAudioKit.needsUserGesture,
+  builder: (context, snapshot) => snapshot.data!
+      ? const Text('Tap anywhere to start the sound')
+      : const SizedBox.shrink(),
+);
+```
+
+It is always false outside the web.
+
+#### 15.3 Files the user picks
+
+`Media.fromBlob` plays a `File` or `Blob` of the browser: from an
+`<input type="file">`, a drop, or a folder opened with
+`showDirectoryPicker`. The file can be on a network share the system has
+mounted (an SMB or NFS folder in the file manager): the browser reads it
+through the system as it plays and seeks, and the page needs no access to
+the server.
+
+```dart
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
+
+final input = web.HTMLInputElement()
+  ..type = 'file'
+  ..accept = 'audio/*'
+  ..multiple = true;
+input.onchange = (web.Event _) {
+  final files = input.files!;
+  player.openAll([
+    for (var i = 0; i < files.length; i++) Media.fromBlob(files.item(i)!),
+  ]);
+}.toJS;
+input.click();
+```
+
+The media gets the file's name as its `title` extra. A `blob:` URL the app
+already has, such as the `path` of an `XFile` from file_selector, plays as
+`Media(url)`. `asset:///` sources load from the page's origin.
+
+#### 15.4 Network
+
+libmpv reads `http` and `https` through the browser's fetch, HLS and DASH
+segments included:
+
+- A server of another origin must send CORS headers
+  (`Access-Control-Allow-Origin`), or the file does not open. A proxy on
+  the page's origin, reached through a `SourceResolver`, serves the others.
+- Seeking needs a server that answers range requests with 206.
+- A page served over https cannot open `http` URLs (mixed content).
+- ICY titles come from a radio on the page's origin. One of another
+  origin sends them with `streamLavfOptions: {'icy_cross_origin': '1'}` on
+  its `Media`, if its server accepts the `Icy-MetaData` header and exposes
+  `icy-metaint` through CORS; otherwise it plays with no titles.
+- The browser handles TLS, cookies and proxies: `setTlsVerify`,
+  `setTlsCaFile`, `setCookies` and `setHttpProxy` have no effect, and
+  headers fetch forbids (`Cookie`, `Referer`, `Host`) are not sent.
+- `smb2://` is not available: the browser has no sockets. Mount the share
+  in the system and pick its files ([15.3](#153-files-the-user-picks)).
+
+#### 15.5 What differs on the web
+
+| Feature | On the web |
+| :--- | :--- |
+| `setSystemVolume`, `setSystemMute` | The gain of the player's output, after effects and taps, kept across files and settable before the first one |
+| `setAudioSampleRate` | Remakes the page's audio output at that rate, for every player of the page |
+| Output devices | One: the page's output. The device list holds only the automatic choice |
+| File paths, `file://`, `content://` | Not available: pick files ([15.3](#153-files-the-user-picks)) |
+| `PcmSource.create` | Needs the module loaded: create it once a player is ready, or use `Player.openPcmStream`, which waits |
+| OS media session | `navigator.mediaSession`, with the play, pause, stop, next, previous, seek and skip actions; while it is on, the sound goes through an `<audio>` element, which browsers want before they show their controls. An artwork URL the page cannot download (no CORS) goes to the browser, which loads it itself |
+| Hot restart | The next run of the app destroys the players the previous one left and reuses the loaded module |
 
 ---
 
