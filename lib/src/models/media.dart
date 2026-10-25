@@ -54,10 +54,10 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 /// ```
 ///
 /// Equality compares every field ([uri], [extras], [httpHeaders],
-/// [httpChunkSize], [demuxerLavfOptions], [start] and [end]), so two instances
-/// that differ in any of them are not equal: useful when diffing playlists
-/// for re-render decisions. The maps compare by content, their values by
-/// `==`.
+/// [httpChunkSize], [streamLavfOptions], [demuxerLavfOptions], [start] and
+/// [end]), so two instances that differ in any of them are not equal:
+/// useful when diffing playlists for re-render decisions. The maps compare
+/// by content, their values by `==`.
 final class Media {
   /// The URI of the media resource.
   ///
@@ -95,6 +95,45 @@ final class Media {
   /// entry while the current one plays, and a write there lands on the
   /// playing entry: these headers do not have that problem.
   final Map<String, String>? httpHeaders;
+
+  /// Optional per-track options for FFmpeg's network protocols, added to
+  /// mpv's global `stream-lavf-o` for this exact playlist entry
+  /// (`stream-lavf-o-add`), the stream-side twin of [demuxerLavfOptions].
+  /// Each `key: value` becomes one `key=value` entry.
+  ///
+  /// The player sets the global value when it starts, so a dropped
+  /// connection is retried instead of ending the track early:
+  /// - `reconnect=1` and `reconnect_delay_max=7`, mpv's own values for a
+  ///   file, also for the segments of an HLS stream: a body cut short is
+  ///   requested again from where it stopped, on a server that accepts
+  ///   range requests, after 0, 1, 3 and 7 s;
+  /// - `reconnect_on_network_error=1`: a connection that fails to open
+  ///   (refused, reset, a name that does not resolve, a TLS error) is tried
+  ///   again on the same schedule, so an unreachable server fails the
+  ///   entry after about 11 s;
+  /// - `seg_max_retry=4`: the HLS demuxer requests a segment that fails to
+  ///   open four more times before it skips it.
+  ///
+  /// A key set here wins over them, and over what [httpChunkSize] adds.
+  /// For a live stream (a radio) add `'reconnect_streamed': '1'`, so a
+  /// stream that drops is opened again:
+  ///
+  /// ```dart
+  /// Media(radioUrl, streamLavfOptions: {'reconnect_streamed': '1'})
+  /// ```
+  ///
+  /// Keep it for live streams. A file the server sends without range
+  /// support is opened again from its first byte: it plays again from its
+  /// start after a cut, and one sent with no length at all plays over and
+  /// over.
+  ///
+  /// Values must not contain a comma; keys must be non-empty. `null`
+  /// (default) adds nothing. A global `stream-lavf-o` the app sets with
+  /// `Player.setRawProperty` replaces the defaults above, and these
+  /// options add to it. With [Player.setPrefetchPlaylist] on, an entry
+  /// with these options opens ahead only after an entry with the same
+  /// ones.
+  final Map<String, String>? streamLavfOptions;
 
   /// Optional per-track options for libmpv's libavformat (`lavf`) demuxer,
   /// applied as the file-local `demuxer-lavf-o`, the demuxer-side analogue of
@@ -171,12 +210,14 @@ final class Media {
 
   /// Creates an immutable media item for [uri], with optional consumer
   /// [extras], per-request [httpHeaders] and [httpChunkSize], per-entry
-  /// [demuxerLavfOptions], and the [start] and [end] of what it plays.
+  /// [streamLavfOptions] and [demuxerLavfOptions], and the [start] and
+  /// [end] of what it plays.
   const Media(
     this.uri, {
     this.extras,
     this.httpHeaders,
     this.httpChunkSize,
+    this.streamLavfOptions,
     this.demuxerLavfOptions,
     this.start,
     this.end,
@@ -188,14 +229,15 @@ final class Media {
   bool get isPcmStream => uri.startsWith('mak-pcm://');
 
   /// Returns a copy with the given fields replaced. Pass `null` for
-  /// [extras], [httpHeaders], [httpChunkSize], [demuxerLavfOptions],
-  /// [start] or [end] to clear them; omitted fields keep their current
-  /// value.
+  /// [extras], [httpHeaders], [httpChunkSize], [streamLavfOptions],
+  /// [demuxerLavfOptions], [start] or [end] to clear them; omitted fields
+  /// keep their current value.
   Media copyWith({
     String? uri,
     Object? extras = unset,
     Object? httpHeaders = unset,
     Object? httpChunkSize = unset,
+    Object? streamLavfOptions = unset,
     Object? demuxerLavfOptions = unset,
     Object? start = unset,
     Object? end = unset,
@@ -210,6 +252,9 @@ final class Media {
     httpChunkSize: identical(httpChunkSize, unset)
         ? this.httpChunkSize
         : httpChunkSize as int?,
+    streamLavfOptions: identical(streamLavfOptions, unset)
+        ? this.streamLavfOptions
+        : streamLavfOptions as Map<String, String>?,
     demuxerLavfOptions: identical(demuxerLavfOptions, unset)
         ? this.demuxerLavfOptions
         : demuxerLavfOptions as Map<String, String>?,
@@ -227,6 +272,7 @@ final class Media {
           other.end == end &&
           _mapEqDyn(extras, other.extras) &&
           _mapEq(httpHeaders, other.httpHeaders) &&
+          _mapEq(streamLavfOptions, other.streamLavfOptions) &&
           _mapEq(demuxerLavfOptions, other.demuxerLavfOptions));
 
   @override
@@ -250,6 +296,11 @@ final class Media {
         : Object.hashAllUnordered(
             demuxerLavfOptions!.entries.map((e) => Object.hash(e.key, e.value)),
           ),
+    streamLavfOptions == null
+        ? null
+        : Object.hashAllUnordered(
+            streamLavfOptions!.entries.map((e) => Object.hash(e.key, e.value)),
+          ),
   );
 
   /// Prints the [httpHeaders] names only: their values often carry
@@ -261,6 +312,7 @@ final class Media {
         : '{${httpHeaders!.keys.map((k) => '$k: <redacted>').join(', ')}}';
     return 'Media(uri: $uri, extras: $extras, '
         'httpHeaders: $headers, httpChunkSize: $httpChunkSize, '
+        'streamLavfOptions: $streamLavfOptions, '
         'demuxerLavfOptions: $demuxerLavfOptions, start: $start, '
         'end: $end)';
   }

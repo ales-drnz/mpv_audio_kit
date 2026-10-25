@@ -30,6 +30,16 @@ enum ServeMode {
   /// 200 with a chunked body, no `Content-Length` and no `Accept-Ranges`;
   /// a `Range` header is ignored, as by a server streaming a transcode.
   chunked,
+
+  /// 200 from the first byte with a `Content-Length` and no
+  /// `Accept-Ranges`; a `Range` header is ignored, as by a server without
+  /// range support.
+  noRanges,
+
+  /// 200 from the first byte with no `Content-Length`, no `Accept-Ranges`
+  /// and no chunked encoding: the end of the body is marked by closing the
+  /// connection, as by an HTTP/1.0 server.
+  closeDelimited,
 }
 
 /// One request [RangeHttpServer] received.
@@ -105,7 +115,28 @@ final class RangeHttpServer {
   /// the load. The requests are logged as they arrive.
   Future<void>? hold;
 
+  /// After a [dropAfterBytes] cut, every connection is closed as soon as it
+  /// is accepted for this long, as by a server that went down: the client
+  /// gets a network error, not an HTTP answer.
+  Duration? downAfterDrop;
+
+  /// The next GET of each path here is answered with that status and an
+  /// empty body; the GETs after it are served.
+  final Map<String, int> statusOnce = {};
+
+  /// The next GET of each path here has its connection closed after that
+  /// many body bytes; the GETs after it are served in full.
+  final Map<String, int> cutOnce = {};
+
+  /// Answer with `HTTP/1.0` in the status line instead of `HTTP/1.1`.
+  bool http10 = false;
+
+  /// Connections closed unanswered while the server was down
+  /// ([downAfterDrop]).
+  int refused = 0;
+
   int? _cutAt;
+  DateTime? _downUntil;
 
   final List<ServedRequest> _requests = [];
   final Set<Socket> _open = {};
@@ -120,9 +151,9 @@ final class RangeHttpServer {
       .fold(0, (sum, r) => sum + r.bytesSent);
 
   /// A readable dump of the log, for failure messages.
-  String describe() => _requests.isEmpty
-      ? '(no requests)'
-      : _requests.map((r) => '  $r').join('\n');
+  String describe() =>
+      '${_requests.isEmpty ? '(no requests)' : _requests.map((r) => '  $r').join('\n')}'
+      '${refused > 0 ? '\n  $refused connections refused' : ''}';
 
   /// Starts a server for [files], keyed by name (served at `/<name>`).
   static Future<RangeHttpServer> start(
@@ -139,6 +170,10 @@ final class RangeHttpServer {
     return server;
   }
 
+  /// Closes every connection unanswered for [time] from now, as
+  /// [downAfterDrop] does after a cut.
+  void goDown(Duration time) => _downUntil = DateTime.now().add(time);
+
   /// The URL of the file served as [name].
   String url(String name) =>
       'http://${_socket.address.address}:${_socket.port}/$name';
@@ -153,6 +188,12 @@ final class RangeHttpServer {
   }
 
   void _accept(Socket client) {
+    final down = _downUntil;
+    if (down != null && DateTime.now().isBefore(down)) {
+      refused++;
+      client.destroy();
+      return;
+    }
     _open.add(client);
     final head = BytesBuilder(copy: false);
     var handled = false;
@@ -244,6 +285,14 @@ final class RangeHttpServer {
       req.completed = true;
       return;
     }
+    final name = path.startsWith('/') ? path.substring(1) : path;
+    final once = method == 'GET' ? statusOnce.remove(name) : null;
+    if (once != null) {
+      req.status = once;
+      await _writeHead(client, once, const {'Content-Length': '0'});
+      req.completed = true;
+      return;
+    }
     final total = file.length;
     final contentType = _contentType(path);
 
@@ -257,7 +306,9 @@ final class RangeHttpServer {
         req.completed = true;
         return;
       }
-      await _sendBody(client, req, file, 0, total, gone, goneSignal, (chunk) {
+      await _sendBody(client, req, name, file, 0, total, gone, goneSignal, (
+        chunk,
+      ) {
         final out = BytesBuilder(copy: false)
           ..add(latin1.encode('${chunk.length.toRadixString(16)}\r\n'))
           ..add(chunk)
@@ -268,6 +319,30 @@ final class RangeHttpServer {
         client.add(latin1.encode('0\r\n\r\n'));
         await _flush(client);
       }
+      return;
+    }
+
+    if (mode == ServeMode.noRanges || mode == ServeMode.closeDelimited) {
+      req.status = 200;
+      await _writeHead(client, 200, {
+        'Content-Type': contentType,
+        if (mode == ServeMode.noRanges) 'Content-Length': '$total',
+      });
+      if (method == 'HEAD') {
+        req.completed = true;
+        return;
+      }
+      await _sendBody(
+        client,
+        req,
+        name,
+        file,
+        0,
+        total,
+        gone,
+        goneSignal,
+        null,
+      );
       return;
     }
 
@@ -317,12 +392,23 @@ final class RangeHttpServer {
       req.completed = true;
       return;
     }
-    await _sendBody(client, req, file, start, end + 1, gone, goneSignal, null);
+    await _sendBody(
+      client,
+      req,
+      name,
+      file,
+      start,
+      end + 1,
+      gone,
+      goneSignal,
+      null,
+    );
   }
 
   Future<void> _sendBody(
     Socket client,
     ServedRequest req,
+    String name,
     Uint8List file,
     int from,
     int to,
@@ -334,6 +420,8 @@ final class RangeHttpServer {
     if (dropAfterBytes != null && req.method == 'GET') {
       drop = dropAfterBytes;
       dropAfterBytes = null;
+    } else if (req.method == 'GET') {
+      drop = cutOnce.remove(name);
     }
     const chunkSize = 16 * 1024;
     var pos = from;
@@ -363,6 +451,8 @@ final class RangeHttpServer {
       if (drop != null && req.bytesSent >= drop) {
         req.dropped = true;
         if (refuseResume) _cutAt = from + req.bytesSent;
+        final downFor = downAfterDrop;
+        if (downFor != null) _downUntil = DateTime.now().add(downFor);
         return;
       }
       if (pos >= to) break;
@@ -387,7 +477,7 @@ final class RangeHttpServer {
     req.completed = true;
   }
 
-  static Future<void> _writeHead(
+  Future<void> _writeHead(
     Socket client,
     int status,
     Map<String, String> headers,
@@ -400,7 +490,9 @@ final class RangeHttpServer {
       503 => 'Service Unavailable',
       _ => 'Status',
     };
-    final b = StringBuffer('HTTP/1.1 $status $reason\r\n');
+    final b = StringBuffer(
+      'HTTP/${http10 ? '1.0' : '1.1'} $status $reason\r\n',
+    );
     headers.forEach((k, v) => b.write('$k: $v\r\n'));
     b.write('Connection: close\r\n\r\n');
     client.add(latin1.encode(b.toString()));

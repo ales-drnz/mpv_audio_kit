@@ -7,12 +7,8 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Storage.Streams.h>
 
-#include <fstream>
 #include <chrono>
 #include <future>
-
-#include <shlwapi.h>
-#pragma comment(lib, "shlwapi.lib")
 
 namespace mpv_audio_kit {
 
@@ -84,46 +80,24 @@ wss::RandomAccessStreamReference MakeThumbnail(const std::vector<uint8_t>& bytes
   }).get();
 }
 
-// Builds an in-memory thumbnail stream reference by reading a local file.
-// Uses PathCreateFromUrlW to resolve a `file://` URI to a Win32 path, then
-// reads the bytes and forwards them to MakeThumbnail — same MTA-safe pattern.
-wss::RandomAccessStreamReference MakeThumbnailFromFile(
-    const std::wstring& path) {
-  return std::async(std::launch::async,
-                    [path]() -> wss::RandomAccessStreamReference {
-    try {
-      winrt::init_apartment(winrt::apartment_type::multi_threaded);
-    } catch (const winrt::hresult_error&) {
-    }
-    try {
-      std::ifstream file(path, std::ios::binary | std::ios::ate);
-      if (!file.is_open())
-        return wss::RandomAccessStreamReference{nullptr};
-      const auto size = file.tellg();
-      if (size <= 0)
-        return wss::RandomAccessStreamReference{nullptr};
-      file.seekg(0);
-      std::vector<uint8_t> bytes(static_cast<size_t>(size));
-      file.read(reinterpret_cast<char*>(bytes.data()), size);
-      if (!file)
-        return wss::RandomAccessStreamReference{nullptr};
-
-      wss::InMemoryRandomAccessStream stream;
-      wss::DataWriter writer{stream};
-      writer.WriteBytes(winrt::array_view<uint8_t const>(
-          bytes.data(), bytes.data() + bytes.size()));
-      writer.StoreAsync().get();
-      writer.DetachStream();
-      stream.Seek(0);
-      return wss::RandomAccessStreamReference::CreateFromStream(stream);
-    } catch (...) {
-      return wss::RandomAccessStreamReference{nullptr};
-    }
-  }).get();
-}
-
 flutter::EncodableValue Str(const std::optional<std::string>& v) {
   return v.has_value() ? flutter::EncodableValue(*v) : flutter::EncodableValue();
+}
+
+const char* StatusName(wm::MediaPlaybackStatus status) {
+  switch (status) {
+    case wm::MediaPlaybackStatus::Closed:
+      return "closed";
+    case wm::MediaPlaybackStatus::Changing:
+      return "changing";
+    case wm::MediaPlaybackStatus::Stopped:
+      return "stopped";
+    case wm::MediaPlaybackStatus::Playing:
+      return "playing";
+    case wm::MediaPlaybackStatus::Paused:
+      return "paused";
+  }
+  return "unknown";
 }
 
 }  // namespace
@@ -310,54 +284,19 @@ void SmtcController::PublishMetadata() {
     genres.Append(winrt::to_hstring(*metadata_.genre));
   }
 
+  // Every cover arrives as bytes: the package downloads a URL and reads a
+  // file:// itself.
   if (!metadata_.artwork.empty()) {
     if (metadata_.artwork != artwork_cache_key_) {
       wss::RandomAccessStreamReference thumb = MakeThumbnail(metadata_.artwork);
       du.Thumbnail(thumb);
       artwork_cache_key_ = metadata_.artwork;
-      artwork_uri_cache_key_.clear();
-    }
-  } else if (metadata_.artwork_uri.has_value() &&
-             !metadata_.artwork_uri->empty()) {
-    // A URL the OS fetches itself (e.g. a transcoded stream's cover, which
-    // has no embedded bytes) — hand SMTC a stream reference built straight
-    // from the URI rather than shipping a blob across the channel.
-    if (*metadata_.artwork_uri != artwork_uri_cache_key_) {
-      const std::string& uri_str = *metadata_.artwork_uri;
-      const bool is_file_uri =
-          uri_str.size() >= 7 &&
-          uri_str.compare(0, 7, "file://") == 0;
-      if (is_file_uri) {
-        // `RandomAccessStreamReference::CreateFromUri` does not support
-        // `file://` URIs — resolve to a Win32 path and read the bytes.
-        std::wstring wide_uri =
-            winrt::to_hstring(uri_str).c_str();
-        wchar_t win_path[MAX_PATH] = {};
-        DWORD path_len = MAX_PATH;
-        if (SUCCEEDED(PathCreateFromUrlW(wide_uri.c_str(), win_path,
-                                        &path_len, 0))) {
-          du.Thumbnail(MakeThumbnailFromFile(win_path));
-        } else {
-          du.Thumbnail(wss::RandomAccessStreamReference{nullptr});
-        }
-      } else {
-        try {
-          winrt::Windows::Foundation::Uri uri{
-              winrt::to_hstring(uri_str)};
-          du.Thumbnail(wss::RandomAccessStreamReference::CreateFromUri(uri));
-        } catch (const winrt::hresult_error&) {
-          du.Thumbnail(wss::RandomAccessStreamReference{nullptr});
-        }
-      }
-      artwork_uri_cache_key_ = uri_str;
-      artwork_cache_key_.clear();
     }
   } else {
     // A bare `nullptr` is ambiguous for the projected property setter — pass an
     // explicitly typed empty reference to clear the thumbnail.
     du.Thumbnail(wss::RandomAccessStreamReference{nullptr});
     artwork_cache_key_.clear();
-    artwork_uri_cache_key_.clear();
   }
   du.Update();  // commits the DisplayUpdater changes to the OS.
 }
@@ -471,9 +410,6 @@ void SmtcController::Disable() {
   metadata_ = SmtcMetadata{};
   playback_ = SmtcPlayback{};
   artwork_cache_key_.clear();
-  // Also the URI's: a re-enable with the same artwork URI would otherwise
-  // match the stale key and never republish the cover ClearAll removed.
-  artwork_uri_cache_key_.clear();
   ++publish_count_;
 }
 
@@ -507,7 +443,26 @@ flutter::EncodableValue SmtcController::DebugState() const {
       {flutter::EncodableValue("loop"), flutter::EncodableValue(playback_.loop)},
       {flutter::EncodableValue("shuffle"),
        flutter::EncodableValue(playback_.shuffle)},
+      {flutter::EncodableValue("smtcCreated"), flutter::EncodableValue(created_)},
   };
+  // The keys above are this controller's copy of what Dart sent. The smtc*
+  // ones are read back from the transport controls, what the OS was given.
+  if (created_) {
+    auto du = smtc_.DisplayUpdater();
+    auto mp = du.MusicProperties();
+    m[flutter::EncodableValue("smtcEnabled")] =
+        flutter::EncodableValue(smtc_.IsEnabled());
+    m[flutter::EncodableValue("smtcStatus")] =
+        flutter::EncodableValue(StatusName(smtc_.PlaybackStatus()));
+    m[flutter::EncodableValue("smtcTitle")] =
+        flutter::EncodableValue(winrt::to_string(mp.Title()));
+    m[flutter::EncodableValue("smtcArtist")] =
+        flutter::EncodableValue(winrt::to_string(mp.Artist()));
+    m[flutter::EncodableValue("smtcAlbum")] =
+        flutter::EncodableValue(winrt::to_string(mp.AlbumTitle()));
+    m[flutter::EncodableValue("smtcThumbnail")] =
+        flutter::EncodableValue(static_cast<bool>(du.Thumbnail()));
+  }
   return flutter::EncodableValue(std::move(m));
 }
 

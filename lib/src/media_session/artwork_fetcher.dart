@@ -14,32 +14,20 @@ export 'artwork_download_io.dart'
 /// system roots; `null` on any failure.
 typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri, String caFile);
 
-/// Whether the media session downloads remote artwork in Dart on
-/// [platform], handing the native side bytes instead of the URL. Remote
-/// cover URLs often carry credentials in the query (Subsonic `u`, `t` and
-/// `s`, Jellyfin `api_key`, Plex `X-Plex-Token`), and the OS would publish
-/// them: MPRIS `mpris:artUrl` on the session bus (Linux), the session
-/// metadata other apps with notification access read (Android), the
-/// thumbnail source SMTC is given (Windows). Apple's Now Playing takes an
-/// image, never a URL, so its plugin publishes the bytes it is sent.
-///
-/// Never in the browser, whatever [platform] the page runs on: the web
-/// media session takes the URL, as the page could fetch it anyway.
+/// Whether the media session loads artwork URLs in Dart on [platform]:
+/// it downloads an `http(s)://` one and reads a `file://` one, and the
+/// native side only ever gets bytes. Remote cover URLs often carry
+/// credentials in the query (Subsonic `u`, `t` and `s`, Jellyfin
+/// `api_key`, Plex `X-Plex-Token`), and the OS would publish them: MPRIS
+/// `mpris:artUrl` on the session bus (Linux), the session metadata other
+/// apps with notification access read (Android), the thumbnail source SMTC
+/// is given (Windows). Apple's Now Playing takes an image, never a URL.
 @internal
-bool downloadsArtworkOn(TargetPlatform platform) =>
-    !kIsWeb &&
-    switch (platform) {
-      TargetPlatform.linux ||
-      TargetPlatform.android ||
-      TargetPlatform.windows ||
-      TargetPlatform.iOS ||
-      TargetPlatform.macOS => true,
-      _ => false,
-    };
-
-/// Whether the media session also reads `file://` artwork in Dart on
-/// [platform]: on Apple, whose plugin takes bytes only. Elsewhere the
-/// native side opens the file.
-@internal
-bool readsArtworkFilesOn(TargetPlatform platform) =>
-    platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
+bool downloadsArtworkOn(TargetPlatform platform) => switch (platform) {
+  TargetPlatform.linux ||
+  TargetPlatform.android ||
+  TargetPlatform.windows ||
+  TargetPlatform.iOS ||
+  TargetPlatform.macOS => true,
+  _ => false,
+};

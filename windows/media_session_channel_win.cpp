@@ -96,7 +96,6 @@ SmtcMetadata ParseMetadata(const EncodableMap& m) {
   md.track_number = GetInt64(m, "trackNumber");
   if (auto* v = Find(m, "artworkBytes"))
     if (auto* b = std::get_if<std::vector<uint8_t>>(v)) md.artwork = *b;
-  md.artwork_uri = GetString(m, "artworkUri");
   md.duration_ms = GetInt64(m, "durationMs");
   return md;
 }

@@ -5,6 +5,7 @@
 // `mpv_constants.dart` defines its own integer-typed `MpvEndFileReason`
 // (the libmpv constants). The enum below shadows that name, so we hide
 // the constants symbol to keep the import free of name conflicts.
+import '../models/media.dart';
 import '../mpv_constants.dart' hide MpvEndFileReason;
 import '../types/enums/log_level.dart';
 
@@ -37,10 +38,10 @@ sealed class PlayerError {
 ///
 /// Emitted when mpv fires `MPV_EVENT_END_FILE` with a non-zero error code.
 ///
-/// **Network note:** according to the mpv documentation, a network
-/// disconnection mid-stream may report as [MpvEndFileReason.eof] rather
-/// than [MpvEndFileReason.error]. Use `Player.stream.endFile` and compare
-/// the player's position against duration to detect premature endings.
+/// **Network note:** a network disconnection mid-stream reports as
+/// [MpvEndFileReason.eof] rather than [MpvEndFileReason.error], with no
+/// error. `Player.stream.endFile` carries the position and duration of the
+/// entry that ended, to tell such an end apart ([MpvFileEndedEvent]).
 final class EndFileError extends PlayerError {
   /// Why the file ended.
   final MpvEndFileReason reason;
@@ -134,16 +135,30 @@ extension EndFileErrorX on EndFileError {
 
 /// Emitted for **every** file-end event, regardless of whether an error occurred.
 ///
-/// This is the typed Dart equivalent of mpv's `MPV_EVENT_END_FILE`.
-/// Subscribe via `Player.stream.endFile` to detect both clean completions
-/// and premature endings (e.g. a network stream that reports EOF
-/// mid-playback without setting an error code).
+/// This is the typed Dart equivalent of mpv's `MPV_EVENT_END_FILE`, with
+/// what the player knew of the entry that ended: its [media], the
+/// [position] its output reached and its [duration]. Read them here, not
+/// from `Player.state`: when the event arrives the state can already
+/// describe the next entry, or a stopped player.
+///
+/// The last entry of the playlist does not end at its end. The player
+/// keeps it open on its last frame: `PlayerState.completed` turns true and
+/// `PlayerState.position` holds where it ended. This event comes for it
+/// when it is stopped or replaced, with [MpvEndFileReason.stop].
+///
+/// mpv reports a stream cut short as a normal end
+/// ([MpvEndFileReason.eof] with [error] `0`), for example an HTTP
+/// connection that dropped. See [MpvFileEndedEventX.reachedNaturalEnd].
 ///
 /// ```dart
 /// player.stream.endFile.listen((event) {
-///   if (event.reason == MpvEndFileReason.eof) {
-///     // Compare player.state.position vs player.state.duration
-///     // to decide if this was a genuine completion or a network drop.
+///   final position = event.position;
+///   final duration = event.duration;
+///   if (event.reason == MpvEndFileReason.eof &&
+///       position != null &&
+///       duration != null &&
+///       duration - position > const Duration(seconds: 5)) {
+///     print('${event.media?.uri} ended early');
 ///   }
 /// });
 /// ```
@@ -154,21 +169,57 @@ final class MpvFileEndedEvent {
   /// mpv error code. Non-zero only when [reason] is [MpvEndFileReason.error].
   final int error;
 
-  /// Creates a file-ended event with the given [reason] and [error] code.
-  const MpvFileEndedEvent({required this.reason, required this.error});
+  /// The [Media] the entry was loaded with. `null` for an entry the player
+  /// did not load itself: one of a playlist file
+  /// (`Player.openPlaylistFile`) or of a raw command.
+  final Media? media;
+
+  /// The last position mpv reported for the entry before it ended: where
+  /// its output was. `null` when mpv reported none, as for a file that
+  /// failed to open.
+  ///
+  /// With gapless playback (the default) mpv ends an entry once its decoder
+  /// is done, while the output still plays what it buffered. The position
+  /// then trails the end of the file by about that buffer: the one of
+  /// `Player.setAudioBuffer` (0.2 s by default) plus the audio output's
+  /// own.
+  final Duration? position;
+
+  /// The duration of the entry as mpv knew it when it ended. `null` when
+  /// mpv knew none, as for a live stream.
+  ///
+  /// It can be an estimate: for an MP3 without a Xing or VBRI header, and
+  /// for some HLS streams, mpv derives it from the bitrate, and a file that
+  /// played to its end can stop seconds away from it.
+  final Duration? duration;
+
+  /// Creates a file-ended event with the given [reason] and [error] code,
+  /// and the [media], [position] and [duration] of the entry that ended.
+  const MpvFileEndedEvent({
+    required this.reason,
+    required this.error,
+    this.media,
+    this.position,
+    this.duration,
+  });
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MpvFileEndedEvent &&
           other.reason == reason &&
-          other.error == error);
+          other.error == error &&
+          other.media == media &&
+          other.position == position &&
+          other.duration == duration);
 
   @override
-  int get hashCode => Object.hash(reason, error);
+  int get hashCode => Object.hash(reason, error, media, position, duration);
 
   @override
-  String toString() => 'MpvFileEndedEvent(reason: $reason, error: $error)';
+  String toString() =>
+      'MpvFileEndedEvent(reason: $reason, error: $error, media: $media, '
+      'position: $position, duration: $duration)';
 }
 
 /// Whether the file ended naturally and not because of a stop, error, redirect,
@@ -178,6 +229,8 @@ extension MpvFileEndedEventX on MpvFileEndedEvent {
   ///
   /// mpv also reports EOF when a network stream drops, so this means the
   /// demuxer ran out of data, not that the track played to completion.
+  /// [MpvFileEndedEvent.position] against [MpvFileEndedEvent.duration]
+  /// tells most such ends apart.
   bool get reachedNaturalEnd => reason == MpvEndFileReason.eof;
 }
 

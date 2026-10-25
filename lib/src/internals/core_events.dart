@@ -126,12 +126,23 @@ class MpvEventEndFile extends MpvIsolateEvent {
   /// error reasons, `false` for the others.
   final bool lastEntry;
 
-  /// Carries the end-of-file [reason] and [error] codes of entry [entryId].
+  /// The last `time-pos` mpv reported for the entry, in seconds, or the
+  /// park position read for it; `null` when none came.
+  final double? position;
+
+  /// The last `duration` mpv reported for the entry, in seconds; `null`
+  /// when none came.
+  final double? duration;
+
+  /// Carries the end-of-file [reason] and [error] codes of entry [entryId],
+  /// with its last [position] and [duration].
   MpvEventEndFile(
     this.entryId,
     this.reason,
     this.error, {
     this.lastEntry = false,
+    this.position,
+    this.duration,
   });
 }
 

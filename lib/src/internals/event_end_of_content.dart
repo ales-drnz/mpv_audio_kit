@@ -29,7 +29,7 @@ const Set<String> _kEndOfContentTriggers = {
 /// queued, and a read sent ahead of them would raise `completed` for the
 /// player to clear again on those events. So a read counts only for the
 /// entry whose START_FILE the pump already forwarded
-/// ([_PropertyCache.startedEntryId]); the newer entry's own FILE_LOADED and
+/// ([_PropertyCache.started]); the newer entry's own FILE_LOADED and
 /// PLAYBACK_RESTART read again. The current entry is read before and after
 /// `eof-reached` and `pause`, so both belong to it.
 Future<void> _sendEndOfContent(
@@ -37,11 +37,11 @@ Future<void> _sendEndOfContent(
   _Send send,
   _PropertyCache cache,
 ) async {
-  final started = cache.startedEntryId;
+  final started = cache.started;
   if (started == null) return;
   final pos = await reader.int64('playlist-pos');
   if (pos == null || pos < 0) return;
-  if (await reader.int64('playlist/$pos/id') != started) return;
+  if (await reader.int64('playlist/$pos/id') != started.id) return;
   final eof = await reader.flag('eof-reached') == 1;
   // With gapless audio mpv reports EOF once the decoder is done, while the
   // output buffer still plays; keep-open pauses the core only after it has
@@ -65,10 +65,12 @@ Future<void> _sendEndOfContent(
   if (parked) timePos = await reader.float('time-pos');
   final count = await reader.int64('playlist-count');
   if (await reader.int64('playlist-pos') != pos) return;
-  if (await reader.int64('playlist/$pos/id') != started) return;
+  if (await reader.int64('playlist/$pos/id') != started.id) return;
   // The park position supersedes a throttled time-pos still held back,
-  // which would land after the event, as at PLAYBACK_RESTART.
+  // which would land after the event, as at PLAYBACK_RESTART. It is also
+  // where the entry ended, for its END_FILE.
   if (parked) cache.trailing.remove('time-pos');
+  if (timePos != null) started.position = timePos;
   send(
     MpvEventEndOfContent(
       eof: eof,

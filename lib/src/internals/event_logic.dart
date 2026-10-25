@@ -112,7 +112,7 @@ final class EventLogic {
         // A clock value held from the previous file must not land after the
         // new one starts.
         _cache.trailing.clear();
-        _cache.startedEntryId = entryId;
+        _cache.started = _StartedEntry(entryId);
         _send(event);
       case MpvEventFileLoaded():
         return _fileLoaded();
@@ -121,7 +121,7 @@ final class EventLogic {
             reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
           return _endFile(entryId, reason, error);
         }
-        _send(event);
+        _send(_endFileEvent(entryId, reason, error, lastEntry: false));
       case MpvEventAudioReconfig():
         return _audioReconfig(event);
       case MpvEventPlaybackRestart():
@@ -158,13 +158,28 @@ final class EventLogic {
   }
 
   Future<void> _endFile(int entryId, int reason, int error) async {
-    _send(
-      MpvEventEndFile(
-        entryId,
-        reason,
-        error,
-        lastEntry: await _isLastEntry(_reader, entryId),
-      ),
+    final lastEntry = await _isLastEntry(_reader, entryId);
+    _send(_endFileEvent(entryId, reason, error, lastEntry: lastEntry));
+  }
+
+  /// The END_FILE of entry [entryId]. mpv has unloaded the file by now:
+  /// what it reported of the entry comes from the START_FILE that named it
+  /// ([_PropertyCache.started]).
+  MpvEventEndFile _endFileEvent(
+    int entryId,
+    int reason,
+    int error, {
+    required bool lastEntry,
+  }) {
+    final started = _cache.started;
+    final entry = started?.id == entryId ? started : null;
+    return MpvEventEndFile(
+      entryId,
+      reason,
+      error,
+      lastEntry: lastEntry,
+      position: entry?.position,
+      duration: entry?.duration,
     );
   }
 

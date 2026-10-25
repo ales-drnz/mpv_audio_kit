@@ -614,20 +614,6 @@ void MprisServer::RemoveStaleArtDirs(const std::string& root) {
   g_dir_close(dir);
 }
 
-void MprisServer::SetExternalArtwork(const std::string& url) {
-  // The consumer (or the extras['art'] fallback) handed us a ready-to-use
-  // URL — MPRIS's `mpris:artUrl` is itself a URL, so pass it through directly
-  // and skip the temp-file dance WriteArtwork does for embedded bytes. Drop
-  // any temp file a previous embedded cover left behind.
-  if (!prev_art_path_.empty()) {
-    g_remove(prev_art_path_.c_str());
-    prev_art_path_.clear();
-  }
-  art_cache_key_.clear();
-  art_url_ = url;
-  has_artwork_ = !url.empty();
-}
-
 void MprisServer::SweepArtwork() {
   if (!prev_art_path_.empty()) {
     g_remove(prev_art_path_.c_str());
@@ -817,15 +803,12 @@ void MprisServer::UpdateMetadata(FlValue* metadata) {
     has_duration_ = false;
   }
 
-  std::string art_uri = FlString(metadata, "artworkUri");
+  // Every cover arrives as bytes (the package downloads a URL and reads a
+  // file:// itself) and is written to a file of the runtime directory.
   FlValue* art =
       metadata ? fl_value_lookup_string(metadata, "artworkBytes") : nullptr;
   std::string mime = FlString(metadata, "artworkMime");
-  if (!art_uri.empty()) {
-    // A URL the desktop can fetch itself (e.g. a transcoded stream's cover) —
-    // no embedded bytes to write out.
-    SetExternalArtwork(art_uri);
-  } else if (art && fl_value_get_type(art) == FL_VALUE_TYPE_UINT8_LIST) {
+  if (art && fl_value_get_type(art) == FL_VALUE_TYPE_UINT8_LIST) {
     size_t n = fl_value_get_length(art);
     const uint8_t* d = fl_value_get_uint8_list(art);
     WriteArtwork(std::vector<uint8_t>(d, d + n), mime);

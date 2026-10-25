@@ -21,17 +21,11 @@ class MediaSessionMetadataSnapshot {
   final String? artist;
   final String? album;
 
-  /// Decoded artwork bytes (embedded cover or a [MediaSessionArtwork.custom]
-  /// image). Mutually exclusive with [artworkUri]: at most one is set.
+  /// The artwork as image bytes: the embedded cover, a
+  /// [MediaSessionArtwork.custom] image, or the image of an artwork URL
+  /// ([MediaSessionArtwork.uri] or `extras['art']`) the package loaded. No
+  /// URL ever reaches the native side.
   final CoverArt? artwork;
-
-  /// An artwork URL the native side opens itself ([MediaSessionArtwork.uri],
-  /// or the consumer-attached `extras['art']` fallback for a tag-less
-  /// stream). Only a non-HTTP URL (a `file://` path) gets here, and not on
-  /// Apple, where the package reads it too: an `http(s)://` one is
-  /// downloaded first and sent as [artwork]. Mutually exclusive with
-  /// [artwork].
-  final String? artworkUri;
   final Duration? duration;
 
   /// Rich tags, mpv-derived (no per-field override). Surfaced where the OS
@@ -50,7 +44,6 @@ class MediaSessionMetadataSnapshot {
     this.artist,
     this.album,
     this.artwork,
-    this.artworkUri,
     this.duration,
     this.trackNumber,
     this.discNumber,
@@ -62,8 +55,7 @@ class MediaSessionMetadataSnapshot {
   // Value equality so the controller can dedup unchanged snapshots before
   // re-shipping. The byte [artwork] compares by reference identity: the
   // resolver returns a stable [CoverArt] until the cover genuinely changes,
-  // so the (multi-MB) bytes are never walked here; [artworkUri] is a small
-  // string and compares by value.
+  // so the (multi-MB) bytes are never walked here.
   @override
   bool operator ==(Object other) =>
       other is MediaSessionMetadataSnapshot &&
@@ -72,7 +64,6 @@ class MediaSessionMetadataSnapshot {
       other.album == album &&
       other.duration == duration &&
       identical(other.artwork, artwork) &&
-      other.artworkUri == artworkUri &&
       other.trackNumber == trackNumber &&
       other.discNumber == discNumber &&
       other.albumArtist == albumArtist &&
@@ -86,7 +77,6 @@ class MediaSessionMetadataSnapshot {
     album,
     duration,
     identityHashCode(artwork),
-    artworkUri,
     trackNumber,
     discNumber,
     albumArtist,
@@ -283,10 +273,6 @@ class MediaSessionChannel {
         'album': m.album,
         'artworkBytes': m.artwork?.bytes,
         'artworkMime': m.artwork?.mimeType,
-        // A `file://` URL the native side opens itself on Android, Windows
-        // and Linux, mutually exclusive with the bytes above. `null` when
-        // the artwork is embedded, custom, none or loaded by the package.
-        'artworkUri': m.artworkUri,
         'durationMs': m.duration?.inMilliseconds,
         'trackNumber': m.trackNumber,
         'discNumber': m.discNumber,
