@@ -106,22 +106,31 @@ mixin _InitModule on _PlayerBase {
     if (_loudnessMeterCtrl.hasListener) _loudnessMeterPipeline.setEnabled(true);
     if (_loudnessScanCtrl.hasListener) _loudnessScanPipeline.setEnabled(true);
 
-    if (MpvAudioKit.libraryPath == null) unawaited(_checkBundledRelease());
+    unawaited(_checkLibmpvRelease());
   }
 
-  /// Warns when the bundled libmpv is not the release this package
-  /// version expects, which leaves features missing in ways that are hard
-  /// to trace back (a stale build cache, or an app bundling its own binary
-  /// through the hook's `libmpv` user define).
-  Future<void> _checkBundledRelease() async {
+  /// Warns, once per player, when the libmpv lacks what the player relies
+  /// on, which leaves features missing in ways that are hard to trace back:
+  /// a bundled libmpv that is not the release this package version expects
+  /// (a stale build cache, or an app bundling its own binary through the
+  /// hook's `libmpv` user define), or one without the patches of
+  /// [libmpvMinimumRelease], bundled or passed by path. A patch is missing
+  /// when mpv does not know the property it adds.
+  Future<void> _checkLibmpvRelease() async {
     try {
       final version = await (this as Player).getRawProperty('mpv-version');
-      if (version != null && !version.endsWith('+$libmpvRelease')) {
-        _internalLog(
-          'libmpv reports "$version"; mpv_audio_kit expects its '
-          '$libmpvRelease build. Features may be missing.',
-          level: LogLevel.warn,
-        );
+      final missing = <String>[];
+      for (final (name, _) in libmpvRequiredPatches) {
+        final (rc, _) = await _calls.get(name, MpvFormat.mpvFormatString);
+        if (rc == MpvError.mpvErrorPropertyNotFound) missing.add(name);
+      }
+      final warning = libmpvWarning(
+        version: version,
+        custom: MpvAudioKit.libraryPath != null,
+        missing: missing,
+      );
+      if (warning != null && !_disposed) {
+        _internalLog(warning, level: LogLevel.warn);
       }
     } catch (_) {
       // Disposed before the reply: nothing to check.

@@ -27,7 +27,7 @@ import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/entry_table.dart';
 import '../internals/hook_table.dart';
-import '../internals/libmpv_release.dart';
+import '../internals/libmpv_requirements.dart';
 import '../internals/mpv_audio_kit.dart';
 import '../internals/mpv_float.dart';
 import '../internals/owned_source.dart';

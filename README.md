@@ -438,6 +438,8 @@ void main() async {
 }
 ```
 
+A libmpv of your own goes in `libmpv`, as a path, or in place of the bundled one through `hooks: user_defines: mpv_audio_kit: libmpv:` in the app's pubspec. Build it with libmpv-scripts 0.3.0 (libmpv-r20) or later. An older build, or one of upstream mpv, still plays, and a warning on `stream.internalLog` lists what it lacks.
+
 #### 1.2 Creating a player
 
 ```dart
