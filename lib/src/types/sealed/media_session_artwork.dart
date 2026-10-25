@@ -13,9 +13,8 @@ import '../../models/cover_art.dart';
 ///   the file's embedded cover.
 /// - [MediaSessionArtwork.uri]: an image at a URL, for streams whose file
 ///   carries no embedded cover (for example a transcoded server track).
-///   An `http(s)://` URL is downloaded and only the image reaches the OS;
-///   a `file://` URL is read by the package on iOS and macOS and opened by
-///   the native side elsewhere.
+///   The package downloads an `http(s)://` URL or reads a `file://` one,
+///   and only the image reaches the OS.
 /// - [MediaSessionArtwork.none]: no artwork. The OS shows its own
 ///   placeholder (typically the app icon).
 sealed class MediaSessionArtwork {
@@ -31,17 +30,16 @@ sealed class MediaSessionArtwork {
   const factory MediaSessionArtwork.custom(CoverArt cover) =
       MediaSessionArtworkCustom._;
 
-  /// Show the image at [uri], ignoring any embedded cover. An `http(s)://`
-  /// URL never reaches the OS, since cover URLs often carry credentials:
-  /// the package downloads it and hands the native side the bytes. A
-  /// `file://` URL is read by the package on iOS and macOS, whose Now
-  /// Playing takes an image, and passed to the native side elsewhere,
-  /// which reads the file. The package skips an image over 20 MB.
+  /// Show the image at [uri], ignoring any embedded cover. The URL never
+  /// reaches the OS, since cover URLs often carry credentials: the package
+  /// downloads an `http(s)://` URL or reads a `file://` one, on every
+  /// platform, and hands the native side the bytes. It skips an image over
+  /// 20 MB.
   ///
   /// [uri] must load without custom headers: an `http(s)://` URL (a
-  /// tokenised query string is fine) or a `file://` path. For art behind
-  /// custom headers, fetch the bytes yourself and use
-  /// [MediaSessionArtwork.custom].
+  /// tokenised query string is fine) or a `file://` path. Any other scheme
+  /// shows no artwork. For art behind custom headers, fetch the bytes
+  /// yourself and use [MediaSessionArtwork.custom].
   const factory MediaSessionArtwork.uri(Uri uri) = MediaSessionArtworkUri._;
 }
 
@@ -82,7 +80,7 @@ final class MediaSessionArtworkCustom extends MediaSessionArtwork {
 }
 
 /// The [MediaSessionArtwork.uri] variant: the image at an `http(s)://` or
-/// `file://` URL, see [MediaSessionArtwork.uri] for who loads it.
+/// `file://` URL, which the package loads (see [MediaSessionArtwork.uri]).
 final class MediaSessionArtworkUri extends MediaSessionArtwork {
   /// The artwork location, an `http(s)://` or `file://` URL.
   final Uri uri;

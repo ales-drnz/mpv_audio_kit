@@ -103,6 +103,18 @@ jobs:
       - name: Publish dry run
         if: matrix.flutter == 'any'
         run: flutter pub publish --dry-run
+      # The FFmpeg tarball the generator parses comes from the cache, not
+      # from ffmpeg.org on every run: fetch_ffmpeg_src.sh keeps it and checks
+      # its SHA-256 either way.
+      - name: FFmpeg version of the codegen
+        id: ffmpeg
+        if: matrix.flutter == 'any'
+        run: echo "version=$(jq -r .ffmpeg tool/codegen/libmpv_manifest.json)" >> "$GITHUB_OUTPUT"
+      - if: matrix.flutter == 'any'
+        uses: actions/cache@v6
+        with:
+          path: tool/codegen/.ffmpeg-src/ffmpeg-${{ steps.ffmpeg.outputs.version }}.tar.gz
+          key: codegen-ffmpeg-${{ steps.ffmpeg.outputs.version }}
       # The generated effects API must be exactly what tool/codegen emits.
       # git status, not git diff: a file the generator adds is untracked.
       - name: Codegen drift
@@ -204,7 +216,10 @@ jobs:
           run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: pubspec.yaml
-      - run: flutter test -x network
+      # The files whose result can depend on the host: the Dart-only ones
+      # give here what they give on Linux, which runs them all.
+      - name: flutter test -x network (files that touch the host)
+        run: flutter test -x network $(scripts/ci/platform_tests.sh)
 
   build:
     name: Build ${{ matrix.name }}
@@ -343,9 +358,13 @@ jobs:
             ${{ steps.ndk.outputs.sdk }}/ndk/${{ steps.ndk.outputs.version }}
             ${{ steps.ndk.outputs.sdk }}/cmake/3.22.1
           key: android-ndk-${{ steps.ndk.outputs.version }}-cmake-3.22.1
+      # xvfb, a session bus and gdbus for the media session tests below, and
+      # ALSA, the one audio library libmpv links at load time.
       - name: Install Linux build dependencies
         if: matrix.name == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev
+        run: >-
+          sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev
+          xvfb dbus dbus-session-bus-common libglib2.0-bin libasound2t64
       - name: Disable Swift Package Manager
         if: matrix.swiftpm == 'off'
         run: flutter config --no-enable-swift-package-manager
@@ -357,6 +376,39 @@ jobs:
       - name: Build test app
         working-directory: test_app
         run: ${{ matrix.command }}
+      # The media session through the running app, on a session bus of its
+      # own and an X server: media_session_test reads the plugin's probe,
+      # linux_mpris_test reads the bus with gdbus and sends the commands of
+      # a desktop shell.
+      - name: Media session integration tests
+        if: matrix.name == 'Linux'
+        timeout-minutes: 20
+        working-directory: test_app
+        run: >-
+          xvfb-run -a dbus-run-session --
+          flutter test -d linux -r expanded
+          integration_test/media_session_test.dart
+          integration_test/linux_mpris_test.dart
+      # media_session_test reads the plugin's probe, windows_smtc_test what
+      # the SystemMediaTransportControls themselves hold.
+      - name: Media session integration tests
+        if: matrix.name == 'Windows'
+        timeout-minutes: 20
+        working-directory: test_app
+        run: >-
+          flutter test -d windows -r expanded
+          integration_test/media_session_test.dart
+          integration_test/windows_smtc_test.dart
+      # Spike: whether this runner shows the session to the API the Windows
+      # media flyout reads (GlobalSystemMediaTransportControlsSessionManager).
+      # It does not gate the build: its log answers the question, then it
+      # either joins the step above or goes.
+      - name: Media session spike (GSMTC)
+        if: matrix.name == 'Windows'
+        continue-on-error: true
+        timeout-minutes: 10
+        working-directory: test_app
+        run: flutter test -d windows -r expanded integration_test/windows_gsmtc_spike_test.dart
       # The plugin's JVM tests (android/src/test), through the test app's
       # Gradle build, whose wrapper flutter build apk has just written.
       - name: Kotlin unit tests

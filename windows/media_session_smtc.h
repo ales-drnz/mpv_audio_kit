@@ -39,8 +39,7 @@ struct SmtcMetadata {
   std::optional<std::string> album_artist;
   std::optional<std::string> genre;
   std::optional<int64_t> track_number;
-  std::vector<uint8_t> artwork;          // empty => no embedded/custom bytes
-  std::optional<std::string> artwork_uri;  // URL the OS fetches itself
+  std::vector<uint8_t> artwork;  // empty => no artwork
   std::optional<int64_t> duration_ms;
 };
 
@@ -126,9 +125,6 @@ class SmtcController {
 
   // Thumbnail cache keyed by byte identity — skip rebuilding when unchanged.
   std::vector<uint8_t> artwork_cache_key_{};
-  // Thumbnail cache for the URL path — skip re-issuing CreateFromUri when the
-  // URL is unchanged. Empty when the current art is byte- or none-sourced.
-  std::string artwork_uri_cache_key_{};
 };
 
 }  // namespace mpv_audio_kit
