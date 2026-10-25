@@ -74,6 +74,10 @@ class _PropertyCache {
   /// [_sendEndOfContent] reads count only for it, and its END_FILE carries
   /// what mpv last reported of it.
   _StartedEntry? started;
+
+  /// Whether the pump read `time-pos` itself after the last change mpv
+  /// sent for it: the next change is read again ([_forwardFreshTimePos]).
+  bool timePosRead = false;
 }
 
 /// The entry of a START_FILE, with the last `time-pos` and `duration` mpv
@@ -288,11 +292,47 @@ Future<void> _rereadUnavailable(
         _ => null,
       };
       final value = await read;
+      if (name == 'time-pos') cache.timePosRead = true;
       if (value != null) _forwardValue(send, name, format, value, cache);
     } catch (e) {
       send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
     }
   }
+}
+
+/// Reads `time-pos` for the pump's own use: the payloads of FILE_LOADED
+/// and PLAYBACK_RESTART, and the park. The next change mpv sends for it is
+/// read again ([_forwardFreshTimePos]).
+Future<double?> _readTimePos(CoreReader reader, _PropertyCache cache) {
+  cache.timePosRead = true;
+  return reader.float('time-pos');
+}
+
+/// Forwards the `time-pos` change that follows a read of it by the pump
+/// ([_readTimePos], [_rereadUnavailable]) with a fresh read in place of
+/// mpv's value. mpv samples `time-pos` for its observers at a tick, at
+/// most every 50 ms and none while the core is parked, and hands the
+/// newest sample over when the pump asks for the next event. That sample
+/// can be older than the pump's read: an entry that loads, plays out and
+/// parks between two ticks (a short one, or one the null output plays
+/// untimed) gives the position of its start after the park read, and
+/// nothing moves it again while it stays parked. mpv keeps one sample per
+/// property, so only this change can be older than the read; the ones
+/// after it are mpv's own.
+Future<void> _forwardFreshTimePos(
+  CoreReader reader,
+  _Send send,
+  _PropertyCache cache,
+) async {
+  cache.timePosRead = false;
+  final value = await reader.float('time-pos');
+  _dispatchProperty(
+    send,
+    'time-pos',
+    mpv.MpvFormat.mpvFormatDouble,
+    value ?? kPropertyUnavailable,
+    cache,
+  );
 }
 
 /// Reads `core-idle` and forwards it even when it equals the last value

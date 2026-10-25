@@ -93,8 +93,12 @@ final class EventLogic {
   /// A property change of [name] in [format], with the [value] the
   /// transport decoded, [kPropertyUnavailable] or [kPropertyUnobserved].
   /// Returns a future when the change takes reads (an end-of-content
-  /// trigger); the pump waits for it before the next event.
+  /// trigger, the `time-pos` change after a read of it); the pump waits
+  /// for it before the next event.
   Future<void>? property(String name, int format, Object? value) {
+    if (name == 'time-pos' && _cache.timePosRead) {
+      return _forwardFreshTimePos(_reader, _send, _cache);
+    }
     if (name != 'pause') _dispatchProperty(_send, name, format, value, _cache);
     if (_kEndOfContentTriggers.contains(name)) {
       return _sendEndOfContent(_reader, _send, _cache);
@@ -199,7 +203,9 @@ final class EventLogic {
     _flushGroup(_send, _cache);
     // Ahead of the event, so a listener of the restart sees `playing`.
     await _forwardCoreIdle(_reader, _send, _cache);
-    _send(MpvEventPlaybackRestart(timePos: await _reader.float('time-pos')));
+    _send(
+      MpvEventPlaybackRestart(timePos: await _readTimePos(_reader, _cache)),
+    );
     await _rereadUnavailable(_reader, _send, _cache);
     await _sendEndOfContent(_reader, _send, _cache);
   }
@@ -219,7 +225,7 @@ final class EventLogic {
     return MpvEventFileLoaded(
       path: await _reader.string('path'),
       playlist: await _reader.node('playlist'),
-      timePos: await _reader.float('time-pos'),
+      timePos: await _readTimePos(_reader, _cache),
       chapterIndex: await _reader.int64('chapter'),
       chapterList: await _reader.node('chapter-list'),
       coverData: cover?.$1,

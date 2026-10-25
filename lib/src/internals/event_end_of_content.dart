@@ -62,13 +62,14 @@ Future<void> _sendEndOfContent(
   if (parked) file = await reader.string('playlist/$pos/filename');
   final live = file?.startsWith('mak-pcm://') ?? false;
   double? timePos;
-  if (parked) timePos = await reader.float('time-pos');
+  if (parked) timePos = await _readTimePos(reader, cache);
   final count = await reader.int64('playlist-count');
   if (await reader.int64('playlist-pos') != pos) return;
   if (await reader.int64('playlist/$pos/id') != started.id) return;
   // The park position supersedes a throttled time-pos still held back,
-  // which would land after the event, as at PLAYBACK_RESTART. It is also
-  // where the entry ended, for its END_FILE.
+  // which would land after the event, as at PLAYBACK_RESTART, and a change
+  // mpv sampled before it, which is read again. It is also where the entry
+  // ended, for its END_FILE.
   if (parked) cache.trailing.remove('time-pos');
   if (timePos != null) started.position = timePos;
   send(
