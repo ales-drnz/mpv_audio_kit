@@ -360,6 +360,8 @@ void _dispatchEvent(
       // mpv sent, which the seek may already have moved.
       cache.trailing.remove('time-pos');
       _flushGroup(toMain, cache);
+      // Ahead of the event, so a listener of the restart sees `playing`.
+      _forwardCoreIdle(lib, handle, toMain, cache);
       toMain.send(
         MpvEventPlaybackRestart(
           timePos: _getPropDouble(lib, handle, 'time-pos'),
