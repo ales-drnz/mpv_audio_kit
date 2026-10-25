@@ -33,18 +33,28 @@ class LifecycleResult {
 /// Given the previous [PlayerState] and any subset of `playing`,
 /// `buffering` and `completed` overrides, returns the new state plus a
 /// per-field "did-change" flag the caller pushes to the corresponding
-/// broadcast reactives.
+/// broadcast reactives. A `completed` written also writes how the entry
+/// ended, [readError] and [skippedSegments], which belong to a completed
+/// entry only: a `false` clears them.
 @internal
 LifecycleResult computeLifecycle({
   required PlayerState prev,
   bool? playing,
   bool? buffering,
   bool? completed,
+  bool? readError,
+  int? skippedSegments,
 }) {
   var next = prev;
   if (playing != null) next = next.copyWith(playing: playing);
   if (buffering != null) next = next.copyWith(buffering: buffering);
-  if (completed != null) next = next.copyWith(completed: completed);
+  if (completed != null) {
+    next = next.copyWith(
+      completed: completed,
+      readError: completed ? readError : null,
+      skippedSegments: completed ? skippedSegments : null,
+    );
+  }
   return LifecycleResult(
     newState: next,
     playingDidChange: playing != null && prev.playing != playing,

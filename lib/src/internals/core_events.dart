@@ -126,8 +126,18 @@ class MpvEventEndFile extends MpvIsolateEvent {
   /// when none came.
   final double? duration;
 
+  /// Whether the entry stopped on a read error, from the event (libmpv-r20,
+  /// patch read_error). `null` from a libmpv without the patch, which the
+  /// transport tells by the property `demuxer-read-error` it adds.
+  final bool? readError;
+
+  /// The HLS or DASH segments the entry lost to errors, from the event;
+  /// `null` as for [readError].
+  final int? skippedSegments;
+
   /// Carries the end-of-file [reason] and [error] codes of entry [entryId],
-  /// with its last [position] and [duration].
+  /// with its last [position] and [duration], and the [readError] and
+  /// [skippedSegments] of the event.
   MpvEventEndFile(
     this.entryId,
     this.reason,
@@ -135,6 +145,8 @@ class MpvEventEndFile extends MpvIsolateEvent {
     this.lastEntry = false,
     this.position,
     this.duration,
+    this.readError,
+    this.skippedSegments,
   });
 }
 
@@ -170,13 +182,25 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   /// when [parked].
   final double? timePos;
 
-  /// Carries the [eof], [parked], [lastEntry], [live] and [timePos] reads.
+  /// `demuxer-read-error` read at the park: whether the file stopped on a
+  /// read error. `null` when the read failed, as on a libmpv without the
+  /// property. Read only when [parked].
+  final bool? readError;
+
+  /// `demuxer-skipped-segments` read at the park, `null` as for
+  /// [readError].
+  final int? skippedSegments;
+
+  /// Carries the [eof], [parked], [lastEntry], [live], [timePos],
+  /// [readError] and [skippedSegments] reads.
   MpvEventEndOfContent({
     required this.eof,
     required this.parked,
     required this.lastEntry,
     this.live = false,
     this.timePos,
+    this.readError,
+    this.skippedSegments,
   });
 }
 

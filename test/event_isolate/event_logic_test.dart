@@ -190,12 +190,55 @@ void main() {
         'pause',
         'playlist/0/filename',
         'time-pos',
+        'demuxer-read-error',
+        'demuxer-skipped-segments',
         'playlist-count',
         'playlist-pos',
         'playlist/0/id',
       ]);
     },
   );
+
+  test('the park reads how the entry ended, and END_FILE carries its '
+      'fields through', () async {
+    final values = _parkedFirstOfTwo()
+      ..['demuxer-read-error'] = 1
+      ..['demuxer-skipped-segments'] = 2;
+    final out = <MpvIsolateEvent>[];
+    final logic = EventLogic(_Reader(values), out.add);
+    await logic.dispatch(MpvEventStartFile(7));
+    await logic.property('pause', MpvFormat.mpvFormatFlag, 1);
+    final parked = out.whereType<MpvEventEndOfContent>().single;
+    expect(parked.readError, isTrue);
+    expect(parked.skippedSegments, 2);
+    await logic.dispatch(
+      MpvEventEndFile(
+        7,
+        MpvEndFileReason.mpvEndFileReasonEof,
+        0,
+        readError: true,
+        skippedSegments: 3,
+      ),
+    );
+    await logic.dispatch(
+      MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonStop, 0),
+    );
+    final ends = out.whereType<MpvEventEndFile>().toList();
+    expect(
+      [for (final e in ends) (e.readError, e.skippedSegments)],
+      [(true, 3), (null, null)],
+    );
+  });
+
+  test('a park on a libmpv without the properties reads nulls', () async {
+    final out = <MpvIsolateEvent>[];
+    final logic = EventLogic(_Reader(_parkedFirstOfTwo()), out.add);
+    await logic.dispatch(MpvEventStartFile(7));
+    await logic.property('pause', MpvFormat.mpvFormatFlag, 1);
+    final parked = out.whereType<MpvEventEndOfContent>().single;
+    expect(parked.readError, isNull);
+    expect(parked.skippedSegments, isNull);
+  });
 
   test('the end of content of an entry not started yet is not sent', () async {
     final values = _parkedFirstOfTwo()..['playlist/0/id'] = 9;

@@ -75,6 +75,42 @@ final class MpvEventEndFile extends Struct {
   external int playlistEntryId;
 }
 
+/// FFI layout of `mpv_event_end_file` in a libmpv of libmpv-r20 or later
+/// (patch read_error), which appends two fields: whether the file stopped
+/// on a read error, and how many HLS or DASH segments it lost. The same
+/// offsets on every ABI of the release. Read it only from a libmpv that has
+/// the patch: an older one copies a shorter event, and the fields past it
+/// are not its memory.
+final class MpvEventEndFileReadError extends Struct {
+  /// As [MpvEventEndFile.reason].
+  @Int32()
+  external int reason;
+
+  /// As [MpvEventEndFile.error].
+  @Int32()
+  external int error;
+
+  /// As [MpvEventEndFile.playlistEntryId].
+  @Int64()
+  external int playlistEntryId;
+
+  /// The `playlist_insert_id` of a redirect.
+  @Int64()
+  external int playlistInsertId;
+
+  /// The `playlist_insert_num_entries` of a redirect.
+  @Int32()
+  external int playlistInsertNumEntries;
+
+  /// `mak_read_error`: 1 when the file stopped on a read error, else 0.
+  @Int32()
+  external int makReadError;
+
+  /// `mak_skipped_segments`: the HLS or DASH segments lost to errors.
+  @Int64()
+  external int makSkippedSegments;
+}
+
 // ---------------------------------------------------------------------------
 // mpv_event_property
 // ---------------------------------------------------------------------------

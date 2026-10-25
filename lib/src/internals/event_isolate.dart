@@ -112,6 +112,7 @@ void _isolateEntry(SendPort initialReplyPort) {
 
   fromMain.listen((message) async {
     if (message is _InitMessage) {
+      var readErrors = false;
       toMain = message.toMain;
       final wakeupCounter = message.wakeupCounterAddress != null
           ? Pointer<Int64>.fromAddress(message.wakeupCounterAddress!)
@@ -147,6 +148,7 @@ void _isolateEntry(SendPort initialReplyPort) {
         }
         _applyPropertyStrings(lib!, h, message.postInitOptions);
         _applyObserves(lib!, h, message.observes);
+        readErrors = _hasReadErrors(lib!, h);
         // Not registered with the logic: `pause` never reaches the main
         // isolate, the logic reads it for the end of content only.
         _applyObserves(lib!, h, const [
@@ -186,6 +188,7 @@ void _isolateEntry(SendPort initialReplyPort) {
         ownerGone,
         logic,
         wakeupCounter,
+        readErrors: readErrors,
       );
       if (stopFlag.value == 0 && ownerGone.value != 0) {
         releaseOrphan(lib!, handle!);
@@ -203,6 +206,20 @@ void _isolateEntry(SendPort initialReplyPort) {
 /// isolate hands out.
 const int _kPauseObserverReplyId = 1 << 62;
 
+/// Whether the libmpv appends the read error to its END_FILE event
+/// (libmpv-r20, patch read_error), told by the property the patch adds:
+/// idle, it is unavailable with the patch and not found without it.
+bool _hasReadErrors(mpv.MpvLibrary lib, Pointer<mpv.MpvHandle> handle) =>
+    using((arena) {
+      final rc = lib.mpvGetProperty(
+        handle,
+        'demuxer-read-error'.toNativeUtf8(allocator: arena),
+        mpv.MpvFormat.mpvFormatFlag,
+        arena<Int32>().cast(),
+      );
+      return rc != mpv.MpvError.mpvErrorPropertyNotFound;
+    });
+
 Future<void> _runEventLoop(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
@@ -210,8 +227,9 @@ Future<void> _runEventLoop(
   Pointer<Int32> stopFlag,
   Pointer<Int32> ownerGone,
   EventLogic logic,
-  Pointer<Int64>? wakeupCounter,
-) async {
+  Pointer<Int64>? wakeupCounter, {
+  required bool readErrors,
+}) async {
   while (stopFlag.value == 0 && ownerGone.value == 0) {
     // Test-only telemetry; null in production.
     if (wakeupCounter != null) {
@@ -246,7 +264,7 @@ Future<void> _runEventLoop(
     try {
       // Decoded before any await: the payload is valid only until the next
       // mpv_wait_event.
-      final reads = _dispatchEvent(logic, event);
+      final reads = _dispatchEvent(logic, event, readErrors: readErrors);
       if (reads != null) await reads;
       logic.flushTrailing();
     } catch (e, st) {
@@ -259,9 +277,14 @@ Future<void> _runEventLoop(
   }
 }
 
-/// Decodes [event] out of the core's memory and hands it to [logic].
-/// Returns the future of the reads the event takes, if any.
-Future<void>? _dispatchEvent(EventLogic logic, Pointer<mpv.MpvEvent> event) {
+/// Decodes [event] out of the core's memory and hands it to [logic], with
+/// the read error of an END_FILE when the libmpv appends it
+/// ([readErrors]). Returns the future of the reads the event takes, if any.
+Future<void>? _dispatchEvent(
+  EventLogic logic,
+  Pointer<mpv.MpvEvent> event, {
+  required bool readErrors,
+}) {
   final ev = event.ref;
   switch (ev.eventId) {
     case mpv.MpvEventId.mpvEventPropertyChange:
@@ -282,9 +305,21 @@ Future<void>? _dispatchEvent(EventLogic logic, Pointer<mpv.MpvEvent> event) {
     case mpv.MpvEventId.mpvEventFileLoaded:
       return logic.dispatch(MpvEventFileLoaded());
     case mpv.MpvEventId.mpvEventEndFile:
-      final ef = ev.data.cast<mpv.MpvEventEndFile>().ref;
+      if (!readErrors) {
+        final ef = ev.data.cast<mpv.MpvEventEndFile>().ref;
+        return logic.dispatch(
+          MpvEventEndFile(ef.playlistEntryId, ef.reason, ef.error),
+        );
+      }
+      final ef = ev.data.cast<mpv.MpvEventEndFileReadError>().ref;
       return logic.dispatch(
-        MpvEventEndFile(ef.playlistEntryId, ef.reason, ef.error),
+        MpvEventEndFile(
+          ef.playlistEntryId,
+          ef.reason,
+          ef.error,
+          readError: ef.makReadError != 0,
+          skippedSegments: ef.makSkippedSegments,
+        ),
       );
     case mpv.MpvEventId.mpvEventAudioReconfig:
       return logic.audioReconfig();

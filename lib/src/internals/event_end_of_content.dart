@@ -62,7 +62,16 @@ Future<void> _sendEndOfContent(
   if (parked) file = await reader.string('playlist/$pos/filename');
   final live = file?.startsWith('mak-pcm://') ?? false;
   double? timePos;
-  if (parked) timePos = await reader.float('time-pos');
+  int? readError;
+  int? skipped;
+  if (parked) {
+    timePos = await reader.float('time-pos');
+    // libmpv-r20 (patch read_error). The demuxer marks the error under the
+    // lock it marks the end with, before the output can play out to the
+    // park: read now, the values are the file's.
+    readError = await reader.flag('demuxer-read-error');
+    skipped = await reader.int64('demuxer-skipped-segments');
+  }
   final count = await reader.int64('playlist-count');
   if (await reader.int64('playlist-pos') != pos) return;
   if (await reader.int64('playlist/$pos/id') != started.id) return;
@@ -78,6 +87,8 @@ Future<void> _sendEndOfContent(
       lastEntry: count != null && pos == count - 1,
       live: live,
       timePos: timePos,
+      readError: readError == null ? null : readError != 0,
+      skippedSegments: skipped,
     ),
   );
 }

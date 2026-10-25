@@ -123,12 +123,12 @@ final class EventLogic {
         _send(event);
       case MpvEventFileLoaded():
         return _fileLoaded();
-      case MpvEventEndFile(:final entryId, :final reason, :final error):
-        if (reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
-            reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
-          return _endFile(entryId, reason, error);
+      case final MpvEventEndFile ended:
+        if (ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
+            ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
+          return _endFile(ended);
         }
-        _send(_endFileEvent(entryId, reason, error, lastEntry: false));
+        _send(_endFileEvent(ended, lastEntry: false));
       case MpvEventPlaybackRestart():
         return _playbackRestart();
       default:
@@ -162,29 +162,29 @@ final class EventLogic {
     await _sendEndOfContent(_reader, _send, _cache);
   }
 
-  Future<void> _endFile(int entryId, int reason, int error) async {
-    final lastEntry = await _isLastEntry(_reader, entryId);
-    _send(_endFileEvent(entryId, reason, error, lastEntry: lastEntry));
+  Future<void> _endFile(MpvEventEndFile ended) async {
+    final lastEntry = await _isLastEntry(_reader, ended.entryId);
+    _send(_endFileEvent(ended, lastEntry: lastEntry));
   }
 
-  /// The END_FILE of entry [entryId]. mpv has unloaded the file by now:
-  /// what it reported of the entry comes from the START_FILE that named it
-  /// ([_PropertyCache.started]).
+  /// The END_FILE the transport decoded as [ended], with what mpv reported
+  /// of its entry. mpv has unloaded the file by now: that comes from the
+  /// START_FILE that named it ([_PropertyCache.started]).
   MpvEventEndFile _endFileEvent(
-    int entryId,
-    int reason,
-    int error, {
+    MpvEventEndFile ended, {
     required bool lastEntry,
   }) {
     final started = _cache.started;
-    final entry = started?.id == entryId ? started : null;
+    final entry = started?.id == ended.entryId ? started : null;
     return MpvEventEndFile(
-      entryId,
-      reason,
-      error,
+      ended.entryId,
+      ended.reason,
+      ended.error,
       lastEntry: lastEntry,
       position: entry?.position,
       duration: entry?.duration,
+      readError: ended.readError,
+      skippedSegments: ended.skippedSegments,
     );
   }
 

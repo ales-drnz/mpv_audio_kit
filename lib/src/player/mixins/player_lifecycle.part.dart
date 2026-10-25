@@ -79,14 +79,23 @@ extension _Lifecycle on _PlayerBase {
   /// Updates the lifecycle triple (playing, buffering, completed) and
   /// emits per-reactive only for fields that actually changed. Used
   /// for compound transitions (start-file, file-loaded, end-file,
-  /// end of content, shutdown, idle-active). The pure diff lives in
-  /// [computeLifecycle].
-  void _updateLifecycle({bool? playing, bool? buffering, bool? completed}) {
+  /// end of content, shutdown, idle-active). With `completed`, how the
+  /// entry ended ([readError], [skippedSegments]) goes into the state
+  /// before the flag is emitted. The pure diff lives in [computeLifecycle].
+  void _updateLifecycle({
+    bool? playing,
+    bool? buffering,
+    bool? completed,
+    bool? readError,
+    int? skippedSegments,
+  }) {
     final result = computeLifecycle(
       prev: _state,
       playing: playing,
       buffering: buffering,
       completed: completed,
+      readError: readError,
+      skippedSegments: skippedSegments,
     );
     _state = result.newState;
     if (result.playingDidChange) _reactives.playing.update(playing!);
@@ -116,11 +125,14 @@ extension _Lifecycle on _PlayerBase {
   /// change, cleared by the next load, and missed the real end.
   ///
   /// A live PCM entry ([live]) has no restart either: it plays once and
-  /// parks under [Loop.file] too (F225).
+  /// parks under [Loop.file] too (F225). [readError] and [skippedSegments],
+  /// read at the park, tell how the entry ended.
   void _settleEndOfContent({
     required bool parked,
     required bool lastEntry,
     required bool live,
+    bool? readError,
+    int? skippedSegments,
   }) {
     if (!_transport.hasLoadedFile) return;
     final loop = _state.loop;
@@ -129,7 +141,11 @@ extension _Lifecycle on _PlayerBase {
         lastEntry &&
         (loop == Loop.off || (live && loop == Loop.file));
     if (end == _state.completed) return;
-    _updateLifecycle(completed: end);
+    _updateLifecycle(
+      completed: end,
+      readError: readError,
+      skippedSegments: skippedSegments,
+    );
     // The play-pause intent is spent at the end of content; leaving the
     // end (a seek back, a new file) keeps it. Only on the edge: a jump or
     // a replace issued at the park can see one more parked read before

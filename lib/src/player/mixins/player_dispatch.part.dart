@@ -60,13 +60,21 @@ mixin _DispatchModule on _PlayerBase {
           :final lastEntry,
           :final live,
           :final timePos,
+          :final readError,
+          :final skippedSegments,
         ):
           // Parked: the position where the file ended, before completed.
           if (parked) _applyPolledPosition(timePos);
           // The core's value at the read, ahead of a skipped or late
           // `eof-reached` notification.
           _dispatchProperty('eof-reached', eof);
-          _settleEndOfContent(parked: parked, lastEntry: lastEntry, live: live);
+          _settleEndOfContent(
+            parked: parked,
+            lastEntry: lastEntry,
+            live: live,
+            readError: readError,
+            skippedSegments: skippedSegments,
+          );
         case final MpvEventEndFile ended:
           _onEndFile(ended);
         case MpvEventReply():
@@ -205,6 +213,8 @@ mixin _DispatchModule on _PlayerBase {
       :lastEntry,
       :position,
       :duration,
+      :readError,
+      :skippedSegments,
     ) = ended;
     final media = _entries.onEndFile(entryId);
     _releaseSettled();
@@ -216,6 +226,8 @@ mixin _DispatchModule on _PlayerBase {
         media: media,
         position: position == null ? null : secondsToDuration(position),
         duration: duration == null ? null : secondsToDuration(duration),
+        readError: readError,
+        skippedSegments: skippedSegments,
       ),
     );
     if (error < 0) {
@@ -256,6 +268,8 @@ mixin _DispatchModule on _PlayerBase {
       playing: false,
       buffering: false,
       completed: isEof && lastEntry && _state.loop == Loop.off,
+      readError: readError,
+      skippedSegments: skippedSegments,
     );
   }
 

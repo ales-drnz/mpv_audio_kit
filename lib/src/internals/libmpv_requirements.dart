@@ -25,6 +25,12 @@ const List<(String, String)> libmpvRequiredPatches = [
         'file, and after a refused change the audio can differ from the '
         'state',
   ),
+  (
+    'demuxer-read-error',
+    'the readError and skippedSegments of MpvFileEndedEvent and of '
+        'PlayerState stay null, so an entry cut short by a read error looks '
+        'like one that ended',
+  ),
 ];
 
 /// The libmpv-scripts release stamped in an mpv version string:
