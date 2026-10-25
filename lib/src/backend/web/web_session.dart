@@ -209,8 +209,21 @@ final class WebSession implements MpvSession {
       case MpvEventId.mpvEventFileLoaded:
         return _logic.dispatch(MpvEventFileLoaded());
       case MpvEventId.mpvEventEndFile:
+        // The read error fields of a module with the read_error patch; a
+        // module without it has neither (offsets 0).
+        final fields = m.endFile;
         return _logic.dispatch(
-          MpvEventEndFile(m.i64(data + 8), m.i32(data), m.i32(data + 4)),
+          MpvEventEndFile(
+            m.i64(data + 8),
+            m.i32(data),
+            m.i32(data + 4),
+            readError: fields.readError == 0
+                ? null
+                : m.i32(data + fields.readError) != 0,
+            skippedSegments: fields.skippedSegments == 0
+                ? 0
+                : m.i64(data + fields.skippedSegments),
+          ),
         );
       case MpvEventId.mpvEventAudioReconfig:
         return _logic.dispatch(MpvEventAudioReconfig());

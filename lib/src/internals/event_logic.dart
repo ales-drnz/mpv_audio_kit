@@ -116,12 +116,12 @@ final class EventLogic {
         _send(event);
       case MpvEventFileLoaded():
         return _fileLoaded();
-      case MpvEventEndFile(:final entryId, :final reason, :final error):
+      case MpvEventEndFile(:final reason):
         if (reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
             reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
-          return _endFile(entryId, reason, error);
+          return _endFile(event);
         }
-        _send(_endFileEvent(entryId, reason, error, lastEntry: false));
+        _send(_endFileEvent(event, lastEntry: false));
       case MpvEventAudioReconfig():
         return _audioReconfig(event);
       case MpvEventPlaybackRestart():
@@ -157,29 +157,29 @@ final class EventLogic {
     await _sendEndOfContent(_reader, _send, _cache);
   }
 
-  Future<void> _endFile(int entryId, int reason, int error) async {
-    final lastEntry = await _isLastEntry(_reader, entryId);
-    _send(_endFileEvent(entryId, reason, error, lastEntry: lastEntry));
+  Future<void> _endFile(MpvEventEndFile ended) async {
+    final lastEntry = await _isLastEntry(_reader, ended.entryId);
+    _send(_endFileEvent(ended, lastEntry: lastEntry));
   }
 
-  /// The END_FILE of entry [entryId]. mpv has unloaded the file by now:
-  /// what it reported of the entry comes from the START_FILE that named it
-  /// ([_PropertyCache.started]).
+  /// The END_FILE [ended] as the player gets it. mpv has unloaded the file
+  /// by now: what it reported of the entry comes from the START_FILE that
+  /// named it ([_PropertyCache.started]).
   MpvEventEndFile _endFileEvent(
-    int entryId,
-    int reason,
-    int error, {
+    MpvEventEndFile ended, {
     required bool lastEntry,
   }) {
     final started = _cache.started;
-    final entry = started?.id == entryId ? started : null;
+    final entry = started?.id == ended.entryId ? started : null;
     return MpvEventEndFile(
-      entryId,
-      reason,
-      error,
+      ended.entryId,
+      ended.reason,
+      ended.error,
       lastEntry: lastEntry,
       position: entry?.position,
       duration: entry?.duration,
+      readError: ended.readError,
+      skippedSegments: ended.skippedSegments,
     );
   }
 

@@ -134,8 +134,20 @@ class MpvEventEndFile extends MpvIsolateEvent {
   /// when none came.
   final double? duration;
 
+  /// Whether the read of the entry stopped on an error before its end (a
+  /// connection that dropped, a server that closed early, a resume it
+  /// refused), from the `mak_read_error` field the read_error patch of
+  /// libmpv-r20 adds to `mpv_event_end_file`. `null` when the libmpv
+  /// cannot tell. The transports fill it, the logic carries it as it is.
+  final bool? readError;
+
+  /// The HLS or DASH segments lost to errors since the entry opened, from
+  /// `mak_skipped_segments`; `0` when none were, or the libmpv cannot tell.
+  final int skippedSegments;
+
   /// Carries the end-of-file [reason] and [error] codes of entry [entryId],
-  /// with its last [position] and [duration].
+  /// with its last [position] and [duration], and the [readError] and
+  /// [skippedSegments] of its read.
   MpvEventEndFile(
     this.entryId,
     this.reason,
@@ -143,6 +155,8 @@ class MpvEventEndFile extends MpvIsolateEvent {
     this.lastEntry = false,
     this.position,
     this.duration,
+    this.readError,
+    this.skippedSegments = 0,
   });
 }
 
