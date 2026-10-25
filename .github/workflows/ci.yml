@@ -374,6 +374,26 @@ jobs:
           flutter test -d linux -r expanded
           integration_test/media_session_test.dart
           integration_test/linux_mpris_test.dart
+      # media_session_test reads the plugin's probe, windows_smtc_test what
+      # the SystemMediaTransportControls themselves hold.
+      - name: Media session integration tests
+        if: matrix.name == 'Windows'
+        timeout-minutes: 20
+        working-directory: test_app
+        run: >-
+          flutter test -d windows -r expanded
+          integration_test/media_session_test.dart
+          integration_test/windows_smtc_test.dart
+      # Spike: whether this runner shows the session to the API the Windows
+      # media flyout reads (GlobalSystemMediaTransportControlsSessionManager).
+      # It does not gate the build: its log answers the question, then it
+      # either joins the step above or goes.
+      - name: Media session spike (GSMTC)
+        if: matrix.name == 'Windows'
+        continue-on-error: true
+        timeout-minutes: 10
+        working-directory: test_app
+        run: flutter test -d windows -r expanded integration_test/windows_gsmtc_spike_test.dart
       # The plugin's JVM tests (android/src/test), through the test app's
       # Gradle build, whose wrapper flutter build apk has just written.
       - name: Kotlin unit tests

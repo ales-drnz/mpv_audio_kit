@@ -13,8 +13,10 @@
 // Two platform-gated groups share this file:
 //  - Apple (iOS / macOS): `MediaSessionPlugin` → `MPNowPlayingInfoCenter`,
 //    read back via `debugNowPlayingInfo`.
-//  - Android: `MediaSessionManager` → Media3 `MediaSession` /
-//    `SimpleBasePlayer`, read back via `debugMediaSessionState`.
+//  - Android, Windows and Linux, read back via `debugMediaSessionState`:
+//    `MediaSessionManager` → Media3 `MediaSession` / `SimpleBasePlayer`,
+//    the SMTC renderer and the MPRIS server. linux_mpris_test and
+//    windows_smtc_test read what the OS itself holds.
 //
 // Cover art is intentionally NOT asserted — title / artist / album /
 // duration / state come from standard mpv properties and work everywhere,
@@ -22,54 +24,12 @@
 
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '_helpers/asset_fixture.dart';
-
-const _probe = MethodChannel('mpv_audio_kit/media_session');
-
-/// Reads the OS-visible Now Playing snapshot back from the plugin (the
-/// real `MPNowPlayingInfoCenter.default()`). Apple only.
-Future<Map<String, Object?>> readNowPlaying() async {
-  final raw = await _probe.invokeMethod<Map<Object?, Object?>>(
-    'debugNowPlayingInfo',
-  );
-  return Map<String, Object?>.from(raw ?? const {});
-}
-
-/// Reads back the real published Media3 session State from the Android
-/// plugin (what the OS notification / lock-screen renders from). Android only.
-Future<Map<String, Object?>> readMediaSession() async {
-  final raw = await _probe.invokeMethod<Map<Object?, Object?>>(
-    'debugMediaSessionState',
-  );
-  return Map<String, Object?>.from(raw ?? const {});
-}
-
-/// Polls [reader] until [predicate] holds or the timeout fires. Returns
-/// the last snapshot so the caller can assert on it (and get a useful
-/// failure message). Method-channel pushes are async, so a settled
-/// assertion needs a poll, not a fixed delay. [reader] defaults to the
-/// Apple Now Playing probe; the Android tests pass [readMediaSession].
-Future<Map<String, Object?>> pumpUntil(
-  bool Function(Map<String, Object?>) predicate, {
-  Duration timeout = const Duration(seconds: 5),
-  Future<Map<String, Object?>> Function() reader = readNowPlaying,
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  var snapshot = await reader();
-  while (!predicate(snapshot)) {
-    if (DateTime.now().isAfter(deadline)) {
-      fail('Media session never satisfied the predicate. Last: $snapshot');
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    snapshot = await reader();
-  }
-  return snapshot;
-}
+import '_helpers/session_probe.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

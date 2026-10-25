@@ -126,6 +126,22 @@ flutter::EncodableValue Str(const std::optional<std::string>& v) {
   return v.has_value() ? flutter::EncodableValue(*v) : flutter::EncodableValue();
 }
 
+const char* StatusName(wm::MediaPlaybackStatus status) {
+  switch (status) {
+    case wm::MediaPlaybackStatus::Closed:
+      return "closed";
+    case wm::MediaPlaybackStatus::Changing:
+      return "changing";
+    case wm::MediaPlaybackStatus::Stopped:
+      return "stopped";
+    case wm::MediaPlaybackStatus::Playing:
+      return "playing";
+    case wm::MediaPlaybackStatus::Paused:
+      return "paused";
+  }
+  return "unknown";
+}
+
 }  // namespace
 
 SmtcController::SmtcController(
@@ -507,7 +523,26 @@ flutter::EncodableValue SmtcController::DebugState() const {
       {flutter::EncodableValue("loop"), flutter::EncodableValue(playback_.loop)},
       {flutter::EncodableValue("shuffle"),
        flutter::EncodableValue(playback_.shuffle)},
+      {flutter::EncodableValue("smtcCreated"), flutter::EncodableValue(created_)},
   };
+  // The keys above are this controller's copy of what Dart sent. The smtc*
+  // ones are read back from the transport controls, what the OS was given.
+  if (created_) {
+    auto du = smtc_.DisplayUpdater();
+    auto mp = du.MusicProperties();
+    m[flutter::EncodableValue("smtcEnabled")] =
+        flutter::EncodableValue(smtc_.IsEnabled());
+    m[flutter::EncodableValue("smtcStatus")] =
+        flutter::EncodableValue(StatusName(smtc_.PlaybackStatus()));
+    m[flutter::EncodableValue("smtcTitle")] =
+        flutter::EncodableValue(winrt::to_string(mp.Title()));
+    m[flutter::EncodableValue("smtcArtist")] =
+        flutter::EncodableValue(winrt::to_string(mp.Artist()));
+    m[flutter::EncodableValue("smtcAlbum")] =
+        flutter::EncodableValue(winrt::to_string(mp.AlbumTitle()));
+    m[flutter::EncodableValue("smtcThumbnail")] =
+        flutter::EncodableValue(static_cast<bool>(du.Thumbnail()));
+  }
   return flutter::EncodableValue(std::move(m));
 }
 
