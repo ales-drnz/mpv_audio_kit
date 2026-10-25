@@ -74,6 +74,25 @@ void main() {
     });
   });
 
+  group('Media.streamLavfOptions copyWith', () {
+    test('omitted keeps the current value', () {
+      const a = Media('a', streamLavfOptions: {'k': 'v'});
+      expect(a.copyWith(uri: 'b').streamLavfOptions, {'k': 'v'});
+    });
+
+    test('set overrides', () {
+      const a = Media('a');
+      expect(a.copyWith(streamLavfOptions: {'k': 'v2'}).streamLavfOptions, {
+        'k': 'v2',
+      });
+    });
+
+    test('explicit null clears', () {
+      const a = Media('a', streamLavfOptions: {'k': 'v'});
+      expect(a.copyWith(streamLavfOptions: null).streamLavfOptions, isNull);
+    });
+  });
+
   group('Media.start copyWith', () {
     test('omitted keeps the current value', () {
       const a = Media('a', start: Duration(seconds: 3));
@@ -161,6 +180,24 @@ void main() {
       expect(a.hashCode, isNot(b.hashCode));
     });
 
+    test('streamLavfOptions participate in equality', () {
+      const a = Media('a');
+      const b = Media('a', streamLavfOptions: {'reconnect_streamed': '1'});
+      expect(a, isNot(b));
+      expect(a.hashCode, isNot(b.hashCode));
+
+      const c = Media('a', streamLavfOptions: {'reconnect_streamed': '1'});
+      expect(b, c);
+      expect(b.hashCode, c.hashCode);
+      expect(
+        b,
+        isNot(
+          const Media('a', demuxerLavfOptions: {'reconnect_streamed': '1'}),
+        ),
+        reason: 'the two option maps are not interchangeable',
+      );
+    });
+
     test('demuxerLavfOptions participate in equality', () {
       const a = Media('a');
       const b = Media('a', demuxerLavfOptions: {'seg_format_options': 'x=1'});
@@ -195,6 +232,16 @@ void main() {
       ).toString();
       expect(out, contains('Authorization'));
       expect(out, isNot(contains('s3cr3t')));
+    });
+
+    test('the stream options are printed', () {
+      expect(
+        const Media(
+          'a',
+          streamLavfOptions: {'reconnect_streamed': '1'},
+        ).toString(),
+        contains('streamLavfOptions: {reconnect_streamed: 1}'),
+      );
     });
 
     test('the end is printed', () {

@@ -70,9 +70,34 @@ class _PropertyCache {
   /// When the first change in [group] was held.
   int groupSince = 0;
 
-  /// The `playlist_entry_id` of the last START_FILE forwarded to the main
-  /// isolate: [_sendEndOfContent] reads count only for that entry.
-  int? startedEntryId;
+  /// The entry of the last START_FILE forwarded to the main isolate:
+  /// [_sendEndOfContent] reads count only for it, and its END_FILE carries
+  /// what mpv last reported of it.
+  _StartedEntry? started;
+}
+
+/// The entry of a START_FILE, with the last `time-pos` and `duration` mpv
+/// reported for it, in seconds. The unavailable notifications of its
+/// unload leave them, so they still describe it when its END_FILE goes
+/// out, after the unload.
+class _StartedEntry {
+  _StartedEntry(this.id);
+
+  /// The `playlist_entry_id` the START_FILE named.
+  final int id;
+
+  double? position;
+  double? duration;
+
+  /// Keeps [value] of [name] when it is one of the two.
+  void note(String name, double value) {
+    switch (name) {
+      case 'time-pos':
+        position = value;
+      case 'duration':
+        duration = value;
+    }
+  }
 }
 
 /// The `mpv_wait_event` timeout: [_kWaitEventTimeoutSeconds], shortened to
@@ -141,6 +166,8 @@ void _dispatchProperty(
     _ => _unobserved,
   };
   if (identical(value, _unobserved)) return;
+  // Every value mpv reports, ahead of the throttle and the dedup.
+  if (value is double) cache.started?.note(name, value);
   _forwardValue(toMain, name, prop.format, value, cache);
 }
 

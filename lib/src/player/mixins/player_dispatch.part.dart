@@ -207,11 +207,26 @@ mixin _DispatchModule on _PlayerBase {
 
   /// MPV_EVENT_END_FILE: the entry ended, finished, stopped or failed.
   void _onEndFile(MpvEventEndFile ended) {
-    final MpvEventEndFile(:reason, :error, :lastEntry) = ended;
-    _entries.onEndFile();
+    final MpvEventEndFile(
+      :entryId,
+      :reason,
+      :error,
+      :lastEntry,
+      :position,
+      :duration,
+    ) = ended;
+    final media = _entries.onEndFile(entryId);
     _releaseSettled();
     final typedReason = MpvEndFileReason.fromValue(reason);
-    _endFileCtrl.add(MpvFileEndedEvent(reason: typedReason, error: error));
+    _endFileCtrl.add(
+      MpvFileEndedEvent(
+        reason: typedReason,
+        error: error,
+        media: media,
+        position: position == null ? null : secondsToDuration(position),
+        duration: duration == null ? null : secondsToDuration(duration),
+      ),
+    );
     if (error < 0) {
       _errorCtrl.add(
         EndFileError(

@@ -115,8 +115,39 @@ void main() {
 
     test('until its END_FILE when it fails', () {
       table.onStartFile(3);
-      table.onEndFile();
+      table.onEndFile(3);
       expect(table.loading, isNull);
+    });
+  });
+
+  group('the entry that ends', () {
+    test('reports the Media of its START_FILE, after it left', () {
+      const media = Media('fd://4');
+      add(4, held: false, media: media);
+      table.onStartFile(4);
+      // A stop: the empty playlist reaches the table before the END_FILE.
+      table.onPlaylist(report([5]));
+      expect(table.mediaOf(4), isNull);
+      expect(table.onEndFile(4), same(media));
+    });
+
+    test('an END_FILE for another entry reads the table', () {
+      const media = Media('fd://6');
+      add(6, held: false, media: media);
+      table.onStartFile(4);
+      expect(table.onEndFile(6), same(media));
+    });
+
+    test('an entry the player did not load reports none', () {
+      table.onStartFile(7);
+      expect(table.onEndFile(7), isNull);
+    });
+
+    test('an entry numbered after its START_FILE reads the table', () {
+      table.onStartFile(8);
+      const media = Media('fd://8');
+      add(8, held: false, media: media);
+      expect(table.onEndFile(8), same(media));
     });
   });
 
@@ -355,7 +386,7 @@ void main() {
 
   group('an external track', () {
     test('kept until the file it joined ends', () async {
-      table.onEndFile(); // an earlier file, reported before the add
+      table.onEndFile(0); // an earlier file, reported before the add
       final settle = table.holdTrack(closer('fd://20'));
       await runAll(table.takeSettled());
       expect(closed, isEmpty, reason: 'mpv has not taken it yet');
@@ -365,7 +396,7 @@ void main() {
       await runAll(table.takeSettled());
       expect(closed, isEmpty, reason: 'the file still plays');
 
-      table.onEndFile();
+      table.onEndFile(1);
       await runAll(table.takeSettled());
       expect(closed, ['fd://20']);
     });
