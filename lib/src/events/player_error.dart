@@ -2,11 +2,11 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-// `mpv_bindings.dart` defines its own integer-typed `MpvEndFileReason`
-// (hand-written FFI bindings). The enum below shadows that name, so we hide
-// the bindings symbol to keep the import free of name conflicts.
+// `mpv_constants.dart` defines its own integer-typed `MpvEndFileReason`
+// (the libmpv constants). The enum below shadows that name, so we hide
+// the constants symbol to keep the import free of name conflicts.
 import '../models/media.dart';
-import '../mpv_bindings.dart' hide MpvEndFileReason;
+import '../mpv_constants.dart' hide MpvEndFileReason;
 import '../types/enums/log_level.dart';
 
 /// Typed error events delivered on [PlayerStream.error]. A sealed union

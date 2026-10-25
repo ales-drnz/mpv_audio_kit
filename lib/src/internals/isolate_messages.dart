@@ -49,24 +49,6 @@ class _InitMessage {
   });
 }
 
-/// Single property to register via `mpv_observe_property` from the
-/// isolate. [replyId] is opaque user data; the dispatcher matches by
-/// name on the receive side.
-class MpvObserveSpec {
-  /// mpv property name to observe (e.g. `time-pos`, `pause`).
-  final String name;
-
-  /// The `MPV_FORMAT_*` constant the property's value is delivered in.
-  final int format;
-
-  /// Opaque user-data tag echoed back on each property change; the
-  /// main-side dispatcher matches incoming changes by [name], not this.
-  final int replyId;
-
-  /// Describes a single property to register via `mpv_observe_property`.
-  const MpvObserveSpec(this.name, this.format, this.replyId);
-}
-
 // ── Messages: isolate → main (init handshake only) ───────────────────────────
 
 /// Init succeeded; carries the live `mpv_handle*` address so the main

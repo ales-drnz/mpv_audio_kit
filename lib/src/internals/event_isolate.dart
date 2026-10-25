@@ -13,12 +13,17 @@ import 'package:ffi/ffi.dart';
 import '../events/player_exception.dart';
 import '../mpv_bindings.dart' as mpv;
 import 'build_mode.dart';
+import 'core_events.dart';
+import 'event_logic.dart';
 import 'owner_watch.dart';
 
-part 'isolate_end_of_content.dart';
-part 'isolate_events.dart';
+export 'core_events.dart';
+
 part 'isolate_messages.dart';
-part 'isolate_properties.dart';
+
+// The native event pump: an isolate that waits on `mpv_wait_event`, decodes
+// each event out of the core's memory over FFI and hands it to the shared
+// [EventLogic], whose reads are synchronous client calls here.
 
 // ── Tunables ─────────────────────────────────────────────────────────────────
 
@@ -105,10 +110,7 @@ void _isolateEntry(SendPort initialReplyPort) {
   Pointer<mpv.MpvHandle>? handle;
   mpv.MpvLibrary? lib;
 
-  // Per-isolate deduplication state: not shared across Player instances.
-  final cache = _PropertyCache();
-
-  fromMain.listen((message) {
+  fromMain.listen((message) async {
     if (message is _InitMessage) {
       toMain = message.toMain;
       final wakeupCounter = message.wakeupCounterAddress != null
@@ -116,7 +118,6 @@ void _isolateEntry(SendPort initialReplyPort) {
           : null;
       final stopFlag = Pointer<Int32>.fromAddress(message.stopFlagAddress);
       final ownerGone = Pointer<Int32>.fromAddress(message.ownerGoneAddress);
-      _isolateStopFlag = stopFlag;
       try {
         // The heavy FFI sequence runs here: off the main isolate so
         // the host UI keeps rendering during cold start.
@@ -146,8 +147,8 @@ void _isolateEntry(SendPort initialReplyPort) {
         }
         _applyPropertyStrings(lib!, h, message.postInitOptions);
         _applyObserves(lib!, h, message.observes);
-        // Not added to `cache.formats`: `pause` never reaches the main
-        // isolate, see [_kEndOfContentTriggers].
+        // Not registered with the logic: `pause` never reaches the main
+        // isolate, the logic reads it for the end of content only.
         _applyObserves(lib!, h, const [
           MpvObserveSpec(
             'pause',
@@ -155,9 +156,6 @@ void _isolateEntry(SendPort initialReplyPort) {
             _kPauseObserverReplyId,
           ),
         ]);
-        for (final spec in message.observes) {
-          cache.formats[spec.name] = spec.format;
-        }
         toMain!.send(_InitDone(h.address));
       } catch (e, st) {
         // The main isolate gets no handle from a failed init, so the core
@@ -168,17 +166,25 @@ void _isolateEntry(SendPort initialReplyPort) {
         fromMain.close();
         return;
       }
-      // Blocking call: returns when `_runEventLoop` breaks out of
-      // its loop: on the stop flag dispose() sets right after its `quit`
-      // command (MpvEventIsolate.requestStop), on MPV_EVENT_SHUTDOWN, or
-      // once the owner isolate exited without dispose ([OwnerWatch]).
-      _runEventLoop(
+      // Per-isolate logic and cache: not shared across Player instances.
+      final send = toMain!.send;
+      final logic = EventLogic(_NativeReader(lib!, handle!, stopFlag), send);
+      for (final spec in message.observes) {
+        logic.observe(spec.name, spec.format);
+      }
+      // Returns when `_runEventLoop` breaks out of its loop: on the stop
+      // flag dispose() sets right after its `quit` command
+      // (MpvEventIsolate.requestStop), on MPV_EVENT_SHUTDOWN, or once the
+      // owner isolate exited without dispose ([OwnerWatch]). The loop
+      // blocks this isolate in mpv_wait_event and in the reads; its awaits
+      // resume as microtasks, never through the event queue.
+      await _runEventLoop(
         lib!,
         handle!,
-        toMain!,
+        send,
         stopFlag,
         ownerGone,
-        cache,
+        logic,
         wakeupCounter,
       );
       if (stopFlag.value == 0 && ownerGone.value != 0) {
@@ -193,21 +199,28 @@ void _isolateEntry(SendPort initialReplyPort) {
   });
 }
 
-void _runEventLoop(
+/// Reply id of the isolate's own `pause` observer, above every id the main
+/// isolate hands out.
+const int _kPauseObserverReplyId = 1 << 62;
+
+Future<void> _runEventLoop(
   mpv.MpvLibrary lib,
   Pointer<mpv.MpvHandle> handle,
-  SendPort toMain,
+  void Function(MpvIsolateEvent) send,
   Pointer<Int32> stopFlag,
   Pointer<Int32> ownerGone,
-  _PropertyCache cache,
+  EventLogic logic,
   Pointer<Int64>? wakeupCounter,
-) {
+) async {
   while (stopFlag.value == 0 && ownerGone.value == 0) {
     // Test-only telemetry; null in production.
     if (wakeupCounter != null) {
       wakeupCounter.value = wakeupCounter.value + 1;
     }
-    final event = lib.mpvWaitEvent(handle, _waitTimeoutSeconds(cache));
+    final event = lib.mpvWaitEvent(
+      handle,
+      logic.waitSeconds(_kWaitEventTimeoutSeconds),
+    );
 
     // Re-read the flag the instant the wait returns. `requestStop` sets the
     // flag THEN calls `mpv_wakeup`, so a wakeup-driven return lands here with
@@ -222,7 +235,7 @@ void _runEventLoop(
     // MPV_EVENT_NONE on a positive-timeout expiry, or on an `mpv_wakeup` with
     // no pending event: nothing to dispatch, loop and re-check the flag.
     if (id == mpv.MpvEventId.mpvEventNone) {
-      _flushTrailing(toMain, cache);
+      logic.flushTrailing();
       continue;
     }
 
@@ -231,12 +244,13 @@ void _runEventLoop(
     // would silently terminate the worker and freeze every property stream
     // for the Player's lifetime while playback keeps running.
     try {
-      _dispatchEvent(lib, handle, toMain, event, cache);
-      _flushTrailing(toMain, cache);
+      // Decoded before any await: the payload is valid only until the next
+      // mpv_wait_event.
+      final reads = _dispatchEvent(logic, event);
+      if (reads != null) await reads;
+      logic.flushTrailing();
     } catch (e, st) {
-      toMain.send(
-        MpvEventInternalLog('error', 'event dispatch failed: $e\n$st'),
-      );
+      send(MpvEventInternalLog('error', 'event dispatch failed: $e\n$st'));
     }
 
     if (id == mpv.MpvEventId.mpvEventShutdown) {
@@ -245,340 +259,201 @@ void _runEventLoop(
   }
 }
 
-void _dispatchEvent(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  SendPort toMain,
-  Pointer<mpv.MpvEvent> event,
-  _PropertyCache cache,
-) {
-  final id = event.ref.eventId;
-  switch (id) {
-    case mpv.MpvEventId.mpvEventShutdown:
-      toMain.send(MpvEventShutdown());
-
-    case mpv.MpvEventId.mpvEventStartFile:
-      // A clock value held from the previous file must not land after the
-      // new one starts.
-      cache.trailing.clear();
-      final started = event.ref.data
-          .cast<mpv.MpvEventStartFileData>()
-          .ref
-          .playlistEntryId;
-      cache.started = _StartedEntry(started);
-      toMain.send(MpvEventStartFile(started));
-
-    case mpv.MpvEventId.mpvEventFileLoaded:
-      // The payload reads run HERE, not on the main isolate: each one is a
-      // synchronous client call that waits for the playloop, and the
-      // file-load boundary is exactly the window where the playloop can be
-      // stuck for seconds initializing the audio output. This isolate is
-      // allowed to wait; the main isolate is not. A failed payload read
-      // must never swallow the event itself: lifecycle, af resync and the
-      // waveform re-arm all ride it.
-      MpvEventFileLoaded loaded;
-      try {
-        loaded = _readFileLoadedEvent(lib, handle);
-      } catch (e, st) {
-        toMain.send(
-          MpvEventInternalLog(
-            'warn',
-            'file-loaded payload read failed: $e\n$st',
-          ),
-        );
-        loaded = MpvEventFileLoaded();
-      }
-      // The values mpv has not notified again go first, so the main
-      // isolate has them when FILE_LOADED ends the loading state.
-      _rereadUnavailable(lib, handle, toMain, cache);
-      toMain.send(loaded);
-      // A short entry can reach EOF before this event is handled: its
-      // `eof-reached` change may already be spent (re-read above, or
-      // skipped by mpv), so the end of content is read again after it.
-      _sendEndOfContent(lib, handle, toMain, cache);
-
-    case mpv.MpvEventId.mpvEventEndFile:
-      final ef = event.ref.data.cast<mpv.MpvEventEndFile>().ref;
-      toMain.send(_endFileEvent(lib, handle, ef, cache));
-
+/// Decodes [event] out of the core's memory and hands it to [logic].
+/// Returns the future of the reads the event takes, if any.
+Future<void>? _dispatchEvent(EventLogic logic, Pointer<mpv.MpvEvent> event) {
+  final ev = event.ref;
+  switch (ev.eventId) {
     case mpv.MpvEventId.mpvEventPropertyChange:
-      final prop = event.ref.data.cast<mpv.MpvEventProperty>().ref;
-      final name = decodeMpvString(prop.name.cast());
-      if (name != 'pause') _dispatchProperty(toMain, prop, cache);
-      if (_kEndOfContentTriggers.contains(name)) {
-        _sendEndOfContent(lib, handle, toMain, cache);
-      }
-
+      final prop = ev.data.cast<mpv.MpvEventProperty>().ref;
+      return logic.property(
+        decodeMpvString(prop.name.cast()),
+        prop.format,
+        _propertyChangeValue(prop),
+      );
+    case mpv.MpvEventId.mpvEventShutdown:
+      return logic.dispatch(MpvEventShutdown());
+    case mpv.MpvEventId.mpvEventStartFile:
+      return logic.dispatch(
+        MpvEventStartFile(
+          ev.data.cast<mpv.MpvEventStartFileData>().ref.playlistEntryId,
+        ),
+      );
+    case mpv.MpvEventId.mpvEventFileLoaded:
+      return logic.dispatch(MpvEventFileLoaded());
+    case mpv.MpvEventId.mpvEventEndFile:
+      final ef = ev.data.cast<mpv.MpvEventEndFile>().ref;
+      return logic.dispatch(
+        MpvEventEndFile(ef.playlistEntryId, ef.reason, ef.error),
+      );
     case mpv.MpvEventId.mpvEventAudioReconfig:
-      _rereadUnavailable(lib, handle, toMain, cache);
-      toMain.send(MpvEventAudioReconfig());
-
+      return logic.dispatch(MpvEventAudioReconfig());
     case mpv.MpvEventId.mpvEventSetPropertyReply:
-      toMain.send(MpvEventReply(event.ref.replyUserdata, event.ref.error));
-
+      return logic.dispatch(MpvEventReply(ev.replyUserdata, ev.error));
     case mpv.MpvEventId.mpvEventCommandReply:
       // The payload is an `mpv_event_command`, whose only member is the
       // `mpv_node result` (`loadfile` returns `playlist_entry_id` in it).
       // Valid only until the next mpv_wait_event, hence decoded here.
-      final error = event.ref.error;
+      final error = ev.error;
       Object? result;
-      if (error >= 0 && event.ref.data != nullptr) {
-        result = decodeMpvNode(event.ref.data.cast<mpv.MpvNode>().ref);
+      if (error >= 0 && ev.data != nullptr) {
+        result = decodeMpvNode(ev.data.cast<mpv.MpvNode>().ref);
       }
-      toMain.send(MpvEventReply(event.ref.replyUserdata, error, result));
-
+      return logic.dispatch(MpvEventReply(ev.replyUserdata, error, result));
     case mpv.MpvEventId.mpvEventGetPropertyReply:
-      final error = event.ref.error;
+      final error = ev.error;
       dynamic value;
-      if (error >= 0 && event.ref.data != nullptr) {
+      if (error >= 0 && ev.data != nullptr) {
         // The payload (an mpv_event_property) is owned by the event and
         // valid only until the next mpv_wait_event: decode (and copy)
         // before forwarding.
-        value = _decodePropertyValue(
-          event.ref.data.cast<mpv.MpvEventProperty>().ref,
-        );
+        value = _decodePropertyValue(ev.data.cast<mpv.MpvEventProperty>().ref);
       }
-      toMain.send(MpvEventGetReply(event.ref.replyUserdata, error, value));
-
+      return logic.dispatch(MpvEventGetReply(ev.replyUserdata, error, value));
     case mpv.MpvEventId.mpvEventLogMessage:
-      _dispatchLog(toMain, event.ref.data.cast<mpv.MpvEventLogMessage>().ref);
-
-    case mpv.MpvEventId.mpvEventHook:
-      final hook = event.ref.data.cast<mpv.MpvEventHook>().ref;
-      final name = decodeMpvString(hook.name.cast());
-      toMain.send(MpvEventHookFired(hook.id, name));
-
-    case mpv.MpvEventId.mpvEventSeek:
-      toMain.send(MpvEventPlaybackSeek());
-
-    case mpv.MpvEventId.mpvEventPlaybackRestart:
-      // The landing position rides the event payload (read here, where
-      // waiting on the core is harmless), so it reaches the stream before
-      // any throttled time-pos event from the property observer. A held
-      // time-pos from before the seek would land after it and step the
-      // position back: drop it. The other clock values keep the newest one
-      // mpv sent, which the seek may already have moved.
-      cache.trailing.remove('time-pos');
-      _flushGroup(toMain, cache);
-      toMain.send(
-        MpvEventPlaybackRestart(
-          timePos: _getPropDouble(lib, handle, 'time-pos'),
+      final msg = ev.data.cast<mpv.MpvEventLogMessage>().ref;
+      return logic.dispatch(
+        MpvEventLog(
+          decodeMpvString(msg.prefix.cast()),
+          decodeMpvString(msg.level.cast()),
+          decodeMpvString(msg.text.cast()).trimRight(),
         ),
       );
-      _rereadUnavailable(lib, handle, toMain, cache);
-      _sendEndOfContent(lib, handle, toMain, cache);
+    case mpv.MpvEventId.mpvEventHook:
+      final hook = ev.data.cast<mpv.MpvEventHook>().ref;
+      return logic.dispatch(
+        MpvEventHookFired(hook.id, decodeMpvString(hook.name.cast())),
+      );
+    case mpv.MpvEventId.mpvEventSeek:
+      return logic.dispatch(MpvEventPlaybackSeek());
+    case mpv.MpvEventId.mpvEventPlaybackRestart:
+      return logic.dispatch(MpvEventPlaybackRestart());
   }
+  return null;
 }
 
-/// The END_FILE [ef] as [MpvEventEndFile]. mpv has unloaded the file by
-/// now: what it reported of the entry comes from the START_FILE that named
-/// it ([_PropertyCache.started]).
-MpvEventEndFile _endFileEvent(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  mpv.MpvEventEndFile ef,
-  _PropertyCache cache,
-) {
-  final ended =
-      ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
-      ef.reason == mpv.MpvEndFileReason.mpvEndFileReasonError;
-  final started = cache.started;
-  final entry = started?.id == ef.playlistEntryId ? started : null;
-  return MpvEventEndFile(
-    ef.playlistEntryId,
-    ef.reason,
-    ef.error,
-    lastEntry: ended && _isLastEntry(lib, handle, ef.playlistEntryId),
-    position: entry?.position,
-    duration: entry?.duration,
-  );
-}
-
-/// Reads the file-load payload (path, playlist, position, chapters,
-/// embedded cover) for [MpvEventFileLoaded]. A malformed or oversized
-/// embedded picture must not abort the rest of the payload, so the cover
-/// read is guarded on its own: the event then carries a `null` cover and
-/// consumers clear stale artwork.
-MpvEventFileLoaded _readFileLoadedEvent(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-) {
-  TransferableTypedData? coverData;
-  String? coverMime;
-  try {
-    final cover = _readEmbeddedCover(lib, handle);
-    if (cover != null) {
-      coverData = cover.$1;
-      coverMime = cover.$2;
-    }
-  } catch (_) {
-    // Cover stays null; the rest of the payload is still delivered.
+/// The value of a property change as [EventLogic.property] takes it.
+Object? _propertyChangeValue(mpv.MpvEventProperty prop) {
+  if (prop.format == mpv.MpvFormat.mpvFormatNone || prop.data == nullptr) {
+    return kPropertyUnavailable;
   }
-  return MpvEventFileLoaded(
-    path: _getPropString(lib, handle, 'path'),
-    playlist: _getPropNode(lib, handle, 'playlist'),
-    timePos: _getPropDouble(lib, handle, 'time-pos'),
-    chapterIndex: _getPropInt64(lib, handle, 'chapter'),
-    chapterList: _getPropNode(lib, handle, 'chapter-list'),
-    coverData: coverData,
-    coverMime: coverMime,
-  );
+  return switch (prop.format) {
+    mpv.MpvFormat.mpvFormatDouble => prop.data.cast<Double>().value,
+    mpv.MpvFormat.mpvFormatFlag => prop.data.cast<Int32>().value,
+    mpv.MpvFormat.mpvFormatInt64 => prop.data.cast<Int64>().value,
+    mpv.MpvFormat.mpvFormatString => decodeMpvString(
+      prop.data.cast<Pointer<Utf8>>().value,
+    ),
+    mpv.MpvFormat.mpvFormatNode => decodeMpvNode(
+      prop.data.cast<mpv.MpvNode>().ref,
+    ),
+    _ => kPropertyUnobserved,
+  };
 }
 
-/// Reads the embedded cover art of the loaded file via the
-/// `embedded-cover-art-data` and `embedded-cover-art-mime` properties.
-/// Returns `null` when the file has no embedded cover. The bytes are the
-/// original PNG, JPEG or other format as embedded (no decode, no conversion),
-/// copied
-/// once out of mpv-owned memory into a transferable buffer.
-(TransferableTypedData, String)? _readEmbeddedCover(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-) {
-  if (_stopRequested) return null;
-  final result = calloc<mpv.MpvNode>();
-  try {
-    return using<(TransferableTypedData, String)?>((arena) {
-      final name = 'embedded-cover-art-data'.toNativeUtf8(allocator: arena);
-      final rc = lib.mpvGetProperty(
-        handle,
-        name,
-        mpv.MpvFormat.mpvFormatNode,
-        result.cast(),
+// ── Synchronous property reads (event-isolate side only) ─────────────────────
+
+/// The reads of [EventLogic] as synchronous client calls. They block this
+/// isolate until the playloop serves the request: safe here, never on the
+/// main isolate. Each one answers null once a stop is requested
+/// ([_stopRequested]).
+final class _NativeReader implements CoreReader {
+  _NativeReader(this._lib, this._handle, this._stopFlag);
+
+  final mpv.MpvLibrary _lib;
+  final Pointer<mpv.MpvHandle> _handle;
+  final Pointer<Int32> _stopFlag;
+
+  /// Whether dispose asked this isolate to stop
+  /// ([MpvEventIsolate.requestStop]). One event takes up to a dozen
+  /// synchronous reads, each a wait on the core. Read after read past the
+  /// stop, against a busy core, they outlasted [_kIsolateExitTimeout], and
+  /// dispose skipped the destroy. Nothing read after a stop reaches the
+  /// main isolate anyway: [MpvEventIsolate.stop] closed the port.
+  bool get _stopRequested => _stopFlag.value != 0;
+
+  @override
+  Future<String?> string(String name) async {
+    if (_stopRequested) return null;
+    return using<String?>((arena) {
+      final n = name.toNativeUtf8(allocator: arena);
+      final ptr = _lib.mpvGetPropertyString(_handle, n);
+      if (ptr == nullptr) return null;
+      final s = decodeMpvString(ptr.cast());
+      _lib.mpvFree(ptr.cast());
+      return s;
+    });
+  }
+
+  @override
+  Future<double?> float(String name) async {
+    if (_stopRequested) return null;
+    return using<double?>((arena) {
+      final n = name.toNativeUtf8(allocator: arena);
+      final buf = arena<Double>();
+      final rc = _lib.mpvGetProperty(
+        _handle,
+        n,
+        mpv.MpvFormat.mpvFormatDouble,
+        buf.cast(),
+      );
+      return rc == mpv.MpvError.mpvErrorSuccess ? buf.value : null;
+    });
+  }
+
+  @override
+  Future<int?> int64(String name) async {
+    if (_stopRequested) return null;
+    return using<int?>((arena) {
+      final n = name.toNativeUtf8(allocator: arena);
+      final buf = arena<Int64>();
+      final rc = _lib.mpvGetProperty(
+        _handle,
+        n,
+        mpv.MpvFormat.mpvFormatInt64,
+        buf.cast(),
+      );
+      return rc == mpv.MpvError.mpvErrorSuccess ? buf.value : null;
+    });
+  }
+
+  @override
+  Future<int?> flag(String name) async {
+    if (_stopRequested) return null;
+    return using<int?>((arena) {
+      final n = name.toNativeUtf8(allocator: arena);
+      final buf = arena<Int32>();
+      final rc = _lib.mpvGetProperty(
+        _handle,
+        n,
+        mpv.MpvFormat.mpvFormatFlag,
+        buf.cast(),
+      );
+      return rc == mpv.MpvError.mpvErrorSuccess ? buf.value : null;
+    });
+  }
+
+  @override
+  Future<Object?> node(String name) async {
+    if (_stopRequested) return null;
+    final node = calloc<mpv.MpvNode>();
+    try {
+      final rc = using(
+        (arena) => _lib.mpvGetProperty(
+          _handle,
+          name.toNativeUtf8(allocator: arena),
+          mpv.MpvFormat.mpvFormatNode,
+          node.cast(),
+        ),
       );
       if (rc < 0) return null;
-      if (result.ref.format != mpv.MpvFormat.mpvFormatByteArray) return null;
-      final ba = result.ref.u.ba.ref;
-      if (ba.size <= 0) return null;
-      // fromList copies out of mpv-owned memory before the node is freed;
-      // materialize() on the main isolate is then zero-copy.
-      final data = TransferableTypedData.fromList([
-        ba.data.cast<Uint8>().asTypedList(ba.size),
-      ]);
-      final mime =
-          _getPropString(lib, handle, 'embedded-cover-art-mime') ??
-          'application/octet-stream';
-      return (data, mime);
-    });
-  } finally {
-    lib.mpvFreeNodeContents(result);
-    calloc.free(result);
-  }
-}
-
-// ── Synchronous property readers (event-isolate side only) ──────────────────
-//
-// These block the calling thread until the playloop serves the request:
-// safe here, never on the main isolate. Each one answers null once a stop is
-// requested ([_stopRequested]).
-
-/// This isolate's stop flag, set at init: see [_stopRequested].
-Pointer<Int32>? _isolateStopFlag;
-
-/// Whether dispose asked this isolate to stop ([MpvEventIsolate.requestStop]).
-/// One event takes up to a dozen synchronous reads, each a wait on the core.
-/// Read after read past the stop, against a busy core, they outlasted
-/// [_kIsolateExitTimeout], and dispose skipped the destroy. Nothing read
-/// after a stop reaches the main isolate anyway: [MpvEventIsolate.stop]
-/// closed the port.
-bool get _stopRequested => (_isolateStopFlag?.value ?? 0) != 0;
-
-String? _getPropString(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  String name,
-) {
-  if (_stopRequested) return null;
-  return using<String?>((arena) {
-    final n = name.toNativeUtf8(allocator: arena);
-    final ptr = lib.mpvGetPropertyString(handle, n);
-    if (ptr == nullptr) return null;
-    final s = decodeMpvString(ptr.cast());
-    lib.mpvFree(ptr.cast());
-    return s;
-  });
-}
-
-double? _getPropDouble(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  String name,
-) {
-  if (_stopRequested) return null;
-  return using<double?>((arena) {
-    final n = name.toNativeUtf8(allocator: arena);
-    final buf = arena<Double>();
-    final rc = lib.mpvGetProperty(
-      handle,
-      n,
-      mpv.MpvFormat.mpvFormatDouble,
-      buf.cast(),
-    );
-    return rc == mpv.MpvError.mpvErrorSuccess ? buf.value : null;
-  });
-}
-
-int? _getPropInt64(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  String name,
-) {
-  if (_stopRequested) return null;
-  return using<int?>((arena) {
-    final n = name.toNativeUtf8(allocator: arena);
-    final buf = arena<Int64>();
-    final rc = lib.mpvGetProperty(
-      handle,
-      n,
-      mpv.MpvFormat.mpvFormatInt64,
-      buf.cast(),
-    );
-    return rc == mpv.MpvError.mpvErrorSuccess ? buf.value : null;
-  });
-}
-
-int? _getPropFlag(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  String name,
-) {
-  if (_stopRequested) return null;
-  return using<int?>((arena) {
-    final n = name.toNativeUtf8(allocator: arena);
-    final buf = arena<Int32>();
-    final rc = lib.mpvGetProperty(
-      handle,
-      n,
-      mpv.MpvFormat.mpvFormatFlag,
-      buf.cast(),
-    );
-    return rc == mpv.MpvError.mpvErrorSuccess ? buf.value : null;
-  });
-}
-
-dynamic _getPropNode(
-  mpv.MpvLibrary lib,
-  Pointer<mpv.MpvHandle> handle,
-  String name,
-) {
-  if (_stopRequested) return null;
-  final node = calloc<mpv.MpvNode>();
-  try {
-    final rc = using(
-      (arena) => lib.mpvGetProperty(
-        handle,
-        name.toNativeUtf8(allocator: arena),
-        mpv.MpvFormat.mpvFormatNode,
-        node.cast(),
-      ),
-    );
-    if (rc < 0) return null;
-    // decodeMpvNode copies every borrowed string and byte buffer, so the node
-    // contents can be freed before the tree is returned.
-    return decodeMpvNode(node.ref);
-  } finally {
-    lib.mpvFreeNodeContents(node);
-    calloc.free(node);
+      // decodeMpvNode copies every borrowed string and byte buffer, so the
+      // node contents can be freed before the tree is returned.
+      return decodeMpvNode(node.ref);
+    } finally {
+      _lib.mpvFreeNodeContents(node);
+      calloc.free(node);
+    }
   }
 }
 
@@ -604,13 +479,6 @@ dynamic _decodePropertyValue(mpv.MpvEventProperty prop) {
     ),
     _ => null,
   };
-}
-
-void _dispatchLog(SendPort toMain, mpv.MpvEventLogMessage msg) {
-  final prefix = decodeMpvString(msg.prefix.cast());
-  final level = decodeMpvString(msg.level.cast());
-  final text = decodeMpvString(msg.text.cast()).trimRight();
-  toMain.send(MpvEventLog(prefix, level, text));
 }
 
 // ── String and node decoding ──────────────────────────────────────────────────
@@ -686,6 +554,28 @@ dynamic decodeMpvNode(mpv.MpvNode node, {bool transferBytes = false}) {
           : Uint8List.fromList(bytes);
     default:
       return null;
+  }
+}
+
+/// Turns the [TransferableTypedData] byte arrays of a get reply back into
+/// [Uint8List]s, in place, on the receiving isolate. Maps and lists are
+/// walked; other values are returned as they are.
+Object? materializeBytes(Object? value) {
+  switch (value) {
+    case TransferableTypedData():
+      return value.materialize().asUint8List();
+    case Map<String, dynamic>():
+      for (final entry in value.entries.toList(growable: false)) {
+        value[entry.key] = materializeBytes(entry.value);
+      }
+      return value;
+    case List<dynamic>():
+      for (var i = 0; i < value.length; i++) {
+        value[i] = materializeBytes(value[i]);
+      }
+      return value;
+    default:
+      return value;
   }
 }
 

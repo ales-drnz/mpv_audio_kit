@@ -2896,7 +2896,7 @@ final class AfadeEffect extends AudioEffect {
   static const int nbSamplesMin = 1;
 
   /// Maximum value for [nbSamples].
-  static const int nbSamplesMax = 9223372036854775807;
+  static const int nbSamplesMax = 9007199254740991 * 1024 + 1023;
 
   /// Default value for [silence].
   static const double silenceDefault = 0.0;
@@ -2914,7 +2914,7 @@ final class AfadeEffect extends AudioEffect {
   static const int startSampleMin = 0;
 
   /// Maximum value for [startSample].
-  static const int startSampleMax = 9223372036854775807;
+  static const int startSampleMax = 9007199254740991 * 1024 + 1023;
 
   /// Default value for [unity].
   static const double unityDefault = 1.0;
@@ -5420,7 +5420,7 @@ final class ApadEffect extends AudioEffect {
   static const int padLenMin = -1;
 
   /// Maximum value for [padLen].
-  static const int padLenMax = 9223372036854775807;
+  static const int padLenMax = 9007199254740991 * 1024 + 1023;
 
   /// Default value for [wholeLen].
   static const int wholeLenDefault = -1;
@@ -5429,7 +5429,7 @@ final class ApadEffect extends AudioEffect {
   static const int wholeLenMin = -1;
 
   /// Maximum value for [wholeLen].
-  static const int wholeLenMax = 9223372036854775807;
+  static const int wholeLenMax = 9007199254740991 * 1024 + 1023;
 
   /// Whether this effect is applied. `false` keeps it in the
   /// list, with its settings, without inserting it in the chain.

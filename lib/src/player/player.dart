@@ -4,15 +4,12 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
-import 'dart:io' show Platform;
-import 'dart:isolate';
 
-import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/services.dart' show RootIsolateToken;
 import 'package:meta/meta.dart';
 
+import '../backend/backend.dart';
 import '../dsp/filter_tap_pipeline.dart';
 import '../dsp/loudness_meter_pipeline.dart';
 import '../dsp/loudness_scan_pipeline.dart';
@@ -25,16 +22,14 @@ import '../events/player_exception.dart';
 import '../generated/audio_effects_settings.dart';
 import '../internals/audio_effects_validation.dart';
 import '../internals/core_calls.dart';
+import '../internals/core_events.dart';
 import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/entry_table.dart';
-import '../internals/event_isolate.dart';
 import '../internals/hook_table.dart';
 import '../internals/libmpv_release.dart';
-import '../internals/library_loader.dart';
-import '../internals/mpv_client.dart';
+import '../internals/mpv_audio_kit.dart';
 import '../internals/mpv_float.dart';
-import '../internals/orphan_handle_tracker.dart';
 import '../internals/owned_source.dart';
 import '../internals/uri_resolver.dart';
 import '../media_session/media_session_controller.dart';
@@ -52,7 +47,7 @@ import '../models/pcm_frame.dart';
 import '../models/playlist.dart';
 import '../models/source_resolve_request.dart';
 import '../models/waveform_data.dart';
-import '../mpv_bindings.dart' hide MpvEndFileReason, MpvEventEndFile;
+import '../mpv_constants.dart' hide MpvEndFileReason;
 import '../pcm/pcm_format.dart';
 import '../pcm/pcm_source.dart';
 import '../reactive/default_reactives.dart';
@@ -603,7 +598,7 @@ class Player extends _PlayerBase
 /// logic.
 ///
 /// Owns:
-/// - the FFI handle and event-isolate plumbing,
+/// - the session to the core (the backend's event pump and client),
 /// - the [PropertyRegistry] for the ~90 simple mpv properties,
 /// - the small set of standalone [ReactiveProperty]s and [StreamController]s
 ///   that back state fields not directly mirrored by an mpv property
@@ -614,12 +609,12 @@ abstract class _PlayerBase {
   /// The configuration captured at construction time.
   final PlayerConfiguration configuration;
 
-  late final MpvLibrary _lib;
-  late final Pointer<MpvHandle> _handle;
-  // Eagerly instantiated so `dispose()` is safe even when invoked
-  // synchronously after construction. The actual mpv init runs
-  // inside the isolate, driven by `_ready`.
-  final MpvEventIsolate _eventIsolate = MpvEventIsolate();
+  // The core and the client to it, through the backend of the platform
+  // (an event isolate over FFI, or the module in WebAssembly on the web).
+  // Created with the player so `dispose()` is safe even when invoked
+  // synchronously after construction; the core starts in bring-up, driven
+  // by `_ready`.
+  final MpvSession _session;
   bool _disposed = false;
 
   /// The transport axis: the load epoch, the loads in flight, the
@@ -790,9 +785,6 @@ abstract class _PlayerBase {
   /// events.
   late final PlayerStream stream;
 
-  /// Test-only; `null` outside [Player.testInstrumented].
-  final int? _wakeupCounterAddress;
-
   // ── Cross-mixin surface ──────────────────────────────────────────────────
   // These members live in the `.part` mixins below but are declared here
   // (abstract) so `_PlayerBase`'s constructor, `dispose` and the sibling
@@ -805,23 +797,12 @@ abstract class _PlayerBase {
   /// See `_DispatchModule` (player_dispatch.part.dart).
   void _updatePlaylistFromNode(dynamic raw);
 
-  /// The async request and reply channel to libmpv, created at bring-up
-  /// together with [_lib] and [_handle].
-  late final MpvClient _client;
-
-  /// Every call to libmpv once the player runs, on top of [_client]. All
+  /// Every call to libmpv once the player runs, on top of [_session]. All
   /// of them ride the async client API (`mpv_*_async`): the main isolate
   /// never waits for the playloop. Most setters update the state once the
   /// reply confirms the write; the play-pause intent and the settings
   /// bundles ([CoreCalls.writeBundle]) update it before the write.
   late final CoreCalls _calls;
-
-  /// In-flight `registerHook` runs. `mpv_hook_add` locks the core and has no
-  /// async variant, so it executes in a throwaway `Isolate.run` against the
-  /// shared handle; dispose must await any outstanding one BEFORE
-  /// `mpv_terminate_destroy` frees the handle, or the throwaway isolate would
-  /// dereference freed memory (`lock_core(ctx)`).
-  final Set<Future<void>> _pendingHookAdds = {};
 
   /// See `_LoadValidationModule` (player_load_validation.part.dart).
   String _buildLoadfileOptions(Media media);
@@ -852,10 +833,10 @@ abstract class _PlayerBase {
   void _onAudioReconfig();
 
   /// See `_InitModule` (player_init.part.dart): called by the constructor.
-  Future<void> _bringUpInIsolate();
+  Future<void> _bringUp();
 
   /// See `_DispatchModule` (player_dispatch.part.dart): wired as the event
-  /// isolate's `onEvent` during bring-up.
+  /// pump's `onEvent` during bring-up.
   void _handleEvent(MpvIsolateEvent event);
 
   /// See `_DispatchModule`: `setAudioDevice` reuses it to optimistically
@@ -865,7 +846,7 @@ abstract class _PlayerBase {
   _PlayerBase({
     this.configuration = const PlayerConfiguration(),
     int? wakeupCounterAddress,
-  }) : _wakeupCounterAddress = wakeupCounterAddress {
+  }) : _session = createMpvSession(wakeupCounterAddress: wakeupCounterAddress) {
     // Pure-Dart setup runs on the main isolate (microseconds).
     _reactives = DefaultPropertyReactives();
     _registry = PropertyRegistry()
@@ -877,7 +858,7 @@ abstract class _PlayerBase {
         ),
       );
 
-    // Streams that don't need _lib or _handle can be wired immediately:
+    // Streams that don't need the core can be wired immediately:
     // a consumer subscribing right after `Player()` sees no events
     // until init completes, which is the correct semantics.
     _wireAnalysisControllers();
@@ -920,11 +901,11 @@ abstract class _PlayerBase {
       mediaSessionCommands: _mediaSessionCommandsCtrl.stream,
     );
 
-    // Build the recipe and hand it to the event isolate. All heavy
-    // FFI runs there; the main isolate stays free. A failed init reaches
-    // every call that awaits it; a player nobody uses yet must not report
-    // it as an unhandled error.
-    _ready = _bringUpInIsolate()..ignore();
+    // Build the recipe and hand it to the session, which starts the core
+    // off the UI thread's way. A failed init reaches every call that awaits
+    // it; a player nobody uses yet must not report it as an unhandled
+    // error.
+    _ready = _bringUp()..ignore();
   }
 
   /// The controllers of the analysis streams (fft, pcm, waveform, loudness
@@ -935,7 +916,7 @@ abstract class _PlayerBase {
     // streams have a listener, so bridging unconditionally would keep the
     // poll running for the player's whole lifetime with zero consumers.
     // Subscribers that land before bring-up are reconciled once the
-    // pipeline exists (see `_bringUpInIsolate`).
+    // pipeline exists (see `_bringUp`).
     _fftCtrl = StreamController<FftFrame>.broadcast(
       onListen: () {
         if (_bringUpCompleted) {
@@ -963,9 +944,9 @@ abstract class _PlayerBase {
       },
     );
     // Listener-gated: the native waveform analyzer arms only while a
-    // consumer is subscribed. The pipeline is built during isolate
-    // bring-up; a subscriber that lands before then is reconciled
-    // once bring-up finishes (see `_bringUpInIsolate`).
+    // consumer is subscribed. The pipeline is built during bring-up; a
+    // subscriber that lands before then is reconciled once bring-up
+    // finishes (see `_bringUp`).
     _waveformCtrl = StreamController<WaveformData?>.broadcast(
       onListen: () {
         if (_bringUpCompleted) _waveformPipeline.setEnabled(true);
@@ -998,7 +979,7 @@ abstract class _PlayerBase {
   }
 
   /// Test-only: allows tests to await the post-`Player()` init that
-  /// now runs in the background isolate. Public methods already
+  /// runs in the background. Public methods already
   /// `await _ready` internally so consumers don't normally need this.
   @visibleForTesting
   Future<void> get ready => _ready;
@@ -1031,13 +1012,13 @@ abstract class _PlayerBase {
     }
   }
 
-  /// Shared prologue for every public method that touches the FFI handle:
-  /// fail fast when already disposed, await bring-up, then verify bring-up
-  /// actually assigned the FFI fields. A dispose() that lands while the
-  /// caller is parked on [_ready] aborts bring-up early: [_ready] still
-  /// completes normally, but `_lib` and `_handle` were never assigned, so
-  /// resuming into an FFI call would throw [LateInitializationError]
-  /// instead of the [PlayerDisposedException] the API contract promises.
+  /// Shared prologue for every public method that touches the core: fail
+  /// fast when already disposed, await bring-up, then verify bring-up
+  /// actually completed. A dispose() that lands while the caller is parked
+  /// on [_ready] aborts bring-up early: [_ready] still completes normally,
+  /// but [_calls] was never assigned, so resuming into a call would throw
+  /// [LateInitializationError] instead of the [PlayerDisposedException]
+  /// the API contract promises.
   Future<void> _gate() async {
     _checkNotDisposed();
     await _ready;
@@ -1137,23 +1118,24 @@ abstract class _PlayerBase {
   ///    fails fast via `_checkNotDisposed()`. Before any await, continue
   ///    the pending hooks and end the live PCM sources (a reader blocked
   ///    on one wakes up), then release the OS media session.
-  /// 2. **Await bring-up**, then **drop the [OrphanHandleTracker] entry**
-  ///    so a hot-restart that fires before the destroy completes doesn't
-  ///    try to clean up a handle we're already cleaning up, and **dispose
-  ///    the DSP pipelines** (each turns off what it armed).
+  /// 2. **Await bring-up**, then **drop the core from the Hot Restart
+  ///    cleanup** ([MpvSession.untrack]) so a hot-restart that fires before
+  ///    the destroy completes doesn't try to clean up a handle we're
+  ///    already cleaning up, and **dispose the DSP pipelines** (each turns
+  ///    off what it armed).
   /// 3. **Send the `quit` command** to mpv. mpv processes it
   ///    asynchronously and fires `MPV_EVENT_SHUTDOWN` inside its own
   ///    event queue.
-  /// 4. **`requestStop` (stop flag + `mpv_wakeup`)** so the event loop
+  /// 4. **`requestStop` (stop flag + `mpv_wakeup` natively)** so the event loop
   ///    unwinds deterministically even if `quit` was dropped or
   ///    `MPV_EVENT_SHUTDOWN` is delayed by a stalled hook. Then dispose
   ///    the filter taps, whose streams the app listens to directly.
-  /// 5. **Await `_eventIsolate.stop()`**, which returns `true` only once
-  ///    the isolate has ACTUALLY exited, so it is provably off
-  ///    `mpv_wait_event`. Then wait (bounded) for any `registerHook` still
-  ///    running `mpv_hook_add`, and **close the client**, which settles
-  ///    every in-flight call.
-  /// 6. **`mpvTerminateDestroy(_handle)`** ONLY when the exit and the hook
+  /// 5. **Await [MpvSession.stop]**, which returns `true` only once the
+  ///    event pump has ACTUALLY stopped (natively, the isolate exited), so
+  ///    it is provably off `mpv_wait_event`. Then wait (bounded) for any
+  ///    `registerHook` still running `mpv_hook_add`, and **close the
+  ///    client**, which settles every in-flight call.
+  /// 6. **[MpvSession.terminateDestroy]** ONLY when the exit and the hook
   ///    registrations are confirmed, in a throwaway isolate and awaited
   ///    (it waits for the core to shut down and the output to close),
   ///    then release the held `content://` descriptors. Destroying the
@@ -1191,7 +1173,7 @@ abstract class _PlayerBase {
     } catch (_) {}
 
     if (_bringUpCompleted) {
-      OrphanHandleTracker.instance.remove(_handle);
+      _session.untrack();
       await _waveformPipeline.dispose();
       await _spectrumPipeline.dispose();
       await _loudnessMeterPipeline.dispose();
@@ -1204,41 +1186,31 @@ abstract class _PlayerBase {
       // Fire-and-forget: quit's reply may never be forwarded (the isolate is
       // about to stop): the drain below settles the dangling future.
       unawaited(_calls.command(['quit']));
-      _eventIsolate.requestStop(_lib, _handle);
+      _session.requestStop();
       // The taps after the quit: their streams are the app's own, and
       // nothing a listener does may keep mpv alive. The analyzer-taps write
       // still reaches the core, which serves it before the destroy below.
       await _filterTapPipeline.dispose();
-      final exited = await _eventIsolate.stop();
-      // A registerHook may still be running mpv_hook_add in a throwaway
-      // isolate against this handle: it MUST finish before the handle is
-      // freed below. quit + the stop above have driven the core toward a
-      // dispatch point, so the core-locked hook_add is granted and returns.
-      // Bounded: if it doesn't settle (a pathologically stuck playloop), skip
-      // the destroy and leak the handle rather than free it under the running
-      // isolate (same trade-off as an unconfirmed event-isolate exit).
-      // Re-read the set until it is empty: Future.wait takes a snapshot, and
-      // a setSourceResolver suspended between its two registrations could
-      // start the second one after it.
-      var hooksSettled = true;
-      final hooksDeadline = DateTime.now().add(const Duration(seconds: 2));
-      while (hooksSettled && _pendingHookAdds.isNotEmpty) {
-        final left = hooksDeadline.difference(DateTime.now());
-        try {
-          await Future.wait(_pendingHookAdds.toList()).timeout(left);
-        } on TimeoutException {
-          hooksSettled = false;
-        } catch (_) {}
-      }
+      final exited = await _session.stop();
+      // A registerHook may still be running mpv_hook_add against this
+      // handle: it MUST finish before the handle is freed below. quit + the
+      // stop above have driven the core toward a dispatch point, so the
+      // core-locked hook_add is granted and returns. Bounded: if it doesn't
+      // settle (a pathologically stuck playloop), skip the destroy and leak
+      // the handle rather than free it under the running call (same
+      // trade-off as an unconfirmed event-isolate exit).
+      final hooksSettled = await _session.settleHookAdds(
+        const Duration(seconds: 2),
+      );
       // From here no FFI may touch the handle, and no reply can arrive:
       // closing the client resolves every in-flight call, so an
       // `await player.setX(...)` racing dispose never hangs, and turns the
       // continuations that resumes (a setter suspended between writes)
       // into no-ops, while the destroy below frees the handle.
-      _client.close();
+      _session.close();
       if (exited && hooksSettled) {
         // Off the main isolate: the destroy waits for the core to shut down.
-        await terminateDestroyOffMain(_handle);
+        await _session.terminateDestroy();
         // mpv is gone: nothing reads the descriptors any more.
         for (final release in _entries.takeAll()) {
           await release();
@@ -1260,7 +1232,7 @@ abstract class _PlayerBase {
       // and stopped the worker, and the `await _ready` above waited for
       // that teardown. The stop() here is a best-effort no-op backstop.
       try {
-        await _eventIsolate.stop();
+        await _session.stop();
       } catch (_) {}
     }
 
