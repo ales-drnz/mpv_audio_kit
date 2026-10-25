@@ -17,6 +17,8 @@
 #include <variant>
 #include <vector>
 
+#include "engine_ownership.h"
+
 namespace mpv_audio_kit {
 
 namespace {
@@ -161,36 +163,94 @@ void EnsureProcessIdentity(const std::string& app_name_utf8) {
   SetCurrentProcessExplicitAppUserModelID(aumid.c_str());  // HRESULT ignored
 }
 
+// The process's side of the media session, shared by the channels of every
+// engine: the SMTC controller, the message-only window that brings OS
+// commands onto the platform thread, and the owner engine with each
+// engine's event sink. Created by the first channel, on the platform
+// thread, and never destroyed (see the header). Platform thread only, but
+// for ForwardCommand.
+class MediaSessionHub {
+ public:
+  static MediaSessionHub& Get() {
+    static auto* hub = new MediaSessionHub();
+    return *hub;
+  }
+
+  SmtcController& controller() { return *controller_; }
+  EngineOwnership<flutter::EventSink<EncodableValue>*>& engines() {
+    return engines_;
+  }
+
+ private:
+  MediaSessionHub() {
+    // SMTC types are agile, but C++/WinRT requires the apartment initialised.
+    // Flutter already inits COM on this (platform) thread as STA; match that
+    // (init_apartment defaults to MTA, which would just throw
+    // RPC_E_CHANGED_MODE and mask the real apartment). The artwork async work
+    // runs on its own MTA thread — see MakeThumbnail — since `.get()` is
+    // unsafe on this STA thread.
+    try {
+      winrt::init_apartment(winrt::apartment_type::single_threaded);
+    } catch (const winrt::hresult_error&) {
+    }
+
+    // Message-only window to marshal OS commands onto the platform thread.
+    WNDCLASSW wc{};
+    wc.lpfnWndProc = &MediaSessionHub::WndProc;
+    wc.hInstance = GetModuleHandleW(nullptr);
+    wc.lpszClassName = kWindowClass;
+    RegisterClassW(&wc);  // ignore ERROR_CLASS_ALREADY_EXISTS
+    HWND window = CreateWindowExW(0, kWindowClass, L"", 0, 0, 0, 0, 0,
+                                  HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
+    if (window) {
+      SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+    }
+    message_window_ = window;
+
+    controller_ = std::make_unique<SmtcController>(
+        [this](EncodableValue command) { ForwardCommand(std::move(command)); });
+  }
+
+  // Invoked on a WinRT pool thread by the controller; PostMessages the
+  // command to the platform-thread window so the event sink is touched on
+  // the right thread.
+  void ForwardCommand(EncodableValue command) {
+    HWND win = message_window_.load();
+    if (!win) return;
+    auto* heap = new EncodableValue(std::move(command));
+    if (!PostMessageW(win, kCommandMessage, 0, reinterpret_cast<LPARAM>(heap))) {
+      delete heap;
+    }
+  }
+
+  // On the platform thread: the command goes to the owner engine's sink. A
+  // sink leaves the hub when its engine cancels or goes, so it is alive.
+  static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam,
+                                  LPARAM lparam) {
+    if (msg == kCommandMessage) {
+      auto* command = reinterpret_cast<EncodableValue*>(lparam);
+      auto* self = reinterpret_cast<MediaSessionHub*>(
+          GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+      auto* sink = self ? self->engines_.CommandSink() : nullptr;
+      if (sink && command) sink->Success(*command);
+      delete command;
+      return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wparam, lparam);
+  }
+
+  std::unique_ptr<SmtcController> controller_;
+  // Read on WinRT pool threads (ForwardCommand), written once by the
+  // constructor before the controller exists.
+  std::atomic<HWND> message_window_{nullptr};
+  EngineOwnership<flutter::EventSink<EncodableValue>*> engines_;
+};
+
 }  // namespace
 
 MediaSessionChannelWin::MediaSessionChannelWin(
     flutter::PluginRegistrarWindows* registrar) {
-  // SMTC types are agile, but C++/WinRT requires the apartment initialised.
-  // Flutter already inits COM on this (platform) thread as STA; match that
-  // (init_apartment defaults to MTA, which would just throw RPC_E_CHANGED_MODE
-  // and mask the real apartment). The artwork async work runs on its own MTA
-  // thread — see MakeThumbnail — since `.get()` is unsafe on this STA thread.
-  try {
-    winrt::init_apartment(winrt::apartment_type::single_threaded);
-  } catch (const winrt::hresult_error&) {
-  }
-
-  // Message-only window to marshal OS commands onto the platform thread.
-  WNDCLASSW wc{};
-  wc.lpfnWndProc = &MediaSessionChannelWin::WndProc;
-  wc.hInstance = GetModuleHandleW(nullptr);
-  wc.lpszClassName = kWindowClass;
-  RegisterClassW(&wc);  // ignore ERROR_CLASS_ALREADY_EXISTS
-  message_window_ =
-      CreateWindowExW(0, kWindowClass, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr,
-                      wc.hInstance, nullptr);
-  if (message_window_) {
-    SetWindowLongPtrW(message_window_, GWLP_USERDATA,
-                      reinterpret_cast<LONG_PTR>(this));
-  }
-
-  controller_ = std::make_unique<SmtcController>(
-      [this](EncodableValue command) { ForwardCommand(std::move(command)); });
+  MediaSessionHub::Get();  // the first channel creates it here
 
   method_channel_ = std::make_unique<flutter::MethodChannel<EncodableValue>>(
       registrar->messenger(), "mpv_audio_kit/media_session",
@@ -209,56 +269,29 @@ MediaSessionChannelWin::MediaSessionChannelWin(
                  std::unique_ptr<flutter::EventSink<EncodableValue>>&& events)
               -> std::unique_ptr<flutter::StreamHandlerError<EncodableValue>> {
             event_sink_ = std::move(events);
+            MediaSessionHub::Get().engines().OnListen(this, event_sink_.get());
             return nullptr;
           },
           [this](const EncodableValue*)
               -> std::unique_ptr<flutter::StreamHandlerError<EncodableValue>> {
+            MediaSessionHub::Get().engines().OnCancel(this);
             event_sink_.reset();
             return nullptr;
           }));
 }
 
 MediaSessionChannelWin::~MediaSessionChannelWin() {
-  // Publish nullptr to the window BEFORE tearing down the controller: a command
-  // firing on a WinRT pool thread mid-teardown then no-ops in ForwardCommand
-  // instead of racing the window's destruction. (The controller also flips its
-  // own `alive_` flag so its handlers stop touching the command sink.)
-  HWND win = message_window_.exchange(nullptr);
-  controller_.reset();
-  if (win) {
-    SetWindowLongPtrW(win, GWLP_USERDATA, 0);
-    // Drain queued command messages so their heap payloads aren't leaked when
-    // the window is destroyed.
-    MSG msg;
-    while (PeekMessageW(&msg, win, kCommandMessage, kCommandMessage, PM_REMOVE)) {
-      delete reinterpret_cast<EncodableValue*>(msg.lParam);
+  // The engine is going, and its Dart may never have disabled (an engine
+  // destroyed while it plays): the session goes with its owner, and the
+  // sink leaves the hub before the messenger it sends on (F221). Another
+  // engine's session stays.
+  auto& hub = MediaSessionHub::Get();
+  if (hub.engines().OnDetach(this)) {
+    try {
+      hub.controller().Disable();
+    } catch (const winrt::hresult_error&) {
     }
-    DestroyWindow(win);
   }
-}
-
-void MediaSessionChannelWin::ForwardCommand(EncodableValue command) {
-  HWND win = message_window_.load();
-  if (!win) return;
-  auto* heap = new EncodableValue(std::move(command));
-  if (!PostMessageW(win, kCommandMessage, 0, reinterpret_cast<LPARAM>(heap))) {
-    delete heap;
-  }
-}
-
-LRESULT CALLBACK MediaSessionChannelWin::WndProc(HWND hwnd, UINT msg,
-                                                 WPARAM wparam, LPARAM lparam) {
-  if (msg == kCommandMessage) {
-    auto* command = reinterpret_cast<EncodableValue*>(lparam);
-    auto* self = reinterpret_cast<MediaSessionChannelWin*>(
-        GetWindowLongPtrW(hwnd, GWLP_USERDATA));
-    if (self && self->event_sink_ && command) {
-      self->event_sink_->Success(*command);
-    }
-    delete command;
-    return 0;
-  }
-  return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
 void MediaSessionChannelWin::HandleMethodCall(
@@ -266,6 +299,8 @@ void MediaSessionChannelWin::HandleMethodCall(
     std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
   const auto& method = call.method_name();
   const auto* args = std::get_if<EncodableMap>(call.arguments());
+  auto& hub = MediaSessionHub::Get();
+  SmtcController& controller = hub.controller();
 
   // Backstop: any WinRT failure inside the controller surfaces as a channel
   // error instead of an uncaught hresult_error that would crash the engine.
@@ -275,6 +310,13 @@ void MediaSessionChannelWin::HandleMethodCall(
         result->Error("bad_args", "enable expects a map");
         return;
       }
+      if (!hub.engines().TryEnable(this)) {
+        // Dart throws a StateError and leaves its state off.
+        result->Error("already_owned",
+                      "Another Flutter engine of this process owns the media "
+                      "session.");
+        return;
+      }
       const EncodableMap* cfg = SubMap(*args, "config");
       const EncodableMap* meta = SubMap(*args, "metadata");
       const EncodableMap* pb = SubMap(*args, "playback");
@@ -282,24 +324,33 @@ void MediaSessionChannelWin::HandleMethodCall(
       // Set the process AUMID (from app_name) before the SMTC is created inside
       // Enable() → EnsureCreated(); no-op after the first call.
       EnsureProcessIdentity(parsed.app_name);
-      controller_->Enable(parsed,
-                          meta ? ParseMetadata(*meta) : SmtcMetadata{},
-                          pb ? ParsePlayback(*pb) : SmtcPlayback{});
+      controller.Enable(parsed, meta ? ParseMetadata(*meta) : SmtcMetadata{},
+                        pb ? ParsePlayback(*pb) : SmtcPlayback{});
       result->Success();
     } else if (method == "updateConfig") {
-      if (args) controller_->UpdateConfig(ParseConfig(*args));
+      // Only the owner's: another engine's Player never had the session.
+      if (args && hub.engines().MayUpdate(this)) {
+        controller.UpdateConfig(ParseConfig(*args));
+      }
       result->Success();
     } else if (method == "updateMetadata") {
-      if (args) controller_->UpdateMetadata(ParseMetadata(*args));
+      if (args && hub.engines().MayUpdate(this)) {
+        controller.UpdateMetadata(ParseMetadata(*args));
+      }
       result->Success();
     } else if (method == "updatePlayback") {
-      if (args) controller_->UpdatePlayback(ParsePlayback(*args));
+      if (args && hub.engines().MayUpdate(this)) {
+        controller.UpdatePlayback(ParsePlayback(*args));
+      }
       result->Success();
     } else if (method == "disable") {
-      controller_->Disable();
+      if (hub.engines().MayDisable(this)) {
+        controller.Disable();
+        hub.engines().OnDisabled();
+      }
       result->Success();
     } else if (method == "debugMediaSessionState") {
-      result->Success(controller_->DebugState());
+      result->Success(controller.DebugState());
     } else {
       result->NotImplemented();
     }

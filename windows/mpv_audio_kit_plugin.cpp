@@ -49,12 +49,11 @@ void MpvAudioKitPlugin::RegisterWithRegistrar(
       });
 
   // ── OS media session (SMTC via C++/WinRT) ───────────────────────────
-  // MediaSessionChannelWin owns both media-session channels, the
-  // SystemMediaTransportControls controller, and the platform-thread
-  // command marshaling. Leaked into static storage for the plugin
-  // lifetime (matching the channel-ownership pattern Flutter uses).
-  static auto* media_session = new MediaSessionChannelWin(registrar);
-  (void)media_session;
+  // MediaSessionChannelWin holds this engine's media-session channels and
+  // goes with the registrar. The SystemMediaTransportControls controller
+  // and the platform-thread command marshaling are one per process, in a
+  // hub that is never destroyed (see media_session_channel_win.h).
+  registrar->AddPlugin(std::make_unique<MediaSessionChannelWin>(registrar));
 
   // Add the plugin instance to the registrar.
   registrar->AddPlugin(std::move(plugin));

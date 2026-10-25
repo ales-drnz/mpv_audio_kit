@@ -21,24 +21,29 @@
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 
-#include <atomic>
 #include <memory>
 
 #include "media_session_smtc.h"
 
 namespace mpv_audio_kit {
 
-// Bridges the two media-session Flutter channels to the C++/WinRT
-// [SmtcController]. Owns both channels, the controller, and a message-only
-// window used to marshal OS commands (which fire on WinRT pool threads) back
-// onto the Flutter platform thread before touching the event sink.
+// Bridges the two media-session Flutter channels of one engine to the
+// process's SystemMediaTransportControls. The SMTC is one per process while
+// the plugin runs once per engine: a MediaSessionHub (in the .cpp) holds the
+// [SmtcController], the message-only window that marshals OS commands (which
+// fire on WinRT pool threads) back onto the platform thread, and which engine
+// owns the session (native_common/engine_ownership.h). Another engine's
+// enable answers `already_owned`, its updates and disable are dropped, and
+// the commands go to the owner's event sink.
 //
-// Constructed during plugin registration (on the platform thread) and kept
-// alive for the plugin lifetime.
-class MediaSessionChannelWin {
+// The hub is never destroyed, which keeps WinRT teardown out of process exit
+// (e876881). A channel is a plugin of its registrar and goes with its engine:
+// the owner's turns the session off on its way, so no command reaches a
+// messenger that is gone.
+class MediaSessionChannelWin : public flutter::Plugin {
  public:
   explicit MediaSessionChannelWin(flutter::PluginRegistrarWindows* registrar);
-  ~MediaSessionChannelWin();
+  ~MediaSessionChannelWin() override;
 
   MediaSessionChannelWin(const MediaSessionChannelWin&) = delete;
   MediaSessionChannelWin& operator=(const MediaSessionChannelWin&) = delete;
@@ -48,21 +53,9 @@ class MediaSessionChannelWin {
       const flutter::MethodCall<flutter::EncodableValue>& call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
-  // Invoked on a WinRT pool thread by the controller; PostMessages the command
-  // to the platform-thread window so the event sink is touched on the right thread.
-  void ForwardCommand(flutter::EncodableValue command);
-
-  static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam,
-                                  LPARAM lparam);
-
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> method_channel_;
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>> event_channel_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink_;
-  std::unique_ptr<SmtcController> controller_;
-  // Read on WinRT pool threads (ForwardCommand) while the platform thread
-  // creates/destroys it — atomic so teardown can publish nullptr with a
-  // happens-before edge instead of racing an unsynchronised HWND read.
-  std::atomic<HWND> message_window_{nullptr};
 };
 
 }  // namespace mpv_audio_kit

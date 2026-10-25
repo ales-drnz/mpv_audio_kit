@@ -57,6 +57,12 @@ target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_20)
 target_include_directories(${PLUGIN_NAME}
   INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
+# The multi engine rule of the media session, one header shared with the
+# Linux plugin. The package root is the parent of this directory, also
+# where an app's build reaches it (flutter/ephemeral/.plugin_symlinks).
+target_include_directories(${PLUGIN_NAME} PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../native_common"
+)
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
 # C++/WinRT consumes SystemMediaTransportControls; link the WinRT umbrella
