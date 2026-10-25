@@ -267,6 +267,38 @@ void main() {
     },
   );
 
+  // mpv samples `time-pos` for its observers at a tick, and no tick comes
+  // while the core is parked: a change sampled before the park read can
+  // still be on its way after it.
+  for (final later in [false, true]) {
+    test('the time-pos change after a read of it is read again '
+        '(answered ${later ? 'later' : 'at once'})', () async {
+      final events = <MpvIsolateEvent>[];
+      final reader = _Reader(_parkedFirstOfTwo(), later: later);
+      final logic = EventLogic(reader, events.add);
+      await logic.dispatch(MpvEventStartFile(7));
+      await logic.property('pause', MpvFormat.mpvFormatFlag, 1);
+      reader.reads.clear();
+      await logic.property('time-pos', MpvFormat.mpvFormatDouble, 0.0);
+      await logic.dispatch(
+        MpvEventEndFile(7, MpvEndFileReason.mpvEndFileReasonStop, 0),
+      );
+      expect(events.map(_describe), [
+        'start 7',
+        'eoc eof=true parked=true last=false',
+        'time-pos=1.0',
+        'end 7 2 last=false',
+      ]);
+      expect((events.last as MpvEventEndFile).position, 1.0);
+      expect(reader.reads, ['time-pos']);
+      // Once: the change after it goes on as mpv sent it.
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      await logic.property('time-pos', MpvFormat.mpvFormatDouble, 0.9);
+      expect(reader.reads, ['time-pos']);
+      expect(_describe(events.last), 'time-pos=0.9');
+    });
+  }
+
   test('the audio params group crosses once', () async {
     final out = <String>[];
     final logic = EventLogic(_Reader({}), (e) => out.add(_describe(e)));
