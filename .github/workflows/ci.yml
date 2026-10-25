@@ -103,6 +103,18 @@ jobs:
       - name: Publish dry run
         if: matrix.flutter == 'any'
         run: flutter pub publish --dry-run
+      # The FFmpeg tarball the generator parses comes from the cache, not
+      # from ffmpeg.org on every run: fetch_ffmpeg_src.sh keeps it and checks
+      # its SHA-256 either way.
+      - name: FFmpeg version of the codegen
+        id: ffmpeg
+        if: matrix.flutter == 'any'
+        run: echo "version=$(jq -r .ffmpeg tool/codegen/libmpv_manifest.json)" >> "$GITHUB_OUTPUT"
+      - if: matrix.flutter == 'any'
+        uses: actions/cache@v6
+        with:
+          path: tool/codegen/.ffmpeg-src/ffmpeg-${{ steps.ffmpeg.outputs.version }}.tar.gz
+          key: codegen-ffmpeg-${{ steps.ffmpeg.outputs.version }}
       # The generated effects API must be exactly what tool/codegen emits.
       # git status, not git diff: a file the generator adds is untracked.
       - name: Codegen drift
