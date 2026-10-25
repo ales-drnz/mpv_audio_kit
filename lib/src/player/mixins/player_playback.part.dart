@@ -42,10 +42,13 @@ mixin _PlaybackModule on _PlayerBase {
       // running: it replaces the parked file (openAll removes it first), so
       // the reads tell nothing about the source, and the unpause arms the
       // load.
-      if (_transport.loadsInFlight == 0 &&
-          await _parkedAtEof() &&
-          await getRawProperty('seekable') != 'yes' &&
-          _transport.loadsInFlight == 0) {
+      // Statements, not one `&&` chain: compiled to WebAssembly, an await
+      // on the right of `&&` traps when the left decides (see
+      // `_sendEndOfContent`).
+      var stuck = _transport.loadsInFlight == 0;
+      if (stuck) stuck = await _parkedAtEof();
+      if (stuck) stuck = await getRawProperty('seekable') != 'yes';
+      if (stuck && _transport.loadsInFlight == 0) {
         if (_transport.owns(intent)) _transport.writeIntent(false);
         return;
       }
@@ -61,10 +64,9 @@ mixin _PlaybackModule on _PlayerBase {
     // Idle with nothing to play (before any open, after stop or a failed
     // load): the unpause only arms the next load, nothing plays now. Not
     // while a load is running, which is about to give the core content.
-    if (_transport.loadsInFlight == 0 &&
-        await getRawProperty('idle-active') == 'yes' &&
-        _transport.loadsInFlight == 0 &&
-        _transport.owns(intent)) {
+    var idle = _transport.loadsInFlight == 0;
+    if (idle) idle = await getRawProperty('idle-active') == 'yes';
+    if (idle && _transport.loadsInFlight == 0 && _transport.owns(intent)) {
       _transport.writeIntent(false);
     }
   }
@@ -119,11 +121,11 @@ mixin _PlaybackModule on _PlayerBase {
   /// which keys the resume point.
   Future<void> deleteResumeConfig({String? filename}) async {
     await _gate();
-    await _calls.command(
-      filename == null
-          ? ['delete-watch-later-config']
-          : ['delete-watch-later-config', await loadedName(filename)],
-    );
+    final args = ['delete-watch-later-config'];
+    // Not an await under `?:` or a collection if: compiled to WebAssembly
+    // those trap when the other branch is taken (see `_sendEndOfContent`).
+    if (filename != null) args.add(await loadedName(filename));
+    await _calls.command(args);
   }
 
   /// Stops playback and unloads the current file. Distinct from [pause]:

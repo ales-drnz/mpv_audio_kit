@@ -47,18 +47,25 @@ Future<void> _sendEndOfContent(
   // output buffer still plays; keep-open pauses the core only after it has
   // played out. Without `keep-open-pause` no pause comes, and EOF is the
   // closest signal left.
-  final parked =
-      eof &&
-      (await reader.flag('pause') == 1 ||
-          await reader.flag('keep-open-pause') == 0);
-  final file = parked ? await reader.string('playlist/$pos/filename') : null;
-  final live = file?.startsWith('mak-pcm://') ?? false;
-  final timePos = parked ? await reader.float('time-pos') : null;
-  final count = await reader.int64('playlist-count');
-  if (await reader.int64('playlist-pos') != pos ||
-      await reader.int64('playlist/$pos/id') != started) {
-    return;
+  //
+  // No await sits in a branch of `&&`, `||` or `?:` here: compiled to
+  // WebAssembly (Dart 3.13), resuming such an await after the other side
+  // decided the result traps ("illegal cast"), and the trap takes the
+  // whole microtask loop with it. Statements keep the same reads in the
+  // same order.
+  var parked = false;
+  if (eof) {
+    parked = await reader.flag('pause') == 1;
+    if (!parked) parked = await reader.flag('keep-open-pause') == 0;
   }
+  String? file;
+  if (parked) file = await reader.string('playlist/$pos/filename');
+  final live = file?.startsWith('mak-pcm://') ?? false;
+  double? timePos;
+  if (parked) timePos = await reader.float('time-pos');
+  final count = await reader.int64('playlist-count');
+  if (await reader.int64('playlist-pos') != pos) return;
+  if (await reader.int64('playlist/$pos/id') != started) return;
   // The park position supersedes a throttled time-pos still held back,
   // which would land after the event, as at PLAYBACK_RESTART.
   if (parked) cache.trailing.remove('time-pos');

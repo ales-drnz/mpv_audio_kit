@@ -250,14 +250,17 @@ Future<void> _rereadUnavailable(
     // One property that fails to read or decode must not cost the others,
     // or the event (FILE_LOADED, AUDIO_RECONFIG) the caller sends next.
     try {
-      final value = switch (format) {
-        mpv.MpvFormat.mpvFormatDouble => await reader.float(name),
-        mpv.MpvFormat.mpvFormatFlag => await reader.flag(name),
-        mpv.MpvFormat.mpvFormatInt64 => await reader.int64(name),
-        mpv.MpvFormat.mpvFormatString => await reader.string(name),
-        mpv.MpvFormat.mpvFormatNode => await reader.node(name),
+      // One await on a future picked first, not one per arm of a switch
+      // expression (see the WebAssembly note in _sendEndOfContent).
+      final read = switch (format) {
+        mpv.MpvFormat.mpvFormatDouble => reader.float(name),
+        mpv.MpvFormat.mpvFormatFlag => reader.flag(name),
+        mpv.MpvFormat.mpvFormatInt64 => reader.int64(name),
+        mpv.MpvFormat.mpvFormatString => reader.string(name),
+        mpv.MpvFormat.mpvFormatNode => reader.node(name),
         _ => null,
       };
+      final value = await read;
       if (value != null) _forwardValue(send, name, format, value, cache);
     } catch (e) {
       send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
