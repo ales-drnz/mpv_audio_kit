@@ -62,7 +62,6 @@ String _describe(MpvIsolateEvent e) => switch (e) {
   MpvEventPropertyUnavailable(:final name) => '$name=none',
   MpvEventPropertyGroup(:final events) =>
     'group ${events.map(_describe).join(', ')}',
-  MpvEventAudioReconfig() => 'reconfig',
   MpvEventReply(:final userdata) => 'reply $userdata',
   _ => e.runtimeType.toString(),
 };

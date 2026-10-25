@@ -1045,8 +1045,9 @@ player.stream.audioEffects.listen((fx) => print('${fx.length} stages'));
 
 A slider drag that only changes the parameters of a stage, keeping the
 list's shape, is applied to the running filter graph in place, with no
-audible rebuild. Adding, removing, reordering or toggling a stage
-rebuilds the chain. Reset everything with:
+audible rebuild, and the value stays through seeks, loops, track
+switches and the next file. Adding, removing, reordering or toggling a
+stage rebuilds the stages it changes. Reset everything with:
 
 ```dart
 await player.setAudioEffects(const []);

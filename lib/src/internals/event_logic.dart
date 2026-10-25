@@ -102,6 +102,13 @@ final class EventLogic {
     return null;
   }
 
+  /// mpv sent AUDIO_RECONFIG: the audio chain was rebuilt, for a track
+  /// switch, a format change or an output reopen. The player takes nothing
+  /// from the event itself; the values it left unavailable are read again.
+  /// Returns the future of the reads; the pump waits for it before the
+  /// next event.
+  Future<void> audioReconfig() => _rereadUnavailable(_reader, _send, _cache);
+
   /// Any other event, as the transport decoded it: the bare
   /// [MpvEventFileLoaded], [MpvEventPlaybackRestart] and [MpvEventEndFile]
   /// are filled here with the reads they carry. Returns a future when the
@@ -122,8 +129,6 @@ final class EventLogic {
           return _endFile(entryId, reason, error);
         }
         _send(_endFileEvent(entryId, reason, error, lastEntry: false));
-      case MpvEventAudioReconfig():
-        return _audioReconfig(event);
       case MpvEventPlaybackRestart():
         return _playbackRestart();
       default:
@@ -136,7 +141,7 @@ final class EventLogic {
   // waits for the playloop, and the file-load boundary is exactly the window
   // where the playloop can be stuck for seconds initializing the audio
   // output. A failed payload read must never swallow the event itself:
-  // lifecycle, af resync and the waveform re-arm all ride it.
+  // lifecycle, the effects chain check and the waveform re-arm ride it.
   Future<void> _fileLoaded() async {
     MpvEventFileLoaded loaded;
     try {
@@ -181,11 +186,6 @@ final class EventLogic {
       position: entry?.position,
       duration: entry?.duration,
     );
-  }
-
-  Future<void> _audioReconfig(MpvIsolateEvent event) async {
-    await _rereadUnavailable(_reader, _send, _cache);
-    _send(event);
   }
 
   // The landing position rides the event payload (read here, where waiting

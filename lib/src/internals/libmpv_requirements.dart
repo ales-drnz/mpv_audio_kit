@@ -18,6 +18,13 @@ const List<(String, String)> libmpvRequiredPatches = [
     'the prefetch of the next entry runs Hook.load, and the playing entry '
         'stops while a source resolver or a Hook.load listener runs for it',
   ),
+  (
+    'af-command-saves-args',
+    'effects changed with updateAudioEffects go back to the values of the '
+        'last setAudioEffects at a seek, a loop, a track switch or the next '
+        'file, and after a refused change the audio can differ from the '
+        'state',
+  ),
 ];
 
 /// The libmpv-scripts release stamped in an mpv version string:

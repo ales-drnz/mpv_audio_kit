@@ -213,7 +213,7 @@ final class WebSession implements MpvSession {
           MpvEventEndFile(m.i64(data + 8), m.i32(data), m.i32(data + 4)),
         );
       case MpvEventId.mpvEventAudioReconfig:
-        return _logic.dispatch(MpvEventAudioReconfig());
+        return _logic.audioReconfig();
       case MpvEventId.mpvEventSetPropertyReply:
         return _logic.dispatch(MpvEventReply(userdata, error));
       case MpvEventId.mpvEventCommandReply:
@@ -236,8 +236,6 @@ final class WebSession implements MpvSession {
         return _logic.dispatch(
           MpvEventHookFired(m.i64(data + 8), m.string(m.u32(data)) ?? ''),
         );
-      case MpvEventId.mpvEventSeek:
-        return _logic.dispatch(MpvEventPlaybackSeek());
       case MpvEventId.mpvEventPlaybackRestart:
         return _logic.dispatch(MpvEventPlaybackRestart());
     }

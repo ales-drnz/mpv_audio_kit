@@ -821,16 +821,9 @@ abstract class _PlayerBase {
   /// (user-registered hook) or continues it internally.
   Future<void> _routeHookEvent(int id, Hook hook, String name);
 
-  /// mpv reset the filters and rebuilt them from their stored arguments
-  /// (a file load or a seek): see `_AudioModule`.
-  void _onAfChainReset();
-
   /// mpv loaded a file, after applying the resume point it may hold: see
   /// `_AudioModule`.
   void _reassertAfChain();
-
-  /// mpv sent AUDIO_RECONFIG: see `_AudioModule`.
-  void _onAudioReconfig();
 
   /// See `_InitModule` (player_init.part.dart): called by the constructor.
   Future<void> _bringUp();

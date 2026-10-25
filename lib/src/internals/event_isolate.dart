@@ -287,7 +287,7 @@ Future<void>? _dispatchEvent(EventLogic logic, Pointer<mpv.MpvEvent> event) {
         MpvEventEndFile(ef.playlistEntryId, ef.reason, ef.error),
       );
     case mpv.MpvEventId.mpvEventAudioReconfig:
-      return logic.dispatch(MpvEventAudioReconfig());
+      return logic.audioReconfig();
     case mpv.MpvEventId.mpvEventSetPropertyReply:
       return logic.dispatch(MpvEventReply(ev.replyUserdata, ev.error));
     case mpv.MpvEventId.mpvEventCommandReply:
@@ -324,8 +324,6 @@ Future<void>? _dispatchEvent(EventLogic logic, Pointer<mpv.MpvEvent> event) {
       return logic.dispatch(
         MpvEventHookFired(hook.id, decodeMpvString(hook.name.cast())),
       );
-    case mpv.MpvEventId.mpvEventSeek:
-      return logic.dispatch(MpvEventPlaybackSeek());
     case mpv.MpvEventId.mpvEventPlaybackRestart:
       return logic.dispatch(MpvEventPlaybackRestart());
   }

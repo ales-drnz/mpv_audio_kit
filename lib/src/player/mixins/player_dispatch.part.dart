@@ -51,13 +51,6 @@ mixin _DispatchModule on _PlayerBase {
           _onStartFile(entryId);
         case final MpvEventFileLoaded loaded:
           _onFileLoaded(loaded);
-        case MpvEventPlaybackSeek():
-          // A seek's landing is observed via PLAYBACK_RESTART
-          // (`seekCompleted`). The seek itself resets the filters, which
-          // lavfi rebuilds from their stored arguments.
-          _onAfChainReset();
-        case MpvEventAudioReconfig():
-          _onAudioReconfig();
         case MpvEventPlaybackRestart(:final timePos):
           _applyPolledPosition(timePos);
           _seekCompletedCtrl.add(null);
@@ -155,8 +148,6 @@ mixin _DispatchModule on _PlayerBase {
     // parked at its end here.
     _updateLifecycle(buffering: false);
     _entries.onFileLoaded();
-    // mpv just built the new file's chain from the stored arguments.
-    _onAfChainReset();
     _reassertAfChain();
     _applyPolledPosition(timePos);
     // mpv exposes -1, -2 etc. as "no chapter active"; surface as
