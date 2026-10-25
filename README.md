@@ -2477,7 +2477,7 @@ player.registerHook(Hook.load, timeout: const Duration(seconds: 10));
 The hooks mpv offers:
 
 <details>
-<summary><b>6 hooks</b> (click to expand)</summary>
+<summary><b>7 hooks</b> (click to expand)</summary>
 
 | Hook | When it fires |
 | :--- | :--- |
@@ -2487,14 +2487,14 @@ The hooks mpv offers:
 | `Hook.preloaded` | File open, before tracks are selected and the decoder starts |
 | `Hook.unload` | Before the file closes. Clean up what belongs to it |
 | `Hook.afterEndFile` | After the file ended and was unloaded |
+| `Hook.prefetch` | Before the next entry opens ahead of time, while the current one plays. Change the URL it opens |
 
 </details>
 
-Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track, and `setRawProperty('stream-open-filename', ...)` works in both cases. With `setPrefetchPlaylist(true)`:
+With `setPrefetchPlaylist(true)` mpv opens the next entry ahead of time, and runs `Hook.prefetch` for it first. Read `prefetch-open-filename` for the URL it will open and write it to open another one, so a custom scheme such as `plex-transcode://` gets resolved before the track change; `prefetch-playlist-entry-id` names the entry. `Hook.load` then runs once, when the entry starts, with the entry's own URL in `stream-open-filename`: write the same URL there, or mpv drops the stream it opened ahead and opens the entry again. The source resolver of [12.4](#124-the-source-resolver) does both for you.
 
-- `on_load` runs twice for an entry opened ahead: once while the previous entry still plays, then again when the entry starts. Give the same URL both times, or mpv drops the prefetch and opens the entry again. The source resolver of [12.4](#124-the-source-resolver) does this for you.
-- Until the first run continues, mpv stops feeding the entry that plays. A listener slower than the output buffer (0.2 s by default) leaves a gap in the music, so keep that work short.
-- In the first run the current file is still the one that plays: a `file-local-options/...` write lands on it, for the rest of it, and the prefetch opens with it. Headers for one entry are safer in `Media.httpHeaders`: mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
+- The current entry keeps playing while `Hook.prefetch` waits for you. If it ends first, or the playlist no longer has that entry next (a stop, a clear, a jump), mpv drops the early open: the two properties become unavailable, a write to them fails, and the entry opens with `Hook.load` alone when it starts.
+- The other properties still belong to the entry that plays, `path` and `stream-open-filename` among them. A `file-local-options/...` write lands on it, for the rest of it. Headers for one entry are safer in `Media.httpHeaders`: mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
 
 #### 12.2 Listening and continuing
 
@@ -2531,7 +2531,7 @@ player.stream.hook.listen((event) async {
 
 #### 12.3 HTTP headers via hook
 
-`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`. In an `on_load` run for an entry opened ahead, the current file is the one still playing (see [12.1](#121-registering-a-hook)):
+`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`. During `Hook.prefetch` the current file is the one still playing (see [12.1](#121-registering-a-hook)):
 
 ```dart
 await player.setRawProperty(

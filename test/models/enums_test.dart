@@ -5,6 +5,7 @@
 import 'package:mpv_audio_kit/src/types/enums/cache.dart';
 import 'package:mpv_audio_kit/src/types/enums/cover.dart';
 import 'package:mpv_audio_kit/src/types/enums/gapless.dart';
+import 'package:mpv_audio_kit/src/types/enums/hook.dart';
 import 'package:mpv_audio_kit/src/types/enums/replay_gain.dart';
 import 'package:mpv_audio_kit/src/types/state/audio_output_state.dart';
 import 'package:test/test.dart';
@@ -48,6 +49,17 @@ void main() {
         );
         expect(fromMpv(''), fallback, reason: '$name empty fallback');
       }
+    });
+  });
+
+  group('Hook', () {
+    test('fromMpv gives every hook from its mpv name, null for another', () {
+      for (final hook in Hook.values) {
+        expect(Hook.fromMpv(hook.mpvValue), hook);
+      }
+      // libmpv-r20 runs it before the early open of the next entry.
+      expect(Hook.prefetch.mpvValue, 'on_prefetch');
+      expect(Hook.fromMpv('on_a_future_phase'), isNull);
     });
   });
 }

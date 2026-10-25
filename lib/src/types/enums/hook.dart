@@ -4,7 +4,7 @@
 
 /// Lifecycle hook fired by mpv during file loading and unloading.
 ///
-/// Six phases you can intercept to lazily resolve a URL, attach
+/// Seven phases you can intercept to lazily resolve a URL, attach
 /// per-file HTTP headers, drive a fallback path, or react to a track
 /// boundary.
 ///
@@ -37,10 +37,8 @@ enum Hook {
   /// `file-local-options/http-header-fields` to attach per-file
   /// HTTP headers.
   ///
-  /// With `Player.setPrefetchPlaylist` on, it also runs for the next
-  /// entry while the current one plays, and the playing entry gets no
-  /// audio until the hook continues. In that run `file-local-options`
-  /// still belong to the playing entry.
+  /// It runs once per entry, when the entry starts. The early open of the
+  /// next entry with `Player.setPrefetchPlaylist` runs [prefetch] instead.
   load('on_load'),
 
   /// After a stream failed to open. Useful for fallback URLs:
@@ -58,7 +56,25 @@ enum Hook {
 
   /// After a file finished and was fully unloaded. The next file
   /// (if any) hasn't started yet.
-  afterEndFile('on_after_end_file');
+  afterEndFile('on_after_end_file'),
+
+  /// Before mpv opens the next entry ahead of time, while the current one
+  /// plays (`Player.setPrefetchPlaylist`). The current entry keeps playing
+  /// while the hook is held.
+  ///
+  /// Read `prefetch-open-filename` for the URL mpv will open, and write it
+  /// to open another one; `prefetch-playlist-entry-id` is the id of the
+  /// entry. Other properties, `path`, `stream-open-filename` and
+  /// `file-local-options` among them, still belong to the playing entry.
+  /// When the entry starts, [load] runs for it with its own URL in
+  /// `stream-open-filename`: write there the URL given here, and mpv plays
+  /// the opened stream.
+  ///
+  /// When the entry starts before the hook continues, or the playlist no
+  /// longer has it next, mpv drops the early open: both properties become
+  /// unavailable and the continue does nothing. Needs libmpv-r20 or later;
+  /// an older libmpv never fires it.
+  prefetch('on_prefetch');
 
   const Hook(this.mpvValue);
 
@@ -76,6 +92,7 @@ enum Hook {
     'on_preloaded' => preloaded,
     'on_unload' => unload,
     'on_after_end_file' => afterEndFile,
+    'on_prefetch' => prefetch,
     _ => null,
   };
 }
