@@ -3,9 +3,10 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 
-// The prefetch of libmpv-r18 (patch_prefetch_hook, patch_prefetch_state).
-// mpv runs the `on_load` hook of the next entry while the current file
-// plays. Up to r17 the patch hid the playing file's demuxer and moved its
+// The prefetch of libmpv-r18 (patch_prefetch_hook, patch_prefetch_state),
+// one patch from r20 (patch_prefetch). mpv runs a hook for the next entry
+// while the current file plays: `on_load` up to r19, `on_prefetch` from
+// r20. Up to r17 the patch hid the playing file's demuxer and moved its
 // filename to the next entry for the length of the hook: a cache dump
 // aborted the process, duration and tags went away, track changes did
 // nothing (F271, F57, F272). The prefetch opened the next entry with the
@@ -36,10 +37,8 @@ void main() {
   runtimeSuite(fixturePath: a, extraFixtures: [b, c], () {
     libmpvReleaseGroup(18, 'The prefetch of the next entry', () {
       late Player player;
-      int? heldHook;
 
       setUp(() async {
-        heldHook = null;
         player = await buildPlayer();
         await player.setPrefetchPlaylist(true);
         // The whole of a is read at once, so b is prefetched right after a
@@ -48,79 +47,7 @@ void main() {
         await player.setRawProperty('cache', 'yes');
       });
 
-      tearDown(() async {
-        final id = heldHook;
-        if (id != null) await player.continueHook(id);
-        await player.dispose();
-      });
-
-      // Plays a then b with `on_load` registered, and holds the hook of the
-      // prefetch of b: returns once mpv waits in it, while a plays.
-      Future<void> holdPrefetchOfB() async {
-        await player.registerHook(Hook.load);
-        final held = Completer<int>();
-        player.stream.hook.listen((event) async {
-          final url = await player.getRawProperty('stream-open-filename');
-          if (!held.isCompleted && _slashes(url ?? '') == _slashes(b)) {
-            held.complete(event.id);
-          } else {
-            await player.continueHook(event.id);
-          }
-        });
-        await player.openAll([Media(a), Media(b)], play: true);
-        heldHook = await held.future.timeout(const Duration(seconds: 10));
-      }
-
-      // F271: r17 set the demuxer to NULL around the hook, and
-      // cache_dump_poll asserts one: the process aborted.
-      test('a cache dump of the playing file survives the hook', () async {
-        await holdPrefetchOfB();
-        final dir = Directory.systemTemp.createTempSync('mak_dump');
-        addTearDown(() => dir.deleteSync(recursive: true));
-        // Open-ended: the command completes when the dump stops, at the
-        // end of a.
-        unawaited(
-          player
-              .sendRawCommand(['dump-cache', '0', 'no', '${dir.path}/a.mka'])
-              .catchError((Object _) {}),
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        expect(await player.getRawProperty('duration'), isNotNull);
-      }, timeout: const Timeout(Duration(seconds: 30)));
-
-      // F57: the hook sees the entry being loaded, the rest stays a's.
-      test('the playing file keeps its duration and tags during the hook, '
-          'while path names the entry being loaded', () async {
-        await holdPrefetchOfB();
-        final duration = double.tryParse(
-          await player.getRawProperty('duration') ?? '',
-        );
-        expect(duration, closeTo(5, 0.1), reason: 'the duration of a');
-        expect(
-          await player.getRawProperty('metadata/by-key/encoder'),
-          'Lavf62.12.100',
-          reason: 'the tags of a',
-        );
-        expect(await player.getRawProperty('seekable'), 'yes');
-        expect(await player.getRawProperty('media-title'), 'sine_5s.flac');
-        expect(
-          _slashes(await player.getRawProperty('path') ?? ''),
-          _slashes(b),
-        );
-        expect(player.state.duration, const Duration(seconds: 5));
-      }, timeout: const Timeout(Duration(seconds: 30)));
-
-      // F272: with no demuxer, r17 added the track to nothing.
-      test('an audio track added during the hook plays at once', () async {
-        await holdPrefetchOfB();
-        await player.addAudioTrack(Media(c));
-        await waitUntil(
-          () async =>
-              await player.getRawProperty('current-tracks/audio/external') ==
-              'yes',
-          reason: 'the added track never became the playing one',
-        );
-      }, timeout: const Timeout(Duration(seconds: 30)));
+      tearDown(() => player.dispose());
 
       // F60: r17 reported `loading` until the transition, 5 s later.
       test('a prefetch that cannot open turns failed while the current '
@@ -190,6 +117,97 @@ void main() {
           reason: 'a carries its own header',
         );
         await loadedB;
+      }, timeout: const Timeout(Duration(seconds: 30)));
+    });
+
+    libmpvReleaseGroup(20, 'The on_prefetch hook of the next entry', () {
+      late Player player;
+      int? heldHook;
+
+      setUp(() async {
+        heldHook = null;
+        player = await buildPlayer();
+        await player.setPrefetchPlaylist(true);
+        await player.setRawProperty('cache', 'yes');
+      });
+
+      tearDown(() async {
+        final id = heldHook;
+        if (id != null) await player.continueHook(id);
+        await player.dispose();
+      });
+
+      // Plays a then b with `on_prefetch` registered, and holds the hook of
+      // the prefetch of b: returns once mpv waits in it, while a plays.
+      Future<void> holdPrefetchOfB() async {
+        await player.registerHook(Hook.prefetch);
+        final held = Completer<int>();
+        player.stream.hook.listen((event) async {
+          final url = await player.getRawProperty('prefetch-open-filename');
+          if (!held.isCompleted && _slashes(url ?? '') == _slashes(b)) {
+            held.complete(event.id);
+          } else {
+            await player.continueHook(event.id);
+          }
+        });
+        await player.openAll([Media(a), Media(b)], play: true);
+        heldHook = await held.future.timeout(const Duration(seconds: 10));
+      }
+
+      // F271: r17 set the demuxer to NULL around the hook, and
+      // cache_dump_poll asserts one: the process aborted.
+      test('a cache dump of the playing file survives the hook', () async {
+        await holdPrefetchOfB();
+        final dir = Directory.systemTemp.createTempSync('mak_dump');
+        addTearDown(() => dir.deleteSync(recursive: true));
+        // Open-ended: the command completes when the dump stops, at the
+        // end of a.
+        unawaited(
+          player
+              .sendRawCommand(['dump-cache', '0', 'no', '${dir.path}/a.mka'])
+              .catchError((Object _) {}),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        expect(await player.getRawProperty('duration'), isNotNull);
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      // F57: everything stays a's, and the hook reads b's URL from its own
+      // property. Up to r19 path named b during the hook.
+      test('the playing file keeps its duration, tags and path during the '
+          'hook, which names the next entry apart', () async {
+        await holdPrefetchOfB();
+        final duration = double.tryParse(
+          await player.getRawProperty('duration') ?? '',
+        );
+        expect(duration, closeTo(5, 0.1), reason: 'the duration of a');
+        expect(
+          await player.getRawProperty('metadata/by-key/encoder'),
+          'Lavf62.12.100',
+          reason: 'the tags of a',
+        );
+        expect(await player.getRawProperty('seekable'), 'yes');
+        expect(await player.getRawProperty('media-title'), 'sine_5s.flac');
+        expect(
+          _slashes(await player.getRawProperty('path') ?? ''),
+          _slashes(a),
+        );
+        expect(
+          _slashes(await player.getRawProperty('prefetch-open-filename') ?? ''),
+          _slashes(b),
+        );
+        expect(player.state.duration, const Duration(seconds: 5));
+      }, timeout: const Timeout(Duration(seconds: 30)));
+
+      // F272: with no demuxer, r17 added the track to nothing.
+      test('an audio track added during the hook plays at once', () async {
+        await holdPrefetchOfB();
+        await player.addAudioTrack(Media(c));
+        await waitUntil(
+          () async =>
+              await player.getRawProperty('current-tracks/audio/external') ==
+              'yes',
+          reason: 'the added track never became the playing one',
+        );
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });
