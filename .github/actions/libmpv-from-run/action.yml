@@ -71,15 +71,19 @@ runs:
         echo "Manifest of the run: $(jq -c '{release, source}' "$manifest" | tr -d '\r')"
         echo "MAK_LIBMPV_RELEASE=$release" >> "$GITHUB_ENV"
         # The user define skips the hook's checksums, so a table that does
-        # not match these binaries would stay green until the release.
-        hook="$GITHUB_WORKSPACE/hook/build.dart"
+        # not match these binaries would stay green until the release. The
+        # web module is pinned by the manifest copy of tool/codegen, which
+        # scripts/update_libmpv.sh writes with the hook.
+        web=$(jq -r '.web.asset // empty' "$manifest" | tr -d '\r')
         jq -r '.assets | to_entries[] | "\(.key) \(.value)"' \
           "$manifest" |
           while read -r asset sha; do
             # jq.exe on Windows ends its lines with CRLF.
             sha="${sha%$'\r'}"
-            grep -q "$sha" "$hook" ||
-              echo "::warning::$asset of this run is not the one pinned in hook/build.dart; run scripts/update_libmpv.sh before the release."
+            pinned=hook/build.dart
+            [[ "$asset" == "$web" ]] && pinned=tool/codegen/libmpv_manifest.json
+            grep -q "$sha" "$GITHUB_WORKSPACE/$pinned" ||
+              echo "::warning::$asset of this run is not the one pinned in $pinned; run scripts/update_libmpv.sh before the release."
           done
         for pubspec in ${{ inputs.pubspecs }}; do
           if grep -q '^hooks:' "$pubspec"; then
