@@ -27,14 +27,15 @@ import io.flutter.plugin.common.MethodChannel
 
 /**
  * Process-static bridge between the Dart `MediaSessionController` and the
- * Media3 session. Only one [Player] per process owns the session
- * (enforced Dart-side), so a singleton is the natural fit and lets
- * [MpvMediaSessionService] — which Media3 may create / destroy on its own
- * schedule — always resolve the live session and command target without a
- * Binder handshake. Every Flutter engine of the process reaches it through
- * its own plugin, which passes itself as the engine token: the session and
- * the command sink belong to the engine that enabled and listened (see
- * [EngineOwnership]).
+ * Media3 session. Only one [Player] per process owns the session, so a
+ * singleton is the natural fit and lets [MpvMediaSessionService] — which
+ * Media3 may create / destroy on its own schedule — always resolve the live
+ * session and command target without a Binder handshake. Every Flutter
+ * engine of the process reaches it through its own plugin, which passes
+ * itself as the engine token. The first engine to enable owns the session
+ * until it disables or detaches: another engine's enable fails with
+ * `already_owned`, its updates are dropped, and the commands go to the
+ * owner's sink (see [EngineOwnership]).
  *
  * It is a *stateless renderer*: each `enable` / `update*` replaces a
  * `@Volatile` snapshot and calls [MpvControllerPlayer.invalidateState];
@@ -123,14 +124,13 @@ internal object MediaSessionManager {
     // ── Wiring (set by the plugin) ──────────────────────────────────────
 
     private var appContext: Context? = null
-    private var eventSink: EventChannel.EventSink? = null
     private var player: MpvControllerPlayer? = null
     private var session: MediaSession? = null
     private var audioFocus: AudioFocusController? = null
 
-    // Which engine enabled the session and which one listens for commands:
+    // Which engine owns the session, and the command sink of each engine:
     // every engine of the process reaches this object through its own plugin.
-    private val engines = EngineOwnership()
+    private val engines = EngineOwnership<EventChannel.EventSink>()
 
     // A self-connected controller binds [MpvMediaSessionService] so Media3
     // promotes it to the foreground and posts (and keeps updating) the media
@@ -188,16 +188,15 @@ internal object MediaSessionManager {
         appContext = context.applicationContext
     }
 
-    /** [engine] detaches: tear down what it owns. Dart calls `disable` on
-     *  dispose, but an engine destroyed with the process still running
-     *  (Back on the root route, a swipe from the recent apps) never
-     *  disposes: its players stop on their own (`OwnerWatch` on the Dart
-     *  side), and the session goes here. The session and the sink of
-     *  another engine stay, and the application context serves them all. */
+    /** [engine] detaches: its sink goes, and the session if it owns it.
+     *  Dart calls `disable` on dispose, but an engine destroyed with the
+     *  process still running (Back on the root route, a swipe from the
+     *  recent apps) never disposes: its players stop on their own
+     *  (`OwnerWatch` on the Dart side), and the session goes here. The
+     *  session of another engine stays, and the application context serves
+     *  them all. */
     fun detach(engine: Any) {
-        val teardown = engines.onDetach(engine)
-        if (teardown.sink) eventSink = null
-        if (teardown.session && enabled) disable()
+        if (engines.onDetach(engine) && enabled) disable()
     }
 
     // ── Method channel (Dart → native), per engine ──────────────────────
@@ -207,7 +206,15 @@ internal object MediaSessionManager {
             when (call.method) {
                 "enable" -> {
                     val a = call.arguments as Map<*, *>
-                    engines.onEnable(engine)
+                    if (!engines.tryEnable(engine)) {
+                        // Dart throws a StateError and leaves its state off.
+                        result.error(
+                            "already_owned",
+                            "Another Flutter engine of this process owns the media session.",
+                            null,
+                        )
+                        return
+                    }
                     enable(
                         a["config"] as Map<*, *>,
                         a["metadata"] as Map<*, *>,
@@ -215,14 +222,18 @@ internal object MediaSessionManager {
                     )
                     result.success(null)
                 }
+                // Only the owner's: another engine's Player never had the session.
                 "updateConfig" -> {
-                    updateConfig(call.arguments as Map<*, *>); result.success(null)
+                    if (engines.mayUpdate(engine)) updateConfig(call.arguments as Map<*, *>)
+                    result.success(null)
                 }
                 "updateMetadata" -> {
-                    updateMetadata(call.arguments as Map<*, *>); result.success(null)
+                    if (engines.mayUpdate(engine)) updateMetadata(call.arguments as Map<*, *>)
+                    result.success(null)
                 }
                 "updatePlayback" -> {
-                    updatePlayback(call.arguments as Map<*, *>); result.success(null)
+                    if (engines.mayUpdate(engine)) updatePlayback(call.arguments as Map<*, *>)
+                    result.success(null)
                 }
                 "disable" -> {
                     // Only the owner's: another engine's Player never had it.
@@ -240,17 +251,17 @@ internal object MediaSessionManager {
     // ── Event channel (native → Dart), per engine ───────────────────────
 
     fun onListen(engine: Any, events: EventChannel.EventSink) {
-        engines.onListen(engine)
-        eventSink = events
+        engines.onListen(engine, events)
     }
 
     fun onCancel(engine: Any) {
-        if (engines.onCancel(engine)) eventSink = null
+        engines.onCancel(engine)
     }
 
-    /** Forwards an OS remote command to Dart, on the platform thread. */
+    /** Forwards an OS remote command to the owner's Dart, on the platform
+     *  thread. */
     fun forwardCommand(command: Map<String, Any?>) = runOnMain {
-        eventSink?.success(command)
+        engines.commandSink()?.success(command)
     }
 
     /** A scrub from the OS slider: pin the slider at the drop target
@@ -260,7 +271,7 @@ internal object MediaSessionManager {
     fun onScrub(positionMs: Long) = runOnMain {
         val generation = scrub.start(positionMs, trackOf(metadata))
         player?.republish()
-        eventSink?.success(mapOf("type" to "seekTo", "positionMs" to positionMs))
+        engines.commandSink()?.success(mapOf("type" to "seekTo", "positionMs" to positionMs))
         mainHandler.postDelayed({
             if (scrub.expire(generation) && enabled) publish()
         }, ScrubFreeze.BACKSTOP_MS)

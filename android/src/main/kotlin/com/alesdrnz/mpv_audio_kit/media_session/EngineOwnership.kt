@@ -5,58 +5,66 @@
  */
 package com.alesdrnz.mpv_audio_kit.media_session
 
+import java.util.IdentityHashMap
+
 /**
- * Which Flutter engine owns the process-wide media session and the command
- * sink, kept free of Android types so it runs on the plain JVM (see
- * `EngineOwnershipTest`). An engine is any token unique to it (the plugin
- * instance attached to it).
+ * Which Flutter engine owns the process-wide media session, and the command
+ * sink of each engine, kept free of Android types so it runs on the plain
+ * JVM (see `EngineOwnershipTest`). An engine is any token unique to it (the
+ * plugin instance attached to it), [S] the type of its sink.
  *
  * An app can run more engines than the one that plays: a workmanager task
  * builds one per task and destroys it at the end, add-to-app keeps several.
- * The session belongs to the engine that enabled it, and the sink to the
- * one that listened last: another engine's detach, cancel or disable leaves
- * them alone. A Hot Restart keeps the engine, so the disable its new VM
- * sends is the owner's.
+ * The first engine to enable owns the session until it disables or
+ * detaches. Another engine's enable is refused, and its updates, disable
+ * and detach change nothing. OS commands go to the owner's sink, whichever
+ * engine listened last. A Hot Restart keeps the engine, so its new VM's
+ * calls are the owner's. Apple, Windows and Linux follow the same rule.
  */
-internal class EngineOwnership {
+internal class EngineOwnership<S : Any> {
 
-    /** What an engine's detach tears down. */
-    data class Teardown(val sink: Boolean, val session: Boolean)
+    private val sinks = IdentityHashMap<Any, S>()
+    private var owner: Any? = null
 
-    private var sinkOwner: Any? = null
-    private var sessionOwner: Any? = null
-
-    /** [engine] listened: the sink is now its. */
-    fun onListen(engine: Any) {
-        sinkOwner = engine
+    /** [engine] listened for commands on [sink]. */
+    fun onListen(engine: Any, sink: S) {
+        sinks[engine] = sink
     }
 
-    /** [engine] cancelled. Returns whether the sink was its and goes. */
-    fun onCancel(engine: Any): Boolean {
-        if (sinkOwner !== engine) return false
-        sinkOwner = null
+    /** [engine] cancelled: its sink goes. */
+    fun onCancel(engine: Any) {
+        sinks.remove(engine)
+    }
+
+    /** [engine] asks to enable the session. Refused, with nothing changed,
+     *  while another engine owns it. */
+    fun tryEnable(engine: Any): Boolean {
+        if (owner != null && owner !== engine) return false
+        owner = engine
         return true
     }
 
-    /** [engine] enabled the session: it owns it from now on. */
-    fun onEnable(engine: Any) {
-        sessionOwner = engine
-    }
+    /** Whether an update from [engine] reaches the session: only the owner's. */
+    fun mayUpdate(engine: Any): Boolean = owner === engine
 
     /** Whether a disable from [engine] turns the session off: the owner's
      *  does, and any does while nobody owns it (a no-op then). */
-    fun mayDisable(engine: Any): Boolean = sessionOwner == null || sessionOwner === engine
+    fun mayDisable(engine: Any): Boolean = owner == null || owner === engine
 
     /** The session went off. */
     fun onDisabled() {
-        sessionOwner = null
+        owner = null
     }
 
-    /** [engine] detached: what of the sink and the session was its. */
-    fun onDetach(engine: Any): Teardown {
-        val t = Teardown(sink = sinkOwner === engine, session = sessionOwner === engine)
-        if (t.sink) sinkOwner = null
-        if (t.session) sessionOwner = null
-        return t
+    /** [engine] detached: its sink goes. Returns whether it owned the
+     *  session, which the caller then turns off. */
+    fun onDetach(engine: Any): Boolean {
+        sinks.remove(engine)
+        if (owner !== engine) return false
+        owner = null
+        return true
     }
+
+    /** Where an OS command goes: the owner's sink, or nowhere. */
+    fun commandSink(): S? = owner?.let { sinks[it] }
 }
