@@ -105,7 +105,8 @@ void main() {
       expect(art.scheme, 'file');
       expect(art.path, contains('/mpv_audio_kit/$pid/art-'));
       expect(File.fromUri(art).existsSync(), isTrue, reason: '$art');
-      expect(meta['xesam:url'] as String, endsWith('tagged.m4a'));
+      // xesam:url is a URI, not the bare path the Media was opened with.
+      expect(meta['xesam:url'], Uri.file(tagged).toString());
 
       expect(await bus.playbackStatus(), 'Paused');
       expect(await bus.property(MprisBus.rootIface, 'Identity'), _appName);

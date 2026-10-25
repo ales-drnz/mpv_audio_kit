@@ -371,10 +371,11 @@ class MediaSessionController {
       _firstTagValue(mpvMeta, const ['disc']),
     );
 
-    // Source URI of the current item, for MPRIS xesam:url. Only local files:
-    // the bus is readable by every process in the session, and a network
-    // URL can carry credentials (Subsonic `u`, `t` and `s`, Jellyfin `api_key`).
-    final url = remote ? null : item?.uri;
+    // Source URI of the current item, for MPRIS xesam:url, which takes a URI:
+    // a bare path is not one. Only local files: the bus is readable by every
+    // process in the session, and a network URL can carry credentials
+    // (Subsonic `u`, `t` and `s`, Jellyfin `api_key`).
+    final url = remote || item == null ? null : _fileUri(item.uri);
 
     // A URL reaches the native side as the image it names, or not at all.
     final artwork = _resolveArtwork(override, state.coverArt, extras);
@@ -413,6 +414,22 @@ class MediaSessionController {
   static bool _isLocalUri(String uri) {
     final scheme = Uri.tryParse(uri)?.scheme ?? '';
     return scheme.isEmpty || scheme == 'file' || scheme.length == 1;
+  }
+
+  /// The local item [uri] as a `file:` URI: a `file:` URI as it is, a path
+  /// percent-encoded, a relative one under the working directory, where mpv
+  /// opens it. `null` for a path no URI can name.
+  static String? _fileUri(String uri) {
+    final parsed = Uri.tryParse(uri);
+    if (parsed?.scheme == 'file') return uri;
+    final drive = parsed?.scheme.length == 1;
+    try {
+      return Uri.base
+          .resolveUri(Uri.file(uri, windows: drive ? true : null))
+          .toString();
+    } on ArgumentError {
+      return null;
+    }
   }
 
   /// Whether the artwork [uri] goes through [_artworkFetcher]: an

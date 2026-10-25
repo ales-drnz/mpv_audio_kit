@@ -1057,8 +1057,51 @@ void main() {
       await _settle();
       expect(
         lastSnap(ch).url,
-        '/music/song.flac',
-        reason: 'plain local paths are still published',
+        'file:///music/song.flac',
+        reason: 'plain local paths are still published, as a file URI',
+      );
+    });
+
+    test('a local path is published as a file URI', () async {
+      // MPRIS wants a URI in xesam:url: a bare path is not one.
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final controller = await _buildController(rig: rig, channel: ch);
+      addTearDown(controller.dispose);
+      ch.calls.clear();
+
+      Future<String?> urlOf(String uri) async {
+        rig.state = PlayerState(
+          mediaSession: const MediaSession(),
+          metadata: const {'title': 'Song'},
+          playlist: Playlist([Media(uri)]),
+        );
+        rig.metadata.add(const {'title': 'Song'});
+        await _settle();
+        return lastSnap(ch).url;
+      }
+
+      expect(
+        await urlOf('/music/Città vecchia #1.flac'),
+        'file:///music/Citt%C3%A0%20vecchia%20%231.flac',
+      );
+      expect(
+        await urlOf('file:///music/a%20b.flac'),
+        'file:///music/a%20b.flac',
+        reason: 'a file URI is published as it is',
+      );
+      expect(
+        await urlOf('music/song.flac'),
+        Uri.base.resolve('music/song.flac').toString(),
+        reason: 'a relative path is the file mpv opens, under the cwd',
+      );
+      expect(await urlOf(r'C:\Music\song.flac'), 'file:///C:/Music/song.flac');
+      expect(
+        await urlOf(r'C:\Music\a*b.flac'),
+        isNull,
+        reason: 'no URI names a path Windows forbids, and nothing throws',
       );
     });
 
