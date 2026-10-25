@@ -155,6 +155,7 @@ The package needs Dart 3.10 and Flutter 3.38, and Flutter 3.47.4 or later to bui
     * [7.6 Radio and live streams](#76-radio-and-live-streams)
     * [7.7 Throttling CDNs and chunked requests](#77-throttling-cdns-and-chunked-requests)
     * [7.8 Monitoring the cache and the network](#78-monitoring-the-cache-and-the-network)
+    * [7.9 Dropped connections](#79-dropped-connections)
 
     </details>
 
@@ -595,6 +596,8 @@ final media = Media(
 Keys must not be empty, and values must not contain a comma. With
 `setPrefetchPlaylist(true)`, an entry with demuxer options, and the entry
 after it, open when they start instead of from the prefetch.
+`Media.streamLavfOptions` does the same for FFmpeg's network protocols
+(mpv's `stream-lavf-o`), see [7.9](#79-dropped-connections).
 
 #### 2.5 Live PCM input
 
@@ -1689,6 +1692,8 @@ await player.setCache(const CacheSettings(mode: Cache.no, pause: false));
 await player.setNetworkTimeout(const Duration(seconds: 10));
 ```
 
+To open the stream again when the connection drops, see [7.9](#79-dropped-connections).
+
 HLS streams, such as Jellyfin's transcoded ones, work with the default cache settings:
 
 ```dart
@@ -1758,6 +1763,33 @@ player.stream.demuxerViaNetwork.listen((isNetwork) {
   print('Network stream: $isNetwork');
 });
 ```
+
+#### 7.9 Dropped connections
+
+Every `http://` and `https://` entry asks FFmpeg to recover from a dropped connection instead of ending the track early:
+- A body cut short is requested again from where it stopped, after 0, 1, 3 and 7 s, on a server that accepts range requests. mpv does this for a file; the entry also asks it for the segments of an HLS stream.
+- A connection that fails to open (refused, reset, a name that does not resolve, a TLS error) is tried again on the same schedule. A server that stays unreachable fails the entry after about 11 s.
+- The HLS demuxer requests a segment that fails to open four more times before it skips it.
+
+`Media.streamLavfOptions` passes options to FFmpeg's network protocols for that entry only (mpv's `stream-lavf-o`), and a key set there wins over these defaults:
+
+```dart
+// Fail at once on an unreachable server
+Media(url, streamLavfOptions: {'reconnect_on_network_error': '0'});
+```
+
+A live stream that drops is not opened again by default. Turn it on for a radio with `reconnect_streamed`:
+
+```dart
+await player.open(Media(
+  'https://stream.radio.example.com/live.mp3',
+  streamLavfOptions: {'reconnect_streamed': '1'},
+));
+```
+
+Keep it for live streams. FFmpeg opens such a stream again from its first byte, so a file sent by a server without range support plays again from its start after a cut, and a file sent with no length plays over and over.
+
+The options of the entry replace a global `stream-lavf-o` set with `setRawProperty`. An entry whose URI a hook or the source resolver turns into an `http://` URL does not get the defaults: give its `Media` the options it needs. With `setPrefetchPlaylist(true)`, an `http://` entry next to an entry of another kind (a local file) opens when it starts instead of from the prefetch, since their options differ.
 
 ---
 
@@ -2307,7 +2339,7 @@ What to keep in mind when you compare them:
 - With gapless playback (the default), mpv ends an entry once its decoder is done, while the output still plays what it buffered. The position then trails the end by about that buffer: the audio buffer of [6.10](#610-audio-buffer) (0.2 s by default) plus the audio output's own. Leave a margin larger than that.
 - The last entry of the playlist does not end at its end. The player keeps it open on its last frame: `state.completed` turns true and `state.position` holds where it ended. Its event comes when it is stopped or replaced, with `reason: stop` and that position.
 - The duration can be an estimate. For an MP3 without a Xing or VBRI header, and for some HLS streams, mpv derives it from the bitrate, and a file that played to its end can stop seconds away from it.
-- For an HTTP file whose length the server announced, FFmpeg logs the cut on `stream.log`, and so on `stream.error` as a `LogError`: prefix `ffmpeg`, level `error`, text `http: Stream ends prematurely at <bytes read>, should be <length>`. On a server that accepts range requests it then reconnects where it stopped, with a `Will reconnect at ...` warning for each attempt, and the entry plays on when one of them works.
+- For an HTTP file whose length the server announced, FFmpeg logs the cut on `stream.log`, and so on `stream.error` as a `LogError`: prefix `ffmpeg`, level `error`, text `http: Stream ends prematurely at <bytes read>, should be <length>`. On a server that accepts range requests it then reconnects where it stopped ([7.9](#79-dropped-connections)), with a `Will reconnect at ...` warning for each attempt, and the entry plays on when one of them works. When none does, it ends with `reason: eof` short of its duration.
 
 `MpvFileEndedEvent` fields:
 - `reason`: a `MpvEndFileReason` enum value

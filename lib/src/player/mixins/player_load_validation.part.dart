@@ -31,9 +31,48 @@ mixin _LoadValidationModule on _PlayerBase {
   }
 }
 
+/// The `stream-lavf-o` entries of every `http://` and `https://` entry,
+/// below what [Media.httpChunkSize] and [Media.streamLavfOptions] set
+/// (verified against FFmpeg 8.1.1 and mpv 0.41):
+/// - `reconnect` and `reconnect_delay_max` are mpv's own values for a
+///   progressive stream (stream_lavf.c), which it does not pass to the
+///   segments of an HLS or DASH stream. Through `stream-lavf-o` they reach
+///   them: demux_lavf.c hands the network options to every nested open.
+///   FFmpeg then requests a body cut short again from where it stopped, on
+///   a server that accepts ranges (http.c, http_read_stream), after 0, 1,
+///   3 and 7 s.
+/// - `reconnect_on_network_error` tries a connection that fails to open
+///   (refused, reset, DNS, TLS) again on the same schedule (http.c,
+///   http_open_cnx), for the open and for each of those reconnects.
+/// - `seg_max_retry` is an option of the HLS demuxer, which takes the
+///   network options as its own (demux_lavf.c sets them on a demuxer that
+///   opens its URL itself). With FFmpeg's 0 a segment that fails to open is
+///   skipped at once (hls.c, read_data_continuous). 4 gives it as many
+///   retries as a progressive stream gets reconnects. Through
+///   `demuxer-lavf-o` it would also drop the prefetch of the entry: that
+///   option rebuilds the demuxer when it changes.
+/// `reconnect_streamed` is not among them: on a server without range
+/// support FFmpeg reconnects from the first byte, so a file cut short
+/// plays again from its start, and one sent with no length plays over and
+/// over. A live stream asks for it with [Media.streamLavfOptions].
+const Map<String, String> _kHttpStreamOptions = {
+  'reconnect': '1',
+  'reconnect_delay_max': '7',
+  'reconnect_on_network_error': '1',
+  'seg_max_retry': '4',
+};
+
+/// Whether [uri] is an `http://` or `https://` URL.
+bool _isHttp(String uri) {
+  final head = (uri.length < 8 ? uri : uri.substring(0, 8)).toLowerCase();
+  return head.startsWith('http://') || head.startsWith('https://');
+}
+
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
-/// `httpHeaders`, `httpChunkSize`, `demuxerLavfOptions`, `start` and `end`, and
-/// the raw audio demuxer of a live PCM source. Each value is length-prefixed
+/// `httpHeaders`, `httpChunkSize`, `streamLavfOptions`, `demuxerLavfOptions`,
+/// `start` and `end`, the stream options of an `http://` or `https://`
+/// entry ([_kHttpStreamOptions]), and the raw audio demuxer of a live PCM
+/// source. Each value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
 /// inside it. The headers still refuse some characters
 /// ([_validateHeaderKey], [_validateHeaderValue]): `,`, since
@@ -59,6 +98,35 @@ String loadfileOptions(Media media) {
     parts.add('http-header-fields=%${utf8.encode(joined).length}%$joined');
   }
 
+  final stream = _streamOptions(media);
+  if (stream.isNotEmpty) parts.add(_keyValueOption('stream-lavf-o', stream));
+
+  final lavf = media.demuxerLavfOptions;
+  if (lavf != null && lavf.isNotEmpty) {
+    for (final e in lavf.entries) {
+      _validateLavfOption(e.key, e.value, 'demuxerLavfOptions');
+    }
+    // File-local `demuxer-lavf-o`, scoped to this entry like the options
+    // above.
+    parts.add(_keyValueOption('demuxer-lavf-o', lavf));
+  }
+
+  // mpv applies it after a resume point it loads for the file, so it wins.
+  final start = media.start;
+  if (start != null) parts.add('start=${durationToOption(start)}');
+  final end = media.end;
+  if (end != null) parts.add('end=${durationToOption(end)}');
+
+  return parts.join(',');
+}
+
+/// The `stream-lavf-o` entries of [media], each key once: the defaults of
+/// an `http://` or `https://` entry, then those of its chunk size, then its
+/// own options, a later value replacing an earlier one.
+Map<String, String> _streamOptions(Media media) {
+  final stream = <String, String>{
+    if (_isHttp(media.uri)) ..._kHttpStreamOptions,
+  };
   final chunk = media.httpChunkSize;
   if (chunk != null) {
     if (chunk <= 0) {
@@ -85,30 +153,28 @@ String loadfileOptions(Media media) {
     // Setting both keeps the probe AND every steady-state read bounded.
     // (`request_size` alone would also suffice here; `initial_request_size`
     // alone would NOT: chunk 2+ would go unbounded.)
-    final value =
-        'initial_request_size=$chunk,request_size=$chunk,'
-        'reconnect_streamed=1,reconnect_on_network_error=1';
-    parts.add('stream-lavf-o=%${utf8.encode(value).length}%$value');
+    stream.addAll({
+      'initial_request_size': '$chunk',
+      'request_size': '$chunk',
+      'reconnect_streamed': '1',
+      'reconnect_on_network_error': '1',
+    });
   }
-
-  final lavf = media.demuxerLavfOptions;
-  if (lavf != null && lavf.isNotEmpty) {
-    for (final e in lavf.entries) {
-      _validateDemuxerLavfOption(e.key, e.value);
+  final own = media.streamLavfOptions;
+  if (own != null) {
+    for (final e in own.entries) {
+      _validateLavfOption(e.key, e.value, 'streamLavfOptions');
     }
-    // File-local `demuxer-lavf-o`, scoped to this entry like the options
-    // above. Entries are comma-joined (validated comma-free).
-    final value = lavf.entries.map((e) => '${e.key}=${e.value}').join(',');
-    parts.add('demuxer-lavf-o=%${utf8.encode(value).length}%$value');
+    stream.addAll(own);
   }
+  return stream;
+}
 
-  // mpv applies it after a resume point it loads for the file, so it wins.
-  final start = media.start;
-  if (start != null) parts.add('start=${durationToOption(start)}');
-  final end = media.end;
-  if (end != null) parts.add('end=${durationToOption(end)}');
-
-  return parts.join(',');
+/// The file-local option [name] holding [entries] as `key=value` pairs,
+/// comma-joined (each validated comma-free) and length-prefixed.
+String _keyValueOption(String name, Map<String, String> entries) {
+  final value = entries.entries.map((e) => '${e.key}=${e.value}').join(',');
+  return '$name=%${utf8.encode(value).length}%$value';
 }
 
 /// Throws [ArgumentError] for a negative [Media.start], an [Media.end]
@@ -170,32 +236,31 @@ void validateLoadOptions(Media media) {
       'must be a positive byte count (or null to disable)',
     );
   }
-  final lavf = media.demuxerLavfOptions;
-  if (lavf != null && lavf.isNotEmpty) {
-    for (final e in lavf.entries) {
-      _validateDemuxerLavfOption(e.key, e.value);
+  for (final (name, options) in [
+    ('streamLavfOptions', media.streamLavfOptions),
+    ('demuxerLavfOptions', media.demuxerLavfOptions),
+  ]) {
+    for (final e in options?.entries ?? const <MapEntry<String, String>>[]) {
+      _validateLavfOption(e.key, e.value, name);
     }
   }
 }
 
 final RegExp _kForbiddenInLavfOption = RegExp(r'[\r\n,\x00]');
 
-/// A `demuxer-lavf-o` entry sits in a comma-separated list, so its key and
-/// value must be non-empty and free of comma, CR, LF and NUL. Mirrors the
+/// A `stream-lavf-o` or `demuxer-lavf-o` entry sits in a comma-separated
+/// list, so its key must be non-empty and the key and value free of comma,
+/// CR, LF and NUL. [name] is the [Media] field it came from. Mirrors the
 /// header validators.
-void _validateDemuxerLavfOption(String key, String value) {
+void _validateLavfOption(String key, String value, String name) {
   if (key.isEmpty) {
-    throw ArgumentError.value(
-      key,
-      'demuxerLavfOptions key',
-      'must not be empty',
-    );
+    throw ArgumentError.value(key, '$name key', 'must not be empty');
   }
   if (_kForbiddenInLavfOption.hasMatch(key) ||
       _kForbiddenInLavfOption.hasMatch(value)) {
     throw ArgumentError.value(
       '$key=$value',
-      'demuxerLavfOptions',
+      name,
       'must not contain CR, LF, NUL, or comma',
     );
   }
