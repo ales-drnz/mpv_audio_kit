@@ -57,7 +57,8 @@ Future<_Response> _get(String url) async {
 /// The bytes of [path] under the test directory.
 Future<Uint8List> fetchBytes(String path) async {
   final response = await _get(testUrl(path));
-  return (await response.arrayBuffer().toDart).toDart.asUint8List();
+  final buffer = await response.arrayBuffer().toDart;
+  return buffer.toDart.asUint8List();
 }
 
 String _blobUrl(JSAny part, String type) {

@@ -6,6 +6,9 @@
 @TestOn('browser')
 library;
 
+import 'dart:math' as math;
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -52,4 +55,23 @@ void main() {
       expect(player.state.audioParams.sampleRate, greaterThan(0));
     },
   );
+
+  test('a live PCM source plays to its end through the module', () async {
+    final player = Player();
+    addTearDown(player.dispose);
+    await player.ready;
+    await player.setRawProperty('ao', 'null');
+    // The module is loaded once a player is ready: the input lives in it.
+    const format = PcmFormat(sampleRate: 48000, channels: 1);
+    final source = PcmSource.create(format);
+    final tone = Int16List(48000 ~/ 2);
+    for (var i = 0; i < tone.length; i++) {
+      tone[i] = (8000 * math.sin(2 * math.pi * 440 * i / 48000)).round();
+    }
+    source.add(tone.buffer.asUint8List());
+    await source.close();
+    await player.open(source.toMedia(), play: true);
+    await waitFor(() => player.state.completed);
+    expect(player.state.audioParams.sampleRate, 48000);
+  });
 }
