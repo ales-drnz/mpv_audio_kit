@@ -2560,24 +2560,24 @@ await player.openAll([
 
 The player calls the resolver:
 
-* before every stream opens (`on_load`), prefetch included;
+* before every stream opens (`on_load`), and before the next entry opens ahead of time (`on_prefetch`);
 * once more after a failed open (`on_load_fail`), with `request.isRetry` set: return a fresh URL, for example with a new token, and mpv tries again. This happens at most once per load, and only when the new URL differs from the one that failed.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/source_resolver.png" width="100%" alt="The resolver returns a URL with a short-lived token; when the open fails, on_load_fail asks it again with isRetry true and a fresh token plays, at most once per load">
 
 Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error goes to `internalLog` and keeps the current URL.
 
-The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. A URL it returns after that is dropped, with a warning on `internalLog`, since mpv has moved on. `timeout: null` lifts the deadline, also one an earlier call set. Pass `null` to remove the resolver.
+The resolver works alongside your own hooks. If you also registered `Hook.load` or `Hook.prefetch`, the resolver runs first; your listener then gets the event with `stream-open-filename` (or `prefetch-open-filename`) already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. A URL it returns after that is dropped, with a warning on `internalLog`, since mpv has moved on. `timeout: null` lifts the deadline, also one an earlier call set. Pass `null` to remove the resolver.
 
 A `file://` URL from the resolver plays as the local path it names, as the URL of a `Media` does.
 
-With `setPrefetchPlaylist(true)` the resolver also runs for the next entry while the current one plays, and mpv stops feeding the playing track until it returns (see [12.1](#121-registering-a-hook)). A resolver slower than the output buffer leaves a gap in the music: keep it fast, for example with URLs fetched ahead of time, or leave the prefetch off.
+With `setPrefetchPlaylist(true)` the resolver also runs for the next entry while the current one plays, which goes on meanwhile (see [12.1](#121-registering-a-hook)). When that entry starts, it opens with the URL the resolver gave for the prefetch, without asking again, so a URL that changes on every call (a salted or signed URL) keeps the prefetch and the gapless change. A failed open still asks again, and a new `open`, `openAll`, `stop`, `clearPlaylist` or resolver drops the kept URL.
 
-When that entry starts, it opens with the URL the resolver gave for the prefetch, without asking again, so a URL that changes on every call (a salted or signed URL) keeps the prefetch and the gapless change. A failed open still asks again, and a new `open`, `openAll`, `stop`, `clearPlaylist` or resolver drops the kept URL.
+A resolver still running when that entry starts, or when it is no longer next, misses the prefetch: mpv drops it, the resolver is asked again for the entry's own open, and the URL of the first call is dropped with a warning on `internalLog`. So a resolver faster than the rest of the playing entry keeps the gapless change.
 
 #### 12.5 Lazy URL resolution
 
-Building a playlist with `Future.wait` runs all the `getStreamUrl` calls at once. If the server refuses parallel sessions, as Plex does for transcoding, keep the session parameters and return a placeholder URL such as `my-scheme://session-id`. `on_load` fires for one track at a time as mpv opens them, so the real calls never overlap:
+Building a playlist with `Future.wait` runs all the `getStreamUrl` calls at once. If the server refuses parallel sessions, as Plex does for transcoding, keep the session parameters and return a placeholder URL such as `my-scheme://session-id`. The hooks fire for one track at a time as mpv opens them (`on_load`, or `on_prefetch` for the next one with the prefetch on), so calls for two tracks never overlap:
 
 ```dart
 // No real API calls yet
@@ -2587,7 +2587,7 @@ final medias = await Future.wait(tracks.map((t) async {
 }));
 await player.openAll(medias);
 
-// When mpv reaches each track, on_load calls myResolver("my-scheme://abc"),
+// When mpv reaches each track, the hook calls myResolver("my-scheme://abc"),
 // which makes the /decision call and returns the start.m3u8 URL
 ```
 ---

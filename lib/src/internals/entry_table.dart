@@ -90,9 +90,9 @@ final class EntryTable {
   Object? get lastNode => _lastNode;
 
   /// The entry mpv is loading: from its START_FILE to the FILE_LOADED or
-  /// END_FILE of that load. An `on_load` outside it is the prefetch of the
-  /// next entry, which mpv runs while the current file plays, with no
-  /// START_FILE.
+  /// END_FILE of that load. Up to libmpv-r19 an `on_load` outside it is the
+  /// prefetch of the next entry, which mpv runs while the current file
+  /// plays, with no START_FILE; libmpv-r20 runs `on_prefetch` for it.
   int? get loading => _loading;
 
   /// The [Media] the entry [id] was loaded with, `null` when the player
