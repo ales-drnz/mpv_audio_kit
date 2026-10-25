@@ -3,8 +3,9 @@ description: >-
   Bundles the libraries of a libmpv-scripts CI run instead of the pinned
   release, through the build hook's libmpv user define, and sets
   MAK_LIBMPV_RELEASE to the run's release, the one the release-gated tests
-  then expect. For testing a libmpv build before its release exists. Does
-  nothing without a run id.
+  then expect. Its dir output is where the run's release is, for the web
+  module of the browser tests. For testing a libmpv build before its
+  release exists. Does nothing without a run id.
 inputs:
   run-id:
     description: The libmpv-scripts workflow run whose libmpv-release artifact to use.
@@ -17,8 +18,18 @@ inputs:
     required: false
     default: ''
   pubspecs:
-    description: The pubspec.yaml files to point at it, separated by spaces.
-    required: true
+    description: >-
+      The pubspec.yaml files to point at it, separated by spaces. None for a
+      job that only reads the run's release from the dir output.
+    required: false
+    default: ''
+outputs:
+  dir:
+    description: >-
+      The directory of the run's libmpv-release artifact (manifest.json and
+      every asset, libmpv_web.zip included), or empty when the job uses the
+      pinned release.
+    value: ${{ steps.release.outputs.dir }}
 runs:
   using: composite
   steps:
@@ -59,9 +70,11 @@ runs:
         run-id: ${{ inputs.run-id }}
         github-token: ${{ inputs.token }}
         path: ${{ runner.temp }}/libmpv
-    - if: steps.check.outputs.use == 'true'
+    - id: release
+      if: steps.check.outputs.use == 'true'
       shell: bash
       run: |
+        echo "dir=$RUNNER_TEMP/libmpv" >> "$GITHUB_OUTPUT"
         manifest="$RUNNER_TEMP/libmpv/manifest.json"
         # The tests of a release expect the run's (expectedLibmpvRelease in
         # test/_helpers/setter_test_helpers.dart): on CI one the binary
