@@ -60,6 +60,12 @@ abstract final class MpvAudioKit {
   /// [Player] dispose crashes the process, and `previousPlaylist` can
   /// crash it too.
   ///
+  /// On the web [libmpv] is the URL of the `libmpv.mjs` of another build of
+  /// the web module, with its `libmpv.wasm` and
+  /// `mak_webaudio_processor.js` beside it on the page's origin; `null`
+  /// loads the one the package ships as web assets. The module loads in the
+  /// background from this call on, and the first [Player] waits for it.
+  ///
   /// [hotRestartCleanup] (default: `true`): recovers libmpv handles
   /// leaked across a Flutter Hot-Restart so they don't keep
   /// exclusive-mode audio devices locked. In the root isolate only (see
@@ -69,6 +75,8 @@ abstract final class MpvAudioKit {
   /// in test runners, background isolates and other multi-VM scenarios
   /// that share a pid: in a debug build the tracker would otherwise take
   /// the live handles of the other isolate for orphans and destroy them.
+  /// On the web it destroys the players, PCM sources and audio output the
+  /// app left in the page before a Hot Restart, and reuses its module.
   static void ensureInitialized({
     String? libmpv,
     bool hotRestartCleanup = true,

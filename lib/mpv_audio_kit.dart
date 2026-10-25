@@ -4,7 +4,7 @@
 
 /// mpv_audio_kit: a Flutter audio player powered by libmpv.
 ///
-/// Supports macOS, Windows, Linux, iOS, and Android.
+/// Supports macOS, Windows, Linux, iOS, Android and the web.
 ///
 /// ## Quick start
 /// ```dart
