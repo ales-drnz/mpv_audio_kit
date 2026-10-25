@@ -4,70 +4,42 @@
 
 part of '../player.dart';
 
-/// Cold-start bring-up: hands the init recipe to the event isolate, then
-/// re-opens libmpv on the main isolate and wires the FFI handle, DSP
-/// pipelines, orphan tracking and TLS bundle. Also owns the pre-/post-init option
-/// recipes and the `mpv_observe_property` spec list. `_bringUpInIsolate` is
-/// the abstract member `_PlayerBase`'s constructor calls; the rest are
-/// internal to this mixin.
+/// Cold-start bring-up: hands the init recipe to the session, which starts
+/// the core and its event pump, then wires the calls, DSP pipelines, orphan
+/// tracking and TLS bundle. Also owns the pre-/post-init option recipes and
+/// the `mpv_observe_property` spec list. `_bringUp` is the abstract member
+/// `_PlayerBase`'s constructor calls; the rest are internal to this mixin.
 mixin _InitModule on _PlayerBase {
   @override
-  Future<void> _bringUpInIsolate() async {
-    final preOpts = _buildPreInitOptions();
-    final postOpts = _buildPostInitOptions();
-    final observes = _buildObserveSpecs();
-    final logLevel = configuration.logLevel == LogLevel.off
-        ? null
-        : configuration.logLevel.mpvValue;
-
-    // After a Hot Restart the cores of the replaced VM hold their audio
-    // output until the reap destroys them: an exclusive output opened
-    // meanwhile fails (F220). Bounded, so a destroy that hangs does not
-    // hold the player.
-    final orphans = orphansReleased;
-    if (orphans != null) {
-      try {
-        await orphans.timeout(const Duration(seconds: 2));
-      } on TimeoutException {
-        debugLog('mpv_audio_kit: the Hot Restart reap is still running');
-      }
-    }
-
-    final handleAddress = await _eventIsolate.start(
-      libraryPath: MpvAudioKit.libraryPath,
-      onEvent: _handleEvent,
-      preInitOptions: preOpts,
-      postInitOptions: postOpts,
-      observes: observes,
-      logLevel: logLevel,
-      wakeupCounterAddress: _wakeupCounterAddress,
+  Future<void> _bringUp() async {
+    final recipe = CoreRecipe(
+      preInitOptions: _buildPreInitOptions(),
+      postInitOptions: _buildPostInitOptions(),
+      observes: _buildObserveSpecs(),
+      logLevel: configuration.logLevel == LogLevel.off
+          ? null
+          : configuration.logLevel.mpvValue,
     );
 
+    await _session.start(recipe, _handleEvent);
+
     if (_disposed) {
-      // dispose() landed while the isolate was initializing. dispose()
-      // found `_bringUpCompleted == false` and has no handle to tear
+      // dispose() landed while the core was initializing. dispose()
+      // found `_bringUpCompleted == false` and has no core to tear
       // down: this is the only code that ever sees it, so the teardown
-      // duty lands here: unwind the worker deterministically (stop flag
-      // + wakeup), then destroy the core only on confirmed exit (same
+      // duty lands here: unwind the event pump deterministically (stop
+      // flag + wakeup), then destroy the core only on confirmed exit (same
       // rule as dispose: destroying mid-`mpv_wait_event` SIGSEGVs).
       // dispose() awaits `_ready`, i.e. this very teardown, before
       // proceeding, so it cannot observe a half-released core.
-      final lib = MpvLibrary.open(MpvAudioKit.libraryPath);
-      final h = Pointer<MpvHandle>.fromAddress(handleAddress);
-      _eventIsolate.requestStop(lib, h);
-      if (await _eventIsolate.stop()) await terminateDestroyOffMain(h);
+      _session.requestStop();
+      if (await _session.stop()) await _session.terminateDestroy();
       return;
     }
 
-    // Re-open the library on the main isolate. The OS keeps libmpv
-    // mapped after the event isolate's first dlopen, so this resolves
-    // in microseconds: no second cold-load cost.
-    _lib = MpvLibrary.open(MpvAudioKit.libraryPath);
-    _handle = Pointer<MpvHandle>.fromAddress(handleAddress);
-    _client = MpvClient(_lib, _handle);
-    _calls = CoreCalls(_client);
-    // Every DSP pipeline polls mpv through the async-get path (decoded in
-    // the event isolate, reply-correlated) rather than a blocking FFI read,
+    _calls = CoreCalls(_session);
+    // Every DSP pipeline polls mpv through the async-get path (decoded by
+    // the event pump, reply-correlated) rather than a blocking read,
     // so a visualizer's poll loop can never stall the main isolate while the
     // core is busy initializing an audio output. [CoreCalls.get] and
     // [CoreCalls.propRc] are the same async calls the typed setters use.
@@ -114,7 +86,7 @@ mixin _InitModule on _PlayerBase {
       _loudnessScanCtrl.add(s);
     });
 
-    OrphanHandleTracker.instance.add(_handle);
+    _session.track();
 
     _bringUpCompleted = true;
 
@@ -157,7 +129,7 @@ mixin _InitModule on _PlayerBase {
   }
 
   /// Recipe of pre-init `mpv_set_option_string` calls executed by the
-  /// event isolate before `mpv_initialize`.
+  /// session before `mpv_initialize`.
   Map<String, String> _buildPreInitOptions() => {
     'vid': 'no',
     'sid': 'no',

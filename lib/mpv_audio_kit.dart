@@ -51,7 +51,7 @@ export 'src/generated/audio_effects_settings.dart'
         audioEffectLabels,
         audioEffectsChain,
         audioEffectsDiff;
-export 'src/internals/library_loader.dart' show MpvAudioKit;
+export 'src/internals/mpv_audio_kit.dart' show MpvAudioKit;
 export 'src/models/audio_params.dart' show AudioParams;
 export 'src/models/chapter.dart' show Chapter;
 export 'src/models/cover_art.dart' show CoverArt;

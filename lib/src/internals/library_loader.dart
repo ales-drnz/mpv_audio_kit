@@ -15,8 +15,11 @@ import '../media_session/media_session_channel.dart';
 import '../mpv_bindings.dart';
 import '../pcm/pcm_native.dart';
 import 'debug_log.dart';
+import 'mpv_audio_kit.dart';
 import 'orphan_handle_tracker.dart';
 import 'owner_watch.dart';
+
+export 'mpv_audio_kit.dart';
 
 /// How long Hot-Restart cleanup waits, after waking a leaked core with
 /// `quit`, before destroying its handle. The previous VM's event isolate
@@ -107,177 +110,128 @@ Future<void> terminateDestroyOffMain(
   }
 }
 
-/// One-time initialization for `mpv_audio_kit`. Owns the libmpv
-/// `DynamicLibrary` lookup and the orphaned-handle cleanup that fires
-/// across Flutter Hot-Restarts.
-abstract final class MpvAudioKit {
-  MpvAudioKit._();
+/// The native steps of [MpvAudioKit.ensureInitialized] before the kit
+/// counts as initialized: the platform quirks, and with
+/// [hotRestartCleanup] the orphan tracker, whose reap of the cores a
+/// Hot-Restart leaked starts here.
+@internal
+void startNativeBackend({String? libmpv, required bool hotRestartCleanup}) {
+  _applyPlatformQuirks();
 
-  static bool _initialized = false;
-  static String? _libraryPath;
+  if (!hotRestartCleanup) return;
 
-  /// Whether [ensureInitialized] ran in this isolate.
-  @internal
-  static bool get isInitialized => _initialized;
-
-  /// Returns the path used to initialize the library, if provided.
-  static String? get libraryPath => _libraryPath;
-
-  /// Initializes the native backend for `mpv_audio_kit`.
-  /// Must be called before creating any [Player] instances.
-  ///
-  /// Its settings hold per isolate: a [Player] created in another isolate
-  /// needs a call there too, with the same [libmpv] and
-  /// `hotRestartCleanup: false`.
-  ///
-  /// Handles cleanup of orphaned `libmpv` native resources
-  /// (e.g., handles that leaked across a Flutter Hot-Restart).
-  ///
-  /// [libmpv] (optional): explicit path or filename for the native
-  /// `libmpv` library to load via `DynamicLibrary.open`. When `null`
-  /// (the default), the libmpv the package's build hook bundles with the
-  /// app is used. Pass an explicit path only when shipping a custom
-  /// libmpv build alongside your app; to bundle one in place of the
-  /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
-  /// app's pubspec instead. On Windows a custom libmpv needs the patches
-  /// of libmpv-scripts 0.1.7 or later: with an unpatched mpv, every
-  /// [Player] dispose crashes the process, and `previousPlaylist` can
-  /// crash it too.
-  ///
-  /// [hotRestartCleanup] (default: `true`): recovers libmpv handles
-  /// leaked across a Flutter Hot-Restart so they don't keep
-  /// exclusive-mode audio devices locked. In the root isolate only (see
-  /// [releasesPcmSourcesAtInit]), it also releases the live PCM sources of
-  /// the replaced VM, turns off the waveform, loudness scan and filter taps
-  /// its listeners left on, and disables its OS media session. Pass `false`
-  /// in test runners, background isolates and other multi-VM scenarios
-  /// that share a pid: in a debug build the tracker would otherwise take
-  /// the live handles of the other isolate for orphans and destroy them.
-  static void ensureInitialized({
-    String? libmpv,
-    bool hotRestartCleanup = true,
-  }) {
-    if (_initialized) {
+  OrphanHandleTracker.instance.ensureInitialized((references) {
+    if (references.isEmpty) {
       return;
     }
 
-    _applyPlatformQuirks();
+    const tag = 'mpv_audio_kit: OrphanHandleTracker:';
+    debugLog('$tag Found ${references.length} orphaned reference(s).');
+    debugLog('$tag Releasing leaked handles (Hot-Restart fix):');
 
-    if (!hotRestartCleanup) {
-      _libraryPath = libmpv;
-      _initialized = true;
-      return;
+    for (final ref in references) {
+      debugLog(' - Address: ${ref.address}');
     }
 
-    OrphanHandleTracker.instance.ensureInitialized((references) {
-      if (references.isEmpty) {
-        return;
-      }
-
-      const tag = 'mpv_audio_kit: OrphanHandleTracker:';
-      debugLog('$tag Found ${references.length} orphaned reference(s).');
-      debugLog('$tag Releasing leaked handles (Hot-Restart fix):');
-
-      for (final ref in references) {
-        debugLog(' - Address: ${ref.address}');
-      }
-
-      // Best effort: MpvLibraryException is not public, and a library
-      // that cannot be reopened leaves the handles to the process exit.
-      final MpvLibrary lib;
-      try {
-        lib = MpvLibrary.open(libmpv);
-      } on MpvLibraryException catch (e) {
-        debugLog('$tag cannot reopen libmpv: ${e.message}');
-        return;
-      }
-      // The analysis switches are process-wide, like the PCM sources below:
-      // only the root isolate a Hot-Restart replaced turns them off.
-      _orphansReleased = reapOrphanedHandles(
-        lib,
-        references,
-        stopAnalysis: releasesPcmSourcesAtInit(
-          restarted: OrphanHandleTracker.instance.restarted,
-        ),
-        destroy: (handle) =>
-            terminateDestroyOffMain(handle, libraryPath: libmpv),
-      );
-    });
-
-    _libraryPath = libmpv;
-    _initialized = true;
-    if (releasesPcmSourcesAtInit(
-      restarted: OrphanHandleTracker.instance.restarted,
-    )) {
-      _releasePcmSources();
-      _disableMediaSession();
-    }
-  }
-
-  /// Aborts and frees the live PCM sources of the VM a Hot-Restart
-  /// replaced: the native side outlives it, and their readers would wait
-  /// on input that never comes. See [releasesPcmSourcesAtInit].
-  static void _releasePcmSources() {
+    // Best effort: MpvLibraryException is not public, and a library
+    // that cannot be reopened leaves the handles to the process exit.
+    final MpvLibrary lib;
     try {
-      pcmNative().releaseAll();
-    } catch (e) {
-      // A custom libmpv without the live PCM input: nothing to release.
-      debugLog('mpv_audio_kit: no PCM sources to release: $e');
+      lib = MpvLibrary.open(libmpv);
+    } on MpvLibraryException catch (e) {
+      debugLog('$tag cannot reopen libmpv: ${e.message}');
+      return;
     }
-  }
-
-  /// Turns off the OS media session of the VM a Hot-Restart replaced. The
-  /// engine and its plugins outlive the VM: the notification, the lock
-  /// screen entry and the audio focus stay, still showing the old track,
-  /// and their buttons reach no listener. Sent before any `enable` of
-  /// this VM, on the same channel, so it lands first.
-  static void _disableMediaSession() {
-    // Needs the services binding (`WidgetsFlutterBinding.ensureInitialized`
-    // first, as the README shows): without it the session stays on.
-    unawaited(
-      MediaSessionChannel().disable().catchError((Object e) {
-        debugLog('mpv_audio_kit: cannot disable the old media session: $e');
-      }),
+    // The analysis switches are process-wide, like the PCM sources below:
+    // only the root isolate a Hot-Restart replaced turns them off.
+    _orphansReleased = reapOrphanedHandles(
+      lib,
+      references,
+      stopAnalysis: releasesPcmSourcesAtInit(
+        restarted: OrphanHandleTracker.instance.restarted,
+      ),
+      destroy: (handle) => terminateDestroyOffMain(handle, libraryPath: libmpv),
     );
+  });
+}
+
+/// The native steps of [MpvAudioKit.ensureInitialized] with the Hot
+/// Restart cleanup, once the kit counts as initialized: in the root
+/// isolate of a Hot-Restart, the release of the replaced VM's live PCM
+/// sources and OS media session.
+@internal
+void nativeBackendInitialized() {
+  if (releasesPcmSourcesAtInit(
+    restarted: OrphanHandleTracker.instance.restarted,
+  )) {
+    _releasePcmSources();
+    _disableMediaSession();
+  }
+}
+
+/// Aborts and frees the live PCM sources of the VM a Hot-Restart
+/// replaced: the native side outlives it, and their readers would wait
+/// on input that never comes. See [releasesPcmSourcesAtInit].
+void _releasePcmSources() {
+  try {
+    pcmNative().releaseAll();
+  } catch (e) {
+    // A custom libmpv without the live PCM input: nothing to release.
+    debugLog('mpv_audio_kit: no PCM sources to release: $e');
+  }
+}
+
+/// Turns off the OS media session of the VM a Hot-Restart replaced. The
+/// engine and its plugins outlive the VM: the notification, the lock
+/// screen entry and the audio focus stay, still showing the old track,
+/// and their buttons reach no listener. Sent before any `enable` of
+/// this VM, on the same channel, so it lands first.
+void _disableMediaSession() {
+  // Needs the services binding (`WidgetsFlutterBinding.ensureInitialized`
+  // first, as the README shows): without it the session stays on.
+  unawaited(
+    MediaSessionChannel().disable().catchError((Object e) {
+      debugLog('mpv_audio_kit: cannot disable the old media session: $e');
+    }),
+  );
+}
+
+/// Sets `LC_NUMERIC=C` process-wide on Linux and macOS: mandated
+/// by libmpv's API contract (`mpv/client.h`; mpv aborts loading
+/// otherwise).
+///
+/// Process-wide is non-negotiable: mpv spawns its own threads at
+/// `mpv_create` time, and POSIX threads inherit `LC_GLOBAL_LOCALE`,
+/// not `uselocale`. Other locale categories (`LC_TIME`,
+/// `LC_MESSAGES`, …) are left untouched.
+void _applyPlatformQuirks() {
+  if (Platform.isWindows || Platform.isAndroid) {
+    return;
   }
 
-  /// Sets `LC_NUMERIC=C` process-wide on Linux and macOS: mandated
-  /// by libmpv's API contract (`mpv/client.h`; mpv aborts loading
-  /// otherwise).
-  ///
-  /// Process-wide is non-negotiable: mpv spawns its own threads at
-  /// `mpv_create` time, and POSIX threads inherit `LC_GLOBAL_LOCALE`,
-  /// not `uselocale`. Other locale categories (`LC_TIME`,
-  /// `LC_MESSAGES`, …) are left untouched.
-  static void _applyPlatformQuirks() {
-    if (Platform.isWindows || Platform.isAndroid) {
-      return;
-    }
+  try {
+    final DynamicLibrary libc = Platform.isLinux
+        ? DynamicLibrary.open('libc.so.6')
+        : DynamicLibrary.open('libSystem.B.dylib');
 
-    try {
-      final DynamicLibrary libc = Platform.isLinux
-          ? DynamicLibrary.open('libc.so.6')
-          : DynamicLibrary.open('libSystem.B.dylib');
+    final setlocale = libc
+        .lookupFunction<
+          Pointer<Utf8> Function(Int32, Pointer<Utf8>),
+          Pointer<Utf8> Function(int, Pointer<Utf8>)
+        >('setlocale');
 
-      final setlocale = libc
-          .lookupFunction<
-            Pointer<Utf8> Function(Int32, Pointer<Utf8>),
-            Pointer<Utf8> Function(int, Pointer<Utf8>)
-          >('setlocale');
-
-      // The LC_NUMERIC constant is libc-specific: glibc (Linux) numbers
-      // it 1, the BSD layout (macOS and iOS) numbers it 4: there, 1 is
-      // LC_COLLATE, which would leave the numeric locale untouched.
-      final lcNumeric = Platform.isLinux ? 1 : 4;
-      using((arena) {
-        setlocale(lcNumeric, 'C'.toNativeUtf8(allocator: arena));
-      });
-    } catch (e) {
-      debugLog(
-        'mpv_audio_kit: setlocale failed: $e. '
-        'mpv might fail to initialize if system locale is not compatible.',
-      );
-    }
+    // The LC_NUMERIC constant is libc-specific: glibc (Linux) numbers
+    // it 1, the BSD layout (macOS and iOS) numbers it 4: there, 1 is
+    // LC_COLLATE, which would leave the numeric locale untouched.
+    final lcNumeric = Platform.isLinux ? 1 : 4;
+    using((arena) {
+      setlocale(lcNumeric, 'C'.toNativeUtf8(allocator: arena));
+    });
+  } catch (e) {
+    debugLog(
+      'mpv_audio_kit: setlocale failed: $e. '
+      'mpv might fail to initialize if system locale is not compatible.',
+    );
   }
 }
 
