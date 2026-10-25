@@ -78,6 +78,15 @@ final class Harness {
     plugin.handle(mc) { _ in }
   }
 
+  /// `call` that returns the plugin's answer: nil, a value or a
+  /// FlutterError. On the main thread the plugin answers before returning.
+  func callResult(_ method: String, args: Any?) -> Any? {
+    var reply: Any?
+    let mc = FlutterMethodCall(methodName: method, arguments: args)
+    plugin.handle(mc) { reply = $0 }
+    return reply
+  }
+
   func reset() {
     call("disable", args: nil)
     emitted.removeAll()
@@ -424,6 +433,43 @@ func runNonOwnerDisableKeepsOwnerEntry() {
   }
 }
 
+/// Two engines: A owns the session. B's enable is refused with the error
+/// Dart turns into a StateError, and B's pushes leave A's entry alone. Once
+/// A disables, B's enable is accepted.
+func runSecondEngineEnableIsRefused() {
+  scenario("a second engine's enable is refused as already_owned, its pushes ignored") {
+    let a = Harness()
+    enable(a, playback: makePlayback(playing: true, positionMs: 30_000))
+    let b = Harness(); defer { b.reset() }
+    var other = makeMetadata()
+    other["title"] = "Second Engine"
+    let reply = b.callResult("enable", args: [
+      "config": defaultConfig,
+      "metadata": other,
+      "playback": makePlayback(playing: false, positionMs: 0),
+    ])
+    check((reply as? FlutterError)?.code == "already_owned",
+          "the refusal must reach Dart as already_owned, got \(String(describing: reply))")
+
+    b.call("updateMetadata", args: other)
+    b.call("updatePlayback", args: makePlayback(playing: false, positionMs: 0))
+    let f = Frame.capture()
+    check(f.title == "Test Track",
+          "B's metadata must not reach the entry, got \(String(describing: f.title))")
+    check(f.playbackState == .playing, "B's playback must not reach the entry, got \(f.description)")
+
+    a.reset()
+    let accepted = b.callResult("enable", args: [
+      "config": defaultConfig,
+      "metadata": other,
+      "playback": makePlayback(playing: false, positionMs: 0),
+    ])
+    check(accepted == nil && b.plugin.enabled,
+          "B's enable must be accepted once A disabled, got \(String(describing: accepted))")
+    check(Frame.capture().title == "Second Engine", "B's entry must be published")
+  }
+}
+
 /// An engine released without its Dart side calling `disable` (add-to-app):
 /// its detach retires the entry, so no Now Playing entry is left whose
 /// commands fail. The detach of another engine leaves the
@@ -498,6 +544,7 @@ runDedupCoalescesIdenticalPushes()
 runDisableClearsNowPlaying()
 runNoTitlePoisonGuard()
 runNonOwnerDisableKeepsOwnerEntry()
+runSecondEngineEnableIsRefused()
 runDetachRetiresTheOwnersEntry()
 runArtworkFromBytesOnly()
 

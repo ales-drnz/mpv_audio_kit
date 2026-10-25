@@ -161,8 +161,19 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       guard let args = call.arguments as? [String: Any] else {
         result(invalidArgs("enable")); return
       }
-      onMain { self.enable(args: args) }
-      result(nil)
+      // Answered after the ownership check: Dart turns already_owned into
+      // a StateError and leaves its state off.
+      onMain {
+        if self.enable(args: args) {
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "already_owned",
+              message: "Another Flutter engine of this process owns the media session.",
+              details: nil))
+        }
+      }
 
     case "updateConfig":
       guard let cfg = call.arguments as? [String: Any] else {
@@ -242,16 +253,15 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
   // ── Enable / Disable ──────────────────────────────────────────────
 
-  private func enable(args: [String: Any]) {
+  /// Returns false, changing nothing, while another engine owns the
+  /// session: the first engine to enable keeps it until it disables or
+  /// detaches, as on Android, Windows and Linux.
+  private func enable(args: [String: Any]) -> Bool {
     dispatchPrecondition(condition: .onQueue(.main))
-    // Single-owner guard mirroring the Dart StateError: the shared command
-    // targets resolve `currentInstance` at fire time, so a second engine
-    // enabling would silently hijack every remote command. Refuse instead.
+    // The shared command targets resolve `currentInstance` at fire time, so
+    // a second engine enabling would silently hijack every remote command.
     if let existing = MediaSessionPlugin.currentInstance, existing !== self {
-      NSLog(
-        "[mpv_audio_kit] OS media session already owned by another engine; "
-          + "ignoring enable.")
-      return
+      return false
     }
     if let cfg = args["config"] as? [String: Any] { currentConfig = cfg }
     if let meta = args["metadata"] as? [String: Any] { currentMetadata = meta }
@@ -267,6 +277,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     applyAudioSessionConfig()
     #endif
     publishNowPlaying()
+    return true
   }
 
   private func disable() {
