@@ -27,7 +27,7 @@ import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/entry_table.dart';
 import '../internals/hook_table.dart';
-import '../internals/libmpv_release.dart';
+import '../internals/libmpv_requirements.dart';
 import '../internals/mpv_audio_kit.dart';
 import '../internals/mpv_float.dart';
 import '../internals/owned_source.dart';
@@ -821,16 +821,9 @@ abstract class _PlayerBase {
   /// (user-registered hook) or continues it internally.
   Future<void> _routeHookEvent(int id, Hook hook, String name);
 
-  /// mpv reset the filters and rebuilt them from their stored arguments
-  /// (a file load or a seek): see `_AudioModule`.
-  void _onAfChainReset();
-
   /// mpv loaded a file, after applying the resume point it may hold: see
   /// `_AudioModule`.
   void _reassertAfChain();
-
-  /// mpv sent AUDIO_RECONFIG: see `_AudioModule`.
-  void _onAudioReconfig();
 
   /// See `_InitModule` (player_init.part.dart): called by the constructor.
   Future<void> _bringUp();

@@ -29,6 +29,33 @@ void main() {
     });
   });
 
+  group('computeLifecycle — how the completed entry ended', () {
+    test('completed true writes it, false clears it', () {
+      final done = computeLifecycle(
+        prev: const PlayerState(),
+        completed: true,
+        readError: true,
+        skippedSegments: 2,
+      ).newState;
+      expect(done.readError, isTrue);
+      expect(done.skippedSegments, 2);
+      final next = computeLifecycle(prev: done, completed: false).newState;
+      expect(next.readError, isNull);
+      expect(next.skippedSegments, isNull);
+    });
+
+    test('an update without completed keeps it', () {
+      const prev = PlayerState(
+        completed: true,
+        readError: false,
+        skippedSegments: 0,
+      );
+      final r = computeLifecycle(prev: prev, playing: false);
+      expect(r.newState.readError, isFalse);
+      expect(r.newState.skippedSegments, 0);
+    });
+  });
+
   group('computeLifecycle — dedup semantics', () {
     test('writing the same value as prev → no change flag', () {
       // The reactive layer dedups on the property side, but the

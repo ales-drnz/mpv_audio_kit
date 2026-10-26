@@ -46,7 +46,7 @@ mixin _HooksModule on _PlayerBase {
   /// the same hook on the same [Player] only updates the optional
   /// [timeout]; the underlying mpv registration happens once, so the
   /// [priority] of the first one stays (mpv can't change it later, and
-  /// [Player.setSourceResolver] registers `on_load` with priority 0). mpv
+  /// [Player.setSourceResolver] registers its hooks with priority 0). mpv
   /// allows multiple registrations per name but its shutdown path can
   /// stall when several events for the same hook are still active at
   /// `quit`: duplicates are collapsed here to avoid that race.
@@ -130,10 +130,11 @@ mixin _HooksModule on _PlayerBase {
       // unblocked mpv.
       return;
     }
-    // Safe on the main isolate even though `mpv_hook_continue` locks the
-    // core: a pending event in `_hooks` means mpv is parked at the hook's
-    // dispatch point waiting for exactly this call, so the lock is granted
-    // immediately: the playloop cannot simultaneously be busy elsewhere.
+    // `mpv_hook_continue` is synchronous and locks the core. For a hook
+    // that holds a load (`on_load` and the others) mpv waits in the hook's
+    // dispatch loop for exactly this call, so the lock comes at once. For
+    // `on_prefetch` the playloop keeps running, and the call waits for its
+    // next turn, usually a few milliseconds.
     _calls.hookContinue(mpvId);
   }
 
@@ -145,7 +146,8 @@ mixin _HooksModule on _PlayerBase {
   /// entry's original [Media] ([Media.extras] and [Media.httpHeaders]
   /// intact) once per load attempt, including gapless prefetch opens:
   ///
-  /// - before every stream open (`on_load`), and
+  /// - before every stream open (`on_load`, and `on_prefetch` for the next
+  ///   entry opened ahead of time), and
   /// - once more after a failed open (`on_load_fail`) with
   ///   [SourceResolveRequest.isRetry] `true`: return a fresh URL and mpv
   ///   retries, covering expired CDN or token URLs. The retry fires at
@@ -165,29 +167,30 @@ mixin _HooksModule on _PlayerBase {
   /// the underlying hook so mpv never stalls indefinitely. Pass `null`
   /// to disable the net, also when an earlier call or [registerHook] set
   /// one. The value is stored per hook name, so it also becomes the
-  /// deadline of a consumer-registered `Hook.load` or `Hook.loadFail` (the
-  /// most recent registration's timeout wins). A URL the resolver returns
+  /// deadline of a consumer-registered `Hook.load`, `Hook.loadFail` or
+  /// `Hook.prefetch` (the most recent registration's timeout wins). A URL
+  /// the resolver returns
   /// after the deadline is dropped, with a warning on
   /// [PlayerStream.internalLog]: mpv has moved on, and the URL would land
   /// on the next entry. A consumer-registered hook does not get that event
   /// either.
   ///
   /// With [Player.setPrefetchPlaylist] on, the resolver also runs for the
-  /// next entry while the current one plays, and mpv stops feeding the
-  /// playing entry until it returns: a resolver slower than the output
-  /// buffer (0.2 s by default) leaves a gap in the playing track. Keep it
-  /// fast with the prefetch on, for example with URLs fetched ahead. When
+  /// next entry while the current one plays, which goes on meanwhile. When
   /// the entry starts it opens with the URL the resolver gave for the
   /// prefetch, without a second call, so a URL that changes on every call
   /// (a salt, a signed URL) keeps the prefetch. A failed open still asks
   /// again, and a new open, openAll, stop, clearPlaylist or resolver drops
-  /// the kept URL.
+  /// the kept URL. When the entry starts, or leaves the next place, before
+  /// the resolver returns, mpv drops the prefetch: the resolver is asked
+  /// again for the load, and the URL of the prefetch is dropped with a
+  /// warning on [PlayerStream.internalLog].
   ///
   /// Composes with [registerHook]: when the consumer has registered
-  /// `Hook.load` themselves, the resolver runs FIRST, then the event
-  /// surfaces on [PlayerStream.hook] with the rewritten URL already in
-  /// `stream-open-filename`, and the consumer's [continueHook] releases
-  /// mpv as usual.
+  /// `Hook.load` or `Hook.prefetch` themselves, the resolver runs FIRST,
+  /// then the event surfaces on [PlayerStream.hook] with the rewritten URL
+  /// already in `stream-open-filename` (`prefetch-open-filename` for the
+  /// prefetch), and the consumer's [continueHook] releases mpv as usual.
   ///
   /// Pass `null` to uninstall. mpv has no hook-removal API, so the
   /// underlying registrations stay; the library just auto-continues
@@ -200,7 +203,7 @@ mixin _HooksModule on _PlayerBase {
     _sourceResolver = resolver;
     _prefetchResolved = null;
     if (resolver == null) return;
-    for (final hook in const [Hook.load, Hook.loadFail]) {
+    for (final hook in const [Hook.load, Hook.loadFail, Hook.prefetch]) {
       // The default is 15 s, so a null here was asked for: it lifts the
       // deadline, where for registerHook it only means none was given.
       if (timeout == null) _hooks.timeouts.remove(hook.mpvValue);
@@ -210,7 +213,7 @@ mixin _HooksModule on _PlayerBase {
 
   /// Single entry point for every MPV_EVENT_HOOK, called by the dispatch
   /// layer. Ordering per event: resolver pass (when installed and the
-  /// hook is `on_load` or `on_load_fail`) → consumer delivery on
+  /// hook is `on_load`, `on_load_fail` or `on_prefetch`) → consumer delivery on
   /// [PlayerStream.hook] (only when the consumer registered this hook) →
   /// otherwise internal [continueHook]. A hook the deadline continued
   /// during the resolver pass goes nowhere.
@@ -222,7 +225,8 @@ mixin _HooksModule on _PlayerBase {
   Future<void> _routeHookEvent(int id, Hook hook, String name) async {
     bool pending() => _hooks.isPending(id);
     final resolver = _sourceResolver;
-    if (resolver != null && (hook == Hook.load || hook == Hook.loadFail)) {
+    if (resolver != null &&
+        (hook == Hook.load || hook == Hook.loadFail || hook == Hook.prefetch)) {
       await _runSourceResolver(resolver, hook, pending);
     }
     // The deadline continued the hook while the resolver ran: mpv has moved
@@ -236,8 +240,9 @@ mixin _HooksModule on _PlayerBase {
   }
 
   /// One resolver pass: read the URL mpv is about to open, look up the
-  /// original [Media] in the media cache, invoke the consumer callback,
-  /// and rewrite `stream-open-filename` when it returns a different URL.
+  /// original [Media] of the entry, invoke the consumer callback, and
+  /// rewrite `stream-open-filename` (`prefetch-open-filename` for
+  /// `on_prefetch`) when it returns a different URL.
   ///
   /// A result that comes back once the hook is no longer [pending] (the
   /// deadline continued it) is dropped: mpv is past that load, and the
@@ -253,9 +258,6 @@ mixin _HooksModule on _PlayerBase {
   ) async {
     try {
       final isRetry = hook == Hook.loadFail;
-      // The entry mpv is loading, `null` for the prefetch of the next one.
-      final loading = _entries.loading;
-      final prefetch = !isRetry && loading == null;
       // One resolver-driven retry per load attempt: see
       // [_resolverRetried] for the loop hazard this caps. The flag is
       // cleared on START_FILE only, NOT on `on_load`: after an
@@ -263,42 +265,39 @@ mixin _HooksModule on _PlayerBase {
       // `on_load` for the same attempt, and re-arming there would
       // reopen the infinite loop the flag exists to prevent.
       if (isRetry && _resolverRetried) return;
-      final current = await getRawProperty('stream-open-filename') ?? '';
+      // The entry mpv is loading, `null` outside a START_FILE.
+      final loading = _entries.loading;
+      // libmpv-r20 runs `on_prefetch` for the prefetch of the next entry.
+      // An older libmpv ran `on_load` for it, outside a START_FILE.
+      final early = hook == Hook.prefetch;
+      final prefetch = early || (!isRetry && loading == null);
+      // The load epoch mpv asked in: an open, stop or clear while the
+      // resolver runs supersedes the URL it gives for the prefetch.
+      final asked = _transport.snapshotLoad();
+      final current =
+          await getRawProperty(
+            early ? 'prefetch-open-filename' : 'stream-open-filename',
+          ) ??
+          '';
       if (current.isEmpty || _disposed) return;
       // A load gets the Media of its own entry, which another entry with the
-      // same URL does not share (F14). The prefetch knows only the URL.
+      // same URL does not share (F14). So does the prefetch of libmpv-r20,
+      // which names its entry; the older one knows only the URL.
       final media =
-          (prefetch ? null : _entries.mediaOf(loading)) ??
+          (await _entryMedia(early, prefetch ? null : loading)) ??
           _cachedMedia(current) ??
           Media(current);
-      // The load of an entry the prefetch resolved opens the same URL
-      // without asking again: a resolver that gives a new URL on every call
-      // (a salt, a signed URL) would make mpv drop the prefetch. A retry
-      // asks as before, so an expired URL is still renewed.
-      final kept = _prefetchResolved;
-      if (!isRetry && !prefetch) _prefetchResolved = null;
-      String target;
-      if (!isRetry &&
-          !prefetch &&
-          kept != null &&
-          kept.$1 == current &&
-          !kept.$3.superseded) {
-        target = kept.$2;
-      } else {
-        final resolved = await resolver(
-          SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
-        );
-        if (_disposed) return;
-        // A file:// URL goes to mpv as its path, as the URL of a Media
-        // does: the waveform and loudness scans hand the name to FFmpeg,
-        // whose file protocol does not decode it.
-        target = resolved == null || resolved.isEmpty
-            ? current
-            : fileUrlToPath(resolved) ?? resolved;
-        if (prefetch && pending()) {
-          _prefetchResolved = (current, target, _transport.snapshotLoad());
-        }
+      final target = await _targetUrl(
+        resolver,
+        SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
+        takesKept: !isRetry && !prefetch,
+      );
+      if (target == null) return;
+      if (early) {
+        await _settlePrefetch(current, target, media, asked, pending);
+        return;
       }
+      if (prefetch && pending()) _prefetchResolved = (current, target, asked);
       if (target == current) return;
       // No timer runs between this check and the write below: the write is
       // queued in mpv before control goes back to the event loop.
@@ -322,6 +321,92 @@ mixin _HooksModule on _PlayerBase {
         level: LogLevel.warn,
       );
     }
+  }
+
+  /// The URL to open for [request], `null` once the player was disposed.
+  /// The load of an entry the prefetch resolved ([takesKept]) opens the
+  /// same URL without asking again: a resolver that gives a new URL on
+  /// every call (a salt, a signed URL) would make mpv drop the prefetch. A
+  /// retry asks as before, so an expired URL is still renewed.
+  Future<String?> _targetUrl(
+    SourceResolver resolver,
+    SourceResolveRequest request, {
+    required bool takesKept,
+  }) async {
+    final current = request.uri;
+    if (takesKept) {
+      final kept = _prefetchResolved;
+      _prefetchResolved = null;
+      if (kept != null && kept.$1 == current && !kept.$3.superseded) {
+        return kept.$2;
+      }
+    }
+    final resolved = await resolver(request);
+    if (_disposed) return null;
+    // A file:// URL goes to mpv as its path, as the URL of a Media does:
+    // the waveform and loudness scans hand the name to FFmpeg, whose file
+    // protocol does not decode it.
+    return resolved == null || resolved.isEmpty
+        ? current
+        : fileUrlToPath(resolved) ?? resolved;
+  }
+
+  /// The [Media] of the entry the hook opens: the one of the prefetch for
+  /// [early] (`on_prefetch`, which names it), else [loading]'s. `null` for
+  /// an entry the player did not load.
+  Future<Media?> _entryMedia(bool early, int? loading) async {
+    if (!early) return _entries.mediaOf(loading);
+    final (rc, id) = await _calls.get(
+      'prefetch-playlist-entry-id',
+      MpvFormat.mpvFormatInt64,
+    );
+    return rc < 0 || id is! int ? null : _entries.mediaOf(id);
+  }
+
+  /// Hands mpv the URL the resolver gave for the prefetch ([target], for
+  /// [current]) and keeps it for the load of the entry in the epoch mpv
+  /// [asked] in, only while mpv still holds the prefetch: when the entry
+  /// starts, or leaves the next place, before the resolver returns, mpv
+  /// drops it, and the write (or, for an unchanged URL, the read) of
+  /// `prefetch-open-filename` fails. The load then asks the resolver again.
+  Future<void> _settlePrefetch(
+    String current,
+    String target,
+    Media media,
+    _LoadTicket asked,
+    bool Function() pending,
+  ) async {
+    final changed = target != current;
+    // As for a load: no timer runs between this check and the request.
+    if (!pending()) {
+      if (changed) {
+        _internalLog(
+          'Source resolver for on_prefetch returned after its hook timed '
+          'out; the result is dropped',
+          level: LogLevel.warn,
+        );
+      }
+      return;
+    }
+    final rc = changed
+        ? await _calls.propRc('prefetch-open-filename', target)
+        : (await _calls.get(
+            'prefetch-open-filename',
+            MpvFormat.mpvFormatString,
+          )).$1;
+    if (_disposed) return;
+    if (rc < 0) {
+      if (changed) {
+        _internalLog(
+          'Source resolver for on_prefetch returned after mpv dropped the '
+          'prefetch; the result is dropped',
+          level: LogLevel.warn,
+        );
+      }
+      return;
+    }
+    _prefetchResolved = (current, target, asked);
+    if (changed) _mediaCache[target] = media;
   }
 
   /// The [Media] cached under [uri]. On Windows mpv hands a local path

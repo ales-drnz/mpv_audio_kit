@@ -106,6 +106,13 @@ final class EventLogic {
     return null;
   }
 
+  /// mpv sent AUDIO_RECONFIG: the audio chain was rebuilt, for a track
+  /// switch, a format change or an output reopen. The player takes nothing
+  /// from the event itself; the values it left unavailable are read again.
+  /// Returns the future of the reads; the pump waits for it before the
+  /// next event.
+  Future<void> audioReconfig() => _rereadUnavailable(_reader, _send, _cache);
+
   /// Any other event, as the transport decoded it: the bare
   /// [MpvEventFileLoaded], [MpvEventPlaybackRestart] and [MpvEventEndFile]
   /// are filled here with the reads they carry. Returns a future when the
@@ -120,14 +127,12 @@ final class EventLogic {
         _send(event);
       case MpvEventFileLoaded():
         return _fileLoaded();
-      case MpvEventEndFile(:final reason):
-        if (reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
-            reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
-          return _endFile(event);
+      case final MpvEventEndFile ended:
+        if (ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonEof ||
+            ended.reason == mpv.MpvEndFileReason.mpvEndFileReasonError) {
+          return _endFile(ended);
         }
-        _send(_endFileEvent(event, lastEntry: false));
-      case MpvEventAudioReconfig():
-        return _audioReconfig(event);
+        _send(_endFileEvent(ended, lastEntry: false));
       case MpvEventPlaybackRestart():
         return _playbackRestart();
       default:
@@ -140,7 +145,7 @@ final class EventLogic {
   // waits for the playloop, and the file-load boundary is exactly the window
   // where the playloop can be stuck for seconds initializing the audio
   // output. A failed payload read must never swallow the event itself:
-  // lifecycle, af resync and the waveform re-arm all ride it.
+  // lifecycle, the effects chain check and the waveform re-arm ride it.
   Future<void> _fileLoaded() async {
     MpvEventFileLoaded loaded;
     try {
@@ -166,9 +171,9 @@ final class EventLogic {
     _send(_endFileEvent(ended, lastEntry: lastEntry));
   }
 
-  /// The END_FILE [ended] as the player gets it. mpv has unloaded the file
-  /// by now: what it reported of the entry comes from the START_FILE that
-  /// named it ([_PropertyCache.started]).
+  /// The END_FILE the transport decoded as [ended], with what mpv reported
+  /// of its entry. mpv has unloaded the file by now: that comes from the
+  /// START_FILE that named it ([_PropertyCache.started]).
   MpvEventEndFile _endFileEvent(
     MpvEventEndFile ended, {
     required bool lastEntry,
@@ -185,11 +190,6 @@ final class EventLogic {
       readError: ended.readError,
       skippedSegments: ended.skippedSegments,
     );
-  }
-
-  Future<void> _audioReconfig(MpvIsolateEvent event) async {
-    await _rereadUnavailable(_reader, _send, _cache);
-    _send(event);
   }
 
   // The landing position rides the event payload (read here, where waiting

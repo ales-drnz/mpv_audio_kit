@@ -58,11 +58,10 @@ Future<void> _sendEndOfContent(
     parked = await reader.flag('pause') == 1;
     if (!parked) parked = await reader.flag('keep-open-pause') == 0;
   }
-  String? file;
-  if (parked) file = await reader.string('playlist/$pos/filename');
-  final live = file?.startsWith('mak-pcm://') ?? false;
-  double? timePos;
-  if (parked) timePos = await _readTimePos(reader, cache);
+  _Park? park;
+  if (parked) park = await _readPark(reader, pos, cache);
+  final live = park?.file?.startsWith('mak-pcm://') ?? false;
+  final timePos = park?.timePos;
   final count = await reader.int64('playlist-count');
   if (await reader.int64('playlist-pos') != pos) return;
   if (await reader.int64('playlist/$pos/id') != started.id) return;
@@ -79,7 +78,38 @@ Future<void> _sendEndOfContent(
       lastEntry: count != null && pos == count - 1,
       live: live,
       timePos: timePos,
+      readError: park?.readError,
+      skippedSegments: park?.skipped,
     ),
+  );
+}
+
+/// What the park reads of entry [pos]: its filename, where it ended and how.
+typedef _Park = ({
+  String? file,
+  double? timePos,
+  bool? readError,
+  int? skipped,
+});
+
+/// The reads of the park of entry [pos]. `demuxer-read-error` and
+/// `demuxer-skipped-segments` come with libmpv-r20 (patch read_error): the
+/// demuxer marks the error under the lock it marks the end with, before the
+/// output can play out to the park, so the values read now are the file's.
+Future<_Park> _readPark(
+  CoreReader reader,
+  int pos,
+  _PropertyCache cache,
+) async {
+  final file = await reader.string('playlist/$pos/filename');
+  final timePos = await _readTimePos(reader, cache);
+  final readError = await reader.flag('demuxer-read-error');
+  final skipped = await reader.int64('demuxer-skipped-segments');
+  return (
+    file: file,
+    timePos: timePos,
+    readError: readError == null ? null : readError != 0,
+    skipped: skipped,
   );
 }
 

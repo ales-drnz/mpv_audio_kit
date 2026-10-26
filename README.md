@@ -450,6 +450,8 @@ void main() async {
 }
 ```
 
+A libmpv of your own goes in `libmpv`, as a path, or in place of the bundled one through `hooks: user_defines: mpv_audio_kit: libmpv:` in the app's pubspec. Build it with libmpv-scripts 0.3.0 (libmpv-r20) or later. An older build, or one of upstream mpv, still plays, and a warning on `stream.internalLog` lists what it lacks.
+
 #### 1.2 Creating a player
 
 ```dart
@@ -1056,8 +1058,9 @@ player.stream.audioEffects.listen((fx) => print('${fx.length} stages'));
 
 A slider drag that only changes the parameters of a stage, keeping the
 list's shape, is applied to the running filter graph in place, with no
-audible rebuild. Adding, removing, reordering or toggling a stage
-rebuilds the chain. Reset everything with:
+audible rebuild, and the value stays through seeks, loops, track
+switches and the next file. Adding, removing, reordering or toggling a
+stage rebuilds the stages it changes. Reset everything with:
 
 ```dart
 await player.setAudioEffects(const []);
@@ -2339,26 +2342,33 @@ player.stream.error.listen((error) {
 
 `player.stream.endFile` emits an `MpvFileEndedEvent` every time a file ends, not only on errors. The event carries the entry that ended: the `Media` it was loaded with, the last position mpv reported for it and its duration. Read them from the event, not from `player.state`: when the event arrives the state can already describe the next entry, or a stopped player at position zero.
 
-mpv reports a stream cut short as a normal end of file (`reason: eof`, no error code), a dropped HTTP connection for example. The position against the duration tells most of them apart:
+mpv reports a stream cut short as a normal end of file (`reason: eof`, no error code), a dropped HTTP connection for example. `readError` tells it apart: `true` when the entry stopped reading on an error instead of at its end. `skippedSegments` counts the HLS and DASH segments the entry lost on the way, which mpv skips with a warning only:
 
 ```dart
 player.stream.endFile.listen((event) {
-  final position = event.position;
-  final duration = event.duration;
-  if (event.reason == MpvEndFileReason.eof &&
-      position != null &&
-      duration != null &&
-      duration - position > const Duration(seconds: 5)) {
-    print('${event.media?.uri} ended ${duration - position} early');
+  if (event.readError == true || (event.skippedSegments ?? 0) > 0) {
+    print('${event.media?.uri} was cut short at ${event.position}');
   }
 });
 ```
 
-What to keep in mind when you compare them:
-- With gapless playback (the default), mpv ends an entry once its decoder is done, while the output still plays what it buffered. The position then trails the end by about that buffer: the audio buffer of [6.10](#610-audio-buffer) (0.2 s by default) plus the audio output's own. Leave a margin larger than that.
-- The last entry of the playlist does not end at its end. The player keeps it open on its last frame: `state.completed` turns true and `state.position` holds where it ended. Its event comes when it is stopped or replaced, with `reason: stop` and that position.
-- The duration can be an estimate. For an MP3 without a Xing or VBRI header, and for some HLS streams, mpv derives it from the bitrate, and a file that played to its end can stop seconds away from it.
-- For an HTTP file whose length the server announced, FFmpeg logs the cut on `stream.log`, and so on `stream.error` as a `LogError`: prefix `ffmpeg`, level `error`, text `http: Stream ends prematurely at <bytes read>, should be <length>`. On a server that accepts range requests it then reconnects where it stopped ([7.9](#79-dropped-connections)), with a `Will reconnect at ...` warning for each attempt, and the entry plays on when one of them works. When none does, it ends with `reason: eof` short of its duration.
+The last entry of the playlist does not end at its end. The player keeps it open on its last frame: `state.completed` turns true, `state.position` holds where it ended, and `state.readError` and `state.skippedSegments` tell how it ended, as the event would. Its event comes when it is stopped or replaced, with `reason: stop`, that position and the same two fields:
+
+```dart
+player.stream.completed.listen((completed) {
+  if (completed && player.state.readError == true) {
+    print('the last track was cut short at ${player.state.position}');
+  }
+});
+```
+
+What to keep in mind:
+- A cut is a read error once FFmpeg gave up on it. On a server that accepts range requests it first reconnects where it stopped ([7.9](#79-dropped-connections)), with a `Will reconnect at ...` warning for each attempt, and the entry plays on when one of them works. When none does, the entry ends about 11 s after the cut, after the last attempt.
+- A local file always reads to its end. A response with neither a length nor chunks, from a server without range support, ends where the connection closes, and reads as an error even when it was whole.
+- `readError` and `skippedSegments` are `null` with a libmpv older than libmpv-r20, which cannot tell.
+- With gapless playback (the default), mpv ends an entry once its decoder is done, while the output still plays what it buffered. The position then trails the end by about that buffer: the audio buffer of [6.10](#610-audio-buffer) (0.2 s by default) plus the audio output's own.
+- The duration can be an estimate. For an MP3 without a Xing or VBRI header, and for some HLS streams, mpv derives it from the bitrate, and a file that played to its end can stop seconds away from it: the position against the duration does not tell a cut.
+- For an HTTP file whose length the server announced, FFmpeg also logs the cut on `stream.log`, and so on `stream.error` as a `LogError`: prefix `ffmpeg`, level `error`, text `http: Stream ends prematurely at <bytes read>, should be <length>`.
 
 `MpvFileEndedEvent` fields:
 - `reason`: a `MpvEndFileReason` enum value
@@ -2366,6 +2376,8 @@ What to keep in mind when you compare them:
 - `media`: the `Media` the entry was loaded with, `null` for an entry of a playlist file or a raw command
 - `position`: the last position mpv reported for the entry, `null` when none came (a file that failed to open)
 - `duration`: the duration of the entry as mpv knew it, `null` when it knew none (a live stream)
+- `readError`: whether the entry stopped reading on an error instead of at its end, `null` when the libmpv cannot tell
+- `skippedSegments`: the HLS and DASH segments the entry lost to errors, `0` for other formats, `null` when the libmpv cannot tell
 
 #### 11.3 Audio output lifecycle
 
@@ -2490,7 +2502,7 @@ player.registerHook(Hook.load, timeout: const Duration(seconds: 10));
 The hooks mpv offers:
 
 <details>
-<summary><b>6 hooks</b> (click to expand)</summary>
+<summary><b>7 hooks</b> (click to expand)</summary>
 
 | Hook | When it fires |
 | :--- | :--- |
@@ -2500,14 +2512,14 @@ The hooks mpv offers:
 | `Hook.preloaded` | File open, before tracks are selected and the decoder starts |
 | `Hook.unload` | Before the file closes. Clean up what belongs to it |
 | `Hook.afterEndFile` | After the file ended and was unloaded |
+| `Hook.prefetch` | Before the next entry opens ahead of time, while the current one plays. Change the URL it opens |
 
 </details>
 
-Hooks fire during prefetch too: when mpv opens the next entry in advance, `on_load` runs for it, so a custom scheme such as `plex-transcode://` gets resolved for every track, and `setRawProperty('stream-open-filename', ...)` works in both cases. With `setPrefetchPlaylist(true)`:
+With `setPrefetchPlaylist(true)` mpv opens the next entry ahead of time, and runs `Hook.prefetch` for it first. Read `prefetch-open-filename` for the URL it will open and write it to open another one, so a custom scheme such as `plex-transcode://` gets resolved before the track change; `prefetch-playlist-entry-id` names the entry. `Hook.load` then runs once, when the entry starts, with the entry's own URL in `stream-open-filename`: write the same URL there, or mpv drops the stream it opened ahead and opens the entry again. The source resolver of [12.4](#124-the-source-resolver) does both for you.
 
-- `on_load` runs twice for an entry opened ahead: once while the previous entry still plays, then again when the entry starts. Give the same URL both times, or mpv drops the prefetch and opens the entry again. The source resolver of [12.4](#124-the-source-resolver) does this for you.
-- Until the first run continues, mpv stops feeding the entry that plays. A listener slower than the output buffer (0.2 s by default) leaves a gap in the music, so keep that work short.
-- In the first run the current file is still the one that plays: a `file-local-options/...` write lands on it, for the rest of it, and the prefetch opens with it. Headers for one entry are safer in `Media.httpHeaders`: mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
+- The current entry keeps playing while `Hook.prefetch` waits for you. If it ends first, or the playlist no longer has that entry next (a stop, a clear, a jump), mpv drops the early open: the two properties become unavailable, a write to them fails, and the entry opens with `Hook.load` alone when it starts.
+- The other properties still belong to the entry that plays, `path` and `stream-open-filename` among them. A `file-local-options/...` write lands on it, for the rest of it. Headers for one entry are safer in `Media.httpHeaders`: mpv does not open ahead an entry whose `Media` options differ from the playing entry's, so they never mix.
 
 #### 12.2 Listening and continuing
 
@@ -2544,7 +2556,7 @@ player.stream.hook.listen((event) async {
 
 #### 12.3 HTTP headers via hook
 
-`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`. In an `on_load` run for an entry opened ahead, the current file is the one still playing (see [12.1](#121-registering-a-hook)):
+`file-local-options/http-header-fields` sets headers for the current file only. For an HLS stream they reach the playlist and every segment, the same as `Media.httpHeaders`. During `Hook.prefetch` the current file is the one still playing (see [12.1](#121-registering-a-hook)):
 
 ```dart
 await player.setRawProperty(
@@ -2573,24 +2585,24 @@ await player.openAll([
 
 The player calls the resolver:
 
-* before every stream opens (`on_load`), prefetch included;
+* before every stream opens (`on_load`), and before the next entry opens ahead of time (`on_prefetch`);
 * once more after a failed open (`on_load_fail`), with `request.isRetry` set: return a fresh URL, for example with a new token, and mpv tries again. This happens at most once per load, and only when the new URL differs from the one that failed.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/source_resolver.png" width="100%" alt="The resolver returns a URL with a short-lived token; when the open fails, on_load_fail asks it again with isRetry true and a fresh token plays, at most once per load">
 
 Returning `null` (or the incoming `request.uri` unchanged) keeps the current URL, so a resolver that only handles some entries leaves the rest untouched. A thrown error goes to `internalLog` and keeps the current URL.
 
-The resolver works alongside your own hooks. If you also registered `Hook.load`, the resolver runs first; your listener then gets the event with `stream-open-filename` already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. A URL it returns after that is dropped, with a warning on `internalLog`, since mpv has moved on. `timeout: null` lifts the deadline, also one an earlier call set. Pass `null` to remove the resolver.
+The resolver works alongside your own hooks. If you also registered `Hook.load` or `Hook.prefetch`, the resolver runs first; your listener then gets the event with `stream-open-filename` (or `prefetch-open-filename`) already changed, and still calls `continueHook`. A resolver that hangs is cut off by `timeout` (default 15 s), after which the library continues the hook. A URL it returns after that is dropped, with a warning on `internalLog`, since mpv has moved on. `timeout: null` lifts the deadline, also one an earlier call set. Pass `null` to remove the resolver.
 
 A `file://` URL from the resolver plays as the local path it names, as the URL of a `Media` does.
 
-With `setPrefetchPlaylist(true)` the resolver also runs for the next entry while the current one plays, and mpv stops feeding the playing track until it returns (see [12.1](#121-registering-a-hook)). A resolver slower than the output buffer leaves a gap in the music: keep it fast, for example with URLs fetched ahead of time, or leave the prefetch off.
+With `setPrefetchPlaylist(true)` the resolver also runs for the next entry while the current one plays, which goes on meanwhile (see [12.1](#121-registering-a-hook)). When that entry starts, it opens with the URL the resolver gave for the prefetch, without asking again, so a URL that changes on every call (a salted or signed URL) keeps the prefetch and the gapless change. A failed open still asks again, and a new `open`, `openAll`, `stop`, `clearPlaylist` or resolver drops the kept URL.
 
-When that entry starts, it opens with the URL the resolver gave for the prefetch, without asking again, so a URL that changes on every call (a salted or signed URL) keeps the prefetch and the gapless change. A failed open still asks again, and a new `open`, `openAll`, `stop`, `clearPlaylist` or resolver drops the kept URL.
+A resolver still running when that entry starts, or when it is no longer next, misses the prefetch: mpv drops it, the resolver is asked again for the entry's own open, and the URL of the first call is dropped with a warning on `internalLog`. So a resolver faster than the rest of the playing entry keeps the gapless change.
 
 #### 12.5 Lazy URL resolution
 
-Building a playlist with `Future.wait` runs all the `getStreamUrl` calls at once. If the server refuses parallel sessions, as Plex does for transcoding, keep the session parameters and return a placeholder URL such as `my-scheme://session-id`. `on_load` fires for one track at a time as mpv opens them, so the real calls never overlap:
+Building a playlist with `Future.wait` runs all the `getStreamUrl` calls at once. If the server refuses parallel sessions, as Plex does for transcoding, keep the session parameters and return a placeholder URL such as `my-scheme://session-id`. The hooks fire for one track at a time as mpv opens them (`on_load`, or `on_prefetch` for the next one with the prefetch on), so calls for two tracks never overlap:
 
 ```dart
 // No real API calls yet
@@ -2600,7 +2612,7 @@ final medias = await Future.wait(tracks.map((t) async {
 }));
 await player.openAll(medias);
 
-// When mpv reaches each track, on_load calls myResolver("my-scheme://abc"),
+// When mpv reaches each track, the hook calls myResolver("my-scheme://abc"),
 // which makes the /decision call and returns the start.m3u8 URL
 ```
 ---

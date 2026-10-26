@@ -55,10 +55,12 @@ abstract final class MpvAudioKit {
   /// app is used. Pass an explicit path only when shipping a custom
   /// libmpv build alongside your app; to bundle one in place of the
   /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
-  /// app's pubspec instead. On Windows a custom libmpv needs the patches
-  /// of libmpv-scripts 0.1.7 or later: with an unpatched mpv, every
-  /// [Player] dispose crashes the process, and `previousPlaylist` can
-  /// crash it too.
+  /// app's pubspec instead. A custom libmpv should carry the patches of
+  /// libmpv-scripts 0.3.0 (libmpv-r20) or later. With an older build, or
+  /// one of upstream mpv, the player still plays, and a warning on
+  /// `PlayerStream.internalLog` lists what each missing patch takes away.
+  /// On Windows an unpatched mpv also crashes the process at every
+  /// [Player] dispose, and `previousPlaylist` can crash it too.
   ///
   /// On the web [libmpv] is the URL of the `libmpv.mjs` of another build of
   /// the web module, with its `libmpv.wasm` and

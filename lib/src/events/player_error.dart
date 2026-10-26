@@ -193,14 +193,36 @@ final class MpvFileEndedEvent {
   /// played to its end can stop seconds away from it.
   final Duration? duration;
 
+  /// Whether the entry stopped reading on an error instead of at its end:
+  /// a dropped connection, a server that closed before the length it
+  /// announced or refused the resume, a live stream closed without its
+  /// last chunk. mpv still ends such an entry with [MpvEndFileReason.eof]
+  /// and [error] `0`. `false` when the entry was read to its end. `null`
+  /// with a libmpv older than libmpv-r20, which cannot tell.
+  ///
+  /// A local file always reads to its end. A response with neither a
+  /// length nor chunks, from a server without range support, ends where the
+  /// connection closes, and reads as an error even when it was whole.
+  final bool? readError;
+
+  /// How many HLS or DASH segments the entry lost to errors since it
+  /// opened, whole (one that did not open) or in part (a read that broke
+  /// off). `0` for every other format. The segments a live stream drops
+  /// because the player fell behind do not count. `null` with a libmpv
+  /// older than libmpv-r20.
+  final int? skippedSegments;
+
   /// Creates a file-ended event with the given [reason] and [error] code,
-  /// and the [media], [position] and [duration] of the entry that ended.
+  /// and the [media], [position], [duration], [readError] and
+  /// [skippedSegments] of the entry that ended.
   const MpvFileEndedEvent({
     required this.reason,
     required this.error,
     this.media,
     this.position,
     this.duration,
+    this.readError,
+    this.skippedSegments,
   });
 
   @override
@@ -211,15 +233,26 @@ final class MpvFileEndedEvent {
           other.error == error &&
           other.media == media &&
           other.position == position &&
-          other.duration == duration);
+          other.duration == duration &&
+          other.readError == readError &&
+          other.skippedSegments == skippedSegments);
 
   @override
-  int get hashCode => Object.hash(reason, error, media, position, duration);
+  int get hashCode => Object.hash(
+    reason,
+    error,
+    media,
+    position,
+    duration,
+    readError,
+    skippedSegments,
+  );
 
   @override
   String toString() =>
       'MpvFileEndedEvent(reason: $reason, error: $error, media: $media, '
-      'position: $position, duration: $duration)';
+      'position: $position, duration: $duration, readError: $readError, '
+      'skippedSegments: $skippedSegments)';
 }
 
 /// Whether the file ended naturally and not because of a stop, error, redirect,
@@ -229,8 +262,8 @@ extension MpvFileEndedEventX on MpvFileEndedEvent {
   ///
   /// mpv also reports EOF when a network stream drops, so this means the
   /// demuxer ran out of data, not that the track played to completion.
-  /// [MpvFileEndedEvent.position] against [MpvFileEndedEvent.duration]
-  /// tells most such ends apart.
+  /// [MpvFileEndedEvent.readError] and [MpvFileEndedEvent.skippedSegments]
+  /// tell such ends apart.
   bool get reachedNaturalEnd => reason == MpvEndFileReason.eof;
 }
 

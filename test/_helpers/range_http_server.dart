@@ -131,6 +131,11 @@ final class RangeHttpServer {
   /// Answer with `HTTP/1.0` in the status line instead of `HTTP/1.1`.
   bool http10 = false;
 
+  /// With [ServeMode.chunked], a cut ([dropAfterBytes], [cutOnce]) closes
+  /// the connection inside a chunk, which announced more bytes than came,
+  /// instead of after the last whole chunk.
+  bool cutInsideChunk = false;
+
   /// Connections closed unanswered while the server was down
   /// ([downAfterDrop]).
   int refused = 0;
@@ -434,7 +439,25 @@ final class RangeHttpServer {
         return;
       }
       var n = to - pos < chunkSize ? to - pos : chunkSize;
-      if (drop != null && req.bytesSent + n > drop) n = drop - req.bytesSent;
+      if (drop != null && req.bytesSent + n > drop) {
+        final left = drop - req.bytesSent;
+        if (frame != null && cutInsideChunk) {
+          // The chunk announces all its n bytes; the connection closes
+          // after [left] of them.
+          try {
+            client.add(latin1.encode('${n.toRadixString(16)}\r\n'));
+            client.add(Uint8List.sublistView(file, pos, pos + left));
+            await client.flush();
+          } catch (_) {
+            req.aborted = true;
+            return;
+          }
+          req.bytesSent += left;
+          req.dropped = true;
+          return;
+        }
+        n = left;
+      }
       if (n > 0) {
         final chunk = Uint8List.sublistView(file, pos, pos + n);
         try {

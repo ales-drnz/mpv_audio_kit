@@ -104,6 +104,20 @@ final class PlayerState {
   /// [MpvPlaybackState.completed].
   final bool completed;
 
+  /// Whether the entry that ended at the end of content ([completed])
+  /// stopped reading on an error instead of at its end, as
+  /// [MpvFileEndedEvent.readError] tells for an entry that ends with an
+  /// event. `null` while [completed] is `false`, and with a libmpv older
+  /// than libmpv-r20, which cannot tell. It changes with [completed]: read
+  /// it when [PlayerStream.completed] turns `true`.
+  final bool? readError;
+
+  /// The HLS or DASH segments the entry that ended at the end of content
+  /// ([completed]) lost to errors, as [MpvFileEndedEvent.skippedSegments]
+  /// tells. `null` while [completed] is `false`, and with a libmpv older
+  /// than libmpv-r20. It changes with [completed].
+  final int? skippedSegments;
+
   /// Current playback position.
   final Duration position;
 
@@ -532,6 +546,8 @@ final class PlayerState {
     this.playing = false,
     this.playWhenReady = false,
     this.completed = false,
+    this.readError,
+    this.skippedSegments,
     this.position = Duration.zero,
     this.duration = Duration.zero,
     this.volume = 100.0,
@@ -631,6 +647,8 @@ final class PlayerState {
     bool? playing,
     bool? playWhenReady,
     bool? completed,
+    Object? readError = unset,
+    Object? skippedSegments = unset,
     Duration? position,
     Duration? duration,
     double? volume,
@@ -726,6 +744,12 @@ final class PlayerState {
     playing: playing ?? this.playing,
     playWhenReady: playWhenReady ?? this.playWhenReady,
     completed: completed ?? this.completed,
+    readError: identical(readError, unset)
+        ? this.readError
+        : readError as bool?,
+    skippedSegments: identical(skippedSegments, unset)
+        ? this.skippedSegments
+        : skippedSegments as int?,
     position: position ?? this.position,
     duration: duration ?? this.duration,
     volume: volume ?? this.volume,
@@ -844,6 +868,8 @@ final class PlayerState {
           other.playing == playing &&
           other.playWhenReady == playWhenReady &&
           other.completed == completed &&
+          other.readError == readError &&
+          other.skippedSegments == skippedSegments &&
           other.position == position &&
           other.duration == duration &&
           other.volume == volume &&
@@ -941,6 +967,8 @@ final class PlayerState {
     playing,
     playWhenReady,
     completed,
+    readError,
+    skippedSegments,
     position,
     duration,
     volume,
