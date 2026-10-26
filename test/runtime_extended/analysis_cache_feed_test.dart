@@ -138,8 +138,11 @@ final class _Watch {
   final List<String> _trace = [];
   String? _lastState;
 
-  void _note(String what) =>
-      _trace.add('${_clock.elapsedMilliseconds} ms $what');
+  void _note(String what) {
+    _trace.add('${_clock.elapsedMilliseconds} ms $what');
+    // A log at verbose level runs long: the end tells the most.
+    if (_trace.length > 400) _trace.removeAt(0);
+  }
 
   /// What the watch saw, from its start: the stream values and the native
   /// states [settle] read, for failure messages.
@@ -405,12 +408,12 @@ void main() {
       FutureOr<bool> Function() condition,
       String what, {
       Duration timeout = const Duration(seconds: 10),
-      String Function()? detail,
+      FutureOr<String> Function()? detail,
     }) async {
       final deadline = DateTime.now().add(timeout);
       while (!await condition()) {
         if (DateTime.now().isAfter(deadline)) {
-          fail('$what within $timeout${detail?.call() ?? ''}\n${log()}');
+          fail('$what within $timeout${await detail?.call() ?? ''}\n${log()}');
         }
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
@@ -504,6 +507,30 @@ void main() {
             }
             last = p;
           });
+          // mpv's own account of the loop, for a failure: on the Windows
+          // runner, in the whole suite, the second loop did not come.
+          player!.setLogLevel(LogLevel.v);
+          final lines = player!.stream.log.listen(
+            (e) => watch!._note('[${e.prefix}] ${e.text.trim()}'),
+          );
+          Future<String> props() async {
+            final values = [
+              for (final name in [
+                'pause',
+                'paused-for-cache',
+                'core-idle',
+                'eof-reached',
+                'seeking',
+                'time-pos',
+                'demuxer-cache-time',
+                'demuxer-cache-idle',
+              ])
+                '$name=${await player!.getRawProperty(name)}',
+            ];
+            return ' (wraps $wraps, position $last, ${values.join(' ')}), '
+                'seen:\n${watch!.describe()}';
+          }
+
           try {
             await player!.open(Media(server.url(flacName)), play: true);
             final a = (await watch!.settle(log))!;
@@ -511,9 +538,7 @@ void main() {
               () => wraps >= 2,
               'the file did not loop twice',
               timeout: const Duration(seconds: 20),
-              detail: () =>
-                  ' (wraps $wraps, position $last), seen:\n'
-                  '${watch!.describe()}',
+              detail: props,
             );
             expect(
               server.gets('/$flacName'),
@@ -524,7 +549,7 @@ void main() {
             );
             _expectSame(a, flacRef, log());
             // Looping did not restart or spoil the settled analysis.
-            expect(await _nativeState(player!), 'ready');
+            expect(await _nativeState(player!), 'ready', reason: await props());
             expect(_complete(watch!.wave), isTrue);
             _expectSame(
               _Analysis(watch!.wave!, watch!.loudness!),
@@ -533,6 +558,7 @@ void main() {
             );
           } finally {
             await pos.cancel();
+            await lines.cancel();
           }
         },
         timeout: const Timeout(Duration(seconds: 60)),
