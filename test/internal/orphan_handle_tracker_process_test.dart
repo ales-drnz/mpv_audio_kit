@@ -43,6 +43,18 @@ void main() {
     },
   );
 
+  // A second VM of the process (a second Flutter engine, an isolate that
+  // calls ensureInitialized with the default) finds the buffer of the
+  // first while the first still runs: its cores are live, not orphans.
+  test('a second VM beside a live one takes none of its handles', () async {
+    final report = await probe(const []);
+    expect(report['alive'], {'restarted': false, 'orphans': <int>[]});
+    expect(report['second'], {
+      'restarted': true,
+      'orphans': [_fakeHandle],
+    }, reason: 'the handle is still there for the VM a Hot Restart brings up');
+  });
+
   test('a fresh process leaves no file in the temp directory', () async {
     final report = await probe(const []);
     expect(report['second'], {

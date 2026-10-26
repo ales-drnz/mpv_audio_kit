@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
@@ -29,14 +30,21 @@ import 'debug_log.dart';
 /// left on disk. A child process inherits the value with the pid of
 /// its parent, and ignores it.
 ///
+/// The pid does not tell a Hot-Restart from a second VM of the same
+/// process that is still running (a second Flutter engine, an isolate
+/// that calls `ensureInitialized`). The buffer holds the native port of
+/// the VM that owns it, alive as long as that VM: a VM that finds the
+/// owner alive takes none of its handles, and tracks none of its own.
+///
 /// **Debug only**: guarded by [kHotRestartPossible]. Profile and
 /// release builds have no Hot-Restart. An engine can still go while the
 /// process stays (Android): the players of an isolate that exits are
 /// stopped by `OwnerWatch`, not here.
 ///
 /// **Single-isolate**: [add] and [remove] are not synchronized across
-/// isolates that share a pid. The test suite disables the tracker
-/// via `MpvAudioKit.ensureInitialized(hotRestartCleanup: false)`.
+/// isolates that share a pid, and only the VM that owns the buffer
+/// writes to it. The test suite disables the tracker via
+/// `MpvAudioKit.ensureInitialized(hotRestartCleanup: false)`.
 class OrphanHandleTracker {
   static const int _kBufferSize = 256;
   // Magic cookie stored alongside every address. Hot-Restart cleanup
@@ -49,6 +57,10 @@ class OrphanHandleTracker {
   // keeps its 64 bits on a 32-bit ABI (armeabi-v7a), and an address of
   // that ABI fits in the second word.
   static const int _kSlotStride = 2;
+  // One Int64 word after the slots: the native port of the VM that owns
+  // the buffer (see [_ownerAlive]). After the slots, so the slots keep
+  // their layout from the start of the buffer.
+  static const int _kOwnerWord = _kBufferSize * _kSlotStride;
 
   /// The bytes of one slot, the same on every ABI.
   @visibleForTesting
@@ -75,8 +87,12 @@ class OrphanHandleTracker {
   final ProcessEnvironment _env;
   bool _initialized = false;
 
-  // Null until [ensureInitialized] runs, and if it fails.
+  // Null until [ensureInitialized] runs, if it fails, and when another
+  // live VM owns the buffer.
   Pointer<Int64>? _buffer;
+  // Open while this VM lives; closed with the isolate, so a Hot-Restart
+  // finds it closed. It must not keep the isolate alive.
+  RawReceivePort? _lifePort;
   final Completer<void> _completer = Completer<void>();
 
   bool get _isDebug => kHotRestartPossible;
@@ -114,7 +130,8 @@ class OrphanHandleTracker {
         // so the next Hot-Restart can rehydrate orphan addresses from it.
         // The OS reclaims the allocation when the host process eventually
         // exits.
-        buffer = calloc<Int64>(_kBufferSize * _kSlotStride);
+        buffer = calloc<Int64>(_kOwnerWord + 1);
+        (buffer + _kOwnerWord).value = _openLifePort();
         _buffer = buffer;
         if (!_env.set(envName, '$pid:${buffer.address}')) {
           debugLog(
@@ -122,8 +139,13 @@ class OrphanHandleTracker {
             'Hot-restart cleanup disabled for the next restart.',
           );
         }
+      } else if (_ownerAlive((previous + _kOwnerWord).value)) {
+        // Another VM of this process runs and owns the buffer: its
+        // handles are live cores, not orphans.
+        return;
       } else {
         buffer = previous;
+        (buffer + _kOwnerWord).value = _openLifePort();
         _buffer = buffer;
         _restarted = true;
       }
@@ -156,6 +178,38 @@ class OrphanHandleTracker {
       }
     }
   }
+
+  /// Closes the life port: the VM this tracker stands for is gone, as a
+  /// Hot-Restart leaves it.
+  @visibleForTesting
+  void endForTesting() {
+    _lifePort?.close();
+    _lifePort = null;
+  }
+
+  int _openLifePort() {
+    final port = RawReceivePort(_ignore, 'mpv_audio_kit tracker')
+      ..keepIsolateAlive = false;
+    _lifePort = port;
+    return port.sendPort.nativePort;
+  }
+
+  static void _ignore(Object? _) {}
+
+  // A null message (its type, Dart_CObject_kNull, is 0), for [_ownerAlive].
+  static final Pointer<Dart_CObject> _nullMessage = calloc<Uint8>(
+    64,
+  ).cast<Dart_CObject>();
+
+  static final int Function(int, Pointer<Dart_CObject>) _postCObject = NativeApi
+      .postCObject
+      .asFunction<int Function(int, Pointer<Dart_CObject>)>();
+
+  /// Whether the VM that owns [port] still runs: the VM accepts a message
+  /// for an open port only. After a Hot-Restart the ports of the old VM
+  /// are closed. 0 is no port.
+  static bool _ownerAlive(int port) =>
+      port != 0 && _postCObject(port, _nullMessage) != 0;
 
   /// The buffer an earlier VM of this process published, or `null` when
   /// there is none. A value with another pid came from the parent of

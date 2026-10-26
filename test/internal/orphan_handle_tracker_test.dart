@@ -6,8 +6,10 @@
 // The Hot-Restart tracker keeps its buffer in the process environment.
 // Each OrphanHandleTracker.forTesting below stands for one Dart VM of a
 // process whose environment is the fake one it gets: a second tracker over
-// the same environment is the VM a Hot-Restart brings up. The real
-// process environment is checked once, through the singleton.
+// the same environment is another VM of that process, and the VM a
+// Hot-Restart brings up once the first ends (endForTesting closes the port
+// that tells it is alive). The real process environment is checked once,
+// through the singleton.
 // orphan_handle_tracker_process_test.dart runs the tracker in processes of
 // its own.
 
@@ -60,6 +62,7 @@ void main() {
       ..remove(h2);
     // add() and remove() land once the init future completes.
     await Future<void>.delayed(Duration.zero);
+    old.endForTesting();
 
     final restarted = OrphanHandleTracker.forTesting(env);
     expect(bringUp(restarted), [h1.address, h3.address]);
@@ -70,7 +73,30 @@ void main() {
     // only what this VM added.
     restarted.add(h2);
     await Future<void>.delayed(Duration.zero);
+    restarted.endForTesting();
     expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
+  });
+
+  test('a second VM beside a live one takes none of its handles', () async {
+    // A second Flutter engine of the process, or an isolate that calls
+    // ensureInitialized with the default, finds the buffer of the first.
+    final env = _FakeEnvironment();
+    final first = OrphanHandleTracker.forTesting(env);
+    bringUp(first);
+    first.add(h1);
+    await Future<void>.delayed(Duration.zero);
+
+    final second = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(second), isEmpty, reason: 'the core of h1 is live');
+    expect(second.restarted, isFalse);
+    // The second VM tracks nothing of its own: the buffer stays the first's.
+    second.add(h2);
+    await Future<void>.delayed(Duration.zero);
+
+    first.endForTesting();
+    final restarted = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(restarted), [h1.address]);
+    expect(restarted.restarted, isTrue);
   });
 
   test('a handle another isolate freed is not reaped again', () async {
@@ -84,6 +110,7 @@ void main() {
       ..add(h1)
       ..add(h2);
     await Future<void>.delayed(Duration.zero);
+    old.endForTesting();
 
     OrphanHandleTracker.forTesting(env).forget(h1);
     expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
@@ -106,6 +133,7 @@ void main() {
       expect(tracker.restarted, isFalse, reason: bad);
       tracker.add(h1);
       await Future<void>.delayed(Duration.zero);
+      tracker.endForTesting();
       expect(bringUp(OrphanHandleTracker.forTesting(env)), [
         h1.address,
       ], reason: bad);

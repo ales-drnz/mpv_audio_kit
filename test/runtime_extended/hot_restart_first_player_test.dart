@@ -51,6 +51,7 @@ void main() {
       previousVm.add(orphan);
       // add() writes the slot once the tracker's init future resolves.
       await Future<void>.delayed(Duration.zero);
+      previousVm.endForTesting();
       shim().set('destroy_delay_us', _destroyDelayUs);
 
       // The new VM: ensureInitialized finds the orphan, and the app

@@ -5,10 +5,12 @@
 //
 // A plain `dart` program (no Flutter) that brings up the Hot Restart tracker
 // of a fresh process, the way MpvAudioKit.ensureInitialized does in a debug
-// build, then stands for the VM a Hot Restart brings up with a second
-// isolate of the same process. Prints one JSON line:
-// `{"first": {...}, "second": {...}}`, each with `restarted` and the
-// `orphans` that isolate's tracker reported.
+// build. A second isolate of the same process then stands for another VM
+// that lives beside it (a second engine, a background isolate), and once
+// the first one ends its life port, a third stands for the VM a Hot
+// Restart brings up. Prints one JSON line:
+// `{"first": {...}, "alive": {...}, "second": {...}}`, each with
+// `restarted` and the `orphans` that isolate's tracker reported.
 //
 // Optional arguments leave a file in the temp directory first:
 // - `own <content>`: a sentinel named after this process' pid, as a dead
@@ -45,9 +47,14 @@ Future<void> main(List<String> args) async {
   OrphanHandleTracker.instance.add(Pointer.fromAddress(_fakeHandle));
   // add() lands once the tracker's init future completes.
   await Future<void>.delayed(Duration.zero);
+  final alive = await Isolate.run(_bringUp);
+  // The VM a Hot Restart replaces is gone: its ports are closed.
+  OrphanHandleTracker.instance.endForTesting();
   final second = await Isolate.run(_bringUp);
 
-  stdout.writeln(jsonEncode({'first': first, 'second': second}));
+  stdout.writeln(
+    jsonEncode({'first': first, 'alive': alive, 'second': second}),
+  );
 }
 
 Map<String, Object> _bringUp() {
