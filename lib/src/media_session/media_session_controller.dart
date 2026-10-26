@@ -52,7 +52,7 @@ class MediaSessionController {
   final void Function()? _onAudioOutputReset;
   final MediaSessionChannel _channel;
 
-  /// Loads `http(s)://` and `file://` artwork so the OS gets the image
+  /// Loads artwork URLs ([_fetches]) so the OS gets the image
   /// bytes, never the URL (see [downloadsArtworkOn]). Without one, artwork
   /// URLs show no artwork.
   final ArtworkFetcher? _artworkFetcher;
@@ -122,8 +122,8 @@ class MediaSessionController {
   /// [MediaSessionInputs] from raw [StreamController]s and drive
   /// arbitrary event sequences.
   ///
-  /// [artworkFetcher] defaults to [downloadArtwork] (see
-  /// [downloadsArtworkOn]). It gets the `http(s)://` and `file://` artwork.
+  /// [artworkFetcher] defaults to [loadArtwork] (see
+  /// [downloadsArtworkOn]). It gets the artwork URLs [_fetches] names.
   static Future<MediaSessionController> create({
     required PlayerState Function() stateSnapshot,
     required MediaSessionInputs inputs,
@@ -141,7 +141,7 @@ class MediaSessionController {
       channel: channel,
       artworkFetcher:
           artworkFetcher ??
-          (downloadsArtworkOn(defaultTargetPlatform) ? downloadArtwork : null),
+          (downloadsArtworkOn(defaultTargetPlatform) ? loadArtwork : null),
       artworkRetryAfter: artworkRetryAfter,
     );
     try {
@@ -446,10 +446,17 @@ class MediaSessionController {
   }
 
   /// Whether the artwork [uri] goes through [_artworkFetcher]: an
-  /// `http(s)://` or a `file://` URL. Any other scheme shows no artwork.
+  /// `http(s)://`, `file://` or `asset://` URL, a `content://` or
+  /// `android.resource://` one on Android and a `blob:` one in the browser.
+  /// Any other scheme shows no artwork.
   static bool _fetches(String uri) {
-    final scheme = Uri.tryParse(uri)?.scheme.toLowerCase();
-    return scheme == 'http' || scheme == 'https' || scheme == 'file';
+    return switch (Uri.tryParse(uri)?.scheme.toLowerCase()) {
+      'http' || 'https' || 'file' || 'asset' => true,
+      'content' || 'android.resource' =>
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
+      'blob' => kIsWeb,
+      _ => false,
+    };
   }
 
   /// Removes what could be credentials from a title mpv derived from a URL:
@@ -484,7 +491,7 @@ class MediaSessionController {
       _artAttempts++;
       unawaited(
         _artworkFetcher!(
-          Uri.parse(uri),
+          uri,
           _stateSnapshot().tlsCaFile,
         ).catchError((Object _) => null).then((cover) {
           if (_disposed || uri != _pendingArtUri) return;

@@ -11,12 +11,15 @@ export 'artwork_download_io.dart'
 
 /// Loads an artwork URL into a [CoverArt], trusting the extra CA bundle
 /// `caFile` (the player's `tls-ca-file`, empty for none) on top of the
-/// system roots; `null` on any failure.
-typedef ArtworkFetcher = Future<CoverArt?> Function(Uri uri, String caFile);
+/// system roots; `null` on any failure. The URL comes as the app wrote it:
+/// parsing it into a [Uri] would lower the case of an Android authority
+/// and of the first part of an `asset://` key.
+typedef ArtworkFetcher = Future<CoverArt?> Function(String url, String caFile);
 
 /// Whether the media session loads artwork URLs in Dart on [platform]:
-/// it downloads an `http(s)://` one and reads a `file://` one, and the
-/// native side only ever gets bytes. Remote cover URLs often carry
+/// it downloads an `http(s)://` one, reads a `file://`, an `asset://` and
+/// on Android a `content://` one (loadArtwork), and the native side only
+/// ever gets bytes. Remote cover URLs often carry
 /// credentials in the query (Subsonic `u`, `t` and `s`, Jellyfin
 /// `api_key`, Plex `X-Plex-Token`), and the OS would publish them: MPRIS
 /// `mpris:artUrl` on the session bus (Linux), the session metadata other

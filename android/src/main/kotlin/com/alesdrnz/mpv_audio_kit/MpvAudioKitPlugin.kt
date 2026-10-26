@@ -6,6 +6,7 @@
 package com.alesdrnz.mpv_audio_kit
 
 import android.content.Context
+import android.net.Uri
 import androidx.media3.common.util.UnstableApi
 import com.alesdrnz.mpv_audio_kit.media_session.MediaSessionManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -14,7 +15,8 @@ import io.flutter.plugin.common.MethodChannel
 
 /**
  * Android entry point. The package itself is direct FFI to libmpv; this plugin
- * only opens Content URIs as file descriptors ([FileDescriptorChannel]) and
+ * only opens Content URIs as file descriptors ([FileDescriptorChannel]), reads
+ * the images of content:// covers ([ArtworkChannel]), and
  * wires the OS media session (Media3) and its method/event channels.
  */
 class MpvAudioKitPlugin : FlutterPlugin {
@@ -33,6 +35,7 @@ class MpvAudioKitPlugin : FlutterPlugin {
     }
 
     private lateinit var fileDescriptors: FileDescriptorChannel
+    private lateinit var artwork: ArtworkChannel
     private lateinit var mediaSessionMethodChannel: MethodChannel
     private lateinit var mediaSessionEventChannel: EventChannel
     private lateinit var context: Context
@@ -46,6 +49,14 @@ class MpvAudioKitPlugin : FlutterPlugin {
         // Content URIs opened as file descriptors, off the main thread.
         fileDescriptors = FileDescriptorChannel { context.contentResolver }
         fileDescriptors.attach(flutterPluginBinding.binaryMessenger)
+        // The images of content:// and android.resource:// covers, read for
+        // the media session of the Dart side on a queue of their own.
+        artwork = ArtworkChannel { uri ->
+            val parsed = Uri.parse(uri)
+            val resolver = context.contentResolver
+            ArtworkChannel.Source(resolver.getType(parsed)) { resolver.openInputStream(parsed) }
+        }
+        artwork.attach(flutterPluginBinding.binaryMessenger)
 
         // OS media session (Media3): lockscreen / notification controls,
         // hardware & Bluetooth media keys. The MediaSessionManager owns the
@@ -82,6 +93,7 @@ class MpvAudioKitPlugin : FlutterPlugin {
     @UnstableApi
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         fileDescriptors.detach()
+        artwork.detach()
         mediaSessionMethodChannel.setMethodCallHandler(null)
         mediaSessionEventChannel.setStreamHandler(null)
         MediaSessionManager.detach(this)

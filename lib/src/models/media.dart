@@ -75,8 +75,9 @@ final class Media {
   /// - `title`, `artist` and `album`: used when the file has no such tag
   ///   and [MediaSession] sets no override. `title` comes before mpv's
   ///   `media-title`, which falls back to the file name or URL.
-  /// - `art`: an `http(s)://` or `file://` URL of the cover, used when the
-  ///   artwork is [MediaSessionArtwork.embedded] and the file has none.
+  /// - `art`: the URL of the cover, in a scheme
+  ///   [MediaSessionArtwork.uri] loads, used when the artwork is
+  ///   [MediaSessionArtwork.embedded] and the file has none.
   final Map<String, Object?>? extras;
 
   /// Optional HTTP headers for network streams.
