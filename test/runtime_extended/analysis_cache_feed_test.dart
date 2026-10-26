@@ -138,11 +138,8 @@ final class _Watch {
   final List<String> _trace = [];
   String? _lastState;
 
-  void _note(String what) {
-    _trace.add('${_clock.elapsedMilliseconds} ms $what');
-    // A log at verbose level runs long: the end tells the most.
-    if (_trace.length > 400) _trace.removeAt(0);
-  }
+  void _note(String what) =>
+      _trace.add('${_clock.elapsedMilliseconds} ms $what');
 
   /// What the watch saw, from its start: the stream values and the native
   /// states [settle] read, for failure messages.
@@ -408,12 +405,12 @@ void main() {
       FutureOr<bool> Function() condition,
       String what, {
       Duration timeout = const Duration(seconds: 10),
-      FutureOr<String> Function()? detail,
+      String Function()? detail,
     }) async {
       final deadline = DateTime.now().add(timeout);
       while (!await condition()) {
         if (DateTime.now().isAfter(deadline)) {
-          fail('$what within $timeout${await detail?.call() ?? ''}\n${log()}');
+          fail('$what within $timeout${detail?.call() ?? ''}\n${log()}');
         }
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
@@ -510,69 +507,6 @@ void main() {
             }
             last = p;
           });
-          // mpv's own account of the loop, for a failure: on the Windows
-          // runner, in the whole suite, the second loop did not come.
-          player!.setLogLevel(LogLevel.v);
-          final lines = player!.stream.log.listen(
-            (e) => watch!._note('[${e.prefix}] ${e.text.trim()}'),
-          );
-          Future<String> props() async {
-            final values = [
-              for (final name in [
-                'pause',
-                'paused-for-cache',
-                'core-idle',
-                'eof-reached',
-                'seeking',
-                'time-pos',
-                'demuxer-cache-time',
-                'demuxer-cache-idle',
-              ])
-                '$name=${await player!.getRawProperty(name)}',
-            ];
-            // Whether the core still runs a command, and whether a fresh
-            // player reads its own core and the analysis of the process:
-            // a stuck core, a stuck event pump and a stuck analyzer give
-            // different answers.
-            Future<String> probe(
-              String what,
-              Future<Object?> Function() f,
-            ) => f()
-                .then((v) => '$what ok ($v)')
-                .timeout(const Duration(seconds: 3))
-                .catchError(
-                  (Object e) =>
-                      '$what ${e is TimeoutException ? 'hangs' : 'fails: $e'}',
-                );
-            final command = await probe(
-              'command',
-              () => player!.sendRawCommand(['ignore']).then((_) => null),
-            );
-            var freshVersion = 'fresh player hangs';
-            var freshWave = '';
-            try {
-              final fresh = await buildPlayer().timeout(
-                const Duration(seconds: 5),
-              );
-              freshVersion = await probe(
-                'fresh mpv-version',
-                () => fresh.getRawProperty('mpv-version'),
-              );
-              freshWave = await probe(
-                'fresh waveform-data',
-                () => fresh
-                    .getRawPropertyNode('waveform-data')
-                    .then((n) => (n as Map?)?['state']),
-              );
-              unawaited(fresh.dispose());
-            } on TimeoutException {
-              // freshVersion says it.
-            }
-            return ' (wraps $wraps, position $last, ${values.join(' ')}; '
-                '$command; $freshVersion; $freshWave), '
-                'seen:\n${watch!.describe()}';
-          }
-
           try {
             await player!.open(Media(server.url(flacName)), play: true);
             final a = (await watch!.settle(log))!;
@@ -580,7 +514,9 @@ void main() {
               () => wraps >= 2,
               'the file did not loop twice',
               timeout: const Duration(seconds: 20),
-              detail: props,
+              detail: () =>
+                  ' (wraps $wraps, position $last), seen:\n'
+                  '${watch!.describe()}',
             );
             expect(
               server.gets('/$flacName'),
@@ -591,7 +527,7 @@ void main() {
             );
             _expectSame(a, flacRef, log());
             // Looping did not restart or spoil the settled analysis.
-            expect(await _nativeState(player!), 'ready', reason: await props());
+            expect(await _nativeState(player!), 'ready');
             expect(_complete(watch!.wave), isTrue);
             _expectSame(
               _Analysis(watch!.wave!, watch!.loudness!),
@@ -600,7 +536,6 @@ void main() {
             );
           } finally {
             await pos.cancel();
-            await lines.cancel();
           }
         },
         timeout: const Timeout(Duration(seconds: 60)),
