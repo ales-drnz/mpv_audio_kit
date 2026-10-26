@@ -99,7 +99,10 @@ void main() {
   final root = Directory.current.path;
 
   test('pubspec ships web/ as a web asset folder, Flutter 3.41 or later', () {
-    final pubspec = File('$root/pubspec.yaml').readAsStringSync();
+    // A Windows checkout may end the lines with CRLF (core.autocrlf).
+    final pubspec = File(
+      '$root/pubspec.yaml',
+    ).readAsStringSync().replaceAll('\r\n', '\n');
     expect(pubspec, contains("flutter: '>=3.41.0'"));
     expect(
       pubspec,

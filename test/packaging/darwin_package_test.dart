@@ -21,7 +21,10 @@ void main() {
   ];
 
   test('iOS and macOS read the plugin from darwin', () {
-    final pubspec = File('pubspec.yaml').readAsStringSync();
+    // A Windows checkout may end the lines with CRLF (core.autocrlf).
+    final pubspec = File(
+      'pubspec.yaml',
+    ).readAsStringSync().replaceAll('\r\n', '\n');
     for (final os in ['ios', 'macos']) {
       final entry = RegExp(
         '^      $os:\\n((?:        .*(?:\\n|\$))+)',
