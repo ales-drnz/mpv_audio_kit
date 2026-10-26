@@ -104,12 +104,22 @@ internal object InterruptionLogic {
      *   pauseAndResume only (parity with transient-loss handling).
      *
      * `keepPlaying` never pauses — the policy opts out of focus gating.
+     *
+     * [duringTransientLoss]: the request was made during a call (see
+     * [transientLossAfter]). Anything short of a grant then waits for the
+     * gain that ends the call, as a deferred grant does; before API 26 the
+     * request fails instead of being deferred.
      */
-    fun onFocusRequestResult(result: Int, policy: String): Reaction {
+    fun onFocusRequestResult(
+        result: Int,
+        policy: String,
+        duringTransientLoss: Boolean = false,
+    ): Reaction {
         if (policy == KEEP_PLAYING) {
             return Reaction(command = null, resumeOnFocusGain = false, abandonFocus = false)
         }
-        return when (result) {
+        val waits = duringTransientLoss && result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        return when (if (waits) AudioManager.AUDIOFOCUS_REQUEST_DELAYED else result) {
             AudioManager.AUDIOFOCUS_REQUEST_GRANTED ->
                 Reaction(command = null, resumeOnFocusGain = false, abandonFocus = false)
 
@@ -130,4 +140,28 @@ internal object InterruptionLogic {
      *  blast the speaker); never arms auto-resume — re-plugging must not restart. */
     fun onBecomingNoisy(): Reaction =
         Reaction(command = PAUSE, resumeOnFocusGain = false, abandonFocus = false)
+
+    /** Reaction to a pause from a controller (the car, a headset, a Media3
+     *  controller), which the session forwards to Dart. During a call the
+     *  player is already paused, so the latch is the only place the user's
+     *  choice can go: the end of the call must not restart it. ExoPlayer
+     *  does the same by clearing `playWhenReady`. */
+    fun onExternalPause(): Reaction =
+        Reaction(command = null, resumeOnFocusGain = false, abandonFocus = false)
+
+    /** Whether a call (a transient loss that paused the player) is in
+     *  progress after [focusChange], from the [current] state. A transient
+     *  loss keeps the focus request, so the player still holds the focus
+     *  then, but a play must ask again instead of trusting it. */
+    fun transientLossAfter(focusChange: Int, policy: String, current: Boolean): Boolean =
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> policy != KEEP_PLAYING
+            AudioManager.AUDIOFOCUS_GAIN, AudioManager.AUDIOFOCUS_LOSS -> false
+            else -> current
+        }
+
+    /** Whether a play must request the focus: always without it, and
+     *  during a call even with it (see [transientLossAfter]). */
+    fun needsFocusRequest(hasFocus: Boolean, transientLoss: Boolean): Boolean =
+        !hasFocus || transientLoss
 }

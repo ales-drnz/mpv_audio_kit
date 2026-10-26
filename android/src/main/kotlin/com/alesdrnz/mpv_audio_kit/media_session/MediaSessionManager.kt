@@ -278,6 +278,12 @@ internal object MediaSessionManager {
         engines.onCancel(engine)
     }
 
+    /** A pause from a controller: disarm the resume of a call before the
+     *  pause goes to Dart, which is already paused then. */
+    fun disarmResume() = runOnMain {
+        audioFocus?.disarm()
+    }
+
     /** Forwards an OS remote command to the owner's Dart, on the platform
      *  thread. */
     fun forwardCommand(command: Map<String, Any?>) = runOnMain {

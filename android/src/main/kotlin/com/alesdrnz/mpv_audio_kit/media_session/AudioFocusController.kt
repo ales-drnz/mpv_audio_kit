@@ -53,6 +53,10 @@ internal class AudioFocusController(
     // The play intent, as the last onPlaybackActive or onPlaybackInactive
     // set it: a focus loss arms the resume only when it was true.
     private var playbackActive = false
+    // A transient loss (a call) that paused the player, until the gain or
+    // a permanent loss. The focus request stays in place through it, so
+    // [hasFocus] is still true, but a play then asks for the focus again.
+    private var transientLoss = false
 
     private val focusListener =
         AudioManager.OnAudioFocusChangeListener { change -> onFocusChange(change) }
@@ -74,9 +78,11 @@ internal class AudioFocusController(
      *  barging over a non-duckable holder (active call / assistant). */
     fun onPlaybackActive() {
         playbackActive = true
+        val duringLoss = transientLoss
         val result = requestFocus()
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) transientLoss = false
         registerNoisy()
-        val r = InterruptionLogic.onFocusRequestResult(result, policy())
+        val r = InterruptionLogic.onFocusRequestResult(result, policy(), duringLoss)
         resumeOnFocusGain = r.resumeOnFocusGain
         r.command?.let { emit(mapOf("type" to it)) }
     }
@@ -89,18 +95,26 @@ internal class AudioFocusController(
         unregisterNoisy()
     }
 
+    /** A pause from a controller: the end of a call must not restart it
+     *  (see [InterruptionLogic.onExternalPause]). */
+    fun disarm() {
+        resumeOnFocusGain = InterruptionLogic.onExternalPause().resumeOnFocusGain
+    }
+
     /** Session disabled / engine detached: drop focus and the receiver. */
     fun release() {
         abandonFocus()
         unregisterNoisy()
         resumeOnFocusGain = false
         playbackActive = false
+        transientLoss = false
     }
 
     private fun onFocusChange(focusChange: Int) {
         val r = InterruptionLogic.onFocusChange(
             focusChange, policy(), resumeOnFocusGain, wasPlaying = playbackActive,
         )
+        transientLoss = InterruptionLogic.transientLossAfter(focusChange, policy(), transientLoss)
         resumeOnFocusGain = r.resumeOnFocusGain
         if (r.abandonFocus) abandonFocus()
         r.command?.let { emit(mapOf("type" to it)) }
@@ -109,7 +123,9 @@ internal class AudioFocusController(
     /** Requests focus and returns the raw `AUDIOFOCUS_REQUEST_*` result so the
      *  caller can gate playback (GRANTED / FAILED / DELAYED). */
     private fun requestFocus(): Int {
-        if (hasFocus) return AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        if (!InterruptionLogic.needsFocusRequest(hasFocus, transientLoss)) {
+            return AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
         val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)

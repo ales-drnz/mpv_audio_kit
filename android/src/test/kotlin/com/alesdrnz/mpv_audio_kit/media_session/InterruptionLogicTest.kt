@@ -6,6 +6,7 @@
 package com.alesdrnz.mpv_audio_kit.media_session
 
 import android.media.AudioManager
+import androidx.media3.common.Player
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -218,5 +219,106 @@ class InterruptionLogicTest {
             resumeArmed = noisy.resumeOnFocusGain, wasPlaying = false,
         )
         assertNull(gain.command, "the end of the call must not restart into the speaker")
+    }
+
+    // ── The user's own transport during a call ──────────────────────────
+
+    @Test
+    fun `a pause from a controller during a call disarms the resume`() {
+        // A call paused playback and armed the resume. The user then
+        // presses pause on the car, the headset or a Media3 controller:
+        // Dart is already paused, so only the latch can carry the choice.
+        val loss = InterruptionLogic.onFocusChange(
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT, "pauseAndResume",
+            resumeArmed = false, wasPlaying = true,
+        )
+        assertTrue(loss.resumeOnFocusGain, "precondition: the call armed the resume")
+
+        val pause = InterruptionLogic.onExternalPause()
+        assertNull(pause.command, "the pause itself goes to Dart as before")
+        assertFalse(pause.resumeOnFocusGain, "the user's pause must disarm the resume")
+        assertEquals(
+            PublishedIntent(false, Player.PLAYBACK_SUPPRESSION_REASON_NONE),
+            PublishedIntent.of(playing = false, resumeArmed = pause.resumeOnFocusGain),
+            "the session publishes the user's pause, not a suppressed play",
+        )
+
+        val gain = InterruptionLogic.onFocusChange(
+            AudioManager.AUDIOFOCUS_GAIN, "pauseAndResume",
+            resumeArmed = pause.resumeOnFocusGain, wasPlaying = false,
+        )
+        assertNull(gain.command, "the end of the call must not restart what the user paused")
+    }
+
+    @Test
+    fun `a play during a call asks for the focus and waits for the gain`() {
+        // A transient loss leaves the focus request in place, so the
+        // player still thinks it holds the focus when the user presses
+        // play during the call.
+        val inLoss = InterruptionLogic.transientLossAfter(
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT, "pauseAndResume", current = false,
+        )
+        assertTrue(inLoss, "a transient loss that pauses starts the transient state")
+        assertTrue(
+            InterruptionLogic.needsFocusRequest(hasFocus = true, transientLoss = inLoss),
+            "the focus held before the call is no grant during it",
+        )
+        // The request is delayed during a call, or fails before API 26.
+        for (result in listOf(
+            AudioManager.AUDIOFOCUS_REQUEST_DELAYED,
+            AudioManager.AUDIOFOCUS_REQUEST_FAILED,
+        )) {
+            val r = InterruptionLogic.onFocusRequestResult(
+                result, "pauseAndResume", duringTransientLoss = inLoss,
+            )
+            assertEquals(InterruptionLogic.PAUSE, r.command, "no play over the call (result=$result)")
+            assertTrue(r.resumeOnFocusGain, "the end of the call plays (result=$result)")
+        }
+        val only = InterruptionLogic.onFocusRequestResult(
+            AudioManager.AUDIOFOCUS_REQUEST_FAILED, "pauseOnly", duringTransientLoss = true,
+        )
+        assertEquals(InterruptionLogic.PAUSE, only.command)
+        assertFalse(only.resumeOnFocusGain, "pauseOnly never auto-resumes")
+        val granted = InterruptionLogic.onFocusRequestResult(
+            AudioManager.AUDIOFOCUS_REQUEST_GRANTED, "pauseAndResume", duringTransientLoss = true,
+        )
+        assertNull(granted.command, "a real grant plays")
+
+        val afterGain = InterruptionLogic.transientLossAfter(
+            AudioManager.AUDIOFOCUS_GAIN, "pauseAndResume", current = inLoss,
+        )
+        assertFalse(afterGain, "the gain ends the transient state")
+        assertFalse(
+            InterruptionLogic.needsFocusRequest(hasFocus = true, transientLoss = afterGain),
+            "outside a call the held focus is enough",
+        )
+    }
+
+    @Test
+    fun `the transient state follows the focus changes`() {
+        assertFalse(
+            InterruptionLogic.transientLossAfter(
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT, "keepPlaying", current = false,
+            ),
+            "keepPlaying plays through the call and never re-asks",
+        )
+        assertTrue(
+            InterruptionLogic.transientLossAfter(
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT, "pauseOnly", current = false,
+            ),
+        )
+        assertTrue(
+            InterruptionLogic.transientLossAfter(
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK, "pauseAndResume", current = true,
+            ),
+            "a duck during the call leaves it as it is",
+        )
+        assertFalse(
+            InterruptionLogic.transientLossAfter(
+                AudioManager.AUDIOFOCUS_LOSS, "pauseAndResume", current = true,
+            ),
+            "a permanent loss abandons the focus",
+        )
+        assertTrue(InterruptionLogic.needsFocusRequest(hasFocus = false, transientLoss = false))
     }
 }
