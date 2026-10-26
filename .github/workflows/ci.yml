@@ -40,7 +40,7 @@ permissions:
 # it was made. The changes job checks the token, the run and the pinned
 # release before anything else starts (scripts/ci/preflight.sh).
 env:
-  LIBMPV_SCRIPTS_RUN: ${{ vars.LIBMPV_SCRIPTS_RUN }}
+  LIBMPV_SCRIPTS_RUN: '40308704440'
 
 jobs:
   # Decides whether the tests and the builds have anything to check. They
