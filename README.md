@@ -2804,7 +2804,9 @@ Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
 plays from its start, such as a direct-play file, is decoded the same way
 from mpv's own cache as it downloads, so the envelope fills at the pace
-of the download. Streams that cannot be decoded
+of the download. So is a transcode a music server sends without byte
+ranges or a length, when its `Media` carries the track's length in
+`waveformDurationHint`. Streams that cannot be decoded
 ahead of time (adaptive, non-seekable or transcoded network sources)
 fill in as playback advances, and a live stream of unknown length keeps
 a rolling window (`wave.live`). `wave.filled` has one byte per bin, `1`

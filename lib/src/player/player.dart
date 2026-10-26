@@ -495,7 +495,8 @@ class Player extends _PlayerBase
   /// autoplay value decides. Replaces any currently loaded file or playlist.
   ///
   /// Per-[Media] options (`httpHeaders`, `demuxerLavfOptions`, `httpChunkSize`,
-  /// `start`, `end`) are validated but NOT applied to the playlist fetch:
+  /// `start`, `end`, `waveformDurationHint`) are validated but NOT applied
+  /// to the playlist fetch:
   /// `loadlist` has no file-local options slot. Entries parsed out of the playlist inherit the
   /// global network and demuxer settings.
   @override
@@ -979,6 +980,11 @@ abstract class _PlayerBase {
 
   late final Future<void> _ready;
   bool _bringUpCompleted = false;
+
+  /// Whether the libmpv knows `waveform-duration-hint` (libmpv-r20), read
+  /// at the end of bring-up. Without it the loads leave
+  /// `Media.waveformDurationHint` out.
+  bool _durationHint = false;
 
   /// The level of the last [setLogLevel] call, applied at the end of
   /// bring-up when the call came before it.

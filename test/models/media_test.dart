@@ -137,7 +137,49 @@ void main() {
     });
   });
 
+  group('Media.waveformDurationHint copyWith', () {
+    test('omitted keeps the current value', () {
+      const a = Media('a', waveformDurationHint: Duration(seconds: 3));
+      expect(
+        a.copyWith(uri: 'b').waveformDurationHint,
+        const Duration(seconds: 3),
+      );
+    });
+
+    test('set overrides', () {
+      const a = Media('a');
+      expect(
+        a
+            .copyWith(waveformDurationHint: const Duration(seconds: 4))
+            .waveformDurationHint,
+        const Duration(seconds: 4),
+      );
+    });
+
+    test('explicit null clears', () {
+      const a = Media('a', waveformDurationHint: Duration(seconds: 3));
+      expect(
+        a.copyWith(waveformDurationHint: null).waveformDurationHint,
+        isNull,
+      );
+    });
+  });
+
   group('Media equality — 0.1.0 full-field semantics', () {
+    test('waveformDurationHint participates in equality', () {
+      const a = Media('a');
+      const b = Media('a', waveformDurationHint: Duration(seconds: 2));
+      expect(a, isNot(b));
+      expect(a.hashCode, isNot(b.hashCode));
+      expect(b, const Media('a', waveformDurationHint: Duration(seconds: 2)));
+      expect(
+        b.hashCode,
+        const Media('a', waveformDurationHint: Duration(seconds: 2)).hashCode,
+      );
+      // Not the same as an end at the same time.
+      expect(b, isNot(const Media('a', end: Duration(seconds: 2))));
+    });
+
     test('end participates in equality', () {
       const a = Media('a');
       const b = Media('a', end: Duration(seconds: 2));
@@ -259,6 +301,16 @@ void main() {
       expect(
         const Media('a.mp3', start: Duration(seconds: 2)).toString(),
         contains('start: 0:00:02.000000'),
+      );
+    });
+
+    test('the duration hint is printed', () {
+      expect(
+        const Media(
+          'a.mp3',
+          waveformDurationHint: Duration(seconds: 2),
+        ).toString(),
+        contains('waveformDurationHint: 0:00:02.000000'),
       );
     });
 

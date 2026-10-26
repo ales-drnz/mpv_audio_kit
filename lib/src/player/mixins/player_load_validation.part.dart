@@ -11,7 +11,8 @@ part of '../player.dart';
 /// abstract signatures on `_PlayerBase`.
 mixin _LoadValidationModule on _PlayerBase {
   @override
-  String _buildLoadfileOptions(Media media) => loadfileOptions(media);
+  String _buildLoadfileOptions(Media media) =>
+      loadfileOptions(media, durationHint: _durationHint);
 
   @override
   void _validateLoadOptions(Media media) => validateLoadOptions(media);
@@ -33,7 +34,9 @@ mixin _LoadValidationModule on _PlayerBase {
 
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
 /// `httpHeaders`, `httpChunkSize`, `streamLavfOptions`, `demuxerLavfOptions`,
-/// `start` and `end`, and the raw audio demuxer of a live PCM source. Each
+/// `start`, `end` and `waveformDurationHint` (left out without
+/// [durationHint], for a libmpv that lacks it), and the raw audio demuxer
+/// of a live PCM source. Each
 /// value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
 /// inside it. The headers still refuse some characters
@@ -42,8 +45,9 @@ mixin _LoadValidationModule on _PlayerBase {
 /// which would inject into the HTTP request; and `:` in keys.
 /// Returns `''` when the media carries none.
 @visibleForTesting
-String loadfileOptions(Media media) {
+String loadfileOptions(Media media, {bool durationHint = true}) {
   _checkPlayRange(media);
+  _checkDurationHint(media);
   final parts = <String>[];
 
   // A live PCM source: mpv's raw audio demuxer in the source's format.
@@ -82,6 +86,14 @@ String loadfileOptions(Media media) {
   if (start != null) parts.add('start=${durationToOption(start)}');
   final end = media.end;
   if (end != null) parts.add('end=${durationToOption(end)}');
+
+  // Read by the analysis only. A libmpv without it logs an error for every
+  // entry that carries it, and its prefetch skips an entry whose hint
+  // differs.
+  final hint = media.waveformDurationHint;
+  if (hint != null && durationHint) {
+    parts.add('waveform-duration-hint=${durationToOption(hint)}');
+  }
 
   return parts.join(',');
 }
@@ -175,6 +187,15 @@ void _checkPlayRange(Media media) {
   }
 }
 
+/// Throws [ArgumentError] for a `waveformDurationHint` that is not
+/// positive.
+void _checkDurationHint(Media media) {
+  final hint = media.waveformDurationHint;
+  if (hint != null && hint <= Duration.zero) {
+    throw ArgumentError.value(hint, 'waveformDurationHint', 'must be positive');
+  }
+}
+
 final RegExp _kForbiddenInHeaderKey = RegExp(r'[\r\n,:\x00]');
 final RegExp _kForbiddenInHeaderValue = RegExp(r'[\r\n,\x00]');
 
@@ -184,6 +205,7 @@ final RegExp _kForbiddenInHeaderValue = RegExp(r'[\r\n,\x00]');
 @visibleForTesting
 void validateLoadOptions(Media media) {
   _checkPlayRange(media);
+  _checkDurationHint(media);
   pcmLoadOptions(media.uri);
   final headers = media.httpHeaders;
   if (headers != null && headers.isNotEmpty) {
