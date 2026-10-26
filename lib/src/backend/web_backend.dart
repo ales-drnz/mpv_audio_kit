@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:ui_web' as ui_web;
 
 import 'package:meta/meta.dart';
@@ -68,7 +69,39 @@ Future<MpvModule>? debugWebModule;
 
 Future<_Loaded> _load() => _loading ??= _start();
 
+/// Why libmpv cannot run in this page, or `null` when it can. Its threads
+/// share the module's memory, which a browser hands to workers only in a
+/// secure, cross-origin isolated page; the output is an AudioWorklet.
+/// Without them the module's factory would never settle.
+@internal
+String? get unsupportedReason {
+  bool has(String name) => globalContext.has(name);
+  bool flag(String name) =>
+      globalContext.getProperty<JSBoolean?>(name.toJS)?.toDart ?? false;
+  final String why;
+  if (!flag('isSecureContext')) {
+    why = 'the page is not a secure context: serve it over https';
+  } else if (!flag('crossOriginIsolated')) {
+    why =
+        'the page is not cross-origin isolated: serve it with '
+        'Cross-Origin-Opener-Policy: same-origin and '
+        'Cross-Origin-Embedder-Policy: require-corp or credentialless';
+  } else if (!has('SharedArrayBuffer')) {
+    why = 'the browser has no SharedArrayBuffer';
+  } else if (!has('AudioWorkletNode')) {
+    why = 'the browser has no AudioWorklet';
+  } else {
+    return null;
+  }
+  return 'mpv_audio_kit: libmpv cannot run here, $why';
+}
+
 Future<_Loaded> _start() async {
+  final reason = unsupportedReason;
+  if (reason != null) {
+    _failure = StateError(reason);
+    throw _failure!;
+  }
   final url = _absolute(
     _url ?? ui_web.assetManager.getAssetUrl(kWebModuleAsset),
   );

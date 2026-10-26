@@ -300,12 +300,14 @@ jobs:
             --cross-origin-isolation --dart-define=MAK_WEB_AUTOPLAY=true \
             test/web/web_audio_test.dart 2>&1 | tee build/web-test-logs/autoplay.txt
       # DDC, the default web compiler, cannot isolate the page and so runs
-      # no core: the package has to compile through it.
+      # no core: the package has to compile through it, and a player there
+      # fails at once with the reason.
       - name: flutter test --platform chrome (DDC)
         if: steps.module.outputs.ready == 'true'
         timeout-minutes: 10
         run: |
-          flutter test --platform chrome test/web/web_compile_test.dart 2>&1 |
+          flutter test --platform chrome test/web/web_compile_test.dart \
+            test/web/web_isolation_test.dart 2>&1 |
             tee build/web-test-logs/ddc.txt
       - if: failure() && steps.module.outputs.ready == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

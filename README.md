@@ -3120,6 +3120,13 @@ resource of another origin loaded without CORS (an image, a font) for a
 - GitHub Pages sets no headers: a service worker such as coi-serviceworker
   adds them, and reloads the page on the first visit.
 
+A page that is not a secure, cross-origin isolated one, or a browser
+without SharedArrayBuffer or AudioWorklet, cannot run libmpv: there is no
+fallback. `MpvAudioKit.unsupportedReason` names what is missing (`null`
+when nothing is, and always outside the web), and a `Player` fails at once
+with a `PlayerInitException` that says the same. An app can read it first
+and show its own message.
+
 `MpvAudioKit.ensureInitialized(libmpv: url)` loads another build of the
 module, from the URL of its `libmpv.mjs`, with the other two files beside
 it on the same origin. The module loads in the background from

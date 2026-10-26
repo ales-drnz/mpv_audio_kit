@@ -14,6 +14,7 @@
 //   void resumeOutput()
 //   Future<void>? setOutputSampleRate(int rate)
 //   bool get outputNeedsGesture, Stream<bool> get outputNeedsGestureChanges
+//   String? get unsupportedReason
 //   String? kOutputVolumeOption, kOutputMuteOption
 //
 // The rest of the package imports this file only, so dart:ffi, dart:io and

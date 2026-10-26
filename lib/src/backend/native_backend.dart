@@ -57,6 +57,11 @@ Future<void>? setOutputSampleRate(int rate) => null;
 @internal
 bool get outputNeedsGesture => false;
 
+/// A native platform has what libmpv needs; a missing library fails the
+/// player itself.
+@internal
+String? get unsupportedReason => null;
+
 /// [outputNeedsGesture] never changes.
 @internal
 Stream<bool> get outputNeedsGestureChanges => const Stream<bool>.empty();

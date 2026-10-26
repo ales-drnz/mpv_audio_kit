@@ -5,6 +5,7 @@
 import 'package:meta/meta.dart';
 
 import '../backend/backend.dart' as backend;
+import '../events/player_exception.dart' show PlayerInitException;
 import '../player/player.dart' show Player;
 
 /// One-time initialization for `mpv_audio_kit`. Owns the choice of the
@@ -33,6 +34,17 @@ abstract final class MpvAudioKit {
   /// An app that starts playback on its own (a restored session) can show
   /// a prompt while this is `true`.
   static bool get needsUserGesture => backend.outputNeedsGesture;
+
+  /// Why a [Player] cannot run on this platform, or `null` when it can.
+  /// On the web the page must be a secure context, cross-origin isolated
+  /// (COOP and COEP headers) and have SharedArrayBuffer and AudioWorklet;
+  /// otherwise this names what is missing, and a player fails with a
+  /// [PlayerInitException] that says the same. Always `null` outside the
+  /// web.
+  ///
+  /// An app can read it before it creates a player, to show its own
+  /// message instead.
+  static String? get unsupportedReason => backend.unsupportedReason;
 
   /// [needsUserGesture] at each change, from the moment the web module has
   /// loaded. Never emits outside the web.
