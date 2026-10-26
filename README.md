@@ -2364,6 +2364,7 @@ player.stream.completed.listen((completed) {
 
 What to keep in mind:
 - A cut is a read error once FFmpeg gave up on it. On a server that accepts range requests it first reconnects where it stopped ([7.9](#79-dropped-connections)), with a `Will reconnect at ...` warning for each attempt, and the entry plays on when one of them works. When none does, the entry ends about 11 s after the cut, after the last attempt.
+- A seek after the cut reads again, from where the read stopped or from the seek position. The new connection is tried as an open is ([7.9](#79-dropped-connections)). When the server answers, the entry plays on to its end and the next park has `readError` false. When it does not, the player parks again with `readError` true.
 - A local file always reads to its end. A response with neither a length nor chunks, from a server without range support, ends where the connection closes, and reads as an error even when it was whole.
 - `readError` and `skippedSegments` are `null` with a libmpv older than libmpv-r20, which cannot tell.
 - With gapless playback (the default), mpv ends an entry once its decoder is done, while the output still plays what it buffered. The position then trails the end by about that buffer: the audio buffer of [6.10](#610-audio-buffer) (0.2 s by default) plus the audio output's own.

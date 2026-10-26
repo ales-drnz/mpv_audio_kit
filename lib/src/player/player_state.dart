@@ -109,7 +109,8 @@ final class PlayerState {
   /// [MpvFileEndedEvent.readError] tells for an entry that ends with an
   /// event. `null` while [completed] is `false`, and with a libmpv older
   /// than libmpv-r20, which cannot tell. It changes with [completed]: read
-  /// it when [PlayerStream.completed] turns `true`.
+  /// it when [PlayerStream.completed] turns `true`. A seek at the park
+  /// tries the read again, and the next park tells how it ended then.
   final bool? readError;
 
   /// The HLS or DASH segments the entry that ended at the end of content
