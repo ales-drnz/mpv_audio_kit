@@ -17,6 +17,7 @@ test/web/
 ├── web_module_helper.dart   loads the module, gives fixture URLs
 ├── parity_trace.txt         the native order of events, for web_parity_test
 ├── web_compile_test.dart    compiles with every web compiler, DDC included
+├── web_isolation_test.dart  a page without isolation fails the player at once
 └── web_*_test.dart          the suites, under dart2wasm only
 ```
 
@@ -53,13 +54,15 @@ MAK_CHROME="$CHROME_EXECUTABLE" CHROME_EXECUTABLE="$PWD/test/web/chrome_autoplay
   test/web/web_audio_test.dart
 
 # 3. The package through DDC.
-flutter test --platform chrome test/web/web_compile_test.dart
+flutter test --platform chrome test/web/web_compile_test.dart \
+  test/web/web_isolation_test.dart
 ```
 
 - libmpv runs on threads, which need a cross-origin isolated page.
   flutter test serves the page with COOP and COEP only with `--wasm`
   (dart2wasm and the skwasm renderer). DDC cannot isolate it, so only
-  `web_compile_test` runs there.
+  `web_compile_test` runs there, with `web_isolation_test`, whose player
+  must fail at once in a page that is not isolated.
 - A compile error in a browser test leaves flutter test waiting on the
   page instead of failing. `dart analyze` reports it first.
 - The network cases need the server of `with_net_server.sh`, whose URL

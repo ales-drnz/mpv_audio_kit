@@ -155,6 +155,7 @@ final class WebSession implements MpvSession {
     _sequencer = EventSequencer(
       take: _take,
       flushTrailing: _logic.flushTrailing,
+      idle: _logic.idle,
       waitSeconds: () => _logic.holdsValues ? _logic.waitSeconds(1) : null,
       onError: (e, st) =>
           _send(MpvEventInternalLog('error', 'event dispatch failed: $e\n$st')),

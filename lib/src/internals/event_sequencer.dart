@@ -26,12 +26,15 @@ final class EventSequencer {
   /// A sequencer over [take], which takes the next event of the queue and
   /// hands it to the logic. [flushTrailing] sends the values the logic
   /// held whose window closed; [waitSeconds] says when the next one
-  /// closes (`null` when none is held). [onError] gets what an event threw.
+  /// closes (`null` when none is held). [idle], when given, runs in its
+  /// place once the queue is empty, and may return reads to wait for.
+  /// [onError] gets what an event threw.
   EventSequencer({
     required this.take,
     required this.flushTrailing,
     required this.waitSeconds,
     required this.onError,
+    this.idle,
   });
 
   /// Takes the next event of mpv's queue and dispatches it.
@@ -46,6 +49,10 @@ final class EventSequencer {
 
   /// Gets an error an event threw, synchronously or from its reads.
   final void Function(Object error, StackTrace stack) onError;
+
+  /// Flushes as [flushTrailing] does, then starts the reads that are due,
+  /// if any, and returns their future.
+  final Future<void>? Function()? idle;
 
   bool _stepping = false;
   bool _stopped = false;
@@ -98,8 +105,12 @@ final class EventSequencer {
       final (taken, reads, last) = next;
       if (!taken) {
         // The queue is empty: the native pump's wait would end here with
-        // no event, after which it flushes.
-        flushTrailing();
+        // no event, after which it flushes and runs the reads that are due.
+        final due = _idle();
+        if (due != null) {
+          _step(due);
+          return;
+        }
         // A wakeup during that take: its event may have come after it.
         if (!_again) break;
         continue;
@@ -109,17 +120,35 @@ final class EventSequencer {
         flushTrailing();
         continue;
       }
-      _stepping = true;
-      reads.then(
-        (_) => _stepped(true),
-        onError: (Object e, StackTrace st) {
-          onError(e, st);
-          _stepped(false);
-        },
-      );
+      _step(reads);
       return;
     }
     _armFlush();
+  }
+
+  Future<void>? _idle() {
+    final run = idle;
+    if (run == null) {
+      flushTrailing();
+      return null;
+    }
+    try {
+      return run();
+    } catch (e, st) {
+      onError(e, st);
+      return null;
+    }
+  }
+
+  void _step(Future<void> reads) {
+    _stepping = true;
+    reads.then(
+      (_) => _stepped(true),
+      onError: (Object e, StackTrace st) {
+        onError(e, st);
+        _stepped(false);
+      },
+    );
   }
 
   void _stepped(bool ok) {

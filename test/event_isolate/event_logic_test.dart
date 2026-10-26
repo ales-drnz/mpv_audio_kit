@@ -240,6 +240,43 @@ void main() {
     expect(parked.skippedSegments, isNull);
   });
 
+  // play() at a seek that lands on the end at once: the read finds pause
+  // 0, keep-open puts it back to the 1 mpv last sent, and mpv sends no
+  // change. The pump reads again once the wait is over.
+  test('a read at the end, unpaused after mpv sent pause 1, is done again '
+      'shortly', () async {
+    final values = _parkedFirstOfTwo()..['playlist-count'] = 1;
+    final out = <String>[];
+    final logic = EventLogic(_Reader(values), (e) => out.add(_describe(e)));
+    await logic.dispatch(MpvEventStartFile(7));
+    await logic.property('pause', MpvFormat.mpvFormatFlag, 1);
+    values['pause'] = 0;
+    await logic.dispatch(MpvEventPlaybackRestart());
+    expect(out.last, 'eoc eof=true parked=false last=true');
+    expect(logic.holdsValues, isTrue);
+    expect(logic.waitSeconds(1), lessThanOrEqualTo(0.05));
+    expect(logic.idle(), isNull, reason: 'not due yet');
+    values['pause'] = 1;
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    await logic.idle();
+    expect(out.last, 'eoc eof=true parked=true last=true');
+    expect(logic.holdsValues, isFalse);
+    expect(logic.waitSeconds(1), 1);
+  });
+
+  test('a read at the end, unpaused as mpv sent, is not done again', () async {
+    final values = _parkedFirstOfTwo()..['pause'] = 0;
+    final out = <String>[];
+    final logic = EventLogic(_Reader(values), (e) => out.add(_describe(e)));
+    await logic.dispatch(MpvEventStartFile(7));
+    await logic.property('pause', MpvFormat.mpvFormatFlag, 0);
+    await logic.dispatch(MpvEventPlaybackRestart());
+    expect(out.last, 'eoc eof=true parked=false last=false');
+    expect(logic.holdsValues, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(logic.idle(), isNull);
+  });
+
   test('the end of content of an entry not started yet is not sent', () async {
     final values = _parkedFirstOfTwo()..['playlist/0/id'] = 9;
     final out = <String>[];

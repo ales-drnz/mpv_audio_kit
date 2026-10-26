@@ -2364,6 +2364,7 @@ player.stream.completed.listen((completed) {
 
 What to keep in mind:
 - A cut is a read error once FFmpeg gave up on it. On a server that accepts range requests it first reconnects where it stopped ([7.9](#79-dropped-connections)), with a `Will reconnect at ...` warning for each attempt, and the entry plays on when one of them works. When none does, the entry ends about 11 s after the cut, after the last attempt.
+- A seek after the cut reads again, from where the read stopped or from the seek position. The new connection is tried as an open is ([7.9](#79-dropped-connections)). When the server answers, the entry plays on to its end and the next park has `readError` false. When it does not, the player parks again with `readError` true.
 - A local file always reads to its end. A response with neither a length nor chunks, from a server without range support, ends where the connection closes, and reads as an error even when it was whole.
 - `readError` and `skippedSegments` are `null` with a libmpv older than libmpv-r20, which cannot tell.
 - With gapless playback (the default), mpv ends an entry once its decoder is done, while the output still plays what it buffered. The position then trails the end by about that buffer: the audio buffer of [6.10](#610-audio-buffer) (0.2 s by default) plus the audio output's own.
@@ -2803,7 +2804,9 @@ Local files are decoded ahead of time: partial envelopes arrive while
 the decode runs (`wave.decoding`), then the final one. An HTTP file that
 plays from its start, such as a direct-play file, is decoded the same way
 from mpv's own cache as it downloads, so the envelope fills at the pace
-of the download. Streams that cannot be decoded
+of the download. So is a transcode a music server sends without byte
+ranges or a length, when its `Media` carries the track's length in
+`waveformDurationHint`. Streams that cannot be decoded
 ahead of time (adaptive, non-seekable or transcoded network sources)
 fill in as playback advances, and a live stream of unknown length keeps
 a rolling window (`wave.live`). `wave.filled` has one byte per bin, `1`
@@ -2941,8 +2944,8 @@ await player.setMediaSession(
 
 For a file without tags, such as a transcoded stream, each field falls
 back to the entry's `Media.extras`: `title`, `artist` and `album` as
-strings, and `art` as an `http(s)://` or `file://` cover URL when the
-artwork is `embedded` and the file has none. A stream with no title tag
+strings, and `art` as a cover URL (the schemes of `MediaSessionArtwork.uri`)
+when the artwork is `embedded` and the file has none. A stream with no title tag
 and no `extras['title']` falls back to mpv's `media-title`, taken from the
 URL with the query removed. Setting `MediaSession.title` is still better.
 
@@ -2953,7 +2956,7 @@ URL with the query removed. Setting `MediaSession.title` is still better.
 ```dart
 MediaSessionArtwork.embedded            // default, the file's embedded cover
 MediaSessionArtwork.custom(myCoverArt)  // your own image, ignoring the file cover
-MediaSessionArtwork.uri(myArtUrl)       // an http(s):// or file:// image, loaded by the package
+MediaSessionArtwork.uri(myArtUrl)       // an image at a URL, loaded by the package
 MediaSessionArtwork.none                // no artwork
 ```
 
@@ -2966,10 +2969,25 @@ playback, trusts `tls-ca-file` on top of the system roots, refuses a
 redirect from `https` to plain `http`, skips an image over 20 MB, and is
 tried at most 3 times. On iOS and macOS it does not go through App
 Transport Security, so a plain `http` cover loads as on the other
-platforms. A `file://` cover is read by the package on every platform,
-with the same 20 MB limit, and reaches the OS as an image too: on Linux,
-`mpris:artUrl` names a copy in the runtime directory, not your file. A
-cover URL with any other scheme shows no artwork.
+platforms. The package also reads, with the same 20 MB limit:
+
+- a `file://` cover, on every platform;
+- an `asset://` cover from the app's bundle, on every platform and the
+  web: `asset:///assets/cover.png`, with three slashes, since a `Uri`
+  lowers the case of what follows two;
+- a `content://` or `android.resource://` cover on Android, through the
+  ContentResolver, on a queue apart from the one that opens songs: an
+  album art URI of MediaStore, a picked image, a file of a FileProvider, a
+  bitmap drawable. It must be an image (PNG, JPEG, GIF, WebP, BMP, HEIF or
+  AVIF): the URI of a song, a vector drawable or an adaptive icon shows no
+  artwork. A `Uri` lowers the case of the authority too: for one with
+  capitals, pass the URL as a string in `extras['art']`;
+- a `blob:` cover of the page on the web.
+
+Each reaches the OS as an image: on Linux, `mpris:artUrl` names a copy in
+the runtime directory, not your file. A cover URL with any other scheme,
+such as `ms-appx://`, shows no artwork: load the bytes and use
+`MediaSessionArtwork.custom`.
 
 #### 14.4 Reacting to OS commands
 
@@ -3119,6 +3137,13 @@ resource of another origin loaded without CORS (an image, a font) for a
   under `/*`.
 - GitHub Pages sets no headers: a service worker such as coi-serviceworker
   adds them, and reloads the page on the first visit.
+
+A page that is not a secure, cross-origin isolated one, or a browser
+without SharedArrayBuffer or AudioWorklet, cannot run libmpv: there is no
+fallback. `MpvAudioKit.unsupportedReason` names what is missing (`null`
+when nothing is, and always outside the web), and a `Player` fails at once
+with a `PlayerInitException` that says the same. An app can read it first
+and show its own message.
 
 `MpvAudioKit.ensureInitialized(libmpv: url)` loads another build of the
 module, from the URL of its `libmpv.mjs`, with the other two files beside

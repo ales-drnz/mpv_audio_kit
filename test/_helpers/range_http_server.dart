@@ -120,6 +120,11 @@ final class RangeHttpServer {
   /// gets a network error, not an HTTP answer.
   Duration? downAfterDrop;
 
+  /// After a [dropAfterBytes] cut, every connection is closed as soon as it
+  /// is accepted until [comeBack], as by a server that went down and stays
+  /// down: no request after the cut gets an answer, from any offset.
+  bool outageAfterDrop = false;
+
   /// The next GET of each path here is answered with that status and an
   /// empty body; the GETs after it are served.
   final Map<String, int> statusOnce = {};
@@ -137,11 +142,12 @@ final class RangeHttpServer {
   bool cutInsideChunk = false;
 
   /// Connections closed unanswered while the server was down
-  /// ([downAfterDrop]).
+  /// ([downAfterDrop], [outageAfterDrop]).
   int refused = 0;
 
   int? _cutAt;
   DateTime? _downUntil;
+  bool _outage = false;
 
   final List<ServedRequest> _requests = [];
   final Set<Socket> _open = {};
@@ -179,6 +185,13 @@ final class RangeHttpServer {
   /// [downAfterDrop] does after a cut.
   void goDown(Duration time) => _downUntil = DateTime.now().add(time);
 
+  /// Ends a down time ([goDown], [downAfterDrop], [outageAfterDrop]): the
+  /// next connection is answered.
+  void comeBack() {
+    _outage = false;
+    _downUntil = null;
+  }
+
   /// The URL of the file served as [name].
   String url(String name) =>
       'http://${_socket.address.address}:${_socket.port}/$name';
@@ -194,7 +207,7 @@ final class RangeHttpServer {
 
   void _accept(Socket client) {
     final down = _downUntil;
-    if (down != null && DateTime.now().isBefore(down)) {
+    if (_outage || (down != null && DateTime.now().isBefore(down))) {
       refused++;
       client.destroy();
       return;
@@ -476,6 +489,7 @@ final class RangeHttpServer {
         if (refuseResume) _cutAt = from + req.bytesSent;
         final downFor = downAfterDrop;
         if (downFor != null) _downUntil = DateTime.now().add(downFor);
+        if (outageAfterDrop) _outage = true;
         return;
       }
       if (pos >= to) break;

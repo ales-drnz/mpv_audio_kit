@@ -112,6 +112,18 @@ mixin _InitModule on _PlayerBase {
     if (_loudnessMeterCtrl.hasListener) _loudnessMeterPipeline.setEnabled(true);
     if (_loudnessScanCtrl.hasListener) _loudnessScanPipeline.setEnabled(true);
 
+    // Before any load: mpv logs an error for a per-file option it does not
+    // know, and the loads leave the hint out then (see [loadfileOptions]).
+    try {
+      final (rc, _) = await _calls.get(
+        'waveform-duration-hint',
+        MpvFormat.mpvFormatString,
+      );
+      _durationHint = rc != MpvError.mpvErrorPropertyNotFound;
+    } catch (_) {
+      // Disposed before the reply: nothing loads any more.
+    }
+
     unawaited(_checkLibmpvRelease());
   }
 

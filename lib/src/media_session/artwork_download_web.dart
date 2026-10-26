@@ -14,9 +14,7 @@ import 'dart:js_interop_unsafe';
 import 'package:meta/meta.dart';
 
 import '../models/cover_art.dart';
-
-/// Upper bound on a loaded cover, as on the other platforms.
-const int _maxArtworkBytes = 20 * 1024 * 1024;
+import 'artwork_sources.dart';
 
 const Duration _timeout = Duration(seconds: 15);
 
@@ -30,14 +28,16 @@ extension type _Response._(JSObject _) implements JSObject {
 }
 
 /// Default `ArtworkFetcher` in the browser: fetches an `http(s)://` URL
-/// with CORS, without credentials, and returns the image with the MIME type
-/// the server gives; `null` for a URL the page cannot read (no CORS, a
-/// network error, an error status), for a `file://` URL (no file system),
-/// and past 20 MB. [caFile] has no meaning there: the browser verifies
-/// certificates.
+/// with CORS, without credentials, or a `blob:` one of the page, and
+/// returns the image with the MIME type the server gives; `null` for a URL
+/// the page cannot read (no CORS, a network error, an error status), for a
+/// `file://` URL (no file system), and past 20 MB. [caFile] has no meaning
+/// there: the browser verifies certificates.
 @internal
 Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
-  if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+  if (uri.scheme != 'http' && uri.scheme != 'https' && uri.scheme != 'blob') {
+    return null;
+  }
   try {
     final init = JSObject()
       ..['mode'] = 'cors'.toJS
@@ -48,15 +48,24 @@ Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
     ).toDart.timeout(_timeout);
     if (!response.ok) return null;
     final length = int.tryParse(_header(response, 'content-length') ?? '');
-    if (length != null && length > _maxArtworkBytes) return null;
+    if (length != null && length > maxArtworkBytes) return null;
     final buffer = await response.arrayBuffer().toDart.timeout(_timeout);
     final bytes = buffer.toDart.asUint8List();
-    if (bytes.isEmpty || bytes.length > _maxArtworkBytes) return null;
+    if (bytes.isEmpty || bytes.length > maxArtworkBytes) return null;
     final type = _header(response, 'content-type') ?? '';
     return CoverArt(bytes: bytes, mimeType: type.split(';').first.trim());
   } catch (_) {
     return null;
   }
+}
+
+/// Default `ArtworkFetcher` in the browser: an `asset://` [url] from the
+/// app's bundle, as the app wrote it; the rest through [downloadArtwork].
+@internal
+Future<CoverArt?> loadArtwork(String url, [String caFile = '']) async {
+  if (artworkScheme(url) == 'asset') return readArtworkAsset(url);
+  final uri = Uri.tryParse(url);
+  return uri == null ? null : downloadArtwork(uri, caFile);
 }
 
 String? _header(_Response response, String name) {

@@ -108,6 +108,9 @@ void mak_shim_configure(const char *real_path, int get_us, int set_us) {
 // mak_shim_counter / mak_shim_set. All process-wide, like the stalls.
 static atomic_int hook_add_delay_us; // sleep before mpv_hook_add
 static atomic_int hide_eof;          // flag reads of eof-reached return 0
+static atomic_int freeze_park;       // flag reads of eof-reached, pause return 1
+static atomic_int pause_zero_once;   // the next flag read of pause returns 0
+static atomic_int pause_zero_reads;  // reads pause_zero_once answered
 static atomic_int destroy_delay_us;  // sleep before mpv_terminate_destroy
 static atomic_int hook_adds_entered;
 static atomic_int hook_adds_inflight;
@@ -187,6 +190,10 @@ void mak_shim_set(const char *knob, int value) {
     atomic_store(&hook_add_delay_us, value);
   } else if (strcmp(knob, "hide_eof") == 0) {
     atomic_store(&hide_eof, value);
+  } else if (strcmp(knob, "freeze_park") == 0) {
+    atomic_store(&freeze_park, value);
+  } else if (strcmp(knob, "pause_zero_once") == 0) {
+    atomic_store(&pause_zero_once, value);
   } else if (strcmp(knob, "destroy_delay_us") == 0) {
     atomic_store(&destroy_delay_us, value);
   } else {
@@ -216,6 +223,7 @@ int mak_shim_counter(const char *name) {
     return hooks_pending_at_destroy;
   }
   if (strcmp(name, "watched_gets") == 0) return watched_gets;
+  if (strcmp(name, "pause_zero_reads") == 0) return pause_zero_reads;
   if (strcmp(name, "broken_gets") == 0) return broken_gets;
   if (strcmp(name, "replies_held") == 0) return replies_held;
   if (strcmp(name, "loadfiles_refused") == 0) return loadfiles_refused;
@@ -228,6 +236,9 @@ void mak_shim_reset(void) {
   pthread_mutex_lock(&mu);
   atomic_store(&hook_add_delay_us, 0);
   atomic_store(&hide_eof, 0);
+  atomic_store(&freeze_park, 0);
+  atomic_store(&pause_zero_once, 0);
+  atomic_store(&pause_zero_reads, 0);
   atomic_store(&destroy_delay_us, 0);
   atomic_store(&hook_adds_entered, 0);
   atomic_store(&inflight_at_destroy, 0);
@@ -402,6 +413,15 @@ int mpv_get_property(void *h, const char *n, int fmt, void *out) {
   if (rc >= 0 && fmt == 3 && atomic_load(&hide_eof) &&
       strcmp(n, "eof-reached") == 0) {
     *(int *)out = 0;
+  }
+  if (rc >= 0 && fmt == 3 && atomic_load(&freeze_park) &&
+      (strcmp(n, "eof-reached") == 0 || strcmp(n, "pause") == 0)) {
+    *(int *)out = 1;
+  }
+  if (rc >= 0 && fmt == 3 && strcmp(n, "pause") == 0 &&
+      atomic_exchange(&pause_zero_once, 0)) {
+    *(int *)out = 0;
+    atomic_fetch_add(&pause_zero_reads, 1);
   }
   return rc;
 }

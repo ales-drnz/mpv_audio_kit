@@ -197,8 +197,9 @@ final class MpvFileEndedEvent {
   /// a dropped connection, a server that closed before the length it
   /// announced or refused the resume, a live stream closed without its
   /// last chunk. mpv still ends such an entry with [MpvEndFileReason.eof]
-  /// and [error] `0`. `false` when the entry was read to its end. `null`
-  /// with a libmpv older than libmpv-r20, which cannot tell.
+  /// and [error] `0`. `false` when the entry was read to its end, also
+  /// when a seek after the error read it on to the end. `null` with a
+  /// libmpv older than libmpv-r20, which cannot tell.
   ///
   /// A local file always reads to its end. A response with neither a
   /// length nor chunks, from a server without range support, ends where the

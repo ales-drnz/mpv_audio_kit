@@ -47,6 +47,50 @@ void main() {
     expect(q.log, ['take a', 'flush', 'take b', 'flush', 'flush']);
   });
 
+  test(
+    'with an empty queue the reads of idle come before the next take',
+    () async {
+      final due = Completer<void>();
+      final log = <String>[];
+      final events = Queue<String>()..add('a');
+      Future<void>? idleReads = due.future;
+      late final EventSequencer sequencer;
+      sequencer = EventSequencer(
+        take: () {
+          if (events.isEmpty) return (false, null, false);
+          log.add('take ${events.removeFirst()}');
+          return (true, null, false);
+        },
+        flushTrailing: () => log.add('flush'),
+        waitSeconds: () => null,
+        onError: (e, _) => log.add('error $e'),
+        idle: () {
+          log.add('idle');
+          final reads = idleReads;
+          idleReads = null;
+          return reads;
+        },
+      );
+      sequencer.pump();
+      expect(log, ['take a', 'flush', 'idle']);
+      expect(sequencer.stepping, isTrue);
+      events.add('b');
+      sequencer.pump();
+      expect(log, ['take a', 'flush', 'idle'], reason: 'b waits for the reads');
+      due.complete();
+      await pumpEventQueue();
+      expect(log, [
+        'take a',
+        'flush',
+        'idle',
+        'flush',
+        'take b',
+        'flush',
+        'idle',
+      ]);
+    },
+  );
+
   test('takes nothing while the reads of an event are in flight', () async {
     final reads = Completer<void>();
     final q = _Queue()..events.addAll([('loaded', reads), ('next', null)]);
