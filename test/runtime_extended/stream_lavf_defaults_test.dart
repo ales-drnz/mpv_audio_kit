@@ -230,7 +230,13 @@ void main() {
           media,
           networkTimeout: networkTimeout,
         );
-        expect(withDefaults, unorderedEquals(cleared));
+        // FFmpeg logs to the first mpv instance alive in the process only
+        // (mpv's common/av_log.c): whether its lines reach a fresh player
+        // depends on the players before it, and on the macOS runner one
+        // outcome had the smb2 line and the other did not (check
+        // 40351929409). The rest is compared, and no line names reconnect.
+        bool own(String l) => !l.contains(' [ffmpeg] ');
+        expect(withDefaults.where(own), unorderedEquals(cleared.where(own)));
         expect(withDefaults.where((l) => l.contains('reconnect')), isEmpty);
       }
 
