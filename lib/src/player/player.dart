@@ -587,8 +587,8 @@ class Player extends _PlayerBase
     // the removed client; the continue keeps the core from waiting on them
     // meanwhile.) An event is pending only once bring-up delivered it, so
     // the handle exists here.
-    for (final mpvId in _hooks.takeAll()) {
-      _calls.hookContinue(mpvId);
+    for (final (mpvId, name) in _hooks.takeAll()) {
+      _continueMpvHook(mpvId, name);
     }
     // Before the quit: an ended source wakes a reader blocked on it.
     _entries.endLive();
@@ -642,9 +642,19 @@ abstract class _PlayerBase {
         'auto-continuing to unblock mpv',
         level: LogLevel.warn,
       );
-      if (!_disposed) _calls.hookContinue(mpvId);
+      if (!_disposed) _continueMpvHook(mpvId, name);
     },
   );
+
+  /// Continues mpv's event [mpvId] of hook [name]. `mpv_hook_continue`
+  /// locks the core: for a hook that holds a load (`on_load` and the
+  /// others) mpv waits in the hook's dispatch loop for exactly this call,
+  /// so the lock comes at once. For `on_prefetch` the playloop keeps
+  /// running, and the call waits for whatever the core is doing (an audio
+  /// output that takes seconds to open), so it goes off the main isolate
+  /// (kit-core-1).
+  void _continueMpvHook(int mpvId, String name) =>
+      _calls.hookContinue(mpvId, prefetch: name == Hook.prefetch.mpvValue);
 
   // The installed [SourceResolver]; null = feature off. Set by
   // [Player.setSourceResolver], consulted by `_routeHookEvent` on every

@@ -123,19 +123,14 @@ mixin _HooksModule on _PlayerBase {
       );
       return;
     }
-    final mpvId = _hooks.take(id);
-    if (mpvId == null) {
+    final event = _hooks.take(id);
+    if (event == null) {
       // Already continued (manual + auto-timer race, or caller
       // double-dispatch). Drop silently: the first continue already
       // unblocked mpv.
       return;
     }
-    // `mpv_hook_continue` is synchronous and locks the core. For a hook
-    // that holds a load (`on_load` and the others) mpv waits in the hook's
-    // dispatch loop for exactly this call, so the lock comes at once. For
-    // `on_prefetch` the playloop keeps running, and the call waits for its
-    // next turn, usually a few milliseconds.
-    _calls.hookContinue(mpvId);
+    _continueMpvHook(event.$1, event.$2);
   }
 
   /// Installs [resolver] as the player's source resolver: the official

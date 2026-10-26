@@ -39,10 +39,23 @@ abstract interface class MpvRequests {
   /// mpv's description of error [code].
   String errorString(int code);
 
-  /// Continues the hook event mpv numbered [id].
+  /// Continues the hook event mpv numbered [id], on the calling thread.
   void hookContinue(int id);
 
   /// Sets which log messages mpv sends, by mpv's level name (`no` for
   /// none).
   void requestLogMessages(String level);
+}
+
+/// The [MpvRequests] of a backend whose hook continue can wait for a busy
+/// core: native, where `mpv_hook_continue` locks it. For `on_load` and the
+/// other hooks mpv waits for the continue in its hook loop, so the lock
+/// comes at once. `on_prefetch` keeps the playloop running, and its
+/// continue waits for whatever the core is doing, such as an audio output
+/// that takes seconds to open.
+@internal
+abstract interface class MpvHookContinueOffMain implements MpvRequests {
+  /// Continues the hook event mpv numbered [id] where the wait stalls
+  /// nothing. The core is not destroyed before it returned.
+  void hookContinueOffMain(int id);
 }
