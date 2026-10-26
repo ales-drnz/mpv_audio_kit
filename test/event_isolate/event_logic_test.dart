@@ -300,10 +300,12 @@ void main() {
           MpvEndFileReason.mpvEndFileReasonStop,
           0,
           readError: false,
+          skippedSegments: 0,
         ),
       ),
       isNull,
     );
+    // A libmpv without the read_error patch: neither is known.
     expect(
       logic.dispatch(
         MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonStop, 0),
@@ -312,7 +314,7 @@ void main() {
     );
     expect(
       [for (final e in out) (e.entryId, e.readError, e.skippedSegments)],
-      [(7, true, 2), (8, false, 0), (8, null, 0)],
+      [(7, true, 2), (8, false, 0), (8, null, null)],
     );
   });
 
