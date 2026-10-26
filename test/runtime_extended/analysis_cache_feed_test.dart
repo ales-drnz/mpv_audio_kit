@@ -493,9 +493,12 @@ void main() {
       test(
         'a file looping on itself is analysed once, from the cache',
         () async {
-          // Untimed: the loop comes back to the start as soon as the
-          // throttled download reaches the end.
-          await player!.setAudioNullUntimed(true);
+          // At 4x the 5 s file loops every 1.25 s once the throttled
+          // download is in. Not untimed: an untimed loop restarts the file
+          // thousands of times a second, and on the Windows runner the
+          // event pump fell behind that storm until mpv's event queue was
+          // full and every call failed (check 40351929409).
+          await player!.setRate(4);
           await player!.setLoop(Loop.file);
           server.bytesPerSecond = 48 * 1024;
           var wraps = 0;
