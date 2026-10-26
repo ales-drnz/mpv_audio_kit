@@ -450,10 +450,12 @@ abstract interface class PlayerApi {
   /// Installs a [SourceResolver], the official callback for resolving or
   /// refreshing a playback URL right before each track opens (and once
   /// more after a failed open, with [SourceResolveRequest.isRetry] set),
-  /// driven internally by the `on_load` and `on_load_fail` hooks. Return
-  /// `null` to keep the current URL; pass `null` to uninstall. [timeout]
-  /// caps a hung resolver (default 15s, `null` disables). An entry opened
-  /// from the prefetch reuses the URL the resolver gave for it.
+  /// driven internally by the `on_load`, `on_load_fail` and `on_prefetch`
+  /// hooks. Return `null` to keep the current URL; pass `null` to
+  /// uninstall. [timeout] caps a hung resolver (default 15s, `null`
+  /// disables). With [setPrefetchPlaylist] on, the next entry is resolved
+  /// on `on_prefetch` while the current one plays, and its open reuses
+  /// that URL.
   Future<void> setSourceResolver(
     SourceResolver? resolver, {
     Duration? timeout = const Duration(seconds: 15),
