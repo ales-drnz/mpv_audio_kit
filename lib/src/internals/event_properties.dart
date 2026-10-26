@@ -78,6 +78,15 @@ class _PropertyCache {
   /// Whether the pump read `time-pos` itself after the last change mpv
   /// sent for it: the next change is read again ([_forwardFreshTimePos]).
   bool timePosRead = false;
+
+  /// The last value mpv sent for `pause`: it sends the next change only
+  /// for a value that differs from it.
+  int? sentPause;
+
+  /// When the end of content is read again with no notification to start
+  /// it ([_sendEndOfContent]), on [_throttleClock]; `null` when no read is
+  /// due.
+  int? endOfContentAgainAt;
 }
 
 /// The entry of a START_FILE, with the last `time-pos` and `duration` mpv
@@ -105,9 +114,11 @@ class _StartedEntry {
 }
 
 /// How long the pump may wait for the next event: [cap], shortened to the
-/// end of the earliest throttle window while a value is held back.
+/// end of the earliest throttle window while a value is held back, and to
+/// the read of the end of content that is due.
 double _waitSeconds(_PropertyCache cache, double cap) {
-  if (cache.trailing.isEmpty && cache.group.isEmpty) {
+  final again = cache.endOfContentAgainAt;
+  if (cache.trailing.isEmpty && cache.group.isEmpty && again == null) {
     return cap;
   }
   final now = _throttleClock.elapsedMilliseconds;
@@ -115,6 +126,7 @@ double _waitSeconds(_PropertyCache cache, double cap) {
   if (cache.group.isNotEmpty) {
     remaining = cache.groupSince + _kGroupWindowMs - now;
   }
+  if (again != null && again - now < remaining) remaining = again - now;
   for (final name in cache.trailing.keys) {
     final last = cache.lastTimestamps[name] ?? -_kClockThrottleMs;
     final left = last + _kClockThrottleMs - now;

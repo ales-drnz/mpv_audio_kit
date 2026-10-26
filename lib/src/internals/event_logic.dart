@@ -83,12 +83,29 @@ final class EventLogic {
   /// end of the earliest throttle window while a value is held back.
   double waitSeconds(double cap) => _waitSeconds(_cache, cap);
 
-  /// Whether a value is held back for a throttle window or the group.
-  bool get holdsValues => _cache.trailing.isNotEmpty || _cache.group.isNotEmpty;
+  /// Whether a value is held back for a throttle window or the group, or
+  /// a read of the end of content is due.
+  bool get holdsValues =>
+      _cache.trailing.isNotEmpty ||
+      _cache.group.isNotEmpty ||
+      _cache.endOfContentAgainAt != null;
 
-  /// Sends the held values whose window has closed. The pump calls it after
-  /// every event and whenever its wait ends with no event.
+  /// Sends the held values whose window has closed.
   void flushTrailing() => _flushTrailing(_send, _cache);
+
+  /// What the pump does after every event and whenever its wait ends with
+  /// no event: [flushTrailing], then the read of the end of content once
+  /// it is due. Returns the future of that read; the pump waits for it
+  /// before the next event.
+  Future<void>? idle() {
+    _flushTrailing(_send, _cache);
+    final again = _cache.endOfContentAgainAt;
+    if (again == null || _throttleClock.elapsedMilliseconds < again) {
+      return null;
+    }
+    _cache.endOfContentAgainAt = null;
+    return _sendEndOfContent(_reader, _send, _cache);
+  }
 
   /// A property change of [name] in [format], with the [value] the
   /// transport decoded, [kPropertyUnavailable] or [kPropertyUnobserved].
@@ -99,7 +116,11 @@ final class EventLogic {
     if (name == 'time-pos' && _cache.timePosRead) {
       return _forwardFreshTimePos(_reader, _send, _cache);
     }
-    if (name != 'pause') _dispatchProperty(_send, name, format, value, _cache);
+    if (name == 'pause') {
+      _cache.sentPause = value is int ? value : null;
+    } else {
+      _dispatchProperty(_send, name, format, value, _cache);
+    }
     if (_kEndOfContentTriggers.contains(name)) {
       return _sendEndOfContent(_reader, _send, _cache);
     }

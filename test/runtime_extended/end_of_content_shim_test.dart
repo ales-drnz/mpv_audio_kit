@@ -19,6 +19,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../_helpers/range_http_server.dart';
 import '../_helpers/setter_test_helpers.dart';
 import '../_helpers/slow_core_shim.dart';
 
@@ -178,6 +179,107 @@ void main() {
           lessThan(const Duration(seconds: 4)),
           reason: 'the last track starts again from its beginning',
         );
+      });
+
+      // A seek at the park that lands on the end again at once. The read
+      // that sees the end finds pause 0 (shim), as when it lands while an
+      // unpause of play() is in effect that keep-open undoes before mpv
+      // samples pause: mpv then sends no change of pause, nor of
+      // eof-reached, and nothing else reads the core again.
+      test(
+        'a park read while an unpause was in effect is read again',
+        () async {
+          final flac = File(longFixture).readAsBytesSync();
+          final server = await RangeHttpServer.start({'a.flac': flac});
+          addTearDown(server.close);
+          server
+            ..dropAfterBytes = flac.length ~/ 2
+            ..outageAfterDrop = true;
+          await player.setAudioNullUntimed(true);
+          final parked = player.stream.completed
+              .firstWhere((c) => c)
+              .timeout(const Duration(seconds: 30));
+          await player.open(
+            Media(
+              server.url('a.flac'),
+              streamLavfOptions: const {
+                'reconnect': '0',
+                'reconnect_on_network_error': '0',
+              },
+            ),
+            play: true,
+          );
+          await parked;
+          // The reads the park itself started are done by then.
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          final completions = <bool>[];
+          final sub = player.stream.completed.listen(completions.add);
+          addTearDown(sub.cancel);
+          shim().set('pause_zero_once', 1);
+          // Past the cut, while the server is down: the end again at once.
+          await player.seek(const Duration(seconds: 3));
+          await waitUntil(
+            () async =>
+                shim().counter('pause_zero_reads') > 0 &&
+                await player.getRawProperty('eof-reached') == 'yes' &&
+                await player.getRawProperty('pause') == 'yes',
+            reason: 'mpv never parked again, or no read found it there',
+          );
+          expect(completions, contains(false), reason: 'the read saw no park');
+          await waitUntil(
+            () => player.state.completed,
+            timeout: const Duration(seconds: 2),
+            reason: 'the park must be read again',
+          );
+        },
+      );
+
+      libmpvReleaseGroup(20, 'A park the player never sees left', () {
+        // A seek at the park and the play to the end can both go by
+        // between two reads, as with an output that does not wait: the
+        // new park must still say how the entry ended this time.
+        test('reads how the entry ended again', () async {
+          final flac = File(longFixture).readAsBytesSync();
+          final server = await RangeHttpServer.start({'a.flac': flac});
+          addTearDown(server.close);
+          server
+            ..dropAfterBytes = flac.length ~/ 2
+            ..outageAfterDrop = true;
+          await player.setAudioNullUntimed(true);
+          final parked = player.stream.completed
+              .firstWhere((c) => c)
+              .timeout(const Duration(seconds: 30));
+          await player.open(
+            Media(
+              server.url('a.flac'),
+              streamLavfOptions: const {'reconnect': '0'},
+            ),
+            play: true,
+          );
+          await parked;
+          expect(player.state.readError, isTrue, reason: server.describe());
+          shim().set('freeze_park', 1);
+          server.comeBack();
+          await player.seek(const Duration(seconds: 3));
+          await player.play();
+          await waitUntil(
+            () async =>
+                await player.getRawProperty('demuxer-read-error') == 'no' &&
+                await player.getRawProperty('eof-reached') == 'yes' &&
+                await player.getRawProperty('pause') == 'yes',
+            timeout: const Duration(seconds: 15),
+            reason: 'mpv never parked at the real end (${server.describe()})',
+          );
+          expect(
+            player.state.completed,
+            isTrue,
+            reason: 'the shim must hide the seek from completed',
+          );
+          await waitUntil(
+            () => player.state.readError == false,
+            reason: 'the park at the real end reads how it ended again',
+          );
+        });
       });
     },
   );
