@@ -195,6 +195,32 @@ void main() {
       'SMB2 connect timed out\n',
       'The FFmpeg SMB protocol',
       () {
+        // On Windows FFmpeg's poll is a select, which reports a failed
+        // connect only to a socket asked for errors: a refused connect
+        // waited the whole network timeout, here 60 s (check 40328562509).
+        test('a share that refuses the connection fails at once', () async {
+          final closed = await ServerSocket.bind(
+            InternetAddress.loopbackIPv4,
+            0,
+          );
+          final port = closed.port;
+          await closed.close();
+          final player = await buildPlayer();
+          addTearDown(player.dispose);
+          await player.setNetworkTimeout(const Duration(seconds: 60));
+          final clock = Stopwatch()..start();
+          final failed = player.stream.error
+              .firstWhere((e) => e is EndFileError)
+              .timeout(const Duration(seconds: 30));
+          await player.open(
+            Media('smb2://127.0.0.1:$port/share/a.flac'),
+            play: true,
+          );
+          await failed;
+          // A refusal takes about 2 s on Windows.
+          expect(clock.elapsed, lessThan(const Duration(seconds: 10)));
+        }, timeout: const Timeout(Duration(seconds: 40)));
+
         test('a stop lands at once while the server does not answer', () async {
           final silent = await ServerSocket.bind(
             InternetAddress.loopbackIPv4,
