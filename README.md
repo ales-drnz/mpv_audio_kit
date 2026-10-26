@@ -2941,8 +2941,8 @@ await player.setMediaSession(
 
 For a file without tags, such as a transcoded stream, each field falls
 back to the entry's `Media.extras`: `title`, `artist` and `album` as
-strings, and `art` as an `http(s)://` or `file://` cover URL when the
-artwork is `embedded` and the file has none. A stream with no title tag
+strings, and `art` as a cover URL (the schemes of `MediaSessionArtwork.uri`)
+when the artwork is `embedded` and the file has none. A stream with no title tag
 and no `extras['title']` falls back to mpv's `media-title`, taken from the
 URL with the query removed. Setting `MediaSession.title` is still better.
 
@@ -2953,7 +2953,7 @@ URL with the query removed. Setting `MediaSession.title` is still better.
 ```dart
 MediaSessionArtwork.embedded            // default, the file's embedded cover
 MediaSessionArtwork.custom(myCoverArt)  // your own image, ignoring the file cover
-MediaSessionArtwork.uri(myArtUrl)       // an http(s):// or file:// image, loaded by the package
+MediaSessionArtwork.uri(myArtUrl)       // an image at a URL, loaded by the package
 MediaSessionArtwork.none                // no artwork
 ```
 
@@ -2966,10 +2966,20 @@ playback, trusts `tls-ca-file` on top of the system roots, refuses a
 redirect from `https` to plain `http`, skips an image over 20 MB, and is
 tried at most 3 times. On iOS and macOS it does not go through App
 Transport Security, so a plain `http` cover loads as on the other
-platforms. A `file://` cover is read by the package on every platform,
-with the same 20 MB limit, and reaches the OS as an image too: on Linux,
-`mpris:artUrl` names a copy in the runtime directory, not your file. A
-cover URL with any other scheme shows no artwork.
+platforms. The package also reads, with the same 20 MB limit:
+
+- a `file://` cover, on every platform;
+- an `asset://` cover from the app's bundle, keyed as `Media` keys its
+  assets, on every platform and the web;
+- a `content://` or `android.resource://` cover on Android, through the
+  ContentResolver: an album art URI of MediaStore, a picked image, a file
+  of a FileProvider. The URI of a song is refused, since it is no image;
+- a `blob:` cover of the page on the web.
+
+Each reaches the OS as an image: on Linux, `mpris:artUrl` names a copy in
+the runtime directory, not your file. A cover URL with any other scheme,
+such as `ms-appx://`, shows no artwork: load the bytes and use
+`MediaSessionArtwork.custom`.
 
 #### 14.4 Reacting to OS commands
 

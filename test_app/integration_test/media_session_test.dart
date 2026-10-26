@@ -390,6 +390,27 @@ void main() {
       await pumpUntil((s) => s['hasArtwork'] == true, reader: readMediaSession);
     }, skip: !isProbePlatform);
 
+    testWidgets('an android.resource:// cover is read by the ContentResolver', (
+      _,
+    ) async {
+      // The launcher icon of the test app, a PNG: the package reads it
+      // through the ContentResolver, as it reads a content:// cover, and
+      // the session gets the bytes.
+      final fixture = await materializeFixture('with_chapters.mka');
+      await player.setMediaSession(
+        MediaSession(
+          artwork: MediaSessionArtwork.uri(
+            Uri.parse(
+              'android.resource://com.alesdrnz.mpv_audio_kit_test_app'
+              '/mipmap/ic_launcher',
+            ),
+          ),
+        ),
+      );
+      await player.open(Media(fixture), play: false);
+      await pumpUntil((s) => s['hasArtwork'] == true, reader: readMediaSession);
+    }, skip: !Platform.isAndroid);
+
     testWidgets('disable clears the session entry', (_) async {
       await player.open(Media(fixture), play: false);
       await player.stream.duration

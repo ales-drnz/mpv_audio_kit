@@ -446,10 +446,17 @@ class MediaSessionController {
   }
 
   /// Whether the artwork [uri] goes through [_artworkFetcher]: an
-  /// `http(s)://` or a `file://` URL. Any other scheme shows no artwork.
+  /// `http(s)://`, `file://` or `asset://` URL, a `content://` or
+  /// `android.resource://` one on Android and a `blob:` one in the browser.
+  /// Any other scheme shows no artwork.
   static bool _fetches(String uri) {
-    final scheme = Uri.tryParse(uri)?.scheme.toLowerCase();
-    return scheme == 'http' || scheme == 'https' || scheme == 'file';
+    return switch (Uri.tryParse(uri)?.scheme.toLowerCase()) {
+      'http' || 'https' || 'file' || 'asset' => true,
+      'content' ||
+      'android.resource' => defaultTargetPlatform == TargetPlatform.android,
+      'blob' => kIsWeb,
+      _ => false,
+    };
   }
 
   /// Removes what could be credentials from a title mpv derived from a URL:

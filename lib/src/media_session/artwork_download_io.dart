@@ -9,13 +9,15 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/cover_art.dart';
 import 'artwork_fetcher.dart' show ArtworkFetcher, downloadsArtworkOn;
+import 'artwork_sources.dart';
 
-/// Upper bound on a loaded cover. Real covers are a few MB at most;
-/// anything larger is not an image worth putting on the media session.
-const int _maxArtworkBytes = 20 * 1024 * 1024;
+/// The plugin's channel, which reads a `content://` cover on Android
+/// (FileDescriptorChannel.kt).
+const MethodChannel _channel = MethodChannel('mpv_audio_kit');
 
 const Duration _timeout = Duration(seconds: 15);
 
@@ -31,11 +33,26 @@ const int _maxRedirects = 5;
 /// anything is sent over it. A response that announces more than 20 MB is
 /// dropped before its body is read.
 ///
-/// A `file://` URL is read from disk instead, with the same 20 MB limit,
-/// and its MIME type comes from the extension.
+/// A `file://` URL is read from disk instead, and an `asset://` one from
+/// the app's bundle, with the same 20 MB limit and the MIME type of the
+/// extension. On Android a `content://` or `android.resource://` URL is
+/// read through the ContentResolver, which gives its MIME type.
 @internal
 Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
-  if (uri.scheme == 'file') return _readArtworkFile(uri);
+  switch (uri.scheme) {
+    case 'file':
+      return _readArtworkFile(uri);
+    case 'asset':
+      return readArtworkAsset(uri);
+    case 'content' || 'android.resource':
+      return defaultTargetPlatform == TargetPlatform.android
+          ? _readArtworkContent(uri)
+          : null;
+    case 'http' || 'https':
+      break;
+    default:
+      return null;
+  }
   HttpClient? client;
   try {
     client = caFile.isEmpty
@@ -58,13 +75,13 @@ Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
     }
     // Not drained: the forced close below drops the connection.
     if (response.statusCode != HttpStatus.ok ||
-        response.contentLength > _maxArtworkBytes) {
+        response.contentLength > maxArtworkBytes) {
       return null;
     }
     final bytes = BytesBuilder(copy: false);
     await for (final chunk in response.timeout(_timeout)) {
       bytes.add(chunk);
-      if (bytes.length > _maxArtworkBytes) return null;
+      if (bytes.length > maxArtworkBytes) return null;
     }
     if (bytes.isEmpty) return null;
     return CoverArt(
@@ -88,25 +105,33 @@ Future<CoverArt?> _readArtworkFile(Uri uri) async {
   try {
     final file = File.fromUri(uri);
     final length = await file.length();
-    if (length == 0 || length > _maxArtworkBytes) return null;
+    if (length == 0 || length > maxArtworkBytes) return null;
     final bytes = await file.readAsBytes();
     // The file may have changed since its length was read.
-    if (bytes.isEmpty || bytes.length > _maxArtworkBytes) return null;
-    return CoverArt(bytes: bytes, mimeType: _mimeTypeOf(uri.path));
+    if (bytes.isEmpty || bytes.length > maxArtworkBytes) return null;
+    return CoverArt(bytes: bytes, mimeType: artworkMimeType(uri.path));
   } catch (_) {
     return null;
   }
 }
 
-String _mimeTypeOf(String path) {
-  final name = path.substring(path.lastIndexOf('/') + 1);
-  final dot = name.lastIndexOf('.');
-  return switch (dot < 0 ? '' : name.substring(dot + 1).toLowerCase()) {
-    'png' => 'image/png',
-    'jpg' || 'jpeg' => 'image/jpeg',
-    'webp' => 'image/webp',
-    'bmp' => 'image/bmp',
-    'gif' => 'image/gif',
-    _ => '',
-  };
+Future<CoverArt?> _readArtworkContent(Uri uri) async {
+  try {
+    final read = await _channel.invokeMapMethod<String, Object?>(
+      'readArtwork',
+      {'uri': uri.toString(), 'maxBytes': maxArtworkBytes},
+    );
+    final bytes = read?['bytes'];
+    if (bytes is! Uint8List || bytes.isEmpty) return null;
+    if (bytes.length > maxArtworkBytes) return null;
+    final type = read?['mimeType'];
+    return CoverArt(
+      bytes: bytes,
+      mimeType: type is String && type.isNotEmpty
+          ? type
+          : artworkMimeType(uri.path),
+    );
+  } catch (_) {
+    return null;
+  }
 }

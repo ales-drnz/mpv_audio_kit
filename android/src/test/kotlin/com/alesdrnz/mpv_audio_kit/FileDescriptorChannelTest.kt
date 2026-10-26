@@ -6,6 +6,9 @@
 package com.alesdrnz.mpv_audio_kit
 
 import io.flutter.plugin.common.BinaryMessenger
+import java.io.ByteArrayInputStream
+import kotlin.test.assertContentEquals
+import kotlin.test.assertNull
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.eq
@@ -49,5 +52,21 @@ class FileDescriptorChannelTest {
         channel.detach()
 
         verify(messenger).setMessageHandler(eq("mpv_audio_kit"), isNull(), same(queue))
+    }
+
+    @Test
+    fun `readArtwork returns the whole image up to the limit`() {
+        val image = ByteArray(200_000) { it.toByte() }
+        assertContentEquals(
+            image,
+            FileDescriptorChannel.readArtwork(ByteArrayInputStream(image), 200_000),
+        )
+    }
+
+    @Test
+    fun `readArtwork gives up on an image past the limit or an empty one`() {
+        val image = ByteArray(200_001)
+        assertNull(FileDescriptorChannel.readArtwork(ByteArrayInputStream(image), 200_000))
+        assertNull(FileDescriptorChannel.readArtwork(ByteArrayInputStream(ByteArray(0)), 200_000))
     }
 }
