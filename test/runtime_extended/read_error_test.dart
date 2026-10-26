@@ -33,6 +33,8 @@ void main() {
   // No reconnect: a cut ends the read at once, as the retries that fail
   // would after about 11 s.
   const once = {'reconnect': '0'};
+  // Nor a refused open tried again: the read after a seek fails at once.
+  const noRetry = {...once, 'reconnect_on_network_error': '0'};
 
   runtimeSuite(
     fixturePath: flacPath,
@@ -204,6 +206,136 @@ void main() {
             reason: describe(),
           );
         }, timeout: const Timeout(Duration(seconds: 60)));
+
+        group('a seek at the park', () {
+          // The server goes down at the cut and stays down until comeBack:
+          // no request after it gets an answer, from any offset.
+          setUp(() {
+            server.dropAfterBytes = flac.length ~/ 2;
+            server.outageAfterDrop = true;
+          });
+
+          late List<bool> completions;
+
+          /// Parks [media] at the cut, then seeks it to [to].
+          Future<void> parkAndSeek(Media media, Duration to) async {
+            await playToEnd([media]);
+            expect(player.state.readError, isTrue, reason: describe());
+            completions = [];
+            final sub = player.stream.completed.listen(completions.add);
+            addTearDown(sub.cancel);
+            await player.seek(to);
+          }
+
+          /// Waits for the park at the cut again, with the error.
+          Future<void> expectParkedAgain() async {
+            await waitUntil(
+              () => player.state.completed,
+              reason: 'parked again (${describe()})',
+            );
+            expect(player.state.readError, isTrue, reason: describe());
+          }
+
+          /// Brings the server back, seeks to [to] again and waits for the
+          /// park at the real end, then stops.
+          Future<void> expectReadToTheEnd(Duration to) async {
+            server.comeBack();
+            completions.clear();
+            await player.seek(to);
+            await player.play();
+            await waitUntil(
+              () => completions.contains(false) && player.state.completed,
+              timeout: const Duration(seconds: 20),
+              reason: 'parked at the real end (${describe()})',
+            );
+            expect(player.state.readError, isFalse, reason: describe());
+            expect(player.state.skippedSegments, 0);
+            expect(
+              player.state.position,
+              greaterThan(const Duration(seconds: 4)),
+              reason: describe(),
+            );
+            expect(
+              server.gets('/a.flac').where((r) => r.start > 0 && r.completed),
+              isNotEmpty,
+              reason: 'a request from the cut or the seek (${describe()})',
+            );
+            await player.stop();
+            await waitUntil(() => ended.isNotEmpty, reason: describe());
+            expect(ended.single.reason, MpvEndFileReason.stop);
+            expect(ended.single.readError, isFalse, reason: describe());
+          }
+
+          // Back is 0.5 s, into the cache when there is one; past the cut
+          // is 3 s of the 5 s file. Still down, the read is tried again,
+          // fails at once and the player parks again with the error; back
+          // up, the same seek reads on to the real end. Past the cut the
+          // park can come back before mpv samples the pause play() wrote,
+          // with no change of it to follow (first here: the cold first run
+          // hit it most).
+          for (final (cached, back) in [
+            (true, false),
+            (true, true),
+            (false, true),
+            (false, false),
+          ]) {
+            test('${back ? 'back' : 'past the cut'} '
+                '${cached ? 'with' : 'without'} the cache tries the read '
+                'again', () async {
+              final to = back
+                  ? const Duration(milliseconds: 500)
+                  : const Duration(seconds: 3);
+              if (!cached) {
+                await player.setCache(
+                  player.state.cache.copyWith(mode: Cache.no),
+                );
+              }
+              final clock = Stopwatch()..start();
+              await parkAndSeek(
+                Media(server.url('a.flac'), streamLavfOptions: noRetry),
+                to,
+              );
+              final seekAt = clock.elapsed;
+              await player.play();
+              await expectParkedAgain();
+              expect(
+                clock.elapsed - seekAt,
+                lessThan(const Duration(seconds: 3)),
+              );
+              // One request; two when the seek has already failed and
+              // play() finds the park and starts the track again.
+              expect(
+                server.refused,
+                inInclusiveRange(1, 2),
+                reason: describe(),
+              );
+              await expectReadToTheEnd(to);
+            }, timeout: const Timeout(Duration(seconds: 60)));
+          }
+
+          // With the defaults the read tried again after the seek opens as
+          // any connection does: refused, it is tried on, after 0, 1, 3
+          // and 7 s.
+          test('reads on when the server is back during the retries of '
+              'the open', () async {
+            await parkAndSeek(
+              cutOnce(server.url('a.flac')),
+              const Duration(seconds: 3),
+            );
+            await player.play();
+            await waitUntil(
+              () => server.refused >= 2,
+              reason: 'the open is tried again (${describe()})',
+            );
+            server.comeBack();
+            await waitUntil(
+              () => completions.contains(false) && player.state.completed,
+              timeout: const Duration(seconds: 20),
+              reason: 'parked at the real end (${describe()})',
+            );
+            expect(player.state.readError, isFalse, reason: describe());
+          }, timeout: const Timeout(Duration(seconds: 60)));
+        });
 
         group('on a chunked live stream', () {
           setUp(() => server.mode = ServeMode.chunked);
