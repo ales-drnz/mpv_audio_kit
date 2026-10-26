@@ -148,6 +148,63 @@ void main() {
       );
     });
   });
+  group('waveform-duration-hint', () {
+    test('null adds nothing', () {
+      expect(loadfileOptions(const Media('a.mp3')), '');
+    });
+
+    test('goes out in seconds, last', () {
+      expect(
+        loadfileOptions(
+          const Media(
+            'https://h/a.opus',
+            waveformDurationHint: Duration(milliseconds: 262190),
+          ),
+        ),
+        'waveform-duration-hint=262.190',
+      );
+      expect(
+        loadfileOptions(
+          const Media(
+            'https://h/a.opus',
+            httpHeaders: {'X-Token': 'A'},
+            end: Duration(seconds: 90),
+            waveformDurationHint: Duration(microseconds: 262190005),
+          ),
+        ).split(','),
+        [
+          'http-header-fields=%10%X-Token: A',
+          'end=90.000',
+          'waveform-duration-hint=262.190005',
+        ],
+      );
+    });
+
+    test('left out for a libmpv without it', () {
+      const media = Media(
+        'https://h/a.opus',
+        end: Duration(seconds: 90),
+        waveformDurationHint: Duration(seconds: 262),
+      );
+      expect(loadfileOptions(media, durationHint: false), 'end=90.000');
+    });
+
+    test('must be positive, refused before any load', () {
+      Matcher refused() => throwsA(
+        isA<ArgumentError>().having(
+          (e) => e.name,
+          'name',
+          'waveformDurationHint',
+        ),
+      );
+      for (final d in [Duration.zero, const Duration(milliseconds: -1)]) {
+        final media = Media('https://h/a.opus', waveformDurationHint: d);
+        expect(() => validateLoadOptions(media), refused());
+        expect(() => loadfileOptions(media), refused());
+      }
+    });
+  });
+
   group('stream-lavf-o-add', () {
     /// The `stream-lavf-o-add` value [media] gives, its length prefix
     /// checked; `null` when it gives none.

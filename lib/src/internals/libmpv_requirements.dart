@@ -31,6 +31,11 @@ const List<(String, String)> libmpvRequiredPatches = [
         'PlayerState stay null, so an entry cut short by a read error looks '
         'like one that ended',
   ),
+  (
+    'waveform-duration-hint',
+    'Media.waveformDurationHint is left out, so the waveform of an HTTP '
+        'stream without a length grows from playback',
+  ),
 ];
 
 /// The libmpv-scripts release stamped in an mpv version string:

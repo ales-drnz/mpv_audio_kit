@@ -419,7 +419,8 @@ mixin _PlaylistModule on _PlayerBase {
   ///
   /// Some entries open when they start, not from the prefetch:
   /// - an entry whose [Media] options (headers, chunk size, stream and
-  ///   demuxer options, start, end) differ from the playing entry's;
+  ///   demuxer options, start, end) differ from the playing entry's; not
+  ///   [Media.waveformDurationHint];
   /// - an entry with [Media.demuxerLavfOptions], and the entry after it;
   /// - a live [PcmSource] entry, and the entry after it.
   Future<void> setPrefetchPlaylist(bool enabled) async {

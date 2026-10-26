@@ -55,8 +55,8 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 /// ```
 ///
 /// Equality compares every field ([uri], [extras], [httpHeaders],
-/// [httpChunkSize], [streamLavfOptions], [demuxerLavfOptions], [start] and
-/// [end]), so two instances that differ in any of them are not equal:
+/// [httpChunkSize], [streamLavfOptions], [demuxerLavfOptions], [start],
+/// [end] and [waveformDurationHint]), so two instances that differ in any of them are not equal:
 /// useful when diffing playlists for re-render decisions. The maps compare
 /// by content, their values by `==`.
 final class Media {
@@ -210,10 +210,29 @@ final class Media {
   /// [PcmSource] entry refuses it.
   final Duration? end;
 
+  /// The length of this entry, for the waveform and the loudness scan of
+  /// an HTTP stream that cannot seek and does not tell its length: a
+  /// transcode a music server sends without byte ranges, whose catalog
+  /// knows the track's length. With it the analysis decodes the stream
+  /// from mpv's cache as it downloads, and the waveform fills ahead of
+  /// playback and turns final, instead of growing from playback (mpv's
+  /// per-file `waveform-duration-hint`).
+  ///
+  /// The waveform lays out this length. A hint a little off still ends
+  /// final: a shorter one leaves the rest of the stream out, a longer one
+  /// leaves the bins after the end of the stream unfilled. Any other
+  /// source ignores it. Unlike the other per-entry options it does not
+  /// keep the entry from opening ahead with [Player.setPrefetchPlaylist].
+  ///
+  /// `null` (default) gives none. Must be positive. A libmpv older than
+  /// libmpv-r20 does not get it.
+  final Duration? waveformDurationHint;
+
   /// Creates an immutable media item for [uri], with optional consumer
   /// [extras], per-request [httpHeaders] and [httpChunkSize], per-entry
-  /// [streamLavfOptions] and [demuxerLavfOptions], and the [start] and
-  /// [end] of what it plays.
+  /// [streamLavfOptions] and [demuxerLavfOptions], the [start] and [end] of
+  /// what it plays, and the [waveformDurationHint] of a stream without a
+  /// length.
   const Media(
     this.uri, {
     this.extras,
@@ -223,6 +242,7 @@ final class Media {
     this.demuxerLavfOptions,
     this.start,
     this.end,
+    this.waveformDurationHint,
   });
 
   /// A media item for a file the user picked in the browser: [blob], a
@@ -261,8 +281,8 @@ final class Media {
 
   /// Returns a copy with the given fields replaced. Pass `null` for
   /// [extras], [httpHeaders], [httpChunkSize], [streamLavfOptions],
-  /// [demuxerLavfOptions], [start] or [end] to clear them; omitted fields
-  /// keep their current value.
+  /// [demuxerLavfOptions], [start], [end] or [waveformDurationHint] to
+  /// clear them; omitted fields keep their current value.
   Media copyWith({
     String? uri,
     Object? extras = unset,
@@ -272,6 +292,7 @@ final class Media {
     Object? demuxerLavfOptions = unset,
     Object? start = unset,
     Object? end = unset,
+    Object? waveformDurationHint = unset,
   }) => Media(
     uri ?? this.uri,
     extras: identical(extras, unset)
@@ -291,6 +312,9 @@ final class Media {
         : demuxerLavfOptions as Map<String, String>?,
     start: identical(start, unset) ? this.start : start as Duration?,
     end: identical(end, unset) ? this.end : end as Duration?,
+    waveformDurationHint: identical(waveformDurationHint, unset)
+        ? this.waveformDurationHint
+        : waveformDurationHint as Duration?,
   );
 
   @override
@@ -301,6 +325,7 @@ final class Media {
           other.httpChunkSize == httpChunkSize &&
           other.start == start &&
           other.end == end &&
+          other.waveformDurationHint == waveformDurationHint &&
           _mapEqDyn(extras, other.extras) &&
           _mapEq(httpHeaders, other.httpHeaders) &&
           _mapEq(streamLavfOptions, other.streamLavfOptions) &&
@@ -312,6 +337,7 @@ final class Media {
     httpChunkSize,
     start,
     end,
+    waveformDurationHint,
     extras == null
         ? null
         : Object.hashAllUnordered(
@@ -345,6 +371,6 @@ final class Media {
         'httpHeaders: $headers, httpChunkSize: $httpChunkSize, '
         'streamLavfOptions: $streamLavfOptions, '
         'demuxerLavfOptions: $demuxerLavfOptions, start: $start, '
-        'end: $end)';
+        'end: $end, waveformDurationHint: $waveformDurationHint)';
   }
 }
