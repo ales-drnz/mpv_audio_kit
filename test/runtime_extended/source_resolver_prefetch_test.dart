@@ -167,7 +167,6 @@ void main() {
         // x with q 2 lasts 4 s, x with q 1 3 s.
         await waitUntil(
           () => player.state.duration > Duration.zero,
-          timeout: const Duration(seconds: 5),
           reason: 'no duration',
         );
         expect(player.state.duration.inMilliseconds, closeTo(4000, 50));
