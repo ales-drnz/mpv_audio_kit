@@ -146,8 +146,10 @@ class SlowCoreShim {
   /// `mpv_hook_add`), `destroy_delay_us` (a sleep in front of every
   /// `mpv_terminate_destroy`), `hide_eof` (non-zero: synchronous flag
   /// reads of `eof-reached` answer 0, the reads the event isolate makes)
-  /// or `freeze_park` (non-zero: those of `eof-reached` and `pause`
-  /// answer 1, a park the player never sees mpv leave).
+  /// `freeze_park` (non-zero: those of `eof-reached` and `pause` answer 1,
+  /// a park the player never sees mpv leave) or `pause_zero_once`
+  /// (non-zero: the next of `pause` answers 0, as when the read lands
+  /// while an unpause that keep-open undoes is in effect).
   void set(String knob, int value) {
     final fn = _lib
         .lookupFunction<

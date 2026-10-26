@@ -251,9 +251,15 @@ Future<void> _runEventLoop(
     final id = event.ref.eventId;
 
     // MPV_EVENT_NONE on a positive-timeout expiry, or on an `mpv_wakeup` with
-    // no pending event: nothing to dispatch, loop and re-check the flag.
+    // no pending event: nothing to dispatch but the held values and a read
+    // that is due; loop and re-check the flag.
     if (id == mpv.MpvEventId.mpvEventNone) {
-      logic.flushTrailing();
+      try {
+        final reads = logic.idle();
+        if (reads != null) await reads;
+      } catch (e, st) {
+        send(MpvEventInternalLog('error', 'event dispatch failed: $e\n$st'));
+      }
       continue;
     }
 
@@ -266,7 +272,8 @@ Future<void> _runEventLoop(
       // mpv_wait_event.
       final reads = _dispatchEvent(logic, event, readErrors: readErrors);
       if (reads != null) await reads;
-      logic.flushTrailing();
+      final again = logic.idle();
+      if (again != null) await again;
     } catch (e, st) {
       send(MpvEventInternalLog('error', 'event dispatch failed: $e\n$st'));
     }

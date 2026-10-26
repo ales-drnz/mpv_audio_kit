@@ -8,6 +8,10 @@ part of 'event_logic.dart';
 // read, the read itself ([MpvEventEndOfContent]) and the last-entry check
 // of END_FILE.
 
+/// How long after a read that may miss the park the pump reads the end of
+/// content again ([_sendEndOfContent]).
+const int _kEndOfContentAgainMs = 50;
+
 /// The observed properties whose notifications take a fresh
 /// [MpvEventEndOfContent] read. `eof-reached` is the direct one; `pause`
 /// is observed by the pump only for this (the player does not observe
@@ -37,6 +41,8 @@ Future<void> _sendEndOfContent(
   _Send send,
   _PropertyCache cache,
 ) async {
+  // A read that starts now takes the place of the one that was due.
+  cache.endOfContentAgainAt = null;
   final started = cache.started;
   if (started == null) return;
   final pos = await reader.int64('playlist-pos');
@@ -54,8 +60,10 @@ Future<void> _sendEndOfContent(
   // whole microtask loop with it. Statements keep the same reads in the
   // same order.
   var parked = false;
+  int? pause;
   if (eof) {
-    parked = await reader.flag('pause') == 1;
+    pause = await reader.flag('pause');
+    parked = pause == 1;
     if (!parked) parked = await reader.flag('keep-open-pause') == 0;
   }
   _Park? park;
@@ -70,6 +78,16 @@ Future<void> _sendEndOfContent(
   // mpv sampled before it, which is read again. It is also where the entry
   // ended, for its END_FILE.
   if (parked) cache.trailing.remove('time-pos');
+  // At the end, unpaused, while mpv last sent pause 1: an unpause that
+  // keep-open undoes before mpv samples pause again (play() at a seek
+  // that lands on the end at once) brings pause back to the value mpv
+  // sent, and mpv sends nothing. eof-reached it samples only at a restart
+  // or a change of core-idle. So no notification may follow the park:
+  // read again shortly, until the read or a change of pause settles it.
+  if (eof && !parked && pause == 0 && cache.sentPause == 1) {
+    cache.endOfContentAgainAt =
+        _throttleClock.elapsedMilliseconds + _kEndOfContentAgainMs;
+  }
   if (timePos != null) started.position = timePos;
   send(
     MpvEventEndOfContent(

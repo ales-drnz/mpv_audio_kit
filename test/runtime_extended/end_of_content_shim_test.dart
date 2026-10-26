@@ -181,6 +181,59 @@ void main() {
         );
       });
 
+      // A seek at the park that lands on the end again at once. The read
+      // that sees the end finds pause 0 (shim), as when it lands while an
+      // unpause of play() is in effect that keep-open undoes before mpv
+      // samples pause: mpv then sends no change of pause, nor of
+      // eof-reached, and nothing else reads the core again.
+      test(
+        'a park read while an unpause was in effect is read again',
+        () async {
+          final flac = File(longFixture).readAsBytesSync();
+          final server = await RangeHttpServer.start({'a.flac': flac});
+          addTearDown(server.close);
+          server
+            ..dropAfterBytes = flac.length ~/ 2
+            ..outageAfterDrop = true;
+          await player.setAudioNullUntimed(true);
+          final parked = player.stream.completed
+              .firstWhere((c) => c)
+              .timeout(const Duration(seconds: 30));
+          await player.open(
+            Media(
+              server.url('a.flac'),
+              streamLavfOptions: const {
+                'reconnect': '0',
+                'reconnect_on_network_error': '0',
+              },
+            ),
+            play: true,
+          );
+          await parked;
+          // The reads the park itself started are done by then.
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          final completions = <bool>[];
+          final sub = player.stream.completed.listen(completions.add);
+          addTearDown(sub.cancel);
+          shim().set('pause_zero_once', 1);
+          // Past the cut, while the server is down: the end again at once.
+          await player.seek(const Duration(seconds: 3));
+          await waitUntil(
+            () async =>
+                shim().counter('pause_zero_reads') > 0 &&
+                await player.getRawProperty('eof-reached') == 'yes' &&
+                await player.getRawProperty('pause') == 'yes',
+            reason: 'mpv never parked again, or no read found it there',
+          );
+          expect(completions, contains(false), reason: 'the read saw no park');
+          await waitUntil(
+            () => player.state.completed,
+            timeout: const Duration(seconds: 2),
+            reason: 'the park must be read again',
+          );
+        },
+      );
+
       libmpvReleaseGroup(20, 'A park the player never sees left', () {
         // A seek at the park and the play to the end can both go by
         // between two reads, as with an output that does not wait: the
