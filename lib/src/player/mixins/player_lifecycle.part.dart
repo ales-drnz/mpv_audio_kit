@@ -126,7 +126,8 @@ extension _Lifecycle on _PlayerBase {
   ///
   /// A live PCM entry ([live]) has no restart either: it plays once and
   /// parks under [Loop.file] too (F225). [readError] and [skippedSegments],
-  /// read at the park, tell how the entry ended.
+  /// read at the park, tell how the entry ended, also at a park the player
+  /// never saw left.
   void _settleEndOfContent({
     required bool parked,
     required bool lastEntry,
@@ -140,7 +141,19 @@ extension _Lifecycle on _PlayerBase {
         parked &&
         lastEntry &&
         (loop == Loop.off || (live && loop == Loop.file));
-    if (end == _state.completed) return;
+    if (end == _state.completed) {
+      // Parked again with no read in between, after a seek that played on
+      // to the end at once: this park tells how the entry ended now.
+      if (end &&
+          (readError != _state.readError ||
+              skippedSegments != _state.skippedSegments)) {
+        _state = _state.copyWith(
+          readError: readError,
+          skippedSegments: skippedSegments,
+        );
+      }
+      return;
+    }
     _updateLifecycle(
       completed: end,
       readError: readError,
