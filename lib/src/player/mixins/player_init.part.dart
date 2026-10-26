@@ -67,6 +67,12 @@ mixin _InitModule on _PlayerBase {
       asyncGet: _calls.get,
       asyncSet: _calls.propRc,
     );
+    // No file is loaded yet, and the analysis is one per process: what mpv
+    // holds now is another player's. Both poll from the reset of the first
+    // FILE_LOADED on. Before the listens below, so the null of the clear
+    // reaches no one.
+    _waveformPipeline.clear();
+    _loudnessScanPipeline.clear();
     _waveformPipeline.stream.listen((w) {
       _lastWaveform = w;
       _waveformCtrl.add(w);
