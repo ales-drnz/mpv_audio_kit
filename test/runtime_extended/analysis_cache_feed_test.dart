@@ -527,7 +527,46 @@ void main() {
               ])
                 '$name=${await player!.getRawProperty(name)}',
             ];
-            return ' (wraps $wraps, position $last, ${values.join(' ')}), '
+            // Whether the core still runs a command, and whether a fresh
+            // player reads its own core and the analysis of the process:
+            // a stuck core, a stuck event pump and a stuck analyzer give
+            // different answers.
+            Future<String> probe(
+              String what,
+              Future<Object?> Function() f,
+            ) => f()
+                .then((v) => '$what ok ($v)')
+                .timeout(const Duration(seconds: 3))
+                .catchError(
+                  (Object e) =>
+                      '$what ${e is TimeoutException ? 'hangs' : 'fails: $e'}',
+                );
+            final command = await probe(
+              'command',
+              () => player!.sendRawCommand(['ignore']).then((_) => null),
+            );
+            var freshVersion = 'fresh player hangs';
+            var freshWave = '';
+            try {
+              final fresh = await buildPlayer().timeout(
+                const Duration(seconds: 5),
+              );
+              freshVersion = await probe(
+                'fresh mpv-version',
+                () => fresh.getRawProperty('mpv-version'),
+              );
+              freshWave = await probe(
+                'fresh waveform-data',
+                () => fresh
+                    .getRawPropertyNode('waveform-data')
+                    .then((n) => (n as Map?)?['state']),
+              );
+              unawaited(fresh.dispose());
+            } on TimeoutException {
+              // freshVersion says it.
+            }
+            return ' (wraps $wraps, position $last, ${values.join(' ')}; '
+                '$command; $freshVersion; $freshWave), '
                 'seen:\n${watch!.describe()}';
           }
 
