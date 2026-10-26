@@ -660,9 +660,11 @@ abstract class _PlayerBase {
   bool _resolverRetried = false;
 
   // What the resolver gave for the prefetch of the next entry: the URL mpv
-  // was about to open, the one it opened instead, and the load epoch then.
-  // The load of that URL in the same epoch takes it once (F10).
-  (String, String, _LoadTicket)? _prefetchResolved;
+  // was about to open, the one it opened instead, the load epoch then, and
+  // the entry (`null` before libmpv-r20, whose prefetch names none). The
+  // load of that entry, or of that URL without one, in the same epoch takes
+  // it once (F10, kit-core-3).
+  (String, String, _LoadTicket, int?)? _prefetchResolved;
 
   PlayerState _state = const PlayerState();
 
