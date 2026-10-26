@@ -177,7 +177,7 @@ internal object MediaSessionMappers {
         // Media3 takes raw encoded image bytes (JPEG/PNG) directly and
         // decodes them for the notification: no Bitmap conversion needed.
         // Every cover arrives as bytes: the package downloads a URL and reads
-        // a file:// itself.
+        // a file://, an asset:// and a content:// (ArtworkChannel) itself.
         meta.artworkBytes?.let {
             b.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
         }

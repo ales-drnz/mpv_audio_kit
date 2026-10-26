@@ -909,8 +909,8 @@ void main() {
           rig: rig,
           channel: ch,
           artworkFetcher: (uri, _) async {
-            fetched.add('$uri');
-            return covers['$uri'];
+            fetched.add(uri);
+            return covers[uri];
           },
         );
         addTearDown(controller.dispose);
@@ -1167,7 +1167,7 @@ void main() {
           rig: rig,
           channel: ch,
           artworkFetcher: (uri, _) {
-            fetched.add(uri);
+            fetched.add(Uri.parse(uri));
             return pending.future;
           },
         );
@@ -1319,7 +1319,7 @@ void main() {
           rig: rig,
           channel: ch,
           artworkFetcher: (uri, _) async {
-            fetched.add(uri);
+            fetched.add(Uri.parse(uri));
             return cover;
           },
         );
@@ -1375,7 +1375,7 @@ void main() {
         inputs: rig.inputs,
         onCommand: (_) {},
         artworkFetcher: (uri, _) async {
-          fetched.add(uri);
+          fetched.add(Uri.parse(uri));
           return CoverArt(
             bytes: Uint8List.fromList(const [9]),
             mimeType: 'image/png',
@@ -1417,6 +1417,72 @@ void main() {
       ]);
     });
 
+    test('a cover URL reaches the fetcher as the app wrote it', () async {
+      // Uri.parse lowers the case of a host: an Android authority and the
+      // first part of an asset key would change.
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final fetched = <String>[];
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkFetcher: (url, _) async {
+          fetched.add(url);
+          return null;
+        },
+      );
+      addTearDown(controller.dispose);
+      for (final art in [
+        'content://com.Example.Files/covers/A.png',
+        'asset://Covers/A.png',
+      ]) {
+        rig.state = PlayerState(
+          mediaSession: const MediaSession(),
+          metadata: {'title': art},
+          playlist: Playlist([
+            Media('/music/song.flac', extras: {'art': art}),
+          ]),
+        );
+        rig.metadata.add({'title': art});
+        await _settle();
+      }
+      expect(fetched, [
+        'content://com.Example.Files/covers/A.png',
+        'asset://Covers/A.png',
+      ]);
+    });
+
+    test('a blob: cover is fetched in the browser only', () async {
+      final rig = _Rig();
+      final ch = _RecordingChannel();
+      addTearDown(rig.dispose);
+      addTearDown(ch.close);
+      final fetched = <String>[];
+      final controller = await _buildController(
+        rig: rig,
+        channel: ch,
+        artworkFetcher: (url, _) async {
+          fetched.add(url);
+          return null;
+        },
+      );
+      addTearDown(controller.dispose);
+      rig.state = PlayerState(
+        mediaSession: MediaSession(
+          artwork: MediaSessionArtwork.uri(
+            Uri.parse('blob:http://localhost/1b2c'),
+          ),
+        ),
+        metadata: const {'title': 'Song'},
+      );
+      rig.metadata.add(const {'title': 'Song'});
+      await _settle();
+      expect(fetched, isEmpty);
+      expect(lastSnap(ch).artwork, isNull);
+    });
+
     test('an asset:// cover is read by the fetcher on every platform, '
         'content:// and android.resource:// on Android only', () async {
       for (final platform in [
@@ -1442,7 +1508,7 @@ void main() {
           rig: rig,
           channel: ch,
           artworkFetcher: (uri, _) async {
-            fetched.add(uri);
+            fetched.add(Uri.parse(uri));
             return cover;
           },
         );

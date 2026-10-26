@@ -12,14 +12,10 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMethodCodec
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
 
 /**
  * The `mpv_audio_kit` method channel: opens Content URIs (e.g. from the
  * file picker) as raw file descriptors libmpv can read, and closes them.
- * It also reads the image of a `content://` or `android.resource://` cover
- * for the media session, which only ever gets bytes.
  *
  * It runs on a background task queue of the messenger, not on the main
  * thread: `openFileDescriptor` blocks until the provider has the file, and
@@ -87,31 +83,6 @@ internal class FileDescriptorChannel(
                     result.error("INVALID", "fd is null", null)
                 }
             }
-            "readArtwork" -> {
-                // The image of a cover URL, at most maxBytes, as the media
-                // session of the Dart side takes it: the bytes and the MIME
-                // type the provider gives. null when it has none or names a
-                // type that is no image (the URI of a song, not its cover).
-                val uriStr = call.argument<String>("uri")
-                val maxBytes = call.argument<Int>("maxBytes")
-                if (uriStr == null || maxBytes == null) {
-                    result.error("INVALID", "uri or maxBytes is null", null)
-                    return
-                }
-                try {
-                    val uri = Uri.parse(uriStr)
-                    val r = resolver()
-                    val type = r.getType(uri)
-                    val bytes = if (type == null || type.startsWith("image/")) {
-                        r.openInputStream(uri)?.use { readArtwork(it, maxBytes) }
-                    } else {
-                        null
-                    }
-                    result.success(bytes?.let { mapOf("bytes" to it, "mimeType" to type) })
-                } catch (e: Exception) {
-                    result.error("ERROR", e.message, null)
-                }
-            }
             else -> {
                 result.notImplemented()
             }
@@ -120,21 +91,5 @@ internal class FileDescriptorChannel(
 
     companion object {
         const val NAME = "mpv_audio_kit"
-
-        /**
-         * Reads [input] to its end, or gives up past [maxBytes]: null for an
-         * empty stream or one longer than that, without reading on.
-         */
-        internal fun readArtwork(input: InputStream, maxBytes: Int): ByteArray? {
-            val out = ByteArrayOutputStream()
-            val buffer = ByteArray(64 * 1024)
-            while (true) {
-                val n = input.read(buffer)
-                if (n < 0) break
-                out.write(buffer, 0, n)
-                if (out.size() > maxBytes) return null
-            }
-            return if (out.size() == 0) null else out.toByteArray()
-        }
     }
 }

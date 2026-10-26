@@ -2969,11 +2969,16 @@ Transport Security, so a plain `http` cover loads as on the other
 platforms. The package also reads, with the same 20 MB limit:
 
 - a `file://` cover, on every platform;
-- an `asset://` cover from the app's bundle, keyed as `Media` keys its
-  assets, on every platform and the web;
+- an `asset://` cover from the app's bundle, on every platform and the
+  web: `asset:///assets/cover.png`, with three slashes, since a `Uri`
+  lowers the case of what follows two;
 - a `content://` or `android.resource://` cover on Android, through the
-  ContentResolver: an album art URI of MediaStore, a picked image, a file
-  of a FileProvider. The URI of a song is refused, since it is no image;
+  ContentResolver, on a queue apart from the one that opens songs: an
+  album art URI of MediaStore, a picked image, a file of a FileProvider, a
+  bitmap drawable. It must be an image (PNG, JPEG, GIF, WebP, BMP, HEIF or
+  AVIF): the URI of a song, a vector drawable or an adaptive icon shows no
+  artwork. A `Uri` lowers the case of the authority too: for one with
+  capitals, pass the URL as a string in `extras['art']`;
 - a `blob:` cover of the page on the web.
 
 Each reaches the OS as an image: on Linux, `mpris:artUrl` names a copy in

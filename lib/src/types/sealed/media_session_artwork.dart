@@ -38,10 +38,12 @@ sealed class MediaSessionArtwork {
   /// [uri] must load without custom headers:
   /// - an `http(s)://` URL (a tokenised query string is fine) or a
   ///   `file://` path, on every platform;
-  /// - an `asset://` one from the app's bundle, keyed as [Media] keys its
-  ///   assets, on every platform;
+  /// - an `asset://` one from the app's bundle, on every platform: write
+  ///   `asset:///` and the key, since a [Uri] lowers the case of what
+  ///   follows two slashes;
   /// - a `content://` or `android.resource://` one on Android, read
-  ///   through the ContentResolver (the URI of an image, not of a song);
+  ///   through the ContentResolver: an image (PNG, JPEG, GIF, WebP, BMP,
+  ///   HEIF or AVIF), not a song, a vector or an adaptive icon;
   /// - a `blob:` one of the page on the web.
   ///
   /// Any other scheme shows no artwork. For art behind custom headers,
@@ -88,7 +90,7 @@ final class MediaSessionArtworkCustom extends MediaSessionArtwork {
 /// The [MediaSessionArtwork.uri] variant: the image at an `http(s)://` or
 /// `file://` URL, which the package loads (see [MediaSessionArtwork.uri]).
 final class MediaSessionArtworkUri extends MediaSessionArtwork {
-  /// The artwork location, an `http(s)://` or `file://` URL.
+  /// The artwork location, in a scheme [MediaSessionArtwork.uri] loads.
   final Uri uri;
 
   const MediaSessionArtworkUri._(this.uri) : super._();

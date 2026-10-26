@@ -31,12 +31,10 @@ extension type _Response._(JSObject _) implements JSObject {
 /// with CORS, without credentials, or a `blob:` one of the page, and
 /// returns the image with the MIME type the server gives; `null` for a URL
 /// the page cannot read (no CORS, a network error, an error status), for a
-/// `file://` URL (no file system), and past 20 MB. An `asset://` URL is
-/// read from the app's bundle. [caFile] has no meaning there: the browser
-/// verifies certificates.
+/// `file://` URL (no file system), and past 20 MB. [caFile] has no meaning
+/// there: the browser verifies certificates.
 @internal
 Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
-  if (uri.scheme == 'asset') return readArtworkAsset(uri);
   if (uri.scheme != 'http' && uri.scheme != 'https' && uri.scheme != 'blob') {
     return null;
   }
@@ -59,6 +57,15 @@ Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
   } catch (_) {
     return null;
   }
+}
+
+/// Default `ArtworkFetcher` in the browser: an `asset://` [url] from the
+/// app's bundle, as the app wrote it; the rest through [downloadArtwork].
+@internal
+Future<CoverArt?> loadArtwork(String url, [String caFile = '']) async {
+  if (artworkScheme(url) == 'asset') return readArtworkAsset(url);
+  final uri = Uri.tryParse(url);
+  return uri == null ? null : downloadArtwork(uri, caFile);
 }
 
 String? _header(_Response response, String name) {

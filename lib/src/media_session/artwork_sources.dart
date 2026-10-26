@@ -15,13 +15,26 @@ import '../models/cover_art.dart';
 @internal
 const int maxArtworkBytes = 20 * 1024 * 1024;
 
-/// The cover of an `asset://` [uri] from the app's bundle, keyed as
-/// `Media` keys its assets (`asset://assets/a.png` or
-/// `asset:///assets/a.png`); `null` when it is missing, empty or over 20 MB.
+/// The scheme of [url], in lower case; `''` for none.
 @internal
-Future<CoverArt?> readArtworkAsset(Uri uri) async {
-  final path = uri.toString().substring('asset://'.length);
-  final key = Uri.decodeFull(path.startsWith('/') ? path.substring(1) : path);
+String artworkScheme(String url) {
+  final colon = url.indexOf(':');
+  return colon < 0 ? '' : url.substring(0, colon).toLowerCase();
+}
+
+/// The cover of an `asset://` [url] from the app's bundle: the key is what
+/// follows `asset://` without a leading slash (`asset://assets/a.png` or
+/// `asset:///assets/a.png`), with its percent escapes decoded, since a
+/// [Uri] writes them; `null` when it is missing, empty or over 20 MB.
+@internal
+Future<CoverArt?> readArtworkAsset(String url) async {
+  final path = url.substring('asset://'.length);
+  final String key;
+  try {
+    key = Uri.decodeFull(path.startsWith('/') ? path.substring(1) : path);
+  } on FormatException {
+    return null;
+  }
   try {
     final data = await rootBundle.load(key);
     if (data.lengthInBytes == 0 || data.lengthInBytes > maxArtworkBytes) {
