@@ -237,7 +237,8 @@ final RegExp _kForbiddenInLavfOption = RegExp(r'[\r\n,\x00]');
 /// A `stream-lavf-o` or `demuxer-lavf-o` entry sits in a comma-separated
 /// list, so its key must be non-empty and the key and value free of comma,
 /// CR, LF and NUL. [name] is the [Media] field it came from. Mirrors the
-/// header validators.
+/// header validators. The error names the key only: a value can carry
+/// credentials, as [Media.toString] says.
 void _validateLavfOption(String key, String value, String name) {
   if (key.isEmpty) {
     throw ArgumentError.value(key, '$name key', 'must not be empty');
@@ -245,9 +246,9 @@ void _validateLavfOption(String key, String value, String name) {
   if (_kForbiddenInLavfOption.hasMatch(key) ||
       _kForbiddenInLavfOption.hasMatch(value)) {
     throw ArgumentError.value(
-      '$key=$value',
+      key,
       name,
-      'must not contain CR, LF, NUL, or comma',
+      'must not contain CR, LF, NUL, or comma in its key or value',
     );
   }
 }

@@ -292,5 +292,25 @@ void main() {
         expect(() => loadfileOptions(media), throwsArgumentError);
       }
     });
+
+    test('a refused option names its key, not its value', () {
+      const media = Media(
+        'https://h/a.mp3',
+        streamLavfOptions: {'headers': 'Authorization: s3cr3t,x'},
+      );
+      expect(
+        () => validateLoadOptions(media),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'streamLavfOptions')
+              .having((e) => e.invalidValue, 'invalidValue', 'headers')
+              .having(
+                (e) => e.toString(),
+                'toString',
+                isNot(contains('s3cr3t')),
+              ),
+        ),
+      );
+    });
   });
 }

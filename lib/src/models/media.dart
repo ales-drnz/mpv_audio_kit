@@ -361,16 +361,17 @@ final class Media {
           ),
   );
 
-  /// Prints the [httpHeaders] names only: their values often carry
-  /// credentials (an `Authorization` token) that must not reach a log.
+  /// Prints the names of [httpHeaders] and [streamLavfOptions] only: their
+  /// values often carry credentials (an `Authorization` token, a proxy
+  /// password) that must not reach a log.
   @override
   String toString() {
-    final headers = httpHeaders == null
+    String? names(Map<String, String>? map) => map == null
         ? null
-        : '{${httpHeaders!.keys.map((k) => '$k: <redacted>').join(', ')}}';
+        : '{${map.keys.map((k) => '$k: <redacted>').join(', ')}}';
     return 'Media(uri: $uri, extras: $extras, '
-        'httpHeaders: $headers, httpChunkSize: $httpChunkSize, '
-        'streamLavfOptions: $streamLavfOptions, '
+        'httpHeaders: ${names(httpHeaders)}, httpChunkSize: $httpChunkSize, '
+        'streamLavfOptions: ${names(streamLavfOptions)}, '
         'demuxerLavfOptions: $demuxerLavfOptions, start: $start, '
         'end: $end, waveformDurationHint: $waveformDurationHint)';
   }

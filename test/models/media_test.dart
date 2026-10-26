@@ -280,13 +280,29 @@ void main() {
       expect(out, isNot(contains('s3cr3t')));
     });
 
-    test('the stream options are printed', () {
+    test('the stream options are printed by name, not by value', () {
+      // FFmpeg's http options can carry credentials as the headers do.
+      final out = const Media(
+        'a',
+        streamLavfOptions: {
+          'headers': 'Authorization: Bearer s3cr3t',
+          'http_proxy': 'http://user:pa55@proxy:3128',
+        },
+      ).toString();
       expect(
-        const Media(
-          'a',
-          streamLavfOptions: {'reconnect_streamed': '1'},
-        ).toString(),
-        contains('streamLavfOptions: {reconnect_streamed: 1}'),
+        out,
+        contains(
+          'streamLavfOptions: {headers: <redacted>, http_proxy: <redacted>}',
+        ),
+      );
+      expect(out, isNot(contains('s3cr3t')));
+      expect(out, isNot(contains('pa55')));
+    });
+
+    test('no stream options prints null', () {
+      expect(
+        const Media('a.mp3').toString(),
+        contains('streamLavfOptions: null'),
       );
     });
 
