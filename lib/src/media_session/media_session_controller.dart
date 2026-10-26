@@ -422,12 +422,13 @@ class MediaSessionController {
     return scheme.isEmpty || scheme == 'file' || scheme.length == 1;
   }
 
-  /// The local item [uri] as a `file:` URI: a `file:` URI as it is, a path
-  /// percent-encoded, a relative one under the working directory, where mpv
-  /// opens it. `null` for a path no URI can name.
+  /// The local item [uri] as a `file:` URI, percent-encoded: a `file:` URI
+  /// as Dart parses it (mpv also opens one with a raw space), a path
+  /// encoded, a relative one under the working directory, where mpv opens
+  /// it. `null` for a path no URI can name.
   static String? _fileUri(String uri) {
     final parsed = Uri.tryParse(uri);
-    if (parsed?.scheme == 'file') return uri;
+    if (parsed?.scheme == 'file') return parsed!.toString();
     final drive = parsed?.scheme.length == 1;
     try {
       return Uri.base

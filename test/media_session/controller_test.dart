@@ -1090,7 +1090,16 @@ void main() {
       expect(
         await urlOf('file:///music/a%20b.flac'),
         'file:///music/a%20b.flac',
-        reason: 'a file URI is published as it is',
+        reason: 'a file URI already encoded is published as it is',
+      );
+      expect(
+        await urlOf('file:///music/a b.flac'),
+        'file:///music/a%20b.flac',
+        reason: 'mpv opens a file URI with a raw space, a URI has none',
+      );
+      expect(
+        await urlOf('file:///music/50% off.mp3'),
+        'file:///music/50%25%20off.mp3',
       );
       expect(
         await urlOf('music/song.flac'),
