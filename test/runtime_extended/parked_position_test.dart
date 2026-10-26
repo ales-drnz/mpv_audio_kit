@@ -33,12 +33,12 @@ void main() {
 
   runtimeSuite(fixturePath: oneSecond, () {
     /// Plays [media], one second long, to its park, then stops it. Every
-    /// position the player gives while `completed` is up must be the end,
-    /// and so must the position its `endFile` carries. Stopping right
-    /// after the park needs no wait: `completed` stays up until the
-    /// `endFile` of the stop, and a change mpv still had to deliver for the
-    /// entry reaches the player before it, or never (the unload samples
-    /// `time-pos` again).
+    /// position the player gives while parked must be the end, and so must
+    /// the position its `endFile` carries. The changes mpv still had to
+    /// deliver follow the park within a few milliseconds; the check ends
+    /// where the stop begins. The stop's unload reports `time-pos`
+    /// unavailable, and so the position 0, while mpv waits for the demuxer
+    /// to close: before its END_FILE, which clears `completed`.
     Future<void> expectParkedAtEnd(Media Function() media) async {
       final wrong = <String>[];
       for (var round = 0; round < rounds; round++) {
@@ -47,11 +47,14 @@ void main() {
         );
         try {
           await player.setAudioNullUntimed(true);
+          var parked = true;
           // Read in the listener: the state is the one the event that
           // moved the position left.
           final sub = player.stream.position.listen((p) {
-            if (player.state.completed && (p - end).abs() > _tolerance) {
-              wrong.add('round $round: position $p while completed');
+            if (parked &&
+                player.state.completed &&
+                (p - end).abs() > _tolerance) {
+              wrong.add('round $round: position $p while parked');
             }
           });
           final completed = player.stream.completed
@@ -59,6 +62,8 @@ void main() {
               .timeout(const Duration(seconds: 10));
           await player.open(media(), play: true);
           await completed;
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          parked = false;
           final ended = player.stream.endFile.first.timeout(
             const Duration(seconds: 5),
           );
