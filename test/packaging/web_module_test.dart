@@ -90,10 +90,34 @@ Future<File> _release(
     ..writeAsStringSync(const JsonEncoder.withIndent('  ').convert(manifest));
 }
 
-Future<ProcessResult> _update(Directory package, File manifest) => Process.run(
-  'bash',
-  ['${package.path}/scripts/update_libmpv.sh', 'r99', manifest.path],
-);
+/// The bash that runs the script. On Windows a bare `bash` is the WSL
+/// launcher of System32, which the process search finds before PATH: the
+/// one of Git for Windows is taken instead, from where git lives.
+final String _bash = () {
+  if (!Platform.isWindows) return 'bash';
+  // The exec path is <git>/mingw64/libexec/git-core; the bash is
+  // <git>/bin/bash.exe.
+  final exec = Process.runSync('git', ['--exec-path']);
+  final git = Directory(
+    (exec.stdout as String).trim(),
+  ).parent.parent.parent.path;
+  final bash = File('$git/bin/bash.exe');
+  if (!bash.existsSync()) {
+    throw StateError('no bash of Git for Windows at ${bash.path}');
+  }
+  return bash.path;
+}();
+
+/// [path] as the bash of [_bash] reads it: with forward slashes on Windows.
+String _bashPath(String path) =>
+    Platform.isWindows ? path.replaceAll(r'\', '/') : path;
+
+Future<ProcessResult> _update(Directory package, File manifest) =>
+    Process.run(_bash, [
+      _bashPath('${package.path}/scripts/update_libmpv.sh'),
+      'r99',
+      _bashPath(manifest.path),
+    ]);
 
 void main() {
   final root = Directory.current.path;
