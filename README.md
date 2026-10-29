@@ -20,6 +20,8 @@
 
 mpv_audio_kit is the audio engine for Flutter apps that play from your own server. It talks to Jellyfin, Plex and Samba, and puts everything mpv and ffmpeg can do behind a typed Dart API.
 
+**[Try it in your browser](https://ales-drnz.github.io/mpv_studio/)**: [mpv_studio](https://github.com/ales-drnz/mpv_studio), the demo app, running libmpv as WebAssembly. Best in Chrome or Edge.
+
 <table>
 <tr>
 <td valign="middle" width="48"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/protocols/jellyfin.png" width="32" alt="Jellyfin"></td>
@@ -3136,7 +3138,17 @@ resource of another origin loaded without CORS (an image, a font) for a
 - Cloudflare Pages and Netlify: a `web/_headers` file with the two headers
   under `/*`.
 - GitHub Pages sets no headers: a service worker such as coi-serviceworker
-  adds them, and reloads the page on the first visit.
+  adds them, and reloads the page on the first visit. Flutter's own
+  bootstrap still registers `flutter_service_worker.js` on the same scope,
+  which would replace it: give the app a `web/flutter_bootstrap.js` that
+  calls `_flutter.loader.load()` without `serviceWorkerSettings`.
+  [mpv_studio](https://github.com/ales-drnz/mpv_studio) does both, in its
+  `web/` folder.
+
+A page served over HTTPS cannot open an `http://` address, a server on the
+local network included: the browser blocks the request before it is sent
+(mixed content), and the entry fails to open. Only `localhost` is exempt.
+Reach such a server over `https://`.
 
 A page that is not a secure, cross-origin isolated one, or a browser
 without SharedArrayBuffer or AudioWorklet, cannot run libmpv: there is no

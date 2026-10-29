@@ -1,3 +1,70 @@
+# Migrating to 0.6.0
+
+0.6.0 adds the web and needs libmpv-r20, which the build hook bundles. Most
+apps change nothing. These are the cases that need a change.
+
+## Flutter 3.41
+
+The package needs Flutter 3.41 or later, for the web assets it ships.
+
+## Hook.prefetch
+
+With `setPrefetchPlaylist(true)`, mpv opens the next entry ahead of time.
+On libmpv-r20 it runs a hook of its own for that early open,
+`Hook.prefetch`, while the current entry keeps playing, and `Hook.load`
+runs once per entry, when it starts.
+
+| 0.5.x | 0.6.0 |
+| --- | --- |
+| `Hook.load` ran for the early open and again when the entry started | `Hook.prefetch` runs for the early open, `Hook.load` once at the start |
+| An exhaustive `switch` over `Hook` | Add the `Hook.prefetch` case |
+| A `Hook.load` listener that rewrites `stream-open-filename` for the prefetch | Register `Hook.prefetch` too and rewrite `prefetch-open-filename`; `prefetch-playlist-entry-id` names the entry |
+
+`setSourceResolver` handles both hooks: an app that resolves URLs through
+it needs no change. Its resolver now runs for the next entry while the
+current one plays; a URL it returns after the entry started, or after the
+entry left the next place, is dropped with a warning on `internalLog`.
+
+## One OS media session per process
+
+The OS media session is one per process. The first Flutter engine that
+enables it owns it until it disables it or detaches, on every platform, and
+the commands go to it. `setMediaSession` in another engine (an add-to-app
+screen, a background task) throws `StateError` instead of taking the
+session over.
+
+## The reconnect defaults are mpv's global stream-lavf-o
+
+The player retries a dropped HTTP connection through mpv's global
+`stream-lavf-o` (`reconnect=1,reconnect_delay_max=7,`
+`reconnect_on_network_error=1,seg_max_retry=4`). Setting `stream-lavf-o`
+with `setRawProperty` replaces them. To add a key and keep them:
+
+```dart
+await player.sendRawCommand(['change-list', 'stream-lavf-o', 'add', 'timeout=5000000']);
+```
+
+`Media.streamLavfOptions` adds options for one entry, on top of them.
+
+## A custom libmpv
+
+An app that bundles its own libmpv through the build hook's `libmpv` user
+define gets a warning on `internalLog` when it is older than libmpv-r20 or
+lacks one of its patches, naming what each missing patch costs. It still
+plays.
+
+## Behavior changes
+
+- The event isolate's own diagnostics (an event it could not decode, a
+  property it could not read) go to `internalLog`, not to `stream.log` and
+  `stream.error`.
+- `endFile` carries the media, position and duration of the entry that
+  ended, instead of leaving them to `state`, which has already moved on in
+  a playlist. Its `readError` and `skippedSegments`, and the same fields of
+  `PlayerState` at the park, tell an entry cut short by a read error.
+- An app on the web serves its page cross-origin isolated (README, section
+  15). Nothing changes on the other platforms.
+
 # Migrating to 0.5.0
 
 0.5.0 changes how audio effects are described and how libmpv reaches your

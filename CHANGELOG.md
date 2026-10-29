@@ -1,5 +1,7 @@
 ## [0.6.0] - Unreleased
 
+The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an app may need.
+
 ### Contributions
 - [@2697a](https://github.com/2697a): asked for Flutter Web support ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
 - [@erikjara](https://github.com/erikjara): reported that the waveform of an HTTP stream served without byte ranges never filled from mpv's cache ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
@@ -28,7 +30,7 @@
 - When a short entry plays out and parks between two position updates, `state.position` no longer goes back to its start.
 - The effects chain keeps the values set live through a seek, a loop, a track switch and the next file.
 - The source resolver gets the `Media` of the entry that loads, also when two entries share a URL.
-- A player with no file loaded no longer shows another player's waveform or loudness scan.
+- A player with no file loaded no longer shows another player's waveform or loudness scan, as a fresh player did with the result of one disposed just before.
 - The Hot Restart cleanup closes the old players off the main isolate, and the first new player waits for it.
 - Covers reach the media session plugins as bytes only: `file://` is read in Dart on every platform, and Apple downloads covers with the same retries and 20 MB limit as the others.
 - Android: `content://` and `android.resource://` covers show again, read on a queue of their own and checked as images.
@@ -40,6 +42,9 @@
 - A refused `http://` or `smb2://` connection fails at once on Windows instead of after the network timeout.
 - iOS and macOS share one Swift package in `darwin`.
 - Updated libmpv to `libmpv-r20` across all platforms, with the web module shipped as web assets of the package.
+
+### Docs
+- The README describes the web, how to serve the page cross-origin isolated (GitHub Pages included) and links a live demo, mpv_studio in the browser. MIGRATION covers 0.6.0.
 
 ## [0.5.3] - 22-10-2026
 
