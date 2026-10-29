@@ -5,6 +5,7 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -125,6 +126,39 @@ void main() {
         },
         timeout: const Timeout(Duration(seconds: 40)),
       );
+
+      // A port nothing listens on refuses the connection: each try fails
+      // at once, well before the network timeout. On Windows FFmpeg's
+      // poll is a select, which reports a failed connect only to a socket
+      // asked for errors: each try waited the whole timeout, 60 s here, and
+      // the entry failed after five minutes (check 40328562509).
+      test('a port that refuses the connection fails the entry after the '
+          'retries, each try at once', () async {
+        final closed = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        final port = closed.port;
+        await closed.close();
+        await player.setNetworkTimeout(const Duration(seconds: 60));
+        final clock = Stopwatch()..start();
+        final failed = player.stream.error
+            .firstWhere((e) => e is EndFileError)
+            .timeout(const Duration(seconds: 40));
+        await player.open(Media('http://127.0.0.1:$port/a.flac'), play: true);
+        try {
+          await failed;
+        } on TimeoutException {
+          fail(
+            'the refused open did not fail within 40 s\n'
+            'log:\n  ${log.join('\n  ')}',
+          );
+        }
+        // The open and four more tries, after 0, 1, 3 and 7 s; a refusal
+        // takes about 2 s on Windows.
+        expect(
+          clock.elapsed,
+          lessThan(const Duration(seconds: 30)),
+          reason: 'log:\n  ${log.join('\n  ')}',
+        );
+      }, timeout: const Timeout(Duration(seconds: 60)));
 
       test('an app can turn a default off', () async {
         server.goDown(const Duration(seconds: 30));

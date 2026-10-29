@@ -203,5 +203,52 @@ void main() {
       },
       timeout: const Timeout(Duration(seconds: 60)),
     );
+
+    // The result is one per process: a player that has loaded nothing has
+    // none of its own, and showed the one of another player (on the
+    // Windows runner, of the player the test before disposed: check
+    // 40328562509).
+    test('a player with no file loaded shows no analysis of another '
+        'player', () async {
+      final a = await buildPlayer();
+      final b = await buildPlayer();
+      try {
+        // A keeps its listeners, and with them its analysis.
+        final aDone = Completer<void>();
+        final aScanned = Completer<void>();
+        final aWave = a.stream.waveform.listen((w) {
+          if (w != null && !w.decoding && !aDone.isCompleted) aDone.complete();
+        });
+        final aScan = a.stream.loudnessScan.listen((s) {
+          if (s?.state == LoudnessScanState.ready && !aScanned.isCompleted) {
+            aScanned.complete();
+          }
+        });
+        addTearDown(aWave.cancel);
+        addTearDown(aScan.cancel);
+        await openAndWaitForLoad(a, fixture);
+        await aDone.future.timeout(const Duration(seconds: 10));
+        await aScanned.future.timeout(const Duration(seconds: 10));
+        expect(
+          ((await b.getRawPropertyNode('waveform-data')) as Map?)?['state'],
+          'ready',
+          reason: 'the result of A is the one of the process',
+        );
+
+        final waves = <WaveformData?>[];
+        final scans = <LoudnessScan?>[];
+        final bWave = b.stream.waveform.listen(waves.add);
+        final bScan = b.stream.loudnessScan.listen(scans.add);
+        // Several polls of the pipelines (120 ms each).
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        await bWave.cancel();
+        await bScan.cancel();
+        expect(waves.nonNulls, isEmpty, reason: 'waveforms: $waves');
+        expect(scans.nonNulls, isEmpty, reason: 'loudness scans: $scans');
+      } finally {
+        await b.dispose();
+        await a.dispose();
+      }
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

@@ -98,6 +98,12 @@ bool _complete(WaveformData? w) {
   return tail != 0 && (tail < 0 || w.filled.skip(tail).every((b) => b == 0));
 }
 
+/// [w] in a failure message: whether it is a partial and the bins filled.
+String _show(WaveformData? w) => w == null
+    ? 'null'
+    : 'decoding=${w.decoding} filled='
+          '${w.filled.where((b) => b != 0).length}/${w.filled.length}';
+
 /// The native state of the analyzer (`ready`, `decoding`, `progressive`,
 /// `failed`, ...), or `null` when there is none.
 Future<String?> _nativeState(Player player) async {
@@ -112,10 +118,12 @@ final class _Watch {
     _wave = player.stream.waveform.listen((w) {
       waves.add(w);
       wave = w;
+      _note('waveform ${_show(w)}');
     });
     _loud = player.stream.loudnessScan.listen((s) {
       scans.add(s);
       loudness = s;
+      _note('loudness ${s?.state.name}');
     });
   }
 
@@ -126,6 +134,18 @@ final class _Watch {
   LoudnessScan? loudness;
   late final StreamSubscription<WaveformData?> _wave;
   late final StreamSubscription<LoudnessScan?> _loud;
+  final Stopwatch _clock = Stopwatch()..start();
+  final List<String> _trace = [];
+  String? _lastState;
+
+  void _note(String what) =>
+      _trace.add('${_clock.elapsedMilliseconds} ms $what');
+
+  /// What the watch saw, from its start: the stream values and the native
+  /// states [settle] read, for failure messages.
+  String describe() => _trace.isEmpty
+      ? '  (nothing seen)'
+      : _trace.map((l) => '  $l').join('\n');
 
   /// Waits for the native analyzer to settle (`ready` or `failed`) and for
   /// the loudness scan to reach a terminal state. Fails with [log] when it
@@ -138,6 +158,8 @@ final class _Watch {
     DateTime? readyAt;
     while (true) {
       final state = await _nativeState(player);
+      if (state != _lastState) _note('native $state');
+      _lastState = state;
       if (state == 'failed' && _terminal(loudness)) return null;
       if (state == 'ready' && _terminal(loudness)) {
         readyAt ??= DateTime.now();
@@ -152,15 +174,10 @@ final class _Watch {
         }
       }
       if (DateTime.now().isAfter(deadline)) {
-        final w = wave;
-        final filled = w == null
-            ? 'null'
-            : 'decoding=${w.decoding} filled='
-                  '${w.filled.where((b) => b != 0).length}/${w.filled.length}';
         fail(
           'analysis did not settle within $timeout (native state $state, '
-          'waveform $filled, loudness ${loudness?.state}), requests:\n'
-          '${log()}',
+          'waveform ${_show(wave)}, loudness ${loudness?.state}), seen:\n'
+          '${describe()}\nrequests:\n${log()}',
         );
       }
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -361,14 +378,17 @@ void main() {
       });
       player = await buildPlayer();
       watch = _Watch(player!);
+      // The analysis is one per process: a fresh player must not start
+      // from the result of the one before.
+      watch!._note('native ${await _nativeState(player!)} before the open');
     });
 
     tearDown(() async {
-      // MAK_HTTP_LOG=1 prints the requests of every test, not only of a
-      // failing one.
+      // MAK_HTTP_LOG=1 prints the requests and what the watch saw in every
+      // test, not only in a failing one.
       if (Platform.environment['MAK_HTTP_LOG'] != null) {
         // ignore: avoid_print
-        print(server.describe());
+        print('${server.describe()}\n${watch?.describe()}');
       }
       await watch?.cancel();
       watch = null;
@@ -385,11 +405,12 @@ void main() {
       FutureOr<bool> Function() condition,
       String what, {
       Duration timeout = const Duration(seconds: 10),
+      String Function()? detail,
     }) async {
       final deadline = DateTime.now().add(timeout);
       while (!await condition()) {
         if (DateTime.now().isAfter(deadline)) {
-          fail('$what within $timeout\n${log()}');
+          fail('$what within $timeout${detail?.call() ?? ''}\n${log()}');
         }
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
@@ -469,15 +490,21 @@ void main() {
       test(
         'a file looping on itself is analysed once, from the cache',
         () async {
-          // Untimed: the loop comes back to the start as soon as the
-          // throttled download reaches the end.
-          await player!.setAudioNullUntimed(true);
+          // At 4x the 5 s file loops every 1.25 s once the throttled
+          // download is in. Not untimed: an untimed loop restarts the file
+          // thousands of times a second, and on the Windows runner the
+          // event pump fell behind that storm until mpv's event queue was
+          // full and every call failed (check 40351929409).
+          await player!.setRate(4);
           await player!.setLoop(Loop.file);
           server.bytesPerSecond = 48 * 1024;
           var wraps = 0;
           var last = Duration.zero;
           final pos = player!.stream.position.listen((p) {
-            if (p < last - const Duration(seconds: 1)) wraps++;
+            if (p < last - const Duration(seconds: 1)) {
+              wraps++;
+              watch!._note('wrap from $last to $p');
+            }
             last = p;
           });
           try {
@@ -487,6 +514,9 @@ void main() {
               () => wraps >= 2,
               'the file did not loop twice',
               timeout: const Duration(seconds: 20),
+              detail: () =>
+                  ' (wraps $wraps, position $last), seen:\n'
+                  '${watch!.describe()}',
             );
             expect(
               server.gets('/$flacName'),
@@ -518,6 +548,13 @@ void main() {
         final a = (await watch!.settle(log))!;
 
         final gets = server.gets('/$flacName');
+        expect(
+          gets,
+          isNotEmpty,
+          reason:
+              'the analysis settled with no GET of the file, seen:\n'
+              '${watch!.describe()}\n${log()}',
+        );
         expect(gets.first.dropped, isTrue, reason: log());
         // FFmpeg reconnects with a range from where the body stopped, so
         // the packets stay contiguous and the pass is still clean.
@@ -717,6 +754,13 @@ void main() {
         final a = (await watch!.settle(log))!;
 
         final gets = server.gets('/$flacName');
+        expect(
+          gets,
+          isNotEmpty,
+          reason:
+              'the analysis settled with no GET of the file, seen:\n'
+              '${watch!.describe()}\n${log()}',
+        );
         expect(gets.first.dropped, isTrue, reason: log());
         expect(
           gets.any((r) => r.status == 503),
