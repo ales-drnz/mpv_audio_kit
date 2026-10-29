@@ -1,3 +1,46 @@
+## [0.6.0] - Unreleased
+
+### Contributions
+- [@2697a](https://github.com/2697a): asked for Flutter Web support ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
+- [@erikjara](https://github.com/erikjara): reported that the waveform of an HTTP stream served without byte ranges never filled from mpv's cache ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
+
+### Breaking
+- Flutter 3.41 is the minimum.
+- `Hook` has `prefetch`: an exhaustive switch over it needs the new case. On `libmpv-r20` the early open of the next entry runs `on_prefetch`, and `on_load` runs once per entry, when it starts.
+- The source resolver runs on `on_prefetch` for the next entry, while the current one plays. A URL it returns after the entry started or left the next place is dropped with a warning.
+- `setMediaSession` throws `StateError` when another Flutter engine of the process owns the OS media session. The session stays with the first engine that enabled it, on every platform, and the commands go to it.
+- The reconnect defaults of http entries are mpv's global `stream-lavf-o`. An app that sets its own `stream-lavf-o` replaces them.
+- A custom libmpv older than `libmpv-r20`, or built without one of its patches, plays with a warning on `internalLog` that names what it lacks.
+- The event isolate's own diagnostics go to `internalLog` instead of `stream.log` and `stream.error`.
+
+### Added
+- The web: players run libmpv in WebAssembly and play through the page's Web Audio output. The page must be cross-origin isolated; `MpvAudioKit.unsupportedReason` says what it lacks, and a player there fails at once with a `PlayerInitException` that names it ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
+- `MpvAudioKit.needsUserGesture` and `needsUserGestureStream` say whether the browser holds the sound until a user gesture, and `Player.play` resumes it from inside the gesture.
+- `Media.fromBlob` plays a file the user picks or drops in the browser.
+- The OS media session on the web, through `navigator.mediaSession`.
+- `Media.waveformDurationHint` gives the length of an HTTP stream that cannot seek and tells none, such as a music server's transcode: its waveform decodes from mpv's cache, reads as `decoding` and turns final before playback ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
+- `endFile` carries the media, position and duration of the entry that ended, and whether a read error cut it short (`readError`, and `skippedSegments` for HLS and DASH). `PlayerState` has the same two fields for the entry parked at the end.
+
+### Fixed
+- An http entry recovers from a dropped connection, a failed open or an HLS segment that does not open, instead of ending early without an error.
+- A seek after a read error tries the read again.
+- `playing` comes back at the next file of a gapless advance, so `playbackState`, the spectrum, the taps and the media session no longer stay idle.
+- When a short entry plays out and parks between two position updates, `state.position` no longer goes back to its start.
+- The effects chain keeps the values set live through a seek, a loop, a track switch and the next file.
+- The source resolver gets the `Media` of the entry that loads, also when two entries share a URL.
+- A player with no file loaded no longer shows another player's waveform or loudness scan.
+- The Hot Restart cleanup closes the old players off the main isolate, and the first new player waits for it.
+- Covers reach the media session plugins as bytes only: `file://` is read in Dart on every platform, and Apple downloads covers with the same retries and 20 MB limit as the others.
+- Android: `content://` and `android.resource://` covers show again, read on a queue of their own and checked as images.
+- Android: the media service stays in the foreground through a call, so playback resumes when it ends.
+- Windows: a second engine gets its own media session channel, and a media key after the first engine is destroyed no longer uses freed memory.
+- Linux: one MPRIS server per process, owned by the first engine, and `xesam:url` is a file URI for a local item.
+
+### Build
+- A refused `http://` or `smb2://` connection fails at once on Windows instead of after the network timeout.
+- iOS and macOS share one Swift package in `darwin`.
+- Updated libmpv to `libmpv-r20` across all platforms, with the web module shipped as web assets of the package.
+
 ## [0.5.3] - 22-10-2026
 
 ### Contributions
