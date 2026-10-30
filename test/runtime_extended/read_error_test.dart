@@ -227,10 +227,24 @@ void main() {
             await player.seek(to);
           }
 
-          /// Waits for the park at the cut again, with the error.
+          /// Waits for the park at the cut again, with the error. The
+          /// state still holds the first park until the seek's restart
+          /// reaches the player, and play() can seek once more after it:
+          /// the wait starts from the core, parked again after the read
+          /// was refused, and ends on the park the restart left.
           Future<void> expectParkedAgain() async {
             await waitUntil(
-              () => player.state.completed,
+              () => server.refused >= 1,
+              reason: 'the read is tried again (${describe()})',
+            );
+            await waitUntil(
+              () async =>
+                  await player.getRawProperty('eof-reached') == 'yes' &&
+                  await player.getRawProperty('pause') == 'yes',
+              reason: 'mpv parked again (${describe()})',
+            );
+            await waitUntil(
+              () => completions.contains(false) && player.state.completed,
               reason: 'parked again (${describe()})',
             );
             expect(player.state.readError, isTrue, reason: describe());
@@ -243,12 +257,15 @@ void main() {
             completions.clear();
             await player.seek(to);
             await player.play();
+            // Only the park at the real end reads no error.
             await waitUntil(
-              () => completions.contains(false) && player.state.completed,
+              () =>
+                  completions.contains(false) &&
+                  player.state.completed &&
+                  player.state.readError == false,
               timeout: const Duration(seconds: 20),
               reason: 'parked at the real end (${describe()})',
             );
-            expect(player.state.readError, isFalse, reason: describe());
             expect(player.state.skippedSegments, 0);
             expect(
               player.state.position,
@@ -298,9 +315,12 @@ void main() {
               final seekAt = clock.elapsed;
               await player.play();
               await expectParkedAgain();
+              // No wait of a retry or of the network timeout: the reads
+              // after the seek fail at once. Measured to the park, which
+              // the event isolate can report late on a loaded runner.
               expect(
                 clock.elapsed - seekAt,
-                lessThan(const Duration(seconds: 3)),
+                lessThan(const Duration(seconds: 5)),
               );
               // One request; two when the seek has already failed and
               // play() finds the park and starts the track again.

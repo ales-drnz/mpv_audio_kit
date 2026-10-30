@@ -27,6 +27,7 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - An http entry recovers from a dropped connection, a failed open or an HLS segment that does not open, instead of ending early without an error.
 - A seek after a read error tries the read again.
 - `playing` comes back at the next file of a gapless advance, so `playbackState`, the spectrum, the taps and the media session no longer stay idle.
+- A seek or `play()` at the end that parks again before the player saw it move raises `completed` again, so `playWhenReady` goes back off and `readError` changes with an edge.
 - When a short entry plays out and parks between two position updates, `state.position` no longer goes back to its start.
 - The effects chain keeps the values set live through a seek, a loop, a track switch and the next file.
 - The source resolver gets the `Media` of the entry that loads, also when two entries share a URL.
@@ -40,6 +41,7 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 
 ### Build
 - A refused `http://` or `smb2://` connection fails at once on Windows instead of after the network timeout.
+- The end of a file with gapless audio plays to its last sample when the output ran dry in its final buffer (ALSA, PulseAudio, the web), instead of parking with up to 0.4 s unplayed.
 - iOS and macOS share one Swift package in `darwin`.
 - Updated libmpv to `libmpv-r20` across all platforms, with the web module shipped as web assets of the package.
 

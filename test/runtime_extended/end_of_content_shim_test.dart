@@ -234,6 +234,49 @@ void main() {
         },
       );
 
+      // A seek and a play() at the park whose leave no read of the event
+      // isolate sees: with freeze_park its eof-reached and pause reads
+      // answer 1, as when the core leaves and parks again between two of
+      // its reads (a slow pump on a loaded runner). The seek's restart
+      // still leaves the park: the new park is an edge of completed, and
+      // the intent of play() ends with it.
+      test('a park the player never sees left is a new end', () async {
+        await player.setAudioNullUntimed(true);
+        final parked = player.stream.completed
+            .firstWhere((c) => c)
+            .timeout(const Duration(seconds: 30));
+        await player.open(Media(longFixture), play: true);
+        await parked;
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(player.state.playWhenReady, isFalse);
+        final completions = <bool>[];
+        final sub = player.stream.completed.skip(1).listen(completions.add);
+        addTearDown(sub.cancel);
+        shim().set('freeze_park', 1);
+        await player.seek(const Duration(seconds: 3));
+        await player.play();
+        await waitUntil(
+          () async =>
+              await player.getRawProperty('eof-reached') == 'yes' &&
+              await player.getRawProperty('pause') == 'yes' &&
+              player.state.position > const Duration(seconds: 4),
+          timeout: const Duration(seconds: 10),
+          reason: 'mpv never parked at the end again',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(player.state.completed, isTrue);
+        expect(
+          completions,
+          containsAllInOrder([false, true]),
+          reason: 'the seek left the park and the play parked again',
+        );
+        expect(
+          player.state.playWhenReady,
+          isFalse,
+          reason: 'the intent of play() ends at the new park',
+        );
+      });
+
       libmpvReleaseGroup(20, 'A park the player never sees left', () {
         // A seek at the park and the play to the end can both go by
         // between two reads, as with an output that does not wait: the
@@ -273,7 +316,7 @@ void main() {
           expect(
             player.state.completed,
             isTrue,
-            reason: 'the shim must hide the seek from completed',
+            reason: 'parked at the real end',
           );
           await waitUntil(
             () => player.state.readError == false,
