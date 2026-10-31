@@ -39,15 +39,10 @@ int bigIntValue(JSBigInt value) => _number(value).toDartInt;
 @visibleForTesting
 final Map<String, int> webCallMaxMicros = {};
 
-/// Test-only: gets the name of each call of [timedCall] before it runs.
-@visibleForTesting
-void Function(String name)? debugWebCallTrace;
-
 /// Runs [body], the call [name] of the module, and records its length in
 /// [webCallMaxMicros].
 @internal
 T timedCall<T>(String name, T Function() body) {
-  debugWebCallTrace?.call(name);
   final clock = Stopwatch()..start();
   try {
     return body();
