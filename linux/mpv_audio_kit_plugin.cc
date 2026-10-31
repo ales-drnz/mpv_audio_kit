@@ -229,8 +229,8 @@ void mpv_audio_kit_plugin_register_with_registrar(FlPluginRegistrar* registrar) 
   // One MprisServer for the process (MprisHub), shared by every engine.
   // The plugin keeps its event channel, where the server forwards the
   // D-Bus commands while this engine owns the session. The method channel
-  // routes enable/update*/disable to the server and is leaked for the
-  // plugin lifetime (matching the channel-ownership pattern Flutter uses).
+  // routes enable/update*/disable to the server; the messenger keeps it,
+  // as the main channel above.
   if (hub == nullptr) hub = new MprisHub();
   hub->plugins++;
   plugin->in_hub = true;
@@ -248,7 +248,7 @@ void mpv_audio_kit_plugin_register_with_registrar(FlPluginRegistrar* registrar) 
 
   g_autoptr(FlStandardMethodCodec) ms_method_codec =
       fl_standard_method_codec_new();
-  FlMethodChannel* ms_method_channel = fl_method_channel_new(
+  g_autoptr(FlMethodChannel) ms_method_channel = fl_method_channel_new(
       fl_plugin_registrar_get_messenger(registrar),
       "mpv_audio_kit/media_session", FL_METHOD_CODEC(ms_method_codec));
   fl_method_channel_set_method_call_handler(
