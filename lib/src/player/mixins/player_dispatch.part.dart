@@ -254,11 +254,7 @@ mixin _DispatchModule on _PlayerBase {
       // the last one so a mid-playlist failure that auto-advances
       // doesn't flicker the button.
       if (lastEntry && _state.loop == Loop.off) {
-        _updateField(
-          (s) => s.copyWith(playWhenReady: false),
-          _reactives.playWhenReady,
-          false,
-        );
+        _transport.writeIntent(false);
       }
     }
     // mpv emits END_FILE(EOF) for EVERY finished entry, including a
