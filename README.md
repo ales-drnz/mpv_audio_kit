@@ -2796,7 +2796,8 @@ computed on a worker thread: about 2000 bins, each with its min, max and
 RMS, enough to paint a waveform
 overview or a waveform-style seekbar. There is one waveform per process:
 with several players, the last `open()` wins, and the stream of every
-player that listens shows that file, even one another player opened.
+player that listens and has a file loaded shows that file, even one
+another player opened; a player with nothing loaded shows none.
 While one player listens, the files of the others are decoded too, and
 an envelope that fills from playback takes in the audio of every player.
 It stays on while a player of the same isolate listens: another player's

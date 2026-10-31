@@ -841,8 +841,9 @@ class PlayerStream {
   /// listens.
   ///
   /// **Single active scan per process**, as for [waveform]: with several
-  /// players the last `open()` wins, and every listening player's stream
-  /// shows that file. The gain example above assumes one player.
+  /// players the last `open()` wins, and the stream of every listening
+  /// player with a file loaded shows that file. The gain example above
+  /// assumes one player.
   final Stream<LoudnessScan?> loudnessScan;
 
   // ── Media session ──────────────────────────────────────────────────
