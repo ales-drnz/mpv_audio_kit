@@ -141,19 +141,12 @@ extension _Lifecycle on _PlayerBase {
         parked &&
         lastEntry &&
         (loop == Loop.off || (live && loop == Loop.file));
-    if (end == _state.completed) {
-      // Parked again with no read in between, after a seek that played on
-      // to the end at once: this park tells how the entry ended now.
-      if (end &&
-          (readError != _state.readError ||
-              skippedSegments != _state.skippedSegments)) {
-        _state = _state.copyWith(
-          readError: readError,
-          skippedSegments: skippedSegments,
-        );
-      }
-      return;
-    }
+    final edge = end != _state.completed;
+    // Without an edge this only writes how the entry ended: a read that
+    // came late (or was held) raised `completed` before this park, so the
+    // restart that left the end was not seen between them (see
+    // [_handleEvent]), and this park tells how the entry ended now. Away
+    // from the end both are already clear.
     _updateLifecycle(
       completed: end,
       readError: readError,
@@ -163,6 +156,6 @@ extension _Lifecycle on _PlayerBase {
     // end (a seek back, a new file) keeps it. Only on the edge: a jump or
     // a replace issued at the park can see one more parked read before
     // its load starts, and must keep its intent.
-    if (end) _transport.writeIntent(false);
+    if (end && edge) _transport.writeIntent(false);
   }
 }
