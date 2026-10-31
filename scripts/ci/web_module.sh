@@ -13,8 +13,7 @@
 # checks the SHA-256 of the zip and of each file, and the ABI.
 #
 # libmpv-r20 is the first release with a web module. On a libmpv before it
-# the web tests do not run, with a notice: the pin is r19 until
-# scripts/update_libmpv.sh moves it, and test/packaging/web_module_test
+# the web tests do not run, with a notice, and test/packaging/web_module_test
 # fails on a pinned manifest without the module from r20 on. From r20 on a
 # module that cannot be had fails the job with CI=true, as a missing libmpv
 # fails the runtime suites; off CI it only warns. A module that does not
