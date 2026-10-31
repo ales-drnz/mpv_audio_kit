@@ -19,7 +19,6 @@ final class _Transport {
 
   final _PlayerBase _player;
 
-  bool _hasLoadedFile = false;
   int _fileStarts = 0;
 
   // Monotonic generation counter for content-replacing transport calls.
@@ -54,7 +53,7 @@ final class _Transport {
   /// even for a load that fails to open) rather than FILE_LOADED means a
   /// failed first open() still arms the reset, so its intent doesn't stick
   /// true.
-  bool get hasLoadedFile => _hasLoadedFile;
+  bool get hasLoadedFile => _fileStarts > 0;
 
   /// The MPV_EVENT_START_FILE events seen so far. A reply that arrives
   /// after a newer one may describe the file that load opened.
@@ -67,7 +66,6 @@ final class _Transport {
 
   /// mpv started a file (MPV_EVENT_START_FILE).
   void onStartFile() {
-    _hasLoadedFile = true;
     _fileStarts++;
   }
 
@@ -90,7 +88,7 @@ final class _Transport {
       // waits for the loads to end ([_settleIdleReset]): made
       // now, it flickered the OS button and undid a play() called
       // during the load.
-      if (_hasLoadedFile) {
+      if (hasLoadedFile) {
         if (_loadsInFlight > 0) {
           _idleResetPending = true;
         } else {
