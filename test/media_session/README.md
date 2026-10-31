@@ -30,9 +30,6 @@ test_app/integration_test/
 ├── media_session_test.dart    every platform, through the plugin's probe
 ├── linux_mpris_test.dart      Linux, read from the session bus with gdbus
 ├── windows_smtc_test.dart     Windows, read back from the SMTC
-├── windows_gsmtc_spike_test.dart
-│                              Windows, through the API of the media
-│                              flyout (a spike that does not gate)
 ├── android_engine_exit_test.dart
 │                              Android, a second engine: refused while
 │                              the first owns the session
