@@ -76,8 +76,8 @@ void MpvAudioKitPlugin::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue> & /*method_call*/,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   // The channel's methods (openFileDescriptor, closeFileDescriptor) are
-  // Android-only. The unused
-  // call param is left unnamed to avoid C4100 under MSVC /W4 /WX.
+  // Android-only. The unused call param is left unnamed to avoid C4100
+  // under MSVC /W4 /WX.
   result->NotImplemented();
 }
 

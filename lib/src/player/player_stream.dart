@@ -773,8 +773,9 @@ class PlayerStream {
   /// **Single active analysis per process.** The background analyzer is a
   /// process-global singleton: the most recent `open()` wins, so with
   /// multiple [Player]s alive only the last-loaded file's waveform is
-  /// computed, and every listening player's stream shows it, also when
-  /// another player loaded that file. While one player listens, the files
+  /// computed, and the stream of every listening player with a file loaded
+  /// shows it, also when another player loaded that file; a player with
+  /// nothing loaded shows none. While one player listens, the files
   /// of a player with no listener are decoded too. An envelope that grows
   /// from playback takes in the audio of every player. This matches the
   /// single-player-per-app usage this package targets; don't rely on
