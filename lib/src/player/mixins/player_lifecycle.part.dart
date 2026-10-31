@@ -16,7 +16,9 @@ extension _Lifecycle on _PlayerBase {
   /// last entry parks, `completed` can still be false. The calls that
   /// replace or jump need the core's answer at the call: an unpause
   /// written while mpv is about to park does not survive the park, so
-  /// they write it again after the load.
+  /// they write it again after the load. [Player.play] reads it too, after
+  /// its seek back from the park, to tell a seek that could not leave the
+  /// end.
   Future<bool> _parkedAtEof() async =>
       await getRawProperty('eof-reached') == 'yes';
 
