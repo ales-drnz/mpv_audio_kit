@@ -16,8 +16,8 @@ import FlutterMacOS
 /// `libmpv`; this class only exists to:
 ///
 /// - register the `mpv_audio_kit` method channel (unused on Apple — its
-///   only method, `openFileDescriptor` for `content://` URIs, is
-///   Android-only), and
+///   methods, `openFileDescriptor` and `closeFileDescriptor` for
+///   `content://` URIs, are Android-only), and
 /// - hand control off to `MediaSessionPlugin.register(with:)` so the
 ///   OS Now Playing widget / Control Center / lockscreen integration
 ///   gets wired up alongside the core plugin.
