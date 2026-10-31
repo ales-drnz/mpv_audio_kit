@@ -144,11 +144,12 @@ extension _Lifecycle on _PlayerBase {
         lastEntry &&
         (loop == Loop.off || (live && loop == Loop.file));
     final edge = end != _state.completed;
-    // Without an edge this only writes how the entry ended: a read that
-    // came late (or was held) raised `completed` before this park, so the
-    // restart that left the end was not seen between them (see
-    // [_handleEvent]), and this park tells how the entry ended now. Away
-    // from the end both are already clear.
+    // Without an edge this only refreshes how the entry ended: mostly a
+    // second read of the same park (its pause and eof-reached
+    // notifications each send one), with the same values. They differ
+    // when a read that came late (or was held) raised `completed` before
+    // this park, so the restart that left the end was not seen between
+    // them (see [_handleEvent]). Away from the end both are already clear.
     _updateLifecycle(
       completed: end,
       readError: readError,
