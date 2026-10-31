@@ -82,7 +82,9 @@ static void media_session_method_call_cb(FlMethodChannel* channel,
                                          FlMethodCall* method_call,
                                          gpointer user_data) {
   MpvAudioKitPlugin* plugin = MPV_AUDIO_KIT_PLUGIN(user_data);
-  mpv_audio_kit::MprisServer* mpris = hub != nullptr ? &hub->server : nullptr;
+  // The hub lives while any plugin does, and this handler holds a ref on
+  // its plugin.
+  mpv_audio_kit::MprisServer* mpris = &hub->server;
   const gchar* method = fl_method_call_get_name(method_call);
   FlValue* args = fl_method_call_get_args(method_call);
   g_autoptr(FlMethodResponse) response = nullptr;
@@ -93,16 +95,19 @@ static void media_session_method_call_cb(FlMethodChannel* channel,
       strcmp(method, "enable") == 0 || strcmp(method, "updateConfig") == 0 ||
       strcmp(method, "updateMetadata") == 0 ||
       strcmp(method, "updatePlayback") == 0;
-  if (mpris != nullptr && needs_map &&
+  if (needs_map &&
       (args == nullptr || fl_value_get_type(args) != FL_VALUE_TYPE_MAP)) {
-    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    // As on Windows: a malformed enable fails, a malformed update is dropped.
+    response =
+        strcmp(method, "enable") == 0
+            ? FL_METHOD_RESPONSE(fl_method_error_response_new(
+                  "bad_args", "enable expects a map", nullptr))
+            : FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
     fl_method_call_respond(method_call, response, nullptr);
     return;
   }
 
-  if (mpris == nullptr) {
-    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
-  } else if (strcmp(method, "enable") == 0) {
+  if (strcmp(method, "enable") == 0) {
     if (hub->engines.TryEnable(plugin)) {
       mpris->Enable(fl_value_lookup_string(args, "config"),
                     fl_value_lookup_string(args, "metadata"),
