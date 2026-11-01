@@ -72,19 +72,19 @@ void main() {
       expect(af, contains('lra=11.000'));
     });
 
-    test('rubberband with typed enum + numeric params', () {
+    test('agate with typed enum + numeric params', () {
       final af = audioEffectsChain(const [
-        RubberbandEffect(
-          tempo: 0.95,
-          pitchq: RubberbandPitch.speed,
-          transients: RubberbandTransients.smooth,
+        AgateEffect(
+          ratio: 4.0,
+          mode: AgateMode.upward,
+          link: AgateLink.maximum,
         ),
       ]);
       // Enums emit via `mpvValue` (the exact ffmpeg CONST name).
-      expect(af, startsWith('@aek_rubberband_0:lavfi-rubberband='));
-      expect(af, contains('tempo=0.950'));
-      expect(af, contains('pitchq=speed'));
-      expect(af, contains('transients=smooth'));
+      expect(af, startsWith('@aek_agate_0:lavfi-agate='));
+      expect(af, contains('ratio=4.000'));
+      expect(af, contains('mode=upward'));
+      expect(af, contains('link=maximum'));
     });
 
     test('aemphasis: default enum omitted, other values by mpvValue', () {
@@ -117,12 +117,12 @@ void main() {
   group('audioEffectsChain — order and repeated filters', () {
     test('list order is chain order', () {
       final entries = audioEffectsChain(const [
-        RubberbandEffect(tempo: 0.9),
+        AtempoEffect(tempo: 0.9),
         AcompressorEffect(),
         LoudnormEffect(),
       ]).split(',');
       expect(entries, [
-        '@aek_rubberband_0:lavfi-rubberband=tempo=0.900',
+        '@aek_atempo_0:lavfi-atempo=tempo=0.900',
         '@aek_acompressor_0:lavfi-acompressor',
         '@aek_loudnorm_0:lavfi-loudnorm',
       ]);
@@ -326,8 +326,8 @@ void main() {
       for (final v in AemphasisType.values) {
         expect(AemphasisType.fromMpv(v.mpvValue), v);
       }
-      for (final v in RubberbandPitch.values) {
-        expect(RubberbandPitch.fromMpv(v.mpvValue), v);
+      for (final v in AfadeCurve.values) {
+        expect(AfadeCurve.fromMpv(v.mpvValue), v);
       }
     });
   });

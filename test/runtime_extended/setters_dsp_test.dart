@@ -44,7 +44,7 @@ void main() {
         timeout: const Timeout(Duration(seconds: 5)),
       );
 
-      test('acompressor / loudnorm / rubberband round-trip', () async {
+      test('acompressor / loudnorm / atempo round-trip', () async {
         await putEffect(
           player,
           const AcompressorEffect(threshold: 0.1, ratio: 6),
@@ -56,9 +56,8 @@ void main() {
         await putEffect(player, const LoudnormEffect(i: -23));
         expect(effectOf<LoudnormEffect>(player).i, -23);
 
-        await putEffect(player, const RubberbandEffect(pitch: 1.5, tempo: 0.8));
-        expect(effectOf<RubberbandEffect>(player).pitch, 1.5);
-        expect(effectOf<RubberbandEffect>(player).tempo, 0.8);
+        await putEffect(player, const AtempoEffect(tempo: 0.8));
+        expect(effectOf<AtempoEffect>(player).tempo, 0.8);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test(
