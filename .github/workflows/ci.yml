@@ -5,6 +5,11 @@ on:
     branches: [main, 'release/**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: libmpv-scripts run whose libmpv-release artifact the jobs bundle (empty for the repository variable)
+        type: string
+        default: ''
 
 # A pull request cancels the run its next push makes stale. Pushes to main
 # and the release branches are never cancelled: each pushed commit has a
@@ -39,8 +44,12 @@ permissions:
 # ales-drnz/libmpv-scripts only, renewed before the expiry date chosen when
 # it was made. The changes job checks the token, the run and the pinned
 # release before anything else starts (scripts/ci/preflight.sh).
+#
+# A run started by hand can name the run instead, as the input
+# libmpv_scripts_run, to test a branch on a Build without changing the
+# variable for every other run.
 env:
-  LIBMPV_SCRIPTS_RUN: ${{ vars.LIBMPV_SCRIPTS_RUN }}
+  LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
 
 jobs:
   # Decides whether the tests and the builds have anything to check. They
