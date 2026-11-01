@@ -44,7 +44,7 @@ void main() {
         timeout: const Timeout(Duration(seconds: 5)),
       );
 
-      test('acompressor / loudnorm / atempo round-trip', () async {
+      test('acompressor / loudnorm / atempo / afreqshift round-trip', () async {
         await putEffect(
           player,
           const AcompressorEffect(threshold: 0.1, ratio: 6),
@@ -57,6 +57,16 @@ void main() {
         expect(effectOf<LoudnormEffect>(player).i, -23);
 
         await putEffect(player, const AtempoEffect(tempo: 0.8));
+        expect(effectOf<AtempoEffect>(player).tempo, 0.8);
+
+        // Two numeric fields of one stage, as pitch and tempo of the
+        // rubberband stage this test checked before the LGPL libmpv.
+        await putEffect(
+          player,
+          const AfreqshiftEffect(shift: 50.0, level: 0.8),
+        );
+        expect(effectOf<AfreqshiftEffect>(player).shift, 50.0);
+        expect(effectOf<AfreqshiftEffect>(player).level, 0.8);
         expect(effectOf<AtempoEffect>(player).tempo, 0.8);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
