@@ -5,6 +5,11 @@ on:
     branches: [main, 'release/**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: libmpv-scripts run whose libmpv-release artifact the jobs bundle (empty for the repository variable, else the Build found by itself)
+        type: string
+        default: ''
 
 # A pull request cancels the run its next push makes stale. Pushes to main
 # and the release branches are never cancelled: each pushed commit has a
@@ -20,27 +25,34 @@ permissions:
   # The changes job looks for green runs of a commit and of its parent.
   actions: read
 
-# Until a libmpv release is published, set the repository variable
-# LIBMPV_SCRIPTS_RUN to the libmpv-scripts run that built it: the jobs that
-# bundle libmpv then take that run's libraries instead of the pinned
-# release (see .github/actions/libmpv-from-run), and Test (Web) its web
-# module. Unset the variable once the release is out: the run's artifacts
-# expire after 90 days, and main would keep testing them instead of the
-# release.
+# The jobs that bundle libmpv take the libmpv the package needs: the later
+# of the pin (libmpvRelease in lib/src/internals/libmpv_release.dart) and
+# the minimum the player relies on (libmpvMinimumRelease in
+# libmpv_requirements.dart), libmpv-rN. While libmpv-rN is not published,
+# the changes job finds the libmpv-scripts Build that made it, once for
+# every job: the latest successful run of build.yml on release/rN started
+# by a push (scripts/ci/resolve_libmpv_run.sh). The jobs then take that
+# run's libraries instead of the pinned release (see
+# .github/actions/libmpv-from-run), and Test (Web) its web module. Once
+# libmpv-rN is out the pinned release serves, with a warning until
+# scripts/update_libmpv.sh rN moves the pin. Nothing is set by hand.
 #
 # The tests of a fix in libmpv-rN fail here, instead of skipping, on a
 # binary without it when rN is the release the run expects (the run's, or
 # the pin without one), and test/packaging/libmpv_release_test fails when
-# the tests need a release past it. So the tests of rN go in once
-# LIBMPV_SCRIPTS_RUN points at the Build of rN.
+# the tests need a release past it.
 #
-# Before setting it, check that the secret LIBMPV_SCRIPTS_TOKEN exists and
-# has not expired: a fine-grained token with Actions read access on
+# Reading the Builds and their artifacts needs the secret
+# LIBMPV_SCRIPTS_TOKEN: a fine-grained token with Actions read access on
 # ales-drnz/libmpv-scripts only, renewed before the expiry date chosen when
 # it was made. The changes job checks the token, the run and the pinned
 # release before anything else starts (scripts/ci/preflight.sh).
-env:
-  LIBMPV_SCRIPTS_RUN: ${{ vars.LIBMPV_SCRIPTS_RUN }}
+#
+# To force a Build, the input libmpv_scripts_run of a run started by hand
+# names it for that run, and the repository variable LIBMPV_SCRIPTS_RUN
+# for every run while it is set (the input wins). Neither is needed
+# otherwise: leave the variable unset, since run artifacts expire after 90
+# days.
 
 jobs:
   # Decides whether the tests and the builds have anything to check. They
@@ -55,6 +67,8 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      # The libmpv-scripts run the jobs bundle, empty for the pinned release.
+      libmpv_run: ${{ steps.libmpv.outputs.run }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -69,12 +83,25 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           REPO: ${{ github.repository }}
         run: scripts/ci/changes_gate.sh
+      # The libmpv-scripts Build the jobs bundle, if the release they need
+      # is not published: found once here, for every job.
+      - name: libmpv-scripts run
+        id: libmpv
+        if: steps.diff.outputs.code == 'true'
+        env:
+          LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
+          GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          run="$(scripts/ci/resolve_libmpv_run.sh)"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       # The libmpv the jobs will bundle must be there: one error here
       # instead of each job failing on its own, minutes in.
       - name: Preflight
         if: steps.diff.outputs.code == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          LIBMPV_SCRIPTS_RUN: ${{ steps.libmpv.outputs.run }}
           LIBMPV_SCRIPTS_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           FORK: ${{ github.event.pull_request.head.repo.fork }}
         run: scripts/ci/preflight.sh
@@ -151,7 +178,7 @@ jobs:
         run: bash test/media_session/cpp/run.sh
       - uses: ./.github/actions/libmpv-from-run
         with:
-          run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: pubspec.yaml
       # The build hook bundles libmpv for flutter test. ALSA is its one
@@ -218,7 +245,7 @@ jobs:
           swiftc --version
       - uses: ./.github/actions/libmpv-from-run
         with:
-          run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: pubspec.yaml
       # The files whose result can depend on the host: the Dart-only ones
@@ -227,9 +254,9 @@ jobs:
         run: flutter test -x network $(scripts/ci/platform_tests.sh)
 
   # The web backend in Chrome, on libmpv built as WebAssembly. The module
-  # is the web build of the libmpv the other jobs bundle, the run's with
-  # LIBMPV_SCRIPTS_RUN and the pinned release's without, checked against
-  # its manifest. A libmpv before r20 has none: the tests then do not run,
+  # is the web build of the libmpv the other jobs bundle, the run's when
+  # the changes job found or was given one and the pinned release's
+  # otherwise, checked against its manifest. A libmpv before r20 has none: the tests then do not run,
   # with a notice (scripts/ci/web_module.sh). test/web/README.md describes
   # the three runs.
   test-web:
@@ -247,12 +274,13 @@ jobs:
       - id: run
         uses: ./.github/actions/libmpv-from-run
         with:
-          run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
       - name: Web module
         id: module
         env:
           RUN_DIR: ${{ steps.run.outputs.dir }}
+          LIBMPV_SCRIPTS_RUN: ${{ needs.changes.outputs.libmpv_run }}
         run: scripts/ci/web_module.sh
       - if: steps.module.outputs.ready == 'true'
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
@@ -465,7 +493,7 @@ jobs:
         run: flutter config --no-enable-swift-package-manager
       - uses: ./.github/actions/libmpv-from-run
         with:
-          run-id: ${{ env.LIBMPV_SCRIPTS_RUN }}
+          run-id: ${{ needs.changes.outputs.libmpv_run }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
           pubspecs: test_app/pubspec.yaml
       - name: Build test app

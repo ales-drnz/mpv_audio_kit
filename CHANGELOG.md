@@ -30,6 +30,8 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - A seek after a read error tries the read again.
 - `playing` comes back at the next file of a gapless advance, so `playbackState`, the spectrum, the taps and the media session no longer stay idle.
 - A seek or `play()` at the end that parks again before the player saw it move raises `completed` again, so `playWhenReady` goes back off and `readError` changes with an edge.
+- `play()` and `jump()` at the end whose move lands on the end again (an entry with no audio, a seek past a cut that fails again) no longer leave `playWhenReady` true over a silent park.
+- Each park at the end spends the play intent once: a loop turned off again at the same park, or a read of a park that `play()`, `jump()` or a load is leaving, no longer turns `playWhenReady` off, and a park reached while a load runs keeps the intent of the load.
 - When a short entry plays out and parks between two position updates, `state.position` no longer goes back to its start.
 - The effects chain keeps the values set live through a seek, a loop, a track switch and the next file.
 - The source resolver gets the `Media` of the entry that loads, also when two entries share a URL.

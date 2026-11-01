@@ -232,8 +232,8 @@ if [[ ! "$MANIFEST" -ef "$ROOT/tool/codegen/libmpv_manifest.json" ]]; then
 fi
 
 if [[ -n "${2:-}" ]]; then
-  echo "While $TAG is not published, CI needs the repository" \
-    "variable LIBMPV_SCRIPTS_RUN set to the libmpv-scripts run that built it," \
-    "and the secret LIBMPV_SCRIPTS_TOKEN present and not expired" \
+  echo "While $TAG is not published, CI takes the latest successful" \
+    "Build of libmpv-scripts release/$RELEASE (scripts/ci/resolve_libmpv_run.sh)," \
+    "which needs the secret LIBMPV_SCRIPTS_TOKEN present and not expired" \
     "(see .github/workflows/ci.yml)."
 fi

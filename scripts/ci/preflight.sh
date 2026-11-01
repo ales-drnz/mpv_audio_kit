@@ -18,7 +18,8 @@
 # that fails for want of GitHub only warns: the jobs will try again.
 #
 # Reads from the environment:
-#   LIBMPV_SCRIPTS_RUN    the repository variable, empty when unset
+#   LIBMPV_SCRIPTS_RUN    the run the jobs bundle (resolve_libmpv_run.sh),
+#                         empty for the pinned release
 #   LIBMPV_SCRIPTS_TOKEN  the secret, empty when unset
 #   FORK                  "true" on a pull request from a fork
 #   GH_TOKEN              the workflow's token, for this repository's releases
@@ -49,7 +50,7 @@ check_release() {
   fi
   if ! names="$(gh api "repos/$repo/releases/tags/$tag" --jq '.assets[].name' 2>"$err")"; then
     if [[ "$(http_status)" == 404 ]]; then
-      echo "::error::The pinned libmpv release $tag is not published on $repo. Until it is, set the repository variable LIBMPV_SCRIPTS_RUN to the libmpv-scripts run that built it."
+      echo "::error::The pinned libmpv release $tag is not published on $repo. Until it is, CI takes the libmpv-scripts Build of it (scripts/ci/resolve_libmpv_run.sh), which needs LIBMPV_SCRIPTS_TOKEN, or a run given as LIBMPV_SCRIPTS_RUN."
       exit 1
     fi
     echo "::warning::Could not look up the pinned libmpv release $tag: $(cat "$err")"
