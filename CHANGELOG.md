@@ -14,6 +14,7 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - The reconnect defaults of http entries are mpv's global `stream-lavf-o`. An app that sets its own `stream-lavf-o` replaces them.
 - A custom libmpv older than `libmpv-r20`, or built without one of its patches, plays with a warning on `internalLog` that names what it lacks.
 - The event isolate's own diagnostics go to `internalLog` instead of `stream.log` and `stream.error`.
+- `RubberbandEffect`, its eight `Rubberband*` enums and `AudioFilter.rubberband` are gone: the libmpv of `libmpv-r20` is LGPL, version 3 or later, and leaves out Rubber Band, which is GPL. `setPitch`, `setRate` with pitch correction, `AtempoEffect` and `AsetrateEffect` remain; with a GPL libmpv built by hand, `RawAudioEffect('lavfi-rubberband=...')` still runs it.
 
 ### Added
 - The web: players run libmpv in WebAssembly and play through the page's Web Audio output. The page must be cross-origin isolated; `MpvAudioKit.unsupportedReason` says what it lacks, and a player there fails at once with a `PlayerInitException` that names it ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
@@ -44,9 +45,11 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - The end of a file with gapless audio plays to its last sample when the output ran dry in its final buffer (ALSA, PulseAudio, the web), instead of parking with up to 0.4 s unplayed.
 - iOS and macOS share one Swift package in `darwin`.
 - Updated libmpv to `libmpv-r20` across all platforms, with the web module shipped as web assets of the package.
+- The bundled libmpv is LGPL, version 3 or later, instead of GPL: built without Rubber Band, and with its license texts in the release's `licenses.zip`.
 
 ### Docs
 - The README describes the web, how to serve the page cross-origin isolated (GitHub Pages included) and links a live demo, mpv_studio in the browser. MIGRATION covers 0.6.0.
+- The README has a Licenses section: what an app that ships the bundled libmpv must do, and the GPL route for Rubber Band.
 
 ## [0.5.3] - 22-10-2026
 

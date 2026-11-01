@@ -53,6 +53,37 @@ define gets a warning on `internalLog` when it is older than libmpv-r20 or
 lacks one of its patches, naming what each missing patch costs. It still
 plays.
 
+## RubberbandEffect
+
+libmpv-r20 is LGPL, version 3 or later, and leaves out Rubber Band, which
+is GPL. `RubberbandEffect`, the `Rubberband*` enums (`RubberbandPitch`,
+`RubberbandTransients` and the others) and `AudioFilter.rubberband` are
+gone.
+
+| 0.5.x | 0.6.0 |
+| --- | --- |
+| `RubberbandEffect(pitch: p)` | `setPitch(p)`: mpv resamples and corrects the tempo with `scaletempo2` |
+| `RubberbandEffect(tempo: t)` | `setRate(t)` with `setPitchCorrection(true)`, the default, or `AtempoEffect(tempo: t)` in the chain |
+| `RubberbandEffect(pitch: p, tempo: t)` in the chain | `AsetrateEffect` with `AresampleEffect` changes pitch and speed together; follow it with `AtempoEffect` to set the tempo apart |
+| `formant`, `transients`, `window` and the other options | No LGPL equivalent |
+
+To keep Rubber Band, build libmpv yourself with libmpv-scripts' GPL option
+(`LIBMPV_GPL=1`), bundle it with the build hook's `libmpv` user define and
+write the stage as `RawAudioEffect('lavfi-rubberband=pitch=1.0594')`. That
+library is GPL, and an app that ships it must be GPL too (README,
+Licenses).
+
+### Saved effect chains
+
+An app that stores chains and maps them back to typed effects by filter
+name no longer finds `rubberband`: `AudioFilter.values.byName('rubberband')`
+throws `ArgumentError`. Drop the stage or map it to one of the above when
+it reads a saved chain. A `rubberband` stage that reaches mpv, as a
+`RawAudioEffect`, is an unknown filter on the bundled libmpv: with a
+file loaded, `setAudioEffects` throws `MpvCommandException` and keeps the
+last chain mpv accepted; without one, the error comes at the next load,
+on `stream.error`.
+
 ## Behavior changes
 
 - The event isolate's own diagnostics (an event it could not decode, a
