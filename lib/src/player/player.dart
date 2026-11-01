@@ -212,6 +212,11 @@ class Player extends _PlayerBase
         }
         rethrow;
       }
+      // The replace leaves the park of the old file: its START_FILE is
+      // queued behind this reply, and can reach the player after the load
+      // ends. A park of the old file reached while this load ran keeps the
+      // intent (see [_Transport._park]).
+      _transport.takePark();
       // Asked again, not reused: a pause() called while the loadfile was in
       // flight has the last word.
       if (parkedAtEof && _transport.intendedPlay(intent, shouldPlay)) {
@@ -357,6 +362,8 @@ class Player extends _PlayerBase
       // The parked flow went through idle, which does not spend the intent
       // while this call runs: see the idle-active observer.
       await _calls.commandChecked(['playlist-play-index', target.toString()]);
+      // The jump leaves the park, as the replace of [open] does.
+      _transport.takePark();
 
       // ── Phase 4: drop the retained old entry ──────────────────────────
       // Non-current by now (the jump moved current to the target), so the
@@ -551,6 +558,8 @@ class Player extends _PlayerBase
         }
         rethrow;
       }
+      // See [open]: the replace leaves the park.
+      _transport.takePark();
       // See [open]: asked again, a pause() during the loadlist wins.
       if (parkedAtEof && _transport.intendedPlay(intent, shouldPlay)) {
         await _calls.prop('pause', 'no');

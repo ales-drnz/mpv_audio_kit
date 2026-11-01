@@ -64,9 +64,76 @@ final class _Transport {
   /// and the idle-active observer keep the intent.
   int get loadsInFlight => _loadsInFlight;
 
+  // The park generation the core is in. The core is always in one: it
+  // opens at every MPV_EVENT_START_FILE and PLAYBACK_RESTART, the only ways
+  // a park is left. An unpause at a park is undone by keep-open, and a seek
+  // or a new file always brings one of the two events.
+  //
+  // Each generation spends the play intent at most once: its first
+  // end-of-content read at the end ([onEndOfContent]) spends it, or a call
+  // that leaves the park takes it first ([takePark]), and then no read of
+  // that generation spends. So no intent write depends on the order of a
+  // reply and a read, which mpv and the pump fix as follows: mpv notifies
+  // PLAYBACK_RESTART in its playloop pass ahead of the end-of-file
+  // handling that parks again, and serves client requests only between
+  // passes, queueing the reply of a command before the event of the move
+  // it causes; the pump's events, its reads and the replies reach this
+  // isolate through one FIFO, natively and on the web, and an await
+  // continuation here runs before the next of them. A read the pump sent
+  // for the generation being left lands before the event that opens the
+  // next one; the read after that event belongs to the new generation,
+  // which the call leaving the park did not take: landed at the end
+  // again, it spends.
+  //
+  // A spend that comes while a content-replacing load runs waits for the
+  // loads to end ([_deferredPark]): the load leaves the park.
+  int _park = 0;
+
+  // The generation that spent the intent or was taken, -1 for none.
+  int _spentPark = -1;
+
+  // The generation whose spend waits for the loads to end.
+  int? _deferredPark;
+
   /// mpv started a file (MPV_EVENT_START_FILE).
   void onStartFile() {
     _fileStarts++;
+    _park++;
+  }
+
+  /// mpv restarted playback (MPV_EVENT_PLAYBACK_RESTART): a seek landed,
+  /// and the park, if any, was left.
+  void onRestart() => _park++;
+
+  /// An end-of-content read found the queue at its end: the first one of
+  /// the generation spends the play intent, unless a call leaving the park
+  /// took it. While a content-replacing load runs, the spend waits for the
+  /// loads to end, and goes only if the core is still in that park then.
+  void onEndOfContent() {
+    if (_spentPark == _park) return;
+    if (_loadsInFlight > 0) {
+      _deferredPark = _park;
+      return;
+    }
+    _spentPark = _park;
+    writeIntent(false);
+  }
+
+  /// A call leaving the park takes its generation: no read of it spends
+  /// the intent from now on.
+  void takePark() => _spentPark = _park;
+
+  /// The spend left to the end of the loads. The generation moves at every
+  /// START_FILE and restart, the only ways out of a park, and a loop change
+  /// clears `completed` with the read that turned the end off: with both
+  /// unchanged the core is still in that park, as a core read would say.
+  void _settleDeferredPark() {
+    final park = _deferredPark;
+    _deferredPark = null;
+    if (park == null || park != _park || _spentPark == park) return;
+    if (_player._disposed || !_player._state.completed) return;
+    _spentPark = park;
+    writeIntent(false);
   }
 
   /// mpv entered its idle loop ([idle]) or left it.
@@ -118,7 +185,11 @@ final class _Transport {
       await load();
     } finally {
       _loadsInFlight--;
-      if (_loadsInFlight == 0 && _idleResetPending) await _settleIdleReset();
+      if (_loadsInFlight == 0) {
+        // Both may write the intent off; neither ever writes it on.
+        _settleDeferredPark();
+        if (_idleResetPending) await _settleIdleReset();
+      }
     }
   }
 

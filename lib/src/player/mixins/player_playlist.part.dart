@@ -200,12 +200,15 @@ mixin _PlaylistModule on _PlayerBase {
       _transport.intendedPlay(intent, true) ? 'no' : 'yes',
     );
     await _calls.commandChecked(['playlist-play-index', index.toString()]);
+    // The jump leaves the park, as the seek of [play] does: its START_FILE
+    // is queued behind this reply. A read of the park that spent the
+    // intent since the call began is undone; an entry that parks at once
+    // opens a new park, whose read spends the intent.
+    _transport.takePark();
+    if (_transport.owns(intent)) _transport.writeIntent(true);
     if (parkedAtEof && _transport.intendedPlay(intent, true)) {
       await _calls.prop('pause', 'no');
     }
-    // A park read on its way when this call began clears the intent on
-    // arrival, as in [play]: set again while this call still owns it.
-    if (_transport.owns(intent)) _transport.writeIntent(true);
   }
 
   /// Moves the track at [from] to position [to].

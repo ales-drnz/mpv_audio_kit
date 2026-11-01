@@ -143,9 +143,8 @@ extension _Lifecycle on _PlayerBase {
         parked &&
         lastEntry &&
         (loop == Loop.off || (live && loop == Loop.file));
-    final edge = end != _state.completed;
-    // Without an edge this only refreshes how the entry ended: mostly a
-    // second read of the same park (its pause and eof-reached
+    // With `completed` as it was, this only refreshes how the entry ended:
+    // mostly a second read of the same park (its pause and eof-reached
     // notifications each send one), with the same values. They differ
     // when a read that came late (or was held) raised `completed` before
     // this park, so the restart that left the end was not seen between
@@ -155,10 +154,13 @@ extension _Lifecycle on _PlayerBase {
       readError: readError,
       skippedSegments: skippedSegments,
     );
-    // The play-pause intent is spent at the end of content; leaving the
-    // end (a seek back, a new file) keeps it. Only on the edge: a jump or
-    // a replace issued at the park can see one more parked read before
-    // its load starts, and must keep its intent.
-    if (end && edge) _transport.writeIntent(false);
+    // The play-pause intent is spent at the end of content, once per park:
+    // the reads that follow find the same park and keep what a call wrote
+    // since. A call that leaves the park (play() seeking back, a jump, a
+    // load) takes it, so a read of the park it leaves, still on its way,
+    // keeps the call's intent; landed at the end again, the read after the
+    // move belongs to a new park and spends. A park reached while a load
+    // runs waits for the load, which leaves it (see [_Transport._park]).
+    if (end) _transport.onEndOfContent();
   }
 }

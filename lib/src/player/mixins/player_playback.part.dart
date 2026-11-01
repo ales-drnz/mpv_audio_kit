@@ -40,6 +40,13 @@ mixin _PlaybackModule on _PlayerBase {
     // is already out, and an unpause written now would undo it.
     if (!_transport.owns(intent)) return;
     if (parked) {
+      // The seek leaves this park: no read of it spends the intent of this
+      // call from now on, and one that spent it during the reads above (the
+      // park had just happened) is undone. Landed at the end again, the
+      // seek's restart opens a new park, whose read spends the intent
+      // whether it comes before or after the replies below.
+      _transport.takePark();
+      _transport.writeIntent(true);
       await _calls.command(['seek', '0', 'absolute']);
       // A seek that landed has left EOF by the next read: the seek wakes
       // the core, which runs it before it serves another request. Still at
@@ -61,10 +68,6 @@ mixin _PlaybackModule on _PlayerBase {
       }
       if (!_transport.owns(intent)) return;
       await _calls.prop('pause', 'no');
-      // A park read still on its way when this call began (the park had
-      // just happened) clears the intent on arrival; by now it has
-      // arrived, so the intent of this call is set again.
-      if (_transport.owns(intent)) _transport.writeIntent(true);
       return;
     }
     await _calls.prop('pause', 'no');

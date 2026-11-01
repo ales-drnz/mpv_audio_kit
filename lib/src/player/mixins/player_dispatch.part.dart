@@ -55,9 +55,11 @@ mixin _DispatchModule on _PlayerBase {
           // A restart is a seek that landed: it left the park, even when
           // it lands on the end again (a seek past a cut whose read fails
           // again) or the play after it parks before any read of the
-          // event isolate saw it move. The end-of-content read that
-          // follows the restart raises `completed` again for that park,
-          // with how the entry ended this time, and ends the play intent.
+          // event isolate saw it move. It opens a new park generation:
+          // the end-of-content read that follows the restart raises
+          // `completed` again for that park, with how the entry ended this
+          // time, and spends the play intent of the generation.
+          _transport.onRestart();
           if (_state.completed) _updateLifecycle(completed: false);
           _applyPolledPosition(timePos);
           _seekCompletedCtrl.add(null);
