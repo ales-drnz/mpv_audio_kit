@@ -5,8 +5,8 @@ part of '../player.dart';
 
 /// The transport axis of a player: the load epoch, the loads in flight,
 /// the play-pause intent ([PlayerState.playWhenReady]) across the calls
-/// that set it, and the file starts. Its events move counters; the callers
-/// read them as before.
+/// that set it, the file starts and the park generation. Its events move
+/// counters; the callers read them as before.
 ///
 /// Each content-replacing call claims the load epoch, and every load path
 /// checks its [_LoadTicket] after each await. Each public call that sets
@@ -14,6 +14,17 @@ part of '../player.dart';
 /// after an await (a failed load, the pause write of a load) leaves it
 /// alone once a later call claimed it. The loads in flight hold back the
 /// intent reset of an idle core while they give it content.
+///
+/// The park generation moves at every START_FILE and PLAYBACK_RESTART, the
+/// only ways out of a keep-open park, and each generation spends the
+/// intent at most once: the first end-of-content read at the end
+/// ([onEndOfContent]) spends it, unless a call that leaves the park took
+/// the generation first ([takePark]). A call takes it after the reply of
+/// its moving command (a seek, `playlist-play-index`, a load), which mpv
+/// queues ahead of the move's own event, so the take is the generation
+/// that command leaves. A spend that comes while a load runs is deferred
+/// to the end of the loads, and goes only if the core is still in that
+/// generation then.
 final class _Transport {
   _Transport(this._player);
 

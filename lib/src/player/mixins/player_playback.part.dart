@@ -40,14 +40,24 @@ mixin _PlaybackModule on _PlayerBase {
     // is already out, and an unpause written now would undo it.
     if (!_transport.owns(intent)) return;
     if (parked) {
-      // The seek leaves this park: no read of it spends the intent of this
-      // call from now on, and one that spent it during the reads above (the
-      // park had just happened) is undone. Landed at the end again, the
-      // seek's restart opens a new park, whose read spends the intent
-      // whether it comes before or after the replies below.
+      // The seek leaves the park. Taken here, the park the reads saw spends
+      // nothing more and the intent shows playing at once, without a
+      // flicker. That is not the park the seek leaves when an earlier move
+      // is still on its way (a seek to the end called just before): its
+      // restart opens a new park, whose read can spend the intent before
+      // this seek runs. So the park is taken again after the seek's reply,
+      // which mpv queues ahead of the seek's own restart: that take is the
+      // generation this seek leaves, whatever came between, and a spend in
+      // between is undone. Landed at the end again, the seek's restart
+      // opens a new park, whose read spends the intent whether it comes
+      // before or after the replies below.
       _transport.takePark();
       _transport.writeIntent(true);
       await _calls.command(['seek', '0', 'absolute']);
+      if (_transport.owns(intent)) {
+        _transport.takePark();
+        _transport.writeIntent(true);
+      }
       // A seek that landed has left EOF by the next read: the seek wakes
       // the core, which runs it before it serves another request. Still at
       // EOF on a source that cannot seek, it failed. The unpause would only

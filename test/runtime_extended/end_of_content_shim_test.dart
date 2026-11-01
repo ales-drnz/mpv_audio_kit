@@ -429,6 +429,74 @@ void main() {
         expect(player.state.position, lessThan(const Duration(seconds: 4)));
       });
 
+      // play() at a park while a seek to the end, called just before it, is
+      // still on its way: play() reads the park and takes it, then the
+      // earlier seek lands on the end again, and the read of its restart
+      // spends the intent, all before the seek of play() leaves for 0. The
+      // shim holds the earlier seek until play() sends its own, and that
+      // one until the restart of the earlier seek has been read. The
+      // player then plays from the start, and the intent must say so.
+      test('play() at a park with a seek to the end in flight plays from '
+          'the start', () async {
+        await openAndWaitForLoad(player, longFixture);
+        await player.seek(const Duration(milliseconds: 4700));
+        await player.play();
+        await waitUntil(
+          () async =>
+              player.state.completed &&
+              await player.getRawProperty('eof-reached') == 'yes' &&
+              await player.getRawProperty('pause') == 'yes',
+          timeout: const Duration(seconds: 10),
+          reason: 'mpv never parked',
+        );
+        // The reads the park itself started are done by then.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(player.state.playWhenReady, isFalse);
+        final completions = recordCompletions();
+        shim()
+          ..holdRequest('seek')
+          ..deferRequest(
+            'seek',
+            afterEvent: MpvEventId.mpvEventPlaybackRestart,
+          );
+        final toEnd = player.seek(const Duration(milliseconds: 4999));
+        await player.play();
+        await toEnd;
+        expect(
+          shim().counter('held_requests_sent'),
+          1,
+          reason:
+              'the seek to the end must reach mpv after the reads of play()',
+        );
+        expect(
+          shim().counter('deferred_sent'),
+          1,
+          reason: 'the seek of play() must go after the restart of the first',
+        );
+        expect(
+          completions,
+          containsAllInOrder([false, true, false]),
+          reason:
+              'the seek to the end landed on the end, read before the seek '
+              'of play() left it',
+        );
+        await waitUntil(
+          () async =>
+              await player.getRawProperty('pause') == 'no' &&
+              player.state.playing,
+          reason: 'play() at the park must play',
+        );
+        // The reads of the restart of play()'s seek.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(player.state.playing, isTrue);
+        expect(
+          player.state.playWhenReady,
+          isTrue,
+          reason: 'playing from the start: the intent of play() stands',
+        );
+        expect(player.state.position, lessThan(const Duration(seconds: 2)));
+      });
+
       group('a park reached while a load runs', () {
         setUp(() {
           // A `slow://` URI resolves to the long fixture after its delay
