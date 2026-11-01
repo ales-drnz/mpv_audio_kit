@@ -38,3 +38,4 @@ __pycache__/
 /web/libmpv.mjs
 /web/libmpv.wasm
 /web/mak_webaudio_processor.js
+/web/THIRD_PARTY_LICENSES.txt

@@ -22,6 +22,7 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - `Media.fromBlob` plays a file the user picks or drops in the browser.
 - The OS media session on the web, through `navigator.mediaSession`.
 - `Media.waveformDurationHint` gives the length of an HTTP stream that cannot seek and tells none, such as a music server's transcode: its waveform decodes from mpv's cache, reads as `decoding` and turns final before playback ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
+- `MpvAudioKit.ensureInitialized` registers the license texts of the bundled libmpv with Flutter's `LicenseRegistry`, so `showLicensePage` and `AboutDialog` list them (`libmpv`, `mpv`, `FFmpeg`, `OpenSSL` and the other components). `scripts/update_libmpv.sh` takes them from the release's `licenses.zip`, and puts those of the web module in `web/THIRD_PARTY_LICENSES.txt`.
 - `endFile` carries the media, position and duration of the entry that ended, and whether a read error cut it short (`readError`, and `skippedSegments` for HLS and DASH). `PlayerState` has the same two fields for the entry parked at the end.
 
 ### Fixed
@@ -50,6 +51,7 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 ### Docs
 - The README describes the web, how to serve the page cross-origin isolated (GitHub Pages included) and links a live demo, mpv_studio in the browser. MIGRATION covers 0.6.0.
 - The README has a Licenses section: what an app that ships the bundled libmpv must do, and the GPL route for Rubber Band.
+- The header of the generated `audio_effects.dart` and `audio_effects_settings.dart` says that the filter and option descriptions in their documentation comments are FFmpeg's text, under FFmpeg's LGPL, version 2.1 or later; the README no longer says that all the code of the package is BSD-3-Clause.
 
 ## [0.5.3] - 22-10-2026
 

@@ -47,10 +47,11 @@ dev_dependencies:
   test: ^1.25.0
 
 flutter:
-  # The web module (libmpv.mjs, libmpv.wasm, mak_webaudio_processor.js),
-  # installed in web/ by scripts/update_libmpv.sh and kept out of git. A
-  # folder, not the three files: `flutter test` bundles every listed asset,
-  # whatever its platforms, and fails on a missing one.
+  # The web module (libmpv.mjs, libmpv.wasm, mak_webaudio_processor.js)
+  # and its license texts (THIRD_PARTY_LICENSES.txt), installed in web/ by
+  # scripts/update_libmpv.sh and kept out of git. A folder, not the
+  # files: `flutter test` bundles every listed asset, whatever its
+  # platforms, and fails on a missing one.
   assets:
     - path: web/
       platforms: [web]

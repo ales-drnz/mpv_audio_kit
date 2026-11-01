@@ -7,6 +7,7 @@ import 'package:meta/meta.dart';
 import '../backend/backend.dart' as backend;
 import '../events/player_exception.dart' show PlayerInitException;
 import '../player/player.dart' show Player;
+import 'libmpv_license_registry.dart';
 
 /// One-time initialization for `mpv_audio_kit`. Owns the choice of the
 /// libmpv the players use and the cleanup of the cores that leaked across
@@ -91,6 +92,11 @@ abstract final class MpvAudioKit {
   /// the live handles of the other isolate for orphans and destroy them.
   /// On the web it destroys the players, PCM sources and audio output the
   /// app left in the page before a Hot Restart, and reuses its module.
+  ///
+  /// The first call also adds the license texts of the bundled libmpv to
+  /// Flutter's `LicenseRegistry`, so `showLicensePage` and `AboutDialog`
+  /// list them (under `libmpv`, `mpv`, `FFmpeg`, `OpenSSL` and the other
+  /// components) beside the app's Dart packages.
   static void ensureInitialized({
     String? libmpv,
     bool hotRestartCleanup = true,
@@ -98,6 +104,7 @@ abstract final class MpvAudioKit {
     if (_initialized) {
       return;
     }
+    registerLibmpvLicenses();
     backend.startBackend(libmpv: libmpv, hotRestartCleanup: hotRestartCleanup);
     _libraryPath = libmpv;
     _initialized = true;
