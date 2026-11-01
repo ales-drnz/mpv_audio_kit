@@ -111,6 +111,8 @@ static atomic_int hide_eof;          // flag reads of eof-reached return 0
 static atomic_int freeze_park;       // flag reads of eof-reached, pause return 1
 static atomic_int pause_zero_once;   // the next flag read of pause returns 0
 static atomic_int pause_zero_reads;  // reads pause_zero_once answered
+static atomic_int stall_park_read_us; // sleep after the next pause read of 1
+static atomic_int park_reads_stalled; // reads stall_park_read_us held
 static atomic_int destroy_delay_us;  // sleep before mpv_terminate_destroy
 static atomic_int hook_adds_entered;
 static atomic_int hook_adds_inflight;
@@ -152,6 +154,26 @@ static int hold_state; // 0 off, 1 waiting for the request, 2 for its reply
 static int hold_event; // the reply's event id: 3 get, 4 set, 5 command
 static uint64_t hold_ud;
 
+// One request deferred (mak_shim_defer_request): the async set or command
+// naming defer_name, after defer_skip of them went through, is kept here
+// instead of reaching mpv, and mpv_wait_event sends it as it was asked,
+// with the same reply id, on its first call once it has handed the pump an
+// event of type defer_after since the knob was set. The pump makes that
+// call only after it sent the reads that event takes, so the reads land
+// ahead of the reply.
+#define DEFER_MAX_ARGS 16
+static char defer_name[64];
+static int defer_after;
+static int defer_skip;
+static int defer_state; // 0 off, 1 waiting for the request, 2 for the event,
+                        // 3 to be sent
+static int defer_seen;  // the event went to the pump since the knob was set
+static int defer_kind;  // SET_REPLY or COMMAND_REPLY, as below
+static void *defer_handle;
+static uint64_t defer_ud;
+static char *defer_args[DEFER_MAX_ARGS + 1]; // a set: name, value
+static atomic_int deferred_sent;
+
 // Async loadfile commands whose URL holds this text are refused
 // (mak_shim_refuse_loadfile); empty means none.
 static char refuse_marker[64];
@@ -185,6 +207,13 @@ static void forget_hook(void *h, uint64_t id) {
   }
 }
 
+static void free_deferred(void) {
+  for (int i = 0; defer_args[i]; i++) {
+    free(defer_args[i]);
+    defer_args[i] = NULL;
+  }
+}
+
 void mak_shim_set(const char *knob, int value) {
   if (strcmp(knob, "hook_add_delay_us") == 0) {
     atomic_store(&hook_add_delay_us, value);
@@ -194,6 +223,8 @@ void mak_shim_set(const char *knob, int value) {
     atomic_store(&freeze_park, value);
   } else if (strcmp(knob, "pause_zero_once") == 0) {
     atomic_store(&pause_zero_once, value);
+  } else if (strcmp(knob, "stall_park_read_us") == 0) {
+    atomic_store(&stall_park_read_us, value);
   } else if (strcmp(knob, "destroy_delay_us") == 0) {
     atomic_store(&destroy_delay_us, value);
   } else {
@@ -224,9 +255,11 @@ int mak_shim_counter(const char *name) {
   }
   if (strcmp(name, "watched_gets") == 0) return watched_gets;
   if (strcmp(name, "pause_zero_reads") == 0) return pause_zero_reads;
+  if (strcmp(name, "park_reads_stalled") == 0) return park_reads_stalled;
   if (strcmp(name, "broken_gets") == 0) return broken_gets;
   if (strcmp(name, "replies_held") == 0) return replies_held;
   if (strcmp(name, "loadfiles_refused") == 0) return loadfiles_refused;
+  if (strcmp(name, "deferred_sent") == 0) return deferred_sent;
   fprintf(stderr, "mak_slow_core_shim: unknown counter %s\n", name);
   abort();
 }
@@ -239,6 +272,8 @@ void mak_shim_reset(void) {
   atomic_store(&freeze_park, 0);
   atomic_store(&pause_zero_once, 0);
   atomic_store(&pause_zero_reads, 0);
+  atomic_store(&stall_park_read_us, 0);
+  atomic_store(&park_reads_stalled, 0);
   atomic_store(&destroy_delay_us, 0);
   atomic_store(&hook_adds_entered, 0);
   atomic_store(&inflight_at_destroy, 0);
@@ -255,6 +290,9 @@ void mak_shim_reset(void) {
   hold_state = 0;
   refuse_marker[0] = 0;
   atomic_store(&loadfiles_refused, 0);
+  defer_state = 0;
+  free_deferred();
+  atomic_store(&deferred_sent, 0);
   pthread_mutex_unlock(&mu);
 }
 
@@ -293,6 +331,52 @@ void mak_shim_hold_reply(const char *name, int us) {
   hold_us = us;
   hold_state = 1;
   pthread_mutex_unlock(&mu);
+}
+
+// Defers the async set or command naming [name] (a command's first
+// argument, or the property of a set) that comes after [skip] of them: it
+// reaches mpv only once mpv_wait_event has handed the pump an event of id
+// [after_event], from this call on, and the pump asked for the next one.
+// Counted in `deferred_sent` once sent.
+void mak_shim_defer_request(const char *name, int after_event, int skip) {
+  pthread_mutex_lock(&mu);
+  snprintf(defer_name, sizeof defer_name, "%s", name);
+  defer_after = after_event;
+  defer_skip = skip;
+  free_deferred();
+  defer_state = 1;
+  defer_seen = 0;
+  pthread_mutex_unlock(&mu);
+}
+
+// Keeps the request named by [args] (NULL-terminated; for a set, the
+// property and its string value) when it is the one to defer. Returns
+// whether it did; the caller then reports it queued.
+static int defer(void *h, int kind, uint64_t ud, const char **args) {
+  int kept = 0;
+  pthread_mutex_lock(&mu);
+  if (defer_state == 1 && args[0] && strcmp(args[0], defer_name) == 0) {
+    if (defer_skip > 0) {
+      defer_skip--;
+    } else {
+      int n = 0;
+      while (args[n] && n < DEFER_MAX_ARGS) {
+        defer_args[n] = strdup(args[n]);
+        n++;
+      }
+      defer_args[n] = NULL;
+      defer_kind = kind;
+      defer_handle = h;
+      defer_ud = ud;
+      defer_state = defer_seen ? 3 : 2;
+      kept = 1;
+    }
+  }
+  int due = kept && defer_state == 3;
+  pthread_mutex_unlock(&mu);
+  // The pump may be waiting for an event: woken, it sends the request.
+  if (due) real_mpv_wakeup(h);
+  return kept;
 }
 
 // Called before the request is queued, so its reply cannot come first.
@@ -423,6 +507,15 @@ int mpv_get_property(void *h, const char *n, int fmt, void *out) {
     *(int *)out = 0;
     atomic_fetch_add(&pause_zero_reads, 1);
   }
+  // The read of a park, which the event isolate makes only at the end,
+  // answers late: the read is done, the pump is not.
+  if (rc >= 0 && fmt == 3 && strcmp(n, "pause") == 0 && *(int *)out == 1) {
+    int us = atomic_exchange(&stall_park_read_us, 0);
+    if (us > 0) {
+      atomic_fetch_add(&park_reads_stalled, 1);
+      stall(us);
+    }
+  }
   return rc;
 }
 
@@ -452,8 +545,21 @@ struct shim_event_hook {
   uint64_t id;
 };
 
+// Sends the deferred request once its event went to the pump.
+static void send_deferred(void);
+
 void *mpv_wait_event(void *h, double timeout) {
+  send_deferred();
   struct shim_event *ev = real_mpv_wait_event(h, timeout);
+  if (ev) {
+    pthread_mutex_lock(&mu);
+    if ((defer_state == 1 || defer_state == 2) &&
+        ev->event_id == defer_after) {
+      defer_seen = 1;
+      if (defer_state == 2) defer_state = 3;
+    }
+    pthread_mutex_unlock(&mu);
+  }
   if (ev) {
     int held = 0;
     pthread_mutex_lock(&mu);
@@ -531,8 +637,15 @@ int mpv_hook_continue(void *h, uint64_t id) {
 #define SET_REPLY 4
 #define COMMAND_REPLY 5
 
+// MPV_FORMAT_STRING is 1: the format the client writes properties in.
+#define FORMAT_STRING 1
+
 int mpv_set_property_async(void *h, uint64_t ud, const char *n, int fmt,
                            void *data) {
+  if (fmt == FORMAT_STRING) {
+    const char *args[] = {n, *(const char **)data, NULL};
+    if (defer(h, SET_REPLY, ud, args)) return 0;
+  }
   note_request(SET_REPLY, ud, n);
   return real_mpv_set_property_async(h, ud, n, fmt, data);
 }
@@ -547,6 +660,33 @@ int mpv_command_async(void *h, uint64_t ud, const char **args) {
     atomic_fetch_add(&loadfiles_refused, 1);
     return -1; // MPV_ERROR_EVENT_QUEUE_FULL
   }
+  if (defer(h, COMMAND_REPLY, ud, args)) return 0;
   note_request(COMMAND_REPLY, ud, args[0]);
   return real_mpv_command_async(h, ud, args);
+}
+
+static void send_deferred(void) {
+  pthread_mutex_lock(&mu);
+  if (defer_state != 3) {
+    pthread_mutex_unlock(&mu);
+    return;
+  }
+  defer_state = 0;
+  pthread_mutex_unlock(&mu);
+  // Off the lock, which note_request takes: a held reply matches the
+  // request as any other.
+  if (defer_kind == SET_REPLY) {
+    const char *value = defer_args[1];
+    note_request(SET_REPLY, defer_ud, defer_args[0]);
+    real_mpv_set_property_async(defer_handle, defer_ud, defer_args[0],
+                                FORMAT_STRING, &value);
+  } else {
+    note_request(COMMAND_REPLY, defer_ud, defer_args[0]);
+    real_mpv_command_async(defer_handle, defer_ud,
+                           (const char **)defer_args);
+  }
+  pthread_mutex_lock(&mu);
+  free_deferred();
+  pthread_mutex_unlock(&mu);
+  atomic_fetch_add(&deferred_sent, 1);
 }

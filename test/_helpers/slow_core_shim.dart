@@ -149,7 +149,10 @@ class SlowCoreShim {
   /// `freeze_park` (non-zero: those of `eof-reached` and `pause` answer 1,
   /// a park the player never sees mpv leave) or `pause_zero_once`
   /// (non-zero: the next of `pause` answers 0, as when the read lands
-  /// while an unpause that keep-open undoes is in effect).
+  /// while an unpause that keep-open undoes is in effect) or
+  /// `stall_park_read_us` (the next of `pause` that answers 1, the read of
+  /// a park, returns after that many microseconds, counted in
+  /// `park_reads_stalled`).
   void set(String knob, int value) {
     final fn = _lib
         .lookupFunction<
@@ -184,6 +187,22 @@ class SlowCoreShim {
     _withString(name, (p) => fn(p, hold.inMicroseconds));
   }
 
+  /// Defers the async request naming [name] (a command's first argument,
+  /// or the property of a set) that comes after [skip] of them: mpv gets
+  /// it only once an event of [afterEvent] has gone to the event isolate,
+  /// from this call on, and the isolate asked for the next event, by which
+  /// time it has sent the reads that event takes. The reply then reaches
+  /// the player behind those reads. `counter('deferred_sent')` counts the
+  /// requests sent.
+  void deferRequest(String name, {required int afterEvent, int skip = 0}) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>, Int32, Int32),
+          void Function(Pointer<Utf8>, int, int)
+        >('mak_shim_defer_request');
+    _withString(name, (p) => fn(p, afterEvent, skip));
+  }
+
   /// Answers every synchronous node read of the property [name] from now
   /// on with a byte array of `SIZE_MAX` bytes, which the client cannot
   /// decode. `counter('broken_gets')` counts them.
@@ -216,8 +235,9 @@ class SlowCoreShim {
   /// already destroyed, which the shim does not forward), `destroys`,
   /// `destroys_done_at_create` (the destroys that had returned when the
   /// last `mpv_create` began), `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
-  /// before the destroy), `watched_gets`, `broken_gets`, `replies_held` and
-  /// `loadfiles_refused`.
+  /// before the destroy), `watched_gets`, `pause_zero_reads`,
+  /// `park_reads_stalled`, `broken_gets`, `replies_held`,
+  /// `loadfiles_refused` and `deferred_sent`.
   int counter(String name) {
     final fn = _lib
         .lookupFunction<
