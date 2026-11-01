@@ -10,6 +10,10 @@
 #                       GitHub does
 #   run/<id>.json       a workflow run of another repository (404 by default)
 #   release/<tag>.json  a release (404 by default)
+#   builds.json         the build.yml runs of libmpv-scripts, a JSON array
+#                       newest first (none by default); branch=, event=,
+#                       status= and per_page= in the query filter them as
+#                       GitHub does
 # A file $FAKE_GH/down fails every call the way a network error does, and
 # a token listed in $FAKE_GH/expired is refused with a 401. Like gh, an
 # HTTP error writes its JSON body to stdout and "gh: ... (HTTP n)" to
@@ -62,6 +66,18 @@ case "${path%%\?*}" in
     if [[ -n "$event" ]]; then
       body="$(jq --arg e "$event" '.workflow_runs |= map(select(.event == $e))' <<<"$body")"
     fi
+    ;;
+  repos/*/actions/workflows/build.yml/runs)
+    builds='[]'
+    [[ -f "$root/builds.json" ]] && builds="$(cat "$root/builds.json")"
+    body="$(jq --arg branch "$(param branch)" --arg event "$(param event)" \
+      --arg status "$(param status)" --arg per_page "$(param per_page)" '
+      map(select(($branch == "" or .head_branch == $branch)
+        and ($event == "" or .event == $event)
+        and ($status == "" or .status == $status or .conclusion == $status)))
+      | {total_count: length,
+         workflow_runs: .[:(if $per_page == "" then 30 else ($per_page | tonumber) end)]}
+    ' <<<"$builds")"
     ;;
   repos/*/actions/runs/*)
     file="$root/run/${path##*/}.json"

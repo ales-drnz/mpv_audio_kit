@@ -76,9 +76,10 @@ flutter test --platform chrome test/web/web_compile_test.dart \
 The Test (Web) job of `.github/workflows/ci.yml` runs on `ubuntu-24.04`:
 
 1. `scripts/ci/web_module.sh` installs the module of the libmpv the other
-   jobs bundle: the libmpv-scripts run's when `LIBMPV_SCRIPTS_RUN` is set
-   (from the libmpv-release artifact, through the `dir` output of
-   `.github/actions/libmpv-from-run`), the pinned release's otherwise.
+   jobs bundle: the libmpv-scripts run's when the changes job found or
+   was given one (from the libmpv-release artifact, through the `dir`
+   output of `.github/actions/libmpv-from-run`), the pinned release's
+   otherwise.
    `scripts/web_module.py` checks it against the manifest: the SHA-256 of
    the zip and of each file, and the ABI.
 2. A libmpv before r20 has no web module. The job then runs no tests and

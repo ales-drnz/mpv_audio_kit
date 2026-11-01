@@ -45,7 +45,7 @@ expect_eq "looked up with the workflow token on the hook's repository" \
 
 new_gh
 expect_eq "a release not published stops the run" 1 "$(preflight "" "" "")"
-expect_log "and names the way out" "::error::.*libmpv-r99 is not published.*LIBMPV_SCRIPTS_RUN"
+expect_log "and names the way out" "::error::.*libmpv-r99 is not published.*resolve_libmpv_run.sh"
 
 new_gh
 release "${assets[@]:1}"
