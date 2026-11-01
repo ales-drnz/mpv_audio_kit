@@ -48,9 +48,14 @@ Future<List<(List<String>, String)>> _entries(Directory package) async {
       ']));\n',
     );
   // The dart of the SDK on PATH, which update_libmpv.sh formats with too.
-  final run = await Process.run('dart', [
-    script.path,
-  ], runInShell: Platform.isWindows);
+  // UTF-8 both ways: the default systemEncoding is cp1252 on Windows.
+  final run = await Process.run(
+    'dart',
+    [script.path],
+    runInShell: Platform.isWindows,
+    stdoutEncoding: utf8,
+    stderrEncoding: utf8,
+  );
   expect(run.exitCode, 0, reason: '${run.stdout}${run.stderr}');
   final decoded = jsonDecode(run.stdout as String) as List<Object?>;
   expect(decoded.first, 'r99');
