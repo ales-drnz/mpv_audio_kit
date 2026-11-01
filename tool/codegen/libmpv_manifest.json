@@ -2,7 +2,6 @@
   "release": "r19",
   "mpv": "0.41.0",
   "ffmpeg": "8.1.1",
-  "license": "LGPL-3.0-or-later",
   "audioFilters": [
     "acompressor",
     "acontrast",
@@ -79,6 +78,7 @@
     "lowshelf",
     "mcompand",
     "pan",
+    "rubberband",
     "silenceremove",
     "speechnorm",
     "stereotools",

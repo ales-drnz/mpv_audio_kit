@@ -70,8 +70,8 @@ gone.
 To keep Rubber Band, build libmpv yourself with libmpv-scripts' GPL option
 (`LIBMPV_GPL=1`), bundle it with the build hook's `libmpv` user define and
 write the stage as `RawAudioEffect('lavfi-rubberband=pitch=1.0594')`. That
-library is GPL, and an app that ships it must be GPL too (README,
-Licenses).
+library is GPL, version 3 or later: an app that ships it has to be
+distributed under the GPLv3, with its source (README, Licenses).
 
 ### Saved effect chains
 

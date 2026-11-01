@@ -332,9 +332,10 @@ _COPYRIGHT_FFMPEG_TEXT = _COPYRIGHT + (
     "//\n"
     "// The descriptions of the filters and of their options in the\n"
     "// documentation comments are FFmpeg's (doc/filters.texi and the option\n"
-    "// help of libavfilter, https://ffmpeg.org) and keep FFmpeg's license, the\n"
-    "// LGPL, version 2.1 or later (FFmpeg's LICENSE.md); the BSD 3-Clause\n"
-    "// license above covers the rest of this file.\n"
+    "// help of libavfilter, https://ffmpeg.org) and keep FFmpeg's licenses: the\n"
+    "// LGPL, version 2.1 or later (FFmpeg's LICENSE.md), and for the option help of\n"
+    "// deesser, arnndn and hdcd the MIT or BSD terms of their source files; the BSD\n"
+    "// 3-Clause license above covers the rest of this file.\n"
 )
 
 

@@ -1162,13 +1162,13 @@ def parse_filters_texi(path: Path) -> dict[str, dict]:
 # ── Whitelist + version detection ──────────────────────────────────────
 
 
-def read_whitelist(whitelist_file: Path, var_name: str) -> set[str]:
+def read_whitelist(whitelist_file: Path, var_name: str, exclude=()) -> set[str]:
     """The EFFECTIVE filter set for ``$var_name``.
 
     Shell-evals the whitelist file (honoring `_user_overrides.sh` + the `VAR+=`
     accumulation form) via config.resolve_whitelist — so a TUI filter selection
     drives both the binary build and this codegen from one source of truth."""
-    return set(resolve_whitelist(whitelist_file, var_name))
+    return set(resolve_whitelist(whitelist_file, var_name, exclude))
 
 
 def read_ffmpeg_version(ffmpeg_root: Path) -> str:
@@ -1303,7 +1303,8 @@ def run(config: Config) -> int:
             f"libavfilter dir not found: {libavfilter}\n"
             "Run a build first (or fix [ffmpeg].source_dir in codegen.toml)."
         )
-    whitelist = read_whitelist(config.whitelist_file, config.whitelist_var)
+    whitelist = read_whitelist(config.whitelist_file, config.whitelist_var,
+                               config.whitelist_exclude)
     version = read_ffmpeg_version(ffmpeg_root)
     print(f"ffmpeg {version}, whitelist {len(whitelist)} filters", file=sys.stderr)
     filters: dict[str, Filter] = {}

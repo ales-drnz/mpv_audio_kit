@@ -8,6 +8,10 @@ name = "mpv_audio_kit"
 # The manifest of the libmpv release the build hook pins; kept in step
 # with hook/build.dart by scripts/update_libmpv.sh.
 manifest = "libmpv_manifest.json"
+# Rubber Band (GPL) is not in the LGPL libmpv of libmpv-r20 on, so the API
+# has no rubberband effect, even while the pin is the GPL libmpv-r19, whose
+# manifest still lists it.
+exclude_filters = ["rubberband"]
 
 [naming]
 # The sealed chain-stage base is the bundle name minus its "s": AudioEffect.

@@ -82,10 +82,10 @@ def _ffmpeg_version(ffmpeg: str) -> str:
 # ── Whitelist ──────────────────────────────────────────────────────────
 
 
-def _read_whitelist(whitelist_file: Path, var_name: str) -> list[str]:
+def _read_whitelist(whitelist_file: Path, var_name: str, exclude=()) -> list[str]:
     # Shell-eval (honors _user_overrides.sh + `+=` accumulation) — see
     # config.resolve_whitelist.
-    return resolve_whitelist(whitelist_file, var_name)
+    return resolve_whitelist(whitelist_file, var_name, exclude)
 
 
 # ── av_opt_show2 textual format ────────────────────────────────────────
@@ -482,7 +482,8 @@ def run(
     """
     ffmpeg = ffmpeg or _detect_ffmpeg()
     version = _ffmpeg_version(ffmpeg)
-    whitelist = _read_whitelist(config.whitelist_file, config.whitelist_var)
+    whitelist = _read_whitelist(config.whitelist_file, config.whitelist_var,
+                                config.whitelist_exclude)
     print(
         f"ffmpeg {version} at {ffmpeg}, whitelist {len(whitelist)} filters",
         file=sys.stderr,

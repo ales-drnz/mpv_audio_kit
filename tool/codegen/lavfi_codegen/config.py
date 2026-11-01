@@ -39,9 +39,11 @@ def read_manifest(manifest: Path) -> dict:
     return json.loads(manifest.read_text())
 
 
-def resolve_whitelist(manifest: Path, key: str) -> list[str]:
-    """The filters compiled into the pinned libmpv: ``manifest[key]``."""
-    names = sorted({x.strip() for x in read_manifest(manifest).get(key, []) if x.strip()})
+def resolve_whitelist(manifest: Path, key: str, exclude=()) -> list[str]:
+    """The filters compiled into the pinned libmpv, ``manifest[key]``, less
+    ``exclude``."""
+    names = sorted({x.strip() for x in read_manifest(manifest).get(key, [])
+                    if x.strip()} - set(exclude))
     if not names:
         sys.exit(f"No {key} in {manifest}")
     return names
@@ -139,6 +141,7 @@ class Config:
     ffmpeg_source_dir: Path
     whitelist_file: Path
     whitelist_var: str
+    whitelist_exclude: tuple[str, ...]
     wire: WireConfig
     features: FeatureFlags
     naming: NamingConfig
@@ -176,6 +179,8 @@ def load_config(toml_path: Path) -> Config:
     idata = data.get("inputs") or {}
     whitelist_file = (SHARED_ROOT / idata.get("manifest", "libmpv_manifest.json")).resolve()
     whitelist_var = "audioFilters"
+    # Filters of the manifest the API leaves out (see the toml).
+    whitelist_exclude = tuple(idata.get("exclude_filters", []))
     ffmpeg_version = read_manifest(whitelist_file)["ffmpeg"]
     ffmpeg_source_dir = (SHARED_ROOT / ".ffmpeg-src" / f"ffmpeg-{ffmpeg_version}").resolve()
 
@@ -297,6 +302,7 @@ def load_config(toml_path: Path) -> Config:
         ffmpeg_source_dir=ffmpeg_source_dir,
         whitelist_file=whitelist_file,
         whitelist_var=whitelist_var,
+        whitelist_exclude=whitelist_exclude,
         wire=wire,
         features=features,
         naming=naming,
