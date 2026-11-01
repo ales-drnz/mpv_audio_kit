@@ -60,7 +60,7 @@ JSObject? registeredModule(String url) {
   return record != null && record.url == url ? record.module : null;
 }
 
-/// Test-only: gets the handle of each core [reapPreviousCores] destroys.
+/// Test-only: gets the handle of each core [registerModule] destroys.
 @visibleForTesting
 void Function(int handle)? debugWebReapTrace;
 

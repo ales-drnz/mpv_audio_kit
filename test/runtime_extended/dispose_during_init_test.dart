@@ -17,25 +17,24 @@ library;
 //
 // The three bugs covered (all in the dispose-during-init window):
 //
-// BUG A — `_bringUpInIsolate` (player_init.part.dart:33) early-returns
-//   AFTER `_eventIsolate.start(...)` succeeded when `_disposed` flipped
-//   during the await. `_lib` / `_handle` are never assigned and
+// BUG A — `_bringUp` early-returns AFTER the event isolate started when
+//   `_disposed` flipped during the await. The core is never assigned and
 //   `_bringUpCompleted` stays false, so `dispose()` takes the
-//   `!_bringUpCompleted` branch and calls `_eventIsolate.stop()` WITHOUT
-//   sending `quit` and WITHOUT `requestStop`. The worker isolate keeps
+//   `!_bringUpCompleted` branch and stops the isolate WITHOUT sending
+//   `quit` and WITHOUT `requestStop`. The worker isolate keeps
 //   looping on `mpv_wait_event` forever (isolate + mpv core leak) and
 //   `stop()` burns its full 2 s safety timeout.
 //   Red signal: `Player(); await dispose()` takes ~2 s instead of ms.
 //
 // BUG B — a second concurrent `dispose()` call sees `_disposed == true`
-//   (player.dart:811-814) and returns IMMEDIATELY while the first call is
+//   and returns IMMEDIATELY while the first call is
 //   still mid-teardown. Correct: the second caller's future completes only
 //   when teardown is actually done.
 //
 // BUG C — a setter that passed `_checkNotDisposed()` and suspended on the
 //   pending `_ready`, when dispose lands during init (Bug A path), resumes
-//   after the early-returned bring-up and reads the unassigned
-//   `late final _lib` → `LateInitializationError` instead of a proper
+//   after the early-returned bring-up and reads the unassigned core
+//   → `LateInitializationError` instead of a proper
 //   `PlayerDisposedException` (or clean completion).
 
 import 'dart:async';
@@ -56,8 +55,8 @@ void main() {
         );
 
         // Deliberately NO await between construction and dispose: `_disposed`
-        // flips while `_bringUpInIsolate` is still awaiting
-        // `_eventIsolate.start(...)`, so bring-up early-returns with the
+        // flips while `_bringUp` is still awaiting the start of the event
+        // isolate, so bring-up early-returns with the
         // worker isolate alive and `_bringUpCompleted == false`.
         final sw = Stopwatch()..start();
         await player.dispose();

@@ -59,8 +59,7 @@ void main() {
         await putEffect(player, const AtempoEffect(tempo: 0.8));
         expect(effectOf<AtempoEffect>(player).tempo, 0.8);
 
-        // Two numeric fields of one stage, as pitch and tempo of the
-        // rubberband stage this test checked before the LGPL libmpv.
+        // Two numeric fields of one stage.
         await putEffect(
           player,
           const AfreqshiftEffect(shift: 50.0, level: 0.8),

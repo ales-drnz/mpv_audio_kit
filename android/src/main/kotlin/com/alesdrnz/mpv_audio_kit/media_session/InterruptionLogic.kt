@@ -95,8 +95,7 @@ internal object InterruptionLogic {
 
     /**
      * Reaction to the result of an audio-focus *request* made when playback
-     * starts (the gate ExoPlayer's `AudioFocusManager` applies). Without this
-     * the engine barges over a non-duckable holder (active call / assistant).
+     * starts. Without this the engine barges over a non-duckable holder (active call / assistant).
      *
      * - GRANTED: proceed (already playing).
      * - FAILED: pause — another app holds focus we can't duck under.

@@ -13,8 +13,8 @@ import androidx.media3.common.Player
  *
  * A transient focus loss (a call, an alarm) pauses the player and arms the
  * resume for the next gain. The session then publishes `playWhenReady`
- * with the suppression reason of a transient focus loss, as ExoPlayer
- * does, instead of a pause. Media3 keeps a session with `playWhenReady`
+ * with the suppression reason of a transient focus loss instead of a
+ * pause. Media3 keeps a session with `playWhenReady`
  * "user engaged", so the service stays in the foreground through the
  * whole call. Published as paused, it left the foreground after Media3's
  * timeout (10 minutes), and on Android 12 and later the play at the end

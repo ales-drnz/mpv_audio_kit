@@ -118,7 +118,7 @@ class EnumValue:
     name: str    # ffmpeg CONST name, exact (e.g. "50fm", "downward")
     value: Optional[int]  # int when the C source uses an integer literal,
                           # None when it references a C symbol like
-                          # `RubberBandOptionTransientsCrisp`. Not on the
+                          # `AV_CH_LAYOUT_STEREO`. Not on the
                           # wire — mpv uses the NAME — kept only for
                           # schema inspectability.
     desc: str    # the AVOption description (3rd field of the CONST entry)

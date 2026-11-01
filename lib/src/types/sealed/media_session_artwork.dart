@@ -87,8 +87,8 @@ final class MediaSessionArtworkCustom extends MediaSessionArtwork {
   String toString() => 'MediaSessionArtwork.custom($cover)';
 }
 
-/// The [MediaSessionArtwork.uri] variant: the image at an `http(s)://` or
-/// `file://` URL, which the package loads (see [MediaSessionArtwork.uri]).
+/// The [MediaSessionArtwork.uri] variant: the image at a URL, which the
+/// package loads (see [MediaSessionArtwork.uri] for the schemes).
 final class MediaSessionArtworkUri extends MediaSessionArtwork {
   /// The artwork location, in a scheme [MediaSessionArtwork.uri] loads.
   final Uri uri;

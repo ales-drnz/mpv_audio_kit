@@ -15,8 +15,8 @@ import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   // Lifecycle races — calls that arrive in unexpected order or interleave
-  // with in-flight commands. The wrapper has a single `_command` /
-  // `_prop` channel into mpv, so on the Dart side these are serialized;
+  // with in-flight commands. The wrapper has a single channel into
+  // mpv, so on the Dart side these are serialized;
   // what we verify here is that mpv's own response to interleaved
   // `loadfile` / `seek` / `stop` doesn't leave the wrapper in an
   // inconsistent state.
@@ -85,7 +85,7 @@ void main() {
           await pastSeek;
 
           // Race: kick off a seek without awaiting, then issue open() with the
-          // loadfile-replace semantic. `open()` calls `_settleWrites()` before its
+          // loadfile-replace semantic. `open()` settles the writes before its
           // loadfile, so the in-flight seek is honored on the OLD file first (the
           // playhead jumps to ~1s) and only THEN does FILE_LOADED reset it to the
           // new file's start. We pin the WHOLE observable sequence — the seek

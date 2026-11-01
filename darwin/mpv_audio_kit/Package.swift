@@ -30,9 +30,8 @@ let package = Package(
                 .product(name: "FlutterFramework", package: "FlutterFramework"),
             ],
             path: "Sources/mpv_audio_kit",
-            // Apple privacy manifest, embedded into the built bundle:
-            // required for App Store submission. .process places it at the
-            // bundle root.
+            // Apple privacy manifest, embedded into the built bundle.
+            // .process places it at the bundle root.
             resources: [
                 .process("PrivacyInfo.xcprivacy"),
             ],

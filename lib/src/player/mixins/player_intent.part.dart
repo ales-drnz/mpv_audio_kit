@@ -6,7 +6,7 @@ part of '../player.dart';
 /// The transport axis of a player: the load epoch, the loads in flight,
 /// the play-pause intent ([PlayerState.playWhenReady]) across the calls
 /// that set it, the file starts and the park generation. Its events move
-/// counters; the callers read them as before.
+/// counters.
 ///
 /// Each content-replacing call claims the load epoch, and every load path
 /// checks its [_LoadTicket] after each await. Each public call that sets

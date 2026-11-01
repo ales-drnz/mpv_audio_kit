@@ -30,8 +30,7 @@ Pod::Spec.new do |s|
   # The same Swift sources as the Swift package.
   s.source_files     = 'mpv_audio_kit/Sources/mpv_audio_kit/**/*.swift'
   # Apple privacy manifest. Shipped as a CocoaPods resource bundle so it is
-  # embedded (and codesigned) into the built framework, which App Store
-  # submission requires. Kept out of `source_files` (which is `*.swift`) so
+  # embedded (and codesigned) into the built framework. Kept out of `source_files` (which is `*.swift`) so
   # it isn't double-referenced.
   s.resource_bundles = {
     'mpv_audio_kit_privacy' => ['mpv_audio_kit/Sources/mpv_audio_kit/PrivacyInfo.xcprivacy'],

@@ -138,8 +138,8 @@ class _Target {
       '$arch in $_release',
     );
     // The iOS binary is built for iOS 15, and Flutter writes this version
-    // into the framework's MinimumOSVersion: a lower one makes App Store
-    // validation reject the app. Flutter before 3.47.4 passes 12 or 13.
+    // into the framework's MinimumOSVersion: a lower one does not match the
+    // binary. Flutter before 3.47.4 passes 12 or 13.
     if (code.targetOS == OS.iOS && code.iOS.targetVersion < 15) {
       throw UnsupportedError(
         'mpv_audio_kit: building for iOS needs Flutter 3.47.4 or later, '
