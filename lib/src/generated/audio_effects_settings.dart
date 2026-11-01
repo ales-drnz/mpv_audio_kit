@@ -4,6 +4,12 @@
 // that can be found in the LICENSE file.
 //
 // AUTO-GENERATED: do not edit by hand.
+//
+// The descriptions of the filters and of their options in the
+// documentation comments are FFmpeg's (doc/filters.texi and the option
+// help of libavfilter, https://ffmpeg.org) and keep FFmpeg's license, the
+// LGPL, version 2.1 or later (FFmpeg's LICENSE.md); the BSD 3-Clause
+// license above covers the rest of this file.
 // ignore_for_file: non_constant_identifier_names, constant_identifier_names, camel_case_types, curly_braces_in_flow_control_structures, prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
 
 import 'package:meta/meta.dart';

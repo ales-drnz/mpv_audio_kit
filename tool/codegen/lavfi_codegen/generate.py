@@ -325,6 +325,18 @@ _COPYRIGHT = (
     "// AUTO-GENERATED: do not edit by hand.\n"
 )
 
+# The enums and the settings carry, in their documentation comments, the
+# descriptions FFmpeg gives its filters and options (doc/filters.texi and the
+# AVOption help of libavfilter): that text is FFmpeg's, not ours.
+_COPYRIGHT_FFMPEG_TEXT = _COPYRIGHT + (
+    "//\n"
+    "// The descriptions of the filters and of their options in the\n"
+    "// documentation comments are FFmpeg's (doc/filters.texi and the option\n"
+    "// help of libavfilter, https://ffmpeg.org) and keep FFmpeg's license, the\n"
+    "// LGPL, version 2.1 or later (FFmpeg's LICENSE.md); the BSD 3-Clause\n"
+    "// license above covers the rest of this file.\n"
+)
+
 
 def _emit_test_filter_names(sorted_names: list[str]) -> str:
     """Test-side mirror of every typed audio filter name. Imported by
@@ -387,7 +399,7 @@ def _emit_audio_effect_enum(sorted_names: list[str]) -> str:
 
 def _emit_enums_header() -> str:
     return (
-        _COPYRIGHT
+        _COPYRIGHT_FFMPEG_TEXT
         + "// ignore_for_file: constant_identifier_names, camel_case_types,"
         " non_constant_identifier_names\n"
     )
@@ -400,7 +412,7 @@ def _emit_settings_header(
     # (Set / Map params). Audio has both, so its output is unchanged; a flavor
     # with neither (video) omits them rather than tripping `unused_element`.
     parts: list[str] = [
-        _COPYRIGHT,
+        _COPYRIGHT_FFMPEG_TEXT,
         "// ignore_for_file: non_constant_identifier_names,"
         " constant_identifier_names, camel_case_types,"
         " curly_braces_in_flow_control_structures,"
