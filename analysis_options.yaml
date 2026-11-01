@@ -13,7 +13,6 @@ analyzer:
     strict-inference: true
   exclude:
     - docs/**
-    - graphify-out/**
     # Emitted by tool/codegen; their ignore_for_file
     # headers don't cover this file's stricter ruleset, and the resulting
     # ~5k infos would bury every real finding in `flutter analyze`.

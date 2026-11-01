@@ -24,7 +24,6 @@ coverage/
 # AI tooling
 .claude/
 CLAUDE.md
-graphify-out/
 
 # Codegen inputs and build products (tool/codegen)
 /tool/codegen/.ffmpeg-src/
