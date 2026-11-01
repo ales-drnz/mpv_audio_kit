@@ -6,6 +6,8 @@
 // libmpv release: do not edit by hand. The license texts below are those
 // of the components of that libmpv, each under its own terms.
 
+// ignore_for_file: prefer_single_quotes
+
 /// The libmpv release whose license texts [libmpvLicenses] holds, or `''`
 /// when it holds none.
 const String libmpvLicensesRelease = '';
