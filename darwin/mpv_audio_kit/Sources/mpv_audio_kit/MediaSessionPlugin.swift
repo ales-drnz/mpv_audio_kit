@@ -48,7 +48,8 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private static let eventChannelName = "mpv_audio_kit/media_session/commands"
 
   // Default skip interval when the consumer doesn't override
-  // `fastForwardInterval` / `rewindInterval`. 15s matches Apple Podcasts.
+  // `fastForwardInterval` / `rewindInterval`: 15 s, the common skip step
+  // for spoken content.
   private static let defaultSkipIntervalSeconds: TimeInterval = 15
   // Largest retained artwork edge. The request closure downscales on
   // demand, so this caps the cached bitmap, not what the OS can ask for.

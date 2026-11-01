@@ -104,7 +104,7 @@ void main() {
 
     // The waveform, the loudness scan and the analyzer taps are switched
     // process-wide in libmpv, and the previous VM never ran the dispose
-    // that turns them off (F158). The loudness scan goes off first: the
+    // that turns them off. The loudness scan goes off first: the
     // waveform off restarts a running pass for a scan still on.
     test(
       'turns the analysis off before each quit, before any destroy',

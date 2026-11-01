@@ -30,7 +30,7 @@ void main() {
     setUp(() => shim().reset());
     tearDown(() => shim().reset());
 
-    // F26: dispose called mpv_terminate_destroy on the main isolate, the
+    // Dispose called mpv_terminate_destroy on the main isolate, the
     // one synchronous core call left there.
     test('dispose destroys the core off the main isolate, and completes '
         'once it is gone', () async {

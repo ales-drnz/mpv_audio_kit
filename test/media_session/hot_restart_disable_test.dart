@@ -5,10 +5,10 @@
 //
 // A Hot Restart keeps the engine and its plugins, so the OS media session
 // the old VM enabled stays on: notification, lock screen and audio focus,
-// still "playing" the old track, with no listener left for its buttons
-// (F189). The new VM's MpvAudioKit.ensureInitialized turns it off. This
-// file is a process of its own: the old VM is the tracker buffer published
-// in the process environment before the init, as a Hot Restart leaves it.
+// still "playing" the old track, with no listener left for its buttons.
+// The new VM's MpvAudioKit.ensureInitialized turns it off. This file is a
+// process of its own: the old VM is the tracker buffer published in the
+// process environment before the init, as a Hot Restart leaves it.
 
 @TestOn('mac-os || linux || windows')
 library;

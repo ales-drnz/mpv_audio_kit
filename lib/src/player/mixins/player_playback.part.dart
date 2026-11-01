@@ -263,9 +263,10 @@ mixin _PlaybackModule on _PlayerBase {
   /// Replaces the current file's chapter markers with [chapters]: an
   /// "external chapters" injection for sources whose container carries none.
   ///
-  /// The canonical case is a resolved YouTube (`googlevideo`) audio stream:
-  /// YouTube's chapters live in the video description
-  /// not in the audio container, so a freshly-loaded stream has an empty
+  /// The typical case is an audio stream extracted from a video platform
+  /// or a podcast feed, whose chapters are published separately (e.g. in a
+  /// description or a sidecar file) and not in the audio container, so a
+  /// freshly-loaded stream has an empty
   /// `chapter-list`. This writes the list directly through the stable C API
   /// (`mpv_set_property` on `chapter-list`), so [PlayerStream.chapters] and
   /// [PlayerState.chapters] then reflect them and [setChapter] navigates them

@@ -24,7 +24,8 @@ void main() {
   // just stopped. This file pins the correct ordering: the later call
   // (`stop()`) must win; the superseded `open()` must not load anything.
   //
-  // Single Player per file (CLAUDE.md convention).
+  // Single Player per file: a third libmpv core in one flutter_test
+  // process can SIGSEGV.
   final fixturePath = '${Directory.current.path}/test/fixtures/sine_5s.flac';
 
   runtimeSuite(fixturePath: fixturePath, () {
@@ -42,7 +43,8 @@ void main() {
 
       test('stop() issued while open() is in flight is final — '
           'playback must not restart', () async {
-        // Pre-subscribe BEFORE acting (CLAUDE.md). The player is fresh —
+        // Pre-subscribe BEFORE acting, so the event cannot fire before the
+        // listener exists. The player is fresh —
         // no file has ever been loaded — so ANY PLAYBACK_RESTART from here
         // on means a `loadfile` reached mpv after this test started.
         final restarted = Completer<void>();

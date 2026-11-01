@@ -8,7 +8,7 @@
 // another isolate it used to write the owner and the state first, then
 // fail inside the controller: an unhandled error from the command channel
 // killed the isolate, and a controller nobody could dispose kept failing
-// at every push (F293). A create that fails in the root isolate left the
+// at every push. A create that fails in the root isolate left the
 // same leftovers.
 
 import 'dart:isolate';

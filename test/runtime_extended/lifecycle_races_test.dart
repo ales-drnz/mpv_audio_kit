@@ -22,7 +22,8 @@ void main() {
   // inconsistent state.
   //
   // Single-Player, no explicit `dispose()` mid-test: respects the per-
-  // file SIGSEGV guard documented in CLAUDE.md and lets all five tests
+  // file SIGSEGV guard (a third libmpv core in one flutter_test process
+  // can SIGSEGV) and lets all five tests
   // share one fixture-loaded player without rebuilding it.
   final fixturePath =
       '${Directory.current.path}/test/fixtures/with_chapters.mka';

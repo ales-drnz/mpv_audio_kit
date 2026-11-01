@@ -87,7 +87,7 @@ void main() {
           ], play: true);
           // Sample across the track1->track2 boundary but BEFORE track2
           // ends: until the second entry has played a little. A fixed time
-          // could close before the boundary on a slow start (F128). The
+          // could close before the boundary on a slow start. The
           // upper bound keeps the first entry's last position out.
           await waitUntil(
             () =>

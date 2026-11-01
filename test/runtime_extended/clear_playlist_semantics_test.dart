@@ -14,7 +14,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  // L2 — `clearPlaylist()` issues both `playlist-clear` AND
+  // `clearPlaylist()` issues both `playlist-clear` AND
   // `playlist-remove current`. mpv's `playlist-clear` on its own
   // preserves the active entry; the second command is what makes the
   // wrapper's contract match the method name ("clear ALL tracks,
@@ -29,7 +29,7 @@ void main() {
   final fixturePath = defaultFixturePath();
 
   runtimeSuite(fixturePath: fixturePath, () {
-    group('clearPlaylist semantics (L2)', () {
+    group('clearPlaylist semantics', () {
       test('clearPlaylist() during playback stops the active track and '
           'empties the playlist', () async {
         final player = await buildPlayer();

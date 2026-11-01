@@ -76,9 +76,8 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     // observes it only for its end-of-content read and never forwards
     // it). The intent axis (`playWhenReady`) is driven purely by the
     // play, pause, open and stop call sites (plus the resets at idle and at the
-    // end of content): the same "intent changes only on explicit method
-    // calls" model as ExoPlayer's `playWhenReady` and just_audio's
-    // `playing`. Observing `pause` would mis-report intent at idle (mpv's
+    // end of content): intent changes only on explicit method calls.
+    // Observing `pause` would mis-report intent at idle (mpv's
     // `pause` defaults to `no` even when nothing is loaded) and the initial
     // observe burst could race the optimistic set on the first open.
     MpvPropertySpec<double>.double(

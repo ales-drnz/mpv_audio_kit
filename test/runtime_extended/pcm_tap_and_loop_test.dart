@@ -5,9 +5,9 @@
 
 // The PCM patches of libmpv-r18 (pcm_tap, pcm_stream). Up to r17 the tap
 // behind `stream.pcm` kept the samples of the previous output format
-// after a change of channels or rate, and read them as the new format
-// (F47). A live PCM entry set to loop seeked back at its end, failed, and
-// tried again on every turn of the playloop, with no end (F225).
+// after a change of channels or rate, and read them as the new format.
+// A live PCM entry set to loop seeked back at its end, failed, and tried
+// again on every turn of the playloop, with no end.
 
 @TestOn('mac-os || linux || windows')
 library;
@@ -69,7 +69,7 @@ void main() {
         dir.deleteSync(recursive: true);
       });
 
-      // F47: stereo at +0.25, then mono at -0.5. A small output buffer, so
+      // Stereo at +0.25, then mono at -0.5. A small output buffer, so
       // the first write after the change does not fill the window by itself
       // and what the ring kept from before shows.
       test('after a change of channels the tap holds only the new '
@@ -105,7 +105,7 @@ void main() {
         );
       }, timeout: const Timeout(Duration(seconds: 30)));
 
-      // F225: r17 logged tens of thousands of "Cannot seek" a second, kept
+      // r17 logged tens of thousands of "Cannot seek" a second, kept
       // the core busy and never left the entry.
       group('a live PCM entry with Loop.file plays once', () {
         late PcmSource source;

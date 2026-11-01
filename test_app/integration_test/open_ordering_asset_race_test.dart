@@ -54,7 +54,8 @@ void main() {
       // B: plain filesystem path — resolveUri is pass-through.
       final plainPathB = await materializeFixture('sine_88200hz.flac');
 
-      // Pre-subscribe BEFORE acting (CLAUDE.md): anchor "a file is
+      // Pre-subscribe BEFORE acting, so the event cannot fire before the
+      // listener exists: anchor "a file is
       // loaded" on PLAYBACK_RESTART, which fires once per loadfile.
       final firstLoad = Completer<void>();
       final sub = player.stream.seekCompleted.listen((_) {

@@ -6,10 +6,10 @@
 // The waveform and the loudness scan of libmpv-r18 (bulk_analysis,
 // loudness_scan). Up to r17 the analysis converted frames of more than 8
 // channels from the wrong planes, and kept its converter across a change
-// of channel layout: both crashed the process (F63). It decoded the first
-// audio track whatever the player played (F67), could not read an fd://
-// source (F156), and placed the samples of a source with a start time off
-// the playback axis (F64).
+// of channel layout: both crashed the process. It decoded the first
+// audio track whatever the player played, could not read an fd://
+// source, and placed the samples of a source with a start time off
+// the playback axis.
 //
 // Fixtures (test/fixtures/analysis), made with ffmpeg:
 //   opus_16ch_2s.opus          2 s sine on 16 channels, libopus mapping 255

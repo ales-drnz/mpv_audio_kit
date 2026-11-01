@@ -354,10 +354,10 @@ void main() {
         expect(await player.getRawProperty('af'), contains('9.000'));
       }, timeout: const Timeout(Duration(seconds: 20)));
 
-      // F50: the write back after a refusal must rebuild the stage the
+      // The write back after a refusal must rebuild the stage the
       // live update moved, which an older libmpv kept at its old arguments.
       test('a live update on top of a refused rewrite leaves the audio of '
-          'the list mpv accepted (F50)', () async {
+          'the list mpv accepted', () async {
         const accepted = [
           BassEffect(frequency: 1000),
           Ebur128Effect(metadata: true),

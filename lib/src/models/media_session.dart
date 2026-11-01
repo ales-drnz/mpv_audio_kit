@@ -104,9 +104,8 @@ class MediaSession {
   // ── Skip intervals ─────────────────────────────────────────────────
 
   /// Interval used by the system "skip forward N seconds" button when
-  /// [MediaAction.fastForward] is in [actions]. Default 15 seconds,
-  /// matching Apple Podcasts' default and audio_service's
-  /// `fastForwardInterval`. The OS shows this number on the skip icon
+  /// [MediaAction.fastForward] is in [actions]. Default 15 seconds, a
+  /// common podcast skip interval. The OS shows this number on the skip icon
   /// (e.g. "+15") on iOS, macOS and Android Auto.
   final Duration fastForwardInterval;
 
@@ -117,8 +116,8 @@ class MediaSession {
 
   /// Set of selectable playback rates surfaced by the OS Now Playing
   /// rate-picker when [MediaAction.setPlaybackRate] is in [actions].
-  /// Default `[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]` matches Apple
-  /// Podcasts. The OS may show only a subset depending on the
+  /// Default `[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]`, quarter steps from
+  /// half to double speed. The OS may show only a subset depending on the
   /// surface (CarPlay, lockscreen, Control Center).
   final List<double> supportedPlaybackRates;
 

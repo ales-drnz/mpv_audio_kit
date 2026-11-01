@@ -8,7 +8,7 @@
 // measures them against a core that plays through a heavy chain, with hooks
 // registered and continued meanwhile, and checks that none takes a frame
 // (16 ms): the measure behind not moving them to a service thread. The
-// numbers go to the console (read them over CDP, see AUDIT/w4a).
+// numbers go to the console (read them over the Chrome DevTools Protocol).
 
 @TestOn('browser')
 library;

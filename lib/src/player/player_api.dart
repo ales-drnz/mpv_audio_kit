@@ -137,7 +137,8 @@ abstract interface class PlayerApi {
 
   /// Replaces the current file's chapter markers with [chapters], an
   /// external-chapters injection for sources whose container carries none
-  /// (e.g. a resolved YouTube or `googlevideo` audio stream). Writes mpv's
+  /// (e.g. an extracted audio stream whose chapters are published
+  /// separately). Writes mpv's
   /// `chapter-list` directly, so [PlayerStream.chapters] reflect them and
   /// [setChapter] navigates them. Call after the file is loaded; an empty
   /// list clears them.

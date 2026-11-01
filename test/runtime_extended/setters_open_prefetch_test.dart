@@ -126,7 +126,7 @@ void main() {
         // for a determinate progress bar). A local file is prefetched
         // whole while the first entry plays, so mpv reports a positive
         // value before the transition: without one the property never
-        // reached the stream (F131). The initial zero the stream replays
+        // reached the stream. The initial zero the stream replays
         // on subscribe proves nothing.
         final seen = <Duration>[];
         final sub = player.stream.prefetchCacheDuration.listen(seen.add);

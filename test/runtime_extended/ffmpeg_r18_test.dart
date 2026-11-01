@@ -4,11 +4,10 @@
 // found in the LICENSE file.
 
 // The FFmpeg of libmpv-r18. Up to r17 the build left out the spdif muxer,
-// so a passthrough of AC3 never started (F258), and the httpproxy
-// protocol, so HTTPS through a proxy failed with "Protocol not found"
-// (F177). Its filters accepted values that read out of their buffers
-// (F195), and its SMB protocol waited out the network timeout before a
-// stop could land (F83).
+// so a passthrough of AC3 never started, and the httpproxy protocol, so
+// HTTPS through a proxy failed with "Protocol not found". Its filters
+// accepted values that read out of their buffers, and its SMB protocol
+// waited out the network timeout before a stop could land.
 //
 // The last two are FFmpeg patches: a libmpv built against a system FFmpeg
 // does not have them, and their groups skip there. The spdif muxer and the
@@ -109,7 +108,7 @@ void main() {
       });
       tearDown(() => player.dispose());
 
-      // F258: r17 loaded the file and never played a sample.
+      // r17 loaded the file and never played a sample.
       test('AC3 passthrough plays', () async {
         await player.setAudioSpdif({Spdif.ac3});
         await player.open(Media(ac3), play: true);
@@ -123,7 +122,7 @@ void main() {
         );
       }, timeout: const Timeout(Duration(seconds: 30)));
 
-      // F177: r17 failed with "Protocol not found" and the proxy saw nothing.
+      // r17 failed with "Protocol not found" and the proxy saw nothing.
       test('HTTPS goes through an HTTP proxy', () async {
         final tls = '${Directory.current.path}/test/fixtures/tls';
         final https = await HttpServer.bindSecure(
@@ -163,7 +162,7 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
 
-    // F195: the patch refuses chorus voices whose modulation leaves the
+    // The patch refuses chorus voices whose modulation leaves the
     // delay line, with this message, where upstream reads out of it.
     _ffmpegPatchGroup(
       'Invalid delay, decay, speed or depth for voice %d.\n',
@@ -189,7 +188,7 @@ void main() {
       },
     );
 
-    // F83: a server that stops answering (a sleeping NAS) held a stop for
+    // A server that stops answering (a sleeping NAS) held a stop for
     // the whole network timeout, here 60 s.
     _ffmpegPatchGroup(
       'SMB2 connect timed out\n',

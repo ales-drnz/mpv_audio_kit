@@ -5,8 +5,8 @@
 // Ground-truth probe: asks the REAL shipped libmpv whether each native
 // option/property listed below exists, and of what type, so a libmpv bump
 // that drops or renames one fails here instead of at a setter call site.
-// The `#n` tags in the labels are the numbers of the audit items that
-// introduced each binding.
+// Each label names the option or property, with a note where the check
+// carries more than existence.
 //
 // Options are introspected via `option-info/<name>/type` (non-null => the
 // option exists; the value is mpv's own type name: Flag/Double/Integer/
@@ -23,35 +23,35 @@ import '../_helpers/setter_test_helpers.dart';
 
 void main() {
   runtimeSuite(() {
-    // Plan item -> mpv OPTION name. We assert each exists and print its real type.
+    // Label -> mpv OPTION name. We assert each exists and print its real type.
     const options = <String, String>{
-      'demuxer-readahead-secs (#2 must be Double, not int)':
+      'demuxer-readahead-secs (must be Double, not int)':
           'demuxer-readahead-secs',
-      'audio-fallback-to-null (#5)': 'audio-fallback-to-null',
-      'cache-pause-initial (#6)': 'cache-pause-initial',
-      'force-seekable (#13)': 'force-seekable',
-      'hls-bitrate (#14)': 'hls-bitrate',
-      'audio-client-name (#16)': 'audio-client-name',
-      'audio-set-media-role (#18)': 'audio-set-media-role',
-      'audio-normalize-downmix (#19)': 'audio-normalize-downmix',
-      'demuxer-cache-dir (#20)': 'demuxer-cache-dir',
-      'volume-max (#10)': 'volume-max',
-      'volume-gain-min (#10)': 'volume-gain-min',
-      'volume-gain-max (#10)': 'volume-gain-max',
-      'cookies (#24)': 'cookies',
-      'http-proxy (#24)': 'http-proxy',
-      'stream-record (#D3)': 'stream-record',
-      'resume-playback (#9 watch-later)': 'resume-playback',
+      'audio-fallback-to-null': 'audio-fallback-to-null',
+      'cache-pause-initial': 'cache-pause-initial',
+      'force-seekable': 'force-seekable',
+      'hls-bitrate': 'hls-bitrate',
+      'audio-client-name': 'audio-client-name',
+      'audio-set-media-role': 'audio-set-media-role',
+      'audio-normalize-downmix': 'audio-normalize-downmix',
+      'demuxer-cache-dir': 'demuxer-cache-dir',
+      'volume-max': 'volume-max',
+      'volume-gain-min': 'volume-gain-min',
+      'volume-gain-max': 'volume-gain-max',
+      'cookies': 'cookies',
+      'http-proxy': 'http-proxy',
+      'stream-record': 'stream-record',
+      'resume-playback (watch-later)': 'resume-playback',
       'cache (sanity: known-good)': 'cache',
     };
 
-    // Plan item -> mpv PROPERTY name (not option-backed). Checked via property-list.
+    // Label -> mpv PROPERTY name (not option-backed). Checked via property-list.
     const properties = <String, String>{
-      'ao-volume (#10)': 'ao-volume',
-      'ao-mute (#10)': 'ao-mute',
-      'demuxer-cache-state (#17)': 'demuxer-cache-state',
-      'playlist-path (#22/D1)': 'playlist-path',
-      'audio-spdif (#3 sanity)': 'audio-spdif',
+      'ao-volume': 'ao-volume',
+      'ao-mute': 'ao-mute',
+      'demuxer-cache-state': 'demuxer-cache-state',
+      'playlist-path': 'playlist-path',
+      'audio-spdif (sanity)': 'audio-spdif',
       'volume (sanity: known-good)': 'volume',
     };
 

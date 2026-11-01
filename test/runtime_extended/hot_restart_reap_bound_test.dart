@@ -22,8 +22,8 @@ const int _destroyDelayUs = 6000 * 1000;
 void main() {
   // One Hot Restart per process, as in hot_restart_first_player_test.
   slowCoreShimSuite(initialize: false, (shim) {
-    // The first player waits for the reap of F220 only so long: a destroy
-    // that hangs must not hold the app's player with it.
+    // The first player waits for the reap of the replaced VM's cores only
+    // so long: a destroy that hangs must not hold the app's player with it.
     test(
       'a reap that hangs does not hold the first player past the bound',
       () async {

@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// The audiotrack output of libmpv-r18 after audioserver dies (F278). Up to
+// The audiotrack output of libmpv-r18 after audioserver dies. Up to
 // r17 the output recreated its AudioTrack on the spot, while audioserver
 // was still down, and stayed silent when that failed. Now it asks mpv to
 // reload the output.
@@ -35,9 +35,7 @@ void main() {
   group('Android audiotrack after audioserver dies', () {
     if (!Platform.isAndroid) return;
 
-    testWidgets('the output reopens and the position runs again (F278)', (
-      _,
-    ) async {
+    testWidgets('the output reopens and the position runs again', (_) async {
       final player = Player();
       addTearDown(() async {
         await player.stop();
@@ -77,7 +75,7 @@ void main() {
         }
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
-      // Reloaded by the output (F278) when the states left active, restored
+      // Reloaded by the output when the states left active, restored
       // by Android's AudioTrack when they did not.
       final reloaded = states
           .skip(seen)

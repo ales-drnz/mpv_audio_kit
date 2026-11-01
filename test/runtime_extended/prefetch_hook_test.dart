@@ -8,8 +8,8 @@
 // current one while the hook is held. Up to r19 the prefetch ran `on_load`
 // inside a nested hook loop that fed no audio: a resolver slower than the
 // output buffer left a gap in the playing entry, and one still running at
-// the end of the entry held the transition (F9). A consumer of
-// `Hook.load` got the event twice for a prefetched entry (F241).
+// the end of the entry held the transition. A consumer of
+// `Hook.load` got the event twice for a prefetched entry.
 
 @TestOn('mac-os || linux || windows')
 library;
@@ -66,7 +66,7 @@ void main() {
       );
 
       test('the current entry plays on while the resolver of the next one '
-          'runs (F9)', () async {
+          'runs', () async {
         final done = Completer<(double, double)>();
         var asked = false;
         await player.setSourceResolver((request) async {
@@ -175,7 +175,7 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('a Hook.load of the app runs once per entry, not for the '
-          'prefetch (F241)', () async {
+          'prefetch', () async {
         await player.registerHook(Hook.load);
         final loads = <String>[];
         player.stream.hook.listen((event) async {
@@ -244,8 +244,8 @@ void main() {
         expect(player.state.playlist.index, 0);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
-      test('the prefetch gives the resolver the Media of its own entry '
-          '(F14)', () async {
+      test('the prefetch gives the resolver the Media of its '
+          'own entry', () async {
         final extras = <Object?>[];
         await player.setSourceResolver((request) {
           if (_slashes(request.uri) == _slashes(short) &&

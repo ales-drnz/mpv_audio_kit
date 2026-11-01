@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// F170 on Android, for an engine: Back on the root route or a swipe from
+// On Android, for an engine: Back on the root route or a swipe from
 // the recent apps destroys the Flutter engine, and its root isolate, while
 // the process stays. The players that isolate created kept playing. Now
 // the engine's root isolate is watched like any owner, and its players
@@ -44,8 +44,9 @@ void main() {
   group('Android players of a destroyed engine', () {
     if (!Platform.isAndroid) return;
 
-    testWidgets('a player of an engine destroyed while it plays stops '
-        '(F170)', (_) async {
+    testWidgets('a player of an engine destroyed while it plays stops', (
+      _,
+    ) async {
       expect(
         threadExists(audiotrackThread),
         isFalse,

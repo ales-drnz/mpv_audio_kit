@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// F172 on Android: a transient focus loss (a call) pauses the player and
+// On Android: a transient focus loss (a call) pauses the player and
 // arms the resume for the end of the call. The session then stays
 // playWhenReady with a suppression reason, so Media3 keeps its service in
 // the foreground for the whole call. Published as paused, it left the
@@ -45,7 +45,7 @@ void main() {
         _focus.invokeMethod<bool>('serviceForeground');
 
     testWidgets('the service keeps the foreground while a call holds the '
-        'focus (F172)', (_) async {
+        'focus', (_) async {
       // Before the service exists: its onCreate reads it.
       await _session.invokeMethod<void>(
         'debugForegroundServiceTimeoutMs',
@@ -57,7 +57,7 @@ void main() {
       addTearDown(player.dispose);
       await player.setRawProperty('ao', 'null');
       await player.setLoop(Loop.file);
-      await player.setMediaSession(const MediaSession(title: 'F172'));
+      await player.setMediaSession(const MediaSession(title: 'Call focus'));
       await player.open(
         Media(await materializeFixture('with_chapters.mka')),
         play: true,

@@ -167,7 +167,7 @@ void main() {
     });
   });
 
-  // F208: an unreadable CA bundle fails closed. A fetcher that ignored it
+  // An unreadable CA bundle fails closed. A fetcher that ignored it
   // and fell back to the system roots would fetch a plain http cover, which
   // needs no CA at all.
   test('an unreadable CA bundle refuses even a plain http cover', () async {

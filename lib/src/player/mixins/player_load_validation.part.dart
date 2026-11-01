@@ -112,8 +112,8 @@ Map<String, String> _streamOptions(Media media) {
         'must be a positive byte count (or null to disable)',
       );
     }
-    // Cap every HTTP range request to `chunk` bytes so a throttling CDN
-    // (e.g. googlevideo) keeps serving at full speed instead of slowing an
+    // Cap every HTTP range request to `chunk` bytes so a CDN that throttles
+    // open-ended requests keeps serving at full speed instead of slowing an
     // unbounded whole-file request to a crawl; `reconnect_*` recover genuine
     // drops (mpv already sets `reconnect=1`).
     //

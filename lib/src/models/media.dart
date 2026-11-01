@@ -49,9 +49,9 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 ///   start: Duration(minutes: 5),
 /// );
 ///
-/// // Opt in to chunked range requests so a throttling CDN (YouTube or
-/// // googlevideo) keeps serving at full speed after a seek.
-/// final yt = Media(googlevideoUrl, httpChunkSize: 8 * 1024 * 1024);
+/// // Opt in to chunked range requests so a CDN that throttles long
+/// // open-ended requests keeps serving at full speed after a seek.
+/// final throttled = Media(streamUrl, httpChunkSize: 8 * 1024 * 1024);
 /// ```
 ///
 /// Equality compares every field ([uri], [extras], [httpHeaders],
@@ -159,11 +159,10 @@ final class Media {
   /// request for the rest of the file.
   ///
   /// Set it to fetch the stream in bounded chunks instead. Some CDNs
-  /// (notably progressive YouTube or `googlevideo` audio) rate-limit a single
-  /// open-ended request for the whole file to a crawl, so seeking back
-  /// freezes once the buffered audio drains. Capping each request below the
-  /// CDN's threshold (a common value is `8 * 1024 * 1024`, 8 MiB) keeps it
-  /// serving at full speed. The same technique yt-dlp uses (`--http-chunk-size`).
+  /// rate-limit a single open-ended request for the whole file to a crawl, so
+  /// seeking back freezes once the buffered audio drains. Capping each request
+  /// below the CDN's threshold (a common value is `8 * 1024 * 1024`, 8 MiB)
+  /// keeps it serving at full speed.
   ///
   /// Leave it `null` for fast, trusted servers (Plex, Jellyfin, your own
   /// library) where one large request buffers fastest. Like [httpHeaders],

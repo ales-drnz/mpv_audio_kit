@@ -25,7 +25,7 @@ void main() {
     expect(releasesPcmSourcesAtInit(restarted: false), isFalse);
   });
 
-  // F207: the two cases above pass with a guard that never releases, and
+  // The two cases above pass with a guard that never releases, and
   // then the readers of the replaced VM wait for input forever.
   test('after a restart the root isolate releases them', () {
     // flutter_tester runs the tests in the engine's root isolate.

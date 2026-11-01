@@ -15,7 +15,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  // L3 — `mpv_wait_event` is invoked with a BOUNDED timeout (debug `0.1` s,
+  // `mpv_wait_event` is invoked with a BOUNDED timeout (debug `0.1` s,
   // product `1.0` s as of 0.3.4), not the old busy-poll. The bounded floor
   // exists so a Player left undisposed at process exit can't wedge
   // `WaitForIsolateShutdown` (the macOS Dock-Quit hang); the graceful dispose
@@ -31,7 +31,7 @@ void main() {
 
   runtimeSuite(() {
     test('idle event isolate does not busy-poll mpv_wait_event '
-        '(L3 wakeup-rate invariant)', () async {
+        '(wakeup-rate invariant)', () async {
       final counter = calloc<Int64>();
       try {
         final player = Player.testInstrumented(

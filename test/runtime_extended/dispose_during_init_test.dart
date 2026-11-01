@@ -8,7 +8,8 @@ library;
 
 // Regression tests for the dispose-during-bring-up lifecycle bugs.
 //
-// NOTE on the Single-Player-per-file convention (CLAUDE.md): these tests
+// NOTE on the Single-Player-per-file convention (a third libmpv core in
+// one flutter_test process can SIGSEGV): these tests
 // inherently create multiple Players sequentially in one file — the
 // scenario under test IS "a Player that never finished bring-up was
 // disposed; does the process (and the next Player) survive cleanly?".

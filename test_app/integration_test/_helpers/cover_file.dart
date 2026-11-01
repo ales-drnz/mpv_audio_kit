@@ -19,7 +19,7 @@ const onePixelPng = <int>[
 
 /// Writes [onePixelPng] to a file of the temporary directory whose name is
 /// not ASCII and has a space, and returns its `file://` URL: what the
-/// native side once had to decode itself (F176 on Windows).
+/// native side once had to decode itself (on Windows).
 Future<String> coverFileUrl() async {
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/Città copertina.png');

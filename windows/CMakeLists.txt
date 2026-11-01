@@ -1,22 +1,18 @@
-# The Flutter tooling requires that developers have a version of Visual Studio
-# installed that includes CMake 3.14 or later. You should not increase this
-# version, as doing so will cause the plugin to fail to compile for some
-# customers of the plugin.
+# 3.14 is the minimum CMake the Flutter Windows tooling ships; raising it
+# breaks some app builds.
 cmake_minimum_required(VERSION 3.14)
 
 # Project-level configuration.
 set(PROJECT_NAME "mpv_audio_kit")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
-# Explicitly opt in to modern CMake behaviors to avoid warnings with recent
-# versions of CMake.
+# Newer CMake policies up to 3.25, without the deprecation warnings.
 cmake_policy(VERSION 3.14...3.25)
 
-# This value is used when generating builds using this plugin, so it must
-# not be changed
+# Flutter derives the registrant name from PLUGIN_NAME; keep it.
 set(PLUGIN_NAME "mpv_audio_kit_plugin")
 
-# Any new source files that you add to the plugin should be added here.
+# The plugin sources.
 list(APPEND PLUGIN_SOURCES
   "mpv_audio_kit_plugin.cpp"
   "mpv_audio_kit_plugin.h"
@@ -26,22 +22,17 @@ list(APPEND PLUGIN_SOURCES
   "media_session_channel_win.h"
 )
 
-# Define the plugin library target. Its name must not be changed (see comment
-# on PLUGIN_NAME above).
+# The plugin library, named after PLUGIN_NAME.
 add_library(${PLUGIN_NAME} SHARED
   "include/mpv_audio_kit/mpv_audio_kit_plugin_c_api.h"
   "mpv_audio_kit_plugin_c_api.cpp"
   ${PLUGIN_SOURCES}
 )
 
-# Apply a standard set of build settings that are configured in the
-# application-level CMakeLists.txt. This can be removed for plugins that want
-# full control over build settings.
+# The app's standard Flutter build settings.
 apply_standard_settings(${PLUGIN_NAME})
 
-# Symbols are hidden by default to reduce the chance of accidental conflicts
-# between plugins. This should not be removed; any symbols that should be
-# exported should be explicitly exported with the FLUTTER_PLUGIN_EXPORT macro.
+# Symbols are hidden; only FLUTTER_PLUGIN_EXPORT ones are exported.
 set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
@@ -52,8 +43,7 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 # only the plugin target.
 target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_20)
 
-# Source include directories and library dependencies. Add any plugin-specific
-# dependencies here.
+# The public header, for the generated registrant.
 target_include_directories(${PLUGIN_NAME}
   INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )

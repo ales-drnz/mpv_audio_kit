@@ -13,9 +13,9 @@ import '../_helpers/setter_test_helpers.dart';
 void main() {
   runtimeSuite(() {
     // Companion of `dispose_safety_test.dart` — split into a separate
-    // file so the SIGSEGV-on-3rd-Player ceiling (CLAUDE.md) doesn't bite
-    // when running the full dispose-contract suite. This file uses
-    // exactly ONE Player.
+    // file so the SIGSEGV-on-3rd-Player ceiling (a third libmpv core in
+    // one flutter_test process can SIGSEGV) doesn't bite when running the
+    // full dispose-contract suite. This file uses exactly ONE Player.
 
     group(
       'Dispose safety — escape hatches throw PlayerDisposedException after dispose',

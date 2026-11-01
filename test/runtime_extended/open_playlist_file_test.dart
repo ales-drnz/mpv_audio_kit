@@ -59,7 +59,7 @@ void main() {
           contains('sine_440hz'),
           reason: 'entries resolve to the fixture referenced by the playlist',
         );
-        // playlist-path (#D1 part C) reports the source .m3u for the entry.
+        // playlist-path reports the source .m3u for the entry.
         expect(
           player.state.playlistPath,
           contains('list.m3u'),

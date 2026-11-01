@@ -20,7 +20,7 @@ void main() {
   // Hot Restart exists only in debug builds. A profile build runs AOT like
   // release, yet `dart.vm.product` is false there: keyed on that alone, it
   // woke the idle event isolate ten times a second and kept the Hot Restart
-  // tracker on (F30). `flutter test` cannot compile a profile build, so a
+  // tracker on. `flutter test` cannot compile a profile build, so a
   // `dart` process compiled with `dart.vm.profile` runs the probe.
   runtimeSuite(initialize: false, () {
     late Directory tmp;

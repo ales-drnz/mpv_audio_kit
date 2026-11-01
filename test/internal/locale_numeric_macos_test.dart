@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  // L1 — libmpv's API contract (mpv/client.h, player/main.c::check_locale)
+  // libmpv's API contract (mpv/client.h, player/main.c::check_locale)
   // requires LC_NUMERIC=C process-wide before any mpv_initialize call.
   // `library_loader.dart::_applyPlatformQuirks` exists solely to enforce
   // that, but the LC_* category numbers are NOT portable:

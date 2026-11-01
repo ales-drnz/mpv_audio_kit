@@ -724,11 +724,11 @@ def _emit_runtime_coverage(filters: dict, sorted_names: list[str]) -> str:
     to a live mpv via `setAudioEffects`, and assert no init error.
 
     Filters with REQUIRED params would fail to init if those options were
-    left unset (the bug this codegen change fixes) — here they're filled
+    left unset (mpv reports an init error) — here they're filled
     from SAMPLE_VALUES so mpv accepts them. `arnndn`'s required `model` is a
     real `.rnnn` FILE (not an inline string), so its case is built at run
     time from a committed fixture (ARNNDN_MODEL_FIXTURE, produced by
-    mpv_kit/scripts/generate_filter_fixtures.sh) and appended to the
+    scripts/generate_filter_fixtures.sh) and appended to the
     init loop — it stays OUT of the `const` case list only because its model
     arg is a runtime path, not a const literal. Its `model=` wire string is
     additionally asserted statically below.

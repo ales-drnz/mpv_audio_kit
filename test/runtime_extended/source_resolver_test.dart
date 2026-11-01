@@ -341,7 +341,7 @@ void main() {
 
     // Two entries with the same URL and their own extras: the resolver gets
     // the Media of the entry that loads, not the last one queued under that
-    // URL (F14). The prefetch is off, so every call is a load.
+    // URL. The prefetch is off, so every call is a load.
     test('entries with the same URL reach the resolver with their own '
         'extras', () async {
       final player = await buildPlayer();

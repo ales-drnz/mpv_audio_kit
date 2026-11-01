@@ -6,9 +6,9 @@
 // The audiotrack output of libmpv-r18 at rest and across pauses, on an
 // Android device or emulator (CI: diag/android_emulator.sh, API 24, 29 and
 // 34). Up to r17 the output thread spun on a full core while there was
-// nothing to play: paused, or with the source dry (F277). A pause flushed
+// nothing to play: paused, or with the source dry. A pause flushed
 // the audio the track held, so each resume skipped it and the position
-// jumped ahead (F276).
+// jumped ahead.
 //
 // Skipped off Android, and on a libmpv older than r18.
 
@@ -66,7 +66,7 @@ void main() {
     Future<double> timePos() async =>
         double.parse(await player.getRawProperty('time-pos') ?? 'nan');
 
-    testWidgets('the output thread rests while paused (F277)', (_) async {
+    testWidgets('the output thread rests while paused', (_) async {
       if (await skipBeforeRelease(player, 18)) return;
       await playOnAudiotrack(Media(tone));
       await player.pause();
@@ -75,8 +75,9 @@ void main() {
       expect(cpu, lessThan(_restingCpu), reason: 'paused, it used $cpu');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    testWidgets('the output thread rests while paused with stream silence '
-        '(F277)', (_) async {
+    testWidgets('the output thread rests while paused with stream silence', (
+      _,
+    ) async {
       if (await skipBeforeRelease(player, 18)) return;
       await player.setAudioStreamSilence(true);
       await playOnAudiotrack(Media(tone));
@@ -86,9 +87,7 @@ void main() {
       expect(cpu, lessThan(_restingCpu), reason: 'paused, it used $cpu');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    testWidgets('the output thread rests while the source runs dry (F277)', (
-      _,
-    ) async {
+    testWidgets('the output thread rests while the source runs dry', (_) async {
       if (await skipBeforeRelease(player, 18)) return;
       // 0.5 s of audio, then nothing: the output underruns while playing.
       const format = PcmFormat(sampleRate: 24000, channels: 1);
@@ -109,7 +108,7 @@ void main() {
       await source.close();
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    testWidgets('ten pauses keep the audio the track held (F276)', (_) async {
+    testWidgets('ten pauses keep the audio the track held', (_) async {
       if (await skipBeforeRelease(player, 18)) return;
       await playOnAudiotrack(Media(tone));
       // Paused, the position stands still: what it gained while playing is
@@ -147,7 +146,7 @@ void main() {
       );
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    testWidgets('a seek while paused resumes at the target (F276)', (_) async {
+    testWidgets('a seek while paused resumes at the target', (_) async {
       if (await skipBeforeRelease(player, 18)) return;
       await playOnAudiotrack(Media(tone));
       await player.pause();

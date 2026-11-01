@@ -14,7 +14,7 @@ import '../_helpers/range_http_server.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 void main() {
-  // F10: with the prefetch on, the resolver ran for the prefetch of the
+  // With the prefetch on, the resolver ran for the prefetch of the
   // next entry and again when the transition loaded it. A resolver whose
   // URL changes on every call (a Subsonic salt, a signed CDN URL with a
   // timestamp) made mpv drop the prefetch as "wrong URL" and open the

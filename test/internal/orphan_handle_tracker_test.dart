@@ -137,7 +137,7 @@ void main() {
 
   // A slot is two Int64 words on every ABI. In IntPtr words a 32-bit ABI
   // (armeabi-v7a) cut the 64-bit cookie, so the tracker turned itself off
-  // there and a Hot Restart left the old cores playing (F228). This host is
+  // there and a Hot Restart left the old cores playing. This host is
   // 64-bit, so the layout is read back instead: cookie and address in
   // 8-byte words, as a 32-bit ABI now has them too.
   test('a slot is two Int64 words on every ABI', () async {

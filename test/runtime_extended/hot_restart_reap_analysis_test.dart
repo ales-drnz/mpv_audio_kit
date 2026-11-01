@@ -19,7 +19,7 @@ void main() {
   // The waveform, the loudness scan and the analyzer taps are switched on
   // and off process-wide in libmpv. A Hot Restart skips the old VM's
   // dispose, so whatever its listeners armed stayed on for the new VM,
-  // whose players then decoded every file they opened for nobody (F158).
+  // whose players then decoded every file they opened for nobody.
   // The cores here stand for the old VM's leaked player and the new one.
   analysisSuite(() {
     late MpvLibrary lib;

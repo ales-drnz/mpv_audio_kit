@@ -18,7 +18,7 @@ void main() {
     setUp(() => shim().reset());
     tearDown(() => shim().reset());
 
-    // F148: a payload the event isolate failed to read reached stream.log
+    // A payload the event isolate failed to read reached stream.log
     // with the prefix 'event-isolate', as if mpv had logged it, and at the
     // error level also stream.error as a LogError, whatever the configured
     // log level. It is the library's own diagnostic: internalLog.

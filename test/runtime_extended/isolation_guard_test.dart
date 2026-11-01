@@ -11,7 +11,8 @@ import 'package:test/test.dart';
 import '../_helpers/setter_test_helpers.dart';
 
 /// Permanent guard: verifies that the file-split workaround for the
-/// SIGSEGV-on-3rd-Player quirk (documented in CLAUDE.md) keeps holding.
+/// SIGSEGV-on-3rd-Player quirk (a third libmpv core in one flutter_test
+/// process can SIGSEGV) keeps holding.
 ///
 /// `flutter test` runs each test file in its own Dart isolate group;
 /// this file's [Player] is logically separate from the one in

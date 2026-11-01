@@ -80,7 +80,7 @@ void main() {
     });
   });
   group('core idle', () {
-    // F41: paused or stopped, the output writes nothing, so the poll reads
+    // Paused or stopped, the output writes nothing, so the poll reads
     // nothing new. It stops while the core is idle and starts again after.
     test('no read while the core is idle, the poll comes back after', () async {
       var gets = 0;

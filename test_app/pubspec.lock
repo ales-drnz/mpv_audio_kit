@@ -120,6 +120,11 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_web_plugins:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   fuchsia_remote_debug_protocol:
     dependency: transitive
     description: flutter
@@ -224,7 +229,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.5.1"
+    version: "0.5.3"
   objective_c:
     dependency: transitive
     description:
@@ -448,4 +453,4 @@ packages:
     version: "3.1.3"
 sdks:
   dart: ">=3.11.0-0 <4.0.0"
-  flutter: ">=3.38.4"
+  flutter: ">=3.41.0"

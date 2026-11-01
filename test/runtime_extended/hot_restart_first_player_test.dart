@@ -25,7 +25,7 @@ void main() {
   // file of `flutter test` has a process of its own: this file stands for
   // one Hot Restart.
   slowCoreShimSuite(initialize: false, (shim) {
-    // F220: the reap destroyed the cores of the replaced VM 500 ms after
+    // The reap destroyed the cores of the replaced VM 500 ms after
     // ensureInitialized, and nothing held the new VM's players meanwhile.
     // A player opened right away initialized its audio output while the
     // orphan still held the device: an exclusive output failed.

@@ -105,7 +105,7 @@ void main() {
   });
 
   test('no read while the core is idle, the poll comes back after', () async {
-    // F41: paused or stopped, the ring and the playback position stand
+    // Paused or stopped, the ring and the playback position stand
     // still. A new listener still gets one read, the slice held now.
     var gets = 0;
     final p = FilterTapPipeline(

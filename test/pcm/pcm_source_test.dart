@@ -499,7 +499,7 @@ void main() {
         return (s.toMedia(), WeakReference(s));
       }
 
-      // F206: the control, the same source whose media is dropped too. The
+      // The control, the same source whose media is dropped too. The
       // churn must collect it, or the check below passes without a GC.
       WeakReference<PcmSource> makeDropped() {
         final s = PcmSource.create(_mono);

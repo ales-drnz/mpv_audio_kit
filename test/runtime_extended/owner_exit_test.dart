@@ -92,7 +92,7 @@ void main() {
   // On Android the process outlives the Flutter engine: Back on the root
   // route or a swipe from the recent apps destroys the engine and its root
   // isolate, and the players that isolate created kept playing with nobody
-  // to stop them (F170). An isolate that exits here stands for that root.
+  // to stop them. An isolate that exits here stands for that root.
   final fixturePath = defaultFixturePath();
 
   runtimeSuite(fixturePath: fixturePath, () {

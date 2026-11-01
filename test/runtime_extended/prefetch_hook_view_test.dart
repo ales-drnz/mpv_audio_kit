@@ -9,10 +9,10 @@
 // r20. Up to r17 the patch hid the playing file's demuxer and moved its
 // filename to the next entry for the length of the hook: a cache dump
 // aborted the process, duration and tags went away, track changes did
-// nothing (F271, F57, F272). The prefetch opened the next entry with the
-// per-file options of the playing one, its HTTP headers included (F239),
-// prefetch-state stayed `loading` after a failed open (F60) and kept the
-// prefetch after a stop (F165).
+// nothing. The prefetch opened the next entry with the
+// per-file options of the playing one, its HTTP headers included,
+// prefetch-state stayed `loading` after a failed open and kept the
+// prefetch after a stop.
 
 @TestOn('mac-os || linux || windows')
 library;
@@ -49,7 +49,7 @@ void main() {
 
       tearDown(() => player.dispose());
 
-      // F60: r17 reported `loading` until the transition, 5 s later.
+      // r17 reported `loading` until the transition, 5 s later.
       test('a prefetch that cannot open turns failed while the current '
           'file plays', () async {
         final sw = Stopwatch()..start();
@@ -67,7 +67,7 @@ void main() {
         );
       }, timeout: const Timeout(Duration(seconds: 30)));
 
-      // F165: r17 kept the prefetch, and `ready`, after a stop.
+      // r17 kept the prefetch, and `ready`, after a stop.
       test('a stop drops the prefetch and resets the state', () async {
         final ready = player.stream.prefetchState
             .firstWhere((s) => s == PrefetchState.ready)
@@ -82,7 +82,7 @@ void main() {
         );
       }, timeout: const Timeout(Duration(seconds: 30)));
 
-      // F239: the opener reads the global options, which during playback
+      // The opener reads the global options, which during playback
       // hold the per-file options of the playing entry.
       test('the HTTP headers of an entry do not reach the next one', () async {
         final server = await RangeHttpServer.start({
@@ -154,7 +154,7 @@ void main() {
         heldHook = await held.future.timeout(const Duration(seconds: 10));
       }
 
-      // F271: r17 set the demuxer to NULL around the hook, and
+      // r17 set the demuxer to NULL around the hook, and
       // cache_dump_poll asserts one: the process aborted.
       test('a cache dump of the playing file survives the hook', () async {
         await holdPrefetchOfB();
@@ -171,7 +171,7 @@ void main() {
         expect(await player.getRawProperty('duration'), isNotNull);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
-      // F57: everything stays a's, and the hook reads b's URL from its own
+      // Everything stays a's, and the hook reads b's URL from its own
       // property. Up to r19 path named b during the hook.
       test('the playing file keeps its duration, tags and path during the '
           'hook, which names the next entry apart', () async {
@@ -198,7 +198,7 @@ void main() {
         expect(player.state.duration, const Duration(seconds: 5));
       }, timeout: const Timeout(Duration(seconds: 30)));
 
-      // F272: with no demuxer, r17 added the track to nothing.
+      // With no demuxer, r17 added the track to nothing.
       test('an audio track added during the hook plays at once', () async {
         await holdPrefetchOfB();
         await player.addAudioTrack(Media(c));

@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// F170 on Android: the process outlives the isolates that create players.
+// On Android: the process outlives the isolates that create players.
 // An isolate that exits without disposing its players left them playing,
 // with nobody to stop them. Now each owner is watched, and its players
 // free their core when it exits: the output thread of mpv goes away.
@@ -50,7 +50,7 @@ void main() {
     if (!Platform.isAndroid) return;
 
     testWidgets('a playing player whose isolate exits without dispose '
-        'stops (F170)', (_) async {
+        'stops', (_) async {
       expect(
         threadExists(audiotrackThread),
         isFalse,

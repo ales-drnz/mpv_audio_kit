@@ -190,7 +190,7 @@ void main() {
     // dispose() gives the event isolate 2 s to exit and skips the destroy
     // when it does not, leaving the core alive in the process. One event
     // takes up to a dozen synchronous reads, 500 ms each here: read after
-    // read past the stop flag, the isolate outlived the bound (F31).
+    // read past the stop flag, the isolate outlived the bound.
     test('a dispose in the middle of the file-load reads still destroys '
         'the core', () async {
       final player = await buildPlayer();

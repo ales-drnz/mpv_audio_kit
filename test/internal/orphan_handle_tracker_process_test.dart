@@ -30,7 +30,7 @@ void main() {
 
   // A process that exits leaves its sentinel behind, and a later process can
   // get the same pid. Read as a Hot Restart, the address in it belongs to
-  // the dead process: 4096 is never mapped, so a read there crashes (F25).
+  // the dead process: 4096 is never mapped, so a read there crashes.
   test(
     'a sentinel left by a dead process with our pid is never dereferenced',
     () async {

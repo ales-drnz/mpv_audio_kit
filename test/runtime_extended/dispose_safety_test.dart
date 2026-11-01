@@ -16,7 +16,7 @@ void main() {
     // - `dispose_escape_hatches_test.dart` — getRawProperty / etc.
     // The split exists because creating + disposing 2+ Players inside
     // a single test file pushes against the SIGSEGV-on-3rd-Player
-    // quirk (CLAUDE.md).
+    // quirk.
 
     group('Dispose safety — idempotency', () {
       test('dispose() called twice is a no-op', () async {

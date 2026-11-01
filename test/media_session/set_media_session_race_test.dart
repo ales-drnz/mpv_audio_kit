@@ -13,7 +13,7 @@
 // player. A controller torn down late used to send its `disable` after
 // the winner's `enable`, and its cancel took the command channel handler
 // with it, so the lock screen entry vanished while the commands went
-// nowhere (F17).
+// nowhere.
 //
 // The checks read only the final native state, not how the code gets
 // there: the last lifecycle call, the last control call of the command

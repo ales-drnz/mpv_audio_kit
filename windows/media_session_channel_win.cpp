@@ -157,7 +157,7 @@ void EnsureProcessIdentity(const std::string& app_name_utf8) {
         if (c == L'\0') break;
         if (std::iswalnum(static_cast<wint_t>(c))) suffix.push_back(c);
       }
-      if (!suffix.empty()) aumid += L"." + suffix;  // e.g. "mpv_audio_kit.Finova"
+      if (!suffix.empty()) aumid += L"." + suffix;  // e.g. "mpv_audio_kit.MyPlayer"
     }
   }
   SetCurrentProcessExplicitAppUserModelID(aumid.c_str());  // HRESULT ignored

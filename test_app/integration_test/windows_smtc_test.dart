@@ -84,7 +84,7 @@ void main() {
     testWidgets('a file:// cover whose path is not ASCII is the thumbnail', (
       _,
     ) async {
-      // F176: the plugin decoded the URL with PathCreateFromUrlW into a
+      // The plugin decoded the URL with PathCreateFromUrlW into a
       // MAX_PATH buffer. The package reads the file now and sends bytes.
       final fixture = await materializeFixture('with_chapters.mka');
       await player.setMediaSession(const MediaSession(title: 'Cover'));

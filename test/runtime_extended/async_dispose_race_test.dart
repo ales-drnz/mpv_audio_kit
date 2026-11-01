@@ -18,7 +18,7 @@ import '../_helpers/setter_test_helpers.dart';
 /// never dereferenced after `mpv_terminate_destroy`.
 void main() {
   runtimeSuite(fixturePath: defaultFixturePath(), () {
-    test('uaf-1: a multi-write setter in flight when dispose() runs never issues '
+    test('a multi-write setter in flight when dispose() runs never issues '
         'FFI on the freed handle', () async {
       // setReplayGain issues four sequential async writes. Firing it un-awaited
       // and disposing immediately suspends it mid-sequence; dispose drains the

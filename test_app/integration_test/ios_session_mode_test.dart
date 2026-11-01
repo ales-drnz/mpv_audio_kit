@@ -3,7 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// F187 on iOS: up to libmpv-r17 mpv's audio output set the shared audio
+// On iOS: up to libmpv-r17 mpv's audio output set the shared audio
 // session to the MoviePlayback mode at every init, a mode Apple means for
 // video, in every app and with no media session enabled. From r18 it sets
 // the `.playback` category only, and the mode stays default. Read back
@@ -32,8 +32,9 @@ void main() {
   group('iOS audio session', () {
     if (!Platform.isIOS) return;
 
-    testWidgets('the audio output leaves the session mode at default '
-        '(F187)', (_) async {
+    testWidgets('the audio output leaves the session mode at default', (
+      _,
+    ) async {
       final player = Player();
       addTearDown(() async {
         await player.stop();
