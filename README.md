@@ -2731,7 +2731,7 @@ The Dart code of mpv_audio_kit is BSD-3-Clause ([LICENSE](LICENSE)). The libmpv 
 - ships the license texts and says that it uses libmpv: `licenses.zip`, published with the binaries in the `libmpv-<release>` release of this repository, holds the texts for every target;
 - lets the user replace the library with one built from modified source: every target bundles libmpv as its own dynamic library or module, and the `README.txt` of `licenses.zip` names the libmpv-scripts commit and every pinned source it was built from. Point users at libmpv-scripts and at that file.
 
-Rubber Band (librubberband) is GPL, so the bundled libmpv leaves it out, and the package has no `RubberbandEffect`. For pitch and tempo, see [4.4](#44-speed-and-pitch). To use it anyway, build libmpv yourself with libmpv-scripts' GPL option (`LIBMPV_GPL=1`), bundle it with the `libmpv` user define ([1.1](#11-global-initialization)) and add the filter as a `RawAudioEffect`:
+Rubber Band (librubberband) is GPL, so the bundled libmpv leaves it out, and the package has no `RubberbandEffect`. For pitch and tempo, see [4.4](#44-speed-and-pitch). To use it anyway on Android, iOS, macOS, Windows and Linux, build libmpv yourself with libmpv-scripts' GPL option (`LIBMPV_GPL=1`), bundle it with the `libmpv` user define ([1.1](#11-global-initialization)) and add the filter as a `RawAudioEffect` (the web has no such route: its module ships in the package's `web/` assets, and the user define does not replace it):
 
 ```dart
 await player.setAudioEffects(const [
