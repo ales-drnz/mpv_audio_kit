@@ -194,6 +194,7 @@ On Android, iOS, macOS, Windows and Linux the build downloads the libmpv binary 
   - [15.5 What differs on the web](#155-what-differs-on-the-web)
 - [Permissions](#permissions)
 - [Troubleshooting](#troubleshooting)
+- [Licenses](#licenses)
 - [Project background](#project-background)
 
 ---
@@ -738,7 +739,7 @@ await player.setPitch(0.9);            // lower pitch, same speed (0.01 to 100)
 await player.setPitchCorrection(true); // default
 ```
 
-With pitch correction on, a rate other than 1.0 keeps the original pitch. With it off, the pitch follows the speed. For high-quality pitch and tempo changes, use `RubberbandEffect` ([5.2](#52-common-effects-quick-examples)).
+With pitch correction on, a rate other than 1.0 keeps the original pitch. With it off, the pitch follows the speed. In the effects chain, `AtempoEffect` changes the tempo alone and `AsetrateEffect` the pitch and speed together ([5.3](#53-available-effects)).
 
 ### 4.5 Volume and mute
 
@@ -894,8 +895,8 @@ await player.setAudioEffects(const [
   // EBU R128 loudness normalization
   LoudnormEffect(i: -16, tp: -1.5, lra: 11),
 
-  // Pitch and tempo, independently
-  RubberbandEffect(pitch: 1.0594, tempo: 1.0, pitchq: RubberbandPitch.quality),
+  // Tempo without pitch change
+  AtempoEffect(tempo: 1.1),
 
   // 18-band graphic EQ, bands `1b` to `18b`
   SuperequalizerEffect(params: {'4b': 1.5, '5b': 2.0, '8b': 0.5, '13b': 1.0}),
@@ -906,11 +907,11 @@ await player.setAudioEffects(const [
 ]);
 ```
 
-For sliders, every numeric parameter has `static const` bounds and a default (`AcompressorEffect.thresholdMin`, `thresholdMax`, `thresholdDefault`). Parameters with fixed choices are Dart enums (`RubberbandPitch`, `EqualizerWidthType`).
+For sliders, every numeric parameter has `static const` bounds and a default (`AcompressorEffect.thresholdMin`, `thresholdMax`, `thresholdDefault`). Parameters with fixed choices are Dart enums (`AgateMode`, `EqualizerWidthType`).
 
 ### 5.3 Available effects
 
-There are 87 typed effects, each named after its ffmpeg filter plus `Effect` (`acompressor` is `AcompressorEffect`). For any other `lavfi-*` filter, use `RawAudioEffect`.
+There are 86 typed effects, each named after its ffmpeg filter plus `Effect` (`acompressor` is `AcompressorEffect`). For any other `lavfi-*` filter, use `RawAudioEffect`.
 
 <details>
 <summary><b>All effects</b> (click to expand)</summary>
@@ -977,7 +978,6 @@ There are 87 typed effects, each named after its ffmpeg filter plus `Effect` (`a
 | `aresample` | Resample |
 | `asetrate` | Varispeed (pitch and speed together) |
 | `atempo` | Tempo without pitch change |
-| `rubberband` | Independent pitch and tempo |
 
 **Stereo and spatial**
 
@@ -2721,6 +2721,25 @@ sudo apt install libasound2 libpipewire-0.3-0 libpulse0
 ```
 
 Inside a container the `alsa` driver cannot reach the sound card: use `pipewire` or `pulse` ([6.1](#61-audio-output-driver)). On WSL only `pulse` works.
+
+---
+
+## Licenses
+
+The Dart code of mpv_audio_kit is BSD-3-Clause ([LICENSE](LICENSE)). The libmpv it bundles, from libmpv-r20 on, is mpv, FFmpeg and the libraries they link, built by [libmpv-scripts](https://github.com/ales-drnz/libmpv-scripts) under the **LGPL, version 3 or later**. An app of any license can ship it, as long as it:
+
+- ships the license texts and says that it uses libmpv: `licenses.zip`, published with the binaries in the `libmpv-<release>` release of this repository, holds the texts for every target;
+- lets the user replace the library with one built from modified source: every target bundles libmpv as its own dynamic library or module, and the `README.txt` of `licenses.zip` names the libmpv-scripts commit and every pinned source it was built from. Point users at libmpv-scripts and at that file.
+
+Rubber Band (librubberband) is GPL, so the bundled libmpv leaves it out, and the package has no `RubberbandEffect`. For pitch and tempo, see [4.4](#44-speed-and-pitch). To use it anyway, build libmpv yourself with libmpv-scripts' GPL option (`LIBMPV_GPL=1`), bundle it with the `libmpv` user define ([1.1](#11-global-initialization)) and add the filter as a `RawAudioEffect`:
+
+```dart
+await player.setAudioEffects(const [
+  RawAudioEffect('lavfi-rubberband=pitch=1.0594:pitchq=quality'),
+]);
+```
+
+A raw stage has no chain label, so any change rebuilds the chain instead of updating the filter live. That library is GPL, version 3 or later, and an app that ships it must be GPL too.
 
 ---
 
