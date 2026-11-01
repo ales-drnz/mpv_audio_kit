@@ -9,7 +9,8 @@
 // its URL to the tests as MAK_WEB_NET.
 //
 //   GET /cut/<fixture>  the fixture under test/fixtures, its whole length
-//                       announced and the body cut at half; a resume (a
+//                       announced and the body cut at half, after a pause
+//                       for the page to read it; a resume (a
 //                       Range from past the start) gets 503 with an empty
 //                       body: a file cut short whose resume is refused.
 //   GET /file/<fixture> the fixture in full, with Range support.
@@ -22,6 +23,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
+/// How long the bytes of a cut body stand before the connection breaks.
+const _cutDelay = Duration(seconds: 2);
 
 Future<void> main() async {
   final fixtures = Directory.fromUri(Platform.script.resolve('../fixtures/'));
@@ -98,6 +102,10 @@ Future<void> _serve(Socket client, Directory fixtures) async {
     final end = cut ? bytes.length ~/ 2 : bytes.length;
     client.add(bytes.sublist(start, end));
     await client.flush();
+    // Chrome drops what the page has not read yet of a body that breaks, and
+    // a page on a slow machine then gets no byte at all: the open fails
+    // instead of the file ending short. The break waits for the read.
+    if (cut) await Future<void>.delayed(_cutDelay);
   } finally {
     await sub.cancel();
     client.destroy();
