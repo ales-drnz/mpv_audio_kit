@@ -193,7 +193,8 @@ class SlowCoreShim {
   /// from this call on, and the isolate asked for the next event, by which
   /// time it has sent the reads that event takes. The reply then reaches
   /// the player behind those reads. `counter('deferred_sent')` counts the
-  /// requests sent.
+  /// requests sent. A request an earlier call still defers goes to mpv at
+  /// once.
   void deferRequest(String name, {required int afterEvent, int skip = 0}) {
     final fn = _lib
         .lookupFunction<
@@ -201,6 +202,22 @@ class SlowCoreShim {
           void Function(Pointer<Utf8>, int, int)
         >('mak_shim_defer_request');
     _withString(name, (p) => fn(p, afterEvent, skip));
+  }
+
+  /// Holds the next async request naming [name] (a command's first
+  /// argument, or the property of a set) off mpv until the next request of
+  /// that name: it is sent then, just ahead of that one, which goes on as
+  /// it would have ([deferRequest] still applies to it). Two requests of
+  /// one name reach mpv in their order, and the second cannot come first,
+  /// whatever the player reads in between. `counter('held_requests_sent')`
+  /// counts the held requests sent.
+  void holdRequest(String name) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>),
+          void Function(Pointer<Utf8>)
+        >('mak_shim_hold_request');
+    _withString(name, fn);
   }
 
   /// Answers every synchronous node read of the property [name] from now
@@ -237,7 +254,7 @@ class SlowCoreShim {
   /// last `mpv_create` began), `hooks_pending_at_destroy` (hooks mpv fired and nobody continued
   /// before the destroy), `watched_gets`, `pause_zero_reads`,
   /// `park_reads_stalled`, `broken_gets`, `replies_held`,
-  /// `loadfiles_refused` and `deferred_sent`.
+  /// `loadfiles_refused`, `deferred_sent` and `held_requests_sent`.
   int counter(String name) {
     final fn = _lib
         .lookupFunction<
@@ -247,7 +264,9 @@ class SlowCoreShim {
     return _withString(name, fn);
   }
 
-  /// Zeroes the counters and the knobs. The stalls stay.
+  /// Zeroes the counters and the knobs. The stalls stay. A request
+  /// [deferRequest] or [holdRequest] still keeps goes to mpv now, so the
+  /// call that made it does not wait forever.
   void reset() =>
       _lib.lookupFunction<Void Function(), void Function()>('mak_shim_reset')();
 
