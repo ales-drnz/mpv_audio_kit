@@ -4446,36 +4446,6 @@ const List<ParamCorner> kFilterParamCorners = [
     bundle: const [LowshelfEffect(width: LowshelfEffect.widthMax)],
   ),
   (
-    filter: 'rubberband',
-    label: 'pitch=pitchMin',
-    bundle: const [RubberbandEffect(pitch: RubberbandEffect.pitchMin)],
-  ),
-  (
-    filter: 'rubberband',
-    label: 'pitch=pitchDefault',
-    bundle: const [RubberbandEffect(pitch: RubberbandEffect.pitchDefault)],
-  ),
-  (
-    filter: 'rubberband',
-    label: 'pitch=pitchMax',
-    bundle: const [RubberbandEffect(pitch: RubberbandEffect.pitchMax)],
-  ),
-  (
-    filter: 'rubberband',
-    label: 'tempo=tempoMin',
-    bundle: const [RubberbandEffect(tempo: RubberbandEffect.tempoMin)],
-  ),
-  (
-    filter: 'rubberband',
-    label: 'tempo=tempoDefault',
-    bundle: const [RubberbandEffect(tempo: RubberbandEffect.tempoDefault)],
-  ),
-  (
-    filter: 'rubberband',
-    label: 'tempo=tempoMax',
-    bundle: const [RubberbandEffect(tempo: RubberbandEffect.tempoMax)],
-  ),
-  (
     filter: 'silenceremove',
     label: 'start_duration=500us',
     bundle: const [
@@ -6165,7 +6135,6 @@ const List<ParamCorner> kFilterSamples = [
     label: 'preset Karaoke (center cut)',
     bundle: const [PanEffect(args: 'stereo|c0=c0-c1|c1=c1-c0')],
   ),
-  (filter: 'rubberband', label: 'defaults', bundle: const [RubberbandEffect()]),
   (
     filter: 'silenceremove',
     label: 'defaults',

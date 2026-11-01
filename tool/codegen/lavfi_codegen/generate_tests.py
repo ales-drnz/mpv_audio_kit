@@ -1191,7 +1191,7 @@ def _emit_af_command_coverage(
     lines.append("")
     lines.append("      for (final c in cases) {")
     lines.append("        // Without libmpv-scripts' chain_eof patch, mpv stalls at the end")
-    lines.append("        // of a file when a chain change there drops lavfi-rubberband with")
+    lines.append("        // of a file when a chain change there drops lavfi-dynaudnorm with")
     lines.append("        // the EOF it holds: change the chain at the start.")
     lines.append("        await player.seek(Duration.zero);")
     lines.append("        await player.setAudioEffects(c.bundle);")

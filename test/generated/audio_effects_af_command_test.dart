@@ -1480,25 +1480,6 @@ void main() {
             ],
           ),
           (
-            filter: 'rubberband',
-            field: 'rubberband_0',
-            bundle: const [RubberbandEffect()],
-            updates: <AfCommandUpdate>[
-              (
-                label: 'pitch=2.0',
-                apply: (e) => [
-                  (e.single as RubberbandEffect).copyWith(pitch: 2.0),
-                ],
-              ),
-              (
-                label: 'tempo=2.0',
-                apply: (e) => [
-                  (e.single as RubberbandEffect).copyWith(tempo: 2.0),
-                ],
-              ),
-            ],
-          ),
-          (
             filter: 'silenceremove',
             field: 'silenceremove_0',
             bundle: const [SilenceremoveEffect()],
@@ -2071,7 +2052,7 @@ void main() {
 
         for (final c in cases) {
           // Without libmpv-scripts' chain_eof patch, mpv stalls at the end
-          // of a file when a chain change there drops lavfi-rubberband with
+          // of a file when a chain change there drops lavfi-dynaudnorm with
           // the EOF it holds: change the chain at the start.
           await player.seek(Duration.zero);
           await player.setAudioEffects(c.bundle);

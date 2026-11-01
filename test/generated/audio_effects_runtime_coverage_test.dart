@@ -116,7 +116,6 @@ const List<RuntimeCase> _kRuntimeCases = [
   (filter: 'lowshelf', bundle: const [LowshelfEffect()]),
   (filter: 'mcompand', bundle: const [McompandEffect()]),
   (filter: 'pan', bundle: const [PanEffect(args: 'stereo|c0=c0|c1=c1')]),
-  (filter: 'rubberband', bundle: const [RubberbandEffect()]),
   (filter: 'silenceremove', bundle: const [SilenceremoveEffect()]),
   (filter: 'speechnorm', bundle: const [SpeechnormEffect()]),
   (filter: 'stereotools', bundle: const [StereotoolsEffect()]),

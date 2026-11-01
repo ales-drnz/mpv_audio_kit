@@ -24,7 +24,7 @@ Naming rules:
                       (`type` → `type_`). Digit-prefix names → routed via
                       `Map<String, T> params` keyed by the exact ffmpeg
                       identifier.
-  - Enum type:        `<FilterPascal><UnitPascal>` (e.g. `RubberbandPitch`).
+  - Enum type:        `<FilterPascal><UnitPascal>` (e.g. `AgateMode`).
                       Members are the ffmpeg CONST name in camelCase;
                       digit-prefix members get an `n` prefix (`n50fm` →
                       `'50fm'`).

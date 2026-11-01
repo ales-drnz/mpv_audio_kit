@@ -83,7 +83,6 @@ CATEGORIES = [
     ]),
     ("pitch_time", "PitchTime", "Pitch, tempo and time", "speed", [
         "afreqshift", "aphaseshift", "aresample", "asetrate", "atempo",
-        "rubberband",
     ]),
     ("stereo", "Stereo", "Stereo, channels and spatial", "surround_sound", [
         "crossfeed", "dialoguenhance", "earwax", "extrastereo", "haas",

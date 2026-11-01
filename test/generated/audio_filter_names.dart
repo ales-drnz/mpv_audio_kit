@@ -86,7 +86,6 @@ const List<String> kAudioFilterNames = [
   'lowshelf',
   'mcompand',
   'pan',
-  'rubberband',
   'silenceremove',
   'speechnorm',
   'stereotools',
