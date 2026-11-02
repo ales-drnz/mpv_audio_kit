@@ -608,9 +608,11 @@ def _emit_param_corners(
     filters: dict, sorted_names: list[str]
 ) -> tuple[str, int, int]:
     """Emits the runtime corner-case manifest. One `(filter, label,
-    bundle)` record per (filter, numeric-param, corner ∈ {Min, Default,
-    Max}). The runtime test iterates this list and feeds each bundle
-    to live mpv, capturing any AVOption-rejection errors.
+    bundle)` record per (filter, numeric-param, corner ∈ {Min, Max}).
+    The runtime test iterates this list and feeds each bundle to live
+    mpv, capturing any AVOption-rejection errors. No Default corner:
+    toFilterString omits a value equal to the default, so it would send
+    the bare filter, which the runtime coverage test already opens.
 
     A duration param gets one corner instead, 500 us when its range holds
     it: under a millisecond, where its wire value once took an exponent.
@@ -675,15 +677,13 @@ def _emit_param_corners(
                 continue
             # Each corner uses the codegen's public const so a drift in
             # the const value is automatically reflected here.
-            for suffix in ("Min", "Default", "Max"):
+            for suffix in ("Min", "Max"):
                 # Skip when the underlying schema field is missing —
                 # generate.py won't emit a `<param><suffix>` const if
                 # min/max parses to None.
                 if suffix == "Min" and p.get("min") is None:
                     continue
                 if suffix == "Max" and p.get("max") is None:
-                    continue
-                if suffix == "Default" and p.get("default") is None:
                     continue
                 const_name = f"{cls}.{dart_pname}{suffix}"
                 req_extra = _required_args_fragment_except(fname, pname)

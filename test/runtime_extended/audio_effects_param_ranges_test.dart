@@ -55,12 +55,12 @@ void main() {
     'surround.lfe_low=lfeLowMax',
     // afade: AVOption declares `start_sample` max as I64_MAX,
     // but the filter rejects it at init time — `start_sample +
-    // nb_samples` would overflow internally. Min / Default are
+    // nb_samples` would overflow internally. Min is
     // accepted; only the I64_MAX extreme blows up.
     'afade.start_sample=startSampleMax',
     // firequalizer: AVOption declares `delay` up to 1e10 s, but a kernel
     // that long overflows to nan or infinity on macOS ("filter kernel
-    // contains nan or infinity"). Min / Default are accepted.
+    // contains nan or infinity"). Min is accepted.
     'firequalizer.delay=delayMax',
   };
 
@@ -84,7 +84,7 @@ void main() {
     });
 
     test(
-      'every typed numeric param accepts its codegen Min/Default/Max in mpv',
+      'every typed numeric param accepts its codegen Min and Max in mpv',
       () async {
         final cases = <ChainCase>[
           for (final corner in kFilterParamCorners)

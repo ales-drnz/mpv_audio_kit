@@ -21,11 +21,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acompressor',
-    label: 'attack=attackDefault',
-    bundle: const [AcompressorEffect(attack: AcompressorEffect.attackDefault)],
-  ),
-  (
-    filter: 'acompressor',
     label: 'attack=attackMax',
     bundle: const [AcompressorEffect(attack: AcompressorEffect.attackMax)],
   ),
@@ -33,11 +28,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acompressor',
     label: 'knee=kneeMin',
     bundle: const [AcompressorEffect(knee: AcompressorEffect.kneeMin)],
-  ),
-  (
-    filter: 'acompressor',
-    label: 'knee=kneeDefault',
-    bundle: const [AcompressorEffect(knee: AcompressorEffect.kneeDefault)],
   ),
   (
     filter: 'acompressor',
@@ -51,13 +41,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acompressor',
-    label: 'level_in=levelInDefault',
-    bundle: const [
-      AcompressorEffect(levelIn: AcompressorEffect.levelInDefault),
-    ],
-  ),
-  (
-    filter: 'acompressor',
     label: 'level_in=levelInMax',
     bundle: const [AcompressorEffect(levelIn: AcompressorEffect.levelInMax)],
   ),
@@ -65,13 +48,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acompressor',
     label: 'level_sc=levelScMin',
     bundle: const [AcompressorEffect(levelSc: AcompressorEffect.levelScMin)],
-  ),
-  (
-    filter: 'acompressor',
-    label: 'level_sc=levelScDefault',
-    bundle: const [
-      AcompressorEffect(levelSc: AcompressorEffect.levelScDefault),
-    ],
   ),
   (
     filter: 'acompressor',
@@ -85,11 +61,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acompressor',
-    label: 'makeup=makeupDefault',
-    bundle: const [AcompressorEffect(makeup: AcompressorEffect.makeupDefault)],
-  ),
-  (
-    filter: 'acompressor',
     label: 'makeup=makeupMax',
     bundle: const [AcompressorEffect(makeup: AcompressorEffect.makeupMax)],
   ),
@@ -97,11 +68,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acompressor',
     label: 'mix=mixMin',
     bundle: const [AcompressorEffect(mix: AcompressorEffect.mixMin)],
-  ),
-  (
-    filter: 'acompressor',
-    label: 'mix=mixDefault',
-    bundle: const [AcompressorEffect(mix: AcompressorEffect.mixDefault)],
   ),
   (
     filter: 'acompressor',
@@ -115,11 +81,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acompressor',
-    label: 'ratio=ratioDefault',
-    bundle: const [AcompressorEffect(ratio: AcompressorEffect.ratioDefault)],
-  ),
-  (
-    filter: 'acompressor',
     label: 'ratio=ratioMax',
     bundle: const [AcompressorEffect(ratio: AcompressorEffect.ratioMax)],
   ),
@@ -127,13 +88,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acompressor',
     label: 'release=releaseMin',
     bundle: const [AcompressorEffect(release: AcompressorEffect.releaseMin)],
-  ),
-  (
-    filter: 'acompressor',
-    label: 'release=releaseDefault',
-    bundle: const [
-      AcompressorEffect(release: AcompressorEffect.releaseDefault),
-    ],
   ),
   (
     filter: 'acompressor',
@@ -145,13 +99,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'threshold=thresholdMin',
     bundle: const [
       AcompressorEffect(threshold: AcompressorEffect.thresholdMin),
-    ],
-  ),
-  (
-    filter: 'acompressor',
-    label: 'threshold=thresholdDefault',
-    bundle: const [
-      AcompressorEffect(threshold: AcompressorEffect.thresholdDefault),
     ],
   ),
   (
@@ -168,11 +115,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acontrast',
-    label: 'contrast=contrastDefault',
-    bundle: const [AcontrastEffect(contrast: AcontrastEffect.contrastDefault)],
-  ),
-  (
-    filter: 'acontrast',
     label: 'contrast=contrastMax',
     bundle: const [AcontrastEffect(contrast: AcontrastEffect.contrastMax)],
   ),
@@ -180,11 +122,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acrusher',
     label: 'aa=aaMin',
     bundle: const [AcrusherEffect(aa: AcrusherEffect.aaMin)],
-  ),
-  (
-    filter: 'acrusher',
-    label: 'aa=aaDefault',
-    bundle: const [AcrusherEffect(aa: AcrusherEffect.aaDefault)],
   ),
   (
     filter: 'acrusher',
@@ -198,11 +135,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acrusher',
-    label: 'bits=bitsDefault',
-    bundle: const [AcrusherEffect(bits: AcrusherEffect.bitsDefault)],
-  ),
-  (
-    filter: 'acrusher',
     label: 'bits=bitsMax',
     bundle: const [AcrusherEffect(bits: AcrusherEffect.bitsMax)],
   ),
@@ -210,11 +142,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acrusher',
     label: 'dc=dcMin',
     bundle: const [AcrusherEffect(dc: AcrusherEffect.dcMin)],
-  ),
-  (
-    filter: 'acrusher',
-    label: 'dc=dcDefault',
-    bundle: const [AcrusherEffect(dc: AcrusherEffect.dcDefault)],
   ),
   (
     filter: 'acrusher',
@@ -228,11 +155,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acrusher',
-    label: 'level_in=levelInDefault',
-    bundle: const [AcrusherEffect(levelIn: AcrusherEffect.levelInDefault)],
-  ),
-  (
-    filter: 'acrusher',
     label: 'level_in=levelInMax',
     bundle: const [AcrusherEffect(levelIn: AcrusherEffect.levelInMax)],
   ),
@@ -240,11 +162,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acrusher',
     label: 'level_out=levelOutMin',
     bundle: const [AcrusherEffect(levelOut: AcrusherEffect.levelOutMin)],
-  ),
-  (
-    filter: 'acrusher',
-    label: 'level_out=levelOutDefault',
-    bundle: const [AcrusherEffect(levelOut: AcrusherEffect.levelOutDefault)],
   ),
   (
     filter: 'acrusher',
@@ -258,11 +175,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acrusher',
-    label: 'lforange=lforangeDefault',
-    bundle: const [AcrusherEffect(lforange: AcrusherEffect.lforangeDefault)],
-  ),
-  (
-    filter: 'acrusher',
     label: 'lforange=lforangeMax',
     bundle: const [AcrusherEffect(lforange: AcrusherEffect.lforangeMax)],
   ),
@@ -270,11 +182,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acrusher',
     label: 'lforate=lforateMin',
     bundle: const [AcrusherEffect(lforate: AcrusherEffect.lforateMin)],
-  ),
-  (
-    filter: 'acrusher',
-    label: 'lforate=lforateDefault',
-    bundle: const [AcrusherEffect(lforate: AcrusherEffect.lforateDefault)],
   ),
   (
     filter: 'acrusher',
@@ -288,11 +195,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'acrusher',
-    label: 'mix=mixDefault',
-    bundle: const [AcrusherEffect(mix: AcrusherEffect.mixDefault)],
-  ),
-  (
-    filter: 'acrusher',
     label: 'mix=mixMax',
     bundle: const [AcrusherEffect(mix: AcrusherEffect.mixMax)],
   ),
@@ -300,11 +202,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'acrusher',
     label: 'samples=samplesMin',
     bundle: const [AcrusherEffect(samples: AcrusherEffect.samplesMin)],
-  ),
-  (
-    filter: 'acrusher',
-    label: 'samples=samplesDefault',
-    bundle: const [AcrusherEffect(samples: AcrusherEffect.samplesDefault)],
   ),
   (
     filter: 'acrusher',
@@ -318,11 +215,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adeclick',
-    label: 'arorder=arorderDefault',
-    bundle: const [AdeclickEffect(arorder: AdeclickEffect.arorderDefault)],
-  ),
-  (
-    filter: 'adeclick',
     label: 'arorder=arorderMax',
     bundle: const [AdeclickEffect(arorder: AdeclickEffect.arorderMax)],
   ),
@@ -330,11 +222,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'adeclick',
     label: 'burst=burstMin',
     bundle: const [AdeclickEffect(burst: AdeclickEffect.burstMin)],
-  ),
-  (
-    filter: 'adeclick',
-    label: 'burst=burstDefault',
-    bundle: const [AdeclickEffect(burst: AdeclickEffect.burstDefault)],
   ),
   (
     filter: 'adeclick',
@@ -348,11 +235,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adeclick',
-    label: 'overlap=overlapDefault',
-    bundle: const [AdeclickEffect(overlap: AdeclickEffect.overlapDefault)],
-  ),
-  (
-    filter: 'adeclick',
     label: 'overlap=overlapMax',
     bundle: const [AdeclickEffect(overlap: AdeclickEffect.overlapMax)],
   ),
@@ -360,11 +242,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'adeclick',
     label: 'threshold=thresholdMin',
     bundle: const [AdeclickEffect(threshold: AdeclickEffect.thresholdMin)],
-  ),
-  (
-    filter: 'adeclick',
-    label: 'threshold=thresholdDefault',
-    bundle: const [AdeclickEffect(threshold: AdeclickEffect.thresholdDefault)],
   ),
   (
     filter: 'adeclick',
@@ -378,11 +255,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adeclick',
-    label: 'window=windowDefault',
-    bundle: const [AdeclickEffect(window: AdeclickEffect.windowDefault)],
-  ),
-  (
-    filter: 'adeclick',
     label: 'window=windowMax',
     bundle: const [AdeclickEffect(window: AdeclickEffect.windowMax)],
   ),
@@ -390,11 +262,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'adeclip',
     label: 'arorder=arorderMin',
     bundle: const [AdeclipEffect(arorder: AdeclipEffect.arorderMin)],
-  ),
-  (
-    filter: 'adeclip',
-    label: 'arorder=arorderDefault',
-    bundle: const [AdeclipEffect(arorder: AdeclipEffect.arorderDefault)],
   ),
   (
     filter: 'adeclip',
@@ -408,11 +275,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adeclip',
-    label: 'hsize=hsizeDefault',
-    bundle: const [AdeclipEffect(hsize: AdeclipEffect.hsizeDefault)],
-  ),
-  (
-    filter: 'adeclip',
     label: 'hsize=hsizeMax',
     bundle: const [AdeclipEffect(hsize: AdeclipEffect.hsizeMax)],
   ),
@@ -420,11 +282,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'adeclip',
     label: 'overlap=overlapMin',
     bundle: const [AdeclipEffect(overlap: AdeclipEffect.overlapMin)],
-  ),
-  (
-    filter: 'adeclip',
-    label: 'overlap=overlapDefault',
-    bundle: const [AdeclipEffect(overlap: AdeclipEffect.overlapDefault)],
   ),
   (
     filter: 'adeclip',
@@ -438,11 +295,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adeclip',
-    label: 'threshold=thresholdDefault',
-    bundle: const [AdeclipEffect(threshold: AdeclipEffect.thresholdDefault)],
-  ),
-  (
-    filter: 'adeclip',
     label: 'threshold=thresholdMax',
     bundle: const [AdeclipEffect(threshold: AdeclipEffect.thresholdMax)],
   ),
@@ -450,11 +302,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'adeclip',
     label: 'window=windowMin',
     bundle: const [AdeclipEffect(window: AdeclipEffect.windowMin)],
-  ),
-  (
-    filter: 'adeclip',
-    label: 'window=windowDefault',
-    bundle: const [AdeclipEffect(window: AdeclipEffect.windowDefault)],
   ),
   (
     filter: 'adeclip',
@@ -468,11 +315,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adecorrelate',
-    label: 'seed=seedDefault',
-    bundle: const [AdecorrelateEffect(seed: AdecorrelateEffect.seedDefault)],
-  ),
-  (
-    filter: 'adecorrelate',
     label: 'seed=seedMax',
     bundle: const [AdecorrelateEffect(seed: AdecorrelateEffect.seedMax)],
   ),
@@ -480,13 +322,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'adecorrelate',
     label: 'stages=stagesMin',
     bundle: const [AdecorrelateEffect(stages: AdecorrelateEffect.stagesMin)],
-  ),
-  (
-    filter: 'adecorrelate',
-    label: 'stages=stagesDefault',
-    bundle: const [
-      AdecorrelateEffect(stages: AdecorrelateEffect.stagesDefault),
-    ],
   ),
   (
     filter: 'adecorrelate',
@@ -500,11 +335,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adenorm',
-    label: 'level=levelDefault',
-    bundle: const [AdenormEffect(level: AdenormEffect.levelDefault)],
-  ),
-  (
-    filter: 'adenorm',
     label: 'level=levelMax',
     bundle: const [AdenormEffect(level: AdenormEffect.levelMax)],
   ),
@@ -515,11 +345,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adrc',
-    label: 'attack=attackDefault',
-    bundle: const [AdrcEffect(attack: AdrcEffect.attackDefault)],
-  ),
-  (
-    filter: 'adrc',
     label: 'attack=attackMax',
     bundle: const [AdrcEffect(attack: AdrcEffect.attackMax)],
   ),
@@ -527,11 +352,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'adrc',
     label: 'release=releaseMin',
     bundle: const [AdrcEffect(release: AdrcEffect.releaseMin)],
-  ),
-  (
-    filter: 'adrc',
-    label: 'release=releaseDefault',
-    bundle: const [AdrcEffect(release: AdrcEffect.releaseDefault)],
   ),
   (
     filter: 'adrc',
@@ -547,13 +367,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adynamicequalizer',
-    label: 'attack=attackDefault',
-    bundle: const [
-      AdynamicequalizerEffect(attack: AdynamicequalizerEffect.attackDefault),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
     label: 'attack=attackMax',
     bundle: const [
       AdynamicequalizerEffect(attack: AdynamicequalizerEffect.attackMax),
@@ -565,15 +378,6 @@ const List<ParamCorner> kFilterParamCorners = [
     bundle: const [
       AdynamicequalizerEffect(
         dfrequency: AdynamicequalizerEffect.dfrequencyMin,
-      ),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
-    label: 'dfrequency=dfrequencyDefault',
-    bundle: const [
-      AdynamicequalizerEffect(
-        dfrequency: AdynamicequalizerEffect.dfrequencyDefault,
       ),
     ],
   ),
@@ -595,15 +399,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adynamicequalizer',
-    label: 'dqfactor=dqfactorDefault',
-    bundle: const [
-      AdynamicequalizerEffect(
-        dqfactor: AdynamicequalizerEffect.dqfactorDefault,
-      ),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
     label: 'dqfactor=dqfactorMax',
     bundle: const [
       AdynamicequalizerEffect(dqfactor: AdynamicequalizerEffect.dqfactorMax),
@@ -614,13 +409,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'makeup=makeupMin',
     bundle: const [
       AdynamicequalizerEffect(makeup: AdynamicequalizerEffect.makeupMin),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
-    label: 'makeup=makeupDefault',
-    bundle: const [
-      AdynamicequalizerEffect(makeup: AdynamicequalizerEffect.makeupDefault),
     ],
   ),
   (
@@ -639,13 +427,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adynamicequalizer',
-    label: 'range=rangeDefault',
-    bundle: const [
-      AdynamicequalizerEffect(range: AdynamicequalizerEffect.rangeDefault),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
     label: 'range=rangeMax',
     bundle: const [
       AdynamicequalizerEffect(range: AdynamicequalizerEffect.rangeMax),
@@ -656,13 +437,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'ratio=ratioMin',
     bundle: const [
       AdynamicequalizerEffect(ratio: AdynamicequalizerEffect.ratioMin),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
-    label: 'ratio=ratioDefault',
-    bundle: const [
-      AdynamicequalizerEffect(ratio: AdynamicequalizerEffect.ratioDefault),
     ],
   ),
   (
@@ -681,13 +455,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adynamicequalizer',
-    label: 'release=releaseDefault',
-    bundle: const [
-      AdynamicequalizerEffect(release: AdynamicequalizerEffect.releaseDefault),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
     label: 'release=releaseMax',
     bundle: const [
       AdynamicequalizerEffect(release: AdynamicequalizerEffect.releaseMax),
@@ -699,15 +466,6 @@ const List<ParamCorner> kFilterParamCorners = [
     bundle: const [
       AdynamicequalizerEffect(
         tfrequency: AdynamicequalizerEffect.tfrequencyMin,
-      ),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
-    label: 'tfrequency=tfrequencyDefault',
-    bundle: const [
-      AdynamicequalizerEffect(
-        tfrequency: AdynamicequalizerEffect.tfrequencyDefault,
       ),
     ],
   ),
@@ -729,15 +487,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adynamicequalizer',
-    label: 'threshold=thresholdDefault',
-    bundle: const [
-      AdynamicequalizerEffect(
-        threshold: AdynamicequalizerEffect.thresholdDefault,
-      ),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
     label: 'threshold=thresholdMax',
     bundle: const [
       AdynamicequalizerEffect(threshold: AdynamicequalizerEffect.thresholdMax),
@@ -748,15 +497,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'tqfactor=tqfactorMin',
     bundle: const [
       AdynamicequalizerEffect(tqfactor: AdynamicequalizerEffect.tqfactorMin),
-    ],
-  ),
-  (
-    filter: 'adynamicequalizer',
-    label: 'tqfactor=tqfactorDefault',
-    bundle: const [
-      AdynamicequalizerEffect(
-        tqfactor: AdynamicequalizerEffect.tqfactorDefault,
-      ),
     ],
   ),
   (
@@ -775,13 +515,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'adynamicsmooth',
-    label: 'basefreq=basefreqDefault',
-    bundle: const [
-      AdynamicsmoothEffect(basefreq: AdynamicsmoothEffect.basefreqDefault),
-    ],
-  ),
-  (
-    filter: 'adynamicsmooth',
     label: 'basefreq=basefreqMax',
     bundle: const [
       AdynamicsmoothEffect(basefreq: AdynamicsmoothEffect.basefreqMax),
@@ -792,15 +525,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'sensitivity=sensitivityMin',
     bundle: const [
       AdynamicsmoothEffect(sensitivity: AdynamicsmoothEffect.sensitivityMin),
-    ],
-  ),
-  (
-    filter: 'adynamicsmooth',
-    label: 'sensitivity=sensitivityDefault',
-    bundle: const [
-      AdynamicsmoothEffect(
-        sensitivity: AdynamicsmoothEffect.sensitivityDefault,
-      ),
     ],
   ),
   (
@@ -817,11 +541,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aecho',
-    label: 'in_gain=inGainDefault',
-    bundle: const [AechoEffect(inGain: AechoEffect.inGainDefault)],
-  ),
-  (
-    filter: 'aecho',
     label: 'in_gain=inGainMax',
     bundle: const [AechoEffect(inGain: AechoEffect.inGainMax)],
   ),
@@ -829,11 +548,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aecho',
     label: 'out_gain=outGainMin',
     bundle: const [AechoEffect(outGain: AechoEffect.outGainMin)],
-  ),
-  (
-    filter: 'aecho',
-    label: 'out_gain=outGainDefault',
-    bundle: const [AechoEffect(outGain: AechoEffect.outGainDefault)],
   ),
   (
     filter: 'aecho',
@@ -847,11 +561,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aemphasis',
-    label: 'level_in=levelInDefault',
-    bundle: const [AemphasisEffect(levelIn: AemphasisEffect.levelInDefault)],
-  ),
-  (
-    filter: 'aemphasis',
     label: 'level_in=levelInMax',
     bundle: const [AemphasisEffect(levelIn: AemphasisEffect.levelInMax)],
   ),
@@ -859,11 +568,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aemphasis',
     label: 'level_out=levelOutMin',
     bundle: const [AemphasisEffect(levelOut: AemphasisEffect.levelOutMin)],
-  ),
-  (
-    filter: 'aemphasis',
-    label: 'level_out=levelOutDefault',
-    bundle: const [AemphasisEffect(levelOut: AemphasisEffect.levelOutDefault)],
   ),
   (
     filter: 'aemphasis',
@@ -877,11 +581,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aexciter',
-    label: 'amount=amountDefault',
-    bundle: const [AexciterEffect(amount: AexciterEffect.amountDefault)],
-  ),
-  (
-    filter: 'aexciter',
     label: 'amount=amountMax',
     bundle: const [AexciterEffect(amount: AexciterEffect.amountMax)],
   ),
@@ -889,11 +588,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aexciter',
     label: 'blend=blendMin',
     bundle: const [AexciterEffect(blend: AexciterEffect.blendMin)],
-  ),
-  (
-    filter: 'aexciter',
-    label: 'blend=blendDefault',
-    bundle: const [AexciterEffect(blend: AexciterEffect.blendDefault)],
   ),
   (
     filter: 'aexciter',
@@ -907,11 +601,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aexciter',
-    label: 'ceil=ceilDefault',
-    bundle: const [AexciterEffect(ceil: AexciterEffect.ceilDefault)],
-  ),
-  (
-    filter: 'aexciter',
     label: 'ceil=ceilMax',
     bundle: const [AexciterEffect(ceil: AexciterEffect.ceilMax)],
   ),
@@ -919,11 +608,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aexciter',
     label: 'drive=driveMin',
     bundle: const [AexciterEffect(drive: AexciterEffect.driveMin)],
-  ),
-  (
-    filter: 'aexciter',
-    label: 'drive=driveDefault',
-    bundle: const [AexciterEffect(drive: AexciterEffect.driveDefault)],
   ),
   (
     filter: 'aexciter',
@@ -937,11 +621,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aexciter',
-    label: 'freq=freqDefault',
-    bundle: const [AexciterEffect(freq: AexciterEffect.freqDefault)],
-  ),
-  (
-    filter: 'aexciter',
     label: 'freq=freqMax',
     bundle: const [AexciterEffect(freq: AexciterEffect.freqMax)],
   ),
@@ -952,11 +631,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aexciter',
-    label: 'level_in=levelInDefault',
-    bundle: const [AexciterEffect(levelIn: AexciterEffect.levelInDefault)],
-  ),
-  (
-    filter: 'aexciter',
     label: 'level_in=levelInMax',
     bundle: const [AexciterEffect(levelIn: AexciterEffect.levelInMax)],
   ),
@@ -964,11 +638,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aexciter',
     label: 'level_out=levelOutMin',
     bundle: const [AexciterEffect(levelOut: AexciterEffect.levelOutMin)],
-  ),
-  (
-    filter: 'aexciter',
-    label: 'level_out=levelOutDefault',
-    bundle: const [AexciterEffect(levelOut: AexciterEffect.levelOutDefault)],
   ),
   (
     filter: 'aexciter',
@@ -987,11 +656,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afade',
-    label: 'nb_samples=nbSamplesDefault',
-    bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesDefault)],
-  ),
-  (
-    filter: 'afade',
     label: 'nb_samples=nbSamplesMax',
     bundle: const [AfadeEffect(nbSamples: AfadeEffect.nbSamplesMax)],
   ),
@@ -1002,11 +666,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afade',
-    label: 'silence=silenceDefault',
-    bundle: const [AfadeEffect(silence: AfadeEffect.silenceDefault)],
-  ),
-  (
-    filter: 'afade',
     label: 'silence=silenceMax',
     bundle: const [AfadeEffect(silence: AfadeEffect.silenceMax)],
   ),
@@ -1014,11 +673,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afade',
     label: 'start_sample=startSampleMin',
     bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleMin)],
-  ),
-  (
-    filter: 'afade',
-    label: 'start_sample=startSampleDefault',
-    bundle: const [AfadeEffect(startSample: AfadeEffect.startSampleDefault)],
   ),
   (
     filter: 'afade',
@@ -1037,11 +691,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afade',
-    label: 'unity=unityDefault',
-    bundle: const [AfadeEffect(unity: AfadeEffect.unityDefault)],
-  ),
-  (
-    filter: 'afade',
     label: 'unity=unityMax',
     bundle: const [AfadeEffect(unity: AfadeEffect.unityMax)],
   ),
@@ -1049,11 +698,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afftdn',
     label: 'adaptivity=adaptivityMin',
     bundle: const [AfftdnEffect(adaptivity: AfftdnEffect.adaptivityMin)],
-  ),
-  (
-    filter: 'afftdn',
-    label: 'adaptivity=adaptivityDefault',
-    bundle: const [AfftdnEffect(adaptivity: AfftdnEffect.adaptivityDefault)],
   ),
   (
     filter: 'afftdn',
@@ -1065,13 +709,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'band_multiplier=bandMultiplierMin',
     bundle: const [
       AfftdnEffect(bandMultiplier: AfftdnEffect.bandMultiplierMin),
-    ],
-  ),
-  (
-    filter: 'afftdn',
-    label: 'band_multiplier=bandMultiplierDefault',
-    bundle: const [
-      AfftdnEffect(bandMultiplier: AfftdnEffect.bandMultiplierDefault),
     ],
   ),
   (
@@ -1088,11 +725,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afftdn',
-    label: 'floor_offset=floorOffsetDefault',
-    bundle: const [AfftdnEffect(floorOffset: AfftdnEffect.floorOffsetDefault)],
-  ),
-  (
-    filter: 'afftdn',
     label: 'floor_offset=floorOffsetMax',
     bundle: const [AfftdnEffect(floorOffset: AfftdnEffect.floorOffsetMax)],
   ),
@@ -1100,11 +732,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afftdn',
     label: 'gain_smooth=gainSmoothMin',
     bundle: const [AfftdnEffect(gainSmooth: AfftdnEffect.gainSmoothMin)],
-  ),
-  (
-    filter: 'afftdn',
-    label: 'gain_smooth=gainSmoothDefault',
-    bundle: const [AfftdnEffect(gainSmooth: AfftdnEffect.gainSmoothDefault)],
   ),
   (
     filter: 'afftdn',
@@ -1118,11 +745,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afftdn',
-    label: 'noise_floor=noiseFloorDefault',
-    bundle: const [AfftdnEffect(noiseFloor: AfftdnEffect.noiseFloorDefault)],
-  ),
-  (
-    filter: 'afftdn',
     label: 'noise_floor=noiseFloorMax',
     bundle: const [AfftdnEffect(noiseFloor: AfftdnEffect.noiseFloorMax)],
   ),
@@ -1131,13 +753,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'noise_reduction=noiseReductionMin',
     bundle: const [
       AfftdnEffect(noiseReduction: AfftdnEffect.noiseReductionMin),
-    ],
-  ),
-  (
-    filter: 'afftdn',
-    label: 'noise_reduction=noiseReductionDefault',
-    bundle: const [
-      AfftdnEffect(noiseReduction: AfftdnEffect.noiseReductionDefault),
     ],
   ),
   (
@@ -1154,13 +769,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afftdn',
-    label: 'residual_floor=residualFloorDefault',
-    bundle: const [
-      AfftdnEffect(residualFloor: AfftdnEffect.residualFloorDefault),
-    ],
-  ),
-  (
-    filter: 'afftdn',
     label: 'residual_floor=residualFloorMax',
     bundle: const [AfftdnEffect(residualFloor: AfftdnEffect.residualFloorMax)],
   ),
@@ -1168,11 +776,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afftfilt',
     label: 'overlap=overlapMin',
     bundle: const [AfftfiltEffect(overlap: AfftfiltEffect.overlapMin)],
-  ),
-  (
-    filter: 'afftfilt',
-    label: 'overlap=overlapDefault',
-    bundle: const [AfftfiltEffect(overlap: AfftfiltEffect.overlapDefault)],
   ),
   (
     filter: 'afftfilt',
@@ -1186,11 +789,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afftfilt',
-    label: 'win_size=winSizeDefault',
-    bundle: const [AfftfiltEffect(winSize: AfftfiltEffect.winSizeDefault)],
-  ),
-  (
-    filter: 'afftfilt',
     label: 'win_size=winSizeMax',
     bundle: const [AfftfiltEffect(winSize: AfftfiltEffect.winSizeMax)],
   ),
@@ -1198,11 +796,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afreqshift',
     label: 'level=levelMin',
     bundle: const [AfreqshiftEffect(level: AfreqshiftEffect.levelMin)],
-  ),
-  (
-    filter: 'afreqshift',
-    label: 'level=levelDefault',
-    bundle: const [AfreqshiftEffect(level: AfreqshiftEffect.levelDefault)],
   ),
   (
     filter: 'afreqshift',
@@ -1216,11 +809,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afreqshift',
-    label: 'order=orderDefault',
-    bundle: const [AfreqshiftEffect(order: AfreqshiftEffect.orderDefault)],
-  ),
-  (
-    filter: 'afreqshift',
     label: 'order=orderMax',
     bundle: const [AfreqshiftEffect(order: AfreqshiftEffect.orderMax)],
   ),
@@ -1228,11 +816,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afreqshift',
     label: 'shift=shiftMin',
     bundle: const [AfreqshiftEffect(shift: AfreqshiftEffect.shiftMin)],
-  ),
-  (
-    filter: 'afreqshift',
-    label: 'shift=shiftDefault',
-    bundle: const [AfreqshiftEffect(shift: AfreqshiftEffect.shiftDefault)],
   ),
   (
     filter: 'afreqshift',
@@ -1246,11 +829,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afwtdn',
-    label: 'levels=levelsDefault',
-    bundle: const [AfwtdnEffect(levels: AfwtdnEffect.levelsDefault)],
-  ),
-  (
-    filter: 'afwtdn',
     label: 'levels=levelsMax',
     bundle: const [AfwtdnEffect(levels: AfwtdnEffect.levelsMax)],
   ),
@@ -1258,11 +836,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afwtdn',
     label: 'percent=percentMin',
     bundle: const [AfwtdnEffect(percent: AfwtdnEffect.percentMin)],
-  ),
-  (
-    filter: 'afwtdn',
-    label: 'percent=percentDefault',
-    bundle: const [AfwtdnEffect(percent: AfwtdnEffect.percentDefault)],
   ),
   (
     filter: 'afwtdn',
@@ -1276,11 +849,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afwtdn',
-    label: 'samples=samplesDefault',
-    bundle: const [AfwtdnEffect(samples: AfwtdnEffect.samplesDefault)],
-  ),
-  (
-    filter: 'afwtdn',
     label: 'samples=samplesMax',
     bundle: const [AfwtdnEffect(samples: AfwtdnEffect.samplesMax)],
   ),
@@ -1288,11 +856,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'afwtdn',
     label: 'sigma=sigmaMin',
     bundle: const [AfwtdnEffect(sigma: AfwtdnEffect.sigmaMin)],
-  ),
-  (
-    filter: 'afwtdn',
-    label: 'sigma=sigmaDefault',
-    bundle: const [AfwtdnEffect(sigma: AfwtdnEffect.sigmaDefault)],
   ),
   (
     filter: 'afwtdn',
@@ -1306,11 +869,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'afwtdn',
-    label: 'softness=softnessDefault',
-    bundle: const [AfwtdnEffect(softness: AfwtdnEffect.softnessDefault)],
-  ),
-  (
-    filter: 'afwtdn',
     label: 'softness=softnessMax',
     bundle: const [AfwtdnEffect(softness: AfwtdnEffect.softnessMax)],
   ),
@@ -1318,11 +876,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'agate',
     label: 'attack=attackMin',
     bundle: const [AgateEffect(attack: AgateEffect.attackMin)],
-  ),
-  (
-    filter: 'agate',
-    label: 'attack=attackDefault',
-    bundle: const [AgateEffect(attack: AgateEffect.attackDefault)],
   ),
   (
     filter: 'agate',
@@ -1336,11 +889,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'agate',
-    label: 'knee=kneeDefault',
-    bundle: const [AgateEffect(knee: AgateEffect.kneeDefault)],
-  ),
-  (
-    filter: 'agate',
     label: 'knee=kneeMax',
     bundle: const [AgateEffect(knee: AgateEffect.kneeMax)],
   ),
@@ -1348,11 +896,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'agate',
     label: 'level_in=levelInMin',
     bundle: const [AgateEffect(levelIn: AgateEffect.levelInMin)],
-  ),
-  (
-    filter: 'agate',
-    label: 'level_in=levelInDefault',
-    bundle: const [AgateEffect(levelIn: AgateEffect.levelInDefault)],
   ),
   (
     filter: 'agate',
@@ -1366,11 +909,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'agate',
-    label: 'level_sc=levelScDefault',
-    bundle: const [AgateEffect(levelSc: AgateEffect.levelScDefault)],
-  ),
-  (
-    filter: 'agate',
     label: 'level_sc=levelScMax',
     bundle: const [AgateEffect(levelSc: AgateEffect.levelScMax)],
   ),
@@ -1378,11 +916,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'agate',
     label: 'makeup=makeupMin',
     bundle: const [AgateEffect(makeup: AgateEffect.makeupMin)],
-  ),
-  (
-    filter: 'agate',
-    label: 'makeup=makeupDefault',
-    bundle: const [AgateEffect(makeup: AgateEffect.makeupDefault)],
   ),
   (
     filter: 'agate',
@@ -1396,11 +929,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'agate',
-    label: 'range=rangeDefault',
-    bundle: const [AgateEffect(range: AgateEffect.rangeDefault)],
-  ),
-  (
-    filter: 'agate',
     label: 'range=rangeMax',
     bundle: const [AgateEffect(range: AgateEffect.rangeMax)],
   ),
@@ -1408,11 +936,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'agate',
     label: 'ratio=ratioMin',
     bundle: const [AgateEffect(ratio: AgateEffect.ratioMin)],
-  ),
-  (
-    filter: 'agate',
-    label: 'ratio=ratioDefault',
-    bundle: const [AgateEffect(ratio: AgateEffect.ratioDefault)],
   ),
   (
     filter: 'agate',
@@ -1426,11 +949,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'agate',
-    label: 'release=releaseDefault',
-    bundle: const [AgateEffect(release: AgateEffect.releaseDefault)],
-  ),
-  (
-    filter: 'agate',
     label: 'release=releaseMax',
     bundle: const [AgateEffect(release: AgateEffect.releaseMax)],
   ),
@@ -1438,11 +956,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'agate',
     label: 'threshold=thresholdMin',
     bundle: const [AgateEffect(threshold: AgateEffect.thresholdMin)],
-  ),
-  (
-    filter: 'agate',
-    label: 'threshold=thresholdDefault',
-    bundle: const [AgateEffect(threshold: AgateEffect.thresholdDefault)],
   ),
   (
     filter: 'agate',
@@ -1456,11 +969,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aiir',
-    label: 'channel=channelDefault',
-    bundle: const [AiirEffect(channel: AiirEffect.channelDefault)],
-  ),
-  (
-    filter: 'aiir',
     label: 'channel=channelMax',
     bundle: const [AiirEffect(channel: AiirEffect.channelMax)],
   ),
@@ -1468,11 +976,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aiir',
     label: 'dry=dryMin',
     bundle: const [AiirEffect(dry: AiirEffect.dryMin)],
-  ),
-  (
-    filter: 'aiir',
-    label: 'dry=dryDefault',
-    bundle: const [AiirEffect(dry: AiirEffect.dryDefault)],
   ),
   (
     filter: 'aiir',
@@ -1486,11 +989,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aiir',
-    label: 'mix=mixDefault',
-    bundle: const [AiirEffect(mix: AiirEffect.mixDefault)],
-  ),
-  (
-    filter: 'aiir',
     label: 'mix=mixMax',
     bundle: const [AiirEffect(mix: AiirEffect.mixMax)],
   ),
@@ -1498,11 +996,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aiir',
     label: 'wet=wetMin',
     bundle: const [AiirEffect(wet: AiirEffect.wetMin)],
-  ),
-  (
-    filter: 'aiir',
-    label: 'wet=wetDefault',
-    bundle: const [AiirEffect(wet: AiirEffect.wetDefault)],
   ),
   (
     filter: 'aiir',
@@ -1516,11 +1009,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'alimiter',
-    label: 'asc_level=ascLevelDefault',
-    bundle: const [AlimiterEffect(ascLevel: AlimiterEffect.ascLevelDefault)],
-  ),
-  (
-    filter: 'alimiter',
     label: 'asc_level=ascLevelMax',
     bundle: const [AlimiterEffect(ascLevel: AlimiterEffect.ascLevelMax)],
   ),
@@ -1528,11 +1016,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'alimiter',
     label: 'attack=attackMin',
     bundle: const [AlimiterEffect(attack: AlimiterEffect.attackMin)],
-  ),
-  (
-    filter: 'alimiter',
-    label: 'attack=attackDefault',
-    bundle: const [AlimiterEffect(attack: AlimiterEffect.attackDefault)],
   ),
   (
     filter: 'alimiter',
@@ -1546,11 +1029,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'alimiter',
-    label: 'level_in=levelInDefault',
-    bundle: const [AlimiterEffect(levelIn: AlimiterEffect.levelInDefault)],
-  ),
-  (
-    filter: 'alimiter',
     label: 'level_in=levelInMax',
     bundle: const [AlimiterEffect(levelIn: AlimiterEffect.levelInMax)],
   ),
@@ -1558,11 +1036,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'alimiter',
     label: 'level_out=levelOutMin',
     bundle: const [AlimiterEffect(levelOut: AlimiterEffect.levelOutMin)],
-  ),
-  (
-    filter: 'alimiter',
-    label: 'level_out=levelOutDefault',
-    bundle: const [AlimiterEffect(levelOut: AlimiterEffect.levelOutDefault)],
   ),
   (
     filter: 'alimiter',
@@ -1576,11 +1049,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'alimiter',
-    label: 'limit=limitDefault',
-    bundle: const [AlimiterEffect(limit: AlimiterEffect.limitDefault)],
-  ),
-  (
-    filter: 'alimiter',
     label: 'limit=limitMax',
     bundle: const [AlimiterEffect(limit: AlimiterEffect.limitMax)],
   ),
@@ -1588,11 +1056,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'alimiter',
     label: 'release=releaseMin',
     bundle: const [AlimiterEffect(release: AlimiterEffect.releaseMin)],
-  ),
-  (
-    filter: 'alimiter',
-    label: 'release=releaseDefault',
-    bundle: const [AlimiterEffect(release: AlimiterEffect.releaseDefault)],
   ),
   (
     filter: 'alimiter',
@@ -1606,11 +1069,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'allpass',
-    label: 'frequency=frequencyDefault',
-    bundle: const [AllpassEffect(frequency: AllpassEffect.frequencyDefault)],
-  ),
-  (
-    filter: 'allpass',
     label: 'frequency=frequencyMax',
     bundle: const [AllpassEffect(frequency: AllpassEffect.frequencyMax)],
   ),
@@ -1618,11 +1076,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'allpass',
     label: 'mix=mixMin',
     bundle: const [AllpassEffect(mix: AllpassEffect.mixMin)],
-  ),
-  (
-    filter: 'allpass',
-    label: 'mix=mixDefault',
-    bundle: const [AllpassEffect(mix: AllpassEffect.mixDefault)],
   ),
   (
     filter: 'allpass',
@@ -1636,11 +1089,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'allpass',
-    label: 'order=orderDefault',
-    bundle: const [AllpassEffect(order: AllpassEffect.orderDefault)],
-  ),
-  (
-    filter: 'allpass',
     label: 'order=orderMax',
     bundle: const [AllpassEffect(order: AllpassEffect.orderMax)],
   ),
@@ -1648,11 +1096,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'allpass',
     label: 'width=widthMin',
     bundle: const [AllpassEffect(width: AllpassEffect.widthMin)],
-  ),
-  (
-    filter: 'allpass',
-    label: 'width=widthDefault',
-    bundle: const [AllpassEffect(width: AllpassEffect.widthDefault)],
   ),
   (
     filter: 'allpass',
@@ -1666,11 +1109,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'anequalizer',
-    label: 'mgain=mgainDefault',
-    bundle: const [AnequalizerEffect(mgain: AnequalizerEffect.mgainDefault)],
-  ),
-  (
-    filter: 'anequalizer',
     label: 'mgain=mgainMax',
     bundle: const [AnequalizerEffect(mgain: AnequalizerEffect.mgainMax)],
   ),
@@ -1678,11 +1116,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'anlmdn',
     label: 'smooth=smoothMin',
     bundle: const [AnlmdnEffect(smooth: AnlmdnEffect.smoothMin)],
-  ),
-  (
-    filter: 'anlmdn',
-    label: 'smooth=smoothDefault',
-    bundle: const [AnlmdnEffect(smooth: AnlmdnEffect.smoothDefault)],
   ),
   (
     filter: 'anlmdn',
@@ -1696,11 +1129,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'anlmdn',
-    label: 'strength=strengthDefault',
-    bundle: const [AnlmdnEffect(strength: AnlmdnEffect.strengthDefault)],
-  ),
-  (
-    filter: 'anlmdn',
     label: 'strength=strengthMax',
     bundle: const [AnlmdnEffect(strength: AnlmdnEffect.strengthMax)],
   ),
@@ -1708,11 +1136,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apad',
     label: 'packet_size=packetSizeMin',
     bundle: const [ApadEffect(packetSize: ApadEffect.packetSizeMin)],
-  ),
-  (
-    filter: 'apad',
-    label: 'packet_size=packetSizeDefault',
-    bundle: const [ApadEffect(packetSize: ApadEffect.packetSizeDefault)],
   ),
   (
     filter: 'apad',
@@ -1731,11 +1154,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apad',
-    label: 'pad_len=padLenDefault',
-    bundle: const [ApadEffect(padLen: ApadEffect.padLenDefault)],
-  ),
-  (
-    filter: 'apad',
     label: 'pad_len=padLenMax',
     bundle: const [ApadEffect(padLen: ApadEffect.padLenMax)],
   ),
@@ -1751,11 +1169,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apad',
-    label: 'whole_len=wholeLenDefault',
-    bundle: const [ApadEffect(wholeLen: ApadEffect.wholeLenDefault)],
-  ),
-  (
-    filter: 'apad',
     label: 'whole_len=wholeLenMax',
     bundle: const [ApadEffect(wholeLen: ApadEffect.wholeLenMax)],
   ),
@@ -1763,11 +1176,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aphaser',
     label: 'decay=decayMin',
     bundle: const [AphaserEffect(decay: AphaserEffect.decayMin)],
-  ),
-  (
-    filter: 'aphaser',
-    label: 'decay=decayDefault',
-    bundle: const [AphaserEffect(decay: AphaserEffect.decayDefault)],
   ),
   (
     filter: 'aphaser',
@@ -1781,11 +1189,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aphaser',
-    label: 'delay=delayDefault',
-    bundle: const [AphaserEffect(delay: AphaserEffect.delayDefault)],
-  ),
-  (
-    filter: 'aphaser',
     label: 'delay=delayMax',
     bundle: const [AphaserEffect(delay: AphaserEffect.delayMax)],
   ),
@@ -1793,11 +1196,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aphaser',
     label: 'in_gain=inGainMin',
     bundle: const [AphaserEffect(inGain: AphaserEffect.inGainMin)],
-  ),
-  (
-    filter: 'aphaser',
-    label: 'in_gain=inGainDefault',
-    bundle: const [AphaserEffect(inGain: AphaserEffect.inGainDefault)],
   ),
   (
     filter: 'aphaser',
@@ -1811,11 +1209,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aphaser',
-    label: 'out_gain=outGainDefault',
-    bundle: const [AphaserEffect(outGain: AphaserEffect.outGainDefault)],
-  ),
-  (
-    filter: 'aphaser',
     label: 'out_gain=outGainMax',
     bundle: const [AphaserEffect(outGain: AphaserEffect.outGainMax)],
   ),
@@ -1823,11 +1216,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aphaser',
     label: 'speed=speedMin',
     bundle: const [AphaserEffect(speed: AphaserEffect.speedMin)],
-  ),
-  (
-    filter: 'aphaser',
-    label: 'speed=speedDefault',
-    bundle: const [AphaserEffect(speed: AphaserEffect.speedDefault)],
   ),
   (
     filter: 'aphaser',
@@ -1841,11 +1229,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aphaseshift',
-    label: 'level=levelDefault',
-    bundle: const [AphaseshiftEffect(level: AphaseshiftEffect.levelDefault)],
-  ),
-  (
-    filter: 'aphaseshift',
     label: 'level=levelMax',
     bundle: const [AphaseshiftEffect(level: AphaseshiftEffect.levelMax)],
   ),
@@ -1853,11 +1236,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aphaseshift',
     label: 'order=orderMin',
     bundle: const [AphaseshiftEffect(order: AphaseshiftEffect.orderMin)],
-  ),
-  (
-    filter: 'aphaseshift',
-    label: 'order=orderDefault',
-    bundle: const [AphaseshiftEffect(order: AphaseshiftEffect.orderDefault)],
   ),
   (
     filter: 'aphaseshift',
@@ -1871,11 +1249,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'aphaseshift',
-    label: 'shift=shiftDefault',
-    bundle: const [AphaseshiftEffect(shift: AphaseshiftEffect.shiftDefault)],
-  ),
-  (
-    filter: 'aphaseshift',
     label: 'shift=shiftMax',
     bundle: const [AphaseshiftEffect(shift: AphaseshiftEffect.shiftMax)],
   ),
@@ -1883,11 +1256,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apsyclip',
     label: 'adaptive=adaptiveMin',
     bundle: const [ApsyclipEffect(adaptive: ApsyclipEffect.adaptiveMin)],
-  ),
-  (
-    filter: 'apsyclip',
-    label: 'adaptive=adaptiveDefault',
-    bundle: const [ApsyclipEffect(adaptive: ApsyclipEffect.adaptiveDefault)],
   ),
   (
     filter: 'apsyclip',
@@ -1901,11 +1269,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apsyclip',
-    label: 'clip=clipDefault',
-    bundle: const [ApsyclipEffect(clip: ApsyclipEffect.clipDefault)],
-  ),
-  (
-    filter: 'apsyclip',
     label: 'clip=clipMax',
     bundle: const [ApsyclipEffect(clip: ApsyclipEffect.clipMax)],
   ),
@@ -1913,13 +1276,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apsyclip',
     label: 'iterations=iterationsMin',
     bundle: const [ApsyclipEffect(iterations: ApsyclipEffect.iterationsMin)],
-  ),
-  (
-    filter: 'apsyclip',
-    label: 'iterations=iterationsDefault',
-    bundle: const [
-      ApsyclipEffect(iterations: ApsyclipEffect.iterationsDefault),
-    ],
   ),
   (
     filter: 'apsyclip',
@@ -1933,11 +1289,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apsyclip',
-    label: 'level_in=levelInDefault',
-    bundle: const [ApsyclipEffect(levelIn: ApsyclipEffect.levelInDefault)],
-  ),
-  (
-    filter: 'apsyclip',
     label: 'level_in=levelInMax',
     bundle: const [ApsyclipEffect(levelIn: ApsyclipEffect.levelInMax)],
   ),
@@ -1945,11 +1296,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apsyclip',
     label: 'level_out=levelOutMin',
     bundle: const [ApsyclipEffect(levelOut: ApsyclipEffect.levelOutMin)],
-  ),
-  (
-    filter: 'apsyclip',
-    label: 'level_out=levelOutDefault',
-    bundle: const [ApsyclipEffect(levelOut: ApsyclipEffect.levelOutDefault)],
   ),
   (
     filter: 'apsyclip',
@@ -1963,11 +1309,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apulsator',
-    label: 'amount=amountDefault',
-    bundle: const [ApulsatorEffect(amount: ApulsatorEffect.amountDefault)],
-  ),
-  (
-    filter: 'apulsator',
     label: 'amount=amountMax',
     bundle: const [ApulsatorEffect(amount: ApulsatorEffect.amountMax)],
   ),
@@ -1975,11 +1316,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apulsator',
     label: 'bpm=bpmMin',
     bundle: const [ApulsatorEffect(bpm: ApulsatorEffect.bpmMin)],
-  ),
-  (
-    filter: 'apulsator',
-    label: 'bpm=bpmDefault',
-    bundle: const [ApulsatorEffect(bpm: ApulsatorEffect.bpmDefault)],
   ),
   (
     filter: 'apulsator',
@@ -1993,11 +1329,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apulsator',
-    label: 'hz=hzDefault',
-    bundle: const [ApulsatorEffect(hz: ApulsatorEffect.hzDefault)],
-  ),
-  (
-    filter: 'apulsator',
     label: 'hz=hzMax',
     bundle: const [ApulsatorEffect(hz: ApulsatorEffect.hzMax)],
   ),
@@ -2005,11 +1336,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apulsator',
     label: 'level_in=levelInMin',
     bundle: const [ApulsatorEffect(levelIn: ApulsatorEffect.levelInMin)],
-  ),
-  (
-    filter: 'apulsator',
-    label: 'level_in=levelInDefault',
-    bundle: const [ApulsatorEffect(levelIn: ApulsatorEffect.levelInDefault)],
   ),
   (
     filter: 'apulsator',
@@ -2023,11 +1349,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apulsator',
-    label: 'level_out=levelOutDefault',
-    bundle: const [ApulsatorEffect(levelOut: ApulsatorEffect.levelOutDefault)],
-  ),
-  (
-    filter: 'apulsator',
     label: 'level_out=levelOutMax',
     bundle: const [ApulsatorEffect(levelOut: ApulsatorEffect.levelOutMax)],
   ),
@@ -2035,11 +1356,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apulsator',
     label: 'ms=msMin',
     bundle: const [ApulsatorEffect(ms: ApulsatorEffect.msMin)],
-  ),
-  (
-    filter: 'apulsator',
-    label: 'ms=msDefault',
-    bundle: const [ApulsatorEffect(ms: ApulsatorEffect.msDefault)],
   ),
   (
     filter: 'apulsator',
@@ -2053,11 +1369,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apulsator',
-    label: 'offset_l=offsetLDefault',
-    bundle: const [ApulsatorEffect(offsetL: ApulsatorEffect.offsetLDefault)],
-  ),
-  (
-    filter: 'apulsator',
     label: 'offset_l=offsetLMax',
     bundle: const [ApulsatorEffect(offsetL: ApulsatorEffect.offsetLMax)],
   ),
@@ -2065,11 +1376,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'apulsator',
     label: 'offset_r=offsetRMin',
     bundle: const [ApulsatorEffect(offsetR: ApulsatorEffect.offsetRMin)],
-  ),
-  (
-    filter: 'apulsator',
-    label: 'offset_r=offsetRDefault',
-    bundle: const [ApulsatorEffect(offsetR: ApulsatorEffect.offsetRDefault)],
   ),
   (
     filter: 'apulsator',
@@ -2083,11 +1389,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'apulsator',
-    label: 'width=widthDefault',
-    bundle: const [ApulsatorEffect(width: ApulsatorEffect.widthDefault)],
-  ),
-  (
-    filter: 'apulsator',
     label: 'width=widthMax',
     bundle: const [ApulsatorEffect(width: ApulsatorEffect.widthMax)],
   ),
@@ -2095,13 +1396,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'aresample',
     label: 'sample_rate=sampleRateMin',
     bundle: const [AresampleEffect(sampleRate: AresampleEffect.sampleRateMin)],
-  ),
-  (
-    filter: 'aresample',
-    label: 'sample_rate=sampleRateDefault',
-    bundle: const [
-      AresampleEffect(sampleRate: AresampleEffect.sampleRateDefault),
-    ],
   ),
   (
     filter: 'aresample',
@@ -2115,11 +1409,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'arnndn',
-    label: 'mix=mixDefault',
-    bundle: const [ArnndnEffect(mix: ArnndnEffect.mixDefault, model: '')],
-  ),
-  (
-    filter: 'arnndn',
     label: 'mix=mixMax',
     bundle: const [ArnndnEffect(mix: ArnndnEffect.mixMax, model: '')],
   ),
@@ -2127,11 +1416,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asoftclip',
     label: 'output=outputMin',
     bundle: const [AsoftclipEffect(output: AsoftclipEffect.outputMin)],
-  ),
-  (
-    filter: 'asoftclip',
-    label: 'output=outputDefault',
-    bundle: const [AsoftclipEffect(output: AsoftclipEffect.outputDefault)],
   ),
   (
     filter: 'asoftclip',
@@ -2145,13 +1429,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asoftclip',
-    label: 'oversample=oversampleDefault',
-    bundle: const [
-      AsoftclipEffect(oversample: AsoftclipEffect.oversampleDefault),
-    ],
-  ),
-  (
-    filter: 'asoftclip',
     label: 'oversample=oversampleMax',
     bundle: const [AsoftclipEffect(oversample: AsoftclipEffect.oversampleMax)],
   ),
@@ -2159,11 +1436,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asoftclip',
     label: 'param=paramMin',
     bundle: const [AsoftclipEffect(param: AsoftclipEffect.paramMin)],
-  ),
-  (
-    filter: 'asoftclip',
-    label: 'param=paramDefault',
-    bundle: const [AsoftclipEffect(param: AsoftclipEffect.paramDefault)],
   ),
   (
     filter: 'asoftclip',
@@ -2177,13 +1449,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asoftclip',
-    label: 'threshold=thresholdDefault',
-    bundle: const [
-      AsoftclipEffect(threshold: AsoftclipEffect.thresholdDefault),
-    ],
-  ),
-  (
-    filter: 'asoftclip',
     label: 'threshold=thresholdMax',
     bundle: const [AsoftclipEffect(threshold: AsoftclipEffect.thresholdMax)],
   ),
@@ -2191,11 +1456,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asubboost',
     label: 'boost=boostMin',
     bundle: const [AsubboostEffect(boost: AsubboostEffect.boostMin)],
-  ),
-  (
-    filter: 'asubboost',
-    label: 'boost=boostDefault',
-    bundle: const [AsubboostEffect(boost: AsubboostEffect.boostDefault)],
   ),
   (
     filter: 'asubboost',
@@ -2209,11 +1469,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asubboost',
-    label: 'cutoff=cutoffDefault',
-    bundle: const [AsubboostEffect(cutoff: AsubboostEffect.cutoffDefault)],
-  ),
-  (
-    filter: 'asubboost',
     label: 'cutoff=cutoffMax',
     bundle: const [AsubboostEffect(cutoff: AsubboostEffect.cutoffMax)],
   ),
@@ -2221,11 +1476,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asubboost',
     label: 'decay=decayMin',
     bundle: const [AsubboostEffect(decay: AsubboostEffect.decayMin)],
-  ),
-  (
-    filter: 'asubboost',
-    label: 'decay=decayDefault',
-    bundle: const [AsubboostEffect(decay: AsubboostEffect.decayDefault)],
   ),
   (
     filter: 'asubboost',
@@ -2239,11 +1489,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asubboost',
-    label: 'delay=delayDefault',
-    bundle: const [AsubboostEffect(delay: AsubboostEffect.delayDefault)],
-  ),
-  (
-    filter: 'asubboost',
     label: 'delay=delayMax',
     bundle: const [AsubboostEffect(delay: AsubboostEffect.delayMax)],
   ),
@@ -2251,11 +1496,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asubboost',
     label: 'dry=dryMin',
     bundle: const [AsubboostEffect(dry: AsubboostEffect.dryMin)],
-  ),
-  (
-    filter: 'asubboost',
-    label: 'dry=dryDefault',
-    bundle: const [AsubboostEffect(dry: AsubboostEffect.dryDefault)],
   ),
   (
     filter: 'asubboost',
@@ -2269,11 +1509,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asubboost',
-    label: 'feedback=feedbackDefault',
-    bundle: const [AsubboostEffect(feedback: AsubboostEffect.feedbackDefault)],
-  ),
-  (
-    filter: 'asubboost',
     label: 'feedback=feedbackMax',
     bundle: const [AsubboostEffect(feedback: AsubboostEffect.feedbackMax)],
   ),
@@ -2281,11 +1516,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asubboost',
     label: 'slope=slopeMin',
     bundle: const [AsubboostEffect(slope: AsubboostEffect.slopeMin)],
-  ),
-  (
-    filter: 'asubboost',
-    label: 'slope=slopeDefault',
-    bundle: const [AsubboostEffect(slope: AsubboostEffect.slopeDefault)],
   ),
   (
     filter: 'asubboost',
@@ -2299,11 +1529,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asubboost',
-    label: 'wet=wetDefault',
-    bundle: const [AsubboostEffect(wet: AsubboostEffect.wetDefault)],
-  ),
-  (
-    filter: 'asubboost',
     label: 'wet=wetMax',
     bundle: const [AsubboostEffect(wet: AsubboostEffect.wetMax)],
   ),
@@ -2311,11 +1536,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asubcut',
     label: 'cutoff=cutoffMin',
     bundle: const [AsubcutEffect(cutoff: AsubcutEffect.cutoffMin)],
-  ),
-  (
-    filter: 'asubcut',
-    label: 'cutoff=cutoffDefault',
-    bundle: const [AsubcutEffect(cutoff: AsubcutEffect.cutoffDefault)],
   ),
   (
     filter: 'asubcut',
@@ -2329,11 +1549,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asubcut',
-    label: 'level=levelDefault',
-    bundle: const [AsubcutEffect(level: AsubcutEffect.levelDefault)],
-  ),
-  (
-    filter: 'asubcut',
     label: 'level=levelMax',
     bundle: const [AsubcutEffect(level: AsubcutEffect.levelMax)],
   ),
@@ -2341,11 +1556,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asubcut',
     label: 'order=orderMin',
     bundle: const [AsubcutEffect(order: AsubcutEffect.orderMin)],
-  ),
-  (
-    filter: 'asubcut',
-    label: 'order=orderDefault',
-    bundle: const [AsubcutEffect(order: AsubcutEffect.orderDefault)],
   ),
   (
     filter: 'asubcut',
@@ -2359,11 +1569,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asupercut',
-    label: 'cutoff=cutoffDefault',
-    bundle: const [AsupercutEffect(cutoff: AsupercutEffect.cutoffDefault)],
-  ),
-  (
-    filter: 'asupercut',
     label: 'cutoff=cutoffMax',
     bundle: const [AsupercutEffect(cutoff: AsupercutEffect.cutoffMax)],
   ),
@@ -2371,11 +1576,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asupercut',
     label: 'level=levelMin',
     bundle: const [AsupercutEffect(level: AsupercutEffect.levelMin)],
-  ),
-  (
-    filter: 'asupercut',
-    label: 'level=levelDefault',
-    bundle: const [AsupercutEffect(level: AsupercutEffect.levelDefault)],
   ),
   (
     filter: 'asupercut',
@@ -2389,11 +1589,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asupercut',
-    label: 'order=orderDefault',
-    bundle: const [AsupercutEffect(order: AsupercutEffect.orderDefault)],
-  ),
-  (
-    filter: 'asupercut',
     label: 'order=orderMax',
     bundle: const [AsupercutEffect(order: AsupercutEffect.orderMax)],
   ),
@@ -2401,11 +1596,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asuperpass',
     label: 'centerf=centerfMin',
     bundle: const [AsuperpassEffect(centerf: AsuperpassEffect.centerfMin)],
-  ),
-  (
-    filter: 'asuperpass',
-    label: 'centerf=centerfDefault',
-    bundle: const [AsuperpassEffect(centerf: AsuperpassEffect.centerfDefault)],
   ),
   (
     filter: 'asuperpass',
@@ -2419,11 +1609,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asuperpass',
-    label: 'level=levelDefault',
-    bundle: const [AsuperpassEffect(level: AsuperpassEffect.levelDefault)],
-  ),
-  (
-    filter: 'asuperpass',
     label: 'level=levelMax',
     bundle: const [AsuperpassEffect(level: AsuperpassEffect.levelMax)],
   ),
@@ -2431,11 +1616,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asuperpass',
     label: 'order=orderMin',
     bundle: const [AsuperpassEffect(order: AsuperpassEffect.orderMin)],
-  ),
-  (
-    filter: 'asuperpass',
-    label: 'order=orderDefault',
-    bundle: const [AsuperpassEffect(order: AsuperpassEffect.orderDefault)],
   ),
   (
     filter: 'asuperpass',
@@ -2449,11 +1629,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asuperpass',
-    label: 'qfactor=qfactorDefault',
-    bundle: const [AsuperpassEffect(qfactor: AsuperpassEffect.qfactorDefault)],
-  ),
-  (
-    filter: 'asuperpass',
     label: 'qfactor=qfactorMax',
     bundle: const [AsuperpassEffect(qfactor: AsuperpassEffect.qfactorMax)],
   ),
@@ -2461,11 +1636,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asuperstop',
     label: 'centerf=centerfMin',
     bundle: const [AsuperstopEffect(centerf: AsuperstopEffect.centerfMin)],
-  ),
-  (
-    filter: 'asuperstop',
-    label: 'centerf=centerfDefault',
-    bundle: const [AsuperstopEffect(centerf: AsuperstopEffect.centerfDefault)],
   ),
   (
     filter: 'asuperstop',
@@ -2479,11 +1649,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asuperstop',
-    label: 'level=levelDefault',
-    bundle: const [AsuperstopEffect(level: AsuperstopEffect.levelDefault)],
-  ),
-  (
-    filter: 'asuperstop',
     label: 'level=levelMax',
     bundle: const [AsuperstopEffect(level: AsuperstopEffect.levelMax)],
   ),
@@ -2491,11 +1656,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'asuperstop',
     label: 'order=orderMin',
     bundle: const [AsuperstopEffect(order: AsuperstopEffect.orderMin)],
-  ),
-  (
-    filter: 'asuperstop',
-    label: 'order=orderDefault',
-    bundle: const [AsuperstopEffect(order: AsuperstopEffect.orderDefault)],
   ),
   (
     filter: 'asuperstop',
@@ -2509,11 +1669,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'asuperstop',
-    label: 'qfactor=qfactorDefault',
-    bundle: const [AsuperstopEffect(qfactor: AsuperstopEffect.qfactorDefault)],
-  ),
-  (
-    filter: 'asuperstop',
     label: 'qfactor=qfactorMax',
     bundle: const [AsuperstopEffect(qfactor: AsuperstopEffect.qfactorMax)],
   ),
@@ -2521,11 +1676,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'atempo',
     label: 'tempo=tempoMin',
     bundle: const [AtempoEffect(tempo: AtempoEffect.tempoMin)],
-  ),
-  (
-    filter: 'atempo',
-    label: 'tempo=tempoDefault',
-    bundle: const [AtempoEffect(tempo: AtempoEffect.tempoDefault)],
   ),
   (
     filter: 'atempo',
@@ -2539,11 +1689,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'atilt',
-    label: 'freq=freqDefault',
-    bundle: const [AtiltEffect(freq: AtiltEffect.freqDefault)],
-  ),
-  (
-    filter: 'atilt',
     label: 'freq=freqMax',
     bundle: const [AtiltEffect(freq: AtiltEffect.freqMax)],
   ),
@@ -2551,11 +1696,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'atilt',
     label: 'level=levelMin',
     bundle: const [AtiltEffect(level: AtiltEffect.levelMin)],
-  ),
-  (
-    filter: 'atilt',
-    label: 'level=levelDefault',
-    bundle: const [AtiltEffect(level: AtiltEffect.levelDefault)],
   ),
   (
     filter: 'atilt',
@@ -2569,11 +1709,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'atilt',
-    label: 'order=orderDefault',
-    bundle: const [AtiltEffect(order: AtiltEffect.orderDefault)],
-  ),
-  (
-    filter: 'atilt',
     label: 'order=orderMax',
     bundle: const [AtiltEffect(order: AtiltEffect.orderMax)],
   ),
@@ -2581,11 +1716,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'atilt',
     label: 'slope=slopeMin',
     bundle: const [AtiltEffect(slope: AtiltEffect.slopeMin)],
-  ),
-  (
-    filter: 'atilt',
-    label: 'slope=slopeDefault',
-    bundle: const [AtiltEffect(slope: AtiltEffect.slopeDefault)],
   ),
   (
     filter: 'atilt',
@@ -2599,11 +1729,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'atilt',
-    label: 'width=widthDefault',
-    bundle: const [AtiltEffect(width: AtiltEffect.widthDefault)],
-  ),
-  (
-    filter: 'atilt',
     label: 'width=widthMax',
     bundle: const [AtiltEffect(width: AtiltEffect.widthMax)],
   ),
@@ -2611,11 +1736,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'bandpass',
     label: 'blocksize=blocksizeMin',
     bundle: const [BandpassEffect(blocksize: BandpassEffect.blocksizeMin)],
-  ),
-  (
-    filter: 'bandpass',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [BandpassEffect(blocksize: BandpassEffect.blocksizeDefault)],
   ),
   (
     filter: 'bandpass',
@@ -2629,11 +1749,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'bandpass',
-    label: 'frequency=frequencyDefault',
-    bundle: const [BandpassEffect(frequency: BandpassEffect.frequencyDefault)],
-  ),
-  (
-    filter: 'bandpass',
     label: 'frequency=frequencyMax',
     bundle: const [BandpassEffect(frequency: BandpassEffect.frequencyMax)],
   ),
@@ -2641,11 +1756,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'bandpass',
     label: 'mix=mixMin',
     bundle: const [BandpassEffect(mix: BandpassEffect.mixMin)],
-  ),
-  (
-    filter: 'bandpass',
-    label: 'mix=mixDefault',
-    bundle: const [BandpassEffect(mix: BandpassEffect.mixDefault)],
   ),
   (
     filter: 'bandpass',
@@ -2659,11 +1769,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'bandpass',
-    label: 'width=widthDefault',
-    bundle: const [BandpassEffect(width: BandpassEffect.widthDefault)],
-  ),
-  (
-    filter: 'bandpass',
     label: 'width=widthMax',
     bundle: const [BandpassEffect(width: BandpassEffect.widthMax)],
   ),
@@ -2671,13 +1776,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'bandreject',
     label: 'blocksize=blocksizeMin',
     bundle: const [BandrejectEffect(blocksize: BandrejectEffect.blocksizeMin)],
-  ),
-  (
-    filter: 'bandreject',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [
-      BandrejectEffect(blocksize: BandrejectEffect.blocksizeDefault),
-    ],
   ),
   (
     filter: 'bandreject',
@@ -2691,13 +1789,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'bandreject',
-    label: 'frequency=frequencyDefault',
-    bundle: const [
-      BandrejectEffect(frequency: BandrejectEffect.frequencyDefault),
-    ],
-  ),
-  (
-    filter: 'bandreject',
     label: 'frequency=frequencyMax',
     bundle: const [BandrejectEffect(frequency: BandrejectEffect.frequencyMax)],
   ),
@@ -2705,11 +1796,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'bandreject',
     label: 'mix=mixMin',
     bundle: const [BandrejectEffect(mix: BandrejectEffect.mixMin)],
-  ),
-  (
-    filter: 'bandreject',
-    label: 'mix=mixDefault',
-    bundle: const [BandrejectEffect(mix: BandrejectEffect.mixDefault)],
   ),
   (
     filter: 'bandreject',
@@ -2723,11 +1809,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'bandreject',
-    label: 'width=widthDefault',
-    bundle: const [BandrejectEffect(width: BandrejectEffect.widthDefault)],
-  ),
-  (
-    filter: 'bandreject',
     label: 'width=widthMax',
     bundle: const [BandrejectEffect(width: BandrejectEffect.widthMax)],
   ),
@@ -2735,11 +1816,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'bass',
     label: 'blocksize=blocksizeMin',
     bundle: const [BassEffect(blocksize: BassEffect.blocksizeMin)],
-  ),
-  (
-    filter: 'bass',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [BassEffect(blocksize: BassEffect.blocksizeDefault)],
   ),
   (
     filter: 'bass',
@@ -2753,11 +1829,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'bass',
-    label: 'frequency=frequencyDefault',
-    bundle: const [BassEffect(frequency: BassEffect.frequencyDefault)],
-  ),
-  (
-    filter: 'bass',
     label: 'frequency=frequencyMax',
     bundle: const [BassEffect(frequency: BassEffect.frequencyMax)],
   ),
@@ -2765,11 +1836,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'bass',
     label: 'gain=gainMin',
     bundle: const [BassEffect(gain: BassEffect.gainMin)],
-  ),
-  (
-    filter: 'bass',
-    label: 'gain=gainDefault',
-    bundle: const [BassEffect(gain: BassEffect.gainDefault)],
   ),
   (
     filter: 'bass',
@@ -2783,11 +1849,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'bass',
-    label: 'mix=mixDefault',
-    bundle: const [BassEffect(mix: BassEffect.mixDefault)],
-  ),
-  (
-    filter: 'bass',
     label: 'mix=mixMax',
     bundle: const [BassEffect(mix: BassEffect.mixMax)],
   ),
@@ -2795,11 +1856,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'bass',
     label: 'poles=polesMin',
     bundle: const [BassEffect(poles: BassEffect.polesMin)],
-  ),
-  (
-    filter: 'bass',
-    label: 'poles=polesDefault',
-    bundle: const [BassEffect(poles: BassEffect.polesDefault)],
   ),
   (
     filter: 'bass',
@@ -2813,11 +1869,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'bass',
-    label: 'width=widthDefault',
-    bundle: const [BassEffect(width: BassEffect.widthDefault)],
-  ),
-  (
-    filter: 'bass',
     label: 'width=widthMax',
     bundle: const [BassEffect(width: BassEffect.widthMax)],
   ),
@@ -2825,11 +1876,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'biquad',
     label: 'a0=a0Min',
     bundle: const [BiquadEffect(a0: BiquadEffect.a0Min)],
-  ),
-  (
-    filter: 'biquad',
-    label: 'a0=a0Default',
-    bundle: const [BiquadEffect(a0: BiquadEffect.a0Default)],
   ),
   (
     filter: 'biquad',
@@ -2843,11 +1889,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'biquad',
-    label: 'a1=a1Default',
-    bundle: const [BiquadEffect(a1: BiquadEffect.a1Default)],
-  ),
-  (
-    filter: 'biquad',
     label: 'a1=a1Max',
     bundle: const [BiquadEffect(a1: BiquadEffect.a1Max)],
   ),
@@ -2855,11 +1896,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'biquad',
     label: 'a2=a2Min',
     bundle: const [BiquadEffect(a2: BiquadEffect.a2Min)],
-  ),
-  (
-    filter: 'biquad',
-    label: 'a2=a2Default',
-    bundle: const [BiquadEffect(a2: BiquadEffect.a2Default)],
   ),
   (
     filter: 'biquad',
@@ -2873,11 +1909,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'biquad',
-    label: 'b0=b0Default',
-    bundle: const [BiquadEffect(b0: BiquadEffect.b0Default)],
-  ),
-  (
-    filter: 'biquad',
     label: 'b0=b0Max',
     bundle: const [BiquadEffect(b0: BiquadEffect.b0Max)],
   ),
@@ -2885,11 +1916,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'biquad',
     label: 'b1=b1Min',
     bundle: const [BiquadEffect(b1: BiquadEffect.b1Min)],
-  ),
-  (
-    filter: 'biquad',
-    label: 'b1=b1Default',
-    bundle: const [BiquadEffect(b1: BiquadEffect.b1Default)],
   ),
   (
     filter: 'biquad',
@@ -2903,11 +1929,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'biquad',
-    label: 'b2=b2Default',
-    bundle: const [BiquadEffect(b2: BiquadEffect.b2Default)],
-  ),
-  (
-    filter: 'biquad',
     label: 'b2=b2Max',
     bundle: const [BiquadEffect(b2: BiquadEffect.b2Max)],
   ),
@@ -2915,11 +1936,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'biquad',
     label: 'blocksize=blocksizeMin',
     bundle: const [BiquadEffect(blocksize: BiquadEffect.blocksizeMin)],
-  ),
-  (
-    filter: 'biquad',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [BiquadEffect(blocksize: BiquadEffect.blocksizeDefault)],
   ),
   (
     filter: 'biquad',
@@ -2933,11 +1949,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'biquad',
-    label: 'mix=mixDefault',
-    bundle: const [BiquadEffect(mix: BiquadEffect.mixDefault)],
-  ),
-  (
-    filter: 'biquad',
     label: 'mix=mixMax',
     bundle: const [BiquadEffect(mix: BiquadEffect.mixMax)],
   ),
@@ -2947,19 +1958,6 @@ const List<ParamCorner> kFilterParamCorners = [
     bundle: const [
       ChorusEffect(
         inGain: ChorusEffect.inGainMin,
-        delays: '55|60',
-        decays: '0.4|0.32',
-        speeds: '0.25|0.4',
-        depths: '2|1.3',
-      ),
-    ],
-  ),
-  (
-    filter: 'chorus',
-    label: 'in_gain=inGainDefault',
-    bundle: const [
-      ChorusEffect(
-        inGain: ChorusEffect.inGainDefault,
         delays: '55|60',
         decays: '0.4|0.32',
         speeds: '0.25|0.4',
@@ -2995,19 +1993,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'chorus',
-    label: 'out_gain=outGainDefault',
-    bundle: const [
-      ChorusEffect(
-        outGain: ChorusEffect.outGainDefault,
-        delays: '55|60',
-        decays: '0.4|0.32',
-        speeds: '0.25|0.4',
-        depths: '2|1.3',
-      ),
-    ],
-  ),
-  (
-    filter: 'chorus',
     label: 'out_gain=outGainMax',
     bundle: const [
       ChorusEffect(
@@ -3026,11 +2011,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'compand',
-    label: 'delay=delayDefault',
-    bundle: const [CompandEffect(delay: CompandEffect.delayDefault)],
-  ),
-  (
-    filter: 'compand',
     label: 'delay=delayMax',
     bundle: const [CompandEffect(delay: CompandEffect.delayMax)],
   ),
@@ -3038,11 +2018,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'compand',
     label: 'gain=gainMin',
     bundle: const [CompandEffect(gain: CompandEffect.gainMin)],
-  ),
-  (
-    filter: 'compand',
-    label: 'gain=gainDefault',
-    bundle: const [CompandEffect(gain: CompandEffect.gainDefault)],
   ),
   (
     filter: 'compand',
@@ -3056,11 +2031,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'compand',
-    label: 'volume=volumeDefault',
-    bundle: const [CompandEffect(volume: CompandEffect.volumeDefault)],
-  ),
-  (
-    filter: 'compand',
     label: 'volume=volumeMax',
     bundle: const [CompandEffect(volume: CompandEffect.volumeMax)],
   ),
@@ -3068,13 +2038,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'compensationdelay',
     label: 'cm=cmMin',
     bundle: const [CompensationdelayEffect(cm: CompensationdelayEffect.cmMin)],
-  ),
-  (
-    filter: 'compensationdelay',
-    label: 'cm=cmDefault',
-    bundle: const [
-      CompensationdelayEffect(cm: CompensationdelayEffect.cmDefault),
-    ],
   ),
   (
     filter: 'compensationdelay',
@@ -3086,13 +2049,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'dry=dryMin',
     bundle: const [
       CompensationdelayEffect(dry: CompensationdelayEffect.dryMin),
-    ],
-  ),
-  (
-    filter: 'compensationdelay',
-    label: 'dry=dryDefault',
-    bundle: const [
-      CompensationdelayEffect(dry: CompensationdelayEffect.dryDefault),
     ],
   ),
   (
@@ -3109,13 +2065,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'compensationdelay',
-    label: 'm=mDefault',
-    bundle: const [
-      CompensationdelayEffect(m: CompensationdelayEffect.mDefault),
-    ],
-  ),
-  (
-    filter: 'compensationdelay',
     label: 'm=mMax',
     bundle: const [CompensationdelayEffect(m: CompensationdelayEffect.mMax)],
   ),
@@ -3123,13 +2072,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'compensationdelay',
     label: 'mm=mmMin',
     bundle: const [CompensationdelayEffect(mm: CompensationdelayEffect.mmMin)],
-  ),
-  (
-    filter: 'compensationdelay',
-    label: 'mm=mmDefault',
-    bundle: const [
-      CompensationdelayEffect(mm: CompensationdelayEffect.mmDefault),
-    ],
   ),
   (
     filter: 'compensationdelay',
@@ -3141,13 +2083,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'temp=tempMin',
     bundle: const [
       CompensationdelayEffect(temp: CompensationdelayEffect.tempMin),
-    ],
-  ),
-  (
-    filter: 'compensationdelay',
-    label: 'temp=tempDefault',
-    bundle: const [
-      CompensationdelayEffect(temp: CompensationdelayEffect.tempDefault),
     ],
   ),
   (
@@ -3166,13 +2101,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'compensationdelay',
-    label: 'wet=wetDefault',
-    bundle: const [
-      CompensationdelayEffect(wet: CompensationdelayEffect.wetDefault),
-    ],
-  ),
-  (
-    filter: 'compensationdelay',
     label: 'wet=wetMax',
     bundle: const [
       CompensationdelayEffect(wet: CompensationdelayEffect.wetMax),
@@ -3182,13 +2110,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'crossfeed',
     label: 'block_size=blockSizeMin',
     bundle: const [CrossfeedEffect(blockSize: CrossfeedEffect.blockSizeMin)],
-  ),
-  (
-    filter: 'crossfeed',
-    label: 'block_size=blockSizeDefault',
-    bundle: const [
-      CrossfeedEffect(blockSize: CrossfeedEffect.blockSizeDefault),
-    ],
   ),
   (
     filter: 'crossfeed',
@@ -3202,11 +2123,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'crossfeed',
-    label: 'level_in=levelInDefault',
-    bundle: const [CrossfeedEffect(levelIn: CrossfeedEffect.levelInDefault)],
-  ),
-  (
-    filter: 'crossfeed',
     label: 'level_in=levelInMax',
     bundle: const [CrossfeedEffect(levelIn: CrossfeedEffect.levelInMax)],
   ),
@@ -3214,11 +2130,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'crossfeed',
     label: 'level_out=levelOutMin',
     bundle: const [CrossfeedEffect(levelOut: CrossfeedEffect.levelOutMin)],
-  ),
-  (
-    filter: 'crossfeed',
-    label: 'level_out=levelOutDefault',
-    bundle: const [CrossfeedEffect(levelOut: CrossfeedEffect.levelOutDefault)],
   ),
   (
     filter: 'crossfeed',
@@ -3232,11 +2143,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'crossfeed',
-    label: 'range=rangeDefault',
-    bundle: const [CrossfeedEffect(range: CrossfeedEffect.rangeDefault)],
-  ),
-  (
-    filter: 'crossfeed',
     label: 'range=rangeMax',
     bundle: const [CrossfeedEffect(range: CrossfeedEffect.rangeMax)],
   ),
@@ -3244,11 +2150,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'crossfeed',
     label: 'slope=slopeMin',
     bundle: const [CrossfeedEffect(slope: CrossfeedEffect.slopeMin)],
-  ),
-  (
-    filter: 'crossfeed',
-    label: 'slope=slopeDefault',
-    bundle: const [CrossfeedEffect(slope: CrossfeedEffect.slopeDefault)],
   ),
   (
     filter: 'crossfeed',
@@ -3262,11 +2163,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'crossfeed',
-    label: 'strength=strengthDefault',
-    bundle: const [CrossfeedEffect(strength: CrossfeedEffect.strengthDefault)],
-  ),
-  (
-    filter: 'crossfeed',
     label: 'strength=strengthMax',
     bundle: const [CrossfeedEffect(strength: CrossfeedEffect.strengthMax)],
   ),
@@ -3274,11 +2170,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'crystalizer',
     label: 'i=iMin',
     bundle: const [CrystalizerEffect(i: CrystalizerEffect.iMin)],
-  ),
-  (
-    filter: 'crystalizer',
-    label: 'i=iDefault',
-    bundle: const [CrystalizerEffect(i: CrystalizerEffect.iDefault)],
   ),
   (
     filter: 'crystalizer',
@@ -3292,13 +2183,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'dcshift',
-    label: 'limitergain=limitergainDefault',
-    bundle: const [
-      DcshiftEffect(limitergain: DcshiftEffect.limitergainDefault),
-    ],
-  ),
-  (
-    filter: 'dcshift',
     label: 'limitergain=limitergainMax',
     bundle: const [DcshiftEffect(limitergain: DcshiftEffect.limitergainMax)],
   ),
@@ -3306,11 +2190,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'dcshift',
     label: 'shift=shiftMin',
     bundle: const [DcshiftEffect(shift: DcshiftEffect.shiftMin)],
-  ),
-  (
-    filter: 'dcshift',
-    label: 'shift=shiftDefault',
-    bundle: const [DcshiftEffect(shift: DcshiftEffect.shiftDefault)],
   ),
   (
     filter: 'dcshift',
@@ -3324,11 +2203,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'deesser',
-    label: 'f=fDefault',
-    bundle: const [DeesserEffect(f: DeesserEffect.fDefault)],
-  ),
-  (
-    filter: 'deesser',
     label: 'f=fMax',
     bundle: const [DeesserEffect(f: DeesserEffect.fMax)],
   ),
@@ -3336,11 +2210,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'deesser',
     label: 'i=iMin',
     bundle: const [DeesserEffect(i: DeesserEffect.iMin)],
-  ),
-  (
-    filter: 'deesser',
-    label: 'i=iDefault',
-    bundle: const [DeesserEffect(i: DeesserEffect.iDefault)],
   ),
   (
     filter: 'deesser',
@@ -3354,11 +2223,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'deesser',
-    label: 'm=mDefault',
-    bundle: const [DeesserEffect(m: DeesserEffect.mDefault)],
-  ),
-  (
-    filter: 'deesser',
     label: 'm=mMax',
     bundle: const [DeesserEffect(m: DeesserEffect.mMax)],
   ),
@@ -3367,13 +2231,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'enhance=enhanceMin',
     bundle: const [
       DialoguenhanceEffect(enhance: DialoguenhanceEffect.enhanceMin),
-    ],
-  ),
-  (
-    filter: 'dialoguenhance',
-    label: 'enhance=enhanceDefault',
-    bundle: const [
-      DialoguenhanceEffect(enhance: DialoguenhanceEffect.enhanceDefault),
     ],
   ),
   (
@@ -3392,13 +2249,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'dialoguenhance',
-    label: 'original=originalDefault',
-    bundle: const [
-      DialoguenhanceEffect(original: DialoguenhanceEffect.originalDefault),
-    ],
-  ),
-  (
-    filter: 'dialoguenhance',
     label: 'original=originalMax',
     bundle: const [
       DialoguenhanceEffect(original: DialoguenhanceEffect.originalMax),
@@ -3408,13 +2258,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'dialoguenhance',
     label: 'voice=voiceMin',
     bundle: const [DialoguenhanceEffect(voice: DialoguenhanceEffect.voiceMin)],
-  ),
-  (
-    filter: 'dialoguenhance',
-    label: 'voice=voiceDefault',
-    bundle: const [
-      DialoguenhanceEffect(voice: DialoguenhanceEffect.voiceDefault),
-    ],
   ),
   (
     filter: 'dialoguenhance',
@@ -3428,11 +2271,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'drmeter',
-    label: 'length=lengthDefault',
-    bundle: const [DrmeterEffect(length: DrmeterEffect.lengthDefault)],
-  ),
-  (
-    filter: 'drmeter',
     label: 'length=lengthMax',
     bundle: const [DrmeterEffect(length: DrmeterEffect.lengthMax)],
   ),
@@ -3440,13 +2278,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'dynaudnorm',
     label: 'compress=compressMin',
     bundle: const [DynaudnormEffect(compress: DynaudnormEffect.compressMin)],
-  ),
-  (
-    filter: 'dynaudnorm',
-    label: 'compress=compressDefault',
-    bundle: const [
-      DynaudnormEffect(compress: DynaudnormEffect.compressDefault),
-    ],
   ),
   (
     filter: 'dynaudnorm',
@@ -3460,13 +2291,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'dynaudnorm',
-    label: 'framelen=framelenDefault',
-    bundle: const [
-      DynaudnormEffect(framelen: DynaudnormEffect.framelenDefault),
-    ],
-  ),
-  (
-    filter: 'dynaudnorm',
     label: 'framelen=framelenMax',
     bundle: const [DynaudnormEffect(framelen: DynaudnormEffect.framelenMax)],
   ),
@@ -3474,13 +2298,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'dynaudnorm',
     label: 'gausssize=gausssizeMin',
     bundle: const [DynaudnormEffect(gausssize: DynaudnormEffect.gausssizeMin)],
-  ),
-  (
-    filter: 'dynaudnorm',
-    label: 'gausssize=gausssizeDefault',
-    bundle: const [
-      DynaudnormEffect(gausssize: DynaudnormEffect.gausssizeDefault),
-    ],
   ),
   (
     filter: 'dynaudnorm',
@@ -3494,11 +2311,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'dynaudnorm',
-    label: 'maxgain=maxgainDefault',
-    bundle: const [DynaudnormEffect(maxgain: DynaudnormEffect.maxgainDefault)],
-  ),
-  (
-    filter: 'dynaudnorm',
     label: 'maxgain=maxgainMax',
     bundle: const [DynaudnormEffect(maxgain: DynaudnormEffect.maxgainMax)],
   ),
@@ -3506,11 +2318,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'dynaudnorm',
     label: 'overlap=overlapMin',
     bundle: const [DynaudnormEffect(overlap: DynaudnormEffect.overlapMin)],
-  ),
-  (
-    filter: 'dynaudnorm',
-    label: 'overlap=overlapDefault',
-    bundle: const [DynaudnormEffect(overlap: DynaudnormEffect.overlapDefault)],
   ),
   (
     filter: 'dynaudnorm',
@@ -3524,11 +2331,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'dynaudnorm',
-    label: 'peak=peakDefault',
-    bundle: const [DynaudnormEffect(peak: DynaudnormEffect.peakDefault)],
-  ),
-  (
-    filter: 'dynaudnorm',
     label: 'peak=peakMax',
     bundle: const [DynaudnormEffect(peak: DynaudnormEffect.peakMax)],
   ),
@@ -3536,13 +2338,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'dynaudnorm',
     label: 'targetrms=targetrmsMin',
     bundle: const [DynaudnormEffect(targetrms: DynaudnormEffect.targetrmsMin)],
-  ),
-  (
-    filter: 'dynaudnorm',
-    label: 'targetrms=targetrmsDefault',
-    bundle: const [
-      DynaudnormEffect(targetrms: DynaudnormEffect.targetrmsDefault),
-    ],
   ),
   (
     filter: 'dynaudnorm',
@@ -3556,13 +2351,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'dynaudnorm',
-    label: 'threshold=thresholdDefault',
-    bundle: const [
-      DynaudnormEffect(threshold: DynaudnormEffect.thresholdDefault),
-    ],
-  ),
-  (
-    filter: 'dynaudnorm',
     label: 'threshold=thresholdMax',
     bundle: const [DynaudnormEffect(threshold: DynaudnormEffect.thresholdMax)],
   ),
@@ -3570,11 +2358,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'ebur128',
     label: 'meter=meterMin',
     bundle: const [Ebur128Effect(meter: Ebur128Effect.meterMin)],
-  ),
-  (
-    filter: 'ebur128',
-    label: 'meter=meterDefault',
-    bundle: const [Ebur128Effect(meter: Ebur128Effect.meterDefault)],
   ),
   (
     filter: 'ebur128',
@@ -3588,11 +2371,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'ebur128',
-    label: 'panlaw=panlawDefault',
-    bundle: const [Ebur128Effect(panlaw: Ebur128Effect.panlawDefault)],
-  ),
-  (
-    filter: 'ebur128',
     label: 'panlaw=panlawMax',
     bundle: const [Ebur128Effect(panlaw: Ebur128Effect.panlawMax)],
   ),
@@ -3600,11 +2378,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'ebur128',
     label: 'target=targetMin',
     bundle: const [Ebur128Effect(target: Ebur128Effect.targetMin)],
-  ),
-  (
-    filter: 'ebur128',
-    label: 'target=targetDefault',
-    bundle: const [Ebur128Effect(target: Ebur128Effect.targetDefault)],
   ),
   (
     filter: 'ebur128',
@@ -3618,13 +2391,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'equalizer',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [
-      EqualizerEffect(blocksize: EqualizerEffect.blocksizeDefault),
-    ],
-  ),
-  (
-    filter: 'equalizer',
     label: 'blocksize=blocksizeMax',
     bundle: const [EqualizerEffect(blocksize: EqualizerEffect.blocksizeMax)],
   ),
@@ -3632,13 +2398,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'equalizer',
     label: 'frequency=frequencyMin',
     bundle: const [EqualizerEffect(frequency: EqualizerEffect.frequencyMin)],
-  ),
-  (
-    filter: 'equalizer',
-    label: 'frequency=frequencyDefault',
-    bundle: const [
-      EqualizerEffect(frequency: EqualizerEffect.frequencyDefault),
-    ],
   ),
   (
     filter: 'equalizer',
@@ -3652,11 +2411,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'equalizer',
-    label: 'gain=gainDefault',
-    bundle: const [EqualizerEffect(gain: EqualizerEffect.gainDefault)],
-  ),
-  (
-    filter: 'equalizer',
     label: 'gain=gainMax',
     bundle: const [EqualizerEffect(gain: EqualizerEffect.gainMax)],
   ),
@@ -3664,11 +2418,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'equalizer',
     label: 'mix=mixMin',
     bundle: const [EqualizerEffect(mix: EqualizerEffect.mixMin)],
-  ),
-  (
-    filter: 'equalizer',
-    label: 'mix=mixDefault',
-    bundle: const [EqualizerEffect(mix: EqualizerEffect.mixDefault)],
   ),
   (
     filter: 'equalizer',
@@ -3682,11 +2431,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'equalizer',
-    label: 'width=widthDefault',
-    bundle: const [EqualizerEffect(width: EqualizerEffect.widthDefault)],
-  ),
-  (
-    filter: 'equalizer',
     label: 'width=widthMax',
     bundle: const [EqualizerEffect(width: EqualizerEffect.widthMax)],
   ),
@@ -3694,11 +2438,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'extrastereo',
     label: 'm=mMin',
     bundle: const [ExtrastereoEffect(m: ExtrastereoEffect.mMin)],
-  ),
-  (
-    filter: 'extrastereo',
-    label: 'm=mDefault',
-    bundle: const [ExtrastereoEffect(m: ExtrastereoEffect.mDefault)],
   ),
   (
     filter: 'extrastereo',
@@ -3710,13 +2449,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'accuracy=accuracyMin',
     bundle: const [
       FirequalizerEffect(accuracy: FirequalizerEffect.accuracyMin),
-    ],
-  ),
-  (
-    filter: 'firequalizer',
-    label: 'accuracy=accuracyDefault',
-    bundle: const [
-      FirequalizerEffect(accuracy: FirequalizerEffect.accuracyDefault),
     ],
   ),
   (
@@ -3733,11 +2465,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'firequalizer',
-    label: 'delay=delayDefault',
-    bundle: const [FirequalizerEffect(delay: FirequalizerEffect.delayDefault)],
-  ),
-  (
-    filter: 'firequalizer',
     label: 'delay=delayMax',
     bundle: const [FirequalizerEffect(delay: FirequalizerEffect.delayMax)],
   ),
@@ -3745,11 +2472,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'flanger',
     label: 'delay=delayMin',
     bundle: const [FlangerEffect(delay: FlangerEffect.delayMin)],
-  ),
-  (
-    filter: 'flanger',
-    label: 'delay=delayDefault',
-    bundle: const [FlangerEffect(delay: FlangerEffect.delayDefault)],
   ),
   (
     filter: 'flanger',
@@ -3763,11 +2485,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'flanger',
-    label: 'depth=depthDefault',
-    bundle: const [FlangerEffect(depth: FlangerEffect.depthDefault)],
-  ),
-  (
-    filter: 'flanger',
     label: 'depth=depthMax',
     bundle: const [FlangerEffect(depth: FlangerEffect.depthMax)],
   ),
@@ -3775,11 +2492,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'flanger',
     label: 'phase=phaseMin',
     bundle: const [FlangerEffect(phase: FlangerEffect.phaseMin)],
-  ),
-  (
-    filter: 'flanger',
-    label: 'phase=phaseDefault',
-    bundle: const [FlangerEffect(phase: FlangerEffect.phaseDefault)],
   ),
   (
     filter: 'flanger',
@@ -3793,11 +2505,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'flanger',
-    label: 'regen=regenDefault',
-    bundle: const [FlangerEffect(regen: FlangerEffect.regenDefault)],
-  ),
-  (
-    filter: 'flanger',
     label: 'regen=regenMax',
     bundle: const [FlangerEffect(regen: FlangerEffect.regenMax)],
   ),
@@ -3805,11 +2512,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'flanger',
     label: 'speed=speedMin',
     bundle: const [FlangerEffect(speed: FlangerEffect.speedMin)],
-  ),
-  (
-    filter: 'flanger',
-    label: 'speed=speedDefault',
-    bundle: const [FlangerEffect(speed: FlangerEffect.speedDefault)],
   ),
   (
     filter: 'flanger',
@@ -3823,11 +2525,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'flanger',
-    label: 'width=widthDefault',
-    bundle: const [FlangerEffect(width: FlangerEffect.widthDefault)],
-  ),
-  (
-    filter: 'flanger',
     label: 'width=widthMax',
     bundle: const [FlangerEffect(width: FlangerEffect.widthMax)],
   ),
@@ -3835,11 +2532,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'haas',
     label: 'left_balance=leftBalanceMin',
     bundle: const [HaasEffect(leftBalance: HaasEffect.leftBalanceMin)],
-  ),
-  (
-    filter: 'haas',
-    label: 'left_balance=leftBalanceDefault',
-    bundle: const [HaasEffect(leftBalance: HaasEffect.leftBalanceDefault)],
   ),
   (
     filter: 'haas',
@@ -3853,11 +2545,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'haas',
-    label: 'left_delay=leftDelayDefault',
-    bundle: const [HaasEffect(leftDelay: HaasEffect.leftDelayDefault)],
-  ),
-  (
-    filter: 'haas',
     label: 'left_delay=leftDelayMax',
     bundle: const [HaasEffect(leftDelay: HaasEffect.leftDelayMax)],
   ),
@@ -3865,11 +2552,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'haas',
     label: 'left_gain=leftGainMin',
     bundle: const [HaasEffect(leftGain: HaasEffect.leftGainMin)],
-  ),
-  (
-    filter: 'haas',
-    label: 'left_gain=leftGainDefault',
-    bundle: const [HaasEffect(leftGain: HaasEffect.leftGainDefault)],
   ),
   (
     filter: 'haas',
@@ -3883,11 +2565,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'haas',
-    label: 'level_in=levelInDefault',
-    bundle: const [HaasEffect(levelIn: HaasEffect.levelInDefault)],
-  ),
-  (
-    filter: 'haas',
     label: 'level_in=levelInMax',
     bundle: const [HaasEffect(levelIn: HaasEffect.levelInMax)],
   ),
@@ -3895,11 +2572,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'haas',
     label: 'level_out=levelOutMin',
     bundle: const [HaasEffect(levelOut: HaasEffect.levelOutMin)],
-  ),
-  (
-    filter: 'haas',
-    label: 'level_out=levelOutDefault',
-    bundle: const [HaasEffect(levelOut: HaasEffect.levelOutDefault)],
   ),
   (
     filter: 'haas',
@@ -3913,11 +2585,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'haas',
-    label: 'right_balance=rightBalanceDefault',
-    bundle: const [HaasEffect(rightBalance: HaasEffect.rightBalanceDefault)],
-  ),
-  (
-    filter: 'haas',
     label: 'right_balance=rightBalanceMax',
     bundle: const [HaasEffect(rightBalance: HaasEffect.rightBalanceMax)],
   ),
@@ -3925,11 +2592,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'haas',
     label: 'right_delay=rightDelayMin',
     bundle: const [HaasEffect(rightDelay: HaasEffect.rightDelayMin)],
-  ),
-  (
-    filter: 'haas',
-    label: 'right_delay=rightDelayDefault',
-    bundle: const [HaasEffect(rightDelay: HaasEffect.rightDelayDefault)],
   ),
   (
     filter: 'haas',
@@ -3943,11 +2605,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'haas',
-    label: 'right_gain=rightGainDefault',
-    bundle: const [HaasEffect(rightGain: HaasEffect.rightGainDefault)],
-  ),
-  (
-    filter: 'haas',
     label: 'right_gain=rightGainMax',
     bundle: const [HaasEffect(rightGain: HaasEffect.rightGainMax)],
   ),
@@ -3955,11 +2612,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'haas',
     label: 'side_gain=sideGainMin',
     bundle: const [HaasEffect(sideGain: HaasEffect.sideGainMin)],
-  ),
-  (
-    filter: 'haas',
-    label: 'side_gain=sideGainDefault',
-    bundle: const [HaasEffect(sideGain: HaasEffect.sideGainDefault)],
   ),
   (
     filter: 'haas',
@@ -3973,11 +2625,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'hdcd',
-    label: 'cdt_ms=cdtMsDefault',
-    bundle: const [HdcdEffect(cdtMs: HdcdEffect.cdtMsDefault)],
-  ),
-  (
-    filter: 'hdcd',
     label: 'cdt_ms=cdtMsMax',
     bundle: const [HdcdEffect(cdtMs: HdcdEffect.cdtMsMax)],
   ),
@@ -3985,11 +2632,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'highpass',
     label: 'blocksize=blocksizeMin',
     bundle: const [HighpassEffect(blocksize: HighpassEffect.blocksizeMin)],
-  ),
-  (
-    filter: 'highpass',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [HighpassEffect(blocksize: HighpassEffect.blocksizeDefault)],
   ),
   (
     filter: 'highpass',
@@ -4003,11 +2645,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'highpass',
-    label: 'frequency=frequencyDefault',
-    bundle: const [HighpassEffect(frequency: HighpassEffect.frequencyDefault)],
-  ),
-  (
-    filter: 'highpass',
     label: 'frequency=frequencyMax',
     bundle: const [HighpassEffect(frequency: HighpassEffect.frequencyMax)],
   ),
@@ -4015,11 +2652,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'highpass',
     label: 'mix=mixMin',
     bundle: const [HighpassEffect(mix: HighpassEffect.mixMin)],
-  ),
-  (
-    filter: 'highpass',
-    label: 'mix=mixDefault',
-    bundle: const [HighpassEffect(mix: HighpassEffect.mixDefault)],
   ),
   (
     filter: 'highpass',
@@ -4033,11 +2665,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'highpass',
-    label: 'poles=polesDefault',
-    bundle: const [HighpassEffect(poles: HighpassEffect.polesDefault)],
-  ),
-  (
-    filter: 'highpass',
     label: 'poles=polesMax',
     bundle: const [HighpassEffect(poles: HighpassEffect.polesMax)],
   ),
@@ -4045,11 +2672,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'highpass',
     label: 'width=widthMin',
     bundle: const [HighpassEffect(width: HighpassEffect.widthMin)],
-  ),
-  (
-    filter: 'highpass',
-    label: 'width=widthDefault',
-    bundle: const [HighpassEffect(width: HighpassEffect.widthDefault)],
   ),
   (
     filter: 'highpass',
@@ -4063,13 +2685,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'highshelf',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [
-      HighshelfEffect(blocksize: HighshelfEffect.blocksizeDefault),
-    ],
-  ),
-  (
-    filter: 'highshelf',
     label: 'blocksize=blocksizeMax',
     bundle: const [HighshelfEffect(blocksize: HighshelfEffect.blocksizeMax)],
   ),
@@ -4077,13 +2692,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'highshelf',
     label: 'frequency=frequencyMin',
     bundle: const [HighshelfEffect(frequency: HighshelfEffect.frequencyMin)],
-  ),
-  (
-    filter: 'highshelf',
-    label: 'frequency=frequencyDefault',
-    bundle: const [
-      HighshelfEffect(frequency: HighshelfEffect.frequencyDefault),
-    ],
   ),
   (
     filter: 'highshelf',
@@ -4097,11 +2705,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'highshelf',
-    label: 'gain=gainDefault',
-    bundle: const [HighshelfEffect(gain: HighshelfEffect.gainDefault)],
-  ),
-  (
-    filter: 'highshelf',
     label: 'gain=gainMax',
     bundle: const [HighshelfEffect(gain: HighshelfEffect.gainMax)],
   ),
@@ -4109,11 +2712,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'highshelf',
     label: 'mix=mixMin',
     bundle: const [HighshelfEffect(mix: HighshelfEffect.mixMin)],
-  ),
-  (
-    filter: 'highshelf',
-    label: 'mix=mixDefault',
-    bundle: const [HighshelfEffect(mix: HighshelfEffect.mixDefault)],
   ),
   (
     filter: 'highshelf',
@@ -4127,11 +2725,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'highshelf',
-    label: 'poles=polesDefault',
-    bundle: const [HighshelfEffect(poles: HighshelfEffect.polesDefault)],
-  ),
-  (
-    filter: 'highshelf',
     label: 'poles=polesMax',
     bundle: const [HighshelfEffect(poles: HighshelfEffect.polesMax)],
   ),
@@ -4139,11 +2732,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'highshelf',
     label: 'width=widthMin',
     bundle: const [HighshelfEffect(width: HighshelfEffect.widthMin)],
-  ),
-  (
-    filter: 'highshelf',
-    label: 'width=widthDefault',
-    bundle: const [HighshelfEffect(width: HighshelfEffect.widthDefault)],
   ),
   (
     filter: 'highshelf',
@@ -4157,11 +2745,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'loudnorm',
-    label: 'i=iDefault',
-    bundle: const [LoudnormEffect(i: LoudnormEffect.iDefault)],
-  ),
-  (
-    filter: 'loudnorm',
     label: 'i=iMax',
     bundle: const [LoudnormEffect(i: LoudnormEffect.iMax)],
   ),
@@ -4169,11 +2752,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'loudnorm',
     label: 'lra=lraMin',
     bundle: const [LoudnormEffect(lra: LoudnormEffect.lraMin)],
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'lra=lraDefault',
-    bundle: const [LoudnormEffect(lra: LoudnormEffect.lraDefault)],
   ),
   (
     filter: 'loudnorm',
@@ -4187,11 +2765,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_i=measuredIDefault',
-    bundle: const [LoudnormEffect(measuredI: LoudnormEffect.measuredIDefault)],
-  ),
-  (
-    filter: 'loudnorm',
     label: 'measured_i=measuredIMax',
     bundle: const [LoudnormEffect(measuredI: LoudnormEffect.measuredIMax)],
   ),
@@ -4199,13 +2772,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'loudnorm',
     label: 'measured_lra=measuredLraMin',
     bundle: const [LoudnormEffect(measuredLra: LoudnormEffect.measuredLraMin)],
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'measured_lra=measuredLraDefault',
-    bundle: const [
-      LoudnormEffect(measuredLra: LoudnormEffect.measuredLraDefault),
-    ],
   ),
   (
     filter: 'loudnorm',
@@ -4217,13 +2783,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'measured_thresh=measuredThreshMin',
     bundle: const [
       LoudnormEffect(measuredThresh: LoudnormEffect.measuredThreshMin),
-    ],
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'measured_thresh=measuredThreshDefault',
-    bundle: const [
-      LoudnormEffect(measuredThresh: LoudnormEffect.measuredThreshDefault),
     ],
   ),
   (
@@ -4240,13 +2799,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'loudnorm',
-    label: 'measured_tp=measuredTpDefault',
-    bundle: const [
-      LoudnormEffect(measuredTp: LoudnormEffect.measuredTpDefault),
-    ],
-  ),
-  (
-    filter: 'loudnorm',
     label: 'measured_tp=measuredTpMax',
     bundle: const [LoudnormEffect(measuredTp: LoudnormEffect.measuredTpMax)],
   ),
@@ -4254,11 +2806,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'loudnorm',
     label: 'offset=offsetMin',
     bundle: const [LoudnormEffect(offset: LoudnormEffect.offsetMin)],
-  ),
-  (
-    filter: 'loudnorm',
-    label: 'offset=offsetDefault',
-    bundle: const [LoudnormEffect(offset: LoudnormEffect.offsetDefault)],
   ),
   (
     filter: 'loudnorm',
@@ -4272,11 +2819,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'loudnorm',
-    label: 'tp=tpDefault',
-    bundle: const [LoudnormEffect(tp: LoudnormEffect.tpDefault)],
-  ),
-  (
-    filter: 'loudnorm',
     label: 'tp=tpMax',
     bundle: const [LoudnormEffect(tp: LoudnormEffect.tpMax)],
   ),
@@ -4284,11 +2826,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'lowpass',
     label: 'blocksize=blocksizeMin',
     bundle: const [LowpassEffect(blocksize: LowpassEffect.blocksizeMin)],
-  ),
-  (
-    filter: 'lowpass',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [LowpassEffect(blocksize: LowpassEffect.blocksizeDefault)],
   ),
   (
     filter: 'lowpass',
@@ -4302,11 +2839,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'lowpass',
-    label: 'frequency=frequencyDefault',
-    bundle: const [LowpassEffect(frequency: LowpassEffect.frequencyDefault)],
-  ),
-  (
-    filter: 'lowpass',
     label: 'frequency=frequencyMax',
     bundle: const [LowpassEffect(frequency: LowpassEffect.frequencyMax)],
   ),
@@ -4314,11 +2846,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'lowpass',
     label: 'mix=mixMin',
     bundle: const [LowpassEffect(mix: LowpassEffect.mixMin)],
-  ),
-  (
-    filter: 'lowpass',
-    label: 'mix=mixDefault',
-    bundle: const [LowpassEffect(mix: LowpassEffect.mixDefault)],
   ),
   (
     filter: 'lowpass',
@@ -4332,11 +2859,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'lowpass',
-    label: 'poles=polesDefault',
-    bundle: const [LowpassEffect(poles: LowpassEffect.polesDefault)],
-  ),
-  (
-    filter: 'lowpass',
     label: 'poles=polesMax',
     bundle: const [LowpassEffect(poles: LowpassEffect.polesMax)],
   ),
@@ -4344,11 +2866,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'lowpass',
     label: 'width=widthMin',
     bundle: const [LowpassEffect(width: LowpassEffect.widthMin)],
-  ),
-  (
-    filter: 'lowpass',
-    label: 'width=widthDefault',
-    bundle: const [LowpassEffect(width: LowpassEffect.widthDefault)],
   ),
   (
     filter: 'lowpass',
@@ -4362,11 +2879,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'lowshelf',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [LowshelfEffect(blocksize: LowshelfEffect.blocksizeDefault)],
-  ),
-  (
-    filter: 'lowshelf',
     label: 'blocksize=blocksizeMax',
     bundle: const [LowshelfEffect(blocksize: LowshelfEffect.blocksizeMax)],
   ),
@@ -4374,11 +2886,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'lowshelf',
     label: 'frequency=frequencyMin',
     bundle: const [LowshelfEffect(frequency: LowshelfEffect.frequencyMin)],
-  ),
-  (
-    filter: 'lowshelf',
-    label: 'frequency=frequencyDefault',
-    bundle: const [LowshelfEffect(frequency: LowshelfEffect.frequencyDefault)],
   ),
   (
     filter: 'lowshelf',
@@ -4392,11 +2899,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'lowshelf',
-    label: 'gain=gainDefault',
-    bundle: const [LowshelfEffect(gain: LowshelfEffect.gainDefault)],
-  ),
-  (
-    filter: 'lowshelf',
     label: 'gain=gainMax',
     bundle: const [LowshelfEffect(gain: LowshelfEffect.gainMax)],
   ),
@@ -4404,11 +2906,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'lowshelf',
     label: 'mix=mixMin',
     bundle: const [LowshelfEffect(mix: LowshelfEffect.mixMin)],
-  ),
-  (
-    filter: 'lowshelf',
-    label: 'mix=mixDefault',
-    bundle: const [LowshelfEffect(mix: LowshelfEffect.mixDefault)],
   ),
   (
     filter: 'lowshelf',
@@ -4422,11 +2919,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'lowshelf',
-    label: 'poles=polesDefault',
-    bundle: const [LowshelfEffect(poles: LowshelfEffect.polesDefault)],
-  ),
-  (
-    filter: 'lowshelf',
     label: 'poles=polesMax',
     bundle: const [LowshelfEffect(poles: LowshelfEffect.polesMax)],
   ),
@@ -4434,11 +2926,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'lowshelf',
     label: 'width=widthMin',
     bundle: const [LowshelfEffect(width: LowshelfEffect.widthMin)],
-  ),
-  (
-    filter: 'lowshelf',
-    label: 'width=widthDefault',
-    bundle: const [LowshelfEffect(width: LowshelfEffect.widthDefault)],
   ),
   (
     filter: 'lowshelf',
@@ -4461,15 +2948,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'silenceremove',
-    label: 'start_periods=startPeriodsDefault',
-    bundle: const [
-      SilenceremoveEffect(
-        startPeriods: SilenceremoveEffect.startPeriodsDefault,
-      ),
-    ],
-  ),
-  (
-    filter: 'silenceremove',
     label: 'start_periods=startPeriodsMax',
     bundle: const [
       SilenceremoveEffect(startPeriods: SilenceremoveEffect.startPeriodsMax),
@@ -4488,15 +2966,6 @@ const List<ParamCorner> kFilterParamCorners = [
     bundle: const [
       SilenceremoveEffect(
         startThreshold: SilenceremoveEffect.startThresholdMin,
-      ),
-    ],
-  ),
-  (
-    filter: 'silenceremove',
-    label: 'start_threshold=startThresholdDefault',
-    bundle: const [
-      SilenceremoveEffect(
-        startThreshold: SilenceremoveEffect.startThresholdDefault,
       ),
     ],
   ),
@@ -4525,13 +2994,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'silenceremove',
-    label: 'stop_periods=stopPeriodsDefault',
-    bundle: const [
-      SilenceremoveEffect(stopPeriods: SilenceremoveEffect.stopPeriodsDefault),
-    ],
-  ),
-  (
-    filter: 'silenceremove',
     label: 'stop_periods=stopPeriodsMax',
     bundle: const [
       SilenceremoveEffect(stopPeriods: SilenceremoveEffect.stopPeriodsMax),
@@ -4549,15 +3011,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'stop_threshold=stopThresholdMin',
     bundle: const [
       SilenceremoveEffect(stopThreshold: SilenceremoveEffect.stopThresholdMin),
-    ],
-  ),
-  (
-    filter: 'silenceremove',
-    label: 'stop_threshold=stopThresholdDefault',
-    bundle: const [
-      SilenceremoveEffect(
-        stopThreshold: SilenceremoveEffect.stopThresholdDefault,
-      ),
     ],
   ),
   (
@@ -4581,13 +3034,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'speechnorm',
-    label: 'compression=compressionDefault',
-    bundle: const [
-      SpeechnormEffect(compression: SpeechnormEffect.compressionDefault),
-    ],
-  ),
-  (
-    filter: 'speechnorm',
     label: 'compression=compressionMax',
     bundle: const [
       SpeechnormEffect(compression: SpeechnormEffect.compressionMax),
@@ -4597,13 +3043,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'speechnorm',
     label: 'expansion=expansionMin',
     bundle: const [SpeechnormEffect(expansion: SpeechnormEffect.expansionMin)],
-  ),
-  (
-    filter: 'speechnorm',
-    label: 'expansion=expansionDefault',
-    bundle: const [
-      SpeechnormEffect(expansion: SpeechnormEffect.expansionDefault),
-    ],
   ),
   (
     filter: 'speechnorm',
@@ -4617,11 +3056,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'speechnorm',
-    label: 'fall=fallDefault',
-    bundle: const [SpeechnormEffect(fall: SpeechnormEffect.fallDefault)],
-  ),
-  (
-    filter: 'speechnorm',
     label: 'fall=fallMax',
     bundle: const [SpeechnormEffect(fall: SpeechnormEffect.fallMax)],
   ),
@@ -4629,11 +3063,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'speechnorm',
     label: 'peak=peakMin',
     bundle: const [SpeechnormEffect(peak: SpeechnormEffect.peakMin)],
-  ),
-  (
-    filter: 'speechnorm',
-    label: 'peak=peakDefault',
-    bundle: const [SpeechnormEffect(peak: SpeechnormEffect.peakDefault)],
   ),
   (
     filter: 'speechnorm',
@@ -4647,11 +3076,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'speechnorm',
-    label: 'raise=raiseDefault',
-    bundle: const [SpeechnormEffect(raise: SpeechnormEffect.raiseDefault)],
-  ),
-  (
-    filter: 'speechnorm',
     label: 'raise=raiseMax',
     bundle: const [SpeechnormEffect(raise: SpeechnormEffect.raiseMax)],
   ),
@@ -4659,11 +3083,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'speechnorm',
     label: 'rms=rmsMin',
     bundle: const [SpeechnormEffect(rms: SpeechnormEffect.rmsMin)],
-  ),
-  (
-    filter: 'speechnorm',
-    label: 'rms=rmsDefault',
-    bundle: const [SpeechnormEffect(rms: SpeechnormEffect.rmsDefault)],
   ),
   (
     filter: 'speechnorm',
@@ -4677,13 +3096,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'speechnorm',
-    label: 'threshold=thresholdDefault',
-    bundle: const [
-      SpeechnormEffect(threshold: SpeechnormEffect.thresholdDefault),
-    ],
-  ),
-  (
-    filter: 'speechnorm',
     label: 'threshold=thresholdMax',
     bundle: const [SpeechnormEffect(threshold: SpeechnormEffect.thresholdMax)],
   ),
@@ -4692,13 +3104,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'balance_in=balanceInMin',
     bundle: const [
       StereotoolsEffect(balanceIn: StereotoolsEffect.balanceInMin),
-    ],
-  ),
-  (
-    filter: 'stereotools',
-    label: 'balance_in=balanceInDefault',
-    bundle: const [
-      StereotoolsEffect(balanceIn: StereotoolsEffect.balanceInDefault),
     ],
   ),
   (
@@ -4717,13 +3122,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereotools',
-    label: 'balance_out=balanceOutDefault',
-    bundle: const [
-      StereotoolsEffect(balanceOut: StereotoolsEffect.balanceOutDefault),
-    ],
-  ),
-  (
-    filter: 'stereotools',
     label: 'balance_out=balanceOutMax',
     bundle: const [
       StereotoolsEffect(balanceOut: StereotoolsEffect.balanceOutMax),
@@ -4733,11 +3131,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'stereotools',
     label: 'base=baseMin',
     bundle: const [StereotoolsEffect(base: StereotoolsEffect.baseMin)],
-  ),
-  (
-    filter: 'stereotools',
-    label: 'base=baseDefault',
-    bundle: const [StereotoolsEffect(base: StereotoolsEffect.baseDefault)],
   ),
   (
     filter: 'stereotools',
@@ -4751,11 +3144,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereotools',
-    label: 'delay=delayDefault',
-    bundle: const [StereotoolsEffect(delay: StereotoolsEffect.delayDefault)],
-  ),
-  (
-    filter: 'stereotools',
     label: 'delay=delayMax',
     bundle: const [StereotoolsEffect(delay: StereotoolsEffect.delayMax)],
   ),
@@ -4763,13 +3151,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'stereotools',
     label: 'level_in=levelInMin',
     bundle: const [StereotoolsEffect(levelIn: StereotoolsEffect.levelInMin)],
-  ),
-  (
-    filter: 'stereotools',
-    label: 'level_in=levelInDefault',
-    bundle: const [
-      StereotoolsEffect(levelIn: StereotoolsEffect.levelInDefault),
-    ],
   ),
   (
     filter: 'stereotools',
@@ -4783,13 +3164,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereotools',
-    label: 'level_out=levelOutDefault',
-    bundle: const [
-      StereotoolsEffect(levelOut: StereotoolsEffect.levelOutDefault),
-    ],
-  ),
-  (
-    filter: 'stereotools',
     label: 'level_out=levelOutMax',
     bundle: const [StereotoolsEffect(levelOut: StereotoolsEffect.levelOutMax)],
   ),
@@ -4797,11 +3171,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'stereotools',
     label: 'mlev=mlevMin',
     bundle: const [StereotoolsEffect(mlev: StereotoolsEffect.mlevMin)],
-  ),
-  (
-    filter: 'stereotools',
-    label: 'mlev=mlevDefault',
-    bundle: const [StereotoolsEffect(mlev: StereotoolsEffect.mlevDefault)],
   ),
   (
     filter: 'stereotools',
@@ -4815,11 +3184,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereotools',
-    label: 'mpan=mpanDefault',
-    bundle: const [StereotoolsEffect(mpan: StereotoolsEffect.mpanDefault)],
-  ),
-  (
-    filter: 'stereotools',
     label: 'mpan=mpanMax',
     bundle: const [StereotoolsEffect(mpan: StereotoolsEffect.mpanMax)],
   ),
@@ -4827,11 +3191,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'stereotools',
     label: 'phase=phaseMin',
     bundle: const [StereotoolsEffect(phase: StereotoolsEffect.phaseMin)],
-  ),
-  (
-    filter: 'stereotools',
-    label: 'phase=phaseDefault',
-    bundle: const [StereotoolsEffect(phase: StereotoolsEffect.phaseDefault)],
   ),
   (
     filter: 'stereotools',
@@ -4845,11 +3204,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereotools',
-    label: 'sbal=sbalDefault',
-    bundle: const [StereotoolsEffect(sbal: StereotoolsEffect.sbalDefault)],
-  ),
-  (
-    filter: 'stereotools',
     label: 'sbal=sbalMax',
     bundle: const [StereotoolsEffect(sbal: StereotoolsEffect.sbalMax)],
   ),
@@ -4857,13 +3211,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'stereotools',
     label: 'sclevel=sclevelMin',
     bundle: const [StereotoolsEffect(sclevel: StereotoolsEffect.sclevelMin)],
-  ),
-  (
-    filter: 'stereotools',
-    label: 'sclevel=sclevelDefault',
-    bundle: const [
-      StereotoolsEffect(sclevel: StereotoolsEffect.sclevelDefault),
-    ],
   ),
   (
     filter: 'stereotools',
@@ -4877,11 +3224,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereotools',
-    label: 'slev=slevDefault',
-    bundle: const [StereotoolsEffect(slev: StereotoolsEffect.slevDefault)],
-  ),
-  (
-    filter: 'stereotools',
     label: 'slev=slevMax',
     bundle: const [StereotoolsEffect(slev: StereotoolsEffect.slevMax)],
   ),
@@ -4890,13 +3232,6 @@ const List<ParamCorner> kFilterParamCorners = [
     label: 'crossfeed=crossfeedMin',
     bundle: const [
       StereowidenEffect(crossfeed: StereowidenEffect.crossfeedMin),
-    ],
-  ),
-  (
-    filter: 'stereowiden',
-    label: 'crossfeed=crossfeedDefault',
-    bundle: const [
-      StereowidenEffect(crossfeed: StereowidenEffect.crossfeedDefault),
     ],
   ),
   (
@@ -4913,11 +3248,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereowiden',
-    label: 'delay=delayDefault',
-    bundle: const [StereowidenEffect(delay: StereowidenEffect.delayDefault)],
-  ),
-  (
-    filter: 'stereowiden',
     label: 'delay=delayMax',
     bundle: const [StereowidenEffect(delay: StereowidenEffect.delayMax)],
   ),
@@ -4925,11 +3255,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'stereowiden',
     label: 'drymix=drymixMin',
     bundle: const [StereowidenEffect(drymix: StereowidenEffect.drymixMin)],
-  ),
-  (
-    filter: 'stereowiden',
-    label: 'drymix=drymixDefault',
-    bundle: const [StereowidenEffect(drymix: StereowidenEffect.drymixDefault)],
   ),
   (
     filter: 'stereowiden',
@@ -4943,13 +3268,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'stereowiden',
-    label: 'feedback=feedbackDefault',
-    bundle: const [
-      StereowidenEffect(feedback: StereowidenEffect.feedbackDefault),
-    ],
-  ),
-  (
-    filter: 'stereowiden',
     label: 'feedback=feedbackMax',
     bundle: const [StereowidenEffect(feedback: StereowidenEffect.feedbackMax)],
   ),
@@ -4957,11 +3275,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'allx=allxMin',
     bundle: const [SurroundEffect(allx: SurroundEffect.allxMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'allx=allxDefault',
-    bundle: const [SurroundEffect(allx: SurroundEffect.allxDefault)],
   ),
   (
     filter: 'surround',
@@ -4975,11 +3288,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'ally=allyDefault',
-    bundle: const [SurroundEffect(ally: SurroundEffect.allyDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'ally=allyMax',
     bundle: const [SurroundEffect(ally: SurroundEffect.allyMax)],
   ),
@@ -4987,11 +3295,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'angle=angleMin',
     bundle: const [SurroundEffect(angle: SurroundEffect.angleMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'angle=angleDefault',
-    bundle: const [SurroundEffect(angle: SurroundEffect.angleDefault)],
   ),
   (
     filter: 'surround',
@@ -5005,11 +3308,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'bc_in=bcInDefault',
-    bundle: const [SurroundEffect(bcIn: SurroundEffect.bcInDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'bc_in=bcInMax',
     bundle: const [SurroundEffect(bcIn: SurroundEffect.bcInMax)],
   ),
@@ -5017,11 +3315,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'bc_out=bcOutMin',
     bundle: const [SurroundEffect(bcOut: SurroundEffect.bcOutMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'bc_out=bcOutDefault',
-    bundle: const [SurroundEffect(bcOut: SurroundEffect.bcOutDefault)],
   ),
   (
     filter: 'surround',
@@ -5035,11 +3328,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'bcx=bcxDefault',
-    bundle: const [SurroundEffect(bcx: SurroundEffect.bcxDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'bcx=bcxMax',
     bundle: const [SurroundEffect(bcx: SurroundEffect.bcxMax)],
   ),
@@ -5047,11 +3335,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'bcy=bcyMin',
     bundle: const [SurroundEffect(bcy: SurroundEffect.bcyMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'bcy=bcyDefault',
-    bundle: const [SurroundEffect(bcy: SurroundEffect.bcyDefault)],
   ),
   (
     filter: 'surround',
@@ -5065,11 +3348,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'bl_in=blInDefault',
-    bundle: const [SurroundEffect(blIn: SurroundEffect.blInDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'bl_in=blInMax',
     bundle: const [SurroundEffect(blIn: SurroundEffect.blInMax)],
   ),
@@ -5077,11 +3355,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'bl_out=blOutMin',
     bundle: const [SurroundEffect(blOut: SurroundEffect.blOutMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'bl_out=blOutDefault',
-    bundle: const [SurroundEffect(blOut: SurroundEffect.blOutDefault)],
   ),
   (
     filter: 'surround',
@@ -5095,11 +3368,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'blx=blxDefault',
-    bundle: const [SurroundEffect(blx: SurroundEffect.blxDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'blx=blxMax',
     bundle: const [SurroundEffect(blx: SurroundEffect.blxMax)],
   ),
@@ -5107,11 +3375,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'bly=blyMin',
     bundle: const [SurroundEffect(bly: SurroundEffect.blyMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'bly=blyDefault',
-    bundle: const [SurroundEffect(bly: SurroundEffect.blyDefault)],
   ),
   (
     filter: 'surround',
@@ -5125,11 +3388,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'br_in=brInDefault',
-    bundle: const [SurroundEffect(brIn: SurroundEffect.brInDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'br_in=brInMax',
     bundle: const [SurroundEffect(brIn: SurroundEffect.brInMax)],
   ),
@@ -5137,11 +3395,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'br_out=brOutMin',
     bundle: const [SurroundEffect(brOut: SurroundEffect.brOutMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'br_out=brOutDefault',
-    bundle: const [SurroundEffect(brOut: SurroundEffect.brOutDefault)],
   ),
   (
     filter: 'surround',
@@ -5155,11 +3408,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'brx=brxDefault',
-    bundle: const [SurroundEffect(brx: SurroundEffect.brxDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'brx=brxMax',
     bundle: const [SurroundEffect(brx: SurroundEffect.brxMax)],
   ),
@@ -5167,11 +3415,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'bry=bryMin',
     bundle: const [SurroundEffect(bry: SurroundEffect.bryMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'bry=bryDefault',
-    bundle: const [SurroundEffect(bry: SurroundEffect.bryDefault)],
   ),
   (
     filter: 'surround',
@@ -5185,11 +3428,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'fc_in=fcInDefault',
-    bundle: const [SurroundEffect(fcIn: SurroundEffect.fcInDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'fc_in=fcInMax',
     bundle: const [SurroundEffect(fcIn: SurroundEffect.fcInMax)],
   ),
@@ -5197,11 +3435,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'fc_out=fcOutMin',
     bundle: const [SurroundEffect(fcOut: SurroundEffect.fcOutMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'fc_out=fcOutDefault',
-    bundle: const [SurroundEffect(fcOut: SurroundEffect.fcOutDefault)],
   ),
   (
     filter: 'surround',
@@ -5215,11 +3448,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'fcx=fcxDefault',
-    bundle: const [SurroundEffect(fcx: SurroundEffect.fcxDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'fcx=fcxMax',
     bundle: const [SurroundEffect(fcx: SurroundEffect.fcxMax)],
   ),
@@ -5227,11 +3455,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'fcy=fcyMin',
     bundle: const [SurroundEffect(fcy: SurroundEffect.fcyMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'fcy=fcyDefault',
-    bundle: const [SurroundEffect(fcy: SurroundEffect.fcyDefault)],
   ),
   (
     filter: 'surround',
@@ -5245,11 +3468,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'fl_in=flInDefault',
-    bundle: const [SurroundEffect(flIn: SurroundEffect.flInDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'fl_in=flInMax',
     bundle: const [SurroundEffect(flIn: SurroundEffect.flInMax)],
   ),
@@ -5257,11 +3475,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'fl_out=flOutMin',
     bundle: const [SurroundEffect(flOut: SurroundEffect.flOutMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'fl_out=flOutDefault',
-    bundle: const [SurroundEffect(flOut: SurroundEffect.flOutDefault)],
   ),
   (
     filter: 'surround',
@@ -5275,11 +3488,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'flx=flxDefault',
-    bundle: const [SurroundEffect(flx: SurroundEffect.flxDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'flx=flxMax',
     bundle: const [SurroundEffect(flx: SurroundEffect.flxMax)],
   ),
@@ -5287,11 +3495,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'fly=flyMin',
     bundle: const [SurroundEffect(fly: SurroundEffect.flyMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'fly=flyDefault',
-    bundle: const [SurroundEffect(fly: SurroundEffect.flyDefault)],
   ),
   (
     filter: 'surround',
@@ -5305,11 +3508,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'focus=focusDefault',
-    bundle: const [SurroundEffect(focus: SurroundEffect.focusDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'focus=focusMax',
     bundle: const [SurroundEffect(focus: SurroundEffect.focusMax)],
   ),
@@ -5317,11 +3515,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'fr_in=frInMin',
     bundle: const [SurroundEffect(frIn: SurroundEffect.frInMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'fr_in=frInDefault',
-    bundle: const [SurroundEffect(frIn: SurroundEffect.frInDefault)],
   ),
   (
     filter: 'surround',
@@ -5335,11 +3528,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'fr_out=frOutDefault',
-    bundle: const [SurroundEffect(frOut: SurroundEffect.frOutDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'fr_out=frOutMax',
     bundle: const [SurroundEffect(frOut: SurroundEffect.frOutMax)],
   ),
@@ -5347,11 +3535,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'frx=frxMin',
     bundle: const [SurroundEffect(frx: SurroundEffect.frxMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'frx=frxDefault',
-    bundle: const [SurroundEffect(frx: SurroundEffect.frxDefault)],
   ),
   (
     filter: 'surround',
@@ -5365,11 +3548,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'fry=fryDefault',
-    bundle: const [SurroundEffect(fry: SurroundEffect.fryDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'fry=fryMax',
     bundle: const [SurroundEffect(fry: SurroundEffect.fryMax)],
   ),
@@ -5377,11 +3555,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'level_in=levelInMin',
     bundle: const [SurroundEffect(levelIn: SurroundEffect.levelInMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'level_in=levelInDefault',
-    bundle: const [SurroundEffect(levelIn: SurroundEffect.levelInDefault)],
   ),
   (
     filter: 'surround',
@@ -5395,11 +3568,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'level_out=levelOutDefault',
-    bundle: const [SurroundEffect(levelOut: SurroundEffect.levelOutDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'level_out=levelOutMax',
     bundle: const [SurroundEffect(levelOut: SurroundEffect.levelOutMax)],
   ),
@@ -5407,11 +3575,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'lfe_high=lfeHighMin',
     bundle: const [SurroundEffect(lfeHigh: SurroundEffect.lfeHighMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'lfe_high=lfeHighDefault',
-    bundle: const [SurroundEffect(lfeHigh: SurroundEffect.lfeHighDefault)],
   ),
   (
     filter: 'surround',
@@ -5425,11 +3588,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'lfe_in=lfeInDefault',
-    bundle: const [SurroundEffect(lfeIn: SurroundEffect.lfeInDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'lfe_in=lfeInMax',
     bundle: const [SurroundEffect(lfeIn: SurroundEffect.lfeInMax)],
   ),
@@ -5437,11 +3595,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'lfe_low=lfeLowMin',
     bundle: const [SurroundEffect(lfeLow: SurroundEffect.lfeLowMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'lfe_low=lfeLowDefault',
-    bundle: const [SurroundEffect(lfeLow: SurroundEffect.lfeLowDefault)],
   ),
   (
     filter: 'surround',
@@ -5455,11 +3608,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'lfe_out=lfeOutDefault',
-    bundle: const [SurroundEffect(lfeOut: SurroundEffect.lfeOutDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'lfe_out=lfeOutMax',
     bundle: const [SurroundEffect(lfeOut: SurroundEffect.lfeOutMax)],
   ),
@@ -5467,11 +3615,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'overlap=overlapMin',
     bundle: const [SurroundEffect(overlap: SurroundEffect.overlapMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'overlap=overlapDefault',
-    bundle: const [SurroundEffect(overlap: SurroundEffect.overlapDefault)],
   ),
   (
     filter: 'surround',
@@ -5485,11 +3628,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'sl_in=slInDefault',
-    bundle: const [SurroundEffect(slIn: SurroundEffect.slInDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'sl_in=slInMax',
     bundle: const [SurroundEffect(slIn: SurroundEffect.slInMax)],
   ),
@@ -5497,11 +3635,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'sl_out=slOutMin',
     bundle: const [SurroundEffect(slOut: SurroundEffect.slOutMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'sl_out=slOutDefault',
-    bundle: const [SurroundEffect(slOut: SurroundEffect.slOutDefault)],
   ),
   (
     filter: 'surround',
@@ -5515,11 +3648,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'slx=slxDefault',
-    bundle: const [SurroundEffect(slx: SurroundEffect.slxDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'slx=slxMax',
     bundle: const [SurroundEffect(slx: SurroundEffect.slxMax)],
   ),
@@ -5527,11 +3655,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'sly=slyMin',
     bundle: const [SurroundEffect(sly: SurroundEffect.slyMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'sly=slyDefault',
-    bundle: const [SurroundEffect(sly: SurroundEffect.slyDefault)],
   ),
   (
     filter: 'surround',
@@ -5545,11 +3668,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'smooth=smoothDefault',
-    bundle: const [SurroundEffect(smooth: SurroundEffect.smoothDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'smooth=smoothMax',
     bundle: const [SurroundEffect(smooth: SurroundEffect.smoothMax)],
   ),
@@ -5557,11 +3675,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'sr_in=srInMin',
     bundle: const [SurroundEffect(srIn: SurroundEffect.srInMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'sr_in=srInDefault',
-    bundle: const [SurroundEffect(srIn: SurroundEffect.srInDefault)],
   ),
   (
     filter: 'surround',
@@ -5575,11 +3688,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'sr_out=srOutDefault',
-    bundle: const [SurroundEffect(srOut: SurroundEffect.srOutDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'sr_out=srOutMax',
     bundle: const [SurroundEffect(srOut: SurroundEffect.srOutMax)],
   ),
@@ -5587,11 +3695,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'srx=srxMin',
     bundle: const [SurroundEffect(srx: SurroundEffect.srxMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'srx=srxDefault',
-    bundle: const [SurroundEffect(srx: SurroundEffect.srxDefault)],
   ),
   (
     filter: 'surround',
@@ -5605,11 +3708,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'surround',
-    label: 'sry=sryDefault',
-    bundle: const [SurroundEffect(sry: SurroundEffect.sryDefault)],
-  ),
-  (
-    filter: 'surround',
     label: 'sry=sryMax',
     bundle: const [SurroundEffect(sry: SurroundEffect.sryMax)],
   ),
@@ -5617,11 +3715,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'surround',
     label: 'win_size=winSizeMin',
     bundle: const [SurroundEffect(winSize: SurroundEffect.winSizeMin)],
-  ),
-  (
-    filter: 'surround',
-    label: 'win_size=winSizeDefault',
-    bundle: const [SurroundEffect(winSize: SurroundEffect.winSizeDefault)],
   ),
   (
     filter: 'surround',
@@ -5635,13 +3728,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'tiltshelf',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [
-      TiltshelfEffect(blocksize: TiltshelfEffect.blocksizeDefault),
-    ],
-  ),
-  (
-    filter: 'tiltshelf',
     label: 'blocksize=blocksizeMax',
     bundle: const [TiltshelfEffect(blocksize: TiltshelfEffect.blocksizeMax)],
   ),
@@ -5649,13 +3735,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'tiltshelf',
     label: 'frequency=frequencyMin',
     bundle: const [TiltshelfEffect(frequency: TiltshelfEffect.frequencyMin)],
-  ),
-  (
-    filter: 'tiltshelf',
-    label: 'frequency=frequencyDefault',
-    bundle: const [
-      TiltshelfEffect(frequency: TiltshelfEffect.frequencyDefault),
-    ],
   ),
   (
     filter: 'tiltshelf',
@@ -5669,11 +3748,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'tiltshelf',
-    label: 'gain=gainDefault',
-    bundle: const [TiltshelfEffect(gain: TiltshelfEffect.gainDefault)],
-  ),
-  (
-    filter: 'tiltshelf',
     label: 'gain=gainMax',
     bundle: const [TiltshelfEffect(gain: TiltshelfEffect.gainMax)],
   ),
@@ -5681,11 +3755,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'tiltshelf',
     label: 'mix=mixMin',
     bundle: const [TiltshelfEffect(mix: TiltshelfEffect.mixMin)],
-  ),
-  (
-    filter: 'tiltshelf',
-    label: 'mix=mixDefault',
-    bundle: const [TiltshelfEffect(mix: TiltshelfEffect.mixDefault)],
   ),
   (
     filter: 'tiltshelf',
@@ -5699,11 +3768,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'tiltshelf',
-    label: 'poles=polesDefault',
-    bundle: const [TiltshelfEffect(poles: TiltshelfEffect.polesDefault)],
-  ),
-  (
-    filter: 'tiltshelf',
     label: 'poles=polesMax',
     bundle: const [TiltshelfEffect(poles: TiltshelfEffect.polesMax)],
   ),
@@ -5711,11 +3775,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'tiltshelf',
     label: 'width=widthMin',
     bundle: const [TiltshelfEffect(width: TiltshelfEffect.widthMin)],
-  ),
-  (
-    filter: 'tiltshelf',
-    label: 'width=widthDefault',
-    bundle: const [TiltshelfEffect(width: TiltshelfEffect.widthDefault)],
   ),
   (
     filter: 'tiltshelf',
@@ -5729,11 +3788,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'treble',
-    label: 'blocksize=blocksizeDefault',
-    bundle: const [TrebleEffect(blocksize: TrebleEffect.blocksizeDefault)],
-  ),
-  (
-    filter: 'treble',
     label: 'blocksize=blocksizeMax',
     bundle: const [TrebleEffect(blocksize: TrebleEffect.blocksizeMax)],
   ),
@@ -5741,11 +3795,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'treble',
     label: 'frequency=frequencyMin',
     bundle: const [TrebleEffect(frequency: TrebleEffect.frequencyMin)],
-  ),
-  (
-    filter: 'treble',
-    label: 'frequency=frequencyDefault',
-    bundle: const [TrebleEffect(frequency: TrebleEffect.frequencyDefault)],
   ),
   (
     filter: 'treble',
@@ -5759,11 +3808,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'treble',
-    label: 'gain=gainDefault',
-    bundle: const [TrebleEffect(gain: TrebleEffect.gainDefault)],
-  ),
-  (
-    filter: 'treble',
     label: 'gain=gainMax',
     bundle: const [TrebleEffect(gain: TrebleEffect.gainMax)],
   ),
@@ -5771,11 +3815,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'treble',
     label: 'mix=mixMin',
     bundle: const [TrebleEffect(mix: TrebleEffect.mixMin)],
-  ),
-  (
-    filter: 'treble',
-    label: 'mix=mixDefault',
-    bundle: const [TrebleEffect(mix: TrebleEffect.mixDefault)],
   ),
   (
     filter: 'treble',
@@ -5789,11 +3828,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'treble',
-    label: 'poles=polesDefault',
-    bundle: const [TrebleEffect(poles: TrebleEffect.polesDefault)],
-  ),
-  (
-    filter: 'treble',
     label: 'poles=polesMax',
     bundle: const [TrebleEffect(poles: TrebleEffect.polesMax)],
   ),
@@ -5801,11 +3835,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'treble',
     label: 'width=widthMin',
     bundle: const [TrebleEffect(width: TrebleEffect.widthMin)],
-  ),
-  (
-    filter: 'treble',
-    label: 'width=widthDefault',
-    bundle: const [TrebleEffect(width: TrebleEffect.widthDefault)],
   ),
   (
     filter: 'treble',
@@ -5819,11 +3848,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'tremolo',
-    label: 'd=dDefault',
-    bundle: const [TremoloEffect(d: TremoloEffect.dDefault)],
-  ),
-  (
-    filter: 'tremolo',
     label: 'd=dMax',
     bundle: const [TremoloEffect(d: TremoloEffect.dMax)],
   ),
@@ -5831,11 +3855,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'tremolo',
     label: 'f=fMin',
     bundle: const [TremoloEffect(f: TremoloEffect.fMin)],
-  ),
-  (
-    filter: 'tremolo',
-    label: 'f=fDefault',
-    bundle: const [TremoloEffect(f: TremoloEffect.fDefault)],
   ),
   (
     filter: 'tremolo',
@@ -5849,11 +3868,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'vibrato',
-    label: 'd=dDefault',
-    bundle: const [VibratoEffect(d: VibratoEffect.dDefault)],
-  ),
-  (
-    filter: 'vibrato',
     label: 'd=dMax',
     bundle: const [VibratoEffect(d: VibratoEffect.dMax)],
   ),
@@ -5861,11 +3875,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'vibrato',
     label: 'f=fMin',
     bundle: const [VibratoEffect(f: VibratoEffect.fMin)],
-  ),
-  (
-    filter: 'vibrato',
-    label: 'f=fDefault',
-    bundle: const [VibratoEffect(f: VibratoEffect.fDefault)],
   ),
   (
     filter: 'vibrato',
@@ -5879,11 +3888,6 @@ const List<ParamCorner> kFilterParamCorners = [
   ),
   (
     filter: 'virtualbass',
-    label: 'cutoff=cutoffDefault',
-    bundle: const [VirtualbassEffect(cutoff: VirtualbassEffect.cutoffDefault)],
-  ),
-  (
-    filter: 'virtualbass',
     label: 'cutoff=cutoffMax',
     bundle: const [VirtualbassEffect(cutoff: VirtualbassEffect.cutoffMax)],
   ),
@@ -5891,13 +3895,6 @@ const List<ParamCorner> kFilterParamCorners = [
     filter: 'virtualbass',
     label: 'strength=strengthMin',
     bundle: const [VirtualbassEffect(strength: VirtualbassEffect.strengthMin)],
-  ),
-  (
-    filter: 'virtualbass',
-    label: 'strength=strengthDefault',
-    bundle: const [
-      VirtualbassEffect(strength: VirtualbassEffect.strengthDefault),
-    ],
   ),
   (
     filter: 'virtualbass',
