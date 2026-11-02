@@ -1,8 +1,7 @@
-## [0.6.1] - Unreleased
+## [0.6.1] - 2-11-2026
 
 ### Docs
 - A shorter README, with the guides moved to topics of the API reference.
-- `LICENSES.md` holds the license details.
 
 ## [0.6.0] - 2-11-2026
 

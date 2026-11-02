@@ -56,7 +56,7 @@ The package is an audio player for Flutter apps that play from your own server. 
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.6.0
+  mpv_audio_kit: ^0.6.1
 ```
 
 The build downloads the libmpv binary for each native target and checks its SHA-256, so the first build needs network access. On the web the module ships with the package.
