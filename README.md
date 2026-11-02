@@ -20,7 +20,12 @@
 
 The package is an audio player for Flutter apps that play from your own server. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web.
 
-**[Try it in your browser](https://ales-drnz.github.io/mpv_studio/)** with [mpv_studio](https://github.com/ales-drnz/mpv_studio), the demo app.
+<table>
+<tr>
+<td valign="middle" width="80"><a href="https://ales-drnz.github.io/mpv_studio/"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/mpv_studio.png" width="64" alt="MPV Studio"></a></td>
+<td valign="middle"><b><a href="https://ales-drnz.github.io/mpv_studio/">Try MPV Studio in your browser</a></b><br>The demo app runs the package with libmpv as WebAssembly. Its source is in the <a href="https://github.com/ales-drnz/mpv_studio">mpv_studio</a> repository.</td>
+</tr>
+</table>
 
 <table>
 <tr>

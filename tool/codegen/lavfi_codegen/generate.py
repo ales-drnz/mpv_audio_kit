@@ -1206,6 +1206,8 @@ def _emit_chain() -> str:
 ///
 /// Every typed `XxxEffect` extends it; [Raw{base}] carries a lavfi
 /// entry written by hand.
+///
+/// {{@category Effects}}
 sealed class {base} {{
   const {base}();
 
@@ -1235,7 +1237,9 @@ sealed class {base} {{
 /// `Raw{base}('lavfi-aeval=val(0)*0.5|val(1)*0.5')`.
 ///
 /// It is inserted as is, without a chain label, so it is never updated
-/// live: any change rebuilds the chain.
+/// live: a change to it rebuilds the chain.
+///
+/// {{@category Effects}}
 final class Raw{base} extends {base} {{
   /// Creates a raw chain stage from [entry].
   const Raw{base}(this.entry, {{this.enabled = true}});

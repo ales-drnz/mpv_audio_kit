@@ -72,6 +72,7 @@ String _wireDuration(Duration d) {
 ///
 /// Every typed `XxxEffect` extends it; [RawAudioEffect] carries a lavfi
 /// entry written by hand.
+///
 /// {@category Effects}
 sealed class AudioEffect {
   const AudioEffect();
@@ -102,7 +103,8 @@ sealed class AudioEffect {
 /// `RawAudioEffect('lavfi-aeval=val(0)*0.5|val(1)*0.5')`.
 ///
 /// It is inserted as is, without a chain label, so it is never updated
-/// live: any change rebuilds the chain.
+/// live: a change to it rebuilds the chain.
+///
 /// {@category Effects}
 final class RawAudioEffect extends AudioEffect {
   /// Creates a raw chain stage from [entry].
