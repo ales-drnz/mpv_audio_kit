@@ -244,16 +244,20 @@ internal class MpvControllerPlayer(looper: Looper) : SimpleBasePlayer(looper) {
     //    re-publishes). The lone exception is the scrub freeze. ──────────
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
-        // A pause during a call is the user's: the end of the call must not
-        // play again.
-        if (!playWhenReady) mgr.disarmResume()
-        mgr.forwardCommand(mapOf("type" to if (playWhenReady) "play" else "pause"))
+        forwardTransport(if (playWhenReady) InterruptionLogic.PLAY else InterruptionLogic.PAUSE)
         return Futures.immediateVoidFuture()
     }
 
     override fun handleStop(): ListenableFuture<*> {
-        mgr.forwardCommand(mapOf("type" to "stop"))
+        forwardTransport(InterruptionLogic.STOP)
         return Futures.immediateVoidFuture()
+    }
+
+    // A pause or a stop during a call is the user's: the end of the call
+    // must not play again.
+    private fun forwardTransport(type: String) {
+        if (InterruptionLogic.disarmsResume(type)) mgr.disarmResume()
+        mgr.forwardCommand(mapOf("type" to type))
     }
 
     override fun handleSeek(

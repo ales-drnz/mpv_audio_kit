@@ -251,6 +251,16 @@ class InterruptionLogicTest {
     }
 
     @Test
+    fun `a stop from a controller during a call disarms the resume too`() {
+        // The stop goes to Dart as the pause does: the end of the call
+        // must not play what the user stopped.
+        assertTrue(InterruptionLogic.disarmsResume("stop"), "a stop is the user's end too")
+        assertTrue(InterruptionLogic.disarmsResume(InterruptionLogic.PAUSE))
+        assertFalse(InterruptionLogic.disarmsResume(InterruptionLogic.PLAY))
+        assertFalse(InterruptionLogic.disarmsResume("next"), "a skip keeps the call's resume")
+    }
+
+    @Test
     fun `a play during a call asks for the focus and waits for the gain`() {
         // A transient loss leaves the focus request in place, so the
         // player still thinks it holds the focus when the user presses

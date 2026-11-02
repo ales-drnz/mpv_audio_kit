@@ -27,6 +27,7 @@ internal object InterruptionLogic {
 
     const val PLAY = "play"
     const val PAUSE = "pause"
+    const val STOP = "stop"
 
     private const val KEEP_PLAYING = "keepPlaying"
     private const val PAUSE_AND_RESUME = "pauseAndResume"
@@ -148,6 +149,11 @@ internal object InterruptionLogic {
      *  does the same by clearing `playWhenReady`. */
     fun onExternalPause(): Reaction =
         Reaction(command = null, resumeOnFocusGain = false, abandonFocus = false)
+
+    /** Whether a command from a controller is the user's own end of
+     *  playback, which disarms the resume of a call (see
+     *  [onExternalPause]): a pause or a stop. */
+    fun disarmsResume(command: String): Boolean = command == PAUSE || command == STOP
 
     /** Whether a call (a transient loss that paused the player) is in
      *  progress after [focusChange], from the [current] state. A transient
