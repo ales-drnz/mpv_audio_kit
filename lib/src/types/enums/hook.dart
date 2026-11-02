@@ -26,6 +26,8 @@
 ///   }
 /// });
 /// ```
+///
+/// {@category Hooks and raw access}
 enum Hook {
   /// Before any per-file work begins. Drains any pending property
   /// changes from the previous file before the new `start-file`

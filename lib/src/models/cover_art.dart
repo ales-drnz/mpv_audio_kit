@@ -22,6 +22,8 @@ import 'package:flutter/widgets.dart';
 /// the same byte content compare unequal because [Uint8List] itself
 /// does not implement value equality. Use the bytes directly for image
 /// cache keys.
+///
+/// {@category Metadata}
 class CoverArt {
   /// Creates a cover-art payload from raw image [bytes] and their [mimeType].
   const CoverArt({required this.bytes, required this.mimeType});

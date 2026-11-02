@@ -45,6 +45,8 @@ import '../types/sealed/media_session_artwork.dart';
 /// // Disable
 /// await player.setMediaSession(null);
 /// ```
+///
+/// {@category Media session}
 class MediaSession {
   // ── Metadata override (null = derive from mpv) ─────────────────────
 

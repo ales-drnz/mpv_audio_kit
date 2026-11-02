@@ -87,6 +87,14 @@ await player.dispose(); // when you are done
 
 `player.state` holds the current values, and `player.stream` sends each change.
 
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/player_lifecycle.png" width="100%" alt="Player lifecycle: ensureInitialized once, then for each player create, open, listen and control, and dispose">
+
+### How it works
+
+The player lives on your main isolate and calls libmpv without blocking it. A background isolate waits for mpv's events and brings state back.
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/architecture.png" width="100%" alt="Architecture: the Player on the main isolate calls libmpv, the event isolate forwards events and state, and the platform plugin connects the media session">
+
 ---
 
 ## Working with the player
@@ -128,6 +136,8 @@ player.stream.error.listen((error) {
 });
 ```
 
+More in [Errors and logs](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Errors%20and%20logs-topic.html).
+
 ### A URL that expires
 
 A source resolver gives each entry its stream URL when it opens, so a queue of tokens never goes stale.
@@ -144,13 +154,23 @@ await player.openAll([
 ]);
 ```
 
+More in [Hooks and raw access](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Hooks%20and%20raw%20access-topic.html).
+
 ### Lock screen and notification
 
 ```dart
 await player.setMediaSession(const MediaSession());
 ```
 
-The player then shows in the system media controls on every platform. On Android this also keeps it playing in the background.
+The player then shows in the system media controls on every platform. On Android this also keeps it playing in the background. More in [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html).
+
+### Visualizer
+
+```dart
+player.stream.fft.listen((frame) => paintSpectrum(frame));
+```
+
+A live spectrum, the raw PCM, a waveform of the whole file and a loudness scan. More in [Visualizer and analysis](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Visualizer%20and%20analysis-topic.html).
 
 ### The browser
 
@@ -222,7 +242,18 @@ Inside a container the `alsa` driver cannot reach the sound card: use `pipewire`
 
 ## Documentation
 
-- [API reference](https://pub.dev/documentation/mpv_audio_kit/latest/), with the guides [Playback](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html), [Effects](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Effects-topic.html) and [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html)
+- [API reference](https://pub.dev/documentation/mpv_audio_kit/latest/), with these guides:
+  - [Playback](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html): sources, the queue, controls and resume points
+  - [Effects](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Effects-topic.html): the FFmpeg effects chain, ReplayGain and gapless
+  - [Output](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Output-topic.html): drivers, devices, formats and exclusive mode
+  - [Network and cache](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Network%20and%20cache-topic.html): the cache, timeouts, TLS, proxies and reconnects
+  - [Metadata](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Metadata-topic.html): tags and cover art
+  - [State and streams](https://pub.dev/documentation/mpv_audio_kit/latest/topics/State%20and%20streams-topic.html): reading and following the player
+  - [Errors and logs](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Errors%20and%20logs-topic.html): typed errors, end of file and logs
+  - [Hooks and raw access](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Hooks%20and%20raw%20access-topic.html): the source resolver, mpv hooks and raw properties
+  - [Visualizer and analysis](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Visualizer%20and%20analysis-topic.html): spectrum, PCM, waveform and loudness
+  - [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html): lock screen, notification and system controls
+  - [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html): serving the page, autoplay and the browser's limits
 - [Example app](example/) and [mpv_studio](https://github.com/ales-drnz/mpv_studio), a full player
 - [CHANGELOG](CHANGELOG.md) and [MIGRATION](MIGRATION.md)
 

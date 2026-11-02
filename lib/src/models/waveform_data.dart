@@ -46,6 +46,8 @@ import 'dart:typed_data';
 ///   }
 /// });
 /// ```
+///
+/// {@category Visualizer and analysis}
 final class WaveformData {
   /// Absolute media time of bin 0. Zero for a normal track; for a [live]
   /// rolling window it's the oldest still-cached moment, so bins sit at

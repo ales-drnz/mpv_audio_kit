@@ -68,6 +68,8 @@ bool _listEq<T>(List<T> a, List<T> b) {
 ///
 /// Retrieve the current snapshot synchronously via `player.state`, or subscribe
 /// to individual fields via the typed streams in `player.stream`.
+///
+/// {@category State and streams}
 final class PlayerState {
   /// The currently loaded playlist and active track index.
   final Playlist playlist;

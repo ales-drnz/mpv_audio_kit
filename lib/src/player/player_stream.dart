@@ -61,6 +61,8 @@ import 'mpv_playback_state_derive.dart';
 /// An event stream (`seekCompleted`, `endFile`, `error`, `log`,
 /// `internalLog`, `hook`, `mediaSessionCommands`, `fft`, `pcm`,
 /// `loudnessMeter`, `tap`) only delivers what happens after `listen()`.
+///
+/// {@category State and streams}
 class PlayerStream {
   /// Internal constructor wired by `Player`. Not part of the public API:
   /// the `DefaultPropertyReactives` argument is library-private, so a

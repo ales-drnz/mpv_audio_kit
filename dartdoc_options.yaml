@@ -4,6 +4,33 @@ dartdoc:
       markdown: doc/playback.md
     "Effects":
       markdown: doc/effects.md
+    "Output":
+      markdown: doc/output.md
+    "Network and cache":
+      markdown: doc/network.md
+    "Metadata":
+      markdown: doc/metadata.md
+    "State and streams":
+      markdown: doc/state.md
+    "Errors and logs":
+      markdown: doc/errors.md
+    "Hooks and raw access":
+      markdown: doc/hooks.md
+    "Visualizer and analysis":
+      markdown: doc/analysis.md
+    "Media session":
+      markdown: doc/media_session.md
     "Web":
       markdown: doc/web.md
-  categoryOrder: ["Playback", "Effects", "Web"]
+  categoryOrder:
+    - "Playback"
+    - "Effects"
+    - "Output"
+    - "Network and cache"
+    - "Metadata"
+    - "State and streams"
+    - "Errors and logs"
+    - "Hooks and raw access"
+    - "Visualizer and analysis"
+    - "Media session"
+    - "Web"

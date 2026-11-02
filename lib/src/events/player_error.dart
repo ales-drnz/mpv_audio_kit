@@ -24,6 +24,8 @@ import '../types/enums/log_level.dart';
 ///   }
 /// });
 /// ```
+///
+/// {@category Errors and logs}
 sealed class PlayerError {
   const PlayerError();
 

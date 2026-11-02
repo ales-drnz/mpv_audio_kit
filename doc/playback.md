@@ -8,7 +8,7 @@ A `Media` is a URI with optional data and options for that entry.
 final remote  = Media('https://cdn.example.com/audio.flac');
 final local   = Media('file:///home/user/music/song.flac');
 final asset   = Media('asset:///assets/audio/sample.mp3');
-final content = Media('content://com.android.externalstorage.documents/...'); // Android
+final content = Media('content://media/external/audio/media/42'); // Android
 final share   = Media('smb2://nas.local/music/song.flac');
 ```
 
@@ -135,6 +135,8 @@ player.state.playWhenReady ? await player.pause() : await player.play();
 ```
 
 `playWhenReady` is what the user asked for. `playing` also turns false while the player seeks or buffers.
+
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/play_when_ready.png" width="100%" alt="playWhenReady stays true through a load, a seek and a network stall, while playing waits">
 
 ### Seeking
 

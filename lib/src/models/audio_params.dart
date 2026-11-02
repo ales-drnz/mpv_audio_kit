@@ -9,6 +9,8 @@ import '../types/sealed/channels.dart';
 /// Audio format parameters reported by mpv. Used both for the decoder
 /// side (`audio-params` + `audio-codec*`) and for the hardware output
 /// side (`audio-out-params`).
+///
+/// {@category Output}
 final class AudioParams {
   /// Sample format reported by mpv. `null` when no audio is currently
   /// being decoded. mpv occasionally emits a format string the wrapper

@@ -30,6 +30,8 @@ typedef SourceResolver =
 ///   return service.getPlaybackUrl(id);     // temporary CDN or token URL
 /// });
 /// ```
+///
+/// {@category Hooks and raw access}
 final class SourceResolveRequest {
   /// The playlist entry being opened, as originally passed to
   /// [Player.open], [Player.openAll] or [Player.add], with [Media.extras]
