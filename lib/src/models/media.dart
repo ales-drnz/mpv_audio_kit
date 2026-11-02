@@ -59,6 +59,8 @@ bool _mapEq(Map<String, String>? a, Map<String, String>? b) {
 /// [end] and [waveformDurationHint]), so two instances that differ in any of them are not equal:
 /// useful when diffing playlists for re-render decisions. The maps compare
 /// by content, their values by `==`.
+///
+/// {@category Playback}
 final class Media {
   /// The URI of the media resource.
   ///

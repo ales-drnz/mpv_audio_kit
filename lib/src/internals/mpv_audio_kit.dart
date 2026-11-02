@@ -12,6 +12,8 @@ import 'libmpv_license_registry.dart';
 /// One-time initialization for `mpv_audio_kit`. Owns the choice of the
 /// libmpv the players use and the cleanup of the cores that leaked across
 /// Flutter Hot-Restarts, both of which the backend carries out.
+///
+/// {@category Web}
 abstract final class MpvAudioKit {
   MpvAudioKit._();
 

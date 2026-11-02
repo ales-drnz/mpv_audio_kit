@@ -1,0 +1,9 @@
+dartdoc:
+  categories:
+    "Playback":
+      markdown: doc/playback.md
+    "Effects":
+      markdown: doc/effects.md
+    "Web":
+      markdown: doc/web.md
+  categoryOrder: ["Playback", "Effects", "Web"]

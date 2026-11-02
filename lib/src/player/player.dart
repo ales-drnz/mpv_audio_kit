@@ -99,6 +99,8 @@ part 'mixins/player_playlist.part.dart';
 /// Implements [PlayerApi] so test code can mock the player without
 /// dragging in the FFI handle and event isolate
 /// (`class MockPlayer extends Mock implements PlayerApi {}`).
+///
+/// {@category Playback}
 class Player extends _PlayerBase
     with
         _FfiModule,
