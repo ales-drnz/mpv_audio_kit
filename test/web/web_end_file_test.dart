@@ -78,4 +78,17 @@ void main() {
     skip: _net.isEmpty ? 'needs test/web/with_net_server.sh' : false,
     timeout: const Timeout(Duration(seconds: 60)),
   );
+
+  // kit-web-10: skippedSegments at its offset, with a value other than 0.
+  test(
+    'an HLS stream with a segment that never opens counts it',
+    () async {
+      final end = await _endOf('$_net/hls/a.m3u8');
+      expect(end.reason, MpvEndFileReason.mpvEndFileReasonEof);
+      expect(end.skippedSegments, 1);
+      expect(end.readError, isFalse);
+    },
+    skip: _net.isEmpty ? 'needs test/web/with_net_server.sh' : false,
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
 }
