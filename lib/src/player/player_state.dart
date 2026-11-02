@@ -112,7 +112,9 @@ final class PlayerState {
   /// event. `null` while [completed] is `false`, and with a libmpv older
   /// than libmpv-r20, which cannot tell. It changes with [completed]: read
   /// it when [PlayerStream.completed] turns `true`. A seek at the park
-  /// tries the read again, and the next park tells how it ended then.
+  /// tries the read again, and the next park tells how it ended then:
+  /// [completed] turns `false` and `true` again for it, also when the seek
+  /// played on to the end at once.
   final bool? readError;
 
   /// The HLS or DASH segments the entry that ended at the end of content

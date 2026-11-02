@@ -56,7 +56,7 @@ player.stream.completed.listen((completed) {
 Its `endFile` event comes later, with `reason: stop`, when the entry is stopped or replaced.
 
 - The player retries a dropped connection first. It counts as a read error only after every retry failed. See the [Network and cache](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Network%20and%20cache-topic.html) topic.
-- A seek after a cut reads again, and the entry plays on if the server answers.
+- A seek after a cut reads again, and the entry plays on if the server answers. `completed` turns false and true again, with the new `readError`, also when the seek lands on the end.
 - `duration` can be an estimate, so comparing it with `position` does not detect a cut.
 
 ## Silent output
