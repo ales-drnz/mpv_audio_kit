@@ -313,4 +313,36 @@ void main() {
       );
     });
   });
+
+  group('a refused header value', () {
+    // CR, LF, NUL and `,` are refused, and the value often holds a token.
+    const media = Media(
+      'https://example.com/a.mp3',
+      httpHeaders: {'Authorization': 'Bearer s3cr3t,x'},
+    );
+
+    test('is not in the error, which names the header', () {
+      for (final check in [
+        () => validateLoadOptions(media),
+        () => loadfileOptions(media),
+      ]) {
+        expect(
+          check,
+          throwsA(
+            isA<ArgumentError>()
+                .having(
+                  (e) => e.toString(),
+                  'toString',
+                  contains('Authorization'),
+                )
+                .having(
+                  (e) => '${e.invalidValue} ${e.message} $e',
+                  'text',
+                  isNot(contains('s3cr3t')),
+                ),
+          ),
+        );
+      }
+    });
+  });
 }

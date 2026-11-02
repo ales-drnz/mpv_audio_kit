@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:meta/meta.dart';
+
 import '../internals/unset_sentinel.dart';
 import 'media_blob_io.dart' if (dart.library.js_interop) 'media_blob_web.dart';
 
@@ -361,18 +363,27 @@ final class Media {
           ),
   );
 
-  /// Prints the names of [httpHeaders] and [streamLavfOptions] only: their
-  /// values often carry credentials (an `Authorization` token, a proxy
-  /// password) that must not reach a log.
+  /// Prints the names of [httpHeaders], [streamLavfOptions] and
+  /// [demuxerLavfOptions] only, and the [uri] without its user info:
+  /// they often carry credentials (an `Authorization` token, a proxy
+  /// password, a `decryption_key`) that must not reach a log.
   @override
   String toString() {
     String? names(Map<String, String>? map) => map == null
         ? null
         : '{${map.keys.map((k) => '$k: <redacted>').join(', ')}}';
-    return 'Media(uri: $uri, extras: $extras, '
+    return 'Media(uri: ${redactUserInfo(uri)}, extras: $extras, '
         'httpHeaders: ${names(httpHeaders)}, httpChunkSize: $httpChunkSize, '
         'streamLavfOptions: ${names(streamLavfOptions)}, '
-        'demuxerLavfOptions: $demuxerLavfOptions, start: $start, '
+        'demuxerLavfOptions: ${names(demuxerLavfOptions)}, start: $start, '
         'end: $end, waveformDurationHint: $waveformDurationHint)';
   }
 }
+
+final RegExp _userInfo = RegExp(r'^([A-Za-z][A-Za-z0-9+.-]*://)[^/?#]*@');
+
+/// [uri] with the user info of its authority, a name and often a
+/// password, replaced by `<redacted>`, for a log. Anything else is kept.
+@internal
+String redactUserInfo(String uri) =>
+    uri.replaceFirstMapped(_userInfo, (m) => '${m[1]}<redacted>@');

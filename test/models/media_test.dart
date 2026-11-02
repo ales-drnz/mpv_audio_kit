@@ -299,6 +299,53 @@ void main() {
       expect(out, isNot(contains('pa55')));
     });
 
+    test('the demuxer options are printed by name, not by value', () {
+      // decryption_key and the http options of a demuxer hold secrets too.
+      final out = const Media(
+        'a',
+        demuxerLavfOptions: {'decryption_key': 'deadbeef00112233'},
+      ).toString();
+      expect(out, contains('demuxerLavfOptions: {decryption_key: <redacted>}'));
+      expect(out, isNot(contains('deadbeef')));
+      expect(
+        const Media('a.mp3').toString(),
+        contains('demuxerLavfOptions: null'),
+      );
+    });
+
+    test('the user info of the uri is not printed', () {
+      for (final (uri, printed) in [
+        (
+          'https://user:pa55@example.com/a.mp3',
+          'https://<redacted>@example.com/a.mp3',
+        ),
+        ('ftp://token@host/a@b.mp3', 'ftp://<redacted>@host/a@b.mp3'),
+        ('rtsp://u:p%40ss@cam:554/s', 'rtsp://<redacted>@cam:554/s'),
+      ]) {
+        final out = Media(uri).toString();
+        expect(out, contains('uri: $printed,'), reason: uri);
+        final request = SourceResolveRequest(
+          media: Media(uri),
+          uri: uri,
+          isRetry: false,
+        ).toString();
+        expect(request, contains('uri: $printed,'), reason: uri);
+        for (final secret in ['pa55', 'token', 'p%40ss']) {
+          expect(out, isNot(contains(secret)), reason: uri);
+          expect(request, isNot(contains(secret)), reason: uri);
+        }
+      }
+      // A uri with no user info is printed as it is.
+      for (final uri in [
+        'https://example.com/a@b.mp3',
+        '/music/me@home.flac',
+        'mailto:a@b.c',
+        r'C:\music\a.flac',
+      ]) {
+        expect(Media(uri).toString(), contains('uri: $uri,'), reason: uri);
+      }
+    });
+
     test('no stream options prints null', () {
       expect(
         const Media('a.mp3').toString(),
