@@ -529,6 +529,10 @@ mixin _AudioModule on _PlayerBase {
   ///   of them, or a NaN crossover frequency;
   /// - compand attacks and decays that both start with no number.
   ///
+  /// It throws the same way for a `params` key that is no option name,
+  /// such as one with a `:` or a `,`, which would add options or filters
+  /// to the chain.
+  ///
   /// A [RawAudioEffect] is not checked here. The filters themselves refuse
   /// such values, so a raw stage that carries one fails as described above
   /// for a value a filter refuses, instead of reading or writing out of its

@@ -1178,6 +1178,41 @@ def _emit_runtime_diff(filter_name, cls, params, invalid):
     return out
 
 
+def _emit_param_keys(filters: dict, sorted_names: list[str]) -> str:
+    """`audioEffectParamKeys(effect)`: the raw `params` keys of a stage,
+    for the check the chain passes before the state changes. The filters
+    with a `params` map are the ones with options named from a digit.
+    Empty when no filter has one."""
+    with_map = [
+        _settings_class_name(fname)
+        for fname in sorted_names
+        if any(
+            not p.get("readonly")
+            for p in filters[fname].get("params_invalid", {}).values()
+        )
+    ]
+    if not with_map:
+        return ""
+    base = _NAMING.bundle_name[:-1]
+    arms = "".join(
+        f"    {cls}(:final params) => params.keys,\n" for cls in with_map
+    )
+    return (
+        "\n"
+        "/// The keys of the raw `params` of [effect] that are no option name,\n"
+        "/// none for a stage without `params`. They are checked before the\n"
+        "/// chain is built, so a refused key never reaches the state.\n"
+        "@internal\n"
+        f"Iterable<String> {_camel(base)}BadParamKeys({base} effect) {{\n"
+        "  final keys = switch (effect) {\n"
+        f"{arms}"
+        "    _ => const <String>[],\n"
+        "  };\n"
+        "  return keys.where((k) => !_paramKey.hasMatch(k));\n"
+        "}\n"
+    )
+
+
 def _bundle_default_ctor(filter_name: str) -> str:
     """Const default-constructor expression for a filter's bundle field.
 
@@ -1461,6 +1496,7 @@ def run(config: Config) -> int:
     for fname in sorted_names:
         settings_bodies.append(_emit_settings_class(fname, filters[fname]))
     settings_bodies.insert(0, _emit_chain())
+    settings_bodies.append(_emit_param_keys(filters, sorted_names))
     # The Set/Map equality helpers and the duration formatter are emitted only
     # when a field uses them, so a flavor without them (video) doesn't trip
     # `unused_element`.

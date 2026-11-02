@@ -47,6 +47,7 @@ export 'src/generated/audio_effects_extensions.dart';
 export 'src/generated/audio_effects_settings.dart'
     hide
         AfCommand,
+        audioEffectBadParamKeys,
         audioEffectLabel,
         audioEffectLabels,
         audioEffectsChain,

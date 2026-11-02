@@ -16947,3 +16947,16 @@ final class VirtualbassEffect extends AudioEffect {
     return out;
   }
 }
+
+/// The keys of the raw `params` of [effect] that are no option name,
+/// none for a stage without `params`. They are checked before the
+/// chain is built, so a refused key never reaches the state.
+@internal
+Iterable<String> audioEffectBadParamKeys(AudioEffect effect) {
+  final keys = switch (effect) {
+    CompandEffect(:final params) => params.keys,
+    SuperequalizerEffect(:final params) => params.keys,
+    _ => const <String>[],
+  };
+  return keys.where((k) => !_paramKey.hasMatch(k));
+}
