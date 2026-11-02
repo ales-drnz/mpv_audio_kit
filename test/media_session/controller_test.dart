@@ -1107,6 +1107,20 @@ void main() {
         reason: 'a relative path is the file mpv opens, under the cwd',
       );
       expect(await urlOf(r'C:\Music\song.flac'), 'file:///C:/Music/song.flac');
+      // mpv takes all that follows file:// as the path, percent-decoded:
+      // a # or a ? there is part of the name, not a fragment or a query.
+      const named = 'file:///music/track%20%231%20%3Fa%2050%25.flac';
+      expect(await urlOf('/music/track #1 ?a 50%.flac'), named);
+      expect(
+        await urlOf('file:///music/track #1 ?a 50%.flac'),
+        named,
+        reason: 'a # and a ? of a file URI belong to the path',
+      );
+      expect(await urlOf(named), named);
+      expect(
+        await urlOf('file:///C:/Music/a #1.flac'),
+        'file:///C:/Music/a%20%231.flac',
+      );
       expect(
         await urlOf(r'C:\Music\a*b.flac'),
         isNull,

@@ -3,6 +3,7 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -422,21 +423,49 @@ class MediaSessionController {
     return scheme.isEmpty || scheme == 'file' || scheme.length == 1;
   }
 
-  /// The local item [uri] as a `file:` URI, percent-encoded: a `file:` URI
-  /// as Dart parses it (mpv also opens one with a raw space), a path
-  /// encoded, a relative one under the working directory, where mpv opens
-  /// it. `null` for a path no URI can name.
+  /// The local item [uri] as a `file:` URI, percent-encoded from the path
+  /// mpv opens: a path as it is, a relative one under the working
+  /// directory. mpv takes all that follows `file://` as the path,
+  /// percent-decoded, so a `#` or a `?` there is part of the name (and so
+  /// is a raw space). `null` for a path no URI can name.
   static String? _fileUri(String uri) {
     final parsed = Uri.tryParse(uri);
-    if (parsed?.scheme == 'file') return parsed!.toString();
-    final drive = parsed?.scheme.length == 1;
+    var path = uri;
+    if (parsed?.scheme == 'file' || uri.toLowerCase().startsWith('file:')) {
+      if (!uri.toLowerCase().startsWith('file:///')) {
+        // A host, or no `//`: not a path of this machine as mpv reads it.
+        return parsed?.toString();
+      }
+      path = _unescape(uri.substring('file://'.length));
+      // `/C:/Music` names `C:/Music`, as mpv reads it on Windows.
+      if (_drivePath.hasMatch(path)) path = path.substring(1);
+    }
+    final drive = Uri.tryParse(path)?.scheme.length == 1;
     try {
       return Uri.base
-          .resolveUri(Uri.file(uri, windows: drive ? true : null))
+          .resolveUri(Uri.file(path, windows: drive ? true : null))
           .toString();
     } on ArgumentError {
       return null;
     }
+  }
+
+  static final RegExp _drivePath = RegExp('^/[A-Za-z]:');
+  static final RegExp _escape = RegExp('%([0-9A-Fa-f]{2})');
+
+  /// [s] with each `%` and two hex digits decoded, the way mpv decodes a
+  /// `file:` URI. A `%` without them is kept.
+  static String _unescape(String s) {
+    final bytes = <int>[];
+    var i = 0;
+    for (final m in _escape.allMatches(s)) {
+      bytes
+        ..addAll(utf8.encode(s.substring(i, m.start)))
+        ..add(int.parse(m[1]!, radix: 16));
+      i = m.end;
+    }
+    bytes.addAll(utf8.encode(s.substring(i)));
+    return utf8.decode(bytes, allowMalformed: true);
   }
 
   /// Whether [uri] is an `http(s)://` URL.
