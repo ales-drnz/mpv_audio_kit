@@ -45,11 +45,11 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 - Linux: one MPRIS server per process, owned by the first engine, and `xesam:url` is a file URI for a local item.
 
 ### Build
-- Updated libmpv to `libmpv-r20` across all platforms, with the web module shipped as web assets of the package.
 - The bundled libmpv is LGPL, version 3 or later, instead of GPL, and its release has the license texts in `licenses.zip`.
 - The end of a gapless file plays to its last sample when the output ran dry in its last buffer, instead of parking up to 0.4 s early.
 - iOS and macOS share one Swift package in `darwin`.
 - Windows: a refused `http://` or `smb2://` connection fails at once instead of after the network timeout.
+- Updated libmpv to `libmpv-r20` across all platforms, with the web module shipped as web assets of the package.
 
 ### Docs
 - The README describes the web and how to serve a cross-origin isolated page, and links a live demo of mpv_studio. MIGRATION covers 0.6.0.
