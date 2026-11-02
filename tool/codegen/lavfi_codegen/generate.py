@@ -306,10 +306,9 @@ def _format_value_expr(name: str, dart_type: str, nullable: bool) -> str:
             f"{dn}.map((e) => e.{_WIRE.value_getter}).join('+')"
         )
     if dart_type in ("string", "chlayout"):
-        # Wrap in `[...]` so mpv's filter-args parser doesn't split on
-        # internal `:` `=` `,` `|` characters within the value. This is
-        # the documented mpv canonical escape (vf.rst).
-        return f"'[' + {dn} + ']'"
+        # Quoted so mpv's filter-args parser doesn't split on internal
+        # `:` `=` `,` `|` characters within the value (see _wireString).
+        return f"_wireString({dn})"
     return dn
 
 
@@ -419,6 +418,8 @@ def _emit_settings_header(
         " prefer_adjacent_string_concatenation,"
         " prefer_interpolation_to_compose_strings\n"
         "\n"
+        "import 'dart:convert';\n"
+        "\n"
         "import 'package:meta/meta.dart';\n"
         "\n"
         f"import '{_NAMING.sentinel_import}';\n"
@@ -471,7 +472,28 @@ def _emit_settings_header(
         "  if (v.abs() < 0.001) return v.toStringAsExponential();\n"
         "  return v.toStringAsFixed(6);\n"
         "}\n"
+        "\n"
+        "/// Wire-format a string option. `[...]` keeps `:` `=` `,` `|` in the\n"
+        "/// value, but ends at the `]` that balances the first `[`: a value\n"
+        "/// with a bracket takes mpv's `%len%` form instead, its length in\n"
+        "/// UTF-8 bytes, which holds any text.\n"
+        "String _wireString(String v) {\n"
+        "  if (!v.contains('[') && !v.contains(']')) return '[' + v + ']';\n"
+        "  return '%' + utf8.encode(v).length.toString() + '%' + v;\n"
+        "}\n"
     )
+    if needs_map:
+        parts.append(
+            "\n"
+            "final RegExp _paramKey = RegExp(r'^[A-Za-z0-9_-]+$');\n"
+            "\n"
+            "/// The key of a raw `params` entry, an FFmpeg option name: a `:` or a\n"
+            "/// `,` in it would add options or filters to the chain.\n"
+            "String _wireKey(String k) {\n"
+            "  if (_paramKey.hasMatch(k)) return k;\n"
+            "  throw ArgumentError.value(k, 'params', 'not an option name');\n"
+            "}\n"
+        )
     if needs_duration:
         parts.append(
             "\n"
@@ -1083,11 +1105,13 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     if invalid:
         if map_value_type == "double":
             lines.append(
-                "    params.forEach((k, v) => parts.add('$k=' + _wireDouble(v)));"
+                "    params.forEach("
+                "(k, v) => parts.add(_wireKey(k) + '=' + _wireDouble(v)));"
             )
         else:
             lines.append(
-                "    params.forEach((k, v) => parts.add('$k=' + v.toString()));"
+                "    params.forEach("
+                "(k, v) => parts.add(_wireKey(k) + '=' + v.toString()));"
             )
     lines.append(
         f"    return parts.isEmpty ? '{_WIRE.label_prefix}{filter_name}' : "

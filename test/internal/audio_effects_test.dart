@@ -321,6 +321,43 @@ void main() {
     expect(cmds?.map((c) => c.option), ['cm']);
   });
 
+  // F196: `[...]` ends at the `]` that balances the first `[`, so a
+  // bracket in a value cut it, and the rest reached the chain.
+  group('strings on the wire', () {
+    test('a value with a bracket takes the length form', () {
+      expect(
+        const ArnndnEffect(model: 'x],lavfi-volume=volume=8').toFilterString(),
+        'lavfi-arnndn=model=%24%x],lavfi-volume=volume=8',
+      );
+      // The length counts UTF-8 bytes, as mpv reads them.
+      expect(
+        const ArnndnEffect(model: '[è').toFilterString(),
+        'lavfi-arnndn=model=%3%[è',
+      );
+    });
+
+    test('a value with no bracket keeps the bracket form', () {
+      expect(
+        const ArnndnEffect(model: '/m/a:b,c|d.rnnn').toFilterString(),
+        'lavfi-arnndn=model=[/m/a:b,c|d.rnnn]',
+      );
+    });
+
+    test('a params key that is no option name is an ArgumentError', () {
+      for (final key in ['0:volume', '1b,lavfi-volume', 'a=b', '']) {
+        expect(
+          () => SuperequalizerEffect(params: {key: 2}).toFilterString(),
+          throwsArgumentError,
+          reason: key,
+        );
+      }
+      expect(
+        const SuperequalizerEffect(params: {'1b': 2}).toFilterString(),
+        'lavfi-superequalizer=1b=2.000',
+      );
+    });
+  });
+
   group('Enum.fromMpv non-throwing fallback', () {
     test('AemphasisType.fromMpv unknown → first member', () {
       expect(AemphasisType.fromMpv('not_a_real_value'), AemphasisType.col);

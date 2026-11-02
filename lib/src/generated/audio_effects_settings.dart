@@ -13,6 +13,8 @@
 // 3-Clause license above covers the rest of this file.
 // ignore_for_file: non_constant_identifier_names, constant_identifier_names, camel_case_types, curly_braces_in_flow_control_structures, prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
 
+import 'dart:convert';
+
 import 'package:meta/meta.dart';
 
 import '../internals/unset_sentinel.dart';
@@ -54,6 +56,24 @@ String _wireDouble(double v) {
   if (v == 0 || double.parse(fixed) == v) return fixed;
   if (v.abs() < 0.001) return v.toStringAsExponential();
   return v.toStringAsFixed(6);
+}
+
+/// Wire-format a string option. `[...]` keeps `:` `=` `,` `|` in the
+/// value, but ends at the `]` that balances the first `[`: a value
+/// with a bracket takes mpv's `%len%` form instead, its length in
+/// UTF-8 bytes, which holds any text.
+String _wireString(String v) {
+  if (!v.contains('[') && !v.contains(']')) return '[' + v + ']';
+  return '%' + utf8.encode(v).length.toString() + '%' + v;
+}
+
+final RegExp _paramKey = RegExp(r'^[A-Za-z0-9_-]+$');
+
+/// The key of a raw `params` entry, an FFmpeg option name: a `:` or a
+/// `,` in it would add options or filters to the chain.
+String _wireKey(String k) {
+  if (_paramKey.hasMatch(k)) return k;
+  throw ArgumentError.value(k, 'params', 'not an option name');
 }
 
 /// Wire-format a duration option, in seconds: 3 decimals when that is
@@ -1472,7 +1492,7 @@ final class AdelayEffect extends AudioEffect {
   String toFilterString() {
     final parts = <String>[];
     if (all != false) parts.add('all=' + (all ? '1' : '0'));
-    if (delays != '') parts.add('delays=' + '[' + delays + ']');
+    if (delays != '') parts.add('delays=' + _wireString(delays));
     return parts.isEmpty ? 'lavfi-adelay' : 'lavfi-adelay=' + parts.join(':');
   }
 
@@ -1737,9 +1757,9 @@ final class AdrcEffect extends AudioEffect {
     assert(release <= releaseMax, 'adrc.release must be <= 2000');
     final parts = <String>[];
     if (attack != 50.0) parts.add('attack=' + _wireDouble(attack));
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (release != 100.0) parts.add('release=' + _wireDouble(release));
-    if (transfer != 'p') parts.add('transfer=' + '[' + transfer + ']');
+    if (transfer != 'p') parts.add('transfer=' + _wireString(transfer));
     return parts.isEmpty ? 'lavfi-adrc' : 'lavfi-adrc=' + parts.join(':');
   }
 
@@ -2407,8 +2427,8 @@ final class AechoEffect extends AudioEffect {
     assert(outGain >= outGainMin, 'aecho.out_gain must be >= 0');
     assert(outGain <= outGainMax, 'aecho.out_gain must be <= 1');
     final parts = <String>[];
-    if (decays != '0.5') parts.add('decays=' + '[' + decays + ']');
-    if (delays != '1000') parts.add('delays=' + '[' + delays + ']');
+    if (decays != '0.5') parts.add('decays=' + _wireString(decays));
+    if (delays != '1000') parts.add('delays=' + _wireString(delays));
     if (inGain != 0.6) parts.add('in_gain=' + _wireDouble(inGain));
     if (outGain != 0.3) parts.add('out_gain=' + _wireDouble(outGain));
     return parts.isEmpty ? 'lavfi-aecho' : 'lavfi-aecho=' + parts.join(':');
@@ -2624,8 +2644,8 @@ final class AevalEffect extends AudioEffect {
   String toFilterString() {
     final parts = <String>[];
     if (channelLayout != '')
-      parts.add('channel_layout=' + '[' + channelLayout + ']');
-    parts.add('exprs=' + '[' + exprs + ']');
+      parts.add('channel_layout=' + _wireString(channelLayout));
+    parts.add('exprs=' + _wireString(exprs));
     return parts.isEmpty ? 'lavfi-aeval' : 'lavfi-aeval=' + parts.join(':');
   }
 }
@@ -3383,7 +3403,7 @@ final class AfftdnEffect extends AudioEffect {
     if (adaptivity != 0.5) parts.add('adaptivity=' + _wireDouble(adaptivity));
     if (bandMultiplier != 1.25)
       parts.add('band_multiplier=' + _wireDouble(bandMultiplier));
-    if (bandNoise != '') parts.add('band_noise=' + '[' + bandNoise + ']');
+    if (bandNoise != '') parts.add('band_noise=' + _wireString(bandNoise));
     if (floorOffset != 1.0)
       parts.add('floor_offset=' + _wireDouble(floorOffset));
     if (gainSmooth != 0) parts.add('gain_smooth=' + gainSmooth.toString());
@@ -3566,9 +3586,9 @@ final class AfftfiltEffect extends AudioEffect {
     assert(winSize >= winSizeMin, 'afftfilt.win_size must be >= 16');
     assert(winSize <= winSizeMax, 'afftfilt.win_size must be <= 131072');
     final parts = <String>[];
-    if (imag != 'im') parts.add('imag=' + '[' + imag + ']');
+    if (imag != 'im') parts.add('imag=' + _wireString(imag));
     if (overlap != 0.75) parts.add('overlap=' + _wireDouble(overlap));
-    if (real != 're') parts.add('real=' + '[' + real + ']');
+    if (real != 're') parts.add('real=' + _wireString(real));
     if (winFunc != AfftfiltWinFunc.hann)
       parts.add('win_func=' + winFunc.mpvValue);
     if (winSize != 4096) parts.add('win_size=' + winSize.toString());
@@ -3662,10 +3682,11 @@ final class AformatEffect extends AudioEffect {
   String toFilterString() {
     final parts = <String>[];
     if (channelLayouts != null)
-      parts.add('channel_layouts=' + '[' + channelLayouts! + ']');
-    if (sampleFmts != null) parts.add('sample_fmts=' + '[' + sampleFmts! + ']');
+      parts.add('channel_layouts=' + _wireString(channelLayouts!));
+    if (sampleFmts != null)
+      parts.add('sample_fmts=' + _wireString(sampleFmts!));
     if (sampleRates != null)
-      parts.add('sample_rates=' + '[' + sampleRates! + ']');
+      parts.add('sample_rates=' + _wireString(sampleRates!));
     return parts.isEmpty ? 'lavfi-aformat' : 'lavfi-aformat=' + parts.join(':');
   }
 }
@@ -4570,18 +4591,18 @@ final class AiirEffect extends AudioEffect {
     if (channel != 0) parts.add('channel=' + channel.toString());
     if (dry != 1.0) parts.add('dry=' + _wireDouble(dry));
     if (format != AiirFormat.zp) parts.add('format=' + format.mpvValue);
-    if (gains != '1|1') parts.add('gains=' + '[' + gains + ']');
+    if (gains != '1|1') parts.add('gains=' + _wireString(gains));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
     if (normalize != true) parts.add('normalize=' + (normalize ? '1' : '0'));
-    if (poles != '1+0i 1-0i') parts.add('poles=' + '[' + poles + ']');
+    if (poles != '1+0i 1-0i') parts.add('poles=' + _wireString(poles));
     if (precision != AiirPrecision.dbl)
       parts.add('precision=' + precision.mpvValue);
     if (process != AiirProcess.s) parts.add('process=' + process.mpvValue);
-    if (rate != '25') parts.add('rate=' + '[' + rate + ']');
+    if (rate != '25') parts.add('rate=' + _wireString(rate));
     if (response != false) parts.add('response=' + (response ? '1' : '0'));
-    if (size != 'hd720') parts.add('size=' + '[' + size + ']');
+    if (size != 'hd720') parts.add('size=' + _wireString(size));
     if (wet != 1.0) parts.add('wet=' + _wireDouble(wet));
-    if (zeros != '1+0i 1-0i') parts.add('zeros=' + '[' + zeros + ']');
+    if (zeros != '1+0i 1-0i') parts.add('zeros=' + _wireString(zeros));
     return parts.isEmpty ? 'lavfi-aiir' : 'lavfi-aiir=' + parts.join(':');
   }
 }
@@ -5058,7 +5079,7 @@ final class AllpassEffect extends AudioEffect {
     assert(width >= widthMin, 'allpass.width must be >= 0');
     assert(width <= widthMax, 'allpass.width must be <= 99999');
     final parts = <String>[];
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 3000.0) parts.add('frequency=' + _wireDouble(frequency));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
     if (normalize != false) parts.add('normalize=' + (normalize ? '1' : '0'));
@@ -5219,12 +5240,12 @@ final class AnequalizerEffect extends AudioEffect {
     assert(mgain <= mgainMax, 'anequalizer.mgain must be <= 900');
     final parts = <String>[];
     if (colors != 'red|green|blue|yellow|orange|lime|pink|magenta|brown')
-      parts.add('colors=' + '[' + colors + ']');
+      parts.add('colors=' + _wireString(colors));
     if (curves != false) parts.add('curves=' + (curves ? '1' : '0'));
     if (fscale != AnequalizerFscale.log) parts.add('fscale=' + fscale.mpvValue);
     if (mgain != 60.0) parts.add('mgain=' + _wireDouble(mgain));
-    if (params != '') parts.add('params=' + '[' + params + ']');
-    if (size != 'hd720') parts.add('size=' + '[' + size + ']');
+    if (params != '') parts.add('params=' + _wireString(params));
+    if (size != 'hd720') parts.add('size=' + _wireString(size));
     return parts.isEmpty
         ? 'lavfi-anequalizer'
         : 'lavfi-anequalizer=' + parts.join(':');
@@ -6505,7 +6526,7 @@ final class ArnndnEffect extends AudioEffect {
     assert(mix <= mixMax, 'arnndn.mix must be <= 1');
     final parts = <String>[];
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
-    parts.add('model=' + '[' + model + ']');
+    parts.add('model=' + _wireString(model));
     return parts.isEmpty ? 'lavfi-arnndn' : 'lavfi-arnndn=' + parts.join(':');
   }
 
@@ -6971,7 +6992,7 @@ final class AsubboostEffect extends AudioEffect {
     assert(wet <= wetMax, 'asubboost.wet must be <= 1');
     final parts = <String>[];
     if (boost != 2.0) parts.add('boost=' + _wireDouble(boost));
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (cutoff != 100.0) parts.add('cutoff=' + _wireDouble(cutoff));
     if (decay != 0.0) parts.add('decay=' + _wireDouble(decay));
     if (delay != 20.0) parts.add('delay=' + _wireDouble(delay));
@@ -8077,7 +8098,7 @@ final class BandpassEffect extends AudioEffect {
     assert(width <= widthMax, 'bandpass.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (csg != false) parts.add('csg=' + (csg ? '1' : '0'));
     if (frequency != 3000.0) parts.add('frequency=' + _wireDouble(frequency));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
@@ -8309,7 +8330,7 @@ final class BandrejectEffect extends AudioEffect {
     assert(width <= widthMax, 'bandreject.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 3000.0) parts.add('frequency=' + _wireDouble(frequency));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
     if (normalize != false) parts.add('normalize=' + (normalize ? '1' : '0'));
@@ -8577,7 +8598,7 @@ final class BassEffect extends AudioEffect {
     assert(width <= widthMax, 'bass.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 100.0) parts.add('frequency=' + _wireDouble(frequency));
     if (gain != 0.0) parts.add('gain=' + _wireDouble(gain));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
@@ -8888,7 +8909,7 @@ final class BiquadEffect extends AudioEffect {
     if (b1 != 0.0) parts.add('b1=' + _wireDouble(b1));
     if (b2 != 0.0) parts.add('b2=' + _wireDouble(b2));
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
     if (normalize != false) parts.add('normalize=' + (normalize ? '1' : '0'));
     if (precision != BiquadPrecision.auto)
@@ -9008,8 +9029,8 @@ final class ChannelmapEffect extends AudioEffect {
   String toFilterString() {
     final parts = <String>[];
     if (channelLayout != null)
-      parts.add('channel_layout=' + '[' + channelLayout! + ']');
-    parts.add('map=' + '[' + map + ']');
+      parts.add('channel_layout=' + _wireString(channelLayout!));
+    parts.add('map=' + _wireString(map));
     return parts.isEmpty
         ? 'lavfi-channelmap'
         : 'lavfi-channelmap=' + parts.join(':');
@@ -9147,12 +9168,12 @@ final class ChorusEffect extends AudioEffect {
     assert(outGain >= outGainMin, 'chorus.out_gain must be >= 0');
     assert(outGain <= outGainMax, 'chorus.out_gain must be <= 1');
     final parts = <String>[];
-    parts.add('decays=' + '[' + decays + ']');
-    parts.add('delays=' + '[' + delays + ']');
-    parts.add('depths=' + '[' + depths + ']');
+    parts.add('decays=' + _wireString(decays));
+    parts.add('delays=' + _wireString(delays));
+    parts.add('depths=' + _wireString(depths));
     if (inGain != .4) parts.add('in_gain=' + _wireDouble(inGain));
     if (outGain != .4) parts.add('out_gain=' + _wireDouble(outGain));
-    parts.add('speeds=' + '[' + speeds + ']');
+    parts.add('speeds=' + _wireString(speeds));
     return parts.isEmpty ? 'lavfi-chorus' : 'lavfi-chorus=' + parts.join(':');
   }
 }
@@ -9312,14 +9333,14 @@ final class CompandEffect extends AudioEffect {
     assert(volume >= volumeMin, 'compand.volume must be >= -900');
     assert(volume <= volumeMax, 'compand.volume must be <= 0');
     final parts = <String>[];
-    if (attacks != '0') parts.add('attacks=' + '[' + attacks + ']');
-    if (decays != '0.8') parts.add('decays=' + '[' + decays + ']');
+    if (attacks != '0') parts.add('attacks=' + _wireString(attacks));
+    if (decays != '0.8') parts.add('decays=' + _wireString(decays));
     if (delay != 0.0) parts.add('delay=' + _wireDouble(delay));
     if (gain != 0.0) parts.add('gain=' + _wireDouble(gain));
     if (points != '-70/-70|-60/-20|1/0')
-      parts.add('points=' + '[' + points + ']');
+      parts.add('points=' + _wireString(points));
     if (volume != 0.0) parts.add('volume=' + _wireDouble(volume));
-    params.forEach((k, v) => parts.add('$k=' + _wireDouble(v)));
+    params.forEach((k, v) => parts.add(_wireKey(k) + '=' + _wireDouble(v)));
     return parts.isEmpty ? 'lavfi-compand' : 'lavfi-compand=' + parts.join(':');
   }
 }
@@ -10555,11 +10576,11 @@ final class DynaudnormEffect extends AudioEffect {
     final parts = <String>[];
     if (altboundary != false)
       parts.add('altboundary=' + (altboundary ? '1' : '0'));
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (compress != 0.0) parts.add('compress=' + _wireDouble(compress));
     if (correctdc != false) parts.add('correctdc=' + (correctdc ? '1' : '0'));
     if (coupling != true) parts.add('coupling=' + (coupling ? '1' : '0'));
-    if (curve != '') parts.add('curve=' + '[' + curve + ']');
+    if (curve != '') parts.add('curve=' + _wireString(curve));
     if (framelen != 500) parts.add('framelen=' + framelen.toString());
     if (gausssize != 31) parts.add('gausssize=' + gausssize.toString());
     if (maxgain != 10.0) parts.add('maxgain=' + _wireDouble(maxgain));
@@ -10891,7 +10912,7 @@ final class Ebur128Effect extends AudioEffect {
       parts.add('peak=' + peak.map((e) => e.mpvValue).join('+'));
     if (scale != Ebur128Scaletype.absolute)
       parts.add('scale=' + scale.mpvValue);
-    if (size != '640x480') parts.add('size=' + '[' + size + ']');
+    if (size != '640x480') parts.add('size=' + _wireString(size));
     if (target != -23) parts.add('target=' + target.toString());
     if (video != false) parts.add('video=' + (video ? '1' : '0'));
     return parts.isEmpty ? 'lavfi-ebur128' : 'lavfi-ebur128=' + parts.join(':');
@@ -11103,7 +11124,7 @@ final class EqualizerEffect extends AudioEffect {
     assert(width <= widthMax, 'equalizer.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 0.0) parts.add('frequency=' + _wireDouble(frequency));
     if (gain != 0.0) parts.add('gain=' + _wireDouble(gain));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
@@ -11442,13 +11463,13 @@ final class FirequalizerEffect extends AudioEffect {
     final parts = <String>[];
     if (accuracy != 5.0) parts.add('accuracy=' + _wireDouble(accuracy));
     if (delay != 0.01) parts.add('delay=' + _wireDouble(delay));
-    if (dumpfile != '') parts.add('dumpfile=' + '[' + dumpfile + ']');
+    if (dumpfile != '') parts.add('dumpfile=' + _wireString(dumpfile));
     if (dumpscale != FirequalizerScale.linlog)
       parts.add('dumpscale=' + dumpscale.mpvValue);
     if (fft2 != false) parts.add('fft2=' + (fft2 ? '1' : '0'));
     if (fixed != false) parts.add('fixed=' + (fixed ? '1' : '0'));
-    if (gain != 'gain_interpolate(f)') parts.add('gain=' + '[' + gain + ']');
-    if (gainEntry != '') parts.add('gain_entry=' + '[' + gainEntry + ']');
+    if (gain != 'gain_interpolate(f)') parts.add('gain=' + _wireString(gain));
+    if (gainEntry != '') parts.add('gain_entry=' + _wireString(gainEntry));
     if (minPhase != false) parts.add('min_phase=' + (minPhase ? '1' : '0'));
     if (multi != false) parts.add('multi=' + (multi ? '1' : '0'));
     if (scale != FirequalizerScale.linlog) parts.add('scale=' + scale.mpvValue);
@@ -12327,7 +12348,7 @@ final class HighpassEffect extends AudioEffect {
     assert(width <= widthMax, 'highpass.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 3000.0) parts.add('frequency=' + _wireDouble(frequency));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
     if (normalize != false) parts.add('normalize=' + (normalize ? '1' : '0'));
@@ -12597,7 +12618,7 @@ final class HighshelfEffect extends AudioEffect {
     assert(width <= widthMax, 'highshelf.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 3000.0) parts.add('frequency=' + _wireDouble(frequency));
     if (gain != 0.0) parts.add('gain=' + _wireDouble(gain));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
@@ -12931,7 +12952,7 @@ final class LoudnormEffect extends AudioEffect {
     if (offset != 0.0) parts.add('offset=' + _wireDouble(offset));
     if (printFormat != LoudnormPrintFormat.none)
       parts.add('print_format=' + printFormat.mpvValue);
-    if (statsFile != '') parts.add('stats_file=' + '[' + statsFile + ']');
+    if (statsFile != '') parts.add('stats_file=' + _wireString(statsFile));
     if (tp != -2.0) parts.add('tp=' + _wireDouble(tp));
     return parts.isEmpty
         ? 'lavfi-loudnorm'
@@ -13140,7 +13161,7 @@ final class LowpassEffect extends AudioEffect {
     assert(width <= widthMax, 'lowpass.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 500.0) parts.add('frequency=' + _wireDouble(frequency));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
     if (normalize != false) parts.add('normalize=' + (normalize ? '1' : '0'));
@@ -13408,7 +13429,7 @@ final class LowshelfEffect extends AudioEffect {
     assert(width <= widthMax, 'lowshelf.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 100.0) parts.add('frequency=' + _wireDouble(frequency));
     if (gain != 0.0) parts.add('gain=' + _wireDouble(gain));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
@@ -13521,7 +13542,7 @@ final class McompandEffect extends AudioEffect {
     final parts = <String>[];
     if (args !=
         '0.005,0.1 6 -47/-40,-34/-34,-17/-33 100 | 0.003,0.05 6 -47/-40,-34/-34,-17/-33 400 | 0.000625,0.0125 6 -47/-40,-34/-34,-15/-33 1600 | 0.0001,0.025 6 -47/-40,-34/-34,-31/-31,-0/-30 6400 | 0,0.025 6 -38/-31,-28/-28,-0/-25 22000')
-      parts.add('args=' + '[' + args + ']');
+      parts.add('args=' + _wireString(args));
     return parts.isEmpty
         ? 'lavfi-mcompand'
         : 'lavfi-mcompand=' + parts.join(':');
@@ -13581,7 +13602,7 @@ final class PanEffect extends AudioEffect {
   @override
   String toFilterString() {
     final parts = <String>[];
-    parts.add('args=' + '[' + args + ']');
+    parts.add('args=' + _wireString(args));
     return parts.isEmpty ? 'lavfi-pan' : 'lavfi-pan=' + parts.join(':');
   }
 }
@@ -14115,7 +14136,7 @@ final class SpeechnormEffect extends AudioEffect {
     assert(threshold >= thresholdMin, 'speechnorm.threshold must be >= 0.0');
     assert(threshold <= thresholdMax, 'speechnorm.threshold must be <= 1.0');
     final parts = <String>[];
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (compression != 2.0)
       parts.add('compression=' + _wireDouble(compression));
     if (expansion != 2.0) parts.add('expansion=' + _wireDouble(expansion));
@@ -14880,7 +14901,7 @@ final class SuperequalizerEffect extends AudioEffect {
   @override
   String toFilterString() {
     final parts = <String>[];
-    params.forEach((k, v) => parts.add('$k=' + _wireDouble(v)));
+    params.forEach((k, v) => parts.add(_wireKey(k) + '=' + _wireDouble(v)));
     return parts.isEmpty
         ? 'lavfi-superequalizer'
         : 'lavfi-superequalizer=' + parts.join(':');
@@ -15902,8 +15923,8 @@ final class SurroundEffect extends AudioEffect {
     if (brOut != 1.0) parts.add('br_out=' + _wireDouble(brOut));
     if (brx != 0.5) parts.add('brx=' + _wireDouble(brx));
     if (bry != 0.5) parts.add('bry=' + _wireDouble(bry));
-    if (chlIn != 'stereo') parts.add('chl_in=' + '[' + chlIn + ']');
-    if (chlOut != '5.1') parts.add('chl_out=' + '[' + chlOut + ']');
+    if (chlIn != 'stereo') parts.add('chl_in=' + _wireString(chlIn));
+    if (chlOut != '5.1') parts.add('chl_out=' + _wireString(chlOut));
     if (fcIn != 1.0) parts.add('fc_in=' + _wireDouble(fcIn));
     if (fcOut != 1.0) parts.add('fc_out=' + _wireDouble(fcOut));
     if (fcx != 0.5) parts.add('fcx=' + _wireDouble(fcx));
@@ -16314,7 +16335,7 @@ final class TiltshelfEffect extends AudioEffect {
     assert(width <= widthMax, 'tiltshelf.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 3000.0) parts.add('frequency=' + _wireDouble(frequency));
     if (gain != 0.0) parts.add('gain=' + _wireDouble(gain));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
@@ -16588,7 +16609,7 @@ final class TrebleEffect extends AudioEffect {
     assert(width <= widthMax, 'treble.width must be <= 99999');
     final parts = <String>[];
     if (blocksize != 0) parts.add('blocksize=' + blocksize.toString());
-    if (channels != 'all') parts.add('channels=' + '[' + channels + ']');
+    if (channels != 'all') parts.add('channels=' + _wireString(channels));
     if (frequency != 3000.0) parts.add('frequency=' + _wireDouble(frequency));
     if (gain != 0.0) parts.add('gain=' + _wireDouble(gain));
     if (mix != 1.0) parts.add('mix=' + _wireDouble(mix));
