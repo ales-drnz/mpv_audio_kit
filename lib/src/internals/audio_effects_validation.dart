@@ -22,13 +22,22 @@ import '../generated/audio_effects_settings.dart';
 
 /// Throws [ArgumentError] when an enabled stage of [effects] holds a value
 /// its lavfi filter accepts and then reads or writes out of its buffers
-/// with, or turns the audio to NaN with. The error names the stage by its
-/// index, e.g. `effects[1].decays`.
+/// with, or turns the audio to NaN with, or a raw `params` key that is no
+/// option name. The error names the stage by its index, e.g.
+/// `effects[1].decays`.
 @internal
 void validateAudioEffects(List<AudioEffect> effects) {
   for (var i = 0; i < effects.length; i++) {
     final e = effects[i];
     if (!e.enabled) continue;
+    // The chain would refuse it too, but only once the state holds it.
+    for (final key in audioEffectBadParamKeys(e)) {
+      throw ArgumentError.value(
+        key,
+        'effects[$i].params',
+        'not an option name',
+      );
+    }
     switch (e) {
       case AechoEffect():
         _checkAecho(e, 'effects[$i]');

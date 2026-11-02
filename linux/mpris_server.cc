@@ -115,13 +115,17 @@ void MprisServer::EnsureOwned() {
   // The spec's form for a player that can run more than once: without the
   // instance part a second copy of the app loses the name and, with it,
   // its media controls. Clients match on the part before ".instance".
+  // The pid alone is not unique on the bus: each `flatpak run` has a pid
+  // namespace of its own, where the app is nearly always pid 2. A name
+  // another process holds is asked again with a suffix (OnNameLost).
   std::string bus = "org.mpris.MediaPlayer2." + suffix + ".instance" +
                     std::to_string(getpid());
-  // Not queued: a name that cannot be taken is lost at once (OnNameLost),
-  // and the next Enable asks for it again.
+  if (name_attempt_ > 0) bus += "_" + std::to_string(name_attempt_);
+  name_acquired_ = false;
+  // Not queued: a name that cannot be taken is lost at once (OnNameLost).
   owner_id_ = g_bus_own_name(G_BUS_TYPE_SESSION, bus.c_str(),
                              G_BUS_NAME_OWNER_FLAGS_DO_NOT_QUEUE, OnBusAcquired,
-                             nullptr, OnNameLost, this, nullptr);
+                             OnNameAcquired, OnNameLost, this, nullptr);
 }
 
 void MprisServer::ReleaseBus() {
@@ -140,6 +144,8 @@ void MprisServer::ReleaseBus() {
     owner_id_ = 0;
   }
   connection_ = nullptr;
+  name_acquired_ = false;
+  name_attempt_ = 0;
 }
 
 void MprisServer::OnBusAcquired(GDBusConnection* connection, const gchar*,
@@ -168,6 +174,26 @@ void MprisServer::OnBusAcquired(GDBusConnection* connection, const gchar*,
   self->RepublishAll();
 }
 
+void MprisServer::OnNameAcquired(GDBusConnection*, const gchar*,
+                                 gpointer user_data) {
+  static_cast<MprisServer*>(user_data)->name_acquired_ = true;
+}
+
+namespace {
+
+// How many names EnsureOwned asks for before it gives up: `instance<pid>`,
+// then `instance<pid>_1` and on.
+constexpr int kNameAttempts = 8;
+
+// From inside the lost handler GLib still counts a name it never had as
+// one to release: the ReleaseName then logs a GLib-GIO-WARNING.
+gboolean UnownLater(gpointer owner_id) {
+  g_bus_unown_name(GPOINTER_TO_UINT(owner_id));
+  return G_SOURCE_REMOVE;
+}
+
+}  // namespace
+
 void MprisServer::OnNameLost(GDBusConnection* connection, const gchar*,
                              gpointer user_data) {
   // Either the connection couldn't be established, or another instance took
@@ -189,8 +215,17 @@ void MprisServer::OnNameLost(GDBusConnection* connection, const gchar*,
   // Stop asking for the name, so EnsureOwned asks again on the next Enable
   // instead of keeping a request that never comes back.
   if (self->owner_id_) {
-    g_bus_unown_name(self->owner_id_);
+    g_idle_add(UnownLater, GUINT_TO_POINTER(self->owner_id_));
     self->owner_id_ = 0;
+  }
+  // Another process holds the name (a second Flatpak instance with the
+  // same pid): ask for the next one now, not at an Enable that may never
+  // come. A name that was ours, or a bus that cannot be reached, waits
+  // for the next Enable.
+  if (connection != nullptr && self->enabled_ && !self->name_acquired_ &&
+      self->name_attempt_ + 1 < kNameAttempts) {
+    ++self->name_attempt_;
+    self->EnsureOwned();
   }
 }
 

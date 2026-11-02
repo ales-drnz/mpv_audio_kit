@@ -13,6 +13,7 @@ import '../internals/debug_log.dart';
 import '../internals/event_isolate.dart';
 import '../internals/library_loader.dart';
 import '../internals/mpv_client.dart';
+import '../internals/mpv_requests.dart';
 import '../internals/orphan_handle_tracker.dart';
 import '../mpv_bindings.dart';
 import '../pcm/pcm_native.dart';
@@ -74,7 +75,7 @@ const String? kOutputVolumeOption = null;
 @internal
 const String? kOutputMuteOption = null;
 
-final class _NativeSession implements MpvSession {
+final class _NativeSession implements MpvSession, MpvHookContinueOffMain {
   _NativeSession(this._wakeupCounterAddress);
 
   // Test-only; null in production.
@@ -88,11 +89,12 @@ final class _NativeSession implements MpvSession {
   late final Pointer<MpvHandle> _handle;
   late final MpvClient _client;
 
-  /// In-flight [hookAdd] runs. `mpv_hook_add` locks the core and has no
-  /// async variant, so it executes in a throwaway `Isolate.run` against the
-  /// shared handle; dispose must await any outstanding one BEFORE
-  /// `mpv_terminate_destroy` frees the handle, or the throwaway isolate would
-  /// dereference freed memory (`lock_core(ctx)`).
+  /// In-flight [hookAdd] and [hookContinueOffMain] runs. `mpv_hook_add`
+  /// and `mpv_hook_continue` lock the core and have no async variant, so
+  /// they execute in a throwaway `Isolate.run` against the shared handle;
+  /// dispose must await any outstanding one BEFORE `mpv_terminate_destroy`
+  /// frees the handle, or the throwaway isolate would dereference freed
+  /// memory (`lock_core(ctx)`).
   final Set<Future<void>> _hookAdds = {};
 
   @override
@@ -152,17 +154,44 @@ final class _NativeSession implements MpvSession {
     // mpv_hook_add does `lock_core(ctx)` on the shared core, and a busy
     // playloop can hold it long enough for a concurrent dispose to reach
     // mpv_terminate_destroy first (use-after-free on the freed MPContext).
-    final run = Isolate.run(() {
-      final lib = MpvLibrary.open(libraryPath);
-      using((arena) {
-        lib.mpvHookAdd(
-          Pointer<MpvHandle>.fromAddress(handleAddress),
-          0,
-          name.toNativeUtf8(allocator: arena),
-          priority,
-        );
-      });
-    });
+    await _tracked(
+      Isolate.run(() {
+        final lib = MpvLibrary.open(libraryPath);
+        using((arena) {
+          lib.mpvHookAdd(
+            Pointer<MpvHandle>.fromAddress(handleAddress),
+            0,
+            name.toNativeUtf8(allocator: arena),
+            priority,
+          );
+        });
+      }),
+    );
+  }
+
+  @override
+  void hookContinueOffMain(int id) {
+    // After close the handle is about to be freed: as for hookContinue.
+    if (_client.isClosed) return;
+    final handleAddress = _handle.address;
+    final libraryPath = MpvAudioKit.libraryPath;
+    // Tracked as hookAdd is, for the same reason: the continue waits for
+    // the core, and dispose must not free it meanwhile.
+    unawaited(
+      _tracked(
+        Isolate.run(() {
+          MpvLibrary.open(
+            libraryPath,
+          ).mpvHookContinue(Pointer<MpvHandle>.fromAddress(handleAddress), id);
+        }),
+      ).catchError((Object e) {
+        debugLog('mpv_audio_kit: hook continue failed: $e');
+      }),
+    );
+  }
+
+  /// Awaits [run] with it in [_hookAdds] meanwhile.
+  Future<void> _tracked(Future<void> run) async {
     _hookAdds.add(run);
     try {
       await run;

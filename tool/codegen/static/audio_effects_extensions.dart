@@ -64,8 +64,13 @@ extension AechoTapsX on AechoEffect {
   }
 
   /// Returns a copy whose [delays] and [decays] reflect [taps].
+  ///
+  /// Throws an [ArgumentError] when [taps] is empty: aecho needs one tap.
+  /// Turn the effect off with `enabled: false` instead.
   AechoEffect withTaps(List<AechoTap> taps) {
-    if (taps.isEmpty) return copyWith(delays: '0', decays: '0');
+    if (taps.isEmpty) {
+      throw ArgumentError.value(taps, 'taps', 'aecho needs at least one tap');
+    }
     return copyWith(
       delays: taps.map((t) => t.delayMs.toStringAsFixed(2)).join('|'),
       decays: taps.map((t) => t.decay.toStringAsFixed(3)).join('|'),
@@ -168,9 +173,16 @@ extension ChorusVoicesX on ChorusEffect {
   }
 
   /// Returns a copy whose four CSVs reflect [voices].
+  ///
+  /// Throws an [ArgumentError] when [voices] is empty: chorus needs one
+  /// voice. Turn the effect off with `enabled: false` instead.
   ChorusEffect withVoices(List<ChorusVoice> voices) {
     if (voices.isEmpty) {
-      return copyWith(delays: '', decays: '', depths: '', speeds: '');
+      throw ArgumentError.value(
+        voices,
+        'voices',
+        'chorus needs at least one voice',
+      );
     }
     String join(double Function(ChorusVoice) get) =>
         voices.map((v) => get(v).toStringAsFixed(3)).join('|');
@@ -239,9 +251,18 @@ extension CompandPointsX on CompandEffect {
   }
 
   /// Returns a copy whose [points] reflects [points] (ascending
-  /// input order). Empty input clears the transfer function.
+  /// input order).
+  ///
+  /// Throws an [ArgumentError] when [points] is empty: compand needs one
+  /// point. Turn the effect off with `enabled: false` instead.
   CompandEffect withTransferPoints(List<CompandPoint> points) {
-    if (points.isEmpty) return copyWith(points: '');
+    if (points.isEmpty) {
+      throw ArgumentError.value(
+        points,
+        'points',
+        'compand needs at least one point',
+      );
+    }
     final sorted = [...points]..sort((a, b) => a.inDb.compareTo(b.inDb));
     return copyWith(
       points: sorted

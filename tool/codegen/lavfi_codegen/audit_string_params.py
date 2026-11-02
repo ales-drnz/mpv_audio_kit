@@ -32,8 +32,8 @@ Three buckets, by decreasing priority:
     Listed for visibility only.
 
 Output is grouped by tier with the param's short description, so a
-human can decide which candidates merit a `lib/src/types/settings/
-extensions/<filter>_<plural>.dart` overlay.
+human can decide which candidates merit a typed helper in
+`tool/codegen/static/audio_effects_extensions.dart`.
 """
 
 from __future__ import annotations
@@ -58,8 +58,8 @@ _EXPRESSION_KEYWORDS = re.compile(
 )
 
 # Filter+param pairs already covered by hand-written extensions in
-# `lib/src/types/settings/extensions/`. Keep this in sync with that
-# directory — the audit subtracts these from the candidate report so
+# `tool/codegen/static/audio_effects_extensions.dart`. Keep this in sync
+# with that file — the audit subtracts these from the candidate report so
 # the output only highlights NEW candidates after a ffmpeg upgrade.
 _ALREADY_COVERED = {
     ("anequalizer", "params"),

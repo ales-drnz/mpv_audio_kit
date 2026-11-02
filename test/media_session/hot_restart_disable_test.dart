@@ -7,16 +7,14 @@
 // the old VM enabled stays on: notification, lock screen and audio focus,
 // still "playing" the old track, with no listener left for its buttons.
 // The new VM's MpvAudioKit.ensureInitialized turns it off. This file is a
-// process of its own: the old VM is the tracker buffer published in the
-// process environment before the init, as a Hot Restart leaves it.
+// process of its own: the old VM is a tracker that published its buffer in
+// the process environment and ended, as a Hot Restart leaves it.
 
 @TestOn('mac-os || linux || windows')
 library;
 
-import 'dart:ffi';
 import 'dart:io';
 
-import 'package:ffi/ffi.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -40,13 +38,12 @@ void main() {
     );
 
     // The old VM's tracker buffer, empty: no handle leaked, a session did.
-    final buffer = calloc<Int64>(512);
+    OrphanHandleTracker.forTesting(ProcessEnvironment.native())
+      ..ensureInitialized((_) {})
+      ..endForTesting();
     expect(
-      ProcessEnvironment.native().set(
-        OrphanHandleTracker.envName,
-        '$pid:${buffer.address}',
-      ),
-      isTrue,
+      ProcessEnvironment.native().get(OrphanHandleTracker.envName),
+      startsWith('$pid:'),
     );
     MpvAudioKit.ensureInitialized();
     expect(OrphanHandleTracker.instance.restarted, isTrue);

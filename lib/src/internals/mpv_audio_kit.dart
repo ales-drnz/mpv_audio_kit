@@ -90,8 +90,11 @@ abstract final class MpvAudioKit {
   /// the replaced VM, turns off the waveform, loudness scan and filter taps
   /// its listeners left on, and disables its OS media session. Pass `false`
   /// in test runners, background isolates and other multi-VM scenarios
-  /// that share a pid: in a debug build the tracker would otherwise take
-  /// the live handles of the other isolate for orphans and destroy them.
+  /// that share a pid: the tracker keeps one buffer per process, for the VM
+  /// that sets it up first, and the cleanup after a Hot-Restart reaches
+  /// the PCM sources and the analysis switches of the whole process. A VM
+  /// that finds the owner of the buffer still running takes none of its
+  /// handles.
   /// On the web it destroys the players, PCM sources and audio output the
   /// app left in the page before a Hot Restart, and reuses its module.
   ///

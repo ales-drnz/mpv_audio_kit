@@ -471,9 +471,12 @@ def _index_local_macros(source: str) -> None:
         _LOCAL_NUMERIC_DEFINES[m.group("name")] = raw
 
 
+# The body may sit in parentheses, as in af_compensationdelay.c:
+# `#define A (AV_OPT_FLAG_AUDIO_PARAM|...|AV_OPT_FLAG_RUNTIME_PARAM)`.
 _FLAG_MACRO_DEFINE_RE = re.compile(
-    r"^\s*#\s*define\s+(?P<name>[A-Z][A-Z0-9_]*)\s+"
-    r"(?P<body>(?:AV_OPT_FLAG_[A-Z_]+|[A-Z][A-Z0-9_]*|[|\s])+)\s*$",
+    r"^[ \t]*#[ \t]*define[ \t]+(?P<name>[A-Z][A-Z0-9_]*)[ \t]+(?P<open>\()?[ \t]*"
+    r"(?P<body>[A-Z][A-Z0-9_]*(?:[ \t]*\|[ \t]*[A-Z][A-Z0-9_]*)*)"
+    r"[ \t]*(?(open)\))[ \t]*$",
     re.MULTILINE,
 )
 

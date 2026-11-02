@@ -212,8 +212,18 @@ final class CoreCalls {
   /// queue up, not the UI thread.
   Future<void> settleWrites() => _mpv.settleWrites();
 
-  /// Continues the hook event mpv numbered [id].
-  void hookContinue(int id) => _mpv.hookContinue(id);
+  /// Continues the hook event mpv numbered [id]. The continue of an
+  /// `on_prefetch` event ([prefetch]) can wait for a busy core, so it runs
+  /// off the calling isolate where the backend can
+  /// ([MpvHookContinueOffMain]).
+  void hookContinue(int id, {bool prefetch = false}) {
+    final mpv = _mpv;
+    if (prefetch && mpv is MpvHookContinueOffMain) {
+      mpv.hookContinueOffMain(id);
+    } else {
+      mpv.hookContinue(id);
+    }
+  }
 
   /// Sets the engine log verbosity; [LogLevel.off] maps to mpv's `no`.
   void requestLogMessages(LogLevel level) =>

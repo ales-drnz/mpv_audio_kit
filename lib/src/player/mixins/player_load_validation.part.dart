@@ -58,7 +58,7 @@ String loadfileOptions(Media media, {bool durationHint = true}) {
   if (headers != null && headers.isNotEmpty) {
     for (final e in headers.entries) {
       _validateHeaderKey(e.key);
-      _validateHeaderValue(e.value);
+      _validateHeaderValue(e.key, e.value);
     }
     final joined = headers.entries.map((e) => '${e.key}: ${e.value}').join(',');
     parts.add('http-header-fields=%${utf8.encode(joined).length}%$joined');
@@ -211,7 +211,7 @@ void validateLoadOptions(Media media) {
   if (headers != null && headers.isNotEmpty) {
     for (final e in headers.entries) {
       _validateHeaderKey(e.key);
-      _validateHeaderValue(e.value);
+      _validateHeaderValue(e.key, e.value);
     }
   }
   final chunk = media.httpChunkSize;
@@ -237,7 +237,8 @@ final RegExp _kForbiddenInLavfOption = RegExp(r'[\r\n,\x00]');
 /// A `stream-lavf-o` or `demuxer-lavf-o` entry sits in a comma-separated
 /// list, so its key must be non-empty and the key and value free of comma,
 /// CR, LF and NUL. [name] is the [Media] field it came from. Mirrors the
-/// header validators.
+/// header validators. The error names the key only: a value can carry
+/// credentials, as [Media.toString] says.
 void _validateLavfOption(String key, String value, String name) {
   if (key.isEmpty) {
     throw ArgumentError.value(key, '$name key', 'must not be empty');
@@ -245,9 +246,9 @@ void _validateLavfOption(String key, String value, String name) {
   if (_kForbiddenInLavfOption.hasMatch(key) ||
       _kForbiddenInLavfOption.hasMatch(value)) {
     throw ArgumentError.value(
-      '$key=$value',
+      key,
       name,
-      'must not contain CR, LF, NUL, or comma',
+      'must not contain CR, LF, NUL, or comma in its key or value',
     );
   }
 }
@@ -265,12 +266,13 @@ void _validateHeaderKey(String key) {
   }
 }
 
-void _validateHeaderValue(String value) {
+/// The error names the header, not its value, which often holds a token.
+void _validateHeaderValue(String key, String value) {
   if (_kForbiddenInHeaderValue.hasMatch(value)) {
-    throw ArgumentError.value(
-      value,
+    throw ArgumentError(
+      'the value of $key must not contain CR, LF, NUL, or comma (would '
+          'split or inject the HTTP request)',
       'header value',
-      'must not contain CR, LF, NUL, or comma (would split or inject the HTTP request)',
     );
   }
 }

@@ -240,13 +240,12 @@ void _applyPlatformQuirks() {
 /// debug-only orphan tracker detects), and only in the root isolate.
 ///
 /// The sources are process-wide. A release at every init would cut those
-/// of the other players and isolates, and the tracker also reports a
-/// restart to a second isolate of the same process (the process
-/// environment already holds its buffer), whose own release would cut the
-/// sources of the first.
-/// Hot-Restart replaces the root isolate, which alone holds a
+/// of the other players and isolates. The tracker reports a restart only
+/// when the VM that owned its buffer is gone, and the release stays with
+/// the root isolate, which a Hot-Restart replaces and which alone holds a
 /// `RootIsolateToken`. A second Flutter engine in the process (add-to-app)
-/// has a root isolate of its own: pass `hotRestartCleanup: false` there.
+/// has a root isolate of its own, whose sources a Hot-Restart of the first
+/// engine would cut: pass `hotRestartCleanup: false` there.
 /// The orphan reap turns off the analysis switches, process-wide too, under
 /// the same guard.
 @internal

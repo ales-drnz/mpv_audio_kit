@@ -7,9 +7,9 @@
 
 library;
 
-/// Names of every typed audio filter the public `AudioEffects`
-/// bundle exposes, in declaration order. Kept in `test/` because
-/// no production code consumes the list.
+/// Names of every typed audio filter of the public API, in
+/// alphabetical order. Kept in `test/` because no production code
+/// consumes the list.
 const List<String> kAudioFilterNames = [
   'acompressor',
   'acontrast',

@@ -65,8 +65,9 @@ abstract interface class MpvSession implements MpvRequests {
   Future<void> hookAdd(String name, int priority);
 
   /// Waits, at most until [bound], for every [hookAdd] still running,
-  /// those that start meanwhile included. Returns whether they settled:
-  /// the core must not be destroyed under one.
+  /// those that start meanwhile included, and for every continue run off
+  /// the main isolate (`MpvHookContinueOffMain`). Returns whether they
+  /// settled: the core must not be destroyed under one.
   Future<bool> settleHookAdds(Duration bound);
 
   /// Records the core for the Hot Restart cleanup, once bring-up kept it.

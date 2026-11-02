@@ -74,8 +74,14 @@ enum Hook {
   ///
   /// When the entry starts before the hook continues, or the playlist no
   /// longer has it next, mpv drops the early open: both properties become
-  /// unavailable and the continue does nothing. Needs libmpv-r20 or later;
-  /// an older libmpv never fires it.
+  /// unavailable and the continue does nothing.
+  ///
+  /// Until the hook continues, dropped or not, no other entry opens ahead
+  /// of time, not even after an open or openAll: a listener that never
+  /// continues takes the prefetch away from every entry after it. Pass a
+  /// `timeout` to `Player.registerHook` for this hook.
+  ///
+  /// Needs libmpv-r20 or later; an older libmpv never fires it.
   prefetch('on_prefetch');
 
   const Hook(this.mpvValue);

@@ -306,10 +306,9 @@ def _format_value_expr(name: str, dart_type: str, nullable: bool) -> str:
             f"{dn}.map((e) => e.{_WIRE.value_getter}).join('+')"
         )
     if dart_type in ("string", "chlayout"):
-        # Wrap in `[...]` so mpv's filter-args parser doesn't split on
-        # internal `:` `=` `,` `|` characters within the value. This is
-        # the documented mpv canonical escape (vf.rst).
-        return f"'[' + {dn} + ']'"
+        # Quoted so mpv's filter-args parser doesn't split on internal
+        # `:` `=` `,` `|` characters within the value (see _wireString).
+        return f"_wireString({dn})"
     return dn
 
 
@@ -342,16 +341,15 @@ _COPYRIGHT_FFMPEG_TEXT = _COPYRIGHT + (
 def _emit_test_filter_names(sorted_names: list[str]) -> str:
     """Test-side mirror of every typed audio filter name. Imported by
     runtime tests that exercise the bundled libmpv binary's filter
-    registry without consuming the public AudioEffects API."""
+    registry without consuming the public effect classes."""
     body = [_COPYRIGHT, ""]
     body.append("library;")
     body.append("")
     body.append(
-        f"/// Names of every typed {_NAMING.noun} filter the public "
-        f"`{_NAMING.bundle_name}`"
+        f"/// Names of every typed {_NAMING.noun} filter of the public API, in"
     )
-    body.append("/// bundle exposes, in declaration order. Kept in `test/` because")
-    body.append("/// no production code consumes the list.")
+    body.append("/// alphabetical order. Kept in `test/` because no production code")
+    body.append("/// consumes the list.")
     body.append(f"const List<String> {_NAMING.test_names_const} = [")
     for name in sorted_names:
         body.append(f"  '{name}',")
@@ -361,7 +359,7 @@ def _emit_test_filter_names(sorted_names: list[str]) -> str:
 
 def _emit_audio_effect_enum(sorted_names: list[str]) -> str:
     """Singular `AudioEffect` enum — one value per typed audio filter.
-    Identifies a slot in the [AudioEffects] bundle for APIs that pick a
+    Identifies one typed effect class for APIs that pick a
     single filter (e.g. `PlayerStream.tap`). Enum value name == mpv
     filter type name, exposed verbatim through [filterName]. Appended
     to the multi-enum `audio_effects.dart` file alongside the AVOption
@@ -420,6 +418,8 @@ def _emit_settings_header(
         " prefer_adjacent_string_concatenation,"
         " prefer_interpolation_to_compose_strings\n"
         "\n"
+        "import 'dart:convert';\n"
+        "\n"
         "import 'package:meta/meta.dart';\n"
         "\n"
         f"import '{_NAMING.sentinel_import}';\n"
@@ -472,7 +472,28 @@ def _emit_settings_header(
         "  if (v.abs() < 0.001) return v.toStringAsExponential();\n"
         "  return v.toStringAsFixed(6);\n"
         "}\n"
+        "\n"
+        "/// Wire-format a string option. `[...]` keeps `:` `=` `,` `|` in the\n"
+        "/// value, but ends at the `]` that balances the first `[`: a value\n"
+        "/// with a bracket takes mpv's `%len%` form instead, its length in\n"
+        "/// UTF-8 bytes, which holds any text.\n"
+        "String _wireString(String v) {\n"
+        "  if (!v.contains('[') && !v.contains(']')) return '[' + v + ']';\n"
+        "  return '%' + utf8.encode(v).length.toString() + '%' + v;\n"
+        "}\n"
     )
+    if needs_map:
+        parts.append(
+            "\n"
+            "final RegExp _paramKey = RegExp(r'^[A-Za-z0-9_-]+$');\n"
+            "\n"
+            "/// The key of a raw `params` entry, an FFmpeg option name: a `:` or a\n"
+            "/// `,` in it would add options or filters to the chain.\n"
+            "String _wireKey(String k) {\n"
+            "  if (_paramKey.hasMatch(k)) return k;\n"
+            "  throw ArgumentError.value(k, 'params', 'not an option name');\n"
+            "}\n"
+        )
     if needs_duration:
         parts.append(
             "\n"
@@ -1084,11 +1105,13 @@ def _emit_settings_class(filter_name: str, fdata: dict) -> str:
     if invalid:
         if map_value_type == "double":
             lines.append(
-                "    params.forEach((k, v) => parts.add('$k=' + _wireDouble(v)));"
+                "    params.forEach("
+                "(k, v) => parts.add(_wireKey(k) + '=' + _wireDouble(v)));"
             )
         else:
             lines.append(
-                "    params.forEach((k, v) => parts.add('$k=' + v.toString()));"
+                "    params.forEach("
+                "(k, v) => parts.add(_wireKey(k) + '=' + v.toString()));"
             )
     lines.append(
         f"    return parts.isEmpty ? '{_WIRE.label_prefix}{filter_name}' : "
@@ -1153,6 +1176,41 @@ def _emit_runtime_diff(filter_name, cls, params, invalid):
     out.append("    return out;")
     out.append("  }")
     return out
+
+
+def _emit_param_keys(filters: dict, sorted_names: list[str]) -> str:
+    """`audioEffectParamKeys(effect)`: the raw `params` keys of a stage,
+    for the check the chain passes before the state changes. The filters
+    with a `params` map are the ones with options named from a digit.
+    Empty when no filter has one."""
+    with_map = [
+        _settings_class_name(fname)
+        for fname in sorted_names
+        if any(
+            not p.get("readonly")
+            for p in filters[fname].get("params_invalid", {}).values()
+        )
+    ]
+    if not with_map:
+        return ""
+    base = _NAMING.bundle_name[:-1]
+    arms = "".join(
+        f"    {cls}(:final params) => params.keys,\n" for cls in with_map
+    )
+    return (
+        "\n"
+        "/// The keys of the raw `params` of [effect] that are no option name,\n"
+        "/// none for a stage without `params`. They are checked before the\n"
+        "/// chain is built, so a refused key never reaches the state.\n"
+        "@internal\n"
+        f"Iterable<String> {_camel(base)}BadParamKeys({base} effect) {{\n"
+        "  final keys = switch (effect) {\n"
+        f"{arms}"
+        "    _ => const <String>[],\n"
+        "  };\n"
+        "  return keys.where((k) => !_paramKey.hasMatch(k));\n"
+        "}\n"
+    )
 
 
 def _bundle_default_ctor(filter_name: str) -> str:
@@ -1438,6 +1496,7 @@ def run(config: Config) -> int:
     for fname in sorted_names:
         settings_bodies.append(_emit_settings_class(fname, filters[fname]))
     settings_bodies.insert(0, _emit_chain())
+    settings_bodies.append(_emit_param_keys(filters, sorted_names))
     # The Set/Map equality helpers and the duration formatter are emitted only
     # when a field uses them, so a flavor without them (video) doesn't trip
     # `unused_element`.
