@@ -91,6 +91,10 @@ class MediaSessionController {
   String? _artAttemptsUri;
   int _artAttempts = 0;
 
+  // The pauses and stops the app made, pushed as
+  // [MediaSessionPlaybackSnapshot.appPauses].
+  int _appPauses = 0;
+
   // The `seekable` last sent to the OS. mpv reports it unavailable while
   // the next track loads, and the OS reads a non-seekable entry as a live
   // stream, so the loading gap keeps the previous value.
@@ -264,6 +268,14 @@ class MediaSessionController {
     _playbackDirty = true;
     if (seek) _playbackSeek = true;
     _scheduleFlush();
+  }
+
+  /// The app called `pause` or `stop`. Pushed even when the state does
+  /// not change: during a call the player is already paused, and Android
+  /// must still learn that the end of the call is not to play again.
+  void appPaused() {
+    _appPauses++;
+    _markPlayback();
   }
 
   void _markMetadata() {
@@ -609,6 +621,7 @@ class MediaSessionController {
       buffering: state.buffering,
       hasNext: hasNext,
       hasPrevious: hasPrevious,
+      appPauses: _appPauses,
     );
   }
 
