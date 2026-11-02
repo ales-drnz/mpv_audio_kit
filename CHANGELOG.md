@@ -1,4 +1,4 @@
-## [0.6.0] - Unreleased
+## [0.6.0] - 2-11-2026
 
 The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an app may need.
 

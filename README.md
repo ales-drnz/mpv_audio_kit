@@ -49,7 +49,7 @@ Add `mpv_audio_kit` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.5.3
+  mpv_audio_kit: ^0.6.0
 ```
 
 On Android, iOS, macOS, Windows and Linux the build downloads the libmpv binary for the target from the package's GitHub release and checks its SHA-256 (the first build needs network access). On the web the WebAssembly module ships with the package.
