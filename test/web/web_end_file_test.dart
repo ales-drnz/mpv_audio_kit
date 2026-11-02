@@ -3,10 +3,12 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// END_FILE of the web module carries the read error fields of the r20
-// read_error patch (offsets 28 and 32), decoded by the web session into the
-// event the player gets: a file read to its end says no error, a file cut
-// short whose resume the server refuses says it ended on one. The cut file
+// END_FILE of the web module carries the four fields of the read_error
+// patch (offsets 28, 32, 40 and 48 in r21), decoded by the web session into
+// the event the player gets: a file read to its end says no error, a file
+// cut short whose resume the server refuses says it ended on one, and the
+// event carries the duration and position of the entry, which a bare
+// session observes nowhere else. The cut file
 // comes from net_server.dart (test/web/with_net_server.sh --platform chrome
 // --wasm), without which that case skips.
 
@@ -61,6 +63,8 @@ void main() {
     expect(end.reason, MpvEndFileReason.mpvEndFileReasonEof);
     expect(end.readError, isFalse);
     expect(end.skippedSegments, 0);
+    expect(end.duration, closeTo(1.0, 0.005));
+    expect(end.position, inInclusiveRange(0.0, 1.005));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test(

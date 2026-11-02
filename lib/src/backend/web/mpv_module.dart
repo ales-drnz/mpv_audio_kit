@@ -232,8 +232,8 @@ final class MpvModule {
   /// The exported C functions.
   MpvExports get c => _m;
 
-  /// Where `mpv_event_end_file` keeps the read error fields of the
-  /// read_error patch, `0` and `0` in a module without it.
+  /// Where `mpv_event_end_file` keeps the four fields of the read_error
+  /// patch, all `0` in a module without it.
   late final EndFileFields endFile;
 
   /// The module's `mak_web_layout()`, up to its `-1` end.

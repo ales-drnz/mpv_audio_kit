@@ -143,7 +143,11 @@ final class WebSession implements MpvSession {
     }
     _handle = h;
     _client = WebClient(_m, h);
-    _logic = EventLogic(_WebReader(this), _send);
+    _logic = EventLogic(
+      _WebReader(this),
+      _send,
+      endFileCarriesEntry: _m.endFile.position != 0,
+    );
     for (final spec in recipe.observes) {
       _logic.observe(spec.name, spec.format);
     }
@@ -209,14 +213,23 @@ final class WebSession implements MpvSession {
       case MpvEventId.mpvEventFileLoaded:
         return _logic.dispatch(MpvEventFileLoaded());
       case MpvEventId.mpvEventEndFile:
-        // The read error fields of a module with the read_error patch; a
-        // module without it has neither (offsets 0).
+        // The fields of a module with the read_error patch; a module
+        // without it has none (offsets 0). A duration or position mpv did
+        // not know (-1) is null, as on the native side.
         final fields = m.endFile;
+        double? known(int offset) {
+          if (offset == 0) return null;
+          final seconds = m.f64(data + offset);
+          return seconds >= 0 ? seconds : null;
+        }
+
         return _logic.dispatch(
           MpvEventEndFile(
             m.i64(data + 8),
             m.i32(data),
             m.i32(data + 4),
+            position: known(fields.position),
+            duration: known(fields.duration),
             readError: fields.readError == 0
                 ? null
                 : m.i32(data + fields.readError) != 0,

@@ -156,8 +156,13 @@ void main() {
       final values = _parkedFirstOfTwo();
       final reader = _Reader(values);
       final out = <String>[];
-      final logic = EventLogic(reader, (e) => out.add(_describe(e)))
-        ..observe('duration', MpvFormat.mpvFormatDouble);
+      // A libmpv-r21 END_FILE carries the duration and position: no read
+      // for them (the reads of an older one: the group below).
+      final logic = EventLogic(
+        reader,
+        (e) => out.add(_describe(e)),
+        endFileCarriesEntry: true,
+      )..observe('duration', MpvFormat.mpvFormatDouble);
       await logic.property('duration', MpvFormat.mpvFormatDouble, 1.0);
       await logic.dispatch(MpvEventStartFile(7));
       await logic.property(
@@ -353,6 +358,161 @@ void main() {
       [for (final e in out) (e.entryId, e.readError, e.skippedSegments)],
       [(7, true, 2), (8, false, 0), (8, null, null)],
     );
+  });
+
+  // kit-core-2: mpv sends property changes only once its event queue is
+  // empty, so an entry that loads and ends within one burst of events gets
+  // none. Its END_FILE keeps what the pump read of it, or what a
+  // libmpv-r20 event carries.
+  group('the duration and position of the entry that ended', () {
+    /// The core's answers while entry 8, the second of three, plays.
+    Map<String, Object?> playingSecond() => {
+      'path': '/b.flac',
+      'time-pos': 0.0,
+      'duration': 180.0,
+      'playlist-pos': 1,
+      'playlist-playing-pos': 1,
+      'playlist/1/id': 8,
+      'eof-reached': 0,
+      'playlist-count': 3,
+      'playlist/2/id': 9,
+    };
+
+    Future<List<MpvEventEndFile>> run(
+      Map<String, Object?> values,
+      Future<void> Function(EventLogic logic) steps,
+    ) async {
+      final ends = <MpvEventEndFile>[];
+      final logic = EventLogic(_Reader(values), (e) {
+        if (e is MpvEventEndFile) ends.add(e);
+      })..observe('duration', MpvFormat.mpvFormatDouble);
+      await steps(logic);
+      return ends;
+    }
+
+    test('the reads at FILE_LOADED reach END_FILE, with no change from '
+        'mpv', () async {
+      final values = playingSecond();
+      final ends = await run(values, (logic) async {
+        await logic.dispatch(MpvEventStartFile(8));
+        await logic.dispatch(MpvEventFileLoaded());
+        values['time-pos'] = 2.5;
+        await logic.dispatch(MpvEventPlaybackRestart());
+        await logic.dispatch(
+          MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
+        );
+      });
+      expect(ends.single.duration, 180.0);
+      expect(ends.single.position, 2.5);
+    });
+
+    test('a duration read again at FILE_LOADED reaches END_FILE', () async {
+      final values = playingSecond();
+      final ends = await run(values, (logic) async {
+        // Entry 7 had a duration; its unload reports it unavailable, and
+        // mpv does not notify it again for entry 8: the re-read does.
+        await logic.dispatch(MpvEventStartFile(7));
+        await logic.property('duration', MpvFormat.mpvFormatDouble, 180.0);
+        await logic.property(
+          'duration',
+          MpvFormat.mpvFormatNone,
+          kPropertyUnavailable,
+        );
+        await logic.dispatch(
+          MpvEventEndFile(7, MpvEndFileReason.mpvEndFileReasonEof, 0),
+        );
+        await logic.dispatch(MpvEventStartFile(8));
+        values['duration'] = 3.0;
+        await logic.dispatch(MpvEventFileLoaded());
+        await logic.dispatch(
+          MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
+        );
+      });
+      expect([for (final e in ends) e.duration], [180.0, 3.0]);
+    });
+
+    test('a read after mpv moved on to the next entry is not kept', () async {
+      final values = playingSecond()
+        ..['playlist-playing-pos'] = 2
+        ..['duration'] = 60.0;
+      final ends = await run(values, (logic) async {
+        await logic.dispatch(MpvEventStartFile(8));
+        await logic.dispatch(MpvEventFileLoaded());
+        await logic.dispatch(
+          MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
+        );
+      });
+      expect(ends.single.duration, isNull);
+      expect(ends.single.position, isNull);
+    });
+
+    test('with an END_FILE that carries them (libmpv-r21) the pump reads '
+        'neither', () async {
+      final values = playingSecond();
+      final reader = _Reader(values);
+      final ends = <MpvEventEndFile>[];
+      final logic = EventLogic(
+        reader,
+        (e) {
+          if (e is MpvEventEndFile) ends.add(e);
+        },
+        endFileCarriesEntry: true,
+      )..observe('duration', MpvFormat.mpvFormatDouble);
+      await logic.dispatch(MpvEventStartFile(8));
+      await logic.dispatch(MpvEventFileLoaded());
+      await logic.dispatch(MpvEventPlaybackRestart());
+      final atLoad = [...reader.reads];
+      await logic.dispatch(
+        MpvEventEndFile(
+          8,
+          MpvEndFileReason.mpvEndFileReasonEof,
+          0,
+          position: 0.05,
+          duration: 0.05,
+          readError: false,
+          skippedSegments: 0,
+        ),
+      );
+      expect(atLoad, isNot(contains('duration')));
+      expect(atLoad, isNot(contains('playlist-playing-pos')));
+      expect((ends.single.duration, ends.single.position), (0.05, 0.05));
+    });
+
+    test('the fields of a libmpv-r21 END_FILE win, and one mpv did not '
+        'know keeps what it reported', () async {
+      final ends = await run(playingSecond(), (logic) async {
+        await logic.dispatch(MpvEventStartFile(8));
+        await logic.property('duration', MpvFormat.mpvFormatDouble, 5.0);
+        await logic.property('time-pos', MpvFormat.mpvFormatDouble, 1.0);
+        await logic.dispatch(
+          MpvEventEndFile(
+            8,
+            MpvEndFileReason.mpvEndFileReasonStop,
+            0,
+            position: 3.9,
+            duration: 4.0,
+            readError: false,
+            skippedSegments: 0,
+          ),
+        );
+        await logic.dispatch(MpvEventStartFile(9));
+        await logic.property('duration', MpvFormat.mpvFormatDouble, 6.0);
+        await logic.property('time-pos', MpvFormat.mpvFormatDouble, 2.0);
+        await logic.dispatch(
+          MpvEventEndFile(
+            9,
+            MpvEndFileReason.mpvEndFileReasonStop,
+            0,
+            readError: false,
+            skippedSegments: 0,
+          ),
+        );
+      });
+      expect(
+        [for (final e in ends) (e.duration, e.position)],
+        [(4.0, 3.9), (6.0, 2.0)],
+      );
+    });
   });
 
   test(
