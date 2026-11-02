@@ -8,52 +8,53 @@ The web, and libmpv-r20. See [MIGRATION.md](MIGRATION.md) for the few changes an
 
 ### Breaking
 - Flutter 3.41 is the minimum.
-- `Hook` has `prefetch`: an exhaustive switch over it needs the new case. On `libmpv-r20` the early open of the next entry runs `on_prefetch`, and `on_load` runs once per entry, when it starts.
+- `RubberbandEffect`, its eight `Rubberband*` enums and `AudioFilter.rubberband` are gone, as the LGPL libmpv of `libmpv-r20` leaves out Rubber Band. MIGRATION lists what replaces them.
+- `Hook` has `prefetch`: an exhaustive switch over it needs the new case. On `libmpv-r20`, `on_load` runs once per entry, and the early open of the next one runs `on_prefetch`.
 - The source resolver runs on `on_prefetch` for the next entry, while the current one plays. A URL it returns after the entry started or left the next place is dropped with a warning.
-- `setMediaSession` throws `StateError` when another Flutter engine of the process owns the OS media session. The session stays with the first engine that enabled it, on every platform, and the commands go to it.
-- The reconnect defaults of http entries are mpv's global `stream-lavf-o`. An app that sets its own `stream-lavf-o` replaces them.
+- `setMediaSession` throws `StateError` when another Flutter engine of the process owns the OS media session, which stays with the first engine that enabled it.
+- The reconnect defaults of http entries are mpv's global `stream-lavf-o`, which an app's own `stream-lavf-o` replaces.
 - A custom libmpv older than `libmpv-r20`, or built without one of its patches, plays with a warning on `internalLog` that names what it lacks.
 - The event isolate's own diagnostics go to `internalLog` instead of `stream.log` and `stream.error`.
-- `RubberbandEffect`, its eight `Rubberband*` enums and `AudioFilter.rubberband` are gone: the libmpv of `libmpv-r20` is LGPL, version 3 or later, and leaves out Rubber Band, which is GPL. `setPitch`, `setRate` with pitch correction, `AtempoEffect` and `AsetrateEffect` remain; with a GPL libmpv built by hand, `RawAudioEffect('lavfi-rubberband=...')` still runs it.
 
 ### Added
-- The web: players run libmpv in WebAssembly and play through the page's Web Audio output. The page must be cross-origin isolated; `MpvAudioKit.unsupportedReason` says what it lacks, and a player there fails at once with a `PlayerInitException` that names it ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
-- `MpvAudioKit.needsUserGesture` and `needsUserGestureStream` say whether the browser holds the sound until a user gesture, and `Player.play` resumes it from inside the gesture.
+- The web: players run libmpv in WebAssembly and play through Web Audio, on a cross-origin isolated page ([#26](https://github.com/ales-drnz/mpv_audio_kit/issues/26)).
+- `MpvAudioKit.unsupportedReason` says what a page lacks, and a player there fails at once with a `PlayerInitException`.
+- `MpvAudioKit.needsUserGesture` and `needsUserGestureStream` say whether the browser holds the sound until a user gesture, and `Player.play` resumes it from inside one.
 - `Media.fromBlob` plays a file the user picks or drops in the browser.
 - The OS media session on the web, through `navigator.mediaSession`.
-- `Media.waveformDurationHint` gives the length of an HTTP stream that cannot seek and tells none, such as a music server's transcode: its waveform decodes from mpv's cache, reads as `decoding` and turns final before playback ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
-- `MpvAudioKit.ensureInitialized` registers the license texts of the bundled libmpv with Flutter's `LicenseRegistry`, so `showLicensePage` and `AboutDialog` list them (`libmpv`, `mpv`, `FFmpeg`, `OpenSSL` and the other components). `scripts/update_libmpv.sh` takes them from the release's `licenses.zip`, and puts those of the web module in `web/THIRD_PARTY_LICENSES.txt`.
-- `endFile` carries the media, position and duration of the entry that ended, and whether a read error cut it short (`readError`, and `skippedSegments` for HLS and DASH). `PlayerState` has the same two fields for the entry parked at the end.
+- `Media.waveformDurationHint` gives the length of an HTTP stream that cannot seek and tells none, so its waveform decodes from mpv's cache ([#29](https://github.com/ales-drnz/mpv_audio_kit/issues/29)).
+- `MpvAudioKit.ensureInitialized` registers the license texts of the bundled libmpv, so `showLicensePage` and `AboutDialog` list them. On the web they are also in `web/THIRD_PARTY_LICENSES.txt`.
+- `endFile` carries the media, position and duration of the entry that ended, and whether a read error cut it short (`readError`, `skippedSegments`). `PlayerState` has the same two fields for the parked entry.
 
 ### Fixed
 - An http entry recovers from a dropped connection, a failed open or an HLS segment that does not open, instead of ending early without an error.
 - A seek after a read error tries the read again.
 - `playing` comes back at the next file of a gapless advance, so `playbackState`, the spectrum, the taps and the media session no longer stay idle.
-- A seek or `play()` at the end that parks again before the player saw it move raises `completed` again, so `playWhenReady` goes back off and `readError` changes with an edge.
-- `play()` and `jump()` at the end whose move lands on the end again (an entry with no audio, a seek past a cut that fails again) no longer leave `playWhenReady` true over a silent park.
-- Each park at the end spends the play intent once: a loop turned off again at the same park, or a read of a park that `play()`, `jump()` or a load is leaving, no longer turns `playWhenReady` off, and a park reached while a load runs keeps the intent of the load.
-- When a short entry plays out and parks between two position updates, `state.position` no longer goes back to its start.
+- A seek or `play()` at the end that parks again at once raises `completed` again, so `playWhenReady` goes back off.
+- `play()` and `jump()` at the end that land on the end again no longer leave `playWhenReady` true over a silent park.
+- Each park at the end spends the play intent once, so a loop turned off at the park, or a load that leaves it, no longer turns `playWhenReady` off.
+- When a short entry plays out between two position updates, `state.position` no longer goes back to its start.
 - The effects chain keeps the values set live through a seek, a loop, a track switch and the next file.
 - The source resolver gets the `Media` of the entry that loads, also when two entries share a URL.
-- A player with no file loaded no longer shows another player's waveform or loudness scan, as a fresh player did with the result of one disposed just before.
+- A new player no longer shows the waveform or the loudness scan of one disposed just before.
 - The Hot Restart cleanup closes the old players off the main isolate, and the first new player waits for it.
-- Covers reach the media session plugins as bytes only: `file://` is read in Dart on every platform, and Apple downloads covers with the same retries and 20 MB limit as the others.
-- Android: `content://` and `android.resource://` covers show again, read on a queue of their own and checked as images.
+- Covers reach the media session plugins as bytes: `file://` is read in Dart, and Apple downloads covers with the same retries and 20 MB limit as the other platforms.
+- Android: `content://` and `android.resource://` covers show again, and are checked as images.
 - Android: the media service stays in the foreground through a call, so playback resumes when it ends.
 - Windows: a second engine gets its own media session channel, and a media key after the first engine is destroyed no longer uses freed memory.
 - Linux: one MPRIS server per process, owned by the first engine, and `xesam:url` is a file URI for a local item.
 
 ### Build
-- A refused `http://` or `smb2://` connection fails at once on Windows instead of after the network timeout.
-- The end of a file with gapless audio plays to its last sample when the output ran dry in its final buffer (ALSA, PulseAudio, the web), instead of parking with up to 0.4 s unplayed.
-- iOS and macOS share one Swift package in `darwin`.
 - Updated libmpv to `libmpv-r20` across all platforms, with the web module shipped as web assets of the package.
-- The bundled libmpv is LGPL, version 3 or later, instead of GPL: built without Rubber Band, and with its license texts in the release's `licenses.zip`.
+- The bundled libmpv is LGPL, version 3 or later, instead of GPL, and its release has the license texts in `licenses.zip`.
+- The end of a gapless file plays to its last sample when the output ran dry in its last buffer, instead of parking up to 0.4 s early.
+- iOS and macOS share one Swift package in `darwin`.
+- Windows: a refused `http://` or `smb2://` connection fails at once instead of after the network timeout.
 
 ### Docs
-- The README describes the web, how to serve the page cross-origin isolated (GitHub Pages included) and links a live demo, mpv_studio in the browser. MIGRATION covers 0.6.0.
+- The README describes the web and how to serve a cross-origin isolated page, and links a live demo of mpv_studio. MIGRATION covers 0.6.0.
 - The README has a Licenses section: what an app that ships the bundled libmpv must do, and the GPL route for Rubber Band.
-- The header of the generated `audio_effects.dart` and `audio_effects_settings.dart` says that the filter and option descriptions in their documentation comments are FFmpeg's text, under FFmpeg's licenses (the LGPL, version 2.1 or later, for most of it); the README no longer says that all the code of the package is BSD-3-Clause.
+- The headers of the generated effects files say that the filter descriptions in their comments are FFmpeg's text, under FFmpeg's licenses.
 
 ## [0.5.3] - 22-10-2026
 
