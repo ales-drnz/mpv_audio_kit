@@ -280,13 +280,15 @@ void _flushGroup(_Send send, _PropertyCache cache) {
 /// Reads again every property mpv reported unavailable after it had a
 /// value, and forwards those that are back. Runs at the points where a
 /// new file's values settle (file loaded, audio reconfigured, playback
-/// restarted), since mpv may not send them itself.
-Future<void> _rereadUnavailable(
+/// restarted), since mpv may not send them itself. Returns the doubles
+/// read, for [_noteForStarted].
+Future<Map<String, double?>> _rereadUnavailable(
   CoreReader reader,
   _Send send,
   _PropertyCache cache,
 ) async {
-  if (cache.unavailable.isEmpty) return;
+  final doubles = <String, double?>{};
+  if (cache.unavailable.isEmpty) return doubles;
   for (final name in cache.unavailable.toList(growable: false)) {
     final format = cache.formats[name];
     if (format == null) continue;
@@ -305,10 +307,37 @@ Future<void> _rereadUnavailable(
       };
       final value = await read;
       if (name == 'time-pos') cache.timePosRead = true;
+      if (value is double) doubles[name] = value;
       if (value != null) _forwardValue(send, name, format, value, cache);
     } catch (e) {
       send(MpvEventInternalLog('warn', 're-reading $name failed: $e'));
     }
+  }
+  return doubles;
+}
+
+/// Keeps the [values] the pump read (by property name, `null` for a read
+/// that gave none) for the END_FILE of the started entry
+/// ([_PropertyCache.started]), when the entry mpv plays is still that one.
+/// mpv sends property changes only once its event queue is empty, so an
+/// entry that loads and ends within one burst of events (the null output
+/// untimed, a file of a few milliseconds) gets none, and these reads are
+/// all the player has of it. The pump reads after mpv, though: such an
+/// entry may be gone already, and the read gave the next entry's value.
+Future<void> _noteForStarted(
+  CoreReader reader,
+  _PropertyCache cache,
+  Map<String, double?> values,
+) async {
+  final started = cache.started;
+  if (started == null || values.values.every((v) => v == null)) return;
+  final pos = await reader.int64('playlist-playing-pos');
+  if (pos == null || pos < 0) return;
+  // mpv plays its entries forward: still on this one after the reads, it
+  // was on it during them.
+  if (await reader.int64('playlist/$pos/id') != started.id) return;
+  for (final MapEntry(:key, :value) in values.entries) {
+    if (value != null) started.note(key, value);
   }
 }
 

@@ -118,11 +118,13 @@ class MpvEventEndFile extends MpvIsolateEvent {
   /// error reasons, `false` for the others.
   final bool lastEntry;
 
-  /// The last `time-pos` mpv reported for the entry, in seconds, or the
-  /// park position read for it; `null` when none came.
+  /// The position of the entry when it ended, in seconds: from the event
+  /// (libmpv-r21, patch read_error), else the last `time-pos` mpv reported
+  /// for it or the event pump read; `null` when none came.
   final double? position;
 
-  /// The last `duration` mpv reported for the entry, in seconds; `null`
+  /// The duration of the entry when it ended, in seconds: from the event,
+  /// else the last `duration` mpv reported or the event pump read; `null`
   /// when none came.
   final double? duration;
 

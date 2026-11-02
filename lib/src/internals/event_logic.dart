@@ -68,11 +68,15 @@ abstract interface class CoreReader {
 @internal
 final class EventLogic {
   /// The logic of a core that [reader] reads and whose events go to
-  /// [send].
-  EventLogic(this._reader, this._send);
+  /// [send]. [endFileCarriesEntry] says that the END_FILE of the libmpv
+  /// carries the duration and position of the entry (libmpv-r21): the
+  /// pump then reads neither for it.
+  EventLogic(this._reader, this._send, {bool endFileCarriesEntry = false})
+    : _endFileCarriesEntry = endFileCarriesEntry;
 
   final CoreReader _reader;
   final _Send _send;
+  final bool _endFileCarriesEntry;
   final _PropertyCache _cache = _PropertyCache();
 
   /// Registers the observe format of [name], which [property] changes and
@@ -132,7 +136,10 @@ final class EventLogic {
   /// from the event itself; the values it left unavailable are read again.
   /// Returns the future of the reads; the pump waits for it before the
   /// next event.
-  Future<void> audioReconfig() => _rereadUnavailable(_reader, _send, _cache);
+  Future<void> audioReconfig() async {
+    final reread = await _rereadUnavailable(_reader, _send, _cache);
+    await _noteForEndFile(reread);
+  }
 
   /// Any other event, as the transport decoded it: the bare
   /// [MpvEventFileLoaded], [MpvEventPlaybackRestart] and [MpvEventEndFile]
@@ -179,7 +186,18 @@ final class EventLogic {
     }
     // The values mpv has not notified again go first, so the player has
     // them when FILE_LOADED ends the loading state.
-    await _rereadUnavailable(_reader, _send, _cache);
+    final reread = await _rereadUnavailable(_reader, _send, _cache);
+    // The duration for the END_FILE of the entry, when the event does not
+    // carry it: an entry that loads and ends within one burst of events
+    // gets no change of it from mpv.
+    if (!_endFileCarriesEntry) {
+      final duration = await _reader.float('duration');
+      await _noteForEndFile({
+        'time-pos': loaded.timePos,
+        ...reread,
+        'duration': duration,
+      });
+    }
     _send(loaded);
     // A short entry can reach EOF before this event is handled: its
     // `eof-reached` change may already be spent (re-read above, or skipped
@@ -193,8 +211,9 @@ final class EventLogic {
   }
 
   /// The END_FILE the transport decoded as [ended], with what mpv reported
-  /// of its entry. mpv has unloaded the file by now: that comes from the
-  /// START_FILE that named it ([_PropertyCache.started]).
+  /// of its entry. mpv has unloaded the file by now: the position and
+  /// duration come from the event when a libmpv-r21 carries them, else from
+  /// the START_FILE that named it ([_PropertyCache.started]).
   MpvEventEndFile _endFileEvent(
     MpvEventEndFile ended, {
     required bool lastEntry,
@@ -206,11 +225,18 @@ final class EventLogic {
       ended.reason,
       ended.error,
       lastEntry: lastEntry,
-      position: entry?.position,
-      duration: entry?.duration,
+      position: ended.position ?? entry?.position,
+      duration: ended.duration ?? entry?.duration,
       readError: ended.readError,
       skippedSegments: ended.skippedSegments,
     );
+  }
+
+  /// Keeps the [values] the pump read for the END_FILE of the started
+  /// entry, with a libmpv whose END_FILE does not carry them.
+  Future<void> _noteForEndFile(Map<String, double?> values) async {
+    if (_endFileCarriesEntry) return;
+    await _noteForStarted(_reader, _cache, values);
   }
 
   // The landing position rides the event payload (read here, where waiting
@@ -224,10 +250,10 @@ final class EventLogic {
     _flushGroup(_send, _cache);
     // Ahead of the event, so a listener of the restart sees `playing`.
     await _forwardCoreIdle(_reader, _send, _cache);
-    _send(
-      MpvEventPlaybackRestart(timePos: await _readTimePos(_reader, _cache)),
-    );
-    await _rereadUnavailable(_reader, _send, _cache);
+    final timePos = await _readTimePos(_reader, _cache);
+    _send(MpvEventPlaybackRestart(timePos: timePos));
+    final reread = await _rereadUnavailable(_reader, _send, _cache);
+    await _noteForEndFile({'time-pos': timePos, ...reread});
     await _sendEndOfContent(_reader, _send, _cache);
   }
 
