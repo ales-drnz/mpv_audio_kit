@@ -342,16 +342,15 @@ _COPYRIGHT_FFMPEG_TEXT = _COPYRIGHT + (
 def _emit_test_filter_names(sorted_names: list[str]) -> str:
     """Test-side mirror of every typed audio filter name. Imported by
     runtime tests that exercise the bundled libmpv binary's filter
-    registry without consuming the public AudioEffects API."""
+    registry without consuming the public effect classes."""
     body = [_COPYRIGHT, ""]
     body.append("library;")
     body.append("")
     body.append(
-        f"/// Names of every typed {_NAMING.noun} filter the public "
-        f"`{_NAMING.bundle_name}`"
+        f"/// Names of every typed {_NAMING.noun} filter of the public API, in"
     )
-    body.append("/// bundle exposes, in declaration order. Kept in `test/` because")
-    body.append("/// no production code consumes the list.")
+    body.append("/// alphabetical order. Kept in `test/` because no production code")
+    body.append("/// consumes the list.")
     body.append(f"const List<String> {_NAMING.test_names_const} = [")
     for name in sorted_names:
         body.append(f"  '{name}',")
@@ -361,7 +360,7 @@ def _emit_test_filter_names(sorted_names: list[str]) -> str:
 
 def _emit_audio_effect_enum(sorted_names: list[str]) -> str:
     """Singular `AudioEffect` enum — one value per typed audio filter.
-    Identifies a slot in the [AudioEffects] bundle for APIs that pick a
+    Identifies one typed effect class for APIs that pick a
     single filter (e.g. `PlayerStream.tap`). Enum value name == mpv
     filter type name, exposed verbatim through [filterName]. Appended
     to the multi-enum `audio_effects.dart` file alongside the AVOption

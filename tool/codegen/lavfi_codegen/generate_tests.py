@@ -4,8 +4,9 @@ tests under `test/generated/` (paths from `[output]` in the consumer TOML).
 The main one, `audio_effects_coverage_test.dart`, is an exhaustive,
 schema-driven check that every parameter of every filter shows up in
 `toFilterString()`, and every enum member round-trips through
-`mpvValue` / `fromMpv`; beside it go the filter-name manifest, the
-param corners, the runtime init coverage and the `af-command` probes.
+`mpvValue` / `fromMpv`; beside it go the param corners, the runtime
+init coverage and the `af-command` probes. The filter-name manifest
+comes from the generate stage (generate.py).
 
 Usage (from tool/codegen; tool/codegen/regen.sh does it):
     python3 -m lavfi_codegen --config mpv_audio_kit.toml tests
@@ -296,7 +297,8 @@ def _sentinel_bool(p: dict) -> tuple[str, str]:
 
 def _sentinel_duration(p: dict) -> tuple[str, str]:
     """Duration is microseconds in the C struct. The Dart wire format
-    emits seconds with 3 decimals (`(d.inMicroseconds/1e6).toStringAsFixed(3)`)."""
+    emits seconds through `_wireDuration`: 3 decimals when exact, which
+    holds for the whole-second sentinel here."""
     default = _try_int(p.get("default")) or 0
     sentinel_us = default + 1_000_000  # +1 second; differ from default
     seconds = sentinel_us / 1e6
