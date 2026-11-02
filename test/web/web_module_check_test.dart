@@ -3,9 +3,9 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// The web module is checked before any other call into it: the r20 module
-// of test/web/module passes and keeps the read error fields of END_FILE at
-// 28 and 32, and a module of another ABI, or one older than the ABI, is
+// The web module is checked before any other call into it: the r21 module
+// of test/web/module passes and keeps the four fields of END_FILE at 28,
+// 32, 40 and 48, and a module of another ABI, or one older than the ABI, is
 // refused with a message that names it (flutter test --platform chrome
 // --wasm).
 
@@ -31,22 +31,24 @@ JSObject _fakeModule({int? abi}) {
 }
 
 void main() {
-  test(
-    'the r20 module loads, with the read error fields of END_FILE',
-    () async {
-      final module = await loadTestModule();
-      expect(module.endFile, (readError: 28, skippedSegments: 32));
-    },
-  );
+  test('the r21 module loads, with the four fields of END_FILE', () async {
+    final module = await loadTestModule();
+    expect(module.endFile, (
+      readError: 28,
+      skippedSegments: 32,
+      duration: 40,
+      position: 48,
+    ));
+  });
 
   test('a module of another ABI is refused before any other call', () {
     expect(
-      () => MpvModule(_fakeModule(abi: 2)),
+      () => MpvModule(_fakeModule(abi: 1)),
       throwsA(
         isA<StateError>().having(
           (e) => e.message,
           'message',
-          allOf(contains('has ABI 2'), contains('needs ABI 1')),
+          allOf(contains('has ABI 1'), contains('needs ABI 2')),
         ),
       ),
     );

@@ -10,7 +10,7 @@
 
 /// The libmpv release whose license texts [libmpvLicenses] holds, or `''`
 /// when it holds none.
-const String libmpvLicensesRelease = 'r20';
+const String libmpvLicensesRelease = 'r21';
 
 /// The license texts of the libmpv the package ships, from the
 /// `licenses.zip` of [libmpvLicensesRelease], each text once across the
@@ -47,7 +47,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -93,7 +93,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -139,7 +139,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -183,7 +183,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -228,7 +228,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -274,7 +274,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -318,7 +318,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -358,7 +358,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  musl           musl libc of Emscripten of the toolchain: COPYRIGHT\n"
         "  llvm-runtimes  LLVM libc++, libc++abi, libunwind and compiler-rt of the toolchain: libcxx/LICENSE.TXT, libcxxabi/LICENSE.TXT, libunwind/LICENSE.TXT, compiler-rt/LICENSE.TXT\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -400,7 +400,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
@@ -447,7 +447,7 @@ const List<(List<String>, String)> libmpvLicenses = [
         "  libsmb2        libsmb2: COPYING, LICENCE-LGPL-2.1.txt\n"
         "  mozilla-ca     the Mozilla CA bundle (MPL-2.0)\n"
         "\n"
-        "Source: https://github.com/ales-drnz/libmpv-scripts at commit b59fd27fa3e9ff0a95126116ddcb72daf1e7214c\n"
+        "Source: https://github.com/ales-drnz/libmpv-scripts at commit 787e7af07469d2878b026ee8b6cbf48d4a383dec\n"
         "builds this library from the upstream sources below, pinned by SHA-256 (tarballs)\n"
         "or commit (git tags) in scripts/shared/_sources.sha256, with the patches under\n"
         "patches/ of that commit:\n"
