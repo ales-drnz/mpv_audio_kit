@@ -19,6 +19,8 @@ library;
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
+
 import 'package:mpv_audio_kit/src/internals/orphan_handle_tracker.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
 import 'package:test/test.dart';
@@ -113,6 +115,62 @@ void main() {
     old.endForTesting();
 
     OrphanHandleTracker.forTesting(env).forget(h1);
+    expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
+  });
+
+  // 0.6.1 published a buffer of 256 slots and nothing after them under
+  // the old name. A Hot Restart onto this version in the same process
+  // finds it: the owner word would be 8 bytes past its end.
+  test('a buffer of 0.6.1 is reaped without a word past its end', () {
+    const legacyName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER';
+    const cookie = 0x4D414B5F4D5056AB;
+    const words = 512;
+    const canary = 0x5AFE5AFE5AFE;
+    // One word more than 0.6.1 allocated, to see a write past the end.
+    final legacy = calloc<Int64>(words + 1);
+    addTearDown(() => calloc.free(legacy));
+    final view = legacy.asTypedList(words + 1);
+    view[0] = cookie;
+    view[1] = h1.address;
+    view[510] = cookie;
+    view[511] = h3.address;
+    view[words] = canary;
+    final env = _FakeEnvironment()
+      ..values[legacyName] = '$pid:${legacy.address}';
+
+    final tracker = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(tracker), [h1.address, h3.address]);
+    expect(tracker.restarted, isTrue);
+    expect(view[words], canary, reason: 'nothing is written past the end');
+    expect(view.sublist(0, words), everyElement(0));
+    // The buffer of this version is a new one, under a name 0.6.1 never
+    // reads: a Hot Restart back to 0.6.1 finds its own buffer, empty.
+    expect(_name, isNot(legacyName));
+    expect(env.values[legacyName], '$pid:${legacy.address}');
+    final value = env.values[_name];
+    expect(value, matches(RegExp('^$pid:[1-9][0-9]*\$')));
+    expect(value, isNot('$pid:${legacy.address}'));
+  });
+
+  test('a buffer of 0.6.1 is read only once', () async {
+    const legacyName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER';
+    const cookie = 0x4D414B5F4D5056AB;
+    final legacy = calloc<Int64>(512);
+    addTearDown(() => calloc.free(legacy));
+    legacy.asTypedList(512)
+      ..[0] = cookie
+      ..[1] = h1.address;
+    final env = _FakeEnvironment()
+      ..values[legacyName] = '$pid:${legacy.address}';
+    final old = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(old), [h1.address]);
+    old.add(h2);
+    await Future<void>.delayed(Duration.zero);
+    old.endForTesting();
+    // Once this version published its buffer, the old one is not read.
+    legacy.asTypedList(512)
+      ..[0] = cookie
+      ..[1] = h3.address;
     expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
   });
 

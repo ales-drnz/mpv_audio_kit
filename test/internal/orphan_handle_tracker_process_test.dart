@@ -72,7 +72,11 @@ void main() {
       await runDartProbe(
         _probe,
         tempDir: tmp,
-        environment: {'MPV_AUDIO_KIT_ORPHAN_BUFFER': '$pid:4096'},
+        // The name of this version and the one of 0.6.1.
+        environment: {
+          'MPV_AUDIO_KIT_ORPHAN_BUFFER_2': '$pid:4096',
+          'MPV_AUDIO_KIT_ORPHAN_BUFFER': '$pid:4096',
+        },
       ),
     );
     expect(report['first'], {'restarted': false, 'orphans': <int>[]});

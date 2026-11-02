@@ -68,8 +68,17 @@ class OrphanHandleTracker {
 
   /// The process environment variable that holds `<pid>:<address>` of
   /// the buffer.
+  ///
+  /// Not the name 0.6.1 used, [_kLegacyEnvName]: its buffer ends with the
+  /// slots, and the owner word would be past its end.
   @visibleForTesting
-  static const String envName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER';
+  static const String envName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER_2';
+
+  /// The name of the buffer 0.6.1 published: the slots only. A Hot
+  /// Restart onto this version in the same process reaps it, once, and
+  /// never writes it past the slots. Never written: a Hot Restart back to
+  /// 0.6.1 finds its own buffer, empty.
+  static const String _kLegacyEnvName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER';
 
   /// The process-wide singleton. One tracker shares the per-process leak
   /// buffer across every [Player] created in this Dart VM.
@@ -125,7 +134,17 @@ class OrphanHandleTracker {
     try {
       final previous = _publishedBuffer();
       final Pointer<Int64> buffer;
+      final orphans = <Pointer<MpvHandle>>[];
       if (previous == null) {
+        // The VM a Hot Restart replaced may be 0.6.1. Its buffer has no
+        // owner word: it is reaped, and this VM publishes its own. The VM
+        // it came from is gone: the version of a running VM does not
+        // change.
+        final legacy = _publishedBuffer(_kLegacyEnvName);
+        if (legacy != null) {
+          _reap(legacy, orphans);
+          _restarted = true;
+        }
         // Intentionally never freed: the buffer must outlive the Dart VM
         // so the next Hot-Restart can rehydrate orphan addresses from it.
         // The OS reclaims the allocation when the host process eventually
@@ -150,22 +169,7 @@ class OrphanHandleTracker {
         _restarted = true;
       }
 
-      final orphans = <Pointer<MpvHandle>>[];
-      for (int i = 0; i < _kBufferSize; i++) {
-        final cookieRef = buffer + (i * _kSlotStride);
-        final addrRef = buffer + (i * _kSlotStride + 1);
-        final cookieVal = cookieRef.value;
-        final refAddr = addrRef.value;
-        // Skip slots that lack the magic cookie: either empty (cookie=0)
-        // or filled by something other than us. This is the load-bearing
-        // safety check against handing libmpv a dangling pointer.
-        if (cookieVal != _kCookie) continue;
-        if (refAddr != 0) {
-          orphans.add(Pointer.fromAddress(refAddr));
-          cookieRef.value = 0;
-          addrRef.value = 0;
-        }
-      }
+      _reap(buffer, orphans);
 
       if (orphans.isNotEmpty) {
         onOrphanFound(orphans);
@@ -175,6 +179,26 @@ class OrphanHandleTracker {
     } finally {
       if (!_completer.isCompleted) {
         _completer.complete();
+      }
+    }
+  }
+
+  /// Moves the handles of the slots of [buffer] to [orphans] and clears
+  /// those slots. Reads the slots only, which 0.6.1 laid out the same.
+  static void _reap(Pointer<Int64> buffer, List<Pointer<MpvHandle>> orphans) {
+    for (int i = 0; i < _kBufferSize; i++) {
+      final cookieRef = buffer + (i * _kSlotStride);
+      final addrRef = buffer + (i * _kSlotStride + 1);
+      final cookieVal = cookieRef.value;
+      final refAddr = addrRef.value;
+      // Skip slots that lack the magic cookie: either empty (cookie=0)
+      // or filled by something other than us. This is the load-bearing
+      // safety check against handing libmpv a dangling pointer.
+      if (cookieVal != _kCookie) continue;
+      if (refAddr != 0) {
+        orphans.add(Pointer.fromAddress(refAddr));
+        cookieRef.value = 0;
+        addrRef.value = 0;
       }
     }
   }
@@ -211,11 +235,12 @@ class OrphanHandleTracker {
   static bool _ownerAlive(int port) =>
       port != 0 && _postCObject(port, _nullMessage) != 0;
 
-  /// The buffer an earlier VM of this process published, or `null` when
-  /// there is none. A value with another pid came from the parent of
-  /// this process, which a child inherits: its address is not ours.
-  Pointer<Int64>? _publishedBuffer() {
-    final value = _env.get(envName);
+  /// The buffer an earlier VM of this process published under [name], or
+  /// `null` when there is none. A value with another pid came from the
+  /// parent of this process, which a child inherits: its address is not
+  /// ours.
+  Pointer<Int64>? _publishedBuffer([String name = envName]) {
+    final value = _env.get(name);
     if (value == null) return null;
     final sep = value.indexOf(':');
     if (sep < 0) return null;
