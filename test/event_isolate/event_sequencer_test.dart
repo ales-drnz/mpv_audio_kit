@@ -72,24 +72,70 @@ void main() {
         },
       );
       sequencer.pump();
-      expect(log, ['take a', 'flush', 'idle']);
+      expect(log, ['take a', 'idle']);
       expect(sequencer.stepping, isTrue);
       events.add('b');
       sequencer.pump();
-      expect(log, ['take a', 'flush', 'idle'], reason: 'b waits for the reads');
+      expect(log, ['take a', 'idle'], reason: 'b waits for the reads');
       due.complete();
       await pumpEventQueue();
-      expect(log, [
-        'take a',
-        'flush',
-        'idle',
-        'flush',
-        'take b',
-        'flush',
-        'idle',
-      ]);
+      expect(log, ['take a', 'idle', 'idle', 'take b', 'idle', 'idle']);
     },
   );
+
+  // kit-web-6: the native pump runs idle after every event, so a read of
+  // the end of content that is due comes before the next event, not once
+  // the queue is empty.
+  test('idle runs after every event, as natively', () {
+    final log = <String>[];
+    final events = Queue<String>()..addAll(['a', 'b', 'c']);
+    final sequencer = EventSequencer(
+      take: () {
+        if (events.isEmpty) return (false, null, false);
+        log.add('take ${events.removeFirst()}');
+        return (true, null, false);
+      },
+      flushTrailing: () => log.add('flush'),
+      waitSeconds: () => null,
+      onError: (e, _) => log.add('error $e'),
+      idle: () {
+        log.add('idle');
+        return null;
+      },
+    );
+    sequencer.pump();
+    expect(log, ['take a', 'idle', 'take b', 'idle', 'take c', 'idle', 'idle']);
+  });
+
+  test('the reads idle starts after an event come before the next '
+      'event', () async {
+    final log = <String>[];
+    final due = Completer<void>();
+    final events = Queue<String>()..addAll(['a', 'b']);
+    Future<void>? idleReads = due.future;
+    final sequencer = EventSequencer(
+      take: () {
+        if (events.isEmpty) return (false, null, false);
+        log.add('take ${events.removeFirst()}');
+        return (true, null, false);
+      },
+      flushTrailing: () => log.add('flush'),
+      waitSeconds: () => null,
+      onError: (e, _) => log.add('error $e'),
+      idle: () {
+        log.add('idle');
+        final reads = idleReads;
+        idleReads = null;
+        return reads;
+      },
+    );
+    sequencer.pump();
+    expect(log, ['take a', 'idle']);
+    expect(sequencer.stepping, isTrue);
+    due.complete();
+    await pumpEventQueue();
+    expect(log, ['take a', 'idle', 'idle', 'take b', 'idle', 'idle']);
+  });
 
   test('takes nothing while the reads of an event are in flight', () async {
     final reads = Completer<void>();
