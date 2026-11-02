@@ -6,18 +6,20 @@ Show the player in the system media controls and apply the commands they send ba
 | Android | Media notification |
 | Windows | SMTC |
 | Linux | MPRIS |
-| Web | `navigator.mediaSession` (see the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic) |
+| Web | `navigator.mediaSession` |
+
+See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic for the web session.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/media_session_flow.png" width="100%" alt="The media session on each platform and the commands it sends back">
 
-## Enabling it
+## Session
 
 ```dart
-await player.setMediaSession(const MediaSession()); // title, artist, album, cover from the file
+await player.setMediaSession(const MediaSession()); // title, artist, album and cover from the file
 await player.setMediaSession(null);                 // remove
 ```
 
-One `Player` per process owns the session, and it must live in the root isolate. A second player throws `StateError`, also from another Flutter engine of the process. The owner keeps the session until it passes `null` or is disposed.
+One `Player` per process owns the session, and it must live in the root isolate. A second player throws `StateError`, even from another Flutter engine in the same process. The owner keeps the session until it passes `null` or is disposed.
 
 ## Metadata
 
@@ -28,7 +30,7 @@ await player.setMediaSession(
 );
 ```
 
-`null` keeps the file's value, and an empty string leaves the field blank. For a file without tags, each field falls back to `title`, `artist`, `album` and `art` in `Media.extras`. With no title anywhere, the session shows the title mpv takes from the URL.
+`null` keeps the file's value, and an empty string leaves the field blank. For a file without tags, each field falls back to `title`, `artist`, `album` and `art` in `Media.extras`. With no title anywhere, the session shows the title libmpv takes from the URL.
 
 ## Artwork
 
@@ -61,7 +63,7 @@ player.stream.mediaSessionCommands.listen((command) {
     case MediaSessionCommandSeekTo(:final position):
       print('Scrubbed to $position');
     case MediaSessionCommandNext():
-      myQueue.next(); // a one-entry playlist only emits next here
+      myQueue.next(); // with one entry, next is only emitted
     case _:
       break;
   }
@@ -83,19 +85,21 @@ const MediaSession(
 );
 ```
 
-The intervals and `supportedPlaybackRates` apply only with their action in the set. With `autoApplyPlaylistNavigation: false`, map next and previous to a 30 s skip in an audiobook, for example.
+The intervals and `supportedPlaybackRates` apply only with their action in the set. In an audiobook app, for example, map next and previous to a 30 s skip.
 
-A platform leaves out the actions it does not draw. A lock screen usually shows 3 or 4.
+A platform leaves out the actions it does not draw. A lock screen shows 3 or 4.
+
+What each system draws varies by OS version. The table shows what the package registers.
 
 | Action | iOS | macOS | Android | Windows | Linux |
 | :--- | :--: | :--: | :--: | :--: | :--: |
 | play, pause, next, previous | Yes | Yes | Yes | Yes | Yes |
-| `seek` | Yes | Yes | Yes | Yes | KDE |
+| `seek` | Yes | Yes | Yes | Yes | Yes |
 | `fastForward`, `rewind` | Yes | Yes | Yes | Yes | No |
-| `stop` | No | No | No | Yes | No |
-| `setRepeatMode`, `setShuffle` | No | No | Yes | No | KDE |
-| `setPlaybackRate` | No | No | No | No | KDE |
-| `like` | Yes | No | Yes | No | No |
+| `stop` | Yes | Yes | Yes | Yes | Yes |
+| `setRepeatMode`, `setShuffle` | Yes | Yes | Yes | Yes | Yes |
+| `setPlaybackRate` | Yes | Yes | Yes | Yes | Yes |
+| `like` | Yes | Yes | Yes | No | No |
 
 GNOME shows only previous, play-pause and next.
 
@@ -109,11 +113,11 @@ const MediaSession(interruptionPolicy: InterruptionPolicy.pauseOnly);      // ne
 const MediaSession(interruptionPolicy: InterruptionPolicy.keepPlaying);
 ```
 
-- With `keepPlaying`, an accepted call or Siri still takes the audio on iOS. Android 12 and later may fade the app out.
+- With `keepPlaying`, an accepted call or a voice assistant still takes the audio on iOS. Android 12 and later may fade the app out.
 - Unplugging headphones always pauses.
 - On iOS the audio does not mix with other apps. Loading a file stops another app's audio, even with `play: false`.
 
-Background playback needs the iOS and Android setup in the package README.
+Background playback needs the iOS and Android setup in [Permissions](https://pub.dev/packages/mpv_audio_kit#permissions).
 
 ## App name on the desktop
 

@@ -10,7 +10,7 @@ player.stream.metadata.listen((tags) {
 final album = player.state.metadata['album'];
 ```
 
-Keys keep the case of the file's tag format. ID3 and MP4 tags use lowercase keys (`title`). Vorbis comments in FLAC, Ogg and Opus use uppercase keys (`TITLE`). Look them up without case:
+Keys keep the case the file stores them in, so look them up without case:
 
 ```dart
 String? tag(Map<String, String> tags, String key) => tags.entries
@@ -25,7 +25,7 @@ Common keys are `title`, `artist`, `album`, `album_artist`, `date`, `track`, `di
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/cover_art_flow.png" width="100%" alt="Cover art flow: an embedded picture reaches stream.coverArt, an image in the folder appears only in state.tracks">
 
-`coverArt` carries the picture embedded in the file, as its original bytes.
+`coverArt` carries the picture embedded in the file.
 
 ```dart
 StreamBuilder<CoverArt?>(
@@ -46,7 +46,7 @@ if (art != null) {
 
 `bytes` holds the image as stored, without re-encoding. `mimeType` and `extension` give its type, and `extension` is empty for an unknown type.
 
-The stream emits on every file load, before playback starts. It emits `null` for a file without a picture, so the UI clears the previous cover. It also emits `null` when `open`, `openAll` or `openPlaylistFile` return, so a new cover always follows a `null`.
+The stream emits on every file load, a reload of the same file included. It emits `null` for a file without a picture, so the UI clears the previous cover. It also emits `null` when `open`, `openAll` or `openPlaylistFile` return, so a new cover always follows a `null`.
 
 ### Images in the folder
 

@@ -13,7 +13,7 @@ await player.setAudioDriver('auto');      // the default
 
 On Android `auto` picks `audiotrack`, the right choice for most apps. `aaudio` needs Android 8 (API 26), and `opensles` plays stereo only.
 
-When no device opens, playback goes on silently on the `null` output. `state.currentAo` then reads `'null'`, and `stream.error` gets a `LogError` (see the [Errors and logs](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Errors%20and%20logs-topic.html) topic).
+When no device opens, playback goes on silently on the `null` output. See the [Errors and logs](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Errors%20and%20logs-topic.html) topic.
 
 ## Device
 
@@ -26,7 +26,7 @@ await player.setAudioDevice(player.state.audioDevices.first);
 await player.setAudioDevice(Device.auto); // back to the system default
 ```
 
-`name` is the device id, and `description` is the label to show. On Android the list holds one entry per driver, such as `Default (audiotrack)`. The system routes the sound to the speaker, headphones or Bluetooth itself.
+`name` is the device id, and `description` is the label to show. On Android the list holds one device per driver, such as `Default (audiotrack)`. The system routes the sound to the speaker, headphones or Bluetooth itself.
 
 ### Exclusive mode
 
@@ -46,7 +46,7 @@ await player.setAudioExclusive(false); // back to shared mode
 With WASAPI and CoreAudio the player keeps the device while paused and at the end of the queue. Call `stop()`, `setAudioExclusive(false)` or `dispose()` to give it back. In exclusive mode `setSystemVolume` moves the device's own volume on Windows and does nothing on macOS.
 
 ```dart
-// Android: an exclusive low-latency stream
+// An exclusive low-latency stream on Android
 await player.setAudioDriver('aaudio');
 await player.setRawProperty('aaudio-performance-mode', 'low-latency');
 await player.setAudioExclusive(true);
@@ -63,7 +63,7 @@ await player.setAudioChannels(Channels.stereo);    // also fiveOne, sevenOne, au
 await player.setAudioChannels(const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'));
 ```
 
-`Channels.auto` keeps the source layout when the device accepts it. `Channels.autoSafe` uses the system's preferred layout, or stereo. The API reference lists every format and layout.
+`Channels.auto` keeps the source layout when the device accepts it. `Channels.autoSafe` allows a multichannel layout only when the device reports it. The API reference lists every format and layout.
 
 To downmix without clipping, create the player with `PlayerConfiguration(normalizeDownmix: true)`.
 
@@ -111,7 +111,7 @@ await player.addAudioTrack(Media('commentary.mka'), title: 'Commentary');
 await player.removeAudioTrack(const Track.id(3));
 ```
 
-`stream.currentAudioTrack` follows the selected track. `image` and `albumArt` let a track picker skip pictures. `rescanExternalFiles()` looks again for files next to the current one, within the auto-load options (see the [Metadata](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Metadata-topic.html) topic for covers).
+`stream.currentAudioTrack` follows the selected track. `image` and `albumArt` let a track picker skip pictures. `rescanExternalFiles()` looks again for files next to the current one, within the auto-load options. The [Metadata](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Metadata-topic.html) topic covers images in the folder.
 
 ## Other settings
 
@@ -124,9 +124,9 @@ await player.setAudioNullUntimed(true);        // the null output runs as fast a
 await player.reloadAudio();                    // close and reopen the output
 ```
 
-- The media role changes routing and per-role volume on PulseAudio and PipeWire. On Android it only tags the content as music.
+- The media role changes routing and per-role volume on PulseAudio and PipeWire. On Android, `audiotrack` and `aaudio` from Android 9 only tag the content as music. Other drivers ignore it.
 - A smaller buffer lowers latency. A larger one copes better with load and Bluetooth.
-- Streaming silence avoids a click on resume. Avoid it on iOS: after an interruption such as a call, the device stays suspended and playback cannot continue.
+- Streaming silence avoids a click on resume. Avoid it on iOS. After an interruption such as a call, the device stays suspended and playback cannot continue.
 - The untimed null output processes audio on a machine with no sound device.
 
-In the browser there is one output, the page's (see the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic).
+In the browser the page has a single output. See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic.

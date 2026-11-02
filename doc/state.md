@@ -4,7 +4,7 @@ Read what the player is doing, and react when it changes.
 
 The player shows its state in two ways:
 
-- `player.state` is an immutable snapshot that you read at once.
+- `player.state` is an immutable snapshot that you read synchronously.
 - `player.stream` holds one stream per value, for `StreamBuilder` or `listen()`.
 
 ```dart
@@ -31,7 +31,7 @@ Event streams, such as `endFile`, `error` and `log`, deliver only what happens a
 
 A few values live on one side only. `playbackState`, `prefetchState`, `prefetchCacheDuration`, `waveform`, `loudnessScan` and the event streams have no field in `state`. `tlsCaFile`, `readError` and `skippedSegments` have no stream.
 
-### The current entry
+### Current entry
 
 ```dart
 final s = player.state;
@@ -77,7 +77,7 @@ A paused live stream is `paused`, not `idle`.
 
 `duration` is `Duration.zero` for a live stream and while it is unknown. `position` updates at most about 30 times a second.
 
-## The streams
+## Streams
 
 | Group | Some streams | What for |
 | :--- | :--- | :--- |
@@ -95,13 +95,15 @@ A paused live stream is `paused`, not `idle`.
 
 Most setters have a stream of the same name, so `setRate` changes `rate`. The API reference of `PlayerStream` and `PlayerState` lists every value with its docs.
 
-A field that can be `null` is `null` when libmpv cannot report it. `systemVolume` is `null` on an output without a system volume. `abLoopA` and `abLoopB` are `null` while that point is off, and they return to `null` when the file ends.
+A `null` field means the value is missing, and the field's docs say what that means. `systemVolume` is `null` on an output without a system volume, `abLoopCount` is `null` for an endless loop, and `readError` is `null` while `completed` is false.
+
+`abLoopA` and `abLoopB` are `null` while that point is off. They return to `null` when the file they were set on ends. A point set with no file loaded stays for every file.
 
 See the [Errors and logs](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Errors%20and%20logs-topic.html), [Visualizer and analysis](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Visualizer%20and%20analysis-topic.html) and [Media session](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Media%20session-topic.html) topics for the event streams.
 
 ## Prefetch
 
-With `setPrefetchPlaylist(true)`, the player opens the next entry in the background before the current one ends. `prefetchState` follows that work.
+With `setPrefetchPlaylist(true)`, the player opens the next entry in the background before the current one ends. `prefetchState` follows that work. See the [Playback](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html) topic to set up prefetch.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/mpv_prefetch_state.png" width="100%" alt="Prefetch timeline: the next entry goes through loading, ready and used, or stays failed">
 
@@ -109,8 +111,8 @@ With `setPrefetchPlaylist(true)`, the player opens the next entry in the backgro
 | :--- | :--- |
 | `idle` | No prefetch runs |
 | `loading` | The next entry opens and fills its cache |
-| `ready` | The next entry is open, and the change of entry will use it |
-| `used` | The entry started from the prefetch. It stays until the next `loading` |
+| `ready` | The next entry is open, and the next change of entry uses it |
+| `used` | The entry started from the prefetch. It stays until the next `loading`, or until a cancel resets it to `idle` |
 | `failed` | The next entry could not open. It stays until the next `loading` or a stop |
 
 ```dart

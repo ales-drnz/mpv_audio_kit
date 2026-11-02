@@ -16,8 +16,8 @@
 /// macOS Control Center draws no stop, repeat, shuffle, rate or like
 /// control, and Android's system notification auto-renders only transport +
 /// seek bar. Advertising an action it doesn't render is harmless (it's just
-/// not drawn). See the README's *OS media session* section for the full
-/// per-platform support matrix.
+/// not drawn). See the Media session topic for the
+/// per-platform table.
 enum MediaAction {
   /// Start playback. Default-on.
   play,
@@ -57,10 +57,10 @@ enum MediaAction {
   /// Skip backward by a fixed interval. Symmetric to [fastForward].
   rewind,
 
-  /// Cycle repeat mode (off, file or playlist) from the OS UI. iOS and
-  /// macOS render this as the loop icon in the Now Playing widget;
-  /// Android renders it in MediaStyle notifications; MPRIS exposes it
-  /// via `LoopStatus`. Command arrives as [MediaSessionCommandSetRepeatMode].
+  /// Cycle repeat mode (off, file or playlist) from the OS UI. The package
+  /// registers it on every platform: the repeat command in Now Playing,
+  /// a button in the Android notification, the SMTC repeat mode, and
+  /// `LoopStatus` on MPRIS. Command arrives as [MediaSessionCommandSetRepeatMode].
   setRepeatMode,
 
   /// Toggle shuffle on or off from the OS UI. Same surfaces as
@@ -75,10 +75,10 @@ enum MediaAction {
 
   /// "Like" or favourite feedback (Apple `MPFeedbackCommand.likeCommand`).
   ///
-  /// Rendered only on the iOS lock-screen Now Playing (and CarPlay or watchOS):
-  /// the macOS Control Center widget and Windows SMTC draw no feedback button,
-  /// Linux MPRIS has no like concept, and Android's system controls have no
-  /// built-in like slot.
+  /// Registered on iOS and macOS as the like command, and on Android as a
+  /// custom heart button in the notification. Windows SMTC has no feedback
+  /// button and Linux MPRIS has no like concept, so neither registers it.
+  /// The macOS Control Center widget draws no feedback button.
   ///
   /// The press arrives as [MediaSessionCommandLike] on
   /// [PlayerStream.mediaSessionCommands], emit-only (not auto-applied, since

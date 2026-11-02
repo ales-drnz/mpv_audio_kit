@@ -1,19 +1,19 @@
-Step into the loading of each entry with a source resolver or a hook, and reach any mpv property or command directly.
+Step into the loading of each entry with a source resolver or a hook, and reach any libmpv property or command directly.
 
 A hook pauses mpv at one step of loading a file until your code lets it go on. Use it to resolve a URL at the last moment, add headers for one file or switch to another source.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/on_load_hook_sequence.png" width="100%" alt="on_load hook sequence: mpv waits on the file until continueHook">
 
-For headers alone, pass them in `Media.httpHeaders` (see the [Playback](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html) topic).
+For headers alone, pass them in `Media.httpHeaders`. See the [Playback](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html) topic.
 
-## The source resolver
+## Source resolver
 
 `setSourceResolver` resolves the URL of each entry right before it opens. It needs no `registerHook` and no `continueHook`.
 
 ```dart
 await player.setSourceResolver((request) async {
   final id = request.media.extras?['trackId'] as String?;
-  if (id == null) return null;       // not ours: keep the URL
+  if (id == null) return null;       // not ours, keep the URL
   return service.getPlaybackUrl(id); // a temporary or signed URL
 });
 
@@ -24,9 +24,9 @@ await player.openAll([
 ]);
 ```
 
-The resolver gets the entry's original `Media`, with its `extras` and `httpHeaders`. It runs before every stream opens and before the next entry opens ahead of time.
+The resolver gets the entry's original `Media`, with its `extras` and `httpHeaders`. It runs before an entry opens, and before the next entry opens ahead of time. An entry that opens from the prefetch keeps the URL of the prefetch.
 
-After a failed open it runs once more with `request.isRetry` set. Return a fresh URL, such as one with a new token, and mpv tries again. This happens at most once per load, and only when the new URL differs.
+After a failed open it runs once more with `request.isRetry` set. Return a fresh URL, such as one with a new token, and libmpv tries again. This happens at most once per load, and only when the new URL differs.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/source_resolver.png" width="100%" alt="The resolver asked again with isRetry after a failed open">
 
@@ -42,9 +42,9 @@ await player.setSourceResolver(resolve, timeout: const Duration(seconds: 5)); //
 await player.setSourceResolver(null); // remove it
 ```
 
-With prefetch on, the entry reuses the URL resolved for the prefetch, so a signed URL keeps the gapless change. A resolver slower than the rest of the playing track misses the prefetch and runs again when the entry opens.
+With prefetch on, a signed URL keeps the gapless change. A resolver slower than the rest of the playing entry misses the prefetch and runs again when the entry opens. See the [Playback](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html) topic for prefetch.
 
-Entries open one at a time, so the calls never overlap. This suits a music server that allows one transcoding session.
+Calls can overlap. A prefetch call can still run when the entry starts and the load asks again, and a call past its timeout keeps running. For a server that allows one transcoding session, serialize the calls yourself.
 
 ## Hooks
 
@@ -59,7 +59,7 @@ await player.registerHook(Hook.load, timeout: const Duration(seconds: 10));
 
 `Hook.load` fires before the stream opens, and `Hook.loadFail` fires after it failed to open. `Hook.prefetch` fires before the next entry opens ahead of time. The API reference lists the other hooks.
 
-### Listening and continuing
+### Listener
 
 Call `continueHook` on every path, errors included. mpv waits until you do.
 
@@ -73,7 +73,7 @@ player.stream.hook.listen((event) async {
       }
     }
   } finally {
-    player.continueHook(event.id);
+    await player.continueHook(event.id);
   }
 });
 ```
@@ -104,18 +104,18 @@ mpv drops the early open when the current entry ends or the next one changes bef
 
 ## Raw access
 
-Any property and command of the [mpv manual](https://mpv.io/manual/master/) is reachable directly. Prefer a typed setter when one exists: it updates `state` at once, and a raw write shows up only when mpv reports it.
+Any property and command of the [mpv manual](https://mpv.io/manual/master/) is reachable directly. Prefer a typed setter when one exists. It updates `state` at once, and a raw write shows up only when libmpv reports it.
 
 ```dart
 final String? codec = await player.getRawProperty('audio-codec'); // null when it fails
 final tracks = await player.getRawPropertyNode('track-list') as List?; // decoded
 
 try {
-  await player.setRawProperty('audio-channels', 'stereo');
+  await player.setRawProperty('load-unsafe-playlists', 'yes'); // open every entry of a playlist file
   await player.sendRawCommand(['ao-reload']);
 } on MpvCommandException catch (e) {
-  print('mpv rejected ${e.name}: ${e.message} (code ${e.code})');
+  print('libmpv rejected ${e.name}: ${e.message} (code ${e.code})');
 }
 ```
 
-`af` and `pause` belong to the player. Writes to them throw `ArgumentError`, through any property path or command, `af-command` and `loadfile` options included. Use the effects chain (see the [Effects](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Effects-topic.html) topic) and `play()` or `pause()` instead.
+`af` and `pause` belong to the player. Writes to them throw `ArgumentError`, through any property path or command, `af-command` and `loadfile` options included. Use the effects chain and `play()` or `pause()` instead. See the [Effects](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Effects-topic.html) topic.

@@ -4,7 +4,7 @@ Tune the cache, the network settings and the reconnection of streamed sources.
 
 ```dart
 await player.setCache(const CacheSettings(
-  mode: Cache.yes,                 // .auto (default), .yes, .no
+  mode: Cache.yes,                 // or .auto (default), .no
   secs: Duration(seconds: 30),     // how far ahead of the playhead to cache
   onDisk: true,                    // a file instead of memory
   pause: true,                     // pause when the cache runs dry (default)
@@ -38,7 +38,7 @@ await player.setDemuxer(const DemuxerSettings(
 
 ## Live streams
 
-For a live radio, turn off the cache, the cache pause and the back buffer:
+For live radio, turn off the cache, the cache pause and the back buffer:
 
 ```dart
 await player.open(Media('https://stream.radio.example.com/live.mp3'));
@@ -47,6 +47,8 @@ await player.setDemuxer(player.state.demuxer.copyWith(maxBackBytes: 0));
 ```
 
 HLS streams work with the default cache settings.
+
+Set seeking and the HLS variant in the configuration:
 
 ```dart
 final player = Player(
@@ -61,7 +63,7 @@ await player.setHlsBitrate(HlsBitrate.max); // from the next load
 
 ### Throttling servers
 
-Some CDNs slow a single open-ended request to a crawl. Playback starts fine, then stalls after a seek once the buffer runs out. `httpChunkSize` splits the download into bounded range requests:
+Some servers slow a single open-ended request to a crawl. Playback starts, then stalls after a seek once the buffer runs out. `httpChunkSize` splits the download into bounded range requests:
 
 ```dart
 await player.open(Media(url, httpChunkSize: 8 * 1024 * 1024)); // 8 MiB, positive
@@ -83,7 +85,7 @@ await player.setCookies(true);                          // off by default
 
 - `Duration.zero` uses FFmpeg's default timeout for each protocol. For `smb2://` it gives the connection 30 s and no limit on the reads.
 - The longest timeout is about 36 minutes, and a longer one is capped there.
-- TLS verification uses the Mozilla CA roots built into libmpv. A CA file replaces them.
+- TLS verification uses the CA roots built into libmpv. A CA file replaces them.
 - The proxy and cookies take effect from the next load. `https://` sources go through the proxy with `CONNECT`.
 
 ## Monitoring
@@ -112,12 +114,12 @@ The player retries an HTTP connection that drops or fails to open:
 
 Protocols other than HTTP, such as `smb2://`, do not retry.
 
-The retries come from the global `stream-lavf-o` option. Setting it with `setRawProperty` replaces them, so add a key with `change-list` instead:
+The retries come from the global `stream-lavf-o` option. Setting it with `setRawProperty` replaces them, so add a key with `change-list` instead. This one allows longer waits between retries, up to 30 s:
 
 ```dart
-await player.sendRawCommand(['change-list', 'stream-lavf-o', 'add', 'timeout=5000000']);
+await player.sendRawCommand(['change-list', 'stream-lavf-o', 'add', 'reconnect_delay_max=30']);
 
-// One entry: fail at once on an unreachable server
+// Fail at once on an unreachable server, for one entry
 Media(url, streamLavfOptions: {'reconnect_on_network_error': '0'});
 ```
 
@@ -134,4 +136,4 @@ Use it for live streams only. A file from a server without range support would s
 
 With `setPrefetchPlaylist(true)`, the player opens an entry with stream options ahead only when the playing entry has the same ones.
 
-In the browser, the browser handles TLS, cookies and proxies (see the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic).
+On the web the browser handles TLS, cookies and proxies. See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic.

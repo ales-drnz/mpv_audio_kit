@@ -2,12 +2,12 @@ Catch failed loads, cut streams, a silent output and failed calls, and read the 
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/error_streams.png" width="100%" alt="Error streams: file ends, log messages and output changes each reach a stream, and errors also reach stream.error">
 
-## The error stream
+## Error stream
 
 `stream.error` emits a `PlayerError` with two subtypes:
 
-- `EndFileError`: a file stopped because of an error.
-- `LogError`: libmpv logged an error or a fatal message. Playback can go on.
+- `EndFileError` means a file stopped because of an error.
+- `LogError` means libmpv logged an error or a fatal message, or the package reported a silent output. Playback can go on.
 
 ```dart
 player.stream.error.listen((error) {
@@ -21,13 +21,13 @@ player.stream.error.listen((error) {
 });
 ```
 
-An `EndFileError` tells the cause with `isLoadingError`, `isAudioOutputError` and `isFormatError`. A `LogError` carries the subsystem in `prefix`, such as `ffmpeg`, `ao` or `demux`.
+An `EndFileError` tells the cause with `isLoadingError`, `isAudioOutputError` and `isFormatError`. A `LogError` carries the subsystem in `prefix`, such as `ffmpeg`, `ao`, `demux` or `mpv_audio_kit`.
 
 ## End of a file
 
 `stream.endFile` emits an `MpvFileEndedEvent` every time a file ends, with its `reason`. Read the entry from the event, because `player.state` can already describe the next entry.
 
-The event carries the `Media` of the entry, its last `position` and its `duration`. `media` is `null` for an entry from a playlist file.
+The event carries the `Media` of the entry, its last `position` and its `duration`. `media` is `null` for an entry the player did not load itself, such as one from a playlist file or a raw command.
 
 ### Cut streams
 
@@ -48,7 +48,7 @@ The last entry of the playlist stays open at its end. `state.completed` turns tr
 ```dart
 player.stream.completed.listen((completed) {
   if (completed && player.state.readError == true) {
-    print('The last track was cut short at ${player.state.position}');
+    print('The last entry was cut short at ${player.state.position}');
   }
 });
 ```
@@ -59,7 +59,7 @@ Its `endFile` event comes later, with `reason: stop`, when the entry is stopped 
 - A seek after a cut reads again, and the entry plays on if the server answers.
 - `duration` can be an estimate, so comparing it with `position` does not detect a cut.
 
-## A silent output
+## Silent output
 
 `stream.audioOutputState` follows the audio output.
 
@@ -76,7 +76,7 @@ player.stream.audioOutputState.listen((state) {
 
 When no device opens, libmpv falls back to its null output. The state is `active`, the position runs and nothing is heard. `stream.error` then emits a `LogError`, unless you chose the null driver with `setAudioDriver('null')`.
 
-`failed` comes only when the null output cannot open either. Each file then ends with an `EndFileError` whose `isAudioOutputError` is true.
+`failed` comes only when the null output cannot open either. `stream.error` then emits a `LogError`, and each file that cannot play ends with an `EndFileError`.
 
 ## Logs
 
@@ -100,6 +100,8 @@ player.stream.internalLog.listen((entry) {
 player.setLogLevel(LogLevel.debug); // while developing
 player.setLogLevel(LogLevel.off);   // silence libmpv
 ```
+
+Below `LogLevel.error`, the errors libmpv logs do not reach `stream.error` either.
 
 ## Exceptions
 

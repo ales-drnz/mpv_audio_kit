@@ -2,7 +2,7 @@ Shape the sound with a chain of FFmpeg filters. The chain works the same on ever
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/effects_chain.png" width="100%" alt="Effects chain: the same waveform probed before and after the equalizer, after the compressor and after the volume">
 
-## The chain
+## Chain
 
 The chain is a list of stages, one class per filter. Stages run in list order, and a filter can appear more than once.
 
@@ -25,7 +25,7 @@ await player.updateAudioEffects((fx) => [
 
 A stage with `enabled: false` stays in the list with its settings, and the sound bypasses it.
 
-Moving a slider updates the running filter without a glitch for most gains, frequencies and levels. The class docs mark which parameters do. Adding, removing or reordering stages rebuilds the ones they touch. The chain stays from one track to the next.
+Moving a slider updates the running filter without a glitch for most gains, frequencies and levels. The class docs mark the parameters that update live. Adding, removing or reordering stages rebuilds the ones they touch. The chain stays from one entry to the next.
 
 ```dart
 player.stream.audioEffects.listen((fx) => print('${fx.length} stages'));
@@ -33,7 +33,7 @@ player.stream.audioEffects.listen((fx) => print('${fx.length} stages'));
 await player.setAudioEffects(const []); // clear
 ```
 
-## The effects
+## Effects
 
 Each FFmpeg filter has a class named after it: `acompressor` is `AcompressorEffect`. Its parameters are the filter's options in camelCase, so `level_in` is `levelIn`.
 
@@ -47,7 +47,7 @@ await player.setAudioEffects(const [
 ]);
 ```
 
-Every numeric parameter has bounds and a default for a slider, such as `AcompressorEffect.thresholdMin`, `thresholdMax` and `thresholdDefault`. Parameters with fixed choices are enums.
+Every numeric parameter has bounds and a default for a slider, such as `AcompressorEffect.thresholdMin`, `thresholdMax` and `thresholdDefault`. Parameters with fixed choices are enums. The band gains of `SuperequalizerEffect` go in its `params` map, with their ranges in the class docs.
 
 | Group | Effects |
 | :--- | :--- |
@@ -57,7 +57,7 @@ Every numeric parameter has bounds and a default for a slider, such as `Acompres
 | Pitch and tempo | `atempo`, `asetrate`, `aresample`, `afreqshift`, `aphaseshift` |
 | Stereo and space | `crossfeed`, `extrastereo`, `stereowiden`, `haas`, `surround`, `virtualbass` and 3 more |
 | Creative | `aecho`, `chorus`, `flanger`, `aphaser`, `tremolo`, `vibrato` and 7 more |
-| Restoration | `adeclick`, `adeclip`, `afftdn`, `anlmdn`, `arnndn` and 6 more |
+| Restoration | `adeclick`, `adeclip`, `afftdn`, `anlmdn`, `arnndn` and 7 more |
 | Utility | `afade`, `silenceremove`, `apad`, `aformat`, `pan`, `channelmap`, `aeval` and 2 more |
 
 There are 86 in all. The API reference lists every class with its options.
@@ -73,9 +73,11 @@ await player.setAudioEffects(const [
 ]);
 ```
 
-Any change to a chain with a raw stage rebuilds it instead of updating the filter live.
+A raw stage is never updated live. A change to it rebuilds the chain, while the typed stages around it still update live.
 
 ## ReplayGain
+
+`setReplayGain` applies the gain from the file's tags.
 
 ```dart
 await player.setReplayGain(const ReplayGainSettings(
@@ -85,10 +87,4 @@ await player.setReplayGain(const ReplayGainSettings(
 ));
 ```
 
-## Gapless playback
-
-Tracks follow each other without a gap when their formats allow it. On a network playlist, prefetch opens the next track before the current one ends:
-
-```dart
-await player.setPrefetchPlaylist(true);
-```
+See the [Playback](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Playback-topic.html) topic for gapless playback and prefetch.
