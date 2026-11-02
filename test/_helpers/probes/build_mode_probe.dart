@@ -11,7 +11,7 @@
 //   `mpv_wait_event` in [_idleWindow];
 // - `orphans`: the handles that a second isolate of this process, standing
 //   for the VM a Hot Restart brings up, found in the tracker after this one
-//   registered [_fakeHandle].
+//   registered [_fakeHandle] and ended its life port.
 
 import 'dart:convert';
 import 'dart:ffi';
@@ -35,6 +35,8 @@ Future<void> main(List<String> args) async {
   OrphanHandleTracker.instance.add(Pointer.fromAddress(_fakeHandle));
   // add() lands once the tracker's init future completes.
   await Future<void>.delayed(Duration.zero);
+  // The VM a Hot Restart replaces is gone: a live one keeps its handles.
+  OrphanHandleTracker.instance.endForTesting();
   final orphans = await Isolate.run(() {
     final found = <int>[];
     OrphanHandleTracker.instance.ensureInitialized(
