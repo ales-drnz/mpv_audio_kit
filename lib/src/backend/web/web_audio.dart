@@ -26,6 +26,17 @@ const String _kStateListener = '__makStateListenerOff';
 /// of the page's media session.
 const String _kElement = '__makElement';
 
+/// The property of the module instance that holds the rate its context
+/// was made at, `0` for the device's: a program after a Hot Restart keeps
+/// the context, and its rate.
+const String _kSampleRate = '__makSampleRate';
+
+@JS('document')
+external JSObject get _document;
+
+/// The events that count as a user gesture for a media element.
+const List<String> _kGestures = ['pointerdown', 'keydown', 'touchend'];
+
 /// The page's audio output: the AudioContext of `Module.makWebAudio`, which
 /// mpv's webaudio output plays into, shared by every player of the page.
 ///
@@ -51,10 +62,27 @@ final class WebAudioOutput {
   bool _toElement = false;
   JSObject? _element;
   JSObject? _stream;
+  Future<void> _rates = Future<void>.value();
+
+  /// Whether output 0 also goes to the context's destination while it is
+  /// routed to the element: until the element plays, and whenever it stops
+  /// without the player asking.
+  bool _direct = false;
+
+  JSFunction? _onPlaying;
+  JSFunction? _onPause;
+  JSFunction? _onGesture;
 
   /// Makes the context of [module] and loads the worklet; a context of a
   /// replaced program is closed first. Throws when either fails.
-  static Future<WebAudioOutput> start(MpvModule module) async {
+  ///
+  /// With [reuse], after a Hot Restart on the module the page had, the
+  /// context the replaced program made is kept when there is one, at the
+  /// rate it was made at: making a new one there made the module abort.
+  static Future<WebAudioOutput> start(
+    MpvModule module, {
+    bool reuse = false,
+  }) async {
     final output = WebAudioOutput._(module);
     // One listener per page: a program a Hot Restart replaced left its own
     // on the module.
@@ -72,17 +100,27 @@ final class WebAudioOutput {
       (element as JSObject).callMethod('pause'.toJS);
       element['srcObject'] = null;
     }
-    await output._init();
+    if (reuse && output._audio.context != null) {
+      final rate = instance[_kSampleRate];
+      output._sampleRate = rate.isA<JSNumber>()
+          ? (rate as JSNumber).toDartInt
+          : 0;
+      debugWebAudioTrace?.call('reuse ${output._sampleRate}');
+      output._onState(output._audio.state);
+      return output;
+    }
+    await output._init(output._sampleRate);
     return output;
   }
 
-  Future<void> _init() async {
+  Future<void> _init(int rate) async {
     final options = JSObject();
     final processor = _module.processorUrl;
     if (processor != null) options['processorUrl'] = processor.toJS;
-    if (_sampleRate > 0) options['sampleRate'] = _sampleRate.toJS;
-    debugWebAudioTrace?.call('init $_sampleRate');
+    if (rate > 0) options['sampleRate'] = rate.toJS;
+    debugWebAudioTrace?.call('init $rate');
     await _audio.init(options).toDart;
+    _module.instance[_kSampleRate] = rate.toJS;
     _onState(_audio.state);
     if (_toElement) _route();
   }
@@ -112,10 +150,32 @@ final class WebAudioOutput {
   /// Makes a new context at [rate] (Hz; `0` for the device's), so mpv
   /// resamples to it once and the browser not at all. Every player of the
   /// page plays at that rate: open outputs reopen on the new context.
-  Future<void> setSampleRate(int rate) async {
+  ///
+  /// The changes run one after the other. A rate the browser refuses
+  /// throws a [StateError] and leaves a context at the rate before.
+  Future<void> setSampleRate(int rate) {
+    final change = _rates.then((_) => _changeSampleRate(rate));
+    _rates = change.catchError((Object _) {});
+    return change;
+  }
+
+  Future<void> _changeSampleRate(int rate) async {
     if (rate == _sampleRate) return;
-    _sampleRate = rate;
-    await _init();
+    try {
+      await _init(rate);
+      _sampleRate = rate;
+    } catch (e) {
+      // The module closed the old context before it made the new one.
+      try {
+        await _init(_sampleRate);
+      } catch (_) {
+        // Nothing else to fall back to: the next change tries again.
+      }
+      throw StateError(
+        'mpv_audio_kit: the browser refused an audio output at $rate Hz '
+        '($e)',
+      );
+    }
   }
 
   /// Sends output 0 through an `<audio>` element ([on]) or straight to the
@@ -131,8 +191,11 @@ final class WebAudioOutput {
     if (context == null) return;
     final node = _audio.output(0);
     node.callMethod('disconnect'.toJS);
+    _direct = false;
     debugWebAudioTrace?.call('route ${_toElement ? 'element' : 'destination'}');
     if (!_toElement) {
+      // The listeners go first: the element's pause event comes later.
+      _listen(false);
       _element?.callMethod('pause'.toJS);
       _element?['srcObject'] = null;
       node.callMethod('connect'.toJS, context['destination']);
@@ -145,7 +208,68 @@ final class WebAudioOutput {
     final element = _element ??= _createElement('audio');
     _module.instance[_kElement] = element;
     element['srcObject'] = _stream;
+    _listen(true);
+    // The context's destination keeps the sound until the element plays:
+    // a browser can refuse its play() outside a gesture.
+    _setDirect(true);
     _playElement();
+  }
+
+  /// Connects output 0 to the context's destination as well ([on]), or
+  /// takes it off, while it is routed to the element.
+  void _setDirect(bool on) {
+    final context = _audio.context;
+    if (on == _direct || context == null) return;
+    _direct = on;
+    final node = _audio.output(0);
+    final destination = context['destination'] as JSObject;
+    debugWebAudioTrace?.call('direct $on');
+    if (on) {
+      node.callMethod('connect'.toJS, destination);
+    } else {
+      node.callMethod('disconnect'.toJS, destination);
+    }
+  }
+
+  /// Listens to the element and to the gestures of the page ([on]), or
+  /// stops. The element playing takes the sound off the destination; the
+  /// element stopping without the output asking (the browser paused it,
+  /// another app took the audio) puts it back, and the next gesture or
+  /// running state plays the element again.
+  void _listen(bool on) {
+    final element = _element;
+    if (element == null) return;
+    void each(String method, String type, JSFunction? f) {
+      if (f != null) element.callMethod(method.toJS, type.toJS, f);
+    }
+
+    void gestures(String method, JSFunction? f) {
+      if (f == null) return;
+      for (final type in _kGestures) {
+        _document.callMethod(method.toJS, type.toJS, f);
+      }
+    }
+
+    each('removeEventListener', 'playing', _onPlaying);
+    each('removeEventListener', 'pause', _onPause);
+    gestures('removeEventListener', _onGesture);
+    _onPlaying = _onPause = _onGesture = null;
+    if (!on) return;
+    _onPlaying = ((JSAny? _) {
+      debugWebAudioTrace?.call('element playing');
+      if (_toElement) _setDirect(false);
+    }).toJS;
+    _onPause = ((JSAny? _) {
+      if (!_toElement) return;
+      debugWebAudioTrace?.call('element paused');
+      _setDirect(true);
+    }).toJS;
+    _onGesture = ((JSAny? _) {
+      if (_toElement && _direct) _playElement();
+    }).toJS;
+    each('addEventListener', 'playing', _onPlaying);
+    each('addEventListener', 'pause', _onPause);
+    gestures('addEventListener', _onGesture);
   }
 
   /// The `<audio>` element output 0 plays through, while routed there.
@@ -154,7 +278,8 @@ final class WebAudioOutput {
   void _playElement() {
     final element = this.element;
     if (element == null) return;
-    // Refused until a user gesture: the next running state plays it.
+    // Refused until a user gesture: the next gesture or running state
+    // plays it, and the destination keeps the sound meanwhile.
     element.callMethod<JSPromise?>('play'.toJS)?.toDart.ignore();
   }
 }

@@ -118,7 +118,10 @@ Future<_Loaded> _start() async {
       module = await _import(url);
     }
     registerModule(url, module, reap: _reap);
-    final output = await WebAudioOutput.start(module);
+    final output = await WebAudioOutput.start(
+      module,
+      reuse: debug == null && previous != null,
+    );
     output.needsGestureChanges.listen(_gestureChanges.add);
     if (output.needsGesture) _gestureChanges.add(true);
     return _loaded = _Loaded(module, output);

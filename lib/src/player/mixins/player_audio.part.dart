@@ -855,7 +855,19 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     await _calls.prop('audio-samplerate', rate.toString());
     final output = setOutputSampleRate(rate);
-    if (output != null) await output;
+    if (output != null) {
+      try {
+        await output;
+      } catch (_) {
+        // The browser refused the rate and kept its output at the rate
+        // before: mpv goes back to it too.
+        await _calls.prop(
+          'audio-samplerate',
+          _state.audioSampleRate.toString(),
+        );
+        rethrow;
+      }
+    }
     _updateField(
       (s) => s.copyWith(audioSampleRate: rate),
       _reactives.audioSampleRate,

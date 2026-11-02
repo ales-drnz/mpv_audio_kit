@@ -66,4 +66,33 @@ void main() {
       ),
     );
   });
+
+  // kit-web-1: the factory waits for the workers of the module's threads,
+  // and one that cannot load them never settles. The load fails instead.
+  test('a module whose threads never start fails the load', () async {
+    final url = _createObjectUrl(
+      _Blob(
+        <JSAny>['export default () => new Promise(() => {});'.toJS].toJS,
+        JSObject()..['type'] = 'text/javascript'.toJS,
+      ),
+    ).toDart;
+    await expectLater(
+      loadMpvModule(url, timeout: const Duration(seconds: 1)),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('did not start within 1 s'), contains('COEP')),
+        ),
+      ),
+    );
+  });
 }
+
+@JS('Blob')
+extension type _Blob._(JSObject _) implements JSObject {
+  external _Blob(JSArray<JSAny> parts, JSObject options);
+}
+
+@JS('URL.createObjectURL')
+external JSString _createObjectUrl(JSObject blob);
