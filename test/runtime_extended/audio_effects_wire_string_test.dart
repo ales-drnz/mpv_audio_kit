@@ -45,7 +45,6 @@ void main() {
         await player.setAudioEffects([FirequalizerEffect(dumpfile: path)]);
         await waitUntil(
           () => File(path).existsSync(),
-          timeout: const Duration(seconds: 5),
           reason: 'no dump at $path: ${dir.listSync()}',
         );
       }, timeout: const Timeout(Duration(seconds: 30)));
