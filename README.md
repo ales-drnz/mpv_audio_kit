@@ -179,7 +179,7 @@ The player gives a live spectrum, the raw PCM, a waveform of the whole file and 
 
 ### The browser
 
-The page needs two headers and a user gesture before it plays. See [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) for the setup and the browser's limits.
+The page needs two headers and a user gesture before it plays. The players of a page share at most 512 MiB of memory, 256 MiB on an iPhone or an iPad. Test on a real iPhone: a desktop browser does not show the limits of iOS. See [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) for the setup and the browser's limits.
 
 ---
 
