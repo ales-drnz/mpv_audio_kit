@@ -384,9 +384,78 @@ final class MpvModule {
   };
 }
 
-/// Imports the module at [url] (libmpv.mjs) and instantiates it. [wasmUrl]
-/// is where libmpv.wasm is, and [processorUrl] where
-/// mak_webaudio_processor.js is, when not beside [url].
+/// The pages of 64 KiB the module's memory starts with: the 32 MB its
+/// build starts from (`INITIAL_MEMORY`), and the least a memory passed to
+/// the factory may have.
+@internal
+const int kWebMemoryInitialPages = 512;
+
+/// The most pages the module's memory grows to: 512 MiB.
+@internal
+const int kWebMemoryMaximumPages = 8192;
+
+/// The most pages on WebKit for phones and tablets, which refuses a shared
+/// memory that large or kills the page past a few hundred MB: 256 MiB.
+@internal
+const int kWebMemoryMobileMaximumPages = 4096;
+
+/// Test-only: whether to take the profile of WebKit for phones and tablets
+/// ([kWebMemoryMobileMaximumPages]) whatever the browser, or never. `null`
+/// asks the browser.
+@visibleForTesting
+bool? debugWebKitMobile;
+
+@JS('navigator')
+external JSObject get _navigator;
+
+/// Whether the page runs on WebKit for phones and tablets: an iPhone, an
+/// iPod or an iPad, which says it is a Mac with a touch screen.
+bool get _webKitMobile {
+  final forced = debugWebKitMobile;
+  if (forced != null) return forced;
+  final agent = (_navigator['userAgent'] as JSString?)?.toDart ?? '';
+  if (RegExp('iPhone|iPad|iPod').hasMatch(agent)) return true;
+  final touch = (_navigator['maxTouchPoints'] as JSNumber?)?.toDartInt ?? 0;
+  return agent.contains('Macintosh') && touch > 1;
+}
+
+@JS('WebAssembly.Memory')
+extension type _Memory._(JSObject _) implements JSObject {
+  external _Memory(JSObject descriptor);
+}
+
+/// A shared memory of [maximum] pages that starts at
+/// [kWebMemoryInitialPages], or `null` when the browser refuses it.
+JSObject? _memory(int maximum) {
+  final descriptor = JSObject()
+    ..['initial'] = kWebMemoryInitialPages.toJS
+    ..['maximum'] = maximum.toJS
+    ..['shared'] = true.toJS;
+  try {
+    return _Memory(descriptor);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// The memory the package hands the module's factory: shared, 32 MB at
+/// the start, growing up to 512 MiB, or 256 MiB on WebKit for phones and
+/// tablets and wherever the larger one is refused. The module's own
+/// ceiling is 2 GB, more than such a browser gives a page. `null` when
+/// even the smaller one is refused: the module then makes its own.
+@internal
+JSObject? webModuleMemory() {
+  if (!_webKitMobile) {
+    final memory = _memory(kWebMemoryMaximumPages);
+    if (memory != null) return memory;
+  }
+  return _memory(kWebMemoryMobileMaximumPages);
+}
+
+/// Imports the module at [url] (libmpv.mjs) and instantiates it on the
+/// memory of [webModuleMemory]. [wasmUrl] is where libmpv.wasm is, and
+/// [processorUrl] where mak_webaudio_processor.js is, when not beside
+/// [url].
 @internal
 Future<MpvModule> loadMpvModule(
   String url, {
@@ -399,6 +468,8 @@ Future<MpvModule> loadMpvModule(
   if (wasmUrl != null) {
     options['locateFile'] = ((JSString path) => wasmUrl.toJS).toJS;
   }
+  final memory = webModuleMemory();
+  if (memory != null) options['wasmMemory'] = memory;
   final instance =
       await (factory.callAsFunction(null, options) as JSPromise).toDart;
   return MpvModule(instance as JSObject, processorUrl: processorUrl);
