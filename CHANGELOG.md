@@ -1,10 +1,8 @@
 ## [0.6.1] - Unreleased
 
 ### Docs
-- The README is short: what the package does, setup, how a player works and short examples, with a link to each guide and to MPV Studio running in the browser.
-- The guides are topics of the API reference on pub.dev: Playback, Effects, Output, Network and cache, Metadata, State and streams, Errors and logs, Hooks and raw access, Visualizer and analysis, Media session and Web. Each class of a topic links to it.
-- `LICENSES.md` holds the license details and the GPL build with Rubber Band.
-- The dartdoc of `MediaSession` and `MediaAction` matches the code: a second Flutter engine gets a `StateError`, and the actions are registered on every platform.
+- A shorter README, with the guides moved to topics of the API reference.
+- `LICENSES.md` holds the license details.
 
 ## [0.6.0] - 2-11-2026
 
