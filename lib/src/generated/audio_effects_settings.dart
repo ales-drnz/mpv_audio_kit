@@ -9347,12 +9347,12 @@ final class CompandEffect extends AudioEffect {
 /// The filter accepts the following parameters:
 ///
 /// Parameters:
-/// - [cm]: Set cm distance. This is compensation distance for tightening distance setup. Default is 0. (range 0..100, default 0)
-/// - [dry]: Set dry amount. Amount of unprocessed (dry) signal. Default is 0. (range 0..1, default 0)
-/// - [m]: Set meters distance. This is compensation distance for hard distance setup. Default is 0. (range 0..100, default 0)
-/// - [mm]: Set millimeters distance. This is compensation distance for fine tuning. Default is 0. (range 0..10, default 0)
-/// - [temp]: Set temperature in degrees Celsius. This is the temperature of the environment. Default is 20. (range -50..50, default 20)
-/// - [wet]: Set wet amount. Amount of processed (wet) signal. Default is 1. (range 0..1, default 1)
+/// - [cm]: Set cm distance. This is compensation distance for tightening distance setup. Default is 0. (range 0..100, default 0, runtime-tunable)
+/// - [dry]: Set dry amount. Amount of unprocessed (dry) signal. Default is 0. (range 0..1, default 0, runtime-tunable)
+/// - [m]: Set meters distance. This is compensation distance for hard distance setup. Default is 0. (range 0..100, default 0, runtime-tunable)
+/// - [mm]: Set millimeters distance. This is compensation distance for fine tuning. Default is 0. (range 0..10, default 0, runtime-tunable)
+/// - [temp]: Set temperature in degrees Celsius. This is the temperature of the environment. Default is 20. (range -50..50, default 20, runtime-tunable)
+/// - [wet]: Set wet amount. Amount of processed (wet) signal. Default is 1. (range 0..1, default 1, runtime-tunable)
 final class CompensationdelayEffect extends AudioEffect {
   /// Default value for [cm].
   static const int cmDefault = 0;
@@ -9522,12 +9522,24 @@ final class CompensationdelayEffect extends AudioEffect {
   @override
   List<(String, String)>? _runtimeDiff(covariant CompensationdelayEffect prev) {
     final out = <(String, String)>[];
-    if (cm != prev.cm) return null;
-    if (dry != prev.dry) return null;
-    if (m != prev.m) return null;
-    if (mm != prev.mm) return null;
-    if (temp != prev.temp) return null;
-    if (wet != prev.wet) return null;
+    if (cm != prev.cm) {
+      out.add(('cm', cm.toString()));
+    }
+    if (dry != prev.dry) {
+      out.add(('dry', _wireDouble(dry)));
+    }
+    if (m != prev.m) {
+      out.add(('m', m.toString()));
+    }
+    if (mm != prev.mm) {
+      out.add(('mm', mm.toString()));
+    }
+    if (temp != prev.temp) {
+      out.add(('temp', temp.toString()));
+    }
+    if (wet != prev.wet) {
+      out.add(('wet', _wireDouble(wet)));
+    }
     return out;
   }
 }

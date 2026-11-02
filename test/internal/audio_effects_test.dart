@@ -311,6 +311,16 @@ void main() {
     });
   });
 
+  // F53: compensationdelay's flag macro sits in parentheses, which the
+  // parser missed: no option looked runtime, and every change rebuilt.
+  test('a compensationdelay change goes live', () {
+    final cmds = audioEffectsDiff(
+      const [CompensationdelayEffect()],
+      const [CompensationdelayEffect(cm: 10)],
+    );
+    expect(cmds?.map((c) => c.option), ['cm']);
+  });
+
   group('Enum.fromMpv non-throwing fallback', () {
     test('AemphasisType.fromMpv unknown → first member', () {
       expect(AemphasisType.fromMpv('not_a_real_value'), AemphasisType.col);
