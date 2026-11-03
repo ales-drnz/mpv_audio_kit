@@ -855,6 +855,9 @@ mixin _AudioModule on _PlayerBase {
   /// player keeps its own.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
+    // Taken before the write: the observer of audio-samplerate may report
+    // the new rate before the browser refuses it.
+    final before = _state.audioSampleRate;
     await _calls.prop('audio-samplerate', rate.toString());
     final output = setOutputSampleRate(rate);
     if (output != null) {
@@ -862,10 +865,12 @@ mixin _AudioModule on _PlayerBase {
         await output;
       } catch (_) {
         // The browser refused the rate and kept its output at the rate
-        // before: mpv goes back to it too.
-        await _calls.prop(
-          'audio-samplerate',
-          _state.audioSampleRate.toString(),
+        // before: mpv and the state go back to it too.
+        await _calls.prop('audio-samplerate', before.toString());
+        _updateField(
+          (s) => s.copyWith(audioSampleRate: before),
+          _reactives.audioSampleRate,
+          before,
         );
         rethrow;
       }
