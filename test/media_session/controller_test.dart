@@ -1109,14 +1109,16 @@ void main() {
       expect(await urlOf(r'C:\Music\song.flac'), 'file:///C:/Music/song.flac');
       // mpv takes all that follows file:// as the path, percent-decoded:
       // a # or a ? there is part of the name, not a fragment or a query.
+      // Windows forbids a ? in a file name: no URI names such a path there.
       const named = 'file:///music/track%20%231%20%3Fa%2050%25.flac';
-      expect(await urlOf('/music/track #1 ?a 50%.flac'), named);
+      final namedHere = Platform.isWindows ? null : named;
+      expect(await urlOf('/music/track #1 ?a 50%.flac'), namedHere);
       expect(
         await urlOf('file:///music/track #1 ?a 50%.flac'),
-        named,
+        namedHere,
         reason: 'a # and a ? of a file URI belong to the path',
       );
-      expect(await urlOf(named), named);
+      expect(await urlOf(named), namedHere);
       expect(
         await urlOf('file:///C:/Music/a #1.flac'),
         'file:///C:/Music/a%20%231.flac',
