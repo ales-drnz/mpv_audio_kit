@@ -857,6 +857,7 @@ mixin _AudioModule on _PlayerBase {
     await _gate();
     // Taken before the write: the observer of audio-samplerate may report
     // the new rate before the browser refuses it.
+    // ignore: unused_local_variable
     final before = _state.audioSampleRate;
     await _calls.prop('audio-samplerate', rate.toString());
     final output = setOutputSampleRate(rate);
