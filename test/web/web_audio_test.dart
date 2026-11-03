@@ -235,6 +235,33 @@ void main() {
     expect(again.needsGesture, output.needsGesture);
   });
 
+  // After a Hot Restart the listeners of the replaced program stayed on
+  // its element and on the page, and output 0 on its element.
+  test(
+    'after a Hot Restart the replaced element and gestures are let go',
+    () async {
+      final module = await loadTestModule();
+      final output = await webAudioOutput();
+      trace.clear();
+      output.routeToElement(true);
+      addTearDown(() => output.routeToElement(false));
+      await waitUntil(
+        () => trace.contains('element playing'),
+        what: 'the element playing',
+      );
+      final old = output.element!;
+      trace.clear();
+      await WebAudioOutput.start(module, reuse: true);
+      expect(trace, contains('route destination'));
+      trace.clear();
+      old.callMethod('dispatchEvent'.toJS, _event('pause'));
+      _document.callMethod('dispatchEvent'.toJS, _event('pointerdown'));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(trace, isNot(contains('element paused')));
+      expect(trace, isNot(contains('element playing')));
+    },
+  );
+
   test('setAudioSampleRate makes the page output run at that rate', () async {
     final player = Player();
     addTearDown(player.dispose);
