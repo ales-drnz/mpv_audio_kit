@@ -385,6 +385,28 @@ void main() {
       return ends;
     }
 
+    // Without the fields of libmpv-r21, END_FILE carries only what mpv
+    // notified of the entry, as in 0.6.1: here nothing, and no read of the
+    // pump stands in for it.
+    test('an END_FILE without the fields and no notification carries '
+        'neither', () async {
+      final values = playingSecond();
+      final reader = _Reader(values);
+      final ends = <MpvEventEndFile>[];
+      final logic = EventLogic(reader, (e) {
+        if (e is MpvEventEndFile) ends.add(e);
+      })..observe('duration', MpvFormat.mpvFormatDouble);
+      await logic.dispatch(MpvEventStartFile(8));
+      await logic.dispatch(MpvEventFileLoaded());
+      await logic.dispatch(
+        MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
+      );
+      expect(reader.reads, isNot(contains('duration')));
+      expect(reader.reads, isNot(contains('playlist-playing-pos')));
+      expect(ends.single.duration, isNull);
+      expect(ends.single.position, isNull);
+    });
+
     // The package needs libmpv-r21, whose END_FILE carries both: the pump
     // makes no read of its own for them.
     test('the pump reads neither the duration nor the playing entry for '
