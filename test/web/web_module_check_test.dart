@@ -87,6 +87,36 @@ void main() {
       ),
     );
   });
+
+  // A start past the timeout goes on: the next load waits for it, and
+  // does not make a second module beside it.
+  test('a load after a timeout waits for the same start', () async {
+    final url = _createObjectUrl(
+      _Blob(
+        <JSAny>[
+          'export default () => {'
+                  ' globalThis.__makStarts = (globalThis.__makStarts || 0) + 1;'
+                  ' return new Promise((r) => { globalThis.__makStarted = r; });'
+                  ' };'
+              .toJS,
+        ].toJS,
+        JSObject()..['type'] = 'text/javascript'.toJS,
+      ),
+    ).toDart;
+    await expectLater(
+      loadMpvModule(url, timeout: const Duration(milliseconds: 500)),
+      throwsA(isA<WebModuleTimeout>()),
+    );
+    final again = loadMpvModule(url, timeout: const Duration(seconds: 10));
+    // The start resolves with no exports: MpvModule then fails, not the
+    // wait.
+    (globalContext['__makStarted'] as JSFunction).callAsFunction(
+      null,
+      JSObject(),
+    );
+    await expectLater(again, throwsA(isNot(isA<WebModuleTimeout>())));
+    expect((globalContext['__makStarts'] as JSNumber).toDartInt, 1);
+  });
 }
 
 @JS('Blob')

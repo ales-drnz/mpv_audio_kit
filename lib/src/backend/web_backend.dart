@@ -125,6 +125,10 @@ Future<_Loaded> _start() async {
     output.needsGestureChanges.listen(_gestureChanges.add);
     if (output.needsGesture) _gestureChanges.add(true);
     return _loaded = _Loaded(module, output);
+  } on WebModuleTimeout {
+    // The start goes on: the next Player waits for it again.
+    _loading = null;
+    rethrow;
   } catch (e) {
     _failure = e;
     rethrow;
