@@ -230,7 +230,8 @@ void main() {
     final context = await _context();
     trace.clear();
     final again = await WebAudioOutput.start(module, reuse: true);
-    expect(trace, ['reuse 32000']);
+    // The output is routed again, from the replaced program's element.
+    expect(trace, ['reuse 32000', 'route destination']);
     expect((await _context()).strictEquals(context).toDart, isTrue);
     expect(again.needsGesture, output.needsGesture);
   });
@@ -243,12 +244,10 @@ void main() {
       final module = await loadTestModule();
       final output = await webAudioOutput();
       trace.clear();
+      // The listeners are on as soon as the output goes to the element,
+      // whether the browser lets it play or not.
       output.routeToElement(true);
       addTearDown(() => output.routeToElement(false));
-      await waitUntil(
-        () => trace.contains('element playing'),
-        what: 'the element playing',
-      );
       final old = output.element!;
       trace.clear();
       await WebAudioOutput.start(module, reuse: true);
