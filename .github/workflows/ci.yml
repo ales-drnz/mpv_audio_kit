@@ -271,11 +271,14 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The pubspec too: flutter test --platform chrome builds the hook for
+      # the host, which downloads a pinned release not published yet.
       - id: run
         uses: ./.github/actions/libmpv-from-run
         with:
           run-id: ${{ needs.changes.outputs.libmpv_run }}
           token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: pubspec.yaml
       - name: Web module
         id: module
         env:
