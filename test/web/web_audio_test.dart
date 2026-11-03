@@ -212,6 +212,24 @@ void main() {
     expect(trace, contains('init 1000'));
   });
 
+  // A refused rate puts back the rate from before the call only when no
+  // other call wrote one since.
+  test(
+    'a refused rate set beside an accepted one leaves the accepted one',
+    () async {
+      final player = Player();
+      addTearDown(player.dispose);
+      await player.ready;
+      final refused = player.setAudioSampleRate(1000);
+      final accepted = player.setAudioSampleRate(32000);
+      await expectLater(refused, throwsStateError);
+      await accepted;
+      addTearDown(() => player.setAudioSampleRate(0));
+      expect(player.state.audioSampleRate, 32000);
+      expect(await player.getRawProperty('audio-samplerate'), '32000');
+    },
+  );
+
   test('two rates set at once run one after the other', () async {
     final output = await webAudioOutput();
     trace.clear();
