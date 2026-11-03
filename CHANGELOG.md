@@ -1,3 +1,41 @@
+## [0.6.2] - 3-11-2026
+
+libmpv-r21, and a sturdier web.
+
+### Breaking
+- The package needs `libmpv-r21`, which the build hook bundles: its `END_FILE` is 56 bytes, with the duration and position of the entry, and the web module has ABI 2. A web module of `libmpv-r20` is refused.
+- On the web the demuxer cache starts at 64 MiB ahead and 16 MiB behind, in place of 150 and 50. `setDemuxer` changes it as before.
+
+### Changed
+- `withTaps`, `withVoices` and `withTransferPoints` throw an `ArgumentError` on an empty list.
+- A bad key of `params` is refused before the state changes.
+- `Media.toString` hides the values of `streamLavfOptions` and `demuxerLavfOptions` and the user info of the URI.
+- `CompensationdelayEffect` changes go live instead of rebuilding the chain.
+- On the web `setAudioSampleRate` throws a `StateError` on a rate the browser refuses, and the output stays at the rate before.
+
+### Fixed
+- `endFile` carries the duration and position of an entry that loads and ends at once, a file of a few milliseconds or the null output.
+- On the web the module runs on a memory of 512 MiB at most, 256 MiB on iOS, which WebKit on phones and tablets allows.
+- On the web a module whose threads never start fails `ready` after 30 s with the headers to check, and the next player waits for the same start.
+- On the web a refused sample rate no longer leaves the page silent, two rates set at once run one after the other, and a refused one leaves a rate set since.
+- On the web a pause of the `<audio>` element of the media session from outside no longer leaves the page silent.
+- On the web a Hot Restart keeps the audio context, and lets go the element and the listeners of the replaced program.
+- On the web the event pump runs idle after every event, as the native one.
+- The continue of `on_prefetch` runs off the main isolate, so a slow audio output no longer freezes the UI.
+- The URL the resolver gave for a prefetch serves its own entry, also when two entries share a URL.
+- A string effect option with a bracket reaches the filter whole.
+- A refused header value, the demuxer options and the user info of a URI stay out of logs and errors.
+- A second VM of the process leaves the cores of a live one alone, and reads the Hot Restart buffer of 0.6.1 without a word past its end.
+- Android keeps a pause made during a call, from the app, a controller or a stop, and a play then waits for the call to end.
+- Linux asks for another MPRIS name when a second Flatpak instance has the same pid.
+- MPRIS `xesam:url` of a `file://` item is percent-encoded, a `#` and a `?` of the file name included.
+
+### Docs
+- `Hook.prefetch` says a held hook keeps every later entry from opening ahead of time.
+- `readError` says `completed` turns false and true again at a seek to the park.
+- The iOS note on stream silence says only what is known.
+- The web guide states the memory limits and that a server on another origin must expose `Content-Range`.
+
 ## [0.6.1] - 2-11-2026
 
 ### Docs
