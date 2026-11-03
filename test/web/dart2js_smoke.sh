@@ -22,11 +22,16 @@ work="$(mktemp -d)"
 server=""
 browser=""
 copied=()
+# Chrome runs in a process group of its own, all of which goes: a child
+# still writing to the profile made the rm of the work dir fail the run.
 cleanup() {
-  [[ -n "$browser" ]] && { kill "$browser" 2>/dev/null; wait "$browser" 2>/dev/null; } || true
+  if [[ -n "$browser" ]]; then
+    kill -- "-$browser" 2>/dev/null || true
+    wait "$browser" 2>/dev/null || true
+  fi
   [[ -n "$server" ]] && kill "$server" 2>/dev/null || true
   for f in "${copied[@]}"; do rm -f "$root/web/$f"; done
-  rm -rf "$work"
+  rm -rf "$work" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -50,7 +55,7 @@ url="$(sed -n 's/^MAK_COI=//p' "$work/server.txt")"
 [[ -n "$url" ]] || { echo "coi_server.dart did not start"; exit 1; }
 
 # The sound runs as after a gesture, into no device.
-"$chrome" --headless --no-sandbox --mute-audio \
+setsid "$chrome" --headless --no-sandbox --mute-audio \
   --autoplay-policy=no-user-gesture-required \
   --enable-logging=stderr --v=0 --user-data-dir="$work/profile" "$url" \
   2> "$work/chrome.txt" &
