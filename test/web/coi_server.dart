@@ -32,7 +32,6 @@ Future<void> main(List<String> args) async {
   await for (final request in server) {
     final response = request.response
       ..headers.set('Cross-Origin-Opener-Policy', 'same-origin')
-      ..headers.set('Cross-Origin-Embedder-Policy', 'require-corp')
       ..headers.set('Cross-Origin-Resource-Policy', 'same-origin');
     var path = Uri.decodeComponent(request.uri.path);
     if (request.method == 'POST' && path == '/mak-result') {

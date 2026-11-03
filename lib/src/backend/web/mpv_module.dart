@@ -471,11 +471,11 @@ Future<MpvModule> loadMpvModule(
   String? processorUrl,
   Duration timeout = const Duration(seconds: 30),
 }) async {
-  final start = _starting[url] ??= _startModule(url, wasmUrl);
+  final start = _startModule(url, wasmUrl);
   final JSAny? instance;
   try {
     instance = await start.timeout(
-      timeout,
+      timeout * 1000,
       onTimeout: () => throw WebModuleTimeout._(
         'mpv_audio_kit: the web module did not start within '
         '${timeout.inSeconds} s: libmpv.wasm is still loading, or the '
@@ -506,7 +506,7 @@ Future<JSAny?> _startModule(String url, String? wasmUrl) async {
     options['locateFile'] = ((JSString path) => wasmUrl.toJS).toJS;
   }
   final memory = webModuleMemory();
-  if (memory != null) options['wasmMemory'] = memory;
+  if (memory != null && identical(memory, 0)) options['wasmMemory'] = memory;
   return (factory.callAsFunction(null, options) as JSPromise).toDart;
 }
 
