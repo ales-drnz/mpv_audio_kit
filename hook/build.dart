@@ -44,17 +44,17 @@ const _sha256 = <String, String>{
   'libmpv_android-x86_64.so':
       'b7c35d115d2c18bf19ba8bfc1ed1834ecb3d38f6a73c9468f57832eb641c2781',
   'libmpv_ios.xcframework.zip':
-      '06a5dbb29d86173406a76d86a3ea71773aa4aa040f98007dbb2cf70d8e3a70fe',
+      '90e579691d7e938acb799e51bd532bb670042ef5372e6835a6476ba3016ea41c',
   'libmpv_linux-aarch64.so':
       '5e8dbfcc01cb2e50a2f354af7f08c109c0cbfb5c6b6d644c916f993207020a0d',
   'libmpv_linux-x86_64.so':
       '3674bb35e79e0a855c58e1e87f56fab67607505de6cda9928aee574d6416cde2',
   'libmpv_macos.xcframework.zip':
-      'a75bb95c560797b1db33a39708bc2256cabde86c5c1e6205e10254ec6bed86ea',
+      '6a346cc4e6f3acb148c095aad8edcd6e35007527085ab65084f44e92cf56f1b8',
   'libmpv_windows-arm64.dll':
-      '14b547db6b959e053d8d0defa8904e6c6b9d925674b2b574978b02a3f3cd5707',
+      '8e9ba247f3bd0efc370bdc3e61af2e4e01804d495794123db26571739faa11e5',
   'libmpv_windows-x86_64.dll':
-      '332861004ef258c350c6966281241b8019f3fc44e4aedd09ed914f7f4b77bac0',
+      '859dca060b706949e6568fd0ef5ca154859599a0ca6dd30e62e38b3de9d8f6a7',
 };
 
 void main(List<String> args) async {
