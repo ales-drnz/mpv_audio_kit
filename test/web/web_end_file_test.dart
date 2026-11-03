@@ -27,9 +27,9 @@ import 'web_module_helper.dart';
 
 const String _net = String.fromEnvironment('MAK_WEB_NET');
 
-/// Plays [url] on a bare session of the module to its end and returns the
-/// END_FILE the player would get.
-Future<MpvEventEndFile> _endOf(String url) async {
+/// Plays [url] on a bare session of the module to its end, with the
+/// loadfile [options], and returns the END_FILE the player would get.
+Future<MpvEventEndFile> _endOf(String url, {String? options}) async {
   final session = WebSession(loadTestModule);
   final ended = Completer<MpvEventEndFile>();
   await session.start(
@@ -49,7 +49,11 @@ Future<MpvEventEndFile> _endOf(String url) async {
     },
   );
   try {
-    await session.command(['loadfile', url]);
+    await session.command([
+      'loadfile',
+      url,
+      if (options != null) ...['replace', '-1', options],
+    ]);
     return await ended.future.timeout(const Duration(seconds: 40));
   } finally {
     session.requestStop();
@@ -65,6 +69,18 @@ void main() {
     expect(end.skippedSegments, 0);
     expect(end.duration, closeTo(1.0, 0.005));
     expect(end.position, inInclusiveRange(0.0, 1.005));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A duration and a position apart: offsets 40 and 48 read the wrong way
+  // round, or one of them twice, fail here.
+  test('an entry ended at 0.5 s carries its own position', () async {
+    final end = await _endOf(
+      testUrl('fixtures/sine_stereo_1s.flac'),
+      options: 'end=0.5',
+    );
+    expect(end.reason, MpvEndFileReason.mpvEndFileReasonEof);
+    expect(end.duration, closeTo(1.0, 0.005));
+    expect(end.position, closeTo(0.5, 0.05));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test(
