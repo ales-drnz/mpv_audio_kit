@@ -6,10 +6,10 @@
 /// stamped into mpv's version string (`mpv v0.41.0+rN`). The one place the
 /// package names it: the hook downloads `libmpv-<release>` from it, and
 /// scripts/update_libmpv.sh rewrites it.
-const String libmpvRelease = 'r20';
+const String libmpvRelease = 'r21';
 
 /// The ABI of the web module (`MAK_WEB_ABI` of libmpv-scripts) this package
 /// drives: the exports it calls, the struct layout it decodes, the wakeup
 /// bridge and `Module.makWebAudio`. The module states its own at load, and
 /// scripts/update_libmpv.sh refuses a release whose manifest names another.
-const int webModuleAbi = 1;
+const int webModuleAbi = 2;

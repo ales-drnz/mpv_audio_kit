@@ -117,7 +117,13 @@ final class EventSequencer {
       }
       if (last) _stopped = true;
       if (reads == null) {
-        flushTrailing();
+        // As the native pump after every event: flush, and the reads that
+        // are due go before the next event.
+        final due = _idle();
+        if (due != null) {
+          _step(due);
+          return;
+        }
         continue;
       }
       _step(reads);
@@ -153,7 +159,13 @@ final class EventSequencer {
 
   void _stepped(bool ok) {
     _stepping = false;
-    if (ok && !_stopped) flushTrailing();
+    if (ok && !_stopped) {
+      final due = _idle();
+      if (due != null) {
+        _step(due);
+        return;
+      }
+    }
     pump();
   }
 

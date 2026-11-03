@@ -75,12 +75,13 @@ final class MpvEventEndFile extends Struct {
   external int playlistEntryId;
 }
 
-/// FFI layout of `mpv_event_end_file` in a libmpv of libmpv-r20 or later
-/// (patch read_error), which appends two fields: whether the file stopped
-/// on a read error, and how many HLS or DASH segments it lost. The same
-/// offsets on every ABI of the release. Read it only from a libmpv that has
-/// the patch: an older one copies a shorter event, and the fields past it
-/// are not its memory.
+/// FFI layout of `mpv_event_end_file` in a libmpv with the patch read_error,
+/// which appends up to four fields: whether the file stopped on a read
+/// error and how many HLS or DASH segments it lost (libmpv-r20), the
+/// duration and position of the entry when the file was closed
+/// (libmpv-r21). The same offsets on every ABI. Read only the fields the
+/// libmpv states (`mak-end-file-fields`): an older one copies a shorter
+/// event, and the fields past it are not its memory.
 final class MpvEventEndFileReadError extends Struct {
   /// As [MpvEventEndFile.reason].
   @Int32()
@@ -109,6 +110,17 @@ final class MpvEventEndFileReadError extends Struct {
   /// `mak_skipped_segments`: the HLS or DASH segments lost to errors.
   @Int64()
   external int makSkippedSegments;
+
+  /// `mak_duration`: the duration of the entry when the file was closed,
+  /// in seconds, or -1 when mpv knew none (a live stream, a file that
+  /// never opened).
+  @Double()
+  external double makDuration;
+
+  /// `mak_position`: the playback position of the entry when the file was
+  /// closed, in seconds, or -1 when mpv knew none.
+  @Double()
+  external double makPosition;
 }
 
 // ---------------------------------------------------------------------------

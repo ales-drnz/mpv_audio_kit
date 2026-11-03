@@ -3,9 +3,9 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 //
-// The web module is checked before any other call into it: the r20 module
-// of test/web/module passes and keeps the read error fields of END_FILE at
-// 28 and 32, and a module of another ABI, or one older than the ABI, is
+// The web module is checked before any other call into it: the r21 module
+// of test/web/module passes and keeps the four fields of END_FILE at 28,
+// 32, 40 and 48, and a module of another ABI, or one older than the ABI, is
 // refused with a message that names it (flutter test --platform chrome
 // --wasm).
 
@@ -31,22 +31,24 @@ JSObject _fakeModule({int? abi}) {
 }
 
 void main() {
-  test(
-    'the r20 module loads, with the read error fields of END_FILE',
-    () async {
-      final module = await loadTestModule();
-      expect(module.endFile, (readError: 28, skippedSegments: 32));
-    },
-  );
+  test('the r21 module loads, with the four fields of END_FILE', () async {
+    final module = await loadTestModule();
+    expect(module.endFile, (
+      readError: 28,
+      skippedSegments: 32,
+      duration: 40,
+      position: 48,
+    ));
+  });
 
   test('a module of another ABI is refused before any other call', () {
     expect(
-      () => MpvModule(_fakeModule(abi: 2)),
+      () => MpvModule(_fakeModule(abi: 1)),
       throwsA(
         isA<StateError>().having(
           (e) => e.message,
           'message',
-          allOf(contains('has ABI 2'), contains('needs ABI 1')),
+          allOf(contains('has ABI 1'), contains('needs ABI 2')),
         ),
       ),
     );
@@ -64,4 +66,63 @@ void main() {
       ),
     );
   });
+
+  // kit-web-1: the factory waits for the workers of the module's threads,
+  // and one that cannot load them never settles. The load fails instead.
+  test('a module whose threads never start fails the load', () async {
+    final url = _createObjectUrl(
+      _Blob(
+        <JSAny>['export default () => new Promise(() => {});'.toJS].toJS,
+        JSObject()..['type'] = 'text/javascript'.toJS,
+      ),
+    ).toDart;
+    await expectLater(
+      loadMpvModule(url, timeout: const Duration(seconds: 1)),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('did not start within 1 s'), contains('COEP')),
+        ),
+      ),
+    );
+  });
+
+  // A start past the timeout goes on: the next load waits for it, and
+  // does not make a second module beside it.
+  test('a load after a timeout waits for the same start', () async {
+    final url = _createObjectUrl(
+      _Blob(
+        <JSAny>[
+          'export default () => {'
+                  ' globalThis.__makStarts = (globalThis.__makStarts || 0) + 1;'
+                  ' return new Promise((r) => { globalThis.__makStarted = r; });'
+                  ' };'
+              .toJS,
+        ].toJS,
+        JSObject()..['type'] = 'text/javascript'.toJS,
+      ),
+    ).toDart;
+    await expectLater(
+      loadMpvModule(url, timeout: const Duration(milliseconds: 500)),
+      throwsA(isA<WebModuleTimeout>()),
+    );
+    final again = loadMpvModule(url, timeout: const Duration(seconds: 10));
+    // The start resolves with no exports: MpvModule then fails, not the
+    // wait.
+    (globalContext['__makStarted'] as JSFunction).callAsFunction(
+      null,
+      JSObject(),
+    );
+    await expectLater(again, throwsA(isNot(isA<WebModuleTimeout>())));
+    expect((globalContext['__makStarts'] as JSNumber).toDartInt, 1);
+  });
 }
+
+@JS('Blob')
+extension type _Blob._(JSObject _) implements JSObject {
+  external _Blob(JSArray<JSAny> parts, JSObject options);
+}
+
+@JS('URL.createObjectURL')
+external JSString _createObjectUrl(JSObject blob);

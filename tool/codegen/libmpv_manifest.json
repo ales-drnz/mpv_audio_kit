@@ -1,5 +1,5 @@
 {
-  "release": "r20",
+  "release": "r21",
   "mpv": "0.41.0",
   "ffmpeg": "8.1.1",
   "license": "LGPL-3.0-or-later",
@@ -104,6 +104,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -131,6 +132,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -158,6 +160,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -184,6 +187,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -210,6 +214,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -236,6 +241,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -262,6 +268,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -287,6 +294,7 @@
       "chapter_list_reset",
       "dash_keepalive",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -312,6 +320,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -339,6 +348,7 @@
       "dash_keepalive",
       "embed_cacert",
       "embedded_cover_art",
+      "fd_pread",
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
@@ -357,33 +367,33 @@
     ]
   },
   "source": {
-    "commit": "b59fd27fa3e9ff0a95126116ddcb72daf1e7214c",
-    "run": "41422329285"
+    "commit": "2004c2a51da05afc9779d39de658c311dcd94771",
+    "run": "41622944280"
   },
   "assets": {
-    "libmpv_android-arm64-v8a.so": "494abbd2cfbbcc0340bc87f19450e4a675ba7df3742abbfb49d2ababc70550ed",
-    "libmpv_android-armeabi-v7a.so": "7ac021ac174190af6361042e64fdd87bd5817fb1e666af4d2ef5b6b69154b350",
-    "libmpv_android-x86_64.so": "7fa167095a66b0b912c30ddffe76778ed2719333a75f56b4bea2939f9a06bafe",
-    "libmpv_ios.xcframework.zip": "e390fcb5bfe0f0f47a16ad92f9fc89539c25a5f94e8caf8041fde078cdb469b8",
-    "libmpv_linux-aarch64.so": "5364018eb738dba44d65a9cf164d2594497d90ecbe87db53e97d7183a3816879",
-    "libmpv_linux-x86_64.so": "86abd26c9c063b6900ca9f4b8cfd1d8bff8a0c6d1854cfb45eba42ce629c8559",
-    "libmpv_macos.xcframework.zip": "e9565a548a63b06f62ff5f984fc43ebd9769a3490aca0f7a61095876721bcee3",
-    "libmpv_web.zip": "355a60ccbb93359c8bb7687a799fbf005c841297c91718dbd4e32687be081452",
-    "libmpv_windows-arm64.dll": "e8d764fb589945fea3a9a8ca1db0ca2019eac8d1b7aa4335420f035056103e49",
-    "libmpv_windows-x86_64.dll": "024672436405d2e6aac15c7e18ef7a7890c3ed540605cfd3c4676ff088c43052"
+    "libmpv_android-arm64-v8a.so": "00e147e84a95108108e8d4adfed708af01a4144990f554ee184e8c9e5e43d74c",
+    "libmpv_android-armeabi-v7a.so": "d93aa99778e84f1b97d69c094b337544cac37d1601951a5e3f6bf89abad198d6",
+    "libmpv_android-x86_64.so": "b7c35d115d2c18bf19ba8bfc1ed1834ecb3d38f6a73c9468f57832eb641c2781",
+    "libmpv_ios.xcframework.zip": "90e579691d7e938acb799e51bd532bb670042ef5372e6835a6476ba3016ea41c",
+    "libmpv_linux-aarch64.so": "5e8dbfcc01cb2e50a2f354af7f08c109c0cbfb5c6b6d644c916f993207020a0d",
+    "libmpv_linux-x86_64.so": "3674bb35e79e0a855c58e1e87f56fab67607505de6cda9928aee574d6416cde2",
+    "libmpv_macos.xcframework.zip": "6a346cc4e6f3acb148c095aad8edcd6e35007527085ab65084f44e92cf56f1b8",
+    "libmpv_web.zip": "81b9bdec566ad3fb79b5b95ce947a2dc758925ffe247da854546235827bec675",
+    "libmpv_windows-arm64.dll": "8e9ba247f3bd0efc370bdc3e61af2e4e01804d495794123db26571739faa11e5",
+    "libmpv_windows-x86_64.dll": "859dca060b706949e6568fd0ef5ca154859599a0ca6dd30e62e38b3de9d8f6a7"
   },
   "licenses": {
     "asset": "licenses.zip",
-    "sha256": "dd1e238bf6499d928afff82617bdc112ba79b28c82ec6df64b34a137131ffff8"
+    "sha256": "8c773adec74bdad958a4d321c0f1439814514588315dfdc36deb0009af69ba91"
   },
   "web": {
     "asset": "libmpv_web.zip",
-    "abi": 1,
+    "abi": 2,
     "webaudioAbi": 1,
     "emscripten": "6.0.12",
     "files": {
-      "libmpv.mjs": "10bbf200d22644e38fc90f1a7b261532c2d90d9e3d733b0758fcb601db071b51",
-      "libmpv.wasm": "6974853927eebcd4ad20970479c27a3835aa90f3ac3954bbef1347a76ddafe1d",
+      "libmpv.mjs": "a828dc54cc9a95d5c4b335c7b6dc3ae11691c511f4866dec6c4f211972d1387f",
+      "libmpv.wasm": "5b802bbbf0887cf7c484de9f536c95bd4ea2ee08a9050c98737ea1b3a54f3a26",
       "mak_webaudio_processor.js": "253e3882e772051e749292e518768c75e2d61a807355d45d00ad7215f7c7bee4"
     }
   }

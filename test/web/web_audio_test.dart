@@ -30,6 +30,16 @@ import 'web_module_helper.dart';
 
 const bool _autoplay = bool.fromEnvironment('MAK_WEB_AUTOPLAY');
 
+@JS('document')
+external JSObject get _document;
+
+@JS('Event')
+extension type _Event._(JSObject _) implements JSObject {
+  external _Event(String type);
+}
+
+JSObject _event(String type) => _Event(type);
+
 /// The page's AudioContext.
 Future<JSObject> _context() async =>
     (await loadTestModule()).c.makWebAudio.context!;
@@ -136,6 +146,36 @@ void main() {
       expect(await _consumed() - before, greaterThan(30000));
       expect((element['paused'] as JSBoolean).toDart, isFalse);
     });
+
+    // kit-web-4: the context's destination keeps the sound until the
+    // element plays, and gets it back when the element stops without the
+    // player asking. The next gesture plays the element again.
+    test('an element paused from outside gives the sound back to the '
+        'destination until a gesture plays it again', () async {
+      final output = await webAudioOutput();
+      trace.clear();
+      output.routeToElement(true);
+      addTearDown(() => output.routeToElement(false));
+      await waitUntil(
+        () => trace.contains('element playing'),
+        what: 'the element playing',
+      );
+      expect(trace, containsAllInOrder(['direct true', 'direct false']));
+      trace.clear();
+      output.element!.callMethod('pause'.toJS);
+      await waitUntil(
+        () => trace.contains('element paused'),
+        what: 'the pause seen',
+      );
+      expect(trace, contains('direct true'));
+      trace.clear();
+      _document.callMethod('dispatchEvent'.toJS, _event('pointerdown'));
+      await waitUntil(
+        () => trace.contains('element playing'),
+        what: 'the element playing again',
+      );
+      expect(trace, contains('direct false'));
+    });
   });
 
   test('setSystemVolume and setSystemMute before the first file set the '
@@ -150,6 +190,94 @@ void main() {
     expect(double.parse((await player.getRawProperty('webaudio-volume'))!), 50);
     expect(await player.getRawProperty('webaudio-mute'), 'yes');
   });
+
+  // kit-web-2: the module closes the old context before it makes the new
+  // one, so a rate the browser refuses left the page without sound.
+  test('a rate the browser refuses throws and keeps the output at the rate '
+      'before', () async {
+    final player = Player();
+    addTearDown(player.dispose);
+    await player.ready;
+    final rate = ((await _context())['sampleRate'] as JSNumber).toDartInt;
+    final samplerate = await player.getRawProperty('audio-samplerate');
+    trace.clear();
+    await expectLater(player.setAudioSampleRate(1000), throwsStateError);
+    expect(trace, ['init 1000', 'init 0']);
+    expect(((await _context())['sampleRate'] as JSNumber).toDartInt, rate);
+    expect(player.state.audioSampleRate, 0);
+    expect(await player.getRawProperty('audio-samplerate'), samplerate);
+    // The same rate again tries again.
+    trace.clear();
+    await expectLater(player.setAudioSampleRate(1000), throwsStateError);
+    expect(trace, contains('init 1000'));
+  });
+
+  // A refused rate puts back the rate from before the call only when no
+  // other call wrote one since.
+  test(
+    'a refused rate set beside an accepted one leaves the accepted one',
+    () async {
+      final player = Player();
+      addTearDown(player.dispose);
+      await player.ready;
+      final refused = player.setAudioSampleRate(1000);
+      final accepted = player.setAudioSampleRate(32000);
+      await expectLater(refused, throwsStateError);
+      await accepted;
+      addTearDown(() => player.setAudioSampleRate(0));
+      expect(player.state.audioSampleRate, 32000);
+      expect(await player.getRawProperty('audio-samplerate'), '32000');
+    },
+  );
+
+  test('two rates set at once run one after the other', () async {
+    final output = await webAudioOutput();
+    trace.clear();
+    await Future.wait([output.setSampleRate(32000), output.setSampleRate(0)]);
+    expect(trace.where((l) => l.startsWith('init')), ['init 32000', 'init 0']);
+    expect((await _context())['state'], isNot('closed'.toJS));
+  });
+
+  // kit-web-V1: after a Hot Restart a new context on the same module made
+  // it abort. The new program keeps the context, and its rate.
+  test('after a Hot Restart the output keeps the context', () async {
+    final module = await loadTestModule();
+    final output = await webAudioOutput();
+    await output.setSampleRate(32000);
+    addTearDown(() => output.setSampleRate(0));
+    final context = await _context();
+    trace.clear();
+    final again = await WebAudioOutput.start(module, reuse: true);
+    // The output is routed again, from the replaced program's element.
+    expect(trace, ['reuse 32000', 'route destination']);
+    expect((await _context()).strictEquals(context).toDart, isTrue);
+    expect(again.needsGesture, output.needsGesture);
+  });
+
+  // After a Hot Restart the listeners of the replaced program stayed on
+  // its element and on the page, and output 0 on its element.
+  test(
+    'after a Hot Restart the replaced element and gestures are let go',
+    () async {
+      final module = await loadTestModule();
+      final output = await webAudioOutput();
+      trace.clear();
+      // The listeners are on as soon as the output goes to the element,
+      // whether the browser lets it play or not.
+      output.routeToElement(true);
+      addTearDown(() => output.routeToElement(false));
+      final old = output.element!;
+      trace.clear();
+      await WebAudioOutput.start(module, reuse: true);
+      expect(trace, contains('route destination'));
+      trace.clear();
+      old.callMethod('dispatchEvent'.toJS, _event('pause'));
+      _document.callMethod('dispatchEvent'.toJS, _event('pointerdown'));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(trace, isNot(contains('element paused')));
+      expect(trace, isNot(contains('element playing')));
+    },
+  );
 
   test('setAudioSampleRate makes the page output run at that rate', () async {
     final player = Player();

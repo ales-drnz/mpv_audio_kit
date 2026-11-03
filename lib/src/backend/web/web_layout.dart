@@ -16,8 +16,8 @@ import '../../internals/libmpv_release.dart';
 /// and offsetof of mpv_node, mpv_node_list, mpv_byte_array, mpv_event,
 /// mpv_event_property, mpv_event_log_message, mpv_event_end_file and
 /// mpv_event_hook. The decoders use these numbers. A module with the
-/// read_error patch has the 40-byte END_FILE of [_kEndFileReadError]; one
-/// without it the 32 bytes and two zero offsets below.
+/// read_error patch has the 56-byte END_FILE of [_kEndFileReadError]; one
+/// without it the 32 bytes and four zero offsets below.
 const List<int> _kLayout = [
   16, 8, // mpv_node: size, format
   12, 4, 8, // mpv_node_list: size, values, keys
@@ -27,19 +27,32 @@ const List<int> _kLayout = [
   16, 8, 12, // mpv_event_log_message: size, text, log_level
   32, 4, 8, 16, 24, // mpv_event_end_file: size, error, entry, insert, num
   0, 0, // mpv_event_end_file: mak_read_error, mak_skipped_segments
+  0, 0, // mpv_event_end_file: mak_duration, mak_position
   16, 8, // mpv_event_hook: size, id
 ];
 
 /// The END_FILE entries of [_kLayout] in a module with the read_error
 /// patch: index, value.
-const Map<int, int> _kEndFileReadError = {17: 40, 22: 28, 23: 32};
+const Map<int, int> _kEndFileReadError = {
+  17: 56,
+  22: 28,
+  23: 32,
+  24: 40,
+  25: 48,
+};
 
-/// Where a module keeps the two fields the read_error patch adds at the end
-/// of `mpv_event_end_file`: `mak_read_error` (int32) and
-/// `mak_skipped_segments` (int64). Both `0` in a module without the patch,
-/// where no field can sit.
+/// Where a module keeps the four fields the read_error patch adds at the
+/// end of `mpv_event_end_file`: `mak_read_error` (int32),
+/// `mak_skipped_segments` (int64), `mak_duration` and `mak_position`
+/// (double). All `0` in a module without the patch, where no field can
+/// sit.
 @internal
-typedef EndFileFields = ({int readError, int skippedSegments});
+typedef EndFileFields = ({
+  int readError,
+  int skippedSegments,
+  int duration,
+  int position,
+});
 
 /// Checks [version], what the module's `mak_web_abi_version()` returned
 /// (`null` for a module without it), against [webModuleAbi].
@@ -79,6 +92,11 @@ EndFileFields checkWebLayout(List<int> table) {
     );
   }
   return readError
-      ? (readError: table[22], skippedSegments: table[23])
-      : (readError: 0, skippedSegments: 0);
+      ? (
+          readError: table[22],
+          skippedSegments: table[23],
+          duration: table[24],
+          position: table[25],
+        )
+      : (readError: 0, skippedSegments: 0, duration: 0, position: 0);
 }

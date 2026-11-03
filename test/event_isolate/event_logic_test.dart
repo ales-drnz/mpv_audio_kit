@@ -355,6 +355,125 @@ void main() {
     );
   });
 
+  // kit-core-2: mpv sends property changes only once its event queue is
+  // empty, so an entry that loads and ends within one burst of events gets
+  // none. Its END_FILE carries what the libmpv-r21 event carries, else
+  // what mpv notified of the entry.
+  group('the duration and position of the entry that ended', () {
+    /// The core's answers while entry 8, the second of three, plays.
+    Map<String, Object?> playingSecond() => {
+      'path': '/b.flac',
+      'time-pos': 0.0,
+      'duration': 180.0,
+      'playlist-pos': 1,
+      'playlist-playing-pos': 1,
+      'playlist/1/id': 8,
+      'eof-reached': 0,
+      'playlist-count': 3,
+      'playlist/2/id': 9,
+    };
+
+    Future<List<MpvEventEndFile>> run(
+      Map<String, Object?> values,
+      Future<void> Function(EventLogic logic) steps,
+    ) async {
+      final ends = <MpvEventEndFile>[];
+      final logic = EventLogic(_Reader(values), (e) {
+        if (e is MpvEventEndFile) ends.add(e);
+      })..observe('duration', MpvFormat.mpvFormatDouble);
+      await steps(logic);
+      return ends;
+    }
+
+    // Without the fields of libmpv-r21, END_FILE carries only what mpv
+    // notified of the entry, as in 0.6.1: here nothing, and no read of the
+    // pump stands in for it.
+    test('an END_FILE without the fields and no notification carries '
+        'neither', () async {
+      final values = playingSecond();
+      final reader = _Reader(values);
+      final ends = <MpvEventEndFile>[];
+      final logic = EventLogic(reader, (e) {
+        if (e is MpvEventEndFile) ends.add(e);
+      })..observe('duration', MpvFormat.mpvFormatDouble);
+      await logic.dispatch(MpvEventStartFile(8));
+      await logic.dispatch(MpvEventFileLoaded());
+      await logic.dispatch(
+        MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
+      );
+      expect(reader.reads, isNot(contains('duration')));
+      expect(reader.reads, isNot(contains('playlist-playing-pos')));
+      expect(ends.single.duration, isNull);
+      expect(ends.single.position, isNull);
+    });
+
+    // The package needs libmpv-r21, whose END_FILE carries both: the pump
+    // makes no read of its own for them.
+    test('the pump reads neither the duration nor the playing entry for '
+        'END_FILE', () async {
+      final values = playingSecond();
+      final reader = _Reader(values);
+      final ends = <MpvEventEndFile>[];
+      final logic = EventLogic(reader, (e) {
+        if (e is MpvEventEndFile) ends.add(e);
+      })..observe('duration', MpvFormat.mpvFormatDouble);
+      await logic.dispatch(MpvEventStartFile(8));
+      await logic.dispatch(MpvEventFileLoaded());
+      await logic.dispatch(MpvEventPlaybackRestart());
+      final atLoad = [...reader.reads];
+      await logic.dispatch(
+        MpvEventEndFile(
+          8,
+          MpvEndFileReason.mpvEndFileReasonEof,
+          0,
+          position: 0.05,
+          duration: 0.05,
+          readError: false,
+          skippedSegments: 0,
+        ),
+      );
+      expect(atLoad, isNot(contains('duration')));
+      expect(atLoad, isNot(contains('playlist-playing-pos')));
+      expect((ends.single.duration, ends.single.position), (0.05, 0.05));
+    });
+
+    test('the fields of a libmpv-r21 END_FILE win, and one mpv did not '
+        'know keeps what it reported', () async {
+      final ends = await run(playingSecond(), (logic) async {
+        await logic.dispatch(MpvEventStartFile(8));
+        await logic.property('duration', MpvFormat.mpvFormatDouble, 5.0);
+        await logic.property('time-pos', MpvFormat.mpvFormatDouble, 1.0);
+        await logic.dispatch(
+          MpvEventEndFile(
+            8,
+            MpvEndFileReason.mpvEndFileReasonStop,
+            0,
+            position: 3.9,
+            duration: 4.0,
+            readError: false,
+            skippedSegments: 0,
+          ),
+        );
+        await logic.dispatch(MpvEventStartFile(9));
+        await logic.property('duration', MpvFormat.mpvFormatDouble, 6.0);
+        await logic.property('time-pos', MpvFormat.mpvFormatDouble, 2.0);
+        await logic.dispatch(
+          MpvEventEndFile(
+            9,
+            MpvEndFileReason.mpvEndFileReasonStop,
+            0,
+            readError: false,
+            skippedSegments: 0,
+          ),
+        );
+      });
+      expect(
+        [for (final e in ends) (e.duration, e.position)],
+        [(4.0, 3.9), (6.0, 2.0)],
+      );
+    });
+  });
+
   test(
     'PLAYBACK_RESTART drops a held time-pos and sends the landing',
     () async {

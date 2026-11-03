@@ -176,9 +176,8 @@ final class MpvFileEndedEvent {
   /// (`Player.openPlaylistFile`) or of a raw command.
   final Media? media;
 
-  /// The last position mpv reported for the entry before it ended: where
-  /// its output was. `null` when mpv reported none, as for a file that
-  /// failed to open.
+  /// The position of the entry when it ended: where its output was. `null`
+  /// when mpv knew none, as for a file that failed to open.
   ///
   /// With gapless playback (the default) mpv ends an entry once its decoder
   /// is done, while the output still plays what it buffered. The position
