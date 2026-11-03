@@ -26,6 +26,11 @@ const String _kStateListener = '__makStateListenerOff';
 /// of the page's media session.
 const String _kElement = '__makElement';
 
+/// The listeners of the element and of the gestures, as `[target, type,
+/// listener, ...]`, kept on the module instance: a program a Hot Restart
+/// replaced cannot take its own off.
+const String _kListeners = '__makListeners';
+
 /// The property of the module instance that holds the rate its context
 /// was made at, `0` for the device's: a program after a Hot Restart keeps
 /// the context, and its rate.
@@ -94,7 +99,9 @@ final class WebAudioOutput {
     instance[_kStateListener] = output._audio.onStateChange(
       output._onState.toJS,
     );
-    // And the <audio> element of its media session, still playing.
+    // And the listeners of its element and gestures, and the <audio>
+    // element of its media session, still playing.
+    _removeListeners(instance);
     final element = instance[_kElement];
     if (element.isA<JSObject>()) {
       (element as JSObject).callMethod('pause'.toJS);
@@ -107,6 +114,8 @@ final class WebAudioOutput {
           : 0;
       debugWebAudioTrace?.call('reuse ${output._sampleRate}');
       output._onState(output._audio.state);
+      // Output 0 may still go to the replaced program's element.
+      output._route();
       return output;
     }
     await output._init(output._sampleRate);
@@ -250,9 +259,7 @@ final class WebAudioOutput {
       }
     }
 
-    each('removeEventListener', 'playing', _onPlaying);
-    each('removeEventListener', 'pause', _onPause);
-    gestures('removeEventListener', _onGesture);
+    _removeListeners(_module.instance);
     _onPlaying = _onPause = _onGesture = null;
     if (!on) return;
     _onPlaying = ((JSAny? _) {
@@ -270,6 +277,30 @@ final class WebAudioOutput {
     each('addEventListener', 'playing', _onPlaying);
     each('addEventListener', 'pause', _onPause);
     gestures('addEventListener', _onGesture);
+    _module.instance[_kListeners] = <JSAny?>[
+      element,
+      'playing'.toJS,
+      _onPlaying,
+      element,
+      'pause'.toJS,
+      _onPause,
+      for (final type in _kGestures) ...[_document, type.toJS, _onGesture],
+    ].toJS;
+  }
+
+  /// Takes off the listeners kept on [instance] ([_kListeners]).
+  static void _removeListeners(JSObject instance) {
+    final kept = instance[_kListeners];
+    instance[_kListeners] = null;
+    if (!kept.isA<JSArray>()) return;
+    final list = (kept as JSArray<JSAny?>).toDart;
+    for (var i = 0; i + 2 < list.length; i += 3) {
+      (list[i] as JSObject).callMethod(
+        'removeEventListener'.toJS,
+        list[i + 1],
+        list[i + 2],
+      );
+    }
   }
 
   /// The `<audio>` element output 0 plays through, while routed there.
