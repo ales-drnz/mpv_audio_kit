@@ -460,7 +460,10 @@ JSObject? webModuleMemory() {
 /// The factory waits for the module's threads, and never settles when
 /// their workers cannot load: a file served without COEP, a
 /// Content-Security-Policy that leaves them out, a module on another
-/// origin. Past [timeout] it fails with a [StateError] that says so.
+/// origin. Past [timeout] it fails with a [WebModuleTimeout]. The 30 s
+/// count from the import, so a libmpv.wasm still on its way counts as
+/// well. The start goes on: a later load of [url] waits for that same
+/// start again, rather than making a second module.
 @internal
 Future<MpvModule> loadMpvModule(
   String url, {
@@ -468,6 +471,34 @@ Future<MpvModule> loadMpvModule(
   String? processorUrl,
   Duration timeout = const Duration(seconds: 30),
 }) async {
+  final start = _starting[url] ??= _startModule(url, wasmUrl);
+  final JSAny? instance;
+  try {
+    instance = await start.timeout(
+      timeout,
+      onTimeout: () => throw WebModuleTimeout._(
+        'mpv_audio_kit: the web module did not start within '
+        '${timeout.inSeconds} s: libmpv.wasm is still loading, or the '
+        'workers of its threads did not load. Serve every file with the '
+        'COOP and COEP headers, libmpv.mjs and libmpv.wasm included, from '
+        'the origin of the page, and let a Content-Security-Policy allow '
+        'them as workers',
+      ),
+    );
+  } on WebModuleTimeout {
+    rethrow;
+  } catch (_) {
+    _starting.remove(url)?.ignore();
+    rethrow;
+  }
+  _starting.remove(url)?.ignore();
+  return MpvModule(instance as JSObject, processorUrl: processorUrl);
+}
+
+/// The starts of [loadMpvModule] still going, by URL.
+final Map<String, Future<JSAny?>> _starting = {};
+
+Future<JSAny?> _startModule(String url, String? wasmUrl) async {
   final namespace = await importModule(url.toJS).toDart;
   final factory = namespace['default'] as JSFunction;
   final options = JSObject();
@@ -476,17 +507,12 @@ Future<MpvModule> loadMpvModule(
   }
   final memory = webModuleMemory();
   if (memory != null) options['wasmMemory'] = memory;
-  final instance = await (factory.callAsFunction(null, options) as JSPromise)
-      .toDart
-      .timeout(
-        timeout,
-        onTimeout: () => throw StateError(
-          'mpv_audio_kit: the web module did not start within '
-          '${timeout.inSeconds} s: the workers of its threads did not load. '
-          'Serve every file with the COOP and COEP headers, libmpv.mjs and '
-          'libmpv.wasm included, from the origin of the page, and let a '
-          'Content-Security-Policy allow them as workers',
-        ),
-      );
-  return MpvModule(instance as JSObject, processorUrl: processorUrl);
+  return (factory.callAsFunction(null, options) as JSPromise).toDart;
+}
+
+/// The web module did not start within the time [loadMpvModule] waits.
+/// Its start goes on, and a later load waits for it again.
+@internal
+final class WebModuleTimeout extends StateError {
+  WebModuleTimeout._(super.message);
 }
