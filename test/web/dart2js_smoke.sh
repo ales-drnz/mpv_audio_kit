@@ -10,7 +10,8 @@
 # (coi_server.dart). Chrome headless opens the page of test_app's
 # lib/web_smoke.dart, which plays a fixture to its end and posts the
 # outcome to the server. The files of the web module in <module dir> are
-# copied to web/ for the build, and taken out again after it.
+# copied to web/ for the build, and taken out again after it; a module
+# already in web/ must be the same one. Linux only (setsid).
 #
 #   CHROME_EXECUTABLE=<chrome> test/web/dart2js_smoke.sh <module dir>
 set -euo pipefail
@@ -28,6 +29,11 @@ cleanup() {
   if [[ -n "$browser" ]]; then
     kill -- "-$browser" 2>/dev/null || true
     wait "$browser" 2>/dev/null || true
+    # Every process of the group, not only Chrome's own, for up to 10 s.
+    for _ in $(seq 100); do
+      kill -0 -- "-$browser" 2>/dev/null || break
+      sleep 0.1
+    done
   fi
   [[ -n "$server" ]] && kill "$server" 2>/dev/null || true
   for f in "${copied[@]}"; do rm -f "$root/web/$f"; done
@@ -37,7 +43,11 @@ trap cleanup EXIT
 
 for f in libmpv.mjs libmpv.wasm mak_webaudio_processor.js THIRD_PARTY_LICENSES.txt; do
   [[ -f "$module/$f" ]] || { [[ $f == THIRD_PARTY_LICENSES.txt ]] && continue; echo "$module/$f is missing"; exit 1; }
-  [[ -e "$root/web/$f" ]] && continue
+  if [[ -e "$root/web/$f" ]]; then
+    cmp -s "$module/$f" "$root/web/$f" ||
+      { echo "web/$f is not the one of $module: remove it or install that module"; exit 1; }
+    continue
+  fi
   cp "$module/$f" "$root/web/$f"
   copied+=("$f")
 done
