@@ -14,6 +14,8 @@ test/web/
 ├── with_net_server.sh       flutter test with net_server.dart beside it
 ├── net_server.dart          the HTTP server of the network cases
 ├── chrome_autoplay.sh       Chrome without the autoplay policy
+├── dart2js_smoke.sh         flutter build web of test_app, played in Chrome
+├── coi_server.dart          serves that build with COOP and COEP
 ├── web_module_helper.dart   loads the module, gives fixture URLs
 ├── parity_trace.txt         the native order of events, for web_parity_test
 ├── web_compile_test.dart    compiles with every web compiler, DDC included
@@ -56,6 +58,9 @@ MAK_CHROME="$CHROME_EXECUTABLE" CHROME_EXECUTABLE="$PWD/test/web/chrome_autoplay
 # 3. The package through DDC.
 flutter test --platform chrome test/web/web_compile_test.dart \
   test/web/web_isolation_test.dart
+
+# 4. An app built with dart2js, the module of test/web/module copied to web/, played to its end.
+test/web/dart2js_smoke.sh test/web/module
 ```
 
 - libmpv runs on threads, which need a cross-origin isolated page.

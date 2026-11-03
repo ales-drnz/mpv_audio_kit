@@ -337,6 +337,16 @@ jobs:
           flutter test --platform chrome test/web/web_compile_test.dart \
             test/web/web_isolation_test.dart 2>&1 |
             tee build/web-test-logs/ddc.txt
+      # The production path, which the steps above do not take: flutter
+      # build web with dart2js (what Firefox and Safari get), the module
+      # from the package's web assets, served with COOP and COEP on every
+      # file, played to its end in Chrome (test/web/dart2js_smoke.sh).
+      - name: flutter build web (dart2js), played to its end
+        if: steps.module.outputs.ready == 'true'
+        timeout-minutes: 15
+        run: |
+          test/web/dart2js_smoke.sh test/web/module 2>&1 |
+            tee build/web-test-logs/dart2js.txt
       - if: failure() && steps.module.outputs.ready == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
