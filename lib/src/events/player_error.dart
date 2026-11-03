@@ -177,10 +177,7 @@ final class MpvFileEndedEvent {
   final Media? media;
 
   /// The position of the entry when it ended: where its output was. `null`
-  /// when mpv knew none, as for a file that failed to open. With a libmpv
-  /// older than libmpv-r21 it is the last position mpv reported, which an
-  /// entry that loads and ends at once (a file of a few milliseconds, the
-  /// null output untimed) may not have, or not past its start.
+  /// when mpv knew none, as for a file that failed to open.
   ///
   /// With gapless playback (the default) mpv ends an entry once its decoder
   /// is done, while the output still plays what it buffered. The position
@@ -190,8 +187,7 @@ final class MpvFileEndedEvent {
   final Duration? position;
 
   /// The duration of the entry as mpv knew it when it ended. `null` when
-  /// mpv knew none, as for a live stream, and with a libmpv older than
-  /// libmpv-r21 for an entry that ended before the player read it.
+  /// mpv knew none, as for a live stream.
   ///
   /// It can be an estimate: for an MP3 without a Xing or VBRI header, and
   /// for some HLS streams, mpv derives it from the bitrate, and a file that

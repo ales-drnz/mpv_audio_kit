@@ -171,11 +171,7 @@ void _isolateEntry(SendPort initialReplyPort) {
       }
       // Per-isolate logic and cache: not shared across Player instances.
       final send = toMain!.send;
-      final logic = EventLogic(
-        _NativeReader(lib!, handle!, stopFlag),
-        send,
-        endFileCarriesEntry: endFileFields >= 4,
-      );
+      final logic = EventLogic(_NativeReader(lib!, handle!, stopFlag), send);
       for (final spec in message.observes) {
         logic.observe(spec.name, spec.format);
       }
