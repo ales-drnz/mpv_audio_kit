@@ -462,8 +462,8 @@ JSObject? webModuleMemory() {
 /// Content-Security-Policy that leaves them out, a module on another
 /// origin. Past [timeout] it fails with a [WebModuleTimeout]. The 30 s
 /// count from the import, so a libmpv.wasm still on its way counts as
-/// well. The start goes on: a later load of [url] waits for that same
-/// start again, rather than making a second module.
+/// well. The start goes on: a later load of [url] in the same program
+/// waits for that same start again, rather than making a second module.
 @internal
 Future<MpvModule> loadMpvModule(
   String url, {
@@ -495,7 +495,8 @@ Future<MpvModule> loadMpvModule(
   return MpvModule(instance as JSObject, processorUrl: processorUrl);
 }
 
-/// The starts of [loadMpvModule] still going, by URL.
+/// The starts of [loadMpvModule] still going, by URL, in this program: a
+/// Hot Restart forgets them.
 final Map<String, Future<JSAny?>> _starting = {};
 
 Future<JSAny?> _startModule(String url, String? wasmUrl) async {

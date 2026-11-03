@@ -357,8 +357,8 @@ void main() {
 
   // kit-core-2: mpv sends property changes only once its event queue is
   // empty, so an entry that loads and ends within one burst of events gets
-  // none. Its END_FILE keeps what the pump read of it, or what a
-  // libmpv-r20 event carries.
+  // none. Its END_FILE carries what the libmpv-r21 event carries, else
+  // what mpv notified of the entry.
   group('the duration and position of the entry that ended', () {
     /// The core's answers while entry 8, the second of three, plays.
     Map<String, Object?> playingSecond() => {
