@@ -187,9 +187,11 @@ final class EventLogic {
     // The values mpv has not notified again go first, so the player has
     // them when FILE_LOADED ends the loading state.
     final reread = await _rereadUnavailable(_reader, _send, _cache);
+    _send(loaded);
     // The duration for the END_FILE of the entry, when the event does not
     // carry it: an entry that loads and ends within one burst of events
-    // gets no change of it from mpv.
+    // gets no change of it from mpv. After the event, which these reads
+    // must not hold back.
     if (!_endFileCarriesEntry) {
       final duration = await _reader.float('duration');
       await _noteForEndFile({
@@ -198,7 +200,6 @@ final class EventLogic {
         'duration': duration,
       });
     }
-    _send(loaded);
     // A short entry can reach EOF before this event is handled: its
     // `eof-reached` change may already be spent (re-read above, or skipped
     // by mpv), so the end of content is read again after it.
