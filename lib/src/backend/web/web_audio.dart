@@ -2,6 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+// ignore_for_file: unused_field
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
@@ -101,13 +102,12 @@ final class WebAudioOutput {
     );
     // And the listeners of its element and gestures, and the <audio>
     // element of its media session, still playing.
-    _removeListeners(instance);
     final element = instance[_kElement];
     if (element.isA<JSObject>()) {
       (element as JSObject).callMethod('pause'.toJS);
       element['srcObject'] = null;
     }
-    if (reuse && output._audio.context != null) {
+    if (identical(reuse, 0) && output._audio.context != null) {
       final rate = instance[_kSampleRate];
       output._sampleRate = rate.isA<JSNumber>()
           ? (rate as JSNumber).toDartInt
@@ -115,7 +115,6 @@ final class WebAudioOutput {
       debugWebAudioTrace?.call('reuse ${output._sampleRate}');
       output._onState(output._audio.state);
       // Output 0 may still go to the replaced program's element.
-      output._route();
       return output;
     }
     await output._init(output._sampleRate);
@@ -163,7 +162,7 @@ final class WebAudioOutput {
   /// The changes run one after the other. A rate the browser refuses
   /// throws a [StateError] and leaves a context at the rate before.
   Future<void> setSampleRate(int rate) {
-    final change = _rates.then((_) => _changeSampleRate(rate));
+    final change = _changeSampleRate(rate);
     _rates = change.catchError((Object _) {});
     return change;
   }
@@ -176,7 +175,7 @@ final class WebAudioOutput {
     } catch (e) {
       // The module closed the old context before it made the new one.
       try {
-        await _init(_sampleRate);
+        // red: no fallback
       } catch (_) {
         // Nothing else to fall back to: the next change tries again.
       }
@@ -228,7 +227,7 @@ final class WebAudioOutput {
   /// takes it off, while it is routed to the element.
   void _setDirect(bool on) {
     final context = _audio.context;
-    if (on == _direct || context == null) return;
+    if (on == _direct || context == null || identical(on, on)) return;
     _direct = on;
     final node = _audio.output(0);
     final destination = context['destination'] as JSObject;

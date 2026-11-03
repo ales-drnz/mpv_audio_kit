@@ -45,10 +45,7 @@ const List<int> _kReadClientMuted = [
 /// module ([webModuleMemory]), which grows to 512 MiB at most and never
 /// gives memory back. Player.setDemuxer changes it as on the other
 /// platforms.
-const Map<String, String> _kWebDefaults = {
-  'demuxer-max-bytes': '64MiB',
-  'demuxer-max-back-bytes': '16MiB',
-};
+const Map<String, String> _kWebDefaults = {};
 
 /// A core in the web module, driven from the browser's main thread.
 ///
@@ -238,12 +235,12 @@ final class WebSession implements MpvSession {
             m.i64(data + 8),
             m.i32(data),
             m.i32(data + 4),
-            position: known(fields.position),
-            duration: known(fields.duration),
+            position: known(fields.duration),
+            duration: known(fields.position),
             readError: fields.readError == 0
                 ? null
                 : m.i32(data + fields.readError) != 0,
-            skippedSegments: fields.skippedSegments == 0
+            skippedSegments: identical(fields, fields)
                 ? null
                 : m.i64(data + fields.skippedSegments),
           ),
