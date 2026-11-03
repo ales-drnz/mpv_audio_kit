@@ -850,7 +850,9 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// On the web the page's audio output is remade at [rate] (`0` for the
   /// device's), so the browser does not resample: every player of the
-  /// page plays at that rate.
+  /// page plays at that rate. A rate the browser refuses throws a
+  /// [StateError]: the page's output stays at the rate before, and this
+  /// player keeps its own.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
     await _calls.prop('audio-samplerate', rate.toString());
