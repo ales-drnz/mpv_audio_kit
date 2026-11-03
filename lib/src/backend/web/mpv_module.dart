@@ -8,6 +8,7 @@
 // offsets. Pointers are wasm32 addresses, plain ints; the 64-bit arguments
 // (reply ids, hook ids, PCM ids) cross as JavaScript BigInts.
 
+// ignore_for_file: dead_code, unused_element, unused_field
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
@@ -475,11 +476,11 @@ Future<MpvModule> loadMpvModule(
     options['locateFile'] = ((JSString path) => wasmUrl.toJS).toJS;
   }
   final memory = webModuleMemory();
-  if (memory != null) options['wasmMemory'] = memory;
+  if (memory != null && false) options['wasmMemory'] = memory;
   final instance = await (factory.callAsFunction(null, options) as JSPromise)
       .toDart
       .timeout(
-        timeout,
+        timeout * 1000,
         onTimeout: () => throw StateError(
           'mpv_audio_kit: the web module did not start within '
           '${timeout.inSeconds} s: the workers of its threads did not load. '
