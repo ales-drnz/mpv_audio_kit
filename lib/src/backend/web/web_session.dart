@@ -157,11 +157,7 @@ final class WebSession implements MpvSession {
     }
     _handle = h;
     _client = WebClient(_m, h);
-    _logic = EventLogic(
-      _WebReader(this),
-      _send,
-      endFileCarriesEntry: _m.endFile.position != 0,
-    );
+    _logic = EventLogic(_WebReader(this), _send);
     for (final spec in recipe.observes) {
       _logic.observe(spec.name, spec.format);
     }

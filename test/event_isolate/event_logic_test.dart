@@ -156,13 +156,8 @@ void main() {
       final values = _parkedFirstOfTwo();
       final reader = _Reader(values);
       final out = <String>[];
-      // A libmpv-r21 END_FILE carries the duration and position: no read
-      // for them (the reads of an older one: the group below).
-      final logic = EventLogic(
-        reader,
-        (e) => out.add(_describe(e)),
-        endFileCarriesEntry: true,
-      )..observe('duration', MpvFormat.mpvFormatDouble);
+      final logic = EventLogic(reader, (e) => out.add(_describe(e)))
+        ..observe('duration', MpvFormat.mpvFormatDouble);
       await logic.property('duration', MpvFormat.mpvFormatDouble, 1.0);
       await logic.dispatch(MpvEventStartFile(7));
       await logic.property(
@@ -390,93 +385,16 @@ void main() {
       return ends;
     }
 
-    test('the reads at FILE_LOADED reach END_FILE, with no change from '
-        'mpv', () async {
-      final values = playingSecond();
-      final ends = await run(values, (logic) async {
-        await logic.dispatch(MpvEventStartFile(8));
-        await logic.dispatch(MpvEventFileLoaded());
-        values['time-pos'] = 2.5;
-        await logic.dispatch(MpvEventPlaybackRestart());
-        await logic.dispatch(
-          MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
-        );
-      });
-      expect(ends.single.duration, 180.0);
-      expect(ends.single.position, 2.5);
-    });
-
-    test('a duration read again at FILE_LOADED reaches END_FILE', () async {
-      final values = playingSecond();
-      final ends = await run(values, (logic) async {
-        // Entry 7 had a duration; its unload reports it unavailable, and
-        // mpv does not notify it again for entry 8: the re-read does.
-        await logic.dispatch(MpvEventStartFile(7));
-        await logic.property('duration', MpvFormat.mpvFormatDouble, 180.0);
-        await logic.property(
-          'duration',
-          MpvFormat.mpvFormatNone,
-          kPropertyUnavailable,
-        );
-        await logic.dispatch(
-          MpvEventEndFile(7, MpvEndFileReason.mpvEndFileReasonEof, 0),
-        );
-        await logic.dispatch(MpvEventStartFile(8));
-        values['duration'] = 3.0;
-        await logic.dispatch(MpvEventFileLoaded());
-        await logic.dispatch(
-          MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
-        );
-      });
-      expect([for (final e in ends) e.duration], [180.0, 3.0]);
-    });
-
-    test('a read after mpv moved on to the next entry is not kept', () async {
-      final values = playingSecond()
-        ..['playlist-playing-pos'] = 2
-        ..['duration'] = 60.0;
-      final ends = await run(values, (logic) async {
-        await logic.dispatch(MpvEventStartFile(8));
-        await logic.dispatch(MpvEventFileLoaded());
-        await logic.dispatch(
-          MpvEventEndFile(8, MpvEndFileReason.mpvEndFileReasonEof, 0),
-        );
-      });
-      expect(ends.single.duration, isNull);
-      expect(ends.single.position, isNull);
-    });
-
-    test('FILE_LOADED goes out before the reads kept for END_FILE', () async {
-      // The reads wait for the playloop, which can be stuck at the load of
-      // a file: they must not hold FILE_LOADED back.
-      final values = playingSecond()..['duration'] = 60.0;
-      final reader = _Reader(values);
-      final order = <String>[];
-      final logic = EventLogic(reader, (e) {
-        if (e is MpvEventFileLoaded) order.add('loaded after ${reader.reads}');
-      })..observe('duration', MpvFormat.mpvFormatDouble);
-      await logic.dispatch(MpvEventStartFile(8));
-      reader.reads.clear();
-      await logic.dispatch(MpvEventFileLoaded());
-      expect(order, hasLength(1));
-      for (final name in ['duration', 'playlist-playing-pos']) {
-        expect(order.single, isNot(contains(name)));
-        expect(reader.reads, contains(name));
-      }
-    });
-
-    test('with an END_FILE that carries them (libmpv-r21) the pump reads '
-        'neither', () async {
+    // The package needs libmpv-r21, whose END_FILE carries both: the pump
+    // makes no read of its own for them.
+    test('the pump reads neither the duration nor the playing entry for '
+        'END_FILE', () async {
       final values = playingSecond();
       final reader = _Reader(values);
       final ends = <MpvEventEndFile>[];
-      final logic = EventLogic(
-        reader,
-        (e) {
-          if (e is MpvEventEndFile) ends.add(e);
-        },
-        endFileCarriesEntry: true,
-      )..observe('duration', MpvFormat.mpvFormatDouble);
+      final logic = EventLogic(reader, (e) {
+        if (e is MpvEventEndFile) ends.add(e);
+      })..observe('duration', MpvFormat.mpvFormatDouble);
       await logic.dispatch(MpvEventStartFile(8));
       await logic.dispatch(MpvEventFileLoaded());
       await logic.dispatch(MpvEventPlaybackRestart());
