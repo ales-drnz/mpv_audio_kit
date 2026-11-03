@@ -1,8 +1,23 @@
 ## [0.6.2] - 3-11-2026
 
+### libmpv-r21
+**All platforms**
+- An HTTP stream whose resume the server refuses ends on a read error, instead of as a complete file.
+- A seek after a read error in a Matroska file tries the read again.
+- A stream cut by a read error publishes no loudness, and `eof-cached` no longer reads yes for its cache.
+- The duration hint wins over a duration estimated from the bitrate, so the waveform of such a stream is not cut short.
+- An AAC track in a fragmented MP4 no longer plays its priming samples outside DASH.
+- Each stream of an `fd://` source reads at its own position.
+- A change of effects at the end of a stream that cannot seek no longer leaves it running.
+
+**Android, iOS, Linux, macOS, Windows**
+- With `keep-open` the output plays to the last sample, instead of stopping up to 0.2 s early.
+
+**Web**
+- The module reads over HTTP through short answers, outages, credentials and refused resumes.
+
 ### All platforms
 **Changed**
-- Updated libmpv to `libmpv-r21`.
 - `withTaps`, `withVoices` and `withTransferPoints` throw an `ArgumentError` on an empty list.
 - A bad key of `params` is refused before the state changes.
 - `Media.toString` hides the values of `streamLavfOptions` and `demuxerLavfOptions` and the user info of the URI.
