@@ -201,7 +201,7 @@ final class MpvModule {
     : instance = module,
       _m = MpvExports._(module) {
     checkWebModuleAbi(_m.has('_mak_web_abi_version') ? _m.abiVersion() : null);
-    endFile = checkWebLayout(_layoutTable());
+    checkWebLayout(_layoutTable());
     // One callback per module: mak_web.c posts it to the main thread, at
     // most once per handle until it runs, whenever mpv wakes that client.
     // Emscripten also runs that posted work while the main thread waits for
@@ -231,10 +231,6 @@ final class MpvModule {
 
   /// The exported C functions.
   MpvExports get c => _m;
-
-  /// Where `mpv_event_end_file` keeps the four fields of the read_error
-  /// patch, all `0` in a module without it.
-  late final EndFileFields endFile;
 
   /// The module's `mak_web_layout()`, up to its `-1` end.
   List<int> _layoutTable() {

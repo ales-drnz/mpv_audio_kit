@@ -25,17 +25,15 @@ permissions:
   # The changes job looks for green runs of a commit and of its parent.
   actions: read
 
-# The jobs that bundle libmpv take the libmpv the package needs: the later
-# of the pin (libmpvRelease in lib/src/internals/libmpv_release.dart) and
-# the minimum the player relies on (libmpvMinimumRelease in
-# libmpv_requirements.dart), libmpv-rN. While libmpv-rN is not published,
-# the changes job finds the libmpv-scripts Build that made it, once for
-# every job: the latest successful run of build.yml on release/rN started
-# by a push (scripts/ci/resolve_libmpv_run.sh). The jobs then take that
-# run's libraries instead of the pinned release (see
+# The jobs that bundle libmpv take the libmpv the package runs on: the pin
+# (libmpvRelease in lib/src/internals/libmpv_release.dart), libmpv-rN.
+# While libmpv-rN is not published, the changes job finds the
+# libmpv-scripts Build that made it, once for every job: the latest
+# successful run of build.yml on release/rN started by a push
+# (scripts/ci/resolve_libmpv_run.sh). The jobs then take that run's
+# libraries instead of the pinned release (see
 # .github/actions/libmpv-from-run), and Test (Web) its web module. Once
-# libmpv-rN is out the pinned release serves, with a warning until
-# scripts/update_libmpv.sh rN moves the pin. Nothing is set by hand.
+# libmpv-rN is out the pinned release serves. Nothing is set by hand.
 #
 # The tests of a fix in libmpv-rN fail here, instead of skipping, on a
 # binary without it when rN is the release the run expects (the run's, or

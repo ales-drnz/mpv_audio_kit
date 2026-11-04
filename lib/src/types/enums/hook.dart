@@ -80,8 +80,6 @@ enum Hook {
   /// of time, not even after an open or openAll: a listener that never
   /// continues takes the prefetch away from every entry after it. Pass a
   /// `timeout` to `Player.registerHook` for this hook.
-  ///
-  /// Needs libmpv-r20 or later; an older libmpv never fires it.
   prefetch('on_prefetch');
 
   const Hook(this.mpvValue);

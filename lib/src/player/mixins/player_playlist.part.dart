@@ -151,11 +151,6 @@ mixin _PlaylistModule on _PlayerBase {
   /// Jumps to the first of the previous entries whose source playlist
   /// (`playlist-path`) differs from the current one. The reverse of
   /// [nextPlaylist], with the same return value.
-  ///
-  /// On Windows it needs the libmpv this package bundles, or one built
-  /// with the patches of libmpv-scripts 0.1.7 or later: an unpatched mpv
-  /// can corrupt its heap in `playlist-prev-playlist` and crash the
-  /// process.
   Future<bool> previousPlaylist() async {
     await _gate();
     // See [next]: in-flight transport writes apply to the old entry.

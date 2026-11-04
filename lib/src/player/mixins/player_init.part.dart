@@ -111,48 +111,6 @@ mixin _InitModule on _PlayerBase {
     if (_waveformCtrl.hasListener) _waveformPipeline.setEnabled(true);
     if (_loudnessMeterCtrl.hasListener) _loudnessMeterPipeline.setEnabled(true);
     if (_loudnessScanCtrl.hasListener) _loudnessScanPipeline.setEnabled(true);
-
-    // Before any load: mpv logs an error for a per-file option it does not
-    // know, and the loads leave the hint out then (see [loadfileOptions]).
-    try {
-      final (rc, _) = await _calls.get(
-        'waveform-duration-hint',
-        MpvFormat.mpvFormatString,
-      );
-      _durationHint = rc != MpvError.mpvErrorPropertyNotFound;
-    } catch (_) {
-      // Disposed before the reply: nothing loads any more.
-    }
-
-    unawaited(_checkLibmpvRelease());
-  }
-
-  /// Warns, once per player, when the libmpv lacks what the player relies
-  /// on, which leaves features missing in ways that are hard to trace back:
-  /// a bundled libmpv that is not the release this package version expects
-  /// (a stale build cache, or an app bundling its own binary through the
-  /// hook's `libmpv` user define), or one without the patches of
-  /// [libmpvMinimumRelease], bundled or passed by path. A patch is missing
-  /// when mpv does not know the property it adds.
-  Future<void> _checkLibmpvRelease() async {
-    try {
-      final version = await (this as Player).getRawProperty('mpv-version');
-      final missing = <String>[];
-      for (final (name, _) in libmpvRequiredPatches) {
-        final (rc, _) = await _calls.get(name, MpvFormat.mpvFormatString);
-        if (rc == MpvError.mpvErrorPropertyNotFound) missing.add(name);
-      }
-      final warning = libmpvWarning(
-        version: version,
-        custom: MpvAudioKit.libraryPath != null,
-        missing: missing,
-      );
-      if (warning != null && !_disposed) {
-        _internalLog(warning, level: LogLevel.warn);
-      }
-    } catch (_) {
-      // Disposed before the reply: nothing to check.
-    }
   }
 
   /// Recipe of pre-init `mpv_set_option_string` calls executed by the

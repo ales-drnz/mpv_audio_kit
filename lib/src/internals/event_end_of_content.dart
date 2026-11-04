@@ -111,7 +111,7 @@ typedef _Park = ({
 });
 
 /// The reads of the park of entry [pos]. `demuxer-read-error` and
-/// `demuxer-skipped-segments` come with libmpv-r20 (patch read_error): the
+/// `demuxer-skipped-segments` come with the patch read_error: the
 /// demuxer marks the error under the lock it marks the end with, before the
 /// output can play out to the park, so the values read now are the file's.
 Future<_Park> _readPark(

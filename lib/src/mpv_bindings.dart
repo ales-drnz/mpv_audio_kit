@@ -58,7 +58,8 @@ final class MpvEventStartFileData extends Struct {
 // ---------------------------------------------------------------------------
 // mpv_event_end_file
 // ---------------------------------------------------------------------------
-/// FFI layout of `mpv_event_end_file`, the payload of an end-file event.
+/// FFI layout of `mpv_event_end_file`, the payload of an end-file event,
+/// with the four fields the patch read_error of libmpv-scripts appends.
 final class MpvEventEndFile extends Struct {
   /// Why playback ended, one of the [MpvEndFileReason] constants.
   @Int32()
@@ -69,27 +70,6 @@ final class MpvEventEndFile extends Struct {
   external int error;
 
   /// The `playlist_entry_id` of the entry that ended.
-  @Int64()
-  external int playlistEntryId;
-}
-
-/// FFI layout of `mpv_event_end_file` in a libmpv with the patch read_error,
-/// which appends up to four fields: whether the file stopped on a read
-/// error and how many HLS or DASH segments it lost (libmpv-r20), the
-/// duration and position of the entry when the file was closed
-/// (libmpv-r21). The same offsets on every ABI. Read only the fields the
-/// libmpv states (`mak-end-file-fields`): an older one copies a shorter
-/// event, and the fields past it are not its memory.
-final class MpvEventEndFileReadError extends Struct {
-  /// As [MpvEventEndFile.reason].
-  @Int32()
-  external int reason;
-
-  /// As [MpvEventEndFile.error].
-  @Int32()
-  external int error;
-
-  /// As [MpvEventEndFile.playlistEntryId].
   @Int64()
   external int playlistEntryId;
 
