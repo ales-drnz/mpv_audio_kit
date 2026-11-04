@@ -399,7 +399,10 @@ def _emit_audio_effect_enum(sorted_names: list[str]) -> str:
 def _emit_enums_header() -> str:
     return (
         _COPYRIGHT_FFMPEG_TEXT
-        + "// ignore_for_file: constant_identifier_names, camel_case_types,"
+        # unnecessary_ignore: the names below cover every flavor, and an
+        # audio file needs fewer of them.
+        + "// ignore_for_file: unnecessary_ignore, constant_identifier_names,"
+        " camel_case_types,"
         " non_constant_identifier_names\n"
     )
 
@@ -412,7 +415,7 @@ def _emit_settings_header(
     # with neither (video) omits them rather than tripping `unused_element`.
     parts: list[str] = [
         _COPYRIGHT_FFMPEG_TEXT,
-        "// ignore_for_file: non_constant_identifier_names,"
+        "// ignore_for_file: unnecessary_ignore, non_constant_identifier_names,"
         " constant_identifier_names, camel_case_types,"
         " curly_braces_in_flow_control_structures,"
         " prefer_adjacent_string_concatenation,"

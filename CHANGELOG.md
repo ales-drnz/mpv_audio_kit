@@ -17,6 +17,9 @@
 - The module reads over HTTP through short answers, outages, credentials and refused resumes.
 
 ### All platforms
+**Breaking**
+- A libmpv of another release, or a build of upstream mpv, fails `Player` start with a `PlayerInitException`, instead of a warning on `internalLog`. See MIGRATION.md.
+
 **Changed**
 - `withTaps`, `withVoices` and `withTransferPoints` throw an `ArgumentError` on an empty list.
 - A bad key of `params` is refused before the state changes.

@@ -162,6 +162,18 @@ class SlowCoreShim {
     _withString(knob, (p) => fn(p, value));
   }
 
+  /// Makes the synchronous reads of `mpv-version` answer [version], as a
+  /// libmpv of another release would, until [reset]. Cut to the length of
+  /// the real version.
+  void fakeVersion(String version) {
+    final fn = _lib
+        .lookupFunction<
+          Void Function(Pointer<Utf8>),
+          void Function(Pointer<Utf8>)
+        >('mak_shim_fake_version');
+    _withString(version, fn);
+  }
+
   /// Counts the synchronous reads of the property [name] from now on.
   /// Read the count with `counter('watched_gets')`.
   void watchGet(String name) {

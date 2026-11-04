@@ -86,7 +86,7 @@ _NodeAlloc _byteArray(List<int> bytes) {
 T _decodeAndAssert<T>(_NodeAlloc Function() build, T Function(dynamic) check) {
   final (node, disposeRoot) = build();
   try {
-    final decoded = decodeMpvNode(node.ref);
+    final decoded = decodeMpvNode(node);
     return check(decoded);
   } finally {
     disposeRoot();
@@ -110,7 +110,7 @@ void main() {
       // closure returns — which it does already). Simpler: own the leaf.
       final (node, dispose) = _scalarString('hello mpv');
       try {
-        expect(decodeMpvNode(node.ref), 'hello mpv');
+        expect(decodeMpvNode(node), 'hello mpv');
       } finally {
         dispose();
       }
@@ -119,14 +119,14 @@ void main() {
     test('MPV_FORMAT_INT64 → int (preserves full 64-bit range)', () {
       final (node, dispose) = _scalarInt64(0x7FFFFFFFFFFFFFFF);
       try {
-        expect(decodeMpvNode(node.ref), 0x7FFFFFFFFFFFFFFF);
+        expect(decodeMpvNode(node), 0x7FFFFFFFFFFFFFFF);
       } finally {
         dispose();
       }
 
       final (node2, dispose2) = _scalarInt64(-1);
       try {
-        expect(decodeMpvNode(node2.ref), -1);
+        expect(decodeMpvNode(node2), -1);
       } finally {
         dispose2();
       }
@@ -135,7 +135,7 @@ void main() {
     test('MPV_FORMAT_DOUBLE → double', () {
       final (node, dispose) = _scalarDouble(3.14159);
       try {
-        expect(decodeMpvNode(node.ref), closeTo(3.14159, 1e-9));
+        expect(decodeMpvNode(node), closeTo(3.14159, 1e-9));
       } finally {
         dispose();
       }
@@ -144,14 +144,14 @@ void main() {
     test('MPV_FORMAT_FLAG → bool', () {
       final (n1, d1) = _scalarFlag(true);
       try {
-        expect(decodeMpvNode(n1.ref), isTrue);
+        expect(decodeMpvNode(n1), isTrue);
       } finally {
         d1();
       }
 
       final (n2, d2) = _scalarFlag(false);
       try {
-        expect(decodeMpvNode(n2.ref), isFalse);
+        expect(decodeMpvNode(n2), isFalse);
       } finally {
         d2();
       }
@@ -160,7 +160,7 @@ void main() {
     test('MPV_FORMAT_BYTE_ARRAY → Uint8List (deep-copied out of mpv heap)', () {
       final (node, dispose) = _byteArray([0x42, 0x99, 0x00, 0xFF]);
       try {
-        final result = decodeMpvNode(node.ref);
+        final result = decodeMpvNode(node);
         // mpv frees the node right after: the result must not be a view of
         // its buffer. Overwrite the buffer instead of freeing it, which
         // would make the read below a use after free.
@@ -175,10 +175,28 @@ void main() {
       }
     });
 
+    // A node mpv cannot have made (a byte array of SIZE_MAX bytes, which
+    // the size_t reads as -1) fails the decode, which the event isolate
+    // reports on internalLog, instead of reading as no bytes.
+    test('a byte array of SIZE_MAX bytes fails the decode', () {
+      final (node, dispose) = _byteArray([1]);
+      try {
+        node.ref.u.ba.ref.size = -1;
+        expect(() => decodeMpvNode(node), throwsA(anything));
+        expect(
+          () => decodeMpvNode(node, transferBytes: true),
+          throwsA(anything),
+        );
+      } finally {
+        node.ref.u.ba.ref.size = 1;
+        dispose();
+      }
+    });
+
     test('transferBytes: a TransferableTypedData, materialized in place', () {
       final (node, dispose) = _byteArray([0x42, 0x99, 0x00, 0xFF]);
       try {
-        final bytes = decodeMpvNode(node.ref, transferBytes: true);
+        final bytes = decodeMpvNode(node, transferBytes: true);
         expect(bytes, isA<TransferableTypedData>());
         final reply = <String, dynamic>{
           'samples': bytes,
@@ -245,7 +263,7 @@ void main() {
         root.ref.format = MpvFormat.mpvFormatNodeMap;
         root.ref.u.list = list;
 
-        final decoded = decodeMpvNode(root.ref);
+        final decoded = decodeMpvNode(root);
         expect(decoded, isA<Map<String, dynamic>>());
         final m = decoded as Map<String, dynamic>;
         expect(m['format'], 'floatp');
@@ -290,7 +308,7 @@ void main() {
         root.ref.format = MpvFormat.mpvFormatNodeArray;
         root.ref.u.list = list;
 
-        final decoded = decodeMpvNode(root.ref);
+        final decoded = decodeMpvNode(root);
         expect(decoded, isA<List<dynamic>>());
         expect(decoded, ['a.mp3', 'b.mp3']);
       } finally {
@@ -311,7 +329,7 @@ void main() {
         list.ref.keys = nullptr;
         root.ref.format = MpvFormat.mpvFormatNodeArray;
         root.ref.u.list = list;
-        expect(decodeMpvNode(root.ref), isEmpty);
+        expect(decodeMpvNode(root), isEmpty);
       } finally {
         calloc.free(list);
         calloc.free(root);
@@ -327,7 +345,7 @@ void main() {
         list.ref.keys = nullptr;
         root.ref.format = MpvFormat.mpvFormatNodeMap;
         root.ref.u.list = list;
-        final decoded = decodeMpvNode(root.ref);
+        final decoded = decodeMpvNode(root);
         expect(decoded, isA<Map<String, dynamic>>());
         expect(decoded, isEmpty);
       } finally {
@@ -344,7 +362,7 @@ void main() {
         final node = calloc<MpvNode>();
         try {
           node.ref.format = 9999; // Hypothetical future format mpv may add.
-          expect(decodeMpvNode(node.ref), isNull);
+          expect(decodeMpvNode(node), isNull);
         } finally {
           calloc.free(node);
         }

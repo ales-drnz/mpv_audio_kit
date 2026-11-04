@@ -15,7 +15,7 @@ const String libmpvLicensesRelease = 'r21';
 /// The license texts of the libmpv the package ships, from the
 /// `licenses.zip` of [libmpvLicensesRelease], each text once across the
 /// targets: the packages it applies to, as `showLicensePage` lists them,
-/// and the text. Empty before libmpv-r20, the first release with them.
+/// and the text.
 const List<(List<String>, String)> libmpvLicenses = [
   (
     ["libmpv"],

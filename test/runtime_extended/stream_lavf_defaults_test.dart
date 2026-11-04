@@ -5,6 +5,7 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:math' as math;
@@ -288,7 +289,7 @@ void main() {
             d.setInt16(i * 2, (v * 32767).round(), Endian.little);
           }
           source.add(d.buffer.asUint8List());
-          source.close();
+          unawaited(source.close());
           return source.toMedia();
         }
 

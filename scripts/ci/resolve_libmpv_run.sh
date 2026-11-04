@@ -8,14 +8,10 @@
 # release serves. ci.yml's changes job runs it once for every job, and
 # mpv_studio's setup action runs it from its checkout of the kit.
 #
-# The release CI needs is the later of the pin (libmpvRelease in
-# lib/src/internals/libmpv_release.dart) and the minimum the player relies
-# on (libmpvMinimumRelease in lib/src/internals/libmpv_requirements.dart),
-# libmpv-rN:
-#   - published (on the repository the hook downloads from) and pinned:
-#     nothing to do;
-#   - published but past the pin: nothing either, the jobs keep the pin,
-#     with a warning that the pin must move (scripts/update_libmpv.sh rN);
+# The release CI needs is the pin (libmpvRelease in
+# lib/src/internals/libmpv_release.dart), libmpv-rN, the one release the
+# player runs on:
+#   - published (on the repository the hook downloads from): nothing to do;
 #   - not published: the latest successful Build (build.yml) of the
 #     libmpv-scripts branch release/rN started by a push. Runs started by
 #     hand, on wip branches among others, are never taken. When the latest
@@ -49,7 +45,6 @@ fi
 scripts_repo=ales-drnz/libmpv-scripts
 root="${KIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 release_file="$root/lib/src/internals/libmpv_release.dart"
-requirements_file="$root/lib/src/internals/libmpv_requirements.dart"
 hook="$root/hook/build.dart"
 err="$(mktemp)"
 trap 'rm -f "$err"' EXIT
@@ -59,13 +54,12 @@ trap 'rm -f "$err"' EXIT
 http_status() { sed -n 's/.*(HTTP \([0-9]*\)).*/\1/p' "$err" | tail -n 1; }
 
 pin="$(sed -n "s/^const String libmpvRelease = 'r\([0-9]*\)';/\1/p" "$release_file")"
-minimum="$(sed -n 's/^const int libmpvMinimumRelease = \([0-9]*\);/\1/p' "$requirements_file")"
 repo="$(sed -n 's#.*https://github\.com/\([^/]*/[^/]*\)/releases/download/.*#\1#p' "$hook" | head -n 1)"
-if [[ -z "$pin" || -z "$minimum" || -z "$repo" ]]; then
-  echo "::error::$release_file has no libmpvRelease, $requirements_file no libmpvMinimumRelease or $hook no release URL." >&2
+if [[ -z "$pin" || -z "$repo" ]]; then
+  echo "::error::$release_file has no libmpvRelease or $hook no release URL." >&2
   exit 1
 fi
-want=$(( pin > minimum ? pin : minimum ))
+want=$pin
 tag="libmpv-r$want"
 
 no_token() {
@@ -77,18 +71,13 @@ release_token="${RELEASE_TOKEN:-${GH_TOKEN:-}}"
 
 if GH_TOKEN="$release_token" gh api "repos/$repo/releases/tags/$tag" \
   --jq .tag_name > /dev/null 2>"$err"; then
-  if (( want > pin )); then
-    echo "::warning::$tag is published and the pin is still r$pin: run scripts/update_libmpv.sh r$want. Until then the jobs use the pinned release r$pin." >&2
-  else
-    echo "The pinned libmpv release $tag is published." >&2
-  fi
+  echo "The pinned libmpv release $tag is published." >&2
   exit 0
 fi
 if [[ "$(http_status)" != 404 ]]; then
   echo "::warning::Could not look up the libmpv release $tag on $repo: $(cat "$err")" >&2
-  # The pinned release serves if it is the one wanted; the preflight
-  # checks it again.
-  (( want > pin )) || exit 0
+  # The pinned release serves; the preflight checks it again.
+  exit 0
 fi
 [[ -n "${GH_TOKEN:-}" ]] || no_token
 echo "$tag is not published on $repo: looking for the Build of release/r$want." >&2

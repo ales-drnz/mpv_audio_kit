@@ -5,8 +5,7 @@
 //
 // The checks a web module passes before any other call into it (ABI
 // version and struct layout), on the VM: the rules are plain Dart. The
-// tables are those of libmpv-scripts' mak_web_layout() with and without
-// the read_error patch.
+// module of the pin passes, any other is refused.
 
 import 'package:mpv_audio_kit/src/backend/web/web_layout.dart';
 import 'package:mpv_audio_kit/src/internals/libmpv_release.dart';
@@ -74,23 +73,12 @@ void main() {
   });
 
   group('checkWebLayout', () {
-    test('a module with the read_error patch keeps its four fields at 28, '
-        '32, 40 and 48', () {
-      expect(checkWebLayout(_r21), (
-        readError: 28,
-        skippedSegments: 32,
-        duration: 40,
-        position: 48,
-      ));
+    test('takes the layout of the pinned release', () {
+      checkWebLayout(_r21);
     });
 
-    test('a module without it has a 32-byte END_FILE and no fields', () {
-      expect(checkWebLayout(_noReadError), (
-        readError: 0,
-        skippedSegments: 0,
-        duration: 0,
-        position: 0,
-      ));
+    test('a module without the read_error patch is refused', () {
+      expect(() => checkWebLayout(_noReadError), throwsStateError);
     });
 
     test('the 26 entries of libmpv-r20 and the 24 of a module before the '
@@ -104,16 +92,6 @@ void main() {
         final table = [..._r21]..[i] += 4;
         expect(() => checkWebLayout(table), throwsStateError, reason: '$i');
       }
-      // The read error fields without the 56-byte END_FILE, and the other
-      // way round.
-      expect(
-        () => checkWebLayout([..._noReadError]..[22] = 28),
-        throwsStateError,
-      );
-      expect(
-        () => checkWebLayout([..._noReadError]..[17] = 56),
-        throwsStateError,
-      );
       expect(() => checkWebLayout([..._r21, 0]), throwsStateError);
     });
   });

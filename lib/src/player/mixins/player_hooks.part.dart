@@ -262,10 +262,8 @@ mixin _HooksModule on _PlayerBase {
       if (isRetry && _resolverRetried) return;
       // The entry mpv is loading, `null` outside a START_FILE.
       final loading = _entries.loading;
-      // libmpv-r20 runs `on_prefetch` for the prefetch of the next entry.
-      // An older libmpv ran `on_load` for it, outside a START_FILE.
+      // mpv runs `on_prefetch` for the prefetch of the next entry.
       final early = hook == Hook.prefetch;
-      final prefetch = early || (!isRetry && loading == null);
       // The load epoch mpv asked in: an open, stop or clear while the
       // resolver runs supersedes the URL it gives for the prefetch.
       final asked = _transport.snapshotLoad();
@@ -276,26 +274,21 @@ mixin _HooksModule on _PlayerBase {
           '';
       if (current.isEmpty || _disposed) return;
       // A load gets the Media of its own entry, which another entry with the
-      // same URL does not share (F14). So does the prefetch of libmpv-r20,
-      // which names its entry; the older one knows only the URL.
-      final entry = early
-          ? await _prefetchEntryId()
-          : (prefetch ? null : loading);
+      // same URL does not share (F14). So does the prefetch, which names its
+      // entry.
+      final entry = early ? await _prefetchEntryId() : loading;
       final media =
           _entries.mediaOf(entry) ?? _cachedMedia(current) ?? Media(current);
       final target = await _targetUrl(
         resolver,
         SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
-        takesKept: !isRetry && !prefetch,
+        takesKept: !isRetry && !early,
         loading: loading,
       );
       if (target == null) return;
       if (early) {
         await _settlePrefetch(current, target, media, asked, pending, entry);
         return;
-      }
-      if (prefetch && pending()) {
-        _prefetchResolved = (current, target, asked, null);
       }
       if (target == current) return;
       // No timer runs between this check and the write below: the write is

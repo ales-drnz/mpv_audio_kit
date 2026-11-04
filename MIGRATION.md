@@ -1,3 +1,22 @@
+# Migrating to 0.6.2
+
+0.6.2 runs on libmpv-r21, which the build hook bundles, and on no other
+libmpv. An app that bundles the default libmpv changes nothing.
+
+## A libmpv of another release fails
+
+An app that bundles its own libmpv (the `libmpv` user define) or passes
+one to `MpvAudioKit.ensureInitialized` must give a build of libmpv-scripts
+at libmpv-r21: its `mpv-version` ends with `+r21`.
+
+| 0.6.1 | 0.6.2 |
+| --- | --- |
+| Another release, or upstream mpv, played with a warning on `internalLog` | A `Player` fails to start with a `PlayerInitException` that names the release it found |
+| A web module of another release was refused by its ABI only | It is refused by its release too |
+
+A GPL build with Rubber Band is built from the same release, with
+`LIBMPV_GPL=1`.
+
 # Migrating to 0.6.0
 
 0.6.0 adds the web and needs libmpv-r20, which the build hook bundles. Most

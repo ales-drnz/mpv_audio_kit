@@ -3,238 +3,82 @@
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 part of '../player.dart';
 
-/// The transport axis of a player: the load epoch, the loads in flight,
-/// the play-pause intent ([PlayerState.playWhenReady]) across the calls
-/// that set it, the file starts and the park generation. Its events move
-/// counters.
-///
-/// Each content-replacing call claims the load epoch, and every load path
-/// checks its [_LoadTicket] after each await. Each public call that sets
-/// the intent claims an intent epoch, so a call that corrects the intent
-/// after an await (a failed load, the pause write of a load) leaves it
-/// alone once a later call claimed it. The loads in flight hold back the
-/// intent reset of an idle core while they give it content.
-///
-/// The park generation moves at every START_FILE and PLAYBACK_RESTART, the
-/// only ways out of a keep-open park, and each generation spends the
-/// intent at most once: the first end-of-content read at the end
-/// ([onEndOfContent]) spends it, unless a call that leaves the park took
-/// the generation first ([takePark]). A call takes it after the reply of
-/// its moving command (a seek, `playlist-play-index`, a load), which mpv
-/// queues ahead of the move's own event, so the take is the generation
-/// that command leaves. A spend that comes while a load runs is deferred
-/// to the end of the loads, and goes only if the core is still in that
-/// generation then.
+/// The transport axis of a player: the rules of [TransportMachine], whose
+/// effects this carries out on the player (the intent written into the
+/// state, the lifecycle of an idle core, the read of `idle-active`).
 final class _Transport {
   _Transport(this._player);
 
   final _PlayerBase _player;
+  final TransportMachine _machine = TransportMachine();
 
-  int _fileStarts = 0;
+  /// See [TransportMachine.hasLoadedFile].
+  bool get hasLoadedFile => _machine.hasLoadedFile;
 
-  // Monotonic generation counter for content-replacing transport calls.
-  // Bumped synchronously at the head of open(), openAll(),
-  // openPlaylistFile(), stop() and clearPlaylist(); every load path
-  // re-checks it after each await and aborts when stale. Without it,
-  // per-scheme resolve latencies (asset:// does real I/O, a plain path
-  // resolves in one microtask) let an EARLIER call issue its loadfile
-  // AFTER a later one: the superseded media would win, and an in-flight
-  // open() could resume past a stop() and restart playback.
-  int _loadEpoch = 0;
-
-  int _loadsInFlight = 0;
-
-  // mpv went idle while a load was running (openAll steps through idle
-  // at the end of the queue), and the intent reset that idle makes waits
-  // for the loads to end. Cleared when mpv leaves idle.
-  bool _idleResetPending = false;
-
-  // Bumped by every public call that sets the play-pause intent, so a
-  // call that corrects the intent after an await can tell whether a later
-  // call set it meanwhile (and then leaves it alone).
-  int _intentEpoch = 0;
-
-  /// Latched true on the first MPV_EVENT_START_FILE. Gates the idle-active
-  /// intent reset and `_settleEndOfContent`: the initial observe burst
-  /// delivers `idle-active=true` (the player starts idle) BEFORE any file
-  /// load is attempted, and that stale value must not clear a
-  /// `playWhenReady` intent set by an open(play: true) that is still
-  /// settling. Port delivery is FIFO, so the startup idle-active always
-  /// precedes the first START_FILE. Latching on START_FILE (which fires
-  /// even for a load that fails to open) rather than FILE_LOADED means a
-  /// failed first open() still arms the reset, so its intent doesn't stick
-  /// true.
-  bool get hasLoadedFile => _fileStarts > 0;
-
-  /// The MPV_EVENT_START_FILE events seen so far. A reply that arrives
-  /// after a newer one may describe the file that load opened.
-  int get fileStarts => _fileStarts;
+  /// See [TransportMachine.fileStarts].
+  int get fileStarts => _machine.fileStarts;
 
   /// How many open(), openAll() and openPlaylistFile() calls are running.
   /// While one is, an idle core is about to get content, so [Player.play]
   /// and the idle-active observer keep the intent.
-  int get loadsInFlight => _loadsInFlight;
-
-  // The park generation the core is in. The core is always in one: it
-  // opens at every MPV_EVENT_START_FILE and PLAYBACK_RESTART, the only ways
-  // a park is left. An unpause at a park is undone by keep-open, and a seek
-  // or a new file always brings one of the two events.
-  //
-  // Each generation spends the play intent at most once: its first
-  // end-of-content read at the end ([onEndOfContent]) spends it, or a call
-  // that leaves the park takes it first ([takePark]), and then no read of
-  // that generation spends. So no intent write depends on the order of a
-  // reply and a read, which mpv and the pump fix as follows: mpv notifies
-  // PLAYBACK_RESTART in its playloop pass ahead of the end-of-file
-  // handling that parks again, and serves client requests only between
-  // passes, queueing the reply of a command before the event of the move
-  // it causes; the pump's events, its reads and the replies reach this
-  // isolate through one FIFO, natively and on the web, and an await
-  // continuation here runs before the next of them. A read the pump sent
-  // for the generation being left lands before the event that opens the
-  // next one; the read after that event belongs to the new generation,
-  // which the call leaving the park did not take: landed at the end
-  // again, it spends.
-  //
-  // A spend that comes while a content-replacing load runs waits for the
-  // loads to end ([_deferredPark]): the load leaves the park.
-  int _park = 0;
-
-  // The generation that spent the intent or was taken, -1 for none.
-  int _spentPark = -1;
-
-  // The generation whose spend waits for the loads to end.
-  int? _deferredPark;
+  int get loadsInFlight => _machine.loadsInFlight;
 
   /// mpv started a file (MPV_EVENT_START_FILE).
-  void onStartFile() {
-    _fileStarts++;
-    _park++;
-  }
+  void onStartFile() => _machine.startFile();
 
-  /// mpv restarted playback (MPV_EVENT_PLAYBACK_RESTART): a seek landed,
-  /// and the park, if any, was left.
-  void onRestart() => _park++;
+  /// mpv restarted playback (MPV_EVENT_PLAYBACK_RESTART).
+  void onRestart() => _machine.restart();
 
-  /// An end-of-content read found the queue at its end: the first one of
-  /// the generation spends the play intent, unless a call leaving the park
-  /// took it. While a content-replacing load runs, the spend waits for the
-  /// loads to end, and goes only if the core is still in that park then.
-  void onEndOfContent() {
-    if (_spentPark == _park) return;
-    if (_loadsInFlight > 0) {
-      _deferredPark = _park;
-      return;
-    }
-    _spentPark = _park;
-    writeIntent(false);
-  }
+  /// An end-of-content read found the queue at its end
+  /// ([TransportMachine.endOfContent]).
+  void onEndOfContent() => _apply(_machine.endOfContent());
 
-  /// A call leaving the park takes its generation: no read of it spends
-  /// the intent from now on.
-  void takePark() => _spentPark = _park;
+  /// A call leaving the park takes its generation.
+  void takePark() => _machine.takePark();
 
-  /// The spend left to the end of the loads. The generation moves at every
-  /// START_FILE and restart, the only ways out of a park, and a loop change
-  /// clears `completed` with the read that turned the end off: with both
-  /// unchanged the core is still in that park, as a core read would say.
-  void _settleDeferredPark() {
-    final park = _deferredPark;
-    _deferredPark = null;
-    if (park == null || park != _park || _spentPark == park) return;
-    if (_player._disposed || !_player._state.completed) return;
-    _spentPark = park;
-    writeIntent(false);
-  }
-
-  /// mpv entered its idle loop ([idle]) or left it.
-  void onIdle(bool idle) {
-    if (idle) {
-      _player._updateLifecycle(playing: false, buffering: false);
-      // mpv has entered its idle loop (nothing loaded) → the
-      // play-pause intent is spent; settle the OS button on "play".
-      // Gated on [hasLoadedFile] so the startup idle-active burst
-      // can't clear a fresh open(play: true) intent. mpv reaches idle
-      // after a `stop`, or after a load that ends with no next entry
-      // and is NOT held by keep-open (e.g. a failed first open). The
-      // natural end of playable content under the shipped
-      // `keep-open: yes` does NOT fire idle-active; that path is
-      // handled by `_settleEndOfContent` instead. A mid-playlist
-      // advance also doesn't fire idle-active. While a load runs
-      // the idle is its own step (openAll at the end of the queue
-      // removes the parked entry before its appends), so the reset
-      // waits for the loads to end ([_settleIdleReset]): made
-      // now, it flickered the OS button and undid a play() called
-      // during the load.
-      if (hasLoadedFile) {
-        if (_loadsInFlight > 0) {
-          _idleResetPending = true;
-        } else {
-          writeIntent(false);
-        }
-        // No file is loaded any more (stop, a cleared playlist, a
-        // failed load): nothing of the last one should linger.
-        _player._clearFinishedFile();
-      }
-    } else {
-      _idleResetPending = false;
-    }
-  }
+  /// mpv entered its idle loop ([idle]) or left it
+  /// ([TransportMachine.idleActive]).
+  void onIdle(bool idle) => _apply(_machine.idleActive(idle));
 
   /// Claims the load epoch for a content-replacing call: every earlier
   /// load in flight is superseded from now on.
-  _LoadTicket claimLoad() => _LoadTicket(_player, ++_loadEpoch);
+  _LoadTicket claimLoad() => _LoadTicket(_player, _machine.claimLoad());
 
   /// Snapshots the load epoch for a call that adds to the content (an
   /// append): superseded if a content-replacing call lands meanwhile.
-  _LoadTicket snapshotLoad() => _LoadTicket(_player, _loadEpoch);
+  _LoadTicket snapshotLoad() => _LoadTicket(_player, _machine.loadEpoch);
 
   /// Runs a content-replacing load, counted in [loadsInFlight].
   Future<void> trackLoad(Future<void> Function() load) async {
-    _loadsInFlight++;
+    _machine.beginLoad();
     try {
       await load();
     } finally {
-      _loadsInFlight--;
-      if (_loadsInFlight == 0) {
-        // Both may write the intent off; neither ever writes it on.
-        _settleDeferredPark();
-        if (_idleResetPending) await _settleIdleReset();
-      }
+      final completed = !_player._disposed && _player._state.completed;
+      if (_apply(_machine.endLoad(completed: completed))) await _readIdle();
     }
-  }
-
-  /// The intent reset left to the end of the loads: still idle with no
-  /// load running (one failed, or a later call cleared the playlist),
-  /// nothing will play. Read from the core, since the notification that
-  /// mpv left idle can come after the loads end.
-  Future<void> _settleIdleReset() async {
-    if (_player._disposed) return;
-    final (rc, idle) = await _player._calls.get(
-      'idle-active',
-      MpvFormat.mpvFormatString,
-    );
-    if (!_idleResetPending || _loadsInFlight > 0 || _player._disposed) return;
-    _idleResetPending = false;
-    if (rc >= 0 && idle == 'yes') writeIntent(false);
   }
 
   /// Sets the play-pause intent for a public call and returns the epoch
   /// that call owns.
   int claimIntent(bool value) {
-    writeIntent(value);
-    return ++_intentEpoch;
+    final (write, epoch) = _machine.claimIntent(value);
+    writeIntent(write.value);
+    return epoch;
   }
 
   /// Whether the call that claimed [intent] still owns the intent: no
   /// later call set it.
-  bool owns(int intent) => intent == _intentEpoch;
+  bool owns(int intent) => _machine.owns(intent);
 
   /// Whether a load that claimed [intent] for [shouldPlay] starts playing:
   /// a play() or pause() called after it, while it resolved, has the last
   /// word, so its pause write must not undo theirs.
-  bool intendedPlay(int intent, bool shouldPlay) =>
-      intent == _intentEpoch ? shouldPlay : _player._state.playWhenReady;
+  bool intendedPlay(int intent, bool shouldPlay) => _machine.intendedPlay(
+    intent,
+    shouldPlay,
+    current: _player._state.playWhenReady,
+  );
 
   /// Writes the play-pause intent ([PlayerState.playWhenReady]).
   void writeIntent(bool value) => _player._updateField(
@@ -246,9 +90,44 @@ final class _Transport {
   /// Puts back the intent a failed load replaced, unless a later call took
   /// over the load or the intent. Returns whether it did.
   bool restoreIntent(_LoadTicket load, int intent, bool previous) {
-    if (load.superseded || intent != _intentEpoch) return false;
-    writeIntent(previous);
+    if (_player._disposed) return false;
+    final write = _machine.restoreIntent(load._epoch, intent, previous);
+    if (write == null) return false;
+    writeIntent(write.value);
     return true;
+  }
+
+  /// Carries out [effects] in their order, at once, so a throw reaches
+  /// the caller as before. Returns whether they ask for a read of the core
+  /// ([ReadIdle], always the last), which the caller then awaits with
+  /// [_readIdle].
+  bool _apply(List<TransportEffect> effects) {
+    var read = false;
+    for (final effect in effects) {
+      switch (effect) {
+        case WriteIntent(:final value):
+          writeIntent(value);
+        case SettleIdle():
+          _player._updateLifecycle(playing: false, buffering: false);
+        case ClearFinishedFile():
+          _player._clearFinishedFile();
+        case ReadIdle():
+          read = true;
+      }
+    }
+    return read;
+  }
+
+  /// Reads `idle-active` and hands the answer back to the machine, unless
+  /// the player was disposed.
+  Future<void> _readIdle() async {
+    if (_player._disposed) return;
+    final (rc, idle) = await _player._calls.get(
+      'idle-active',
+      MpvFormat.mpvFormatString,
+    );
+    if (_player._disposed) return;
+    _apply(_machine.idleRead(idle: rc >= 0 && idle == 'yes'));
   }
 }
 
@@ -263,5 +142,5 @@ final class _LoadTicket {
   /// Whether the player was disposed, or a later content-replacing call
   /// took over, since the ticket was taken. Re-check after every await.
   bool get superseded =>
-      _player._disposed || _player._transport._loadEpoch != _epoch;
+      _player._disposed || _player._transport._machine.loadEpoch != _epoch;
 }

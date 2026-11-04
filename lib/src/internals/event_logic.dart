@@ -194,7 +194,7 @@ final class EventLogic {
 
   /// The END_FILE the transport decoded as [ended], with what mpv reported
   /// of its entry. mpv has unloaded the file by now: the position and
-  /// duration come from the event (libmpv-r21), else from what mpv
+  /// duration come from the event, else from what mpv
   /// reported of the entry since the START_FILE that named it
   /// ([_PropertyCache.started]).
   MpvEventEndFile _endFileEvent(

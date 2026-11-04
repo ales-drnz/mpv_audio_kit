@@ -2,8 +2,6 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-import 'package:flutter/foundation.dart' show listEquals;
-
 import '../generated/audio_effects_settings.dart';
 import '../internals/unset_sentinel.dart';
 import '../models/audio_params.dart';
@@ -27,42 +25,11 @@ import '../types/settings/replay_gain_settings.dart';
 import '../types/settings/spectrum_settings.dart';
 import '../types/state/audio_output_state.dart';
 
+part '../generated/player_state_data.dart';
+
 const _kEmptyPlaylist = Playlist.empty;
 const _kAutoDevice = Device(name: 'auto', description: 'Auto');
 const _kDefaultDevices = <Device>[_kAutoDevice];
-
-// Collection equality helpers, kept inline to avoid a transitive
-// `package:collection` dependency. PlayerState only carries small
-// Set, Map and List<MpvTrack | Chapter | Device | Media> fields, so a
-// hand-rolled compare is plenty.
-bool _setEq<T>(Set<T> a, Set<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (final e in a) {
-    if (!b.contains(e)) return false;
-  }
-  return true;
-}
-
-bool _mapEq<K, V>(Map<K, V> a, Map<K, V> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (final entry in a.entries) {
-    if (!b.containsKey(entry.key) || b[entry.key] != entry.value) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool _listEq<T>(List<T> a, List<T> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}
 
 /// Immutable snapshot of the [Player]'s complete playback state.
 ///
@@ -70,7 +37,7 @@ bool _listEq<T>(List<T> a, List<T> b) {
 /// to individual fields via the typed streams in `player.stream`.
 ///
 /// {@category State and streams}
-final class PlayerState {
+final class PlayerState with _$PlayerState {
   /// The currently loaded playlist and active track index.
   final Playlist playlist;
 
@@ -109,8 +76,8 @@ final class PlayerState {
   /// Whether the entry that ended at the end of content ([completed])
   /// stopped reading on an error instead of at its end, as
   /// [MpvFileEndedEvent.readError] tells for an entry that ends with an
-  /// event. `null` while [completed] is `false`, and with a libmpv older
-  /// than libmpv-r20, which cannot tell. It changes with [completed]: read
+  /// event. `null` while [completed] is `false`. It changes with
+  /// [completed]: read
   /// it when [PlayerStream.completed] turns `true`. A seek at the park
   /// tries the read again, and the next park tells how it ended then:
   /// [completed] turns `false` and `true` again for it, also when the seek
@@ -119,8 +86,8 @@ final class PlayerState {
 
   /// The HLS or DASH segments the entry that ended at the end of content
   /// ([completed]) lost to errors, as [MpvFileEndedEvent.skippedSegments]
-  /// tells. `null` while [completed] is `false`, and with a libmpv older
-  /// than libmpv-r20. It changes with [completed].
+  /// tells. `null` while [completed] is `false`. It changes with
+  /// [completed].
   final int? skippedSegments;
 
   /// Current playback position.
@@ -644,431 +611,6 @@ final class PlayerState {
     this.ffmpegVersion = '',
     this.mediaSession,
   });
-
-  /// Returns a copy of this state with the given fields replaced; omitted
-  /// fields keep their current value.
-  PlayerState copyWith({
-    Playlist? playlist,
-    bool? playing,
-    bool? playWhenReady,
-    bool? completed,
-    Object? readError = unset,
-    Object? skippedSegments = unset,
-    Duration? position,
-    Duration? duration,
-    double? volume,
-    double? rate,
-    double? pitch,
-    bool? buffering,
-    Duration? buffer,
-    double? bufferingPercentage,
-    DemuxerCacheState? demuxerCacheState,
-    Loop? loop,
-    bool? shuffle,
-    AudioParams? audioParams,
-    AudioParams? audioOutParams,
-    Object? audioBitrate = unset,
-    Device? audioDevice,
-    List<Device>? audioDevices,
-    bool? mute,
-    Duration? audioDelay,
-    bool? pitchCorrection,
-    Map<String, String>? metadata,
-    Gapless? gapless,
-    ReplayGainSettings? replayGain,
-    double? volumeGain,
-    double? volumeGainMin,
-    double? volumeGainMax,
-    Object? systemVolume = unset,
-    Object? systemMute = unset,
-    CacheSettings? cache,
-    DemuxerSettings? demuxer,
-    Duration? networkTimeout,
-    bool? pausedForCache,
-    bool? demuxerViaNetwork,
-    bool? tlsVerify,
-    String? tlsCaFile,
-    HlsBitrate? hlsBitrate,
-    bool? cookies,
-    String? httpProxy,
-    bool? audioExclusive,
-    bool? audioMediaRole,
-    Duration? audioBuffer,
-    bool? audioStreamSilence,
-    bool? audioNullUntimed,
-    List<MpvTrack>? tracks,
-    Object? currentAudioTrack = unset,
-    Set<Spdif>? audioSpdif,
-    double? volumeMax,
-    int? audioSampleRate,
-    Format? audioFormat,
-    Channels? audioChannels,
-    String? audioClientName,
-    String? audioDriver,
-    AudioOutputState? audioOutputState,
-    List<AudioEffect>? audioEffects,
-    SpectrumSettings? spectrum,
-    Object? coverArt = unset,
-    Cover? coverArtAuto,
-    bool? prefetchPlaylist,
-    Duration? audioPts,
-    Duration? timeRemaining,
-    Duration? playtimeRemaining,
-    bool? eofReached,
-    bool? seekable,
-    bool? partiallySeekable,
-    String? mediaTitle,
-    String? fileFormat,
-    int? fileSize,
-    Duration? bufferDuration,
-    bool? demuxerIdle,
-    Object? currentChapter = unset,
-    List<Chapter>? chapters,
-    String? path,
-    String? filename,
-    String? streamPath,
-    String? streamOpenFilename,
-    String? playlistPath,
-    Object? abLoopA = unset,
-    Object? abLoopB = unset,
-    Object? abLoopCount = unset,
-    Object? remainingAbLoops = unset,
-    bool? seeking,
-    double? percentPos,
-    double? cacheSpeed,
-    int? cacheBufferingState,
-    String? currentDemuxer,
-    String? currentAo,
-    Duration? demuxerStartTime,
-    Map<String, String>? chapterMetadata,
-    String? mpvVersion,
-    String? ffmpegVersion,
-    Object? mediaSession = unset,
-  }) => PlayerState(
-    playlist: playlist ?? this.playlist,
-    playing: playing ?? this.playing,
-    playWhenReady: playWhenReady ?? this.playWhenReady,
-    completed: completed ?? this.completed,
-    readError: identical(readError, unset)
-        ? this.readError
-        : readError as bool?,
-    skippedSegments: identical(skippedSegments, unset)
-        ? this.skippedSegments
-        : skippedSegments as int?,
-    position: position ?? this.position,
-    duration: duration ?? this.duration,
-    volume: volume ?? this.volume,
-    rate: rate ?? this.rate,
-    pitch: pitch ?? this.pitch,
-    buffering: buffering ?? this.buffering,
-    buffer: buffer ?? this.buffer,
-    bufferingPercentage: bufferingPercentage ?? this.bufferingPercentage,
-    demuxerCacheState: demuxerCacheState ?? this.demuxerCacheState,
-    loop: loop ?? this.loop,
-    shuffle: shuffle ?? this.shuffle,
-    audioParams: audioParams ?? this.audioParams,
-    audioOutParams: audioOutParams ?? this.audioOutParams,
-    audioBitrate: identical(audioBitrate, unset)
-        ? this.audioBitrate
-        : audioBitrate as double?,
-    audioDevice: audioDevice ?? this.audioDevice,
-    audioDevices: audioDevices ?? this.audioDevices,
-    mute: mute ?? this.mute,
-    audioDelay: audioDelay ?? this.audioDelay,
-    pitchCorrection: pitchCorrection ?? this.pitchCorrection,
-    metadata: metadata ?? this.metadata,
-    gapless: gapless ?? this.gapless,
-    replayGain: replayGain ?? this.replayGain,
-    volumeGain: volumeGain ?? this.volumeGain,
-    volumeGainMin: volumeGainMin ?? this.volumeGainMin,
-    volumeGainMax: volumeGainMax ?? this.volumeGainMax,
-    systemVolume: identical(systemVolume, unset)
-        ? this.systemVolume
-        : systemVolume as double?,
-    systemMute: identical(systemMute, unset)
-        ? this.systemMute
-        : systemMute as bool?,
-    cache: cache ?? this.cache,
-    demuxer: demuxer ?? this.demuxer,
-    networkTimeout: networkTimeout ?? this.networkTimeout,
-    pausedForCache: pausedForCache ?? this.pausedForCache,
-    demuxerViaNetwork: demuxerViaNetwork ?? this.demuxerViaNetwork,
-    tlsVerify: tlsVerify ?? this.tlsVerify,
-    tlsCaFile: tlsCaFile ?? this.tlsCaFile,
-    hlsBitrate: hlsBitrate ?? this.hlsBitrate,
-    cookies: cookies ?? this.cookies,
-    httpProxy: httpProxy ?? this.httpProxy,
-    audioExclusive: audioExclusive ?? this.audioExclusive,
-    audioMediaRole: audioMediaRole ?? this.audioMediaRole,
-    audioBuffer: audioBuffer ?? this.audioBuffer,
-    audioStreamSilence: audioStreamSilence ?? this.audioStreamSilence,
-    audioNullUntimed: audioNullUntimed ?? this.audioNullUntimed,
-    tracks: tracks ?? this.tracks,
-    currentAudioTrack: identical(currentAudioTrack, unset)
-        ? this.currentAudioTrack
-        : currentAudioTrack as MpvTrack?,
-    audioSpdif: audioSpdif ?? this.audioSpdif,
-    volumeMax: volumeMax ?? this.volumeMax,
-    audioSampleRate: audioSampleRate ?? this.audioSampleRate,
-    audioFormat: audioFormat ?? this.audioFormat,
-    audioChannels: audioChannels ?? this.audioChannels,
-    audioClientName: audioClientName ?? this.audioClientName,
-    audioDriver: audioDriver ?? this.audioDriver,
-    audioOutputState: audioOutputState ?? this.audioOutputState,
-    audioEffects: audioEffects ?? this.audioEffects,
-    spectrum: spectrum ?? this.spectrum,
-    coverArt: identical(coverArt, unset)
-        ? this.coverArt
-        : coverArt as CoverArt?,
-    coverArtAuto: coverArtAuto ?? this.coverArtAuto,
-    prefetchPlaylist: prefetchPlaylist ?? this.prefetchPlaylist,
-    audioPts: audioPts ?? this.audioPts,
-    timeRemaining: timeRemaining ?? this.timeRemaining,
-    playtimeRemaining: playtimeRemaining ?? this.playtimeRemaining,
-    eofReached: eofReached ?? this.eofReached,
-    seekable: seekable ?? this.seekable,
-    partiallySeekable: partiallySeekable ?? this.partiallySeekable,
-    mediaTitle: mediaTitle ?? this.mediaTitle,
-    fileFormat: fileFormat ?? this.fileFormat,
-    fileSize: fileSize ?? this.fileSize,
-    bufferDuration: bufferDuration ?? this.bufferDuration,
-    demuxerIdle: demuxerIdle ?? this.demuxerIdle,
-    currentChapter: identical(currentChapter, unset)
-        ? this.currentChapter
-        : currentChapter as int?,
-    chapters: chapters ?? this.chapters,
-    path: path ?? this.path,
-    filename: filename ?? this.filename,
-    streamPath: streamPath ?? this.streamPath,
-    streamOpenFilename: streamOpenFilename ?? this.streamOpenFilename,
-    playlistPath: playlistPath ?? this.playlistPath,
-    abLoopA: identical(abLoopA, unset) ? this.abLoopA : abLoopA as Duration?,
-    abLoopB: identical(abLoopB, unset) ? this.abLoopB : abLoopB as Duration?,
-    abLoopCount: identical(abLoopCount, unset)
-        ? this.abLoopCount
-        : abLoopCount as int?,
-    remainingAbLoops: identical(remainingAbLoops, unset)
-        ? this.remainingAbLoops
-        : remainingAbLoops as int?,
-    seeking: seeking ?? this.seeking,
-    percentPos: percentPos ?? this.percentPos,
-    cacheSpeed: cacheSpeed ?? this.cacheSpeed,
-    cacheBufferingState: cacheBufferingState ?? this.cacheBufferingState,
-    currentDemuxer: currentDemuxer ?? this.currentDemuxer,
-    currentAo: currentAo ?? this.currentAo,
-    demuxerStartTime: demuxerStartTime ?? this.demuxerStartTime,
-    chapterMetadata: chapterMetadata ?? this.chapterMetadata,
-    mpvVersion: mpvVersion ?? this.mpvVersion,
-    ffmpegVersion: ffmpegVersion ?? this.ffmpegVersion,
-    mediaSession: identical(mediaSession, unset)
-        ? this.mediaSession
-        : mediaSession as MediaSession?,
-  );
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is PlayerState &&
-          other.playlist == playlist &&
-          other.playing == playing &&
-          other.playWhenReady == playWhenReady &&
-          other.completed == completed &&
-          other.readError == readError &&
-          other.skippedSegments == skippedSegments &&
-          other.position == position &&
-          other.duration == duration &&
-          other.volume == volume &&
-          other.rate == rate &&
-          other.pitch == pitch &&
-          other.buffering == buffering &&
-          other.buffer == buffer &&
-          other.bufferingPercentage == bufferingPercentage &&
-          other.demuxerCacheState == demuxerCacheState &&
-          other.loop == loop &&
-          other.shuffle == shuffle &&
-          other.audioParams == audioParams &&
-          other.audioOutParams == audioOutParams &&
-          other.audioBitrate == audioBitrate &&
-          other.audioDevice == audioDevice &&
-          _listEq(audioDevices, other.audioDevices) &&
-          other.mute == mute &&
-          other.audioDelay == audioDelay &&
-          other.pitchCorrection == pitchCorrection &&
-          _mapEq(metadata, other.metadata) &&
-          other.gapless == gapless &&
-          other.replayGain == replayGain &&
-          other.volumeGain == volumeGain &&
-          other.volumeGainMin == volumeGainMin &&
-          other.volumeGainMax == volumeGainMax &&
-          other.systemVolume == systemVolume &&
-          other.systemMute == systemMute &&
-          other.cache == cache &&
-          other.demuxer == demuxer &&
-          other.networkTimeout == networkTimeout &&
-          other.pausedForCache == pausedForCache &&
-          other.demuxerViaNetwork == demuxerViaNetwork &&
-          other.tlsVerify == tlsVerify &&
-          other.tlsCaFile == tlsCaFile &&
-          other.hlsBitrate == hlsBitrate &&
-          other.cookies == cookies &&
-          other.httpProxy == httpProxy &&
-          other.audioExclusive == audioExclusive &&
-          other.audioMediaRole == audioMediaRole &&
-          other.audioBuffer == audioBuffer &&
-          other.audioStreamSilence == audioStreamSilence &&
-          other.audioNullUntimed == audioNullUntimed &&
-          _listEq(tracks, other.tracks) &&
-          other.currentAudioTrack == currentAudioTrack &&
-          _setEq(audioSpdif, other.audioSpdif) &&
-          other.volumeMax == volumeMax &&
-          other.audioSampleRate == audioSampleRate &&
-          other.audioFormat == audioFormat &&
-          other.audioChannels == audioChannels &&
-          other.audioClientName == audioClientName &&
-          other.audioDriver == audioDriver &&
-          other.audioOutputState == audioOutputState &&
-          listEquals(other.audioEffects, audioEffects) &&
-          other.spectrum == spectrum &&
-          other.coverArt == coverArt &&
-          other.coverArtAuto == coverArtAuto &&
-          other.prefetchPlaylist == prefetchPlaylist &&
-          other.audioPts == audioPts &&
-          other.timeRemaining == timeRemaining &&
-          other.playtimeRemaining == playtimeRemaining &&
-          other.eofReached == eofReached &&
-          other.seekable == seekable &&
-          other.partiallySeekable == partiallySeekable &&
-          other.mediaTitle == mediaTitle &&
-          other.fileFormat == fileFormat &&
-          other.fileSize == fileSize &&
-          other.bufferDuration == bufferDuration &&
-          other.demuxerIdle == demuxerIdle &&
-          other.currentChapter == currentChapter &&
-          _listEq(chapters, other.chapters) &&
-          other.path == path &&
-          other.filename == filename &&
-          other.streamPath == streamPath &&
-          other.streamOpenFilename == streamOpenFilename &&
-          other.playlistPath == playlistPath &&
-          other.abLoopA == abLoopA &&
-          other.abLoopB == abLoopB &&
-          other.abLoopCount == abLoopCount &&
-          other.remainingAbLoops == remainingAbLoops &&
-          other.seeking == seeking &&
-          other.percentPos == percentPos &&
-          other.cacheSpeed == cacheSpeed &&
-          other.cacheBufferingState == cacheBufferingState &&
-          other.currentDemuxer == currentDemuxer &&
-          other.currentAo == currentAo &&
-          other.demuxerStartTime == demuxerStartTime &&
-          _mapEq(chapterMetadata, other.chapterMetadata) &&
-          other.mpvVersion == mpvVersion &&
-          other.ffmpegVersion == ffmpegVersion &&
-          other.mediaSession == mediaSession);
-
-  @override
-  int get hashCode => Object.hashAll([
-    playlist,
-    playing,
-    playWhenReady,
-    completed,
-    readError,
-    skippedSegments,
-    position,
-    duration,
-    volume,
-    rate,
-    pitch,
-    buffering,
-    buffer,
-    bufferingPercentage,
-    demuxerCacheState,
-    loop,
-    shuffle,
-    audioParams,
-    audioOutParams,
-    audioBitrate,
-    audioDevice,
-    Object.hashAll(audioDevices),
-    mute,
-    audioDelay,
-    pitchCorrection,
-    Object.hashAllUnordered(
-      metadata.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
-    gapless,
-    replayGain,
-    volumeGain,
-    volumeGainMin,
-    volumeGainMax,
-    systemVolume,
-    systemMute,
-    cache,
-    demuxer,
-    networkTimeout,
-    pausedForCache,
-    demuxerViaNetwork,
-    tlsVerify,
-    tlsCaFile,
-    hlsBitrate,
-    cookies,
-    httpProxy,
-    audioExclusive,
-    audioMediaRole,
-    audioBuffer,
-    audioStreamSilence,
-    audioNullUntimed,
-    Object.hashAll(tracks),
-    currentAudioTrack,
-    Object.hashAllUnordered(audioSpdif),
-    volumeMax,
-    audioSampleRate,
-    audioFormat,
-    audioChannels,
-    audioClientName,
-    audioDriver,
-    audioOutputState,
-    Object.hashAll(audioEffects),
-    spectrum,
-    coverArt,
-    coverArtAuto,
-    prefetchPlaylist,
-    audioPts,
-    timeRemaining,
-    playtimeRemaining,
-    eofReached,
-    seekable,
-    partiallySeekable,
-    mediaTitle,
-    fileFormat,
-    fileSize,
-    bufferDuration,
-    demuxerIdle,
-    currentChapter,
-    Object.hashAll(chapters),
-    path,
-    filename,
-    streamPath,
-    streamOpenFilename,
-    playlistPath,
-    abLoopA,
-    abLoopB,
-    abLoopCount,
-    remainingAbLoops,
-    seeking,
-    percentPos,
-    cacheSpeed,
-    cacheBufferingState,
-    currentDemuxer,
-    currentAo,
-    demuxerStartTime,
-    Object.hashAllUnordered(
-      chapterMetadata.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
-    mpvVersion,
-    ffmpegVersion,
-    mediaSession,
-  ]);
 
   @override
   String toString() =>

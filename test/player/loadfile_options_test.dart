@@ -180,15 +180,6 @@ void main() {
       );
     });
 
-    test('left out for a libmpv without it', () {
-      const media = Media(
-        'https://h/a.opus',
-        end: Duration(seconds: 90),
-        waveformDurationHint: Duration(seconds: 262),
-      );
-      expect(loadfileOptions(media, durationHint: false), 'end=90.000');
-    });
-
     test('must be positive, refused before any load', () {
       Matcher refused() => throwsA(
         isA<ArgumentError>().having(

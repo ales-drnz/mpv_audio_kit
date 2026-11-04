@@ -1,0 +1,73 @@
+name: Mutation
+
+# Mutation testing of the hot files of the player (tool/mutation): each
+# mutant of player.dart, player_dispatch, event_isolate,
+# event_end_of_content and event_decoder runs the unit and runtime tests
+# that cover it. Reads, never gates: the job does not fail on mutants that
+# live, and the html report is an artifact.
+
+on:
+  schedule:
+    # Sundays at 03:17 UTC.
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      libmpv_scripts_run:
+        description: libmpv-scripts run whose libmpv-release artifact the job bundles (empty for the Build found by itself)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Mutation (hot files)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: libmpv-scripts run
+        id: libmpv
+        env:
+          LIBMPV_SCRIPTS_RUN: ${{ inputs.libmpv_scripts_run || vars.LIBMPV_SCRIPTS_RUN }}
+          GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          run="$(scripts/ci/resolve_libmpv_run.sh)"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/libmpv-from-run
+        with:
+          run-id: ${{ steps.libmpv.outputs.run }}
+          token: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+          pubspecs: pubspec.yaml
+      - name: Install libmpv runtime dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2t64 pulseaudio pulseaudio-utils
+      - name: PulseAudio null sink
+        run: |
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci_null norewinds=1
+          pactl set-default-sink ci_null
+      # The lines the tests reach: mutants of the others are not run.
+      - name: Coverage of the tests the mutants run
+        run: flutter test -x network --coverage test/internal test/event_isolate test/player test/runtime test/reactive
+      - name: Mutation test
+        run: |
+          dart pub get -C tool/mutation
+          dart tool/mutation/bin/mutation.dart --coverage coverage/lcov.info
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-test-report
+          path: mutation-test-report
+          if-no-files-found: ignore

@@ -8,8 +8,10 @@ import 'package:meta/meta.dart';
 
 import '../../events/player_exception.dart';
 import '../../internals/core_events.dart';
+import '../../internals/event_decoder.dart';
 import '../../internals/event_logic.dart';
 import '../../internals/event_sequencer.dart';
+import '../../internals/libmpv_requirements.dart';
 import '../../mpv_constants.dart';
 import '../mpv_session.dart';
 import 'mpv_module.dart';
@@ -171,9 +173,26 @@ final class WebSession implements MpvSession {
     );
     _started = true;
     _readsBridge = _m.attachWakeup(_reads, _drainReads);
+    // On the read client, before the player's client has a bridge: a
+    // module of another release hands the player no event.
+    await _checkRelease();
     _handleBridge = _m.attachWakeup(h, _sequencer.pump);
     // The events mpv queued before the bridge existed raised no wakeup.
     scheduleMicrotask(_sequencer.pump);
+  }
+
+  /// Takes the core down and throws [PlayerInitException] when the module,
+  /// past its ABI and layout checks, is not a build of the pinned release,
+  /// as natively: the player then gets no core.
+  Future<void> _checkRelease() async {
+    final mismatch = libmpvMismatch(
+      await _WebReader(this).string('mpv-version'),
+    );
+    if (mismatch == null) return;
+    await stop();
+    close();
+    await terminateDestroy();
+    throw PlayerInitException(mismatch);
   }
 
   void _observe(int h, int replyId, String name, int format) {
@@ -200,105 +219,11 @@ final class WebSession implements MpvSession {
     }
     final id = _m.i32(e);
     if (id == MpvEventId.mpvEventNone) return (false, null, false);
-    return (true, _dispatch(e, id), id == MpvEventId.mpvEventShutdown);
-  }
-
-  Future<void>? _dispatch(int e, int id) {
-    final m = _m;
-    final error = m.i32(e + 4);
-    final userdata = m.i64(e + 8);
-    final data = m.u32(e + 16);
-    switch (id) {
-      case MpvEventId.mpvEventPropertyChange:
-        final format = m.i32(data + 4);
-        return _logic.property(
-          m.string(m.u32(data))!,
-          format,
-          _changeValue(format, m.u32(data + 8)),
-        );
-      case MpvEventId.mpvEventShutdown:
-        return _logic.dispatch(MpvEventShutdown());
-      case MpvEventId.mpvEventStartFile:
-        return _logic.dispatch(MpvEventStartFile(m.i64(data)));
-      case MpvEventId.mpvEventFileLoaded:
-        return _logic.dispatch(MpvEventFileLoaded());
-      case MpvEventId.mpvEventEndFile:
-        // The fields of a module with the read_error patch; a module
-        // without it has none (offsets 0). A duration or position mpv did
-        // not know (-1) is null, as on the native side.
-        final fields = m.endFile;
-        double? known(int offset) {
-          if (offset == 0) return null;
-          final seconds = m.f64(data + offset);
-          return seconds >= 0 ? seconds : null;
-        }
-
-        return _logic.dispatch(
-          MpvEventEndFile(
-            m.i64(data + 8),
-            m.i32(data),
-            m.i32(data + 4),
-            position: known(fields.position),
-            duration: known(fields.duration),
-            readError: fields.readError == 0
-                ? null
-                : m.i32(data + fields.readError) != 0,
-            skippedSegments: fields.skippedSegments == 0
-                ? null
-                : m.i64(data + fields.skippedSegments),
-          ),
-        );
-      case MpvEventId.mpvEventAudioReconfig:
-        return _logic.audioReconfig();
-      case MpvEventId.mpvEventSetPropertyReply:
-        return _logic.dispatch(MpvEventReply(userdata, error));
-      case MpvEventId.mpvEventCommandReply:
-        // The payload is an `mpv_event_command`: its `mpv_node result`.
-        final result = error >= 0 && data != 0 ? m.node(data) : null;
-        return _logic.dispatch(MpvEventReply(userdata, error, result));
-      case MpvEventId.mpvEventGetPropertyReply:
-        return _logic.dispatch(
-          MpvEventGetReply(userdata, error, error >= 0 ? _value(data) : null),
-        );
-      case MpvEventId.mpvEventLogMessage:
-        return _logic.dispatch(
-          MpvEventLog(
-            m.string(m.u32(data)) ?? '',
-            m.string(m.u32(data + 4)) ?? '',
-            (m.string(m.u32(data + 8)) ?? '').trimRight(),
-          ),
-        );
-      case MpvEventId.mpvEventHook:
-        return _logic.dispatch(
-          MpvEventHookFired(m.i64(data + 8), m.string(m.u32(data)) ?? ''),
-        );
-      case MpvEventId.mpvEventPlaybackRestart:
-        return _logic.dispatch(MpvEventPlaybackRestart());
-    }
-    return null;
-  }
-
-  /// The value of a property change as [EventLogic.property] takes it.
-  Object? _changeValue(int format, int data) {
-    if (format == MpvFormat.mpvFormatNone || data == 0) {
-      return kPropertyUnavailable;
-    }
-    return switch (format) {
-      MpvFormat.mpvFormatDouble ||
-      MpvFormat.mpvFormatFlag ||
-      MpvFormat.mpvFormatInt64 ||
-      MpvFormat.mpvFormatString ||
-      MpvFormat.mpvFormatNode => _m.value(format, data),
-      _ => kPropertyUnobserved,
-    };
-  }
-
-  /// The value of the `mpv_event_property` at [property], as a read
-  /// carries it; `null` without one.
-  Object? _value(int property) {
-    if (property == 0) return null;
-    final data = _m.u32(property + 8);
-    return data == 0 ? null : _m.value(_m.i32(property + 4), data);
+    return (
+      true,
+      dispatchEvent(_logic, _m, e),
+      id == MpvEventId.mpvEventShutdown,
+    );
   }
 
   /// Sends a read of [name] in [format] on the read client.
@@ -328,7 +253,7 @@ final class WebSession implements MpvSession {
       if (reply == null) continue;
       Object? value;
       try {
-        if (_m.i32(e + 4) >= 0) value = _value(_m.u32(e + 16));
+        if (_m.i32(e + 4) >= 0) value = propertyValue(_m, _m.u32(e + 16));
       } catch (error) {
         // A read that cannot be decoded fails like a read mpv refused.
         _send(MpvEventInternalLog('warn', 'decoding a read failed: $error'));
@@ -404,7 +329,7 @@ final class WebSession implements MpvSession {
     final reads = _reads;
     _reads = 0;
     _m.detachWakeup(reads, _readsBridge);
-    _m.detachWakeup(h, _handleBridge);
+    if (_handleBridge != 0) _m.detachWakeup(h, _handleBridge);
     timedCall('mpv_destroy', () => _m.c.mpvDestroy(reads));
     timedCall('mpv_terminate_destroy', () => _m.c.mpvTerminateDestroy(h));
   }

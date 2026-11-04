@@ -239,6 +239,8 @@ class FilterTapPipeline {
         // The root keys are the chain labels (`u->label`), the same keys
         // `_streamFor` gives `_controllers`.
         final key = (name: filterKey, isPost: isPost);
+        // A controller of [_controllers], closed by [dispose].
+        // ignore: close_sinks
         final ctrl = _controllers[key];
         if (ctrl == null || !ctrl.hasListener) return;
         // Skip the decode + dispatch when the slice is the one dispatched

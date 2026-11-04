@@ -27,10 +27,10 @@ import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/entry_table.dart';
 import '../internals/hook_table.dart';
-import '../internals/libmpv_requirements.dart';
 import '../internals/mpv_audio_kit.dart';
 import '../internals/mpv_float.dart';
 import '../internals/owned_source.dart';
+import '../internals/transport_machine.dart';
 import '../internals/uri_resolver.dart';
 import '../media_session/media_session_controller.dart';
 import '../media_session/media_session_inputs.dart';
@@ -217,7 +217,7 @@ class Player extends _PlayerBase
       // The replace leaves the park of the old file: its START_FILE is
       // queued behind this reply, and can reach the player after the load
       // ends. A park of the old file reached while this load ran keeps the
-      // intent (see [_Transport._park]).
+      // intent (see [TransportMachine.park]).
       _transport.takePark();
       // Asked again, not reused: a pause() called while the loadfile was in
       // flight has the last word.
@@ -671,7 +671,7 @@ abstract class _PlayerBase {
 
   // What the resolver gave for the prefetch of the next entry: the URL mpv
   // was about to open, the one it opened instead, the load epoch then, and
-  // the entry (`null` before libmpv-r20, whose prefetch names none). The
+  // the entry (`null` when its read failed). The
   // load of that entry, or of that URL without one, in the same epoch takes
   // it once (F10, kit-core-3).
   (String, String, _LoadTicket, int?)? _prefetchResolved;
@@ -1003,11 +1003,6 @@ abstract class _PlayerBase {
 
   late final Future<void> _ready;
   bool _bringUpCompleted = false;
-
-  /// Whether the libmpv knows `waveform-duration-hint` (libmpv-r20), read
-  /// at the end of bring-up. Without it the loads leave
-  /// `Media.waveformDurationHint` out.
-  bool _durationHint = false;
 
   /// The level of the last [setLogLevel] call, applied at the end of
   /// bring-up when the call came before it.

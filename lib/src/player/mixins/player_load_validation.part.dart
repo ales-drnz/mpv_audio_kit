@@ -11,8 +11,7 @@ part of '../player.dart';
 /// abstract signatures on `_PlayerBase`.
 mixin _LoadValidationModule on _PlayerBase {
   @override
-  String _buildLoadfileOptions(Media media) =>
-      loadfileOptions(media, durationHint: _durationHint);
+  String _buildLoadfileOptions(Media media) => loadfileOptions(media);
 
   @override
   void _validateLoadOptions(Media media) => validateLoadOptions(media);
@@ -34,8 +33,7 @@ mixin _LoadValidationModule on _PlayerBase {
 
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
 /// `httpHeaders`, `httpChunkSize`, `streamLavfOptions`, `demuxerLavfOptions`,
-/// `start`, `end` and `waveformDurationHint` (left out without
-/// [durationHint], for a libmpv that lacks it), and the raw audio demuxer
+/// `start`, `end` and `waveformDurationHint`, and the raw audio demuxer
 /// of a live PCM source. Each
 /// value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
@@ -45,7 +43,7 @@ mixin _LoadValidationModule on _PlayerBase {
 /// which would inject into the HTTP request; and `:` in keys.
 /// Returns `''` when the media carries none.
 @visibleForTesting
-String loadfileOptions(Media media, {bool durationHint = true}) {
+String loadfileOptions(Media media) {
   _checkPlayRange(media);
   _checkDurationHint(media);
   final parts = <String>[];
@@ -91,7 +89,7 @@ String loadfileOptions(Media media, {bool durationHint = true}) {
   // entry that carries it, and its prefetch skips an entry whose hint
   // differs.
   final hint = media.waveformDurationHint;
-  if (hint != null && durationHint) {
+  if (hint != null) {
     parts.add('waveform-duration-hint=${durationToOption(hint)}');
   }
 
