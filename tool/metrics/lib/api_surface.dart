@@ -142,8 +142,28 @@ String _header(CompilationUnitMember d) {
       : brace < semicolon
       ? brace
       : semicolon;
-  return (end < 0 ? source : source.substring(0, end)).trim();
+  return _publicSupertypes(
+    (end < 0 ? source : source.substring(0, end)).trim(),
+  );
 }
+
+/// [header] without the private types of its `with` and `implements`
+/// clauses: they are no API, and their public members count as the type's
+/// own.
+String _publicSupertypes(String header) => header
+    .replaceAllMapped(
+      RegExp(r'\b(with|implements) ([^{]*?)(?= implements |$)'),
+      (m) {
+        final names = m[2]!
+            .split(',')
+            .map((n) => n.trim())
+            .where((n) => !n.startsWith('_'))
+            .toList();
+        return names.isEmpty ? '' : '${m[1]} ${names.join(', ')}';
+      },
+    )
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .trim();
 
 void _members(
   CompilationUnitMember d,

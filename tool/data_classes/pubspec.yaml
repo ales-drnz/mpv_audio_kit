@@ -1,0 +1,9 @@
+name: mak_data_classes
+description: Generates ==, hashCode and copyWith of the data classes of mpv_audio_kit (tool/data_classes/README.md).
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  analyzer: ^9.0.0

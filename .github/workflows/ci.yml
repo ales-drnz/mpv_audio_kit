@@ -179,6 +179,19 @@ jobs:
           dart pub get -C tool/metrics
           (cd tool/metrics && dart test)
           dart tool/metrics/bin/metrics.dart
+      # The copyWith, == and hashCode of the data classes must be what
+      # tool/data_classes generates.
+      - name: Data classes drift
+        run: |
+          dart pub get -C tool/data_classes
+          dart tool/data_classes/bin/data_classes.dart
+          drift=$(git status --porcelain -- lib/src/generated)
+          if [[ -n "$drift" ]]; then
+            echo "::error::The data classes differ from what tool/data_classes generates:"
+            echo "$drift"
+            git diff -- lib/src/generated | head -100
+            exit 1
+          fi
       - name: Red and green of the fix commits
         env:
           BEFORE: ${{ github.event.before }}

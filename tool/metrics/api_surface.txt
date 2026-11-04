@@ -3532,7 +3532,7 @@ Player.new testInstrumented  ({super.configuration, required int super.wakeupCou
 Player.void setLogLevel(LogLevel level)
 Player.void setSpectrum(SpectrumSettings settings)
 Player.void updateSpectrum(SpectrumSettings Function(SpectrumSettings) mapper)
-Player: class Player extends _PlayerBase with _FfiModule, _LoadValidationModule, _InitModule, _DispatchModule, _PlaybackModule, _PlaylistModule, _AudioModule, _NetworkModule, _PcmModule, _HooksModule, _MediaSessionModule implements PlayerApi
+Player: class Player extends _PlayerBase implements PlayerApi
 PlayerApi.Future<Object?> getRawPropertyNode(String name)
 PlayerApi.Future<PcmSource> openPcmStream(PcmFormat format, {bool play = true, Duration maxBuffered = const Duration(seconds: 30), bool lowLatency = false, Map<String, Object?>? extras})
 PlayerApi.Future<String?> getRawProperty(String name)
