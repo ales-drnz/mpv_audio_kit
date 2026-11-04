@@ -8,10 +8,11 @@
 # of the commit, must fail. A test that passes there was never red, and
 # fails this script. Only unit tests run (the folders in $unit_dirs): a
 # runtime test needs libmpv, and its red stays the one the commit reports.
-# A fix commit that names no unit test is skipped with a notice. Red means
-# a test ran and failed: a test that only fails to compile on the parent
-# (it calls what the fix adds) warns, and a run that never got to the tests
-# (a timeout, pub or the build hook) fails as a test that passes does.
+# A fix commit that names no unit test, or changes nothing in lib and hook
+# (a CI script), is skipped with a notice. Red means a test ran and failed:
+# a test that only fails to compile on the parent (it calls what the fix
+# adds) warns, and a run that never got to the tests (a timeout, pub or the
+# build hook) fails as a test that passes does.
 #
 #   scripts/ci/verify_red.sh [range]     (origin/main..HEAD by default)
 #
@@ -48,6 +49,12 @@ while read -r sha; do
   [[ "$subject" =~ ^fix(\([^\)]*\))?!?: ]] || continue
   red="$(paragraph "$(git log -1 --format=%b "$sha")" '^Red:')"
   [[ -n "$red" ]] || continue
+  # A fix outside lib and hook (a CI script) leaves the parent's lib as it
+  # is: a unit test its Red quotes cannot be red there.
+  if [[ -z "$(git diff --name-only "$sha^" "$sha" -- lib hook)" ]]; then
+    echo "::notice title=Red by machine::${sha:0:7} \"$subject\": changes nothing the unit tests run, skipped"
+    continue
+  fi
   tree="$(git ls-tree -r --name-only "$sha")"
   tests=()
   while read -r name; do
