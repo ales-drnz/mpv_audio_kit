@@ -175,6 +175,24 @@ void main() {
       }
     });
 
+    // A node mpv cannot have made (a byte array of SIZE_MAX bytes, which
+    // the size_t reads as -1) fails the decode, which the event isolate
+    // reports on internalLog, instead of reading as no bytes.
+    test('a byte array of SIZE_MAX bytes fails the decode', () {
+      final (node, dispose) = _byteArray([1]);
+      try {
+        node.ref.u.ba.ref.size = -1;
+        expect(() => decodeMpvNode(node), throwsA(anything));
+        expect(
+          () => decodeMpvNode(node, transferBytes: true),
+          throwsA(anything),
+        );
+      } finally {
+        node.ref.u.ba.ref.size = 1;
+        dispose();
+      }
+    });
+
     test('transferBytes: a TransferableTypedData, materialized in place', () {
       final (node, dispose) = _byteArray([0x42, 0x99, 0x00, 0xFF]);
       try {
