@@ -30,12 +30,14 @@ commit "$(printf 'fix(web): by name\n\nRed: CI, "a pause stays a pause" timed ou
 commit "$(printf 'feat: not a fix\n\nNo trailers.')"
 commit "$(printf 'fix: no paragraphs\n\nJust words.')"
 commit "$(printf 'fix: placeholders\n\nRed: TODO\nGreen: pending')"
+commit "$(printf 'fix: lower case\n\nRed: tbd\nGreen: n/a')"
+commit "$(printf 'fix: dots\n\nRed: pause_test -1 Expected paused.\nGreen: ...')"
 commit "$(printf 'fix: unknown test\n\nRed: other_test -1, Expected 1.\nGreen: other_test +1.')"
 commit "$(printf 'fix: no failure\n\nRed: pause_test ran.\nGreen: pause_test +1.')"
 
 out="$(bash "$script" "$base..HEAD")"
 expect_eq "exit status 0 and a summary" \
-  "Red and green: 6 fix commits, 8 warnings" "$(tail -1 <<<"$out")"
+  "Red and green: 8 fix commits, 13 warnings" "$(tail -1 <<<"$out")"
 warned() { grep -F "\"$1\"" <<<"$out" | sed 's/.*": //' | tr '\n' '|'; }
 expect_eq "a full red and green" "" "$(warned 'fix: a pause stays a pause')"
 expect_eq "a test by its description" "" "$(warned 'fix(web): by name')"
@@ -45,6 +47,10 @@ expect_eq "no paragraphs" "no Red: paragraph|no Green: paragraph|" \
 expect_eq "placeholders" \
   "the Red: paragraph is a placeholder|the Red: paragraph names no test of the tree|the Red: paragraph says not how the test failed|the Green: paragraph is a placeholder|" \
   "$(warned 'fix: placeholders')"
+expect_eq "lower case placeholders" \
+  "the Red: paragraph is a placeholder|the Red: paragraph names no test of the tree|the Red: paragraph says not how the test failed|the Green: paragraph is a placeholder|" \
+  "$(warned 'fix: lower case')"
+expect_eq "dots" "the Green: paragraph is a placeholder|" "$(warned 'fix: dots')"
 expect_eq "unknown test" "the Red: paragraph names no test of the tree|" \
   "$(warned 'fix: unknown test')"
 expect_eq "no failure" "the Red: paragraph says not how the test failed|" \

@@ -217,7 +217,7 @@ class Player extends _PlayerBase
       // The replace leaves the park of the old file: its START_FILE is
       // queued behind this reply, and can reach the player after the load
       // ends. A park of the old file reached while this load ran keeps the
-      // intent (see [_Transport._park]).
+      // intent (see [TransportMachine.park]).
       _transport.takePark();
       // Asked again, not reused: a pause() called while the loadfile was in
       // flight has the last word.

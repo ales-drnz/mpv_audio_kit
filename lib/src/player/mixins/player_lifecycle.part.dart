@@ -160,7 +160,7 @@ extension _Lifecycle on _PlayerBase {
     // load) takes it, so a read of the park it leaves, still on its way,
     // keeps the call's intent; landed at the end again, the read after the
     // move belongs to a new park and spends. A park reached while a load
-    // runs waits for the load, which leaves it (see [_Transport._park]).
+    // runs waits for the load, which leaves it (see [TransportMachine.park]).
     if (end) _transport.onEndOfContent();
   }
 }

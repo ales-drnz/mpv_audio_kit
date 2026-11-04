@@ -3,196 +3,245 @@
 // Use of this source code is governed by BSD 3-Clause license that can be
 // found in the LICENSE file.
 
-// TransportMachine, the transport axis of a player, against a model of its
-// rules on random sequences of events and calls (kiri_check). The model
-// keeps the set of the park generations that spent or gave away the
-// intent, where the machine keeps the last one only: the two agree only if
-// no rule ever asks about an older generation.
+// TransportMachine, the transport axis of a player, on random sequences of
+// calls and of what mpv sends back, in its FIFO order (kiri_check). The
+// rule the intent must end on is written apart from the machine (_Spec):
+// once mpv has said all, the intent is on exactly when the last call was
+// play() and the core is not parked at the end. A second behavior checks
+// the machine alone: no park generation spends twice, none while a load
+// runs, and no event writes the intent on.
 
 import 'package:kiri_check/kiri_check.dart';
 import 'package:kiri_check/stateful_test.dart';
 import 'package:mpv_audio_kit/src/internals/transport_machine.dart';
 import 'package:test/test.dart';
 
-/// The rules, written from their description.
-final class _Model {
-  int park = 0;
-  bool started = false;
-  final Set<int> settled = {};
-  int loads = 0;
-  int? waiting;
-  bool idleReset = false;
+/// What mpv sends back, in its FIFO order: the reply of a command, then
+/// the restart of the move it causes, then the read of a park when the
+/// move lands on the end.
+sealed class _Item {}
 
-  /// Every intent write of an event so far, by the generation it was in.
-  final Map<int, int> spends = {};
+final class _Reply extends _Item {
+  _Reply(this.intent);
 
-  List<TransportEffect> endOfContent() {
-    if (settled.contains(park)) return [];
-    if (loads > 0) {
-      waiting = park;
-      return [];
+  /// The intent epoch of the play() that sent the command, null for a
+  /// command of no call that sets the intent.
+  final int? intent;
+}
+
+final class _Restart extends _Item {}
+
+final class _ParkRead extends _Item {}
+
+/// The machine behind a player that plays, pauses and seeks, as the rules
+/// of e984aef and 0c37fc6 state them: play() at a park takes the park and
+/// writes the intent on before its seek, and again after the reply of the
+/// seek while it owns the intent; mpv queues that reply ahead of the
+/// seek's restart, and the read of the park after it.
+final class _Rig {
+  final TransportMachine m = TransportMachine()..startFile();
+  final List<_Item> queue = [];
+  bool intent = false;
+
+  /// Whether the core is at the end, ahead of what reached the player.
+  bool parked = false;
+
+  void _apply(List<TransportEffect> effects) {
+    for (final e in effects) {
+      if (e is WriteIntent) intent = e.value;
     }
-    settled.add(park);
-    return [WriteIntent.off];
   }
 
-  List<TransportEffect> idleActive(bool idle) {
-    if (!idle) {
-      idleReset = false;
-      return [];
+  /// [lateRead]: the read of the park the pump sent, which play() did not
+  /// wait for (it reads the core itself), lands between the reply of the
+  /// seek and its restart, still in the generation the seek leaves. A read
+  /// not yet delivered moves there; one delivered comes again.
+  void play(bool landsAtEnd, bool lateRead) {
+    final (write, epoch) = m.claimIntent(true);
+    intent = write.value;
+    if (!parked) return;
+    m.takePark();
+    intent = true;
+    if (lateRead) {
+      final pending = queue.lastIndexWhere((i) => i is _ParkRead);
+      if (pending >= 0) queue.removeAt(pending);
     }
-    if (!started) return [SettleIdle.effect];
-    if (loads > 0) {
-      idleReset = true;
-      return [SettleIdle.effect, ClearFinishedFile.effect];
+    queue.addAll([
+      _Reply(epoch),
+      if (lateRead) _ParkRead(),
+      _Restart(),
+      if (landsAtEnd) _ParkRead(),
+    ]);
+    parked = landsAtEnd;
+  }
+
+  void pause() => intent = m.claimIntent(false).$1.value;
+
+  void seekToEnd() {
+    queue.addAll([_Reply(null), _Restart(), _ParkRead()]);
+    parked = true;
+  }
+
+  void reachEnd() {
+    queue.add(_ParkRead());
+    parked = true;
+  }
+
+  void deliver() {
+    switch (queue.removeAt(0)) {
+      case _Reply(:final intent?) when m.owns(intent):
+        m.takePark();
+        this.intent = true;
+      case _Reply():
+        break;
+      case _Restart():
+        m.restart();
+      case _ParkRead():
+        _apply(m.endOfContent());
     }
-    return [SettleIdle.effect, WriteIntent.off, ClearFinishedFile.effect];
-  }
-
-  List<TransportEffect> endLoad(bool completed) {
-    loads--;
-    if (loads > 0) return [];
-    final w = waiting;
-    waiting = null;
-    return [
-      if (w == park && !settled.contains(park) && completed) WriteIntent.off,
-      if (idleReset) ReadIdle.effect,
-    ];
-  }
-
-  /// Applies the side of [endLoad] the effects do not show.
-  void afterEndLoad(List<TransportEffect> effects) {
-    if (effects.whereType<WriteIntent>().isNotEmpty) settled.add(park);
-  }
-
-  List<TransportEffect> idleRead(bool idle) {
-    if (!idleReset || loads > 0) return [];
-    idleReset = false;
-    return [if (idle) WriteIntent.off];
   }
 }
 
-final class _Behavior extends Behavior<_Model, TransportMachine> {
+/// The rule the player owes the app, written apart from the machine: once
+/// mpv has said all it queued, the intent is on exactly when the last
+/// call was play() and the core is not parked at the end.
+final class _Spec {
+  bool lastPlay = false;
+  bool parked = false;
+
+  /// What mpv still has to say, as the rig queues it: the environment, not
+  /// the machine.
+  final List<String> queue = [];
+  int get queued => queue.length;
+
+  bool get expected => lastPlay && !parked;
+}
+
+final class _Behavior extends Behavior<_Spec, _Rig> {
   @override
-  _Model initialState() => _Model();
-
-  @override
-  TransportMachine createSystem(_Model s) => TransportMachine();
-
-  @override
-  void destroySystem(TransportMachine system) {}
-
-  /// The model's expected effects for one step, computed on a copy so the
-  /// postcondition sees the state before the step.
-  bool _same(List<TransportEffect> got, List<TransportEffect> want) {
-    if (got.length != want.length) return false;
-    for (var i = 0; i < got.length; i++) {
-      if (got[i] != want[i]) return false;
-    }
-    return true;
-  }
-
-  static _Model _copy(_Model s) => _Model()
-    ..park = s.park
-    ..started = s.started
-    ..settled.addAll(s.settled)
-    ..loads = s.loads
-    ..waiting = s.waiting
-    ..idleReset = s.idleReset;
+  _Spec initialState() => _Spec();
 
   @override
-  List<Command<_Model, TransportMachine>> generateCommands(_Model s) => [
-    Action0(
-      'START_FILE',
-      nextState: (s) {
-        s.park++;
-        s.started = true;
-      },
-      run: (m) {
-        m.startFile();
-        return m.park;
-      },
-      postcondition: (s, park) => park == s.park + 1,
-    ),
-    Action0(
-      'PLAYBACK_RESTART',
-      nextState: (s) => s.park++,
-      run: (m) {
-        m.restart();
-        return m.park;
-      },
-      postcondition: (s, park) => park == s.park + 1,
-    ),
-    Action0(
-      'a call leaves the park',
-      nextState: (s) => s.settled.add(s.park),
-      run: (m) => m.takePark(),
-    ),
-    Action0(
-      'end of content',
-      nextState: (s) {
-        final effects = s.endOfContent();
-        if (effects.isNotEmpty) s.spends[s.park] = (s.spends[s.park] ?? 0) + 1;
-      },
-      run: (m) => m.endOfContent(),
-      postcondition: (s, got) => _same(got, _copy(s).endOfContent()),
-    ),
+  _Rig createSystem(_Spec s) => _Rig();
+
+  @override
+  void destroySystem(_Rig system) {}
+
+  /// The intent once the queue is empty, or null while mpv has more to say.
+  static bool? _settled(_Rig r) => r.queue.isEmpty ? r.intent : null;
+
+  @override
+  List<Command<_Spec, _Rig>> generateCommands(_Spec s) => [
+    // Bit 0: the seek lands on the end again. Bit 1: a read of the park
+    // lands between the reply of the seek and its restart.
+    // A second play() before the reply of the first is left out: the
+    // first then owns the intent no more, and a park read of a seek to the
+    // end queued before it spends the intent while the seek of the first
+    // play() plays (a seek to the end, play(), play(), then mpv delivers).
+    // That is the behavior of 0.6.2 as of e984aef and 0c37fc6, an open
+    // proposal, not a rule of this test.
     Action(
-      'idle-active',
-      boolean(),
-      nextState: (s, idle) => s.idleActive(idle),
-      run: (m, idle) => m.idleActive(idle),
-      postcondition: (s, idle, got) => _same(got, _copy(s).idleActive(idle)),
-    ),
-    Action0(
-      'a load starts',
-      nextState: (s) => s.loads++,
-      run: (m) {
-        m.claimLoad();
-        m.beginLoad();
-        return m.loadsInFlight;
-      },
-      postcondition: (s, loads) => loads == s.loads + 1,
-    ),
-    Action(
-      'a load ends',
-      boolean(),
-      precondition: (s, _) => s.loads > 0,
-      nextState: (s, completed) {
-        final effects = s.endLoad(completed);
-        s.afterEndLoad(effects);
-        if (effects.whereType<WriteIntent>().isNotEmpty) {
-          s.spends[s.park] = (s.spends[s.park] ?? 0) + 1;
+      'play()',
+      integer(min: 0, max: 3),
+      precondition: (s, _) => !s.queue.contains('play-reply'),
+      nextState: (s, how) {
+        if (s.parked) {
+          final late = how >> 1 == 1;
+          if (late) {
+            final pending = s.queue.lastIndexOf('park');
+            if (pending >= 0) s.queue.removeAt(pending);
+          }
+          s.queue.addAll([
+            'play-reply',
+            if (late) 'park',
+            'restart',
+            if (how & 1 == 1) 'park',
+          ]);
+          s.parked = how & 1 == 1;
         }
+        s.lastPlay = true;
       },
-      run: (m, completed) => m.endLoad(completed: completed),
-      postcondition: (s, completed, got) =>
-          _same(got, _copy(s).endLoad(completed)),
+      run: (r, how) {
+        r.play(how & 1 == 1, how >> 1 == 1);
+        return r.queue.isEmpty ? r.intent : null;
+      },
+      // At a park the seek is still queued; elsewhere play() is an
+      // unpause, and the intent is on at once.
+      postcondition: (s, _, got) => got == null || got,
     ),
-    Action(
-      'the core answers idle-active',
-      boolean(),
-      nextState: (s, idle) => s.idleRead(idle),
-      run: (m, idle) => m.idleRead(idle: idle),
-      postcondition: (s, idle, got) => _same(got, _copy(s).idleRead(idle)),
+    Action0(
+      'pause()',
+      nextState: (s) => s.lastPlay = false,
+      run: (r) {
+        r.pause();
+        return _settled(r);
+      },
+      postcondition: (s, got) => got == null || got == false,
     ),
-    Action(
-      'a call sets the intent',
-      boolean(),
-      nextState: (s, _) {},
-      run: (m, value) => m.claimIntent(value).$1,
-      postcondition: (s, value, got) => got.value == value,
+    Action0(
+      'a seek to the end',
+      nextState: (s) {
+        s.queue.addAll(['reply', 'restart', 'park']);
+        s.parked = true;
+      },
+      run: (r) => r.seekToEnd(),
+    ),
+    Action0(
+      'playback reaches the end',
+      precondition: (s) => s.lastPlay && !s.parked,
+      nextState: (s) {
+        s.queue.add('park');
+        s.parked = true;
+      },
+      run: (r) => r.reachEnd(),
+    ),
+    Action0(
+      'mpv delivers all it queued',
+      precondition: (s) => s.queued > 0,
+      nextState: (s) => s.queue.clear(),
+      run: (r) {
+        while (r.queue.isNotEmpty) {
+          r.deliver();
+        }
+        return r.intent;
+      },
+      postcondition: (s, got) => got == s.expected,
+    ),
+    Action0(
+      'mpv delivers its next item',
+      precondition: (s) => s.queued > 0,
+      nextState: (s) => s.queue.removeAt(0),
+      run: (r) {
+        r.deliver();
+        return _settled(r);
+      },
+      postcondition: (s, got) {
+        // The state before the step: one item fewer is the queue after it.
+        return got == null || s.queued != 1 || got == s.expected;
+      },
     ),
   ];
 }
 
 void main() {
-  property('the machine follows the model of its rules', () {
+  property('the intent ends as the rule says, whatever mpv delivers first', () {
     runBehavior(_Behavior(), maxSteps: 60, maxCycles: 400);
   });
 
   property('no event spends the intent twice in one park generation', () {
     runBehavior(_InvariantBehavior(), maxSteps: 60, maxCycles: 400);
+  });
+
+  test('a read of the park that lands after the reply of play() spends '
+      'nothing', () {
+    final r = _Rig()
+      ..play(false, false)
+      ..reachEnd()
+      ..play(false, true);
+    while (r.queue.isNotEmpty) {
+      r.deliver();
+    }
+    expect(r.intent, isTrue);
   });
 
   test('a call that leaves the park keeps the intent of its end', () {

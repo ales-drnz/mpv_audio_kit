@@ -598,6 +598,53 @@ void main() {
     );
   });
 
+  // The bytes of a get reply cross to the main isolate as
+  // TransferableTypedData, copied once; the other payloads stay a
+  // Uint8List. Natively only: the web pump runs on the main thread.
+  test('the bytes of a get reply are transferable, the others are not', () {
+    final h = _NativeHeap();
+    try {
+      final bytes = Uint8List.fromList([1, 2, 3]);
+      final reply = decodeEvent(
+        h.memory,
+        _event(
+          h,
+          MpvEventId.mpvEventGetPropertyReply,
+          userdata: 1,
+          data: _property(
+            h,
+            'mak-pcm',
+            MpvFormat.mpvFormatNode,
+            _node(h, bytes),
+          ),
+        ),
+      );
+      expect(
+        ((reply! as Dispatch).event as MpvEventGetReply).value,
+        isA<TransferableTypedData>(),
+      );
+      final change = decodeEvent(
+        h.memory,
+        _event(
+          h,
+          MpvEventId.mpvEventPropertyChange,
+          data: _property(h, 'x', MpvFormat.mpvFormatNode, _node(h, bytes)),
+        ),
+      );
+      expect((change! as PropertyChange).value, isA<Uint8List>());
+      final command = decodeEvent(
+        h.memory,
+        _event(h, MpvEventId.mpvEventCommandReply, data: _node(h, bytes)),
+      );
+      expect(
+        ((command! as Dispatch).event as MpvEventReply).result,
+        isA<Uint8List>(),
+      );
+    } finally {
+      h.free();
+    }
+  });
+
   // The offsets the decoder reads are the ones of the FFI structs of
   // mpv_bindings.dart, which tool/metrics keeps in struct_layout.txt: a
   // field set through the struct lands where the decoder looks.

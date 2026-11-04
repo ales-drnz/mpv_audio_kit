@@ -5,8 +5,9 @@
 #
 # Warns about each fix commit of a range whose message lacks a real red and
 # green: a "Red:" paragraph that names a test of the tree and how it failed,
-# and a "Green:" (or "Green 3 times:") paragraph. A placeholder (RED, GREEN,
-# TODO, pending) counts as none. Only warns: the exit status is 0.
+# and a "Green:" (or "Green 3 times:") paragraph. A placeholder (red,
+# green, todo, tbd, pending, n/a or dots, in any case) counts as none.
+# Only warns: the exit status is 0.
 #
 #   scripts/ci/check_trailers.sh [range]     (origin/main..HEAD by default)
 #
@@ -28,6 +29,19 @@ paragraph() {
   ' <<<"$1"
 }
 
+# Whether paragraph $1 is a placeholder: past its "Red:" or "Green:" it
+# holds nothing but red, green, todo, tbd, pending, n/a, dots or nothing,
+# in any case, or names one of them as a word.
+placeholder() {
+  local rest
+  rest="$(sed -E '1s/^(Red|Green)( [0-9]+ times)?:[[:space:]]*//' <<<"$1" | tr -d '[:space:][:punct:]')"
+  [[ -z "$rest" ]] && return 0
+  grep -Eiq '(^|[^[:alnum:]])(red|green|todo|tbd|pending|n/a)([^[:alnum:]]|$)' <<<"$(sed -E '1s/^(Red|Green)( [0-9]+ times)?://' <<<"$1")" &&
+    [[ ${#rest} -lt 12 ]] && return 0
+  grep -Eq '\b(RED|GREEN|TODO|TBD)\b' <<<"$1" && return 0
+  grep -Eiq '\b(pending|tbd)\b' <<<"$1"
+}
+
 warn() { # sha, subject, message
   echo "::warning title=Red and green::${1:0:7} \"$2\": $3"
   warnings=$((warnings + 1))
@@ -45,7 +59,7 @@ while read -r sha; do
   if [[ -z "$red" ]]; then
     warn "$sha" "$subject" "no Red: paragraph"
   else
-    if grep -Eq '\b(RED|GREEN|TODO)\b' <<<"$red" || grep -Eiq '\bpending\b' <<<"$red"; then
+    if placeholder "$red"; then
       warn "$sha" "$subject" "the Red: paragraph is a placeholder"
     fi
     # The test it names: a *_test or test_* file, a *Test class of the JVM,
@@ -83,7 +97,7 @@ while read -r sha; do
   fi
   if [[ -z "$green" ]]; then
     warn "$sha" "$subject" "no Green: paragraph"
-  elif grep -Eq '\b(RED|GREEN|TODO)\b' <<<"$green" || grep -Eiq '\bpending\b' <<<"$green"; then
+  elif placeholder "$green"; then
     warn "$sha" "$subject" "the Green: paragraph is a placeholder"
   fi
 done < <(git rev-list --no-merges "$range")
