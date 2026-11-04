@@ -42,3 +42,6 @@ CLAUDE.md
 
 # web/ holds the web module, published; its placeholder is not
 /web/.gitkeep
+
+# Maintainer decision records
+/doc/adr/
