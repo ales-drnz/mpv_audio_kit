@@ -45,3 +45,6 @@ CLAUDE.md
 
 # Maintainer decision records
 /doc/adr/
+
+# Mutation testing (tool/mutation)
+/mutation-test-report/

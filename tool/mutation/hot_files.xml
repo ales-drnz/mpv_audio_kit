@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The hot files of the player, mutated with the builtin rules of
+     mutation_test. Run from the root of the package (README.md). -->
+<mutations version="1.1">
+  <files>
+    <file>lib/src/player/player.dart</file>
+    <file>lib/src/player/mixins/player_dispatch.part.dart</file>
+    <file>lib/src/internals/event_isolate.dart</file>
+    <file>lib/src/internals/event_end_of_content.dart</file>
+    <file>lib/src/internals/event_decoder.dart</file>
+  </files>
+  <exclude>
+    <!-- Comments, and the lines of logs and messages. -->
+    <regex pattern="//[^\n]*"/>
+    <regex pattern="_internalLog\([^;]*;" dotAll="true"/>
+    <regex pattern="debugLog\([^;]*;" dotAll="true"/>
+  </exclude>
+  <commands>
+    <command group="test" expected-return="0" working-directory="." timeout="900">flutter test -x network test/internal test/event_isolate test/player test/runtime test/reactive</command>
+  </commands>
+  <threshold failure="0">
+    <rating over="80" name="A"/>
+    <rating over="60" name="B"/>
+    <rating over="40" name="C"/>
+    <rating over="0" name="D"/>
+  </threshold>
+</mutations>
