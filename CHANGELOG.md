@@ -8,6 +8,7 @@
 - The duration hint wins over a duration estimated from the bitrate, so the waveform of such a stream is not cut short.
 - An AAC track in a fragmented MP4 no longer plays its priming samples outside DASH.
 - Each stream of an `fd://` source reads at its own position.
+- The waveform and the loudness of an `fd://` source describe that source even when the app reuses the descriptor on `FILE_LOADED`.
 - A change of effects at the end of a stream that cannot seek no longer leaves it running.
 
 **Android, iOS, Linux, macOS, Windows**
