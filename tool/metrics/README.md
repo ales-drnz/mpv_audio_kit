@@ -13,7 +13,10 @@ What it reads:
 
 - **LOC**: the lines of the `.dart` files of `lib` that hold code, blank
   lines and lines of comment alone left out. `lib/src/generated` and
-  `lib/src/internals/libmpv_licenses.dart` are left out.
+  `lib/src/internals/libmpv_licenses.dart` are left out. lib may grow: a
+  growth past 300 lines only warns, and the commit says why.
+- **Tests per lib**: the lines of code of `test` (`test/generated` left
+  out) per line of lib, in thousandths. It must not go down.
 - **Complexity** of each function of the same files: 1, plus one for each
   `if`, `for`, `while`, `do`, `case`, `catch`, `?:`, `&&`, `||` and `??`.
   `?.` and `??=` count nothing. A closure or a local function counts apart,
