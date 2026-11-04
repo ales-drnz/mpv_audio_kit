@@ -193,6 +193,7 @@ jobs:
             exit 1
           fi
       - name: Red and green of the fix commits
+        id: trailers
         env:
           BEFORE: ${{ github.event.before }}
           EVENT: ${{ github.event_name }}
@@ -203,6 +204,11 @@ jobs:
             range="origin/main..HEAD"
           fi
           scripts/ci/check_trailers.sh "$range"
+          echo "range=$range" >> "$GITHUB_OUTPUT"
+      # The unit tests a fix commit names in its Red: must fail on its
+      # parent with its test files (scripts/ci/verify_red.sh).
+      - name: Red by machine
+        run: scripts/ci/verify_red.sh "${{ steps.trailers.outputs.range }}"
       # A break of the API against the latest version on pub.dev needs a
       # **Breaking** part in the CHANGELOG entry of this version.
       - name: API against pub.dev

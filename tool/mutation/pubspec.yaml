@@ -1,0 +1,9 @@
+name: mak_mutation
+description: Mutation testing of the hot files of mpv_audio_kit (tool/mutation/README.md).
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  mutation_test: ^1.7.0
