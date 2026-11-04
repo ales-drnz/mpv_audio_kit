@@ -264,7 +264,9 @@ jobs:
       # file to an artifact.
       - name: Coverage
         if: success() || failure()
-        run: scripts/ci/coverage.sh coverage/lcov.info | tee -a "$GITHUB_STEP_SUMMARY"
+        run: |
+          set -o pipefail
+          scripts/ci/coverage.sh coverage/lcov.info | tee -a "$GITHUB_STEP_SUMMARY"
       - if: success() || failure()
         uses: actions/upload-artifact@v4
         with:

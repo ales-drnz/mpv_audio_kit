@@ -21,6 +21,7 @@ import 'package:ffi/ffi.dart';
 import 'package:mpv_audio_kit/src/internals/event_decoder.dart';
 import 'package:mpv_audio_kit/src/internals/event_isolate.dart';
 import 'package:mpv_audio_kit/src/internals/event_logic.dart';
+import 'package:mpv_audio_kit/src/mpv_bindings.dart' as ffi;
 import 'package:mpv_audio_kit/src/mpv_constants.dart';
 import 'package:test/test.dart';
 
@@ -595,5 +596,106 @@ void main() {
       (h) => _event(h, MpvEventId.mpvEventIdle),
       null,
     );
+  });
+
+  // The offsets the decoder reads are the ones of the FFI structs of
+  // mpv_bindings.dart, which tool/metrics keeps in struct_layout.txt: a
+  // field set through the struct lands where the decoder looks.
+  group('the decoder reads where the FFI structs lay out', () {
+    final p = nativeMemory.pointerSize;
+    int at(Pointer<NativeType> s, int size) {
+      final bytes = s.cast<Uint8>();
+      for (var i = 0; i < size; i++) {
+        if (bytes[i] != 0) return i;
+      }
+      return -1;
+    }
+
+    int field<T extends NativeType>(
+      Pointer<T> s,
+      int size,
+      void Function() set,
+    ) {
+      set();
+      final offset = at(s, size);
+      calloc.free(s);
+      return offset;
+    }
+
+    test('mpv_event', () {
+      final n = sizeOf<ffi.MpvEvent>();
+      Pointer<ffi.MpvEvent> e() => calloc<ffi.MpvEvent>();
+      var s = e();
+      expect(field(s, n, () => s.ref.error = 1), 4);
+      s = e();
+      expect(field(s, n, () => s.ref.replyUserdata = 1), 8);
+      s = e();
+      expect(field(s, n, () => s.ref.data = Pointer.fromAddress(8)), 16);
+    });
+
+    test('mpv_event_property', () {
+      final n = sizeOf<ffi.MpvEventProperty>();
+      var s = calloc<ffi.MpvEventProperty>();
+      expect(field(s, n, () => s.ref.format = 1), p);
+      s = calloc<ffi.MpvEventProperty>();
+      expect(
+        field(s, n, () => s.ref.data = Pointer.fromAddress(8)),
+        p == 8 ? 16 : 8,
+      );
+    });
+
+    test('mpv_event_log_message', () {
+      final n = sizeOf<ffi.MpvEventLogMessage>();
+      var s = calloc<ffi.MpvEventLogMessage>();
+      expect(field(s, n, () => s.ref.level = Pointer.fromAddress(8)), p);
+      s = calloc<ffi.MpvEventLogMessage>();
+      expect(field(s, n, () => s.ref.text = Pointer.fromAddress(8)), 2 * p);
+    });
+
+    test('mpv_event_hook and mpv_event_start_file', () {
+      final s = calloc<ffi.MpvEventHook>();
+      expect(field(s, sizeOf<ffi.MpvEventHook>(), () => s.ref.id = 1), 8);
+      final f = calloc<ffi.MpvEventStartFileData>();
+      expect(
+        field(
+          f,
+          sizeOf<ffi.MpvEventStartFileData>(),
+          () => f.ref.playlistEntryId = 1,
+        ),
+        0,
+      );
+    });
+
+    test('mpv_event_end_file with the fields of read_error', () {
+      final n = sizeOf<ffi.MpvEventEndFile>();
+      Pointer<ffi.MpvEventEndFile> e() => calloc<ffi.MpvEventEndFile>();
+      var s = e();
+      expect(field(s, n, () => s.ref.error = 1), 4);
+      s = e();
+      expect(field(s, n, () => s.ref.playlistEntryId = 1), 8);
+      s = e();
+      expect(field(s, n, () => s.ref.makReadError = 1), 28);
+      s = e();
+      expect(field(s, n, () => s.ref.makSkippedSegments = 1), 32);
+      s = e();
+      expect(field(s, n, () => s.ref.makDuration = 5e-324), 40);
+      s = e();
+      expect(field(s, n, () => s.ref.makPosition = 5e-324), 48);
+    });
+
+    test('mpv_node, mpv_node_list and mpv_byte_array', () {
+      final node = calloc<ffi.MpvNode>();
+      expect(field(node, sizeOf<ffi.MpvNode>(), () => node.ref.format = 1), 8);
+      final n = sizeOf<ffi.MpvNodeList>();
+      var list = calloc<ffi.MpvNodeList>();
+      expect(field(list, n, () => list.ref.values = Pointer.fromAddress(8)), p);
+      list = calloc<ffi.MpvNodeList>();
+      expect(
+        field(list, n, () => list.ref.keys = Pointer.fromAddress(8)),
+        2 * p,
+      );
+      final ba = calloc<ffi.MpvByteArray>();
+      expect(field(ba, sizeOf<ffi.MpvByteArray>(), () => ba.ref.size = 1), p);
+    });
   });
 }

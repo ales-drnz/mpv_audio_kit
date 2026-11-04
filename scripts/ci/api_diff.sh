@@ -13,7 +13,7 @@ set -euo pipefail
 version="$(sed -n 's/^version: //p' pubspec.yaml)"
 report="$(mktemp)"
 
-dart pub global activate dart_apitool >/dev/null
+dart pub global activate dart_apitool 0.23.2 >/dev/null
 status=0
 dart pub global run dart_apitool:main diff \
   --old pub://mpv_audio_kit \
@@ -39,7 +39,8 @@ entry="$(awk -v v="## [$version]" '
   on { print }
 ' CHANGELOG.md)"
 
-if grep -qi 'breaking' "$report"; then
+# A heading of breaking changes, not of non-breaking ones.
+if grep -Eiq '^#+ *breaking' "$report"; then
   if grep -q '^\*\*Breaking\*\*' <<<"$entry"; then
     echo "API against pub.dev: breaking changes, stated in the CHANGELOG entry of $version"
   else

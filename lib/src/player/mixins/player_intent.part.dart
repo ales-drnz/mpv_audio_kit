@@ -31,14 +31,14 @@ final class _Transport {
 
   /// An end-of-content read found the queue at its end
   /// ([TransportMachine.endOfContent]).
-  void onEndOfContent() => unawaited(_apply(_machine.endOfContent()));
+  void onEndOfContent() => _apply(_machine.endOfContent());
 
   /// A call leaving the park takes its generation.
   void takePark() => _machine.takePark();
 
   /// mpv entered its idle loop ([idle]) or left it
   /// ([TransportMachine.idleActive]).
-  void onIdle(bool idle) => unawaited(_apply(_machine.idleActive(idle)));
+  void onIdle(bool idle) => _apply(_machine.idleActive(idle));
 
   /// Claims the load epoch for a content-replacing call: every earlier
   /// load in flight is superseded from now on.
@@ -55,7 +55,7 @@ final class _Transport {
       await load();
     } finally {
       final completed = !_player._disposed && _player._state.completed;
-      await _apply(_machine.endLoad(completed: completed));
+      if (_apply(_machine.endLoad(completed: completed))) await _readIdle();
     }
   }
 
@@ -97,9 +97,12 @@ final class _Transport {
     return true;
   }
 
-  /// Carries out [effects] in their order. A [ReadIdle] reads the core and
-  /// hands the answer back to the machine, unless the player was disposed.
-  Future<void> _apply(List<TransportEffect> effects) async {
+  /// Carries out [effects] in their order, at once, so a throw reaches
+  /// the caller as before. Returns whether they ask for a read of the core
+  /// ([ReadIdle], always the last), which the caller then awaits with
+  /// [_readIdle].
+  bool _apply(List<TransportEffect> effects) {
+    var read = false;
     for (final effect in effects) {
       switch (effect) {
         case WriteIntent(:final value):
@@ -109,15 +112,22 @@ final class _Transport {
         case ClearFinishedFile():
           _player._clearFinishedFile();
         case ReadIdle():
-          if (_player._disposed) return;
-          final (rc, idle) = await _player._calls.get(
-            'idle-active',
-            MpvFormat.mpvFormatString,
-          );
-          if (_player._disposed) return;
-          await _apply(_machine.idleRead(idle: rc >= 0 && idle == 'yes'));
+          read = true;
       }
     }
+    return read;
+  }
+
+  /// Reads `idle-active` and hands the answer back to the machine, unless
+  /// the player was disposed.
+  Future<void> _readIdle() async {
+    if (_player._disposed) return;
+    final (rc, idle) = await _player._calls.get(
+      'idle-active',
+      MpvFormat.mpvFormatString,
+    );
+    if (_player._disposed) return;
+    _apply(_machine.idleRead(idle: rc >= 0 && idle == 'yes'));
   }
 }
 

@@ -173,10 +173,12 @@ final class WebSession implements MpvSession {
     );
     _started = true;
     _readsBridge = _m.attachWakeup(_reads, _drainReads);
+    // On the read client, before the player's client has a bridge: a
+    // module of another release hands the player no event.
+    await _checkRelease();
     _handleBridge = _m.attachWakeup(h, _sequencer.pump);
     // The events mpv queued before the bridge existed raised no wakeup.
     scheduleMicrotask(_sequencer.pump);
-    await _checkRelease();
   }
 
   /// Takes the core down and throws [PlayerInitException] when the module,
@@ -327,7 +329,7 @@ final class WebSession implements MpvSession {
     final reads = _reads;
     _reads = 0;
     _m.detachWakeup(reads, _readsBridge);
-    _m.detachWakeup(h, _handleBridge);
+    if (_handleBridge != 0) _m.detachWakeup(h, _handleBridge);
     timedCall('mpv_destroy', () => _m.c.mpvDestroy(reads));
     timedCall('mpv_terminate_destroy', () => _m.c.mpvTerminateDestroy(h));
   }
