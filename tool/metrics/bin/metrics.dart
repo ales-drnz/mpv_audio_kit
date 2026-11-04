@@ -74,11 +74,21 @@ Future<void> main(List<String> args) async {
     complexity.entries.where((e) => e.value > 10).toList()
       ..sort((a, b) => a.key.compareTo(b.key)),
   );
+  // The tests against lib: their lines of code per line of lib, in
+  // thousandths. Generated tests left out, as generated lib is.
+  var testLoc = 0;
+  for (final f in Directory('test').listSync(recursive: true)) {
+    final path = f.path.replaceAll(r'\', '/');
+    if (f is! File || !path.endsWith('.dart')) continue;
+    if (path.startsWith('test/generated/')) continue;
+    testLoc += codeLines(parse(path));
+  }
   final api = apiSurface('lib/mpv_audio_kit.dart', parse);
   final structs = structLayout(parse);
 
   final current = <String, Object>{
     'loc': loc,
+    'test_per_lib_permille': (testLoc * 1000) ~/ loc,
     'complexity_over_15': over10.values.where((c) => c > 15).length,
     'complexity_over_10': over10.length,
     'player_base_fields': playerBase['fields']!,
@@ -127,6 +137,7 @@ Future<void> main(List<String> args) async {
 void printSummary(Map<String, Object> m) {
   for (final k in [
     'loc',
+    'test_per_lib_permille',
     'complexity_over_15',
     'complexity_over_10',
     'player_base_fields',
@@ -144,8 +155,22 @@ List<String> compare(
   Map<String, Object> current,
 ) {
   final failures = <String>[];
+  // lib may grow with what it does: a warning past 300 lines, which the
+  // body of the commit explains.
+  final locWas = baseline['loc'] as int;
+  final locNow = current['loc'] as int;
+  if (locNow > locWas + 300) {
+    stdout.writeln(
+      '::warning title=metrics::lib grew by ${locNow - locWas} lines: '
+      'say why in the commit',
+    );
+  }
+  final ratioWas = baseline['test_per_lib_permille'] as int? ?? 0;
+  final ratioNow = current['test_per_lib_permille'] as int;
+  if (ratioNow < ratioWas) {
+    failures.add('test_per_lib_permille went from $ratioWas to $ratioNow');
+  }
   for (final k in [
-    'loc',
     'complexity_over_15',
     'complexity_over_10',
     'player_base_fields',
