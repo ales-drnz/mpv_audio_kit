@@ -55,7 +55,7 @@ void main() {
         isA<StateError>().having(
           (e) => e.message,
           'message',
-          contains('older than libmpv-r20'),
+          contains('states no ABI version'),
         ),
       ),
     );
