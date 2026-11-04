@@ -472,8 +472,11 @@ final class _NativeMemory implements CoreMemory {
 
   @override
   Object bytes(int address, int length, {bool transfer = false}) {
-    // Copied out of mpv-owned memory before the caller frees the node.
-    final view = length <= 0
+    // Copied out of mpv-owned memory before the caller frees the node. A
+    // size_t past the range of an int reads negative: no node of mpv has
+    // one, and it fails the decode.
+    RangeError.checkNotNegative(length, 'length');
+    final view = length == 0
         ? Uint8List(0)
         : Pointer<Uint8>.fromAddress(address).asTypedList(length);
     return transfer
