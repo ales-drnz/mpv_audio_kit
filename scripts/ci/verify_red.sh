@@ -8,7 +8,10 @@
 # of the commit, must fail. A test that passes there was never red, and
 # fails this script. Only unit tests run (the folders in $unit_dirs): a
 # runtime test needs libmpv, and its red stays the one the commit reports.
-# A fix commit that names no unit test is skipped with a notice.
+# A fix commit that names no unit test is skipped with a notice. Red means
+# a test ran and failed: a test that only fails to compile on the parent
+# (it calls what the fix adds) warns, and a run that never got to the tests
+# (a timeout, pub or the build hook) fails as a test that passes does.
 #
 #   scripts/ci/verify_red.sh [range]     (origin/main..HEAD by default)
 #
@@ -18,6 +21,10 @@ set -euo pipefail
 range="${1:-origin/main..HEAD}"
 unit_dirs='^test/(internal|models|backend|player|packaging|event_isolate|reactive|dsp|pcm|utils)/'
 root="$(git rev-parse --show-toplevel)"
+if ! git rev-list "$range" > /dev/null 2>&1; then
+  echo "::error title=Red by machine::the range $range does not resolve"
+  exit 1
+fi
 work="$(mktemp -d)"
 trap 'git -C "$root" worktree remove --force "$work/tree" >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 
@@ -74,12 +81,22 @@ while read -r sha; do
     fi
     status=0
     (cd "$work/tree" && timeout 900 flutter test "$t" > "$work/log" 2>&1) || status=$?
+    # A test that ran and failed is marked [E] on its own line; a file
+    # that does not compile is marked on its "loading" line.
+    ran="$(grep -E '\[E\]' "$work/log" | grep -v ': loading ' | head -1 || true)"
+    loading="$(grep -E ': loading .*\[E\]' "$work/log" | head -1 || true)"
     if [[ $status -eq 0 ]]; then
       echo "::error title=Red by machine::${sha:0:7} \"$subject\": $t passes on the parent with the commit's tests, so it was never red"
       tail -5 "$work/log"
       failures=$((failures + 1))
+    elif [[ -n "$ran" ]]; then
+      echo "Red by machine: ${sha:0:7} $t fails on the parent: $ran"
+    elif [[ -n "$loading" ]]; then
+      echo "::warning title=Red by machine::${sha:0:7} \"$subject\": $t does not compile on the parent, a red that runs no test"
     else
-      echo "Red by machine: ${sha:0:7} $t fails on the parent (exit $status): $(grep -m1 -E '\[E\]|Error|Expected' "$work/log" || echo 'see the log')"
+      echo "::error title=Red by machine::${sha:0:7} \"$subject\": $t did not run on the parent (exit $status), so its red is not checked"
+      tail -5 "$work/log"
+      failures=$((failures + 1))
     fi
   done
 done < <(git rev-list --no-merges --reverse "$range")

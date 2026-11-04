@@ -13,7 +13,13 @@
 #   scripts/ci/coverage.sh [coverage/lcov.info]
 set -euo pipefail
 lcov="${1:-coverage/lcov.info}"
-[[ -f "$lcov" ]] || { echo "coverage: no $lcov" >&2; exit 0; }
+floor_file="$(dirname "$0")/../../tool/metrics/coverage_floor.txt"
+if [[ ! -f "$lcov" ]]; then
+  echo "coverage: no $lcov" >&2
+  # With a floor, no measure is no pass.
+  [[ -f "$floor_file" ]] && exit 1
+  exit 0
+fi
 total_file="$(mktemp)"
 trap 'rm -f "$total_file"' EXIT
 
@@ -42,9 +48,12 @@ awk -F: -v total_file="$total_file" '
   }
 ' "$lcov"
 
-floor_file="$(dirname "$0")/../../tool/metrics/coverage_floor.txt"
 total="$(cat "$total_file")"
-if [[ -f "$floor_file" && -n "$total" ]]; then
+if [[ -f "$floor_file" ]]; then
+  if [[ -z "$total" ]]; then
+    echo "::error title=Coverage::no line of lib in $lcov"
+    exit 1
+  fi
   floor="$(tr -d '[:space:]' < "$floor_file")"
   if awk -v t="$total" -v f="$floor" 'BEGIN { exit !(t < f) }'; then
     echo "::error title=Coverage::lib is covered at $total%, under the floor of $floor%"

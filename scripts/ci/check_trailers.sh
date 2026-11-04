@@ -13,6 +13,10 @@
 # A fix commit is one whose subject starts with fix: or fix(scope):.
 set -euo pipefail
 range="${1:-origin/main..HEAD}"
+if ! git rev-list "$range" > /dev/null 2>&1; then
+  echo "::error title=Red and green::the range $range does not resolve"
+  exit 1
+fi
 
 # The paragraph of message $1 that starts with a line matching $2.
 paragraph() {
