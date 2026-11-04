@@ -5,6 +5,7 @@
 @TestOn('mac-os || linux || windows')
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -41,7 +42,7 @@ void main() {
           } else {
             req.response.add(bytes);
           }
-          req.response.close();
+          unawaited(req.response.close());
         });
 
         final p = await buildPlayer();

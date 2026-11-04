@@ -50,7 +50,7 @@ void main() {
         req.response
           ..statusCode = 200
           ..add(const [0, 0, 0, 0]);
-        req.response.close();
+        unawaited(req.response.close());
       });
       badCertUrl = 'https://127.0.0.1:${server!.port}/x';
     });

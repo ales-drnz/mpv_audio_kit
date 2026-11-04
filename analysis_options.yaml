@@ -45,3 +45,6 @@ linter:
     - avoid_dynamic_calls
     - unnecessary_async
     - cancel_subscriptions
+    - close_sinks
+    - discarded_futures
+    - unnecessary_ignore

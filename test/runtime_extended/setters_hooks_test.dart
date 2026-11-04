@@ -123,6 +123,7 @@ void main() {
           'event of the hook parked', () async {
         final player = await buildPlayer();
         final events = StreamController<MpvHookEvent>();
+        addTearDown(events.close);
         final queue = StreamIterator(events.stream);
         var loads = 0;
         final subs = [

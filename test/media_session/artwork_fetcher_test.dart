@@ -5,6 +5,7 @@
 // `downloadArtwork` against a loopback HTTP server and local files: the
 // media session hands the native side the image, never the URL.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -28,7 +29,7 @@ void main() {
       } else {
         response.statusCode = HttpStatus.notFound;
       }
-      response.close();
+      unawaited(response.close());
     });
   });
 
@@ -124,14 +125,14 @@ void main() {
         switch (request.uri.path) {
           case '/to-http':
             // A downgrade: the plain HTTP server serves the cover.
-            request.response.redirect(base.resolve('/cover'));
+            unawaited(request.response.redirect(base.resolve('/cover')));
           case '/to-https':
-            request.response.redirect(cover);
+            unawaited(request.response.redirect(cover));
           default:
-            request.response
+            final response = request.response
               ..headers.contentType = ContentType('image', 'png')
-              ..add(const [9, 8, 7])
-              ..close();
+              ..add(const [9, 8, 7]);
+            unawaited(response.close());
         }
       });
     });

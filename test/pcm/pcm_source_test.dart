@@ -455,6 +455,7 @@ void main() {
         final s = PcmSource.create(_mono);
         var cancelled = false;
         final c = StreamController<Uint8List>(onCancel: () => cancelled = true);
+        addTearDown(c.close);
         final fed = s.addStream(c.stream);
         c.add(_ramp(0, 10));
         await _flush();
@@ -468,6 +469,7 @@ void main() {
       final s = PcmSource.create(_mono);
       var cancelled = false;
       final c = StreamController<Uint8List>(onCancel: () => cancelled = true);
+      addTearDown(c.close);
       final fed = s.addStream(c.stream);
       c.add(_ramp(0, 10));
       await _flush();

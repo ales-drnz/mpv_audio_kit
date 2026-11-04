@@ -212,7 +212,7 @@ class MediaSessionController {
     _subscriptions.add(
       _inputs.mediaSession.listen((session) {
         if (session == null) return;
-        _channel.updateConfig(session);
+        unawaited(_channel.updateConfig(session));
         _markMetadata();
       }),
     );
