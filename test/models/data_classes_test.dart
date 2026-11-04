@@ -12,6 +12,7 @@
 // that are not identical are what == must compare.
 // ignore_for_file: prefer_const_constructors
 
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -112,7 +113,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'volume',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(volume: v as double),
     (s, v) => s.legacyCopyWith(volume: v as double),
@@ -120,7 +121,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'rate',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(rate: v as double),
     (s, v) => s.legacyCopyWith(rate: v as double),
@@ -128,7 +129,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'pitch',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(pitch: v as double),
     (s, v) => s.legacyCopyWith(pitch: v as double),
@@ -156,7 +157,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'bufferingPercentage',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(bufferingPercentage: v as double),
     (s, v) => s.legacyCopyWith(bufferingPercentage: v as double),
@@ -216,7 +217,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'audioBitrate',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(audioBitrate: v as double?),
@@ -300,7 +301,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'volumeGain',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(volumeGain: v as double),
     (s, v) => s.legacyCopyWith(volumeGain: v as double),
@@ -308,7 +309,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'volumeGainMin',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(volumeGainMin: v as double),
     (s, v) => s.legacyCopyWith(volumeGainMin: v as double),
@@ -316,7 +317,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'volumeGainMax',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(volumeGainMax: v as double),
     (s, v) => s.legacyCopyWith(volumeGainMax: v as double),
@@ -324,7 +325,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'systemVolume',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(systemVolume: v as double?),
@@ -504,7 +505,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'volumeMax',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(volumeMax: v as double),
     (s, v) => s.legacyCopyWith(volumeMax: v as double),
@@ -819,7 +820,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'percentPos',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(percentPos: v as double),
     (s, v) => s.legacyCopyWith(percentPos: v as double),
@@ -827,7 +828,7 @@ final List<_Field<PlayerState>> _playerState = [
   (
     'cacheSpeed',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
     ],
     (s, v) => s.copyWith(cacheSpeed: v as double),
     (s, v) => s.legacyCopyWith(cacheSpeed: v as double),
@@ -1108,7 +1109,7 @@ final List<_Field<MpvTrack>> _mpvTrack = [
   (
     'demuxBitrate',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(demuxBitrate: v as double?),
@@ -1117,7 +1118,7 @@ final List<_Field<MpvTrack>> _mpvTrack = [
   (
     'hlsBitrate',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(hlsBitrate: v as double?),
@@ -1126,7 +1127,7 @@ final List<_Field<MpvTrack>> _mpvTrack = [
   (
     'replayGainTrackGain',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(replayGainTrackGain: v as double?),
@@ -1135,7 +1136,7 @@ final List<_Field<MpvTrack>> _mpvTrack = [
   (
     'replayGainTrackPeak',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(replayGainTrackPeak: v as double?),
@@ -1144,7 +1145,7 @@ final List<_Field<MpvTrack>> _mpvTrack = [
   (
     'replayGainAlbumGain',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(replayGainAlbumGain: v as double?),
@@ -1153,7 +1154,7 @@ final List<_Field<MpvTrack>> _mpvTrack = [
   (
     'replayGainAlbumPeak',
     () => <Object?>[
-      ...[0.0, 1.5, -2.0, double.nan],
+      ...[0.0, -0.0, 1.5, -2.0, double.nan],
       null,
     ],
     (s, v) => s.copyWith(replayGainAlbumPeak: v as double?),
@@ -1185,8 +1186,23 @@ T _random<T>(Random r, T start, List<_Field<T>> fields, int count) {
   return s;
 }
 
+/// The parameters of the unnamed constructor of [name] in the library
+/// [source], in their order: each `this.x`.
+List<String> _constructorFields(String source, String name) {
+  final text = File(source).readAsStringSync();
+  final start = text.indexOf('const $name({');
+  final end = text.indexOf('});', start);
+  return [
+    for (final m in RegExp(
+      r'this\.(\w+)',
+    ).allMatches(text.substring(start, end)))
+      m[1]!,
+  ];
+}
+
 void _check<T extends Object>({
   required String name,
+  required String source,
   required T start,
   required List<_Field<T>> fields,
   required bool Function(T, Object) legacyEquals,
@@ -1194,7 +1210,10 @@ void _check<T extends Object>({
 }) {
   group(name, () {
     test('every field of the constructor is in the table', () {
-      expect(fields.map((f) => f.$1).toSet(), hasLength(fields.length));
+      expect(
+        fields.map((f) => f.$1).toList(),
+        _constructorFields(source, name),
+      );
     });
 
     test('== and hashCode match the legacy ones on random pairs', () {
@@ -1235,6 +1254,7 @@ void _check<T extends Object>({
 void main() {
   _check(
     name: 'PlayerState',
+    source: 'lib/src/player/player_state.dart',
     start: const PlayerState(),
     fields: _playerState,
     legacyEquals: (a, b) => a.legacyEquals(b),
@@ -1242,6 +1262,7 @@ void main() {
   );
   _check(
     name: 'MpvTrack',
+    source: 'lib/src/models/mpv_track.dart',
     start: const MpvTrack(id: 0, type: 'audio'),
     fields: _mpvTrack,
     legacyEquals: (a, b) => a.legacyEquals(b),

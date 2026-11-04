@@ -19,8 +19,11 @@ What it reads:
   out) per line of lib, in thousandths. It must not go down.
 - **Complexity** of each function of the same files: 1, plus one for each
   `if`, `for`, `while`, `do`, `case`, `catch`, `?:`, `&&`, `||` and `??`.
-  `?.` and `??=` count nothing. A closure or a local function counts apart,
-  named after its function with `#1` or `>name`. The baseline keeps every
+  `?.` and `??=` count nothing. Also counted: the `if` and `for` of a
+  collection, each case of a switch expression, and the `||` and `&&` of a
+  pattern. A closure or a local function counts apart, named after its
+  function with `#1` or `>name`, and so does the initializer of a field
+  or top-level variable that branches. The baseline keeps every
   function over 10 by name: one that grows, or a new one over 10, fails.
   The counts over 15 and over 10 must not grow.
 - **`_PlayerBase`**: its fields (static ones left out), the ones not final,
