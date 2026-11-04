@@ -30,6 +30,7 @@ import '../internals/hook_table.dart';
 import '../internals/mpv_audio_kit.dart';
 import '../internals/mpv_float.dart';
 import '../internals/owned_source.dart';
+import '../internals/transport_machine.dart';
 import '../internals/uri_resolver.dart';
 import '../media_session/media_session_controller.dart';
 import '../media_session/media_session_inputs.dart';
