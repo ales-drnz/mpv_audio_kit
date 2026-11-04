@@ -36,8 +36,10 @@ final class _ParkRead extends _Item {}
 /// The machine behind a player that plays, pauses and seeks, as the rules
 /// of e984aef and 0c37fc6 state them: play() at a park takes the park and
 /// writes the intent on before its seek, and again after the reply of the
-/// seek while it owns the intent; mpv queues that reply ahead of the
-/// seek's restart, and the read of the park after it.
+/// seek while the last call that claimed the intent played
+/// ([TransportMachine.wantsPlay]);
+/// mpv queues that reply ahead of the seek's restart, and the read of the
+/// park after it.
 final class _Rig {
   final TransportMachine m = TransportMachine()..startFile();
   final List<_Item> queue = [];
@@ -89,7 +91,7 @@ final class _Rig {
 
   void deliver() {
     switch (queue.removeAt(0)) {
-      case _Reply(:final intent?) when m.owns(intent):
+      case _Reply(:final intent?) when m.wantsPlay(intent):
         m.takePark();
         this.intent = true;
       case _Reply():
@@ -133,17 +135,11 @@ final class _Behavior extends Behavior<_Spec, _Rig> {
   @override
   List<Command<_Spec, _Rig>> generateCommands(_Spec s) => [
     // Bit 0: the seek lands on the end again. Bit 1: a read of the park
-    // lands between the reply of the seek and its restart.
-    // A second play() before the reply of the first is left out: the
-    // first then owns the intent no more, and a park read of a seek to the
-    // end queued before it spends the intent while the seek of the first
-    // play() plays (a seek to the end, play(), play(), then mpv delivers).
-    // That is the behavior of 0.6.2 as of e984aef and 0c37fc6, an open
-    // proposal, not a rule of this test.
+    // lands between the reply of the seek and its restart. A second play()
+    // may come before the reply of the first.
     Action(
       'play()',
       integer(min: 0, max: 3),
-      precondition: (s, _) => !s.queue.contains('play-reply'),
       nextState: (s, how) {
         if (s.parked) {
           final late = how >> 1 == 1;
@@ -277,6 +273,39 @@ void main() {
   test('the startup idle burst keeps the intent', () {
     final m = TransportMachine();
     expect(m.idleActive(true), [SettleIdle.effect]);
+  });
+
+  test('a second play() before the reply of the first keeps the intent on', () {
+    // A seek to the end on its way, play() at the park it opens, play()
+    // again, then mpv delivers: the read of the park the seek to the end
+    // opened spends the intent, and the reply of the first play() takes
+    // it back although the second one claimed it since.
+    final r = _Rig()
+      ..parked = true
+      ..seekToEnd()
+      ..play(false, false)
+      ..play(false, false);
+    while (r.queue.isNotEmpty) {
+      r.deliver();
+    }
+    expect(r.intent, isTrue);
+  });
+
+  test('what a play() wants follows the last call that claimed the intent', () {
+    final m = TransportMachine();
+    final (_, play) = m.claimIntent(true);
+    final (_, again) = m.claimIntent(true);
+    expect(m.wantsPlay(play), isTrue);
+    m.claimIntent(false);
+    expect(m.wantsPlay(play), isFalse);
+    expect(m.wantsPlay(again), isFalse);
+    m.claimIntent(true);
+    expect(m.wantsPlay(play), isTrue, reason: 'the last call played');
+    final (_, later) = m.claimIntent(true);
+    final load = m.claimLoad();
+    final (_, loading) = m.claimIntent(true);
+    expect(m.restoreIntent(load, loading, false), WriteIntent.off);
+    expect(m.wantsPlay(later), isFalse);
   });
 
   test('a later call owns the intent', () {

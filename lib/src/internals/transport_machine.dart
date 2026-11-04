@@ -86,6 +86,7 @@ final class TransportMachine {
   int _loadsInFlight = 0;
   bool _idleResetPending = false;
   int _intentEpoch = 0;
+  int _lastOffEpoch = 0;
   int _park = 0;
   int _spentPark = -1;
   int? _deferredPark;
@@ -186,10 +187,22 @@ final class TransportMachine {
 
   /// Sets the intent for a public call, and returns the effect and the
   /// epoch that call owns.
-  (WriteIntent, int) claimIntent(bool value) => (_write(value), ++_intentEpoch);
+  (WriteIntent, int) claimIntent(bool value) {
+    final epoch = ++_intentEpoch;
+    if (!value) _lastOffEpoch = epoch;
+    return (_write(value), epoch);
+  }
 
   /// Whether the call that claimed [intent] still owns the intent.
   bool owns(int intent) => intent == _intentEpoch;
+
+  /// Whether a play() that claimed [intent] still has the intent on its
+  /// side: the last call that claimed the intent played, whichever call
+  /// it was ([intent] only has to be a claim made). A play() called before
+  /// the reply of an earlier one's seek, a pause() between them or not,
+  /// leaves that reply its take of the park.
+  bool wantsPlay(int intent) =>
+      intent <= _intentEpoch && _lastOffEpoch < _intentEpoch;
 
   /// Whether a load that claimed [intent] for [shouldPlay] starts playing:
   /// a later play() or pause(), whose intent is [current], has the last
@@ -201,6 +214,7 @@ final class TransportMachine {
   /// over the load ([load] is not the epoch any more) or the intent.
   WriteIntent? restoreIntent(int load, int intent, bool previous) {
     if (load != _loadEpoch || intent != _intentEpoch) return null;
+    if (!previous) _lastOffEpoch = _intentEpoch;
     return _write(previous);
   }
 

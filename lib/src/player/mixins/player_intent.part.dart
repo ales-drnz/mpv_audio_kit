@@ -71,6 +71,10 @@ final class _Transport {
   /// later call set it.
   bool owns(int intent) => _machine.owns(intent);
 
+  /// Whether a play() that claimed [intent] still has the intent on its
+  /// side ([TransportMachine.wantsPlay]).
+  bool wantsPlay(int intent) => _machine.wantsPlay(intent);
+
   /// Whether a load that claimed [intent] for [shouldPlay] starts playing:
   /// a play() or pause() called after it, while it resolved, has the last
   /// word, so its pause write must not undo theirs.

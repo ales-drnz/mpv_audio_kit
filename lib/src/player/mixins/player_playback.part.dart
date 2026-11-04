@@ -50,11 +50,13 @@ mixin _PlaybackModule on _PlayerBase {
       // generation this seek leaves, whatever came between, and a spend in
       // between is undone. Landed at the end again, the seek's restart
       // opens a new park, whose read spends the intent whether it comes
-      // before or after the replies below.
+      // before or after the replies below. A play() called since leaves
+      // the take to this reply: its own seek or unpause does not leave
+      // this park.
       _transport.takePark();
       _transport.writeIntent(true);
       await _calls.command(['seek', '0', 'absolute']);
-      if (_transport.owns(intent)) {
+      if (_transport.wantsPlay(intent)) {
         _transport.takePark();
         _transport.writeIntent(true);
       }
