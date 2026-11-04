@@ -227,8 +227,7 @@ final class Media {
   /// source ignores it. Unlike the other per-entry options it does not
   /// keep the entry from opening ahead with [Player.setPrefetchPlaylist].
   ///
-  /// `null` (default) gives none. Must be positive. A libmpv older than
-  /// libmpv-r20 does not get it.
+  /// `null` (default) gives none. Must be positive.
   final Duration? waveformDurationHint;
 
   /// Creates an immutable media item for [uri], with optional consumer

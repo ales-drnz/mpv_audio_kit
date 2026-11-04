@@ -25,7 +25,7 @@ An app that bundles its own libmpv with the `libmpv` user define ships the `THIR
 
 Rubber Band is GPL, so the bundled libmpv leaves it out. For pitch and tempo, use `setPitch`, `setRate` and the `AtempoEffect` and `AsetrateEffect` stages.
 
-To use it anyway, build libmpv with libmpv-scripts' GPL option (`LIBMPV_GPL=1`). Bundle it with the `libmpv` user define. On the web, load it with `MpvAudioKit.ensureInitialized(libmpv: url)`. Then add the filter as a raw stage:
+To use it anyway, build libmpv with libmpv-scripts' GPL option (`LIBMPV_GPL=1`), at the release of the bundled libmpv: the player runs on no other. Bundle it with the `libmpv` user define. On the web, load it with `MpvAudioKit.ensureInitialized(libmpv: url)`. Then add the filter as a raw stage:
 
 ```dart
 await player.setAudioEffects(const [

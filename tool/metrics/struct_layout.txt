@@ -6,15 +6,12 @@ ffi MpvEventStartFileData.0 playlistEntryId: @Int64() int
 ffi MpvEventEndFile.0 reason: @Int32() int
 ffi MpvEventEndFile.1 error: @Int32() int
 ffi MpvEventEndFile.2 playlistEntryId: @Int64() int
-ffi MpvEventEndFileReadError.0 reason: @Int32() int
-ffi MpvEventEndFileReadError.1 error: @Int32() int
-ffi MpvEventEndFileReadError.2 playlistEntryId: @Int64() int
-ffi MpvEventEndFileReadError.3 playlistInsertId: @Int64() int
-ffi MpvEventEndFileReadError.4 playlistInsertNumEntries: @Int32() int
-ffi MpvEventEndFileReadError.5 makReadError: @Int32() int
-ffi MpvEventEndFileReadError.6 makSkippedSegments: @Int64() int
-ffi MpvEventEndFileReadError.7 makDuration: @Double() double
-ffi MpvEventEndFileReadError.8 makPosition: @Double() double
+ffi MpvEventEndFile.3 playlistInsertId: @Int64() int
+ffi MpvEventEndFile.4 playlistInsertNumEntries: @Int32() int
+ffi MpvEventEndFile.5 makReadError: @Int32() int
+ffi MpvEventEndFile.6 makSkippedSegments: @Int64() int
+ffi MpvEventEndFile.7 makDuration: @Double() double
+ffi MpvEventEndFile.8 makPosition: @Double() double
 ffi MpvEventProperty.0 name: Pointer<Void>
 ffi MpvEventProperty.1 format: @Int32() int
 ffi MpvEventProperty.2 data: Pointer<Void>
@@ -37,5 +34,4 @@ ffi MpvByteArray.0 data: Pointer<Void>
 ffi MpvByteArray.1 size: @Size() int
 ffi MpvEventHook.0 name: Pointer<Void>
 ffi MpvEventHook.1 id: @Uint64() int
-wasm32 _kLayout = [16, 8, 12, 4, 8, 8, 4, 24, 4, 8, 16, 12, 4, 8, 16, 8, 12, 32, 4, 8, 16, 24, 0, 0, 0, 0, 16, 8]
-wasm32 _kEndFileReadError = {17 : 56, 22 : 28, 23 : 32, 24 : 40, 25 : 48}
+wasm32 _kLayout = [16, 8, 12, 4, 8, 8, 4, 24, 4, 8, 16, 12, 4, 8, 16, 8, 12, 56, 4, 8, 16, 24, 28, 32, 40, 48, 16, 8]

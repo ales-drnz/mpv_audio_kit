@@ -192,7 +192,7 @@ generated = (
     "/// The license texts of the libmpv the package ships, from the\n"
     "/// `licenses.zip` of [libmpvLicensesRelease], each text once across the\n"
     "/// targets: the packages it applies to, as `showLicensePage` lists them,\n"
-    "/// and the text. Empty before libmpv-r20, the first release with them.\n"
+    "/// and the text.\n"
     "const List<(List<String>, String)> libmpvLicenses = [\n"
     + "".join(f"  (\n    [{json.dumps(p)}],\n{dart_string(t)},\n  ),\n" for p, t in entries)
     + "];\n"

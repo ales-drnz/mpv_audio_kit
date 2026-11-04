@@ -109,8 +109,8 @@ final class PlayerState {
   /// Whether the entry that ended at the end of content ([completed])
   /// stopped reading on an error instead of at its end, as
   /// [MpvFileEndedEvent.readError] tells for an entry that ends with an
-  /// event. `null` while [completed] is `false`, and with a libmpv older
-  /// than libmpv-r20, which cannot tell. It changes with [completed]: read
+  /// event. `null` while [completed] is `false`. It changes with
+  /// [completed]: read
   /// it when [PlayerStream.completed] turns `true`. A seek at the park
   /// tries the read again, and the next park tells how it ended then:
   /// [completed] turns `false` and `true` again for it, also when the seek
@@ -119,8 +119,8 @@ final class PlayerState {
 
   /// The HLS or DASH segments the entry that ended at the end of content
   /// ([completed]) lost to errors, as [MpvFileEndedEvent.skippedSegments]
-  /// tells. `null` while [completed] is `false`, and with a libmpv older
-  /// than libmpv-r20. It changes with [completed].
+  /// tells. `null` while [completed] is `false`. It changes with
+  /// [completed].
   final int? skippedSegments;
 
   /// Current playback position.

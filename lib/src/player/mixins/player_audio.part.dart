@@ -562,13 +562,10 @@ mixin _AudioModule on _PlayerBase {
   // ── Chain state ────────────────────────────────────────────────────
   // mpv keeps each filter with its arguments, and rebuilds it from them
   // at a file load, at a seek or loop wrap (lavfi frees its graph on
-  // reset), at a track switch and at a format change. libmpv-r20 saves an
-  // af-command that took in the arguments of its filter, and in `af`
-  // (af_command_args), so those rebuilds keep the values set live, and an
-  // `af set` rebuilds only the filters whose arguments it changes. On an
-  // older libmpv the live values go back to the arguments of the last
-  // `af set` at those rebuilds: the player says so at start (see
-  // [libmpvRequiredPatches]).
+  // reset), at a track switch and at a format change. The patch
+  // af_command_args saves an af-command that took in the arguments of its
+  // filter, and in `af`, so those rebuilds keep the values set live, and an
+  // `af set` rebuilds only the filters whose arguments it changes.
 
   /// The last list mpv accepted, through `af set` or a whole diff of
   /// `af-command`s: what it plays when a later write is refused, and so
@@ -626,7 +623,7 @@ mixin _AudioModule on _PlayerBase {
             c.filterName,
           ]),
       ];
-      // libmpv-r20 moves `af` with each command that takes.
+      // af_command_args moves `af` with each command that takes.
       if (cmds.isNotEmpty) _readAfHeld();
       settled = _settleAfCommands(_afSettled, rcs, effects, previous);
     } else {
@@ -705,7 +702,7 @@ mixin _AudioModule on _PlayerBase {
   /// Puts the state back on [_afAccepted] after mpv refused [effects],
   /// unless a later call already replaced them, and throws. A diff that
   /// mpv took meanwhile may have moved the live graph, and saved its
-  /// values (libmpv-r20): the chain is written again from the accepted
+  /// values (af_command_args): the chain is written again from the accepted
   /// list, which rebuilds every stage whose values moved (F50).
   Never _refuseAudioEffects(List<AudioEffect> effects, int rc) {
     if (identical(_state.audioEffects, effects)) {

@@ -10,10 +10,12 @@ import '../../events/player_exception.dart';
 import '../../internals/core_events.dart';
 import '../../internals/event_logic.dart';
 import '../../internals/event_sequencer.dart';
+import '../../internals/libmpv_requirements.dart';
 import '../../mpv_constants.dart';
 import '../mpv_session.dart';
 import 'mpv_module.dart';
 import 'web_client.dart';
+import 'web_layout.dart';
 import 'web_registry.dart';
 
 /// Reply id of the pump's own `pause` observer: 2^40, above every id the
@@ -174,6 +176,21 @@ final class WebSession implements MpvSession {
     _handleBridge = _m.attachWakeup(h, _sequencer.pump);
     // The events mpv queued before the bridge existed raised no wakeup.
     scheduleMicrotask(_sequencer.pump);
+    await _checkRelease();
+  }
+
+  /// Takes the core down and throws [PlayerInitException] when the module,
+  /// past its ABI and layout checks, is not a build of the pinned release,
+  /// as natively: the player then gets no core.
+  Future<void> _checkRelease() async {
+    final mismatch = libmpvMismatch(
+      await _WebReader(this).string('mpv-version'),
+    );
+    if (mismatch == null) return;
+    await stop();
+    close();
+    await terminateDestroy();
+    throw PlayerInitException(mismatch);
   }
 
   void _observe(int h, int replyId, String name, int format) {
@@ -223,12 +240,10 @@ final class WebSession implements MpvSession {
       case MpvEventId.mpvEventFileLoaded:
         return _logic.dispatch(MpvEventFileLoaded());
       case MpvEventId.mpvEventEndFile:
-        // The fields of a module with the read_error patch; a module
-        // without it has none (offsets 0). A duration or position mpv did
-        // not know (-1) is null, as on the native side.
-        final fields = m.endFile;
+        // A duration or position mpv did not know (-1) is null, as on the
+        // native side.
+        const fields = kEndFileFields;
         double? known(int offset) {
-          if (offset == 0) return null;
           final seconds = m.f64(data + offset);
           return seconds >= 0 ? seconds : null;
         }
@@ -240,12 +255,8 @@ final class WebSession implements MpvSession {
             m.i32(data + 4),
             position: known(fields.position),
             duration: known(fields.duration),
-            readError: fields.readError == 0
-                ? null
-                : m.i32(data + fields.readError) != 0,
-            skippedSegments: fields.skippedSegments == 0
-                ? null
-                : m.i64(data + fields.skippedSegments),
+            readError: m.i32(data + fields.readError) != 0,
+            skippedSegments: m.i64(data + fields.skippedSegments),
           ),
         );
       case MpvEventId.mpvEventAudioReconfig:

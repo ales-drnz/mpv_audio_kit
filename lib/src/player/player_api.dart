@@ -188,9 +188,7 @@ abstract interface class PlayerApi {
   Future<bool> nextPlaylist();
 
   /// Jumps to the first of the previous entries from a different source
-  /// playlist (`playlist-path`). The reverse of [nextPlaylist]. On Windows
-  /// it needs a libmpv with the patches of libmpv-scripts 0.1.7 or later:
-  /// see [Player.previousPlaylist].
+  /// playlist (`playlist-path`). The reverse of [nextPlaylist].
   Future<bool> previousPlaylist();
 
   /// Jumps to the playlist entry at [index] and plays it. Throws

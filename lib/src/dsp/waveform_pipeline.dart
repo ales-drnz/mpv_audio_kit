@@ -67,7 +67,7 @@ class WaveformPipeline extends AnalysisPollPipeline<WaveformData> {
         : 0;
     final min = float32FromByteValue(value['min']);
     final max = float32FromByteValue(value['max']);
-    // Absent before libmpv-r14; null then, like a length mismatch.
+    // Null on a length mismatch.
     final rmsValue = float32FromByteValue(value['rms']);
     final filled = value['filled'] is Uint8List
         ? value['filled'] as Uint8List
