@@ -148,12 +148,14 @@ final class EventSequencer {
 
   void _step(Future<void> reads) {
     _stepping = true;
-    reads.then(
-      (_) => _stepped(true),
-      onError: (Object e, StackTrace st) {
-        onError(e, st);
-        _stepped(false);
-      },
+    unawaited(
+      reads.then(
+        (_) => _stepped(true),
+        onError: (Object e, StackTrace st) {
+          onError(e, st);
+          _stepped(false);
+        },
+      ),
     );
   }
 

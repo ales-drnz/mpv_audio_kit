@@ -11,7 +11,7 @@
 // LGPL, version 2.1 or later (FFmpeg's LICENSE.md), and for the option help of
 // deesser, arnndn and hdcd the MIT or BSD terms of their source files; the BSD
 // 3-Clause license above covers the rest of this file.
-// ignore_for_file: non_constant_identifier_names, constant_identifier_names, camel_case_types, curly_braces_in_flow_control_structures, prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
+// ignore_for_file: unnecessary_ignore, non_constant_identifier_names, constant_identifier_names, camel_case_types, curly_braces_in_flow_control_structures, prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
 
 import 'dart:convert';
 

@@ -260,27 +260,29 @@ class OrphanHandleTracker {
     if (!_isDebug || !_initialized) {
       return;
     }
-    _completer.future.then((_) {
-      final buffer = _buffer;
-      if (buffer == null || handle == nullptr) {
-        return;
-      }
-      for (int i = 0; i < _kBufferSize; i++) {
-        final cookieRef = buffer + (i * _kSlotStride);
-        final addrRef = buffer + (i * _kSlotStride + 1);
-        if (cookieRef.value == 0 && addrRef.value == 0) {
-          cookieRef.value = _kCookie;
-          addrRef.value = handle.address;
+    unawaited(
+      _completer.future.then((_) {
+        final buffer = _buffer;
+        if (buffer == null || handle == nullptr) {
           return;
         }
-      }
-      debugLog(
-        'mpv_audio_kit: OrphanHandleTracker buffer full ($_kBufferSize '
-        'handles tracked). Handle ${handle.address} not registered for '
-        'hot-restart cleanup: dispose Player instances before creating '
-        'more.',
-      );
-    });
+        for (int i = 0; i < _kBufferSize; i++) {
+          final cookieRef = buffer + (i * _kSlotStride);
+          final addrRef = buffer + (i * _kSlotStride + 1);
+          if (cookieRef.value == 0 && addrRef.value == 0) {
+            cookieRef.value = _kCookie;
+            addrRef.value = handle.address;
+            return;
+          }
+        }
+        debugLog(
+          'mpv_audio_kit: OrphanHandleTracker buffer full ($_kBufferSize '
+          'handles tracked). Handle ${handle.address} not registered for '
+          'hot-restart cleanup: dispose Player instances before creating '
+          'more.',
+        );
+      }),
+    );
   }
 
   /// Clears [handle] from the buffer when [Player.dispose] runs
@@ -290,13 +292,15 @@ class OrphanHandleTracker {
     if (!_isDebug || !_initialized) {
       return;
     }
-    _completer.future.then((_) {
-      final buffer = _buffer;
-      if (buffer == null || handle == nullptr) {
-        return;
-      }
-      _clear(buffer, handle);
-    });
+    unawaited(
+      _completer.future.then((_) {
+        final buffer = _buffer;
+        if (buffer == null || handle == nullptr) {
+          return;
+        }
+        _clear(buffer, handle);
+      }),
+    );
   }
 
   /// Clears [handle] from the buffer the process published, from any

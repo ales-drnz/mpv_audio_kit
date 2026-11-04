@@ -76,6 +76,8 @@ Future<(ServerSocket, List<String>)> _proxy(int targetPort) async {
         if (end < 0) return;
         requests.add(text.substring(0, text.indexOf('\r\n')));
         sub.pause();
+        // Kept in upstream, destroyed when the client goes.
+        // ignore: close_sinks
         final up = await Socket.connect(
           InternetAddress.loopbackIPv4,
           targetPort,
@@ -139,7 +141,7 @@ void main() {
             ..headers.contentType = ContentType('audio', 'wav')
             ..contentLength = wav.length
             ..add(wav);
-          req.response.close();
+          unawaited(req.response.close());
         });
         final (proxy, requests) = await _proxy(https.port);
         addTearDown(proxy.close);

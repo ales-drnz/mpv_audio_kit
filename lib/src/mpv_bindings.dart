@@ -2,8 +2,6 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-// ignore_for_file: camel_case_types
-
 // The libmpv the build hook bundles (hook/build.dart), which every @Native
 // declaration below binds to.
 @DefaultAsset('package:mpv_audio_kit/libmpv')

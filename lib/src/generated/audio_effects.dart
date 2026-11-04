@@ -11,7 +11,7 @@
 // LGPL, version 2.1 or later (FFmpeg's LICENSE.md), and for the option help of
 // deesser, arnndn and hdcd the MIT or BSD terms of their source files; the BSD
 // 3-Clause license above covers the rest of this file.
-// ignore_for_file: constant_identifier_names, camel_case_types, non_constant_identifier_names
+// ignore_for_file: unnecessary_ignore, constant_identifier_names, camel_case_types, non_constant_identifier_names
 
 /// Values for the `detection` option of the `acompressor` audio filter.
 enum AcompressorDetection {

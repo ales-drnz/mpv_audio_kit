@@ -1590,10 +1590,10 @@ void main() {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
         addTearDown(() => server.close(force: true));
         server.listen((request) {
-          request.response
+          final response = request.response
             ..headers.contentType = ContentType('image', 'png')
-            ..add(const [4, 2])
-            ..close();
+            ..add(const [4, 2]);
+          unawaited(response.close());
         });
         final rig = _Rig();
         final ch = _RecordingChannel();
