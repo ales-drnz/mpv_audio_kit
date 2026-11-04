@@ -272,6 +272,29 @@ void mak_shim_set(const char *knob, int value) {
   }
 }
 
+// The mpv-version the synchronous reads answer, in place of the real one
+// (mak_shim_fake_version). Empty means the real one. Written into the
+// string the real libmpv returned, so mpv_free frees it as usual: a fake
+// longer than the real version is cut to its length.
+static char fake_version[64];
+
+static void apply_fake_version(const char *n, char *version) {
+  pthread_mutex_lock(&mu);
+  if (version && fake_version[0] && strcmp(n, "mpv-version") == 0) {
+    size_t room = strlen(version);
+    size_t len = strlen(fake_version);
+    memcpy(version, fake_version, len < room ? len : room);
+    version[len < room ? len : room] = 0;
+  }
+  pthread_mutex_unlock(&mu);
+}
+
+void mak_shim_fake_version(const char *version) {
+  pthread_mutex_lock(&mu);
+  snprintf(fake_version, sizeof fake_version, "%s", version);
+  pthread_mutex_unlock(&mu);
+}
+
 // Counts the synchronous reads of [name] from now on (one name at a time).
 void mak_shim_watch_get(const char *name) {
   pthread_mutex_lock(&mu);
@@ -324,6 +347,7 @@ void mak_shim_reset(void) {
   atomic_store(&hooks_pending_at_destroy, 0);
   atomic_store(&watched_gets, 0);
   watched_get[0] = 0;
+  fake_version[0] = 0;
   atomic_store(&broken_gets, 0);
   broken_get[0] = 0;
   atomic_store(&replies_held, 0);
@@ -575,7 +599,9 @@ char *mpv_get_property_string(void *h, const char *n) {
   trace_get("mpv_get_property_string", n);
   count_get(n);
   stall(get_delay_us);
-  return real_mpv_get_property_string(h, n);
+  char *value = real_mpv_get_property_string(h, n);
+  apply_fake_version(n, value);
+  return value;
 }
 
 int mpv_get_property(void *h, const char *n, int fmt, void *out) {
@@ -594,6 +620,8 @@ int mpv_get_property(void *h, const char *n, int fmt, void *out) {
     return 0;
   }
   int rc = real_mpv_get_property(h, n, fmt, out);
+  // MPV_FORMAT_STRING is 1.
+  if (rc >= 0 && fmt == 1) apply_fake_version(n, *(char **)out);
   // MPV_FORMAT_FLAG is 3.
   if (rc >= 0 && fmt == 3 && atomic_load(&hide_eof) &&
       strcmp(n, "eof-reached") == 0) {
