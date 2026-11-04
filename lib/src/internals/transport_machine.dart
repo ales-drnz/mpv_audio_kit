@@ -197,9 +197,10 @@ final class TransportMachine {
   bool owns(int intent) => intent == _intentEpoch;
 
   /// Whether a play() that claimed [intent] still has the intent on its
-  /// side: the last call that claimed it played too. A play() called
-  /// before the reply of an earlier one's seek, a pause() between them or
-  /// not, leaves that reply its take of the park.
+  /// side: the last call that claimed the intent played, whichever call
+  /// it was ([intent] only has to be a claim made). A play() called before
+  /// the reply of an earlier one's seek, a pause() between them or not,
+  /// leaves that reply its take of the park.
   bool wantsPlay(int intent) =>
       intent <= _intentEpoch && _lastOffEpoch < _intentEpoch;
 
