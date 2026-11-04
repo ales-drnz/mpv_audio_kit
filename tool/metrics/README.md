@@ -1,0 +1,33 @@
+# Metrics
+
+The numbers the CI ratchet holds. The job Quality runs
+
+    dart pub get -C tool/metrics
+    dart tool/metrics/bin/metrics.dart
+
+from the root of the package, and fails when a number is worse than the
+baseline. A change that makes one worse on purpose writes the baseline again
+in the same commit with `--write`, so the review sees it.
+
+What it reads:
+
+- **LOC**: the lines of the `.dart` files of `lib` that hold code, blank
+  lines and lines of comment alone left out. `lib/src/generated` and
+  `lib/src/internals/libmpv_licenses.dart` are left out.
+- **Complexity** of each function of the same files: 1, plus one for each
+  `if`, `for`, `while`, `do`, `case`, `catch`, `?:`, `&&`, `||` and `??`.
+  `?.` and `??=` count nothing. A closure or a local function counts apart,
+  named after its function with `#1` or `>name`. The baseline keeps every
+  function over 10 by name: one that grows, or a new one over 10, fails.
+  The counts over 15 and over 10 must not grow.
+- **`_PlayerBase`**: its fields (static ones left out), the ones not final,
+  and its abstract members (a getter and its setter count as two).
+- **API** (`api_surface.txt`): each public declaration that
+  `lib/mpv_audio_kit.dart` exports, and each public member, as written.
+  Any change fails, an addition too.
+- **Struct layout** (`struct_layout.txt`): the fields of the `Struct` and
+  `Union` classes of `mpv_bindings.dart`, and the wasm32 table of
+  `web_layout.dart`. Any change fails.
+
+The numbers are this tool's own: another script that counts the same
+things can give others. Compare a version only with this tool.

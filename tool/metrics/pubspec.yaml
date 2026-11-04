@@ -1,0 +1,12 @@
+name: mak_metrics
+description: The metrics of mpv_audio_kit the CI ratchet holds (tool/metrics/README.md).
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  analyzer: ^9.0.0
+
+dev_dependencies:
+  test: ^1.25.0
