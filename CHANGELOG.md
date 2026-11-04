@@ -33,6 +33,7 @@
 - A string effect option with a bracket reaches the filter whole.
 - A refused header value, the demuxer options and the user info of a URI stay out of logs and errors.
 - A second Flutter engine of the process leaves the players of the first alone.
+- `playWhenReady` stays true after two `play` calls at the end of a stream while a seek to the end is on its way.
 
 ### Web
 **Changed**

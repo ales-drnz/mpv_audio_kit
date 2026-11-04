@@ -36,8 +36,10 @@ final class _ParkRead extends _Item {}
 /// The machine behind a player that plays, pauses and seeks, as the rules
 /// of e984aef and 0c37fc6 state them: play() at a park takes the park and
 /// writes the intent on before its seek, and again after the reply of the
-/// seek while it owns the intent; mpv queues that reply ahead of the
-/// seek's restart, and the read of the park after it.
+/// seek while the last call that claimed the intent played
+/// ([TransportMachine.wantsPlay]);
+/// mpv queues that reply ahead of the seek's restart, and the read of the
+/// park after it.
 final class _Rig {
   final TransportMachine m = TransportMachine()..startFile();
   final List<_Item> queue = [];
@@ -89,7 +91,7 @@ final class _Rig {
 
   void deliver() {
     switch (queue.removeAt(0)) {
-      case _Reply(:final intent?) when m.owns(intent):
+      case _Reply(:final intent?) when m.wantsPlay(intent):
         m.takePark();
         this.intent = true;
       case _Reply():
@@ -287,6 +289,23 @@ void main() {
       r.deliver();
     }
     expect(r.intent, isTrue);
+  });
+
+  test('what a play() wants follows the last call that claimed the intent', () {
+    final m = TransportMachine();
+    final (_, play) = m.claimIntent(true);
+    final (_, again) = m.claimIntent(true);
+    expect(m.wantsPlay(play), isTrue);
+    m.claimIntent(false);
+    expect(m.wantsPlay(play), isFalse);
+    expect(m.wantsPlay(again), isFalse);
+    m.claimIntent(true);
+    expect(m.wantsPlay(play), isTrue, reason: 'the last call played');
+    final (_, later) = m.claimIntent(true);
+    final load = m.claimLoad();
+    final (_, loading) = m.claimIntent(true);
+    expect(m.restoreIntent(load, loading, false), WriteIntent.off);
+    expect(m.wantsPlay(later), isFalse);
   });
 
   test('a later call owns the intent', () {
