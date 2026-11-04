@@ -32,7 +32,7 @@ trap 'git -C "$root" worktree remove --force "$work/tree" >/dev/null 2>&1 || tru
 paragraph() {
   awk -v re="$2" '
     found && /^[[:space:]]*$/ { exit }
-    found && /^(Red|Green)( [0-9]+ times)?:/ { exit }
+    found && /^(Red|Green)[^[:alnum:]]/ { exit }
     found { print; next }
     $0 ~ re { found = 1; print }
   ' <<<"$1"
@@ -80,7 +80,9 @@ while read -r sha; do
       continue
     fi
     status=0
-    (cd "$work/tree" && timeout 900 flutter test "$t" > "$work/log" 2>&1) || status=$?
+    # The expanded reporter on every machine: on GitHub Actions flutter test
+    # picks its own, which marks a failure otherwise.
+    (cd "$work/tree" && timeout 900 flutter test --reporter expanded "$t" > "$work/log" 2>&1) || status=$?
     # A test that ran and failed is marked [E] on its own line; a file
     # that does not compile is marked on its "loading" line.
     ran="$(grep -E '\[E\]' "$work/log" | grep -v ': loading ' | head -1 || true)"

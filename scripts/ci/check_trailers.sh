@@ -23,7 +23,7 @@ fi
 paragraph() {
   awk -v re="$2" '
     found && /^[[:space:]]*$/ { exit }
-    found && /^(Red|Green)( [0-9]+ times)?:/ { exit }
+    found && /^(Red|Green)[^[:alnum:]]/ { exit }
     found { print; next }
     $0 ~ re { found = 1; print }
   ' <<<"$1"
@@ -55,7 +55,7 @@ while read -r sha; do
   checked=$((checked + 1))
   body="$(git log -1 --format=%b "$sha")"
   red="$(paragraph "$body" '^Red:')"
-  green="$(paragraph "$body" '^Green( [0-9]+ times)?:')"
+  green="$(paragraph "$body" '^Green[^[:alnum:]]')"
   if [[ -z "$red" ]]; then
     warn "$sha" "$subject" "no Red: paragraph"
   else
