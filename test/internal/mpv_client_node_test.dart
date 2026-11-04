@@ -26,7 +26,7 @@ void main() {
       ..mpvSetPropertyAsync = (_, _, name, format, data) {
         final node = data.cast<MpvNode>();
         inspect?.call(node);
-        written.add((name.toDartString(), format, decodeMpvNode(node.ref)));
+        written.add((name.toDartString(), format, decodeMpvNode(node)));
         return MpvError.mpvErrorSuccess;
       };
     client = MpvClient(lib, nullptr);

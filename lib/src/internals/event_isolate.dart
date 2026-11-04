@@ -15,6 +15,7 @@ import '../events/player_exception.dart';
 import '../mpv_bindings.dart' as mpv;
 import 'build_mode.dart';
 import 'core_events.dart';
+import 'event_decoder.dart';
 import 'event_logic.dart';
 import 'libmpv_requirements.dart';
 import 'owner_watch.dart';
@@ -201,25 +202,6 @@ void _isolateEntry(SendPort initialReplyPort) {
   });
 }
 
-/// The END_FILE payload at [data], with the fields the patch read_error
-/// appends: the read error and the skipped segments, then the duration and
-/// the position. A duration or position mpv did not know (-1) is `null`,
-/// and the event logic keeps what mpv reported of the entry before.
-@visibleForTesting
-MpvEventEndFile decodeEndFile(Pointer<Void> data) {
-  final ef = data.cast<mpv.MpvEventEndFile>().ref;
-  double? known(double seconds) => seconds >= 0 ? seconds : null;
-  return MpvEventEndFile(
-    ef.playlistEntryId,
-    ef.reason,
-    ef.error,
-    position: known(ef.makPosition),
-    duration: known(ef.makDuration),
-    readError: ef.makReadError != 0,
-    skippedSegments: ef.makSkippedSegments,
-  );
-}
-
 /// Why the core [handle] cannot serve the player after `mpv_initialize`
 /// returned [rc], or `null` when it can. Checked before anything reads an
 /// event: the decoders hold the layout of the pinned release only.
@@ -299,7 +281,7 @@ Future<void> _runEventLoop(
     try {
       // Decoded before any await: the payload is valid only until the next
       // mpv_wait_event.
-      final reads = _dispatchEvent(logic, event);
+      final reads = dispatchEvent(logic, nativeMemory, event.address);
       if (reads != null) await reads;
       final again = logic.idle();
       if (again != null) await again;
@@ -311,93 +293,6 @@ Future<void> _runEventLoop(
       break;
     }
   }
-}
-
-/// Decodes [event] out of the core's memory and hands it to [logic].
-/// Returns the future of the reads the event takes, if any.
-Future<void>? _dispatchEvent(EventLogic logic, Pointer<mpv.MpvEvent> event) {
-  final ev = event.ref;
-  switch (ev.eventId) {
-    case mpv.MpvEventId.mpvEventPropertyChange:
-      final prop = ev.data.cast<mpv.MpvEventProperty>().ref;
-      return logic.property(
-        decodeMpvString(prop.name.cast()),
-        prop.format,
-        _propertyChangeValue(prop),
-      );
-    case mpv.MpvEventId.mpvEventShutdown:
-      return logic.dispatch(MpvEventShutdown());
-    case mpv.MpvEventId.mpvEventStartFile:
-      return logic.dispatch(
-        MpvEventStartFile(
-          ev.data.cast<mpv.MpvEventStartFileData>().ref.playlistEntryId,
-        ),
-      );
-    case mpv.MpvEventId.mpvEventFileLoaded:
-      return logic.dispatch(MpvEventFileLoaded());
-    case mpv.MpvEventId.mpvEventEndFile:
-      return logic.dispatch(decodeEndFile(ev.data));
-    case mpv.MpvEventId.mpvEventAudioReconfig:
-      return logic.audioReconfig();
-    case mpv.MpvEventId.mpvEventSetPropertyReply:
-      return logic.dispatch(MpvEventReply(ev.replyUserdata, ev.error));
-    case mpv.MpvEventId.mpvEventCommandReply:
-      // The payload is an `mpv_event_command`, whose only member is the
-      // `mpv_node result` (`loadfile` returns `playlist_entry_id` in it).
-      // Valid only until the next mpv_wait_event, hence decoded here.
-      final error = ev.error;
-      Object? result;
-      if (error >= 0 && ev.data != nullptr) {
-        result = decodeMpvNode(ev.data.cast<mpv.MpvNode>().ref);
-      }
-      return logic.dispatch(MpvEventReply(ev.replyUserdata, error, result));
-    case mpv.MpvEventId.mpvEventGetPropertyReply:
-      final error = ev.error;
-      dynamic value;
-      if (error >= 0 && ev.data != nullptr) {
-        // The payload (an mpv_event_property) is owned by the event and
-        // valid only until the next mpv_wait_event: decode (and copy)
-        // before forwarding.
-        value = _decodePropertyValue(ev.data.cast<mpv.MpvEventProperty>().ref);
-      }
-      return logic.dispatch(MpvEventGetReply(ev.replyUserdata, error, value));
-    case mpv.MpvEventId.mpvEventLogMessage:
-      final msg = ev.data.cast<mpv.MpvEventLogMessage>().ref;
-      return logic.dispatch(
-        MpvEventLog(
-          decodeMpvString(msg.prefix.cast()),
-          decodeMpvString(msg.level.cast()),
-          decodeMpvString(msg.text.cast()).trimRight(),
-        ),
-      );
-    case mpv.MpvEventId.mpvEventHook:
-      final hook = ev.data.cast<mpv.MpvEventHook>().ref;
-      return logic.dispatch(
-        MpvEventHookFired(hook.id, decodeMpvString(hook.name.cast())),
-      );
-    case mpv.MpvEventId.mpvEventPlaybackRestart:
-      return logic.dispatch(MpvEventPlaybackRestart());
-  }
-  return null;
-}
-
-/// The value of a property change as [EventLogic.property] takes it.
-Object? _propertyChangeValue(mpv.MpvEventProperty prop) {
-  if (prop.format == mpv.MpvFormat.mpvFormatNone || prop.data == nullptr) {
-    return kPropertyUnavailable;
-  }
-  return switch (prop.format) {
-    mpv.MpvFormat.mpvFormatDouble => prop.data.cast<Double>().value,
-    mpv.MpvFormat.mpvFormatFlag => prop.data.cast<Int32>().value,
-    mpv.MpvFormat.mpvFormatInt64 => prop.data.cast<Int64>().value,
-    mpv.MpvFormat.mpvFormatString => decodeMpvString(
-      prop.data.cast<Pointer<Utf8>>().value,
-    ),
-    mpv.MpvFormat.mpvFormatNode => decodeMpvNode(
-      prop.data.cast<mpv.MpvNode>().ref,
-    ),
-    _ => kPropertyUnobserved,
-  };
 }
 
 // ── Synchronous property reads (event-isolate side only) ─────────────────────
@@ -498,39 +393,13 @@ final class _NativeReader implements CoreReader {
       if (rc < 0) return null;
       // decodeMpvNode copies every borrowed string and byte buffer, so the
       // node contents can be freed before the tree is returned.
-      return decodeMpvNode(node.ref);
+      return decodeMpvNode(node);
     } finally {
       _lib.mpvFreeNodeContents(node);
       calloc.free(node);
     }
   }
 }
-
-/// Decodes the value of an `mpv_event_property` payload into the same Dart
-/// shapes the property-change pipeline produces (no dedup or throttle:
-/// replies are one-shot). Returns `null` for `data == nullptr` or an
-/// unobserved format.
-dynamic _decodePropertyValue(mpv.MpvEventProperty prop) {
-  if (prop.data == nullptr) return null;
-  return switch (prop.format) {
-    mpv.MpvFormat.mpvFormatDouble => prop.data.cast<Double>().value,
-    mpv.MpvFormat.mpvFormatFlag => prop.data.cast<Int32>().value,
-    mpv.MpvFormat.mpvFormatInt64 => prop.data.cast<Int64>().value,
-    mpv.MpvFormat.mpvFormatString => decodeMpvString(
-      prop.data.cast<Pointer<Utf8>>().value,
-    ),
-    // Get replies carry the polled PCM, tap and waveform frames: their
-    // bytes cross to the main isolate as TransferableTypedData, copied
-    // once instead of twice.
-    mpv.MpvFormat.mpvFormatNode => decodeMpvNode(
-      prop.data.cast<mpv.MpvNode>().ref,
-      transferBytes: true,
-    ),
-    _ => null,
-  };
-}
-
-// ── String and node decoding ──────────────────────────────────────────────────
 
 /// Decodes a NUL-terminated mpv-owned C string, replacing invalid UTF-8
 /// sequences with U+FFFD instead of throwing.
@@ -569,40 +438,47 @@ String decodeMpvString(Pointer<Utf8> ptr) {
 /// Exposed at top-level (rather than file-private) so unit tests can build
 /// synthetic `mpv_node` trees and exercise the decoder without spinning up
 /// a real player.
-dynamic decodeMpvNode(mpv.MpvNode node, {bool transferBytes = false}) {
-  switch (node.format) {
-    case mpv.MpvFormat.mpvFormatString:
-      return decodeMpvString(node.u.string.cast());
-    case mpv.MpvFormat.mpvFormatFlag:
-      return node.u.flag != 0;
-    case mpv.MpvFormat.mpvFormatInt64:
-      return node.u.int64;
-    case mpv.MpvFormat.mpvFormatDouble:
-      return node.u.double_;
-    case mpv.MpvFormat.mpvFormatNodeArray:
-      final list = node.u.list.ref;
-      return [
-        for (var i = 0; i < list.num; i++)
-          decodeMpvNode((list.values + i).ref, transferBytes: transferBytes),
-      ];
-    case mpv.MpvFormat.mpvFormatNodeMap:
-      final list = node.u.list.ref;
-      return <String, dynamic>{
-        for (var i = 0; i < list.num; i++)
-          decodeMpvString((list.keys + i).value.cast()): decodeMpvNode(
-            (list.values + i).ref,
-            transferBytes: transferBytes,
-          ),
-      };
-    case mpv.MpvFormat.mpvFormatByteArray:
-      final ba = node.u.ba.ref;
-      // Copy out of mpv-owned memory before the caller frees the node.
-      final bytes = ba.data.cast<Uint8>().asTypedList(ba.size);
-      return transferBytes
-          ? TransferableTypedData.fromList([bytes])
-          : Uint8List.fromList(bytes);
-    default:
-      return null;
+Object? decodeMpvNode(
+  Pointer<mpv.MpvNode> node, {
+  bool transferBytes = false,
+}) => decodeNode(nativeMemory, node.address, transfer: transferBytes);
+
+/// The memory of the cores of this process, as [decodeNode] and
+/// [dispatchEvent] read it.
+@internal
+const CoreMemory nativeMemory = _NativeMemory();
+
+final class _NativeMemory implements CoreMemory {
+  const _NativeMemory();
+
+  @override
+  int get pointerSize => sizeOf<IntPtr>();
+
+  @override
+  int i32(int address) => Pointer<Int32>.fromAddress(address).value;
+
+  @override
+  int i64(int address) => Pointer<Int64>.fromAddress(address).value;
+
+  @override
+  double f64(int address) => Pointer<Double>.fromAddress(address).value;
+
+  @override
+  int pointer(int address) => Pointer<UintPtr>.fromAddress(address).value;
+
+  @override
+  String? string(int address) =>
+      address == 0 ? null : decodeMpvString(Pointer<Utf8>.fromAddress(address));
+
+  @override
+  Object bytes(int address, int length, {bool transfer = false}) {
+    // Copied out of mpv-owned memory before the caller frees the node.
+    final view = length <= 0
+        ? Uint8List(0)
+        : Pointer<Uint8>.fromAddress(address).asTypedList(length);
+    return transfer
+        ? TransferableTypedData.fromList([view])
+        : Uint8List.fromList(view);
   }
 }
 

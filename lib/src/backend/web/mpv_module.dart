@@ -15,7 +15,7 @@ import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
-import '../../mpv_constants.dart';
+import '../../internals/event_decoder.dart';
 import 'web_layout.dart';
 
 @JS('BigInt')
@@ -192,7 +192,7 @@ extension type MakWebAudio._(JSObject _) implements JSObject {
 /// One instance of the libmpv module: its exports, its memory, and the
 /// wakeup bridge that calls back into Dart.
 @internal
-final class MpvModule {
+final class MpvModule implements CoreMemory {
   /// Wraps the instance [module] the module factory resolved with, after
   /// checking its ABI version and its struct layout against the ones the
   /// decoders assume, before any other call into it. [processorUrl] is
@@ -262,27 +262,40 @@ final class MpvModule {
   // each use, never kept.
   _View _view() => _View(_m.wasmMemory['buffer'] as JSObject);
 
+  @override
+  int get pointerSize => 4;
+
   /// The signed 32-bit value at [p].
+  @override
   int i32(int p) => _view().getInt32(p, true);
 
   /// The unsigned 32-bit value at [p] (a pointer, a size_t).
   int u32(int p) => _view().getUint32(p, true);
 
+  /// A pointer or a `size_t` at [p]: wasm32 has 32-bit ones.
+  @override
+  int pointer(int p) => u32(p);
+
   /// The signed 64-bit value at [p] (exact below 2^53).
+  @override
   int i64(int p) {
     final view = _view();
     return view.getInt32(p + 4, true) * 4294967296 + view.getUint32(p, true);
   }
 
   /// The double at [p].
+  @override
   double f64(int p) => _view().getFloat64(p, true);
 
   /// The NUL-terminated string at [p], malformed UTF-8 replaced with
   /// U+FFFD as on the native side; `null` for a null pointer.
+  @override
   String? string(int p) => p == 0 ? null : _m.utf8ToString(p).toDart;
 
-  /// A copy of the [length] bytes at [p].
-  Uint8List bytes(int p, int length) {
+  /// A copy of the [length] bytes at [p]. [transfer] changes nothing: the
+  /// web pump runs on the main thread.
+  @override
+  Uint8List bytes(int p, int length, {bool transfer = false}) {
     if (length <= 0) return Uint8List(0);
     final buffer = _m.wasmMemory['buffer'] as JSObject;
     return _Bytes(buffer, p, length).slice().toDart;
@@ -333,51 +346,6 @@ final class MpvModule {
       }
     }
   }
-
-  /// Decodes the `mpv_node` at [p]: the same Dart shapes as the native
-  /// decoder, byte arrays as [Uint8List] copies.
-  Object? node(int p) {
-    switch (i32(p + 8)) {
-      case MpvFormat.mpvFormatString:
-        return string(u32(p));
-      case MpvFormat.mpvFormatFlag:
-        return i32(p) != 0;
-      case MpvFormat.mpvFormatInt64:
-        return i64(p);
-      case MpvFormat.mpvFormatDouble:
-        return f64(p);
-      case MpvFormat.mpvFormatNodeArray:
-        final list = u32(p);
-        final num = i32(list);
-        final values = u32(list + 4);
-        return [for (var i = 0; i < num; i++) node(values + 16 * i)];
-      case MpvFormat.mpvFormatNodeMap:
-        final list = u32(p);
-        final num = i32(list);
-        final values = u32(list + 4);
-        final keys = u32(list + 8);
-        return <String, dynamic>{
-          for (var i = 0; i < num; i++)
-            string(u32(keys + 4 * i))!: node(values + 16 * i),
-        };
-      case MpvFormat.mpvFormatByteArray:
-        final ba = u32(p);
-        return bytes(u32(ba), u32(ba + 4));
-      default:
-        return null;
-    }
-  }
-
-  /// Decodes the value of format [format] at [data], as a property change
-  /// or a read carries it: a flag as an int, as the native side does.
-  Object? value(int format, int data) => switch (format) {
-    MpvFormat.mpvFormatDouble => f64(data),
-    MpvFormat.mpvFormatFlag => i32(data),
-    MpvFormat.mpvFormatInt64 => i64(data),
-    MpvFormat.mpvFormatString => string(u32(data)),
-    MpvFormat.mpvFormatNode => node(data),
-    _ => null,
-  };
 }
 
 /// The pages of 64 KiB the module's memory starts with: the 32 MB its

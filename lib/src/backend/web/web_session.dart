@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import '../../events/player_exception.dart';
 import '../../internals/core_events.dart';
+import '../../internals/event_decoder.dart';
 import '../../internals/event_logic.dart';
 import '../../internals/event_sequencer.dart';
 import '../../internals/libmpv_requirements.dart';
@@ -15,7 +16,6 @@ import '../../mpv_constants.dart';
 import '../mpv_session.dart';
 import 'mpv_module.dart';
 import 'web_client.dart';
-import 'web_layout.dart';
 import 'web_registry.dart';
 
 /// Reply id of the pump's own `pause` observer: 2^40, above every id the
@@ -217,99 +217,11 @@ final class WebSession implements MpvSession {
     }
     final id = _m.i32(e);
     if (id == MpvEventId.mpvEventNone) return (false, null, false);
-    return (true, _dispatch(e, id), id == MpvEventId.mpvEventShutdown);
-  }
-
-  Future<void>? _dispatch(int e, int id) {
-    final m = _m;
-    final error = m.i32(e + 4);
-    final userdata = m.i64(e + 8);
-    final data = m.u32(e + 16);
-    switch (id) {
-      case MpvEventId.mpvEventPropertyChange:
-        final format = m.i32(data + 4);
-        return _logic.property(
-          m.string(m.u32(data))!,
-          format,
-          _changeValue(format, m.u32(data + 8)),
-        );
-      case MpvEventId.mpvEventShutdown:
-        return _logic.dispatch(MpvEventShutdown());
-      case MpvEventId.mpvEventStartFile:
-        return _logic.dispatch(MpvEventStartFile(m.i64(data)));
-      case MpvEventId.mpvEventFileLoaded:
-        return _logic.dispatch(MpvEventFileLoaded());
-      case MpvEventId.mpvEventEndFile:
-        // A duration or position mpv did not know (-1) is null, as on the
-        // native side.
-        const fields = kEndFileFields;
-        double? known(int offset) {
-          final seconds = m.f64(data + offset);
-          return seconds >= 0 ? seconds : null;
-        }
-
-        return _logic.dispatch(
-          MpvEventEndFile(
-            m.i64(data + 8),
-            m.i32(data),
-            m.i32(data + 4),
-            position: known(fields.position),
-            duration: known(fields.duration),
-            readError: m.i32(data + fields.readError) != 0,
-            skippedSegments: m.i64(data + fields.skippedSegments),
-          ),
-        );
-      case MpvEventId.mpvEventAudioReconfig:
-        return _logic.audioReconfig();
-      case MpvEventId.mpvEventSetPropertyReply:
-        return _logic.dispatch(MpvEventReply(userdata, error));
-      case MpvEventId.mpvEventCommandReply:
-        // The payload is an `mpv_event_command`: its `mpv_node result`.
-        final result = error >= 0 && data != 0 ? m.node(data) : null;
-        return _logic.dispatch(MpvEventReply(userdata, error, result));
-      case MpvEventId.mpvEventGetPropertyReply:
-        return _logic.dispatch(
-          MpvEventGetReply(userdata, error, error >= 0 ? _value(data) : null),
-        );
-      case MpvEventId.mpvEventLogMessage:
-        return _logic.dispatch(
-          MpvEventLog(
-            m.string(m.u32(data)) ?? '',
-            m.string(m.u32(data + 4)) ?? '',
-            (m.string(m.u32(data + 8)) ?? '').trimRight(),
-          ),
-        );
-      case MpvEventId.mpvEventHook:
-        return _logic.dispatch(
-          MpvEventHookFired(m.i64(data + 8), m.string(m.u32(data)) ?? ''),
-        );
-      case MpvEventId.mpvEventPlaybackRestart:
-        return _logic.dispatch(MpvEventPlaybackRestart());
-    }
-    return null;
-  }
-
-  /// The value of a property change as [EventLogic.property] takes it.
-  Object? _changeValue(int format, int data) {
-    if (format == MpvFormat.mpvFormatNone || data == 0) {
-      return kPropertyUnavailable;
-    }
-    return switch (format) {
-      MpvFormat.mpvFormatDouble ||
-      MpvFormat.mpvFormatFlag ||
-      MpvFormat.mpvFormatInt64 ||
-      MpvFormat.mpvFormatString ||
-      MpvFormat.mpvFormatNode => _m.value(format, data),
-      _ => kPropertyUnobserved,
-    };
-  }
-
-  /// The value of the `mpv_event_property` at [property], as a read
-  /// carries it; `null` without one.
-  Object? _value(int property) {
-    if (property == 0) return null;
-    final data = _m.u32(property + 8);
-    return data == 0 ? null : _m.value(_m.i32(property + 4), data);
+    return (
+      true,
+      dispatchEvent(_logic, _m, e),
+      id == MpvEventId.mpvEventShutdown,
+    );
   }
 
   /// Sends a read of [name] in [format] on the read client.
@@ -339,7 +251,7 @@ final class WebSession implements MpvSession {
       if (reply == null) continue;
       Object? value;
       try {
-        if (_m.i32(e + 4) >= 0) value = _value(_m.u32(e + 16));
+        if (_m.i32(e + 4) >= 0) value = propertyValue(_m, _m.u32(e + 16));
       } catch (error) {
         // A read that cannot be decoded fails like a read mpv refused.
         _send(MpvEventInternalLog('warn', 'decoding a read failed: $error'));
