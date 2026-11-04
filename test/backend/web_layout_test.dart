@@ -75,12 +75,6 @@ void main() {
   group('checkWebLayout', () {
     test('takes the layout of the pinned release', () {
       checkWebLayout(_r21);
-      expect(kEndFileFields, (
-        readError: 28,
-        skippedSegments: 32,
-        duration: 40,
-        position: 48,
-      ));
     });
 
     test('a module without the read_error patch is refused', () {

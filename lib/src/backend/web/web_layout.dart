@@ -15,8 +15,8 @@ import '../../internals/libmpv_release.dart';
 /// of `mak_web_layout()` (scripts/web/mak_web.c of libmpv-scripts): sizeof
 /// and offsetof of mpv_node, mpv_node_list, mpv_byte_array, mpv_event,
 /// mpv_event_property, mpv_event_log_message, mpv_event_end_file (with the
-/// four fields of the patch read_error) and mpv_event_hook. The decoders
-/// use these numbers.
+/// four fields of the patch read_error) and mpv_event_hook: the offsets
+/// the decoder reads (event_decoder.dart) for a 4-byte pointer.
 const List<int> _kLayout = [
   16, 8, // mpv_node: size, format
   12, 4, 8, // mpv_node_list: size, values, keys
@@ -29,18 +29,6 @@ const List<int> _kLayout = [
   40, 48, // mpv_event_end_file: mak_duration, mak_position
   16, 8, // mpv_event_hook: size, id
 ];
-
-/// Where `mpv_event_end_file` keeps the four fields the patch read_error
-/// adds at its end: `mak_read_error` (int32), `mak_skipped_segments`
-/// (int64), `mak_duration` and `mak_position` (double).
-@internal
-const ({int readError, int skippedSegments, int duration, int position})
-kEndFileFields = (
-  readError: 28,
-  skippedSegments: 32,
-  duration: 40,
-  position: 48,
-);
 
 /// Checks [version], what the module's `mak_web_abi_version()` returned
 /// (`null` for a module without it), against [webModuleAbi].
