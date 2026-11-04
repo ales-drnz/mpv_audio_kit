@@ -161,6 +161,42 @@ jobs:
         if: matrix.flutter == 'any'
         run: for t in test/ci/*_test.sh; do bash "$t"; done
 
+  # The quality ratchet: the metrics of tool/metrics against their
+  # baseline, the API against the version on pub.dev, and the red and
+  # green of the fix commits (a warning only).
+  quality:
+    name: Quality
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Metrics
+        run: |
+          dart pub get -C tool/metrics
+          (cd tool/metrics && dart test)
+          dart tool/metrics/bin/metrics.dart
+      - name: Red and green of the fix commits
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT" == push && -n "$BEFORE" && ! "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE" 2>/dev/null; then
+            range="$BEFORE..HEAD"
+          else
+            range="origin/main..HEAD"
+          fi
+          scripts/ci/check_trailers.sh "$range"
+      # A break of the API against the latest version on pub.dev needs a
+      # **Breaking** part in the CHANGELOG entry of this version.
+      - name: API against pub.dev
+        run: scripts/ci/api_diff.sh
+
   test-linux:
     name: Test (Linux)
     needs: changes
@@ -206,7 +242,18 @@ jobs:
       - name: flutter test -x network
         run: |
           ulimit -c unlimited
-          flutter test -x network
+          flutter test -x network --coverage
+      # Measured only, for now: the number goes to the summary and the lcov
+      # file to an artifact.
+      - name: Coverage
+        if: success() || failure()
+        run: scripts/ci/coverage.sh coverage/lcov.info | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-linux
+          path: coverage/lcov.info
+          if-no-files-found: ignore
       - name: Native backtraces of crashed test processes
         if: failure()
         run: |
