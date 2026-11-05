@@ -260,8 +260,8 @@ jobs:
         run: |
           ulimit -c unlimited
           flutter test -x network --coverage
-      # Measured only, for now: the number goes to the summary and the lcov
-      # file to an artifact.
+      # The number goes to the summary and the lcov file to an artifact; the
+      # step fails under the floor of tool/metrics/coverage_floor.txt.
       - name: Coverage
         if: success() || failure()
         run: |
