@@ -146,10 +146,11 @@ class SlowCoreShim {
   /// `mpv_hook_add`), `destroy_delay_us` (a sleep in front of every
   /// `mpv_terminate_destroy`), `hide_eof` (non-zero: synchronous flag
   /// reads of `eof-reached` answer 0, the reads the event isolate makes)
-  /// `freeze_park` (non-zero: those of `eof-reached` and `pause` answer 1,
-  /// a park the player never sees mpv leave) or `pause_zero_once`
-  /// (non-zero: the next of `pause` answers 0, as when the read lands
-  /// while an unpause that keep-open undoes is in effect) or
+  /// `freeze_park` (non-zero: those of `eof-reached`, `pause` and
+  /// `keep-open-parked` answer 1, a park the player never sees mpv leave)
+  /// or `pause_zero_once` (non-zero: the next of `pause` answers 0, and
+  /// the `keep-open-parked` after it, as when the read lands while an
+  /// unpause that keep-open undoes is in effect) or
   /// `stall_park_read_us` (the next of `pause` that answers 1, the read of
   /// a park, returns after that many microseconds, counted in
   /// `park_reads_stalled`).

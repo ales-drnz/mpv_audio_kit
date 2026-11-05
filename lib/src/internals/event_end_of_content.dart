@@ -14,13 +14,16 @@ const int _kEndOfContentAgainMs = 50;
 
 /// The observed properties whose notifications take a fresh
 /// [MpvEventEndOfContent] read. `eof-reached` is the direct one; `pause`
-/// is observed by the pump only for this (the player does not observe
-/// it): the keep-open park pauses the core, which mpv notifies even when
-/// the `eof-reached` change around it was skipped. A loop change at the park
-/// turns the end of content on or off with nothing else moving.
+/// and `keep-open-parked` are observed by the pump only for this (the
+/// player does not observe them): the keep-open park pauses the core,
+/// which mpv notifies even when the `eof-reached` change around it was
+/// skipped, and a client paused in the tail is parked once a resume let
+/// the output play out. A loop change at the park turns the end of
+/// content on or off with nothing else moving.
 const Set<String> _kEndOfContentTriggers = {
   'eof-reached',
   'pause',
+  'keep-open-parked',
   'loop-file',
   'loop-playlist',
 };
@@ -51,8 +54,9 @@ Future<void> _sendEndOfContent(
   final eof = await reader.flag('eof-reached') == 1;
   // With gapless audio mpv reports EOF once the decoder is done, while the
   // output buffer still plays; keep-open pauses the core only after it has
-  // played out. Without `keep-open-pause` no pause comes, and EOF is the
-  // closest signal left.
+  // played out, and says so in `keep-open-parked`. A pause of the client
+  // in that tail is no park: the tail waits for the resume. Without
+  // `keep-open-pause` no pause comes, and EOF is the closest signal left.
   //
   // No await sits in a branch of `&&`, `||` or `?:` here: compiled to
   // WebAssembly (Dart 3.13), resuming such an await after the other side
@@ -63,7 +67,7 @@ Future<void> _sendEndOfContent(
   int? pause;
   if (eof) {
     pause = await reader.flag('pause');
-    parked = pause == 1;
+    parked = await reader.flag('keep-open-parked') == 1;
     if (!parked) parked = await reader.flag('keep-open-pause') == 0;
   }
   _Park? park;
