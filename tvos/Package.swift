@@ -21,7 +21,7 @@
 import Foundation
 import PackageDescription
 
-let release = "libmpv-r20"
+let release = "libmpv-r21"
 let checksum = ""
 
 let local = FileManager.default.fileExists(
