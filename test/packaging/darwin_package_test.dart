@@ -118,7 +118,13 @@ void main() {
     });
 
     test('with no checksum when the release has no tvOS libmpv', () async {
-      final run = await updateLibmpv(package, await release(root));
+      final manifest = await release(
+        root,
+        edit: (m) => (m['assets'] as Map<String, dynamic>).remove(
+          'libmpv_tvos.xcframework.zip',
+        ),
+      );
+      final run = await updateLibmpv(package, manifest);
       expect(run.exitCode, 0, reason: '${run.stdout}${run.stderr}');
       expect(pins(), 'let release = "libmpv-r99"\nlet checksum = ""');
     });
