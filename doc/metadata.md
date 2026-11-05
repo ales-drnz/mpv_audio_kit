@@ -2,21 +2,19 @@ Read the tags and the cover art of the playing file.
 
 ## Tags
 
-```dart
-player.stream.metadata.listen((tags) {
-  print('Now playing: ${tags['title']}, ${tags['artist']}');
-});
-
-final album = player.state.metadata['album'];
-```
-
 Keys keep the case the file stores them in, so look them up without case:
 
 ```dart
 String? tag(Map<String, String> tags, String key) => tags.entries
-    .where((e) => e.key.toLowerCase() == key)
+    .where((e) => e.key.toLowerCase() == key.toLowerCase())
     .map((e) => e.value)
     .firstOrNull;
+
+player.stream.metadata.listen((tags) {
+  print('Now playing: ${tag(tags, 'title')}, ${tag(tags, 'artist')}');
+});
+
+final album = tag(player.state.metadata, 'album');
 ```
 
 Common keys are `title`, `artist`, `album`, `album_artist`, `date`, `track`, `disc`, `genre`, `comment` and `composer`.

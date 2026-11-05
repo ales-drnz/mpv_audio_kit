@@ -150,16 +150,14 @@ extension EndFileErrorX on EndFileError {
 ///
 /// mpv reports a stream cut short as a normal end
 /// ([MpvEndFileReason.eof] with [error] `0`), for example an HTTP
-/// connection that dropped. See [MpvFileEndedEventX.reachedNaturalEnd].
+/// connection that dropped. [readError] and [skippedSegments] tell such a
+/// cut from the end; [duration] can be an estimate, so comparing it with
+/// [position] does not. See [MpvFileEndedEventX.reachedNaturalEnd].
 ///
 /// ```dart
 /// player.stream.endFile.listen((event) {
-///   final position = event.position;
-///   final duration = event.duration;
 ///   if (event.reason == MpvEndFileReason.eof &&
-///       position != null &&
-///       duration != null &&
-///       duration - position > const Duration(seconds: 5)) {
+///       (event.readError == true || (event.skippedSegments ?? 0) > 0)) {
 ///     print('${event.media?.uri} ended early');
 ///   }
 /// });
@@ -204,12 +202,18 @@ final class MpvFileEndedEvent {
   /// A local file always reads to its end. A response with neither a
   /// length nor chunks, from a server without range support, ends where the
   /// connection closes, and reads as an error even when it was whole.
+  ///
+  /// Always set for an event of the player; `null` only in an event built
+  /// by hand.
   final bool? readError;
 
   /// How many HLS or DASH segments the entry lost to errors since it
   /// opened, whole (one that did not open) or in part (a read that broke
   /// off). `0` for every other format. The segments a live stream drops
   /// because the player fell behind do not count.
+  ///
+  /// Always set for an event of the player; `null` only in an event built
+  /// by hand.
   final int? skippedSegments;
 
   /// Creates a file-ended event with the given [reason] and [error] code,

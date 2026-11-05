@@ -214,12 +214,13 @@ final class Media {
   final Duration? end;
 
   /// The length of this entry, for the waveform and the loudness scan of
-  /// an HTTP stream that cannot seek and does not tell its length: a
-  /// transcode a music server sends without byte ranges, whose catalog
-  /// knows the track's length. With it the analysis decodes the stream
-  /// from mpv's cache as it downloads, and the waveform fills ahead of
-  /// playback and turns final, instead of growing from playback (mpv's
-  /// per-file `waveform-duration-hint`).
+  /// an HTTP stream that cannot seek and does not tell its length, or
+  /// tells only one estimated from the bitrate: a transcode a music server
+  /// sends without byte ranges, whose catalog knows the track's length.
+  /// With it the analysis decodes the stream from mpv's cache as it
+  /// downloads, and the waveform fills ahead of playback and turns final,
+  /// instead of growing from playback (mpv's per-file
+  /// `waveform-duration-hint`).
   ///
   /// The waveform lays out this length. A hint a little off still ends
   /// final: a shorter one leaves the rest of the stream out, a longer one
@@ -227,7 +228,8 @@ final class Media {
   /// source ignores it. Unlike the other per-entry options it does not
   /// keep the entry from opening ahead with [Player.setPrefetchPlaylist].
   ///
-  /// `null` (default) gives none. Must be positive.
+  /// `null` (default) gives none. Must be positive. mpv ignores a hint past
+  /// 5,000,000 s.
   final Duration? waveformDurationHint;
 
   /// Creates an immutable media item for [uri], with optional consumer

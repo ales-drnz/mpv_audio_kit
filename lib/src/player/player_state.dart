@@ -77,11 +77,10 @@ final class PlayerState with _$PlayerState {
   /// stopped reading on an error instead of at its end, as
   /// [MpvFileEndedEvent.readError] tells for an entry that ends with an
   /// event. `null` while [completed] is `false`. It changes with
-  /// [completed]: read
-  /// it when [PlayerStream.completed] turns `true`. A seek at the park
-  /// tries the read again, and the next park tells how it ended then:
-  /// [completed] turns `false` and `true` again for it, also when the seek
-  /// played on to the end at once.
+  /// [completed]: read it when [PlayerStream.completed] turns `true`. A
+  /// seek at the park tries the read again, and the next park tells how it
+  /// ended then: [completed] turns `false` and `true` again for it, also
+  /// when the seek played on to the end at once.
   final bool? readError;
 
   /// The HLS or DASH segments the entry that ended at the end of content

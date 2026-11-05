@@ -2,8 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-/// Every exception a [Player] method throws. Switch on it to handle each
-/// case:
+/// Every exception a [Player] method throws when libmpv or a source fails.
+/// Switch on it to handle each case:
 ///
 /// ```dart
 /// try {
@@ -20,7 +20,9 @@
 ///
 /// Invalid arguments are programming errors and throw [ArgumentError] or
 /// [RangeError] instead, before anything is written to libmpv (a playlist
-/// index is checked against mpv's own playlist count).
+/// index is checked against mpv's own playlist count). On the web,
+/// [Player.setAudioSampleRate] throws a [StateError] for a rate the browser
+/// refuses.
 sealed class PlayerException implements Exception {
   const PlayerException();
 }
@@ -36,13 +38,15 @@ final class PlayerDisposedException extends PlayerException {
   String toString() => 'PlayerDisposedException: the Player has been disposed';
 }
 
-/// The [Player] could not start: libmpv failed to load or initialize.
-/// Every call on that player throws it.
+/// The [Player] could not start: libmpv failed to load or initialize, is
+/// not of the release this package pins, or the page cannot run it. Every
+/// call on that player throws it.
 final class PlayerInitException extends PlayerException {
   /// Creates the exception with the reason bring-up failed.
   const PlayerInitException(this.message);
 
-  /// Why bring-up failed, as reported by the loader or by libmpv.
+  /// Why bring-up failed, as reported by the loader, the release check or
+  /// libmpv.
   final String message;
 
   @override

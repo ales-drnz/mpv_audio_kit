@@ -26,8 +26,8 @@ The demuxer reads the container and buffers its packets. `setDemuxer` sets how m
 
 ```dart
 await player.setDemuxer(const DemuxerSettings(
-  maxBytes: 50 * 1024 * 1024,      // ahead of the playhead, default 150 MiB
-  maxBackBytes: 20 * 1024 * 1024,  // behind the playhead, default 50 MiB
+  maxBytes: 50 * 1024 * 1024,      // ahead of the playhead, default 150 MiB, 64 MiB on the web
+  maxBackBytes: 20 * 1024 * 1024,  // behind the playhead, default 50 MiB, 16 MiB on the web
   readahead: Duration(seconds: 5), // default 1 s
 ));
 ```
@@ -45,8 +45,6 @@ await player.open(Media('https://stream.radio.example.com/live.mp3'));
 await player.setCache(const CacheSettings(mode: Cache.no, pause: false));
 await player.setDemuxer(player.state.demuxer.copyWith(maxBackBytes: 0));
 ```
-
-HLS streams work with the default cache settings.
 
 Set seeking and the HLS variant in the configuration:
 
