@@ -83,6 +83,7 @@ Map<String, Object?> _parkedFirstOfTwo() => {
   'playlist/0/id': 7,
   'eof-reached': 1,
   'pause': 1,
+  'keep-open-parked': 1,
   'playlist/0/filename': '/a.flac',
   'playlist-count': 2,
   'playlist/1/id': 8,
@@ -188,6 +189,7 @@ void main() {
         'playlist/0/id',
         'eof-reached',
         'pause',
+        'keep-open-parked',
         'playlist/0/filename',
         'time-pos',
         'demuxer-read-error',
@@ -250,13 +252,16 @@ void main() {
     final logic = EventLogic(_Reader(values), (e) => out.add(_describe(e)));
     await logic.dispatch(MpvEventStartFile(7));
     await logic.property('pause', MpvFormat.mpvFormatFlag, 1);
+    // The unpause leaves the park.
     values['pause'] = 0;
+    values['keep-open-parked'] = 0;
     await logic.dispatch(MpvEventPlaybackRestart());
     expect(out.last, 'eoc eof=true parked=false last=true');
     expect(logic.holdsValues, isTrue);
     expect(logic.waitSeconds(1), lessThanOrEqualTo(0.05));
     expect(logic.idle(), isNull, reason: 'not due yet');
     values['pause'] = 1;
+    values['keep-open-parked'] = 1;
     await Future<void>.delayed(const Duration(milliseconds: 60));
     await logic.idle();
     expect(out.last, 'eoc eof=true parked=true last=true');
@@ -264,8 +269,22 @@ void main() {
     expect(logic.waitSeconds(1), 1);
   });
 
+  // A pause of the client in the gapless tail: eof-reached and pause are
+  // yes with the output still holding the tail, and keep-open has not
+  // parked (libmpv-r22, keep-open-parked). No end of content.
+  test('a pause in the tail at eof is no park', () async {
+    final values = _parkedFirstOfTwo()..['keep-open-parked'] = 0;
+    final out = <String>[];
+    final logic = EventLogic(_Reader(values), (e) => out.add(_describe(e)));
+    await logic.dispatch(MpvEventStartFile(7));
+    await logic.property('pause', MpvFormat.mpvFormatFlag, 1);
+    expect(out.last, 'eoc eof=true parked=false last=false');
+  });
+
   test('a read at the end, unpaused as mpv sent, is not done again', () async {
-    final values = _parkedFirstOfTwo()..['pause'] = 0;
+    final values = _parkedFirstOfTwo()
+      ..['pause'] = 0
+      ..['keep-open-parked'] = 0;
     final out = <String>[];
     final logic = EventLogic(_Reader(values), (e) => out.add(_describe(e)));
     await logic.dispatch(MpvEventStartFile(7));

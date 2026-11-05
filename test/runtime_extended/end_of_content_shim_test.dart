@@ -459,7 +459,9 @@ void main() {
             'seek',
             afterEvent: MpvEventId.mpvEventPlaybackRestart,
           );
-        final toEnd = player.seek(const Duration(milliseconds: 4999));
+        // To the end itself: a seek short of it leaves audio to play, which
+        // keep-open-parked does not take for a park (libmpv-r22).
+        final toEnd = player.seek(const Duration(seconds: 5));
         await player.play();
         await toEnd;
         expect(
@@ -473,9 +475,11 @@ void main() {
           1,
           reason: 'the seek of play() must go after the restart of the first',
         );
-        expect(
-          completions,
-          containsAllInOrder([false, true, false]),
+        // The reads of the two restarts reach the stream after the reply of
+        // play(), so they are waited for.
+        await waitUntil(
+          () =>
+              containsAllInOrder([false, true, false]).matches(completions, {}),
           reason:
               'the seek to the end landed on the end, read before the seek '
               'of play() left it',

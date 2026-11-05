@@ -52,32 +52,34 @@ void main() {
             .map((m) => m.uri)
             .toList(growable: false);
 
-        // Now shuffle and capture the new order.
-        final newPlaylistFuture = player.stream.playlist
-            .firstWhere(
-              (p) =>
-                  p.items.length == fixtures.length &&
-                  p.items.map((m) => m.uri).toList().toString() !=
-                      originalOrder.toString(),
-            )
-            .timeout(
-              const Duration(seconds: 5),
-              onTimeout: () => player.state.playlist,
-            );
+        List<String> order() => player.state.playlist.items
+            .map((m) => m.uri)
+            .toList(growable: false);
+
+        /// Whether the order leaves [originalOrder] within 2 seconds.
+        Future<bool> reordered() async {
+          final deadline = DateTime.now().add(const Duration(seconds: 2));
+          while (DateTime.now().isBefore(deadline)) {
+            if (order().toString() != originalOrder.toString()) return true;
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          }
+          return false;
+        }
 
         await player.setShuffle(true);
         await shuffleStateFuture;
         expect(player.state.shuffle, isTrue);
 
-        // The order must change. With 5 distinct items, the probability
-        // of the random shuffle producing the original order is 1/120 —
-        // negligible in CI, and a deterministic-fail re-run is vanishingly
-        // unlikely. If this ever flakes consistently, the wrapper isn't
-        // calling playlist-shuffle.
-        final reordered = await newPlaylistFuture;
-        final shuffledOrder = reordered.items
-            .map((m) => m.uri)
-            .toList(growable: false);
+        // The order must change. A random shuffle of 5 items gives the
+        // original order back once in 120 runs (CI run 42047677582), so
+        // it shuffles up to twice more: each setShuffle(true) sends
+        // playlist-shuffle. A wrapper that never sends it still fails.
+        var changed = await reordered();
+        for (var i = 0; i < 2 && !changed; i++) {
+          await player.setShuffle(true);
+          changed = await reordered();
+        }
+        final shuffledOrder = order();
         expect(shuffledOrder.length, originalOrder.length);
         expect(
           shuffledOrder.toSet(),

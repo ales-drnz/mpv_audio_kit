@@ -20,6 +20,9 @@
 // and each target takes its own. A single file is bundled for every
 // target, so it only suits a build for one target and architecture. Local
 // files are bundled as they are, without a checksum.
+//
+// tvOS is the exception: the plugin's tvos/Package.swift links libmpv
+// there, and this hook bundles nothing.
 
 import 'dart:io';
 
@@ -37,28 +40,34 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      '37bdb2ac329a7c7758fc24d82b2d19371a5fad368021783708b5d8131dfa72fb',
+      '9a361858f4cb2a0a0824180cada068b1e5058ed76dd1f72f3078e4f1727ca25f',
   'libmpv_android-armeabi-v7a.so':
-      'b56b31caaf68dc47bd543a1d7dd501171c330b959adca279125fd544e7bc165a',
+      '0c0fc39c4f3efbd7177ab6215e32b55b19b89823e50cbb206623c18b5eeb3fc0',
   'libmpv_android-x86_64.so':
-      '8692b061fe72339725eac9d47efe15ae2b1955caf0b45738dc2ab89394cc0cfc',
+      'e270ac0f533a59d7c0c36f79db0a0258b0df556eb4c7e58c426ab0772913937e',
   'libmpv_ios.xcframework.zip':
-      'cc4d7061611825da9f3ea50fc76024261b5f5a0b5b6b0bc57e6ea77a0ad03444',
+      '61729024e141d7e38282ef6444e2f5026b9534bf9b261290f61d2b93db27209b',
   'libmpv_linux-aarch64.so':
-      '80a70449d2d75bff5a415c3cd73aafa30ff4f3b5e02e0a09231a5ace5c5a1c00',
+      '7eea0985650e02aef875fcdfe2cb8d815278b4789c34dda6cfb05a4584d80491',
   'libmpv_linux-x86_64.so':
-      'c2d71a40dae480732df3945fc597968bb34ab92edab940a103b9703769dec50d',
+      '4ec235f4c0eff8ef356bac85843d9eab46291795b0ccdadafcca91c26b977cb1',
   'libmpv_macos.xcframework.zip':
-      'b2b9e90437101df57c9bdaca3d5886a32f49dce890d4bb50d362efb07e1e623c',
+      '22a5164f3ed74d8d052fd41d60aeefc9dbb54a00f79e2cd4e873aa3d041c640c',
   'libmpv_windows-arm64.dll':
-      'e790ec01017dd10c4bdee3a232264b3674e8a2019c17e3a159fcfa733b9316cf',
+      'b221936242add142a1958afe3daca2c2c45c27e2641f7bfa2a6a73c200561b32',
   'libmpv_windows-x86_64.dll':
-      '3bf66c7f80a7a044c84127a85ec3e0adc2a6ade1a43b0c4a9c0da1429736ee77',
+      'fb5edf6dade4ba18acdfad75cd7b81cfd700e21f4de79e617023395d7109f01c',
 };
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets) return;
+    // flutter-tvos (https://fluttertv.dev) runs the hook but installs no
+    // code asset, so tvos/Package.swift links libmpv into the app and
+    // @Native finds its symbols in the process. Read before
+    // input.config.code, which code_assets before 2.0.0 cannot parse for
+    // an OS it does not know.
+    if (_targetOSName(input) == 'tvos') return;
     final code = input.config.code;
     final target = _Target.of(code);
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
@@ -112,6 +121,14 @@ void main(List<String> args) async {
       ),
     );
   });
+}
+
+/// The target OS as the hook protocol writes it, read off the JSON input.
+String? _targetOSName(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final os = code is Map ? code['target_os'] : null;
+  return os is String ? os : null;
 }
 
 /// Which release asset a target needs, and the file name it is bundled

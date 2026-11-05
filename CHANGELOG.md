@@ -1,3 +1,26 @@
+## [0.6.3] - 5-11-2026
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): asked for tvOS and added it, in the kit and in the libmpv build ([#30](https://github.com/ales-drnz/mpv_audio_kit/issues/30), [#31](https://github.com/ales-drnz/mpv_audio_kit/pull/31), [libmpv-scripts#3](https://github.com/ales-drnz/libmpv-scripts/pull/3)).
+
+### libmpv-r22
+**All platforms**
+- A pause in the last buffer of a file pauses at once, instead of blocking until the output played it out, and `keep-open-parked` tells the park of keep-open from such a pause.
+
+**Android, iOS, Linux, macOS**
+- An analysis turned on once an `fd://` source has loaded reads that source, even when the app has reused the descriptor, and each player of the process keeps its own.
+
+**tvOS**
+- `libmpv_tvos.xcframework.zip`, for Apple TV and its simulator.
+
+### All platforms
+**Fixed**
+- A pause in the last 0.4 s of an entry keeps the rest: `completed` stays false, and `play()` plays the rest instead of starting the entry again.
+
+### tvOS
+**Added**
+- tvOS through [flutter-tvos](https://fluttertv.dev) ([#30](https://github.com/ales-drnz/mpv_audio_kit/issues/30)): `tvos/Package.swift` links `libmpv_tvos.xcframework.zip` of the release, and the build hook bundles nothing there. Tried on the simulator.
+
 ## [0.6.2] - 5-11-2026
 
 ### libmpv-r21

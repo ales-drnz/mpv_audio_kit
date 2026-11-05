@@ -177,6 +177,7 @@ void main() {
         final before = {
           for (final path in [
             'hook/build.dart',
+            'tvos/Package.swift',
             'lib/src/internals/libmpv_release.dart',
           ])
             path: read(path),

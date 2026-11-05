@@ -14,6 +14,11 @@
 # module of the release in web/ and copies the manifest to tool/codegen,
 # whose filter list the effects API follows.
 #
+# tvos/Package.swift gets the release and the checksum of
+# libmpv_tvos.xcframework.zip, which SwiftPM downloads on tvOS in place of
+# the hook. A release without it leaves the checksum empty: tvOS then
+# builds only with a libmpv.xcframework of your own in tvos/.
+#
 # The web module is the release's libmpv_web.zip: its SHA-256 is checked
 # against the manifest, its ABI against webModuleAbi in libmpv_release.dart,
 # and each file the manifest lists under web.files against its own SHA-256
@@ -92,6 +97,15 @@ if missing:
     sys.exit(f"{tag} has no {', '.join(missing)}")
 rows = "\n".join(f"  '{name}': '{manifest['assets'][name]}'," for name in pinned)
 hook = hook[:table.start(1)] + rows + hook[table.end(1):]
+
+# tvOS: the release and checksum lines of tvos/Package.swift.
+tvos_path = f"{root}/tvos/Package.swift"
+tvos = open(tvos_path).read()
+tvos_sha = manifest["assets"].get("libmpv_tvos.xcframework.zip", "")
+tvos, n_release = re.subn(r'^let release = "[^"]*"$', f'let release = "{tag}"', tvos, flags=re.M)
+tvos, n_checksum = re.subn(r'^let checksum = "[0-9a-f]*"$', f'let checksum = "{tvos_sha}"', tvos, flags=re.M)
+if (n_release, n_checksum) != (1, 1):
+    sys.exit("tvos/Package.swift: the release or checksum line not found")
 
 release_path = f"{root}/lib/src/internals/libmpv_release.dart"
 release = open(release_path).read()
@@ -214,13 +228,16 @@ else:
 
 # Every check passed: write.
 open(hook_path, "w").write(hook)
+open(tvos_path, "w").write(tvos)
 open(release_path, "w").write(release)
 web_module.install(files, f"{root}/web")
 web_module.install({COMBINED: web_texts}, f"{root}/web")
 open(f"{root}/lib/src/internals/libmpv_licenses.dart", "w", encoding="utf-8").write(generated)
 web = manifest["web"]
 print(f"hook/build.dart -> {tag} (mpv {manifest['mpv']}, FFmpeg {manifest['ffmpeg']}, "
-      f"{len(pinned)} assets); web/ <- {web['asset']} (ABI {web['abi']}, {len(files)} files); "
+      f"{len(pinned)} assets); tvos/Package.swift -> "
+      f"{'libmpv_tvos.xcframework.zip' if tvos_sha else 'no tvOS libmpv'}; "
+      f"web/ <- {web['asset']} (ABI {web['abi']}, {len(files)} files); "
       f"libmpv_licenses.dart <- {licenses['asset']} ({len(entries)} texts, "
       f"{len(targets)} targets)")
 PY

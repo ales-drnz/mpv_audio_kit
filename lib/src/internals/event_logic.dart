@@ -118,7 +118,7 @@ final class EventLogic {
     }
     if (name == 'pause') {
       _cache.sentPause = value is int ? value : null;
-    } else {
+    } else if (name != 'keep-open-parked') {
       _dispatchProperty(_send, name, format, value, _cache);
     }
     if (_kEndOfContentTriggers.contains(name)) {

@@ -108,8 +108,11 @@ void mak_shim_configure(const char *real_path, int get_us, int set_us) {
 // mak_shim_counter / mak_shim_set. All process-wide, like the stalls.
 static atomic_int hook_add_delay_us; // sleep before mpv_hook_add
 static atomic_int hide_eof;          // flag reads of eof-reached return 0
-static atomic_int freeze_park;       // flag reads of eof-reached, pause return 1
-static atomic_int pause_zero_once;   // the next flag read of pause returns 0
+static atomic_int freeze_park;       // flag reads of eof-reached, pause and
+                                     // keep-open-parked return 1
+static atomic_int pause_zero_once;   // the next flag read of pause returns 0,
+                                     // and the keep-open-parked read after it
+static atomic_int park_zero_pending; // that keep-open-parked read is due
 static atomic_int pause_zero_reads;  // reads pause_zero_once answered
 static atomic_int stall_park_read_us; // sleep after the next pause read of 1
 static atomic_int park_reads_stalled; // reads stall_park_read_us held
@@ -334,6 +337,7 @@ void mak_shim_reset(void) {
   atomic_store(&hide_eof, 0);
   atomic_store(&freeze_park, 0);
   atomic_store(&pause_zero_once, 0);
+  atomic_store(&park_zero_pending, 0);
   atomic_store(&pause_zero_reads, 0);
   atomic_store(&stall_park_read_us, 0);
   atomic_store(&park_reads_stalled, 0);
@@ -628,13 +632,20 @@ int mpv_get_property(void *h, const char *n, int fmt, void *out) {
     *(int *)out = 0;
   }
   if (rc >= 0 && fmt == 3 && atomic_load(&freeze_park) &&
-      (strcmp(n, "eof-reached") == 0 || strcmp(n, "pause") == 0)) {
+      (strcmp(n, "eof-reached") == 0 || strcmp(n, "pause") == 0 ||
+       strcmp(n, "keep-open-parked") == 0)) {
     *(int *)out = 1;
   }
   if (rc >= 0 && fmt == 3 && strcmp(n, "pause") == 0 &&
       atomic_exchange(&pause_zero_once, 0)) {
     *(int *)out = 0;
     atomic_fetch_add(&pause_zero_reads, 1);
+    // An unpause leaves the park: keep-open-parked reads 0 with it.
+    atomic_store(&park_zero_pending, 1);
+  }
+  if (rc >= 0 && fmt == 3 && strcmp(n, "keep-open-parked") == 0 &&
+      atomic_exchange(&park_zero_pending, 0)) {
+    *(int *)out = 0;
   }
   // The read of a park, which the event isolate makes only at the end,
   // answers late: the read is done, the pump is not.

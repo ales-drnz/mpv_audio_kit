@@ -101,6 +101,25 @@ void main() {
     expect(release, anyOf('libmpv-$libmpvRelease', r'libmpv-$libmpvRelease'));
   });
 
+  // tvOS takes libmpv from tvos/Package.swift, not from the hook: its
+  // release is the hook's, and from r22, the first with
+  // libmpv_tvos.xcframework.zip, its checksum is set.
+  test('tvos/Package.swift links the release of libmpvRelease', () {
+    final package = File('$root/tvos/Package.swift').readAsStringSync();
+    final release = RegExp(
+      r'^let release = "([^"]*)"$',
+      multiLine: true,
+    ).firstMatch(package)?.group(1);
+    final checksum = RegExp(
+      r'^let checksum = "([^"]*)"$',
+      multiLine: true,
+    ).firstMatch(package)?.group(1);
+    expect(release, 'libmpv-$libmpvRelease');
+    if (int.parse(libmpvRelease.substring(1)) >= 22) {
+      expect(checksum, matches(RegExp(r'^[0-9a-f]{64}$')));
+    }
+  });
+
   test('test_app keeps an equal copy of the release gate', () {
     final host = File('$root/test/_helpers/release_gate.dart');
     final device = File(

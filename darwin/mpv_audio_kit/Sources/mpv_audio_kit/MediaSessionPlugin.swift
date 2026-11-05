@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-#if os(iOS)
+#if os(iOS) || os(tvOS)
 import AVFoundation
 import Flutter
 import UIKit
@@ -18,10 +18,11 @@ private typealias PlatformImage = NSImage
 import Foundation
 import MediaPlayer
 
-/// Shared Apple (iOS + macOS) bridge: publishes the Dart-side `Player`
-/// to the OS Now Playing surface (lockscreen / Control Center / CarPlay)
-/// and forwards `MPRemoteCommandCenter` taps back to Dart. iOS and macOS
-/// build this same file (sharedDarwinSource in pubspec.yaml).
+/// Shared Apple (iOS, tvOS and macOS) bridge: publishes the Dart-side
+/// `Player` to the OS Now Playing surface (lockscreen / Control Center /
+/// CarPlay) and forwards `MPRemoteCommandCenter` taps back to Dart. iOS
+/// and macOS build this same file (sharedDarwinSource in pubspec.yaml),
+/// tvOS through tvos/Package.swift; tvOS takes the iOS branches.
 ///
 /// A renderer, not a state machine: Dart owns playback truth and pushes
 /// resolved snapshots; each push reassigns a fresh `nowPlayingInfo`. The
@@ -39,7 +40,7 @@ import MediaPlayer
 /// - **Scrub freeze**: publish the target with `rate = 0` so the slider
 ///   pins there while the engine seeks; cleared by the `updatePlayback`
 ///   that lands on the target (backstopped by a timer).
-/// - **iOS only**: activate `AVAudioSession` `.playback` (needed for
+/// - **iOS and tvOS only**: activate `AVAudioSession` `.playback` (needed for
 ///   background + Now Playing) and react to interruptions per the
 ///   consumer's `interruptionPolicy`; headphone unplug always pauses
 ///   (consumer must declare `UIBackgroundModes: audio`). No-op on macOS.
@@ -94,7 +95,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   // that redundant pushes coalesce.
   internal var publishCount: Int = 0
 
-  #if os(iOS)
+  #if os(iOS) || os(tvOS)
   private var audioSessionWired = false
   // True once `setActive(true)` has succeeded — `setActive` is blocking
   // mediaserverd IPC meant for activation transitions, so only call it on the
@@ -119,7 +120,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let instance = MediaSessionPlugin()
 
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     let messenger = registrar.messenger()
     #elseif os(macOS)
     let messenger = registrar.messenger
@@ -184,7 +185,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         self.currentConfig = cfg
         if self.enabled {
           self.configureCommands()
-          #if os(iOS)
+          #if os(iOS) || os(tvOS)
           self.applyAudioSessionConfig()
           #endif
         }
@@ -274,7 +275,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     MediaSessionPlugin.currentInstance = self
     installCommandTargetsIfNeeded()
     configureCommands()
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     applyAudioSessionConfig()
     #endif
     publishNowPlaying()
@@ -306,7 +307,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       MediaSessionPlugin.currentInstance = nil
     }
 
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     teardownAudioSession()
     #endif
 
@@ -320,8 +321,8 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     lastPublishedPlaybackState = .unknown
   }
 
-  #if os(iOS)
-  // ── AVAudioSession (iOS-only) ─────────────────────────────────────
+  #if os(iOS) || os(tvOS)
+  // ── AVAudioSession (iOS and tvOS) ─────────────────────────────────
 
   /// Configures the `.playback` category and registers the interruption
   /// and route-change observers. It does not activate the session: this
@@ -601,7 +602,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
 
     let playing = (currentPlayback["playing"] as? Bool) ?? false
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     // Activate on the first playing push, so enabling the session at app
     // launch does not stop another app's audio. mpv's output has usually
     // activated it already: it does so when it opens, even paused.
@@ -749,7 +750,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private static func resizedArtwork(_ image: PlatformImage,
                                      to size: CGSize) -> PlatformImage
   {
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     let format = UIGraphicsImageRendererFormat.default()
     format.scale = 1
     format.opaque = false
@@ -1067,7 +1068,7 @@ public class MediaSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     if let v = info[MPNowPlayingInfoPropertyIsLiveStream] as? NSNumber {
       out["isLiveStream"] = v.boolValue
     }
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     // The category and mode of the shared session, which mpv's audio output
     // sets too (libmpv-r17 set the MoviePlayback mode, F187).
     let session = AVAudioSession.sharedInstance()
