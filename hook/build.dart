@@ -20,6 +20,9 @@
 // and each target takes its own. A single file is bundled for every
 // target, so it only suits a build for one target and architecture. Local
 // files are bundled as they are, without a checksum.
+//
+// tvOS is the exception: the plugin's tvos/Package.swift links libmpv
+// there, and this hook bundles nothing.
 
 import 'dart:io';
 
@@ -59,6 +62,12 @@ const _sha256 = <String, String>{
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets) return;
+    // flutter-tvos (https://fluttertv.dev) runs the hook but installs no
+    // code asset, so tvos/Package.swift links libmpv into the app and
+    // @Native finds its symbols in the process. Read before
+    // input.config.code, which code_assets before 2.0.0 cannot parse for
+    // an OS it does not know.
+    if (_targetOSName(input) == 'tvos') return;
     final code = input.config.code;
     final target = _Target.of(code);
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
@@ -112,6 +121,14 @@ void main(List<String> args) async {
       ),
     );
   });
+}
+
+/// The target OS as the hook protocol writes it, read off the JSON input.
+String? _targetOSName(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final os = code is Map ? code['target_os'] : null;
+  return os is String ? os : null;
 }
 
 /// Which release asset a target needs, and the file name it is bundled
