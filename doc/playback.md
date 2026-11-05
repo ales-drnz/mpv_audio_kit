@@ -184,7 +184,7 @@ await player.setAbLoopB(const Duration(seconds: 45));
 await player.setAbLoopCount(3); // the section plays 4 times, null repeats forever
 ```
 
-The points apply to the current entry and reset when another one loads.
+The points apply to the current entry and reset when another one loads. A point set with no file loaded applies to every file.
 
 ### Speed, pitch and volume
 
@@ -199,7 +199,7 @@ await player.setSystemVolume(70); // the driver's volume, where it has one
 
 ### Resume points
 
-To resume audiobooks and podcasts, set `watchLaterDir`. The player then saves where a file stopped and restores it on the next open.
+To resume audiobooks and podcasts, call `writeResumeConfig`, and the next open of the file starts there. On mobile, set `watchLaterDir` to a writable folder.
 
 ```dart
 final player = Player(

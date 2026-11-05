@@ -12,9 +12,9 @@ final class DemuxerSettings {
   /// Maximum bytes the demuxer is allowed to cache ahead of the playhead.
   /// Default 150 MiB (mpv's `--demuxer-max-bytes=150MiB`). A player on the
   /// web starts at 64 MiB, since every player of the page shares one
-  /// memory. Forwarded as a raw
-  /// byte count, so sub-MiB precision is preserved (mpv accepts plain integers
-  /// and SI or IEC suffixes interchangeably).
+  /// memory. Forwarded as a raw byte count, so sub-MiB precision is
+  /// preserved (mpv accepts plain integers and SI or IEC suffixes
+  /// interchangeably).
   final int maxBytes;
 
   /// Maximum bytes of already-played content kept buffered for instant
@@ -30,7 +30,8 @@ final class DemuxerSettings {
   final Duration readahead;
 
   /// Creates a demuxer configuration. Each default mirrors the corresponding
-  /// mpv property default.
+  /// mpv property default. On the web these are above the 64 and 16 MiB a
+  /// player starts with.
   const DemuxerSettings({
     this.maxBytes = 150 * 1024 * 1024,
     this.maxBackBytes = 50 * 1024 * 1024,

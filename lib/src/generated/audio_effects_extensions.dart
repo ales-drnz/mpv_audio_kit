@@ -43,7 +43,7 @@ final class AechoTap {
 }
 
 /// Typed access over the parallel pipe-separated CSVs lavfi's
-/// `aecho` packs as `delays`/`decays`.
+/// `aecho` packs as `delays` and `decays`.
 ///
 /// The two CSVs are positional: the Nth delay pairs with the Nth
 /// decay. Mismatched lengths are clamped to the shorter list: the
@@ -138,7 +138,7 @@ final class ChorusVoice {
 }
 
 /// Typed access over the four parallel pipe-separated CSVs
-/// (`delays`/`decays`/`depths`/`speeds`) lavfi's `chorus` exposes.
+/// (`delays`, `decays`, `depths` and `speeds`) lavfi's `chorus` exposes.
 ///
 /// The four lists are positional: the Nth delay, decay, depth and speed
 /// make one voice. [voices] reads as many voices as the shortest list
@@ -248,8 +248,8 @@ extension CompandPointsX on CompandEffect {
     return out;
   }
 
-  /// Returns a copy whose [points] reflects [points] (ascending
-  /// input order).
+  /// Returns a copy whose `points` string holds [points], in ascending
+  /// input order.
   ///
   /// Throws an [ArgumentError] when [points] is empty: compand needs one
   /// point. Turn the effect off with `enabled: false` instead.
@@ -316,7 +316,7 @@ final class CompandEnvelope {
 }
 
 /// Typed access over the parallel pipe-separated CSVs lavfi's
-/// `compand` packs as `attacks`/`decays`.
+/// `compand` packs as `attacks` and `decays`.
 ///
 /// The two CSVs are positional per-channel: the Nth attack pairs
 /// with the Nth decay. Mismatched lengths clamp to the shorter list.
@@ -750,7 +750,7 @@ final class AiirChannel {
 }
 
 /// Typed access over `aiir`'s three parallel string parameters
-/// (`gains`/`k`, `poles`/`p`, `zeros`/`z`). The Nth `|`-section of
+/// (`gains` or `k`, `poles` or `p`, `zeros` or `z`). The Nth `|`-section of
 /// each string belongs to the Nth output channel; coefficient lists
 /// within a channel are space-separated.
 extension AiirChannelsX on AiirEffect {

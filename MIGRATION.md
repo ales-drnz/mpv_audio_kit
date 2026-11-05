@@ -17,6 +17,20 @@ at libmpv-r21: its `mpv-version` ends with `+r21`.
 A GPL build with Rubber Band is built from the same release, with
 `LIBMPV_GPL=1`.
 
+## Behavior changes
+
+- `AechoEffect.withTaps`, `ChorusEffect.withVoices` and
+  `CompandEffect.withTransferPoints` throw `ArgumentError` on an empty
+  list, instead of returning a copy that mpv refuses. Turn the effect off
+  with `enabled: false`.
+- A key of `params` that is no option name throws `ArgumentError` before
+  the state changes. Before, the state held the new chain while mpv kept
+  the old one.
+- On the web the demuxer cache starts at 64 MiB ahead and 16 MiB behind,
+  in place of 150 and 50. `setDemuxer` sets other sizes.
+- On the web `setAudioSampleRate` throws `StateError` for a rate the
+  browser refuses, and the output stays at the rate before.
+
 # Migrating to 0.6.0
 
 0.6.0 adds the web and needs libmpv-r20, which the build hook bundles. Most
@@ -70,7 +84,7 @@ await player.sendRawCommand(['change-list', 'stream-lavf-o', 'add', 'timeout=500
 An app that bundles its own libmpv through the build hook's `libmpv` user
 define gets a warning on `internalLog` when it is older than libmpv-r20 or
 lacks one of its patches, naming what each missing patch costs. It still
-plays.
+plays. 0.6.2 refuses such a libmpv: see Migrating to 0.6.2.
 
 ## RubberbandEffect
 
@@ -112,8 +126,8 @@ on `stream.error`.
   ended, instead of leaving them to `state`, which has already moved on in
   a playlist. Its `readError` and `skippedSegments`, and the same fields of
   `PlayerState` at the park, tell an entry cut short by a read error.
-- An app on the web serves its page cross-origin isolated (README, section
-  15). Nothing changes on the other platforms.
+- An app on the web serves its page cross-origin isolated (the Web topic,
+  doc/web.md). Nothing changes on the other platforms.
 
 # Migrating to 0.5.0
 

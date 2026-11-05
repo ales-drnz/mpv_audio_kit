@@ -340,8 +340,8 @@ abstract interface class PlayerApi {
   /// Sets the policy for scanning sidecar cover-art files.
   Future<void> setCoverArtAuto(Cover cover);
 
-  /// Forces the output sample rate in Hz; pass mpv's auto value to let it
-  /// choose.
+  /// Sets the target output sample rate in Hz, `0` for mpv's choice. See
+  /// [Player.setAudioSampleRate].
   Future<void> setAudioSampleRate(int rate);
 
   /// Forces the output sample format; [Format.auto] lets mpv choose.

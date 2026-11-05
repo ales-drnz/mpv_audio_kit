@@ -23,8 +23,9 @@ const List<DataClass> classes = [
     library: 'lib/src/player/player_state.dart',
     name: 'PlayerState',
     copyWithDoc:
-        '/// Returns a copy of this state with the given fields replaced; '
-        'omitted\n/// fields keep their current value.',
+        '/// Returns a copy with the given fields replaced. Pass `null` for a\n'
+        '/// nullable field to clear it; omitted fields keep their current '
+        'value.',
   ),
   (
     library: 'lib/src/models/mpv_track.dart',

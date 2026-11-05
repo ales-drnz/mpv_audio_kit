@@ -4,7 +4,7 @@ Draw a spectrum, a waveform or a level meter, and measure loudness.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/spectrum_pipeline.png" width="100%" alt="Spectrum pipeline from output samples to stream.pcm and stream.fft">
 
-There is nothing to turn on. Each stream on this page starts on the first `listen()` and stops on the last cancel.
+Each stream on this page starts on the first `listen()` and stops on the last cancel. The live meter, `loudnessMeter`, also needs an `Ebur128Effect(metadata: true)` in the chain.
 
 The analysis is shared by the whole process. With several players, `fft` and `pcm` show the audio of the last output, and two players tapping the same stage read one mixed feed.
 
@@ -38,7 +38,7 @@ player.setSpectrum(const SpectrumSettings(
 player.updateSpectrum((s) => s.copyWith(attackSmoothing: 0.7));
 ```
 
-`attackSmoothing` sets how fast a band rises, and `releaseSmoothing` how fast it falls. The smoothing steps once per FFT, so a shorter `emitInterval` or a larger `overlapFactor` also makes the bands move faster. `fftSize`, `window`, `bandLowHz` and `bandHighHz` have defaults that suit a bar visualizer.
+`attackSmoothing` sets how fast a band rises, and `releaseSmoothing` how fast it falls. The smoothing steps once per FFT, so a shorter `emitInterval` or a larger `overlapFactor` also makes the bands move faster. `fftSize` is 2048, `window` Hann and the bands span 20 Hz to 20 kHz by default.
 
 ## Samples
 

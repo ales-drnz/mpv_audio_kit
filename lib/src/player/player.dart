@@ -94,7 +94,8 @@ part 'mixins/player_pcm.part.dart';
 part 'mixins/player_playback.part.dart';
 part 'mixins/player_playlist.part.dart';
 
-/// A high-performance audio player powered by libmpv.
+/// An audio player on libmpv: a queue, effects, analysis and the OS media
+/// session.
 ///
 /// Implements [PlayerApi] so test code can mock the player without
 /// dragging in the FFI handle and event isolate

@@ -7,8 +7,8 @@ part of '../player/player_state.dart';
 mixin _$PlayerState {
   PlayerState get _self => this as PlayerState;
 
-  /// Returns a copy of this state with the given fields replaced; omitted
-  /// fields keep their current value.
+  /// Returns a copy with the given fields replaced. Pass `null` for a
+  /// nullable field to clear it; omitted fields keep their current value.
   PlayerState copyWith({
     Playlist? playlist,
     bool? playing,

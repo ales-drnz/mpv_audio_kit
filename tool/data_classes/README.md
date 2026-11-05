@@ -1,7 +1,7 @@
 # Data classes
 
 Generates the `copyWith`, `==` and `hashCode` of the data classes of the
-package, so no hand keeps 98 fields in step three times:
+package, so no hand keeps 96 and 30 fields in step three times:
 
     dart pub get -C tool/data_classes
     dart tool/data_classes/bin/data_classes.dart

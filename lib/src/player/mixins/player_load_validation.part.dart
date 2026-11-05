@@ -85,9 +85,7 @@ String loadfileOptions(Media media) {
   final end = media.end;
   if (end != null) parts.add('end=${durationToOption(end)}');
 
-  // Read by the analysis only. A libmpv without it logs an error for every
-  // entry that carries it, and its prefetch skips an entry whose hint
-  // differs.
+  // Read by the analysis only.
   final hint = media.waveformDurationHint;
   if (hint != null) {
     parts.add('waveform-duration-hint=${durationToOption(hint)}');

@@ -183,8 +183,7 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   final double? timePos;
 
   /// `demuxer-read-error` read at the park: whether the file stopped on a
-  /// read error. `null` when the read failed, as on a libmpv without the
-  /// property. Read only when [parked].
+  /// read error. `null` when the read failed. Read only when [parked].
   final bool? readError;
 
   /// `demuxer-skipped-segments` read at the park, `null` as for

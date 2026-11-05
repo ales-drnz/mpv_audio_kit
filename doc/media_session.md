@@ -41,7 +41,7 @@ MediaSession(artwork: MediaSessionArtwork.custom(cover));       // your own Cove
 const MediaSession(artwork: MediaSessionArtwork.none);
 ```
 
-On native platforms the package downloads a network cover and hands the OS the bytes, so a URL with credentials never reaches the OS. The download always verifies the certificate and refuses a redirect from `https` to `http`. It skips images over 20 MB.
+On native platforms the package downloads a network cover and hands the OS the bytes, so a URL with credentials never reaches the OS. The download always verifies the certificate and refuses a redirect from `https` to `http`. It skips images over 20 MiB.
 
 | Scheme | Where |
 | :--- | :--- |
@@ -87,9 +87,7 @@ const MediaSession(
 
 The intervals and `supportedPlaybackRates` apply only with their action in the set. In an audiobook app, for example, map next and previous to a 30 s skip.
 
-A platform leaves out the actions it does not draw. A lock screen shows 3 or 4.
-
-What each system draws varies by OS version. The table shows what the package registers.
+A platform leaves out the actions it does not draw. The table shows what the package registers.
 
 | Action | iOS | macOS | Android | Windows | Linux |
 | :--- | :--: | :--: | :--: | :--: | :--: |
