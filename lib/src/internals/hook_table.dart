@@ -40,10 +40,10 @@ class HookTable {
   /// own.
   final timeouts = <String, Duration>{};
 
-  // The pending events, the table's id to mpv's: authoritative for
-  // `Player.continueHook`, whose call for an event no longer here never
-  // reaches mpv.
-  final _pending = <int, int>{};
+  // The pending events, the table's id to mpv's and the hook name:
+  // authoritative for `Player.continueHook`, whose call for an event no
+  // longer here never reaches mpv.
+  final _pending = <int, (int, String)>{};
   final _timers = <int, Timer>{};
   int _lastId = 0;
 
@@ -51,14 +51,14 @@ class HookTable {
   /// with the deadline of [name] armed.
   int add(int mpvId, String name) {
     final id = ++_lastId;
-    _pending[id] = mpvId;
+    _pending[id] = (mpvId, name);
     final timeout = timeouts[name];
     if (timeout != null) {
       _timers[id] = Timer(timeout, () {
         _timers.remove(id);
         // A continue that came first took the event out: nothing to do.
         final pending = _pending.remove(id);
-        if (pending != null) onTimeout(id, name, timeout, pending);
+        if (pending != null) onTimeout(id, name, timeout, pending.$1);
       });
     }
     return id;
@@ -67,16 +67,17 @@ class HookTable {
   /// Whether the event [id] still waits for its continue.
   bool isPending(int id) => _pending.containsKey(id);
 
-  /// Takes the event [id] out, with its deadline: mpv's id, or `null` when
-  /// it was continued already.
-  int? take(int id) {
-    final mpvId = _pending.remove(id);
-    if (mpvId != null) _timers.remove(id)?.cancel();
-    return mpvId;
+  /// Takes the event [id] out, with its deadline: mpv's id and the hook
+  /// name, or `null` when it was continued already.
+  (int, String)? take(int id) {
+    final event = _pending.remove(id);
+    if (event != null) _timers.remove(id)?.cancel();
+    return event;
   }
 
-  /// Takes every pending event out and cancels the deadlines: mpv's ids.
-  List<int> takeAll() {
+  /// Takes every pending event out and cancels the deadlines: mpv's ids
+  /// and the hook names.
+  List<(int, String)> takeAll() {
     for (final timer in _timers.values) {
       timer.cancel();
     }

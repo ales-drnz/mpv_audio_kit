@@ -11,8 +11,7 @@ part of '../player.dart';
 /// abstract signatures on `_PlayerBase`.
 mixin _LoadValidationModule on _PlayerBase {
   @override
-  String _buildLoadfileOptions(Media media) =>
-      loadfileOptions(media, durationHint: _durationHint);
+  String _buildLoadfileOptions(Media media) => loadfileOptions(media);
 
   @override
   void _validateLoadOptions(Media media) => validateLoadOptions(media);
@@ -34,8 +33,7 @@ mixin _LoadValidationModule on _PlayerBase {
 
 /// Builds the `loadfile` `<options>` argument from a [Media]'s
 /// `httpHeaders`, `httpChunkSize`, `streamLavfOptions`, `demuxerLavfOptions`,
-/// `start`, `end` and `waveformDurationHint` (left out without
-/// [durationHint], for a libmpv that lacks it), and the raw audio demuxer
+/// `start`, `end` and `waveformDurationHint`, and the raw audio demuxer
 /// of a live PCM source. Each
 /// value is length-prefixed
 /// (`%N%`) so the outer option-list parser doesn't split on the commas
@@ -45,7 +43,7 @@ mixin _LoadValidationModule on _PlayerBase {
 /// which would inject into the HTTP request; and `:` in keys.
 /// Returns `''` when the media carries none.
 @visibleForTesting
-String loadfileOptions(Media media, {bool durationHint = true}) {
+String loadfileOptions(Media media) {
   _checkPlayRange(media);
   _checkDurationHint(media);
   final parts = <String>[];
@@ -58,7 +56,7 @@ String loadfileOptions(Media media, {bool durationHint = true}) {
   if (headers != null && headers.isNotEmpty) {
     for (final e in headers.entries) {
       _validateHeaderKey(e.key);
-      _validateHeaderValue(e.value);
+      _validateHeaderValue(e.key, e.value);
     }
     final joined = headers.entries.map((e) => '${e.key}: ${e.value}').join(',');
     parts.add('http-header-fields=%${utf8.encode(joined).length}%$joined');
@@ -87,11 +85,9 @@ String loadfileOptions(Media media, {bool durationHint = true}) {
   final end = media.end;
   if (end != null) parts.add('end=${durationToOption(end)}');
 
-  // Read by the analysis only. A libmpv without it logs an error for every
-  // entry that carries it, and its prefetch skips an entry whose hint
-  // differs.
+  // Read by the analysis only.
   final hint = media.waveformDurationHint;
-  if (hint != null && durationHint) {
+  if (hint != null) {
     parts.add('waveform-duration-hint=${durationToOption(hint)}');
   }
 
@@ -211,7 +207,7 @@ void validateLoadOptions(Media media) {
   if (headers != null && headers.isNotEmpty) {
     for (final e in headers.entries) {
       _validateHeaderKey(e.key);
-      _validateHeaderValue(e.value);
+      _validateHeaderValue(e.key, e.value);
     }
   }
   final chunk = media.httpChunkSize;
@@ -237,7 +233,8 @@ final RegExp _kForbiddenInLavfOption = RegExp(r'[\r\n,\x00]');
 /// A `stream-lavf-o` or `demuxer-lavf-o` entry sits in a comma-separated
 /// list, so its key must be non-empty and the key and value free of comma,
 /// CR, LF and NUL. [name] is the [Media] field it came from. Mirrors the
-/// header validators.
+/// header validators. The error names the key only: a value can carry
+/// credentials, as [Media.toString] says.
 void _validateLavfOption(String key, String value, String name) {
   if (key.isEmpty) {
     throw ArgumentError.value(key, '$name key', 'must not be empty');
@@ -245,9 +242,9 @@ void _validateLavfOption(String key, String value, String name) {
   if (_kForbiddenInLavfOption.hasMatch(key) ||
       _kForbiddenInLavfOption.hasMatch(value)) {
     throw ArgumentError.value(
-      '$key=$value',
+      key,
       name,
-      'must not contain CR, LF, NUL, or comma',
+      'must not contain CR, LF, NUL, or comma in its key or value',
     );
   }
 }
@@ -265,12 +262,13 @@ void _validateHeaderKey(String key) {
   }
 }
 
-void _validateHeaderValue(String value) {
+/// The error names the header, not its value, which often holds a token.
+void _validateHeaderValue(String key, String value) {
   if (_kForbiddenInHeaderValue.hasMatch(value)) {
-    throw ArgumentError.value(
-      value,
+    throw ArgumentError(
+      'the value of $key must not contain CR, LF, NUL, or comma (would '
+          'split or inject the HTTP request)',
       'header value',
-      'must not contain CR, LF, NUL, or comma (would split or inject the HTTP request)',
     );
   }
 }

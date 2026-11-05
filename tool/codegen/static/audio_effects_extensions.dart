@@ -45,7 +45,7 @@ final class AechoTap {
 }
 
 /// Typed access over the parallel pipe-separated CSVs lavfi's
-/// `aecho` packs as `delays`/`decays`.
+/// `aecho` packs as `delays` and `decays`.
 ///
 /// The two CSVs are positional: the Nth delay pairs with the Nth
 /// decay. Mismatched lengths are clamped to the shorter list: the
@@ -64,8 +64,13 @@ extension AechoTapsX on AechoEffect {
   }
 
   /// Returns a copy whose [delays] and [decays] reflect [taps].
+  ///
+  /// Throws an [ArgumentError] when [taps] is empty: aecho needs one tap.
+  /// Turn the effect off with `enabled: false` instead.
   AechoEffect withTaps(List<AechoTap> taps) {
-    if (taps.isEmpty) return copyWith(delays: '0', decays: '0');
+    if (taps.isEmpty) {
+      throw ArgumentError.value(taps, 'taps', 'aecho needs at least one tap');
+    }
     return copyWith(
       delays: taps.map((t) => t.delayMs.toStringAsFixed(2)).join('|'),
       decays: taps.map((t) => t.decay.toStringAsFixed(3)).join('|'),
@@ -135,7 +140,7 @@ final class ChorusVoice {
 }
 
 /// Typed access over the four parallel pipe-separated CSVs
-/// (`delays`/`decays`/`depths`/`speeds`) lavfi's `chorus` exposes.
+/// (`delays`, `decays`, `depths` and `speeds`) lavfi's `chorus` exposes.
 ///
 /// The four lists are positional: the Nth delay, decay, depth and speed
 /// make one voice. [voices] reads as many voices as the shortest list
@@ -168,9 +173,16 @@ extension ChorusVoicesX on ChorusEffect {
   }
 
   /// Returns a copy whose four CSVs reflect [voices].
+  ///
+  /// Throws an [ArgumentError] when [voices] is empty: chorus needs one
+  /// voice. Turn the effect off with `enabled: false` instead.
   ChorusEffect withVoices(List<ChorusVoice> voices) {
     if (voices.isEmpty) {
-      return copyWith(delays: '', decays: '', depths: '', speeds: '');
+      throw ArgumentError.value(
+        voices,
+        'voices',
+        'chorus needs at least one voice',
+      );
     }
     String join(double Function(ChorusVoice) get) =>
         voices.map((v) => get(v).toStringAsFixed(3)).join('|');
@@ -238,10 +250,19 @@ extension CompandPointsX on CompandEffect {
     return out;
   }
 
-  /// Returns a copy whose [points] reflects [points] (ascending
-  /// input order). Empty input clears the transfer function.
+  /// Returns a copy whose `points` string holds [points], in ascending
+  /// input order.
+  ///
+  /// Throws an [ArgumentError] when [points] is empty: compand needs one
+  /// point. Turn the effect off with `enabled: false` instead.
   CompandEffect withTransferPoints(List<CompandPoint> points) {
-    if (points.isEmpty) return copyWith(points: '');
+    if (points.isEmpty) {
+      throw ArgumentError.value(
+        points,
+        'points',
+        'compand needs at least one point',
+      );
+    }
     final sorted = [...points]..sort((a, b) => a.inDb.compareTo(b.inDb));
     return copyWith(
       points: sorted
@@ -297,7 +318,7 @@ final class CompandEnvelope {
 }
 
 /// Typed access over the parallel pipe-separated CSVs lavfi's
-/// `compand` packs as `attacks`/`decays`.
+/// `compand` packs as `attacks` and `decays`.
 ///
 /// The two CSVs are positional per-channel: the Nth attack pairs
 /// with the Nth decay. Mismatched lengths clamp to the shorter list.
@@ -731,7 +752,7 @@ final class AiirChannel {
 }
 
 /// Typed access over `aiir`'s three parallel string parameters
-/// (`gains`/`k`, `poles`/`p`, `zeros`/`z`). The Nth `|`-section of
+/// (`gains` or `k`, `poles` or `p`, `zeros` or `z`). The Nth `|`-section of
 /// each string belongs to the Nth output channel; coefficient lists
 /// within a channel are space-separated.
 extension AiirChannelsX on AiirEffect {

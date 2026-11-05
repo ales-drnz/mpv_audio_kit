@@ -629,6 +629,12 @@ void main() {
           );
           await parked;
           expect(player.state.readError, isTrue, reason: server.describe());
+          // kit-core-4: the new value comes with completed, as at any end.
+          final completions = <bool>[];
+          final sub = player.stream.completed.listen(completions.add);
+          addTearDown(sub.cancel);
+          await Future<void>.delayed(Duration.zero);
+          completions.clear();
           shim().set('freeze_park', 1);
           server.comeBack();
           await player.seek(const Duration(seconds: 3));
@@ -650,6 +656,10 @@ void main() {
             () => player.state.readError == false,
             reason: 'the park at the real end reads how it ended again',
           );
+          expect(completions, [
+            false,
+            true,
+          ], reason: 'completed turns false and true again with the new read');
         });
       });
     },

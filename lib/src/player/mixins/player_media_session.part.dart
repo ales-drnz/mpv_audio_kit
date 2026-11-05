@@ -203,20 +203,23 @@ mixin _MediaSessionModule on _PlayerBase {
     switch (command) {
       case MediaSessionCommandPlay():
         _applySessionCommand((this as Player).play());
+      // Pause and stop as the session's, not the app's: the pause of a
+      // focus loss must keep the resume of the call armed, and a
+      // controller's disarms it on the native side already.
       case MediaSessionCommandPause():
-        _applySessionCommand((this as Player).pause());
+        _applySessionCommand((this as Player)._pause());
       case MediaSessionCommandPlayPause():
         // Resolve against the INTENT axis, not actual output: `_state.playing`
         // (core-idle inverted) toggles transiently on every seek and buffer, so
         // a single-button PlayPause landing during a transient would flip the
         // wrong way. The OS button itself binds to `playWhenReady`; match it.
         if (_state.playWhenReady) {
-          _applySessionCommand((this as Player).pause());
+          _applySessionCommand((this as Player)._pause());
         } else {
           _applySessionCommand((this as Player).play());
         }
       case MediaSessionCommandStop():
-        _applySessionCommand((this as Player).stop());
+        _applySessionCommand((this as Player)._stop());
       case MediaSessionCommandNext():
         if (shouldAutoApplyPlaylistNav(
           autoApplyPlaylistNavigation:

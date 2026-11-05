@@ -266,6 +266,11 @@ void main() {
       const s = AechoEffect(delays: '100|200|300', decays: '0.5|0.3');
       expect(s.taps.length, 2);
     });
+
+    // F55: aecho refuses a delay of 0, the filter an empty list wrote.
+    test('no taps is an ArgumentError', () {
+      expect(() => const AechoEffect().withTaps([]), throwsArgumentError);
+    });
   });
 
   group('ChorusVoicesX', () {
@@ -302,6 +307,12 @@ void main() {
         1,
         reason: 'shortest CSV (depths, length 1) wins',
       );
+    });
+
+    // F55: chorus refuses empty lists at init.
+    test('no voices is an ArgumentError', () {
+      const s = ChorusEffect(delays: '', decays: '', speeds: '', depths: '');
+      expect(() => s.withVoices([]), throwsArgumentError);
     });
   });
 
@@ -524,6 +535,14 @@ void main() {
       expect(round.length, 3);
       // Sorted ascending by inDb.
       expect(round.map((p) => p.inDb).toList(), [-60, -20, 0]);
+    });
+
+    // F55: compand refuses empty points when its output is set up.
+    test('no points is an ArgumentError', () {
+      expect(
+        () => const CompandEffect().withTransferPoints([]),
+        throwsArgumentError,
+      );
     });
   });
 

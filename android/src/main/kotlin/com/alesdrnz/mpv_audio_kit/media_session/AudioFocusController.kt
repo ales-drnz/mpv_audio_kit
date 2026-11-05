@@ -22,24 +22,19 @@ import android.os.Handler
  * `AVAudioSession` interruption handling — libmpv's `audiotrack` output
  * does NOT request focus itself, so the plugin is the sole focus owner.
  *
- * The pure policy mapping lives in [InterruptionLogic]; this class only
- * does the Android plumbing (request/abandon focus across the API 26
- * split, register/unregister the noisy receiver) and applies the
- * reactions. Focus callbacks are delivered on [mainHandler]'s looper and
- * the receiver's `onReceive` runs on the main thread, so [emit] (which
- * itself hops to the platform thread) is always called on main.
+ * The pure policy mapping lives in [InterruptionLogic], and the Android
+ * calls in [FocusPort] ([AndroidFocusPort] in the app): this class keeps
+ * the state between them and applies the reactions, so a JVM test drives
+ * it with a fake port. Focus callbacks are delivered on the main looper
+ * and the receiver's `onReceive` runs on the main thread, so [emit]
+ * (which itself hops to the platform thread) is always called on main.
  */
 internal class AudioFocusController(
-    private val context: Context,
-    private val mainHandler: Handler,
+    private val port: FocusPort,
     private val policy: () -> String,
     private val emit: (Map<String, Any?>) -> Unit,
     private val onResumeArmedChanged: () -> Unit = {},
 ) {
-    private val audioManager =
-        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-
-    private var focusRequest: AudioFocusRequest? = null
     private var hasFocus = false
     // The session publishes this latch (see [PublishedIntent]), so a change
     // calls [onResumeArmedChanged].
@@ -49,34 +44,43 @@ internal class AudioFocusController(
             field = value
             onResumeArmedChanged()
         }
-    private var noisyRegistered = false
     // The play intent, as the last onPlaybackActive or onPlaybackInactive
     // set it: a focus loss arms the resume only when it was true.
     private var playbackActive = false
-
-    private val focusListener =
-        AudioManager.OnAudioFocusChangeListener { change -> onFocusChange(change) }
+    // A transient loss (a call) that paused the player, until the gain or
+    // a permanent loss. The focus request stays in place through it, so
+    // [hasFocus] is still true, but a play then asks for the focus again.
+    private var transientLoss = false
+    // The count of pauses and stops the app made, as the last playback
+    // push gave it, or `null` before the first one (see [onPlayback]).
+    private var appPauses: Long? = null
 
     /** A transient loss paused the player, and the next gain resumes it. */
     val resumeArmed: Boolean get() = resumeOnFocusGain
 
-    private val noisyReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != AudioManager.ACTION_AUDIO_BECOMING_NOISY) return
-            val r = InterruptionLogic.onBecomingNoisy()
-            resumeOnFocusGain = r.resumeOnFocusGain
-            r.command?.let { emit(mapOf("type" to it)) }
-        }
+    /** A playback push from Dart: [playing] is the play intent, and
+     *  [appPauses] counts the pauses and stops the app made, not those of
+     *  the session. A new count disarms the resume: during a call Dart is
+     *  already paused, so a pause of the app changes nothing else, and a
+     *  stop only reads as an inactive player. The pause this controller
+     *  emits for a focus loss leaves the count as it is. */
+    fun onPlayback(playing: Boolean, appPauses: Long) {
+        val seen = this.appPauses
+        this.appPauses = appPauses
+        if (seen != null && seen != appPauses) disarm()
+        if (playing) onPlaybackActive() else onPlaybackInactive()
     }
 
     /** Playback became active: take focus and listen for headphone unplug.
      *  Gate on the request result — a FAILED/DELAYED grant pauses instead of
      *  barging over a non-duckable holder (active call / assistant). */
-    fun onPlaybackActive() {
+    private fun onPlaybackActive() {
         playbackActive = true
+        val duringLoss = transientLoss
         val result = requestFocus()
-        registerNoisy()
-        val r = InterruptionLogic.onFocusRequestResult(result, policy())
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) transientLoss = false
+        port.listenNoisy(true)
+        val r = InterruptionLogic.onFocusRequestResult(result, policy(), duringLoss)
         resumeOnFocusGain = r.resumeOnFocusGain
         r.command?.let { emit(mapOf("type" to it)) }
     }
@@ -84,33 +88,98 @@ internal class AudioFocusController(
     /** Playback paused (intent off): drop the headphone-unplug receiver — a
      *  paused stream can't be "becoming noisy" — but keep audio focus held so
      *  a quick resume doesn't re-duck other apps. */
-    fun onPlaybackInactive() {
+    private fun onPlaybackInactive() {
         playbackActive = false
-        unregisterNoisy()
+        port.listenNoisy(false)
+    }
+
+    /** A pause from a controller: the end of a call must not restart it
+     *  (see [InterruptionLogic.onExternalPause]). */
+    fun disarm() {
+        resumeOnFocusGain = InterruptionLogic.onExternalPause().resumeOnFocusGain
     }
 
     /** Session disabled / engine detached: drop focus and the receiver. */
     fun release() {
         abandonFocus()
-        unregisterNoisy()
+        port.listenNoisy(false)
         resumeOnFocusGain = false
         playbackActive = false
+        transientLoss = false
     }
 
-    private fun onFocusChange(focusChange: Int) {
+    /** An `OnAudioFocusChangeListener` callback, from [port]. */
+    fun onFocusChange(focusChange: Int) {
         val r = InterruptionLogic.onFocusChange(
             focusChange, policy(), resumeOnFocusGain, wasPlaying = playbackActive,
         )
+        transientLoss = InterruptionLogic.transientLossAfter(focusChange, policy(), transientLoss)
         resumeOnFocusGain = r.resumeOnFocusGain
         if (r.abandonFocus) abandonFocus()
+        r.command?.let { emit(mapOf("type" to it)) }
+    }
+
+    /** `ACTION_AUDIO_BECOMING_NOISY`, from [port]. */
+    fun onBecomingNoisy() {
+        val r = InterruptionLogic.onBecomingNoisy()
+        resumeOnFocusGain = r.resumeOnFocusGain
         r.command?.let { emit(mapOf("type" to it)) }
     }
 
     /** Requests focus and returns the raw `AUDIOFOCUS_REQUEST_*` result so the
      *  caller can gate playback (GRANTED / FAILED / DELAYED). */
     private fun requestFocus(): Int {
-        if (hasFocus) return AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (!InterruptionLogic.needsFocusRequest(hasFocus, transientLoss)) {
+            return AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+        val result = port.requestFocus()
+        hasFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        return result
+    }
+
+    private fun abandonFocus() {
+        port.abandonFocus()
+        hasFocus = false
+    }
+}
+
+/** The Android calls of [AudioFocusController]. */
+internal interface FocusPort {
+    /** Requests the focus, and returns the `AUDIOFOCUS_REQUEST_*` result. */
+    fun requestFocus(): Int
+
+    fun abandonFocus()
+
+    /** Registers the becoming noisy receiver, or unregisters it. */
+    fun listenNoisy(on: Boolean)
+}
+
+/** [FocusPort] on the [AudioManager] of [context]. Its callbacks go to
+ *  [target], set once the controller exists, on [mainHandler]'s looper. */
+internal class AndroidFocusPort(
+    private val context: Context,
+    private val mainHandler: Handler,
+) : FocusPort {
+    lateinit var target: AudioFocusController
+
+    private val audioManager =
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+    private var focusRequest: AudioFocusRequest? = null
+    private var noisyRegistered = false
+
+    private val focusListener =
+        AudioManager.OnAudioFocusChangeListener { change -> target.onFocusChange(change) }
+
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != AudioManager.ACTION_AUDIO_BECOMING_NOISY) return
+            target.onBecomingNoisy()
+        }
+    }
+
+    override fun requestFocus(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -136,11 +205,8 @@ internal class AudioFocusController(
                 AudioManager.AUDIOFOCUS_GAIN,
             )
         }
-        hasFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        return result
-    }
 
-    private fun abandonFocus() {
+    override fun abandonFocus() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
             focusRequest = null
@@ -148,29 +214,26 @@ internal class AudioFocusController(
             @Suppress("DEPRECATION")
             audioManager.abandonAudioFocus(focusListener)
         }
-        hasFocus = false
     }
 
-    private fun registerNoisy() {
-        if (noisyRegistered) return
-        val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
-        // ACTION_AUDIO_BECOMING_NOISY is a protected system broadcast →
-        // RECEIVER_NOT_EXPORTED on API 33+ (required there; harmless intent).
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(noisyReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    override fun listenNoisy(on: Boolean) {
+        if (on == noisyRegistered) return
+        if (on) {
+            val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+            // ACTION_AUDIO_BECOMING_NOISY is a protected system broadcast →
+            // RECEIVER_NOT_EXPORTED on API 33+ (required there; harmless intent).
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(noisyReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.registerReceiver(noisyReceiver, filter)
+            }
         } else {
-            context.registerReceiver(noisyReceiver, filter)
+            try {
+                context.unregisterReceiver(noisyReceiver)
+            } catch (_: IllegalArgumentException) {
+                // Not registered (defensive) — ignore.
+            }
         }
-        noisyRegistered = true
-    }
-
-    private fun unregisterNoisy() {
-        if (!noisyRegistered) return
-        try {
-            context.unregisterReceiver(noisyReceiver)
-        } catch (_: IllegalArgumentException) {
-            // Not registered (defensive) — ignore.
-        }
-        noisyRegistered = false
+        noisyRegistered = on
     }
 }

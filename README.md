@@ -4,7 +4,7 @@
 
 # mpv_audio_kit
 
-#### Audio engine for Flutter and Dart.
+#### Audio engine for Flutter.
 
 [![](https://img.shields.io/pub/v/mpv_audio_kit.svg?style=for-the-badge&logo=dart&logoColor=white)](https://pub.dev/packages/mpv_audio_kit)
 [![](https://img.shields.io/badge/libmpv-v0.41.0-orange.svg?style=for-the-badge)](https://github.com/ales-drnz/libmpv-scripts)
@@ -18,7 +18,7 @@
 
 ## Made for your media library
 
-The package is an audio player for Flutter apps that play from your own server. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web.
+The package is an audio player for Flutter apps that play a media library, from a server or from the device. It runs mpv and FFmpeg behind a typed Dart API, on Android, iOS, macOS, Windows, Linux and the web.
 
 <table>
 <tr>
@@ -42,7 +42,7 @@ The package is an audio player for Flutter apps that play from your own server. 
 </tr>
 <tr>
 <td valign="middle"><img src="https://raw.githubusercontent.com/ales-drnz/svg-icons/main/png/wrench.png" width="32" alt=""></td>
-<td valign="middle"><b>Total control</b><br>Tune the cache and the network, shape the sound with <a href="https://pub.dev/documentation/mpv_audio_kit/latest/topics/Effects-topic.html">a chain of FFmpeg effects</a>, and watch it with a live spectrum, waveform and loudness meter.</td>
+<td valign="middle"><b>Tuning and analysis</b><br>Tune the cache and the network, shape the sound with <a href="https://pub.dev/documentation/mpv_audio_kit/latest/topics/Effects-topic.html">a chain of FFmpeg effects</a>, and watch it with a live spectrum, waveform and loudness meter.</td>
 </tr>
 </table>
 
@@ -56,14 +56,14 @@ The package is an audio player for Flutter apps that play from your own server. 
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.6.1
+  mpv_audio_kit: ^0.6.2
 ```
 
 The build downloads the libmpv binary for each native target and checks its SHA-256, so the first build needs network access. On the web the module ships with the package.
 
 | Platform | Minimum | Architectures | Size |
 | :--- | :--- | :--- | :---: |
-| Android | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 7.7 MB per ABI |
+| Android | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 7.7 to 8.3 MB per ABI |
 | iOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
 | macOS | 12.0 | arm64, x86_64 | 15.1 MB universal |
 | Windows | 10 | arm64, x86_64 | 7.8 MB |
@@ -96,7 +96,7 @@ await player.dispose(); // when you are done
 
 ### How it works
 
-The player lives on your main isolate and calls libmpv without blocking it. A background isolate waits for libmpv's events and brings state back.
+The player lives on your main isolate and calls libmpv without blocking it. A background isolate waits for libmpv's events and brings state back. On the web the module wakes the player on the main thread.
 
 <img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/architecture.png" width="100%" alt="Architecture: the Player on the main isolate calls libmpv, the event isolate forwards events and state, and the platform plugin connects the media session">
 
@@ -179,7 +179,7 @@ The player gives a live spectrum, the raw PCM, a waveform of the whole file and 
 
 ### The browser
 
-The page needs two headers and a user gesture before it plays. See [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) for the setup and the browser's limits.
+The page needs two headers and a user gesture before it plays. The players of a page share at most 512 MiB of memory, 256 MiB on an iPhone or an iPad. Test on a real iPhone: a desktop browser does not show the limits of iOS. See [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) for the setup and the browser's limits.
 
 ---
 

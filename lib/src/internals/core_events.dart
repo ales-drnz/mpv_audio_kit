@@ -118,17 +118,17 @@ class MpvEventEndFile extends MpvIsolateEvent {
   /// error reasons, `false` for the others.
   final bool lastEntry;
 
-  /// The last `time-pos` mpv reported for the entry, in seconds, or the
-  /// park position read for it; `null` when none came.
+  /// The position of the entry when it ended, in seconds: from the event
+  /// (patch read_error), else the last `time-pos` mpv reported
+  /// for it; `null` when none came.
   final double? position;
 
-  /// The last `duration` mpv reported for the entry, in seconds; `null`
-  /// when none came.
+  /// The duration of the entry when it ended, in seconds: from the event,
+  /// else the last `duration` mpv reported; `null` when none came.
   final double? duration;
 
-  /// Whether the entry stopped on a read error, from the event (libmpv-r20,
-  /// patch read_error). `null` from a libmpv without the patch, which the
-  /// transport tells by the property `demuxer-read-error` it adds.
+  /// Whether the entry stopped on a read error, from the event (patch
+  /// read_error). `null` only for an event made in a test.
   final bool? readError;
 
   /// The HLS or DASH segments the entry lost to errors, from the event;
@@ -183,8 +183,7 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
   final double? timePos;
 
   /// `demuxer-read-error` read at the park: whether the file stopped on a
-  /// read error. `null` when the read failed, as on a libmpv without the
-  /// property. Read only when [parked].
+  /// read error. `null` when the read failed. Read only when [parked].
   final bool? readError;
 
   /// `demuxer-skipped-segments` read at the park, `null` as for

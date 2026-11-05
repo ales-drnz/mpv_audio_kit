@@ -57,5 +57,25 @@ void main() {
       expect(player.state.audioEffects, accepted);
       expect(await player.getRawProperty('af'), af);
     });
+
+    test('a params key that is no option name is refused before the '
+        'state changes', () async {
+      await player.setAudioEffects(accepted);
+      final af = await player.getRawProperty('af');
+      final seen = <List<AudioEffect>>[];
+      final sub = player.stream.audioEffects.listen(seen.add);
+      final refused = [
+        ...accepted,
+        const SuperequalizerEffect(params: {'1b:x': 2}),
+      ];
+      // The check runs with the others, before the state: the state and
+      // its stream never show the list, not even while mpv answers.
+      await expectLater(player.setAudioEffects(refused), throwsArgumentError);
+      expect(player.state.audioEffects, accepted);
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      expect(seen, isNot(contains(refused)));
+      expect(await player.getRawProperty('af'), af);
+    });
   });
 }

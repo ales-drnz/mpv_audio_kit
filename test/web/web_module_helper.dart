@@ -75,24 +75,26 @@ Future<String> blobFixture(String path) async {
 }
 
 /// Loads the module once and makes it the one every session uses.
-Future<MpvModule> loadTestModule() {
-  return debugWebModule ??= () async {
-    final glue = await (await _get(
-      testUrl('web/module/libmpv.mjs'),
-    )).text().toDart;
-    const from = 'new URL("libmpv.mjs",import.meta.url)';
-    final text = glue.toDart;
-    if (!text.contains(from)) {
-      throw StateError('the glue makes its workers another way');
-    }
-    final blob = _blobUrl(
-      text.replaceAll(from, 'new URL(import.meta.url)').toJS,
-      'text/javascript',
-    );
-    return loadMpvModule(
-      blob,
-      wasmUrl: testUrl('web/module/libmpv.wasm'),
-      processorUrl: testUrl('web/module/mak_webaudio_processor.js'),
-    );
-  }();
+Future<MpvModule> loadTestModule() => debugWebModule ??= loadModuleInstance();
+
+/// Loads another instance of the module, with its own memory and threads,
+/// as the package loads it.
+Future<MpvModule> loadModuleInstance() async {
+  final glue = await (await _get(
+    testUrl('web/module/libmpv.mjs'),
+  )).text().toDart;
+  const from = 'new URL("libmpv.mjs",import.meta.url)';
+  final text = glue.toDart;
+  if (!text.contains(from)) {
+    throw StateError('the glue makes its workers another way');
+  }
+  final blob = _blobUrl(
+    text.replaceAll(from, 'new URL(import.meta.url)').toJS,
+    'text/javascript',
+  );
+  return loadMpvModule(
+    blob,
+    wasmUrl: testUrl('web/module/libmpv.wasm'),
+    processorUrl: testUrl('web/module/mak_webaudio_processor.js'),
+  );
 }

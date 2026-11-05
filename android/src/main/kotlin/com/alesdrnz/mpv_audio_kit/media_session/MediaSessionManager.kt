@@ -97,6 +97,8 @@ internal object MediaSessionManager {
         val buffering: Boolean,
         val hasNext: Boolean,
         val hasPrevious: Boolean,
+        // The pauses and stops the app made (see AudioFocusController.onPlayback).
+        val appPauses: Long = 0,
     ) {
         companion object {
             val EMPTY = PlaybackSnapshot(
@@ -278,6 +280,12 @@ internal object MediaSessionManager {
         engines.onCancel(engine)
     }
 
+    /** A pause from a controller: disarm the resume of a call before the
+     *  pause goes to Dart, which is already paused then. */
+    fun disarmResume() = runOnMain {
+        audioFocus?.disarm()
+    }
+
     /** Forwards an OS remote command to the owner's Dart, on the platform
      *  thread. */
     fun forwardCommand(command: Map<String, Any?>) = runOnMain {
@@ -320,8 +328,9 @@ internal object MediaSessionManager {
         startService()
         publish()
         // Take audio focus + arm the headphone-unplug receiver if we're
-        // already playing at enable time.
-        if (this.playback.playing) audioFocus?.onPlaybackActive()
+        // already playing at enable time. The count of the app's pauses
+        // starts here.
+        audioFocus?.onPlayback(this.playback.playing, this.playback.appPauses)
     }
 
     private fun updateConfig(config: Map<*, *>) = runOnMain {
@@ -345,12 +354,9 @@ internal object MediaSessionManager {
         publish()
         // Acquire focus when playback starts (idempotent while held); focus is
         // held across a user pause and released only on disable. On pause, drop
-        // the becoming-noisy receiver but keep focus.
-        if (pb.playing) {
-            audioFocus?.onPlaybackActive()
-        } else {
-            audioFocus?.onPlaybackInactive()
-        }
+        // the becoming-noisy receiver but keep focus. A pause or a stop of the
+        // app disarms the resume of a call.
+        audioFocus?.onPlayback(pb.playing, pb.appPauses)
     }
 
     private fun disable() = runOnMain {
@@ -409,13 +415,13 @@ internal object MediaSessionManager {
     private fun ensureAudioFocus() {
         val ctx = appContext ?: return
         if (audioFocus == null) {
+            val port = AndroidFocusPort(ctx, mainHandler)
             audioFocus = AudioFocusController(
-                context = ctx,
-                mainHandler = mainHandler,
+                port = port,
                 policy = { config.interruptionPolicy },
                 emit = { cmd -> forwardCommand(cmd) },
                 onResumeArmedChanged = { if (enabled) player?.republish() },
-            )
+            ).also { port.target = it }
         }
     }
 
@@ -536,6 +542,7 @@ internal object MediaSessionManager {
         buffering = map["buffering"] as? Boolean ?: false,
         hasNext = map["hasNext"] as? Boolean ?: true,
         hasPrevious = map["hasPrevious"] as? Boolean ?: true,
+        appPauses = (map["appPauses"] as? Number)?.toLong() ?: 0,
     )
 
     private fun runOnMain(block: () -> Unit) {

@@ -290,6 +290,35 @@ void main() {
     });
   });
 
+  group('raw params keys', () {
+    test('a key that is no option name is refused before the chain', () {
+      // The key reaches mpv's chain as written: a `:` or a `,` would add
+      // options or filters to it.
+      for (final key in ['1b:x', '0:volume', '1b,lavfi-volume', 'a=b', '']) {
+        _refused(SuperequalizerEffect(params: {key: 2}));
+        _refused(CompandEffect(params: {key: 2}));
+      }
+      expect(
+        () => validateAudioEffects([
+          const EqualizerEffect(),
+          const SuperequalizerEffect(params: {'1b:x': 2}),
+        ]),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'effects[1].params')
+              .having((e) => e.invalidValue, 'invalidValue', '1b:x'),
+        ),
+      );
+    });
+
+    test('option names pass, and a disabled stage is not checked', () {
+      _accepted(const SuperequalizerEffect(params: {'1b': 2, '18b': 0.5}));
+      _accepted(
+        const SuperequalizerEffect(enabled: false, params: {'1b:x': 2}),
+      );
+    });
+  });
+
   group('the effects manifest', () {
     test('every corner passes', () {
       for (final c in kFilterParamCorners) {

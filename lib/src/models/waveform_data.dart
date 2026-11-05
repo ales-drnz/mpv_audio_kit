@@ -30,7 +30,7 @@ import 'dart:typed_data';
 /// the absolute media time of bin 0 (the oldest still-cached moment) and
 /// [duration] is the span currently held (it grows while you listen and
 /// only drops its oldest bins once the demuxer evicts that audio from its
-/// back-buffer). The newest bin is "now". Map bins with [start]/[duration]
+/// back-buffer). The newest bin is "now". Map bins with [start] and [duration]
 /// in absolute media time and you can scrub anywhere the cache still
 /// covers.
 ///

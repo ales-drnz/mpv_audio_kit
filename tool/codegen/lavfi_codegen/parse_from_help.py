@@ -62,8 +62,8 @@ def _run_ffmpeg(ffmpeg: str, args: list[str]) -> str:
 
 
 def _detect_ffmpeg() -> str:
-    """Locate an ffmpeg binary. Prefer one matching the bundled
-    libavfilter version (8.1.x); fall back to anything on PATH."""
+    """Locate the ffmpeg binary on PATH. Its version is not checked: the
+    help it prints should come from the FFmpeg the pinned libmpv bundles."""
     candidate = shutil.which("ffmpeg")
     if candidate is None:
         sys.exit(

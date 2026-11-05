@@ -15,7 +15,7 @@ import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
-import '../../mpv_constants.dart';
+import '../../internals/event_decoder.dart';
 import 'web_layout.dart';
 
 @JS('BigInt')
@@ -192,7 +192,7 @@ extension type MakWebAudio._(JSObject _) implements JSObject {
 /// One instance of the libmpv module: its exports, its memory, and the
 /// wakeup bridge that calls back into Dart.
 @internal
-final class MpvModule {
+final class MpvModule implements CoreMemory {
   /// Wraps the instance [module] the module factory resolved with, after
   /// checking its ABI version and its struct layout against the ones the
   /// decoders assume, before any other call into it. [processorUrl] is
@@ -201,7 +201,7 @@ final class MpvModule {
     : instance = module,
       _m = MpvExports._(module) {
     checkWebModuleAbi(_m.has('_mak_web_abi_version') ? _m.abiVersion() : null);
-    endFile = checkWebLayout(_layoutTable());
+    checkWebLayout(_layoutTable());
     // One callback per module: mak_web.c posts it to the main thread, at
     // most once per handle until it runs, whenever mpv wakes that client.
     // Emscripten also runs that posted work while the main thread waits for
@@ -231,10 +231,6 @@ final class MpvModule {
 
   /// The exported C functions.
   MpvExports get c => _m;
-
-  /// Where `mpv_event_end_file` keeps the read error fields of the
-  /// read_error patch, `0` and `0` in a module without it.
-  late final EndFileFields endFile;
 
   /// The module's `mak_web_layout()`, up to its `-1` end.
   List<int> _layoutTable() {
@@ -266,27 +262,40 @@ final class MpvModule {
   // each use, never kept.
   _View _view() => _View(_m.wasmMemory['buffer'] as JSObject);
 
+  @override
+  int get pointerSize => 4;
+
   /// The signed 32-bit value at [p].
+  @override
   int i32(int p) => _view().getInt32(p, true);
 
   /// The unsigned 32-bit value at [p] (a pointer, a size_t).
   int u32(int p) => _view().getUint32(p, true);
 
+  /// A pointer or a `size_t` at [p]: wasm32 has 32-bit ones.
+  @override
+  int pointer(int p) => u32(p);
+
   /// The signed 64-bit value at [p] (exact below 2^53).
+  @override
   int i64(int p) {
     final view = _view();
     return view.getInt32(p + 4, true) * 4294967296 + view.getUint32(p, true);
   }
 
   /// The double at [p].
+  @override
   double f64(int p) => _view().getFloat64(p, true);
 
   /// The NUL-terminated string at [p], malformed UTF-8 replaced with
   /// U+FFFD as on the native side; `null` for a null pointer.
+  @override
   String? string(int p) => p == 0 ? null : _m.utf8ToString(p).toDart;
 
-  /// A copy of the [length] bytes at [p].
-  Uint8List bytes(int p, int length) {
+  /// A copy of the [length] bytes at [p]. [transfer] changes nothing: the
+  /// web pump runs on the main thread.
+  @override
+  Uint8List bytes(int p, int length, {bool transfer = false}) {
     if (length <= 0) return Uint8List(0);
     final buffer = _m.wasmMemory['buffer'] as JSObject;
     return _Bytes(buffer, p, length).slice().toDart;
@@ -337,69 +346,138 @@ final class MpvModule {
       }
     }
   }
-
-  /// Decodes the `mpv_node` at [p]: the same Dart shapes as the native
-  /// decoder, byte arrays as [Uint8List] copies.
-  Object? node(int p) {
-    switch (i32(p + 8)) {
-      case MpvFormat.mpvFormatString:
-        return string(u32(p));
-      case MpvFormat.mpvFormatFlag:
-        return i32(p) != 0;
-      case MpvFormat.mpvFormatInt64:
-        return i64(p);
-      case MpvFormat.mpvFormatDouble:
-        return f64(p);
-      case MpvFormat.mpvFormatNodeArray:
-        final list = u32(p);
-        final num = i32(list);
-        final values = u32(list + 4);
-        return [for (var i = 0; i < num; i++) node(values + 16 * i)];
-      case MpvFormat.mpvFormatNodeMap:
-        final list = u32(p);
-        final num = i32(list);
-        final values = u32(list + 4);
-        final keys = u32(list + 8);
-        return <String, dynamic>{
-          for (var i = 0; i < num; i++)
-            string(u32(keys + 4 * i))!: node(values + 16 * i),
-        };
-      case MpvFormat.mpvFormatByteArray:
-        final ba = u32(p);
-        return bytes(u32(ba), u32(ba + 4));
-      default:
-        return null;
-    }
-  }
-
-  /// Decodes the value of format [format] at [data], as a property change
-  /// or a read carries it: a flag as an int, as the native side does.
-  Object? value(int format, int data) => switch (format) {
-    MpvFormat.mpvFormatDouble => f64(data),
-    MpvFormat.mpvFormatFlag => i32(data),
-    MpvFormat.mpvFormatInt64 => i64(data),
-    MpvFormat.mpvFormatString => string(u32(data)),
-    MpvFormat.mpvFormatNode => node(data),
-    _ => null,
-  };
 }
 
-/// Imports the module at [url] (libmpv.mjs) and instantiates it. [wasmUrl]
-/// is where libmpv.wasm is, and [processorUrl] where
-/// mak_webaudio_processor.js is, when not beside [url].
+/// The pages of 64 KiB the module's memory starts with: the 32 MB its
+/// build starts from (`INITIAL_MEMORY`), and the least a memory passed to
+/// the factory may have.
+@internal
+const int kWebMemoryInitialPages = 512;
+
+/// The most pages the module's memory grows to: 512 MiB.
+@internal
+const int kWebMemoryMaximumPages = 8192;
+
+/// The most pages on WebKit for phones and tablets, which refuses a shared
+/// memory that large or kills the page past a few hundred MB: 256 MiB.
+@internal
+const int kWebMemoryMobileMaximumPages = 4096;
+
+/// Test-only: whether to take the profile of WebKit for phones and tablets
+/// ([kWebMemoryMobileMaximumPages]) whatever the browser, or never. `null`
+/// asks the browser.
+@visibleForTesting
+bool? debugWebKitMobile;
+
+@JS('navigator')
+external JSObject get _navigator;
+
+/// Whether the page runs on WebKit for phones and tablets: an iPhone, an
+/// iPod or an iPad, which says it is a Mac with a touch screen.
+bool get _webKitMobile {
+  final forced = debugWebKitMobile;
+  if (forced != null) return forced;
+  final agent = (_navigator['userAgent'] as JSString?)?.toDart ?? '';
+  if (RegExp('iPhone|iPad|iPod').hasMatch(agent)) return true;
+  final touch = (_navigator['maxTouchPoints'] as JSNumber?)?.toDartInt ?? 0;
+  return agent.contains('Macintosh') && touch > 1;
+}
+
+@JS('WebAssembly.Memory')
+extension type _Memory._(JSObject _) implements JSObject {
+  external _Memory(JSObject descriptor);
+}
+
+/// A shared memory of [maximum] pages that starts at
+/// [kWebMemoryInitialPages], or `null` when the browser refuses it.
+JSObject? _memory(int maximum) {
+  final descriptor = JSObject()
+    ..['initial'] = kWebMemoryInitialPages.toJS
+    ..['maximum'] = maximum.toJS
+    ..['shared'] = true.toJS;
+  try {
+    return _Memory(descriptor);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// The memory the package hands the module's factory: shared, 32 MB at
+/// the start, growing up to 512 MiB, or 256 MiB on WebKit for phones and
+/// tablets and wherever the larger one is refused. The module's own
+/// ceiling is 2 GB, more than such a browser gives a page. `null` when
+/// even the smaller one is refused: the module then makes its own.
+@internal
+JSObject? webModuleMemory() {
+  if (!_webKitMobile) {
+    final memory = _memory(kWebMemoryMaximumPages);
+    if (memory != null) return memory;
+  }
+  return _memory(kWebMemoryMobileMaximumPages);
+}
+
+/// Imports the module at [url] (libmpv.mjs) and instantiates it on the
+/// memory of [webModuleMemory]. [wasmUrl] is where libmpv.wasm is, and
+/// [processorUrl] where mak_webaudio_processor.js is, when not beside
+/// [url].
+///
+/// The factory waits for the module's threads, and never settles when
+/// their workers cannot load: a file served without COEP, a
+/// Content-Security-Policy that leaves them out, a module on another
+/// origin. Past [timeout] it fails with a [WebModuleTimeout]. The 30 s
+/// count from the import, so a libmpv.wasm still on its way counts as
+/// well. The start goes on: a later load of [url] in the same program
+/// waits for that same start again, rather than making a second module.
 @internal
 Future<MpvModule> loadMpvModule(
   String url, {
   String? wasmUrl,
   String? processorUrl,
+  Duration timeout = const Duration(seconds: 30),
 }) async {
+  final start = _starting[url] ??= _startModule(url, wasmUrl);
+  final JSAny? instance;
+  try {
+    instance = await start.timeout(
+      timeout,
+      onTimeout: () => throw WebModuleTimeout._(
+        'mpv_audio_kit: the web module did not start within '
+        '${timeout.inSeconds} s: libmpv.wasm is still loading, or the '
+        'workers of its threads did not load. Serve every file with the '
+        'COOP and COEP headers, libmpv.mjs and libmpv.wasm included, from '
+        'the origin of the page, and let a Content-Security-Policy allow '
+        'them as workers',
+      ),
+    );
+  } on WebModuleTimeout {
+    rethrow;
+  } catch (_) {
+    _starting.remove(url)?.ignore();
+    rethrow;
+  }
+  _starting.remove(url)?.ignore();
+  return MpvModule(instance as JSObject, processorUrl: processorUrl);
+}
+
+/// The starts of [loadMpvModule] still going, by URL, in this program: a
+/// Hot Restart forgets them.
+final Map<String, Future<JSAny?>> _starting = {};
+
+Future<JSAny?> _startModule(String url, String? wasmUrl) async {
   final namespace = await importModule(url.toJS).toDart;
   final factory = namespace['default'] as JSFunction;
   final options = JSObject();
   if (wasmUrl != null) {
     options['locateFile'] = ((JSString path) => wasmUrl.toJS).toJS;
   }
-  final instance =
-      await (factory.callAsFunction(null, options) as JSPromise).toDart;
-  return MpvModule(instance as JSObject, processorUrl: processorUrl);
+  final memory = webModuleMemory();
+  if (memory != null) options['wasmMemory'] = memory;
+  return (factory.callAsFunction(null, options) as JSPromise).toDart;
+}
+
+/// The web module did not start within the time [loadMpvModule] waits.
+/// Its start goes on, and a later load waits for it again.
+@internal
+final class WebModuleTimeout extends StateError {
+  WebModuleTimeout._(super.message);
 }

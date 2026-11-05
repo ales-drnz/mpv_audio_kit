@@ -529,6 +529,10 @@ mixin _AudioModule on _PlayerBase {
   ///   of them, or a NaN crossover frequency;
   /// - compand attacks and decays that both start with no number.
   ///
+  /// It throws the same way for a `params` key that is no option name,
+  /// such as one with a `:` or a `,`, which would add options or filters
+  /// to the chain.
+  ///
   /// A [RawAudioEffect] is not checked here. The filters themselves refuse
   /// such values, so a raw stage that carries one fails as described above
   /// for a value a filter refuses, instead of reading or writing out of its
@@ -558,13 +562,10 @@ mixin _AudioModule on _PlayerBase {
   // ── Chain state ────────────────────────────────────────────────────
   // mpv keeps each filter with its arguments, and rebuilds it from them
   // at a file load, at a seek or loop wrap (lavfi frees its graph on
-  // reset), at a track switch and at a format change. libmpv-r20 saves an
-  // af-command that took in the arguments of its filter, and in `af`
-  // (af_command_args), so those rebuilds keep the values set live, and an
-  // `af set` rebuilds only the filters whose arguments it changes. On an
-  // older libmpv the live values go back to the arguments of the last
-  // `af set` at those rebuilds: the player says so at start (see
-  // [libmpvRequiredPatches]).
+  // reset), at a track switch and at a format change. The patch
+  // af_command_args saves an af-command that took in the arguments of its
+  // filter, and in `af`, so those rebuilds keep the values set live, and an
+  // `af set` rebuilds only the filters whose arguments it changes.
 
   /// The last list mpv accepted, through `af set` or a whole diff of
   /// `af-command`s: what it plays when a later write is refused, and so
@@ -622,7 +623,7 @@ mixin _AudioModule on _PlayerBase {
             c.filterName,
           ]),
       ];
-      // libmpv-r20 moves `af` with each command that takes.
+      // af_command_args moves `af` with each command that takes.
       if (cmds.isNotEmpty) _readAfHeld();
       settled = _settleAfCommands(_afSettled, rcs, effects, previous);
     } else {
@@ -701,7 +702,7 @@ mixin _AudioModule on _PlayerBase {
   /// Puts the state back on [_afAccepted] after mpv refused [effects],
   /// unless a later call already replaced them, and throws. A diff that
   /// mpv took meanwhile may have moved the live graph, and saved its
-  /// values (libmpv-r20): the chain is written again from the accepted
+  /// values (af_command_args): the chain is written again from the accepted
   /// list, which rebuilds every stage whose values moved (F50).
   Never _refuseAudioEffects(List<AudioEffect> effects, int rc) {
     if (identical(_state.audioEffects, effects)) {
@@ -846,12 +847,35 @@ mixin _AudioModule on _PlayerBase {
   ///
   /// On the web the page's audio output is remade at [rate] (`0` for the
   /// device's), so the browser does not resample: every player of the
-  /// page plays at that rate.
+  /// page plays at that rate. A rate the browser refuses throws a
+  /// [StateError]: the page's output stays at the rate before, and so do
+  /// this player's `audio-samplerate` and [PlayerState.audioSampleRate],
+  /// unless another call set a rate since.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
+    // Taken before the write: the observer of audio-samplerate may report
+    // the new rate before the browser refuses it.
+    final before = _state.audioSampleRate;
     await _calls.prop('audio-samplerate', rate.toString());
     final output = setOutputSampleRate(rate);
-    if (output != null) await output;
+    if (output != null) {
+      try {
+        await output;
+      } catch (_) {
+        // The browser refused the rate and kept its output at the rate
+        // before: mpv and the state go back to it too, unless another
+        // call wrote a rate since, which stands.
+        if (await getRawProperty('audio-samplerate') == rate.toString()) {
+          await _calls.prop('audio-samplerate', before.toString());
+          _updateField(
+            (s) => s.copyWith(audioSampleRate: before),
+            _reactives.audioSampleRate,
+            before,
+          );
+        }
+        rethrow;
+      }
+    }
     _updateField(
       (s) => s.copyWith(audioSampleRate: rate),
       _reactives.audioSampleRate,

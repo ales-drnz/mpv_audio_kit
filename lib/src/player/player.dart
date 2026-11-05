@@ -27,10 +27,10 @@ import '../internals/debug_log.dart';
 import '../internals/duration_seconds.dart';
 import '../internals/entry_table.dart';
 import '../internals/hook_table.dart';
-import '../internals/libmpv_requirements.dart';
 import '../internals/mpv_audio_kit.dart';
 import '../internals/mpv_float.dart';
 import '../internals/owned_source.dart';
+import '../internals/transport_machine.dart';
 import '../internals/uri_resolver.dart';
 import '../media_session/media_session_controller.dart';
 import '../media_session/media_session_inputs.dart';
@@ -94,7 +94,8 @@ part 'mixins/player_pcm.part.dart';
 part 'mixins/player_playback.part.dart';
 part 'mixins/player_playlist.part.dart';
 
-/// A high-performance audio player powered by libmpv.
+/// An audio player on libmpv: a queue, effects, analysis and the OS media
+/// session.
 ///
 /// Implements [PlayerApi] so test code can mock the player without
 /// dragging in the FFI handle and event isolate
@@ -217,7 +218,7 @@ class Player extends _PlayerBase
       // The replace leaves the park of the old file: its START_FILE is
       // queued behind this reply, and can reach the player after the load
       // ends. A park of the old file reached while this load ran keeps the
-      // intent (see [_Transport._park]).
+      // intent (see [TransportMachine.park]).
       _transport.takePark();
       // Asked again, not reused: a pause() called while the loadfile was in
       // flight has the last word.
@@ -587,8 +588,8 @@ class Player extends _PlayerBase
     // the removed client; the continue keeps the core from waiting on them
     // meanwhile.) An event is pending only once bring-up delivered it, so
     // the handle exists here.
-    for (final mpvId in _hooks.takeAll()) {
-      _calls.hookContinue(mpvId);
+    for (final (mpvId, name) in _hooks.takeAll()) {
+      _continueMpvHook(mpvId, name);
     }
     // Before the quit: an ended source wakes a reader blocked on it.
     _entries.endLive();
@@ -642,9 +643,19 @@ abstract class _PlayerBase {
         'auto-continuing to unblock mpv',
         level: LogLevel.warn,
       );
-      if (!_disposed) _calls.hookContinue(mpvId);
+      if (!_disposed) _continueMpvHook(mpvId, name);
     },
   );
+
+  /// Continues mpv's event [mpvId] of hook [name]. `mpv_hook_continue`
+  /// locks the core: for a hook that holds a load (`on_load` and the
+  /// others) mpv waits in the hook's dispatch loop for exactly this call,
+  /// so the lock comes at once. For `on_prefetch` the playloop keeps
+  /// running, and the call waits for whatever the core is doing (an audio
+  /// output that takes seconds to open), so it goes off the main isolate
+  /// (kit-core-1).
+  void _continueMpvHook(int mpvId, String name) =>
+      _calls.hookContinue(mpvId, prefetch: name == Hook.prefetch.mpvValue);
 
   // The installed [SourceResolver]; null = feature off. Set by
   // [Player.setSourceResolver], consulted by `_routeHookEvent` on every
@@ -660,9 +671,11 @@ abstract class _PlayerBase {
   bool _resolverRetried = false;
 
   // What the resolver gave for the prefetch of the next entry: the URL mpv
-  // was about to open, the one it opened instead, and the load epoch then.
-  // The load of that URL in the same epoch takes it once (F10).
-  (String, String, _LoadTicket)? _prefetchResolved;
+  // was about to open, the one it opened instead, the load epoch then, and
+  // the entry (`null` when its read failed). The
+  // load of that entry, or of that URL without one, in the same epoch takes
+  // it once (F10, kit-core-3).
+  (String, String, _LoadTicket, int?)? _prefetchResolved;
 
   PlayerState _state = const PlayerState();
 
@@ -991,11 +1004,6 @@ abstract class _PlayerBase {
 
   late final Future<void> _ready;
   bool _bringUpCompleted = false;
-
-  /// Whether the libmpv knows `waveform-duration-hint` (libmpv-r20), read
-  /// at the end of bring-up. Without it the loads leave
-  /// `Media.waveformDurationHint` out.
-  bool _durationHint = false;
 
   /// The level of the last [setLogLevel] call, applied at the end of
   /// bring-up when the call came before it.

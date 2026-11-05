@@ -27,6 +27,8 @@ void main() {
       server = await RangeHttpServer.start({
         'a.wav': longWav(2),
         'b.wav': longWav(2),
+        'x_q1.wav': longWav(3),
+        'x_q2.wav': longWav(4),
       });
       player = await buildPlayer();
     });
@@ -118,5 +120,57 @@ void main() {
         reason: 'the open of b must ask the resolver: $calls',
       );
     }, timeout: const Timeout(Duration(seconds: 40)));
+
+    libmpvReleaseGroup(20, 'The prefetch of libmpv-r20', () {
+      // kit-core-3: the URL the resolver gave for the prefetch was kept by
+      // URL, so a later entry with the same URL and other extras (another
+      // quality of the same track) took it without a call of its own.
+      test('a later entry with the URL of the prefetched one asks the '
+          'resolver for its own Media', () async {
+        final asked = <Object?>[];
+        await player.setSourceResolver((request) {
+          final q = request.media.extras?['q'];
+          asked.add(q);
+          return switch (request.uri) {
+            'resolve://a' => server.url('a.wav'),
+            'resolve://c' => server.url('b.wav'),
+            'resolve://x' => server.url('x_q$q.wav'),
+            _ => null,
+          };
+        });
+        await player.setPrefetchPlaylist(true);
+        // Paused: the cache of a fills, and x with q 1 is prefetched.
+        await player.openAll(const [
+          Media('resolve://a'),
+          Media('resolve://x', extras: {'q': 1}),
+          Media('resolve://c'),
+          Media('resolve://x', extras: {'q': 2}),
+        ], play: false);
+        await waitUntil(
+          () => asked.contains(1),
+          timeout: const Duration(seconds: 10),
+          reason: 'the prefetch of x never ran the resolver',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        // The jump keeps the load epoch: only the entry tells the two apart.
+        final loaded = player.stream.playlist
+            .firstWhere((p) => p.index == 3)
+            .then((_) => player.stream.seekCompleted.first)
+            .timeout(const Duration(seconds: 10));
+        await player.jump(3);
+        await loaded;
+        expect(
+          asked,
+          contains(2),
+          reason: 'the entry with q 2 must reach the resolver: $asked',
+        );
+        // x with q 2 lasts 4 s, x with q 1 3 s.
+        await waitUntil(
+          () => player.state.duration > Duration.zero,
+          reason: 'no duration',
+        );
+        expect(player.state.duration.inMilliseconds, closeTo(4000, 50));
+      }, timeout: const Timeout(Duration(seconds: 40)));
+    });
   });
 }

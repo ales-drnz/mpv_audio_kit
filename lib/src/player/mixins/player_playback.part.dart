@@ -50,11 +50,13 @@ mixin _PlaybackModule on _PlayerBase {
       // generation this seek leaves, whatever came between, and a spend in
       // between is undone. Landed at the end again, the seek's restart
       // opens a new park, whose read spends the intent whether it comes
-      // before or after the replies below.
+      // before or after the replies below. A play() called since leaves
+      // the take to this reply: its own seek or unpause does not leave
+      // this park.
       _transport.takePark();
       _transport.writeIntent(true);
       await _calls.command(['seek', '0', 'absolute']);
-      if (_transport.owns(intent)) {
+      if (_transport.wantsPlay(intent)) {
         _transport.takePark();
         _transport.writeIntent(true);
       }
@@ -93,7 +95,14 @@ mixin _PlaybackModule on _PlayerBase {
 
   /// Pauses playback. Idempotent: a no-op when already paused. Position
   /// is preserved: call [play] to resume from the same offset.
-  Future<void> pause() async {
+  Future<void> pause() {
+    _mediaSessionController?.appPaused();
+    return _pause();
+  }
+
+  /// [pause] for a command of the media session: not the app's own, so it
+  /// leaves the resume of a call to the native side.
+  Future<void> _pause() async {
     await _gate();
     _transport.claimIntent(false);
     await _calls.prop('pause', 'yes');
@@ -151,7 +160,13 @@ mixin _PlaybackModule on _PlayerBase {
   /// Stops playback and unloads the current file. Distinct from [pause]:
   /// the demuxer is torn down, the playhead is reset, and the next call
   /// must be [open] (not [play]) to start a new track.
-  Future<void> stop() async {
+  Future<void> stop() {
+    _mediaSessionController?.appPaused();
+    return _stop();
+  }
+
+  /// [stop] for a command of the media session (see [_pause]).
+  Future<void> _stop() async {
     _checkNotDisposed();
     // Claim the load epoch synchronously so an in-flight open() that is
     // still resolving its URI aborts instead of resuming after this call

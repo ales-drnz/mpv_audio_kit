@@ -15,7 +15,7 @@ Cross-Origin-Embedder-Policy: credentialless
 | A host that reads a `_headers` file, such as Netlify or Cloudflare Pages | A `web/_headers` file with the two headers under `/*` |
 | GitHub Pages | A service worker that adds them, such as coi-serviceworker. [mpv_studio](https://github.com/ales-drnz/mpv_studio) shows the setup in its `web/` folder. The app also needs a `web/flutter_bootstrap.js` that calls `_flutter.loader.load()` without `serviceWorkerSettings`. Otherwise Flutter's own worker replaces the one that adds the headers. |
 
-It needs Chrome or Edge 92, Firefox 79 or Safari 15.2 or later.
+With `credentialless` it needs Chrome or Edge 96 or Firefox 119 or later. With `require-corp` it needs Chrome or Edge 92, Firefox 79 or Safari 15.2 or later.
 
 Safari accepts only `require-corp` for the second header. Each image or font from another origin then needs a `Cross-Origin-Resource-Policy` header.
 
@@ -69,12 +69,26 @@ Each entry gets the file name as its title. Files on a share the system has moun
 The browser fetches every `http` and `https` request, so its rules apply.
 
 - A server on another origin must send `Access-Control-Allow-Origin`. For one that does not, put a proxy on your origin and point a source resolver at it.
-- Seeking needs a server that answers range requests.
+- Seeking needs a server that answers range requests. A server on another origin must also expose `Content-Range` through CORS, with `Access-Control-Expose-Headers: Content-Range`. Without it the browser hides the header, and the player cannot seek or resume there.
 - An `https` page cannot open `http://` URLs, local servers included. Only `localhost` can.
 - Headers the browser forbids, such as `Cookie`, `Referer` and `Host`, are not sent.
 - For ICY titles from a radio on another origin, pass `streamLavfOptions: {'icy_cross_origin': '1'}` on its `Media`. The server must accept the `Icy-MetaData` header and expose `icy-metaint` through CORS.
 - TLS, cookies and proxies are the browser's. The player's TLS, cookie and proxy settings have no effect.
 - `smb2://` is not available. Mount the share in the system and let the user pick its files.
+
+## Memory
+
+All the players of a page run in one module, with one memory. It starts at 32 MiB and grows up to 512 MiB, or 256 MiB on an iPhone or an iPad, where WebKit gives a page less. It never shrinks while the page is open. When an allocation fails past that limit, the module stops and every player of the page with it.
+
+The demuxer cache of each player takes the most of it. On the web it starts at 64 MiB ahead and 16 MiB behind, in place of 150 MiB and 50 MiB. Lower it with `setDemuxer` for several players or long network files:
+
+```dart
+await player.setDemuxer(
+  const DemuxerSettings(maxBytes: 32 * 1024 * 1024, maxBackBytes: 0),
+);
+```
+
+Test on a real iPhone or iPad. A desktop browser, even one that imitates a phone, does not have the memory limits of iOS.
 
 ## What differs
 
@@ -82,6 +96,7 @@ The browser fetches every `http` and `https` request, so its rules apply.
 | :--- | :--- |
 | System volume | The gain of the player's output |
 | Output devices | One, the page's output |
+| Sample rate | One for the page: `setAudioSampleRate` sets it for every player. A rate the browser refuses throws `StateError` |
 | `file://` and `content://` | Not available. The user picks files instead. |
 | OS media session | The browser's media controls, through `navigator.mediaSession` |
 | Hot restart | Destroys the players of the previous run and keeps the loaded module |

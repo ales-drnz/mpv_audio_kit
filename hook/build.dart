@@ -27,8 +27,9 @@ import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
 
-import 'package:mpv_audio_kit/src/internals/hook_download.dart';
 import 'package:mpv_audio_kit/src/internals/libmpv_release.dart';
+
+import 'src/hook_download.dart';
 
 const _release = 'libmpv-$libmpvRelease';
 const _baseUrl =
@@ -37,23 +38,23 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      '494abbd2cfbbcc0340bc87f19450e4a675ba7df3742abbfb49d2ababc70550ed',
+      '37bdb2ac329a7c7758fc24d82b2d19371a5fad368021783708b5d8131dfa72fb',
   'libmpv_android-armeabi-v7a.so':
-      '7ac021ac174190af6361042e64fdd87bd5817fb1e666af4d2ef5b6b69154b350',
+      'b56b31caaf68dc47bd543a1d7dd501171c330b959adca279125fd544e7bc165a',
   'libmpv_android-x86_64.so':
-      '7fa167095a66b0b912c30ddffe76778ed2719333a75f56b4bea2939f9a06bafe',
+      '8692b061fe72339725eac9d47efe15ae2b1955caf0b45738dc2ab89394cc0cfc',
   'libmpv_ios.xcframework.zip':
-      'e390fcb5bfe0f0f47a16ad92f9fc89539c25a5f94e8caf8041fde078cdb469b8',
+      'cc4d7061611825da9f3ea50fc76024261b5f5a0b5b6b0bc57e6ea77a0ad03444',
   'libmpv_linux-aarch64.so':
-      '5364018eb738dba44d65a9cf164d2594497d90ecbe87db53e97d7183a3816879',
+      '80a70449d2d75bff5a415c3cd73aafa30ff4f3b5e02e0a09231a5ace5c5a1c00',
   'libmpv_linux-x86_64.so':
-      '86abd26c9c063b6900ca9f4b8cfd1d8bff8a0c6d1854cfb45eba42ce629c8559',
+      'c2d71a40dae480732df3945fc597968bb34ab92edab940a103b9703769dec50d',
   'libmpv_macos.xcframework.zip':
-      'e9565a548a63b06f62ff5f984fc43ebd9769a3490aca0f7a61095876721bcee3',
+      'b2b9e90437101df57c9bdaca3d5886a32f49dce890d4bb50d362efb07e1e623c',
   'libmpv_windows-arm64.dll':
-      'e8d764fb589945fea3a9a8ca1db0ca2019eac8d1b7aa4335420f035056103e49',
+      'e790ec01017dd10c4bdee3a232264b3674e8a2019c17e3a159fcfa733b9316cf',
   'libmpv_windows-x86_64.dll':
-      '024672436405d2e6aac15c7e18ef7a7890c3ed540605cfd3c4676ff088c43052',
+      '3bf66c7f80a7a044c84127a85ec3e0adc2a6ade1a43b0c4a9c0da1429736ee77',
 };
 
 void main(List<String> args) async {

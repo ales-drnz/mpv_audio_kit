@@ -1090,7 +1090,16 @@ void main() {
       expect(
         await urlOf('file:///music/a%20b.flac'),
         'file:///music/a%20b.flac',
-        reason: 'a file URI is published as it is',
+        reason: 'a file URI already encoded is published as it is',
+      );
+      expect(
+        await urlOf('file:///music/a b.flac'),
+        'file:///music/a%20b.flac',
+        reason: 'mpv opens a file URI with a raw space, a URI has none',
+      );
+      expect(
+        await urlOf('file:///music/50% off.mp3'),
+        'file:///music/50%25%20off.mp3',
       );
       expect(
         await urlOf('music/song.flac'),
@@ -1098,6 +1107,22 @@ void main() {
         reason: 'a relative path is the file mpv opens, under the cwd',
       );
       expect(await urlOf(r'C:\Music\song.flac'), 'file:///C:/Music/song.flac');
+      // mpv takes all that follows file:// as the path, percent-decoded:
+      // a # or a ? there is part of the name, not a fragment or a query.
+      // Windows forbids a ? in a file name: no URI names such a path there.
+      const named = 'file:///music/track%20%231%20%3Fa%2050%25.flac';
+      final namedHere = Platform.isWindows ? null : named;
+      expect(await urlOf('/music/track #1 ?a 50%.flac'), namedHere);
+      expect(
+        await urlOf('file:///music/track #1 ?a 50%.flac'),
+        namedHere,
+        reason: 'a # and a ? of a file URI belong to the path',
+      );
+      expect(await urlOf(named), namedHere);
+      expect(
+        await urlOf('file:///C:/Music/a #1.flac'),
+        'file:///C:/Music/a%20%231.flac',
+      );
       expect(
         await urlOf(r'C:\Music\a*b.flac'),
         isNull,
@@ -1565,10 +1590,10 @@ void main() {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
         addTearDown(() => server.close(force: true));
         server.listen((request) {
-          request.response
+          final response = request.response
             ..headers.contentType = ContentType('image', 'png')
-            ..add(const [4, 2])
-            ..close();
+            ..add(const [4, 2]);
+          unawaited(response.close());
         });
         final rig = _Rig();
         final ch = _RecordingChannel();

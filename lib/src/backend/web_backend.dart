@@ -67,6 +67,10 @@ final StreamController<bool> _gestureChanges =
 @visibleForTesting
 Future<MpvModule>? debugWebModule;
 
+/// Test-only: how long the load of the module waits for its start.
+@visibleForTesting
+Duration debugWebModuleTimeout = const Duration(seconds: 30);
+
 Future<_Loaded> _load() => _loading ??= _start();
 
 /// Why libmpv cannot run in this page, or `null` when it can. Its threads
@@ -118,10 +122,17 @@ Future<_Loaded> _start() async {
       module = await _import(url);
     }
     registerModule(url, module, reap: _reap);
-    final output = await WebAudioOutput.start(module);
+    final output = await WebAudioOutput.start(
+      module,
+      reuse: debug == null && previous != null,
+    );
     output.needsGestureChanges.listen(_gestureChanges.add);
     if (output.needsGesture) _gestureChanges.add(true);
     return _loaded = _Loaded(module, output);
+  } on WebModuleTimeout {
+    // The start goes on: the next Player waits for it again.
+    _loading = null;
+    rethrow;
   } catch (e) {
     _failure = e;
     rethrow;
@@ -130,7 +141,7 @@ Future<_Loaded> _start() async {
 
 Future<MpvModule> _import(String url) async {
   try {
-    return await loadMpvModule(url);
+    return await loadMpvModule(url, timeout: debugWebModuleTimeout);
   } on StateError {
     rethrow;
   } catch (e) {

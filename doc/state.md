@@ -29,7 +29,7 @@ StreamBuilder<Duration>(
 
 Event streams, such as `endFile`, `error` and `log`, deliver only what happens after `listen()`.
 
-A few values live on one side only. `playbackState`, `prefetchState`, `prefetchCacheDuration`, `waveform`, `loudnessScan` and the event streams have no field in `state`. `tlsCaFile`, `readError` and `skippedSegments` have no stream.
+A few values live on one side only. `playbackState`, `prefetchState`, `prefetchCacheDuration`, `waveform`, `loudnessScan` and the event streams, `fft`, `pcm` and `loudnessMeter` among them, have no field in `state`. `tlsCaFile`, `readError` and `skippedSegments` have no stream.
 
 ### Current entry
 

@@ -180,15 +180,6 @@ void main() {
       );
     });
 
-    test('left out for a libmpv without it', () {
-      const media = Media(
-        'https://h/a.opus',
-        end: Duration(seconds: 90),
-        waveformDurationHint: Duration(seconds: 262),
-      );
-      expect(loadfileOptions(media, durationHint: false), 'end=90.000');
-    });
-
     test('must be positive, refused before any load', () {
       Matcher refused() => throwsA(
         isA<ArgumentError>().having(
@@ -290,6 +281,58 @@ void main() {
         final media = Media('https://h/a.mp3', streamLavfOptions: bad);
         expect(() => validateLoadOptions(media), throwsArgumentError);
         expect(() => loadfileOptions(media), throwsArgumentError);
+      }
+    });
+
+    test('a refused option names its key, not its value', () {
+      const media = Media(
+        'https://h/a.mp3',
+        streamLavfOptions: {'headers': 'Authorization: s3cr3t,x'},
+      );
+      expect(
+        () => validateLoadOptions(media),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'streamLavfOptions')
+              .having((e) => e.invalidValue, 'invalidValue', 'headers')
+              .having(
+                (e) => e.toString(),
+                'toString',
+                isNot(contains('s3cr3t')),
+              ),
+        ),
+      );
+    });
+  });
+
+  group('a refused header value', () {
+    // CR, LF, NUL and `,` are refused, and the value often holds a token.
+    const media = Media(
+      'https://example.com/a.mp3',
+      httpHeaders: {'Authorization': 'Bearer s3cr3t,x'},
+    );
+
+    test('is not in the error, which names the header', () {
+      for (final check in [
+        () => validateLoadOptions(media),
+        () => loadfileOptions(media),
+      ]) {
+        expect(
+          check,
+          throwsA(
+            isA<ArgumentError>()
+                .having(
+                  (e) => e.toString(),
+                  'toString',
+                  contains('Authorization'),
+                )
+                .having(
+                  (e) => '${e.invalidValue} ${e.message} $e',
+                  'text',
+                  isNot(contains('s3cr3t')),
+                ),
+          ),
+        );
       }
     });
   });

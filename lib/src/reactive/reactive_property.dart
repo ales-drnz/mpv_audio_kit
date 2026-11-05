@@ -114,7 +114,7 @@ Stream<T> aggregateStream<T>(
   void finish() {
     if (done) return;
     done = true;
-    controller.close();
+    unawaited(controller.close());
   }
 
   final subs = [

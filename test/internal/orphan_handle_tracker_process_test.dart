@@ -43,6 +43,18 @@ void main() {
     },
   );
 
+  // A second VM of the process (a second Flutter engine, an isolate that
+  // calls ensureInitialized with the default) finds the buffer of the
+  // first while the first still runs: its cores are live, not orphans.
+  test('a second VM beside a live one takes none of its handles', () async {
+    final report = await probe(const []);
+    expect(report['alive'], {'restarted': false, 'orphans': <int>[]});
+    expect(report['second'], {
+      'restarted': true,
+      'orphans': [_fakeHandle],
+    }, reason: 'the handle is still there for the VM a Hot Restart brings up');
+  });
+
   test('a fresh process leaves no file in the temp directory', () async {
     final report = await probe(const []);
     expect(report['second'], {
@@ -60,7 +72,11 @@ void main() {
       await runDartProbe(
         _probe,
         tempDir: tmp,
-        environment: {'MPV_AUDIO_KIT_ORPHAN_BUFFER': '$pid:4096'},
+        // The name of this version and the one of 0.6.1.
+        environment: {
+          'MPV_AUDIO_KIT_ORPHAN_BUFFER_2': '$pid:4096',
+          'MPV_AUDIO_KIT_ORPHAN_BUFFER': '$pid:4096',
+        },
       ),
     );
     expect(report['first'], {'restarted': false, 'orphans': <int>[]});

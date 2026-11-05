@@ -188,9 +188,7 @@ abstract interface class PlayerApi {
   Future<bool> nextPlaylist();
 
   /// Jumps to the first of the previous entries from a different source
-  /// playlist (`playlist-path`). The reverse of [nextPlaylist]. On Windows
-  /// it needs a libmpv with the patches of libmpv-scripts 0.1.7 or later:
-  /// see [Player.previousPlaylist].
+  /// playlist (`playlist-path`). The reverse of [nextPlaylist].
   Future<bool> previousPlaylist();
 
   /// Jumps to the playlist entry at [index] and plays it. Throws
@@ -342,8 +340,8 @@ abstract interface class PlayerApi {
   /// Sets the policy for scanning sidecar cover-art files.
   Future<void> setCoverArtAuto(Cover cover);
 
-  /// Forces the output sample rate in Hz; pass mpv's auto value to let it
-  /// choose.
+  /// Sets the target output sample rate in Hz, `0` for mpv's choice. See
+  /// [Player.setAudioSampleRate].
   Future<void> setAudioSampleRate(int rate);
 
   /// Forces the output sample format; [Format.auto] lets mpv choose.

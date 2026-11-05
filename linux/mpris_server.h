@@ -47,6 +47,8 @@ class MprisServer {
   // ── GDBus trampolines (user_data == this) ──────────────────────────────
   static void OnBusAcquired(GDBusConnection* connection, const gchar* name,
                             gpointer user_data);
+  static void OnNameAcquired(GDBusConnection* connection, const gchar* name,
+                             gpointer user_data);
   static void OnNameLost(GDBusConnection* connection, const gchar* name,
                          gpointer user_data);
   static void RootMethodCall(GDBusConnection*, const gchar*, const gchar*,
@@ -89,6 +91,10 @@ class MprisServer {
   std::function<FlEventChannel*()> command_channel_;
 
   guint owner_id_ = 0;
+  // Whether the name of owner_id_ was ever ours, and which suffix after
+  // the pid it asks for (0: none).
+  bool name_acquired_ = false;
+  int name_attempt_ = 0;
   GDBusConnection* connection_ = nullptr;  // borrowed (from OnBusAcquired)
   GDBusNodeInfo* node_info_ = nullptr;
   guint root_reg_id_ = 0;

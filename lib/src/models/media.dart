@@ -2,6 +2,8 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
+import 'package:meta/meta.dart';
+
 import '../internals/unset_sentinel.dart';
 import 'media_blob_io.dart' if (dart.library.js_interop) 'media_blob_web.dart';
 
@@ -212,12 +214,13 @@ final class Media {
   final Duration? end;
 
   /// The length of this entry, for the waveform and the loudness scan of
-  /// an HTTP stream that cannot seek and does not tell its length: a
-  /// transcode a music server sends without byte ranges, whose catalog
-  /// knows the track's length. With it the analysis decodes the stream
-  /// from mpv's cache as it downloads, and the waveform fills ahead of
-  /// playback and turns final, instead of growing from playback (mpv's
-  /// per-file `waveform-duration-hint`).
+  /// an HTTP stream that cannot seek and does not tell its length, or
+  /// tells only one estimated from the bitrate: a transcode a music server
+  /// sends without byte ranges, whose catalog knows the track's length.
+  /// With it the analysis decodes the stream from mpv's cache as it
+  /// downloads, and the waveform fills ahead of playback and turns final,
+  /// instead of growing from playback (mpv's per-file
+  /// `waveform-duration-hint`).
   ///
   /// The waveform lays out this length. A hint a little off still ends
   /// final: a shorter one leaves the rest of the stream out, a longer one
@@ -225,8 +228,8 @@ final class Media {
   /// source ignores it. Unlike the other per-entry options it does not
   /// keep the entry from opening ahead with [Player.setPrefetchPlaylist].
   ///
-  /// `null` (default) gives none. Must be positive. A libmpv older than
-  /// libmpv-r20 does not get it.
+  /// `null` (default) gives none. Must be positive. mpv ignores a hint past
+  /// 5,000,000 s.
   final Duration? waveformDurationHint;
 
   /// Creates an immutable media item for [uri], with optional consumer
@@ -361,17 +364,27 @@ final class Media {
           ),
   );
 
-  /// Prints the [httpHeaders] names only: their values often carry
-  /// credentials (an `Authorization` token) that must not reach a log.
+  /// Prints the names of [httpHeaders], [streamLavfOptions] and
+  /// [demuxerLavfOptions] only, and the [uri] without its user info:
+  /// they often carry credentials (an `Authorization` token, a proxy
+  /// password, a `decryption_key`) that must not reach a log.
   @override
   String toString() {
-    final headers = httpHeaders == null
+    String? names(Map<String, String>? map) => map == null
         ? null
-        : '{${httpHeaders!.keys.map((k) => '$k: <redacted>').join(', ')}}';
-    return 'Media(uri: $uri, extras: $extras, '
-        'httpHeaders: $headers, httpChunkSize: $httpChunkSize, '
-        'streamLavfOptions: $streamLavfOptions, '
-        'demuxerLavfOptions: $demuxerLavfOptions, start: $start, '
+        : '{${map.keys.map((k) => '$k: <redacted>').join(', ')}}';
+    return 'Media(uri: ${redactUserInfo(uri)}, extras: $extras, '
+        'httpHeaders: ${names(httpHeaders)}, httpChunkSize: $httpChunkSize, '
+        'streamLavfOptions: ${names(streamLavfOptions)}, '
+        'demuxerLavfOptions: ${names(demuxerLavfOptions)}, start: $start, '
         'end: $end, waveformDurationHint: $waveformDurationHint)';
   }
 }
+
+final RegExp _userInfo = RegExp(r'^([A-Za-z][A-Za-z0-9+.-]*://)[^/?#]*@');
+
+/// [uri] with the user info of its authority, a name and often a
+/// password, replaced by `<redacted>`, for a log. Anything else is kept.
+@internal
+String redactUserInfo(String uri) =>
+    uri.replaceFirstMapped(_userInfo, (m) => '${m[1]}<redacted>@');

@@ -24,7 +24,7 @@
 // Enum, duration and free-string options have no schema-derivable safe
 // alternate value and are skipped (string-only filters carry curated
 // hand-probed values instead). Command-capable filters with NO
-// runtime-tunable options (adelay, anequalizer, compensationdelay) can never
+// runtime-tunable options (adelay, anequalizer) can never
 // receive a diff command, so there is nothing to validate for them.
 
 @TestOn('mac-os || linux || windows')
@@ -1122,6 +1122,49 @@ void main() {
                 label: 'normalize=true',
                 apply: (e) => [
                   (e.single as BiquadEffect).copyWith(normalize: true),
+                ],
+              ),
+            ],
+          ),
+          (
+            filter: 'compensationdelay',
+            field: 'compensationdelay_0',
+            bundle: const [CompensationdelayEffect()],
+            updates: <AfCommandUpdate>[
+              (
+                label: 'cm=1',
+                apply: (e) => [
+                  (e.single as CompensationdelayEffect).copyWith(cm: 1),
+                ],
+              ),
+              (
+                label: 'dry=0.5',
+                apply: (e) => [
+                  (e.single as CompensationdelayEffect).copyWith(dry: 0.5),
+                ],
+              ),
+              (
+                label: 'm=1',
+                apply: (e) => [
+                  (e.single as CompensationdelayEffect).copyWith(m: 1),
+                ],
+              ),
+              (
+                label: 'mm=1',
+                apply: (e) => [
+                  (e.single as CompensationdelayEffect).copyWith(mm: 1),
+                ],
+              ),
+              (
+                label: 'temp=21',
+                apply: (e) => [
+                  (e.single as CompensationdelayEffect).copyWith(temp: 21),
+                ],
+              ),
+              (
+                label: 'wet=0.5',
+                apply: (e) => [
+                  (e.single as CompensationdelayEffect).copyWith(wet: 0.5),
                 ],
               ),
             ],

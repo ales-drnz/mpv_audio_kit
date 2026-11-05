@@ -141,6 +141,12 @@ class MediaSessionPlaybackSnapshot {
   final bool hasNext;
   final bool hasPrevious;
 
+  /// The pauses and stops the app made since the session was enabled, not
+  /// those of the session's own commands. Android disarms the resume of a
+  /// call when it changes: during the call the player is already paused,
+  /// so a pause of the app changes nothing else.
+  final int appPauses;
+
   const MediaSessionPlaybackSnapshot({
     required this.playing,
     required this.position,
@@ -154,6 +160,7 @@ class MediaSessionPlaybackSnapshot {
     this.buffering = false,
     this.hasNext = true,
     this.hasPrevious = true,
+    this.appPauses = 0,
   });
 }
 
@@ -322,6 +329,7 @@ class MediaSessionChannel {
         'buffering': p.buffering,
         'hasNext': p.hasNext,
         'hasPrevious': p.hasPrevious,
+        'appPauses': p.appPauses,
       };
 
   /// Decodes one incoming event from the native event channel into a

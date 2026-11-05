@@ -193,8 +193,10 @@ final class EventLogic {
   }
 
   /// The END_FILE the transport decoded as [ended], with what mpv reported
-  /// of its entry. mpv has unloaded the file by now: that comes from the
-  /// START_FILE that named it ([_PropertyCache.started]).
+  /// of its entry. mpv has unloaded the file by now: the position and
+  /// duration come from the event, else from what mpv
+  /// reported of the entry since the START_FILE that named it
+  /// ([_PropertyCache.started]).
   MpvEventEndFile _endFileEvent(
     MpvEventEndFile ended, {
     required bool lastEntry,
@@ -206,8 +208,8 @@ final class EventLogic {
       ended.reason,
       ended.error,
       lastEntry: lastEntry,
-      position: entry?.position,
-      duration: entry?.duration,
+      position: ended.position ?? entry?.position,
+      duration: ended.duration ?? entry?.duration,
       readError: ended.readError,
       skippedSegments: ended.skippedSegments,
     );

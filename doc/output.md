@@ -11,7 +11,7 @@ await player.setAudioDriver('pipewire');  // Linux, also 'pulse' and 'alsa'
 await player.setAudioDriver('auto');      // the default
 ```
 
-On Android `auto` picks `audiotrack`, the right choice for most apps. `aaudio` needs Android 8 (API 26), and `opensles` plays stereo only.
+On Android `auto` picks `audiotrack`. `aaudio` needs Android 8 (API 26).
 
 When no device opens, playback goes on silently on the `null` output. See the [Errors and logs](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Errors%20and%20logs-topic.html) topic.
 
@@ -66,6 +66,8 @@ await player.setAudioChannels(const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'))
 `Channels.auto` keeps the source layout when the device accepts it. `Channels.autoSafe` allows a multichannel layout only when the device reports it. The API reference lists every format and layout.
 
 To downmix without clipping, create the player with `PlayerConfiguration(normalizeDownmix: true)`.
+
+On the web one rate serves the whole page, and a rate the browser refuses throws `StateError`.
 
 The driver can still change what you ask for, and `state.audioOutParams` shows what the device gets. On Android:
 
@@ -126,7 +128,7 @@ await player.reloadAudio();                    // close and reopen the output
 
 - The media role changes routing and per-role volume on PulseAudio and PipeWire. On Android, `audiotrack` and `aaudio` from Android 9 only tag the content as music. Other drivers ignore it.
 - A smaller buffer lowers latency. A larger one copes better with load and Bluetooth.
-- Streaming silence avoids a click on resume. Avoid it on iOS. After an interruption such as a call, the device stays suspended and playback cannot continue.
+- Streaming silence avoids a click on resume. mpv advises against it, since it changes how underruns are handled. It is untested on iOS across an interruption such as a call.
 - The untimed null output processes audio on a machine with no sound device.
 
-In the browser the page has a single output. See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic.
+In the browser the page has a single output and a single sample rate. See the [Web](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Web-topic.html) topic.

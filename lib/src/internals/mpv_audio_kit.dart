@@ -70,12 +70,10 @@ abstract final class MpvAudioKit {
   /// app is used. Pass an explicit path only when shipping a custom
   /// libmpv build alongside your app; to bundle one in place of the
   /// default, set `hooks: user_defines: mpv_audio_kit: libmpv:` in the
-  /// app's pubspec instead. A custom libmpv should carry the patches of
-  /// libmpv-scripts 0.3.0 (libmpv-r20) or later. With an older build, or
-  /// one of upstream mpv, the player still plays, and a warning on
-  /// `PlayerStream.internalLog` lists what each missing patch takes away.
-  /// On Windows an unpatched mpv also crashes the process at every
-  /// [Player] dispose, and `previousPlaylist` can crash it too.
+  /// app's pubspec instead. A custom libmpv must be a build of
+  /// libmpv-scripts at the release this version of the package pins
+  /// (`mpv-version` ends with its `+rN`): with any other, or with one of
+  /// upstream mpv, a [Player] fails to start with a `PlayerInitException`.
   ///
   /// On the web [libmpv] is the URL of the `libmpv.mjs` of another build of
   /// the web module, with its `libmpv.wasm` and
@@ -90,8 +88,11 @@ abstract final class MpvAudioKit {
   /// the replaced VM, turns off the waveform, loudness scan and filter taps
   /// its listeners left on, and disables its OS media session. Pass `false`
   /// in test runners, background isolates and other multi-VM scenarios
-  /// that share a pid: in a debug build the tracker would otherwise take
-  /// the live handles of the other isolate for orphans and destroy them.
+  /// that share a pid: the tracker keeps one buffer per process, for the VM
+  /// that sets it up first, and the cleanup after a Hot-Restart reaches
+  /// the PCM sources and the analysis switches of the whole process. A VM
+  /// that finds the owner of the buffer still running takes none of its
+  /// handles.
   /// On the web it destroys the players, PCM sources and audio output the
   /// app left in the page before a Hot Restart, and reuses its module.
   ///

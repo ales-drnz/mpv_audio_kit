@@ -2,8 +2,6 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-// ignore_for_file: camel_case_types
-
 // The libmpv the build hook bundles (hook/build.dart), which every @Native
 // declaration below binds to.
 @DefaultAsset('package:mpv_audio_kit/libmpv')
@@ -60,7 +58,8 @@ final class MpvEventStartFileData extends Struct {
 // ---------------------------------------------------------------------------
 // mpv_event_end_file
 // ---------------------------------------------------------------------------
-/// FFI layout of `mpv_event_end_file`, the payload of an end-file event.
+/// FFI layout of `mpv_event_end_file`, the payload of an end-file event,
+/// with the four fields the patch read_error of libmpv-scripts appends.
 final class MpvEventEndFile extends Struct {
   /// Why playback ended, one of the [MpvEndFileReason] constants.
   @Int32()
@@ -71,26 +70,6 @@ final class MpvEventEndFile extends Struct {
   external int error;
 
   /// The `playlist_entry_id` of the entry that ended.
-  @Int64()
-  external int playlistEntryId;
-}
-
-/// FFI layout of `mpv_event_end_file` in a libmpv of libmpv-r20 or later
-/// (patch read_error), which appends two fields: whether the file stopped
-/// on a read error, and how many HLS or DASH segments it lost. The same
-/// offsets on every ABI of the release. Read it only from a libmpv that has
-/// the patch: an older one copies a shorter event, and the fields past it
-/// are not its memory.
-final class MpvEventEndFileReadError extends Struct {
-  /// As [MpvEventEndFile.reason].
-  @Int32()
-  external int reason;
-
-  /// As [MpvEventEndFile.error].
-  @Int32()
-  external int error;
-
-  /// As [MpvEventEndFile.playlistEntryId].
   @Int64()
   external int playlistEntryId;
 
@@ -109,6 +88,17 @@ final class MpvEventEndFileReadError extends Struct {
   /// `mak_skipped_segments`: the HLS or DASH segments lost to errors.
   @Int64()
   external int makSkippedSegments;
+
+  /// `mak_duration`: the duration of the entry when the file was closed,
+  /// in seconds, or -1 when mpv knew none (a live stream, a file that
+  /// never opened).
+  @Double()
+  external double makDuration;
+
+  /// `mak_position`: the playback position of the entry when the file was
+  /// closed, in seconds, or -1 when mpv knew none.
+  @Double()
+  external double makPosition;
 }
 
 // ---------------------------------------------------------------------------

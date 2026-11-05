@@ -16,6 +16,9 @@
 //   GET /file/<fixture> the fixture in full, with Range support.
 //   GET /nocors/<fixture> the same without CORS: a page of another origin
 //                       cannot read it.
+//   GET /hls/a.m3u8     an HLS playlist of eight segments, s0.aac to
+//                       s7.aac, each codec/aac_adts_44100.aac; s6.aac
+//                       answers 404: a segment that never opens.
 //
 // Prints `MAK_WEB_NET=<base URL>` once it listens, then serves until killed.
 
@@ -75,6 +78,10 @@ Future<void> _serve(Socket client, Directory fixtures) async {
       });
       return;
     }
+    if (path.length == 2 && path[0] == 'hls') {
+      await _hls(client, fixtures, path[1]);
+      return;
+    }
     final file = path.length == 2 ? File('${fixtures.path}${path[1]}') : null;
     if (file == null || !file.existsSync() || path[1].contains('..')) {
       await _head(client, 404, {'Content-Length': '0'});
@@ -110,6 +117,38 @@ Future<void> _serve(Socket client, Directory fixtures) async {
     await sub.cancel();
     client.destroy();
   }
+}
+
+/// The segments of /hls/a.m3u8, and the one that answers 404.
+const _hlsSegments = 8;
+const _hlsMissing = 6;
+
+Future<void> _hls(Socket client, Directory fixtures, String name) async {
+  final List<int> body;
+  if (name == 'a.m3u8') {
+    final playlist = StringBuffer(
+      '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n'
+      '#EXT-X-MEDIA-SEQUENCE:0\n',
+    );
+    for (var i = 0; i < _hlsSegments; i++) {
+      playlist.write('#EXTINF:1.044900,\ns$i.aac\n');
+    }
+    playlist.write('#EXT-X-ENDLIST\n');
+    body = utf8.encode(playlist.toString());
+  } else if (RegExp(r'^s(\d)\.aac$').firstMatch(name) case final m?
+      when int.parse(m.group(1)!) < _hlsSegments &&
+          int.parse(m.group(1)!) != _hlsMissing) {
+    body = File('${fixtures.path}codec/aac_adts_44100.aac').readAsBytesSync();
+  } else {
+    await _head(client, 404, {'Content-Length': '0'});
+    return;
+  }
+  await _head(client, 200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Length': '${body.length}',
+  });
+  client.add(body);
+  await client.flush();
 }
 
 Future<void> _head(

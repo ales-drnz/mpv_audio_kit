@@ -1,3 +1,64 @@
+## [0.6.2] - 5-11-2026
+
+### libmpv-r21
+**All platforms**
+- A seek after a read error in a Matroska file tries the read again.
+- A stream with `waveformDurationHint` cut by a read error publishes no loudness, and `eof-cached` no longer reads yes for its cache.
+- The duration hint wins over a duration estimated from the bitrate and yields to an exact one, so the waveform of such a stream is not cut short.
+- An AAC track in a fragmented MP4 no longer plays its priming samples outside DASH.
+- Each stream of an `fd://` source reads at its own position.
+- The waveform and the loudness of an `fd://` source describe that source even when the app reuses the descriptor on `FILE_LOADED`.
+- A change of effects at the end of a stream that cannot seek no longer leaves it running.
+
+**Android, iOS, Linux, macOS, Windows**
+- A chunked HTTP stream whose resume the server refuses ends on a read error, instead of as a complete file.
+- With `keep-open` the output plays to the last sample, instead of stopping up to 0.2 s early.
+
+**Web**
+- The module reads over HTTP through short answers, outages, credentials and refused resumes.
+- A `makWebAudio.init` that fails leaves no context and no device.
+
+### All platforms
+**Breaking**
+- A libmpv of another release, or a build of upstream mpv, fails `Player` start with a `PlayerInitException`, instead of a warning on `internalLog`. See MIGRATION.md.
+
+**Changed**
+- `withTaps`, `withVoices` and `withTransferPoints` throw an `ArgumentError` on an empty list.
+- A bad key of `params` is refused before the state changes.
+- `Media.toString` hides the values of `streamLavfOptions` and `demuxerLavfOptions` and the user info of the URI.
+- `CompensationdelayEffect` changes go live instead of rebuilding the chain.
+
+**Fixed**
+- `endFile` carries the duration and position of an entry that loads and ends at once.
+- Outside the web, a slow audio output no longer freezes the UI while the next entry opens ahead of time.
+- The URL the resolver gave for a prefetch serves its own entry, also when two entries share a URL.
+- A string effect option with a bracket reaches the filter whole.
+- A refused header value, the demuxer options and the user info of a URI stay out of logs and errors.
+- A second Flutter engine of the process leaves the players of the first alone.
+- `playWhenReady` stays true after two `play()` calls at the end while a seek to the end is on its way.
+
+### Web
+**Changed**
+- The demuxer cache starts at 64 MiB ahead and 16 MiB behind, in place of 150 and 50.
+- `setAudioSampleRate` throws a `StateError` on a rate the browser refuses, and the output stays at the rate before.
+
+**Fixed**
+- The module runs on 512 MiB of memory at most, 256 MiB on iOS, which WebKit on phones and tablets allows.
+- A page whose module cannot start its threads fails its players with a `PlayerInitException` after 30 s, naming the headers to check.
+- A refused sample rate no longer leaves the page silent.
+- A pause of the media session's audio from outside no longer leaves the page silent.
+- A Hot Restart keeps the sound.
+- The end of an entry is read before the next entry starts, as on the other platforms.
+
+### Android
+**Fixed**
+- A pause or a stop made during a call stays one, and a play then waits for the call to end.
+
+### Linux
+**Fixed**
+- A second Flatpak instance gets its own media controls.
+- MPRIS `xesam:url` of a local file is percent-encoded, a `#` and a `?` of the name included.
+
 ## [0.6.1] - 2-11-2026
 
 ### Docs

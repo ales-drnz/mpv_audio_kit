@@ -41,7 +41,7 @@ player.stream.endFile.listen((event) {
 });
 ```
 
-`skippedSegments` counts the HLS and DASH segments lost to errors. Both fields are `null` when libmpv cannot report them.
+`skippedSegments` counts the HLS and DASH segments lost to errors.
 
 The last entry of the playlist stays open at its end. `state.completed` turns true, and `state.readError` tells how it ended:
 
@@ -56,7 +56,7 @@ player.stream.completed.listen((completed) {
 Its `endFile` event comes later, with `reason: stop`, when the entry is stopped or replaced.
 
 - The player retries a dropped connection first. It counts as a read error only after every retry failed. See the [Network and cache](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Network%20and%20cache-topic.html) topic.
-- A seek after a cut reads again, and the entry plays on if the server answers.
+- A seek after a cut reads again, and the entry plays on if the server answers. `completed` turns false and true again, with the new `readError`, also when the seek lands on the end.
 - `duration` can be an estimate, so comparing it with `position` does not detect a cut.
 
 ## Silent output
@@ -110,7 +110,7 @@ A call that fails throws a `PlayerException`:
 | Exception | When |
 | :--- | :--- |
 | `PlayerDisposedException` | The player was disposed |
-| `PlayerInitException` | libmpv could not load or start. Every call on that player throws it |
+| `PlayerInitException` | libmpv could not load or start, or is not of libmpv-r21. Every call on that player throws it |
 | `MpvCommandException` | libmpv rejected the request, such as a seek with no file loaded |
 | `SourceException` | A source could not open, such as a missing asset or an unreadable `content://` URI |
 

@@ -123,19 +123,14 @@ mixin _HooksModule on _PlayerBase {
       );
       return;
     }
-    final mpvId = _hooks.take(id);
-    if (mpvId == null) {
+    final event = _hooks.take(id);
+    if (event == null) {
       // Already continued (manual + auto-timer race, or caller
       // double-dispatch). Drop silently: the first continue already
       // unblocked mpv.
       return;
     }
-    // `mpv_hook_continue` is synchronous and locks the core. For a hook
-    // that holds a load (`on_load` and the others) mpv waits in the hook's
-    // dispatch loop for exactly this call, so the lock comes at once. For
-    // `on_prefetch` the playloop keeps running, and the call waits for its
-    // next turn, usually a few milliseconds.
-    _calls.hookContinue(mpvId);
+    _continueMpvHook(event.$1, event.$2);
   }
 
   /// Installs [resolver] as the player's source resolver: the official
@@ -267,10 +262,8 @@ mixin _HooksModule on _PlayerBase {
       if (isRetry && _resolverRetried) return;
       // The entry mpv is loading, `null` outside a START_FILE.
       final loading = _entries.loading;
-      // libmpv-r20 runs `on_prefetch` for the prefetch of the next entry.
-      // An older libmpv ran `on_load` for it, outside a START_FILE.
+      // mpv runs `on_prefetch` for the prefetch of the next entry.
       final early = hook == Hook.prefetch;
-      final prefetch = early || (!isRetry && loading == null);
       // The load epoch mpv asked in: an open, stop or clear while the
       // resolver runs supersedes the URL it gives for the prefetch.
       final asked = _transport.snapshotLoad();
@@ -281,23 +274,22 @@ mixin _HooksModule on _PlayerBase {
           '';
       if (current.isEmpty || _disposed) return;
       // A load gets the Media of its own entry, which another entry with the
-      // same URL does not share (F14). So does the prefetch of libmpv-r20,
-      // which names its entry; the older one knows only the URL.
+      // same URL does not share (F14). So does the prefetch, which names its
+      // entry.
+      final entry = early ? await _prefetchEntryId() : loading;
       final media =
-          (await _entryMedia(early, prefetch ? null : loading)) ??
-          _cachedMedia(current) ??
-          Media(current);
+          _entries.mediaOf(entry) ?? _cachedMedia(current) ?? Media(current);
       final target = await _targetUrl(
         resolver,
         SourceResolveRequest(media: media, uri: current, isRetry: isRetry),
-        takesKept: !isRetry && !prefetch,
+        takesKept: !isRetry && !early,
+        loading: loading,
       );
       if (target == null) return;
       if (early) {
-        await _settlePrefetch(current, target, media, asked, pending);
+        await _settlePrefetch(current, target, media, asked, pending, entry);
         return;
       }
-      if (prefetch && pending()) _prefetchResolved = (current, target, asked);
       if (target == current) return;
       // No timer runs between this check and the write below: the write is
       // queued in mpv before control goes back to the event loop.
@@ -324,20 +316,25 @@ mixin _HooksModule on _PlayerBase {
   }
 
   /// The URL to open for [request], `null` once the player was disposed.
-  /// The load of an entry the prefetch resolved ([takesKept]) opens the
-  /// same URL without asking again: a resolver that gives a new URL on
-  /// every call (a salt, a signed URL) would make mpv drop the prefetch. A
-  /// retry asks as before, so an expired URL is still renewed.
+  /// The load of an entry the prefetch resolved ([takesKept], the entry
+  /// [loading]) opens the same URL without asking again: a resolver that
+  /// gives a new URL on every call (a salt, a signed URL) would make mpv
+  /// drop the prefetch. Another entry with the same URL asks for its own
+  /// [Media]. A retry asks as before, so an expired URL is still renewed.
   Future<String?> _targetUrl(
     SourceResolver resolver,
     SourceResolveRequest request, {
     required bool takesKept,
+    required int? loading,
   }) async {
     final current = request.uri;
     if (takesKept) {
       final kept = _prefetchResolved;
       _prefetchResolved = null;
-      if (kept != null && kept.$1 == current && !kept.$3.superseded) {
+      if (kept != null &&
+          kept.$1 == current &&
+          !kept.$3.superseded &&
+          (kept.$4 == null || kept.$4 == loading)) {
         return kept.$2;
       }
     }
@@ -351,20 +348,18 @@ mixin _HooksModule on _PlayerBase {
         : fileUrlToPath(resolved) ?? resolved;
   }
 
-  /// The [Media] of the entry the hook opens: the one of the prefetch for
-  /// [early] (`on_prefetch`, which names it), else [loading]'s. `null` for
-  /// an entry the player did not load.
-  Future<Media?> _entryMedia(bool early, int? loading) async {
-    if (!early) return _entries.mediaOf(loading);
+  /// The `playlist_entry_id` of the entry `on_prefetch` opens, `null` when
+  /// mpv dropped the prefetch.
+  Future<int?> _prefetchEntryId() async {
     final (rc, id) = await _calls.get(
       'prefetch-playlist-entry-id',
       MpvFormat.mpvFormatInt64,
     );
-    return rc < 0 || id is! int ? null : _entries.mediaOf(id);
+    return rc < 0 || id is! int ? null : id;
   }
 
   /// Hands mpv the URL the resolver gave for the prefetch ([target], for
-  /// [current]) and keeps it for the load of the entry in the epoch mpv
+  /// [current]) and keeps it for the load of [entry] in the epoch mpv
   /// [asked] in, only while mpv still holds the prefetch: when the entry
   /// starts, or leaves the next place, before the resolver returns, mpv
   /// drops it, and the write (or, for an unchanged URL, the read) of
@@ -375,6 +370,7 @@ mixin _HooksModule on _PlayerBase {
     Media media,
     _LoadTicket asked,
     bool Function() pending,
+    int? entry,
   ) async {
     final changed = target != current;
     // As for a load: no timer runs between this check and the request.
@@ -405,7 +401,7 @@ mixin _HooksModule on _PlayerBase {
       }
       return;
     }
-    _prefetchResolved = (current, target, asked);
+    _prefetchResolved = (current, target, asked, entry);
     if (changed) _mediaCache[target] = media;
   }
 

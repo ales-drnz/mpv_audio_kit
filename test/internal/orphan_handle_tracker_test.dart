@@ -6,8 +6,10 @@
 // The Hot-Restart tracker keeps its buffer in the process environment.
 // Each OrphanHandleTracker.forTesting below stands for one Dart VM of a
 // process whose environment is the fake one it gets: a second tracker over
-// the same environment is the VM a Hot-Restart brings up. The real
-// process environment is checked once, through the singleton.
+// the same environment is another VM of that process, and the VM a
+// Hot-Restart brings up once the first ends (endForTesting closes the port
+// that tells it is alive). The real process environment is checked once,
+// through the singleton.
 // orphan_handle_tracker_process_test.dart runs the tracker in processes of
 // its own.
 
@@ -16,6 +18,8 @@ library;
 
 import 'dart:ffi';
 import 'dart:io';
+
+import 'package:ffi/ffi.dart';
 
 import 'package:mpv_audio_kit/src/internals/orphan_handle_tracker.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart';
@@ -60,6 +64,7 @@ void main() {
       ..remove(h2);
     // add() and remove() land once the init future completes.
     await Future<void>.delayed(Duration.zero);
+    old.endForTesting();
 
     final restarted = OrphanHandleTracker.forTesting(env);
     expect(bringUp(restarted), [h1.address, h3.address]);
@@ -70,7 +75,30 @@ void main() {
     // only what this VM added.
     restarted.add(h2);
     await Future<void>.delayed(Duration.zero);
+    restarted.endForTesting();
     expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
+  });
+
+  test('a second VM beside a live one takes none of its handles', () async {
+    // A second Flutter engine of the process, or an isolate that calls
+    // ensureInitialized with the default, finds the buffer of the first.
+    final env = _FakeEnvironment();
+    final first = OrphanHandleTracker.forTesting(env);
+    bringUp(first);
+    first.add(h1);
+    await Future<void>.delayed(Duration.zero);
+
+    final second = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(second), isEmpty, reason: 'the core of h1 is live');
+    expect(second.restarted, isFalse);
+    // The second VM tracks nothing of its own: the buffer stays the first's.
+    second.add(h2);
+    await Future<void>.delayed(Duration.zero);
+
+    first.endForTesting();
+    final restarted = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(restarted), [h1.address]);
+    expect(restarted.restarted, isTrue);
   });
 
   test('a handle another isolate freed is not reaped again', () async {
@@ -84,8 +112,65 @@ void main() {
       ..add(h1)
       ..add(h2);
     await Future<void>.delayed(Duration.zero);
+    old.endForTesting();
 
     OrphanHandleTracker.forTesting(env).forget(h1);
+    expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
+  });
+
+  // 0.6.1 published a buffer of 256 slots and nothing after them under
+  // the old name. A Hot Restart onto this version in the same process
+  // finds it: the owner word would be 8 bytes past its end.
+  test('a buffer of 0.6.1 is reaped without a word past its end', () {
+    const legacyName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER';
+    const cookie = 0x4D414B5F4D5056AB;
+    const words = 512;
+    const canary = 0x5AFE5AFE5AFE;
+    // One word more than 0.6.1 allocated, to see a write past the end.
+    final legacy = calloc<Int64>(words + 1);
+    addTearDown(() => calloc.free(legacy));
+    final view = legacy.asTypedList(words + 1);
+    view[0] = cookie;
+    view[1] = h1.address;
+    view[510] = cookie;
+    view[511] = h3.address;
+    view[words] = canary;
+    final env = _FakeEnvironment()
+      ..values[legacyName] = '$pid:${legacy.address}';
+
+    final tracker = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(tracker), [h1.address, h3.address]);
+    expect(tracker.restarted, isTrue);
+    expect(view[words], canary, reason: 'nothing is written past the end');
+    expect(view.sublist(0, words), everyElement(0));
+    // The buffer of this version is a new one, under a name 0.6.1 never
+    // reads: a Hot Restart back to 0.6.1 finds its own buffer, empty.
+    expect(_name, isNot(legacyName));
+    expect(env.values[legacyName], '$pid:${legacy.address}');
+    final value = env.values[_name];
+    expect(value, matches(RegExp('^$pid:[1-9][0-9]*\$')));
+    expect(value, isNot('$pid:${legacy.address}'));
+  });
+
+  test('a buffer of 0.6.1 is read only once', () async {
+    const legacyName = 'MPV_AUDIO_KIT_ORPHAN_BUFFER';
+    const cookie = 0x4D414B5F4D5056AB;
+    final legacy = calloc<Int64>(512);
+    addTearDown(() => calloc.free(legacy));
+    legacy.asTypedList(512)
+      ..[0] = cookie
+      ..[1] = h1.address;
+    final env = _FakeEnvironment()
+      ..values[legacyName] = '$pid:${legacy.address}';
+    final old = OrphanHandleTracker.forTesting(env);
+    expect(bringUp(old), [h1.address]);
+    old.add(h2);
+    await Future<void>.delayed(Duration.zero);
+    old.endForTesting();
+    // Once this version published its buffer, the old one is not read.
+    legacy.asTypedList(512)
+      ..[0] = cookie
+      ..[1] = h3.address;
     expect(bringUp(OrphanHandleTracker.forTesting(env)), [h2.address]);
   });
 
@@ -106,6 +191,7 @@ void main() {
       expect(tracker.restarted, isFalse, reason: bad);
       tracker.add(h1);
       await Future<void>.delayed(Duration.zero);
+      tracker.endForTesting();
       expect(bringUp(OrphanHandleTracker.forTesting(env)), [
         h1.address,
       ], reason: bad);

@@ -4,6 +4,7 @@
 
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:mpv_audio_kit/src/internals/core_calls.dart';
+import 'package:mpv_audio_kit/src/internals/mpv_requests.dart';
 import 'package:mpv_audio_kit/src/mpv_bindings.dart' show MpvFormat;
 import 'package:test/test.dart';
 
@@ -272,6 +273,20 @@ void main() {
     expect(mpv.logLevels, ['warn', 'no']);
   });
 
+  // kit-core-1: the continue of on_prefetch can wait for a busy core.
+  test('the continue of on_prefetch goes off the main isolate where the '
+      'backend can', () {
+    final offMain = _OffMainMpv(mpv);
+    CoreCalls(offMain)
+      ..hookContinue(1)
+      ..hookContinue(2, prefetch: true);
+    expect(mpv.continued, [1]);
+    expect(offMain.offMain, [2]);
+    // A backend that cannot continues on the calling isolate.
+    CoreCalls(mpv).hookContinue(3, prefetch: true);
+    expect(mpv.continued, [1, 3]);
+  });
+
   test('settleWrites waits for the writes on the wire', () async {
     mpv.hold();
     calls.prop('volume', '50').ignore();
@@ -283,4 +298,39 @@ void main() {
     await settle;
     expect(settled, isTrue);
   });
+}
+
+/// [FakeMpv] with a continue off the main isolate, recorded in [offMain].
+final class _OffMainMpv implements MpvHookContinueOffMain {
+  _OffMainMpv(this._mpv);
+
+  final FakeMpv _mpv;
+
+  /// The ids [hookContinueOffMain] was called with.
+  final List<int> offMain = [];
+
+  @override
+  void hookContinueOffMain(int id) => offMain.add(id);
+
+  @override
+  bool get isClosed => _mpv.isClosed;
+  @override
+  Future<int> setProperty(String name, String value) =>
+      _mpv.setProperty(name, value);
+  @override
+  Future<int> setNodeProperty(String name, Object? value) =>
+      _mpv.setNodeProperty(name, value);
+  @override
+  Future<(int, Object?)> command(List<String> args) => _mpv.command(args);
+  @override
+  Future<(int, Object?)> getProperty(String name, int format) =>
+      _mpv.getProperty(name, format);
+  @override
+  Future<void> settleWrites() => _mpv.settleWrites();
+  @override
+  String errorString(int code) => _mpv.errorString(code);
+  @override
+  void hookContinue(int id) => _mpv.hookContinue(id);
+  @override
+  void requestLogMessages(String level) => _mpv.requestLogMessages(level);
 }

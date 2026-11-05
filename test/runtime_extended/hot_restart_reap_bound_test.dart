@@ -39,10 +39,12 @@ void main() {
           }
         });
         expect(lib.mpvInitialize(orphan), greaterThanOrEqualTo(0));
-        OrphanHandleTracker.forTesting(ProcessEnvironment.native())
-          ..ensureInitialized((_) {})
-          ..add(orphan);
+        final previousVm =
+            OrphanHandleTracker.forTesting(ProcessEnvironment.native())
+              ..ensureInitialized((_) {})
+              ..add(orphan);
         await Future<void>.delayed(Duration.zero);
+        previousVm.endForTesting();
         shim().set('destroy_delay_us', _destroyDelayUs);
 
         final sw = Stopwatch()..start();
