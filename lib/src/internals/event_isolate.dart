@@ -150,13 +150,19 @@ void _isolateEntry(SendPort initialReplyPort) {
         }
         _applyPropertyStrings(lib!, h, message.postInitOptions);
         _applyObserves(lib!, h, message.observes);
-        // Not registered with the logic: `pause` never reaches the main
-        // isolate, the logic reads it for the end of content only.
+        // Not registered with the logic: `pause` and `keep-open-parked`
+        // never reach the main isolate, the logic reads them for the end
+        // of content only.
         _applyObserves(lib!, h, const [
           MpvObserveSpec(
             'pause',
             mpv.MpvFormat.mpvFormatFlag,
             _kPauseObserverReplyId,
+          ),
+          MpvObserveSpec(
+            'keep-open-parked',
+            mpv.MpvFormat.mpvFormatFlag,
+            _kParkObserverReplyId,
           ),
         ]);
         toMain!.send(_InitDone(h.address));
@@ -231,6 +237,9 @@ String? _versionOf(mpv.MpvLibrary lib, Pointer<mpv.MpvHandle> handle) =>
 /// Reply id of the isolate's own `pause` observer, above every id the main
 /// isolate hands out.
 const int _kPauseObserverReplyId = 1 << 62;
+
+/// Reply id of the isolate's own `keep-open-parked` observer.
+const int _kParkObserverReplyId = _kPauseObserverReplyId + 1;
 
 Future<void> _runEventLoop(
   mpv.MpvLibrary lib,

@@ -459,7 +459,9 @@ void main() {
             'seek',
             afterEvent: MpvEventId.mpvEventPlaybackRestart,
           );
-        final toEnd = player.seek(const Duration(milliseconds: 4999));
+        // To the end itself: a seek short of it leaves audio to play, which
+        // keep-open-parked does not take for a park (libmpv-r22).
+        final toEnd = player.seek(const Duration(seconds: 5));
         await player.play();
         await toEnd;
         expect(

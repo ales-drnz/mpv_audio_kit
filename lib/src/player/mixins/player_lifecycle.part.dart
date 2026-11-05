@@ -22,15 +22,19 @@ extension _Lifecycle on _PlayerBase {
   Future<bool> _parkedAtEof() async =>
       await getRawProperty('eof-reached') == 'yes';
 
-  /// Whether mpv is parked: at the end of the file and paused, which
-  /// keep-open does only once the output buffer has played out. In the
-  /// last buffer before that, `eof-reached` is already true while the
-  /// audio still plays.
+  /// Whether mpv is parked: keep-open paused at the end of the file once
+  /// the output buffer played out (`keep-open-parked`). In the last buffer
+  /// before that, `eof-reached` is already true while the audio still
+  /// plays, and a pause of the client there keeps the rest for [play].
+  /// Without `keep-open-pause` no park comes: at the end and paused is the
+  /// closest.
   ///
-  /// The second read is a statement, not the right side of `&&`: compiled
-  /// to WebAssembly, an await there traps once the left side is false
-  /// (see `_sendEndOfContent`).
+  /// The reads are statements, not the sides of `&&`: compiled to
+  /// WebAssembly, an await there traps once the left side is false (see
+  /// `_sendEndOfContent`).
   Future<bool> _parkedPaused() async {
+    if (await getRawProperty('keep-open-parked') == 'yes') return true;
+    if (await getRawProperty('keep-open-pause') != 'no') return false;
     if (!await _parkedAtEof()) return false;
     return await getRawProperty('pause') == 'yes';
   }

@@ -22,6 +22,9 @@ import 'web_registry.dart';
 /// player hands out and exact in a JavaScript number.
 const int _kPauseObserverReplyId = 1099511627776;
 
+/// Reply id of the pump's own `keep-open-parked` observer.
+const int _kParkObserverReplyId = _kPauseObserverReplyId + 1;
+
 /// Test-only: the `mpv-version` the release check takes in place of the
 /// module's, to stand for a module of another release.
 @visibleForTesting
@@ -144,9 +147,16 @@ final class WebSession implements MpvSession {
       for (final spec in recipe.observes) {
         _observe(h, spec.replyId, spec.name, spec.format);
       }
-      // Not registered with the logic: `pause` never reaches the player,
-      // the logic reads it for the end of content only.
+      // Not registered with the logic: `pause` and `keep-open-parked`
+      // never reach the player, the logic reads them for the end of
+      // content only.
       _observe(h, _kPauseObserverReplyId, 'pause', MpvFormat.mpvFormatFlag);
+      _observe(
+        h,
+        _kParkObserverReplyId,
+        'keep-open-parked',
+        MpvFormat.mpvFormatFlag,
+      );
       _reads = _m.withStrings(['mak_reads'], (p) => c.mpvCreateClient(h, p[0]));
       if (_reads == 0) throw StateError('mpv_create_client() returned NULL');
       for (final id in _kReadClientMuted) {
