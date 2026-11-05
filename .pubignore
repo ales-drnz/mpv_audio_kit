@@ -19,6 +19,8 @@ pubspec.lock
 .swiftpm/
 /android/.gradle/
 /android/build/
+# A libmpv of your own for tvOS (tvos/Package.swift)
+/tvos/libmpv.xcframework/
 
 # Maintainer scripts
 /scripts/

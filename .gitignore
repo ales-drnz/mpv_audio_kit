@@ -17,6 +17,8 @@ coverage/
 .swiftpm/
 /android/.gradle/
 /android/build/
+# A libmpv of your own for tvOS (tvos/Package.swift)
+/tvos/libmpv.xcframework/
 
 # Docs
 /docs/

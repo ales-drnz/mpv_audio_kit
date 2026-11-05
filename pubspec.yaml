@@ -72,6 +72,10 @@ flutter:
         pluginClass: MpvAudioKitPlugin
         ffiPlugin: true
         sharedDarwinSource: true
+      # flutter-tvos (https://fluttertv.dev) reads the plugin from
+      # tvos/Package.swift, which also links libmpv: see there.
+      tvos:
+        pluginClass: MpvAudioKitPlugin
       web:
         pluginClass: MpvAudioKitWeb
         fileName: src/web/mpv_audio_kit_web.dart

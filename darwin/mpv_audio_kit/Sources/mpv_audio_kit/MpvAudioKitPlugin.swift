@@ -2,7 +2,7 @@
 // All rights reserved.
 // Use of this source code is governed by BSD 3-Clause license that can be found in the LICENSE file.
 
-#if os(iOS)
+#if os(iOS) || os(tvOS)
 import Flutter
 import UIKit
 #elseif os(macOS)
@@ -10,7 +10,7 @@ import Cocoa
 import FlutterMacOS
 #endif
 
-/// Apple (iOS + macOS) entry point of the mpv_audio_kit Flutter plugin.
+/// Apple (iOS, tvOS and macOS) entry point of the mpv_audio_kit Flutter plugin.
 ///
 /// Most of the package's surface is delivered via direct FFI calls to
 /// `libmpv`; this class only exists to:
@@ -23,7 +23,7 @@ import FlutterMacOS
 ///   gets wired up alongside the core plugin.
 public class MpvAudioKitPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     let messenger = registrar.messenger()
     #elseif os(macOS)
     let messenger = registrar.messenger
