@@ -1,4 +1,4 @@
-## [0.6.2] - 3-11-2026
+## [0.6.2] - 5-11-2026
 
 ### libmpv-r21
 **All platforms**
@@ -16,6 +16,7 @@
 
 **Web**
 - The module reads over HTTP through short answers, outages, credentials and refused resumes.
+- A `makWebAudio.init` that fails leaves no context and no device.
 
 ### All platforms
 **Breaking**
