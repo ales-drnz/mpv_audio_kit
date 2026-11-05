@@ -66,6 +66,7 @@ The build downloads the libmpv binary for each native target and checks its SHA-
 | Android | 7.0 (SDK 24) | arm64-v8a, armeabi-v7a, x86_64 | 7.7 to 8.3 MB per ABI |
 | iOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
 | macOS | 12.0 | arm64, x86_64 | 15.1 MB universal |
+| tvOS | 15.0 | arm64, simulator arm64 and x86_64 | 7.3 MB |
 | Windows | 10 | arm64, x86_64 | 7.8 MB |
 | Linux | glibc 2.31 | aarch64, x86_64 | 8.4 MB |
 | Web | a cross-origin isolated page | wasm32 | 4.3 MB, 2.0 MB zipped |
@@ -212,6 +213,10 @@ For background playback, add the Background Modes capability in Signing & Capabi
   <string>audio</string>
 </array>
 ```
+
+### tvOS
+
+Build with [flutter-tvos](https://fluttertv.dev). It installs no code asset, so on tvOS the plugin's `tvos/Package.swift` links libmpv instead of the build hook: Swift Package Manager downloads `libmpv_tvos.xcframework.zip` of the release and checks its checksum. A libmpv of your own goes to `tvos/libmpv.xcframework` in a checkout of the package.
 
 ### macOS
 
