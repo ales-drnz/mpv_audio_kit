@@ -169,9 +169,17 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('player.state.audioParams aggregates the audio-params NODE_MAP + '
-          'the audio-codec / audio-codec-name siblings', () {
+          'the audio-codec / audio-codec-name siblings', () async {
         // The previous file is still loaded from the first test. Verify the
-        // node-driven audioParams populated (via real mpv events).
+        // node-driven audioParams populated (via real mpv events). The first
+        // test waits for audio-out-params only, and audio-params can come
+        // after it.
+        await waitUntil(
+          () =>
+              player.state.audioParams.format != null &&
+              player.state.audioParams.codec != null,
+          reason: 'audio-params never arrived: ${player.state.audioParams}',
+        );
         expect(
           player.state.audioParams.format,
           isNotNull,

@@ -473,12 +473,14 @@ void main() {
           1,
           reason: 'the seek of play() must go after the restart of the first',
         );
-        expect(
-          completions,
-          containsAllInOrder([false, true, false]),
+        // The reads of the two restarts reach the stream after the reply of
+        // play(), so they are waited for.
+        await waitUntil(
+          () =>
+              containsAllInOrder([false, true, false]).matches(completions, {}),
           reason:
               'the seek to the end landed on the end, read before the seek '
-              'of play() left it',
+              'of play() left it: $completions',
         );
         await waitUntil(
           () async =>
