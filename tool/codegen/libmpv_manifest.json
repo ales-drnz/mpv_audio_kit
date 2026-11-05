@@ -108,6 +108,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -136,6 +137,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -164,6 +166,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -191,6 +194,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -218,6 +222,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -245,6 +250,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -272,6 +278,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -299,6 +306,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -325,6 +333,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "loudness_scan",
       "pcm_tap",
@@ -351,6 +360,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -379,6 +389,7 @@
       "filter_label_tap",
       "gapless_tail",
       "hotplug_core_thread",
+      "keep_open_park",
       "lavfi_eof_passthrough",
       "libsmb2",
       "loudness_scan",
@@ -394,25 +405,25 @@
     ]
   },
   "source": {
-    "commit": "efcf15e14005a2e9055134866707f2d547d3be44",
-    "run": "42060938470"
+    "commit": "da9cfd3a84c367f51731cb28ac307f72737c282d",
+    "run": "42080705837"
   },
   "assets": {
-    "libmpv_android-arm64-v8a.so": "44e59507c8e23ae9e0608556753aefb0260f6f72d9c069b78a09902b8a7c5408",
-    "libmpv_android-armeabi-v7a.so": "2d6cf2c432be0e32be773d69ca0f250b0a35a64d84fbd2e26c2e3c975dfc5dd9",
-    "libmpv_android-x86_64.so": "b3e37ec4fd44e6ec15b3b38ed89d20ccae0941eeb1a6c1bce79915a01749603f",
-    "libmpv_ios.xcframework.zip": "b88dcdbe01118258274740f730a987b9eaf2a160d8bc69722665cbc553c04b95",
-    "libmpv_linux-aarch64.so": "5ef2f7bb72297d042d6dd0483fc260f35f39a754e619d7ec468be2ec50af1a5e",
-    "libmpv_linux-x86_64.so": "0c016cc1160f51b7dd160f4e0930a5c8b68ae14c62e5966531019fb2d4c565c6",
-    "libmpv_macos.xcframework.zip": "9b342fa74819baaa1575a3ac50d6598292ed61e4ee4e74f947d88d6d1153a4e1",
-    "libmpv_tvos.xcframework.zip": "bf9d5cead0ee244f6138b646189b673c5ac55a5445d12bbf82eb2b081597806c",
-    "libmpv_web.zip": "f781ed766894805455ed426b38ec543970804a82e88ab2e9319a5eb9587e6570",
-    "libmpv_windows-arm64.dll": "23727a576ea673ec877b47c44bb9e63b1c4ae57b22a813354594461a257f4640",
-    "libmpv_windows-x86_64.dll": "38cb2c035cd557a561ff4e9be9bd2f47d00fa58ea30e9552fa7f3cb42be951e1"
+    "libmpv_android-arm64-v8a.so": "c1b99f12745b764d057d4c1c76b89b7d6cc03c6aec16c4573e1456493474cd11",
+    "libmpv_android-armeabi-v7a.so": "7d7ccc3b3881b068a75813ed673293d3d953f5d192aa435ba855c638494f73b7",
+    "libmpv_android-x86_64.so": "d46ec153fd55b001da5f4bc1e5eecdeba3c7036fa3a3946c95e686d56b60ba7b",
+    "libmpv_ios.xcframework.zip": "68db83e418648507680c5c9a0fe8aeb84eaa12cd284dc2a773afb184d5a05d3e",
+    "libmpv_linux-aarch64.so": "c995e52a4527db43a88365235203e5273d27c32835d4d5385d284b7cc7c83c96",
+    "libmpv_linux-x86_64.so": "a3d24fbfccb98483c2515662a37630cd194e16742f295885acffd498da1fdd34",
+    "libmpv_macos.xcframework.zip": "393347fabfe08ebe7f150b74540c6f59e0c14e54885c1162f5fd6be780c55e20",
+    "libmpv_tvos.xcframework.zip": "c7be997d7e2dfa4b9eff445ffe11df9ab3076aa59578385c079482a937382172",
+    "libmpv_web.zip": "277888e8f57d5ad22a8148f0ef4bff95fe634d889309691c76e547dbbdb87832",
+    "libmpv_windows-arm64.dll": "cfb073ca1025dd5aee3b97ac2971e96e9eeb0caedf99c286b3c5cf33ec375768",
+    "libmpv_windows-x86_64.dll": "0e5765e38d1fb46a7833316e9d236f922f5616d4c30e8f3e20e50e068a2009ce"
   },
   "licenses": {
     "asset": "licenses.zip",
-    "sha256": "76c9b26515e73402a93a76782728ae6495b087ac011e4619d33f9d38e56a3c15"
+    "sha256": "9829fa82f3dcfecfc4b2f89f252e5c845847e22f094c0448f5e3ca3729efbdc8"
   },
   "web": {
     "asset": "libmpv_web.zip",
@@ -421,7 +432,7 @@
     "emscripten": "6.0.12",
     "files": {
       "libmpv.mjs": "a828dc54cc9a95d5c4b335c7b6dc3ae11691c511f4866dec6c4f211972d1387f",
-      "libmpv.wasm": "420db0a7443258bf928c6f5425afb34ff1bc2f34a2ebb57da179f6324d21aecb",
+      "libmpv.wasm": "0db3605e07f5146f291ea2a8e3beb76bd8ce408772f0280630bf99a2bcf9cf8c",
       "mak_webaudio_processor.js": "253e3882e772051e749292e518768c75e2d61a807355d45d00ad7215f7c7bee4"
     }
   },
