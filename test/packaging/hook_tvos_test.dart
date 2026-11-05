@@ -53,6 +53,7 @@ void main() {
       jsonDecode(outputFile.readAsStringSync()) as Map<String, Object?>,
     );
     expect(output.assets.encodedAssets, isEmpty);
-    expect(Directory('${tmp.path}/out').existsSync(), isFalse);
+    // The download goes to the shared output directory: nothing there.
+    expect(shared.listSync(recursive: true).whereType<File>(), isEmpty);
   });
 }
