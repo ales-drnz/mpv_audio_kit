@@ -111,6 +111,10 @@ void main() {
       late RangeHttpServer server;
       late Player player;
       late List<PrefetchState> states;
+      // Each change of the index or of the prefetch states, with the
+      // position then, for the reason of a failure (macOS once ended at
+      // [idle, ready], CI run 42034639014, and did not again in 30 runs).
+      late List<String> trace;
 
       setUp(() async {
         server = await RangeHttpServer.start({
@@ -120,9 +124,22 @@ void main() {
         player = await buildPlayer();
         await player.setPrefetchPlaylist(true);
         states = [];
-        final sub = player.stream.prefetchState.listen(states.add);
+        trace = [];
+        void note(String what) => trace.add(
+          '$what at index ${player.state.playlist.index}, '
+          '${player.state.position.inMilliseconds} ms',
+        );
+        final sub = player.stream.prefetchState.listen((s) {
+          states.add(s);
+          note(s.name);
+        });
+        final indexSub = player.stream.playlist
+            .map((p) => p.index)
+            .distinct()
+            .listen((i) => note('index $i'));
         addTearDown(() async {
           await sub.cancel();
+          await indexSub.cancel();
           await player.dispose();
           await server.close();
         });
@@ -158,12 +175,12 @@ void main() {
       test('opens the http entry after a local file ahead', () async {
         await playPair(Media(oneSecond), Media(server.url('five.flac')));
         expect(server.gets('/five.flac'), hasLength(1));
-        expect(states, contains(PrefetchState.used), reason: '$states');
+        expect(states, contains(PrefetchState.used), reason: trace.join('\n'));
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('opens a local file after an http entry ahead', () async {
         await playPair(Media(server.url('one.flac')), Media(fiveSeconds));
-        expect(states, contains(PrefetchState.used), reason: '$states');
+        expect(states, contains(PrefetchState.used), reason: trace.join('\n'));
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
 
