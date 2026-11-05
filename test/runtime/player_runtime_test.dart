@@ -178,7 +178,7 @@ void main() {
           () =>
               player.state.audioParams.format != null &&
               player.state.audioParams.codec != null,
-          reason: 'audio-params never arrived: ${player.state.audioParams}',
+          reason: 'audio-params and audio-codec never arrived',
         );
         expect(
           player.state.audioParams.format,

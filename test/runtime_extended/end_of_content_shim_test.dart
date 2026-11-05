@@ -480,7 +480,7 @@ void main() {
               containsAllInOrder([false, true, false]).matches(completions, {}),
           reason:
               'the seek to the end landed on the end, read before the seek '
-              'of play() left it: $completions',
+              'of play() left it',
         );
         await waitUntil(
           () async =>
