@@ -1,3 +1,19 @@
+## [0.6.3] - 5-11-2026
+
+### Contributions
+- [@erikjara](https://github.com/erikjara): asked for tvOS and added it, in the kit and in the libmpv build ([#30](https://github.com/ales-drnz/mpv_audio_kit/issues/30), [#31](https://github.com/ales-drnz/mpv_audio_kit/pull/31), [libmpv-scripts#3](https://github.com/ales-drnz/libmpv-scripts/pull/3)).
+
+### libmpv-r22
+**Android, iOS, Linux, macOS**
+- An analysis turned on once an `fd://` source has loaded reads that source, even when the app has reused the descriptor, and each player of the process keeps its own.
+
+**tvOS**
+- `libmpv_tvos.xcframework.zip`, for Apple TV and its simulator.
+
+### tvOS
+**Added**
+- tvOS through [flutter-tvos](https://fluttertv.dev) ([#30](https://github.com/ales-drnz/mpv_audio_kit/issues/30)): `tvos/Package.swift` links `libmpv_tvos.xcframework.zip` of the release, and the build hook bundles nothing there. Tried on the simulator.
+
 ## [0.6.2] - 5-11-2026
 
 ### libmpv-r21
