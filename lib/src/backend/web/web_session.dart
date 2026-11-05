@@ -22,6 +22,11 @@ import 'web_registry.dart';
 /// player hands out and exact in a JavaScript number.
 const int _kPauseObserverReplyId = 1099511627776;
 
+/// Test-only: the `mpv-version` the release check takes in place of the
+/// module's, to stand for a module of another release.
+@visibleForTesting
+String? debugWebMpvVersion;
+
 /// The events the read client is spared: it only sends reads, and drains
 /// their replies.
 const List<int> _kReadClientMuted = [
@@ -186,7 +191,7 @@ final class WebSession implements MpvSession {
   /// as natively: the player then gets no core.
   Future<void> _checkRelease() async {
     final mismatch = libmpvMismatch(
-      await _WebReader(this).string('mpv-version'),
+      debugWebMpvVersion ?? await _WebReader(this).string('mpv-version'),
     );
     if (mismatch == null) return;
     await stop();
