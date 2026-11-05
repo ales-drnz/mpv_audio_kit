@@ -31,6 +31,7 @@ Directory packageCopy(String root) {
     'scripts/update_libmpv.sh',
     'scripts/web_module.py',
     'hook/build.dart',
+    'tvos/Package.swift',
     'lib/src/internals/libmpv_release.dart',
     'lib/src/internals/libmpv_licenses.dart',
     'tool/codegen/libmpv_manifest.json',

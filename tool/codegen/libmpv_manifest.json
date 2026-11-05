@@ -1,5 +1,5 @@
 {
-  "release": "r21",
+  "release": "r22",
   "mpv": "0.41.0",
   "ffmpeg": "8.1.1",
   "license": "LGPL-3.0-or-later",
@@ -284,6 +284,33 @@
       "strip_swscale",
       "strip_win_resources"
     ],
+    "tvos": [
+      "advanced_editlist",
+      "af_command_args",
+      "afmt_reset",
+      "audio_output_state",
+      "bulk_analysis",
+      "chain_eof",
+      "chapter_list_reset",
+      "dash_keepalive",
+      "embed_cacert",
+      "embedded_cover_art",
+      "fd_pread",
+      "filter_label_tap",
+      "gapless_tail",
+      "hotplug_core_thread",
+      "lavfi_eof_passthrough",
+      "libsmb2",
+      "loudness_scan",
+      "pcm_tap",
+      "playlist_prev_dos_path",
+      "prefetch",
+      "read_error",
+      "strip_libass",
+      "strip_mpv_dead",
+      "strip_swscale",
+      "strip_win_resources"
+    ],
     "web": [
       "advanced_editlist",
       "af_command_args",
@@ -367,24 +394,25 @@
     ]
   },
   "source": {
-    "commit": "050f21e1803f62a5d29e48fb9cb615027a1e5ba9",
-    "run": "41930556097"
+    "commit": "efcf15e14005a2e9055134866707f2d547d3be44",
+    "run": "42060938470"
   },
   "assets": {
-    "libmpv_android-arm64-v8a.so": "37bdb2ac329a7c7758fc24d82b2d19371a5fad368021783708b5d8131dfa72fb",
-    "libmpv_android-armeabi-v7a.so": "b56b31caaf68dc47bd543a1d7dd501171c330b959adca279125fd544e7bc165a",
-    "libmpv_android-x86_64.so": "8692b061fe72339725eac9d47efe15ae2b1955caf0b45738dc2ab89394cc0cfc",
-    "libmpv_ios.xcframework.zip": "cc4d7061611825da9f3ea50fc76024261b5f5a0b5b6b0bc57e6ea77a0ad03444",
-    "libmpv_linux-aarch64.so": "80a70449d2d75bff5a415c3cd73aafa30ff4f3b5e02e0a09231a5ace5c5a1c00",
-    "libmpv_linux-x86_64.so": "c2d71a40dae480732df3945fc597968bb34ab92edab940a103b9703769dec50d",
-    "libmpv_macos.xcframework.zip": "b2b9e90437101df57c9bdaca3d5886a32f49dce890d4bb50d362efb07e1e623c",
-    "libmpv_web.zip": "e7fc57ab465cf719c34b14a8b77f0c46437a5dbb78aa7d39cc01bd067a95e195",
-    "libmpv_windows-arm64.dll": "e790ec01017dd10c4bdee3a232264b3674e8a2019c17e3a159fcfa733b9316cf",
-    "libmpv_windows-x86_64.dll": "3bf66c7f80a7a044c84127a85ec3e0adc2a6ade1a43b0c4a9c0da1429736ee77"
+    "libmpv_android-arm64-v8a.so": "44e59507c8e23ae9e0608556753aefb0260f6f72d9c069b78a09902b8a7c5408",
+    "libmpv_android-armeabi-v7a.so": "2d6cf2c432be0e32be773d69ca0f250b0a35a64d84fbd2e26c2e3c975dfc5dd9",
+    "libmpv_android-x86_64.so": "b3e37ec4fd44e6ec15b3b38ed89d20ccae0941eeb1a6c1bce79915a01749603f",
+    "libmpv_ios.xcframework.zip": "b88dcdbe01118258274740f730a987b9eaf2a160d8bc69722665cbc553c04b95",
+    "libmpv_linux-aarch64.so": "5ef2f7bb72297d042d6dd0483fc260f35f39a754e619d7ec468be2ec50af1a5e",
+    "libmpv_linux-x86_64.so": "0c016cc1160f51b7dd160f4e0930a5c8b68ae14c62e5966531019fb2d4c565c6",
+    "libmpv_macos.xcframework.zip": "9b342fa74819baaa1575a3ac50d6598292ed61e4ee4e74f947d88d6d1153a4e1",
+    "libmpv_tvos.xcframework.zip": "bf9d5cead0ee244f6138b646189b673c5ac55a5445d12bbf82eb2b081597806c",
+    "libmpv_web.zip": "f781ed766894805455ed426b38ec543970804a82e88ab2e9319a5eb9587e6570",
+    "libmpv_windows-arm64.dll": "23727a576ea673ec877b47c44bb9e63b1c4ae57b22a813354594461a257f4640",
+    "libmpv_windows-x86_64.dll": "38cb2c035cd557a561ff4e9be9bd2f47d00fa58ea30e9552fa7f3cb42be951e1"
   },
   "licenses": {
     "asset": "licenses.zip",
-    "sha256": "e95ba3b17cfd018eb7befa720f0034ef07e22d39fb84341f19a5634923bd30f8"
+    "sha256": "76c9b26515e73402a93a76782728ae6495b087ac011e4619d33f9d38e56a3c15"
   },
   "web": {
     "asset": "libmpv_web.zip",
@@ -393,7 +421,7 @@
     "emscripten": "6.0.12",
     "files": {
       "libmpv.mjs": "a828dc54cc9a95d5c4b335c7b6dc3ae11691c511f4866dec6c4f211972d1387f",
-      "libmpv.wasm": "fb0ab217f70c4de7d6bd48ed3e6f9247689ec77585c0b0600578950ff2860c69",
+      "libmpv.wasm": "420db0a7443258bf928c6f5425afb34ff1bc2f34a2ebb57da179f6324d21aecb",
       "mak_webaudio_processor.js": "253e3882e772051e749292e518768c75e2d61a807355d45d00ad7215f7c7bee4"
     }
   },
