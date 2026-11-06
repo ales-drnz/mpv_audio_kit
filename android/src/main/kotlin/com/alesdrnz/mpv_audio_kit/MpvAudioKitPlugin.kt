@@ -16,7 +16,8 @@ import io.flutter.plugin.common.MethodChannel
 /**
  * Android entry point. The package itself is direct FFI to libmpv; this plugin
  * only opens Content URIs as file descriptors ([FileDescriptorChannel]), reads
- * the images of content:// covers ([ArtworkChannel]), and
+ * the images of content:// covers ([ArtworkChannel]), tells the passthrough
+ * codecs of the output ([PassthroughChannel]), and
  * wires the OS media session (Media3) and its method/event channels.
  */
 class MpvAudioKitPlugin : FlutterPlugin {
@@ -36,6 +37,7 @@ class MpvAudioKitPlugin : FlutterPlugin {
 
     private lateinit var fileDescriptors: FileDescriptorChannel
     private lateinit var artwork: ArtworkChannel
+    private lateinit var passthrough: PassthroughChannel
     private lateinit var mediaSessionMethodChannel: MethodChannel
     private lateinit var mediaSessionEventChannel: EventChannel
     private lateinit var context: Context
@@ -57,6 +59,9 @@ class MpvAudioKitPlugin : FlutterPlugin {
             ArtworkChannel.Source(resolver.getType(parsed)) { resolver.openInputStream(parsed) }
         }
         artwork.attach(flutterPluginBinding.binaryMessenger)
+        // The codecs of audio-spdif the output takes (HDMI on a TV box).
+        passthrough = PassthroughChannel(PassthroughChannel.Device(context))
+        passthrough.attach(flutterPluginBinding.binaryMessenger)
 
         // OS media session (Media3): lockscreen / notification controls,
         // hardware & Bluetooth media keys. The MediaSessionManager owns the
@@ -94,6 +99,7 @@ class MpvAudioKitPlugin : FlutterPlugin {
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         fileDescriptors.detach()
         artwork.detach()
+        passthrough.detach()
         mediaSessionMethodChannel.setMethodCallHandler(null)
         mediaSessionEventChannel.setStreamHandler(null)
         MediaSessionManager.detach(this)
