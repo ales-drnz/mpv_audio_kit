@@ -26,7 +26,9 @@ screenshots:
 
 environment:
   sdk: ^3.10.0
-  flutter: '>=3.41.0'
+  # 3.38.10 is the Flutter of flutter-webOS. Before 3.41 the web/ assets
+  # below ship on every platform, as `platforms` is not read there.
+  flutter: '>=3.38.10'
 
 dependencies:
   code_assets: '>=1.1.0 <3.0.0'
