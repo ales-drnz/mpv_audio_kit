@@ -384,8 +384,14 @@ jobs:
         if: steps.module.outputs.ready == 'true'
         timeout-minutes: 20
         run: |
-          test/web/with_net_server.sh --platform chrome --wasm \
-            --cross-origin-isolation test/web 2>&1 | tee build/web-test-logs/wasm.txt
+          for phase in before after; do
+            [[ $phase == after ]] && git apply .github/diag/weblock.patch
+            for i in $(seq 20); do
+              test/web/with_net_server.sh --platform chrome --wasm \
+                --cross-origin-isolation test/web/web_core_lock_test.dart 2>&1 |
+                grep -aE "longest run|took|tests passed|tests failed" | sed "s/^/DIAG $phase $i: /" || true
+            done
+          done
       # The sound running, as after a gesture: Chrome without the autoplay
       # policy (chrome_autoplay.sh) for the file that plays it.
       - name: flutter test --platform chrome --wasm, sound running

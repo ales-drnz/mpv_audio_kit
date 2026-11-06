@@ -1,0 +1,49 @@
+diff --git a/lib/src/backend/web/web_session.dart b/lib/src/backend/web/web_session.dart
+index e0ec7805..388c40fe 100644
+--- a/lib/src/backend/web/web_session.dart
++++ b/lib/src/backend/web/web_session.dart
+@@ -345,10 +345,44 @@ final class WebSession implements MpvSession {
+     _reads = 0;
+     _m.detachWakeup(reads, _readsBridge);
+     if (_handleBridge != 0) _m.detachWakeup(h, _handleBridge);
++    await _awaitShutdown(reads, const Duration(seconds: 1));
+     timedCall('mpv_destroy', () => _m.c.mpvDestroy(reads));
+     timedCall('mpv_terminate_destroy', () => _m.c.mpvTerminateDestroy(h));
+   }
+ 
++  /// Sends `quit` on the read client and drains its queue, without
++  /// blocking, until mpv's SHUTDOWN, for up to [bound]. The core has then
++  /// ended the file and answered the reads still in flight, and the
++  /// destroys take its lock at once. Without it they waited for that end
++  /// with Emscripten's busy loop on the main thread: a frame or more with
++  /// a heavy filter chain. The player sent `quit` already; a second one is
++  /// harmless, and stands in for it where the player sent none (a module
++  /// of another release).
++  Future<void> _awaitShutdown(int reads, Duration bound) async {
++    _m.withStrings(['quit'], (p) {
++      final array = _m.malloc(8);
++      try {
++        _m.setU32(array, p[0]);
++        _m.setU32(array + 4, 0);
++        _m.c.mpvCommandAsync(reads, bigInt(0), array);
++      } finally {
++        _m.free(array);
++      }
++    });
++    final waited = Stopwatch()..start();
++    while (waited.elapsed < bound) {
++      var id = _m.i32(_m.c.mpvWaitEvent(reads, 0));
++      for (
++        ;
++        id != MpvEventId.mpvEventNone;
++        id = _m.i32(_m.c.mpvWaitEvent(reads, 0))
++      ) {
++        if (id == MpvEventId.mpvEventShutdown) return;
++      }
++      await Future<void>.delayed(const Duration(milliseconds: 4));
++    }
++  }
++
+   // ── MpvRequests, through the player's client ──────────────────────────
+ 
+   @override
