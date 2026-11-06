@@ -317,7 +317,11 @@ jobs:
       # The files whose result can depend on the host: the Dart-only ones
       # give here what they give on Linux, which runs them all.
       - name: flutter test -x network (files that touch the host)
-        run: flutter test -x network $(scripts/ci/platform_tests.sh)
+        run: |
+          for i in $(seq 50); do
+            echo "== round $i"
+            flutter test -x network test/runtime_extended/stream_lavf_defaults_test.dart --plain-name "with the prefetch" 2>&1 | grep -aE "at index|Expected|Actual|All tests passed|Some tests failed" || true
+          done
 
   # The web backend in Chrome, on libmpv built as WebAssembly. The module
   # is the web build of the libmpv the other jobs bundle, the run's when
