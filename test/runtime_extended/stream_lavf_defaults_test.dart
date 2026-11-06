@@ -133,12 +133,21 @@ void main() {
           states.add(s);
           note(s.name);
         });
+        // DIAG: the mpv log of the prefetch and of the opens.
+        player.setLogLevel(LogLevel.debug);
+        final logSub = player.stream.log.listen((e) {
+          final t = '${e.prefix}: ${e.text}'.trim();
+          if (RegExp('prefetch|Opening|Playing|loadfile|EOF|playlist', caseSensitive: false).hasMatch(t)) {
+            trace.add('LOG $t');
+          }
+        });
         final indexSub = player.stream.playlist
             .map((p) => p.index)
             .distinct()
             .listen((i) => note('index $i'));
         addTearDown(() async {
           await sub.cancel();
+          await logSub.cancel();
           await indexSub.cancel();
           await player.dispose();
           await server.close();
@@ -180,6 +189,10 @@ void main() {
 
       test('opens a local file after an http entry ahead', () async {
         await playPair(Media(server.url('one.flac')), Media(fiveSeconds));
+        if (!states.contains(PrefetchState.used)) {
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          trace.add('DIAG raw prefetch-state ${await player.getRawProperty('prefetch-state')}, states now $states');
+        }
         expect(states, contains(PrefetchState.used), reason: trace.join('\n'));
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
