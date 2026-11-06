@@ -376,6 +376,7 @@ class Player extends _PlayerBase
       if (retainedOld) {
         // The target plays from its source now: see the check after phase 2.
         if (load.superseded) return;
+        await debugBeforeRetainedRemove?.call();
         await _calls.command(['playlist-remove', '0']);
       }
       // Clear per-track state AFTER the jump's reply; see [open] for why
