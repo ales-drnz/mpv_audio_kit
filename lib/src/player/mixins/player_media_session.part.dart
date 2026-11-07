@@ -221,21 +221,9 @@ mixin _MediaSessionModule on _PlayerBase {
       case MediaSessionCommandStop():
         _applySessionCommand((this as Player)._stop());
       case MediaSessionCommandNext():
-        if (shouldAutoApplyPlaylistNav(
-          autoApplyPlaylistNavigation:
-              _state.mediaSession?.autoApplyPlaylistNavigation,
-          playlistLength: _state.playlist.items.length,
-        )) {
-          _applySessionCommand((this as Player).next());
-        }
+        _applySessionNav((this as Player).next);
       case MediaSessionCommandPrevious():
-        if (shouldAutoApplyPlaylistNav(
-          autoApplyPlaylistNavigation:
-              _state.mediaSession?.autoApplyPlaylistNavigation,
-          playlistLength: _state.playlist.items.length,
-        )) {
-          _applySessionCommand((this as Player).previous());
-        }
+        _applySessionNav((this as Player).previous);
       case MediaSessionCommandLike():
         // Emit-only: there is no built-in favourite concept, so it is not
         // auto-applied. The consumer reacts on the stream below and reflects
@@ -262,6 +250,18 @@ mixin _MediaSessionModule on _PlayerBase {
     // on a single-media playlist (where auto-apply is a no-op) the
     // consumer needs to see the command to drive its own queue.
     _mediaSessionCommandsCtrl.add(command);
+  }
+
+  /// Runs the playlist step [nav] of a next or previous command when the
+  /// session auto-applies it (see [shouldAutoApplyPlaylistNav]).
+  void _applySessionNav(Future<bool> Function() nav) {
+    if (shouldAutoApplyPlaylistNav(
+      autoApplyPlaylistNavigation:
+          _state.mediaSession?.autoApplyPlaylistNavigation,
+      playlistLength: _state.playlist.items.length,
+    )) {
+      _applySessionCommand(nav());
+    }
   }
 
   /// Reopens mpv's audio output after the OS restored the audio session
