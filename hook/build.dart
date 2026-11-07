@@ -69,7 +69,7 @@ void main(List<String> args) async {
     // an OS it does not know.
     if (_targetOSName(input) == 'tvos') return;
     final code = input.config.code;
-    final target = _Target.of(code);
+    final target = _Target.of(code, iOSVersion: _iOSVersion(input));
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
@@ -131,6 +131,21 @@ String? _targetOSName(BuildInput input) {
   return os is String ? os : null;
 }
 
+/// The iOS version the build targets, as Flutter writes it in the input:
+/// `deployment_version` (code_assets 2.2) or `target_version` before.
+/// Read raw, as [_targetOSName]: code_assets 2.2 deprecates
+/// `IOSCodeConfig.targetVersion` for `deploymentVersion`, which the
+/// code_assets 1.x of Flutter 3.41 lacks. `null` when the input has none.
+int? _iOSVersion(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final ios = code is Map ? code['ios'] : null;
+  if (ios is! Map) return null;
+  final deployment = ios['deployment_version'];
+  final major = deployment is Map ? deployment['major'] : ios['target_version'];
+  return major is int ? major : null;
+}
+
 /// Which release asset a target needs, and the file name it is bundled
 /// under. The name is the package's own, never `libmpv`, so it cannot
 /// collide with another plugin's copy on disk or in the loader (bionic
@@ -148,7 +163,7 @@ class _Target {
   /// The xcframework directory holding the slice, on Apple.
   final String? appleSlice;
 
-  static _Target of(CodeConfig code) {
+  static _Target of(CodeConfig code, {int? iOSVersion}) {
     final arch = code.targetArchitecture;
     Never unsupported() => throw UnsupportedError(
       'mpv_audio_kit: no libmpv for ${code.targetOS} '
@@ -157,11 +172,11 @@ class _Target {
     // The iOS binary is built for iOS 15, and Flutter writes this version
     // into the framework's MinimumOSVersion: a lower one does not match the
     // binary. Flutter before 3.47.4 passes 12 or 13.
-    if (code.targetOS == OS.iOS && code.iOS.targetVersion < 15) {
+    if (code.targetOS == OS.iOS && iOSVersion != null && iOSVersion < 15) {
       throw UnsupportedError(
         'mpv_audio_kit: building for iOS needs Flutter 3.47.4 or later, '
         'which targets iOS 15 like the bundled libmpv '
-        '(this Flutter targets iOS ${code.iOS.targetVersion}).',
+        '(this Flutter targets iOS $iOSVersion).',
       );
     }
     return switch (code.targetOS) {
