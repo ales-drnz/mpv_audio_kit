@@ -1,7 +1,7 @@
 name: Tizen emulator
 
-# Spike: what the Tizen SDK's package manager offers for a TV emulator on a
-# GitHub runner, and whether the runner has KVM.
+# Spike: install the Samsung TV emulator of the Tizen SDK on a GitHub runner
+# and start it headless with KVM.
 on:
   push:
     branches: ['wip/0.7.0-tizen-emu']
@@ -28,16 +28,40 @@ jobs:
           chmod a+x install.bin
           ./install.bin --accept-license "$HOME/tizen-studio"
           rm install.bin
-      - name: What the package manager offers
+      - name: KVM for the runner's user
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -la /dev/kvm
+      - name: Install the TV emulator
         run: |
           pm="$HOME/tizen-studio/package-manager/package-manager-cli.bin"
+          "$pm" install --accept-license Emulator,TV-SAMSUNG-Public-Emulator 2>&1 | tail -20
+          ls "$HOME/tizen-studio/tools/emulator/bin" || true
+          ls "$HOME/tizen-studio/platforms" "$HOME/tizen-studio/platforms"/* || true
+      - name: Create and start a TV emulator
+        run: |
           mkdir -p logs
-          "$pm" --help > logs/help.txt 2>&1 || true
-          "$pm" show-pkgs > logs/show-pkgs.txt 2>&1 || true
-          "$pm" extra --list > logs/extra-list.txt 2>&1 || true
-          "$pm" extra -l > logs/extra-l.txt 2>&1 || true
-          grep -iE "emulator|tv" logs/show-pkgs.txt | head -80 || true
-          cat logs/extra-list.txt logs/extra-l.txt | head -40
+          em="$HOME/tizen-studio/tools/emulator/bin/em-cli"
+          sdb="$HOME/tizen-studio/tools/sdb"
+          "$em" --help > logs/em-help.txt 2>&1 || true
+          "$em" list-platform > logs/em-platforms.txt 2>&1 || true
+          cat logs/em-help.txt logs/em-platforms.txt
+          plat="$(grep -oiE 'tv-samsung[^ ]*' logs/em-platforms.txt | head -1)"
+          echo "platform: $plat"
+          "$em" create -n tv -p "$plat" > logs/em-create.txt 2>&1 || true
+          cat logs/em-create.txt
+          "$em" list-vm -d > logs/em-vms.txt 2>&1 || true
+          cat logs/em-vms.txt
+          (xvfb-run -a "$em" launch -n tv > logs/em-launch.txt 2>&1 &)
+          for i in $(seq 60); do
+            "$sdb" devices | tee logs/sdb-devices.txt | grep -q emulator && break
+            sleep 5
+          done
+          "$sdb" devices
+          "$sdb" capability > logs/sdb-capability.txt 2>&1 || true
+          cat logs/sdb-capability.txt logs/em-launch.txt | head -60
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
