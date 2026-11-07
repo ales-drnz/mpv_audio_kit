@@ -1,3 +1,17 @@
+## [0.6.4] - Unreleased
+
+### libmpv-r23
+**All platforms**
+- A pause in an `on_unload` or `on_after_end_file` hook with `keep-open=no` plays the rest of the file before the output closes.
+- A pull output paused in its last few milliseconds keeps them: the position no longer creeps while paused, and the resume plays the rest.
+
+**Android**
+- E-AC3 passthrough opens the output at the rate of its IEC61937 stream, 192 kHz, instead of the output's own.
+
+### Android
+**Added**
+- `MpvAudioKit.passthroughCodecs()`, which of AC3, E-AC3 and DTS the HDMI sink takes.
+
 ## [0.6.3] - 5-11-2026
 
 ### Contributions

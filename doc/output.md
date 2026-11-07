@@ -95,6 +95,12 @@ While a track passes through, the receiver decodes it:
 
 When the output refuses the format, the player decodes the track instead. A change of the list during playback causes a short gap.
 
+On Android `MpvAudioKit.passthroughCodecs()` tells which of AC3, E-AC3 and DTS the HDMI sink takes, so a TV box asks only for those. It is empty on the other platforms. `audiotrack` sends passthrough as IEC61937 stereo, which carries neither TrueHD nor DTS-HD.
+
+```dart
+await player.setAudioSpdif(await MpvAudioKit.passthroughCodecs());
+```
+
 ## Tracks
 
 A file can hold several audio tracks, such as one per language.
