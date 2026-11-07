@@ -8,6 +8,10 @@
 **Android**
 - E-AC3 passthrough opens the output at the rate of its IEC61937 stream, 192 kHz, instead of the output's own.
 
+### All platforms
+**Fixed**
+- `openAll` at an index past the first gives the list it was asked for at once: the entry that played until the jump no longer shows in the playlist, and a call by index in that moment addresses the list the app sees.
+
 ### Android
 **Added**
 - Android TV, Fire TV and Google TV as a platform: the Android build, the remote's media keys through the media session, checked on the TV emulator of API 36. See the Android TV topic for the manifest.
@@ -15,6 +19,10 @@
 
 **Fixed**
 - The media keys of a remote or headset reach the player on Android 7 and 8 while the app is in front.
+
+### Web
+**Fixed**
+- Disposing a player no longer holds the page for about a frame: it waits for mpv to shut down before destroying it.
 
 ## [0.6.3] - 5-11-2026
 
