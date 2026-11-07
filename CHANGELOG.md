@@ -1,3 +1,12 @@
+## [0.6.4] - Unreleased
+
+### Android
+**Added**
+- Android TV, Fire TV and Google TV as a platform: the Android build, the remote's media keys through the media session, checked on the TV emulator of API 36. See the Android TV topic for the manifest.
+
+**Fixed**
+- The media keys of a remote or headset reach the player on Android 7 and 8 while the app is in front.
+
 ## [0.6.3] - 5-11-2026
 
 ### Contributions
