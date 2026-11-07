@@ -181,7 +181,11 @@ jobs:
           "$gcc" --sysroot="$root" -O1 -o mpv_play_check "$GITHUB_WORKSPACE/kit/.github/tizen/mpv_play_check.c" -ldl
           dir=/home/owner/share/tmp/sdk_tools/mak
           sdb shell "mkdir -p $dir"
-          sdb push mpv_play_check "$RUNNER_TEMP/libmpv/libmpv_tizen-x86_64.so" "$GITHUB_WORKSPACE/kit/test/fixtures/sine_5s.flac" "$dir/"
+          # sdb push takes one local file at a time.
+          for f in mpv_play_check "$RUNNER_TEMP/libmpv/libmpv_tizen-x86_64.so" "$GITHUB_WORKSPACE/kit/test/fixtures/sine_5s.flac"; do
+            sdb push "$f" "$dir/$(basename "$f")"
+          done
+          sdb shell "ls -la $dir"
           sdb shell "cd $dir && chmod +x mpv_play_check && ./mpv_play_check ./libmpv_tizen-x86_64.so ./sine_5s.flac" 2>&1 | tee native.txt
           grep -q "MAK_TIZEN_NATIVE PASS" native.txt
       # The app needs a Samsung certificate to install on the TV image: the
