@@ -65,14 +65,18 @@ jobs:
           printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > ~/.asoundrc
       - name: Certificate profile
         run: |
+          certs="$HOME/tizen-studio/tools/certificate-generator/certificates"
+          find "$certs" -name '*.p12' | sort
+          # The emulator takes the SDK's platform-level distributor; the
+          # default public one fails its certificate check.
+          dist="$(find "$certs" -path '*platform*' -name '*distributor*.p12' | sort | head -1)"
+          echo "distributor: ${dist:-default}"
           dbus-run-session -- bash -c "
           echo tizen | gnome-keyring-daemon --unlock &&
           tizen certificate -a tizen -p tizen -f tizen &&
           tizen security-profiles add -n tizen -a $HOME/tizen-studio-data/keystore/author/tizen.p12 -p tizen \
-            -d $HOME/tizen-studio/tools/certificate-generator/certificates/distributor/sdk-platform/tizen-distributor-signer.p12 \
-            -dp tizenpkcs12passfordsigner
+            ${dist:+-d $dist -dp tizenpkcs12passfordsigner}
           "
-          find "$HOME/tizen-studio/tools/certificate-generator/certificates" -name '*.p12' -o -name '*.cer' | head -20
           cat "$HOME/tizen-studio-data/profile/profiles.xml"
       - name: flutter-tizen
         run: |
