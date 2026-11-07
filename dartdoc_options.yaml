@@ -22,6 +22,8 @@ dartdoc:
       markdown: doc/media_session.md
     "Web":
       markdown: doc/web.md
+    "Android TV":
+      markdown: doc/android_tv.md
   categoryOrder:
     - "Playback"
     - "Effects"
@@ -34,3 +36,4 @@ dartdoc:
     - "Visualizer and analysis"
     - "Media session"
     - "Web"
+    - "Android TV"

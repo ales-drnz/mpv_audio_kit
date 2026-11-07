@@ -10,7 +10,11 @@
 
 ### Android
 **Added**
+- Android TV, Fire TV and Google TV as a platform: the Android build, the remote's media keys through the media session, checked on the TV emulator of API 36. See the Android TV topic for the manifest.
 - `MpvAudioKit.passthroughCodecs()`, which of AC3, E-AC3 and DTS the HDMI sink takes.
+
+**Fixed**
+- The media keys of a remote or headset reach the player on Android 7 and 8 while the app is in front.
 
 ## [0.6.3] - 5-11-2026
 
