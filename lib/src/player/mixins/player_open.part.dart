@@ -132,35 +132,16 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
     // awaits below; see [Player.open] for the rationale.
     final previousIntent = _state.playWhenReady;
     final intent = _transport.claimIntent(shouldPlay);
-    // Snapshot the outgoing current entry's Media so it keeps its
-    // metadata while still visible in playlist events during the
-    // transition (retained until the post-jump remove below).
-    final oldPlaylist = _state.playlist;
-    final oldCurrent =
-        oldPlaylist.items.isNotEmpty &&
-            oldPlaylist.index >= 0 &&
-            oldPlaylist.index < oldPlaylist.items.length
-        ? oldPlaylist.items[oldPlaylist.index]
-        : null;
-    _mediaCache.clear();
-    if (oldCurrent != null) _mediaCache[oldCurrent.uri] = oldCurrent;
-    // Resolve once per media: content:// resolutions detach a JVM-side
-    // FD, doing it twice would leak one FD per track. Each source is
-    // released on every way out unless mpv took its entry.
+    _keepOutgoingMedia();
+    // Resolved once per media ([_resolveAll]). Each source is released on
+    // every way out unless mpv took its entry.
     final sources = <OwnedSource>[];
     // The old entry kept in mpv until phase 4, hidden from the state once
     // the jump moved past it.
     int? retainedId;
     try {
       try {
-        for (final m in medias) {
-          _mediaCache[m.uri] = m;
-          final source = OwnedSource(await resolveUri(m.uri));
-          sources.add(source);
-          if (load.superseded) return;
-          _mediaCache[source.uri] = m;
-          await _forgetFdResume(source.uri);
-        }
+        if (!await _resolveAll(medias, sources, load)) return;
       } catch (_) {
         // Mid-loop failure: the caller observes the original error, and the
         // sources resolved so far are released on the way out.
@@ -201,34 +182,14 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
       // next file the app opens while mpv still lists its number.
       if (load.superseded) return;
 
-      // ── Phase 3: intent, then one direct jump to the target ───────────
-      // The pause write cannot be fought by keep-open here: the parked
-      // flow already left EOF (idle after the remove above), and the
-      // playing flow is mid-track. `playlist-play-index` sets
-      // playlist->current straight to the target entry (mp_set_playlist_
-      // entry): entries before it are never loaded or made current.
-      await _calls.prop(
-        'pause',
-        _transport.intendedPlay(intent, shouldPlay) ? 'no' : 'yes',
+      // ── Phases 3 and 4: the jump, then the retained entry leaves ────
+      final played = await _openAllPlay(
+        load,
+        playNow: _transport.intendedPlay(intent, shouldPlay),
+        retainedOld: retainedOld,
+        index: clampedIndex,
       );
-      final target = (retainedOld ? 1 : 0) + clampedIndex;
-      // The parked flow went through idle, which does not spend the intent
-      // while this call runs: see the idle-active observer.
-      await _calls.commandChecked(['playlist-play-index', target.toString()]);
-      // The jump leaves the park, as the replace of [Player.open] does.
-      _transport.takePark();
-
-      // ── Phase 4: drop the retained old entry ──────────────────────────
-      // Non-current by now (the jump moved current to the target), so the
-      // removal is pure bookkeeping; indices shift down to their final
-      // positions. Tolerant [CoreCalls.command]: a concurrent surgery that
-      // already emptied position 0 must not surface as an openAll error.
-      if (retainedOld) {
-        // The target plays from its source now: see the check after phase 2.
-        if (load.superseded) return;
-        await debugBeforeRetainedRemove?.call();
-        await _calls.command(['playlist-remove', '0']);
-      }
+      if (!played) return;
       _forgetRetained(retainedId);
       // Clear per-track state AFTER the jump's reply; see [Player.open] for
       // why the placement (post-reply) is what makes the clear the last
@@ -240,6 +201,76 @@ mixin _OpenModule on _PlayerBase, _FfiModule {
         await source.release();
       }
     }
+  }
+
+  /// Keeps the [Media] of the outgoing current entry in the cache, so it
+  /// keeps its metadata while still visible in playlist events during the
+  /// transition of an [Player.openAll] (retained until the post-jump
+  /// remove).
+  void _keepOutgoingMedia() {
+    final old = _state.playlist;
+    final index = old.index;
+    _mediaCache.clear();
+    if (index < 0 || index >= old.items.length) return;
+    final current = old.items[index];
+    _mediaCache[current.uri] = current;
+  }
+
+  /// Resolves [medias] into [sources], one source per media: content://
+  /// resolutions detach a JVM-side FD, doing it twice would leak one FD
+  /// per track. Returns `false` once a later load took over.
+  Future<bool> _resolveAll(
+    List<Media> medias,
+    List<OwnedSource> sources,
+    _LoadTicket load,
+  ) async {
+    for (final m in medias) {
+      _mediaCache[m.uri] = m;
+      final source = OwnedSource(await resolveUri(m.uri));
+      sources.add(source);
+      if (load.superseded) return false;
+      _mediaCache[source.uri] = m;
+      await _forgetFdResume(source.uri);
+    }
+    return true;
+  }
+
+  /// Phases 3 and 4 of [Player.openAll]: the pause from [playNow], the
+  /// jump to entry [index] of the new list, and the removal of the old
+  /// entry when [retainedOld] kept it at position 0. Returns `false` when
+  /// a later load took over before the removal.
+  Future<bool> _openAllPlay(
+    _LoadTicket load, {
+    required bool playNow,
+    required bool retainedOld,
+    required int index,
+  }) async {
+    // ── Phase 3: intent, then one direct jump to the target ───────────
+    // The pause write cannot be fought by keep-open here: the parked
+    // flow already left EOF (idle after the remove above), and the
+    // playing flow is mid-track. `playlist-play-index` sets
+    // playlist->current straight to the target entry (mp_set_playlist_
+    // entry): entries before it are never loaded or made current.
+    await _calls.prop('pause', playNow ? 'no' : 'yes');
+    final target = (retainedOld ? 1 : 0) + index;
+    // The parked flow went through idle, which does not spend the intent
+    // while this call runs: see the idle-active observer.
+    await _calls.commandChecked(['playlist-play-index', target.toString()]);
+    // The jump leaves the park, as the replace of [Player.open] does.
+    _transport.takePark();
+
+    // ── Phase 4: drop the retained old entry ──────────────────────────
+    // Non-current by now (the jump moved current to the target), so the
+    // removal is pure bookkeeping; indices shift down to their final
+    // positions. Tolerant [CoreCalls.command]: a concurrent surgery that
+    // already emptied position 0 must not surface as an openAll error.
+    if (retainedOld) {
+      // The target plays from its source now: see the check after phase 2.
+      if (load.superseded) return false;
+      await debugBeforeRetainedRemove?.call();
+      await _calls.command(['playlist-remove', '0']);
+    }
+    return true;
   }
 
   /// Hides from the state the old entry an [Player.openAll] [kept] in
