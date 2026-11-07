@@ -10,6 +10,8 @@ import android.net.Uri
 import androidx.media3.common.util.UnstableApi
 import com.alesdrnz.mpv_audio_kit.media_session.MediaSessionManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
@@ -19,7 +21,7 @@ import io.flutter.plugin.common.MethodChannel
  * the images of content:// covers ([ArtworkChannel]), and
  * wires the OS media session (Media3) and its method/event channels.
  */
-class MpvAudioKitPlugin : FlutterPlugin {
+class MpvAudioKitPlugin : FlutterPlugin, ActivityAware {
 
     companion object {
         init {
@@ -90,6 +92,23 @@ class MpvAudioKitPlugin : FlutterPlugin {
     /**
      * Cleans up the plugin when detached from the engine.
      */
+    // The activity of this engine, for the media keys of a remote: see
+    // ActivityMediaKeys.
+    @UnstableApi
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) =
+        MediaSessionManager.attachActivity(this, binding.activity)
+
+    @UnstableApi
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) =
+        MediaSessionManager.attachActivity(this, binding.activity)
+
+    @UnstableApi
+    override fun onDetachedFromActivityForConfigChanges() =
+        MediaSessionManager.detachActivity(this)
+
+    @UnstableApi
+    override fun onDetachedFromActivity() = MediaSessionManager.detachActivity(this)
+
     @UnstableApi
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         fileDescriptors.detach()
