@@ -82,6 +82,7 @@ import 'playlist_nav_gate.dart';
 
 part 'mixins/player_audio.part.dart';
 part 'mixins/player_dispatch.part.dart';
+part 'mixins/player_effects.part.dart';
 part 'mixins/player_ffi.part.dart';
 part 'mixins/player_hooks.part.dart';
 part 'mixins/player_init.part.dart';
@@ -91,6 +92,7 @@ part 'mixins/player_load_validation.part.dart';
 part 'mixins/player_media_session.part.dart';
 part 'mixins/player_network.part.dart';
 part 'mixins/player_open.part.dart';
+part 'mixins/player_output.part.dart';
 part 'mixins/player_pcm.part.dart';
 part 'mixins/player_playback.part.dart';
 part 'mixins/player_playlist.part.dart';
@@ -113,6 +115,8 @@ class Player extends _PlayerBase
         _PlaybackModule,
         _PlaylistModule,
         _AudioModule,
+        _OutputModule,
+        _EffectsModule,
         _NetworkModule,
         _PcmModule,
         _HooksModule,
@@ -462,7 +466,7 @@ abstract class _PlayerBase {
   Future<void> _routeHookEvent(int id, Hook hook, String name);
 
   /// mpv loaded a file, after applying the resume point it may hold: see
-  /// `_AudioModule`.
+  /// `_EffectsModule` (player_effects.part.dart).
   void _reassertAfChain();
 
   /// See `_InitModule` (player_init.part.dart): called by the constructor.
