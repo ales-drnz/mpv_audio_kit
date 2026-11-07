@@ -420,4 +420,18 @@ void main() {
       expect(closed, hasLength(2));
     });
   });
+
+  group('the entry openAll keeps after its jump', () {
+    test('mpv indices from the hidden entry on are one more', () {
+      expect(table.toCore(0), 0);
+      expect(table.fromCoreCount(3), 3);
+      table.hiddenAt = 0;
+      expect(table.toCore(0), 1);
+      expect(table.toCore(1), 2);
+      expect(table.fromCoreCount(3), 2);
+      table.hiddenAt = 2;
+      expect(table.toCore(1), 1);
+      expect(table.toCore(2), 3);
+    });
+  });
 }

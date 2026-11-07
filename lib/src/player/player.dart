@@ -302,6 +302,9 @@ class Player extends _PlayerBase
     // FD, doing it twice would leak one FD per track. Each source is
     // released on every way out unless mpv took its entry.
     final sources = <OwnedSource>[];
+    // The old entry kept in mpv until phase 4, hidden from the state once
+    // the jump moved past it.
+    int? retainedId;
     try {
       try {
         for (final m in medias) {
@@ -325,6 +328,7 @@ class Player extends _PlayerBase
       // ── Phase 1: clear the outgoing playlist ──────────────────────────
       final retainedOld = await _openAllClear(load);
       if (retainedOld == null) return;
+      retainedId = await _holdRetained(retainedOld);
 
       // ── Phase 2: append every entry; playback never starts here ──────
       final failure = await _openAllAppend(medias, sources, load);
@@ -376,17 +380,41 @@ class Player extends _PlayerBase
       if (retainedOld) {
         // The target plays from its source now: see the check after phase 2.
         if (load.superseded) return;
+        await debugBeforeRetainedRemove?.call();
         await _calls.command(['playlist-remove', '0']);
       }
+      _forgetRetained(retainedId);
       // Clear per-track state AFTER the jump's reply; see [open] for why
       // the placement (post-reply) is what makes the clear the last word
       // over trailing OLD-file PROPERTY_CHANGE events.
       _clearPerFileState();
     } finally {
+      _forgetRetained(retainedId);
       for (final source in sources) {
         await source.release();
       }
     }
+  }
+
+  /// Hides from the state the old entry an [openAll] [kept] in mpv, once
+  /// its jump moved past it ([EntryTable.retained]). Returns its id, `null`
+  /// when none was kept. A later load that took over meanwhile ends the
+  /// call before its jump, and the call's `finally` ends the hiding.
+  Future<int?> _holdRetained(bool kept) async {
+    _entries.retained = null;
+    if (!kept) return null;
+    return _entries.retained = int.tryParse(
+      await getRawProperty('playlist/0/id') ?? '',
+    );
+  }
+
+  /// Ends the hiding of the old entry [id] of an [openAll]: removed, or
+  /// left to a later load. Another openAll's entry stays hidden.
+  void _forgetRetained(int? id) {
+    if (id == null || _entries.retained != id) return;
+    _entries
+      ..retained = null
+      ..hiddenAt = null;
   }
 
   /// Phase 1 of [openAll]: clears the outgoing playlist. Returns whether an

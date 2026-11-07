@@ -408,12 +408,15 @@ mixin _DispatchModule on _PlayerBase {
     Playlist? playlist;
     if (playlistNode != null) {
       try {
+        final hidden = retainedEntryAt(playlistNode, _entries.retained);
         playlist = parsePlaylistNode(
           raw: playlistNode,
           mediaCache: _mediaCache,
           mediaByEntry: _entries.media,
           previous: _state.playlist,
+          skip: hidden,
         );
+        _entries.hiddenAt = hidden;
       } catch (e) {
         _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
       }
@@ -436,12 +439,16 @@ mixin _DispatchModule on _PlayerBase {
       // appended after this node was taken (a batch of appends replies
       // ahead of the playlist notifications): it stays.
       _entries.onPlaylist(raw);
+      // The entry openAll still holds in mpv after its jump is left out.
+      final hidden = retainedEntryAt(raw, _entries.retained);
       final playlist = parsePlaylistNode(
         raw: raw,
         mediaCache: _mediaCache,
         mediaByEntry: _entries.media,
         previous: _state.playlist,
+        skip: hidden,
       );
+      _entries.hiddenAt = hidden;
       _updateField((s) => s.copyWith(playlist: playlist), _playlist, playlist);
     } catch (e) {
       _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
