@@ -22,7 +22,8 @@
 // files are bundled as they are, without a checksum.
 //
 // tvOS is the exception: the plugin's tvos/Package.swift links libmpv
-// there, and this hook bundles nothing.
+// there, and this hook bundles nothing. Tizen, through flutter-tizen, is
+// linux on arm or ia32 here, and takes its own libmpv_tizen assets.
 
 import 'dart:io';
 
@@ -165,14 +166,16 @@ class _Target {
       );
     }
     return switch (code.targetOS) {
-      OS.linux => _Target(
-        'libmpv_linux-${switch (arch) {
-          Architecture.x64 => 'x86_64',
-          Architecture.arm64 => 'aarch64',
-          _ => unsupported(),
-        }}.so',
-        'libmpv_audio_kit.so',
-      ),
+      // flutter-tizen (https://github.com/flutter-tizen/flutter-tizen)
+      // writes linux with the arch of the Tizen build: arm for the TVs, ia32
+      // for the emulator. Flutter's Linux desktop builds neither.
+      OS.linux => _Target(switch (arch) {
+        Architecture.x64 => 'libmpv_linux-x86_64.so',
+        Architecture.arm64 => 'libmpv_linux-aarch64.so',
+        Architecture.arm => 'libmpv_tizen-armv7l.so',
+        Architecture.ia32 => 'libmpv_tizen-i686.so',
+        _ => unsupported(),
+      }, 'libmpv_audio_kit.so'),
       OS.android => _Target(
         'libmpv_android-${switch (arch) {
           Architecture.arm64 => 'arm64-v8a',
