@@ -37,12 +37,17 @@ jobs:
       - name: Install the TV emulator
         run: |
           pm="$HOME/tizen-studio/package-manager/package-manager-cli.bin"
-          "$pm" install --accept-license Emulator,TV-SAMSUNG-Public-Emulator 2>&1 | tail -20
+          sudo apt-get install -y libsdl1.2debian openvpn libgl1 libglu1-mesa mesa-utils libxcb-render-util0 libxcb-image0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libv4l-0 > /dev/null
+          mkdir -p logs
+          "$pm" show-pkgs --tree > logs/show-pkgs-tree.txt 2>&1 || true
+          grep -n -B2 -A12 "TV-SAMSUNG-Public-Emulator\|TV Extensions-10.0" logs/show-pkgs-tree.txt | head -60 || true
+          "$pm" install --accept-license Emulator 2>&1 | tail -8
+          "$pm" install --accept-license TV-SAMSUNG-Public-Emulator 2>&1 | tee logs/install-tv-emulator.txt | tail -40
+          "$pm" show-info 2>&1 | tail -30
           ls "$HOME/tizen-studio/tools/emulator/bin" || true
           ls "$HOME/tizen-studio/platforms" "$HOME/tizen-studio/platforms"/* || true
       - name: Create and start a TV emulator
         run: |
-          mkdir -p logs
           em="$HOME/tizen-studio/tools/emulator/bin/em-cli"
           sdb="$HOME/tizen-studio/tools/sdb"
           "$em" --help > logs/em-help.txt 2>&1 || true
