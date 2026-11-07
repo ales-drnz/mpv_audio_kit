@@ -372,31 +372,40 @@ Future<void> _forwardCoreIdle(
 /// (`Map<String, dynamic>`, `List`, scalars or [Uint8List]).
 bool _deepNodeEquals(dynamic a, dynamic b) {
   if (identical(a, b)) return true;
-  if (a is Map) {
-    if (b is! Map || a.length != b.length) return false;
-    for (final entry in a.entries) {
-      if (!b.containsKey(entry.key) ||
-          !_deepNodeEquals(entry.value, b[entry.key])) {
-        return false;
-      }
-    }
-    return true;
-  }
-  if (a is List<int> && a is TypedData) {
-    if (b is! List<int> || b is! TypedData || a.length != b.length) {
+  if (a is Map) return _nodeMapEquals(a, b);
+  if (a is List<int> && a is TypedData) return _nodeBytesEquals(a, b);
+  if (a is List) return _nodeListEquals(a, b);
+  return a == b;
+}
+
+/// [_deepNodeEquals] of the map [a].
+bool _nodeMapEquals(Map<dynamic, dynamic> a, dynamic b) {
+  if (b is! Map || a.length != b.length) return false;
+  for (final entry in a.entries) {
+    if (!b.containsKey(entry.key) ||
+        !_deepNodeEquals(entry.value, b[entry.key])) {
       return false;
     }
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
   }
-  if (a is List) {
-    if (b is! List || a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (!_deepNodeEquals(a[i], b[i])) return false;
-    }
-    return true;
+  return true;
+}
+
+/// [_deepNodeEquals] of the bytes [a], a [TypedData].
+bool _nodeBytesEquals(List<int> a, dynamic b) {
+  if (b is! List<int> || b is! TypedData || a.length != b.length) {
+    return false;
   }
-  return a == b;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// [_deepNodeEquals] of the list [a].
+bool _nodeListEquals(List<dynamic> a, dynamic b) {
+  if (b is! List || a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!_deepNodeEquals(a[i], b[i])) return false;
+  }
+  return true;
 }
