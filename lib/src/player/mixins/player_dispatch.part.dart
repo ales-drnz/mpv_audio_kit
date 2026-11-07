@@ -82,14 +82,16 @@ mixin _DispatchModule on _PlayerBase {
         _internalLog('event isolate: $text', level: LogLevel.fromMpv(level));
       case MpvEventHookFired(:final id, :final name):
         _onHookFired(id, name);
-      default:
-        _dispatchPropertyEvent(event);
+      case final MpvPropertyEvent property:
+        _dispatchPropertyEvent(property);
+      case MpvReplyEvent():
+        break;
     }
   }
 
   /// The property events of [_dispatchEvent]. The replies were completed
   /// before the dispose fence and never reach here.
-  void _dispatchPropertyEvent(MpvIsolateEvent event) {
+  void _dispatchPropertyEvent(MpvPropertyEvent event) {
     switch (event) {
       case MpvEventPropertyDouble(:final name, :final value):
         _dispatchProperty(name, value);
@@ -103,8 +105,6 @@ mixin _DispatchModule on _PlayerBase {
         _dispatchUnavailable(name);
       case MpvEventPropertyGroup(:final events):
         _dispatchGroup(events);
-      default:
-        break;
     }
   }
 
