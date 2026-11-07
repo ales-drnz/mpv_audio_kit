@@ -79,7 +79,21 @@ jobs:
           cat logs/sdb-capability.txt logs/em-launch.txt | head -60
           echo "=== vm files"; find "$HOME/tizen-studio-data/emulator/vms/tv" -maxdepth 2 | head -30
           echo "=== logs"; for f in "$HOME"/tizen-studio-data/emulator/vms/tv/logs/*; do echo "--- $f"; tail -60 "$f"; done
-          echo "=== launch conf"; cat "$HOME/tizen-studio-data/emulator/vms/tv/vm_launch.conf" | head -60
+          conf="$HOME/tizen-studio-data/emulator/vms/tv/vm_launch.conf"
+          echo "=== launch conf"; cat "$conf"
+          cp "$conf" logs/vm_launch.conf
+          # Without the TV tuner, which only feeds broadcast video.
+          echo "=== launch without the tuner"
+          grep -v "maru-virtual-tuner" "$conf" > "$conf.notuner" && mv "$conf.notuner" "$conf"
+          ("$HOME/tizen-studio/platforms/tizen-10.0/tv-samsung/emulator/bin/emulator.sh" --conf "$conf" -j "$HOME/tizen-studio/jdk/bin/java" > logs/emulator-notuner.txt 2>&1 &)
+          for i in $(seq 90); do
+            "$sdb" devices | grep -q emulator && break
+            sleep 5
+          done
+          "$sdb" devices
+          tail -40 logs/emulator-notuner.txt
+          tail -30 "$HOME/tizen-studio-data/emulator/vms/tv/logs/emulator.log"
+          "$sdb" shell "cat /etc/tizen-release; uname -a; ls /usr/lib/libcapi-media-audio-io*" 2>&1 | head || true
           cp -r "$HOME/tizen-studio-data/emulator/vms/tv/logs" logs/vm-logs 2>/dev/null || true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
