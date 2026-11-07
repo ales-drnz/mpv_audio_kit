@@ -1,0 +1,45 @@
+name: Tizen emulator
+
+# Spike: what the Tizen SDK's package manager offers for a TV emulator on a
+# GitHub runner, and whether the runner has KVM.
+on:
+  push:
+    branches: ['wip/0.7.0-tizen-emu']
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: KVM
+        run: ls -la /dev/kvm || echo "no /dev/kvm"
+      # As flutter-tizen's own CI installs it (test.yml).
+      - name: Install the Tizen SDK CLI
+        run: |
+          sudo add-apt-repository -y ppa:deadsnakes/ppa
+          sudo apt-get update
+          sudo apt-get install -y libncurses5 python3.8 libpython3.8 gettext \
+            libkf5itemmodels5 libkf5kiowidgets5 libkchart2 dbus-x11 gnome-keyring \
+            qemu-kvm libvirt-daemon-system bridge-utils libpixman-1-0 libsdl2-2.0-0 xvfb
+          curl -fsSL https://download.tizen.org/sdk/Installer/tizen-sdk_10.0/web-cli_Tizen_SDK_10.0_ubuntu-64.bin -o install.bin
+          chmod a+x install.bin
+          ./install.bin --accept-license "$HOME/tizen-studio"
+          rm install.bin
+      - name: What the package manager offers
+        run: |
+          pm="$HOME/tizen-studio/package-manager/package-manager-cli.bin"
+          mkdir -p logs
+          "$pm" --help > logs/help.txt 2>&1 || true
+          "$pm" show-pkgs > logs/show-pkgs.txt 2>&1 || true
+          "$pm" extra --list > logs/extra-list.txt 2>&1 || true
+          "$pm" extra -l > logs/extra-l.txt 2>&1 || true
+          grep -iE "emulator|tv" logs/show-pkgs.txt | head -80 || true
+          cat logs/extra-list.txt logs/extra-l.txt | head -40
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: tizen-spike-logs
+          path: logs/
