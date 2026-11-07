@@ -52,6 +52,8 @@ jobs:
           pm="$HOME/tizen-studio/package-manager/package-manager-cli.bin"
           "$pm" install --accept-license Emulator
           "$pm" install --accept-license TV-SAMSUNG-Public-Emulator
+          # The rootstrap flutter-tizen builds the x64 embedding against.
+          "$pm" install --accept-license TIZEN-10.0-NativeAppDevelopment-CLI
           echo "$HOME/tizen-studio/tools" >> "$GITHUB_PATH"
           echo "$HOME/tizen-studio/tools/ide/bin" >> "$GITHUB_PATH"
       - name: Audio sink
