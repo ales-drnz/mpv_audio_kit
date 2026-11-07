@@ -170,7 +170,24 @@ jobs:
           for i in $(seq 120); do sdb devices | grep -q emulator && break; sleep 5; done
           for i in $(seq 60); do sdb shell "echo up" 2>/dev/null | grep -q up && break; sleep 5; done
           sdb devices
+      # libmpv and ao_tizen on the TV image itself, without a package: a
+      # small client built with the SDK's toolchain and the 10.0 rootstrap,
+      # pushed and run with sdb shell.
+      - name: libmpv plays on the TV emulator
+        run: |
+          root="$(find "$HOME/tizen-studio/platforms/tizen-10.0" -maxdepth 4 -type d -name '*emulator64.core' | head -1)"
+          gcc="$(find "$HOME/tizen-studio/tools" -path '*bin*' -name 'x86_64-linux-gnu-gcc' | head -1)"
+          echo "rootstrap: $root"; echo "gcc: $gcc"
+          "$gcc" --sysroot="$root" -O1 -o mpv_play_check "$GITHUB_WORKSPACE/kit/.github/tizen/mpv_play_check.c" -ldl
+          dir=/home/owner/share/tmp/sdk_tools/mak
+          sdb shell "mkdir -p $dir"
+          sdb push mpv_play_check "$RUNNER_TEMP/libmpv/libmpv_tizen-x86_64.so" "$GITHUB_WORKSPACE/kit/test/fixtures/sine_5s.flac" "$dir/"
+          sdb shell "cd $dir && chmod +x mpv_play_check && ./mpv_play_check ./libmpv_tizen-x86_64.so ./sine_5s.flac" 2>&1 | tee native.txt
+          grep -q "MAK_TIZEN_NATIVE PASS" native.txt
+      # The app needs a Samsung certificate to install on the TV image: the
+      # SDK's distributors all fail its certificate check.
       - name: Install, play and read the result
+        continue-on-error: true
         run: |
           cd "$RUNNER_TEMP/app"
           tpk="$(ls build/tizen/tpk/*.tpk | head -1)"
@@ -214,6 +231,7 @@ jobs:
           name: tizen-emulator-logs
           path: |
             ${{ runner.temp }}/app/dlog.txt
+            native.txt
             ${{ runner.temp }}/em-launch.txt
             ~/tizen-studio-data/emulator/vms/tv/logs/
           if-no-files-found: ignore
