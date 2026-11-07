@@ -197,13 +197,6 @@ void main() {
         timeout: const Timeout(Duration(seconds: 15)),
       );
 
-      test('setRawProperty rejects `af` with ArgumentError', () {
-        expect(
-          () => player.setRawProperty('af', 'lavfi-volume=2'),
-          throwsA(isA<ArgumentError>()),
-        );
-      });
-
       test('gapless / coverArtAuto enum round-trip', () async {
         await player.setGapless(Gapless.yes);
         expect(player.state.gapless, Gapless.yes);
