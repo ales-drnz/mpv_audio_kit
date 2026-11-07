@@ -41,10 +41,9 @@ void main() {
     setUpAll(() async {
       // logLevel must be at least 'error' to receive the diagnostics we
       // grep for. Default helper builds with 'no'.
-      player = Player(
+      player = await buildPlayer(
         configuration: const PlayerConfiguration(logLevel: LogLevel.error),
       );
-      await player.setRawProperty('ao', 'null');
       await player.setLoop(Loop.file);
       await player.open(Media(fixturePath), play: true);
       // Wait for file-loaded so the audio chain is live; otherwise

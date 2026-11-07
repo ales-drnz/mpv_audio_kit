@@ -63,12 +63,8 @@ void main() {
       late Player player;
 
       setUpAll(() async {
-        player = Player(
-          configuration: const PlayerConfiguration(logLevel: LogLevel.off),
-        );
-        // Avoid a real audio device in CI / sandbox. Keep mpv silent so the
-        // log channel is uncluttered during tests.
-        await player.setRawProperty('ao', 'null');
+        // No audio device and no log, as in CI or a sandbox.
+        player = await buildPlayer();
       });
 
       tearDownAll(() async {
