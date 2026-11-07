@@ -48,53 +48,41 @@ jobs:
           ls "$HOME/tizen-studio/platforms" "$HOME/tizen-studio/platforms"/* || true
       - name: Create and start a TV emulator
         run: |
+          mkdir -p logs
           em="$HOME/tizen-studio/tools/emulator/bin/em-cli"
           sdb="$HOME/tizen-studio/tools/sdb"
-          "$em" --help > logs/em-help.txt 2>&1 || true
-          "$em" list-platform > logs/em-platforms.txt 2>&1 || true
-          cat logs/em-help.txt logs/em-platforms.txt
-          plat="$(grep -oiE 'tv-samsung[^ ]*' logs/em-platforms.txt | head -1)"
-          echo "platform: $plat"
-          "$em" create -n tv -p "$plat" > logs/em-create.txt 2>&1 || true
-          cat logs/em-create.txt
-          "$em" list-vm -d > logs/em-vms.txt 2>&1 || true
-          cat logs/em-vms.txt
-          # The emulator draws through VIGS, on the host's OpenGL: a virtual
-          # display with GLX and Mesa's software renderer.
+          # The emulator draws through VIGS on the host's OpenGL: a virtual
+          # display with GLX and Mesa's software renderer, up before the VM
+          # is created (em-cli picks VIGS's backend from it then).
           export LIBGL_ALWAYS_SOFTWARE=1
           Xvfb :99 -screen 0 1920x1080x24 +extension GLX +render -nolisten tcp > logs/xvfb.txt 2>&1 &
           export DISPLAY=:99
           sleep 3
-          glxinfo -B > logs/glxinfo.txt 2>&1 || true
-          cat logs/glxinfo.txt | head -20
-          "$HOME/tizen-studio/tools/emulator/bin/check-gl" > logs/check-gl.txt 2>&1 || true
-          cat logs/check-gl.txt | tail -20
-          ("$em" launch -n tv > logs/em-launch.txt 2>&1 &)
-          for i in $(seq 90); do
-            "$sdb" devices | tee logs/sdb-devices.txt | grep -q emulator && break
-            sleep 5
-          done
-          "$sdb" devices
-          "$sdb" capability > logs/sdb-capability.txt 2>&1 || true
-          cat logs/sdb-capability.txt logs/em-launch.txt | head -60
-          echo "=== vm files"; find "$HOME/tizen-studio-data/emulator/vms/tv" -maxdepth 2 | head -30
-          echo "=== logs"; for f in "$HOME"/tizen-studio-data/emulator/vms/tv/logs/*; do echo "--- $f"; tail -60 "$f"; done
+          "$HOME/tizen-studio/tools/emulator/bin/check-gl" 2>&1 | tail -3 || true
+          plat="$("$em" list-platform 2>/dev/null | grep -oiE 'tv-samsung[^ ]*' | head -1)"
+          echo "platform: $plat"
+          "$em" create -n tv -p "$plat"
           conf="$HOME/tizen-studio-data/emulator/vms/tv/vm_launch.conf"
-          echo "=== launch conf"; cat "$conf"
+          # The TV devices (tuner, external input) need VIGS's GL backend.
+          sed -i 's/vigs,backend=sw/vigs,backend=gl/' "$conf"
+          grep -n "vigs" "$conf"
           cp "$conf" logs/vm_launch.conf
-          # Without the TV tuner, which only feeds broadcast video.
-          echo "=== launch without the tuner"
-          grep -v "maru-virtual-tuner" "$conf" > "$conf.notuner" && mv "$conf.notuner" "$conf"
-          ("$HOME/tizen-studio/platforms/tizen-10.0/tv-samsung/emulator/bin/emulator.sh" --conf "$conf" -j "$HOME/tizen-studio/jdk/bin/java" > logs/emulator-notuner.txt 2>&1 &)
-          for i in $(seq 90); do
+          ("$em" launch -n tv > logs/em-launch.txt 2>&1 &)
+          for i in $(seq 120); do
             "$sdb" devices | grep -q emulator && break
             sleep 5
           done
           "$sdb" devices
-          tail -40 logs/emulator-notuner.txt
-          tail -30 "$HOME/tizen-studio-data/emulator/vms/tv/logs/emulator.log"
-          "$sdb" shell "cat /etc/tizen-release; uname -a; ls /usr/lib/libcapi-media-audio-io*" 2>&1 | head || true
+          cat logs/em-launch.txt | tail -5
+          grep -vE "^ALSA|alsa:|audio:" "$HOME/tizen-studio-data/emulator/vms/tv/logs/emulator.log" | tail -30
           cp -r "$HOME/tizen-studio-data/emulator/vms/tv/logs" logs/vm-logs 2>/dev/null || true
+          # Wait for the platform to finish booting, then look around.
+          for i in $(seq 60); do
+            "$sdb" shell "echo up" 2>/dev/null | grep -q up && break
+            sleep 5
+          done
+          "$sdb" capability 2>&1 | head -30
+          "$sdb" shell "cat /etc/tizen-release; uname -m; ls /usr/lib64/libcapi-media-audio-io* /usr/lib/libcapi-media-audio-io* 2>/dev/null; ldd --version | head -1" 2>&1 | head -20
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
