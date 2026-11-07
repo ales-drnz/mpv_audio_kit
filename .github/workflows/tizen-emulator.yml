@@ -1,7 +1,9 @@
 name: Tizen emulator
 
-# Spike: install the Samsung TV emulator of the Tizen SDK on a GitHub runner
-# and start it headless with KVM.
+# The kit on the Samsung TV emulator of the Tizen SDK (tv-samsung-10.0,
+# x86_64), started headless with KVM: an app built with flutter-tizen and
+# the libmpv_tizen-x86_64.so of a libmpv-scripts Build opens a FLAC asset,
+# plays it and writes MAK_TIZEN_RESULT to the log, which the job reads.
 on:
   push:
     branches: ['wip/0.7.0-tizen-emu']
@@ -9,82 +11,171 @@ on:
 permissions:
   contents: read
 
+env:
+  # The libmpv-scripts Build whose tizen-x86_64 artifact the app bundles.
+  LIBMPV_SCRIPTS_RUN: '42402905165'
+  FLUTTER_TIZEN_REF: 22bcec9058fbe1e0943e6c6fda21792f24868e91
+
 jobs:
-  spike:
+  tv:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
-      - name: KVM
-        run: ls -la /dev/kvm || echo "no /dev/kvm"
-      # As flutter-tizen's own CI installs it (test.yml).
-      - name: Install the Tizen SDK CLI
-        run: |
-          sudo add-apt-repository -y ppa:deadsnakes/ppa
-          sudo apt-get update
-          sudo apt-get install -y libncurses5 python3.8 libpython3.8 gettext \
-            libkf5itemmodels5 libkf5kiowidgets5 libkchart2 dbus-x11 gnome-keyring \
-            qemu-kvm libvirt-daemon-system bridge-utils libpixman-1-0 libsdl2-2.0-0 xvfb
-          curl -fsSL https://download.tizen.org/sdk/Installer/tizen-sdk_10.0/web-cli_Tizen_SDK_10.0_ubuntu-64.bin -o install.bin
-          chmod a+x install.bin
-          ./install.bin --accept-license "$HOME/tizen-studio"
-          rm install.bin
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: kit
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
       - name: KVM for the runner's user
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          ls -la /dev/kvm
-      - name: Install the TV emulator
+      # As flutter-tizen's own CI installs the SDK (test.yml), with what the
+      # emulator needs and an audio sink for it: PulseAudio with a null sink,
+      # ALSA's default routed there.
+      - name: Install the Tizen SDK and the TV emulator
         run: |
+          sudo add-apt-repository -y ppa:deadsnakes/ppa
+          sudo apt-get update
+          sudo apt-get install -y libncurses5 python3.8 libpython3.8 gettext \
+            libkf5itemmodels5 libkf5kiowidgets5 libkchart2 dbus-x11 gnome-keyring \
+            libsdl1.2debian openvpn libgl1 libglu1-mesa mesa-utils xvfb libv4l-0 \
+            libxcb-render-util0 libxcb-image0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 \
+            pulseaudio libasound2-plugins
+          curl -fsSL https://download.tizen.org/sdk/Installer/tizen-sdk_10.0/web-cli_Tizen_SDK_10.0_ubuntu-64.bin -o install.bin
+          chmod a+x install.bin
+          ./install.bin --accept-license "$HOME/tizen-studio"
+          rm install.bin
           pm="$HOME/tizen-studio/package-manager/package-manager-cli.bin"
-          sudo apt-get install -y libsdl1.2debian openvpn libgl1 libglu1-mesa mesa-utils libxcb-render-util0 libxcb-image0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libv4l-0 > /dev/null
-          mkdir -p logs
-          "$pm" show-pkgs --tree > logs/show-pkgs-tree.txt 2>&1 || true
-          grep -n -B2 -A12 "TV-SAMSUNG-Public-Emulator\|TV Extensions-10.0" logs/show-pkgs-tree.txt | head -60 || true
-          "$pm" install --accept-license Emulator 2>&1 | tail -8
-          "$pm" install --accept-license TV-SAMSUNG-Public-Emulator 2>&1 | tee logs/install-tv-emulator.txt | tail -40
-          "$pm" show-info 2>&1 | tail -30
-          ls "$HOME/tizen-studio/tools/emulator/bin" || true
-          ls "$HOME/tizen-studio/platforms" "$HOME/tizen-studio/platforms"/* || true
-      - name: Create and start a TV emulator
+          "$pm" install --accept-license Emulator
+          "$pm" install --accept-license TV-SAMSUNG-Public-Emulator
+          echo "$HOME/tizen-studio/tools" >> "$GITHUB_PATH"
+          echo "$HOME/tizen-studio/tools/ide/bin" >> "$GITHUB_PATH"
+      - name: Audio sink
         run: |
-          mkdir -p logs
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=null
+          pactl set-default-sink null
+          printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > ~/.asoundrc
+      - name: Certificate profile
+        run: |
+          dbus-run-session -- bash -c "
+          echo tizen | gnome-keyring-daemon --unlock &&
+          tizen certificate -a tizen -p tizen -f tizen &&
+          tizen security-profiles add -n tizen -a $HOME/tizen-studio-data/keystore/author/tizen.p12 -p tizen
+          "
+      - name: flutter-tizen
+        run: |
+          git clone -q https://github.com/flutter-tizen/flutter-tizen "$RUNNER_TEMP/flutter-tizen"
+          git -C "$RUNNER_TEMP/flutter-tizen" checkout -q "$FLUTTER_TIZEN_REF"
+          echo "$RUNNER_TEMP/flutter-tizen/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/flutter-tizen/bin/flutter-tizen" doctor -v
+      - name: libmpv of the libmpv-scripts Build
+        env:
+          GH_TOKEN: ${{ secrets.LIBMPV_SCRIPTS_TOKEN }}
+        run: |
+          gh run download "$LIBMPV_SCRIPTS_RUN" -R ales-drnz/libmpv-scripts -n tizen-x86_64 -D "$RUNNER_TEMP/libmpv"
+          ls -la "$RUNNER_TEMP/libmpv"
+      - name: The app
+        run: |
+          cd "$RUNNER_TEMP"
+          flutter-tizen create --tizen-language csharp --project-name mak_tizen_check app
+          cd app
+          mkdir -p assets
+          cp "$GITHUB_WORKSPACE/kit/test/fixtures/sine_5s.flac" assets/
+          cat >> pubspec.yaml <<YAML
+
+          hooks:
+            user_defines:
+              mpv_audio_kit:
+                libmpv: $RUNNER_TEMP/libmpv
+                tizen: true
+          YAML
+          python3 - <<'PY'
+          import re
+          p = 'pubspec.yaml'
+          s = open(p).read()
+          s = s.replace('dependencies:\n', 'dependencies:\n  mpv_audio_kit:\n    path: ' + __import__('os').environ['GITHUB_WORKSPACE'] + '/kit\n', 1)
+          s = re.sub(r'(\nflutter:\n)', r'\1  assets:\n    - assets/sine_5s.flac\n', s, count=1)
+          open(p, 'w').write(s)
+          PY
+          cat > lib/main.dart <<'DART'
+          import 'package:flutter/widgets.dart';
+          import 'package:mpv_audio_kit/mpv_audio_kit.dart';
+
+          Future<void> main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            runApp(const ColoredBox(color: Color(0xFF000000)));
+            try {
+              MpvAudioKit.ensureInitialized();
+              final player = Player();
+              await player.ready;
+              await player.open(Media('asset://assets/sine_5s.flac'));
+              await player.play();
+              final at = await player.stream.position
+                  .firstWhere((p) => p > const Duration(seconds: 2))
+                  .timeout(const Duration(seconds: 40));
+              final driver = player.state.audioDriver;
+              final ok = driver == 'tizen' && player.state.playing;
+              print('MAK_TIZEN_RESULT ${ok ? 'PASS' : 'FAIL'} ao=$driver '
+                  'position=$at params=${player.state.audioOutParams}');
+              await player.dispose();
+            } catch (e, s) {
+              print('MAK_TIZEN_RESULT FAIL $e\n$s');
+            }
+          }
+          DART
+          sed -i 's/^          //' lib/main.dart
+          cat pubspec.yaml
+          flutter-tizen pub get
+      - name: Build the TPK
+        run: |
+          cd "$RUNNER_TEMP/app"
+          dbus-run-session -- bash -c "
+          echo tizen | gnome-keyring-daemon --unlock &&
+          flutter-tizen build tpk --device-profile tv --target-arch x64 --debug
+          "
+          find build -name '*.tpk' | head
+          unzip -l build/tizen/tpk/*.tpk | grep -E 'libmpv|\.so' || true
+      - name: Start the TV emulator
+        run: |
           em="$HOME/tizen-studio/tools/emulator/bin/em-cli"
-          sdb="$HOME/tizen-studio/tools/sdb"
-          # The emulator draws through VIGS on the host's OpenGL: a virtual
-          # display with GLX and Mesa's software renderer, up before the VM
-          # is created (em-cli picks VIGS's backend from it then).
           export LIBGL_ALWAYS_SOFTWARE=1
-          Xvfb :99 -screen 0 1920x1080x24 +extension GLX +render -nolisten tcp > logs/xvfb.txt 2>&1 &
+          Xvfb :99 -screen 0 1920x1080x24 +extension GLX +render -nolisten tcp &
+          echo DISPLAY=:99 >> "$GITHUB_ENV"
           export DISPLAY=:99
           sleep 3
-          "$HOME/tizen-studio/tools/emulator/bin/check-gl" 2>&1 | tail -3 || true
           plat="$("$em" list-platform 2>/dev/null | grep -oiE 'tv-samsung[^ ]*' | head -1)"
-          echo "platform: $plat"
           "$em" create -n tv -p "$plat"
-          conf="$HOME/tizen-studio-data/emulator/vms/tv/vm_launch.conf"
           # The TV devices (tuner, external input) need VIGS's GL backend.
-          sed -i 's/vigs,backend=sw/vigs,backend=gl/' "$conf"
-          grep -n "vigs" "$conf"
-          cp "$conf" logs/vm_launch.conf
-          ("$em" launch -n tv > logs/em-launch.txt 2>&1 &)
-          for i in $(seq 120); do
-            "$sdb" devices | grep -q emulator && break
-            sleep 5
+          sed -i 's/vigs,backend=sw/vigs,backend=gl/' "$HOME/tizen-studio-data/emulator/vms/tv/vm_launch.conf"
+          ("$em" launch -n tv > "$RUNNER_TEMP/em-launch.txt" 2>&1 &)
+          for i in $(seq 120); do sdb devices | grep -q emulator && break; sleep 5; done
+          for i in $(seq 60); do sdb shell "echo up" 2>/dev/null | grep -q up && break; sleep 5; done
+          sdb devices
+      - name: Install, play and read the result
+        run: |
+          cd "$RUNNER_TEMP/app"
+          sdb install "$(ls build/tizen/tpk/*.tpk | head -1)"
+          appid="$(sed -n 's/.*appid="\([^"]*\)".*/\1/p' tizen/tizen-manifest.xml | head -1)"
+          echo "appid: $appid"
+          sdb dlog -c
+          sdb shell "app_launcher -s $appid" || true
+          for i in $(seq 90); do
+            sdb dlog -d 2>/dev/null > dlog.txt || true
+            grep -q MAK_TIZEN_RESULT dlog.txt && break
+            sleep 2
           done
-          "$sdb" devices
-          cat logs/em-launch.txt | tail -5
-          grep -vE "^ALSA|alsa:|audio:" "$HOME/tizen-studio-data/emulator/vms/tv/logs/emulator.log" | tail -30
-          cp -r "$HOME/tizen-studio-data/emulator/vms/tv/logs" logs/vm-logs 2>/dev/null || true
-          # Wait for the platform to finish booting, then look around.
-          for i in $(seq 60); do
-            "$sdb" shell "echo up" 2>/dev/null | grep -q up && break
-            sleep 5
-          done
-          "$sdb" capability 2>&1 | head -30
-          "$sdb" shell "cat /etc/tizen-release; uname -m; ls /usr/lib64/libcapi-media-audio-io* /usr/lib/libcapi-media-audio-io* 2>/dev/null; ldd --version | head -1" 2>&1 | head -20
+          grep -E "MAK_TIZEN_RESULT|ConsoleMessage|mpv|flutter" dlog.txt | tail -60
+          grep -q "MAK_TIZEN_RESULT PASS" dlog.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: tizen-spike-logs
-          path: logs/
+          name: tizen-emulator-logs
+          path: |
+            ${{ runner.temp }}/app/dlog.txt
+            ${{ runner.temp }}/em-launch.txt
+            ~/tizen-studio-data/emulator/vms/tv/logs/
+          if-no-files-found: ignore
