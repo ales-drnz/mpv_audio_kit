@@ -173,8 +173,28 @@ jobs:
       - name: Install, play and read the result
         run: |
           cd "$RUNNER_TEMP/app"
+          tpk="$(ls build/tizen/tpk/*.tpk | head -1)"
+          # Which of the SDK's distributor certificates the TV emulator takes.
+          certs="$HOME/tizen-studio/tools/certificate-generator/certificates/distributor"
+          n=0
+          for dist in $(find "$certs" -name '*.p12' | sort); do
+            n=$((n + 1))
+            cp "$tpk" "try$n.tpk"
+            dbus-run-session -- bash -c "
+            echo tizen | gnome-keyring-daemon --unlock &&
+            tizen security-profiles add -n try$n -a $HOME/tizen-studio-data/keystore/author/tizen.p12 -p tizen -d $dist -dp tizenpkcs12passfordsigner > /dev/null &&
+            tizen package -t tpk -s try$n -- $PWD/try$n.tpk > /dev/null
+            " || { echo "$dist: could not sign"; continue; }
+            if sdb install "try$n.tpk" 2>&1 | tee "install$n.txt" | grep -q "install completed\|installing\[100\]"; then
+              echo "INSTALLED with $dist"
+              cp "try$n.tpk" "$tpk"
+              break
+            fi
+            echo "$dist: $(grep -o 'reason:.*' "install$n.txt" | head -1)"
+            sdb uninstall com.example.mak_tizen_check > /dev/null 2>&1 || true
+          done
           sdb dlog -c
-          sdb install "$(ls build/tizen/tpk/*.tpk | head -1)" | tee install.txt
+          sdb install "$tpk" | tee install.txt
           sdb dlog -d 2>/dev/null | grep -iE "cert|signature|privilege|pkgmgr" | tail -30 || true
           grep -q "install completed\|installing\[100\]" install.txt
           appid="$(sed -n 's/.*appid="\([^"]*\)".*/\1/p' tizen/tizen-manifest.xml | head -1)"
