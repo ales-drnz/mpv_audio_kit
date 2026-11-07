@@ -48,37 +48,52 @@ Future<CoverArt?> downloadArtwork(Uri uri, [String caFile = '']) async {
               ..setTrustedCertificates(caFile),
           );
     client.connectionTimeout = _timeout;
-    var target = uri;
-    var response = await _get(client, target);
-    for (var hops = 0; response.isRedirect; hops++) {
-      final location = response.headers.value(HttpHeaders.locationHeader);
-      await response.drain<void>();
-      if (location == null || hops == _maxRedirects) return null;
-      final next = target.resolve(location);
-      if (target.scheme == 'https' && next.scheme != 'https') return null;
-      target = next;
-      response = await _get(client, target);
-    }
-    // Not drained: the forced close below drops the connection.
-    if (response.statusCode != HttpStatus.ok ||
-        response.contentLength > maxArtworkBytes) {
-      return null;
-    }
-    final bytes = BytesBuilder(copy: false);
-    await for (final chunk in response.timeout(_timeout)) {
-      bytes.add(chunk);
-      if (bytes.length > maxArtworkBytes) return null;
-    }
-    if (bytes.isEmpty) return null;
-    return CoverArt(
-      bytes: bytes.takeBytes(),
-      mimeType: response.headers.contentType?.mimeType ?? '',
-    );
+    final response = await _getFollowing(client, uri);
+    if (response == null) return null;
+    return await _readArtworkBody(response);
   } catch (_) {
     return null;
   } finally {
     client?.close(force: true);
   }
+}
+
+/// The response to a GET of [uri] once its redirects are followed;
+/// `null` past [_maxRedirects] hops, at a redirect without a location, or
+/// at one from https down to another scheme.
+Future<HttpClientResponse?> _getFollowing(HttpClient client, Uri uri) async {
+  var target = uri;
+  var response = await _get(client, target);
+  for (var hops = 0; response.isRedirect; hops++) {
+    final location = response.headers.value(HttpHeaders.locationHeader);
+    await response.drain<void>();
+    if (location == null || hops == _maxRedirects) return null;
+    final next = target.resolve(location);
+    if (target.scheme == 'https' && next.scheme != 'https') return null;
+    target = next;
+    response = await _get(client, target);
+  }
+  return response;
+}
+
+/// The picture [response] carries; `null` when it is no 200, is empty,
+/// or holds more than [maxArtworkBytes].
+Future<CoverArt?> _readArtworkBody(HttpClientResponse response) async {
+  // Not drained: the forced close of the client drops the connection.
+  if (response.statusCode != HttpStatus.ok ||
+      response.contentLength > maxArtworkBytes) {
+    return null;
+  }
+  final bytes = BytesBuilder(copy: false);
+  await for (final chunk in response.timeout(_timeout)) {
+    bytes.add(chunk);
+    if (bytes.length > maxArtworkBytes) return null;
+  }
+  if (bytes.isEmpty) return null;
+  return CoverArt(
+    bytes: bytes.takeBytes(),
+    mimeType: response.headers.contentType?.mimeType ?? '',
+  );
 }
 
 Future<HttpClientResponse> _get(HttpClient client, Uri uri) async {
