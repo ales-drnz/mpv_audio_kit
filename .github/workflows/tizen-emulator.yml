@@ -1,9 +1,12 @@
 name: Tizen emulator
 
-# The kit on the Samsung TV emulator of the Tizen SDK (tv-samsung-10.0,
-# x86_64), started headless with KVM: an app built with flutter-tizen and
-# the libmpv_tizen-x86_64.so of a libmpv-scripts Build opens a FLAC asset,
-# plays it and writes MAK_TIZEN_RESULT to the log, which the job reads.
+# The kit on the Tizen 10.0 emulator of the Tizen SDK (x86_64), started
+# headless with KVM, with the libmpv_tizen-x86_64.so of a libmpv-scripts
+# Build: a small client plays a FLAC file through ao_tizen (sdb shell), and
+# an app built with flutter-tizen plays it as an asset and writes
+# MAK_TIZEN_RESULT to the log. The Samsung TV image would need a Samsung
+# certificate for the app and has sdb shell disabled; its audio APIs are
+# Tizen's, the ones this image has.
 on:
   push:
     branches: ['wip/0.7.0-tizen-emu']
@@ -51,7 +54,7 @@ jobs:
           rm install.bin
           pm="$HOME/tizen-studio/package-manager/package-manager-cli.bin"
           "$pm" install --accept-license Emulator
-          "$pm" install --accept-license TV-SAMSUNG-Public-Emulator
+          "$pm" install --accept-license TIZEN-10.0-Emulator
           # The toolchain flutter-tizen's doctor asks for, and the rootstrap it
           # builds the x64 embedding against.
           "$pm" install --accept-license NativeToolchain-Gcc-9.2,TIZEN-10.0-NativeAppDevelopment-CLI
@@ -150,11 +153,11 @@ jobs:
           cd "$RUNNER_TEMP/app"
           dbus-run-session -- bash -c "
           echo tizen | gnome-keyring-daemon --unlock &&
-          flutter-tizen build tpk --device-profile tv --target-arch x64 --debug
+          flutter-tizen build tpk --device-profile common --target-arch x64 --debug
           "
           find build -name '*.tpk' | head
           unzip -l build/tizen/tpk/*.tpk | grep -E 'libmpv|\.so' || true
-      - name: Start the TV emulator
+      - name: Start the Tizen emulator
         run: |
           em="$HOME/tizen-studio/tools/emulator/bin/em-cli"
           export LIBGL_ALWAYS_SOFTWARE=1
@@ -162,18 +165,19 @@ jobs:
           echo DISPLAY=:99 >> "$GITHUB_ENV"
           export DISPLAY=:99
           sleep 3
-          plat="$("$em" list-platform 2>/dev/null | grep -oiE 'tv-samsung[^ ]*' | head -1)"
+          "$em" list-platform
+          plat="$("$em" list-platform 2>/dev/null | grep -oiE 'tizen-10\.0-x86_64[^ ]*' | head -1)"
+          echo "platform: $plat"
           "$em" create -n tv -p "$plat"
-          # The TV devices (tuner, external input) need VIGS's GL backend.
+          # VIGS's GL backend, which some devices of the image need.
           sed -i 's/vigs,backend=sw/vigs,backend=gl/' "$HOME/tizen-studio-data/emulator/vms/tv/vm_launch.conf"
           ("$em" launch -n tv > "$RUNNER_TEMP/em-launch.txt" 2>&1 &)
           for i in $(seq 120); do sdb devices | grep -q emulator && break; sleep 5; done
           for i in $(seq 60); do sdb shell "echo up" 2>/dev/null | grep -q up && break; sleep 5; done
           sdb devices
-      # libmpv and ao_tizen on the TV image itself, without a package: a
-      # small client built with the SDK's toolchain and the 10.0 rootstrap,
-      # pushed and run with sdb shell.
-      - name: libmpv plays on the TV emulator
+      # libmpv and ao_tizen without a package: a small client built with the
+      # SDK's toolchain and the 10.0 rootstrap, pushed and run with sdb shell.
+      - name: libmpv plays on the emulator
         run: |
           root="$(find "$HOME/tizen-studio/platforms/tizen-10.0" -maxdepth 4 -type d -name '*emulator64.core' | head -1)"
           gcc="$(find "$HOME/tizen-studio/tools" -path '*bin*' -name 'x86_64-linux-gnu-gcc' | head -1)"
@@ -188,10 +192,7 @@ jobs:
           sdb shell "ls -la $dir"
           sdb shell "cd $dir && chmod +x mpv_play_check && ./mpv_play_check ./libmpv_tizen-x86_64.so ./sine_5s.flac" 2>&1 | tee native.txt
           grep -q "MAK_TIZEN_NATIVE PASS" native.txt
-      # The app needs a Samsung certificate to install on the TV image: the
-      # SDK's distributors all fail its certificate check.
       - name: Install, play and read the result
-        continue-on-error: true
         run: |
           cd "$RUNNER_TEMP/app"
           tpk="$(ls build/tizen/tpk/*.tpk | head -1)"
