@@ -4,10 +4,11 @@
 // found in the LICENSE file.
 //
 // The build hook on Tizen through flutter-tizen, which writes target_os
-// linux with the arch of the Tizen build: arm for the TVs, ia32 for the
-// emulator (its x86 build), arches Flutter's own Linux desktop never builds.
-// Each takes its libmpv_tizen asset, bundled as libmpv_audio_kit.so like
-// the Linux one; the desktop arches keep the Linux assets.
+// linux with the arch of the Tizen build. arm, the TVs, is an arch Flutter's
+// own Linux desktop never builds, so it takes libmpv_tizen-armv7l.so by
+// itself. x64, the TV emulator, is the desktop's arch too: the app says
+// Tizen with the user define tizen: true. Each Tizen asset is bundled as
+// libmpv_audio_kit.so like the Linux one.
 
 import 'dart:convert';
 import 'dart:io';
@@ -22,6 +23,7 @@ Future<(ProcessResult, BuildOutput?)> _runHook(
   Directory tmp,
   Architecture arch, {
   Directory? libmpvDir,
+  bool tizen = false,
 }) async {
   final shared = Directory('${tmp.path}/shared')..createSync();
   final out = Directory('${tmp.path}/out')..createSync();
@@ -32,11 +34,14 @@ Future<(ProcessResult, BuildOutput?)> _runHook(
       packageName: 'mpv_audio_kit',
       outputFile: outputFile.uri,
       outputDirectoryShared: shared.uri,
-      userDefines: libmpvDir == null
+      userDefines: libmpvDir == null && !tizen
           ? null
           : PackageUserDefines(
               workspacePubspec: PackageUserDefinesSource(
-                defines: {'libmpv': libmpvDir.path},
+                defines: {
+                  if (libmpvDir != null) 'libmpv': libmpvDir.path,
+                  if (tizen) 'tizen': true,
+                },
                 basePath: tmp.uri,
               ),
             ),
@@ -71,7 +76,7 @@ void main() {
     final dir = Directory('${tmp.path}/release')..createSync();
     for (final name in [
       'libmpv_tizen-armv7l.so',
-      'libmpv_tizen-i686.so',
+      'libmpv_tizen-x86_64.so',
       'libmpv_linux-x86_64.so',
       'libmpv_linux-aarch64.so',
     ]) {
@@ -80,21 +85,43 @@ void main() {
     return dir;
   }
 
-  for (final (arch, asset) in [
-    (Architecture.arm, 'libmpv_tizen-armv7l.so'),
-    (Architecture.ia32, 'libmpv_tizen-i686.so'),
-    (Architecture.x64, 'libmpv_linux-x86_64.so'),
-    (Architecture.arm64, 'libmpv_linux-aarch64.so'),
+  for (final (arch, tizen, asset) in [
+    (Architecture.arm, false, 'libmpv_tizen-armv7l.so'),
+    (Architecture.arm, true, 'libmpv_tizen-armv7l.so'),
+    (Architecture.x64, true, 'libmpv_tizen-x86_64.so'),
+    (Architecture.x64, false, 'libmpv_linux-x86_64.so'),
+    (Architecture.arm64, false, 'libmpv_linux-aarch64.so'),
   ]) {
-    test('linux on ${arch.name} bundles $asset', () async {
+    test('linux on ${arch.name}${tizen ? ' with tizen: true' : ''} '
+        'bundles $asset', () async {
       final tmp = await Directory.systemTemp.createTemp('mak_hook_tizen');
       addTearDown(() => tmp.delete(recursive: true));
-      final (run, output) = await _runHook(tmp, arch, libmpvDir: assets(tmp));
+      final (run, output) = await _runHook(
+        tmp,
+        arch,
+        libmpvDir: assets(tmp),
+        tizen: tizen,
+      );
       expect(run.exitCode, 0, reason: '${run.stdout}${run.stderr}');
       final code = output!.assets.code.single;
       expect(code.id, 'package:mpv_audio_kit/libmpv');
       expect(code.file!.pathSegments.last, 'libmpv_audio_kit.so');
       expect(File.fromUri(code.file!).readAsStringSync(), asset);
+    });
+  }
+
+  for (final arch in [Architecture.ia32, Architecture.arm64]) {
+    test('Tizen on ${arch.name} is unsupported', () async {
+      final tmp = await Directory.systemTemp.createTemp('mak_hook_tizen');
+      addTearDown(() => tmp.delete(recursive: true));
+      final (run, _) = await _runHook(
+        tmp,
+        arch,
+        libmpvDir: assets(tmp),
+        tizen: arch == Architecture.arm64,
+      );
+      expect(run.exitCode, isNot(0));
+      expect('${run.stdout}${run.stderr}', contains('no libmpv for'));
     });
   }
 

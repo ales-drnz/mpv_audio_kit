@@ -23,7 +23,13 @@
 //
 // tvOS is the exception: the plugin's tvos/Package.swift links libmpv
 // there, and this hook bundles nothing. Tizen, through flutter-tizen, is
-// linux on arm or ia32 here, and takes its own libmpv_tizen assets.
+// linux here and takes its own libmpv_tizen assets: on arm (the TVs) by
+// itself, on x64 (the TV emulator) with
+//
+//   hooks:
+//     user_defines:
+//       mpv_audio_kit:
+//         tizen: true
 
 import 'dart:io';
 
@@ -70,7 +76,7 @@ void main(List<String> args) async {
     // an OS it does not know.
     if (_targetOSName(input) == 'tvos') return;
     final code = input.config.code;
-    final target = _Target.of(code);
+    final target = _Target.of(code, tizen: input.userDefines['tizen'] == true);
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
@@ -149,7 +155,7 @@ class _Target {
   /// The xcframework directory holding the slice, on Apple.
   final String? appleSlice;
 
-  static _Target of(CodeConfig code) {
+  static _Target of(CodeConfig code, {bool tizen = false}) {
     final arch = code.targetArchitecture;
     Never unsupported() => throw UnsupportedError(
       'mpv_audio_kit: no libmpv for ${code.targetOS} '
@@ -167,13 +173,14 @@ class _Target {
     }
     return switch (code.targetOS) {
       // flutter-tizen (https://github.com/flutter-tizen/flutter-tizen)
-      // writes linux with the arch of the Tizen build: arm for the TVs, ia32
-      // for the emulator. Flutter's Linux desktop builds neither.
-      OS.linux => _Target(switch (arch) {
-        Architecture.x64 => 'libmpv_linux-x86_64.so',
-        Architecture.arm64 => 'libmpv_linux-aarch64.so',
-        Architecture.arm => 'libmpv_tizen-armv7l.so',
-        Architecture.ia32 => 'libmpv_tizen-i686.so',
+      // writes linux with the arch of the Tizen build: arm for the TVs,
+      // which Flutter's Linux desktop never builds, and x64 for the TV
+      // emulator, which it does, so there the app sets the tizen user define.
+      OS.linux => _Target(switch ((arch, tizen)) {
+        (Architecture.arm, _) => 'libmpv_tizen-armv7l.so',
+        (Architecture.x64, true) => 'libmpv_tizen-x86_64.so',
+        (Architecture.x64, false) => 'libmpv_linux-x86_64.so',
+        (Architecture.arm64, false) => 'libmpv_linux-aarch64.so',
         _ => unsupported(),
       }, 'libmpv_audio_kit.so'),
       OS.android => _Target(
