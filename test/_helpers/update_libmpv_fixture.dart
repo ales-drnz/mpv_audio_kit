@@ -92,7 +92,16 @@ Future<File> release(
           )
           as Map<String, dynamic>;
   manifest['release'] = 'r99';
-  (manifest['assets'] as Map<String, dynamic>)['libmpv_web.zip'] = sha(
+  // A name the hook pins before the committed manifest has it (a platform
+  // its next release adds): r99 has it too, or the script refuses it.
+  final assets = manifest['assets'] as Map<String, dynamic>;
+  final pinned = RegExp(r"^  '(libmpv_[^']+)':", multiLine: true)
+      .allMatches(File('$root/hook/build.dart').readAsStringSync())
+      .map((m) => m[1]!);
+  for (final name in pinned) {
+    assets.putIfAbsent(name, () => sha(utf8.encode('$name of r99\n')));
+  }
+  assets['libmpv_web.zip'] = sha(
     File('${dir.path}/libmpv_web.zip').readAsBytesSync(),
   );
   manifest['web'] = {
