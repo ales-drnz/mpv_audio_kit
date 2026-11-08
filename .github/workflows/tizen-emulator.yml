@@ -184,6 +184,12 @@ jobs:
           for i in $(seq 120); do sdb devices | grep -q emulator && break; sleep 5; done
           for i in $(seq 60); do sdb shell "echo up" 2>/dev/null | grep -q up && break; sleep 5; done
           sdb devices
+          # Up in 15 minutes, or the step fails here, with the launch log.
+          if ! sdb shell "echo up" 2>/dev/null | grep -q up; then
+            echo "::error title=Tizen emulator::the emulator did not boot"
+            cat "$RUNNER_TEMP/em-launch.txt"
+            exit 1
+          fi
       # libmpv and ao_tizen without a package: a small client built with the
       # SDK's toolchain and the 10.0 rootstrap, pushed and run with sdb shell.
       - name: libmpv plays on the emulator
