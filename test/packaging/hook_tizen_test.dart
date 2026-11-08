@@ -18,12 +18,13 @@ import 'package:hooks/hooks.dart';
 import 'package:test/test.dart';
 
 /// Runs hook/build.dart for linux on [arch], with the libmpv user define
-/// at [libmpvDir] when given, and returns its exit and its output.
+/// at [libmpvDir] when given and the tizen one when [tizen] is not false,
+/// and returns its exit and its output.
 Future<(ProcessResult, BuildOutput?)> _runHook(
   Directory tmp,
   Architecture arch, {
   Directory? libmpvDir,
-  bool tizen = false,
+  Object tizen = false,
 }) async {
   final shared = Directory('${tmp.path}/shared')..createSync();
   final out = Directory('${tmp.path}/out')..createSync();
@@ -34,13 +35,13 @@ Future<(ProcessResult, BuildOutput?)> _runHook(
       packageName: 'mpv_audio_kit',
       outputFile: outputFile.uri,
       outputDirectoryShared: shared.uri,
-      userDefines: libmpvDir == null && !tizen
+      userDefines: libmpvDir == null && tizen == false
           ? null
           : PackageUserDefines(
               workspacePubspec: PackageUserDefinesSource(
                 defines: {
                   if (libmpvDir != null) 'libmpv': libmpvDir.path,
-                  if (tizen) 'tizen': true,
+                  if (tizen != false) 'tizen': tizen,
                 },
                 basePath: tmp.uri,
               ),
@@ -140,4 +141,47 @@ void main() {
       }
     },
   );
+
+  // A string or a yes from YAML is not the bool the hook reads: an emulator
+  // build would bundle the desktop library and fail only when it loads.
+  for (final value in ['true', 'yes', 1]) {
+    test(
+      'tizen: ${jsonEncode(value)} fails the build, naming the define',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp('mak_hook_tizen');
+        addTearDown(() => tmp.delete(recursive: true));
+        final (run, _) = await _runHook(
+          tmp,
+          Architecture.x64,
+          libmpvDir: assets(tmp),
+          tizen: value,
+        );
+        expect(run.exitCode, isNot(0), reason: '${run.stdout}');
+        expect('${run.stdout}${run.stderr}', contains('tizen user define'));
+      },
+    );
+  }
+
+  // update_libmpv.sh rewrites only the names already in _sha256: a name the
+  // hook can pick but the table lacks never gets its SHA at a pin, and
+  // every build for it fails.
+  test('every asset the hook can pick has a row in _sha256', () {
+    final hook = File('hook/build.dart').readAsStringSync();
+    final table = RegExp(
+      r'const _sha256 = <String, String>\{\n(.*?)\n\};',
+      dotAll: true,
+    ).firstMatch(hook)!;
+    final rows = RegExp(r"'([^']+)':").allMatches(table[1]!).map((m) => m[1]);
+    final picked = RegExp(r"'(libmpv_[A-Za-z0-9_.-]+\.(?:so|dll|zip))'")
+        .allMatches(hook.substring(table.end))
+        .map((m) => m[1]!)
+        // The name an asset is bundled as, not one of the release.
+        .where((name) => !name.startsWith('libmpv_audio_kit.'))
+        .toSet();
+    expect(
+      picked,
+      containsAll(['libmpv_tizen-armv7l.so', 'libmpv_tizen-x86_64.so']),
+    );
+    expect(rows, containsAll(picked));
+  });
 }
