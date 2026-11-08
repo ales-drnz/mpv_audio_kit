@@ -11,6 +11,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:mpv_audio_kit/mpv_audio_kit.dart' show LoudnessScan;
 import 'package:mpv_audio_kit/src/dsp/loudness_scan_pipeline.dart';
 import 'package:mpv_audio_kit/src/dsp/waveform_pipeline.dart';
 import 'package:test/test.dart';
@@ -170,6 +171,49 @@ void main() {
       await sub.cancel();
       await p.dispose();
     });
+
+    test('a reply equal to the held envelope, a new instance, is not '
+        'emitted again', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+      // The core answers with a fresh node of the same content.
+      mpv.values['waveform-data'] = _readyWave();
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got, isEmpty, reason: 'the same envelope again: $got');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test(
+      'a failed loudness scan is not held: null, then the new reply',
+      () async {
+        final mpv = _FakeMpv()
+          ..values['loudness-scan-data'] = {'state': 'failed'};
+        final p = LoudnessScanPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+        final got = <Object?>[];
+        final sub = p.stream.listen(got.add);
+        p.setEnabled(true);
+        await _settle();
+        got.clear();
+        p.reset(sameFile: true);
+        await _settle();
+        expect(got.first, isNull, reason: 'cleared at once: $got');
+        expect(got.where((e) => e == null), hasLength(1), reason: '$got');
+        expect(
+          got.last,
+          isA<LoudnessScan>(),
+          reason: 'ends on the reply: $got',
+        );
+        await sub.cancel();
+        await p.dispose();
+      },
+    );
 
     test('the loudness scan keeps its result too', () async {
       final mpv = _FakeMpv()

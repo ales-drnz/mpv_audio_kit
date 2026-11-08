@@ -23,6 +23,7 @@ import '../types/settings/replay_gain_settings.dart';
 import '../types/state/audio_output_state.dart';
 import '../types/state/prefetch_state.dart';
 import 'default_reactives.dart';
+import 'duration_hint.dart';
 import 'mpv_property_spec.dart';
 import 'reactive_property.dart';
 
@@ -41,12 +42,11 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
   DefaultPropertyReactives r, {
   required void Function(bool idle) onIdleActive,
   required void Function(AudioOutputState state) onAudioOutputState,
+  DurationHint? durationHint,
 }) {
-  // mpv's own duration and whether FFmpeg estimated it, kept to combine
-  // them with the duration hint of the entry whichever comes first: the
-  // two arrive as separate changes, in either order.
-  var mpvDuration = Duration.zero;
-  var estimated = false;
+  // mpv's duration and its flag, combined with the entry's hint; the
+  // player applies it again when the playlist or its index changes.
+  final hint = durationHint ?? DurationHint(r);
   return <MpvPropertySpec<Object?>>[
     // ── Playback and timing ──────────────────────────────────────────────
     MpvPropertySpec<Duration>.double(
@@ -59,33 +59,23 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       name: 'duration',
       reactive: r.duration,
       parse: (raw, s) {
-        mpvDuration = secondsToDuration(raw);
-        return _effectiveDuration(mpvDuration, estimated, s);
+        hint.mpv = secondsToDuration(raw);
+        return hint.duration(s);
       },
       unavailable: (s) {
-        mpvDuration = Duration.zero;
+        hint.mpv = Duration.zero;
         return Duration.zero;
       },
-      reduce: (v, s) {
-        final e = _durationIsEstimate(mpvDuration, estimated, s);
-        r.durationEstimated.update(e);
-        return s.copyWith(duration: v, durationEstimated: e);
-      },
+      reduce: (v, s) => hint.apply(s),
     ),
     // Combined with `duration` above: its cell holds mpv's flag, and a
     // change of it sets both values and both streams.
     MpvPropertySpec<bool>.flag(
       name: 'duration-estimated',
       reactive: r.mpvDurationEstimated,
-      parse: (raw, s) => estimated = raw,
-      unavailable: (s) => estimated = false,
-      reduce: (v, s) {
-        final d = _effectiveDuration(mpvDuration, estimated, s);
-        final e = _durationIsEstimate(mpvDuration, estimated, s);
-        r.duration.update(d);
-        r.durationEstimated.update(e);
-        return s.copyWith(duration: d, durationEstimated: e);
-      },
+      parse: (raw, s) => hint.estimated = raw,
+      unavailable: (s) => hint.estimated = false,
+      reduce: (v, s) => hint.apply(s),
     ),
     MpvPropertySpec<Duration>.double(
       name: 'demuxer-cache-time',
@@ -783,26 +773,6 @@ int _identityInt(int raw, PlayerState _) => raw;
 bool _identityBool(bool raw, PlayerState _) => raw;
 String _identityString(String raw, PlayerState _) => raw;
 Duration _toDuration(double raw, PlayerState _) => secondsToDuration(raw);
-
-/// The duration hint of the playing entry, if it has one.
-Duration? _entryHint(PlayerState s) {
-  final playlist = s.playback.playlist;
-  final i = playlist.index;
-  if (i < 0 || i >= playlist.items.length) return null;
-  return playlist.items[i].waveformDurationHint;
-}
-
-/// [mpv]'s duration, or the entry's hint over one FFmpeg [estimated]
-/// from the bitrate: such an estimate can be far off, the hint is the
-/// length the app knows. An exact duration always wins.
-Duration _effectiveDuration(Duration mpv, bool estimated, PlayerState s) {
-  if (!estimated || mpv <= Duration.zero) return mpv;
-  return _entryHint(s) ?? mpv;
-}
-
-/// Whether the duration given is FFmpeg's estimate, with no hint over it.
-bool _durationIsEstimate(Duration mpv, bool estimated, PlayerState s) =>
-    estimated && mpv > Duration.zero && _entryHint(s) == null;
 
 /// `ab-loop-a` and `ab-loop-b` parser. mpv emits `'no'` when disabled
 /// (the `M_OPT_ALLOW_NO` flag on `OPT_TIME`); any other value is a

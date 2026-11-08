@@ -105,7 +105,10 @@ abstract class AnalysisPollPipeline<T extends Object> {
   void reset({bool sameFile = false}) {
     if (_disposed) return;
     _idle = false;
-    final held = sameFile ? _result : null;
+    final result = _result;
+    final held = sameFile && result != null && keepsAcrossReload(result)
+        ? result
+        : null;
     if (held == null) {
       _drop();
     } else {
@@ -163,6 +166,17 @@ abstract class AnalysisPollPipeline<T extends Object> {
   @protected
   void onData(Map<Object?, Object?> value);
 
+  /// Whether the finished [result] stays on screen across a reload of
+  /// the same file until the first reply (see [reset]). A result mpv
+  /// gives back as it was; by default every one.
+  @protected
+  bool keepsAcrossReload(T result) => true;
+
+  /// Whether [a] is the same result as [b], so a reply after a reload
+  /// does not emit it again.
+  @protected
+  bool sameResult(T a, T b);
+
   /// Forgets what [onData] remembers between polls (progress seen, ...).
   @protected
   void onDrop();
@@ -179,7 +193,8 @@ abstract class AnalysisPollPipeline<T extends Object> {
   void finish(T value) {
     _result = value;
     stopPolling();
-    if (value == _held) {
+    final held = _held;
+    if (held != null && sameResult(value, held)) {
       _held = null;
       return;
     }

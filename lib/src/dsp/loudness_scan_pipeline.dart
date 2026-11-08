@@ -35,6 +35,15 @@ class LoudnessScanPipeline extends AnalysisPollPipeline<LoudnessScan> {
   @override
   void onDrop() => _lastScanProgress = null;
 
+  // Only a ready scan: mpv keeps it for the same file, and decodes again
+  // after a failed or unavailable one.
+  @override
+  bool keepsAcrossReload(LoudnessScan result) =>
+      result.state == LoudnessScanState.ready;
+
+  @override
+  bool sameResult(LoudnessScan a, LoudnessScan b) => a == b;
+
   @override
   void onData(Map<Object?, Object?> value) {
     final state = value['state'];

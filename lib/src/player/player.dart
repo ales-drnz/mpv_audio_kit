@@ -52,6 +52,7 @@ import '../pcm/pcm_format.dart';
 import '../pcm/pcm_source.dart';
 import '../reactive/default_reactives.dart';
 import '../reactive/default_specs.dart';
+import '../reactive/duration_hint.dart';
 import '../reactive/node_parsers.dart';
 import '../reactive/property_registry.dart';
 import '../reactive/reactive_property.dart';
@@ -335,6 +336,10 @@ abstract class _PlayerBase {
 
   // ── Property registry (the bulk of state: one spec per mpv property) ──
   late final DefaultPropertyReactives _reactives;
+
+  /// mpv's duration and its flag with the entry's hint; applied again at
+  /// each playlist update (see [DurationHint]).
+  late final DurationHint _durationHint;
   late final PropertyRegistry _registry;
 
   // ── Standalone reactive properties (no 1:1 mpv property backing) ───────
@@ -486,12 +491,14 @@ abstract class _PlayerBase {
   }) : _session = createMpvSession(wakeupCounterAddress: wakeupCounterAddress) {
     // Pure-Dart setup runs on the main isolate (microseconds).
     _reactives = DefaultPropertyReactives();
+    _durationHint = DurationHint(_reactives);
     _registry = PropertyRegistry()
       ..registerAll(
         buildDefaultSpecs(
           _reactives,
           onIdleActive: _transport.onIdle,
           onAudioOutputState: _onAudioOutputState,
+          durationHint: _durationHint,
         ),
       );
 
@@ -623,6 +630,10 @@ abstract class _PlayerBase {
 
   late final Future<void> _ready;
   bool _bringUpCompleted = false;
+
+  /// The path of the last FILE_LOADED, to tell the same file loaded again
+  /// for the analyses (see `_onFileLoaded`).
+  String? _analysisPath;
 
   /// The level of the last [setLogLevel] call, applied at the end of
   /// bring-up when the call came before it.

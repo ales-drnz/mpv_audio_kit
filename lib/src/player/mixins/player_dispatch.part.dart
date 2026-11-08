@@ -206,9 +206,12 @@ mixin _DispatchModule on _PlayerBase {
     // with `state.playlist` or `state.path` sees the new track. The
     // `playlist` and `path` streams still emit with the observed
     // changes that follow this event, as before.
-    // Read before the new entry lands: the same file loaded again (a
-    // playlist of one entry with loop-playlist) keeps its analysis.
-    final samePath = path != null && path == _state.file.path;
+    // The same file loaded again (a playlist of one entry with
+    // loop-playlist) keeps its analysis. Against the path of the last
+    // FILE_LOADED, not the state's: the event isolate sends the new
+    // `path` ahead of this event.
+    final samePath = path != null && path == _analysisPath;
+    _analysisPath = path;
     _applyLoadedEntry(path, playlist);
     _releaseSettled();
     // Emit unconditionally: `null` signals "no cover on the new
@@ -354,6 +357,11 @@ mixin _DispatchModule on _PlayerBase {
   void debugDispatchProperty(String name, dynamic raw) =>
       _dispatchProperty(name, raw);
 
+  /// Test-only: dispatches [event] as if the event isolate sent it, to
+  /// replay an order of events a test cannot get from the core on time.
+  @visibleForTesting
+  void debugDispatchEvent(MpvIsolateEvent event) => _dispatchEvent(event);
+
   /// Routes a property-change to the registry first, then falls back to the
   /// custom handlers for properties whose update logic doesn't fit a simple
   /// (parser, reducer) pair (node parsing with player-side context, derived
@@ -445,6 +453,9 @@ mixin _DispatchModule on _PlayerBase {
     }
     if (path == null && playlist == null) return;
     _state = _state.copyWith(path: path, playlist: playlist);
+    // The duration and its flag arrive before this event: the hint of the
+    // new entry applies now.
+    _state = _durationHint.apply(_state);
   }
 
   void _updateLoopFromMpv(String name, String value) {
@@ -472,6 +483,8 @@ mixin _DispatchModule on _PlayerBase {
       );
       _entries.hiddenAt = hidden;
       _updateField((s) => s.copyWith(playlist: playlist), _playlist, playlist);
+      // A new index, or a hint of the playing entry, changes the duration.
+      _state = _durationHint.apply(_state);
     } catch (e) {
       _internalLog('Failed to parse playlist: $e', level: LogLevel.warn);
     }

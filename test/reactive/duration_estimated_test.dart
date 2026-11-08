@@ -13,6 +13,7 @@ import 'package:mpv_audio_kit/src/player/player_state.dart';
 import 'package:mpv_audio_kit/src/player/state/playback_state.dart';
 import 'package:mpv_audio_kit/src/reactive/default_reactives.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
+import 'package:mpv_audio_kit/src/reactive/duration_hint.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
 import 'package:test/test.dart';
 
@@ -119,5 +120,36 @@ void main() {
     s = _run(registry, s, [('duration', null), ('duration-estimated', null)]);
     expect(s.playback.duration, Duration.zero);
     expect(s.playback.durationEstimated, isFalse);
+  });
+
+  // The duration and its flag arrive before FILE_LOADED, the playlist with
+  // the new index with it or after it: the player applies the hint again
+  // at each playlist update.
+  test('the hint of the entry the index moves to applies', () {
+    final r = DefaultPropertyReactives();
+    final hint = DurationHint(r);
+    final registry = PropertyRegistry()
+      ..registerAll(
+        buildDefaultSpecs(
+          r,
+          onIdleActive: (_) {},
+          onAudioOutputState: (_) {},
+          durationHint: hint,
+        ),
+      );
+    const two = Playlist([
+      Media('https://example.com/a.mp3'),
+      Media('https://example.com/b.mp3', waveformDurationHint: _hint),
+    ]);
+    var s = const PlayerState(playback: PlaybackState(playlist: two));
+    s = _run(registry, s, [('duration', 1455.4), ('duration-estimated', 1)]);
+    expect(s.playback.durationEstimated, isTrue, reason: 'entry 0 has none');
+    s = hint.apply(s.copyWith(playlist: two.copyWith(index: 1)));
+    expect(s.playback.duration, _hint);
+    expect(s.playback.durationEstimated, isFalse);
+    expect(r.duration.value, _hint);
+    s = hint.apply(s.copyWith(playlist: two.copyWith(index: 0)));
+    expect(s.playback.duration, const Duration(milliseconds: 1455400));
+    expect(r.durationEstimated.value, isTrue);
   });
 }

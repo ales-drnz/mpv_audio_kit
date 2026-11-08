@@ -62,6 +62,7 @@ final class PlaybackState with _$PlaybackState {
   /// a Xing header, ADTS AAC, a length a server guessed) and the entry has
   /// a [Media.waveformDurationHint], it is the hint: such an estimate can
   /// be far off. An exact duration always wins over the hint.
+  /// [percentPos] and [timeRemaining] stay mpv's, on its own duration.
   final Duration duration;
 
   /// Whether [duration] is an estimate FFmpeg made from the bitrate, with

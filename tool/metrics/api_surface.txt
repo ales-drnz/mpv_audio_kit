@@ -3530,6 +3530,7 @@ Player.@override Future<void> openAll(List<Media> medias, {bool? play, int index
 Player.@override Future<void> openPlaylistFile(Media playlist, {bool? play})
 Player.@override Future<void> setRawProperty(String name, String value)
 Player.@visibleForTesting Future<void> get ready
+Player.@visibleForTesting void debugDispatchEvent(MpvIsolateEvent event)
 Player.@visibleForTesting void debugDispatchProperty(String name, dynamic raw)
 Player.Future<Object?> getRawPropertyNode(String name)
 Player.Future<PcmSource> openPcmStream(PcmFormat format, {bool play = true, Duration maxBuffered = const Duration(seconds: 30), bool lowLatency = false, Map<String, Object?>? extras})
