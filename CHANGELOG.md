@@ -1,4 +1,4 @@
-## [0.6.4] - Unreleased
+## [0.6.4] - 8-11-2026
 
 ### libmpv-r23
 **All platforms**
