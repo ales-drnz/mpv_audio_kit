@@ -9,7 +9,7 @@ The player shows its state in two ways:
 
 ```dart
 // Read once, in a handler or in build()
-final volume = player.state.volume;
+final volume = player.state.settings.volume;
 
 // Follow every change
 player.stream.volume.listen((v) => print('volume $v'));
@@ -28,6 +28,19 @@ StreamBuilder<Duration>(
 ```
 
 Event streams, such as `endFile`, `error` and `log`, deliver only what happens after `listen()`.
+
+The snapshot holds its values in six groups:
+
+| Group | What it holds |
+| --- | --- |
+| `state.playback` | transport, position and the playlist |
+| `state.network` | buffering, cache and read health of the source |
+| `state.file` | what mpv read from the current file: tags, tracks, cover, paths |
+| `state.output` | the audio output in use and its format |
+| `state.settings` | what the app asked: volume, speed, effects, output, network |
+| `state.versions` | the libmpv and FFmpeg versions |
+
+The streams stay flat: `player.stream.position` follows `state.playback.position`. The flat fields of 0.6, such as `state.position`, still read the same values, deprecated until 0.8.0.
 
 A few values live on one side only. `playbackState`, `prefetchState`, `prefetchCacheDuration`, `waveform`, `loudnessScan` and the event streams, `fft`, `pcm` and `loudnessMeter` among them, have no field in `state`. `tlsCaFile`, `readError` and `skippedSegments` have no stream.
 
@@ -73,7 +86,7 @@ A paused live stream is `paused`, not `idle`.
 | `buffering` | A file opens. A stall during playback shows on `pausedForCache` |
 | `cacheBufferingState` | A buffering indicator, from 0 to 100 |
 
-`bufferingPercentage` compares the cache with `state.cache.secs`. It stays near 0 with the default cache size, so prefer `cacheBufferingState` or `bufferDuration` against your own target.
+`bufferingPercentage` compares the cache with `state.settings.cache.secs`. It stays near 0 with the default cache size, so prefer `cacheBufferingState` or `bufferDuration` against your own target.
 
 `duration` is `Duration.zero` for a live stream and while it is unknown. `position` updates at most about 30 times a second.
 

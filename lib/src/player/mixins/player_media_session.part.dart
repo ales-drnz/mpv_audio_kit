@@ -106,7 +106,7 @@ mixin _MediaSessionModule on _PlayerBase {
       // The controller could not be created: undo the owner and the state
       // this call wrote, unless a later call has replaced them.
       if (session != null &&
-          identical(_state.mediaSession, session) &&
+          identical(_state.settings.mediaSession, session) &&
           _mediaSessionController == null) {
         if (identical(_sessionOwner, this)) {
           _sessionOwner = null;
@@ -153,7 +153,7 @@ mixin _MediaSessionModule on _PlayerBase {
   Future<void> _syncMediaSessionController() async {
     final wanted =
         !_disposed &&
-        _state.mediaSession != null &&
+        _state.settings.mediaSession != null &&
         identical(_sessionOwner, this);
     final current = _mediaSessionController;
     if (wanted && current == null) {
@@ -213,7 +213,7 @@ mixin _MediaSessionModule on _PlayerBase {
         // (core-idle inverted) toggles transiently on every seek and buffer, so
         // a single-button PlayPause landing during a transient would flip the
         // wrong way. The OS button itself binds to `playWhenReady`; match it.
-        if (_state.playWhenReady) {
+        if (_state.playback.playWhenReady) {
           _applySessionCommand((this as Player)._pause());
         } else {
           _applySessionCommand((this as Player).play());
@@ -257,8 +257,8 @@ mixin _MediaSessionModule on _PlayerBase {
   void _applySessionNav(Future<bool> Function() nav) {
     if (shouldAutoApplyPlaylistNav(
       autoApplyPlaylistNavigation:
-          _state.mediaSession?.autoApplyPlaylistNavigation,
-      playlistLength: _state.playlist.items.length,
+          _state.settings.mediaSession?.autoApplyPlaylistNavigation,
+      playlistLength: _state.playback.playlist.items.length,
     )) {
       _applySessionCommand(nav());
     }

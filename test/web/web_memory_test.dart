@@ -56,10 +56,10 @@ void main() {
       addTearDown(player.dispose);
       await player.ready;
       await waitUntil(
-        () => player.state.demuxer.maxBytes == 64 * _mib,
+        () => player.state.settings.demuxer.maxBytes == 64 * _mib,
         what: 'the cache of the web',
       );
-      expect(player.state.demuxer.maxBackBytes, 16 * _mib);
+      expect(player.state.settings.demuxer.maxBackBytes, 16 * _mib);
       expect(await player.getRawProperty('demuxer-max-bytes'), '${64 * _mib}');
     },
     timeout: const Timeout(Duration(seconds: 60)),

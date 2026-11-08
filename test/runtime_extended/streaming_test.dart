@@ -103,9 +103,9 @@ void main() {
         await player.open(const Media(hlsStream), play: false);
         await waitUntil(
           () =>
-              player.state.path == hlsStream &&
-              player.state.audioParams.sampleRate != null &&
-              player.state.duration > Duration.zero,
+              player.state.file.path == hlsStream &&
+              player.state.file.audioParams.sampleRate != null &&
+              player.state.playback.duration > Duration.zero,
           timeout: const Duration(seconds: 20),
           reason:
               'BipBop HLS clip has finite duration; mpv must parse the '

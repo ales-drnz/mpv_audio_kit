@@ -37,13 +37,13 @@ void main() {
         await player.stream.playlist
             .firstWhere((p) => p.items.length == 1)
             .timeout(const Duration(seconds: 5));
-        expect(player.state.playlist.items.length, 1);
+        expect(player.state.playback.playlist.items.length, 1);
 
         await player.add(Media(fixturePath));
         await player.stream.playlist
             .firstWhere((p) => p.items.length == 2)
             .timeout(const Duration(seconds: 5));
-        expect(player.state.playlist.items.length, 2);
+        expect(player.state.playback.playlist.items.length, 2);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('jump moves to the requested index', () async {
@@ -52,15 +52,15 @@ void main() {
         await player.stream.playlist
             .firstWhere((p) => p.index == 1)
             .timeout(const Duration(seconds: 5));
-        expect(player.state.playlist.index, 1);
+        expect(player.state.playback.playlist.index, 1);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('move reorders entries (1 → 0)', () async {
         // 2-item playlist; move the second entry to position 0. The
         // current entry (index 1) moves with it, so the index follows.
         await player.move(1, 0);
-        await waitUntil(() => player.state.playlist.index == 0);
-        expect(player.state.playlist.items.length, 2);
+        await waitUntil(() => player.state.playback.playlist.index == 0);
+        expect(player.state.playback.playlist.items.length, 2);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('remove drops an entry', () async {
@@ -69,7 +69,7 @@ void main() {
         await player.stream.playlist
             .firstWhere((p) => p.items.length == 1)
             .timeout(const Duration(seconds: 5));
-        expect(player.state.playlist.items.length, 1);
+        expect(player.state.playback.playlist.items.length, 1);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('clearPlaylist empties the queue', () async {
@@ -79,7 +79,7 @@ void main() {
         await player.stream.playlist
             .firstWhere((p) => p.items.isEmpty)
             .timeout(const Duration(seconds: 5));
-        expect(player.state.playlist.items, isEmpty);
+        expect(player.state.playback.playlist.items, isEmpty);
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test('setShuffle / setLoop round-trip', () async {
@@ -92,16 +92,16 @@ void main() {
             .timeout(const Duration(seconds: 5));
 
         await player.setShuffle(true);
-        expect(player.state.shuffle, isTrue);
+        expect(player.state.playback.shuffle, isTrue);
         await player.setShuffle(false);
-        expect(player.state.shuffle, isFalse);
+        expect(player.state.playback.shuffle, isFalse);
 
         await player.setLoop(Loop.file);
-        expect(player.state.loop, Loop.file);
+        expect(player.state.playback.loop, Loop.file);
         await player.setLoop(Loop.playlist);
-        expect(player.state.loop, Loop.playlist);
+        expect(player.state.playback.loop, Loop.playlist);
         await player.setLoop(Loop.off);
-        expect(player.state.loop, Loop.off);
+        expect(player.state.playback.loop, Loop.off);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('setLoop between two modes never passes through off', () async {
@@ -157,17 +157,17 @@ void main() {
         final advancedTo1 = waitFor(1);
         await player.next();
         await advancedTo1;
-        expect(player.state.playlist.index, 1);
+        expect(player.state.playback.playlist.index, 1);
 
         final advancedTo2 = waitFor(2);
         await player.next();
         await advancedTo2;
-        expect(player.state.playlist.index, 2);
+        expect(player.state.playback.playlist.index, 2);
 
         final backTo1 = waitFor(1);
         await player.previous();
         await backTo1;
-        expect(player.state.playlist.index, 1);
+        expect(player.state.playback.playlist.index, 1);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test(
@@ -205,13 +205,17 @@ void main() {
               .timeout(const Duration(seconds: 10));
           await player.replace(1, Media(altPath));
           await swapped;
-          expect(player.state.playlist.items.length, 2);
+          expect(player.state.playback.playlist.items.length, 2);
           expect(
-            player.state.playlist.items[1].uri.endsWith('with_chapters.mka'),
+            player.state.playback.playlist.items[1].uri.endsWith(
+              'with_chapters.mka',
+            ),
             isTrue,
           );
           expect(
-            player.state.playlist.items[0].uri.endsWith('sine_440hz_1s.wav'),
+            player.state.playback.playlist.items[0].uri.endsWith(
+              'sine_440hz_1s.wav',
+            ),
             isTrue,
             reason: 'replace(1) must not touch entry 0',
           );
@@ -250,31 +254,33 @@ void main() {
           index: index,
         );
         await restarted;
-        await waitUntil(() => player.state.playlist.items.length == 3);
+        await waitUntil(() => player.state.playback.playlist.items.length == 3);
         ends.clear();
       }
 
       List<String> uris() =>
-          player.state.playlist.items.map((m) => m.uri).toList();
+          player.state.playback.playlist.items.map((m) => m.uri).toList();
 
       test('puts an entry before the one at index, the current one playing '
           'on', () async {
         await openThree();
-        final path = player.state.path;
+        final path = player.state.file.path;
         await player.insert(1, Media(d, extras: const {'tag': 'inserted'}));
-        await waitUntil(() => player.state.playlist.items.length == 4);
+        await waitUntil(() => player.state.playback.playlist.items.length == 4);
         expect(uris(), [a, d, b, c]);
-        expect(player.state.playlist.items[1].extras, {'tag': 'inserted'});
-        expect(player.state.playlist.index, 0);
-        expect(player.state.path, path);
-        expect(player.state.playing, isTrue);
+        expect(player.state.playback.playlist.items[1].extras, {
+          'tag': 'inserted',
+        });
+        expect(player.state.playback.playlist.index, 0);
+        expect(player.state.file.path, path);
+        expect(player.state.playback.playing, isTrue);
         expect(ends, isEmpty, reason: 'the current entry was not reloaded');
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('before the current entry, the index follows it', () async {
         await openThree(index: 1);
         await player.insert(0, Media(d));
-        await waitUntil(() => player.state.playlist.index == 2);
+        await waitUntil(() => player.state.playback.playlist.index == 2);
         expect(uris(), [d, a, b, c]);
         expect(ends, isEmpty);
       }, timeout: const Timeout(Duration(seconds: 30)));
@@ -285,7 +291,7 @@ void main() {
           3,
           Media(d, httpHeaders: const {'X-Inserted': 'yes'}),
         );
-        await waitUntil(() => player.state.playlist.items.length == 4);
+        await waitUntil(() => player.state.playback.playlist.items.length == 4);
         expect(uris(), [a, b, c, d]);
         final loaded = player.stream.seekCompleted.first.timeout(
           const Duration(seconds: 10),
@@ -310,9 +316,9 @@ void main() {
         await openThree();
         await player.insert(1, Media(d, extras: const {'n': 1}));
         await player.insert(2, Media(d, extras: const {'n': 2}));
-        await waitUntil(() => player.state.playlist.items.length == 5);
-        expect(player.state.playlist.items[1].extras, {'n': 1});
-        expect(player.state.playlist.items[2].extras, {'n': 2});
+        await waitUntil(() => player.state.playback.playlist.items.length == 5);
+        expect(player.state.playback.playlist.items[1].extras, {'n': 1});
+        expect(player.state.playback.playlist.items[2].extras, {'n': 2});
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });

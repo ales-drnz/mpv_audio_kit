@@ -58,11 +58,11 @@ void main() {
       dispatch('mute', true);
       dispatch('shuffle', true);
 
-      expect(state.volume, 50.0);
-      expect(state.rate, 1.25);
-      expect(state.pitch, 1.5);
-      expect(state.mute, isTrue);
-      expect(state.shuffle, isTrue);
+      expect(state.settings.volume, 50.0);
+      expect(state.settings.rate, 1.25);
+      expect(state.settings.pitch, 1.5);
+      expect(state.settings.mute, isTrue);
+      expect(state.playback.shuffle, isTrue);
 
       expect(reactives.volume.value, 50.0);
       expect(reactives.shuffle.value, isTrue);
@@ -72,11 +72,11 @@ void main() {
       // `core-idle=false` means mpv is actually producing audio. This is
       // the actual-output axis; it flips transiently on every seek.
       dispatch('core-idle', false);
-      expect(state.playing, isTrue);
+      expect(state.playback.playing, isTrue);
       expect(reactives.playing.value, isTrue);
 
       dispatch('core-idle', true);
-      expect(state.playing, isFalse);
+      expect(state.playback.playing, isFalse);
       expect(reactives.playing.value, isFalse);
     });
 
@@ -85,9 +85,9 @@ void main() {
       dispatch('duration', 90.0); // 1m30
       dispatch('demuxer-cache-time', 30.0);
 
-      expect(state.position, const Duration(milliseconds: 1500));
-      expect(state.duration, const Duration(seconds: 90));
-      expect(state.buffer, const Duration(seconds: 30));
+      expect(state.playback.position, const Duration(milliseconds: 1500));
+      expect(state.playback.duration, const Duration(seconds: 90));
+      expect(state.network.buffer, const Duration(seconds: 30));
     });
   });
 
@@ -107,13 +107,13 @@ void main() {
       dispatch('audio-codec', 'flac');
       dispatch('audio-codec-name', 'FLAC');
 
-      expect(state.audioParams.format, Format.float32Planar);
-      expect(state.audioParams.sampleRate, 48000);
-      expect(state.audioParams.channels, Channels.stereo);
-      expect(state.audioParams.channelCount, 2);
-      expect(state.audioParams.hrChannels, 'L+R');
-      expect(state.audioParams.codec, 'flac');
-      expect(state.audioParams.codecName, 'FLAC');
+      expect(state.file.audioParams.format, Format.float32Planar);
+      expect(state.file.audioParams.sampleRate, 48000);
+      expect(state.file.audioParams.channels, Channels.stereo);
+      expect(state.file.audioParams.channelCount, 2);
+      expect(state.file.audioParams.hrChannels, 'L+R');
+      expect(state.file.audioParams.codec, 'flac');
+      expect(state.file.audioParams.codecName, 'FLAC');
     });
 
     test('`audio-params` node merges into existing audioParams without '
@@ -131,16 +131,16 @@ void main() {
       });
 
       // Both node-side and sibling-side fields must coexist on state.
-      expect(state.audioParams.format, Format.float32Planar);
-      expect(state.audioParams.sampleRate, 48000);
+      expect(state.file.audioParams.format, Format.float32Planar);
+      expect(state.file.audioParams.sampleRate, 48000);
       expect(
-        state.audioParams.codec,
+        state.file.audioParams.codec,
         'flac',
         reason:
             'audio-params node reduce must not reset the codec fields '
             'populated by audio-codec / audio-codec-name siblings',
       );
-      expect(state.audioParams.codecName, 'FLAC');
+      expect(state.file.audioParams.codecName, 'FLAC');
     });
 
     test('a group of audio-params, codec and codec name emits once', () async {
@@ -159,9 +159,9 @@ void main() {
         ('audio-codec-name', 'FLAC'),
         ('audio-params', node),
       ], state)!;
-      expect(state.audioParams.codec, 'flac');
-      expect(state.audioParams.codecName, 'FLAC');
-      expect(state.audioParams.sampleRate, 48000);
+      expect(state.file.audioParams.codec, 'flac');
+      expect(state.file.audioParams.codecName, 'FLAC');
+      expect(state.file.audioParams.sampleRate, 48000);
 
       // The same values again: nothing changes, nothing emits.
       expect(registry.dispatchGroup([('audio-codec', 'flac')], state), isNull);
@@ -171,7 +171,7 @@ void main() {
         ('audio-codec', null),
         ('audio-codec-name', null),
       ], state)!;
-      expect(state.audioParams, const AudioParams());
+      expect(state.file.audioParams, const AudioParams());
 
       await Future<void>.delayed(Duration.zero);
       await sub.cancel();
@@ -192,45 +192,45 @@ void main() {
         'hr-channels': '2.0',
       });
 
-      expect(state.audioOutParams.format, Format.s16);
-      expect(state.audioOutParams.sampleRate, 44100);
-      expect(state.audioOutParams.channels, Channels.stereo);
-      expect(state.audioOutParams.channelCount, 2);
-      expect(state.audioOutParams.hrChannels, '2.0');
+      expect(state.output.audioOutParams.format, Format.s16);
+      expect(state.output.audioOutParams.sampleRate, 44100);
+      expect(state.output.audioOutParams.channels, Channels.stereo);
+      expect(state.output.audioOutParams.channelCount, 2);
+      expect(state.output.audioOutParams.hrChannels, '2.0');
     });
   });
 
   group('Default registry — special parsers', () {
     test('audio-format empty string maps to Format.auto', () {
       dispatch('audio-format', '');
-      expect(state.audioFormat, Format.auto);
+      expect(state.settings.audioFormat, Format.auto);
     });
 
     test('audio-format known values round-trip via fromMpv', () {
       dispatch('audio-format', 's16');
-      expect(state.audioFormat, Format.s16);
+      expect(state.settings.audioFormat, Format.s16);
       dispatch('audio-format', 'floatp');
-      expect(state.audioFormat, Format.float32Planar);
+      expect(state.settings.audioFormat, Format.float32Planar);
       dispatch('audio-format', 'doublep');
-      expect(state.audioFormat, Format.float64Planar);
+      expect(state.settings.audioFormat, Format.float64Planar);
     });
 
     test('audio-channels named layouts and custom round-trip', () {
       dispatch('audio-channels', 'stereo');
-      expect(state.audioChannels, Channels.stereo);
+      expect(state.settings.audioChannels, Channels.stereo);
       dispatch('audio-channels', '5.1');
-      expect(state.audioChannels, Channels.fiveOne);
+      expect(state.settings.audioChannels, Channels.fiveOne);
       dispatch('audio-channels', 'auto-safe');
-      expect(state.audioChannels, Channels.autoSafe);
+      expect(state.settings.audioChannels, Channels.autoSafe);
       // Variant qualifier preserved.
       dispatch('audio-channels', '5.1(side)');
-      expect(state.audioChannels, Channels.fiveOneSide);
+      expect(state.settings.audioChannels, Channels.fiveOneSide);
       dispatch('audio-channels', '7.1(wide-side)');
-      expect(state.audioChannels, Channels.sevenOneWideSide);
+      expect(state.settings.audioChannels, Channels.sevenOneWideSide);
       // Raw speaker-tag list — falls through to .custom().
       dispatch('audio-channels', 'fl-fr-fc-bl-br-sl-sr-lfe');
       expect(
-        state.audioChannels,
+        state.settings.audioChannels,
         const Channels.custom('fl-fr-fc-bl-br-sl-sr-lfe'),
       );
     });
@@ -240,10 +240,10 @@ void main() {
       expect(reactives.audioBitrate.value, isNull);
 
       dispatch('audio-bitrate', 320000.0);
-      expect(state.audioBitrate, 320000.0);
+      expect(state.file.audioBitrate, 320000.0);
 
       dispatch('audio-bitrate', 0.0);
-      expect(state.audioBitrate, isNull);
+      expect(state.file.audioBitrate, isNull);
     });
 
     // The `af` property has NO observer — the typed bundle is the
@@ -280,14 +280,14 @@ void main() {
     test('prefetch-playlist flag round-trips into state.prefetchPlaylist', () {
       // Default mirrors mpv 0.41 (off). Toggle via setPrefetchPlaylist
       // (or any property write) drives the observed flag.
-      expect(state.prefetchPlaylist, isFalse);
+      expect(state.settings.prefetchPlaylist, isFalse);
 
       dispatch('prefetch-playlist', true);
-      expect(state.prefetchPlaylist, isTrue);
+      expect(state.settings.prefetchPlaylist, isTrue);
       expect(reactives.prefetchPlaylist.value, isTrue);
 
       dispatch('prefetch-playlist', false);
-      expect(state.prefetchPlaylist, isFalse);
+      expect(state.settings.prefetchPlaylist, isFalse);
       expect(reactives.prefetchPlaylist.value, isFalse);
     });
   });
@@ -300,33 +300,37 @@ void main() {
     // demuxer-cache-duration → bufferDuration field rename, etc.) live
     // in their own tests below.
     final xsProperties = <(String, Object, Object Function(PlayerState))>[
-      ('audio-pts', 1.5, (s) => s.audioPts),
-      ('time-remaining', 30.0, (s) => s.timeRemaining),
-      ('playtime-remaining', 15.0, (s) => s.playtimeRemaining),
-      ('eof-reached', true, (s) => s.eofReached),
-      ('seekable', true, (s) => s.seekable),
-      ('partially-seekable', true, (s) => s.partiallySeekable),
-      ('media-title', 'My Song - Artist', (s) => s.mediaTitle),
-      ('file-format', 'mp4,m4a,3gp', (s) => s.fileFormat),
-      ('file-size', 1234567890, (s) => s.fileSize),
-      ('demuxer-cache-idle', false, (s) => s.demuxerIdle),
-      ('path', '/audio/track.flac', (s) => s.path),
-      ('filename', 'track.flac', (s) => s.filename),
-      ('stream-path', 'https://cdn.example/track.flac', (s) => s.streamPath),
+      ('audio-pts', 1.5, (s) => s.playback.audioPts),
+      ('time-remaining', 30.0, (s) => s.playback.timeRemaining),
+      ('playtime-remaining', 15.0, (s) => s.playback.playtimeRemaining),
+      ('eof-reached', true, (s) => s.playback.eofReached),
+      ('seekable', true, (s) => s.playback.seekable),
+      ('partially-seekable', true, (s) => s.playback.partiallySeekable),
+      ('media-title', 'My Song - Artist', (s) => s.file.mediaTitle),
+      ('file-format', 'mp4,m4a,3gp', (s) => s.file.fileFormat),
+      ('file-size', 1234567890, (s) => s.file.fileSize),
+      ('demuxer-cache-idle', false, (s) => s.network.demuxerIdle),
+      ('path', '/audio/track.flac', (s) => s.file.path),
+      ('filename', 'track.flac', (s) => s.file.filename),
+      (
+        'stream-path',
+        'https://cdn.example/track.flac',
+        (s) => s.file.streamPath,
+      ),
       (
         'stream-open-filename',
         'https://cdn.example/redirected.flac',
-        (s) => s.streamOpenFilename,
+        (s) => s.file.streamOpenFilename,
       ),
-      ('playlist-path', '/music/radio.m3u', (s) => s.playlistPath),
-      ('seeking', true, (s) => s.seeking),
-      ('percent-pos', 42.5, (s) => s.percentPos),
-      ('cache-speed', 65536.0, (s) => s.cacheSpeed),
-      ('cache-buffering-state', 87, (s) => s.cacheBufferingState),
-      ('current-demuxer', 'mkv', (s) => s.currentDemuxer),
-      ('current-ao', 'coreaudio', (s) => s.currentAo),
-      ('mpv-version', '0.41.0', (s) => s.mpvVersion),
-      ('ffmpeg-version', '7.1.1', (s) => s.ffmpegVersion),
+      ('playlist-path', '/music/radio.m3u', (s) => s.file.playlistPath),
+      ('seeking', true, (s) => s.playback.seeking),
+      ('percent-pos', 42.5, (s) => s.playback.percentPos),
+      ('cache-speed', 65536.0, (s) => s.network.cacheSpeed),
+      ('cache-buffering-state', 87, (s) => s.network.cacheBufferingState),
+      ('current-demuxer', 'mkv', (s) => s.file.currentDemuxer),
+      ('current-ao', 'coreaudio', (s) => s.output.currentAo),
+      ('mpv-version', '0.41.0', (s) => s.versions.mpvVersion),
+      ('ffmpeg-version', '7.1.1', (s) => s.versions.ffmpegVersion),
     ];
     for (final (name, payload, getter) in xsProperties) {
       test('$name round-trip into state', () {
@@ -344,16 +348,16 @@ void main() {
 
     test('demuxer-cache-duration (double → Duration) → bufferDuration', () {
       dispatch('demuxer-cache-duration', 12.5);
-      expect(state.bufferDuration, const Duration(milliseconds: 12500));
+      expect(state.network.bufferDuration, const Duration(milliseconds: 12500));
     });
 
     test('chapter (int64 → int?, -1 maps to null)', () {
       dispatch('chapter', 2);
-      expect(state.currentChapter, 2);
+      expect(state.playback.currentChapter, 2);
 
       dispatch('chapter', -1);
       expect(
-        state.currentChapter,
+        state.playback.currentChapter,
         isNull,
         reason:
             'mpv emits chapter=-1 when no chapter is active; the '
@@ -364,32 +368,32 @@ void main() {
     test('ab-loop-a / ab-loop-b ("no" → null, numeric → Duration)', () {
       dispatch('ab-loop-a', '12.5');
       dispatch('ab-loop-b', '20.0');
-      expect(state.abLoopA, const Duration(milliseconds: 12500));
-      expect(state.abLoopB, const Duration(seconds: 20));
+      expect(state.playback.abLoopA, const Duration(milliseconds: 12500));
+      expect(state.playback.abLoopB, const Duration(seconds: 20));
 
       dispatch('ab-loop-a', 'no');
-      expect(state.abLoopA, isNull);
+      expect(state.playback.abLoopA, isNull);
     });
 
     test('ab-loop-count ("inf" → null, numeric → int)', () {
       dispatch('ab-loop-count', '5');
-      expect(state.abLoopCount, 5);
+      expect(state.playback.abLoopCount, 5);
 
       dispatch('ab-loop-count', 'inf');
-      expect(state.abLoopCount, isNull);
+      expect(state.playback.abLoopCount, isNull);
     });
 
     test('remaining-ab-loops (int64 → int?, -1 maps to null)', () {
       dispatch('remaining-ab-loops', 3);
-      expect(state.remainingAbLoops, 3);
+      expect(state.playback.remainingAbLoops, 3);
 
       dispatch('remaining-ab-loops', -1);
-      expect(state.remainingAbLoops, isNull);
+      expect(state.playback.remainingAbLoops, isNull);
     });
 
     test('demuxer-start-time (double → Duration)', () {
       dispatch('demuxer-start-time', 12.5);
-      expect(state.demuxerStartTime, const Duration(milliseconds: 12500));
+      expect(state.file.demuxerStartTime, const Duration(milliseconds: 12500));
     });
 
     test('chapter-metadata (NODE_MAP → Map<String,String>)', () {
@@ -397,10 +401,13 @@ void main() {
         'title': 'Chapter One',
         'lang': 'eng',
       });
-      expect(state.chapterMetadata, {'title': 'Chapter One', 'lang': 'eng'});
+      expect(state.file.chapterMetadata, {
+        'title': 'Chapter One',
+        'lang': 'eng',
+      });
 
       dispatch('chapter-metadata', <String, dynamic>{});
-      expect(state.chapterMetadata, isEmpty);
+      expect(state.file.chapterMetadata, isEmpty);
     });
 
     test('chapter-list (NODE_ARRAY → List<Chapter>)', () {
@@ -408,9 +415,9 @@ void main() {
         {'time': 0.0, 'title': 'A'},
         {'time': 60.0, 'title': 'B'},
       ]);
-      expect(state.chapters, hasLength(2));
-      expect(state.chapters[0].title, 'A');
-      expect(state.chapters[1].time, const Duration(seconds: 60));
+      expect(state.file.chapters, hasLength(2));
+      expect(state.file.chapters[0].title, 'A');
+      expect(state.file.chapters[1].time, const Duration(seconds: 60));
     });
   });
 
@@ -430,7 +437,7 @@ void main() {
       dispatch('replaygain-clip', true);
       dispatch('replaygain-fallback', 1.5);
       expect(
-        state.replayGain,
+        state.settings.replayGain,
         const ReplayGainSettings(
           mode: ReplayGain.album,
           preamp: -3.0,
@@ -441,21 +448,21 @@ void main() {
 
       // Change just preamp; assert the other 3 fields are untouched.
       dispatch('replaygain-preamp', -10.0);
-      expect(state.replayGain.preamp, -10.0);
+      expect(state.settings.replayGain.preamp, -10.0);
       expect(
-        state.replayGain.mode,
+        state.settings.replayGain.mode,
         ReplayGain.album,
         reason: 'mode must survive a preamp-only dispatch',
       );
-      expect(state.replayGain.clip, isTrue);
-      expect(state.replayGain.fallback, 1.5);
+      expect(state.settings.replayGain.clip, isTrue);
+      expect(state.settings.replayGain.fallback, 1.5);
 
       // Change just clip.
       dispatch('replaygain-clip', false);
-      expect(state.replayGain.clip, isFalse);
-      expect(state.replayGain.mode, ReplayGain.album);
+      expect(state.settings.replayGain.clip, isFalse);
+      expect(state.settings.replayGain.mode, ReplayGain.album);
       expect(
-        state.replayGain.preamp,
+        state.settings.replayGain.preamp,
         -10.0,
         reason: 'preamp from the previous dispatch must survive',
       );
@@ -470,7 +477,7 @@ void main() {
       dispatch('cache-pause-wait', 5.0);
       dispatch('cache-pause-initial', true);
       expect(
-        state.cache,
+        state.settings.cache,
         const CacheSettings(
           mode: Cache.yes,
           secs: Duration(seconds: 30),
@@ -482,21 +489,21 @@ void main() {
       );
 
       dispatch('cache-secs', 60.0);
-      expect(state.cache.secs, const Duration(seconds: 60));
-      expect(state.cache.mode, Cache.yes);
-      expect(state.cache.onDisk, isTrue);
-      expect(state.cache.pause, isFalse);
-      expect(state.cache.pauseWait, const Duration(seconds: 5));
-      expect(state.cache.pauseInitial, isTrue);
+      expect(state.settings.cache.secs, const Duration(seconds: 60));
+      expect(state.settings.cache.mode, Cache.yes);
+      expect(state.settings.cache.onDisk, isTrue);
+      expect(state.settings.cache.pause, isFalse);
+      expect(state.settings.cache.pauseWait, const Duration(seconds: 5));
+      expect(state.settings.cache.pauseInitial, isTrue);
 
       dispatch('cache-pause', true);
-      expect(state.cache.pause, isTrue);
-      expect(state.cache.secs, const Duration(seconds: 60));
+      expect(state.settings.cache.pause, isTrue);
+      expect(state.settings.cache.secs, const Duration(seconds: 60));
 
       dispatch('cache', 'no');
-      expect(state.cache.mode, Cache.no);
-      expect(state.cache.secs, const Duration(seconds: 60));
-      expect(state.cache.onDisk, isTrue);
+      expect(state.settings.cache.mode, Cache.no);
+      expect(state.settings.cache.secs, const Duration(seconds: 60));
+      expect(state.settings.cache.onDisk, isTrue);
     });
 
     test('demuxer: dispatching one property preserves the other 2', () {
@@ -505,7 +512,7 @@ void main() {
       dispatch('demuxer-max-back-bytes', 10 * 1024 * 1024);
       dispatch('demuxer-readahead-secs', 5.0);
       expect(
-        state.demuxer,
+        state.settings.demuxer,
         const DemuxerSettings(
           maxBytes: 200 * 1024 * 1024,
           maxBackBytes: 10 * 1024 * 1024,
@@ -514,24 +521,30 @@ void main() {
       );
 
       dispatch('demuxer-readahead-secs', 2.5);
-      expect(state.demuxer.readahead, const Duration(milliseconds: 2500));
-      expect(state.demuxer.maxBytes, 200 * 1024 * 1024);
-      expect(state.demuxer.maxBackBytes, 10 * 1024 * 1024);
+      expect(
+        state.settings.demuxer.readahead,
+        const Duration(milliseconds: 2500),
+      );
+      expect(state.settings.demuxer.maxBytes, 200 * 1024 * 1024);
+      expect(state.settings.demuxer.maxBackBytes, 10 * 1024 * 1024);
 
       dispatch('demuxer-max-back-bytes', 0);
-      expect(state.demuxer.maxBackBytes, 0);
-      expect(state.demuxer.maxBytes, 200 * 1024 * 1024);
-      expect(state.demuxer.readahead, const Duration(milliseconds: 2500));
+      expect(state.settings.demuxer.maxBackBytes, 0);
+      expect(state.settings.demuxer.maxBytes, 200 * 1024 * 1024);
+      expect(
+        state.settings.demuxer.readahead,
+        const Duration(milliseconds: 2500),
+      );
     });
 
     test('replayGain: dispatch on initial PlayerState (default) is safe', () {
       // Edge case: dispatching the first property after a fresh state
       // must not throw on the `s.replayGain.copyWith(...)` chain.
-      expect(state.replayGain, const ReplayGainSettings());
+      expect(state.settings.replayGain, const ReplayGainSettings());
       dispatch('replaygain-preamp', 1.0);
-      expect(state.replayGain.preamp, 1.0);
+      expect(state.settings.replayGain.preamp, 1.0);
       expect(
-        state.replayGain.mode,
+        state.settings.replayGain.mode,
         ReplayGain.no,
         reason: 'default ReplayGainSettings.mode must survive',
       );

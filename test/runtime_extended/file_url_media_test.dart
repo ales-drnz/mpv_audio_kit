@@ -48,13 +48,13 @@ void main() {
         ], play: false);
         await player.add(Media(urls[2], extras: {'n': 2}));
         await loaded;
-        if (player.state.playlist.items.length != 3) {
+        if (player.state.playback.playlist.items.length != 3) {
           await player.stream.playlist
               .firstWhere((p) => p.items.length == 3)
               .timeout(const Duration(seconds: 10));
         }
 
-        final items = player.state.playlist.items;
+        final items = player.state.playback.playlist.items;
         expect([for (final m in items) m.extras?['n']], [0, 1, 2]);
         expect(
           [for (final m in items) m.uri],
@@ -77,7 +77,7 @@ void main() {
         await player.open(Media(url, extras: {'n': 0}), play: false);
         await loaded;
 
-        final items = player.state.playlist.items;
+        final items = player.state.playback.playlist.items;
         expect(items.single.uri, url);
         expect(items.single.extras?['n'], 0);
       } finally {

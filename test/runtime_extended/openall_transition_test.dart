@@ -84,15 +84,15 @@ void main() {
               'no incoming entry before the selected one may ever '
               'become current',
         );
-        expect(player.state.playlist.index, 6);
-        expect(player.state.playlist.items.length, 8);
+        expect(player.state.playback.playlist.index, 6);
+        expect(player.state.playback.playlist.items.length, 8);
         expect(await player.getRawProperty('pause'), 'no');
       }, timeout: const Timeout(Duration(seconds: 60)));
 
       test('from PLAYING: old track holds until the direct jump', () async {
         await openAndWaitForLoad(player, longFixture);
         await player.play();
-        await waitUntil(() => player.state.playing);
+        await waitUntil(() => player.state.playback.playing);
         frames.clear();
 
         await openAllAndSettle(play: true);
@@ -106,9 +106,9 @@ void main() {
               'no incoming entry before the selected one may ever '
               'become current',
         );
-        expect(player.state.playlist.index, 6);
-        expect(player.state.playlist.items.length, 8);
-        expect(player.state.playing, isTrue);
+        expect(player.state.playback.playlist.index, 6);
+        expect(player.state.playback.playlist.items.length, 8);
+        expect(player.state.playback.playing, isTrue);
       }, timeout: const Timeout(Duration(seconds: 60)));
 
       test('from PARKED at EOF: starts unpaused with intent intact', () async {
@@ -126,10 +126,10 @@ void main() {
               'no incoming entry before the selected one may ever '
               'become current',
         );
-        expect(player.state.playlist.index, 6);
+        expect(player.state.playback.playlist.index, 6);
         expect(await player.getRawProperty('pause'), 'no');
         expect(
-          player.state.playWhenReady,
+          player.state.playback.playWhenReady,
           isTrue,
           reason:
               'the transient idle hop must not settle the OS play '
@@ -153,9 +153,9 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 300));
 
         expect(incomingOffTarget(fixturePath, {6}), isEmpty);
-        expect(player.state.playlist.index, 6);
+        expect(player.state.playback.playlist.index, 6);
         expect(await player.getRawProperty('pause'), 'yes');
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
       }, timeout: const Timeout(Duration(seconds: 60)));
 
       test(
@@ -163,7 +163,7 @@ void main() {
         () async {
           await openAndWaitForLoad(player, longFixture);
           await player.play();
-          await waitUntil(() => player.state.playing);
+          await waitUntil(() => player.state.playback.playing);
 
           final loaded = player.stream.seekCompleted.first.timeout(
             const Duration(seconds: 10),
@@ -176,12 +176,12 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 300));
 
           expect(
-            player.state.playlist.index,
+            player.state.playback.playlist.index,
             0,
             reason: 'after the old entry is dropped the target settles at 0',
           );
-          expect(player.state.playlist.items.length, 2);
-          expect(player.state.playing, isTrue);
+          expect(player.state.playback.playlist.items.length, 2);
+          expect(player.state.playback.playing, isTrue);
         },
         timeout: const Timeout(Duration(seconds: 60)),
       );

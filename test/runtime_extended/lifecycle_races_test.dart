@@ -47,7 +47,7 @@ void main() {
         // wrapper just writes `pause=yes` to mpv; mpv accepts it without
         // emitting any property change because there's nothing playing.
         await player.pause();
-        expect(player.state.playing, isFalse);
+        expect(player.state.playback.playing, isFalse);
       }, timeout: const Timeout(Duration(seconds: 5)));
 
       test('a raw seek before any open() is rejected by mpv', () async {
@@ -69,7 +69,7 @@ void main() {
             player.seek(const Duration(seconds: 5)),
             throwsA(isA<MpvCommandException>()),
           );
-          expect(player.state.position, Duration.zero);
+          expect(player.state.playback.position, Duration.zero);
         },
         timeout: const Timeout(Duration(seconds: 5)),
       );
@@ -114,7 +114,7 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 500));
           await posSub.cancel();
           expect(
-            player.state.position.inMilliseconds,
+            player.state.playback.position.inMilliseconds,
             lessThan(500),
             reason:
                 'the loadfile-replace must settle the playhead at the new '
@@ -149,7 +149,7 @@ void main() {
           // The duration can land a tick after PLAYBACK_RESTART, and stop()
           // cleared the old one.
           await waitUntil(
-            () => player.state.duration.inMilliseconds > 2500,
+            () => player.state.playback.duration.inMilliseconds > 2500,
             reason: 'with_chapters.mka has duration > 2.5s once demuxed',
           );
         },
@@ -171,11 +171,11 @@ void main() {
             await loaded;
           }
           await waitUntil(
-            () => player.state.duration.inMilliseconds > 2500,
+            () => player.state.playback.duration.inMilliseconds > 2500,
             reason: 'after 20 cycles, duration must still match the fixture',
           );
           expect(
-            player.state.audioParams.sampleRate,
+            player.state.file.audioParams.sampleRate,
             isNotNull,
             reason: 'audio-params must be populated after the final load',
           );

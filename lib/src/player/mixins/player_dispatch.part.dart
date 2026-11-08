@@ -118,7 +118,7 @@ mixin _DispatchModule on _PlayerBase {
     // `completed` again for that park, with how the entry ended this
     // time, and spends the play intent of the generation.
     _transport.onRestart();
-    if (_state.completed) _updateLifecycle(completed: false);
+    if (_state.playback.completed) _updateLifecycle(completed: false);
     _applyPolledPosition(timePos);
     _seekCompletedCtrl.add(null);
   }
@@ -273,7 +273,7 @@ mixin _DispatchModule on _PlayerBase {
       // this discrete event instead, gated on the failed entry being
       // the last one so a mid-playlist failure that auto-advances
       // doesn't flicker the button.
-      if (lastEntry && _state.loop == Loop.off) {
+      if (lastEntry && _state.playback.loop == Loop.off) {
         _transport.writeIntent(false);
       }
     }
@@ -290,7 +290,7 @@ mixin _DispatchModule on _PlayerBase {
     _updateLifecycle(
       playing: false,
       buffering: false,
-      completed: isEof && lastEntry && _state.loop == Loop.off,
+      completed: isEof && lastEntry && _state.playback.loop == Loop.off,
       readError: readError,
       skippedSegments: skippedSegments,
     );
@@ -431,7 +431,7 @@ mixin _DispatchModule on _PlayerBase {
           raw: playlistNode,
           mediaCache: _mediaCache,
           mediaByEntry: _entries.media,
-          previous: _state.playlist,
+          previous: _state.playback.playlist,
           skip: hidden,
         );
         _entries.hiddenAt = hidden;
@@ -444,7 +444,7 @@ mixin _DispatchModule on _PlayerBase {
   }
 
   void _updateLoopFromMpv(String name, String value) {
-    final next = deriveLoop(name, value, _state.loop);
+    final next = deriveLoop(name, value, _state.playback.loop);
     if (next == null) return;
     _updateField((s) => s.copyWith(loop: next), _loop, next);
   }
@@ -463,7 +463,7 @@ mixin _DispatchModule on _PlayerBase {
         raw: raw,
         mediaCache: _mediaCache,
         mediaByEntry: _entries.media,
-        previous: _state.playlist,
+        previous: _state.playback.playlist,
         skip: hidden,
       );
       _entries.hiddenAt = hidden;
@@ -479,7 +479,7 @@ mixin _DispatchModule on _PlayerBase {
     // the proper description by looking it up in the parsed
     // `audio-device-list` (state.audioDevices). Falls back to the name
     // on cache miss: typical at boot, before the list arrives.
-    final list = _state.audioDevices;
+    final list = _state.output.audioDevices;
     String description = name;
     for (final d in list) {
       if (d.name == name) {
@@ -520,7 +520,7 @@ mixin _DispatchModule on _PlayerBase {
 
   void _updateBufferingPercentageFromNode(dynamic raw) {
     try {
-      final pct = parseDemuxerCacheStateNode(raw, _state.cache.secs);
+      final pct = parseDemuxerCacheStateNode(raw, _state.settings.cache.secs);
       _updateField(
         (s) => s.copyWith(bufferingPercentage: pct),
         _bufferingPercentage,

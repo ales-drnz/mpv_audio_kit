@@ -36,7 +36,7 @@ void main() {
       test(
         'track-list exposes a selected audio track with real demuxer fields',
         () {
-          final tracks = player.state.tracks;
+          final tracks = player.state.file.tracks;
           expect(tracks, isNotEmpty, reason: 'track-list populated on load');
 
           final audio = tracks.firstWhere(
@@ -62,13 +62,13 @@ void main() {
           expect(audio.channelCount, greaterThan(0));
 
           // Track length is the file-level duration, not a per-track field.
-          expect(player.state.duration, greaterThan(Duration.zero));
+          expect(player.state.playback.duration, greaterThan(Duration.zero));
         },
         timeout: const Timeout(Duration(seconds: 15)),
       );
 
       test('current-tracks/audio mirrors the selected track', () {
-        final current = player.state.currentAudioTrack;
+        final current = player.state.file.currentAudioTrack;
         // current-tracks/audio is populated once a track is selected at load.
         expect(current, isNotNull);
         expect(current!.type, 'audio');

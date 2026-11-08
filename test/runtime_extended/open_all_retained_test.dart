@@ -47,12 +47,17 @@ void main() {
       /// runs [during] in that window.
       Future<void> openAllHeld(Future<void> Function() during) async {
         await player.open(Media(longPath), play: true);
-        await waitUntil(() => player.state.playing, reason: 'long plays');
+        await waitUntil(
+          () => player.state.playback.playing,
+          reason: 'long plays',
+        );
         final held = Completer<void>();
         debugBeforeRetainedRemove = () async {
           debugBeforeRetainedRemove = null;
           await waitUntil(
-            () => !player.state.buffering && player.state.playing,
+            () =>
+                !player.state.network.buffering &&
+                player.state.playback.playing,
             reason: 'the new entry loaded',
           );
           await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -72,7 +77,7 @@ void main() {
         addTearDown(sub.cancel);
         await openAllHeld(() async {
           expect(
-            uris(player.state.playlist),
+            uris(player.state.playback.playlist),
             'sine_440hz_1s.wav,sine_stereo_1s.flac at 0',
             reason: 'mpv still lists the old entry, the state must not',
           );
@@ -90,7 +95,7 @@ void main() {
         await openAllHeld(() async {
           await player.jump(1);
           await waitUntil(
-            () => player.state.playlist.index == 1,
+            () => player.state.playback.playlist.index == 1,
             reason: 'jump(1) never reached the second new entry',
           );
           expect(
@@ -99,11 +104,11 @@ void main() {
           );
         });
         await waitUntil(
-          () => player.state.playlist.items.length == 2,
+          () => player.state.playback.playlist.items.length == 2,
           reason: 'the old entry never left',
         );
         expect(
-          uris(player.state.playlist),
+          uris(player.state.playback.playlist),
           'sine_440hz_1s.wav,sine_stereo_1s.flac at 1',
         );
       }, timeout: const Timeout(Duration(seconds: 30)));

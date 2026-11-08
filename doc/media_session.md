@@ -25,7 +25,7 @@ One `Player` per process owns the session, and it must live in the root isolate.
 
 ```dart
 await player.setMediaSession(
-  (player.state.mediaSession ?? const MediaSession())
+  (player.state.settings.mediaSession ?? const MediaSession())
       .copyWith(title: 'Custom title', artist: 'Custom artist'),
 );
 ```

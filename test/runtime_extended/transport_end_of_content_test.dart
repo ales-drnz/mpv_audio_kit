@@ -52,11 +52,11 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 300));
           await sub.cancel();
 
-          expect(player.state.completed, isTrue);
-          expect(player.state.eofReached, isTrue);
-          expect(player.state.playing, isFalse);
+          expect(player.state.playback.completed, isTrue);
+          expect(player.state.playback.eofReached, isTrue);
+          expect(player.state.playback.playing, isFalse);
           expect(
-            player.state.playWhenReady,
+            player.state.playback.playWhenReady,
             isFalse,
             reason: 'OS play/pause button settles on play at end-of-content',
           );
@@ -91,9 +91,11 @@ void main() {
           // upper bound keeps the first entry's last position out.
           await waitUntil(
             () =>
-                player.state.playlist.index == 1 &&
-                player.state.position > const Duration(milliseconds: 200) &&
-                player.state.position < const Duration(milliseconds: 800),
+                player.state.playback.playlist.index == 1 &&
+                player.state.playback.position >
+                    const Duration(milliseconds: 200) &&
+                player.state.playback.position <
+                    const Duration(milliseconds: 800),
             reason: 'playback never got into the second entry',
           );
           await sub.cancel();
@@ -103,7 +105,7 @@ void main() {
             isNot(contains(false)),
             reason: 'gapless advance must not flip the play/pause button',
           );
-          expect(player.state.playWhenReady, isTrue);
+          expect(player.state.playback.playWhenReady, isTrue);
         },
         timeout: const Timeout(Duration(seconds: 25)),
       );
@@ -124,18 +126,18 @@ void main() {
         // exhausted.
         await done;
         await waitUntil(
-          () => !player.state.playWhenReady,
+          () => !player.state.playback.playWhenReady,
           timeout: const Duration(seconds: 8),
           reason: 'button settles on play when the playlist is exhausted',
         );
 
         expect(
-          player.state.playWhenReady,
+          player.state.playback.playWhenReady,
           isFalse,
           reason: 'button settles on play when the playlist is exhausted',
         );
-        expect(player.state.playing, isFalse);
-        expect(player.state.completed, isTrue);
+        expect(player.state.playback.playing, isFalse);
+        expect(player.state.playback.completed, isTrue);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('seeking back into a completed track clears completed', () async {
@@ -150,7 +152,7 @@ void main() {
             .timeout(const Duration(seconds: 8));
         await player.open(Media(fixturePath), play: true);
         await completed;
-        expect(player.state.completed, isTrue);
+        expect(player.state.playback.completed, isTrue);
 
         // Seek back into the track: eof-reached drops, completed must clear.
         final cleared = player.stream.completed
@@ -158,7 +160,7 @@ void main() {
             .timeout(const Duration(seconds: 5));
         await player.seek(const Duration(milliseconds: 100));
         await cleared;
-        expect(player.state.completed, isFalse);
+        expect(player.state.playback.completed, isFalse);
       }, timeout: const Timeout(Duration(seconds: 25)));
     });
 
@@ -189,7 +191,7 @@ void main() {
         // delay: under full-suite load the event chain can take longer than a
         // couple of seconds, which is what made the fixed-delay version flake.
         await waitUntil(
-          () => !player.state.playWhenReady,
+          () => !player.state.playback.playWhenReady,
           timeout: const Duration(seconds: 12),
           reason: 'a failed load loads nothing; the button must not stick',
         );

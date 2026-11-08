@@ -53,7 +53,7 @@ void main() {
     test('setAudioFormat with mpv-known value succeeds', () async {
       // Sanity: the fix must not turn legitimate setters into errors.
       await player.setAudioFormat(Format.s16);
-      expect(player.state.audioFormat, Format.s16);
+      expect(player.state.settings.audioFormat, Format.s16);
     });
   });
 }

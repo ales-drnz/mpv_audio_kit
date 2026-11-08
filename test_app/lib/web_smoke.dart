@@ -42,7 +42,7 @@ Future<void> main() async {
       play: true,
     );
     await completed;
-    final ao = player.state.currentAo;
+    final ao = player.state.output.currentAo;
     await player.dispose();
     await _report('completed $ao');
   } catch (e) {

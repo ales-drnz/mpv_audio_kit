@@ -43,12 +43,12 @@ player.stream.endFile.listen((event) {
 
 `skippedSegments` counts the HLS and DASH segments lost to errors.
 
-The last entry of the playlist stays open at its end. `state.completed` turns true, and `state.readError` tells how it ended:
+The last entry of the playlist stays open at its end. `state.playback.completed` turns true, and `state.network.readError` tells how it ended:
 
 ```dart
 player.stream.completed.listen((completed) {
-  if (completed && player.state.readError == true) {
-    print('The last entry was cut short at ${player.state.position}');
+  if (completed && player.state.network.readError == true) {
+    print('The last entry was cut short at ${player.state.playback.position}');
   }
 });
 ```

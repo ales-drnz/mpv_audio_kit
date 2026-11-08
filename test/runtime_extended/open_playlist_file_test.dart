@@ -50,23 +50,23 @@ void main() {
         await loaded;
 
         expect(
-          player.state.playlist.items,
+          player.state.playback.playlist.items,
           hasLength(2),
           reason: 'loadlist must parse the .m3u into its 2 entries',
         );
         expect(
-          player.state.playlist.items.first.uri,
+          player.state.playback.playlist.items.first.uri,
           contains('sine_440hz'),
           reason: 'entries resolve to the fixture referenced by the playlist',
         );
         // playlist-path reports the source .m3u for the entry.
         expect(
-          player.state.playlistPath,
+          player.state.file.playlistPath,
           contains('list.m3u'),
           reason: 'playlist-path reports the source .m3u',
         );
         // play:false must leave the intent axis down.
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
       }, timeout: const Timeout(Duration(seconds: 20)));
     });
 
@@ -94,23 +94,23 @@ void main() {
         );
         await Future<void>.delayed(const Duration(milliseconds: 300));
         expect(await player.getRawProperty('pause'), 'yes');
-        expect(player.state.playWhenReady, isFalse);
-        expect(player.state.playing, isFalse);
-        expect(player.state.playlist.items, hasLength(1));
+        expect(player.state.playback.playWhenReady, isFalse);
+        expect(player.state.playback.playing, isFalse);
+        expect(player.state.playback.playlist.items, hasLength(1));
       }, timeout: const Timeout(Duration(seconds: 20)));
 
       test('leaves a playing track playing', () async {
         await openAndWaitForLoad(player, longFixture);
         await player.play();
-        await waitUntil(() => player.state.playing);
+        await waitUntil(() => player.state.playback.playing);
         await expectLater(
           player.openPlaylistFile(Media(server.url('dead.m3u')), play: false),
           throwsA(isA<MpvCommandException>()),
         );
         await Future<void>.delayed(const Duration(milliseconds: 300));
         expect(await player.getRawProperty('pause'), 'no');
-        expect(player.state.playWhenReady, isTrue);
-        expect(player.state.playing, isTrue);
+        expect(player.state.playback.playWhenReady, isTrue);
+        expect(player.state.playback.playing, isTrue);
       }, timeout: const Timeout(Duration(seconds: 20)));
     });
   });

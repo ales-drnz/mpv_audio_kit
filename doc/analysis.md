@@ -66,7 +66,7 @@ player.stream
     .listen((pcm) => paintInput(pcm.samples));
 
 // Bands from a tap, with the same FFT and smoothing as stream.fft
-final processor = BandProcessor(player.state.spectrum);
+final processor = BandProcessor(player.state.settings.spectrum);
 player.stream.spectrum.listen(processor.setSettings);
 player.stream.tap(AudioFilter.equalizer, side: TapSide.post).listen((pcm) {
   final fft = processor.process(pcm);

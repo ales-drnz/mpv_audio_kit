@@ -93,13 +93,15 @@ void main() {
 
         await player.open(media, play: true);
         await waitUntil(
-          () => player.state.position >= const Duration(milliseconds: 1500),
+          () =>
+              player.state.playback.position >=
+              const Duration(milliseconds: 1500),
           timeout: const Duration(seconds: 10),
         );
         final ended = player.stream.endFile.first.timeout(
           const Duration(seconds: 5),
         );
-        final seen = player.state.position;
+        final seen = player.state.playback.position;
         final clock = Stopwatch()..start();
         await player.stop();
         final event = await ended;
@@ -136,7 +138,7 @@ void main() {
         await player.stream.completed
             .firstWhere((c) => c)
             .timeout(const Duration(seconds: 10));
-        final parkedAt = player.state.position;
+        final parkedAt = player.state.playback.position;
 
         expect(ends, isEmpty, reason: 'keep-open holds the last entry open');
         expect(parkedAt.inMilliseconds, closeTo(1000, 50));
@@ -192,7 +194,7 @@ void main() {
 
         await player.openAll([Media(oneSecond), Media(fiftyMs)], play: true);
         await waitUntil(
-          () => ends.isNotEmpty && player.state.completed,
+          () => ends.isNotEmpty && player.state.playback.completed,
           timeout: const Duration(seconds: 10),
         );
         await player.stop();
@@ -230,7 +232,9 @@ void main() {
 
         await player.openAll([for (final f in files) Media(f)], play: true);
         await waitUntil(
-          () => ends.length >= files.length - 1 && player.state.completed,
+          () =>
+              ends.length >= files.length - 1 &&
+              player.state.playback.completed,
           timeout: const Duration(seconds: 20),
           reason: 'the playlist never ended: $ends',
         );

@@ -45,7 +45,7 @@ void main() {
         expect(last.codec, isNotNull, reason: '$fixture: $last');
         expect(last.codecName, isNotNull, reason: '$fixture: $last');
         expect(last.format, isNotNull, reason: '$fixture: $last');
-        expect(player.state.audioParams, last);
+        expect(player.state.file.audioParams, last);
       }
 
       seen.clear();

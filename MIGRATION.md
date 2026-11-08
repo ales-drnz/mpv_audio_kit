@@ -1,3 +1,32 @@
+# Migrating to 0.7.0
+
+## PlayerState in groups
+
+`PlayerState` holds its values in six groups. The flat fields of 0.6
+still read the same values, deprecated: the analyzer points at each one,
+and they go in 0.8.0.
+
+| Group | What it holds | Some of its fields |
+| --- | --- | --- |
+| `playback` (`PlaybackState`) | transport, position, the playlist | `playing`, `position`, `duration`, `playlist`, `loop` |
+| `network` (`NetworkState`) | buffering, cache, read health | `buffering`, `buffer`, `demuxerCacheState`, `readError` |
+| `file` (`FileState`) | what mpv read from the current file | `metadata`, `tracks`, `audioParams`, `coverArt`, `path` |
+| `output` (`OutputState`) | the audio output in use | `audioOutParams`, `audioDevice`, `audioOutputState`, `currentAo` |
+| `settings` (`PlayerSettings`) | what the app asked of the player | `volume`, `rate`, `audioEffects`, `cache`, `mediaSession` |
+| `versions` (`LibraryVersions`) | libmpv and FFmpeg | `mpvVersion`, `ffmpegVersion` |
+
+| 0.6 | 0.7.0 |
+| --- | --- |
+| `player.state.position` | `player.state.playback.position` |
+| `player.state.volume` | `player.state.settings.volume` |
+| `player.state.metadata` | `player.state.file.metadata` |
+| `PlayerState(volume: 50)` | `PlayerState(settings: PlayerSettings(volume: 50))` |
+| `state.copyWith(volume: 50)` | unchanged: `copyWith` takes the groups and every field |
+
+The streams of `player.stream` do not change: `player.stream.position`
+stays as it is. The deprecation message of each flat field names its
+group, so `dart fix` is not needed: the message says the new path.
+
 # Migrating to 0.6.2
 
 0.6.2 runs on libmpv-r21, which the build hook bundles, and on no other

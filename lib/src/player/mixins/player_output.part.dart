@@ -92,7 +92,7 @@ mixin _OutputModule on _PlayerBase {
 
   /// Sets the target audio sample rate.
   ///
-  /// The output driver can still change it: [PlayerState.audioOutParams]
+  /// The output driver can still change it: [PlayerState.output.audioOutParams]
   /// shows the rate the device gets. On Android `audiotrack` plays at most
   /// at the device's native rate, usually 48 kHz. Changed during playback,
   /// it reopens the output, with a short gap. A track in passthrough
@@ -102,13 +102,13 @@ mixin _OutputModule on _PlayerBase {
   /// device's), so the browser does not resample: every player of the
   /// page plays at that rate. A rate the browser refuses throws a
   /// [StateError]: the page's output stays at the rate before, and so do
-  /// this player's `audio-samplerate` and [PlayerState.audioSampleRate],
+  /// this player's `audio-samplerate` and [PlayerState.settings.audioSampleRate],
   /// unless another call set a rate since.
   Future<void> setAudioSampleRate(int rate) async {
     await _gate();
     // Taken before the write: the observer of audio-samplerate may report
     // the new rate before the browser refuses it.
-    final before = _state.audioSampleRate;
+    final before = _state.settings.audioSampleRate;
     await _calls.prop('audio-samplerate', rate.toString());
     final output = setOutputSampleRate(rate);
     if (output != null) {
@@ -139,7 +139,7 @@ mixin _OutputModule on _PlayerBase {
   /// Sets the target audio sample format. Use [Format.auto] to
   /// reset to mpv's pick.
   ///
-  /// The output driver can still change it: [PlayerState.audioOutParams]
+  /// The output driver can still change it: [PlayerState.output.audioOutParams]
   /// shows the format the device gets. On Android `audiotrack` plays only
   /// 8-bit, 16-bit and float samples, so other integer formats become
   /// 16-bit, and `aaudio` takes 32-bit integers from Android 12 (API 31).

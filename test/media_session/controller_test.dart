@@ -120,7 +120,9 @@ class _Rig {
   final mediaTitle = StreamController<String>.broadcast();
   final mediaSession = StreamController<MediaSession?>.broadcast();
 
-  PlayerState state = const PlayerState(mediaSession: MediaSession());
+  PlayerState state = const PlayerState(
+    settings: PlayerSettings(mediaSession: MediaSession()),
+  );
 
   MediaSessionInputs get inputs => MediaSessionInputs(
     playWhenReady: playWhenReady.stream,
@@ -199,8 +201,8 @@ void main() {
       ch.calls.clear();
 
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        playWhenReady: true,
+        playback: PlaybackState(playWhenReady: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.playWhenReady.add(true);
       await _settle();
@@ -230,9 +232,8 @@ void main() {
         // Mid-seek snapshot: core-idle has driven playing=false, but the
         // user still intends to play, and a seek is in flight.
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          playWhenReady: true,
-          seeking: true,
+          playback: PlaybackState(playWhenReady: true, seeking: true),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         // A seek landing re-syncs position; intent is unchanged.
         rig.seekCompleted.add(null);
@@ -258,9 +259,11 @@ void main() {
       ch.calls.clear();
 
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        playWhenReady: true,
-        position: Duration(seconds: 60),
+        playback: PlaybackState(
+          playWhenReady: true,
+          position: Duration(seconds: 60),
+        ),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.seekCompleted.add(null);
       await _settle();
@@ -288,8 +291,8 @@ void main() {
       ch.calls.clear();
 
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        playWhenReady: true,
+        playback: PlaybackState(playWhenReady: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.playWhenReady.add(true);
       await _settle();
@@ -320,9 +323,11 @@ void main() {
         ch.calls.clear();
 
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          position: Duration(seconds: 30),
-          completed: true,
+          playback: PlaybackState(
+            position: Duration(seconds: 30),
+            completed: true,
+          ),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.playWhenReady.add(false);
         await _settle();
@@ -340,9 +345,11 @@ void main() {
         // Falling edge: seeking back in clears completed and re-syncs.
         ch.calls.clear();
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          playWhenReady: true,
-          position: Duration(seconds: 5),
+          playback: PlaybackState(
+            playWhenReady: true,
+            position: Duration(seconds: 5),
+          ),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.seekCompleted.add(null);
         await _settle();
@@ -360,8 +367,8 @@ void main() {
       addTearDown(rig.dispose);
       addTearDown(ch.close);
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        playWhenReady: true,
+        playback: PlaybackState(playWhenReady: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       final controller = await _buildController(rig: rig, channel: ch);
       addTearDown(controller.dispose);
@@ -369,8 +376,8 @@ void main() {
 
       // User pauses: intent flips false, even while seeking.
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        seeking: true,
+        playback: PlaybackState(seeking: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.playWhenReady.add(false);
       await _settle();
@@ -449,7 +456,9 @@ void main() {
       // carrying the new title must be pushed — regression guard: a
       // config-only push would leave the override invisible to the OS.
       const session = MediaSession(title: 'Custom Title');
-      rig.state = const PlayerState(mediaSession: session);
+      rig.state = const PlayerState(
+        settings: PlayerSettings(mediaSession: session),
+      );
       rig.mediaSession.add(session);
       await _settle();
 
@@ -477,8 +486,8 @@ void main() {
       ch.calls.clear();
 
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        playWhenReady: true,
+        playback: PlaybackState(playWhenReady: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.playWhenReady.add(true);
       await _settle();
@@ -528,9 +537,9 @@ void main() {
 
         // A genuine state change so the dedup doesn't suppress the push.
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          duration: Duration(seconds: 30),
-          metadata: {'title': 'X'},
+          playback: PlaybackState(duration: Duration(seconds: 30)),
+          file: FileState(metadata: {'title': 'X'}),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.duration.add(const Duration(seconds: 30));
         rig.metadata.add(const {'title': 'X'});
@@ -561,9 +570,9 @@ void main() {
       // Intending to play, but no actual output yet and buffering: button stays
       // "play" (intent), but the snapshot reflects the stall.
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        playWhenReady: true,
-        buffering: true,
+        playback: PlaybackState(playWhenReady: true),
+        network: NetworkState(buffering: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.buffering.add(true);
       await _settle();
@@ -586,8 +595,8 @@ void main() {
       addTearDown(rig.dispose);
       addTearDown(ch.close);
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        seekable: true,
+        playback: PlaybackState(seekable: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       final controller = await _buildController(rig: rig, channel: ch);
       addTearDown(controller.dispose);
@@ -600,8 +609,8 @@ void main() {
 
       // mpv reports the old file's seekable unavailable inside the load.
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        buffering: true,
+        network: NetworkState(buffering: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.buffering.add(true);
       rig.seekable.add(false);
@@ -609,7 +618,9 @@ void main() {
       expect(lastSeekable(), isTrue, reason: 'not a live stream meanwhile');
 
       // The loaded file is a live stream after all.
-      rig.state = const PlayerState(mediaSession: MediaSession());
+      rig.state = const PlayerState(
+        settings: PlayerSettings(mediaSession: MediaSession()),
+      );
       rig.buffering.add(false);
       await _settle();
       expect(lastSeekable(), isFalse);
@@ -629,8 +640,8 @@ void main() {
 
         // Middle of a multi-item playlist → both available.
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          playlist: Playlist(media, index: 1),
+          playback: PlaybackState(playlist: Playlist(media, index: 1)),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.playWhenReady.add(true);
         await _settle();
@@ -643,8 +654,8 @@ void main() {
         // Last item, loop off → no next.
         ch.calls.clear();
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          playlist: Playlist(media, index: 2),
+          playback: PlaybackState(playlist: Playlist(media, index: 2)),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.playWhenReady.add(true);
         await _settle();
@@ -657,9 +668,11 @@ void main() {
         // Last item but loop=playlist → next wraps.
         ch.calls.clear();
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          playlist: Playlist(media, index: 2),
-          loop: Loop.playlist,
+          playback: PlaybackState(
+            playlist: Playlist(media, index: 2),
+            loop: Loop.playlist,
+          ),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.loop.add(Loop.playlist);
         await _settle();
@@ -671,8 +684,8 @@ void main() {
         // Single item → stays navigable (external queue can drive it).
         ch.calls.clear();
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          playlist: Playlist([Media('only')]),
+          playback: PlaybackState(playlist: Playlist([Media('only')])),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.playWhenReady.add(true);
         await _settle();
@@ -692,8 +705,8 @@ void main() {
       addTearDown(rig.dispose);
       addTearDown(ch.close);
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'Steady'},
+        file: FileState(metadata: {'title': 'Steady'}),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       final controller = await _buildController(rig: rig, channel: ch);
       addTearDown(controller.dispose);
@@ -719,9 +732,9 @@ void main() {
       addTearDown(rig.dispose);
       addTearDown(ch.close);
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'Old', 'artist': 'A'},
-        duration: Duration(seconds: 3),
+        playback: PlaybackState(duration: Duration(seconds: 3)),
+        file: FileState(metadata: {'title': 'Old', 'artist': 'A'}),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       final controller = await _buildController(rig: rig, channel: ch);
       addTearDown(controller.dispose);
@@ -729,15 +742,15 @@ void main() {
 
       // START_FILE, then mpv reports the old file's values unavailable.
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'Old', 'artist': 'A'},
-        duration: Duration(seconds: 3),
-        buffering: true,
+        playback: PlaybackState(duration: Duration(seconds: 3)),
+        network: NetworkState(buffering: true),
+        file: FileState(metadata: {'title': 'Old', 'artist': 'A'}),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.buffering.add(true);
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        buffering: true,
+        network: NetworkState(buffering: true),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.duration.add(Duration.zero);
       rig.metadata.add(const {});
@@ -750,10 +763,10 @@ void main() {
 
       // The new file's values, then FILE_LOADED ends loading.
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'New', 'artist': 'B'},
-        duration: Duration(seconds: 5),
-        buffering: true,
+        playback: PlaybackState(duration: Duration(seconds: 5)),
+        network: NetworkState(buffering: true),
+        file: FileState(metadata: {'title': 'New', 'artist': 'B'}),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.metadata.add(const {'title': 'New', 'artist': 'B'});
       rig.duration.add(const Duration(seconds: 5));
@@ -761,9 +774,9 @@ void main() {
       expect(ch.callsOfType('updateMetadata'), isEmpty);
 
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'New', 'artist': 'B'},
-        duration: Duration(seconds: 5),
+        playback: PlaybackState(duration: Duration(seconds: 5)),
+        file: FileState(metadata: {'title': 'New', 'artist': 'B'}),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.buffering.add(false);
       await _settle();
@@ -790,15 +803,19 @@ void main() {
         ch.calls.clear();
 
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          metadata: {
-            'title': 'Song',
-            'album_artist': 'The Band',
-            'genre': 'Metal',
-            'track': '3/12', // leading int parsed
-            'disc': '1',
-          },
-          playlist: Playlist([Media('file:///music/song.flac')]),
+          playback: PlaybackState(
+            playlist: Playlist([Media('file:///music/song.flac')]),
+          ),
+          file: FileState(
+            metadata: {
+              'title': 'Song',
+              'album_artist': 'The Band',
+              'genre': 'Metal',
+              'track': '3/12', // leading int parsed
+              'disc': '1',
+            },
+          ),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
@@ -839,9 +856,10 @@ void main() {
 
       // none → null even when an embedded cover is present.
       rig.state = PlayerState(
-        mediaSession: const MediaSession(artwork: MediaSessionArtwork.none),
-        coverArt: embedded,
-        metadata: const {'title': 'p1'},
+        file: FileState(coverArt: embedded, metadata: const {'title': 'p1'}),
+        settings: const PlayerSettings(
+          mediaSession: MediaSession(artwork: MediaSessionArtwork.none),
+        ),
       );
       rig.metadata.add(const {'title': 'p1'});
       await _settle();
@@ -852,9 +870,8 @@ void main() {
 
       // embedded → the file's cover.
       rig.state = PlayerState(
-        mediaSession: const MediaSession(),
-        coverArt: embedded,
-        metadata: const {'title': 'p2'},
+        file: FileState(coverArt: embedded, metadata: const {'title': 'p2'}),
+        settings: const PlayerSettings(mediaSession: MediaSession()),
       );
       rig.metadata.add(const {'title': 'p2'});
       await _settle();
@@ -865,9 +882,12 @@ void main() {
 
       // custom → the supplied image, ignoring the embedded cover.
       rig.state = PlayerState(
-        mediaSession: MediaSession(artwork: MediaSessionArtwork.custom(custom)),
-        coverArt: embedded,
-        metadata: const {'title': 'p3'},
+        file: FileState(coverArt: embedded, metadata: const {'title': 'p3'}),
+        settings: PlayerSettings(
+          mediaSession: MediaSession(
+            artwork: MediaSessionArtwork.custom(custom),
+          ),
+        ),
       );
       rig.metadata.add(const {'title': 'p3'});
       await _settle();
@@ -918,10 +938,12 @@ void main() {
 
         // Explicit uri override → its bytes, no URL on the wire.
         rig.state = PlayerState(
-          mediaSession: MediaSession(
-            artwork: MediaSessionArtwork.uri(Uri.parse('https://art/1.jpg')),
+          file: const FileState(metadata: {'title': 'p1'}),
+          settings: PlayerSettings(
+            mediaSession: MediaSession(
+              artwork: MediaSessionArtwork.uri(Uri.parse('https://art/1.jpg')),
+            ),
           ),
-          metadata: const {'title': 'p1'},
         );
         rig.metadata.add(const {'title': 'p1'});
         await _settle();
@@ -933,14 +955,16 @@ void main() {
         // Default (embedded) with no embedded cover → fall back to the queue
         // item's extras['art'] (the transcoded-stream case).
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          metadata: {'title': 'p2'},
-          playlist: Playlist([
-            Media(
-              'https://server/stream',
-              extras: {'art': 'https://art/2.png'},
-            ),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media(
+                'https://server/stream',
+                extras: {'art': 'https://art/2.png'},
+              ),
+            ]),
+          ),
+          file: FileState(metadata: {'title': 'p2'}),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'p2'});
         await _settle();
@@ -955,15 +979,16 @@ void main() {
 
         // An embedded cover still wins over extras['art'].
         rig.state = PlayerState(
-          mediaSession: const MediaSession(),
-          coverArt: embedded,
-          metadata: const {'title': 'p3'},
-          playlist: const Playlist([
-            Media(
-              'https://server/stream',
-              extras: {'art': 'https://art/3.png'},
-            ),
-          ]),
+          playback: const PlaybackState(
+            playlist: Playlist([
+              Media(
+                'https://server/stream',
+                extras: {'art': 'https://art/3.png'},
+              ),
+            ]),
+          ),
+          file: FileState(coverArt: embedded, metadata: const {'title': 'p3'}),
+          settings: const PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'p3'});
         await _settle();
@@ -990,18 +1015,20 @@ void main() {
         // A transcoded stream: no mpv tags, and media-title is the raw URL.
         // The consumer-attached extras supply the real text.
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          mediaTitle: 'https://server/stream',
-          playlist: Playlist([
-            Media(
-              'https://server/stream',
-              extras: {
-                'title': 'Real Title',
-                'artist': 'Real Artist',
-                'album': 'Real Album',
-              },
-            ),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media(
+                'https://server/stream',
+                extras: {
+                  'title': 'Real Title',
+                  'artist': 'Real Artist',
+                  'album': 'Real Album',
+                },
+              ),
+            ]),
+          ),
+          file: FileState(mediaTitle: 'https://server/stream'),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.mediaTitle.add('https://server/stream');
         await _settle();
@@ -1038,20 +1065,24 @@ void main() {
       ch.calls.clear();
 
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'Song'},
-        playlist: Playlist([
-          Media('https://nd.example/rest/stream.view?id=1&u=me&t=tok&s=salt'),
-        ]),
+        playback: PlaybackState(
+          playlist: Playlist([
+            Media('https://nd.example/rest/stream.view?id=1&u=me&t=tok&s=salt'),
+          ]),
+        ),
+        file: FileState(metadata: {'title': 'Song'}),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.metadata.add(const {'title': 'Song'});
       await _settle();
       expect(lastSnap(ch).url, isNull);
 
       rig.state = const PlayerState(
-        mediaSession: MediaSession(),
-        metadata: {'title': 'Song'},
-        playlist: Playlist([Media('/music/song.flac')]),
+        playback: PlaybackState(
+          playlist: Playlist([Media('/music/song.flac')]),
+        ),
+        file: FileState(metadata: {'title': 'Song'}),
+        settings: PlayerSettings(mediaSession: MediaSession()),
       );
       rig.metadata.add(const {'title': 'Song'});
       await _settle();
@@ -1074,9 +1105,9 @@ void main() {
 
       Future<String?> urlOf(String uri) async {
         rig.state = PlayerState(
-          mediaSession: const MediaSession(),
-          metadata: const {'title': 'Song'},
-          playlist: Playlist([Media(uri)]),
+          playback: PlaybackState(playlist: Playlist([Media(uri)])),
+          file: const FileState(metadata: {'title': 'Song'}),
+          settings: const PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
@@ -1141,9 +1172,9 @@ void main() {
 
       Future<String?> titleFor(String uri, String mediaTitle) async {
         rig.state = PlayerState(
-          mediaSession: const MediaSession(),
-          mediaTitle: mediaTitle,
-          playlist: Playlist([Media(uri)]),
+          playback: PlaybackState(playlist: Playlist([Media(uri)])),
+          file: FileState(mediaTitle: mediaTitle),
+          settings: const PlayerSettings(mediaSession: MediaSession()),
         );
         rig.mediaTitle.add(mediaTitle);
         await _settle();
@@ -1201,14 +1232,16 @@ void main() {
 
         const artUrl = 'https://nd.example/rest/getCoverArt.view?t=tok';
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          metadata: {'title': 'Song'},
-          playlist: Playlist([
-            Media(
-              'https://nd.example/rest/stream.view?id=1',
-              extras: {'art': artUrl},
-            ),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media(
+                'https://nd.example/rest/stream.view?id=1',
+                extras: {'art': artUrl},
+              ),
+            ]),
+          ),
+          file: FileState(metadata: {'title': 'Song'}),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
@@ -1250,11 +1283,16 @@ void main() {
 
       Future<void> load(String art) async {
         rig.state = PlayerState(
-          mediaSession: const MediaSession(),
-          metadata: const {'title': 'Song'},
-          playlist: Playlist([
-            Media('https://nd.example/rest/stream.view', extras: {'art': art}),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media(
+                'https://nd.example/rest/stream.view',
+                extras: {'art': art},
+              ),
+            ]),
+          ),
+          file: const FileState(metadata: {'title': 'Song'}),
+          settings: const PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
@@ -1304,15 +1342,19 @@ void main() {
         addTearDown(controller.dispose);
 
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          metadata: {'title': 'Song'},
-          tlsCaFile: '/etc/ssl/home-ca.pem',
-          playlist: Playlist([
-            Media(
-              'https://nd.example/rest/stream.view?id=1',
-              extras: {'art': 'https://nd.example/cover.jpg'},
-            ),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media(
+                'https://nd.example/rest/stream.view?id=1',
+                extras: {'art': 'https://nd.example/cover.jpg'},
+              ),
+            ]),
+          ),
+          file: FileState(metadata: {'title': 'Song'}),
+          settings: PlayerSettings(
+            mediaSession: MediaSession(),
+            tlsCaFile: '/etc/ssl/home-ca.pem',
+          ),
         );
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
@@ -1353,8 +1395,10 @@ void main() {
         // From the override, a path that is not ASCII.
         final art = Uri.parse('file:///covers/Citt%C3%A0.jpg');
         rig.state = PlayerState(
-          mediaSession: MediaSession(artwork: MediaSessionArtwork.uri(art)),
-          metadata: const {'title': 'Song'},
+          file: const FileState(metadata: {'title': 'Song'}),
+          settings: PlayerSettings(
+            mediaSession: MediaSession(artwork: MediaSessionArtwork.uri(art)),
+          ),
         );
         rig.metadata.add(const {'title': 'Song'});
         await _settle();
@@ -1363,11 +1407,16 @@ void main() {
 
         // From the extras['art'] of the queue item.
         rig.state = const PlayerState(
-          mediaSession: MediaSession(),
-          metadata: {'title': 'Song 2'},
-          playlist: Playlist([
-            Media('/music/song.flac', extras: {'art': 'file:///covers/b.jpg'}),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media(
+                '/music/song.flac',
+                extras: {'art': 'file:///covers/b.jpg'},
+              ),
+            ]),
+          ),
+          file: FileState(metadata: {'title': 'Song 2'}),
+          settings: PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'Song 2'});
         await _settle();
@@ -1411,11 +1460,13 @@ void main() {
 
       Future<Map<Object?, Object?>> publish(String art) async {
         rig.state = PlayerState(
-          mediaSession: const MediaSession(),
-          metadata: {'title': art},
-          playlist: Playlist([
-            Media('/music/song.flac', extras: {'art': art}),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media('/music/song.flac', extras: {'art': art}),
+            ]),
+          ),
+          file: FileState(metadata: {'title': art}),
+          settings: const PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add({'title': art});
         await _settle();
@@ -1464,11 +1515,13 @@ void main() {
         'asset://Covers/A.png',
       ]) {
         rig.state = PlayerState(
-          mediaSession: const MediaSession(),
-          metadata: {'title': art},
-          playlist: Playlist([
-            Media('/music/song.flac', extras: {'art': art}),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media('/music/song.flac', extras: {'art': art}),
+            ]),
+          ),
+          file: FileState(metadata: {'title': art}),
+          settings: const PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add({'title': art});
         await _settle();
@@ -1495,12 +1548,14 @@ void main() {
       );
       addTearDown(controller.dispose);
       rig.state = PlayerState(
-        mediaSession: MediaSession(
-          artwork: MediaSessionArtwork.uri(
-            Uri.parse('blob:http://localhost/1b2c'),
+        file: const FileState(metadata: {'title': 'Song'}),
+        settings: PlayerSettings(
+          mediaSession: MediaSession(
+            artwork: MediaSessionArtwork.uri(
+              Uri.parse('blob:http://localhost/1b2c'),
+            ),
           ),
         ),
-        metadata: const {'title': 'Song'},
       );
       rig.metadata.add(const {'title': 'Song'});
       await _settle();
@@ -1541,10 +1596,12 @@ void main() {
 
         Future<CoverArt?> publish(String art) async {
           rig.state = PlayerState(
-            mediaSession: MediaSession(
-              artwork: MediaSessionArtwork.uri(Uri.parse(art)),
+            file: FileState(metadata: {'title': art}),
+            settings: PlayerSettings(
+              mediaSession: MediaSession(
+                artwork: MediaSessionArtwork.uri(Uri.parse(art)),
+              ),
             ),
-            metadata: {'title': art},
           );
           rig.metadata.add({'title': art});
           await _settle();
@@ -1605,16 +1662,18 @@ void main() {
         addTearDown(controller.dispose);
 
         rig.state = PlayerState(
-          mediaSession: const MediaSession(),
-          metadata: const {'title': 'Song'},
-          playlist: Playlist([
-            Media(
-              'https://nd.example/rest/stream.view?id=1',
-              extras: {
-                'art': 'http://127.0.0.1:${server.port}/cover.view?t=tok',
-              },
-            ),
-          ]),
+          playback: PlaybackState(
+            playlist: Playlist([
+              Media(
+                'https://nd.example/rest/stream.view?id=1',
+                extras: {
+                  'art': 'http://127.0.0.1:${server.port}/cover.view?t=tok',
+                },
+              ),
+            ]),
+          ),
+          file: const FileState(metadata: {'title': 'Song'}),
+          settings: const PlayerSettings(mediaSession: MediaSession()),
         );
         rig.metadata.add(const {'title': 'Song'});
         final deadline = DateTime.now().add(const Duration(seconds: 5));

@@ -14,14 +14,14 @@ player.stream.metadata.listen((tags) {
   print('Now playing: ${tag(tags, 'title')}, ${tag(tags, 'artist')}');
 });
 
-final album = tag(player.state.metadata, 'album');
+final album = tag(player.state.file.metadata, 'album');
 ```
 
 Common keys are `title`, `artist`, `album`, `album_artist`, `date`, `track`, `disc`, `genre`, `comment` and `composer`.
 
 ## Cover art
 
-<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/cover_art_flow.png" width="100%" alt="Cover art flow: an embedded picture reaches stream.coverArt, an image in the folder appears only in state.tracks">
+<img src="https://raw.githubusercontent.com/ales-drnz/mpv_audio_kit/main/imgs/diagrams/cover_art_flow.png" width="100%" alt="Cover art flow: an embedded picture reaches stream.coverArt, an image in the folder appears only in state.file.tracks">
 
 `coverArt` carries the picture embedded in the file.
 
@@ -36,7 +36,7 @@ StreamBuilder<CoverArt?>(
 );
 
 // Save it to disk
-final art = player.state.coverArt;
+final art = player.state.file.coverArt;
 if (art != null) {
   await File('${dir.path}/cover.${art.extension}').writeAsBytes(art.bytes);
 }
@@ -60,7 +60,7 @@ await player.setCoverArtAuto(Cover.no);    // off
 That image never reaches `stream.coverArt`. Find it among the tracks and read the file yourself:
 
 ```dart
-final path = player.state.tracks
+final path = player.state.file.tracks
     .where((t) => t.external && t.albumArt)
     .firstOrNull
     ?.externalFilename;

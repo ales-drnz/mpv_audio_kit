@@ -88,7 +88,7 @@ void main() {
       await player.setAudioEffects(const [
         BassEffect(frequency: 1000, gain: 2),
       ]);
-      final before = player.state.audioEffects;
+      final before = player.state.settings.audioEffects;
       // The string parses (lavfi-equalizer is a known filter), so only the
       // graph rebuild can reject `f=abc`.
       await expectLater(
@@ -98,7 +98,7 @@ void main() {
         ]),
         throwsA(isA<MpvCommandException>()),
       );
-      expect(player.state.audioEffects, before);
+      expect(player.state.settings.audioEffects, before);
       expect(
         await player.getRawProperty('af'),
         isNot(contains('equalizer')),
@@ -123,7 +123,7 @@ void main() {
         );
         await expectLater(first, throwsA(isA<MpvCommandException>()));
         await expectLater(second, throwsA(isA<MpvCommandException>()));
-        expect(player.state.audioEffects, accepted);
+        expect(player.state.settings.audioEffects, accepted);
       },
       timeout: const Timeout(Duration(seconds: 20)),
     );
@@ -146,7 +146,7 @@ void main() {
         );
         await expectLater(rewrite, throwsA(isA<MpvCommandException>()));
         await expectLater(live, throwsA(isA<MpvCommandException>()));
-        expect(player.state.audioEffects, accepted);
+        expect(player.state.settings.audioEffects, accepted);
         expect(await player.getRawProperty('af'), isNot(contains('equalizer')));
       },
       timeout: const Timeout(Duration(seconds: 20)),
@@ -248,11 +248,11 @@ void main() {
         ]);
         // Let frames reach the rebuilt graph, so the update below goes
         // through af-command rather than the rebuild that heals a failed one.
-        final rebuiltAt = player.state.position;
+        final rebuiltAt = player.state.playback.position;
         // abs(): the loop may wrap the position back to 0 meanwhile.
         await waitUntil(
           () =>
-              (player.state.position - rebuiltAt).abs() >
+              (player.state.playback.position - rebuiltAt).abs() >
               const Duration(milliseconds: 150),
         );
         await putEffect(player, effectOf<BassEffect>(player).copyWith(gain: 9));
@@ -271,7 +271,10 @@ void main() {
         );
         // The optimistic commit rolled back to the updated bundle.
         expect(effectOf<BassEffect>(player).gain, 9);
-        expect(player.state.audioEffects.whereType<RawAudioEffect>(), isEmpty);
+        expect(
+          player.state.settings.audioEffects.whereType<RawAudioEffect>(),
+          isEmpty,
+        );
         expect(await player.getRawProperty('af'), contains('9.000'));
 
         final loaded = player.stream.seekCompleted.first.timeout(
@@ -376,7 +379,7 @@ void main() {
         );
         await expectLater(rewrite, throwsA(isA<MpvCommandException>()));
         await expectLater(live, throwsA(isA<MpvCommandException>()));
-        expect(player.state.audioEffects, accepted);
+        expect(player.state.settings.audioEffects, accepted);
         final after = await settledMomentary();
         expect(
           after,

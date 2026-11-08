@@ -60,7 +60,7 @@ void main() {
         await loaded.future.timeout(const Duration(seconds: 10));
         await loadSub.cancel();
         expect(
-          player.state.playWhenReady,
+          player.state.playback.playWhenReady,
           isFalse,
           reason: 'opened with play: false — intent starts released',
         );
@@ -84,22 +84,22 @@ void main() {
         // A correct jump() sets the intent synchronously at the call, so
         // this returns at once when the invariant holds.
         await waitUntil(
-          () => player.state.playWhenReady,
+          () => player.state.playback.playWhenReady,
           timeout: const Duration(seconds: 2),
         );
-        final positionA = player.state.position;
+        final positionA = player.state.playback.position;
         await Future<void>.delayed(const Duration(milliseconds: 400));
-        final positionB = player.state.position;
+        final positionB = player.state.playback.position;
         await intentSub.cancel();
 
         expect(
-          player.state.playWhenReady,
+          player.state.playback.playWhenReady,
           isTrue,
           reason:
               'jump() unpauses and starts the target entry, so the '
               'play/pause intent must rise like play()/open(play: true). '
-              'Desync evidence: state.playing=${player.state.playing}, '
-              'playlist index=${player.state.playlist.index}, '
+              'Desync evidence: state.playing=${player.state.playback.playing}, '
+              'playlist index=${player.state.playback.playlist.index}, '
               'position advanced $positionA -> $positionB, '
               'playWhenReady emissions since jump(): $intentEmissions '
               '(mpv "pause" is unobserved — nothing ever corrects this).',
@@ -126,9 +126,9 @@ void main() {
         final epoch = DateTime.now();
         String ctx() {
           final t = DateTime.now().difference(epoch).inMilliseconds;
-          return 't=${t}ms idx=${player.state.playlist.index} '
-              'pos=${player.state.position.inMilliseconds}ms '
-              'eof=${player.state.eofReached}';
+          return 't=${t}ms idx=${player.state.playback.playlist.index} '
+              'pos=${player.state.playback.position.inMilliseconds}ms '
+              'eof=${player.state.playback.eofReached}';
         }
 
         // Only the changes: skip the replayed initial false.
@@ -162,7 +162,7 @@ void main() {
         await stateSub.cancel();
 
         expect(
-          player.state.completed,
+          player.state.playback.completed,
           isTrue,
           reason: 'sanity: the playlist did reach its true end',
         );

@@ -114,7 +114,10 @@ void main() {
       Media(testUrl('fixtures/sine_stereo_1s.flac')),
       play: true,
     );
-    await waitUntil(() => player.state.completed, what: 'the new player');
+    await waitUntil(
+      () => player.state.playback.completed,
+      what: 'the new player',
+    );
   });
 
   test('without the cleanup, the cores of the record are left alone', () {

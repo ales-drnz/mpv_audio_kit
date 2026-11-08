@@ -36,7 +36,7 @@ void main() {
       final p1 = await buildPlayer(configuration: cfg);
       await openAndWaitForLoad(p1, fx);
       await p1.seek(const Duration(milliseconds: 600));
-      await waitUntil(() => p1.state.position.inMilliseconds > 500);
+      await waitUntil(() => p1.state.playback.position.inMilliseconds > 500);
       await p1.writeResumeConfig();
       await waitUntil(() => tmp.listSync().isNotEmpty);
       expect(
@@ -77,7 +77,7 @@ void main() {
       addTearDown(p.dispose);
       await openAndWaitForLoad(p, fx);
       await p.seek(const Duration(milliseconds: 600));
-      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await waitUntil(() => p.state.playback.position.inMilliseconds > 500);
 
       // Write a resume point, confirm it lands...
       await p.writeResumeConfig();
@@ -116,7 +116,7 @@ void main() {
       final url = Uri.file(fx).toString();
       await openAndWaitForLoad(p, url);
       await p.seek(const Duration(milliseconds: 600));
-      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await waitUntil(() => p.state.playback.position.inMilliseconds > 500);
       await p.writeResumeConfig();
       await waitUntil(() => tmp.listSync().isNotEmpty);
 
@@ -153,7 +153,7 @@ void main() {
       const asset = 'asset:///assets/resume_delete.wav';
       await openAndWaitForLoad(p, asset);
       await p.seek(const Duration(milliseconds: 600));
-      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await waitUntil(() => p.state.playback.position.inMilliseconds > 500);
       await p.writeResumeConfig();
       await waitUntil(() => tmp.listSync().isNotEmpty);
 
@@ -189,7 +189,7 @@ void main() {
           addTearDown(p.dispose);
           await openAndWaitForLoad(p, 'fd://$fd');
           await p.seek(const Duration(milliseconds: 600));
-          await waitUntil(() => p.state.position.inMilliseconds > 500);
+          await waitUntil(() => p.state.playback.position.inMilliseconds > 500);
           final logged = p.stream.internalLog
               .firstWhere((e) => e.text.contains('fd://$fd'))
               .timeout(const Duration(seconds: 5));
@@ -222,7 +222,7 @@ void main() {
           addTearDown(p.dispose);
           await openAndWaitForLoad(p, key);
           expect(
-            p.state.position.inMilliseconds,
+            p.state.playback.position.inMilliseconds,
             lessThan(300),
             reason: 'the file starts from its beginning',
           );
@@ -250,7 +250,7 @@ void main() {
       ]);
       await openAndWaitForLoad(p, fx);
       await p.seek(const Duration(milliseconds: 600));
-      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await waitUntil(() => p.state.playback.position.inMilliseconds > 500);
       await p.writeResumeConfig();
       final saved = _resumeFile(tmp);
       expect(saved.readAsStringSync(), contains('start='));
@@ -280,7 +280,7 @@ void main() {
       final restored = (await p.getRawProperty('af'))!;
       await openAndWaitForLoad(p, fx);
       await p.seek(const Duration(milliseconds: 600));
-      await waitUntil(() => p.state.position.inMilliseconds > 500);
+      await waitUntil(() => p.state.playback.position.inMilliseconds > 500);
       await p.writeResumeConfig();
       // A resume point written by 0.5.1 or earlier also held the chain.
       final saved = _resumeFile(tmp)
@@ -296,7 +296,7 @@ void main() {
       await p.setAudioEffects(const []);
       await openAndWaitForLoad(p, fx);
       expect(
-        p.state.position.inMilliseconds,
+        p.state.playback.position.inMilliseconds,
         greaterThan(400),
         reason: 'precondition: the resume point applied',
       );
@@ -314,7 +314,7 @@ void main() {
       saved.writeAsStringSync(legacy);
       await openAndWaitForLoad(p, fx);
       expect(
-        p.state.position.inMilliseconds,
+        p.state.playback.position.inMilliseconds,
         greaterThan(400),
         reason: 'precondition: the resume point applied again',
       );
@@ -322,7 +322,7 @@ void main() {
         () async => await p.getRawProperty('af') == mine,
         reason: "the state's equalizer plays, not the saved one",
       );
-      expect(p.state.audioEffects, const [
+      expect(p.state.settings.audioEffects, const [
         EqualizerEffect(frequency: 1000, width: 200, gain: -6),
       ]);
     }, timeout: const Timeout(Duration(seconds: 30)));
@@ -344,7 +344,7 @@ void main() {
       );
       await openAndWaitForLoad(p1, fx);
       await p1.seek(const Duration(milliseconds: 600));
-      await waitUntil(() => p1.state.position.inMilliseconds > 500);
+      await waitUntil(() => p1.state.playback.position.inMilliseconds > 500);
       await p1.writeResumeConfig();
       await waitUntil(() => tmp.listSync().isNotEmpty);
       await p1.dispose();
@@ -361,7 +361,7 @@ void main() {
       await openAndWaitForLoad(p2, fx);
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(
-        p2.state.position.inMilliseconds,
+        p2.state.playback.position.inMilliseconds,
         lessThan(300),
         reason: 'with resumePlayback:false playback starts from the beginning',
       );

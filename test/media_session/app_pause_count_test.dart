@@ -69,7 +69,7 @@ void main() {
       'a pause of the app while paused is pushed with a new count',
       () async {
         expect(lastCount(), 0);
-        expect(player.state.playWhenReady, isFalse);
+        expect(player.state.playback.playWhenReady, isFalse);
         final mark = pushes.length;
         await player.pause();
         await settle();

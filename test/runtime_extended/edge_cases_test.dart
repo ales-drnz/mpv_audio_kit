@@ -44,7 +44,7 @@ void main() {
         await player.stream.fileFormat
             .firstWhere((fmt) => fmt.isNotEmpty)
             .timeout(const Duration(seconds: 5));
-        expect(player.state.duration.inMilliseconds, lessThan(200));
+        expect(player.state.playback.duration.inMilliseconds, lessThan(200));
       }, timeout: const Timeout(Duration(seconds: 15)));
 
       test(
@@ -78,10 +78,10 @@ void main() {
       test('openAll([]) is a no-op (does not throw)', () async {
         // Empty playlist passed to openAll: documented as a no-op (returns
         // without issuing loadfile). State must not change.
-        final initialPlaylist = player.state.playlist;
+        final initialPlaylist = player.state.playback.playlist;
         await player.openAll(const <Media>[], play: false);
         expect(
-          player.state.playlist,
+          player.state.playback.playlist,
           initialPlaylist,
           reason: 'empty list must not mutate the playlist',
         );
@@ -108,7 +108,7 @@ void main() {
         await player.stream.playlist
             .firstWhere((p) => p.items.length == 2 && p.index == 1)
             .timeout(const Duration(seconds: 5));
-        expect(player.state.playlist.index, 1);
+        expect(player.state.playback.playlist.index, 1);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test(
@@ -124,7 +124,7 @@ void main() {
           }
           await Future.wait(futures);
           expect(
-            player.state.volume,
+            player.state.settings.volume,
             69.0,
             reason: 'last setVolume(20 + 49 = 69) wins',
           );
@@ -179,7 +179,7 @@ void main() {
           'volume-max in its own time)', () async {
         await player.setVolume(150.0);
         expect(
-          player.state.volume,
+          player.state.settings.volume,
           150.0,
           reason:
               'wrapper writes the requested value optimistically; mpv '
@@ -191,10 +191,10 @@ void main() {
         // mpv's M_RANGE for speed is (0.01, 100.0). Values inside the
         // range pass through unchanged.
         await player.setRate(0.01);
-        expect(player.state.rate, 0.01);
+        expect(player.state.settings.rate, 0.01);
 
         await player.setRate(100.0);
-        expect(player.state.rate, 100.0);
+        expect(player.state.settings.rate, 100.0);
 
         // Restore a normal rate so subsequent tests aren't disturbed.
         await player.setRate(1.0);
@@ -205,10 +205,10 @@ void main() {
         // The range is checked before the write reaches mpv, and nothing
         // is written to state, so the prior `1.0` from the previous test
         // survives.
-        final priorRate = player.state.rate;
+        final priorRate = player.state.settings.rate;
         await expectLater(player.setRate(150.0), throwsRangeError);
         expect(
-          player.state.rate,
+          player.state.settings.rate,
           priorRate,
           reason: 'optimistic state must not advance past a rejected write',
         );
@@ -216,10 +216,10 @@ void main() {
 
       test('setRate below 0.01 throws RangeError (outside the range mpv '
           'accepts; state stays at the prior value)', () async {
-        final priorRate = player.state.rate;
+        final priorRate = player.state.settings.rate;
         await expectLater(player.setRate(-1.0), throwsRangeError);
         expect(
-          player.state.rate,
+          player.state.settings.rate,
           priorRate,
           reason: 'optimistic state must not advance past a rejected write',
         );

@@ -55,7 +55,7 @@ void main() {
         final sw = Stopwatch()..start();
         final failedAt = player.stream.prefetchState
             .firstWhere((s) => s == PrefetchState.failed)
-            .then((_) => (sw.elapsed, player.state.playlist.index))
+            .then((_) => (sw.elapsed, player.state.playback.playlist.index))
             .timeout(const Duration(seconds: 10));
         await player.openAll([Media(a), Media('$a.missing.flac')], play: true);
         final (elapsed, index) = await failedAt;
@@ -195,7 +195,7 @@ void main() {
           _slashes(await player.getRawProperty('prefetch-open-filename') ?? ''),
           _slashes(b),
         );
-        expect(player.state.duration, const Duration(seconds: 5));
+        expect(player.state.playback.duration, const Duration(seconds: 5));
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       // With no demuxer, r17 added the track to nothing.

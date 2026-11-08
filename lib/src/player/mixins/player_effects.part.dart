@@ -122,7 +122,7 @@ mixin _EffectsModule on _PlayerBase {
     final effects = List<AudioEffect>.unmodifiable(requested);
     // Before the diff, so a refused list reaches neither mpv nor the state.
     validateAudioEffects(effects);
-    final previous = _state.audioEffects;
+    final previous = _state.settings.audioEffects;
     final written = _afAccepted != null;
     // No-op writes skip the serialization + FFI round-trip entirely.
     if (written && listEquals(effects, previous)) {
@@ -206,7 +206,7 @@ mixin _EffectsModule on _PlayerBase {
         af == _afHeld) {
       return;
     }
-    final effects = _state.audioEffects;
+    final effects = _state.settings.audioEffects;
     final setRc = await _setAfChain(audioEffectsChain(effects));
     if (setRc < 0) {
       _internalLog(
@@ -225,7 +225,7 @@ mixin _EffectsModule on _PlayerBase {
   /// values (af_command_args): the chain is written again from the accepted
   /// list, which rebuilds every stage whose values moved (F50).
   Never _refuseAudioEffects(List<AudioEffect> effects, int rc) {
-    if (identical(_state.audioEffects, effects)) {
+    if (identical(_state.settings.audioEffects, effects)) {
       final accepted = _afAccepted ?? const <AudioEffect>[];
       _updateField(
         (s) => s.copyWith(audioEffects: accepted),
@@ -276,7 +276,7 @@ mixin _EffectsModule on _PlayerBase {
     if (refused) {
       _internalLog(afCommandRefusedLog, level: LogLevel.debug);
     }
-    final healed = _state.audioEffects;
+    final healed = _state.settings.audioEffects;
     final healRc = await _setAfChain(audioEffectsChain(healed));
     if (healRc >= 0) {
       _afAccepted = healed;
@@ -336,6 +336,6 @@ mixin _EffectsModule on _PlayerBase {
     // single suspension point serializes each read-modify-write in call
     // order on the microtask queue.
     await _gate();
-    await _applyAudioEffects(mapper(_state.audioEffects));
+    await _applyAudioEffects(mapper(_state.settings.audioEffects));
   }
 }

@@ -344,7 +344,7 @@ void main() {
               .timeout(const Duration(seconds: 10));
           await openAndWaitForLoad(player, path);
           final wave = (await ready)!;
-          expect(wave.duration, player.state.duration);
+          expect(wave.duration, player.state.playback.duration);
           // The bins hold the audio where it plays, and the tail past
           // its end is left unfilled.
           final end = wave.filled.lastIndexOf(1) + 1;

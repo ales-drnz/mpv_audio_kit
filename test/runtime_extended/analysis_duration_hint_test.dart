@@ -108,7 +108,7 @@ void main() {
               hasLength(1),
               reason: 'one download\n${server.describe()}',
             );
-            expect(player.state.position, Duration.zero);
+            expect(player.state.playback.position, Duration.zero);
           },
           timeout: const Timeout(Duration(seconds: 40)),
         );
@@ -127,8 +127,9 @@ void main() {
           ], play: true);
           await waitUntil(
             () =>
-                player.state.playlist.index == 1 &&
-                player.state.position > const Duration(milliseconds: 200),
+                player.state.playback.playlist.index == 1 &&
+                player.state.playback.position >
+                    const Duration(milliseconds: 200),
             timeout: const Duration(seconds: 10),
             reason: 'the second entry never played',
           );

@@ -59,7 +59,7 @@ void main() {
         // the CA bundle compiled into libmpv.
         await player.setTlsVerify(true);
         expect(
-          player.state.tlsCaFile,
+          player.state.settings.tlsCaFile,
           isEmpty,
           reason: 'no custom CA file — the embedded roots are the only trust',
         );

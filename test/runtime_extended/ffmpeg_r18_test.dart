@@ -115,7 +115,9 @@ void main() {
         await player.setAudioSpdif({Spdif.ac3});
         await player.open(Media(ac3), play: true);
         await waitUntil(
-          () => player.state.position > const Duration(milliseconds: 300),
+          () =>
+              player.state.playback.position >
+              const Duration(milliseconds: 300),
           reason: 'the passthrough never started',
         );
         expect(

@@ -9,6 +9,7 @@
 // and the next changes dispatch as before.
 
 import 'package:mpv_audio_kit/src/player/player_state.dart';
+import 'package:mpv_audio_kit/src/player/state/player_settings.dart';
 import 'package:mpv_audio_kit/src/reactive/default_reactives.dart';
 import 'package:mpv_audio_kit/src/reactive/default_specs.dart';
 import 'package:mpv_audio_kit/src/reactive/property_registry.dart';
@@ -29,7 +30,7 @@ void main() {
           onAudioOutputState: (_) {},
         ),
       );
-    var state = const PlayerState(volume: 50);
+    var state = const PlayerState(settings: PlayerSettings(volume: 50));
     PlayerState? committed;
 
     expect(
@@ -53,7 +54,7 @@ void main() {
 
     // Another property dispatches as before.
     final next = registry.dispatch('volume', 80.0, state);
-    expect(next?.volume, 80);
+    expect(next?.settings.volume, 80);
     state = next!;
     expect(reactives.volume.value, 80);
   });

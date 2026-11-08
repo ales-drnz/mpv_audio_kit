@@ -59,7 +59,7 @@ void main() {
         expect(err.level, LogLevel.error);
         expect(err.text.toLowerCase(), contains('audio output'));
         expect(
-          player.state.audioOutputState,
+          player.state.output.audioOutputState,
           AudioOutputState.failed,
           reason: 'state.audioOutputState must mirror the dispatched value',
         );
@@ -112,7 +112,7 @@ void main() {
         addTearDown(sub.cancel);
         await openAndWaitForLoad(player, defaultFixturePath());
         await waitUntil(
-          () => player.state.currentAo == 'null',
+          () => player.state.output.currentAo == 'null',
           reason: 'precondition: mpv fell back to the null output',
         );
         await waitUntil(
@@ -143,7 +143,7 @@ void main() {
       final sub = player.stream.error.listen(errors.add);
       addTearDown(sub.cancel);
       await openAndWaitForLoad(player, defaultFixturePath());
-      await waitUntil(() => player.state.currentAo == 'null');
+      await waitUntil(() => player.state.output.currentAo == 'null');
       await Future<void>.delayed(const Duration(milliseconds: 300));
       expect(errors, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 20)));

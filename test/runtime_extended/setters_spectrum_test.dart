@@ -41,7 +41,7 @@ void main() {
 
       test('default SpectrumSettings in state.spectrum', () {
         // Before any setSpectrum, the state holds the defaults.
-        final s = player.state.spectrum;
+        final s = player.state.settings.spectrum;
         expect(s.fftSize, 2048);
         expect(s.bandCount, 64);
         expect(s.window, WindowFunction.hann);
@@ -61,7 +61,7 @@ void main() {
             maxDb: -5,
           ),
         );
-        var s = player.state.spectrum;
+        var s = player.state.settings.spectrum;
         expect(s.fftSize, 1024);
         expect(s.bandCount, 32);
         expect(s.window, WindowFunction.blackmanHarris);
@@ -73,7 +73,7 @@ void main() {
 
         // updateSpectrum mapper sees the current settings.
         player.updateSpectrum((c) => c.copyWith(bandCount: 128));
-        s = player.state.spectrum;
+        s = player.state.settings.spectrum;
         expect(s.bandCount, 128);
         expect(s.fftSize, 1024); // other fields preserved
       });
@@ -118,14 +118,14 @@ void main() {
       }, timeout: const Timeout(Duration(seconds: 5)));
 
       test('an emit interval under 8 ms is rejected', () {
-        final before = player.state.spectrum;
+        final before = player.state.settings.spectrum;
         expect(
           () => player.setSpectrum(
             const SpectrumSettings(emitInterval: Duration.zero),
           ),
           throwsA(isA<AssertionError>()),
         );
-        expect(player.state.spectrum, before);
+        expect(player.state.settings.spectrum, before);
       });
     });
   });

@@ -83,7 +83,7 @@ void main() {
           // (the load anchor) under full-suite load — poll instead of reading
           // the state once.
           await waitUntil(
-            () => next.state.duration > Duration.zero,
+            () => next.state.playback.duration > Duration.zero,
             timeout: const Duration(seconds: 10),
           );
         } finally {

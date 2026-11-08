@@ -36,10 +36,10 @@ void main() {
         // Optimistic update is synchronous (state is set inside the setter
         // via _updateField on the 4 granular reactives, then the aggregate
         // is reduced into state.replayGain).
-        expect(player.state.replayGain.mode, ReplayGain.track);
-        expect(player.state.replayGain.preamp, -3.0);
-        expect(player.state.replayGain.clip, isTrue);
-        expect(player.state.replayGain.fallback, 1.5);
+        expect(player.state.settings.replayGain.mode, ReplayGain.track);
+        expect(player.state.settings.replayGain.preamp, -3.0);
+        expect(player.state.settings.replayGain.clip, isTrue);
+        expect(player.state.settings.replayGain.fallback, 1.5);
       }, timeout: const Timeout(Duration(seconds: 30)));
 
       test('partial update via copyWith preserves untouched fields', () async {
@@ -51,22 +51,22 @@ void main() {
             fallback: 0.5,
           ),
         );
-        expect(player.state.replayGain.mode, ReplayGain.album);
+        expect(player.state.settings.replayGain.mode, ReplayGain.album);
 
         // Tweak only preamp; the aggregate setter rewrites all 4 props,
         // but since the consumer copyWith'd from the existing state, the
         // other 3 fields are unchanged.
         await player.setReplayGain(
-          player.state.replayGain.copyWith(preamp: -10.0),
+          player.state.settings.replayGain.copyWith(preamp: -10.0),
         );
-        expect(player.state.replayGain.preamp, -10.0);
+        expect(player.state.settings.replayGain.preamp, -10.0);
         expect(
-          player.state.replayGain.mode,
+          player.state.settings.replayGain.mode,
           ReplayGain.album,
           reason: 'mode must survive a copyWith-only-preamp update',
         );
-        expect(player.state.replayGain.fallback, 0.5);
-        expect(player.state.replayGain.clip, isFalse);
+        expect(player.state.settings.replayGain.fallback, 0.5);
+        expect(player.state.settings.replayGain.clip, isFalse);
       }, timeout: const Timeout(Duration(seconds: 30)));
     });
   });

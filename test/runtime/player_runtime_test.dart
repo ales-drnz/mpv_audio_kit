@@ -99,7 +99,7 @@ void main() {
 
             // 1s ± a few ms — accommodate mpv's rounding without being brittle.
             expect(
-              player.state.duration.inMilliseconds,
+              player.state.playback.duration.inMilliseconds,
               inInclusiveRange(900, 1100),
             );
 
@@ -172,20 +172,20 @@ void main() {
         // after it.
         await waitUntil(
           () =>
-              player.state.audioParams.format != null &&
-              player.state.audioParams.codec != null,
+              player.state.file.audioParams.format != null &&
+              player.state.file.audioParams.codec != null,
           reason: 'audio-params and audio-codec never arrived',
         );
         expect(
-          player.state.audioParams.format,
+          player.state.file.audioParams.format,
           isNotNull,
           reason: 'audio-params/format must arrive via the NODE_MAP spec',
         );
-        expect(player.state.audioParams.sampleRate, isNotNull);
+        expect(player.state.file.audioParams.sampleRate, isNotNull);
         // codec / codecName come from sibling string properties; they are
         // populated post-file-load too.
         expect(
-          player.state.audioParams.codec,
+          player.state.file.audioParams.codec,
           isNotNull,
           reason: 'audio-codec must populate via its sibling string spec',
         );
@@ -198,7 +198,7 @@ void main() {
         // property must reach `active`.
         final raw = await player.getRawProperty('audio-output-state');
         expect(raw, 'active');
-        expect(player.state.audioOutputState, AudioOutputState.active);
+        expect(player.state.output.audioOutputState, AudioOutputState.active);
       }, timeout: const Timeout(Duration(seconds: 5)));
 
       test(

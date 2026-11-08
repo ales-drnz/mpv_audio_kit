@@ -1,6 +1,6 @@
 {
-  "loc": 15673,
-  "test_per_lib_permille": 2402,
+  "loc": 15761,
+  "test_per_lib_permille": 2425,
   "complexity_over_15": 4,
   "complexity_over_10": 40,
   "player_base_fields": 52,

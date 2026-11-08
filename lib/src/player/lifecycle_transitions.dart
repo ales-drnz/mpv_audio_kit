@@ -57,9 +57,11 @@ LifecycleResult computeLifecycle({
   }
   return LifecycleResult(
     newState: next,
-    playingDidChange: playing != null && prev.playing != playing,
-    bufferingDidChange: buffering != null && prev.buffering != buffering,
-    completedDidChange: completed != null && prev.completed != completed,
+    playingDidChange: playing != null && prev.playback.playing != playing,
+    bufferingDidChange:
+        buffering != null && prev.network.buffering != buffering,
+    completedDidChange:
+        completed != null && prev.playback.completed != completed,
   );
 }
 

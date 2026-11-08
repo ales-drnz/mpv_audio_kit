@@ -2507,6 +2507,29 @@ FftFrame.final double bandLowHz
 FftFrame.final int sampleRate
 FftFrame.new const ({required this.bins, required this.bands, required this.timestamp, required this.sampleRate, required this.bandLowHz, required this.bandHighHz})
 FftFrame: class FftFrame
+FileState.@override bool operator ==(Object other)
+FileState.@override int get hashCode
+FileState.FileState copyWith({Map<String, String>? metadata, Map<String, String>? chapterMetadata, List<Chapter>? chapters, List<MpvTrack>? tracks, Object? currentAudioTrack = unset, AudioParams? audioParams, Object? audioBitrate = unset, Object? coverArt = unset, String? mediaTitle, String? fileFormat, int? fileSize, String? path, String? filename, String? streamPath, String? streamOpenFilename, String? playlistPath, String? currentDemuxer, Duration? demuxerStartTime})
+FileState.final AudioParams audioParams
+FileState.final CoverArt? coverArt
+FileState.final Duration demuxerStartTime
+FileState.final List<Chapter> chapters
+FileState.final List<MpvTrack> tracks
+FileState.final Map<String, String> chapterMetadata
+FileState.final Map<String, String> metadata
+FileState.final MpvTrack? currentAudioTrack
+FileState.final String currentDemuxer
+FileState.final String fileFormat
+FileState.final String filename
+FileState.final String mediaTitle
+FileState.final String path
+FileState.final String playlistPath
+FileState.final String streamOpenFilename
+FileState.final String streamPath
+FileState.final double? audioBitrate
+FileState.final int fileSize
+FileState.new const ({this.metadata = const <String, String>{}, this.chapterMetadata = const <String, String>{}, this.chapters = const <Chapter>[], this.tracks = const <MpvTrack>[], this.currentAudioTrack, this.audioParams = const AudioParams(), this.audioBitrate, this.coverArt, this.mediaTitle = '', this.fileFormat = '', this.fileSize = 0, this.path = '', this.filename = '', this.streamPath = '', this.streamOpenFilename = '', this.playlistPath = '', this.currentDemuxer = '', this.demuxerStartTime = Duration.zero})
+FileState: final class FileState
 FirequalizerEffect.@override AudioFilter get filter
 FirequalizerEffect.@override String get filterName
 FirequalizerEffect.@override String toFilterString()
@@ -2877,6 +2900,13 @@ InterruptionPolicy.keepPlaying
 InterruptionPolicy.pauseAndResume
 InterruptionPolicy.pauseOnly
 InterruptionPolicy: enum InterruptionPolicy
+LibraryVersions.@override bool operator ==(Object other)
+LibraryVersions.@override int get hashCode
+LibraryVersions.LibraryVersions copyWith({String? mpvVersion, String? ffmpegVersion})
+LibraryVersions.final String ffmpegVersion
+LibraryVersions.final String mpvVersion
+LibraryVersions.new const ({this.mpvVersion = '', this.ffmpegVersion = ''})
+LibraryVersions: final class LibraryVersions
 LogError.@override String get message
 LogError.@override String toString()
 LogError.@override bool operator ==(Object other)
@@ -3372,6 +3402,35 @@ MpvTrack.final int? channelCount
 MpvTrack.final int? sampleRate
 MpvTrack.new const ({required this.id, required this.type, this.selected = false, this.title, this.lang, this.defaultTrack = false, this.forced = false, this.dependent = false, this.visualImpaired = false, this.hearingImpaired = false, this.image = false, this.albumArt = false, this.external = false, this.externalFilename, this.codec, this.codecDesc, this.codecProfile, this.decoder, this.decoderDesc, this.formatName, this.sampleRate, this.channels, this.channelCount, this.demuxBitrate, this.hlsBitrate, this.replayGainTrackGain, this.replayGainTrackPeak, this.replayGainAlbumGain, this.replayGainAlbumPeak, this.metadata = const <String, String>{}})
 MpvTrack: final class MpvTrack
+NetworkState.@override bool operator ==(Object other)
+NetworkState.@override int get hashCode
+NetworkState.NetworkState copyWith({bool? buffering, Duration? buffer, double? bufferingPercentage, Duration? bufferDuration, DemuxerCacheState? demuxerCacheState, bool? pausedForCache, bool? demuxerViaNetwork, bool? demuxerIdle, double? cacheSpeed, int? cacheBufferingState, Object? readError = unset, Object? skippedSegments = unset})
+NetworkState.final DemuxerCacheState demuxerCacheState
+NetworkState.final Duration buffer
+NetworkState.final Duration bufferDuration
+NetworkState.final bool buffering
+NetworkState.final bool demuxerIdle
+NetworkState.final bool demuxerViaNetwork
+NetworkState.final bool pausedForCache
+NetworkState.final bool? readError
+NetworkState.final double bufferingPercentage
+NetworkState.final double cacheSpeed
+NetworkState.final int cacheBufferingState
+NetworkState.final int? skippedSegments
+NetworkState.new const ({this.buffering = false, this.buffer = Duration.zero, this.bufferingPercentage = 0.0, this.bufferDuration = Duration.zero, this.demuxerCacheState = DemuxerCacheState.empty, this.pausedForCache = false, this.demuxerViaNetwork = false, this.demuxerIdle = true, this.cacheSpeed = 0.0, this.cacheBufferingState = 0, this.readError, this.skippedSegments})
+NetworkState: final class NetworkState
+OutputState.@override bool operator ==(Object other)
+OutputState.@override int get hashCode
+OutputState.OutputState copyWith({AudioParams? audioOutParams, Device? audioDevice, List<Device>? audioDevices, AudioOutputState? audioOutputState, String? currentAo, Object? systemVolume = unset, Object? systemMute = unset})
+OutputState.final AudioOutputState audioOutputState
+OutputState.final AudioParams audioOutParams
+OutputState.final Device audioDevice
+OutputState.final List<Device> audioDevices
+OutputState.final String currentAo
+OutputState.final bool? systemMute
+OutputState.final double? systemVolume
+OutputState.new const ({this.audioOutParams = const AudioParams(), this.audioDevice = _kAutoDevice, this.audioDevices = _kDefaultDevices, this.audioOutputState = AudioOutputState.closed, this.currentAo = '', this.systemVolume, this.systemMute})
+OutputState: final class OutputState
 PanEffect.@override AudioFilter get filter
 PanEffect.@override String get filterName
 PanEffect.@override String toFilterString()
@@ -3438,6 +3497,32 @@ PcmSourceState.reading
 PcmSourceState.stopped
 PcmSourceState.waiting
 PcmSourceState: enum PcmSourceState
+PlaybackState.@override bool operator ==(Object other)
+PlaybackState.@override int get hashCode
+PlaybackState.PlaybackState copyWith({Playlist? playlist, bool? playing, bool? playWhenReady, bool? completed, Duration? position, Duration? duration, bool? seeking, bool? seekable, bool? partiallySeekable, double? percentPos, Duration? timeRemaining, Duration? playtimeRemaining, bool? eofReached, Duration? audioPts, Object? currentChapter = unset, Loop? loop, bool? shuffle, Object? abLoopA = unset, Object? abLoopB = unset, Object? abLoopCount = unset, Object? remainingAbLoops = unset})
+PlaybackState.final Duration audioPts
+PlaybackState.final Duration duration
+PlaybackState.final Duration playtimeRemaining
+PlaybackState.final Duration position
+PlaybackState.final Duration timeRemaining
+PlaybackState.final Duration? abLoopA
+PlaybackState.final Duration? abLoopB
+PlaybackState.final Loop loop
+PlaybackState.final Playlist playlist
+PlaybackState.final bool completed
+PlaybackState.final bool eofReached
+PlaybackState.final bool partiallySeekable
+PlaybackState.final bool playWhenReady
+PlaybackState.final bool playing
+PlaybackState.final bool seekable
+PlaybackState.final bool seeking
+PlaybackState.final bool shuffle
+PlaybackState.final double percentPos
+PlaybackState.final int? abLoopCount
+PlaybackState.final int? currentChapter
+PlaybackState.final int? remainingAbLoops
+PlaybackState.new const ({this.playlist = _kEmptyPlaylist, this.playing = false, this.playWhenReady = false, this.completed = false, this.position = Duration.zero, this.duration = Duration.zero, this.seeking = false, this.seekable = false, this.partiallySeekable = false, this.percentPos = 0.0, this.timeRemaining = Duration.zero, this.playtimeRemaining = Duration.zero, this.eofReached = false, this.audioPts = Duration.zero, this.currentChapter, this.loop = Loop.off, this.shuffle = false, this.abLoopA, this.abLoopB, this.abLoopCount, this.remainingAbLoops})
+PlaybackState: final class PlaybackState
 Player.@override Future<String?> getRawProperty(String name)
 Player.@override Future<void> open(Media media, {bool? play})
 Player.@override Future<void> openAll(List<Media> medias, {bool? play, int index = 0})
@@ -3646,107 +3731,154 @@ PlayerInitException.@override String toString()
 PlayerInitException.final String message
 PlayerInitException.new const (this.message)
 PlayerInitException: final class PlayerInitException extends PlayerException
+PlayerSettings.@override bool operator ==(Object other)
+PlayerSettings.@override int get hashCode
+PlayerSettings.PlayerSettings copyWith({double? volume, bool? mute, double? volumeMax, double? volumeGain, double? volumeGainMin, double? volumeGainMax, double? rate, double? pitch, bool? pitchCorrection, Duration? audioDelay, Gapless? gapless, ReplayGainSettings? replayGain, List<AudioEffect>? audioEffects, SpectrumSettings? spectrum, Cover? coverArtAuto, bool? prefetchPlaylist, CacheSettings? cache, DemuxerSettings? demuxer, Duration? networkTimeout, bool? tlsVerify, String? tlsCaFile, HlsBitrate? hlsBitrate, bool? cookies, String? httpProxy, bool? audioExclusive, bool? audioMediaRole, Duration? audioBuffer, bool? audioStreamSilence, bool? audioNullUntimed, Set<Spdif>? audioSpdif, int? audioSampleRate, Format? audioFormat, Channels? audioChannels, String? audioClientName, String? audioDriver, Object? mediaSession = unset})
+PlayerSettings.final CacheSettings cache
+PlayerSettings.final Channels audioChannels
+PlayerSettings.final Cover coverArtAuto
+PlayerSettings.final DemuxerSettings demuxer
+PlayerSettings.final Duration audioBuffer
+PlayerSettings.final Duration audioDelay
+PlayerSettings.final Duration networkTimeout
+PlayerSettings.final Format audioFormat
+PlayerSettings.final Gapless gapless
+PlayerSettings.final HlsBitrate hlsBitrate
+PlayerSettings.final List<AudioEffect> audioEffects
+PlayerSettings.final MediaSession? mediaSession
+PlayerSettings.final ReplayGainSettings replayGain
+PlayerSettings.final Set<Spdif> audioSpdif
+PlayerSettings.final SpectrumSettings spectrum
+PlayerSettings.final String audioClientName
+PlayerSettings.final String audioDriver
+PlayerSettings.final String httpProxy
+PlayerSettings.final String tlsCaFile
+PlayerSettings.final bool audioExclusive
+PlayerSettings.final bool audioMediaRole
+PlayerSettings.final bool audioNullUntimed
+PlayerSettings.final bool audioStreamSilence
+PlayerSettings.final bool cookies
+PlayerSettings.final bool mute
+PlayerSettings.final bool pitchCorrection
+PlayerSettings.final bool prefetchPlaylist
+PlayerSettings.final bool tlsVerify
+PlayerSettings.final double pitch
+PlayerSettings.final double rate
+PlayerSettings.final double volume
+PlayerSettings.final double volumeGain
+PlayerSettings.final double volumeGainMax
+PlayerSettings.final double volumeGainMin
+PlayerSettings.final double volumeMax
+PlayerSettings.final int audioSampleRate
+PlayerSettings.new const ({this.volume = 100.0, this.mute = false, this.volumeMax = 130.0, this.volumeGain = 0.0, this.volumeGainMin = -96.0, this.volumeGainMax = 12.0, this.rate = 1.0, this.pitch = 1.0, this.pitchCorrection = true, this.audioDelay = Duration.zero, this.gapless = Gapless.weak, this.replayGain = const ReplayGainSettings(), this.audioEffects = const [], this.spectrum = SpectrumSettings.defaults, this.coverArtAuto = Cover.no, this.prefetchPlaylist = false, this.cache = const CacheSettings(), this.demuxer = const DemuxerSettings(), this.networkTimeout = const Duration(seconds: 60), this.tlsVerify = false, this.tlsCaFile = '', this.hlsBitrate = HlsBitrate.max, this.cookies = false, this.httpProxy = '', this.audioExclusive = false, this.audioMediaRole = false, this.audioBuffer = const Duration(milliseconds: 200), this.audioStreamSilence = false, this.audioNullUntimed = false, this.audioSpdif = const <Spdif>{}, this.audioSampleRate = 0, this.audioFormat = Format.auto, this.audioChannels = Channels.auto, this.audioClientName = 'mpv_audio_kit', this.audioDriver = '', this.mediaSession})
+PlayerSettings: final class PlayerSettings
+PlayerState.@Deprecated('Use file.audioBitrate; the flat fields go in 0.8.0.') double? get audioBitrate
+PlayerState.@Deprecated('Use file.audioParams; the flat fields go in 0.8.0.') AudioParams get audioParams
+PlayerState.@Deprecated('Use file.chapterMetadata; the flat fields go in 0.8.0.') Map<String, String> get chapterMetadata
+PlayerState.@Deprecated('Use file.chapters; the flat fields go in 0.8.0.') List<Chapter> get chapters
+PlayerState.@Deprecated('Use file.coverArt; the flat fields go in 0.8.0.') CoverArt? get coverArt
+PlayerState.@Deprecated('Use file.currentAudioTrack; the flat fields go in 0.8.0.') MpvTrack? get currentAudioTrack
+PlayerState.@Deprecated('Use file.currentDemuxer; the flat fields go in 0.8.0.') String get currentDemuxer
+PlayerState.@Deprecated('Use file.demuxerStartTime; the flat fields go in 0.8.0.') Duration get demuxerStartTime
+PlayerState.@Deprecated('Use file.fileFormat; the flat fields go in 0.8.0.') String get fileFormat
+PlayerState.@Deprecated('Use file.fileSize; the flat fields go in 0.8.0.') int get fileSize
+PlayerState.@Deprecated('Use file.filename; the flat fields go in 0.8.0.') String get filename
+PlayerState.@Deprecated('Use file.mediaTitle; the flat fields go in 0.8.0.') String get mediaTitle
+PlayerState.@Deprecated('Use file.metadata; the flat fields go in 0.8.0.') Map<String, String> get metadata
+PlayerState.@Deprecated('Use file.path; the flat fields go in 0.8.0.') String get path
+PlayerState.@Deprecated('Use file.playlistPath; the flat fields go in 0.8.0.') String get playlistPath
+PlayerState.@Deprecated('Use file.streamOpenFilename; the flat fields go in 0.8.0.') String get streamOpenFilename
+PlayerState.@Deprecated('Use file.streamPath; the flat fields go in 0.8.0.') String get streamPath
+PlayerState.@Deprecated('Use file.tracks; the flat fields go in 0.8.0.') List<MpvTrack> get tracks
+PlayerState.@Deprecated('Use network.buffer; the flat fields go in 0.8.0.') Duration get buffer
+PlayerState.@Deprecated('Use network.bufferDuration; the flat fields go in 0.8.0.') Duration get bufferDuration
+PlayerState.@Deprecated('Use network.buffering; the flat fields go in 0.8.0.') bool get buffering
+PlayerState.@Deprecated('Use network.bufferingPercentage; the flat fields go in 0.8.0.') double get bufferingPercentage
+PlayerState.@Deprecated('Use network.cacheBufferingState; the flat fields go in 0.8.0.') int get cacheBufferingState
+PlayerState.@Deprecated('Use network.cacheSpeed; the flat fields go in 0.8.0.') double get cacheSpeed
+PlayerState.@Deprecated('Use network.demuxerCacheState; the flat fields go in 0.8.0.') DemuxerCacheState get demuxerCacheState
+PlayerState.@Deprecated('Use network.demuxerIdle; the flat fields go in 0.8.0.') bool get demuxerIdle
+PlayerState.@Deprecated('Use network.demuxerViaNetwork; the flat fields go in 0.8.0.') bool get demuxerViaNetwork
+PlayerState.@Deprecated('Use network.pausedForCache; the flat fields go in 0.8.0.') bool get pausedForCache
+PlayerState.@Deprecated('Use network.readError; the flat fields go in 0.8.0.') bool? get readError
+PlayerState.@Deprecated('Use network.skippedSegments; the flat fields go in 0.8.0.') int? get skippedSegments
+PlayerState.@Deprecated('Use output.audioDevice; the flat fields go in 0.8.0.') Device get audioDevice
+PlayerState.@Deprecated('Use output.audioDevices; the flat fields go in 0.8.0.') List<Device> get audioDevices
+PlayerState.@Deprecated('Use output.audioOutParams; the flat fields go in 0.8.0.') AudioParams get audioOutParams
+PlayerState.@Deprecated('Use output.audioOutputState; the flat fields go in 0.8.0.') AudioOutputState get audioOutputState
+PlayerState.@Deprecated('Use output.currentAo; the flat fields go in 0.8.0.') String get currentAo
+PlayerState.@Deprecated('Use output.systemMute; the flat fields go in 0.8.0.') bool? get systemMute
+PlayerState.@Deprecated('Use output.systemVolume; the flat fields go in 0.8.0.') double? get systemVolume
+PlayerState.@Deprecated('Use playback.abLoopA; the flat fields go in 0.8.0.') Duration? get abLoopA
+PlayerState.@Deprecated('Use playback.abLoopB; the flat fields go in 0.8.0.') Duration? get abLoopB
+PlayerState.@Deprecated('Use playback.abLoopCount; the flat fields go in 0.8.0.') int? get abLoopCount
+PlayerState.@Deprecated('Use playback.audioPts; the flat fields go in 0.8.0.') Duration get audioPts
+PlayerState.@Deprecated('Use playback.completed; the flat fields go in 0.8.0.') bool get completed
+PlayerState.@Deprecated('Use playback.currentChapter; the flat fields go in 0.8.0.') int? get currentChapter
+PlayerState.@Deprecated('Use playback.duration; the flat fields go in 0.8.0.') Duration get duration
+PlayerState.@Deprecated('Use playback.eofReached; the flat fields go in 0.8.0.') bool get eofReached
+PlayerState.@Deprecated('Use playback.loop; the flat fields go in 0.8.0.') Loop get loop
+PlayerState.@Deprecated('Use playback.partiallySeekable; the flat fields go in 0.8.0.') bool get partiallySeekable
+PlayerState.@Deprecated('Use playback.percentPos; the flat fields go in 0.8.0.') double get percentPos
+PlayerState.@Deprecated('Use playback.playWhenReady; the flat fields go in 0.8.0.') bool get playWhenReady
+PlayerState.@Deprecated('Use playback.playing; the flat fields go in 0.8.0.') bool get playing
+PlayerState.@Deprecated('Use playback.playlist; the flat fields go in 0.8.0.') Playlist get playlist
+PlayerState.@Deprecated('Use playback.playtimeRemaining; the flat fields go in 0.8.0.') Duration get playtimeRemaining
+PlayerState.@Deprecated('Use playback.position; the flat fields go in 0.8.0.') Duration get position
+PlayerState.@Deprecated('Use playback.remainingAbLoops; the flat fields go in 0.8.0.') int? get remainingAbLoops
+PlayerState.@Deprecated('Use playback.seekable; the flat fields go in 0.8.0.') bool get seekable
+PlayerState.@Deprecated('Use playback.seeking; the flat fields go in 0.8.0.') bool get seeking
+PlayerState.@Deprecated('Use playback.shuffle; the flat fields go in 0.8.0.') bool get shuffle
+PlayerState.@Deprecated('Use playback.timeRemaining; the flat fields go in 0.8.0.') Duration get timeRemaining
+PlayerState.@Deprecated('Use settings.audioBuffer; the flat fields go in 0.8.0.') Duration get audioBuffer
+PlayerState.@Deprecated('Use settings.audioChannels; the flat fields go in 0.8.0.') Channels get audioChannels
+PlayerState.@Deprecated('Use settings.audioClientName; the flat fields go in 0.8.0.') String get audioClientName
+PlayerState.@Deprecated('Use settings.audioDelay; the flat fields go in 0.8.0.') Duration get audioDelay
+PlayerState.@Deprecated('Use settings.audioDriver; the flat fields go in 0.8.0.') String get audioDriver
+PlayerState.@Deprecated('Use settings.audioEffects; the flat fields go in 0.8.0.') List<AudioEffect> get audioEffects
+PlayerState.@Deprecated('Use settings.audioExclusive; the flat fields go in 0.8.0.') bool get audioExclusive
+PlayerState.@Deprecated('Use settings.audioFormat; the flat fields go in 0.8.0.') Format get audioFormat
+PlayerState.@Deprecated('Use settings.audioMediaRole; the flat fields go in 0.8.0.') bool get audioMediaRole
+PlayerState.@Deprecated('Use settings.audioNullUntimed; the flat fields go in 0.8.0.') bool get audioNullUntimed
+PlayerState.@Deprecated('Use settings.audioSampleRate; the flat fields go in 0.8.0.') int get audioSampleRate
+PlayerState.@Deprecated('Use settings.audioSpdif; the flat fields go in 0.8.0.') Set<Spdif> get audioSpdif
+PlayerState.@Deprecated('Use settings.audioStreamSilence; the flat fields go in 0.8.0.') bool get audioStreamSilence
+PlayerState.@Deprecated('Use settings.cache; the flat fields go in 0.8.0.') CacheSettings get cache
+PlayerState.@Deprecated('Use settings.cookies; the flat fields go in 0.8.0.') bool get cookies
+PlayerState.@Deprecated('Use settings.coverArtAuto; the flat fields go in 0.8.0.') Cover get coverArtAuto
+PlayerState.@Deprecated('Use settings.demuxer; the flat fields go in 0.8.0.') DemuxerSettings get demuxer
+PlayerState.@Deprecated('Use settings.gapless; the flat fields go in 0.8.0.') Gapless get gapless
+PlayerState.@Deprecated('Use settings.hlsBitrate; the flat fields go in 0.8.0.') HlsBitrate get hlsBitrate
+PlayerState.@Deprecated('Use settings.httpProxy; the flat fields go in 0.8.0.') String get httpProxy
+PlayerState.@Deprecated('Use settings.mediaSession; the flat fields go in 0.8.0.') MediaSession? get mediaSession
+PlayerState.@Deprecated('Use settings.mute; the flat fields go in 0.8.0.') bool get mute
+PlayerState.@Deprecated('Use settings.networkTimeout; the flat fields go in 0.8.0.') Duration get networkTimeout
+PlayerState.@Deprecated('Use settings.pitch; the flat fields go in 0.8.0.') double get pitch
+PlayerState.@Deprecated('Use settings.pitchCorrection; the flat fields go in 0.8.0.') bool get pitchCorrection
+PlayerState.@Deprecated('Use settings.prefetchPlaylist; the flat fields go in 0.8.0.') bool get prefetchPlaylist
+PlayerState.@Deprecated('Use settings.rate; the flat fields go in 0.8.0.') double get rate
+PlayerState.@Deprecated('Use settings.replayGain; the flat fields go in 0.8.0.') ReplayGainSettings get replayGain
+PlayerState.@Deprecated('Use settings.spectrum; the flat fields go in 0.8.0.') SpectrumSettings get spectrum
+PlayerState.@Deprecated('Use settings.tlsCaFile; the flat fields go in 0.8.0.') String get tlsCaFile
+PlayerState.@Deprecated('Use settings.tlsVerify; the flat fields go in 0.8.0.') bool get tlsVerify
+PlayerState.@Deprecated('Use settings.volume; the flat fields go in 0.8.0.') double get volume
+PlayerState.@Deprecated('Use settings.volumeGain; the flat fields go in 0.8.0.') double get volumeGain
+PlayerState.@Deprecated('Use settings.volumeGainMax; the flat fields go in 0.8.0.') double get volumeGainMax
+PlayerState.@Deprecated('Use settings.volumeGainMin; the flat fields go in 0.8.0.') double get volumeGainMin
+PlayerState.@Deprecated('Use settings.volumeMax; the flat fields go in 0.8.0.') double get volumeMax
+PlayerState.@Deprecated('Use versions.ffmpegVersion; the flat fields go in 0.8.0.') String get ffmpegVersion
+PlayerState.@Deprecated('Use versions.mpvVersion; the flat fields go in 0.8.0.') String get mpvVersion
 PlayerState.@override String toString()
 PlayerState.@override bool operator ==(Object other)
 PlayerState.@override int get hashCode
-PlayerState.PlayerState copyWith({Playlist? playlist, bool? playing, bool? playWhenReady, bool? completed, Object? readError = unset, Object? skippedSegments = unset, Duration? position, Duration? duration, double? volume, double? rate, double? pitch, bool? buffering, Duration? buffer, double? bufferingPercentage, DemuxerCacheState? demuxerCacheState, Loop? loop, bool? shuffle, AudioParams? audioParams, AudioParams? audioOutParams, Object? audioBitrate = unset, Device? audioDevice, List<Device>? audioDevices, bool? mute, Duration? audioDelay, bool? pitchCorrection, Map<String, String>? metadata, Gapless? gapless, ReplayGainSettings? replayGain, double? volumeGain, double? volumeGainMin, double? volumeGainMax, Object? systemVolume = unset, Object? systemMute = unset, CacheSettings? cache, DemuxerSettings? demuxer, Duration? networkTimeout, bool? pausedForCache, bool? demuxerViaNetwork, bool? tlsVerify, String? tlsCaFile, HlsBitrate? hlsBitrate, bool? cookies, String? httpProxy, bool? audioExclusive, bool? audioMediaRole, Duration? audioBuffer, bool? audioStreamSilence, bool? audioNullUntimed, List<MpvTrack>? tracks, Object? currentAudioTrack = unset, Set<Spdif>? audioSpdif, double? volumeMax, int? audioSampleRate, Format? audioFormat, Channels? audioChannels, String? audioClientName, String? audioDriver, AudioOutputState? audioOutputState, List<AudioEffect>? audioEffects, SpectrumSettings? spectrum, Object? coverArt = unset, Cover? coverArtAuto, bool? prefetchPlaylist, Duration? audioPts, Duration? timeRemaining, Duration? playtimeRemaining, bool? eofReached, bool? seekable, bool? partiallySeekable, String? mediaTitle, String? fileFormat, int? fileSize, Duration? bufferDuration, bool? demuxerIdle, Object? currentChapter = unset, List<Chapter>? chapters, String? path, String? filename, String? streamPath, String? streamOpenFilename, String? playlistPath, Object? abLoopA = unset, Object? abLoopB = unset, Object? abLoopCount = unset, Object? remainingAbLoops = unset, bool? seeking, double? percentPos, double? cacheSpeed, int? cacheBufferingState, String? currentDemuxer, String? currentAo, Duration? demuxerStartTime, Map<String, String>? chapterMetadata, String? mpvVersion, String? ffmpegVersion, Object? mediaSession = unset})
-PlayerState.final AudioOutputState audioOutputState
-PlayerState.final AudioParams audioOutParams
-PlayerState.final AudioParams audioParams
-PlayerState.final CacheSettings cache
-PlayerState.final Channels audioChannels
-PlayerState.final Cover coverArtAuto
-PlayerState.final CoverArt? coverArt
-PlayerState.final DemuxerCacheState demuxerCacheState
-PlayerState.final DemuxerSettings demuxer
-PlayerState.final Device audioDevice
-PlayerState.final Duration audioBuffer
-PlayerState.final Duration audioDelay
-PlayerState.final Duration audioPts
-PlayerState.final Duration buffer
-PlayerState.final Duration bufferDuration
-PlayerState.final Duration demuxerStartTime
-PlayerState.final Duration duration
-PlayerState.final Duration networkTimeout
-PlayerState.final Duration playtimeRemaining
-PlayerState.final Duration position
-PlayerState.final Duration timeRemaining
-PlayerState.final Duration? abLoopA
-PlayerState.final Duration? abLoopB
-PlayerState.final Format audioFormat
-PlayerState.final Gapless gapless
-PlayerState.final HlsBitrate hlsBitrate
-PlayerState.final List<AudioEffect> audioEffects
-PlayerState.final List<Chapter> chapters
-PlayerState.final List<Device> audioDevices
-PlayerState.final List<MpvTrack> tracks
-PlayerState.final Loop loop
-PlayerState.final Map<String, String> chapterMetadata
-PlayerState.final Map<String, String> metadata
-PlayerState.final MediaSession? mediaSession
-PlayerState.final MpvTrack? currentAudioTrack
-PlayerState.final Playlist playlist
-PlayerState.final ReplayGainSettings replayGain
-PlayerState.final Set<Spdif> audioSpdif
-PlayerState.final SpectrumSettings spectrum
-PlayerState.final String audioClientName
-PlayerState.final String audioDriver
-PlayerState.final String currentAo
-PlayerState.final String currentDemuxer
-PlayerState.final String ffmpegVersion
-PlayerState.final String fileFormat
-PlayerState.final String filename
-PlayerState.final String httpProxy
-PlayerState.final String mediaTitle
-PlayerState.final String mpvVersion
-PlayerState.final String path
-PlayerState.final String playlistPath
-PlayerState.final String streamOpenFilename
-PlayerState.final String streamPath
-PlayerState.final String tlsCaFile
-PlayerState.final bool audioExclusive
-PlayerState.final bool audioMediaRole
-PlayerState.final bool audioNullUntimed
-PlayerState.final bool audioStreamSilence
-PlayerState.final bool buffering
-PlayerState.final bool completed
-PlayerState.final bool cookies
-PlayerState.final bool demuxerIdle
-PlayerState.final bool demuxerViaNetwork
-PlayerState.final bool eofReached
-PlayerState.final bool mute
-PlayerState.final bool partiallySeekable
-PlayerState.final bool pausedForCache
-PlayerState.final bool pitchCorrection
-PlayerState.final bool playWhenReady
-PlayerState.final bool playing
-PlayerState.final bool prefetchPlaylist
-PlayerState.final bool seekable
-PlayerState.final bool seeking
-PlayerState.final bool shuffle
-PlayerState.final bool tlsVerify
-PlayerState.final bool? readError
-PlayerState.final bool? systemMute
-PlayerState.final double bufferingPercentage
-PlayerState.final double cacheSpeed
-PlayerState.final double percentPos
-PlayerState.final double pitch
-PlayerState.final double rate
-PlayerState.final double volume
-PlayerState.final double volumeGain
-PlayerState.final double volumeGainMax
-PlayerState.final double volumeGainMin
-PlayerState.final double volumeMax
-PlayerState.final double? audioBitrate
-PlayerState.final double? systemVolume
-PlayerState.final int audioSampleRate
-PlayerState.final int cacheBufferingState
-PlayerState.final int fileSize
-PlayerState.final int? abLoopCount
-PlayerState.final int? currentChapter
-PlayerState.final int? remainingAbLoops
-PlayerState.final int? skippedSegments
-PlayerState.new const ({this.playlist = _kEmptyPlaylist, this.playing = false, this.playWhenReady = false, this.completed = false, this.readError, this.skippedSegments, this.position = Duration.zero, this.duration = Duration.zero, this.volume = 100.0, this.rate = 1.0, this.pitch = 1.0, this.buffering = false, this.buffer = Duration.zero, this.bufferingPercentage = 0.0, this.demuxerCacheState = DemuxerCacheState.empty, this.loop = Loop.off, this.shuffle = false, this.audioParams = const AudioParams(), this.audioOutParams = const AudioParams(), this.audioBitrate, this.audioDevice = _kAutoDevice, this.audioDevices = _kDefaultDevices, this.mute = false, this.audioDelay = Duration.zero, this.pitchCorrection = true, this.metadata = const <String, String>{}, this.gapless = Gapless.weak, this.replayGain = const ReplayGainSettings(), this.volumeGain = 0.0, this.volumeGainMin = -96.0, this.volumeGainMax = 12.0, this.systemVolume, this.systemMute, this.cache = const CacheSettings(), this.demuxer = const DemuxerSettings(), this.networkTimeout = const Duration(seconds: 60), this.pausedForCache = false, this.demuxerViaNetwork = false, this.tlsVerify = false, this.tlsCaFile = '', this.hlsBitrate = HlsBitrate.max, this.cookies = false, this.httpProxy = '', this.audioExclusive = false, this.audioMediaRole = false, this.audioBuffer = const Duration(milliseconds: 200), this.audioStreamSilence = false, this.audioNullUntimed = false, this.tracks = const <MpvTrack>[], this.currentAudioTrack, this.audioSpdif = const <Spdif>{}, this.volumeMax = 130.0, this.audioSampleRate = 0, this.audioFormat = Format.auto, this.audioChannels = Channels.auto, this.audioClientName = 'mpv_audio_kit', this.audioDriver = '', this.audioOutputState = AudioOutputState.closed, this.audioEffects = const [], this.spectrum = SpectrumSettings.defaults, this.coverArt, this.coverArtAuto = Cover.no, this.prefetchPlaylist = false, this.audioPts = Duration.zero, this.timeRemaining = Duration.zero, this.playtimeRemaining = Duration.zero, this.eofReached = false, this.seekable = false, this.partiallySeekable = false, this.mediaTitle = '', this.fileFormat = '', this.fileSize = 0, this.bufferDuration = Duration.zero, this.demuxerIdle = true, this.currentChapter, this.chapters = const <Chapter>[], this.path = '', this.filename = '', this.streamPath = '', this.streamOpenFilename = '', this.playlistPath = '', this.abLoopA, this.abLoopB, this.abLoopCount, this.remainingAbLoops, this.seeking = false, this.percentPos = 0.0, this.cacheSpeed = 0.0, this.cacheBufferingState = 0, this.currentDemuxer = '', this.currentAo = '', this.demuxerStartTime = Duration.zero, this.chapterMetadata = const <String, String>{}, this.mpvVersion = '', this.ffmpegVersion = '', this.mediaSession})
+PlayerState.PlayerState copyWith({PlaybackState? playback, NetworkState? network, FileState? file, OutputState? output, PlayerSettings? settings, LibraryVersions? versions, Playlist? playlist, bool? playing, bool? playWhenReady, bool? completed, Duration? position, Duration? duration, bool? seeking, bool? seekable, bool? partiallySeekable, double? percentPos, Duration? timeRemaining, Duration? playtimeRemaining, bool? eofReached, Duration? audioPts, Object? currentChapter = unset, Loop? loop, bool? shuffle, Object? abLoopA = unset, Object? abLoopB = unset, Object? abLoopCount = unset, Object? remainingAbLoops = unset, bool? buffering, Duration? buffer, double? bufferingPercentage, Duration? bufferDuration, DemuxerCacheState? demuxerCacheState, bool? pausedForCache, bool? demuxerViaNetwork, bool? demuxerIdle, double? cacheSpeed, int? cacheBufferingState, Object? readError = unset, Object? skippedSegments = unset, Map<String, String>? metadata, Map<String, String>? chapterMetadata, List<Chapter>? chapters, List<MpvTrack>? tracks, Object? currentAudioTrack = unset, AudioParams? audioParams, Object? audioBitrate = unset, Object? coverArt = unset, String? mediaTitle, String? fileFormat, int? fileSize, String? path, String? filename, String? streamPath, String? streamOpenFilename, String? playlistPath, String? currentDemuxer, Duration? demuxerStartTime, AudioParams? audioOutParams, Device? audioDevice, List<Device>? audioDevices, AudioOutputState? audioOutputState, String? currentAo, Object? systemVolume = unset, Object? systemMute = unset, double? volume, bool? mute, double? volumeMax, double? volumeGain, double? volumeGainMin, double? volumeGainMax, double? rate, double? pitch, bool? pitchCorrection, Duration? audioDelay, Gapless? gapless, ReplayGainSettings? replayGain, List<AudioEffect>? audioEffects, SpectrumSettings? spectrum, Cover? coverArtAuto, bool? prefetchPlaylist, CacheSettings? cache, DemuxerSettings? demuxer, Duration? networkTimeout, bool? tlsVerify, String? tlsCaFile, HlsBitrate? hlsBitrate, bool? cookies, String? httpProxy, bool? audioExclusive, bool? audioMediaRole, Duration? audioBuffer, bool? audioStreamSilence, bool? audioNullUntimed, Set<Spdif>? audioSpdif, int? audioSampleRate, Format? audioFormat, Channels? audioChannels, String? audioClientName, String? audioDriver, Object? mediaSession = unset, String? mpvVersion, String? ffmpegVersion})
+PlayerState.final FileState file
+PlayerState.final LibraryVersions versions
+PlayerState.final NetworkState network
+PlayerState.final OutputState output
+PlayerState.final PlaybackState playback
+PlayerState.final PlayerSettings settings
+PlayerState.new const ({this.playback = const PlaybackState(), this.network = const NetworkState(), this.file = const FileState(), this.output = const OutputState(), this.settings = const PlayerSettings(), this.versions = const LibraryVersions()})
 PlayerState: final class PlayerState
 PlayerStream.Stream<PcmFrame> tap(AudioFilter filter, {int instance = 0, required TapSide side})
 PlayerStream.final Stream<AudioOutputState> audioOutputState

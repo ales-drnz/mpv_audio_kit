@@ -8,7 +8,7 @@ part of '../player.dart';
 mixin _PlaybackModule on _PlayerBase {
   /// Starts or resumes playback. Idempotent: a no-op when already
   /// playing, including the last moments of the queue while the output
-  /// buffer still plays. Once the queue has ended ([PlayerState.completed])
+  /// buffer still plays. Once the queue has ended ([PlayerState.playback.completed])
   /// it starts the last track again from its beginning; a source that
   /// cannot seek back there (a live stream, a closed [PcmSource]) stays at
   /// its end and the intent stays off. With nothing loaded (before any
@@ -258,12 +258,12 @@ mixin _PlaybackModule on _PlayerBase {
 
   /// Jumps to the chapter at [index] in the current file.
   ///
-  /// Indexing is 0-based and matches [PlayerState.chapters]; -1 goes to
+  /// Indexing is 0-based and matches [PlayerState.file.chapters]; -1 goes to
   /// the start of the file. mpv refuses any index outside -1 to
   /// `chapters.length - 1`, and the call then throws
-  /// [MpvCommandException] with [PlayerState.currentChapter] unchanged:
+  /// [MpvCommandException] with [PlayerState.playback.currentChapter] unchanged:
   /// check the length for a "next chapter" button. An accepted index
-  /// reaches [PlayerState.currentChapter] at once, and the next observer
+  /// reaches [PlayerState.playback.currentChapter] at once, and the next observer
   /// event confirms it.
   Future<void> setChapter(int index) async {
     await _gate();
@@ -284,7 +284,7 @@ mixin _PlaybackModule on _PlayerBase {
   /// freshly-loaded stream has an empty
   /// `chapter-list`. This writes the list directly through the stable C API
   /// (`mpv_set_property` on `chapter-list`), so [PlayerStream.chapters] and
-  /// [PlayerState.chapters] then reflect them and [setChapter] navigates them
+  /// [PlayerState.file.chapters] then reflect them and [setChapter] navigates them
   /// natively: no demuxer chapters required. Pass an empty list to clear.
   ///
   /// Timing: call this AFTER the file is loaded (e.g. on the first

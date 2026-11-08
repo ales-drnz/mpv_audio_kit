@@ -37,8 +37,8 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 300));
 
         expect(await player.getRawPropertyNode('metadata'), isEmpty);
-        expect(_slashes(player.state.path), _slashes(tagless));
-        expect(player.state.metadata, isEmpty);
+        expect(_slashes(player.state.file.path), _slashes(tagless));
+        expect(player.state.file.metadata, isEmpty);
         expect(await player.stream.metadata.first, isEmpty);
       });
     }

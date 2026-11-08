@@ -48,11 +48,11 @@ void main() {
 
         await player.openAll([for (final f in fixtures) Media(f)]);
         await reorderedFuture;
-        final originalOrder = player.state.playlist.items
+        final originalOrder = player.state.playback.playlist.items
             .map((m) => m.uri)
             .toList(growable: false);
 
-        List<String> order() => player.state.playlist.items
+        List<String> order() => player.state.playback.playlist.items
             .map((m) => m.uri)
             .toList(growable: false);
 
@@ -68,7 +68,7 @@ void main() {
 
         await player.setShuffle(true);
         await shuffleStateFuture;
-        expect(player.state.shuffle, isTrue);
+        expect(player.state.playback.shuffle, isTrue);
 
         // The order must change. A random shuffle of 5 items gives the
         // original order back once in 120 runs (CI run 42047677582), so

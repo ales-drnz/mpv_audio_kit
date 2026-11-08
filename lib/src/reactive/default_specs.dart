@@ -154,7 +154,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       reactive: r.audioParams,
       parse: (raw, s) {
         final node = parseAudioParamsNode(raw);
-        return s.audioParams.copyWith(
+        return s.file.audioParams.copyWith(
           format: node.format,
           sampleRate: node.sampleRate,
           channels: node.channels,
@@ -163,7 +163,7 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
         );
       },
       reduce: (v, s) => s.copyWith(audioParams: v),
-      unavailable: (s) => s.audioParams.copyWith(
+      unavailable: (s) => s.file.audioParams.copyWith(
         format: null,
         sampleRate: null,
         channels: null,
@@ -180,17 +180,17 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
       name: 'audio-codec',
       reactive: r.audioParams,
       parse: (raw, s) =>
-          s.audioParams.copyWith(codec: raw.isEmpty ? null : raw),
+          s.file.audioParams.copyWith(codec: raw.isEmpty ? null : raw),
       reduce: (v, s) => s.copyWith(audioParams: v),
-      unavailable: (s) => s.audioParams.copyWith(codec: null),
+      unavailable: (s) => s.file.audioParams.copyWith(codec: null),
     ),
     MpvPropertySpec<AudioParams>.string(
       name: 'audio-codec-name',
       reactive: r.audioParams,
       parse: (raw, s) =>
-          s.audioParams.copyWith(codecName: raw.isEmpty ? null : raw),
+          s.file.audioParams.copyWith(codecName: raw.isEmpty ? null : raw),
       reduce: (v, s) => s.copyWith(audioParams: v),
-      unavailable: (s) => s.audioParams.copyWith(codecName: null),
+      unavailable: (s) => s.file.audioParams.copyWith(codecName: null),
     ),
 
     // ── Audio params (hardware side) ─────────────────────────────────────
@@ -214,25 +214,28 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<ReplayGainSettings>.string(
       name: 'replaygain',
       reactive: r.replayGain,
-      parse: (raw, s) => s.replayGain.copyWith(mode: ReplayGain.fromMpv(raw)),
+      parse: (raw, s) =>
+          s.settings.replayGain.copyWith(mode: ReplayGain.fromMpv(raw)),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
     MpvPropertySpec<ReplayGainSettings>.double(
       name: 'replaygain-preamp',
       reactive: r.replayGain,
-      parse: (raw, s) => s.replayGain.copyWith(preamp: canonicalFloat(raw)),
+      parse: (raw, s) =>
+          s.settings.replayGain.copyWith(preamp: canonicalFloat(raw)),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
     MpvPropertySpec<ReplayGainSettings>.double(
       name: 'replaygain-fallback',
       reactive: r.replayGain,
-      parse: (raw, s) => s.replayGain.copyWith(fallback: canonicalFloat(raw)),
+      parse: (raw, s) =>
+          s.settings.replayGain.copyWith(fallback: canonicalFloat(raw)),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
     MpvPropertySpec<ReplayGainSettings>.flag(
       name: 'replaygain-clip',
       reactive: r.replayGain,
-      parse: (raw, s) => s.replayGain.copyWith(clip: raw),
+      parse: (raw, s) => s.settings.replayGain.copyWith(clip: raw),
       reduce: (v, s) => s.copyWith(replayGain: v),
     ),
     MpvPropertySpec<double>.double(
@@ -275,37 +278,39 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<CacheSettings>.string(
       name: 'cache',
       reactive: r.cache,
-      parse: (raw, s) => s.cache.copyWith(mode: Cache.fromMpv(raw)),
+      parse: (raw, s) => s.settings.cache.copyWith(mode: Cache.fromMpv(raw)),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
     MpvPropertySpec<CacheSettings>.double(
       name: 'cache-secs',
       reactive: r.cache,
-      parse: (raw, s) => s.cache.copyWith(secs: secondsToDuration(raw)),
+      parse: (raw, s) =>
+          s.settings.cache.copyWith(secs: secondsToDuration(raw)),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
     MpvPropertySpec<CacheSettings>.flag(
       name: 'cache-on-disk',
       reactive: r.cache,
-      parse: (raw, s) => s.cache.copyWith(onDisk: raw),
+      parse: (raw, s) => s.settings.cache.copyWith(onDisk: raw),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
     MpvPropertySpec<CacheSettings>.flag(
       name: 'cache-pause',
       reactive: r.cache,
-      parse: (raw, s) => s.cache.copyWith(pause: raw),
+      parse: (raw, s) => s.settings.cache.copyWith(pause: raw),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
     MpvPropertySpec<CacheSettings>.double(
       name: 'cache-pause-wait',
       reactive: r.cache,
-      parse: (raw, s) => s.cache.copyWith(pauseWait: secondsToDuration(raw)),
+      parse: (raw, s) =>
+          s.settings.cache.copyWith(pauseWait: secondsToDuration(raw)),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
     MpvPropertySpec<CacheSettings>.flag(
       name: 'cache-pause-initial',
       reactive: r.cache,
-      parse: (raw, s) => s.cache.copyWith(pauseInitial: raw),
+      parse: (raw, s) => s.settings.cache.copyWith(pauseInitial: raw),
       reduce: (v, s) => s.copyWith(cache: v),
     ),
     // ── Demuxer ──────────────────────────────────────────────────────────
@@ -314,19 +319,20 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<DemuxerSettings>.int64(
       name: 'demuxer-max-bytes',
       reactive: r.demuxer,
-      parse: (raw, s) => s.demuxer.copyWith(maxBytes: raw),
+      parse: (raw, s) => s.settings.demuxer.copyWith(maxBytes: raw),
       reduce: (v, s) => s.copyWith(demuxer: v),
     ),
     MpvPropertySpec<DemuxerSettings>.int64(
       name: 'demuxer-max-back-bytes',
       reactive: r.demuxer,
-      parse: (raw, s) => s.demuxer.copyWith(maxBackBytes: raw),
+      parse: (raw, s) => s.settings.demuxer.copyWith(maxBackBytes: raw),
       reduce: (v, s) => s.copyWith(demuxer: v),
     ),
     MpvPropertySpec<DemuxerSettings>.double(
       name: 'demuxer-readahead-secs',
       reactive: r.demuxer,
-      parse: (raw, s) => s.demuxer.copyWith(readahead: secondsToDuration(raw)),
+      parse: (raw, s) =>
+          s.settings.demuxer.copyWith(readahead: secondsToDuration(raw)),
       reduce: (v, s) => s.copyWith(demuxer: v),
     ),
     MpvPropertySpec<Duration>.double(

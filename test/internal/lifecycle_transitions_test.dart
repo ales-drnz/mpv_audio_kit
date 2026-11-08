@@ -9,7 +9,7 @@ import 'package:test/test.dart';
 void main() {
   group('computeLifecycle — partial updates', () {
     test('null fields leave state and "did-change" flags untouched', () {
-      const prev = PlayerState(playing: true);
+      const prev = PlayerState(playback: PlaybackState(playing: true));
       final r = computeLifecycle(prev: prev);
       expect(r.newState, prev);
       expect(r.playingDidChange, isFalse);
@@ -18,11 +18,14 @@ void main() {
     });
 
     test('only the supplied fields are written into newState', () {
-      const prev = PlayerState(playing: true, buffering: true);
+      const prev = PlayerState(
+        playback: PlaybackState(playing: true),
+        network: NetworkState(buffering: true),
+      );
       final r = computeLifecycle(prev: prev, completed: true);
-      expect(r.newState.playing, isTrue, reason: 'untouched');
-      expect(r.newState.buffering, isTrue, reason: 'untouched');
-      expect(r.newState.completed, isTrue);
+      expect(r.newState.playback.playing, isTrue, reason: 'untouched');
+      expect(r.newState.network.buffering, isTrue, reason: 'untouched');
+      expect(r.newState.playback.completed, isTrue);
       expect(r.completedDidChange, isTrue);
       expect(r.playingDidChange, isFalse);
       expect(r.bufferingDidChange, isFalse);
@@ -37,22 +40,21 @@ void main() {
         readError: true,
         skippedSegments: 2,
       ).newState;
-      expect(done.readError, isTrue);
-      expect(done.skippedSegments, 2);
+      expect(done.network.readError, isTrue);
+      expect(done.network.skippedSegments, 2);
       final next = computeLifecycle(prev: done, completed: false).newState;
-      expect(next.readError, isNull);
-      expect(next.skippedSegments, isNull);
+      expect(next.network.readError, isNull);
+      expect(next.network.skippedSegments, isNull);
     });
 
     test('an update without completed keeps it', () {
       const prev = PlayerState(
-        completed: true,
-        readError: false,
-        skippedSegments: 0,
+        playback: PlaybackState(completed: true),
+        network: NetworkState(readError: false, skippedSegments: 0),
       );
       final r = computeLifecycle(prev: prev, playing: false);
-      expect(r.newState.readError, isFalse);
-      expect(r.newState.skippedSegments, 0);
+      expect(r.newState.network.readError, isFalse);
+      expect(r.newState.network.skippedSegments, 0);
     });
   });
 
@@ -63,7 +65,7 @@ void main() {
       // *different* reactives. A spurious emit on `_buffering` from
       // `_updateLifecycle(buffering: true)` when buffering was already
       // true would re-trigger consumers' loading-spinner UX.
-      const prev = PlayerState(playing: true);
+      const prev = PlayerState(playback: PlaybackState(playing: true));
       final r = computeLifecycle(
         prev: prev,
         playing: true,
@@ -82,7 +84,7 @@ void main() {
         'buffering (the missing emit that broke loading spinners)', () {
       const prev = PlayerState();
       final r = computeLifecycle(prev: prev, buffering: true, completed: false);
-      expect(r.newState.buffering, isTrue);
+      expect(r.newState.network.buffering, isTrue);
       expect(
         r.bufferingDidChange,
         isTrue,
@@ -94,22 +96,22 @@ void main() {
 
     test('FileLoaded: prev=buffering → buffering=false must signal change '
         '(consumer must see "stopped buffering")', () {
-      const prev = PlayerState(buffering: true);
+      const prev = PlayerState(network: NetworkState(buffering: true));
       final r = computeLifecycle(prev: prev, buffering: false);
       expect(r.bufferingDidChange, isTrue);
     });
 
     test('EndFile (eof): prev=playing → playing=false + completed=true '
         '(both flags must change on a clean finish)', () {
-      const prev = PlayerState(playing: true);
+      const prev = PlayerState(playback: PlaybackState(playing: true));
       final r = computeLifecycle(
         prev: prev,
         playing: false,
         buffering: false,
         completed: true,
       );
-      expect(r.newState.playing, isFalse);
-      expect(r.newState.completed, isTrue);
+      expect(r.newState.playback.playing, isFalse);
+      expect(r.newState.playback.completed, isTrue);
       expect(r.playingDidChange, isTrue);
       expect(
         r.completedDidChange,
@@ -133,10 +135,13 @@ void main() {
 
     test('idle-active=true: clears both playing and buffering '
         '(matches the onIdleActive callback wiring in default specs)', () {
-      const prev = PlayerState(playing: true, buffering: true);
+      const prev = PlayerState(
+        playback: PlaybackState(playing: true),
+        network: NetworkState(buffering: true),
+      );
       final r = computeLifecycle(prev: prev, playing: false, buffering: false);
-      expect(r.newState.playing, isFalse);
-      expect(r.newState.buffering, isFalse);
+      expect(r.newState.playback.playing, isFalse);
+      expect(r.newState.network.buffering, isFalse);
       expect(r.playingDidChange, isTrue);
       expect(r.bufferingDidChange, isTrue);
     });

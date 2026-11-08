@@ -75,14 +75,14 @@ void main() {
                 'stop() was the last transport call in program order',
           );
           expect(
-            player.state.playing,
+            player.state.playback.playing,
             isFalse,
             reason:
                 'stop() was the final call — nothing may be producing '
                 'audio once both futures settle',
           );
           expect(
-            player.state.playWhenReady,
+            player.state.playback.playWhenReady,
             isFalse,
             reason:
                 'stop() releases the play intent; the superseded open() '

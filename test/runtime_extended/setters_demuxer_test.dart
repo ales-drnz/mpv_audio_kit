@@ -32,9 +32,12 @@ void main() {
           readahead: Duration(seconds: 10),
         );
         await player.setDemuxer(cfg);
-        expect(player.state.demuxer.maxBytes, 100 * 1024 * 1024);
-        expect(player.state.demuxer.maxBackBytes, 25 * 1024 * 1024);
-        expect(player.state.demuxer.readahead, const Duration(seconds: 10));
+        expect(player.state.settings.demuxer.maxBytes, 100 * 1024 * 1024);
+        expect(player.state.settings.demuxer.maxBackBytes, 25 * 1024 * 1024);
+        expect(
+          player.state.settings.demuxer.readahead,
+          const Duration(seconds: 10),
+        );
         await expectMpv(player, 'demuxer-max-bytes', 100 * 1024 * 1024);
         await expectMpv(player, 'demuxer-max-back-bytes', 25 * 1024 * 1024);
         await expectMpv(player, 'demuxer-readahead-secs', 10.0);
@@ -44,8 +47,10 @@ void main() {
         // 100 MiB + 1 byte. The byte-precise contract forwards the exact int
         // rather than flooring to whole MiB.
         const bytes = 100 * 1024 * 1024 + 1;
-        await player.setDemuxer(player.state.demuxer.copyWith(maxBytes: bytes));
-        expect(player.state.demuxer.maxBytes, bytes);
+        await player.setDemuxer(
+          player.state.settings.demuxer.copyWith(maxBytes: bytes),
+        );
+        expect(player.state.settings.demuxer.maxBytes, bytes);
         // The state holds the value passed in: only mpv tells a cap that
         // was floored to whole MiB on the way.
         await expectMpv(player, 'demuxer-max-bytes', bytes);
@@ -56,12 +61,12 @@ void main() {
         // to whole seconds (mpv's demuxer-readahead-secs is a fractional-seconds
         // Double).
         await player.setDemuxer(
-          player.state.demuxer.copyWith(
+          player.state.settings.demuxer.copyWith(
             readahead: const Duration(milliseconds: 1500),
           ),
         );
         expect(
-          player.state.demuxer.readahead,
+          player.state.settings.demuxer.readahead,
           const Duration(milliseconds: 1500),
         );
         await expectMpv(player, 'demuxer-readahead-secs', 1.5);
@@ -70,11 +75,11 @@ void main() {
       test('a single field can be tweaked via copyWith', () async {
         // Seekback pool set to zero (radio / live use case) leaves the other
         // two fields untouched.
-        final before = player.state.demuxer;
+        final before = player.state.settings.demuxer;
         await player.setDemuxer(before.copyWith(maxBackBytes: 0));
-        expect(player.state.demuxer.maxBackBytes, 0);
-        expect(player.state.demuxer.maxBytes, before.maxBytes);
-        expect(player.state.demuxer.readahead, before.readahead);
+        expect(player.state.settings.demuxer.maxBackBytes, 0);
+        expect(player.state.settings.demuxer.maxBytes, before.maxBytes);
+        expect(player.state.settings.demuxer.readahead, before.readahead);
         await expectMpv(player, 'demuxer-max-back-bytes', 0);
         await expectMpv(player, 'demuxer-max-bytes', before.maxBytes);
       }, timeout: const Timeout(Duration(seconds: 15)));
