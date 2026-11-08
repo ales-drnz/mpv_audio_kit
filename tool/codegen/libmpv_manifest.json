@@ -1,5 +1,5 @@
 {
-  "release": "r22",
+  "release": "r23",
   "mpv": "0.41.0",
   "ffmpeg": "8.1.1",
   "license": "LGPL-3.0-or-later",
@@ -405,25 +405,25 @@
     ]
   },
   "source": {
-    "commit": "6d810a53d83de67db42d4c2b98d5bdb3edb00933",
-    "run": "42092521625"
+    "commit": "7bd23a3899383ccfeeed4d94bd848c170234eab0",
+    "run": "42424196450"
   },
   "assets": {
-    "libmpv_android-arm64-v8a.so": "9a361858f4cb2a0a0824180cada068b1e5058ed76dd1f72f3078e4f1727ca25f",
-    "libmpv_android-armeabi-v7a.so": "0c0fc39c4f3efbd7177ab6215e32b55b19b89823e50cbb206623c18b5eeb3fc0",
-    "libmpv_android-x86_64.so": "e270ac0f533a59d7c0c36f79db0a0258b0df556eb4c7e58c426ab0772913937e",
-    "libmpv_ios.xcframework.zip": "61729024e141d7e38282ef6444e2f5026b9534bf9b261290f61d2b93db27209b",
-    "libmpv_linux-aarch64.so": "7eea0985650e02aef875fcdfe2cb8d815278b4789c34dda6cfb05a4584d80491",
-    "libmpv_linux-x86_64.so": "4ec235f4c0eff8ef356bac85843d9eab46291795b0ccdadafcca91c26b977cb1",
-    "libmpv_macos.xcframework.zip": "22a5164f3ed74d8d052fd41d60aeefc9dbb54a00f79e2cd4e873aa3d041c640c",
-    "libmpv_tvos.xcframework.zip": "0739373cd6a760f007dda514f6af65bed0137196192bdc46c72c0045f4733184",
-    "libmpv_web.zip": "5448e636d524a40e221ed2284b46dd200c1ebf274256d3f4c30b99da10f85f04",
-    "libmpv_windows-arm64.dll": "b221936242add142a1958afe3daca2c2c45c27e2641f7bfa2a6a73c200561b32",
-    "libmpv_windows-x86_64.dll": "fb5edf6dade4ba18acdfad75cd7b81cfd700e21f4de79e617023395d7109f01c"
+    "libmpv_android-arm64-v8a.so": "cc2b328fd2b3ae6ece527c9acda048ac3d8ecd8854e4ef6184db3cb62b11553a",
+    "libmpv_android-armeabi-v7a.so": "0415456779015ad2d62ce7b1549c0adb54821986e88c2b0ac82053e3af31cccb",
+    "libmpv_android-x86_64.so": "0f0bbc952feed353e5bfd4bc0c1af2d4944631574caf953883cfde7755e0a219",
+    "libmpv_ios.xcframework.zip": "cd5c8700c19b12c7e802410a07e4fd93fb906a245a391330a985d34abdf73cea",
+    "libmpv_linux-aarch64.so": "3bc9b3277705686e00303f2a2cebeef6dc9ad22a5b1f71f41de78557d5904789",
+    "libmpv_linux-x86_64.so": "13d59f9026d831d8c69fc897b7f120e1d96ed67a8fb0e10e206b1adc44786239",
+    "libmpv_macos.xcframework.zip": "55c720db17eaaa20f8928cc53587a06dfcb92c154db8a0a5fe20f2552730898e",
+    "libmpv_tvos.xcframework.zip": "3237ffba0bf95873232ea0594209598cb1d302f0c28ed2281f6ff07adec5d58d",
+    "libmpv_web.zip": "980902e299ac31a5807f6cdaa6e85b4a920f44aac2b57c0a9bdea65115089737",
+    "libmpv_windows-arm64.dll": "d72b331061cdbfc61f85595a2879aac06fbea9c4ab966be819ebf870ff94c42a",
+    "libmpv_windows-x86_64.dll": "36928dcaf795385f476c0484077757c91b946436fc0c4954c0f344d093bdd7b1"
   },
   "licenses": {
     "asset": "licenses.zip",
-    "sha256": "837b8a9d65cb0a52f946b05aacd7c62c802b31a6f17c3d1e0650d86f53b87129"
+    "sha256": "2b391eefa5933724da35a63c63e9ecbcd0fb024e3d335e7de8d450639d7ee60b"
   },
   "web": {
     "asset": "libmpv_web.zip",
@@ -432,7 +432,7 @@
     "emscripten": "6.0.12",
     "files": {
       "libmpv.mjs": "a828dc54cc9a95d5c4b335c7b6dc3ae11691c511f4866dec6c4f211972d1387f",
-      "libmpv.wasm": "b9c6f53323d51e49d86acf0c2ef2aeab5ecbdd980cb7745bdbe1dc63cad4f5a9",
+      "libmpv.wasm": "fee27b40ce6c959fd190a38dc72a482bdf783004f579b4cb1a0cea1dd4bf8e37",
       "mak_webaudio_processor.js": "253e3882e772051e749292e518768c75e2d61a807355d45d00ad7215f7c7bee4"
     }
   },

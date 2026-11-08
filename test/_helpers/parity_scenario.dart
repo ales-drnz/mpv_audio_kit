@@ -224,10 +224,13 @@ Future<List<String>> runParityScenario(ParityFixtures f) async {
         play: false,
       ),
     );
-    await waitUntil(
-      () => milestones.any((m) => m.startsWith('loaded resolved')),
-      what: 'the resolved file loaded',
-    );
+    // Its restart too: the subscriptions end below, and a restart that
+    // comes after the load would be left out (macOS, run 42197962540).
+    await waitUntil(() {
+      final at = milestones.indexWhere((m) => m.startsWith('loaded resolved'));
+      return at >= 0 &&
+          milestones.skip(at + 1).any((m) => m.startsWith('restart'));
+    }, what: 'the resolved file loaded and restarted');
     expect(requests, ['mak-test://cover {k: v}']);
     expect(positionsInBounds, isTrue, reason: 'an end position past its file');
     await _step('no resolver', player.setSourceResolver(null));

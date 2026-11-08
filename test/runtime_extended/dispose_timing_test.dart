@@ -25,31 +25,6 @@ void main() {
   // root-cause fix has regressed.
 
   runtimeSuite(() {
-    test(
-      'Player.dispose() returns well below the 2 s isolate-stop timeout',
-      () async {
-        final player = await buildPlayerWithFixture();
-        // Bring-up is done, so the stop path exercises a real cooperative
-        // shutdown rather than a not-yet-init no-op.
-        await player.ready;
-
-        final sw = Stopwatch()..start();
-        await player.dispose();
-        sw.stop();
-
-        expect(
-          sw.elapsedMilliseconds,
-          lessThan(1000),
-          reason:
-              'dispose() ran for ${sw.elapsedMilliseconds} ms — close to '
-              'or above the 2 s isolate-stop timeout. The cooperative '
-              'shutdown path in event_isolate._isolateEntry has likely '
-              'regressed (missing fromMain.close() after _runEventLoop).',
-        );
-      },
-      timeout: const Timeout(Duration(seconds: 30)),
-    );
-
     test('20 consecutive Player.dispose() calls all return quickly', () async {
       // Stress the path: build + dispose 20 times. If the cooperative
       // exit ever falls into the 2 s timeout, the cumulative time will

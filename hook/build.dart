@@ -40,23 +40,23 @@ const _baseUrl =
 /// SHA-256 of every release asset, from the release's manifest.json.
 const _sha256 = <String, String>{
   'libmpv_android-arm64-v8a.so':
-      '9a361858f4cb2a0a0824180cada068b1e5058ed76dd1f72f3078e4f1727ca25f',
+      'cc2b328fd2b3ae6ece527c9acda048ac3d8ecd8854e4ef6184db3cb62b11553a',
   'libmpv_android-armeabi-v7a.so':
-      '0c0fc39c4f3efbd7177ab6215e32b55b19b89823e50cbb206623c18b5eeb3fc0',
+      '0415456779015ad2d62ce7b1549c0adb54821986e88c2b0ac82053e3af31cccb',
   'libmpv_android-x86_64.so':
-      'e270ac0f533a59d7c0c36f79db0a0258b0df556eb4c7e58c426ab0772913937e',
+      '0f0bbc952feed353e5bfd4bc0c1af2d4944631574caf953883cfde7755e0a219',
   'libmpv_ios.xcframework.zip':
-      '61729024e141d7e38282ef6444e2f5026b9534bf9b261290f61d2b93db27209b',
+      'cd5c8700c19b12c7e802410a07e4fd93fb906a245a391330a985d34abdf73cea',
   'libmpv_linux-aarch64.so':
-      '7eea0985650e02aef875fcdfe2cb8d815278b4789c34dda6cfb05a4584d80491',
+      '3bc9b3277705686e00303f2a2cebeef6dc9ad22a5b1f71f41de78557d5904789',
   'libmpv_linux-x86_64.so':
-      '4ec235f4c0eff8ef356bac85843d9eab46291795b0ccdadafcca91c26b977cb1',
+      '13d59f9026d831d8c69fc897b7f120e1d96ed67a8fb0e10e206b1adc44786239',
   'libmpv_macos.xcframework.zip':
-      '22a5164f3ed74d8d052fd41d60aeefc9dbb54a00f79e2cd4e873aa3d041c640c',
+      '55c720db17eaaa20f8928cc53587a06dfcb92c154db8a0a5fe20f2552730898e',
   'libmpv_windows-arm64.dll':
-      'b221936242add142a1958afe3daca2c2c45c27e2641f7bfa2a6a73c200561b32',
+      'd72b331061cdbfc61f85595a2879aac06fbea9c4ab966be819ebf870ff94c42a',
   'libmpv_windows-x86_64.dll':
-      'fb5edf6dade4ba18acdfad75cd7b81cfd700e21f4de79e617023395d7109f01c',
+      '36928dcaf795385f476c0484077757c91b946436fc0c4954c0f344d093bdd7b1',
 };
 
 void main(List<String> args) async {
@@ -69,7 +69,7 @@ void main(List<String> args) async {
     // an OS it does not know.
     if (_targetOSName(input) == 'tvos') return;
     final code = input.config.code;
-    final target = _Target.of(code);
+    final target = _Target.of(code, iOSVersion: _iOSVersion(input));
     final out = File.fromUri(input.outputDirectory.resolve(target.fileName));
 
     final local = input.userDefines.path('libmpv');
@@ -131,6 +131,21 @@ String? _targetOSName(BuildInput input) {
   return os is String ? os : null;
 }
 
+/// The iOS version the build targets, as Flutter writes it in the input:
+/// `deployment_version` (code_assets 2.2) or `target_version` before.
+/// Read raw, as [_targetOSName]: code_assets 2.2 deprecates
+/// `IOSCodeConfig.targetVersion` for `deploymentVersion`, which the
+/// code_assets 1.x of Flutter 3.41 lacks. `null` when the input has none.
+int? _iOSVersion(BuildInput input) {
+  final extensions = input.config.json['extensions'];
+  final code = extensions is Map ? extensions['code_assets'] : null;
+  final ios = code is Map ? code['ios'] : null;
+  if (ios is! Map) return null;
+  final deployment = ios['deployment_version'];
+  final major = deployment is Map ? deployment['major'] : ios['target_version'];
+  return major is int ? major : null;
+}
+
 /// Which release asset a target needs, and the file name it is bundled
 /// under. The name is the package's own, never `libmpv`, so it cannot
 /// collide with another plugin's copy on disk or in the loader (bionic
@@ -148,7 +163,7 @@ class _Target {
   /// The xcframework directory holding the slice, on Apple.
   final String? appleSlice;
 
-  static _Target of(CodeConfig code) {
+  static _Target of(CodeConfig code, {int? iOSVersion}) {
     final arch = code.targetArchitecture;
     Never unsupported() => throw UnsupportedError(
       'mpv_audio_kit: no libmpv for ${code.targetOS} '
@@ -157,11 +172,11 @@ class _Target {
     // The iOS binary is built for iOS 15, and Flutter writes this version
     // into the framework's MinimumOSVersion: a lower one does not match the
     // binary. Flutter before 3.47.4 passes 12 or 13.
-    if (code.targetOS == OS.iOS && code.iOS.targetVersion < 15) {
+    if (code.targetOS == OS.iOS && iOSVersion != null && iOSVersion < 15) {
       throw UnsupportedError(
         'mpv_audio_kit: building for iOS needs Flutter 3.47.4 or later, '
         'which targets iOS 15 like the bundled libmpv '
-        '(this Flutter targets iOS ${code.iOS.targetVersion}).',
+        '(this Flutter targets iOS $iOSVersion).',
       );
     }
     return switch (code.targetOS) {

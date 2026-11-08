@@ -47,6 +47,7 @@ Playlist parsePlaylistNode({
   required Map<String, Media> mediaCache,
   Map<int, Media> mediaByEntry = const {},
   required Playlist previous,
+  int? skip,
 }) {
   // Defensive: a non-list payload means mpv emitted something unexpected
   // for `playlist`. Preserve the previous value rather than clobber the
@@ -54,10 +55,13 @@ Playlist parsePlaylistNode({
   if (raw is! List) {
     return previous;
   }
+  // An entry mpv still lists that the state leaves out: see
+  // [retainedEntryAt].
+  final entries = _without(raw, skip);
   final medias = <Media>[];
   var currentIndex = -1;
-  for (var i = 0; i < raw.length; i++) {
-    final entry = raw[i];
+  for (var i = 0; i < entries.length; i++) {
+    final entry = entries[i];
     if (entry is! Map) {
       medias.add(const Media(''));
       continue;
@@ -102,6 +106,26 @@ Playlist parsePlaylistNode({
     idx = -1;
   }
   return Playlist(medias, index: idx);
+}
+
+/// [raw] without its entry at [skip], when there is one.
+List<Object?> _without(List<Object?> raw, int? skip) =>
+    skip == null || skip >= raw.length ? raw : (List.of(raw)..removeAt(skip));
+
+/// Where the `playlist` node [raw] lists the entry [id] while it is not
+/// the current one, or `null`. [Player.openAll] keeps the entry that
+/// plays until the new ones are in, jumps to the new one, then removes the
+/// old: in between mpv lists it ahead of the new entries, and the state
+/// leaves it out ([parsePlaylistNode]'s `skip`).
+int? retainedEntryAt(dynamic raw, int? id) {
+  if (id == null || raw is! List) return null;
+  for (var i = 0; i < raw.length; i++) {
+    final entry = raw[i];
+    if (entry is Map && entry['id'] == id) {
+      return entry['current'] == true ? null : i;
+    }
+  }
+  return null;
 }
 
 /// Decodes mpv's `audio-device-list` property (`MPV_FORMAT_NODE_ARRAY`).

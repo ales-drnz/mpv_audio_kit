@@ -14,6 +14,12 @@ import 'dart:typed_data';
 /// from the native pump, which runs in an isolate of its own.
 sealed class MpvIsolateEvent {}
 
+/// A property change the player observes: one subclass per mpv format.
+sealed class MpvPropertyEvent extends MpvIsolateEvent {}
+
+/// The answer to an async request of the player.
+sealed class MpvReplyEvent extends MpvIsolateEvent {}
+
 /// mpv fired MPV_EVENT_START_FILE: a `loadfile` began opening the
 /// next entry (fires even if the open ultimately fails).
 class MpvEventStartFile extends MpvIsolateEvent {
@@ -208,7 +214,7 @@ class MpvEventEndOfContent extends MpvIsolateEvent {
 class MpvEventShutdown extends MpvIsolateEvent {}
 
 /// A `MPV_FORMAT_DOUBLE` property change (e.g. `time-pos`, `volume`).
-class MpvEventPropertyDouble extends MpvIsolateEvent {
+class MpvEventPropertyDouble extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -221,7 +227,7 @@ class MpvEventPropertyDouble extends MpvIsolateEvent {
 
 /// A `MPV_FORMAT_FLAG` or `MPV_FORMAT_INT64` property change, both
 /// delivered as a Dart [int].
-class MpvEventPropertyInt extends MpvIsolateEvent {
+class MpvEventPropertyInt extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -233,7 +239,7 @@ class MpvEventPropertyInt extends MpvIsolateEvent {
 }
 
 /// A `MPV_FORMAT_STRING` property change.
-class MpvEventPropertyString extends MpvIsolateEvent {
+class MpvEventPropertyString extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -247,7 +253,7 @@ class MpvEventPropertyString extends MpvIsolateEvent {
 /// An observed property that had a value became unavailable
 /// (`MPV_FORMAT_NONE`): the file was unloaded, or the new one has no such
 /// value. The player returns the matching state field to its seed.
-class MpvEventPropertyUnavailable extends MpvIsolateEvent {
+class MpvEventPropertyUnavailable extends MpvPropertyEvent {
   /// The mpv property name that became unavailable.
   final String name;
 
@@ -261,7 +267,7 @@ class MpvEventPropertyUnavailable extends MpvIsolateEvent {
 /// `double`, `bool`), `Uint8List` for `MPV_FORMAT_BYTE_ARRAY`, or `null` for
 /// an `MPV_FORMAT_NONE` node inside the tree. A property that is NONE
 /// itself arrives as [MpvEventPropertyUnavailable].
-class MpvEventPropertyNode extends MpvIsolateEvent {
+class MpvEventPropertyNode extends MpvPropertyEvent {
   /// The mpv property name that changed.
   final String name;
 
@@ -277,7 +283,7 @@ class MpvEventPropertyNode extends MpvIsolateEvent {
 /// by the event pump so the cell moves once: each of [events] is an
 /// [MpvEventPropertyNode], [MpvEventPropertyString] or
 /// [MpvEventPropertyUnavailable], applied in order.
-class MpvEventPropertyGroup extends MpvIsolateEvent {
+class MpvEventPropertyGroup extends MpvPropertyEvent {
   /// The held property changes, oldest first.
   final List<MpvIsolateEvent> events;
 
@@ -319,7 +325,7 @@ class MpvEventInternalLog extends MpvIsolateEvent {
 /// (MPV_EVENT_SET_PROPERTY_REPLY, MPV_EVENT_COMMAND_REPLY). The main
 /// isolate matches [userdata] against its pending-reply map and completes
 /// the corresponding `Future` with [error].
-class MpvEventReply extends MpvIsolateEvent {
+class MpvEventReply extends MpvReplyEvent {
   /// The `reply_userdata` the request was tagged with.
   final int userdata;
 
@@ -336,7 +342,7 @@ class MpvEventReply extends MpvIsolateEvent {
 
 /// Outcome of an async property read (MPV_EVENT_GET_PROPERTY_REPLY),
 /// with the value already decoded by the event pump.
-class MpvEventGetReply extends MpvIsolateEvent {
+class MpvEventGetReply extends MpvReplyEvent {
   /// The `reply_userdata` the request was tagged with.
   final int userdata;
 
