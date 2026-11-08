@@ -17,6 +17,7 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:meta/meta.dart';
 
 import '../backend/web_backend.dart' show webAudioOutput;
+import '../media_session/outside_pause.dart';
 
 @JS('navigator.mediaSession')
 external _MediaSession? get _session;
@@ -82,6 +83,8 @@ final class MpvAudioKitWeb {
   int? _durationMs;
   Map<Object?, Object?>? _playback;
   String? _artworkBlob;
+  final OutsidePauseFollower _outside = OutsidePauseFollower();
+  StreamSubscription<bool>? _outsideSub;
 
   /// Registers the plugin with the page's [registrar]. A Hot Restart runs
   /// it again: the session the replaced program left is cleared first.
@@ -111,9 +114,7 @@ final class MpvAudioKitWeb {
         _config(session, args['config'] as Map<Object?, Object?>);
         _metadata(session, args['metadata'] as Map<Object?, Object?>);
         _setPlayback(session, args['playback'] as Map<Object?, Object?>);
-        // Chrome and Firefox show the controls of a media element only:
-        // the page's output plays through one while the session is on.
-        (await webAudioOutput()).routeToElement(true);
+        await _routeToElement();
       case 'updateConfig':
         if (_enabled) _config(session, call.arguments as Map<Object?, Object?>);
       case 'updateMetadata':
@@ -126,6 +127,8 @@ final class MpvAudioKitWeb {
         }
       case 'disable':
         final was = _enabled;
+        await _outsideSub?.cancel();
+        _outsideSub = null;
         _clear();
         if (was) (await webAudioOutput()).routeToElement(false);
       default:
@@ -134,7 +137,28 @@ final class MpvAudioKitWeb {
     return null;
   }
 
+  /// Plays the page's output through the session's `<audio>` element:
+  /// Chrome and Firefox show the controls of a media element only. An
+  /// outside pause of that element follows the interruption policy, as an
+  /// interruption on iOS and Android.
+  Future<void> _routeToElement() async {
+    final previous = _outsideSub;
+    _outsideSub = null;
+    await previous?.cancel();
+    final output = await webAudioOutput();
+    // A disable while the output loaded: nothing to route or follow.
+    if (!_enabled) return;
+    output.routeToElement(true);
+    await _outsideSub?.cancel();
+    _outsideSub = output.outsidePlayback.listen(_onOutside);
+  }
+
   void _config(_MediaSession session, Map<Object?, Object?> config) {
+    if (config.containsKey('interruptionPolicy')) {
+      _outside.policy = OutsidePauseFollower.policyOf(
+        config['interruptionPolicy'],
+      );
+    }
     _forwardMs = config['fastForwardIntervalMs'] as int? ?? _forwardMs;
     _backwardMs = config['rewindIntervalMs'] as int? ?? _backwardMs;
     _actions = {
@@ -154,7 +178,18 @@ final class MpvAudioKitWeb {
     }
   }
 
+  void _onOutside(bool elementPlaying) {
+    if (!_enabled) return;
+    final type = _outside.onOutside(
+      elementPlaying: elementPlaying,
+      playing: _playback?['playing'] == true,
+    );
+    if (type != null) _commands.add({'type': type});
+  }
+
   void _onAction(String action, JSObject details) {
+    // An action of the user's own ends an outside pause.
+    _outside.reset();
     final command = switch (action) {
       'play' => {'type': 'play'},
       'pause' => {'type': 'pause'},
@@ -227,6 +262,8 @@ final class MpvAudioKitWeb {
 
   void _setPlayback(_MediaSession session, Map<Object?, Object?> p) {
     _playback = p;
+    // Played since: an outside pause that ends later plays nothing.
+    if (p['playing'] == true) _outside.reset();
     session.playbackState = p['playing'] == true ? 'playing' : 'paused';
     _position(session);
   }
@@ -264,6 +301,7 @@ final class MpvAudioKitWeb {
   /// Takes everything off the browser's session.
   void _clear() {
     _enabled = false;
+    _outside.reset();
     _playback = null;
     _durationMs = null;
     final session = _session;

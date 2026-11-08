@@ -43,6 +43,12 @@ has no flat getter.
   `player.stream.loudnessScan` no longer emit `null` in between. Another
   file under the same path, or a pass that had not finished, is decoded
   again as before.
+- On the web, a pause of the media session's `<audio>` element from
+  outside the page (the browser, a call, another app) follows
+  `MediaSession.interruptionPolicy`, as on iOS and Android. With the
+  default `pauseAndResume` the player pauses, and plays again when the
+  browser plays the element again; with `pauseOnly` it stays paused. 0.6
+  played on, as `keepPlaying` still does.
 
 # Migrating to 0.6.2
 
