@@ -52,6 +52,16 @@ release "${assets[@]:1}"
 expect_eq "a release without one of its assets stops the run" 1 "$(preflight "" "" "")"
 expect_log "and names it" "::error::.*has no ${assets[0]}"
 
+# A row with no SHA yet (a platform the next release adds) is not pinned:
+# the release need not have it.
+cp hook/build.dart "$scratch/build.dart.pinned"
+sed -i "s/^const _sha256 = <String, String>{\$/&\\n  'libmpv_future.so': '',/" hook/build.dart
+grep -q "^  'libmpv_future.so': ''," hook/build.dart
+new_gh
+release "${assets[@]}"
+expect_eq "a row not pinned yet is not asked of the release" 0 "$(preflight "" "" "")"
+cp "$scratch/build.dart.pinned" hook/build.dart
+
 new_gh
 touch "$FAKE_GH/down"
 expect_eq "a release lookup GitHub cannot answer only warns" 0 "$(preflight "" "" "")"
