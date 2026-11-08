@@ -135,7 +135,9 @@ jobs:
               final at = await player.stream.position
                   .firstWhere((p) => p > const Duration(seconds: 2))
                   .timeout(const Duration(seconds: 40));
-              final driver = player.state.audioDriver;
+              // currentAo is the output mpv resolved (audioDriver is the
+              // requested one, empty for the automatic choice).
+              final driver = player.state.currentAo;
               final ok = driver == 'tizen' && player.state.playing;
               print('MAK_TIZEN_RESULT ${ok ? 'PASS' : 'FAIL'} ao=$driver '
                   'position=$at params=${player.state.audioOutParams}');
