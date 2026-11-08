@@ -5,7 +5,7 @@
 import 'libmpv_release.dart';
 
 /// The libmpv-scripts release stamped in an mpv version string:
-/// `mpv v0.41.0+r22` gives `r22`. `null` for a version without the stamp, a
+/// `mpv v0.41.0+r23` gives `r23`. `null` for a version without the stamp, a
 /// build of upstream mpv.
 String? libmpvReleaseOfVersion(String version) =>
     RegExp(r'\+(r\d+)$').firstMatch(version.trim())?.group(1);

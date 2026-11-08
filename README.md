@@ -56,7 +56,7 @@ The package is an audio player for Flutter apps that play a media library, from 
 
 ```yaml
 dependencies:
-  mpv_audio_kit: ^0.6.3
+  mpv_audio_kit: ^0.6.4
 ```
 
 The build downloads the libmpv binary for each native target and checks its SHA-256, so the first build needs network access. On the web the module ships with the package.
@@ -213,6 +213,10 @@ For background playback, add the Background Modes capability in Signing & Capabi
   <string>audio</string>
 </array>
 ```
+
+### Android TV
+
+Android TV, Fire TV and Google TV run the Android build. The app needs a leanback entry and a banner in its manifest, and the media session for the keys of the remote. See [Android TV](https://pub.dev/documentation/mpv_audio_kit/latest/topics/Android%20TV-topic.html) for the manifest and HDMI passthrough.
 
 ### tvOS
 

@@ -68,10 +68,9 @@ void main() {
 
   runtimeSuite(fixturePath: fixturePath, () {
     setUpAll(() async {
-      player = Player(
+      player = await buildPlayer(
         configuration: const PlayerConfiguration(logLevel: LogLevel.error),
       );
-      await player.setRawProperty('ao', 'null');
       await player.setLoop(Loop.file);
       await player.open(Media(fixturePath), play: true);
       await player.stream.seekCompleted.first.timeout(

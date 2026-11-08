@@ -118,19 +118,36 @@ String? fileUrlToPath(String uri, {bool? windows}) {
     return null;
   }
   final isWindows = windows ?? hostIsWindows;
-  var raw = uri.substring(7);
-  var share = false;
-  final slash = raw.indexOf('/');
-  if (slash > 0 && !_isDrive(raw.substring(0, slash))) {
-    final local = raw.substring(0, slash).toLowerCase() == 'localhost';
-    final drive = raw.length > slash + 2 && raw[slash + 2] == ':';
-    if (isWindows && !(local && drive)) {
-      share = true;
-    } else if (local) {
-      raw = raw.substring(slash);
-    }
+  final (raw, share) = _fileUrlHost(uri.substring(7), isWindows: isWindows);
+  final bytes = _percentDecode(utf8.encode(raw));
+  String path;
+  try {
+    path = utf8.decode(bytes);
+  } on FormatException {
+    return null;
   }
-  final src = utf8.encode(raw);
+  if (share) return r'\\' + path.replaceAll('/', r'\');
+  if (isWindows && path.length > 2 && path[0] == '/' && path[2] == ':') {
+    path = path.substring(1);
+  }
+  return path;
+}
+
+// The part of a `file://` URL after the scheme, [raw], without its host
+// when that is `localhost`, and whether it names a Windows share: a host
+// other than `localhost` on Windows, or `localhost` before no drive.
+(String, bool) _fileUrlHost(String raw, {required bool isWindows}) {
+  final slash = raw.indexOf('/');
+  if (slash <= 0 || _isDrive(raw.substring(0, slash))) return (raw, false);
+  final local = raw.substring(0, slash).toLowerCase() == 'localhost';
+  final drive = raw.length > slash + 2 && raw[slash + 2] == ':';
+  if (isWindows && !(local && drive)) return (raw, true);
+  return (local ? raw.substring(slash) : raw, false);
+}
+
+// [src] with each `%` and two hex digits turned into the byte they name;
+// a `%` without two hex digits stays as it is.
+List<int> _percentDecode(List<int> src) {
   final out = <int>[];
   for (var i = 0; i < src.length;) {
     if (src[i] != 0x25 || i + 2 >= src.length) {
@@ -146,17 +163,7 @@ String? fileUrlToPath(String uri, {bool? windows}) {
     }
     i += 3;
   }
-  String path;
-  try {
-    path = utf8.decode(out);
-  } on FormatException {
-    return null;
-  }
-  if (share) return r'\\' + path.replaceAll('/', r'\');
-  if (isWindows && path.length > 2 && path[0] == '/' && path[2] == ':') {
-    path = path.substring(1);
-  }
-  return path;
+  return out;
 }
 
 // A drive letter and ':', as in `C:`: no host is written that way.

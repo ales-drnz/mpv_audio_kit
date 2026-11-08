@@ -30,14 +30,17 @@ void main() {
       ..config.setupBuild(linkingEnabled: false);
     CodeAssetExtension(
       targetArchitecture: Architecture.arm64,
-      targetOS: OS.iOS,
+      targetOS: OS.linux,
       linkModePreference: LinkModePreference.dynamic,
-      iOS: IOSCodeConfig(targetSdk: IOSSdk.iPhoneSimulator, targetVersion: 15),
     ).setupBuildInput(builder);
     final json = builder.build().json;
-    // What flutter-tvos writes: the protocol's name of the OS.
+    // What flutter-tvos writes: the protocol's name of the OS, on an iOS
+    // input. Written by hand: IOSCodeConfig has no form that both the
+    // code_assets 1.x of Flutter 3.41 and 2.2 take without a deprecation.
     final config = json['config'] as Map;
-    ((config['extensions'] as Map)['code_assets'] as Map)['target_os'] = 'tvos';
+    ((config['extensions'] as Map)['code_assets'] as Map)
+      ..['target_os'] = 'tvos'
+      ..['ios'] = {'target_sdk': 'iphonesimulator', 'target_version': 15};
     final input = File('${tmp.path}/input.json')
       ..writeAsStringSync(jsonEncode(json));
 
