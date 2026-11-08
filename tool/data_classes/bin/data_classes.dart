@@ -80,12 +80,14 @@ const List<DataClass> classes = [
 /// A class made of groups, each a data class of [classes]: its fields are
 /// the groups, and its copyWith also takes every field of every group, so
 /// a caller can set one value without naming its group. Each flat field
-/// has a deprecated getter that reads it from its group.
+/// has a deprecated getter that reads it from its group, but those of
+/// [groupOnly], added after the groups, which never were flat.
 typedef CompositeClass = ({
   String library,
   String name,
   String copyWithDoc,
   String deprecation,
+  Set<String> groupOnly,
 });
 
 const List<CompositeClass> composites = [
@@ -98,6 +100,7 @@ const List<CompositeClass> composites = [
         '/// `null` for a nullable field to clear it; omitted fields keep their\n'
         '/// current value.',
     deprecation: 'the flat fields go in 0.8.0',
+    groupOnly: {'durationEstimated'},
   ),
 ];
 
@@ -317,6 +320,7 @@ String generateComposite(
     );
   for (final g in groups) {
     for (final f in flat[g.name]!) {
+      if (c.groupOnly.contains(f.name)) continue;
       b
         ..writeln()
         ..writeln(

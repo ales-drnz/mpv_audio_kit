@@ -88,7 +88,7 @@ A paused live stream is `paused`, not `idle`.
 
 `bufferingPercentage` compares the cache with `state.settings.cache.secs`. It stays near 0 with the default cache size, so prefer `cacheBufferingState` or `bufferDuration` against your own target.
 
-`duration` is `Duration.zero` for a live stream and while it is unknown. `position` updates at most about 30 times a second.
+`duration` is `Duration.zero` for a live stream and while it is unknown. When FFmpeg estimates it from the bitrate (an MP3 without a Xing header, ADTS AAC, a length a server guessed), it can be far off: `durationEstimated` is then true, and a `Media.waveformDurationHint` takes its place. `position` updates at most about 30 times a second.
 
 ## Streams
 

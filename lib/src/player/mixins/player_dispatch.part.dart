@@ -206,6 +206,9 @@ mixin _DispatchModule on _PlayerBase {
     // with `state.playlist` or `state.path` sees the new track. The
     // `playlist` and `path` streams still emit with the observed
     // changes that follow this event, as before.
+    // Read before the new entry lands: the same file loaded again (a
+    // playlist of one entry with loop-playlist) keeps its analysis.
+    final samePath = path != null && path == _state.file.path;
     _applyLoadedEntry(path, playlist);
     _releaseSettled();
     // Emit unconditionally: `null` signals "no cover on the new
@@ -219,15 +222,16 @@ mixin _DispatchModule on _PlayerBase {
     _state = _state.copyWith(coverArt: cover);
     _coverArtCtrl.add(cover);
     // Re-arm the waveform and the loudness scan on every load, the
-    // same file loaded again included: mpv emits FILE_LOADED once per
-    // load and starts a new analysis on each one, so a result kept
-    // across it may belong to other content, or to a pass that
-    // failed. The path is no key for it: with the prefetch it can name
-    // the next entry.
+    // same file loaded again included: a result kept across it may
+    // belong to other content, or to a pass that failed. The path is no
+    // key for it: with the prefetch it can name the next entry. With the
+    // same path the finished result stays on screen until the first poll
+    // says whether it stands: mpv keeps a complete analysis of the
+    // same file, and otherwise starts a new one.
     if (_bringUpCompleted) {
-      _waveformPipeline.reset();
+      _waveformPipeline.reset(sameFile: samePath);
       // The offline loudness scan rides the same native decode pass.
-      _loudnessScanPipeline.reset();
+      _loudnessScanPipeline.reset(sameFile: samePath);
     }
   }
 

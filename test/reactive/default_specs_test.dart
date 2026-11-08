@@ -611,7 +611,7 @@ void main() {
 
       const documented = <String>{
         // Playback / timing
-        'time-pos', 'duration', 'demuxer-cache-time',
+        'time-pos', 'duration', 'duration-estimated', 'demuxer-cache-time',
         'core-idle', 'volume', 'speed', 'pitch', 'mute', 'idle-active',
         'shuffle', 'audio-pitch-correction', 'audio-delay', 'audio-bitrate',
         // `audio-device` lives outside the registry — its description

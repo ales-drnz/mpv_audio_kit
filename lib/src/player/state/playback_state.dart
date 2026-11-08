@@ -57,7 +57,18 @@ final class PlaybackState with _$PlaybackState {
 
   /// Total duration of the current track. Zero when unknown: a live
   /// stream, nothing loaded, or a track still loading.
+  ///
+  /// When FFmpeg estimated mpv's duration from the bitrate (an MP3 without
+  /// a Xing header, ADTS AAC, a length a server guessed) and the entry has
+  /// a [Media.waveformDurationHint], it is the hint: such an estimate can
+  /// be far off. An exact duration always wins over the hint.
   final Duration duration;
+
+  /// Whether [duration] is an estimate FFmpeg made from the bitrate, with
+  /// no [Media.waveformDurationHint] to replace it: it can be far off, and
+  /// [position] may pass it or stop short of it. `false` for an exact
+  /// duration, a hint, or no file. Mirrors mpv's `duration-estimated`.
+  final bool durationEstimated;
 
   /// Whether mpv is currently seeking. Useful as a UI gate to prevent
   /// new seek commands from racing the in-flight one (slider drag
@@ -140,6 +151,7 @@ final class PlaybackState with _$PlaybackState {
     this.completed = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
+    this.durationEstimated = false,
     this.seeking = false,
     this.seekable = false,
     this.partiallySeekable = false,

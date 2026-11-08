@@ -42,6 +42,11 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
   required void Function(bool idle) onIdleActive,
   required void Function(AudioOutputState state) onAudioOutputState,
 }) {
+  // mpv's own duration and whether FFmpeg estimated it, kept to combine
+  // them with the duration hint of the entry whichever comes first: the
+  // two arrive as separate changes, in either order.
+  var mpvDuration = Duration.zero;
+  var estimated = false;
   return <MpvPropertySpec<Object?>>[
     // ── Playback and timing ──────────────────────────────────────────────
     MpvPropertySpec<Duration>.double(
@@ -53,8 +58,34 @@ List<MpvPropertySpec<Object?>> buildDefaultSpecs(
     MpvPropertySpec<Duration>.double(
       name: 'duration',
       reactive: r.duration,
-      parse: _toDuration,
-      reduce: (v, s) => s.copyWith(duration: v),
+      parse: (raw, s) {
+        mpvDuration = secondsToDuration(raw);
+        return _effectiveDuration(mpvDuration, estimated, s);
+      },
+      unavailable: (s) {
+        mpvDuration = Duration.zero;
+        return Duration.zero;
+      },
+      reduce: (v, s) {
+        final e = _durationIsEstimate(mpvDuration, estimated, s);
+        r.durationEstimated.update(e);
+        return s.copyWith(duration: v, durationEstimated: e);
+      },
+    ),
+    // Combined with `duration` above: its cell holds mpv's flag, and a
+    // change of it sets both values and both streams.
+    MpvPropertySpec<bool>.flag(
+      name: 'duration-estimated',
+      reactive: r.mpvDurationEstimated,
+      parse: (raw, s) => estimated = raw,
+      unavailable: (s) => estimated = false,
+      reduce: (v, s) {
+        final d = _effectiveDuration(mpvDuration, estimated, s);
+        final e = _durationIsEstimate(mpvDuration, estimated, s);
+        r.duration.update(d);
+        r.durationEstimated.update(e);
+        return s.copyWith(duration: d, durationEstimated: e);
+      },
     ),
     MpvPropertySpec<Duration>.double(
       name: 'demuxer-cache-time',
@@ -752,6 +783,26 @@ int _identityInt(int raw, PlayerState _) => raw;
 bool _identityBool(bool raw, PlayerState _) => raw;
 String _identityString(String raw, PlayerState _) => raw;
 Duration _toDuration(double raw, PlayerState _) => secondsToDuration(raw);
+
+/// The duration hint of the playing entry, if it has one.
+Duration? _entryHint(PlayerState s) {
+  final playlist = s.playback.playlist;
+  final i = playlist.index;
+  if (i < 0 || i >= playlist.items.length) return null;
+  return playlist.items[i].waveformDurationHint;
+}
+
+/// [mpv]'s duration, or the entry's hint over one FFmpeg [estimated]
+/// from the bitrate: such an estimate can be far off, the hint is the
+/// length the app knows. An exact duration always wins.
+Duration _effectiveDuration(Duration mpv, bool estimated, PlayerState s) {
+  if (!estimated || mpv <= Duration.zero) return mpv;
+  return _entryHint(s) ?? mpv;
+}
+
+/// Whether the duration given is FFmpeg's estimate, with no hint over it.
+bool _durationIsEstimate(Duration mpv, bool estimated, PlayerState s) =>
+    estimated && mpv > Duration.zero && _entryHint(s) == null;
 
 /// `ab-loop-a` and `ab-loop-b` parser. mpv emits `'no'` when disabled
 /// (the `M_OPT_ALLOW_NO` flag on `OPT_TIME`); any other value is a

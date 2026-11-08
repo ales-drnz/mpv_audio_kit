@@ -24,6 +24,7 @@ mixin _$PlayerState {
     bool? completed,
     Duration? position,
     Duration? duration,
+    bool? durationEstimated,
     bool? seeking,
     bool? seekable,
     bool? partiallySeekable,
@@ -122,6 +123,7 @@ mixin _$PlayerState {
             completed == null &&
             position == null &&
             duration == null &&
+            durationEstimated == null &&
             seeking == null &&
             seekable == null &&
             partiallySeekable == null &&
@@ -145,6 +147,7 @@ mixin _$PlayerState {
             completed: completed,
             position: position,
             duration: duration,
+            durationEstimated: durationEstimated,
             seeking: seeking,
             seekable: seekable,
             partiallySeekable: partiallySeekable,

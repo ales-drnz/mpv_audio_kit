@@ -16,6 +16,7 @@ mixin _$PlaybackState {
     bool? completed,
     Duration? position,
     Duration? duration,
+    bool? durationEstimated,
     bool? seeking,
     bool? seekable,
     bool? partiallySeekable,
@@ -38,6 +39,7 @@ mixin _$PlaybackState {
     completed: completed ?? _self.completed,
     position: position ?? _self.position,
     duration: duration ?? _self.duration,
+    durationEstimated: durationEstimated ?? _self.durationEstimated,
     seeking: seeking ?? _self.seeking,
     seekable: seekable ?? _self.seekable,
     partiallySeekable: partiallySeekable ?? _self.partiallySeekable,
@@ -71,6 +73,7 @@ mixin _$PlaybackState {
           other.completed == _self.completed &&
           other.position == _self.position &&
           other.duration == _self.duration &&
+          other.durationEstimated == _self.durationEstimated &&
           other.seeking == _self.seeking &&
           other.seekable == _self.seekable &&
           other.partiallySeekable == _self.partiallySeekable &&
@@ -95,6 +98,7 @@ mixin _$PlaybackState {
     _self.completed,
     _self.position,
     _self.duration,
+    _self.durationEstimated,
     _self.seeking,
     _self.seekable,
     _self.partiallySeekable,

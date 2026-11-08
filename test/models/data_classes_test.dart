@@ -1192,6 +1192,10 @@ String _className(String source) => RegExp(
 ).firstMatch(File(source).readAsStringSync())![1]!;
 
 /// The parameters of the unnamed constructor of [name] in the library
+/// The fields of the groups added after 0.6.1, which the code written by
+/// hand never had: the generated code has nothing to match them against.
+const _since070 = {'durationEstimated'};
+
 /// [source], in their order: each `this.x`.
 List<String> _constructorFields(String source, String name) {
   final text = File(source).readAsStringSync();
@@ -1221,7 +1225,8 @@ void _check<T extends Object>({
           ? _constructorFields(source, name)
           : [
               for (final g in groupSources)
-                ..._constructorFields(g, _className(g)),
+                for (final f in _constructorFields(g, _className(g)))
+                  if (!_since070.contains(f)) f,
             ];
       expect(fields.map((f) => f.$1).toSet(), expected.toSet());
       expect(fields.length, expected.length);

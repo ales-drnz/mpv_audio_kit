@@ -16,7 +16,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-/// The fields of each group, from its library.
+/// The fields added in the groups after 0.6, with no flat getter.
+const _groupOnly = {'durationEstimated'};
+
+/// The fields of each group, from its library, those of 0.6 only.
 Map<String, List<String>> _groupFields() {
   final out = <String, List<String>>{};
   for (final f in Directory('lib/src/player/state').listSync()) {
@@ -27,7 +30,7 @@ Map<String, List<String>> _groupFields() {
         r'^  final [^;]+? (\w+);$',
         multiLine: true,
       ).allMatches(text))
-        m[1]!,
+        if (!_groupOnly.contains(m[1]!)) m[1]!,
     ];
   }
   return out;

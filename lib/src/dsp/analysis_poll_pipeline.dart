@@ -51,6 +51,9 @@ abstract class AnalysisPollPipeline<T extends Object> {
   final StreamController<T?> _ctrl = StreamController<T?>.broadcast();
   Timer? _pollTimer;
   T? _result;
+  // The result of the file loaded again, kept on screen until the first
+  // reply says whether it stands (see [reset]).
+  T? _held;
   bool _enabled = false;
   // Whether this pipeline holds the native enable property on.
   bool _nativeOn = false;
@@ -93,10 +96,24 @@ abstract class AnalysisPollPipeline<T extends Object> {
   /// Drops the current result and emits `null` so renderers clear stale
   /// data on the track-change boundary. Rearms the polling timer when the
   /// analysis is still enabled.
-  void reset() {
+  ///
+  /// With [sameFile] (the path loaded again) a finished result stays on
+  /// screen instead of `null`: mpv keeps a complete
+  /// analysis of the same file, and the first reply gives it back as it
+  /// was. A reply of a new pass (another file under the same path, or a
+  /// pass that had not finished) replaces it.
+  void reset({bool sameFile = false}) {
     if (_disposed) return;
     _idle = false;
-    _drop();
+    final held = sameFile ? _result : null;
+    if (held == null) {
+      _drop();
+    } else {
+      _result = null;
+      onDrop();
+      stopPolling();
+    }
+    _held = held;
     if (_enabled) {
       _setNative(true);
       _armTimer();
@@ -108,6 +125,7 @@ abstract class AnalysisPollPipeline<T extends Object> {
   void clear() {
     if (_disposed) return;
     _idle = true;
+    _held = null;
     _drop();
   }
 
@@ -151,14 +169,20 @@ abstract class AnalysisPollPipeline<T extends Object> {
 
   @protected
   void emit(T? value) {
+    _held = null;
     if (!_ctrl.isClosed) _ctrl.add(value);
   }
 
-  /// Emits the final [value] and stops polling until the next [reset].
+  /// Emits the final [value] and stops polling until the next [reset]. The
+  /// same result as the one held across a reload is not emitted again.
   @protected
   void finish(T value) {
     _result = value;
     stopPolling();
+    if (value == _held) {
+      _held = null;
+      return;
+    }
     emit(value);
   }
 
@@ -192,6 +216,9 @@ abstract class AnalysisPollPipeline<T extends Object> {
     final (rc, value) = await _asyncGet(_dataProperty, MpvFormat.mpvFormatNode);
     if (_disposed || _idle || _result != null) return;
     if (rc < 0 || value is! Map) return;
+    // A new pass on the file loaded again: the held result goes at once,
+    // not with the first partial value.
+    if (_held != null && value['state'] != 'ready') emit(null);
     try {
       onData(value);
     } catch (_) {

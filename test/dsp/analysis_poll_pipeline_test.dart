@@ -117,6 +117,85 @@ void main() {
     });
   });
 
+  group('the same file loaded again (r24)', () {
+    test('a finished result stays, with no null', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      expect(got.whereType<Object>(), hasLength(1), reason: 'ready');
+      got.clear();
+
+      // mpv kept the analysis: the reply is the same result.
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got.contains(null), isFalse, reason: 'never cleared: $got');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('a new pass under the same path clears it at once', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+
+      // Other content under the same path: mpv decodes again, with no
+      // bins yet.
+      mpv.values['waveform-data'] = {'state': 'decoding', 'duration_us': 0};
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got, [null], reason: 'the held result goes at the first reply');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('another path clears it right away, as before', () async {
+      final mpv = _FakeMpv()..values['waveform-data'] = _readyWave();
+      final p = WaveformPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      got.clear();
+
+      p.reset();
+      await _settle();
+      expect(got.first, isNull, reason: 'cleared before any reply');
+      await sub.cancel();
+      await p.dispose();
+    });
+
+    test('the loudness scan keeps its result too', () async {
+      final mpv = _FakeMpv()
+        ..values['loudness-scan-data'] = {
+          'state': 'ready',
+          'integrated_lufs': -14.0,
+          'lra_lu': 6.0,
+          'sample_peak': 0.9,
+          'true_peak': 0.95,
+        };
+      final p = LoudnessScanPipeline(asyncGet: mpv.get, asyncSet: mpv.set);
+      final got = <Object?>[];
+      final sub = p.stream.listen(got.add);
+      p.setEnabled(true);
+      await _settle();
+      expect(got.whereType<Object>(), hasLength(1), reason: 'ready');
+      got.clear();
+
+      p.reset(sameFile: true);
+      await _settle();
+      expect(got, isEmpty, reason: 'the same result is not emitted again');
+      await sub.cancel();
+      await p.dispose();
+    });
+  });
+
   test('a poll in flight at dispose emits nothing', () async {
     final gate = Completer<void>();
     final mpv = _FakeMpv();
