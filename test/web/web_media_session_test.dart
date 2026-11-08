@@ -178,6 +178,81 @@ void main() {
     expect(_handlers['play'], isNull);
   });
 
+  // 0.7.0: an outside pause of the session's <audio> element (the browser,
+  // a call, another app) follows MediaSession.interruptionPolicy, as on
+  // iOS and Android. 0.6 played on, as keepPlaying.
+  group('an outside pause follows the interruption policy', () {
+    /// Enables a session with [policy] and [playing], waits for the
+    /// element to play, then pauses it and plays it again from outside
+    /// the output. Returns the commands sent.
+    Future<List<MediaSessionCommand>> outside(
+      InterruptionPolicy policy, {
+      bool playing = true,
+    }) async {
+      final channel = MediaSessionChannel();
+      final commands = <MediaSessionCommand>[];
+      final sub = channel.commandStream.listen(commands.add);
+      addTearDown(sub.cancel);
+      addTearDown(channel.disable);
+      await channel.enable(
+        session: MediaSession(interruptionPolicy: policy),
+        metadata: const MediaSessionMetadataSnapshot(title: 'Outside'),
+        playback: MediaSessionPlaybackSnapshot(
+          playing: playing,
+          position: Duration.zero,
+          rate: 1,
+          seekable: true,
+          loop: Loop.off,
+          shuffle: false,
+        ),
+      );
+      final output = await webAudioOutput();
+      final element = output.element!;
+      await waitUntil(
+        () => (element['paused'] as JSBoolean).toDart == false,
+        what: 'the element playing',
+      );
+      // Let its playing event land before the outside pause.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      element.callMethod('pause'.toJS);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      element.callMethod('play'.toJS);
+      await waitUntil(
+        () => (element['paused'] as JSBoolean).toDart == false,
+        what: 'the element playing again',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      return commands;
+    }
+
+    test(
+      'pauseAndResume pauses, and plays when the element plays again',
+      () async {
+        expect(await outside(InterruptionPolicy.pauseAndResume), [
+          MediaSessionCommand.pause,
+          MediaSessionCommand.play,
+        ]);
+      },
+    );
+
+    test('pauseOnly pauses and stays paused', () async {
+      expect(await outside(InterruptionPolicy.pauseOnly), [
+        MediaSessionCommand.pause,
+      ]);
+    });
+
+    test('keepPlaying sends nothing, as 0.6', () async {
+      expect(await outside(InterruptionPolicy.keepPlaying), isEmpty);
+    });
+
+    test('a player already paused is not resumed', () async {
+      expect(
+        await outside(InterruptionPolicy.pauseAndResume, playing: false),
+        isEmpty,
+      );
+    });
+  });
+
   test('a player with a media session plays through an <audio> element, '
       'and back to the destination without one', () async {
     final player = Player();
