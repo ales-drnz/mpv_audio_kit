@@ -27,7 +27,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: kit
-      - uses: actions/setup-dotnet@v4
+      # The .NET runner of the TPK (flutter-tizen's CI takes 6.0 too).
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: '6.0.x'
       - name: KVM for the runner's user
