@@ -16,7 +16,7 @@ permissions:
 
 env:
   # The libmpv-scripts Build whose tizen-x86_64 artifact the app bundles.
-  LIBMPV_SCRIPTS_RUN: '42402905165'
+  LIBMPV_SCRIPTS_RUN: '42523305533'
   FLUTTER_TIZEN_REF: 22bcec9058fbe1e0943e6c6fda21792f24868e91
 
 jobs:
